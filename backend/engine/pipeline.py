@@ -28,6 +28,7 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
+from engine import world
 from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.context import ImageSetting, TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
@@ -42,9 +43,9 @@ from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
 from engine.resolve import resolve_intent
 from engine.rng import SeededRng
-from engine.state.records import Deed, EventStatus, PendingEvent, Visibility
+from engine.state.records import PendingEvent
 from engine.state.world import WorldState
-from engine.timekeeping import TimePassage, advance_clock, world_stopped
+from engine.timekeeping import TimePassage, world_stopped
 
 __all__ = [
     "PlayOut",
@@ -74,23 +75,15 @@ class PlayOut:
     capped: bool = False
 
 
-def _event_handler(ctx: TurnContext, rng: SeededRng):
-    """Applies events through the `apply_event` seam, each with its own stream keyed by its id,
-    so an event rolls the same however the time around it was split into steps."""
-    return lambda state, event: apply_event(state, event, ctx, rng.child("event", event.id))
-
-
 def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) -> TimePassage:
-    """Step 1. Apply pending events due by `until_s`, in time order, and run the deterministic
-    world tick (W6, W10, B12). The graph passes `until_s=state.world_s`. While a time stop is in
-    effect nothing fires (W10a).
+    """Step 1, and every step of a plan. Move the world clock to `until_s` (the graph passes
+    `state.world_s`), applying every pending event due on the way in time order and running the
+    deterministic world tick (W6, W10, B12). The first event that needs the player stops the
+    clock there. While a time stop is in effect nothing fires (W10a).
 
-    Default: the due events go through `apply_event` with `engine.timekeeping.advance_clock`, and
-    there is no world tick. WS10 replaces it.
+    The living world's one loop, `engine.world.catch_up` (WS10).
     """
-    if world_stopped(state):
-        return TimePassage(state=state, started_s=state.world_s, ended_s=state.world_s)
-    return advance_clock(state, until_s, _event_handler(ctx, rng))
+    return world.catch_up(state, until_s, ctx, rng)
 
 
 def resolve(state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng) -> Resolution:
@@ -108,20 +101,14 @@ def apply_event(
     state: WorldState, event: PendingEvent, ctx: TurnContext, rng: SeededRng
 ) -> WorldState:
     """Apply one pending event that fell due: a witness reaching the guard post, a rumor arriving,
-    a faction's answer (W2, W5, W10, W13). It may schedule new events, which fire in turn if they
-    fall due within the same stretch of time.
+    a faction's answer, a clock's step, the world tick (W2, W5, W6, W10, W13). It may schedule new
+    events, which fire in turn if they fall due within the same stretch of time. It leaves the
+    event applied and records on it whether it needed the player when it happened.
 
-    Default: the event is marked applied and changes nothing else. WS10 replaces it.
+    `engine.world.apply_event` (WS10). Events of other kinds, such as `director.*`, are only
+    marked applied.
     """
-    stored = state.pending_events.get(event.id)
-    if stored is None or stored.status is not EventStatus.PENDING:
-        raise ValueError(f"event {event.id!r} is not a pending event of this state")
-    new = state.model_copy(deep=True)
-    fired = new.pending_events[event.id]
-    fired.status = EventStatus.APPLIED
-    fired.applied_turn = ctx.turn
-    fired.applied_s = new.world_s
-    return new
+    return world.apply_event(state, event, ctx, rng)
 
 
 def record_consequences(
@@ -133,45 +120,12 @@ def record_consequences(
 ) -> WorldState:
     """Record what one finished step did to the world: deeds with their witnesses and severity,
     rumors, reputation, grudges, and the world's answers scheduled as pending events (W1 to W5,
-    W11 to W13). Called by `play_out` at the step's end time, so a witness who flees during a long
-    action can arrive during it.
+    W11 to W13). Called by `play_out` at the step's end time, after the step's effects, so a
+    witness who flees during a long action can arrive during it and a victim is already dead.
 
-    Default: the step's proposed deeds are recorded as given. WS10 replaces it.
+    `engine.world.record_consequences` (WS10).
     """
-    if not step.deeds:
-        return state
-    new = state.model_copy(deep=True)
-    for proposed in step.deeds:
-        actor_id = proposed.actor_id or resolution.actor_id or new.player_id
-        actor = new.characters.get(actor_id)
-        visibility = proposed.visibility or (
-            Visibility.WITNESSED if proposed.witness_ids else Visibility.SECRET
-        )
-        unnoticed = proposed.unnoticed_witness_ids
-        if proposed.in_stopped_time:
-            # The user sees a frozen world; whoever was immune to the stop goes unnoticed (W10a).
-            unnoticed = proposed.witness_ids
-        deed = Deed(
-            id=new.new_id("deed"),
-            actor_id=actor_id,
-            kind=proposed.kind,
-            text=proposed.text,
-            turn=ctx.turn,
-            world_s=new.world_s,
-            timeline_id=new.timeline_id,
-            place_id=proposed.place_id or (actor.location_id if actor else None),
-            victim_ids=proposed.victim_ids,
-            target_ids=proposed.target_ids,
-            severity=proposed.severity,
-            visibility=visibility,
-            witness_ids=proposed.witness_ids,
-            unnoticed_witness_ids=[w for w in unnoticed if w in proposed.witness_ids],
-            traces=proposed.traces,
-            in_stopped_time=proposed.in_stopped_time,
-            known_by=list(dict.fromkeys([actor_id, *proposed.witness_ids])),
-        )
-        new.deeds[deed.id] = deed
-    return new
+    return world.record_consequences(state, resolution, step, ctx, rng)
 
 
 def play_out(

@@ -145,6 +145,13 @@ class Deed(EngineModel):
     in_stopped_time: bool = False
     discovered: bool = False
     known_by: list[str] = Field(default_factory=list)
+    known_by_factions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Factions that know of it and who did it (W3, W5), by id, so the player's reputation"
+            " and a faction's answer count each deed once."
+        ),
+    )
 
     @property
     def subject_ids(self) -> list[str]:
