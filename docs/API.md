@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents`. |
+  | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents` and `details.available_cents`. |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -91,12 +91,15 @@ draft or revision, a picture) is checked before it starts, in this order:
 2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
    (ISO 8601, the next midnight UTC). BYOK requests don't count.
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
-   or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents`. A
-   picture that can't be paid for is `skipped` instead (M7).
+   or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents` and
+   `details.available_cents` (less than the balance while another request of the same player is
+   running). A picture that can't be paid for is `skipped` instead (M7).
 
 A request that is refused counts against nothing. The real cost is charged when the request
 completes, in the same transaction as what it saved, so a turn that fails or loses a version race
-costs nothing.
+costs nothing. These checks are wired into each endpoint as it moves to this contract (the turn
+endpoint, drafting and pictures); the legacy endpoints described under Stories have no signed-in
+user yet, so they aren't metered.
 
 **Signing in.** Every auth endpoint answers `200` with a `Session`, except `logout` (`204`).
 

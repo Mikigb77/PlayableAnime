@@ -73,8 +73,17 @@ def test_a_turn_cant_start_without_the_held_amount_available(player):
 
     assert error.code == ErrorCode.OUT_OF_CREDITS
     assert error.status == 402
-    assert error.details == {"balance_cents": 4.99}
+    assert error.details == {"balance_cents": 4.99, "available_cents": 4.99}
     assert not CreditHold.objects.exists()
+
+
+def test_out_of_credits_says_how_much_another_request_holds(player):
+    _set_balance(player, 8)
+    meter.start(player, meter.TURN, now=NOW)
+
+    error = _error(meter.start, player, meter.TURN, now=NOW)
+
+    assert error.details == {"balance_cents": 8.0, "available_cents": 3.0}
 
 
 def test_a_refused_turn_counts_nothing(player, billing_settings):
@@ -204,8 +213,9 @@ def test_a_turn_on_the_players_own_key_uses_no_credits(player):
     assert not LedgerEntry.objects.filter(kind=EntryKind.TURN).exists()
 
 
-def test_a_call_that_fell_back_to_our_key_is_charged(player):
-    """M7: a BYOK key on the free tier can't draw, so the picture falls back to credits."""
+def test_calls_on_our_key_under_a_byok_ticket_are_charged_and_flagged(player, log_lines):
+    """They cost us, so they are charged, but the ticket skipped the quota and the hold: M7's
+    fallback starts a ticket on our key instead."""
     ticket = meter.start(player, meter.IMAGE, byok=True, now=NOW)
 
     entry = meter.charge_image(
@@ -214,6 +224,17 @@ def test_a_call_that_fell_back_to_our_key_is_charged(player):
 
     assert entry.amount_cents == Decimal("-5.1")
     assert entry.cost_usd == Decimal("0.034")
+    assert any("made calls on ours" in line["message"] for line in log_lines())
+
+
+def test_a_picture_falls_back_to_credits_when_the_players_key_cant_draw(player):
+    """M7: their key first, then a ticket on our key, then nothing."""
+    ticket = meter.start(player, meter.IMAGE, byok=False, now=NOW)
+
+    entry = meter.charge_image(ticket, [call("0.034", images=1)], image_id="img-2")
+
+    assert entry.amount_cents == Decimal("-5.1")
+    assert ticket.held_cents == 6
 
 
 # Pictures and drafts

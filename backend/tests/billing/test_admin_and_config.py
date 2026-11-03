@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.test import Client
 from django.urls import reverse
 from pydantic import ValidationError
@@ -39,6 +40,25 @@ def test_staff_can_read_balances_and_the_ledger_but_not_change_them(staff_client
     assert staff_client.post(delete_url, {"post": "yes"}).status_code == 403
     assert LedgerEntry.objects.filter(pk=entry.pk).exists()
     assert CreditAccount.objects.get(user=player).balance_cents == 47
+
+
+@pytest.mark.django_db
+def test_staff_can_still_delete_a_user_with_their_credits(staff_client, player):
+    """T12: the read-only billing admins don't block deleting a user in the admin."""
+    response = staff_client.post(
+        reverse("admin:accounts_user_delete", args=[player.pk]), {"post": "yes"}
+    )
+
+    assert response.status_code == 302
+    assert not User.objects.filter(pk=player.pk).exists()
+    assert not LedgerEntry.objects.exists()
+
+
+def test_a_zero_hold_is_refused(billing_settings):
+    billing_settings["RESERVE_CENTS"]["image"] = 0
+
+    with pytest.raises(ImproperlyConfigured):
+        get_config()
 
 
 def test_the_billing_settings_come_from_env(monkeypatch):

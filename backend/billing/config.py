@@ -7,6 +7,7 @@ from decimal import Decimal
 from enum import StrEnum
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 
 class Use(StrEnum):
@@ -36,7 +37,7 @@ class BillingConfig:
 
 def get_config() -> BillingConfig:
     raw = settings.BILLING
-    return BillingConfig(
+    config = BillingConfig(
         starter_cents=Decimal(raw["STARTER_CENTS"]),
         starter_policy=StarterPolicy(raw["STARTER_POLICY"]),
         margin=Decimal(raw["MARGIN"]),
@@ -45,3 +46,7 @@ def get_config() -> BillingConfig:
         per_minute={Use(k): int(v) for k, v in raw["PER_MINUTE"].items()},
         per_day={Use(k): int(v) for k, v in raw["PER_DAY"].items()},
     )
+    if any(cents <= 0 for cents in config.reserve_cents.values()):
+        # A zero hold would let a request start with no credits at all.
+        raise ImproperlyConfigured("Every BILLING['RESERVE_CENTS'] must be more than zero.")
+    return config

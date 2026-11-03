@@ -335,9 +335,11 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   is deleted with the account (T12); when real payments arrive (K4, K5), their records will need
   keeping for accounting. `manage.py check_ledger` checks every balance against its ledger.
 - **Starter credit (K1).** A `post_save` receiver on `accounts.User` opens the account in the
-  transaction that creates the user. A verified account (Google at once, an email account once
-  `email_verified` is set) gets $0.50, once; any later save that verifies the account grants it
-  then. An account that is missing is opened on first use.
+  transaction that creates the user. A verified account (one with a Google sign-in at once, an
+  email account once `email_verified` is set) gets $0.50, once; any later save that verifies the
+  account grants it then. An account that is missing is opened on first use.
+- **Staff.** The admin shows balances and the ledger read-only. Deleting a user there still
+  takes their billing rows with it (T12); deleting billing rows on their own is refused.
 - **Prices.** The per-model prices are the model layer's (`graph/llm/pricing.py`): each call's
   telemetry record (T5) carries its raw cost. Billing charges that cost times `1 + BILLING_MARGIN`
   and adds no fixed fee, so the spread between turn kinds is the spread of their model cost (K8).
@@ -377,8 +379,12 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   from env (`TURN_RATE_PER_MINUTE`, `DAILY_TURN_QUOTA`).
 - **K8 cost tests.** `billing.pricing.cost_spread()` and `K8_MAX_COST_MULTIPLE` (3 for now)
   compare what a quiet, a montage and an event turn charge a normal account.
-  `tests/billing/test_cost_spread.py` runs them on token budgets estimated from K8's bounds; the
-  turn endpoint's tests run the same check on the turn graph's own telemetry.
+  `tests/billing/test_cost_spread.py` runs them on token budgets estimated from K8's bounds,
+  priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
+  same check on the turn graph's own telemetry.
+- **Not wired yet.** The legacy endpoints have no signed-in user, so nothing calls `billing.meter`
+  until the turn endpoint (WS3), pictures (WS8) and drafting (WS12) land; whichever side lands
+  second wires the calls.
 
 ## Voice input
 

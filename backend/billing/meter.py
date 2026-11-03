@@ -118,7 +118,11 @@ def start(user, use: Use, *, byok: bool = False, now: datetime | None = None) ->
                 raise ApiError(
                     ErrorCode.OUT_OF_CREDITS,
                     "You're out of credits.",
-                    {"balance_cents": float(account.balance_cents)},
+                    {
+                        "balance_cents": float(account.balance_cents),
+                        # Less than the balance while another request holds part of it.
+                        "available_cents": float(max(available, Decimal(0))),
+                    },
                 )
             CreditHold.objects.create(
                 id=ticket_id,
@@ -162,6 +166,14 @@ def charge(
         if not billed.used_our_key:
             return None
         detail = billed.detail()
+        if ticket.byok:
+            # A request started on the player's own key skipped the daily quota and the hold,
+            # yet some calls ran on ours. They cost us, so they are charged, but the caller
+            # should have started a ticket on our key for them (M7's fallback does).
+            logger.warning(
+                "A request started on the player's own key made calls on ours",
+                extra={"billing": {"use": str(ticket.use), "models": list(billed.models)}},
+            )
         if not billed.price_known:
             logger.warning(
                 "A model call had no price in the table, so it was charged at the fallback",
@@ -173,6 +185,8 @@ def charge(
             detail["list_cents"] = str(billed.charge_cents)
         else:
             # Never below zero (M7). The rest is ours to absorb, and recorded so T5 stays honest.
+            # Every hold on this account is the same player's, so a charge may use the whole
+            # balance: that leaves the least uncovered.
             amount = min(billed.charge_cents, account.balance_cents)
             if amount < billed.charge_cents:
                 detail["uncovered_cents"] = str(billed.charge_cents - amount)
@@ -189,7 +203,7 @@ def charge(
         return credits.append(
             account,
             _ENTRY_KIND[ticket.use],
-            -amount if amount else Decimal(0),
+            -amount,
             now=now,
             cost_usd=billed.cost_usd,
             unlimited=ticket.unlimited,
