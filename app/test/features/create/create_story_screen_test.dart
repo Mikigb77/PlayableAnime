@@ -374,6 +374,37 @@ void main() {
     await settle(tester, frames: 12);
   });
 
+  testWidgets('a sheet closed while its change saves leaves the review open', (tester) async {
+    const slow = FakePace(
+      latency: Duration.zero,
+      firstWords: Duration.zero,
+      perChunk: Duration.zero,
+      picture: Duration.zero,
+      drafting: Duration(seconds: 2),
+    );
+    final app = AppHarness(pace: slow);
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await settle(tester, frames: 12);
+    expect(find.text(l10n.reviewTitle), findsOneWidget);
+
+    const line = 'Three factions want the same thing, and only one of them knows you exist.';
+    await tapAndSettle(tester, find.text(line), frames: 6);
+    await tester.enterText(inSheet(find.byType(TextField)), 'Four factions, and all of them know.');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.save)), frames: 2);
+    // Closed by a tap above it just before the redrafted world comes back, which lands while
+    // the sheet is still sliding away.
+    await tester.pump(const Duration(milliseconds: 1850));
+    await tester.tapAt(const Offset(195, 20));
+    await settle(tester, frames: 12);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(CreateStoryScreen), findsOneWidget);
+    expect(find.text(l10n.reviewTitle), findsOneWidget);
+    expect(find.text('Four factions, and all of them know.'), findsOneWidget);
+  });
+
   testWidgets('removing a line says what it costs, then redrafts the world', (tester) async {
     final app = AppHarness();
     await app.launch(tester, location: '/create');

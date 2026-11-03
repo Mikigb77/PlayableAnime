@@ -44,21 +44,28 @@ void reportOutcome(BuildContext context, SheetOutcome? outcome) {
 
 /// Runs a change from a sheet: closes it when the change saved or the draft was stale, and keeps
 /// it open with the failure otherwise, so nothing the player wrote is lost. Out of credits offers
-/// the player's own key, and makes the same change on it once they add one (K2, K6).
+/// the player's own key, and makes the same change on it once they add one (K2, K6). A sheet the
+/// player closed meanwhile is closed already, even while it still slides away, so nothing else is
+/// closed in its place.
 Future<Object?> _runChange(
   BuildContext context,
   Redraft cost,
   Future<Object?> Function() change,
 ) async {
   final navigator = Navigator.of(context);
+  final sheet = ModalRoute.of(context);
+  void close(SheetOutcome outcome) {
+    if (sheet != null && sheet.isCurrent) navigator.pop(outcome);
+  }
+
   while (true) {
     final failure = await change();
     if (failure == null) {
-      navigator.pop(Saved(cost));
+      close(Saved(cost));
       return null;
     }
     if (failure case ApiException(code: ApiErrorCode.versionConflict)) {
-      navigator.pop(const Stale());
+      close(const Stale());
       return null;
     }
     if (!context.mounted || !await offerOwnKey(context, failure)) return failure;
