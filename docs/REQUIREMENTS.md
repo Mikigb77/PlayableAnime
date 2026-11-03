@@ -814,9 +814,12 @@ how often events come, but never turns them off. The details:
   Starting thresholds are 10, 5 and 3 turns without stakes for calm, normal and dramatic, tuned with
   the quiet-life eval (T17).
 - **Themes.** The director only picks themes the player switched on (F7) and stays within the rating.
-  A stranger falling for your wife is a romance event, and a sick child is a dark one.
+  A stranger falling for your wife is a romance event, and a sick child is a dark one. A romance
+  event needs a player character with an adult age recorded, and it casts only adults (F3).
 - **Ignoring an event is a choice.** If the player does nothing, the event plays out with its
-  consequence (the flood takes the barn, the stranger keeps coming back) instead of repeating.
+  consequence (the flood takes the barn, the stranger keeps coming back) instead of repeating. It
+  waits for an in-world time that fits it (hours for a flood, days for a summons, W10), and the
+  player takes it up by acting on it or on the people in it.
 - **Time skips** roll for events inside the skipped time and stop early when one needs a decision
   (E7): "I farm here for a year" can stop in month four when the river rises.
 - **Loose ends.** Each event leaves a thread (N1) that can go dormant and return later.
@@ -1003,7 +1006,7 @@ top model, would cost about $2.70, more than the text.
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined or occupied (W7); a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1), and in a fight with a key NPC or a strong monster, its start and its decisive blow (Miki, 2026-11-03); and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
-| M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits, even with automatic pictures off. A per-story setting (S6) picks off, key moments only (the default), or more often. | P1 |
+| M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits, even with automatic pictures off. A per-story setting (S6) picks off, key moments only (the default), or more often. A fight with a key NPC or a strong monster always gets both its pictures, borrowing against the coming turns, so the average still holds. | P1 |
 | M3 | **Pictures never slow the story.** The narration streams first (S3), and the picture fills its place in the scene when it is ready, usually a few seconds later. The app asks for it in its own request when the scene says one is planned, because nothing may run after a response ends on Cloud Run (B8). The request is safe to repeat, so the app asks again if a picture never arrived, and it is never paid for twice. A picture that fails or is blocked is skipped quietly, never shown as an error, and the scene is complete without it. Asking again doesn't retry a skipped picture, so a failure never costs twice. Illustrate (M2) tries it again, and a portrait or place that failed or wasn't affordable is also tried again the next time it comes up; a blocked one only through Illustrate. | P1 |
 | M4 | **Made once, reused.** Pictures are stored in Cloud Storage in Frankfurt, keyed by character, place or scene. A portrait is reused wherever that character appears, and a place's picture whenever the player returns, until the place changes. Pictures are exported with the stories and deleted with the account (T12). | P1 |
 | M5 | **The same face every time.** Every picture uses the app's house style (S7) and the world's era and look. A scene with a known character passes that character's portrait to the model as a reference image, along with the appearance kept in their entry (C9). When a character changes for good (a lost eye, old age, G17), the portrait is redrawn once. | P1 |

@@ -170,8 +170,9 @@ these functions and saves the result.
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
-| `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS9, WS10 and WS11 replace. |
-| `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
+| `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
+| `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS9 and WS10 replace. |
+| `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
 a new one.
@@ -180,10 +181,11 @@ a new one.
 | --- | --- | --- |
 | 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order through `apply_event`, stopping at the first that needs the player. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
-| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision. At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
 | | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
-| 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
+| 3. Direct | `direct(state, resolution, ctx, rng, intent=None) -> DirectorPlan`, on the state `play_out` returned, with the turn's `Intent` (its `responds_to` and `goals`). It only decides and never changes the state | WS11 |
+| | `record_direction(state, plan, ctx) -> WorldState` writes `plan.updates` into the state. Call it right after `direct`, before the narrator's changes apply, so the plan's ids stay the ones the narrator sees | WS11 |
 | 6. Apply the update | `apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR) -> Applied`. Refused changes come back in `Applied.rejected` for the log and the C5 check; the rest applies. Before saving, the graph runs `check_transition(first, last)`, and a violation is an engine bug: log it and don't save | WS2 |
 
 **Decisions the package makes:**
@@ -232,6 +234,60 @@ a new one.
   engine's is refused, so an old revision can't drop fields it doesn't know and save the stripped
   state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
   meaning.
+
+### The story director
+
+`engine/director/` fills the `direct` step (WS11). Model nodes propose and code decides: every
+choice below is made in plain Python with the turn's seeded `rng`, and the narrator only dresses
+what it is given in the world's own form (G9).
+
+| Module | What it decides |
+| --- | --- |
+| `pressure.py` | W16's stall pressure: turns since the last decision with stakes, plus half a point for each repeat of the same low-stakes action, plus a point for each running clock one step from its end with that step within two days (at most two). An encounter turn or a decision with stakes resets it. The thresholds are 10, 5 and 3 for calm, normal and dramatic; an event may come early from 60% of the threshold. E6's drift moves the threshold by up to 20% either way: it rises 0.1 a turn while the player is comfortably in control and drops 0.6 after a big event. |
+| `sources.py`, `deck.py` | W16's order once pressure calls for an event: what came due, then key NPCs and factions with plans the player is tied to (E3, W6), then a dormant thread quiet for at least 8 turns, then a character or faction that emerged (W15), then a draw from the seeded deck (E4). The deck has one table per size with good things in each; the size comes from the story's scale (personal, local or world, read from threat, fear and memberships), so a farm never draws a world event. A source used in the last 6 events waits. Titles never name what the player doesn't know (C6). |
+| `themes.py` | F7, F2, F3: an event carries only themes the player switched on, gore only in Mature with gore above low, and romance only for a player character with an adult age recorded. A romance event casts only adults. |
+| `plan.py` | `direct` itself, in this order: what came due, play-outs of events the player took up (cancelled), something new if it's time, thread changes and callbacks, suggestions, the picture, the director's memory, goals and leads. |
+| `threads.py` | N1: a thread nobody touched for 12 turns goes dormant; acting on its people or naming it wakes it; it closes when its mystery is solved, its clock ends (unless it is a mystery), or everyone it pits the player against is dead. One or two dormant threads the player knows are called back each scene. |
+| `goals.py` | N2: goals come only from `Intent.goals` or from taking up a lead (`responds_to` names it); nothing else adds or changes one. Leads expire on in-world time. |
+| `suggestions.py` | S2: zero to four choices, always at least one personal, side or wild, and none when suggestions are off. |
+| `pictures.py` | M1, M2: the trigger list in priority order and the budget (below). |
+| `montage.py` | E7, K8: a stretch of a day or more is split into at most 12 steps, each with a chance of an event from the frequency setting (a mean gap of a year, six months or three months), and rolling stops at the first event that needs a decision. |
+| `record.py`, `ids.py` | `record_direction`: mechanical writes of the plan's updates, with provisional ids that are remapped if one was taken in the meantime. |
+
+**Ignoring an event is a choice** (W16, W10). An event that needs a decision opens a thread and
+schedules a `director.plays_out` pending event at the end of its in-world window (a day to a week
+by size, or the card's own). If the player names the thread or a lead in `Intent.responds_to`, or
+acts on the event's people, the play-out is cancelled. Otherwise it comes due through `catch_up`
+like any world event, and the director tells it as a happening with the event's consequence: its
+thread goes dormant if the matter lingers, else it closes as resolved without the player. A
+play-out that the clock applied during the very action that took it up is cancelled after the
+fact.
+
+**Pending event kinds the director owns.** `director.event` is an event rolled inside a time skip
+(its payload holds the pick, and `needs_player` stops the clock at it). `director.plays_out` is an
+ignored event's play-out. `apply_event` only marks either applied, since the director plays them
+out itself, and WS10's replacement must keep it that way. A world event that needs the player
+(`needs_player`) becomes the scene's event as it is; WS10 can give it a size, kind, brief and
+themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": "...", "themes":
+[]}`), and the director defaults to a personal arrival without them.
+
+**Pictures** (M1, M2). At most one a scene, highest first: the player's portrait at the start; a
+key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
+power ladder; hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
+fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
+local or world event; the cover from the second scene; a place ruined or occupied; a key NPC's
+first portrait; a place on the first visit. Portraits, places and the cover come once each, keyed
+in `DirectorState.pictured`, and don't spend the budget. Key scenes spend a credit from a bucket
+that refills 0.1 a turn on key moments (0.2 on more, capped at 2 and 3), so about one in ten turns.
+A key scene needs a full credit; a fight's start may spend down to zero and its decisive blow, once
+the start was pictured, down to −2, so a fight gets both pictures and the average still holds.
+`PictureDecision.subject_id` is the character for portraits, deaths, blows, fight starts,
+breakthroughs and reveals, the place for places, the deed for a big deed, and the thread for an
+arc end or an event.
+
+**The director's memory** lives in `WorldState.director` (`DirectorState`): the stall counters, the
+last action's signature, the drift, the last few sources used, the picture credit and what was
+pictured, and the key fight being followed.
 
 ## Model layer
 
