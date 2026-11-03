@@ -28,7 +28,7 @@ from engine.world.knowledge import (
     faction_learns,
     region_learns,
 )
-from engine.world.norms import Nature, assess_severity, canonical, is_crime, nature
+from engine.world.norms import Nature, assess_severity, canonical, deed_nature, is_crime
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import Kind, World, schedule
 from engine.world.tuning import (
@@ -105,7 +105,9 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
         place_id=place_id,
         victim_ids=victims,
         target_ids=list(dict.fromkeys(proposed.target_ids)),
-        severity=assess_severity(state, proposed.kind, proposed.severity, victims),
+        severity=assess_severity(
+            state, proposed.kind, proposed.severity, victims, proposed.target_ids
+        ),
         visibility=visibility,
         witness_ids=witnesses,
         unnoticed_witness_ids=unnoticed,
@@ -177,7 +179,7 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
         if holder in state.factions:
             targets.append(holder)
             break
-    if is_crime(deed.kind, deed.severity, deed.victim_ids):
+    if is_crime(deed):
         targets.extend(f for f in sorted(state.factions) if law_at(state, f, deed.place_id))
     if deed.severity >= 2:
         for witness_id in deed.witness_ids:
@@ -272,7 +274,7 @@ def _mark_places(w: World, deed: Deed) -> None:
     elif (
         deed.visibility is not Visibility.SECRET
         and deed.severity >= 4
-        and nature(deed.kind, deed.victim_ids) is Nature.HARM
+        and deed_nature(deed) is Nature.HARM
         and deed.place_id in state.places
     ):
         actor = state.characters.get(deed.actor_id)

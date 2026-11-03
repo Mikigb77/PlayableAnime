@@ -9,6 +9,7 @@ assumes a genre (G5).
 
 from enum import StrEnum
 
+from engine.state.records import Deed
 from engine.state.world import WorldState
 
 
@@ -91,7 +92,11 @@ def canonical(kind: str) -> str:
     return _ALIASES.get(word, word)
 
 
-def nature(kind: str, victim_ids: list[str]) -> Nature:
+def nature(
+    kind: str, victim_ids: list[str], target_ids: list[str] = (), severity: int = 1
+) -> Nature:
+    """What a deed does. An attempt on someone that harmed nobody is still harm when resolve
+    weighed it as serious: the target noticed the swing (A8)."""
     word = canonical(kind)
     if word in HARM_FLOORS:
         return Nature.HARM
@@ -99,11 +104,19 @@ def nature(kind: str, victim_ids: list[str]) -> Nature:
         return Nature.HELP
     if word in DISPLAY_KINDS:
         return Nature.DISPLAY
-    return Nature.HARM if victim_ids else Nature.OTHER
+    if victim_ids or (target_ids and severity >= 2):
+        return Nature.HARM
+    return Nature.OTHER
 
 
-def is_killing(kind: str) -> bool:
-    return canonical(kind) in KILLING
+def deed_nature(deed: Deed) -> Nature:
+    return nature(deed.kind, deed.victim_ids, deed.target_ids, deed.severity)
+
+
+def killed(state: WorldState, victim_ids: list[str]) -> list[str]:
+    """Victims who are dead: characters no longer alive, and nameless victims who aren't
+    characters at all (the villagers of a massacre)."""
+    return [v for v in victim_ids if v not in state.characters or not state.characters[v].alive]
 
 
 def monstrous(state: WorldState, kind: str, victim_ids: list[str]) -> bool:
@@ -111,7 +124,7 @@ def monstrous(state: WorldState, kind: str, victim_ids: list[str]) -> bool:
     word = canonical(kind)
     if word in SEXUAL_VIOLENCE or word == "massacre":
         return True
-    if word in KILLING and len(victim_ids) >= MASSACRE_VICTIMS:
+    if word in KILLING and len(killed(state, victim_ids)) >= MASSACRE_VICTIMS:
         return True
     if nature(kind, victim_ids) is not Nature.HARM or HARM_FLOORS.get(word, 2) < 2:
         return False
@@ -122,17 +135,29 @@ def monstrous(state: WorldState, kind: str, victim_ids: list[str]) -> bool:
     return False
 
 
-def assess_severity(state: WorldState, kind: str, proposed: int, victim_ids: list[str]) -> int:
-    """The proposed severity, held above the floor the facts set (W1, W12)."""
+def assess_severity(
+    state: WorldState,
+    kind: str,
+    proposed: int,
+    victim_ids: list[str],
+    target_ids: list[str] = (),
+) -> int:
+    """The proposed severity, held above the floor the facts set (W1, W12). The floor needs
+    someone harmed: an attempt that missed keeps resolve's guess, and a killing nobody died of
+    counts as the wounding it was."""
     severity = max(1, min(5, int(proposed)))
     if monstrous(state, kind, victim_ids):
         return 5
-    if nature(kind, victim_ids) is Nature.HARM:
-        severity = max(severity, HARM_FLOORS.get(canonical(kind), 1))
-    return severity
+    if not victim_ids or nature(kind, victim_ids, target_ids, severity) is not Nature.HARM:
+        return severity
+    word = canonical(kind)
+    floor = HARM_FLOORS.get(word, 1)
+    if word in KILLING and not killed(state, victim_ids):
+        floor = HARM_FLOORS["wound"]
+    return max(severity, floor)
 
 
-def is_crime(kind: str, severity: int, victim_ids: list[str]) -> bool:
-    """W11: a harmful act against someone, serious enough for those who keep the law to act on.
-    Insults and petty theft are left to the people involved."""
-    return nature(kind, victim_ids) is Nature.HARM and severity >= 2
+def is_crime(deed: Deed) -> bool:
+    """W11: a harmful act against someone, or a serious attempt at one, serious enough for those
+    who keep the law to act on. Insults and petty theft are left to the people involved."""
+    return deed_nature(deed) is Nature.HARM and deed.severity >= 2

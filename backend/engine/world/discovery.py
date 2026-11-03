@@ -16,7 +16,7 @@ from engine.world.aftermath import on_attributed
 from engine.world.answers import Answer, law_at, open_answer, schedule_answer
 from engine.world.geography import characters_at, region_of
 from engine.world.knowledge import COMRADE, faction_learns, region_learns, ties_of
-from engine.world.norms import Nature, is_crime, is_killing, nature
+from engine.world.norms import Nature, deed_nature, is_crime, killed
 from engine.world.rumors import blame, names_actor, start_rumor
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
 from engine.world.tuning import (
@@ -38,7 +38,7 @@ _PLAIN_SIGHT = (TraceKind.BODY, TraceKind.NOISE, TraceKind.DAMAGE)
 def ties_trace(state: WorldState, deed: Deed) -> Trace | None:
     """W13: how connected the victims were, worked out from the state: family, friends and
     comrades who will miss them. None for a hermit with no ties."""
-    if nature(deed.kind, deed.victim_ids) is not Nature.HARM:
+    if deed_nature(deed) is not Nature.HARM:
         return None
     count = sum(
         len([t for t in ties_of(state, v, least=COMRADE) if t[0] != deed.actor_id])
@@ -156,7 +156,7 @@ def _unexplained(w: World, deed: Deed, stream) -> None:
     state = w.state
     victims = [state.characters[v] for v in deed.victim_ids if v in state.characters]
     names = ", ".join(v.name for v in victims) or "someone"
-    what = "was found dead" if is_killing(deed.kind) else "came to harm"
+    what = "was found dead" if killed(state, deed.victim_ids) else "came to harm"
     suspects = _suspects(state, deed)
     choices = ["unknown", "accident"] + (["rival"] if suspects else [])
     pick = stream.choice(choices)
@@ -183,7 +183,7 @@ def _unexplained(w: World, deed: Deed, stream) -> None:
     )
     if not is_true:
         blame(w, rumor, deed, deed.place_id)
-    if is_crime(deed.kind, deed.severity, deed.victim_ids):
+    if is_crime(deed):
         _investigate(w, deed)
 
 

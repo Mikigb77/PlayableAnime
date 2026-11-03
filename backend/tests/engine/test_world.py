@@ -7,11 +7,17 @@ from engine import pipeline, world
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import StorySettings, TurnContext
 from engine.contracts import (
+    ActionKind,
+    Aim,
     CharacterChange,
+    Intent,
+    IntentStep,
     OutcomeClass,
     PlaceChange,
     ProposedDeed,
     Resolution,
+    SheetPart,
+    SheetUse,
     StateDelta,
     StepResolution,
 )
@@ -49,7 +55,7 @@ from engine.world.answers import Answer, choose_answer
 from engine.world.discovery import name_the_doer
 from engine.world.geography import travel_s
 from engine.world.knowledge import faction_learns
-from engine.world.norms import assess_severity
+from engine.world.norms import assess_severity, is_crime
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import World
 from engine.world.tuning import (
@@ -137,9 +143,15 @@ def the_deed(state: WorldState) -> Deed:
 def test_severity_holds_the_floor_the_facts_set():
     state = grounded_world()
     state.characters["kid"] = Character(id="kid", name="Tonino", age=9, location_id="bar")
-    many = [f"v{i}" for i in range(5)]
+    many = [f"v{i}" for i in range(5)]  # nameless villagers
+    state.characters["bartender"].status = CharacterStatus.DEAD
+    state.characters["bartender"].death_certainty = DeathCertainty.CONFIRMED
 
-    assert assess_severity(state, "murder", 1, ["carmine"]) == 4
+    assert assess_severity(state, "murder", 1, ["bartender"]) == 4
+    # A killing nobody died of counts as the wounding it was, and a miss keeps resolve's guess.
+    assert assess_severity(state, "kill", 3, ["carmine"]) == 3
+    assert assess_severity(state, "kill", 1, ["carmine"]) == 3
+    assert assess_severity(state, "kill", 3, [], ["carmine"]) == 3
     assert assess_severity(state, "insult", 1, ["carmine"]) == 1
     assert assess_severity(state, "insult", 3, ["carmine"]) == 3
     assert assess_severity(state, "assault", 2, ["kid"]) == 5
@@ -890,3 +902,44 @@ def test_a_witness_still_in_the_players_scene_sends_word_instead_of_walking_off(
     reports = [e for e in fired if e.kind == Kind.REPORT and e.payload["witness_id"] == "wei"]
     assert reports and reports[0].payload["moves"]
     assert after.characters["wei"].location_id == "well"
+
+
+def test_resolves_deeds_flow_into_the_world_whether_the_shot_kills_wounds_or_misses():
+    shoot = IntentStep(
+        text="shoot Carmine",
+        verb="shoot",
+        kind=ActionKind.EXCHANGE,
+        proposed_duration_s=2,
+        aim=Aim.KILL,
+        target_ids=["carmine"],
+        uses=[SheetUse(part=SheetPart.ITEM, ref="pistol")],
+    )
+    seen = set()
+    for seed in range(40):
+        state = grounded_world()
+        stream = SeededRng.for_turn(f"seed-{seed}", "main", 2)
+        resolution = pipeline.resolve(state, Intent(steps=[shoot]), ctx(), stream)
+        played = pipeline.play_out(state, resolution, ctx(), stream)
+        assert check_transition(state, played.state) == []
+        after = played.state
+        result = played.resolution.steps[0].result
+        seen.add(result)
+        deed = the_deed(after)
+
+        # Kill, wound or miss, it is a crime the bartender reports, and Carmine, if he lives,
+        # saw who did it.
+        carmine = after.characters["carmine"]
+        assert is_crime(deed)
+        assert deed.witness_ids == (["bartender", "carmine"] if carmine.alive else ["bartender"])
+        assert "police" in {e.payload["faction_id"] for e in pending_of(after, Kind.REPORT)}
+        if result is StepResult.SUCCESS:
+            assert not carmine.alive and deed.victim_ids == ["carmine"] and deed.severity >= 4
+            continue
+        assert deed.severity == 3
+        assert deed.victim_ids == (["carmine"] if result is StepResult.PARTIAL else [])
+        grudges = carmine.sheet.disposition.attitudes["luca"].grudges
+        assert [g.deed_id for g in grudges] == [deed.id]
+        (revenge,) = [e for e in pending_of(after, Kind.ANSWER) if e.payload["avenger_id"]]
+        assert revenge.payload == revenge.payload | {"avenger_id": "carmine", "target_id": "luca"}
+        assert not pending_of(after, Kind.TIDINGS)  # nobody died
+    assert seen == set(StepResult)

@@ -29,7 +29,7 @@ from engine.world.answers import (
     schedule_revenge,
 )
 from engine.world.geography import is_within
-from engine.world.norms import Nature, is_crime, is_killing, nature
+from engine.world.norms import Nature, deed_nature, is_crime
 from engine.world.scheduling import World
 from engine.world.tuning import REPUTATION_STEP_MAX
 
@@ -128,15 +128,19 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
         or character.id == state.player_id
     ):
         return
-    kind = nature(deed.kind, deed.victim_ids)
+    kind = deed_nature(deed)
     sev = deed.severity
-    affected = deed.victim_ids if kind is Nature.HARM else deed.target_ids
+    affected = [*deed.victim_ids, *deed.target_ids] if kind is Nature.HARM else deed.target_ids
     tie = max((closeness(state, character, v) for v in affected if v != character.id), default=0)
     affinity = fear = trust = 0.0
     keeps_grudge = False
     if kind is Nature.HARM:
         if character.id in deed.victim_ids:
             affinity, fear, trust = -10 * sev, 6 * sev, -8 * sev
+            keeps_grudge = sev >= 2
+        elif character.id in deed.target_ids:
+            # Aimed at, or in the way, and unharmed: they noticed the swing (A8).
+            affinity, fear, trust = -8 * sev, 4 * sev, -6 * sev
             keeps_grudge = sev >= 2
         elif tie:
             affinity = -sev * (4 + 4 * tie)
@@ -172,9 +176,10 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
     victim_fell = any(
         not state.characters[v].alive for v in deed.victim_ids if v in state.characters
     )
-    if tie >= FRIEND and (is_killing(deed.kind) or victim_fell):
+    attacked = character.id in deed.victim_ids or character.id in deed.target_ids
+    if tie >= FRIEND and victim_fell:
         schedule_revenge(w, character, deed)
-    elif character.id in deed.victim_ids and sev >= 3 and character.prominence is Prominence.KEY:
+    elif attacked and sev >= 3 and character.prominence is Prominence.KEY:
         schedule_revenge(w, character, deed)
 
 
@@ -199,7 +204,7 @@ def adjust_reputation(reputation: Reputation, *, esteem: float = 0, fear: float 
 
 def reputation_shift(deed: Deed, *, harmed: bool, helped: bool) -> tuple[float, float]:
     """W3: how a deed moves esteem and fear with those who learn of it."""
-    kind = nature(deed.kind, deed.victim_ids)
+    kind = deed_nature(deed)
     sev = deed.severity
     if kind is Nature.HARM:
         if harmed:
@@ -253,12 +258,12 @@ def faction_learns(w: World, faction_id: str, deed: Deed, *, weight: float = 1.0
     if in_faction(state, deed.actor_id, faction_id) and deed.severity < 4:
         # A faction shrugs off most of what its own people do; only the worst turns it on them.
         return
-    harmed = any(in_faction(state, v, faction_id) for v in deed.victim_ids)
-    helped = nature(deed.kind, deed.victim_ids) is Nature.HELP and any(
-        in_faction(state, t, faction_id) for t in deed.target_ids
-    )
+    kind = deed_nature(deed)
+    struck = [*deed.victim_ids, *deed.target_ids] if kind is Nature.HARM else []
+    harmed = any(in_faction(state, v, faction_id) for v in struck)
+    helped = kind is Nature.HELP and any(in_faction(state, t, faction_id) for t in deed.target_ids)
     law = law_at(state, faction_id, deed.place_id)
-    enforcing = law is not None and is_crime(deed.kind, deed.severity, deed.victim_ids)
+    enforcing = law is not None and is_crime(deed)
 
     if deed.actor_id == state.player_id:
         esteem, fear = reputation_shift(deed, harmed=harmed, helped=helped)
@@ -286,7 +291,7 @@ def threat_tier(state: WorldState, faction: Faction, deed: Deed, *, harmed: bool
     worst it has learned the player did, more when done to its own, with its fear, and with a
     power gap it can't match. It doesn't fall on its own."""
     sev = deed.severity
-    harmful = nature(deed.kind, deed.victim_ids) in (Nature.HARM, Nature.DISPLAY)
+    harmful = deed_nature(deed) in (Nature.HARM, Nature.DISPLAY)
     base = (sev - 1 if harmed else max(0, sev - 2)) if harmful else 0
     from_fear = faction.player_reputation.fear // 20
     gap = actor_might(state, deed.actor_id) - faction_might(state, faction, excluding=deed.actor_id)

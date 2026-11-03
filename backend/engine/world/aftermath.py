@@ -12,7 +12,7 @@ from engine.state.records import Deed, PendingEvent
 from engine.world.cast import maybe_avenger
 from engine.world.geography import travel_s
 from engine.world.knowledge import FRIEND, character_learns, ties_of
-from engine.world.norms import Nature, is_killing, nature
+from engine.world.norms import Nature, deed_nature
 from engine.world.rumors import knows_doer
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.tuning import NEWS_FACTOR, NEWS_FACTOR_INSTANT, NEWS_MIN_S
@@ -25,7 +25,7 @@ def on_attributed(w: World, deed: Deed) -> None:
     """The doer of a harmful deed is known: send word to the victims' close ties, and look for
     an avenger where none is left."""
     state = w.state
-    if nature(deed.kind, deed.victim_ids) is not Nature.HARM or deed.severity < 3:
+    if deed_nature(deed) is not Nature.HARM or deed.severity < 3:
         return
     factor = NEWS_FACTOR_INSTANT if state.bible.travel.instant_messages else NEWS_FACTOR
     for victim_id in deed.victim_ids:
@@ -50,7 +50,7 @@ def on_attributed(w: World, deed: Deed) -> None:
                 place_id=where,
                 payload={"deed_id": deed.id, "character_id": character_id},
             )
-        fell = is_killing(deed.kind) or not victim.alive
+        fell = not victim.alive
         if (
             fell
             and victim.prominence is Prominence.KEY
