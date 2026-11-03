@@ -10,7 +10,7 @@ Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ## Current state vs target
 
 - The backend is still **FastAPI** (`backend/app`). The agreed target is **Django + Django Ninja over
-  ASGI, with a LangGraph turn graph on Vertex AI** (B1 to B11). Until that migration lands, keep new
+  ASGI, with a LangGraph turn graph on Vertex AI** (B1 to B12). Until that migration lands, keep new
   engine logic in plain Python with no web-framework imports (B4), so it moves over unchanged.
 - No auth, credits or deploy exist yet. Nothing goes public before T8 (auth) and T9 (rate limits and
   quotas).
@@ -19,8 +19,9 @@ Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 1. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against the `production` branch.
-2. Engine rules (A2–A8, C1, W1–W16) are enforced in code with unit tests, not only in the prompt.
-   Model nodes propose; code nodes decide.
+2. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2) are enforced in code with unit tests, not
+   only in the prompt. Model nodes propose; code nodes decide. Nothing in the world is timed in
+   turns: world processes run on in-world time (W10).
 3. CI must be green before merging: `uv run ruff check .`, `uv run ruff format --check .` and
    `uv run pytest` in `backend/`; `dart format --set-exit-if-changed lib test`, `flutter analyze` and
    `flutter test` in `app/`. Add tests with each change.
