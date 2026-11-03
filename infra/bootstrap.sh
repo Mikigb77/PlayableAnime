@@ -91,9 +91,17 @@ ensure_service_account() {
   fi
 }
 
+# True when the secret exists and has an enabled version. Once the secret exists, a failed
+# listing stops the script: reading it as "no value yet" would replace a working secret, such as
+# the Django key, which would sign everyone out.
 secret_has_version() {
-  [ -n "$(read_value gcloud secrets versions list "$1" --project="$PROJECT_ID" \
-    --filter='state:ENABLED' --limit=1 --format='value(name)')" ]
+  local versions
+  if ! probe gcloud secrets describe "$1" --project="$PROJECT_ID"; then
+    return 1
+  fi
+  versions="$(gcloud secrets versions list "$1" --project="$PROJECT_ID" --filter='state:ENABLED' \
+    --limit=1 --format='value(name)')" || die "can't list the versions of secret $1"
+  [ -n "$versions" ]
 }
 
 # Sends a secret value through stdin, so it never shows up in arguments, output or logs.
@@ -181,6 +189,10 @@ check_access() {
   [ "$number" = "$PROJECT_NUMBER" ] ||
     die "project $PROJECT_ID has number $number, but infra/config.sh expects $PROJECT_NUMBER"
   say "Signed in as $account, project $PROJECT_ID ($PROJECT_NUMBER)."
+  # The runtime account already exists, with Vertex AI access (T1, B11). A new one with the same
+  # name would be a different principal, so the script stops instead of creating it.
+  gcloud iam service-accounts describe "$RUNTIME_SA" --project="$PROJECT_ID" >/dev/null ||
+    die "the runtime service account $RUNTIME_SA is missing or not readable by $account"
 }
 
 collect_inputs() {
@@ -218,7 +230,6 @@ enable_apis() {
 setup_runtime_account() {
   local role
   step "2. Runtime service account $RUNTIME_SA"
-  ensure_service_account "$RUNTIME_SA_NAME" "Lucid Saga API (Cloud Run)"
   # Vertex AI through Application Default Credentials, and logs (T4, T7, B11). Secret access is
   # granted per secret below, and bucket access on the bucket.
   for role in roles/aiplatform.user roles/logging.logWriter; do

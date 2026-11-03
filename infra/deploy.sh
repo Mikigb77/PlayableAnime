@@ -50,20 +50,50 @@ deploy_labels() {
   printf 'deployed-by=%s,commit-sha=%s' "$by" "$(commit_sha)"
 }
 
+# Saves the service's description as JSON to the file $1: {} if it doesn't exist yet, or in a
+# dry run. One call serves every field the deploy needs.
 describe_service() {
   read_value gcloud run services describe "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
-    --format="$1"
+    --format=json >"$1"
+  if [ ! -s "$1" ]; then
+    printf '{}' >"$1"
+  fi
 }
 
-# The service's hostnames, comma-separated: the deterministic one, which exists before the first
-# deploy, and every URL Cloud Run reports once the service exists.
-service_hosts() {
-  local urls
-  urls="$(describe_service 'value(metadata.annotations["run.googleapis.com/urls"],status.url)')"
-  {
-    printf '%s\n' "$SERVICE_DETERMINISTIC_HOST"
-    printf '%s\n' "$urls" | { grep -oE 'https://[A-Za-z0-9.-]+' || true; } | sed 's#^https://##'
-  } | awk 'NF && !seen[$0]++' | paste -sd, -
+# Reads one field from a saved description:
+#   serving  the revision with the largest share of traffic, so a rollback returns to it
+#   hosts    the deterministic hostname, which exists before the first deploy, then every URL
+#            Cloud Run reports, comma-separated
+#   url      the service's URL
+service_field() {
+  python3 -I - "$1" "$2" "$SERVICE_DETERMINISTIC_HOST" <<'EOF'
+import json
+import sys
+
+path, field, deterministic_host = sys.argv[1:4]
+try:
+    with open(path) as file:
+        service = json.load(file)
+except ValueError:
+    service = {}
+status = service.get("status") or {}
+if field == "serving":
+    routes = [r for r in status.get("traffic") or [] if r.get("revisionName") and r.get("percent")]
+    print(max(routes, key=lambda r: r["percent"])["revisionName"] if routes else "")
+elif field == "hosts":
+    annotations = (service.get("metadata") or {}).get("annotations") or {}
+    urls = json.loads(annotations.get("run.googleapis.com/urls") or "[]") + [status.get("url") or ""]
+    hosts = [deterministic_host]
+    for url in urls:
+        host = url.removeprefix("https://").split("/")[0]
+        if host and host not in hosts:
+            hosts.append(host)
+    print(",".join(hosts))
+elif field == "url":
+    print(status.get("url") or "")
+else:
+    sys.exit(f"unknown field {field}")
+EOF
 }
 
 # Writes the env vars file for a deploy: infra/cloudrun/env.yaml plus the values this script owns.
@@ -139,10 +169,14 @@ cmd_migrate() {
 }
 
 cmd_service() {
-  local image="$1" previous hosts after env_file url revision
+  local image="$1" before="$TMP_DIR/before.json" after="$TMP_DIR/after.json" previous hosts
+  local new_hosts env_file url
   need_arg "$image" IMAGE
-  previous="$(describe_service 'value(status.traffic[0].revisionName)')"
-  hosts="$(service_hosts)"
+  describe_service "$before"
+  previous="$(service_field "$before" serving)"
+  hosts="$(service_field "$before" hosts)"
+  # Written first, so the workflow can roll back if anything fails once traffic may have moved.
+  set_output previous_revision "$previous"
   env_file="$(render_env "$hosts")"
   step "Service $SERVICE in $REGION (T1, B10)"
   # Min 0 and max 3 instances, 300 s for streamed turns, startup CPU boost. No IAM flags: a deploy
@@ -152,28 +186,25 @@ cmd_service() {
     --cpu=1 --memory=1Gi --concurrency=80 --min-instances=0 --max-instances=3 \
     --timeout=300 --cpu-boost --port=8080 \
     --env-vars-file="$env_file" --set-secrets="$SERVICE_SECRETS" --update-labels="$(deploy_labels)"
-  after="$(service_hosts)"
-  if [ "$after" != "$hosts" ]; then
+  describe_service "$after"
+  new_hosts="$(service_field "$after" hosts)"
+  if [ "$new_hosts" != "$hosts" ]; then
     # Only on the first deploy: Cloud Run has just given the service its other URL.
-    say "Allowing the service's new URLs: $after"
-    env_file="$(render_env "$after")"
+    say "Allowing the service's new URLs: $new_hosts"
+    env_file="$(render_env "$new_hosts")"
     run gcloud run services update "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
       --env-vars-file="$env_file"
   fi
   # A rollback pins traffic to an old revision; a deploy always moves it to the new one.
   run gcloud run services update-traffic "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
     --to-latest
-  url="$(describe_service 'value(status.url)')"
-  revision="$(describe_service 'value(status.latestReadyRevisionName)')"
-  set_output previous_revision "$previous"
+  url="$(service_field "$after" url)"
   set_output url "${url:-https://$SERVICE_DETERMINISTIC_HOST}"
-  set_output revision "$revision"
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     # shellcheck disable=SC2016 # The backticks are Markdown.
     {
       printf '| | |\n| --- | --- |\n'
       printf '| Image | `%s` |\n' "$image"
-      printf '| Revision | `%s` |\n' "${revision:-dry run}"
       printf '| Previous revision | `%s` |\n' "${previous:-none}"
       printf '| URL | %s |\n' "${url:-dry run}"
     } >>"$GITHUB_STEP_SUMMARY"
@@ -194,7 +225,7 @@ cmd_smoke() {
   fi
   while :; do
     code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
-      --max-time 30 --header "@$headers" "$url/health" || true)"
+      --max-time 10 --header "@$headers" "$url/health" || true)"
     if [ "$code" = 200 ]; then
       say "/health answered 200."
       return 0

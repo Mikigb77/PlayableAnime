@@ -138,6 +138,24 @@ test_bootstrap_first_and_second_run() {
   contains "$state/calls-2.log" "gcloud billing budgets update billingAccounts/000000-AAAAAA-BBBBBB/budgets/budget-1"
   contains "$state/calls-2.log" "--budget-amount=40"
   equals "$(cat "$state/secret-django-secret-key")" "$key" "the Django key must survive a re-run"
+
+  calls_before="$(wc -l <"$state/calls.log")"
+  out="$state/out-3"
+  # A failed read of the secrets must stop the run, never be taken as "no value yet".
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_SECRET_LIST=1 "$INFRA/bootstrap.sh" --yes
+  if [ "$status" -ne 0 ]; then ok; else bad "went on after failing to list a secret's versions"; fi
+  tail -n +"$((calls_before + 1))" "$state/calls.log" >"$state/calls-3.log"
+  lacks "$state/calls-3.log" "secrets versions add" "replaced a secret after a failed read"
+  equals "$(cat "$state/secret-django-secret-key")" "$key" "the Django key must survive a failed read"
+
+  calls_before="$(wc -l <"$state/calls.log")"
+  out="$state/out-4"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_DELETED=1 "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "re-run with a deleted pool exit status"
+  tail -n +"$((calls_before + 1))" "$state/calls.log" >"$state/calls-4.log"
+  contains "$state/calls-4.log" "gcloud iam workload-identity-pools undelete github"
+  contains "$state/calls-4.log" "gcloud iam workload-identity-pools providers undelete playable-anime-deploy"
+  contains "$state/calls-4.log" "providers update-oidc playable-anime-deploy"
 }
 
 test_bootstrap_rejects_bad_input() {
@@ -164,6 +182,15 @@ test_bootstrap_rejects_bad_input() {
   with_fakes "$out" env FAKE_STATE="$state" BUDGET_AMOUNT=lots "$INFRA/bootstrap.sh" --dry-run
   if [ "$status" -ne 0 ]; then ok; else bad "accepted BUDGET_AMOUNT=lots"; fi
   contains "$out" "BUDGET_AMOUNT must be a number"
+
+  state="$(new_state bootstrap-no-runtime-account)"
+  rm "$state/res/iam_service-accounts_playable-anime-api"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" NEON_PRODUCTION_DATABASE_URL="$POOLED" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" "$INFRA/bootstrap.sh" --yes
+  if [ "$status" -ne 0 ]; then ok; else bad "went on without the runtime account"; fi
+  contains "$out" "runtime service account playable-anime-api@playable-anime.iam.gserviceaccount.com is missing"
+  lacks "$state/calls.log" " create " "created something without the runtime account"
 
   # Only where there is no terminal to ask on, as in CI; elsewhere this would wait for input.
   if ! { : </dev/tty; } 2>/dev/null; then
@@ -228,6 +255,20 @@ test_deploy_service() {
     "a later deploy must not need a second revision for its hosts"
   contains "$state/last-env.yaml" "playable-anime-api-abc123xyz-ey.a.run.app"
   contains "$state/outputs-2" "previous_revision=playable-anime-api-00001-abc"
+
+  out="$state/out-3"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_TRAFFIC_SPLIT=1 GITHUB_OUTPUT="$state/outputs-3" \
+    "$INFRA/deploy.sh" service europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:three
+  equals "$status" 0 "split-traffic deploy exit status"
+  contains "$state/outputs-3" "previous_revision=major-rev" \
+    "the rollback target must be the revision with the most traffic"
+
+  out="$state/out-4"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_DEPLOY=1 GITHUB_OUTPUT="$state/outputs-4" \
+    "$INFRA/deploy.sh" service europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:four
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed deploy passed"; fi
+  contains "$state/outputs-4" "previous_revision=playable-anime-api-00003-abc" \
+    "a failed deploy must still leave the rollback target for the workflow"
 }
 
 test_migration_failure() {
@@ -294,6 +335,8 @@ test_ci_gate() {
   if [ "$status" -ne 0 ]; then ok; else bad "a commit with no CI run passed"; fi
   gate "in_progress none https://github.com/run/4" "completed success https://github.com/run/4"
   equals "$status" 0 "CI that finishes green while waiting"
+  gate "!fail" "completed success https://github.com/run/7"
+  equals "$status" 0 "a failed GitHub call is retried, not taken as an answer"
   gate "in_progress none https://github.com/run/5"
   if [ "$status" -ne 0 ]; then ok; else bad "CI that never finishes passed"; fi
   GATE_REF=refs/heads/feature gate "completed success https://github.com/run/6"

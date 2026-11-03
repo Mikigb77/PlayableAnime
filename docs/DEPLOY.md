@@ -72,7 +72,7 @@ already right: secrets that have a value keep it, and the budget's amount is upd
 | Step | What it does | Cost |
 | --- | --- | --- |
 | 1. APIs | Enables Cloud Run, Artifact Registry, Secret Manager, IAM, IAM Credentials, STS, Cloud Storage, Resource Manager, Billing, Budgets, Vertex AI, Logging and Error Reporting. | Free |
-| 2. Runtime account | Makes sure `playable-anime-api` has `aiplatform.user` and `logging.logWriter` (T4, T7, B11). It already exists and is never recreated. | Free |
+| 2. Runtime account | Makes sure `playable-anime-api` has `aiplatform.user` and `logging.logWriter` (T4, T7, B11). It already exists and is never created here: the script stops before changing anything if it can't see it. | Free |
 | 3. Artifact Registry | A Docker repository `playable-anime` in `europe-west3`, with a cleanup policy: keep the 10 newest images, delete the rest once 30 days old ([`artifact-cleanup.json`](../infra/artifact-cleanup.json)). | 0.5 GiB free, then about $0.10 per GiB-month. Expect a few cents a month. |
 | 4. Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` (generated), each stored in `europe-west3` only, with read access for the runtime account. | 6 versions and 10,000 reads a month are free; these are 3 versions. Free. |
 | 5. Pictures bucket | `gs://playable-anime-pictures` in `europe-west3`: uniform access, public access prevention enforced, soft delete off so a deleted account's pictures are gone at once (T12), and CORS that lets the web build read signed URLs ([`storage-cors.json`](../infra/storage-cors.json)). The runtime account gets `storage.objectUser` on the bucket and `iam.serviceAccountTokenCreator` on itself, which is what [signed URLs without a key](#signed-urls-without-a-key) need. | About $0.02 per GB-month (no free tier in Europe), $0.005 per 1,000 uploads, $0.12 per GB downloaded. 1,000 pictures of about 1.5 MB cost about $0.03 a month to keep and $0.18 to view once. |
@@ -114,9 +114,10 @@ Two deploys never run at once.
    more revision adds it to `ALLOWED_HOSTS`. Traffic then goes to the newest revision, even if an
    earlier rollback had pinned it.
 6. **Check `/health`** with an ID token for `github-deployer`, so it works while the service is
-   still private. If it doesn't answer 200 within about 30 seconds, traffic goes back to the
-   revision that served before this deploy, and the run fails. `/health` never touches the database
-   (T3).
+   still private. It tries 6 times, 5 seconds apart, each with a 10-second limit. If it never gets
+   a 200, or any step fails once the deploy has started, traffic goes back to the revision that
+   had the most traffic before this deploy, and the run fails. `/health` never touches the
+   database (T3).
 
 The run's summary shows the image, the new and previous revisions and the URL.
 
@@ -194,7 +195,7 @@ To make it private again, in an emergency or otherwise, run the same with
 
 | What went wrong | What to do |
 | --- | --- |
-| The new revision fails `/health` | Nothing: the workflow already sent traffic back to the previous revision. |
+| The new revision fails `/health`, or a step after the deploy began fails | Nothing: the workflow already sent traffic back to the previous revision. |
 | The new code misbehaves | List revisions with `gcloud run revisions list --service=playable-anime-api --project=playable-anime --region=europe-west3`, then `infra/deploy.sh rollback <revision>`, or the `update-traffic` command under [Every command](#every-command). The next deploy moves traffic to the newest revision again. Images of the last 10 deploys are kept. |
 | A migration failed | Nothing to roll back in the service, which kept the old code. Read the job's logs (below), fix it in a PR and deploy again. |
 | A migration ran but must be undone | Migrations must stay backward compatible for one deploy (add before you drop), so old code keeps working on the new schema. To reverse one: `gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,migrate,<app>,<migration> --wait`. A migration that drops data needs Miki first (CLAUDE.md). |
@@ -263,14 +264,17 @@ with `--project=playable-anime`. Never delete the runtime account.
 
 Printed from the dry runs by [`infra/tests/print-commands.sh`](../infra/tests/print-commands.sh);
 CI fails if this copy falls out of date. A dry run assumes nothing exists yet, so it shows every
-create; a real run skips what already exists, such as the runtime account. Secret values go in on
-standard input, never as arguments, shown here as `<<< (where it comes from)`.
+create; a real run skips what already exists. On a re-run the bootstrap instead updates the
+provider (`update-oidc` with the same flags) and the budget (`billing budgets update <budget>
+--budget-amount=…`), and undeletes a pool or provider that was deleted. On the first deploy,
+`gcloud run services update … --env-vars-file=ENV_FILE` adds the service's second URL. CI checks
+all of these against the real gcloud too. Secret values go in on standard input, never as
+arguments, shown here as `<<< (where it comes from)`.
 
 <!-- every-command:start -->
 ```text
 # infra/bootstrap.sh
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com storage.googleapis.com cloudresourcemanager.googleapis.com cloudbilling.googleapis.com billingbudgets.googleapis.com aiplatform.googleapis.com logging.googleapis.com clouderrorreporting.googleapis.com --project=playable-anime
-gcloud iam service-accounts create playable-anime-api --project=playable-anime '--display-name=Lucid Saga API (Cloud Run)'
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/aiplatform.user --condition=None --format=none
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/logging.logWriter --condition=None --format=none
 gcloud artifacts repositories create playable-anime --project=playable-anime --location=europe-west3 --repository-format=docker '--description=Lucid Saga API images, built by the deploy workflow'

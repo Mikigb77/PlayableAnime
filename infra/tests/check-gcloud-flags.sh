@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Runs every gcloud command that the dry runs print against the real gcloud, offline and signed
-# out, to prove that the installed gcloud accepts every command and flag. Each command must fail on
-# the network or on credentials, never on its arguments. Nothing reaches Google Cloud: gcloud gets
-# an empty configuration and a proxy that refuses every connection.
+# Runs every gcloud command the scripts can issue against the real gcloud, offline and signed out,
+# to prove that the installed gcloud accepts every command and flag. The commands come from the
+# dry runs and from the calls the scripts make against the fake gcloud on first runs, re-runs and
+# recoveries, which a dry run can't show (update-oidc, undelete, a budget update, the first
+# deploy's second revision, every read). Each must fail on the network, never on its arguments.
+# Nothing reaches Google Cloud: gcloud gets an empty configuration and a proxy that refuses every
+# connection.
 #
 # Usage: infra/tests/check-gcloud-flags.sh   (skips when gcloud isn't installed)
 
@@ -33,7 +36,26 @@ image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000
   DRY_RUN=1 "$INFRA/deploy.sh" migrate "$image"
   DRY_RUN=1 "$INFRA/deploy.sh" service "$image"
   DRY_RUN=1 "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
-} 2>&1 | sed -n 's/^\[dry-run\] \(gcloud .*\)$/\1/p' >"$WORK/commands"
+} 2>&1 | sed -n 's/^\[dry-run\] \(gcloud .*\)$/\1/p' >"$WORK/dry-run-commands"
+
+state="$WORK/fake-state"
+mkdir -p "$state/res"
+touch "$state/res/iam_service-accounts_playable-anime-api"
+fake() {
+  env PATH="$INFRA/tests/fakes:$PATH" FAKE_STATE="$state" RETRY_SLEEP_SECONDS=0 \
+    NEON_PRODUCTION_DATABASE_URL="postgresql://u:p@ep-x-pooler.eu-central-1.aws.neon.tech/db" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="postgresql://u:p@ep-x.eu-central-1.aws.neon.tech/db" \
+    "$@" >/dev/null 2>&1
+}
+fake "$INFRA/bootstrap.sh" --yes
+fake "$INFRA/bootstrap.sh" --yes
+fake env FAKE_DELETED=1 "$INFRA/bootstrap.sh" --yes
+fake "$INFRA/deploy.sh" preflight
+fake "$INFRA/deploy.sh" migrate "$image"
+fake "$INFRA/deploy.sh" service "$image"
+fake "$INFRA/deploy.sh" service "$image"
+fake "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
+cat "$WORK/dry-run-commands" "$state/calls.log" | sort -u >"$WORK/commands"
 
 # The env vars file of a dry run is deleted when it ends; the committed one has the same shape.
 sed -i.bak "s#--env-vars-file=[^ ]*#--env-vars-file=$INFRA/cloudrun/env.yaml#" "$WORK/commands"

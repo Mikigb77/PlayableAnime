@@ -20,9 +20,12 @@ fi
 
 SECONDS=0
 while :; do
-  run="$(gh api -X GET "repos/$repo/actions/workflows/$workflow/runs" \
+  # A failed call (a GitHub hiccup) counts as "still waiting", not as an answer.
+  if ! run="$(gh api -X GET "repos/$repo/actions/workflows/$workflow/runs" \
     -f head_sha="$sha" -f event=push -f branch=main -f per_page=1 \
-    --jq '.workflow_runs[0] // empty | "\(.status) \(.conclusion // "none") \(.html_url)"')"
+    --jq '.workflow_runs[0] // empty | "\(.status) \(.conclusion // "none") \(.html_url)"')"; then
+    run="unknown none (GitHub didn't answer)"
+  fi
   status="${run%% *}"
   rest="${run#* }"
   conclusion="${rest%% *}"
