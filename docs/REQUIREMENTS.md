@@ -203,6 +203,9 @@ from the world's tone: noir for a crime story, wonder for a space opera, dread f
 - **Peoples and creatures:** which races and monsters exist, if any (G23, G24).
 - **How far each kind of ability can go** (A4). In a grounded world the limit is what a real person
   could do: a marksman, a brilliant surgeon, a feared boss, never a fireball.
+- **Where nature works differently.** Physics, chemistry and biology work as they do in our world
+  unless the world says otherwise (A9): fire needs air, people need to breathe. The bible only states
+  the differences, such as mana flames that burn without air.
 - **How people and news travel** (W10): on foot and by messenger; by car, plane and phone, so a
   witness can call the police within seconds; or by jump drive between star systems, with days of
   travel and messages that lag.
@@ -331,10 +334,11 @@ without a power ladder simply doesn't use them.
 (squire, knight, aura master, sword saint), adventurer ranks or numbered levels. The ladder is part
 of what is real in the world (G6), and its rungs are the world's names for the tiers in A8. The gaps
 are large and felt. One realm up is a long shot at best. Two or more is ruled out in a straight
-fight unless something changes the odds: a power such as time stop, a trick, a treasure, or an
-opponent who is wounded or weakened (A8). Standing follows the ladder where the world says so: in a
-sect, a higher realm means a senior's respect, and a lower one means bowing. The player sees their
-rung in the world's words or, in a world with an in-world system, as levels and numbers (G16).
+fight unless something changes the odds: a power such as time stop, a treasure, an opponent who is
+wounded or weakened (A8), or a trick that goes around the strength instead of meeting it, such as
+taking away the air a shielded mage breathes (A9). Standing follows the ladder where the world says
+so: in a sect, a higher realm means a senior's respect, and a lower one means bowing. The player sees
+their rung in the world's words or, in a world with an in-world system, as levels and numbers (G16).
 
 **G19 Breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers. A breakthrough
 needs what the world says it needs: resources (spirit stones, pills, a beast core), insight, time in
@@ -426,7 +430,8 @@ ladder.
   a weapon).
 - **Technique matters most within a gap.** Between characters on the same rung or one apart, skill,
   style, knowing the opponent and the right technique shift the odds a lot (A3, A8). Across a large
-  gap, technique alone doesn't close it (G18), but a perfect counter can buy time or an escape.
+  gap, technique alone doesn't close it (G18), but a perfect counter can buy time or an escape. A plan
+  that goes around the strength instead of meeting it can still win (A9).
 - **The world's fighting energy.** Aura, qi, mana or something else, with its own reserves and
   recovery time (W10). A character who runs dry is weakened until it comes back (G13).
 - **Weapons and gear.** A famous sword, armour, a spirit treasure or a staff adds to what a
@@ -445,7 +450,7 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | A1 | A player character sheet per story, holding everything in G13: attributes, skills, traits, powers where the world has them (with their limits and costs), disposition, resources and standing, and condition. It is drafted from the premise at story start, and the player can change it before playing (G2). | P0 |
-| A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time hits like a cannon shot, the troll dies, the wall behind it breaks and the blast is heard (W10a). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
+| A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time hits like a cannon shot, the troll dies, the wall behind it breaks and the blast is heard (W10a). The same reasoning holds in every genre and for every means, from a bazooka to a force field (A9). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. A plan that goes around the opponent's strength instead of meeting it is judged on its own facts, link by link (A9). **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
 | A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. | P1 |
 | A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. | P1 |
 | A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. | P1 |
@@ -472,6 +477,44 @@ notices: the attempt is a deed (W1) with its own consequences. The same swing ag
 near death by its rivals can succeed. Failing is never just "nothing happens". It costs something or
 changes something: a wound, an enemy, a lost item, a lesson. Players can see the reasons with
 `/status`, or in the scene's details.
+
+**A9 Outcomes follow cause and effect, and a clever workaround can work (P0).** The logic in A2
+isn't special to time stop (Miki, 2026-11-03). Every outcome comes from cause and effect, in
+whatever form the world gives it: a bazooka round kills an unprotected man outright, but fired at a
+mage behind a force field, the result depends on what the field stops and how much it can take. A
+laser pistol burns through a coat but not a warship's hull.
+
+- **Our world's nature by default.** Physics, chemistry and biology work as they do in our world
+  unless the world says otherwise (G6): fire needs air and uses it up, people need to breathe, heat
+  burns, a sealed space runs out of air, a long fall kills. A world, a race or a power states only
+  where it differs, such as a ghost that doesn't breathe or a field that lets air through (G13). When
+  nothing says and it starts to matter, the engine decides from what fits the world and records it,
+  so the answer holds from then on (N7).
+- **Reason when it matters, don't simulate everything.** To keep play simple, the engine doesn't
+  track air, heat or chemistry turn by turn, and a fight with a mage is just a fight. It reasons
+  through what the action brings into play, at the level of detail the outcome needs, the way a sharp
+  and fair game master would. Rough figures are enough: the air inside lasts a few minutes, not
+  3 minutes 41 seconds.
+- **A workaround can beat a far stronger foe.** A rung on a power ladder measures how hard someone
+  hits and how much they can take, not whether they need to breathe. So when the player goes around
+  someone's strength instead of meeting it, the engine follows the chain of cause and effect link by
+  link and settles each link as A2 does, and a trick aimed where the strength doesn't reach can work
+  several rungs up (G18). Example: a mage far above the player shelters behind a force field no blade
+  or bazooka can break, so the player soaks the hall around her in oil and sets it alight. If her
+  field keeps out air as well as flames, the air inside runs out within minutes, and dropping the
+  field lets in flames and smoke with no air left to breathe. She dies unless something in the facts
+  gets her out: magic to breathe or to put out the fire, a way to teleport, an ally outside. Those are
+  her answers, and she uses them if she has them.
+- **Every link has to hold.** A workaround isn't a magic word. Each link rests on what the world, the
+  sheet or the scene holds (R2), it takes the in-world time it really takes (W10), the target can
+  answer while they still can, and the plan stops at the first link that fails (R6). The player
+  needs the oil and the time to spread it, and a mage who sees it coming can strike first or leave. A
+  link the facts rule out breaks the chain: smoke doesn't choke a golem that doesn't breathe.
+- **The same for everyone.** NPCs can use tricks too, as far as their wits and knowledge go (G13),
+  and the same reasoning settles them.
+- **The reasoning is shown.** The chain, the facts behind each link and each link's class are
+  recorded on the scene (A2, A8), so the player can see why it worked: field keeps out air, the air
+  inside lasts minutes, no way to breathe or leave, dead.
 
 ## Narration
 
@@ -951,6 +994,8 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
 | First session | A new account's first story, on the starter credit (K1) | At least one event the player didn't cause arrives before the credit runs out |
 | Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | It fails almost every time and the elder reacts to the insult. Against a gravely wounded elder, the same attack can succeed (G18, A8). Using time stop, the result is the same on every seed, with no roll: whatever the world's rules say a disciple's strike can do to a body that strong (A2) |
+| Cause and effect | In a modern city with hidden mages, the player fires a bazooka at an unshielded thug, then at a mage whose force field is stated to stop it, then at one whose field is about as strong as the round, over many seeds | The thug dies and the strong field holds on every seed, with no roll. Only the evenly matched field is a close call, rolled between outcomes the facts allow (A2, A9) |
+| Workaround | A mage three realms up shelters in a hall behind a force field that keeps out blades, bazooka rounds and air, and the player sets the hall on fire from outside, over many seeds; once when she has no way out and once when her sheet has a teleport | With no way out, she dies on every seed once the air runs out, minutes of in-world time later (W10), with no roll and the chain in the scene details. With the teleport, she escapes and hunts for whoever tried (W1). A head-on attack on her stays ruled out (A9, G18) |
 | Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10) |
 | Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
 | Strong gift | A reborn character with time stop plays 50 turns | The gift wins the fights it should, the world notices and answers it, and at least one event with stakes can't be solved by fighting (G22) |
@@ -1006,10 +1051,10 @@ Every turn costs credits, the server enforces the balance, and the owner account
 | B2 | **Neon with Django:** psycopg 3, the pooled URL with `DISABLE_SERVER_SIDE_CURSORS = True` and `CONN_MAX_AGE = 0` (PgBouncer transaction mode), and the direct URL for `migrate`. Django migrations replace `backend/migrations/*.sql`. | P0 |
 | B3 | **Logging:** Django `LOGGING` sends JSON to stdout, with a middleware that adds request id, trace id, user and story to every line (T4–T6). | P0 |
 | B4 | **Story engine as its own package**, with no Django imports. Invariants, state updates, reputation and escalation are deterministic Python with unit tests. Django views only load the story, run the graph and save the result. | P0 |
-| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus target, method, stakes, duration (W10), the beats it takes (R2) and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal → (3) resolve and direct: check the beats against the scene and the sheet (R2), settle each step from the facts and roll only the ones the facts leave open (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
+| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus target, method, stakes, duration (W10), the beats it takes (R2), the chain of cause and effect behind any beat whose outcome isn't obvious, with the facts each link rests on (A9), and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal → (3) resolve and direct: check the beats and every link of a chain against the world, the scene and the sheet (R2, G8, A9), settle each step from the facts and roll only the ones the facts leave open (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
 | B6 | **Models through Vertex AI** with `langchain-google-vertexai`. The model for each node is set in config (interpret, narrator, checker, tick, summarizer, and the picture and speech models from M8 and V6). A BYOK key builds that request's model client and is never stored. | P0 |
 | B7 | **Streaming:** the narrate node streams tokens through LangGraph `astream` to an SSE response (S3). | P0 |
-| B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call. The checker and the model part of the world tick use the cheapest model. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
+| B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call, which may think longer on a turn whose outcome rests on a chain of cause and effect (A9). The checker and the model part of the world tick use the cheapest model. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
 | B9 | **Story state stays in our own tables.** A LangGraph checkpointer is used only if we need to resume a run that failed partway. | P1 |
 | B10 | **Cold starts:** Cloud Run startup CPU boost on, and heavy imports kept out of module load. Check that T3 still holds with Django and LangChain loaded. | P0 |
 | B11 | **Credentials: no service-account keys anywhere.** On Cloud Run, Vertex AI is called as the attached service account `playable-anime-api@playable-anime.iam.gserviceaccount.com` (it already has `roles/aiplatform.user`), through Application Default Credentials. For local development, run `gcloud auth application-default login`. GitHub Actions deploys through Workload Identity Federation, not a JSON key. The only API keys in the system are the players' own BYOK keys, which are never stored. | P0 |
@@ -1024,7 +1069,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
    on in the PR description.
 2. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against `production`.
-3. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are enforced
+3. Engine rules (A2–A9, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are enforced
    in backend code, with unit tests, not only in the prompt. Logic comes first: a roll is used only
    where the facts leave the outcome open (A2).
 4. CI must be green: ruff and pytest for the backend, and dart format, analyze and test for the app.
