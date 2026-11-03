@@ -637,11 +637,19 @@ Each time power has to exist in the world bible's power rules and carries costs 
 sheet (A1, A4). NPCs can have them too.
 
 - **Time stop (P1).** The user's personal clock runs while the world clock stands still. Nothing else
-  moves and no pending event fires. What the user holds moves with them, and what they let go freezes
-  once it leaves the power's reach, mid-air if need be, until time restarts. Frozen people see nothing,
-  so deeds done during a stop are secret (W2) unless someone is immune, but they still leave traces
-  (W13): to everyone else, the guard simply drops dead. Frozen people can't react either, so an action
-  against them is unopposed, and A2 settles it with no roll unless it is a genuinely close call. How
+  moves and no pending event fires. Taken literally, that would leave the user stuck: frozen air would
+  be a wall, a frozen pebble their hand ran into would go through the hand, and moving a frozen thing
+  at all would take more energy than the universe holds. So the power bends physics just enough to
+  work, by three conventions every setting shares (Miki, 2026-11-03):
+  - **The user moves and breathes freely.** The air around them moves with them.
+  - **What they hold joins the stop.** Whatever the user picks up or carries moves with them, and what
+    they let go freezes again once it leaves the power's reach, mid-air if need be, until time
+    restarts. A person or creature they carry stays frozen inside and knows nothing of it.
+  - **The power shields its user.** Their body never takes the recoil of what they do in the stop.
+
+  Frozen people see nothing, so deeds done during a stop are secret (W2) unless someone is immune, but
+  they still leave traces (W13): to everyone else, the guard simply drops dead. Frozen people can't
+  react either, so an action against them is unopposed, and A2 settles it with no roll unless it is a genuinely close call. How
   hard stopped-time hits land is a setting of the power (G22), chosen when the character is made (G2)
   and fixed after that (G7), and the engine follows it as logic (A2):
   - **Normal force:** a blow or a throw lands as it would have; the target just couldn't defend. A
@@ -649,15 +657,21 @@ sheet (A1, A4). NPCs can have them too.
   - **Relative speed** (Miki, 2026-11-03): to the frozen world, whatever moved during the stop got
     where it is in no time at all, so it lands with overwhelming force. A rock thrown during the stop
     strikes like a cannon shot when time restarts, and a blade swung during it goes through steel like
-    butter. The power sets a ceiling, by default that cannon shot, because taken literally a 100-gram
-    pebble at 90% of the speed of light hits like a three-megaton bomb and would kill the thrower too.
-    The rest follows from the rule: the shot also smashes what is behind the target, the blast is seen
+    butter. The force doesn't come from the user's arm but from the power that took them out of time,
+    which pays for that instant journey when time restarts. Only what strikes something, or is still flying when time restarts, carries
+    that force, so something set down gently stays where it is, unharmed. The power can only pay so
+    much, so it sets a ceiling, by default that cannon shot, because taken literally a 100-gram pebble
+    at 90% of the speed of light hits like a three-megaton bomb and would kill the thrower too. The
+    rest follows from the rule: the shot also smashes what is behind the target, the blast is seen
     and heard, so it starts rumors even when nobody saw who threw (W2, W13), and anything tougher than
     the ceiling, such as a body several rungs up or a protected treasure, survives it.
-  - **Untouchable:** frozen things can't be changed until time restarts, so the stop is for moving,
-    escaping and setting things up, not for striking.
+  - **Untouchable:** frozen things can't be moved or changed until time restarts, not even picked up,
+    so only what the user already carries joins the stop, and the stop is for moving, escaping and
+    placing those things, not for striking.
 
-  When an NPC stops time, the player sees the world jump.
+  A player doesn't need any of this to use the power. One who reasons about it gets answers from these
+  conventions and the setting, followed to every consequence (A9), but can't argue the setting into
+  another one mid-story (G7, A7). When an NPC stops time, the player sees the world jump.
 - **Haste and slow (P1).** The user's personal clock runs faster or slower than the world's, such as
   a fighter who lives ten seconds in every one.
 - **Local reversal (P1).** Rewinding a wound, an object or a building is a state change with a
@@ -992,6 +1006,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
 | Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
+| Stopped-time rescue | In a world where stopped-time hits land at relative speed, the player stops time, carries a frozen friend out of an arrow's path and sets them down | On every seed, the friend is unhurt where they were set down and knows nothing of the stop, and the arrow flies on past (W10a) |
 | First session | A new account's first story, on the starter credit (K1) | At least one event the player didn't cause arrives before the credit runs out |
 | Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | It fails almost every time and the elder reacts to the insult. Against a gravely wounded elder, the same attack can succeed (G18, A8). Using time stop, the result is the same on every seed, with no roll: whatever the world's rules say a disciple's strike can do to a body that strong (A2) |
 | Cause and effect | In a modern city with hidden mages, the player fires a bazooka at an unshielded thug, then at a mage whose force field is stated to stop it, then at one whose field is about as strong as the round, over many seeds | The thug dies and the strong field holds on every seed, with no roll. Only the evenly matched field is a close call, rolled between outcomes the facts allow (A2, A9) |
