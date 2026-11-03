@@ -9,8 +9,8 @@
                                │                           │──▶│ Neon Postgres (psycopg 3)│
                                │                           │   └──────────────────────────┘
                                │                           │   ┌──────────────────────────┐
-                               │                           │──▶│ Cloud Storage: images    │
-                               └───────────────────────────┘   │ (later)                  │
+                               │                           │──▶│ Cloud Storage: pictures  │
+                               └───────────────────────────┘   │ (private, signed URLs)   │
                                                                └──────────────────────────┘
 ```
 
@@ -356,8 +356,9 @@ or `choice` (V7).
 
 ## Images
 
-Requirements: M1 to M8 in [REQUIREMENTS.md](REQUIREMENTS.md#images). Nothing is generated yet.
-`Scene.image_prompt` is produced every turn today; M1 limits it to scenes that get a picture.
+Requirements: M1 to M8 in [REQUIREMENTS.md](REQUIREMENTS.md#images). The pictures backend is
+`backend/media/` (WS8), described [below](#how-pictures-work). The legacy narrator still writes
+`Scene.image_prompt` every turn; M1 limits it to scenes that get a picture once the turn graph lands.
 
 Gemini image models on Vertex AI, at standard prices on the global endpoint, from the [Vertex AI
 pricing page](https://cloud.google.com/vertex-ai/generative-ai/pricing) on 2026-11-03:
@@ -378,19 +379,66 @@ pricing page](https://cloud.google.com/vertex-ai/generative-ai/pricing) on 2026-
 - An open model (FLUX, SDXL) on a Cloud Run GPU is cheaper only at high volume, and it would put the
   content lines (M6) on our own filters. It's out for now: everything runs on Gemini (F2).
 
-Plan:
+### How pictures work
 
-1. The turn response says whether a picture is planned for the scene (M1). The app shows the text
-   first, then calls an image endpoint for that scene, which generates the picture, stores it and
-   returns its URL (M3). This keeps the work inside a request, as B8 requires.
-2. Pictures go to the private Cloud Storage bucket `gs://playable-anime-pictures` in `europe-west3`,
-   served through short-lived signed URLs that the runtime account signs without a key
-   ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)), keyed by character, place or scene, and reused
-   (M4).
-3. A scene with known characters passes their portraits as reference images, so faces stay the same
-   (M5).
-4. The model is set in config per use (portrait, place, scene, cover), so it can change as prices and
-   T18's picture evals change (B6, M8).
+```text
+turn (WS3)            the director decides a scene gets a picture (M1, WS11)
+  └─ media.plans.plan_picture(scene, kind, subject_id, trigger, brief)   in the turn's transaction
+app                   shows the narration, then asks for the picture in its own request (M3, B8)
+  └─ POST /v1/stories/{id}/scenes/{turn}/image  →  media.service.scene_picture
+       claim (row lock) → hold credits → draw on graph.llm → store → mark ready + charge (one txn)
+```
+
+- **One `Image` per subject (M4).** `media.Image` is keyed by story, kind (portrait, place, scene,
+  cover), subject (a character id, a place id, `turn-12`, `cover`) and version. A portrait or place
+  is drawn once and every later scene that shows it links to the same row through
+  `media.ScenePicture`. A planned subject that was skipped is planned again the next time it comes
+  up. `plan_picture(..., redraw=True)` with a new appearance draws a character's portrait again as
+  the next version, once per change (M5); the earlier portrait goes along as the reference.
+- **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
+  prompt, the world's genre, era, tone and setting from the bible, and the known characters in the
+  picture with the appearance from their entry (C9). `media/prompts.py` turns it into the prompt:
+  one house style for every picture (the app's cinematic, dark-first look), the world's own era,
+  the framing and aspect ratio per kind (portraits and covers 3:4, places and scenes 16:9), and the
+  mild-in-every-rating rules. Ready portraits of up to three known characters go along as reference
+  images. The picture safety settings in `graph.llm.safety` back the rules up in every rating. A
+  scene nobody wrote an image prompt for (Illustrate on any scene) is described by the end of its
+  narration, which the same rules keep mild.
+- **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
+  (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
+  failures and call records. A player's own key draws for free (K6); a key that can't draw, such as
+  a free-tier key, which has no image models, falls back to credits (M7).
+- **At most once (M3).** The first request to find a picture planned claims it under a row lock
+  and draws it inside that request; requests that arrive meanwhile answer `pending`. A claim is a
+  lease of 300 seconds, longer than a Cloud Run request can live, so a claim left by a request that
+  died is taken over, at most three attempts in all. The first request to finish wins: a late one
+  keeps the winner's picture, charges nothing and deletes its own file. A failure, a block or no
+  credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
+  Illustrate tries a skipped picture again.
+- **Paying (M7, K7).** `media/billing.py` is the seam to WS7's credit meter: `start` holds the
+  estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
+  `rate_limited`, with the picture planned again), `charge` takes the real cost plus margin in the
+  transaction that marks the picture ready, and `release` lets a hold go when the picture isn't
+  drawn. Until the meter lands, pictures are free and the owner's are recorded as the owner's.
+- **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
+  `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
+  `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last
+  `PICTURE_URL_TTL_S` (an hour by default), signed through IAM's signBlob as the runtime service
+  account with Application Default Credentials, so no key file exists. That needs
+  `roles/iam.serviceAccountTokenCreator` for the service account on itself and object access on the
+  bucket ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)). A URL is reused while more than half its life remains, so a list of
+  scenes doesn't sign the same picture again. Without a bucket, files go to `PICTURE_ROOT`
+  (`backend/media-local/`) and `/media/<key>` serves them behind an HMAC-signed, expiring URL.
+- **Deleting and exporting (T12).** Deleting a story or an account cascades to its pictures, and a
+  `post_delete` receiver removes each file once the transaction commits, so a delete that rolls
+  back keeps them. The account export (WS6's `account_exporting` signal) lists every ready picture
+  with a fresh URL.
+- **Showing pictures elsewhere.** `media.lookups` gives the story, library and memory endpoints
+  `Scene.image`, portrait URLs and covers in one query each, and the export list.
+- **Logs (T5, T6).** Each picture drawn or skipped writes one `media.pictures` line with a
+  `picture` object: image id, kind, version, status, skip reason, trigger, model, cost, payer, BYOK
+  and fallback, references, block categories, latency and size. The prompt and the key never
+  appear.
 
 ## Google Cloud
 
@@ -433,8 +481,10 @@ endpoint lets anyone spend our Vertex budget.
 | `accounts_refreshtoken` | Refresh tokens as SHA-256 hashes, per session, with expiry and when each was spent. |
 | `accounts_throttle` | Sign-in brute-force counters: an HMAC key, the window start and the hits. |
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
-| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, and the picture fields (M1 to M3). |
+| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, and the picture flag, kind and prompt (M1). The picture itself and its state live in `media_image`. |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". |
+| `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
+| `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |
 
 The FastAPI version's `stories` and `schema_migrations` tables are left on Neon untouched. Dropping
 them deletes production data, so it waits for Miki.

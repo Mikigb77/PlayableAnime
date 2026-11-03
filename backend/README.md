@@ -59,6 +59,10 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `OWNER_EMAILS` | `mikigb77@gmail.com` | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). |
 | `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
 | `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
+| `PICTURE_MODEL` | `gemini-3.1-flash-lite-image` | The picture model (M8), read by `graph/llm/config.py`. |
+| `MEDIA_BUCKET` | none | The private Cloud Storage bucket for pictures (M4). Unset, pictures are stored on local disk. |
+| `PICTURE_ROOT` | `backend/media-local/` | Where pictures go without a bucket, served at `/media/` behind signed URLs. |
+| `PICTURE_URL_TTL_S` | `3600` | How long a picture's signed URL works. |
 
 ## Database (Neon Postgres)
 
@@ -123,6 +127,9 @@ today's, ported from FastAPI with the same paths and shapes so the current app k
 | GET | `/v1/stories/{id}` | Full story with `version` |
 | POST | `/v1/stories/{id}/turns` | `{choice_id}` or `{action, input_mode?}`, plus optional `expected_version` → `{scene, state, version}` |
 | GET | `/v1/stories/{id}/memory` | World state |
+| POST | `/v1/stories/{id}/scenes/{turn}/image` | The scene's planned picture, drawn at most once (M3) |
+| POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | A picture of any scene, which the player pays for (M2) |
+| GET | `/v1/stories/{id}/images/{image_id}` | A picture with a fresh signed URL |
 
 Errors use the envelope from API.md: `{"error": {"code", "message", "details"}}`. A turn saves only
 if no other turn was saved since it read the story, so the loser of a race gets `409
@@ -168,6 +175,7 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
+media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
 engine/           The rules engine, plain Python with no web or model imports (B4)
   state/          World state models (C2): bible, cast, sheets, records

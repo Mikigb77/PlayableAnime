@@ -364,6 +364,26 @@ screens.
   under repeated or concurrent calls, `pending` while running, `skipped` quietly on failure, block
   or no credits. Illustrate for player-paid pictures (M2). Deleted with the account (T12).
 - **Done when** idempotency and the never-below-zero rule are tested with a fake picture model.
+- **Landed** as `backend/media/` (see [ARCHITECTURE.md](ARCHITECTURE.md#how-pictures-work)). What
+  other workstreams call:
+  - **WS3 (turn endpoint):** when `DirectorPlan.picture` is set, call
+    `media.plans.plan_picture(scene, kind=, subject_id=, trigger=, brief=Brief(description=<the
+    narrator's image prompt>, look=WorldLook(<bible genre, era, tone, setting>),
+    subject_name=, subject_appearance=, figures=(Figure(id, name, appearance), ...)),
+    redraw=)` after saving the scene, in the turn's transaction. Build `Scene.image`,
+    `Scene.portraits` and `StorySummary.cover_url` with `media.lookups.scene_images`,
+    `portrait_urls` and `cover_urls`.
+  - **WS7 (credits):** replace the three bodies in `media/billing.py` (`start`, `charge`,
+    `release`) with the meter's `astart`, `charge_image` and `arelease`.
+  - **WS6 (accounts):** deletion needs nothing (files go with the cascade); the export receiver
+    connects to `accounts.signals.account_exporting` when it exists. Point
+    `media.api.owned_story` at `stories.api.load_owned_story` once it lands.
+  - **WS11 (director):** the picture decision's `subject_id` is the character or place id; a
+    portrait redraw for a permanent change (M5, G17) is a `PictureDecision` the turn plans with
+    `redraw=True`.
+  - **WS14 (play screen):** see the Pictures section of [API.md](API.md#pictures-m1-to-m8).
+  - The house style in `media/prompts.py` follows the direction above; align it with
+    `app/DESIGN.md` when WS4 lands it.
 
 ### WS9 Resolve: logic first, then dice (wave 2b, after WS2's PR 1)
 

@@ -3,6 +3,7 @@
 pytest-django creates and drops its own `test_*` database there."""
 
 import os
+import tempfile
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
@@ -16,5 +17,8 @@ from lucid.settings import _database  # noqa: E402
 DATABASES = {"default": _database(TEST_DATABASE_URL)}
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 LLM_PROVIDER = "fake"
+# Pictures go to a throwaway folder, never Cloud Storage. Tests that look at files use their own.
+MEDIA_BUCKET = ""
+PICTURE_ROOT = tempfile.mkdtemp(prefix="lucid-pictures-")
 # The admin's assets straight from the apps, so tests don't need `collectstatic`.
 SERVESTATIC_USE_FINDERS = True
