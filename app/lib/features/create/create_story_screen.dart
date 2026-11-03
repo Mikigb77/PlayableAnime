@@ -32,10 +32,25 @@ class CreateStoryScreen extends ConsumerStatefulWidget {
 class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
   late final _flow = CreateFlow(ref.read(draftRepositoryProvider));
 
+  /// The premise step's words and choices, kept here so a failed draft returns to them.
+  PremiseForm? _form;
+
   @override
   void dispose() {
     _flow.dispose();
+    _form?.dispose();
     super.dispose();
+  }
+
+  /// Back from a link with nothing under it goes to Discover, asking first like a pop would.
+  Widget? _back(BuildContext context) {
+    if (GoRouter.of(context).canPop()) return null;
+    return BackButton(
+      onPressed: () async {
+        if (_flow.hasUnsavedDraft && !await _confirmLeave()) return;
+        if (context.mounted) context.go('/discover');
+      },
+    );
   }
 
   Future<void> _start() async {
@@ -103,7 +118,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
             child: Builder(
               builder: (context) => Scaffold(
                 appBar: AppBar(
-                  leading: backOr(context, '/discover'),
+                  leading: _back(context),
                   title: Text(switch (stage) {
                     CreateStage.review => l10n.reviewTitle,
                     _ when starter != null => l10n.createStartTitle,
@@ -120,6 +135,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                       CreateStage.premise => PremiseStep(
                         key: const ValueKey(CreateStage.premise),
                         flow: _flow,
+                        form: _form ??= PremiseForm(premise: starter?.premise),
                         starter: starter,
                       ),
                       CreateStage.drafting => DraftingView(

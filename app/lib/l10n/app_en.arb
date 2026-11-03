@@ -222,6 +222,8 @@
   "reviewAskCharacter": "Ask for a different character",
   "reviewRedraftingWorld": "Redrafting the world…",
   "reviewRedraftingCharacter": "Redrafting your character…",
+  "reviewRedraftingBoth": "Redrafting the world and your character…",
+  "reviewSaving": "Saving…",
   "reviewSettings": "Rating and rules",
   "reviewRating": "Rating",
   "reviewAdvanced": "Advanced",

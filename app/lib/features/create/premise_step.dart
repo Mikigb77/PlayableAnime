@@ -11,12 +11,31 @@ import 'create_flow.dart';
 import 'draft.dart';
 import 'draft_widgets.dart';
 
+/// What the player has written and chosen on the first step. It outlives the step, which is
+/// rebuilt after drafting fails, so nothing is lost however long the failure took.
+class PremiseForm {
+  PremiseForm({String? premise}) : text = TextEditingController(text: premise);
+
+  final TextEditingController text;
+
+  /// Teen until the player picks Mature, which only an adult account can (F8).
+  Rating rating = Rating.teen;
+  Physics? physics;
+  GiftStrength? gift;
+  Difficulty? difficulty;
+  EventFrequency? events;
+  bool advancedOpen = false;
+
+  void dispose() => text.dispose();
+}
+
 /// The first step: the premise, typed or dictated (V1), or a starter's own text to keep or change
 /// (S1); the rating (F2, F8); and, folded away, the advanced choices (G1).
 class PremiseStep extends ConsumerStatefulWidget {
-  const PremiseStep({super.key, required this.flow, this.starter});
+  const PremiseStep({super.key, required this.flow, required this.form, this.starter});
 
   final CreateFlow flow;
+  final PremiseForm form;
   final Premise? starter;
 
   @override
@@ -24,20 +43,13 @@ class PremiseStep extends ConsumerStatefulWidget {
 }
 
 class _PremiseStepState extends ConsumerState<PremiseStep> {
-  late final _premise = TextEditingController(text: widget.starter?.premise);
+  PremiseForm get _form => widget.form;
+  TextEditingController get _premise => _form.text;
   late final _tracker = InputModeTracker(_premise);
-  // Teen until the player picks Mature, which only an adult account can (F8).
-  Rating _rating = Rating.teen;
-  Physics? _physics;
-  GiftStrength? _gift;
-  Difficulty? _difficulty;
-  EventFrequency? _events;
-  bool _advanced = false;
 
   @override
   void dispose() {
     _tracker.dispose();
-    _premise.dispose();
     super.dispose();
   }
 
@@ -57,12 +69,12 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
       premise: own ? text : null,
       premiseId: starter?.id,
       quote: text,
-      rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : _rating,
+      rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : _form.rating,
       choices: DraftChoices(
-        physics: _physics,
-        giftStrength: _gift,
-        difficulty: _difficulty,
-        eventFrequency: _events,
+        physics: _form.physics,
+        giftStrength: _form.gift,
+        difficulty: _form.difficulty,
+        eventFrequency: _form.events,
       ),
     );
   }
@@ -74,7 +86,7 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
     final colors = context.lucid;
     final starter = widget.starter;
     // A limit learned after the screen opened still holds (F8).
-    final rating = ref.watch(maxRatingProvider) == Rating.teen ? Rating.teen : _rating;
+    final rating = ref.watch(maxRatingProvider) == Rating.teen ? Rating.teen : _form.rating;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: Space.xxxl),
@@ -125,6 +137,7 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                     maxLines: 12,
                     maxLength: DraftLimits.premiseMax,
                     maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                    inputFormatters: const [CodePointLimit(DraftLimits.premiseMax)],
                     textCapitalization: TextCapitalization.sentences,
                     style: context.lucidText.narration.copyWith(fontSize: 17),
                     // The counter only near the limit.
@@ -155,20 +168,20 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                 FieldLabel(l10n.createRatingLabel),
                 RatingChoice(
                   value: rating,
-                  onChanged: (rating) => setState(() => _rating = rating),
+                  onChanged: (rating) => setState(() => _form.rating = rating),
                 ),
                 const SizedBox(height: Space.lg),
                 _AdvancedChoices(
-                  open: _advanced,
-                  onToggle: () => setState(() => _advanced = !_advanced),
-                  physics: _physics ?? Physics.funFirst,
-                  gift: _gift,
-                  difficulty: _difficulty ?? Difficulty.balanced,
-                  events: _events ?? EventFrequency.normal,
-                  onPhysics: (value) => setState(() => _physics = value),
-                  onGift: (value) => setState(() => _gift = value),
-                  onDifficulty: (value) => setState(() => _difficulty = value),
-                  onEvents: (value) => setState(() => _events = value),
+                  open: _form.advancedOpen,
+                  onToggle: () => setState(() => _form.advancedOpen = !_form.advancedOpen),
+                  physics: _form.physics ?? Physics.funFirst,
+                  gift: _form.gift,
+                  difficulty: _form.difficulty ?? Difficulty.balanced,
+                  events: _form.events ?? EventFrequency.normal,
+                  onPhysics: (value) => setState(() => _form.physics = value),
+                  onGift: (value) => setState(() => _form.gift = value),
+                  onDifficulty: (value) => setState(() => _form.difficulty = value),
+                  onEvents: (value) => setState(() => _form.events = value),
                 ),
                 ListenableBuilder(
                   listenable: Listenable.merge([_premise, widget.flow]),

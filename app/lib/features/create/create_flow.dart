@@ -38,8 +38,9 @@ class CreateFlow extends ChangeNotifier {
   /// The parts being redrafted by a change in flight.
   Redraft get redrafting => _redrafting;
 
-  /// Whether a draft is being made or a change saved. One change at a time.
-  bool get busy => _stage == CreateStage.drafting || _saving;
+  /// Whether a draft is being made, a change saved or the story started. One at a time, so
+  /// nothing changes under a start.
+  bool get busy => _stage == CreateStage.drafting || _saving || _starting;
 
   bool get starting => _starting;
 
@@ -140,7 +141,7 @@ class CreateFlow extends ChangeNotifier {
   /// that already started returns its story.
   Future<String?> start() async {
     final draft = _draft;
-    if (draft == null || _starting || busy) return null;
+    if (draft == null || busy) return null;
     if (draft.storyId case final storyId?) return storyId;
     _starting = true;
     _error = null;

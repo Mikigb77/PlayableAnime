@@ -95,11 +95,7 @@ class _SheetActions extends StatelessWidget {
             CostNote(
               cost,
               busy: busy && !redrafting.isFree,
-              busyText: switch (redrafting) {
-                Redraft(world: true) => l10n.reviewRedraftingWorld,
-                Redraft(character: true) => l10n.reviewRedraftingCharacter,
-                _ => null,
-              },
+              busyText: _redraftingText(l10n, redrafting),
             ),
             if (error case final error?) ...[const SizedBox(height: Space.md), InlineError(error)],
             const SizedBox(height: Space.lg),
@@ -115,9 +111,7 @@ class _SheetActions extends StatelessWidget {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Theme.of(context).colorScheme.onSurface,
-                            semanticsLabel: redrafting.world
-                                ? l10n.reviewRedraftingWorld
-                                : l10n.reviewRedraftingCharacter,
+                            semanticsLabel: _redraftingText(l10n, redrafting) ?? l10n.reviewSaving,
                           ),
                         )
                       : Text(label),
@@ -130,6 +124,14 @@ class _SheetActions extends StatelessWidget {
     );
   }
 }
+
+/// What a change in flight is redrafting, or null when it redrafts nothing.
+String? _redraftingText(AppLocalizations l10n, Redraft redrafting) => switch (redrafting) {
+  Redraft(world: true, character: true) => l10n.reviewRedraftingBoth,
+  Redraft(world: true) => l10n.reviewRedraftingWorld,
+  Redraft(character: true) => l10n.reviewRedraftingCharacter,
+  _ => null,
+};
 
 /// A text box in the review's style, with the mic as its suffix (V1).
 class _ReviewField extends StatelessWidget {
@@ -161,6 +163,7 @@ class _ReviewField extends StatelessWidget {
     maxLines: 8,
     maxLength: maxLength,
     maxLengthEnforcement: MaxLengthEnforcement.enforced,
+    inputFormatters: [CodePointLimit(maxLength)],
     textCapitalization: TextCapitalization.sentences,
     style: context.lucidText.narration.copyWith(fontSize: 17),
     decoration: InputDecoration(
@@ -207,7 +210,10 @@ class _LineSheet extends StatefulWidget {
 }
 
 class _LineSheetState extends State<_LineSheet> {
-  late final _original = widget.flow.draft!.linesOf(widget.part)[widget.index];
+  /// The draft as the sheet opened on it. A saved change closes the sheet, so this never goes
+  /// stale while the player can act; it keeps the sheet whole while it closes.
+  late final Draft _draft = widget.flow.draft!;
+  late final _original = _draft.linesOf(widget.part)[widget.index];
   late final _text = TextEditingController(text: _original);
   late final _tracker = InputModeTracker(_text);
   Object? _error;
@@ -225,7 +231,7 @@ class _LineSheetState extends State<_LineSheet> {
   }
 
   DraftEdit _edit({bool remove = false}) {
-    final lines = [...widget.flow.draft!.linesOf(widget.part)];
+    final lines = [..._draft.linesOf(widget.part)];
     if (remove) {
       lines.removeAt(widget.index);
     } else {
@@ -237,7 +243,7 @@ class _LineSheetState extends State<_LineSheet> {
   Future<void> _save({bool remove = false}) async {
     final edit = _edit(remove: remove);
     _sent = _text.text;
-    final cost = redraftFor(widget.flow.draft!, edit);
+    final cost = redraftFor(_draft, edit);
     final failure = await _runChange(context, cost, () => widget.flow.edit(edit));
     if (mounted) setState(() => _error = failure);
   }
@@ -246,10 +252,12 @@ class _LineSheetState extends State<_LineSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return ListenableBuilder(
-      listenable: _text,
+      // The flow too, so Remove is disabled while a change is saved.
+      listenable: Listenable.merge([_text, widget.flow]),
       builder: (context, _) {
         final text = normalizeLine(_text.text);
         final changed = text != normalizeLine(_original);
+        final removable = _draft.linesOf(widget.part).length > 1;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -268,11 +276,13 @@ class _LineSheetState extends State<_LineSheet> {
               ),
             _SheetActions(
               flow: widget.flow,
-              cost: redraftFor(widget.flow.draft!, _edit()),
+              // What the enabled action costs: Save once the line changed, else Remove, which
+              // redrafts the part as a rewrite does.
+              cost: redraftFor(_draft, _edit(remove: !changed && removable)),
               label: l10n.save,
               error: fieldMessage(_error, _field) == null ? _error : null,
               onSave: changed && text.isNotEmpty ? _save : null,
-              secondary: widget.flow.draft!.linesOf(widget.part).length > 1
+              secondary: removable
                   ? TextButton.icon(
                       onPressed: widget.flow.busy ? null : () => _save(remove: true),
                       icon: const Icon(Icons.delete_outline_rounded, size: 20),
@@ -669,6 +679,7 @@ class _RuleEditor extends StatelessWidget {
             maxLines: 4,
             maxLength: DraftLimits.line,
             maxLengthEnforcement: MaxLengthEnforcement.enforced,
+            inputFormatters: const [CodePointLimit(DraftLimits.line)],
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: l10n.ruleHint,

@@ -1,4 +1,6 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/features/create/draft_widgets.dart';
 import 'package:playable_anime/features/create/draft.dart';
 
 /// The draft model and what each change costs, by the server's own rules (docs/API.md, "Direct
@@ -99,6 +101,23 @@ void main() {
       expect(cost(DraftEdit(rules: rules)), Redraft.none);
     });
 
+    test('drafted words are compared as they are, the way the server does', () {
+      final spaced = Draft.fromJson(const {
+        'id': 'd',
+        'version': 1,
+        'advanced': {
+          'rules': [
+            {'id': 'r1', 'text': 'The dead  stay dead.', 'fixed': true},
+          ],
+        },
+      });
+      // The server saves the player's list normalized, so even a flipped flag rewrites this rule.
+      expect(
+        redraftFor(spaced, DraftEdit(rules: [spaced.advanced.rules.single.copyWith(fixed: false)])),
+        const Redraft(world: true),
+      );
+    });
+
     test('a rewritten, added or removed rule redrafts the world', () {
       final [first, second] = draft.advanced.rules;
       const world = Redraft(world: true);
@@ -180,5 +199,21 @@ void main() {
   test('lines are kept as the server keeps them', () {
     expect(normalizeLine('  a \n b\tc  '), 'a b c');
     expect(cleanLines(['one', '   ', ' two  lines ']), ['one', 'two lines']);
+  });
+
+  group('CodePointLimit', () {
+    TextEditingValue typed(String text) => TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+
+    test('counts code points, as the server does, and keeps whole characters', () {
+      const limit = CodePointLimit(5);
+      expect(limit.formatEditUpdate(typed(''), typed('abcde')).text, 'abcde');
+      expect(limit.formatEditUpdate(typed(''), typed('abcdef')).text, 'abcde');
+      // A flag is two code points: it fits only whole.
+      expect(limit.formatEditUpdate(typed(''), typed('abcd🇪🇸')).text, 'abcd');
+      expect(limit.formatEditUpdate(typed(''), typed('abc🇪🇸')).text, 'abc🇪🇸');
+    });
   });
 }

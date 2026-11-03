@@ -64,6 +64,7 @@ void registerDraftRoutes(FakeBackend b) {
     if (r.json['premise'] case final String own) _refuseRealPeople([('premise', own)]);
     _failOn(premise);
     await _meter(b, r, calls: 1);
+    _failOn(premise, model: true);
 
     final id = b.data.id('draft');
     final now = b.now().toUtc().toIso8601String();
@@ -120,8 +121,13 @@ void registerDraftRoutes(FakeBackend b) {
       ),
     ]);
     final calls = _editCalls(draft, body, advanced);
-    _failOn([...?body['world_lines'] as List?, ...?body['character_lines'] as List?].join(' '));
+    final words = [
+      ...?body['world_lines'] as List?,
+      ...?body['character_lines'] as List?,
+    ].join(' ');
+    _failOn(words);
     await _meter(b, r, calls: calls);
+    _failOn(words, model: true);
 
     for (final key in ['world_lines', 'character_lines']) {
       if (body[key] case final List lines) draft[key] = _clean(lines);
@@ -142,6 +148,7 @@ void registerDraftRoutes(FakeBackend b) {
     _refuseRealPeople([('instruction', instruction)]);
     _failOn(instruction);
     await _meter(b, r, calls: 1);
+    _failOn(instruction, model: true);
     final lines = [...draft[key] as List, _asLine(instruction)];
     draft[key] = lines.length > 10 ? [lines.first, ...lines.skip(lines.length - 9)] : lines;
     _charge(b, r, calls: 1);
@@ -229,9 +236,13 @@ List<(String, Object?)> _newTexts(
   ];
 }
 
-/// Answers with the error a `[fail:code]` trigger names, as the real backend would.
-void _failOn(String text) {
+/// Answers with the error a `[fail:code]` trigger names, as the real backend would: the meter's
+/// refusals before any model call, and the model's own failures ([model]) after the time a call
+/// takes.
+void _failOn(String text, {bool model = false}) {
   final trigger = RegExp(r'\[fail:(\w+)\]').firstMatch(text)?.group(1);
+  const fromModel = {'unreadable_action', 'bad_key', 'llm_unavailable'};
+  if (trigger == null || fromModel.contains(trigger) != model) return;
   final error = switch (trigger) {
     'out_of_credits' => const FakeError(402, 'out_of_credits', 'Not enough credits.', {
       'balance_cents': 1.5,
@@ -284,12 +295,15 @@ int _editCalls(JsonMap draft, JsonMap body, JsonMap advanced) {
   var character = false;
   if (body['rating'] == 'teen' && draft['rating'] == 'mature') world = character = true;
   if (advanced['rules'] case final List rules) {
-    String key(Object? rule) => '${(rule as JsonMap)['id']}|${_normal(rule['text'])}';
+    // The player's words normalized, the drafted ones as they are, as `plan_edit` compares.
     final after = [
-      for (final rule in rules)
-        if (_normal((rule as JsonMap)['text']).isNotEmpty) key(rule),
+      for (final rule in rules.cast<JsonMap>())
+        if (_normal(rule['text']).isNotEmpty) '${rule['id']}|${_normal(rule['text'])}',
     ];
-    final before = [for (final rule in (draft['advanced'] as JsonMap)['rules'] as List) key(rule)];
+    final before = [
+      for (final rule in ((draft['advanced'] as JsonMap)['rules'] as List).cast<JsonMap>())
+        '${rule['id']}|${rule['text']}',
+    ];
     if (after.join('\n') != before.join('\n')) world = true;
   }
   if (body['world_lines'] case final List lines

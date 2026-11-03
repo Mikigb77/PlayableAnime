@@ -313,12 +313,13 @@ Redraft redraftFor(Draft draft, DraftEdit edit) {
     character = true;
   }
   if (edit.rules case final rules?) {
-    String key(DraftRule r) => '${r.id}\u0000${normalizeLine(r.text)}';
+    // As the server compares: the player's words normalized, the drafted ones as they are.
     final after = [
       for (final rule in rules)
-        if (normalizeLine(rule.text).isNotEmpty) key(rule),
+        if (normalizeLine(rule.text).isNotEmpty) '${rule.id}\u0000${normalizeLine(rule.text)}',
     ];
-    if (!listEquals(after, [for (final rule in draft.advanced.rules) key(rule)])) world = true;
+    final before = [for (final rule in draft.advanced.rules) '${rule.id}\u0000${rule.text}'];
+    if (!listEquals(after, before)) world = true;
   }
   if (edit.worldLines case final lines? when !listEquals(cleanLines(lines), draft.worldLines)) {
     world = true;

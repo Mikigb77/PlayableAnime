@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -329,8 +330,6 @@ class CostNote extends StatelessWidget {
   }
 }
 
-/// A failure in the player's words, in place, with what to do next (T7). Out of credits points
-/// to Account, where the player can add their own key.
 /// The server's words about one field of a `validation_error`, such as a real person named in it
 /// (G12, docs/API.md): shown under that field as they are. Null when [error] says nothing about
 /// [field].
@@ -358,6 +357,9 @@ String? _realPerson(Object error) {
   return null;
 }
 
+/// A failure in the player's words, in place, with what to do next (T7). Out of credits points
+/// to Account, where the player can add their own key; a real person named (G12) shows the
+/// server's message, which says who.
 class InlineError extends StatelessWidget {
   const InlineError(this.error, {super.key});
 
@@ -417,6 +419,35 @@ class InlineError extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Limits a field to [max] Unicode code points, the way the server counts a string's length, so
+/// text with emoji or accents the app accepted is never refused as too long. Flutter's own
+/// `maxLength` counts characters as the eye sees them, which can be fewer.
+class CodePointLimit extends TextInputFormatter {
+  const CodePointLimit(this.max);
+
+  final int max;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.runes.length <= max) return newValue;
+    // Keep whole characters: drop from the end until the code points fit.
+    final characters = newValue.text.characters.toList();
+    var text = '';
+    var runes = 0;
+    for (final character in characters) {
+      final n = character.runes.length;
+      if (runes + n > max) break;
+      text += character;
+      runes += n;
+    }
+    final offset = newValue.selection.baseOffset.clamp(0, text.length);
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: offset),
     );
   }
 }

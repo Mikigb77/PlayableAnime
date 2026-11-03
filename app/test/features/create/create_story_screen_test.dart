@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/features/account/account_screen.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
@@ -79,7 +80,8 @@ void main() {
     // Rewriting a line says what it costs, then redrafts the world.
     await tapAndSettle(tester, find.text(line), frames: 6);
     expect(find.text(l10n.lineSheetTitle), findsOneWidget);
-    expect(inSheet(find.text(l10n.costFree)), findsOneWidget);
+    // Until the line changes, the cost is Remove's, which redrafts the world too.
+    expect(inSheet(find.text(l10n.costWorld)), findsOneWidget);
     await tester.enterText(inSheet(find.byType(TextField)), 'Four factions, and all of them know.');
     await tester.pump();
     expect(inSheet(find.text(l10n.costWorld)), findsOneWidget);
@@ -266,6 +268,66 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text(l10n.reviewConflict), findsOneWidget);
     expect(app.sent('GET', (p) => p.startsWith('/v1/drafts/')), hasLength(1));
+  });
+
+  testWidgets('a draft that fails after a while keeps the premise and choices', (tester) async {
+    const slow = FakePace(
+      latency: Duration.zero,
+      firstWords: Duration.zero,
+      perChunk: Duration.zero,
+      picture: Duration.zero,
+      drafting: Duration(seconds: 2),
+    );
+    final app = AppHarness(pace: slow);
+    await app.launch(tester, location: '/create');
+    await draft(
+      tester,
+      premise: 'A quiet village by the sea [fail:llm_unavailable]',
+      rating: l10n.ratingMature,
+    );
+    expect(find.text(l10n.draftingTitle), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await settle(tester, frames: 12);
+    expect(find.text(l10n.createHeading), findsOneWidget);
+    expect(find.byType(InlineError), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'A quiet village by the sea [fail:llm_unavailable]',
+    );
+    // Drafting again keeps the rating chosen before.
+    await scrollTo(tester, find.text(l10n.createDraftAction));
+    await tapAndSettle(tester, find.text(l10n.createDraftAction), frames: 2);
+    expect(app.sent('POST', (p) => p == '/v1/drafts').last.json['rating'], 'mature');
+    await tester.pump(const Duration(seconds: 3));
+    await settle(tester, frames: 12);
+  });
+
+  testWidgets('removing a line says what it costs, then redrafts the world', (tester) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    const line = 'News travels at the speed of a fast horse, and rumours travel faster.';
+    await scrollTo(tester, find.text(line));
+    await tapAndSettle(tester, find.text(line), frames: 6);
+    expect(inSheet(find.text(l10n.costWorld)), findsOneWidget);
+    await tapAndSettle(tester, inSheet(find.text(l10n.lineRemove)));
+    final sent = app.sent('PATCH', (p) => p.startsWith('/v1/drafts/')).single.json;
+    expect(sent['world_lines'], isNot(contains(line)));
+    expect(find.text(l10n.reviewWorldRedrafted), findsOneWidget);
+    expect(find.text(line), findsNothing);
+  });
+
+  testWidgets('back from a link asks before losing the draft', (tester) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create?premise=outer-disciple');
+    await scrollTo(tester, find.text(l10n.createDraftAction));
+    await tapAndSettle(tester, find.text(l10n.createDraftAction), frames: 12);
+    await tester.tap(find.byType(BackButton));
+    await settle(tester);
+    expect(find.text(l10n.reviewLeaveTitle), findsOneWidget);
+    await tapAndSettle(tester, find.text(l10n.reviewLeave));
+    expect(find.byType(DiscoverScreen), findsOneWidget);
+    expect(app.location(tester), '/discover');
   });
 
   testWidgets('leaving a draft asks first, since it is not in the library yet', (tester) async {

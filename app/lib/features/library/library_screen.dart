@@ -59,7 +59,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         message = l10n.libraryDeleteFailed(story.title, describeError(l10n, e).message);
       }
     }
-    ref.invalidate(storiesProvider);
+    // The player may have left the Library meanwhile; the list reloads when they come back.
+    if (mounted) ref.invalidate(storiesProvider);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));

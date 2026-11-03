@@ -221,6 +221,15 @@ void main() {
     expect(memory.sections, isEmpty);
   });
 
+  test('nothing can change while the story starts', () async {
+    await drafted();
+    final starting = flow.start();
+    expect(flow.busy, isTrue);
+    expect(await flow.edit(const DraftEdit(physics: Physics.strict)), isA<StateError>());
+    expect(await starting, isNotNull);
+    expect(backend.requests.where((r) => r.method == 'PATCH'), isEmpty);
+  });
+
   test('a draft started elsewhere answers with its story', () async {
     final draft = await drafted();
     final started = await api.post('/v1/drafts/${draft.id}/start', {}) as JsonMap;
