@@ -1,5 +1,6 @@
 """The world state (C2): everything the story must remember, beyond the scene text."""
 
+import re
 from enum import StrEnum
 
 from pydantic import Field, model_validator
@@ -71,10 +72,11 @@ class WorldState(EngineModel):
     """C2. Characters, factions, places, the player sheet, deeds, rumors, facts, goals and leads,
     threads, clocks and pending events, the world clock and timeline, and a rolling summary.
 
-    Collections are keyed by id, and each record's `id` must match its key. The player character
-    is in `characters` under `player_id`. Rolls are recorded on each scene's resolution with their
-    seeds (A3), so they are not repeated here. The summary is flavour only; anything that must not
-    be lost lives in the structured records.
+    Collections are keyed by id, and each record's `id` must match its key. Never rely on their
+    order: Postgres JSONB reorders object keys, so sort by id or time where order matters. The
+    player character is in `characters` under `player_id`. Rolls are recorded on each scene's
+    resolution with their seeds (A3), so they are not repeated here. The summary is flavour only;
+    anything that must not be lost lives in the structured records.
     """
 
     schema_version: int = SCHEMA_VERSION
@@ -103,6 +105,12 @@ class WorldState(EngineModel):
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> "WorldState":
+        if self.schema_version > SCHEMA_VERSION:
+            # An older engine would drop the fields it doesn't know and save the stripped state
+            # back, for instance during a rolling deploy. Refuse instead.
+            raise ValueError(
+                f"state schema {self.schema_version} is newer than this engine's {SCHEMA_VERSION}"
+            )
         for field in _KEYED_COLLECTIONS:
             for key, record in getattr(self, field).items():
                 if key != record.id:
@@ -135,7 +143,10 @@ class WorldState(EngineModel):
 
     def due_events(self, until_s: int) -> list[PendingEvent]:
         """Pending events on the current timeline due at or before `until_s`, in time order.
-        Ties keep the order they were scheduled in."""
+
+        Ties go to the event scheduled first, then by id. Map order is never used, because
+        Postgres JSONB doesn't keep the order of object keys.
+        """
         due = [
             e
             for e in self.pending_events.values()
@@ -143,7 +154,12 @@ class WorldState(EngineModel):
             and e.timeline_id == self.timeline_id
             and e.due_s <= until_s
         ]
-        return sorted(due, key=lambda e: e.due_s)
+        return sorted(due, key=lambda e: (e.due_s, e.created_turn, e.created_s, natural_key(e.id)))
+
+
+def natural_key(record_id: str) -> tuple:
+    """Sorts `deed-9` before `deed-10`."""
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"(\d+)", record_id))
 
 
 _KEYED_COLLECTIONS = (

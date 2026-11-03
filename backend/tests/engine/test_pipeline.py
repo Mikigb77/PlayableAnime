@@ -1,3 +1,5 @@
+import pytest
+
 from engine import pipeline
 from engine.base import HOUR
 from engine.context import ImageSetting, StorySettings, TurnContext
@@ -9,12 +11,22 @@ from engine.contracts import (
     PictureTrigger,
     ProposedDeed,
     Resolution,
+    SheetPart,
+    SheetUse,
     StandingAction,
     StepResolution,
 )
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
-from engine.state import EventStatus, PendingEvent, Ruling, StepResult, Visibility
+from engine.state import (
+    ActiveTimeEffect,
+    EventStatus,
+    PendingEvent,
+    Ruling,
+    StepResult,
+    TimeEffect,
+    Visibility,
+)
 from engine.timekeeping import DURATION_BOUNDS, bound_duration
 
 
@@ -48,6 +60,7 @@ def test_duration_bounds_cover_every_kind_and_hold():
     assert bound_duration(ActionKind.REST, 8 * HOUR) == 8 * HOUR
     assert bound_duration(ActionKind.CONVERSATION, 0) == 10
     assert bound_duration(ActionKind.EXCHANGE, 5, world_frozen=True) == 0
+    assert bound_duration(ActionKind.TIME_SKIP, 1800) == 1800
 
 
 def test_default_resolve_succeeds_every_step_within_its_bounds():
@@ -63,6 +76,52 @@ def test_default_resolve_succeeds_every_step_within_its_bounds():
     assert [s.outcome_class for s in resolution.steps] == [OutcomeClass.CERTAIN] * 2
     assert [s.result for s in resolution.steps] == [StepResult.SUCCESS] * 2
     assert [s.duration_s for s in resolution.steps] == [2, 48 * HOUR]
+
+
+def test_default_resolve_bounds_lived_time_too():
+    intent = Intent(steps=[step("blink", ActionKind.INSTANT, 0, proposed_personal_s=10**9)])
+
+    resolution = pipeline.resolve(cultivation_world(), intent, ctx(), rng())
+
+    assert resolution.steps[0].personal_s == 10
+
+
+def test_default_resolve_keeps_the_world_still_for_as_long_as_a_stop_lasts():
+    # Lin's stop lasts three heartbeats (3 personal seconds).
+    stop = SheetUse(part=SheetPart.POWER, ref="time-stop")
+    intent = Intent(
+        steps=[
+            step("stop time", ActionKind.INSTANT, 0, proposed_personal_s=1, uses=[stop]),
+            step("break Zhao's arm", ActionKind.EXCHANGE, 2),
+            step("walk away", ActionKind.MOVE, 20),
+        ]
+    )
+
+    resolution = pipeline.resolve(cultivation_world(), intent, ctx(), rng())
+    played = pipeline.play_out(cultivation_world(), resolution, ctx(), rng())
+
+    assert [s.duration_s for s in resolution.steps] == [0, 0, 20]
+    assert [s.personal_s for s in resolution.steps] == [1, 2, None]
+    assert played.state.world_s == 20
+    assert played.state.player.personal_s(played.state.world_s) == 23
+
+
+def test_default_resolve_respects_a_stop_already_in_effect():
+    state = cultivation_world()
+    state.time_effects.append(
+        ActiveTimeEffect(
+            character_id="lin",
+            power_id="time-stop",
+            effect=TimeEffect.STOP,
+            started_personal_s=0,
+            ends_personal_s=3,
+        )
+    )
+    intent = Intent(steps=[step("strike", ActionKind.EXCHANGE, 2)])
+
+    resolution = pipeline.resolve(state, intent, ctx(), rng())
+
+    assert (resolution.steps[0].duration_s, resolution.steps[0].personal_s) == (0, 2)
 
 
 def test_default_resolve_turns_a_standing_action_into_a_step():
@@ -126,6 +185,19 @@ def test_play_out_records_each_steps_deeds_at_its_end_time():
     assert deed.known_by == ["luca", "bartender"]
 
 
+def test_a_deed_in_stopped_time_with_nobody_immune_stays_secret():
+    deed = ProposedDeed(
+        kind="maim", text="Broke Zhao's arm.", victim_ids=["zhao"], in_stopped_time=True
+    )
+    resolution = Resolution(steps=[settled(0, 0, personal_s=2, deeds=[deed])])
+
+    played = pipeline.play_out(cultivation_world(), resolution, ctx(), rng())
+
+    (recorded,) = played.state.deeds.values()
+    assert recorded.visibility is Visibility.SECRET
+    assert recorded.known_by == ["lin"]
+
+
 def test_play_out_records_a_ruling_once_and_never_flips_it():
     def ruling(answer: str, holds: bool) -> Ruling:
         return Ruling(
@@ -145,6 +217,18 @@ def test_play_out_records_a_ruling_once_and_never_flips_it():
     assert [r.answer for r in again.state.player.sheet.rulings] == ["No."]
 
 
+def test_a_ruling_is_stamped_with_when_it_was_settled():
+    ruling = Ruling(
+        id="r", topic="hit_mode", power_id="time-stop", question="?", answer="Yes.", holds=True
+    )
+    resolution = Resolution(steps=[settled(0, 90)], rulings=[ruling])
+
+    played = pipeline.play_out(cultivation_world(), resolution, ctx(turn=40), rng())
+
+    (recorded,) = played.state.player.sheet.rulings
+    assert (recorded.turn, recorded.world_s) == (40, 90)
+
+
 def test_default_catch_up_and_apply_event():
     state = grounded_world()
 
@@ -155,6 +239,16 @@ def test_default_catch_up_and_apply_event():
     assert fired.pending_events["council-meets"].status is EventStatus.FIRED
     assert fired.pending_events["council-meets"].fired_turn == 2
     assert state.pending_events["council-meets"].status is EventStatus.PENDING
+
+
+def test_apply_event_refuses_an_event_that_is_not_pending_here():
+    state = grounded_world()
+    fired = pipeline.apply_event(state, state.pending_events["council-meets"], ctx(), rng())
+
+    with pytest.raises(ValueError, match="not a pending event"):
+        pipeline.apply_event(fired, fired.pending_events["council-meets"], ctx(), rng())
+    with pytest.raises(ValueError, match="not a pending event"):
+        pipeline.apply_event(state, PendingEvent(id="elsewhere", kind="x", due_s=0), ctx(), rng())
 
 
 def test_default_director_plans_the_opening_portrait_and_suggestions():
@@ -183,6 +277,6 @@ def test_seams_never_change_their_input_state():
     )
 
     pipeline.play_out(state, resolution, ctx(), rng())
-    pipeline.apply_event(state, PendingEvent(id="council-meets", kind="x", due_s=0), ctx(), rng())
+    pipeline.apply_event(state, state.pending_events["council-meets"], ctx(), rng())
 
     assert state.model_dump() == before

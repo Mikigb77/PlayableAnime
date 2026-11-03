@@ -50,7 +50,10 @@ class ProposedDeed(EngineModel):
     visibility: Visibility | None = Field(
         default=None, description="None lets the world work it out from who could perceive it."
     )
-    witness_ids: list[str] = Field(default_factory=list)
+    witness_ids: list[str] = Field(
+        default_factory=list,
+        description="Who perceived it. In stopped time, only those immune to the stop (W10a).",
+    )
     traces: list[Trace] = Field(default_factory=list)
     in_stopped_time: bool = False
 

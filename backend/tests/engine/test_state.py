@@ -49,6 +49,24 @@ def test_samples_round_trip_through_jsonb_style_dicts(make):
     assert WorldState.model_validate(stored) == state
 
 
+def jsonb_reordered(value):
+    """Postgres JSONB keeps object keys sorted by length, then by bytes, not in insertion order."""
+    if isinstance(value, dict):
+        keys = sorted(value, key=lambda k: (len(k.encode()), k.encode()))
+        return {k: jsonb_reordered(value[k]) for k in keys}
+    if isinstance(value, list):
+        return [jsonb_reordered(v) for v in value]
+    return value
+
+
+def test_a_newer_schema_is_refused():
+    stored = minimal_state().model_dump(mode="json")
+    stored["schema_version"] = 99
+
+    with pytest.raises(ValidationError, match="newer than this engine"):
+        WorldState.model_validate(stored)
+
+
 def test_loading_ignores_unknown_keys_and_fills_new_defaults():
     stored = minimal_state().model_dump(mode="json")
     stored["field_from_a_newer_engine"] = {"anything": 1}
@@ -157,6 +175,24 @@ def test_due_events_are_pending_on_this_timeline_and_in_time_order():
     assert [e.id for e in state.due_events(100)] == ["first", "tied", "late"]
 
 
+def test_due_event_order_survives_jsonb_reordering():
+    events = [
+        PendingEvent(id="event-10", kind="t", due_s=10, created_s=1),
+        PendingEvent(id="event-9", kind="t", due_s=10, created_s=1),
+        PendingEvent(id="a-late-schedule", kind="t", due_s=10, created_s=2),
+        PendingEvent(id="b", kind="t", due_s=10, created_turn=0, created_s=0),
+    ]
+    state = minimal_state(pending_events={e.id: e for e in events})
+
+    reloaded = WorldState.model_validate(jsonb_reordered(state.model_dump(mode="json")))
+
+    expected = ["b", "event-9", "event-10", "a-late-schedule"]
+    assert list(reloaded.pending_events) != list(state.pending_events)
+    assert [e.id for e in state.due_events(10)] == expected
+    assert [e.id for e in reloaded.due_events(10)] == expected
+    assert reloaded == state
+
+
 def test_personal_clock_is_world_time_plus_offset():
     lin = cultivation_world().player
     lin.personal_offset_s = 3
@@ -210,6 +246,6 @@ def test_sheet_lookups():
 
 
 def test_rumor_hearers_come_from_heard_at():
-    rumor = Rumor(id="r", text="A monster did it.", is_true=False, heard_at={"p": 30, "q": 60})
+    rumor = Rumor(id="r", text="A monster did it.", is_true=False, heard_at={"q": 60, "p": 30})
 
     assert rumor.heard_by == ["p", "q"]

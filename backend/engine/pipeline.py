@@ -40,7 +40,7 @@ from engine.contracts.resolution import Resolution, StepResolution
 from engine.rng import SeededRng
 from engine.state.records import Deed, EventStatus, PendingEvent, StepResult, Visibility
 from engine.state.world import WorldState
-from engine.timekeeping import bound_duration
+from engine.timekeeping import bound_duration, in_time_stop, stop_power_used
 
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 
@@ -86,20 +86,37 @@ def resolve(state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng)
     """Step 3. Settle each step from the facts and roll only what they leave open (A2, A3).
 
     Default: every step is certain and succeeds in its proposed duration, bounded by its kind.
-    WS9 replaces it.
+    Inside a time stop (one already in effect, or one a step starts), the world clock stands
+    still while the actor's runs, for as long as the stop lasts (W10a). WS9 replaces it.
     """
-    steps = [
-        StepResolution(
-            index=i,
-            text=step.text,
-            outcome_class=OutcomeClass.CERTAIN,
-            reason="Nothing stands in the way.",
-            result=StepResult.SUCCESS,
-            duration_s=bound_duration(step.kind, step.proposed_duration_s),
-            personal_s=step.proposed_personal_s,
+    actor_id = intent.actor_id or state.player_id
+    frozen = in_time_stop(state, actor_id)
+    stop_left_s: int | None = None
+    steps: list[StepResolution] = []
+    for i, step in enumerate(intent.steps):
+        power = stop_power_used(state, actor_id, step)
+        if power is not None:
+            frozen = True
+            stop_left_s = power.time.lasts_s
+        proposed_lived = step.proposed_personal_s
+        if frozen and proposed_lived is None:
+            proposed_lived = step.proposed_duration_s
+        lived = None if proposed_lived is None else bound_duration(step.kind, proposed_lived)
+        steps.append(
+            StepResolution(
+                index=i,
+                text=step.text,
+                outcome_class=OutcomeClass.CERTAIN,
+                reason="Nothing stands in the way.",
+                result=StepResult.SUCCESS,
+                duration_s=bound_duration(step.kind, step.proposed_duration_s, world_frozen=frozen),
+                personal_s=lived,
+            )
         )
-        for i, step in enumerate(intent.steps)
-    ]
+        if frozen and stop_left_s is not None:
+            stop_left_s -= lived or 0
+            if stop_left_s <= 0:
+                frozen, stop_left_s = False, None
     if not steps and intent.standing is not None:
         kind = ActionKind(intent.standing.value)
         steps = [
@@ -124,6 +141,9 @@ def apply_event(
 
     Default: the event is marked fired and changes nothing else. WS10 replaces it.
     """
+    stored = state.pending_events.get(event.id)
+    if stored is None or stored.status is not EventStatus.PENDING:
+        raise ValueError(f"event {event.id!r} is not a pending event of this state")
     new = state.model_copy(deep=True)
     fired = new.pending_events[event.id]
     fired.status = EventStatus.FIRED
@@ -190,28 +210,28 @@ def play_out(
     step in time order through `apply_event`, cuts the plan short at the first one that needs the
     player, and applies each step's `effects` with the C1 invariants.
     """
-    current = state
+    # One working copy for the whole plan; the input state is never touched.
+    current = state.model_copy(deep=True)
     played: list[StepResolution] = []
     actor_id = resolution.actor_id or state.player_id
     for step in resolution.steps:
-        new = current.model_copy(deep=True)
-        start_s = new.world_s
-        new.world_s += step.duration_s
+        start_s = current.world_s
+        current.world_s += step.duration_s
         lived_s = step.duration_s if step.personal_s is None else step.personal_s
-        actor = new.characters.get(actor_id)
+        actor = current.characters.get(actor_id)
         if actor is not None:
             actor.personal_offset_s += lived_s - step.duration_s
-        timed = step.model_copy(update={"start_s": start_s, "end_s": new.world_s})
+        timed = step.model_copy(update={"start_s": start_s, "end_s": current.world_s})
         step_rng = rng.child("play_out", "step", step.index)
-        current = record_consequences(new, resolution, timed, ctx, step_rng)
+        current = record_consequences(current, resolution, timed, ctx, step_rng)
         played.append(timed)
 
     if resolution.rulings and actor_id in current.characters:
-        current = current.model_copy(deep=True)
         sheet = current.characters[actor_id].sheet
         for ruling in resolution.rulings:
             if sheet.ruling(ruling.topic, ruling.power_id) is None:
-                sheet.rulings.append(ruling)
+                settled = ruling.model_copy(update={"turn": ctx.turn, "world_s": current.world_s})
+                sheet.rulings.append(settled)
 
     return PlayOut(state=current, resolution=resolution.model_copy(update={"steps": played}))
 

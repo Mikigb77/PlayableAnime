@@ -159,7 +159,8 @@ class Rumor(EngineModel):
 
     @property
     def heard_by(self) -> list[str]:
-        return list(self.heard_at)
+        """Who has heard it, earliest first."""
+        return sorted(self.heard_at, key=lambda c: (self.heard_at[c], c))
 
 
 class FactKind(StrEnum):

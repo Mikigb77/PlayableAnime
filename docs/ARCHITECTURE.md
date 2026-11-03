@@ -121,7 +121,7 @@ a new one.
 | --- | --- | --- |
 | 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
-| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order: the clocks move by each step's duration, events due during it fire, and the step's consequences are recorded at its end | WS2 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order: the clocks move by each step's duration and the step's consequences are recorded at its end. From WS2's second PR, events due during a step fire in time order and one that needs the player cuts the plan short | WS2 |
 | | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
@@ -132,7 +132,8 @@ a new one.
 - **Records are keyed by id.** `WorldState.characters`, `factions`, `places`, `deeds` and the rest
   are maps from id to record, and each record's `id` must match its key. The player character is in
   `characters` under `player_id`, so attitudes, witnesses and knowledge treat everyone the same
-  way (E5). `state.new_id("deed")` hands out stable ids.
+  way (E5). `state.new_id("deed")` hands out stable ids. Never rely on map order, because Postgres
+  JSONB reorders object keys: sort by time or id wherever order matters, as `due_events` does.
 - **In-world time is whole seconds since the story's epoch** (W10). Everything that happens in time
   carries a `timeline_id` and a world second (W10a). A character's personal clock is
   `world_s + personal_offset_s`, so it moves with the world for free, and a time stop only adds to
@@ -154,8 +155,10 @@ a new one.
   `rng.child("resolve", "step", 0)`. Draws come from SHA-256, so a seed recorded on a scene replays
   its roll on any machine, and retrying a turn never rerolls.
 - **The state is stored as JSONB.** Unknown keys are ignored on load and new fields need defaults,
-  so a state saved by an older engine still loads. `schema_version` marks the shape for a future
-  migration of stored states.
+  so a state saved by an older engine still loads. A state whose `schema_version` is newer than the
+  engine's is refused, so an old revision can't drop fields it doesn't know and save the stripped
+  state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
+  meaning.
 
 ## Bring your own key
 
