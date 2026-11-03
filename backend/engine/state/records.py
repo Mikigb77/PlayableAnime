@@ -285,6 +285,9 @@ class Thread(EngineModel):
     status: ThreadStatus = ThreadStatus.OPEN
     opened_turn: int = Field(default=0, ge=0)
     last_active_turn: int = Field(default=0, ge=0)
+    taken_up_turn: int | None = Field(
+        default=None, ge=0, description="The last turn the player took it up (W16)."
+    )
     closed_turn: int | None = None
     arc: str | None = None
     known_by: list[str] = Field(default_factory=list)

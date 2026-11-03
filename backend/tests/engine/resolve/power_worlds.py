@@ -227,3 +227,15 @@ def friend(state: WorldState) -> WorldState:
     )
     state.characters["lin"].sheet.attributes.strength = 3
     return add(state, mei)
+
+
+def train_until_done(state: WorldState, intent: Intent, turn: int, tries: int = 10) -> PlayOut:
+    """Train turn after turn, as a player says "I keep training" after each interruption (E7),
+    until a stretch runs to its end."""
+    played = play(state, intent, turn=turn)
+    for later in range(turn + 1, turn + tries):
+        if played.interrupted_by is None:
+            break
+        played = play(played.state, intent, turn=later)
+    assert played.interrupted_by is None
+    return played

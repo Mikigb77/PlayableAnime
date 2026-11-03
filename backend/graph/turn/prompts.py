@@ -75,6 +75,9 @@ on it.
 one that would give the sheet a power, item, rank or ally it lacks, one about how others feel, \
 one that contradicts a known fact or person (their ids), and world rules it breaks (N4).
 - goals: goals the player states for their character (N2).
+- responds_to: the ids, from GOALS AND THREADS, of the threads or leads this action takes up \
+(answering a summons, helping the friend who came for help, chasing a lead). Leave it empty when \
+the action leaves them alone: ignoring an event is the player's choice (W16).
 - outcome_claims: outcomes or other characters' reactions the player wrote ("and everyone \
 cheers"). They are hopes, not facts, and the step is the attempt (A6).
 - standing: "wait" or "observe" only when that is all the character does.
@@ -117,7 +120,9 @@ they would.
 only what they have seen or been told. toward_you is how a character really feels about the \
 player character; when apparent_affinity is given, that is what they let show.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
-ends. Weave in the CALLBACKS naturally. Show what the FIRED events made happen.
+ends. When it needs no decision, it is something that already played out: tell it as done. Weave \
+in the CALLBACKS naturally. Show what the FIRED events made happen, and tell the HAPPENINGS \
+briefly as things that came to pass in the time that went by.
 - End on something the player can act on. A quiet ending is fine; the story never ends.
 
 Content: follow CONTENT exactly. You play every action the player attempts, including violence, \
@@ -126,7 +131,8 @@ you.
 
 suggestions (S2): exactly the number SUGGESTIONS asks for, of the kinds it lists, each a short \
 action of at most 12 words, meaningfully different, with at least one away from the current \
-thread. Never suggest waiting or observing: those are always offered.
+thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. Never \
+suggest waiting or observing: those are always offered.
 
 image_prompt (M1): only when PICTURE is given, one or two sentences describing the picture's \
 subject and composition, true to the characters' appearance. Otherwise null.

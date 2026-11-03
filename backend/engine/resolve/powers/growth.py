@@ -495,6 +495,21 @@ def needed_hours(actor: Character, step: IntentStep) -> float:
     return hours
 
 
+def pace_and_need(state: WorldState, actor: Character, step: IntentStep) -> tuple[float, float]:
+    """A4. The effective effort per hour of effort put in, and the effort the gain needs in
+    seconds: none for a copycat watching someone who knows the move."""
+    training = step.training
+    assert training is not None
+    teacher = teacher_of(state, actor, step)
+    instant = (
+        training.kind is GrowthKind.TECHNIQUE
+        and teacher is Teacher.WATCHING
+        and copycat(actor)
+        and _shows_it(state, step)
+    )
+    return pace(actor, teacher), 0.0 if instant else needed_hours(actor, step) * HOUR
+
+
 def progress(
     state: WorldState,
     actor: Character,
@@ -511,15 +526,9 @@ def progress(
     if teacher is not training.teacher:
         training = training.model_copy(update={"teacher": teacher})
         step = step.model_copy(update={"training": training})
-    rate = pace(actor, teacher)
+    rate, need = pace_and_need(state, actor, step)
     total = effort_so_far + effort_s(lived_s) * rate
-    need = needed_hours(actor, step) * HOUR
-    instant = (
-        training.kind is GrowthKind.TECHNIQUE
-        and teacher is Teacher.WATCHING
-        and copycat(actor)
-        and _shows_it(state, step)
-    )
+    instant = need == 0
     key = practice_key(step)
     who = name(state, actor.id)
     if not instant and total < need:

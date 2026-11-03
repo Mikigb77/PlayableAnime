@@ -60,6 +60,7 @@ from tests.engine.resolve.power_worlds import (
     throw,
     train,
     train_power,
+    train_until_done,
     with_hit_mode,
 )
 from tests.engine.resolve.worlds import (
@@ -115,7 +116,7 @@ def test_earned_technique_no_twice_then_the_trained_throw_lands_at_relative_spee
     assert (again.answer, again.holds) == (no.answer, no.holds)  # the same answer, never re-argued
     assert len(second.state.characters["lin"].sheet.rulings) == 1
 
-    trained = play(
+    trained = train_until_done(
         second.state, Intent(steps=[train_power(PowerGrant.RELATIVE_SPEED_THROWS)]), turn=5
     )
     lin = trained.state.characters["lin"]
@@ -162,7 +163,7 @@ def test_a_trained_way_to_throw_doesnt_change_how_blows_land():
 
 def test_controlled_throw_the_bandit_dies_and_nothing_else_is_wrecked():
     state = bandit_camp(sect())
-    trained = play(state, Intent(steps=[train_power(PowerGrant.CONTROLLED_FORCE)]))
+    trained = train_until_done(state, Intent(steps=[train_power(PowerGrant.CONTROLLED_FORCE)]), 3)
     lin = trained.state.characters["lin"]
     assert lin.sheet.technique("technique-gentle-release") is not None
     assert lin_power(trained.state).settings[stop.CONTROL] == stop.CONTROLLED
@@ -656,3 +657,29 @@ def test_a_rung_that_needs_a_masters_guidance_needs_a_master_who_is_there():
         update={"training": guided.training.model_copy(update={"teacher_id": "elder-mo"})}
     )
     assert resolve(state, Intent(steps=[named])).steps[0].outcome_class is OutcomeClass.CONTESTED
+
+
+def test_training_cut_short_keeps_the_effort_and_the_next_stretch_finishes_it():
+    from engine import pipeline
+    from engine.state import PendingEvent
+    from tests.engine.resolve.power_worlds import ctx, rng
+
+    state = sect()
+    state.pending_events["visitor"] = PendingEvent(
+        id="visitor",
+        kind="director.visit",
+        title="Zhao bangs on the door.",
+        due_s=8 * DAY,
+        needs_player=True,
+    )
+    long_one = train(GrowthKind.TECHNIQUE, "Falling Leaf Sword", 60 * 24)
+    resolution = resolve(state, Intent(steps=[long_one]))
+    cut = pipeline.play_out(state, resolution, ctx(), rng())
+    assert cut.resolution.steps[0].interrupted and cut.rejected == ()
+    lin = cut.state.characters["lin"]
+    kept = lin.sheet.practiced("technique:falling-leaf-sword")
+    assert kept is not None and 0 < kept.effort_s < 150 * HOUR
+    assert lin.sheet.techniques == []
+
+    again = train_until_done(cut.state, Intent(steps=[long_one]), 4)
+    assert again.state.characters["lin"].sheet.techniques[0].name == "Falling Leaf Sword"

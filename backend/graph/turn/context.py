@@ -13,7 +13,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine.context import TurnContext
-from engine.contracts import BeatResolution, BeatVerdict, DirectorPlan, Intent, Resolution
+from engine.contracts import (
+    BeatResolution,
+    BeatVerdict,
+    DirectorPlan,
+    EventSource,
+    Intent,
+    Resolution,
+)
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
@@ -308,11 +315,26 @@ def narration_brief(
             sections.append(("ACTION", _action_view(intent)))
         sections.append(("OUTCOME", _outcome_view(resolution)))
         sections.append(("TIME", _time_view(before, after)))
-    seen = [e for e in fired if _perceived(e, after)]
+    # The director tells its own events, and the world's events it made the scene's event or a
+    # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
+    told = {
+        e.source_id
+        for e in (plan.event, *plan.happenings)
+        if e is not None and e.source is EventSource.DUE
+    }
+    seen = [
+        e
+        for e in fired
+        if _perceived(e, after) and not e.kind.startswith("director.") and e.id not in told
+    ]
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:
-        sections.append(("EVENT", _dump(plan.event, exclude={"source", "source_id"})))
+        sections.append(("EVENT", _dump(plan.event, exclude=_PLANNED_HIDDEN)))
+    if plan.happenings:
+        sections.append(
+            ("HAPPENINGS", [_dump(h, exclude=_PLANNED_HIDDEN) for h in plan.happenings])
+        )
     callbacks = [after.threads[t] for t in plan.callbacks if t in after.threads]
     if callbacks:
         sections.append(
@@ -320,7 +342,11 @@ def narration_brief(
         )
     suggestions = plan.suggestions.count
     kinds = [kind.value for kind in plan.suggestions.kinds][:suggestions]
-    sections.append(("SUGGESTIONS", {"count": suggestions, "kinds": kinds}))
+    asked: dict[str, Any] = {"count": suggestions, "kinds": kinds}
+    current = after.threads.get(plan.suggestions.thread_id or "")
+    if suggestions and current is not None and "thread" in kinds:
+        asked["thread"] = {"id": current.id, "title": current.title}  # what thread choices follow
+    sections.append(("SUGGESTIONS", asked))
     if plan.picture is not None:
         subject = plan.picture.subject_id
         sections.append(
@@ -405,6 +431,10 @@ def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
     return view
 
 
+# Bookkeeping in a `PlannedEvent` that the narrator has no use for.
+_PLANNED_HIDDEN = {"source", "source_id", "card_id", "plays_out_s"}
+
+
 def _perceived(event: PendingEvent, state: WorldState) -> bool:
     """Whether the player character could notice an event that fired: it needs them, involves
     them, or happens where they are. Everything else stays off-screen (C6)."""
@@ -423,10 +453,14 @@ def _event_view(event: PendingEvent) -> dict[str, Any]:
 
 
 def _subject_name(state: WorldState, subject_id: str) -> str:
-    for records in (state.characters, state.places, state.deeds):
+    for records in (state.characters, state.places, state.deeds, state.threads):
         record = records.get(subject_id)
         if record is not None:
-            return getattr(record, "name", None) or getattr(record, "text", subject_id)
+            return (
+                getattr(record, "name", None)
+                or getattr(record, "title", None)
+                or getattr(record, "text", subject_id)
+            )
     return subject_id
 
 

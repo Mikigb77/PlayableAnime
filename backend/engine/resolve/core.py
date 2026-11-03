@@ -70,6 +70,7 @@ from engine.contracts.resolution import (
     Resolution,
     StepResolution,
     StopReason,
+    TrainingSoFar,
 )
 from engine.resolve import odds as odds_mod
 from engine.resolve.chain import settle_chain
@@ -148,6 +149,7 @@ class _Frame:
     stop_power: Power | None = None  # the actor's stop holding the world, if one does
     tempo: _Tempo | None = None
     ready_at: dict[str, int] = field(default_factory=dict)  # cooldowns on the actor's clock
+    training: TrainingSoFar | None = None  # the current step's training so far, if any
     settled: stop.Settlements = field(default_factory=stop.Settlements)
     rulings: list[Ruling] = field(default_factory=list)
     practice: dict[str, float] = field(default_factory=dict)
@@ -461,6 +463,7 @@ def _settle_step(
             deeds.append(blasted.deed)
         if blasted.actor_dies:
             frame.gone = f"{cap(name(state, actor.id))} died in the blast of {_own(state, actor)}."
+    frame.training = None
     if growing and happened:
         why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration)
         reason = f"{reason} {why}".strip()
@@ -516,6 +519,7 @@ def _settle_step(
         stopped_at_link=stopped_at_link,
         effects=effects,
         deeds=deeds,
+        training=frame.training,
     )
     return resolution, stakes
 
@@ -709,6 +713,10 @@ def _grow(
     lived = personal if personal is not None else duration
     made = growth.progress(state, actor, step, lived, so_far, frame.settled)
     frame.practice[key] = made.effort_s
+    rate, need = growth.pace_and_need(state, actor, step)
+    frame.training = TrainingSoFar(
+        key=key, what=training.what, before_s=so_far, rate=rate, need_s=need
+    )
     return made.reason, made.effects, None
 
 

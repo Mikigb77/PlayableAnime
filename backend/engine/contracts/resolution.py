@@ -82,6 +82,18 @@ class ProposedDeed(EngineModel):
     in_stopped_time: bool = False
 
 
+class TrainingSoFar(EngineModel):
+    """A4. Where a training step started, so one cut short keeps the effort put in: effort counts
+    as `growth.effort_s` of the lived time it ran, times `rate`, on top of `before_s`, and makes
+    the gain if it reaches `need_s`."""
+
+    key: str
+    what: str
+    before_s: float = Field(default=0, ge=0)
+    rate: float = Field(default=1.0, gt=0)
+    need_s: float = Field(default=0, ge=0)
+
+
 class StepResolution(EngineModel):
     """One step of the plan, settled. `effects` are the engine's own state changes for the outcome,
     such as a death, applied whether or not the narration is blocked (F4)."""
@@ -106,6 +118,9 @@ class StepResolution(EngineModel):
     end_s: int | None = Field(default=None, description="Set by `pipeline.play_out`.")
     interrupted: bool = Field(
         default=False, description="Cut short by an event that needs the player (W10)."
+    )
+    training: TrainingSoFar | None = Field(
+        default=None, description="A4: a training step's effort so far, kept if it is cut short."
     )
 
     @property

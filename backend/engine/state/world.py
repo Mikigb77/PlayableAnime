@@ -44,16 +44,48 @@ class EventSize(StrEnum):
     WORLD = "world"
 
 
+class KeyFight(EngineModel):
+    """M1. A fight with a key NPC or a strong monster that the director is following, so it
+    pictures the fight's start and its decisive blow once each, even after the encounter ends."""
+
+    opponent_ids: list[str] = Field(default_factory=list)
+    started_turn: int = Field(ge=0)
+    start_pictured: bool = False
+    blow_pictured: bool = False
+
+
 class DirectorState(EngineModel):
     """W16, E6, M2. What the director remembers between turns. Turns count only the player's
-    attention and cost (W10), so these are the only turn counters in the state."""
+    attention and cost (W10), so these are the only turn counters in the state.
+
+    `engine.director` reads it and `record_direction` writes it back from the plan."""
 
     turns_without_stakes: int = Field(default=0, ge=0)
     low_stakes_streak: int = Field(default=0, ge=0)
+    last_action_key: str | None = Field(
+        default=None, description="The last low-stakes action, to spot repeats (W16)."
+    )
     last_event_turn: int | None = None
     last_event_size: EventSize | None = None
     frequency_drift: float = Field(default=0.0, ge=-1.0, le=1.0)
+    recent_sources: list[str] = Field(
+        default_factory=list,
+        description="The last few event sources (deck cards, NPCs, threads), newest last, so the "
+        "same one isn't drawn again straight away.",
+    )
     auto_pictures: int = Field(default=0, ge=0, description="Automatic pictures so far (M2).")
+    picture_credit: float = Field(
+        default=1.0,
+        ge=-3.0,
+        le=5.0,
+        description="M2: the key-scene budget, refilled a little each turn. Fights may borrow.",
+    )
+    pictured: list[str] = Field(
+        default_factory=list,
+        description="Subjects that already got their automatic picture: 'portrait:<id>', "
+        "'place:<id>', 'place:<id>:<status>', 'cover' (M1, M4).",
+    )
+    fight: KeyFight | None = None
     deck_draws: int = Field(default=0, ge=0)
 
 

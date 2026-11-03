@@ -28,22 +28,20 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
-from engine import world
+from engine import director, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
-from engine.context import ImageSetting, TurnContext
+from engine.context import TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
 from engine.contracts.direction import (
     DirectorPlan,
-    PictureDecision,
-    PictureKind,
-    PictureTrigger,
-    SuggestionPlan,
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
 from engine.resolve import resolve_intent
+from engine.resolve.powers import growth
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
+from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
 
@@ -55,6 +53,7 @@ __all__ = [
     "direct",
     "play_out",
     "record_consequences",
+    "record_direction",
     "resolve",
 ]
 
@@ -175,6 +174,10 @@ def play_out(
             if actor is not None:
                 actor.personal_offset_s += frozen_part
         if step.duration_s > 0 and not world_stopped(current):
+            # A day or more is a montage: the director rolls its W16 events first, so the first
+            # that needs a decision stops the clock there (E7).
+            stretch_rng = rng.child("director", "stretch", step.index)
+            current = director.schedule_stretch(current, start_s, planned_end, ctx, stretch_rng)
             passage = catch_up(current, planned_end, ctx, rng)
             current = passage.state
             fired.extend(passage.fired)
@@ -203,6 +206,10 @@ def play_out(
             }
         )
         played.append(timed)
+        if cut and step.training is not None:
+            # A4. Training cut short keeps the effort put in, and makes the gain if that was
+            # enough before the interruption.
+            rejected.extend(_keep_training(current, actor_id, step, lived - frozen_part, ctx))
         if not cut:
             if not step.effects.empty:
                 applied = apply_in_place(current, step.effects, ctx, source=DeltaSource.ENGINE)
@@ -238,24 +245,40 @@ def play_out(
     )
 
 
+def _keep_training(
+    current: WorldState, actor_id: str, step: StepResolution, lived_s: int, ctx: TurnContext
+) -> list[Rejection]:
+    so_far = step.training
+    assert so_far is not None
+    effort = so_far.before_s + growth.effort_s(lived_s) * so_far.rate
+    if effort >= so_far.need_s:
+        delta = step.effects
+    else:
+        kept = Practice(key=so_far.key, what=so_far.what, effort_s=int(effort))
+        delta = StateDelta(characters=[CharacterChange(id=actor_id, practice=[kept])])
+    return list(apply_in_place(current, delta, ctx, source=DeltaSource.ENGINE).rejected)
+
+
 def direct(
-    state: WorldState, resolution: Resolution, ctx: TurnContext, rng: SeededRng
+    state: WorldState,
+    resolution: Resolution,
+    ctx: TurnContext,
+    rng: SeededRng,
+    intent: Intent | None = None,
 ) -> DirectorPlan:
     """Decide whether an event comes in, which dormant threads to call back, the suggestions and
-    whether the scene gets a picture (W16, E4, N1, S2, M1, M2).
+    whether the scene gets a picture (W16, E4, N1, S2, M1, M2), in `engine.director` (WS11).
 
-    Default: nothing new comes in, three suggestions (none if the player turned them off), and the
-    player character's portrait on the opening turn. WS11 replaces it.
+    Call it after `play_out`, with the played-out state and resolution. Pass the turn's `intent`
+    so the director sees the goals the player stated, what they took up (`responds_to`) and
+    repeated low-stakes actions; without it the director reads the resolution alone. It never
+    changes the state: `record_direction` writes the plan's updates.
     """
-    picture = None
-    if ctx.turn <= 1 and ctx.settings.images is not ImageSetting.OFF:
-        picture = PictureDecision(
-            kind=PictureKind.PORTRAIT,
-            trigger=PictureTrigger.STORY_START,
-            subject_id=state.player_id,
-            reason="The story starts.",
-        )
-    suggestions = (
-        SuggestionPlan() if ctx.settings.suggestions else SuggestionPlan(count=0, kinds=[])
-    )
-    return DirectorPlan(picture=picture, suggestions=suggestions)
+    return director.direct(state, resolution, ctx, rng, intent)
+
+
+def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> WorldState:
+    """Write a director plan's updates into the state, once per turn after `direct` and before
+    saving: the director's memory, the event's thread and its play-out, thread changes, leads that
+    expired and goals the player stated (W16, N1, N2, M2)."""
+    return director.record(state, plan, ctx)

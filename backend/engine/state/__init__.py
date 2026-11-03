@@ -111,6 +111,7 @@ from engine.state.world import (
     Chapter,
     DirectorState,
     EventSize,
+    KeyFight,
     WorldState,
 )
 
@@ -161,6 +162,7 @@ __all__ = [
     "HitMode",
     "Item",
     "ItemKind",
+    "KeyFight",
     "LadderPosition",
     "Law",
     "Lead",

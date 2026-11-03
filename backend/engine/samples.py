@@ -1,8 +1,9 @@
-"""Two example worlds from the requirements (G1 to G3), for tests and development.
+"""Example worlds from the requirements (G1 to G3, T17), for tests and development.
 
 - `grounded_world()`: Luca Esposito in Naples, 1974. No magic, and that won't change.
 - `cultivation_world()`: Lin Feng, the weakest outer disciple of the Azure Cloud Sect, with a past
   life's memories and time stop that lasts three heartbeats.
+- `farm_world()`: Tomas Weller, a farmer with a wife and no ambitions, for T17's quiet-life runs.
 
 Both run on the same rules (G5). Each call returns a fresh state, so tests can change it freely.
 """
@@ -548,4 +549,117 @@ def cultivation_world() -> WorldState:
             ended_on="Zhao grins and draws back his foot toward the bucket.",
         ),
         summary="Lin Feng wakes in the outer court with a past life's memories.",
+    )
+
+
+def farm_world() -> WorldState:
+    """'I farm a small plot in a river valley with my wife, and I want nothing more.' (T17's quiet
+    life: no ambitions, no factions, no clocks, so every event has to come from the director.)"""
+    tomas = Character(
+        id="tomas",
+        name="Tomas Weller",
+        prominence=Prominence.KEY,
+        description="A broad, sunburnt farmer with a slow smile.",
+        appearance="34, broad shoulders, sandy hair, a farmer's hands.",
+        age=34,
+        location_id="farm",
+        known_by=["tomas"],
+        met_by=["tomas"],
+        sheet=CharacterSheet(
+            attributes=Attributes(strength=4, toughness=4),
+            skills=[
+                Skill(name="farming", level=SkillLevel.EXPERT),
+                Skill(name="carpentry", level=SkillLevel.FAIR),
+            ],
+            disposition=Disposition(
+                temperament=Temperament(traits=["patient", "kind"], wants=["a quiet life"])
+            ),
+            resources=Resources(money=40, currency="silver pennies"),
+        ),
+    )
+    ilse = Character(
+        id="ilse",
+        name="Ilse Weller",
+        prominence=Prominence.KEY,
+        description="Tomas's wife, quick-witted and quicker to laugh.",
+        appearance="32, dark braid, flour on her sleeves.",
+        age=32,
+        location_id="farm",
+        known_by=["tomas"],
+        met_by=["tomas"],
+        sheet=CharacterSheet(
+            disposition=Disposition(attitudes={"tomas": Attitude(affinity=80, trust=80)})
+        ),
+    )
+    bram = Character(
+        id="bram",
+        name="Old Bram",
+        description="The neighbour, who has an opinion about every fence.",
+        age=71,
+        location_id="village",
+        known_by=["tomas"],
+        met_by=["tomas"],
+        sheet=CharacterSheet(
+            disposition=Disposition(attitudes={"tomas": Attitude(affinity=30, trust=40)})
+        ),
+    )
+    bible = WorldBible(
+        title="The Long Valley",
+        genre="pastoral",
+        tone="warm, with small joys and small troubles",
+        era="A river valley of villages, ox carts and market days",
+        extraordinary=[
+            Extraordinary(
+                id="supernatural",
+                kind="magic or anything supernatural",
+                prevalence=Prevalence.NONE,
+                rule_ids=["no-supernatural"],
+            )
+        ],
+        calendar=Calendar(style=CalendarStyle.DAY_COUNT, start_second_of_day=6 * HOUR),
+        travel=Travel(description="On foot and by ox cart. News moves at market speed."),
+        medicine=Medicine(healing="Herbs, rest and the village healer."),
+        rules=[
+            WorldRule(
+                id="no-supernatural",
+                text="Nothing supernatural, and that won't change.",
+                fixed=True,
+                topic=RuleTopic.EXISTENCE,
+            )
+        ],
+    )
+    return WorldState(
+        bible=bible,
+        player_id="tomas",
+        characters={c.id: c for c in (tomas, ilse, bram)},
+        places={
+            "valley": Place(id="valley", name="the Long Valley", kind="region", known_by=["tomas"]),
+            "farm": Place(
+                id="farm",
+                name="the Weller farm",
+                kind="farm",
+                parent_id="valley",
+                mood="quiet, muddy, content",
+                routes=[Route(to_id="village", travel_s=40 * MINUTE, mode="on foot")],
+                known_by=["tomas"],
+                visited_by=["tomas"],
+            ),
+            "village": Place(
+                id="village",
+                name="Millbrook",
+                kind="village",
+                parent_id="valley",
+                routes=[Route(to_id="farm", travel_s=40 * MINUTE, mode="on foot")],
+                known_by=["tomas"],
+                visited_by=["tomas"],
+            ),
+        },
+        scene=SceneFrame(
+            place_id="farm",
+            present_ids=["tomas", "ilse"],
+            positions=["Tomas at the gate", "Ilse in the doorway"],
+            props=["a hoe leaning on the fence", "a bucket of feed"],
+            ended_on="Ilse calls from the doorway that supper is ready.",
+        ),
+        summary="Tomas and Ilse farm a small plot in the Long Valley.",
     )
