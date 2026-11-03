@@ -22,8 +22,23 @@ class StoryAdmin(admin.ModelAdmin):
     list_filter = ("rating", "engine")
     search_fields = ("id", "title", "owner__email")
     raw_id_fields = ("owner",)
-    readonly_fields = ("id", "turn", "version", "created_at", "updated_at")
+    # Only a turn writes the world state and the version (B12, T10).
+    readonly_fields = ("id", "engine", "state", "turn", "version", "created_at", "updated_at")
     inlines = [SceneInline]
+
+    def save_model(self, request, obj, form, change) -> None:
+        if not change:
+            super().save_model(request, obj, form, change)
+            return
+        # Save only what staff changed: a full-row save would write back the world state and
+        # version as they were when the form loaded, undoing a turn saved in between.
+        changed = [name for name in form.changed_data if name in self._model_fields]
+        if changed:
+            obj.save(update_fields=[*changed, "updated_at"])
+
+    @property
+    def _model_fields(self) -> set[str]:
+        return {field.name for field in Story._meta.concrete_fields}
 
 
 @admin.register(Scene)

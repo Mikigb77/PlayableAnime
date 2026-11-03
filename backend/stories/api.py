@@ -16,17 +16,16 @@ from pydantic import BaseModel, model_validator
 from legacy.domain import Scene as LegacyScene
 from legacy.domain import Story as LegacyStory
 from legacy.domain import StorySummary, WorldState
+from legacy.engine.narrator import RECENT_SCENES
 from legacy.premises import SEED_PREMISES, Premise
 from lucid import logs
-from lucid.errors import ApiError, ErrorCode, version_conflict
+from lucid.errors import ApiError, ErrorCode, field_error, version_conflict
 from stories import legacy_bridge
-from stories.models import InputMode, Scene, SceneKind, Story
+from stories.models import Engine, InputMode, Scene, SceneKind, Story
 
 premises_router = Router(tags=["premises"])
 stories_router = Router(tags=["stories"])
 
-# The legacy narrator reads only the last few scenes (and the turn's choice comes from the last).
-RECENT_SCENES = 3
 LIBRARY_SIZE = 50
 
 
@@ -77,7 +76,7 @@ async def create_story(request, body: CreateStoryIn):
     )
     opened = await legacy_bridge.advance(request, draft)
     await legacy_bridge.create_story(story_id, opened)
-    return Status(201, StoryOut(**opened.model_dump(), version=1))
+    return Status(201, StoryOut(**dict(opened), version=1))
 
 
 @stories_router.get("", response=list[StorySummary])
@@ -85,7 +84,7 @@ async def list_stories(request) -> list[StorySummary]:
     """Most recently played first."""
     return [
         StorySummary(id=str(s.id), title=s.title, premise=s.premise, turn=s.turn)
-        async for s in Story.objects.order_by("-updated_at")[:LIBRARY_SIZE]
+        async for s in _legacy_stories().order_by("-updated_at")[:LIBRARY_SIZE]
     ]
 
 
@@ -93,7 +92,7 @@ async def list_stories(request) -> list[StorySummary]:
 async def get_story(request, story_id: str) -> StoryOut:
     story = await _load(story_id)
     scenes = [s async for s in Scene.objects.filter(story=story).order_by("turn")]
-    return StoryOut(**legacy_bridge.to_legacy(story, scenes).model_dump(), version=story.version)
+    return StoryOut(**dict(legacy_bridge.to_legacy(story, scenes)), version=story.version)
 
 
 @stories_router.get("/{story_id}/memory", response=WorldState)
@@ -122,12 +121,18 @@ async def take_turn(request, story_id: str, body: TurnIn) -> TurnOut:
     return TurnOut(scene=advanced.scenes[-1], state=advanced.state, version=version)
 
 
+def _legacy_stories():
+    """Only stories the legacy narrator wrote: it can't read the turn graph's world state, and a
+    legacy turn would overwrite it."""
+    return Story.objects.filter(engine=Engine.LEGACY)
+
+
 async def _load(story_id: str) -> Story:
     try:
         pk = uuid.UUID(story_id)
     except ValueError:
         raise ApiError(ErrorCode.NOT_FOUND, "Story not found.") from None
-    story = await Story.objects.filter(pk=pk).afirst()
+    story = await _legacy_stories().filter(pk=pk).afirst()
     if story is None:
         raise ApiError(ErrorCode.NOT_FOUND, "Story not found.")
     return story
@@ -138,20 +143,7 @@ def _choice_label(story: LegacyStory, choice_id: str | None) -> str:
     for choice in choices:
         if choice.id == choice_id:
             return choice.label
-    raise ApiError(
-        ErrorCode.VALIDATION_ERROR,
-        "Unknown choice for the current scene.",
-        {
-            "fields": [
-                {
-                    "field": "choice_id",
-                    "source": "body",
-                    "message": "Unknown choice for the current scene",
-                    "type": "unknown_choice",
-                }
-            ]
-        },
-    )
+    raise field_error("choice_id", "Unknown choice for the current scene.", type="unknown_choice")
 
 
 def _title_from(premise: str) -> str:

@@ -120,6 +120,25 @@ def test_unknown_story_is_404(client):
         assert response.json()["error"]["code"] == "not_found"
 
 
+def test_the_legacy_endpoints_never_touch_a_turn_graph_story(client):
+    graph = Story.objects.create(title="Graph", premise="P", state={"clock": {"world_s": 0}})
+
+    assert client.get(f"/v1/stories/{graph.pk}").status_code == 404
+    assert _turn(client, str(graph.pk), {"action": "I wait."}).status_code == 404
+    assert client.get("/v1/stories").json() == []
+    graph.refresh_from_db()
+    assert (graph.state, graph.version) == ({"clock": {"world_s": 0}}, 0)
+
+
+def test_a_wrong_method_gets_the_envelope_and_the_allow_header(client):
+    response = client.put("/v1/stories", {}, content_type="application/json")
+
+    assert response.status_code == 405
+    assert response.json()["error"]["code"] == "method_not_allowed"
+    assert set(response["Allow"].split(", ")) == {"GET", "POST"}
+    assert response["X-Request-Id"]
+
+
 def test_unsupported_byok_provider_is_rejected(client):
     response = client.post(
         "/v1/stories",

@@ -18,7 +18,7 @@ from django.utils import timezone
 from legacy.domain import Choice, WorldState
 from legacy.domain import Scene as LegacyScene
 from legacy.domain import Story as LegacyStory
-from lucid.errors import ApiError, ErrorCode, version_conflict
+from lucid.errors import ApiError, ErrorCode, field_error, version_conflict
 from stories.models import Engine, InputMode, Scene, SceneKind, Story
 
 logger = logging.getLogger(__name__)
@@ -106,43 +106,37 @@ def save_turn(
     return story.version + 1
 
 
-def narrator_for(request: HttpRequest):
-    """The legacy narrator for this request: the caller's own Gemini key when the BYOK headers
-    are sent, otherwise the server's provider. The key is used for this request only and never
-    stored or logged (S9, T6).
-
-    Imported here, not at module load, to keep the model SDK out of cold starts (B10).
-    """
+def _legacy_config():
     from legacy.config import Settings
-    from legacy.engine.narrator import Narrator
-    from legacy.llm.factory import UnsupportedProviderError, build_provider
 
-    config = Settings(
+    return Settings(
         llm_provider=settings.LLM_PROVIDER,
         gcp_project=settings.GCP_PROJECT,
         vertex_location=settings.VERTEX_LOCATION,
         narrator_model=settings.NARRATOR_MODEL,
     )
+
+
+def narrator_for(request: HttpRequest):
+    """The legacy narrator for this request: the caller's own Gemini key when the BYOK headers
+    are sent, otherwise the server's provider. The key is used for this request only and never
+    stored or logged (S9, T6).
+
+    Imported here, not at module load, to keep the model SDK out of cold starts (B10). Call it
+    off the event loop: the first call imports the SDK and builds its client.
+    """
+    from legacy.engine.narrator import Narrator
+    from legacy.llm.factory import UnsupportedProviderError, build_provider
+
     try:
         llm = build_provider(
-            config,
+            _legacy_config(),
             byok_provider=request.headers.get("X-LLM-Provider"),
             byok_key=request.headers.get("X-LLM-Api-Key"),
         )
     except UnsupportedProviderError as exc:
-        raise ApiError(
-            ErrorCode.VALIDATION_ERROR,
-            str(exc),
-            {
-                "fields": [
-                    {
-                        "field": "X-LLM-Provider",
-                        "source": "header",
-                        "message": str(exc),
-                        "type": "unsupported_provider",
-                    }
-                ]
-            },
+        raise field_error(
+            "X-LLM-Provider", str(exc), source="header", type="unsupported_provider"
         ) from exc
     return Narrator(llm)
 
@@ -151,7 +145,7 @@ async def advance(
     request: HttpRequest, story: LegacyStory, action: str | None = None
 ) -> LegacyStory:
     """Runs one legacy turn and turns model failures into typed errors (T7)."""
-    narrator = narrator_for(request)
+    narrator = await sync_to_async(narrator_for, thread_sensitive=False)(request)
     try:
         return await narrator.advance(story, action)
     except ApiError:

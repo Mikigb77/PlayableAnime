@@ -12,10 +12,12 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY . .
-# Precompile our own code too, and collect the admin's CSS and JS for ServeStatic. The key only
-# satisfies the settings check at build time; the real one comes from Secret Manager (T11).
+# Precompile our own code too, and collect the admin's CSS and JS for ServeStatic. The key and URL
+# only satisfy the settings checks at build time (nothing connects); the real ones come from
+# Secret Manager (T11).
 RUN python -m compileall -q . -x '/\.venv/' \
-    && DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput -v 0 \
+    && DJANGO_SECRET_KEY=build-only DATABASE_URL=postgresql://build-only/none \
+       python manage.py collectstatic --noinput -v 0 \
     && useradd --system --uid 10001 --no-create-home lucid
 USER lucid
 

@@ -32,6 +32,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents`. |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
+  | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
   | 409 | `version_conflict` | `expected_version` is stale: another turn won (T10). `details.current_version`. |
   | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). |
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |

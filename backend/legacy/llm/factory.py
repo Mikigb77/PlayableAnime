@@ -1,9 +1,12 @@
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 from legacy.config import Settings
 from legacy.llm.base import LLMProvider
 from legacy.llm.fake import FakeNarratorProvider
-from legacy.llm.gemini import GeminiProvider
+
+if TYPE_CHECKING:
+    from legacy.llm.gemini import GeminiProvider
 
 # Providers users can bring their own key for. Others (OpenAI, Anthropic, ...) come later.
 BYOK_PROVIDERS = {"gemini"}
@@ -25,6 +28,9 @@ def build_provider(
         provider = (byok_provider or "gemini").lower()
         if provider not in BYOK_PROVIDERS:
             raise UnsupportedProviderError(f"Bring-your-own-key is not supported for '{provider}'")
+        # Imported only when needed: the SDK is slow to import (B10).
+        from legacy.llm.gemini import GeminiProvider
+
         return GeminiProvider.with_api_key(byok_key, settings.narrator_model)
     if settings.llm_provider == "vertex":
         return _vertex_provider(
@@ -34,5 +40,7 @@ def build_provider(
 
 
 @lru_cache
-def _vertex_provider(project: str, location: str, model: str) -> GeminiProvider:
+def _vertex_provider(project: str, location: str, model: str) -> "GeminiProvider":
+    from legacy.llm.gemini import GeminiProvider
+
     return GeminiProvider.vertex(project=project, location=location, model=model)

@@ -42,6 +42,14 @@ def test_a_secret_key_is_required_outside_debug():
     assert "DJANGO_SECRET_KEY is required" in result.stderr
 
 
+def test_a_database_url_is_required_outside_debug():
+    """/health never touches the database, so a missing URL must fail the start, not hide."""
+    result = _python("import lucid.settings", DJANGO_SECRET_KEY="k", DATABASE_URL="", DEBUG="0")
+
+    assert result.returncode != 0
+    assert "DATABASE_URL is required" in result.stderr
+
+
 def test_the_asgi_app_loads_without_the_model_sdk():
     """B10: heavy imports stay out of module load, so cold starts stay fast (T3). The URLconf
     is imported too, as the first request would, so every view module is checked."""
@@ -50,6 +58,17 @@ def test_the_asgi_app_loads_without_the_model_sdk():
         "heavy = [m for m in ('google.genai', 'langchain_core', 'langgraph') if m in sys.modules]; "
         "print(heavy); sys.exit(1 if heavy else 0)",
         DJANGO_SECRET_KEY="test",
+        DATABASE_URL="postgresql://nowhere/none",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_offline_narrator_never_loads_the_model_sdk():
+    result = _python(
+        "import sys; from legacy.config import Settings; "
+        "from legacy.llm.factory import build_provider; build_provider(Settings()); "
+        "sys.exit(1 if 'google.genai' in sys.modules else 0)"
     )
 
     assert result.returncode == 0, result.stdout + result.stderr

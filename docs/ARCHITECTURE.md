@@ -32,8 +32,8 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
 - **API.** One Ninja API mounted at `/v1`, with its live OpenAPI schema at `/v1/docs`. Each Django
   app adds its own router in `lucid/api.py`. Views are async; database writes that must happen
   together run in a sync function inside `transaction.atomic()` through `sync_to_async`.
-- **Errors (T7).** Every error, including a 404 outside the API and an unexpected exception, comes
-  back as the [API.md](API.md) envelope `{"error": {"code", "message", "details"}}`. Raise
+- **Errors (T7).** Every error, including a 404 outside the API, a wrong method and an unexpected
+  exception, comes back as the [API.md](API.md) envelope `{"error": {"code", "message", "details"}}`. Raise
   `lucid.errors.ApiError(ErrorCode.X, ...)` from any view. An unexpected exception is logged with
   its traceback and answers `internal_error`.
 - **Logging (T4 to T6, B3).** JSON lines on stdout with `severity`, `request_id`, `trace_id` (from
@@ -46,18 +46,23 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
 - **Users.** A custom `accounts.User` from the first migration: the email is the login (stored
   lowercased), with display name, birth date (F8), role (`player` or `owner`, K7) and Google
   subject id. Sign-in flows come with WS6.
-- **Admin (B1).** `/admin/` for staff: users, stories with their scenes, and pending events. Its
-  static files are collected into the image and served by ServeStatic.
-- **Cold starts (B10, T3).** `/health` never touches the database. Model SDKs and LangChain are
-  imported inside the code that uses them, and a test checks that loading the ASGI app and its URLs
-  doesn't import them. The image answers its first `/health` about a second after the container
+- **Admin (B1).** `/admin/` for staff: users, stories with their scenes, and pending events. A
+  story's world state and version are read-only there, and saving a story writes only the fields
+  staff changed, so the admin never undoes a turn (B12, T10). Its static files are collected into
+  the image and served by ServeStatic.
+- **Cold starts (B10, T3).** `/health` never touches the database, and the service refuses to start
+  without `DATABASE_URL` and `DJANGO_SECRET_KEY` outside DEBUG. Model SDKs and LangChain are
+  imported inside the code that uses them, off the event loop, and a test checks that loading the
+  ASGI app and its URLs doesn't import them. The image answers its first `/health` about a second after the container
   starts.
 
 ## Story engine
 
 Today's turn still runs the one-call narrator, moved unchanged from the FastAPI app to
 `backend/legacy/` and wired to the Django models by `stories/legacy_bridge.py`. WS3's LangGraph turn
-graph (B5) replaces both. One turn (`backend/legacy/engine/narrator.py`):
+graph (B5) replaces both. The legacy endpoints only serve stories the legacy narrator wrote
+(`Story.engine`), so they never overwrite a graph story's state. One turn
+(`backend/legacy/engine/narrator.py`):
 
 1. **Build the prompt** from the premise, rolling summary, continuity rules, goals, known characters
    and factions, the last 3 scenes and the player's action.

@@ -11,6 +11,7 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/lucid"
 _NEON_ENV_FILE = BACKEND_DIR.parent / ".env.local"
 
 
@@ -27,9 +28,9 @@ class Env(BaseSettings):
     debug: bool = False
     # Required outside DEBUG. Comes from Secret Manager on Cloud Run (T11).
     django_secret_key: str = ""
-    # The pooled Neon URL for the service; the direct one for `migrate` (B2). Without it, the
-    # local Docker Postgres from the README is used.
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/lucid"
+    # The pooled Neon URL for the service; the direct one for `migrate` (B2). Required outside
+    # DEBUG; with DEBUG on it defaults to the local Docker Postgres from the README.
+    database_url: str = ""
     # Neon's direct (unpooled) URL. When set, `manage.py migrate --database direct` uses it.
     database_url_unpooled: str = ""
     # Comma-separated. Cloud Run only routes requests for the service's own hosts to it.

@@ -12,7 +12,14 @@ from enum import StrEnum
 from typing import Any
 
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBase,
+    HttpResponseNotAllowed,
+    JsonResponse,
+)
 from ninja import NinjaAPI
 from ninja.errors import AuthenticationError, AuthorizationError, HttpError, ValidationError
 
@@ -26,6 +33,7 @@ class ErrorCode(StrEnum):
     OUT_OF_CREDITS = "out_of_credits"
     FORBIDDEN = "forbidden"
     NOT_FOUND = "not_found"
+    METHOD_NOT_ALLOWED = "method_not_allowed"
     VERSION_CONFLICT = "version_conflict"
     UNREADABLE_ACTION = "unreadable_action"
     BAD_KEY = "bad_key"
@@ -43,6 +51,7 @@ STATUS = {
     ErrorCode.OUT_OF_CREDITS: 402,
     ErrorCode.FORBIDDEN: 403,
     ErrorCode.NOT_FOUND: 404,
+    ErrorCode.METHOD_NOT_ALLOWED: 405,
     ErrorCode.VERSION_CONFLICT: 409,
     ErrorCode.UNREADABLE_ACTION: 422,
     ErrorCode.BAD_KEY: 422,
@@ -60,6 +69,7 @@ DEFAULT_MESSAGES = {
     ErrorCode.OUT_OF_CREDITS: "You're out of credits.",
     ErrorCode.FORBIDDEN: "You can't do that.",
     ErrorCode.NOT_FOUND: "Not found.",
+    ErrorCode.METHOD_NOT_ALLOWED: "Method not allowed.",
     ErrorCode.VERSION_CONFLICT: "The story moved on. Reload it and try again.",
     ErrorCode.UNREADABLE_ACTION: "That action couldn't be read. Try rephrasing it.",
     ErrorCode.BAD_KEY: "Your API key was rejected.",
@@ -75,6 +85,7 @@ _CODE_FOR_STATUS = {
     401: ErrorCode.UNAUTHENTICATED,
     403: ErrorCode.FORBIDDEN,
     404: ErrorCode.NOT_FOUND,
+    405: ErrorCode.METHOD_NOT_ALLOWED,
     409: ErrorCode.VERSION_CONFLICT,
     429: ErrorCode.RATE_LIMITED,
     503: ErrorCode.LLM_UNAVAILABLE,
@@ -101,6 +112,17 @@ def version_conflict(current_version: int) -> ApiError:
         ErrorCode.VERSION_CONFLICT,
         "Another turn was saved first.",
         {"current_version": current_version},
+    )
+
+
+def field_error(
+    field: str, message: str, *, source: str = "body", type: str = "invalid"
+) -> ApiError:
+    """A `validation_error` about one field, in the `details.fields` shape from API.md."""
+    return ApiError(
+        ErrorCode.VALIDATION_ERROR,
+        message,
+        {"fields": [{"field": field, "source": source, "message": message, "type": type}]},
     )
 
 
@@ -198,3 +220,13 @@ def handler400(request: HttpRequest, exception: Exception | None = None) -> Http
 
 def handler403(request: HttpRequest, exception: Exception | None = None) -> HttpResponse:
     return error_response(ApiError(ErrorCode.FORBIDDEN))
+
+
+def with_envelope(response: HttpResponseBase) -> HttpResponseBase:
+    """Ninja answers a wrong method with a plain-text 405 instead of raising, so the handlers
+    above never see it. This gives that response the envelope and keeps its Allow header."""
+    if not isinstance(response, HttpResponseNotAllowed):
+        return response
+    replacement = error_response(ApiError(ErrorCode.METHOD_NOT_ALLOWED))
+    replacement["Allow"] = response["Allow"]
+    return replacement

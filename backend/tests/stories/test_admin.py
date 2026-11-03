@@ -33,6 +33,32 @@ def test_staff_can_browse_users_stories_scenes_and_pending_events(staff_client):
     assert staff_client.get(reverse("admin:accounts_user_add")).status_code == 200
 
 
+def test_saving_a_story_in_the_admin_never_undoes_a_turn(staff_client):
+    """B12, T10: staff edit the title while a turn saves a new world state."""
+    story = Story.objects.create(title="Old", premise="P", state={"turn": 1}, version=1)
+    # A turn lands after staff opened the form.
+    Story.objects.filter(pk=story.pk).update(state={"turn": 2, "dead": ["ren"]}, version=2)
+
+    response = staff_client.post(
+        reverse("admin:stories_story_change", args=[story.pk]),
+        {
+            "title": "New",
+            "premise": "P",
+            "genre": "",
+            "rating": "teen",
+            "settings": "{}",
+            "owner": "",
+            "scenes-TOTAL_FORMS": "0",
+            "scenes-INITIAL_FORMS": "0",
+        },
+    )
+
+    assert response.status_code == 302, response.content
+    story.refresh_from_db()
+    assert story.title == "New"
+    assert (story.state, story.version) == ({"turn": 2, "dead": ["ren"]}, 2)
+
+
 def test_the_admin_needs_staff():
     client = Client()
     client.force_login(User.objects.create_user("player@example.com", "pw"))

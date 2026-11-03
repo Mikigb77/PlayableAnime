@@ -10,7 +10,7 @@ from inspect import iscoroutinefunction
 from asgiref.sync import markcoroutinefunction
 from django.http import HttpRequest, HttpResponseBase
 
-from lucid import logs
+from lucid import errors, logs
 
 logger = logging.getLogger("lucid.request")
 
@@ -154,3 +154,25 @@ def _bind_story(view_kwargs: dict) -> None:
     story_id = view_kwargs.get("story_id")
     if story_id:
         logs.bind(story_id=str(story_id))
+
+
+class ErrorEnvelopeMiddleware:
+    """The innermost middleware: gives the envelope to error responses that views return instead
+    of raising (T7), before the outer middleware adds CORS and request-id headers to them."""
+
+    sync_capable = True
+    async_capable = True
+
+    def __init__(self, get_response) -> None:
+        self.get_response = get_response
+        self.is_async = iscoroutinefunction(get_response)
+        if self.is_async:
+            markcoroutinefunction(self)
+
+    def __call__(self, request: HttpRequest):
+        if self.is_async:
+            return self._acall(request)
+        return errors.with_envelope(self.get_response(request))
+
+    async def _acall(self, request: HttpRequest) -> HttpResponseBase:
+        return errors.with_envelope(await self.get_response(request))

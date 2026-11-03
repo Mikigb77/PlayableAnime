@@ -46,7 +46,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | --- | --- | --- |
 | `DJANGO_SECRET_KEY` | none | Required unless `DEBUG=1`. From Secret Manager on Cloud Run (T11). |
 | `DEBUG` | `0` | Never on in production. |
-| `DATABASE_URL` | local Docker Postgres, database `lucid` | Neon's pooled URL for the service, its direct URL for `migrate` (B2). |
+| `DATABASE_URL` | none; with `DEBUG=1`, the local Docker Postgres, database `lucid` | Required outside DEBUG. Neon's pooled URL for the service, its direct URL for `migrate` (B2). |
 | `DATABASE_URL_UNPOOLED` | none | Neon's direct URL. When set, `migrate --database direct` uses it. |
 | `ALLOWED_HOSTS` | `*` | Comma-separated. Cloud Run only routes the service's own hosts to it. |
 | `CORS_ORIGINS` | `*` | Comma-separated origins for the Flutter web build. |

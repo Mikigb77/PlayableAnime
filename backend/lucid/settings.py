@@ -3,7 +3,7 @@
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
-from lucid.env import BACKEND_DIR, Env, split_csv
+from lucid.env import BACKEND_DIR, LOCAL_DATABASE_URL, Env, split_csv
 
 ENV = Env()
 
@@ -11,6 +11,11 @@ DEBUG = ENV.debug
 SECRET_KEY = ENV.django_secret_key or ("insecure-dev-key" if DEBUG else "")
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DEBUG is off.")
+# Fail at startup, not on the first query: /health never touches the database, so a deploy with a
+# missing database secret would otherwise look healthy.
+DATABASE_URL = ENV.database_url or (LOCAL_DATABASE_URL if DEBUG else "")
+if not DATABASE_URL:
+    raise ImproperlyConfigured("DATABASE_URL is required when DEBUG is off.")
 
 ALLOWED_HOSTS = split_csv(ENV.allowed_hosts)
 CSRF_TRUSTED_ORIGINS = split_csv(ENV.csrf_trusted_origins)
@@ -44,6 +49,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Last, so the error responses it rewrites still get the headers added above.
+    "lucid.middleware.ErrorEnvelopeMiddleware",
 ]
 
 ROOT_URLCONF = "lucid.urls"
@@ -73,7 +80,7 @@ def _database(url: str) -> dict:
     return config
 
 
-DATABASES = {"default": _database(ENV.database_url)}
+DATABASES = {"default": _database(DATABASE_URL)}
 if ENV.database_url_unpooled:
     # Neon's direct URL, for `manage.py migrate --database direct` (B2). Same database, so the
     # test runner mirrors it instead of creating a second one.
