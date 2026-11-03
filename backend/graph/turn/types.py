@@ -32,6 +32,9 @@ if TYPE_CHECKING:
 
 # C3: a chapter summary every this many turns.
 CHAPTER_TURNS = 20
+# A chapter covers at most this many turns, so summaries that were late for a long time catch up
+# a window at a time instead of asking for every scene at once.
+MAX_CHAPTER_TURNS = 3 * CHAPTER_TURNS
 # The narrator reads this many of the latest scenes in full.
 RECENT_SCENES = 3
 
@@ -64,8 +67,9 @@ class TurnInput:
     `state` is the story's world state as loaded, with its pending events on the current timeline
     (B12). `ctx.turn` is the turn being played, one more than `state.turn`. `action` is the
     player's text, or the label of the suggestion they picked. `scenes` are saved scenes, oldest
-    first: every one since the last chapter summary (C3), and never fewer than the last
-    `RECENT_SCENES`, which the narrator reads in full.
+    first: every one the next chapter summary covers (C3: those since the last chapter, at most
+    `MAX_CHAPTER_TURNS` of them), and never fewer than the last `RECENT_SCENES`, which the
+    narrator reads in full.
     """
 
     state: WorldState

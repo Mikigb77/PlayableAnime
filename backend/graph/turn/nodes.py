@@ -49,6 +49,7 @@ from graph.turn.outputs import ChapterOutput, NarratorOutput
 from graph.turn.scene import scene_draft
 from graph.turn.types import (
     CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
     Issue,
     NarrationDelta,
     NarrationReset,
@@ -145,13 +146,14 @@ class PendingChapter:
 
 def chapter_due(turn: TurnInput) -> tuple[int, int, list[PastScene]] | None:
     """The saved turns a new chapter covers, and their scenes, once `CHAPTER_TURNS` of them have
-    passed since the last chapter."""
+    passed since the last chapter: all of them, up to `MAX_CHAPTER_TURNS`."""
     last = max((c.to_turn for c in turn.state.chapters), default=0)
     saved = turn.state.turn
     if saved - last < CHAPTER_TURNS:
         return None
-    scenes = [s for s in turn.scenes if last < s.turn <= saved]
-    return last + 1, saved, scenes
+    to_turn = min(saved, last + MAX_CHAPTER_TURNS)
+    scenes = [s for s in turn.scenes if last < s.turn <= to_turn]
+    return last + 1, to_turn, scenes
 
 
 @timed("catch_up")

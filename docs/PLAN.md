@@ -47,7 +47,6 @@ backend/
   moderation/   reports and blocks (WS16)
   engine/       pure rules: state, invariants, time, resolve, world, director (WS2, WS9, WS10, WS11)
   graph/        model layer, LangGraph turn graph, drafting chain, prompts (WS3, WS12)
-  legacy/       today's one-call narrator, moved here by WS1 and deleted by WS3
   evals/        scripted scenario harness (WS17)
   tests/<area>/ tests per package
 app/lib/
@@ -259,7 +258,12 @@ T7, K6.
 - **PR 3, the turn endpoint (needs WS1):** `POST /v1/stories/{id}/turns` as server-sent events per
   API.md (B7, S3), the version check (T10), saving state, scene and pending events in one
   transaction, the opening turn, one structured T5 log line per turn with the input mode (V7). Delete
-  `backend/legacy/`.
+  `backend/legacy/`. **Landed** in `backend/stories/` (see
+  [ARCHITECTURE.md](ARCHITECTURE.md#turn-endpoint)) with API.md's whole Stories contract on graph
+  stories, Memory and `/status`, the credit meter, picture planning, pending events written back to
+  their table, and `manage.py seed_story` for development. `POST /v1/stories` is gone: drafts make
+  stories (WS12). `backend/legacy/` is deleted; the starter premises moved to `stories/premises.py`
+  until WS12's catalog replaces them.
 - **Done when** a turn runs end to end on the fake model with streaming, F4's fallbacks and T7's
   errors are tested, and nothing runs after the response ends (B8).
 

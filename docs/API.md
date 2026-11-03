@@ -34,12 +34,12 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
   | 409 | `version_conflict` | `expected_version` is stale: another turn won (T10). `details.current_version`. |
-  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). When the action crosses a hard limit, `details.category` names it (`minor`, `sexual`, `sexual_violence` or `real_person`, F2, F3, G12) and `message` says which line it is, so show the message as it is. |
+  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). When the action crosses a hard limit, `details.category` names it (`minor`, `sexual`, `sexual_violence` or `real_person`, F2, F3, G12) and `message` says which line it is, so show the message as it is. On a turn it arrives as the stream's `error` event. |
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |
   | 429 | `rate_limited` | Per-user rate limit (T9). `details.retry_after_s`. |
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
   | 500 | `internal_error` | A bug on our side. It is logged with its traceback for Error Reporting, and the message never shows internals. |
-  | 503 | `llm_unavailable` | The model failed twice (one retry, T7). Nothing was saved. |
+  | 503 | `llm_unavailable` | The model failed twice (one retry, T7). Nothing was saved. On a turn it arrives as the stream's `error` event. |
   | 503 | `sign_in_unavailable` | Google sign-in can't be checked right now (Google unreachable, or not configured yet). Email sign-in still works. |
 
 - **Request ids (T4):** every response carries an `X-Request-Id` header, the id on the server's log
@@ -99,9 +99,7 @@ draft or revision, a picture) is checked before it starts, in this order:
 
 A request that is refused counts against nothing. The real cost is charged when the request
 completes, in the same transaction as what it saved, so a turn that fails or loses a version race
-costs nothing. These checks are wired into each endpoint as it moves to this contract (the turn
-endpoint, drafting and pictures). The legacy story endpoints described under Stories aren't
-metered: the streamed turn endpoint replaces them.
+costs nothing. The turn endpoint and pictures run these checks, and drafting does when it lands.
 
 **Signing in.** Every auth endpoint answers `200` with a `Session`, except `logout` (`204`).
 
@@ -237,20 +235,16 @@ the character doesn't know of, N7, C6) never appear in these responses.
 
 ## Stories
 
-**Until WS3's turn graph lands,** the backend still serves today's endpoints with today's shapes, so
-the current app keeps working: `POST /v1/stories` with `{premise, title?}` returns the whole story
-with its opening scene, `POST /v1/stories/{id}/turns` takes `{choice_id}` or `{action}` (plus
-optional `input_mode` and `expected_version`, with the same limits as `TurnRequest` below, so the
-app sends one body to both) and returns `{scene, state, version}` as plain JSON,
-and `GET /v1/stories/{id}/memory` returns the raw world state. Stories and turns already carry
-`version` (T10) and errors already use the envelope above. The contract below is the target.
+A story is made by starting a draft (`POST /v1/drafts/{id}/start`), and its first turn is
+`kind: "opening"`; there is no `POST /v1/stories`. In development, `manage.py seed_story <email>`
+makes one from an example world.
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | GET | `/v1/stories` | | `[StorySummary]`, only the caller's own (S8) |
-| GET | `/v1/stories/{id}` | `?scenes=20` | `Story` with the last N scenes |
-| GET | `/v1/stories/{id}/scenes` | `?before=<turn>&limit=20` | `[Scene]`, older scenes for scrollback |
-| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` (S6) |
+| GET | `/v1/stories/{id}` | `?scenes=20` (0 to 50) | `Story` with the last N scenes, oldest first |
+| GET | `/v1/stories/{id}/scenes` | `?before=<turn>&limit=20` (1 to 50) | `[Scene]`, the `limit` scenes before turn `before`, oldest first, for scrollback |
+| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. |
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
 | GET | `/v1/stories/{id}/memory` | | `MemoryView` (C6) |
@@ -258,8 +252,8 @@ and `GET /v1/stories/{id}/memory` returns the raw world state. Stories and turns
 
 ```text
 StorySummary  {id, title, genre, rating, turn, world_time_label, cover_url?, updated_at}
-Story         {id, title, genre, rating, version, settings: StorySettings,
-               clock: Clock, scenes: [Scene], cover_url?}
+Story         {id, title, genre, rating, version, turn,      # turn 0: play the opening
+               settings: StorySettings, clock: Clock, scenes: [Scene], cover_url?}
 StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                difficulty: "story"|"balanced"|"brutal",
                event_frequency: "calm"|"normal"|"dramatic",
@@ -272,19 +266,23 @@ Clock         {world_s, label, timeline_id}              # label such as "Day 3,
 
 ```text
 TurnRequest {kind: "action"|"choice"|"standing"|"opening",
-             action?: string,            # kind=action, 1 to 2000 characters
-             choice_id?: string,         # kind=choice
-             standing?: "wait"|"observe",# kind=standing (S2)
-             input_mode: "typed"|"voice"|"voice_edited"|"choice",
+             action?: string,            # kind=action only, 1 to 2000 characters, trimmed
+             choice_id?: string,         # kind=choice only: an id from the last scene's choices
+             standing?: "wait"|"observe",# kind=standing only (S2)
+             input_mode?: "typed"|"voice"|"voice_edited"|"choice",  # V7, see below
              expected_version: int}      # the Story.version the app last saw (T10)
 ```
 
 `kind: "opening"` writes the opening scene of a story that has none yet, right after
-`POST /v1/drafts/{id}/start`.
+`POST /v1/drafts/{id}/start`; any other kind on such a story, or an opening on a story that has
+opened, is a `validation_error`. Each kind takes only its own field. `input_mode` is how an action
+was entered (V7), `typed` when left out; a choice and a standing action are always saved as
+`choice`, and the opening has none.
 
-Checks that can fail (auth, ownership, rating, version, credits, rate limit, quota) run before the
-stream starts and come back as ordinary JSON errors. Once the server answers `200` with
-`Content-Type: text/event-stream`, it sends these events:
+Checks that can fail (auth, ownership, rating, version, the request itself, then credits, rate
+limit and quota) run before the stream starts and come back as ordinary JSON errors. Once the
+server answers `200` with `Content-Type: text/event-stream`, it sends these events, each as
+`event: <name>`, then `data: <JSON>`, then a blank line:
 
 | Event | Data | Notes |
 | --- | --- | --- |
@@ -292,7 +290,7 @@ stream starts and come back as ordinary JSON errors. Once the server answers `20
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
-| `error` | `{code, message, details?}` | The turn failed after streaming began: `llm_unavailable`, or `unreadable_action` with the same `details` as the JSON error (a hard limit's `details.category`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry, or a rephrase for `unreadable_action`. |
+| `error` | `{code, message, details}` | The turn failed after streaming began. Nothing was saved and no credits were charged, so the app discards the partial scene. `code` is `unreadable_action` (the interpret step runs after `turn.started`, so this is where it arrives: offer to rephrase or retry, F4, and for a hard limit show `message` as it is, with `details.category` as in the JSON error), `llm_unavailable` or `bad_key` (offer a retry or a look at the key), `version_conflict` (another turn was saved first: reload, `details.current_version`) or `internal_error`. `details` is `{}` when there are none. |
 
 A turn is all or nothing: the world state, the scene, the ledger entry and the version bump are saved
 together only when the turn completes.

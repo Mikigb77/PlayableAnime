@@ -118,7 +118,8 @@ and the things in hand or in the scene that matter next.
 OPENING_TASK = """\
 Write the opening scene. Introduce the player character where the story starts, establish the \
 world and its tone through what the character sees and does, and end on something to act on. \
-Play no action for the character beyond small natural movement.\
+When LAST MOMENT names a moment, the scene opens on it, with the people, positions and props \
+SCENE lists. Play no action for the character beyond small natural movement.\
 """
 
 CUTAWAY_SYSTEM = """
