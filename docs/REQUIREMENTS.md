@@ -384,7 +384,10 @@ it is when making the character (G2). A strong gift is made fun rather than flat
   stop hits at relative speed, with no cap, and a modest one with normal force, which a clever player
   can find a way past (A9).
 - **The world answers it.** Others notice, covet, fear, worship or try to seal it (W5). Stronger
-  rungs and older monsters exist above the player (G18).
+  beings exist above the player only where the world already holds them, such as an ancient god in a
+  world with gods (G18). The engine never invents one just to counter the player (A9), so a
+  character strong enough can rule everything, doing and undoing as they wish, and that is the
+  story (Miki, 2026-11-03).
 - **Not every problem is a fight.** Politics, love, a sect's rules, a debt or a heart demon can't be
   stopped with time stop, and the events the director draws reach every part of the character's life
   (W16).
@@ -534,7 +537,9 @@ laser pistol burns through a coat but not a warship's hull.
   the story more fun, and whether play stays challenging, so a yes can come with a cost (G22), such
   as a heavier drain. Experimenting is part of the fun: a player who has just got time stop can
   throw a rock to see what happens, or try to lift something outside the stop, and each test settles
-  a detail of the power that was still open.
+  a detail of the power that was still open. Discoveries can be made the hard way: a character who
+  throws a pebble at light speed from close range dies in the blast, and the player may engineer a
+  way around it next time (W10a, N6).
 - **Refuse nonsense, never power** (Miki, 2026-11-03). An idea is refused only when it doesn't hold
   up in the world's logic, never because it would make the character too strong. A flick of a finger
   in stopped time doesn't blow up the planet, because nothing in the power explains it, unless the
@@ -542,8 +547,10 @@ laser pistol burns through a coat but not a warship's hull.
   that holds works however strong it makes the character, and the world answers that strength (G22,
   W5) instead of the engine capping it. The engine never bends the logic to hold a power level, to
   weaken a strong character or to keep a weak one alive: an overpowered skill is overpowered, a
-  weakling a knight can kill can die, and the story makes its own turns from there. A theory can't
-  add a new power or break a fixed rule of the world (G7).
+  weakling a knight can kill can die, and the story makes its own turns from there. Nor does the
+  world conjure a foe that couldn't exist to beat the player: something that survives three
+  megatons appears only if the world already holds it, such as a god (G6). A theory can't add a new
+  power or break a fixed rule of the world (G7).
 - **A refused idea can still be earned.** The verdict stands, but the character can later find
   another way that passes the world's logic, as growth (A4). If stopped-time throws can't reach light
   speed, they might learn to release the stop around a rock gradually, so it merges back into time
@@ -601,7 +608,7 @@ this as state. It is not something the narrator is just asked to remember.
 | W2 | **Who knows.** Every deed is secret, witnessed or public. Rumors spread to nearby places and factions over in-world time, and their accuracy can drop as they travel. Characters react only to what they could know. | P0 |
 | W3 | **Reputation.** The player has a reputation with each faction and each region, on two separate axes: *esteem* (how much they like you) and *fear* (how dangerous they think you are). A feared tyrant has high fear and low esteem. | P0 |
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). | P0 |
-| W5 | **Escalation.** A threat level from the player's public deeds and power is an input to each faction's own agenda (E3), not a fixed ladder. How a faction answers depends on its nature and situation: locals avoid or flee, guards, bounties and hunters, an army or elite heroes, a coalition, but also appeasement, a recruitment offer, worship, a bribe, an assassin, an attempt to seal the player away, using the player against a rival, or ignoring them while busy with its own war. One guarantee holds: once the player crosses a threat tier, the world visibly reacts within a set in-world time (W10), never within a set number of turns. | P0 |
+| W5 | **Escalation.** A threat level from the player's public deeds and power is an input to each faction's own agenda (E3), not a fixed ladder. How a faction answers depends on its nature and situation: locals avoid or flee, guards, bounties and hunters, an army or elite heroes, a coalition, but also appeasement, a recruitment offer, worship, a bribe, an assassin, an attempt to seal the player away, using the player against a rival, or ignoring them while busy with its own war. A faction answers with what it really has, and the world never conjures a champion that couldn't exist just to match the player (A9). One guarantee holds: once the player crosses a threat tier, the world visibly reacts within a set in-world time (W10), never within a set number of turns. | P0 |
 | W6 | **Off-screen world.** The world moves on in-world time (W10), not every N turns. **Deterministic part (P0):** advancing clocks (E2), spreading rumors (W2), rolling for discovery (W13), scheduling faction responses (W5) and revivals (W15a), all in code with no model call, run as catch-up at the start of each turn for the in-world time that has passed (B5). **Model part (P1):** a cheap model writes what factions and key NPCs actually do with their plans (scheming, recruiting, retaliating, allying). Results reach the player as news, rumors, ambushes or W16 events. | P0 / P1 |
 | W7 | **Places and territory.** Places have a status (thriving, damaged, ruined, occupied), a controller, a mood and rough travel times to neighbouring places (W10). Conquest changes the controller, lowers stability and creates resistance, unrest and outside rivals. A ruined town stays ruined unless someone rebuilds it, which takes in-world time, people and resources and is recorded as an event (C1). | P1 |
 | W8 | **Consistency.** Characters' everyday behavior matches what they know: no cheerful greetings in a town the player burned, and survivors remember. A violation is a continuity bug (see C5). | P0 |
@@ -686,8 +693,9 @@ sheet (A1, A4). NPCs can have them too.
   - **What they hold joins the stop.** Whatever the user picks up or carries moves with them, and what
     they let go freezes again once it leaves the power's reach, mid-air if need be, until time
     restarts. A person or creature they carry stays frozen inside and knows nothing of it.
-  - **The power shields its user.** Their body never takes the recoil or the blast of what they do in
-    the stop.
+  - **The power shields its user while the stop lasts.** Their body never takes the recoil of what
+    they do in the stop. Once time restarts, the blast of their own hit is as real for them as for
+    anyone else (Miki, 2026-11-03).
 
   Frozen people see nothing, so deeds done during a stop are secret (W2) unless someone is immune, but
   they still leave traces (W13): to everyone else, the guard simply drops dead. Frozen people can't
@@ -700,13 +708,16 @@ sheet (A1, A4). NPCs can have them too.
   - **Relative speed** (Miki, 2026-11-03): to the frozen world, whatever moved during the stop got
     where it is in no time at all, so it lands with overwhelming force. A blade swung during the stop
     goes through steel like butter, and a thrown pebble really arrives at close to the speed of
-    light: 100 grams at 90% of it hits like a three-megaton bomb. The force doesn't come from the
+    light: 100 grams at 90% of it hits like a three-megaton bomb, about 200 times Hiroshima. The force doesn't come from the
     user's arm but from the power that took them out of time, which pays for that instant journey
     when time restarts. Only what strikes something, or is still flying when time restarts, carries
     that force, so something set down gently stays where it is, unharmed. Nothing caps it to hold the
     story at some power level (A9). The character is close to unstoppable, and that becomes the
     story: the world fears, courts or tries to seal them (G22, W5), and fights turn into choices
-    about what they're willing to destroy. The rest follows from the rule: the shot also smashes what
+    about what they're willing to destroy. That includes themselves: a light-speed pebble thrown
+    close by kills the thrower along with everything around them (N6), and the player learns from
+    it. Control is something a character can learn (A4, A9), such as letting the stone back into
+    time gradually, or slowing time instead of stopping it, so they choose how hard it lands. The rest follows from the rule: the shot also smashes what
     is behind the target, the blast is seen and heard, so it starts rumors even when nobody saw who
     threw (W2, W13), and anything tougher than the hit, such as a protected treasure or a body far
     enough up the ladder, survives it.
@@ -1051,7 +1062,9 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
 | Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
-| Light-speed throw | A character whose time stop hits at relative speed stops time and throws a pebble at an army outside a castle, over many seeds | The pebble hits like a three-megaton bomb on every seed, the thrower is unhurt, the army and the land around are wrecked, and the world answers: kingdoms fear, court or plot against the character (W10a, G22, W5) |
+| Light-speed throw | A character whose time stop hits at relative speed stops time and throws a pebble at an army outside a castle, once from a ridge ten kilometers away and once from the castle wall, over many seeds, on Balanced | The pebble hits like a three-megaton bomb on every seed. From the ridge the thrower survives; from the wall the thrower dies with the army (N6). The world answers the survivor: kingdoms fear, court or plot against them (W10a, G22, W5) |
+| Unrivalled | A character whose time stop throws at light speed conquers a cultivation world whose bible holds nothing that survives three megatons, then plays 50 turns as its ruler | No foe appears that the world couldn't hold, factions answer with what they have (plots, appeasement, worship, flight), and the story carries on with the player in charge (A9, G22, W5) |
+| Controlled throw | A character with the same power learns to let a stone back into time gradually, then throws it at a single bandit | On every seed the bandit is hit hard enough to kill and nothing else is wrecked, and the technique is on the sheet (A4, A9, W10a) |
 | Earned technique | In a world where stopped-time throws land with normal force, the player asks twice whether a throw could hit at the speed of light, then trains to release the stop gradually around a rock | The answer is no both times, shown in play with no physics debate. After the training, the new throw lands at relative speed on every seed and is on the sheet (A9, A4) |
 | Nonsense, not power | In a cultivation world, the player says a flick of a finger in stopped time blows up the planet, with nothing behind it; later the player works out a way that holds to throw at light speed | The flick is refused with no lecture. The light-speed throws work however strong they make the character, and the world answers that strength (A9, G22) |
 | Player theory | A new character with time stop, whose player never said how it works, throws a rock in stopped time saying it should hit at the speed of light, then grabs a boulder outside the stop, then sprints across a square in stopped time | The rock hits with overwhelming force, and from then on the power works that way on every seed, recorded on the sheet. The boulder joins the stop when grabbed and is as heavy as ever. Nothing the player didn't raise, such as air friction, blocks the sprint, nothing lectures the player, and the player is never asked how the power should work (A9, W10a) |
