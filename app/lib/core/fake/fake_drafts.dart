@@ -1,4 +1,5 @@
 import '../json.dart';
+import 'fake_auth.dart';
 import 'fake_backend.dart';
 import 'fake_data.dart';
 import 'fake_premises.dart';
@@ -199,7 +200,7 @@ void _checkRating(FakeBackend b, FakeRequest r, String rating) {
   if (rating != 'teen' && rating != 'mature') {
     throw const FakeError.validation('A rating is teen or mature.');
   }
-  final limit = b.data.auth.users[r.userId]?['max_rating'] ?? 'teen';
+  final limit = fakeMaxRating(b.data.auth.users[r.userId]?['birth_date'] as String?, b.now());
   if (rating == 'mature' && limit != 'mature') {
     throw const FakeError(403, 'forbidden', 'This rating is above your account\'s limit.');
   }

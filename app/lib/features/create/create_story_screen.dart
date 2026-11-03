@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n.dart';
 import '../../core/navigation.dart';
 import '../../design/design.dart';
+import '../account/account_repository.dart';
 import '../discover/premises.dart';
 import '../library/library.dart';
 import 'create_flow.dart';
+import 'draft.dart';
 import 'draft_repository.dart';
 import 'draft_review.dart';
+import 'draft_widgets.dart';
 import 'drafting_view.dart';
 import 'premise_step.dart';
 
@@ -30,7 +33,13 @@ class CreateStoryScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
-  late final _flow = CreateFlow(ref.read(draftRepositoryProvider));
+  late final _flow = CreateFlow(
+    ref.read(draftRepositoryProvider),
+    // Drafting spends credits: the balance shown elsewhere is read again (K2).
+    onCharged: () {
+      if (mounted) ref.read(meProvider.notifier).refreshQuietly();
+    },
+  );
 
   /// The premise step's words and choices, kept here so a failed draft returns to them.
   PremiseForm? _form;
@@ -51,6 +60,28 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
         if (context.mounted) context.go('/discover');
       },
     );
+  }
+
+  /// Drafts what the premise step holds. Out of credits offers the player's own key, and drafts
+  /// again on it once they add one (K2, K6).
+  Future<void> _draft(Premise? starter) async {
+    final form = _form!;
+    final text = form.text.text.trim();
+    // The starter's own words go by id, so the draft keeps them word for word.
+    final own = starter == null || normalizeLine(text) != normalizeLine(starter.premise);
+    await _flow.create(
+      premise: own ? text : null,
+      premiseId: starter?.id,
+      quote: text,
+      rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : form.rating,
+      choices: DraftChoices(
+        physics: form.physics,
+        giftStrength: form.gift,
+        difficulty: form.difficulty,
+        eventFrequency: form.events,
+      ),
+    );
+    if (mounted && await offerOwnKey(context, _flow.error) && mounted) await _draft(starter);
   }
 
   Future<void> _start() async {
@@ -136,6 +167,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                         key: const ValueKey(CreateStage.premise),
                         flow: _flow,
                         form: _form ??= PremiseForm(premise: starter?.premise),
+                        onDraft: () => _draft(starter),
                         starter: starter,
                       ),
                       CreateStage.drafting => DraftingView(

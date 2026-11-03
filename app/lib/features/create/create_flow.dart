@@ -11,9 +11,13 @@ enum CreateStage { premise, drafting, review }
 /// then starts the story. Every change sends the version last seen, and a stale draft is reloaded
 /// before the player tries again (T10).
 class CreateFlow extends ChangeNotifier {
-  CreateFlow(this._drafts);
+  CreateFlow(this._drafts, {this.onCharged});
 
   final DraftRepository _drafts;
+
+  /// Called after each request that may have spent credits (K2), whatever its outcome, so the
+  /// balance shown elsewhere can be read again.
+  final VoidCallback? onCharged;
 
   CreateStage _stage = CreateStage.premise;
   Draft? _draft;
@@ -86,6 +90,7 @@ class CreateFlow extends ChangeNotifier {
       _stage = CreateStage.premise;
     }
     _notify();
+    if (!_disposed) onCharged?.call();
   }
 
   /// Saves a direct edit. Returns null when it saved, or the failure for the player to see. A
@@ -122,6 +127,7 @@ class CreateFlow extends ChangeNotifier {
       _redrafting = Redraft.none;
       _saving = false;
       _notify();
+      if (!cost.isFree && !_disposed) onCharged?.call();
     }
   }
 

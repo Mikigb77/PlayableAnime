@@ -43,23 +43,26 @@ void reportOutcome(BuildContext context, SheetOutcome? outcome) {
 }
 
 /// Runs a change from a sheet: closes it when the change saved or the draft was stale, and keeps
-/// it open with the failure otherwise, so nothing the player wrote is lost.
+/// it open with the failure otherwise, so nothing the player wrote is lost. Out of credits offers
+/// the player's own key, and makes the same change on it once they add one (K2, K6).
 Future<Object?> _runChange(
   BuildContext context,
   Redraft cost,
   Future<Object?> Function() change,
 ) async {
   final navigator = Navigator.of(context);
-  final failure = await change();
-  if (failure == null) {
-    navigator.pop(Saved(cost));
-    return null;
+  while (true) {
+    final failure = await change();
+    if (failure == null) {
+      navigator.pop(Saved(cost));
+      return null;
+    }
+    if (failure case ApiException(code: ApiErrorCode.versionConflict)) {
+      navigator.pop(const Stale());
+      return null;
+    }
+    if (!context.mounted || !await offerOwnKey(context, failure)) return failure;
   }
-  if (failure case ApiException(code: ApiErrorCode.versionConflict)) {
-    navigator.pop(const Stale());
-    return null;
-  }
-  return failure;
 }
 
 /// The save row at the foot of a sheet: what the change costs, any failure, and the button.
@@ -70,6 +73,7 @@ class _SheetActions extends StatelessWidget {
     required this.label,
     required this.onSave,
     this.error,
+    this.onRetry,
     this.secondary,
   });
 
@@ -78,6 +82,9 @@ class _SheetActions extends StatelessWidget {
   final String label;
   final VoidCallback? onSave;
   final Object? error;
+
+  /// Makes the failed change again, once the player added their own key.
+  final VoidCallback? onRetry;
   final Widget? secondary;
 
   @override
@@ -97,7 +104,10 @@ class _SheetActions extends StatelessWidget {
               busy: busy && !redrafting.isFree,
               busyText: _redraftingText(l10n, redrafting),
             ),
-            if (error case final error?) ...[const SizedBox(height: Space.md), InlineError(error)],
+            if (error case final error?) ...[
+              const SizedBox(height: Space.md),
+              InlineError(error, onKeyAdded: onRetry),
+            ],
             const SizedBox(height: Space.lg),
             Row(
               children: [
@@ -221,6 +231,9 @@ class _LineSheetState extends State<_LineSheet> {
   /// The words last sent, so a refusal shows under them only while they are still there.
   String? _sent;
 
+  /// Whether the last change sent removed the line, to make it again after a key is added.
+  var _removing = false;
+
   String get _field => '${widget.part.wire}_lines.${widget.index}';
 
   @override
@@ -242,6 +255,7 @@ class _LineSheetState extends State<_LineSheet> {
 
   Future<void> _save({bool remove = false}) async {
     final edit = _edit(remove: remove);
+    _removing = remove;
     _sent = _text.text;
     final cost = redraftFor(_draft, edit);
     final failure = await _runChange(context, cost, () => widget.flow.edit(edit));
@@ -282,6 +296,7 @@ class _LineSheetState extends State<_LineSheet> {
               label: l10n.save,
               error: fieldMessage(_error, _field) == null ? _error : null,
               onSave: changed && text.isNotEmpty ? _save : null,
+              onRetry: () => _save(remove: _removing),
               secondary: removable
                   ? TextButton.icon(
                       onPressed: widget.flow.busy ? null : () => _save(remove: true),
@@ -380,6 +395,7 @@ class _ReviseSheetState extends State<_ReviseSheet> {
             label: l10n.reviseAction,
             error: fieldMessage(_error, 'instruction') == null ? _error : null,
             onSave: _text.text.trim().isEmpty ? null : _save,
+            onRetry: _text.text.trim().isEmpty ? null : _save,
           ),
         ],
       ),
@@ -433,6 +449,7 @@ class _RatingSheetState extends State<_RatingSheet> {
         label: context.l10n.save,
         error: _error,
         onSave: _rating == widget.flow.draft!.rating ? null : _save,
+        onRetry: _rating == widget.flow.draft!.rating ? null : _save,
       ),
     ],
   );
@@ -639,6 +656,7 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
             label: l10n.save,
             error: atRule ? null : _error,
             onSave: _changed ? _save : null,
+            onRetry: _changed ? _save : null,
           ),
         ],
       ),

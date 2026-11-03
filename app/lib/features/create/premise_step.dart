@@ -30,12 +30,20 @@ class PremiseForm {
 }
 
 /// The first step: the premise, typed or dictated (V1), or a starter's own text to keep or change
-/// (S1); the rating (F2, F8); and, folded away, the advanced choices (G1).
+/// (S1); the rating (F2, F8); and, folded away, the advanced choices (G1). [onDraft] drafts what
+/// [form] holds.
 class PremiseStep extends ConsumerStatefulWidget {
-  const PremiseStep({super.key, required this.flow, required this.form, this.starter});
+  const PremiseStep({
+    super.key,
+    required this.flow,
+    required this.form,
+    required this.onDraft,
+    this.starter,
+  });
 
   final CreateFlow flow;
   final PremiseForm form;
+  final VoidCallback onDraft;
   final Premise? starter;
 
   @override
@@ -58,25 +66,6 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
     final message = fieldMessage(widget.flow.error, 'premise');
     if (message == null || _premise.text.trim() != widget.flow.draftingPremise) return null;
     return message;
-  }
-
-  void _draft() {
-    final starter = widget.starter;
-    final text = _premise.text.trim();
-    // The starter's own words go by id, so the draft keeps them word for word.
-    final own = starter == null || normalizeLine(text) != normalizeLine(starter.premise);
-    widget.flow.create(
-      premise: own ? text : null,
-      premiseId: starter?.id,
-      quote: text,
-      rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : _form.rating,
-      choices: DraftChoices(
-        physics: _form.physics,
-        giftStrength: _form.gift,
-        difficulty: _form.difficulty,
-        eventFrequency: _form.events,
-      ),
-    );
   }
 
   @override
@@ -194,11 +183,11 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                         if (widget.flow.error case final error?
                             when fieldMessage(error, 'premise') == null) ...[
                           const SizedBox(height: Space.xl),
-                          InlineError(error),
+                          InlineError(error, onKeyAdded: widget.onDraft),
                         ],
                         const SizedBox(height: Space.xl),
                         FilledButton.icon(
-                          onPressed: short || widget.flow.busy ? null : _draft,
+                          onPressed: short || widget.flow.busy ? null : widget.onDraft,
                           icon: const Icon(Icons.auto_awesome_rounded),
                           label: Text(l10n.createDraftAction),
                         ),

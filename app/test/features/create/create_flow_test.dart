@@ -116,6 +116,21 @@ void main() {
     expect(flow.draft!.rating, Rating.mature);
   });
 
+  test('each paid request says so, for the balance to be read again (K2)', () async {
+    var charged = 0;
+    final paid = CreateFlow(DraftRepository(api), onCharged: () => charged++);
+    addTearDown(paid.dispose);
+    await paid.create(premiseId: 'outer-disciple', rating: Rating.mature);
+    expect(charged, 1);
+    // A free change spends nothing; a redraft and a revision do, and so does a failed one.
+    expect(await paid.edit(const DraftEdit(physics: Physics.strict)), isNull);
+    expect(charged, 1);
+    expect(await paid.edit(const DraftEdit(rating: Rating.teen)), isNull);
+    expect(charged, 2);
+    expect(await paid.revise(DraftPart.world, 'More rain [fail:llm_unavailable]'), isNotNull);
+    expect(charged, 3);
+  });
+
   test('the redrafting parts show while a change is in flight', () async {
     await drafted();
     final seen = <Redraft>[];
@@ -181,7 +196,12 @@ void main() {
   test('a teen account cannot draft Mature (F8)', () async {
     final teen = fakeApi();
     // A fresh backend whose demo account is under 17.
-    teen.backend.data.auth.users[FakeAuthState.demoUserId]!['max_rating'] = 'teen';
+    final now = teen.backend.now();
+    teen.backend.data.auth.users[FakeAuthState.demoUserId]!['birth_date'] = DateTime.utc(
+      now.year - 14,
+      now.month,
+      now.day,
+    ).toIso8601String().substring(0, 10);
     final session =
         await teen.api.post('/v1/auth/login', {
               'email': FakeAuthState.demoEmail,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
-import 'package:playable_anime/features/account/account_screen.dart';
+import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
 import 'package:playable_anime/features/create/draft_widgets.dart';
 import 'package:playable_anime/features/discover/discover_screen.dart';
@@ -85,7 +86,11 @@ void main() {
     await tester.enterText(inSheet(find.byType(TextField)), 'Four factions, and all of them know.');
     await tester.pump();
     expect(inSheet(find.text(l10n.costWorld)), findsOneWidget);
+    int meReads() => app.sent('GET', (p) => p == '/v1/me').length;
+    var reads = meReads();
     await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+    // A paid change reads the balance again (K2).
+    expect(meReads(), greaterThan(reads));
     final patch = app.sent('PATCH', (p) => p.startsWith('/v1/drafts/')).single.json;
     expect(patch['expected_version'], 1);
     expect(patch['world_lines'], contains('Four factions, and all of them know.'));
@@ -115,7 +120,9 @@ void main() {
     await tapAndSettle(tester, inSheet(find.text(l10n.physicsStrict)), frames: 2);
     await tester.ensureVisible(inSheet(find.text(l10n.costFree)));
     expect(inSheet(find.text(l10n.costFree)), findsOneWidget);
+    reads = meReads();
     await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+    expect(meReads(), reads, reason: 'a free change spends nothing');
     expect(app.sent('PATCH', (p) => p.startsWith('/v1/drafts/')).last.json, {
       'advanced': {'physics': 'strict'},
       'expected_version': 3,
@@ -174,22 +181,87 @@ void main() {
     expect(find.text(l10n.reviewTitle), findsOneWidget);
   });
 
-  testWidgets('out of credits keeps the premise and leads to the account', (tester) async {
+  /// Adds the player's own key in the out-of-credits sheet (K6).
+  Future<void> addKeyInSheet(WidgetTester tester) async {
+    Finder inOoc(Finder finder) =>
+        find.descendant(of: find.byType(OutOfCreditsSheet), matching: finder);
+    await tapAndSettle(tester, inOoc(find.byKey(const Key('ooc.useKey'))));
+    await tester.enterText(inOoc(find.byKey(const Key('account.ownKey'))), 'AIza-test-key-4321');
+    await tapAndSettle(tester, inOoc(find.byKey(const Key('account.ownKey.save'))), frames: 14);
+  }
+
+  /// Spends the demo account's credits, so the next paid request is refused (K2).
+  void spendAll(AppHarness app) => app.backend.data.account.charge(
+    FakeAuthState.demoUserId,
+    kind: 'draft',
+    cents: 1000,
+    now: DateTime.utc(2026, 11, 2),
+  );
+
+  testWidgets('out of credits offers your own key and keeps the premise (K2)', (tester) async {
     final app = AppHarness();
     await app.launch(tester, location: '/create');
     await draft(tester, premise: 'A quiet village by the sea [fail:out_of_credits]');
-    expect(find.text(l10n.createHeading), findsOneWidget);
-    expect(find.text(l10n.goToAccount), findsOneWidget);
+    // The sheet opens by itself, over the premise.
+    expect(find.byType(OutOfCreditsSheet), findsOneWidget);
+    expect(find.text(l10n.oocTitle), findsOneWidget);
 
-    await tapAndSettle(tester, find.text(l10n.goToAccount));
-    expect(find.byType(AccountScreen), findsOneWidget);
-    // The account has no back button of its own, being a tab; the system back returns.
-    await tester.binding.handlePopRoute();
-    await settle(tester, frames: 10);
+    await tapAndSettle(tester, find.text(l10n.close));
+    expect(find.byType(OutOfCreditsSheet), findsNothing);
+    expect(find.text(l10n.createHeading), findsOneWidget);
     expect(
       tester.widget<TextField>(find.byType(TextField).first).controller!.text,
       'A quiet village by the sea [fail:out_of_credits]',
     );
+    // The failure stays, with the way back to the sheet.
+    await scrollTo(tester, find.text(l10n.oocCarryOn));
+    await tapAndSettle(tester, find.text(l10n.oocCarryOn));
+    expect(find.byType(OutOfCreditsSheet), findsOneWidget);
+    expect(app.sent('POST', (p) => p == '/v1/drafts'), hasLength(1));
+  });
+
+  testWidgets('with your own key added, drafting carries on at no charge (K6)', (tester) async {
+    final app = AppHarness();
+    spendAll(app);
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    expect(find.byType(OutOfCreditsSheet), findsOneWidget);
+    final ledger = app.backend.data.account.ledgerOf(FakeAuthState.demoUserId).length;
+
+    await addKeyInSheet(tester);
+    expect(find.byType(OutOfCreditsSheet), findsNothing);
+    expect(find.text(l10n.oocKeySavedRetrying), findsOneWidget);
+    final drafts = app.sent('POST', (p) => p == '/v1/drafts');
+    expect(drafts, hasLength(2));
+    expect(drafts.first.usesOwnKey, isFalse);
+    expect(drafts.last.usesOwnKey, isTrue);
+    expect(drafts.last.json, drafts.first.json);
+    expect(find.text(l10n.reviewTitle), findsOneWidget);
+    // Drafting on the player's own key spends nothing.
+    expect(app.backend.data.account.ledgerOf(FakeAuthState.demoUserId), hasLength(ledger));
+  });
+
+  testWidgets('a change out of credits is made again on your own key (K6)', (tester) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    spendAll(app);
+
+    const line = 'Three factions want the same thing, and only one of them knows you exist.';
+    await tapAndSettle(tester, find.text(line), frames: 6);
+    await tester.enterText(inSheet(find.byType(TextField)), 'Four factions, and all of them know.');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+    expect(find.byType(OutOfCreditsSheet), findsOneWidget);
+
+    await addKeyInSheet(tester);
+    final patches = app.sent('PATCH', (p) => p.startsWith('/v1/drafts/'));
+    expect(patches, hasLength(2));
+    expect(patches.last.usesOwnKey, isTrue);
+    expect(patches.last.json, patches.first.json);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text(l10n.reviewWorldRedrafted), findsOneWidget);
+    expect(find.text('Four factions, and all of them know.'), findsOneWidget);
   });
 
   const realPerson =

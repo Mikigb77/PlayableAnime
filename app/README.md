@@ -127,7 +127,9 @@ assets/
   router follows the session. `fieldErrors` turns a `validation_error` into a message per field.
 - **Out of credits:** on a `402 out_of_credits`, call `showOutOfCreditsSheet(context, error)`. It
   shows the balance, says top-ups are coming soon and offers the player's own key; it answers
-  `OutOfCreditsOutcome.keyAdded` when a key was saved, so the caller can retry the turn.
+  `OutOfCreditsOutcome.keyAdded` when a key was saved, so the caller can retry the turn. The
+  create flow's `offerOwnKey(context, error)` does both: it opens the sheet only for that error and
+  answers true when the player added a key.
 - **The account** is `meProvider` (`GET /v1/me`, refreshed when the Account tab shows) and
   `creditsHistoryProvider`; `formatCredits` writes an amount the way the app shows it (50¢, $1.20).
 - **The privacy policy** is `app/assets/legal/privacy_en.md`, everything in `docs/PRIVACY.md` from

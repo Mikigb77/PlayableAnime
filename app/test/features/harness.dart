@@ -28,9 +28,16 @@ class AppHarness {
   final FakeBackend backend;
   final store = MemorySessionStore();
 
-  /// Makes the demo account an adult's or a teen's (F8), before sign-in.
-  set maxRating(String rating) =>
-      backend.data.auth.users[FakeAuthState.demoUserId]!['max_rating'] = rating;
+  /// Makes the demo account an adult's or a teen's (F8), before sign-in: the limit follows the
+  /// birth date, as on the server.
+  set maxRating(String rating) {
+    final now = backend.now();
+    final age = rating == 'mature' ? 30 : 14;
+    final born = DateTime.utc(now.year - age, now.month, now.day);
+    backend.data.auth.users[FakeAuthState.demoUserId]!['birth_date'] = born
+        .toIso8601String()
+        .substring(0, 10);
+  }
 
   Future<void> signIn() async {
     final api = ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend);

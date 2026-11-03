@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_error_text.dart';
 import '../../core/l10n.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import '../account/account_repository.dart';
+import '../account/out_of_credits_sheet.dart';
 import 'draft.dart';
 
 /// The highest rating the signed-in account may choose (F8). An account under 17 gets Teen only,
-/// and the server lifts the limit on the 17th birthday; the session's user follows it at every
-/// token refresh. Without a known limit, Teen.
-final maxRatingProvider = Provider<Rating>(
-  (ref) => Rating.fromWire(ref.watch(sessionProvider).session?.user['max_rating']),
-);
+/// and the server lifts the limit on the 17th birthday. The account as `GET /v1/me` last read it
+/// decides, and the session's copy of the user until then. Without a known limit, Teen.
+final maxRatingProvider = Provider<Rating>((ref) {
+  if (ref.watch(meProvider).value case final me?) {
+    return me.matureAllowed ? Rating.mature : Rating.teen;
+  }
+  return Rating.fromWire(ref.watch(sessionProvider).session?.user['max_rating']);
+});
+
+/// Offers the out-of-credits sheet (K2) when [error] is `402 out_of_credits`, and says whether the
+/// player added their own key there, so the caller tries again on it (K6). The caller tries
+/// again itself, so the note says so ([retrying]).
+Future<bool> offerOwnKey(BuildContext context, Object? error, {bool retrying = true}) async {
+  if (error is! ApiException || error.code != ApiErrorCode.outOfCredits || !context.mounted) {
+    return false;
+  }
+  final added = await showOutOfCreditsSheet(context, error) == OutOfCreditsOutcome.keyAdded;
+  if (added && retrying && context.mounted) {
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(context.l10n.oocKeySavedRetrying)));
+  }
+  return added;
+}
 
 extension DraftChoiceLabels on AppLocalizations {
   String rating(Rating rating) => switch (rating) {
@@ -357,13 +377,16 @@ String? _realPerson(Object error) {
   return null;
 }
 
-/// A failure in the player's words, in place, with what to do next (T7). Out of credits points
-/// to Account, where the player can add their own key; a real person named (G12) shows the
-/// server's message, which says who.
+/// A failure in the player's words, in place, with what to do next (T7). Out of credits opens
+/// the sheet again, where the player can add their own key and carry on ([onKeyAdded]); a real
+/// person named (G12) shows the server's message, which says who.
 class InlineError extends StatelessWidget {
-  const InlineError(this.error, {super.key});
+  const InlineError(this.error, {super.key, this.onKeyAdded});
 
   final Object error;
+
+  /// Tries the failed request again once the player added their own key.
+  final VoidCallback? onKeyAdded;
 
   @override
   Widget build(BuildContext context) {
@@ -408,9 +431,13 @@ class InlineError extends StatelessWidget {
                           padding: EdgeInsets.zero,
                           foregroundColor: scheme.onErrorContainer,
                         ),
-                        // Pushed, so the premise or the draft is still here after a top-up.
-                        onPressed: () => context.push('/account'),
-                        child: Text(context.l10n.goToAccount),
+                        onPressed: () async {
+                          final retry = onKeyAdded;
+                          if (await offerOwnKey(context, error, retrying: retry != null)) {
+                            retry?.call();
+                          }
+                        },
+                        child: Text(context.l10n.oocCarryOn),
                       ),
                     ),
                 ],
