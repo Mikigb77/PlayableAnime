@@ -196,15 +196,29 @@ the clock and the visibility filter.
   class, reason in the world's words, roll record, result, costs, duration; where a plan stopped;
   proposed deeds; rulings settled; items made canon); `DirectorPlan` (event, callbacks, picture
   decision M1); `StateDelta` (what the narrator proposes, replacing `legacy`'s `StateUpdate`).
-- **`engine/pipeline.py`:** the functions the graph calls, with trivial default bodies that WS9,
-  WS10 and WS11 replace: `catch_up(state, until)`, `resolve(state, intent, rng)`,
-  `record_consequences(state, resolution)`, `direct(state, resolution)`. A seeded RNG keyed by story,
-  timeline, turn and step (A3).
-- **PR 2:** `apply_delta` with the C1 invariants (confirmed and presumed deaths, destroyed factions
-  and ruined places change only through a recorded cause, bounds, no nameless characters, fixed rules
-  never change); in-world time arithmetic, duration bounds per action kind, and advancing the clock
-  through pending events in time order, stopping at the first that needs the player (W10); personal
-  clocks (W10a); time labels ("+8 h", the world's calendar); the C6 projection that becomes
+- **`engine/pipeline.py`:** the functions the graph calls, with default bodies that WS9, WS10 and
+  WS11 replace. `engine/pipeline.py` is the source of truth for the signatures. Every seam takes a
+  `TurnContext` (story id, turn, settings, rating, content preferences) and the turn's `SeededRng`
+  (A3), keyed by story, timeline and turn, from which each seam derives child streams with stable
+  labels:
+  - `catch_up(state, until_s, ctx, rng) -> TimePassage` (WS10)
+  - `resolve(state, intent, ctx, rng) -> Resolution` (WS9)
+  - `play_out(state, resolution, ctx, rng) -> PlayOut` (WS2): the steps happen in order on
+    in-world time; the world catches up to each step's end through `catch_up`, and an event that
+    needs the player cuts the plan short; each step's `effects` apply as the engine's, then
+    `record_consequences` runs
+  - `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, once per finished
+    step (WS10)
+  - `apply_event(state, event, ctx, rng) -> WorldState`, once per pending event that falls due
+    (WS10)
+  - `direct(state, resolution, ctx, rng) -> DirectorPlan` (WS11)
+- **PR 2:** `engine.apply.apply_delta(state, delta, ctx, *, source) -> Applied` with the C1
+  invariants (confirmed and presumed deaths, destroyed factions and ruined places change only
+  through a recorded cause, bounds, no nameless characters, fixed rules never change), and
+  `engine.invariants.check_transition(before, after)` for any two states;
+  `engine.timekeeping.advance_clock`, which moves the clock through pending events in time order and
+  stops at the first that needs the player (W10); personal clocks (W10a); `engine.labels` for time
+  labels ("+8 h", the world's calendar); and `engine.visibility`, the C6 projection behind
   `MemoryView` and `StatusView`.
 - **Done when** every invariant and the clock have unit tests, and the models round-trip through
   JSON (Django stores the state as JSONB).
@@ -394,7 +408,7 @@ and slow, local reversal), A4, G19, G20, N4.
 
 **Requirements:** W1 to W8, W11, W12, W13, W15, W15a, E2 (advancing), E5, K8 (bounded tick).
 
-**Owns:** `backend/engine/world/`, the `catch_up` and `record_consequences` seams.
+**Owns:** `backend/engine/world/`, the `catch_up`, `record_consequences` and `apply_event` seams.
 
 - Deeds from resolutions with severity by the world's norms and witnesses from who could perceive
   them (W1, W11, W12); rumors that spread over in-world time along travel times and lose accuracy

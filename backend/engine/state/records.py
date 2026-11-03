@@ -74,11 +74,18 @@ class StatusChange(EngineModel):
     """One entry in the status history of a character, faction or place."""
 
     status: str
+    from_status: str | None = Field(default=None, description="The status it changed from.")
+    presumed: bool = Field(
+        default=False, description="For a death: presumed, not confirmed, when it was recorded."
+    )
     turn: int = Field(ge=0)
     world_s: WorldSeconds
     timeline_id: str = MAIN_TIMELINE
     cause: Cause | None = None
     note: str = ""
+    known_by: list[str] = Field(
+        default_factory=list, description="Who knows of the change, such as a death (C6)."
+    )
 
 
 class Visibility(StrEnum):
@@ -127,6 +134,13 @@ class Deed(EngineModel):
     severity: Severity = 1
     visibility: Visibility = Visibility.SECRET
     witness_ids: list[str] = Field(default_factory=list)
+    unnoticed_witness_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Witnesses the actor didn't notice, such as a hidden watcher or someone immune to a"
+            " time stop. They spread word as usual (W2), but the actor doesn't know of them (C6)."
+        ),
+    )
     traces: list[Trace] = Field(default_factory=list)
     in_stopped_time: bool = False
     discovered: bool = False

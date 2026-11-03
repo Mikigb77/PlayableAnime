@@ -54,6 +54,10 @@ class ProposedDeed(EngineModel):
         default_factory=list,
         description="Who perceived it. In stopped time, only those immune to the stop (W10a).",
     )
+    unnoticed_witness_ids: list[str] = Field(
+        default_factory=list,
+        description="Witnesses the actor didn't notice (C6). In stopped time, all of them.",
+    )
     traces: list[Trace] = Field(default_factory=list)
     in_stopped_time: bool = False
 
