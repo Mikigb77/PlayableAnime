@@ -441,8 +441,8 @@ app                   shows the narration, then asks for the picture in its own 
   `post_delete` receiver removes each file once the transaction commits, so a delete that rolls
   back keeps them. The account export (WS6's `account_exporting` signal) lists every ready picture
   with a fresh URL.
-- **Showing pictures elsewhere.** `media.lookups` gives the story, library and memory endpoints
-  `Scene.image`, portrait URLs and covers in one query each, and the export list.
+- **Showing pictures elsewhere.** `media.lookups` gives the story, library, memory and status
+  endpoints `Scene.image`, portrait, place and cover URLs in one query each, and the export list.
 - **Logs (T5, T6).** Each picture drawn or skipped writes one `media.pictures` line with a
   `picture` object: image id, kind, version, status, skip reason, trigger, model, cost, payer, BYOK
   and fallback, references, block categories, latency and size. The prompt and the key never

@@ -1,5 +1,6 @@
 """Fakes for the picture tests: a scripted picture model, a recording credit meter, and a story
-with scenes. Files go to a fresh folder per test."""
+with scenes, owned by `story_owner()` unless a test says otherwise. Files go to a fresh folder per
+test."""
 
 import asyncio
 import threading
@@ -13,6 +14,7 @@ from media import billing, drawing, storage
 from media.drawing import Drawn
 from media.models import Payer
 from stories.models import Engine, Scene, SceneKind, Story
+from tests.conftest import ADULT_BIRTH_DATE
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
@@ -124,7 +126,20 @@ def picture_files(settings, tmp_path):
     storage._url_cache.clear()
 
 
+def story_owner():
+    """The adult player who owns a test story unless the test names another owner."""
+    from accounts.models import User
+
+    user, _ = User.objects.get_or_create(
+        email="painter@example.com",
+        defaults={"birth_date": ADULT_BIRTH_DATE, "display_name": "painter"},
+    )
+    return user
+
+
 def make_story(**fields) -> Story:
+    if "owner" not in fields:
+        fields["owner"] = story_owner()
     defaults = {
         "title": "The Jade Sect",
         "premise": "A sect disciple with a forbidden technique.",

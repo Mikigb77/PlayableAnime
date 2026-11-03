@@ -1,6 +1,8 @@
-"""Picture URLs for the endpoints that show scenes, portraits, covers and the export.
+"""Picture URLs for the endpoints that show scenes, portraits, places, covers and the export.
 
-The story, library, memory and export endpoints (WS3, WS6, WS15) call these instead of reading
+The story, library, memory, status and export endpoints (WS3, WS6, WS15) and the views that leave
+picture URLs empty for the API to fill (`engine.visibility`, `Scene.portraits`) call these instead
+of reading
 the media tables themselves. Each call is one query, and the URLs it needs are signed together
 (`media.storage.signed_urls`). Signing can call IAM, so call these off the event loop
 (`sync_to_async`), and pass the request to make local development's URLs absolute.
@@ -57,18 +59,24 @@ def scene_images(
 def portrait_urls(
     story: Story | Any, character_ids: Iterable[str], *, request: HttpRequest | None = None
 ) -> dict[str, SignedUrl]:
-    """The current portrait of each character that has one ready (M4, M5), by character id."""
-    portraits = Image.objects.filter(
-        story=story,
-        kind=ImageKind.PORTRAIT,
-        subject__in=list(dict.fromkeys(character_ids)),
-        status=ImageStatus.READY,
-    ).order_by("subject", "-version")
-    latest: dict[str, Image] = {}
-    for portrait in portraits:
-        latest.setdefault(portrait.subject, portrait)
-    urls = _urls(latest.values(), request)
-    return {subject: urls[image.pk] for subject, image in latest.items() if image.pk in urls}
+    """The current portrait of each character that has one ready (M4, M5), by character id.
+    A character with none is left out."""
+    return _subject_urls(story, ImageKind.PORTRAIT, character_ids, request)
+
+
+def place_urls(
+    story: Story | Any, place_ids: Iterable[str], *, request: HttpRequest | None = None
+) -> dict[str, SignedUrl]:
+    """The current picture of each place that has one ready (M4, M5), by place id. A place with
+    none is left out."""
+    return _subject_urls(story, ImageKind.PLACE, place_ids, request)
+
+
+def place_url(
+    story: Story | Any, place_id: str, *, request: HttpRequest | None = None
+) -> SignedUrl | None:
+    """One place's current picture, or None when it has none ready."""
+    return place_urls(story, [place_id], request=request).get(place_id)
 
 
 def cover_urls(
@@ -108,6 +116,23 @@ def export_pictures(user, *, request: HttpRequest | None = None) -> list[dict[st
         for image in images
         if image.pk in urls
     ]
+
+
+def _subject_urls(
+    story: Story | Any, kind: str, subject_ids: Iterable[str], request: HttpRequest | None
+) -> dict[str, SignedUrl]:
+    """The latest ready version of each subject's picture of `kind`, signed, by subject id."""
+    pictures = Image.objects.filter(
+        story=story,
+        kind=kind,
+        subject__in=list(dict.fromkeys(subject_ids)),
+        status=ImageStatus.READY,
+    ).order_by("subject", "-version")
+    latest: dict[str, Image] = {}
+    for picture in pictures:
+        latest.setdefault(picture.subject, picture)
+    urls = _urls(latest.values(), request)
+    return {subject: urls[image.pk] for subject, image in latest.items() if image.pk in urls}
 
 
 def _urls(images: Iterable[Image], request: HttpRequest | None) -> dict[Any, SignedUrl]:

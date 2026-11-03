@@ -1,7 +1,7 @@
 """The picture endpoints: drawn and charged at most once, `pending` while drawing, `skipped`
 quietly on a failure, a block or no credits (M2, M3, M7)."""
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.test import Client
@@ -16,14 +16,16 @@ from media.plans import plan_picture
 from media.prompts import Brief, Figure
 from media.service import LEASE, MAX_ATTEMPTS
 from media.storage import get_storage
-from tests.media.conftest import PNG, make_scene, make_story
+from tests.conftest import auth_headers
+from tests.media.conftest import PNG, make_scene, make_story, story_owner
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def client() -> Client:
-    return Client()
+    """Signed in as the player who owns the test stories."""
+    return Client(headers=auth_headers(story_owner()))
 
 
 def _image(client: Client, story, turn: int, **headers):
@@ -473,20 +475,29 @@ def test_someone_elses_story_is_forbidden(client):
     assert Image.objects.get().status == ImageStatus.PLANNED
 
 
-def test_the_owner_of_a_story_may_ask_for_its_pictures():
-    from asgiref.sync import async_to_sync
-    from django.test import RequestFactory
+def test_a_story_above_the_accounts_rating_limit_is_forbidden(painters, meter):
+    fifteen = date.today() - timedelta(days=15 * 366)
+    teen = User.objects.create_user("kai@example.com", birth_date=fifteen)
+    story = make_story(owner=teen, rating="mature")
+    _planned_scene(story)
 
-    from media.api import owned_story
+    response = _image(Client(headers=auth_headers(teen)), story, 2)
 
-    rosa = User.objects.create_user("rosa@example.com")
-    tonio = User.objects.create_user("tonio@example.com")
-    story = make_story(owner=rosa)
-    request = RequestFactory().post("/")
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+    assert painters.drawings == 0
 
-    request.auth = rosa
-    assert async_to_sync(owned_story)(request, str(story.id)) == story
-    request.auth = tonio
-    with pytest.raises(ApiError) as forbidden:
-        async_to_sync(owned_story)(request, str(story.id))
-    assert forbidden.value.code == ErrorCode.FORBIDDEN
+
+@pytest.mark.parametrize(
+    "method, path",
+    [("post", "scenes/2/image"), ("post", "scenes/2/illustrate"), ("get", "images/{image}")],
+)
+def test_pictures_need_a_signed_in_player(painters, meter, method, path):
+    story = make_story()
+    image = _planned_scene(story).picture.image
+
+    response = getattr(Client(), method)(f"/v1/stories/{story.id}/" + path.format(image=image.id))
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "unauthenticated"
+    assert painters.drawings == 0

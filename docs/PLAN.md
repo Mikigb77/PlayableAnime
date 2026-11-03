@@ -372,12 +372,14 @@ screens.
     subject_name=, subject_appearance=, figures=(Figure(id, name, appearance), ...)),
     redraw=)` after saving the scene, in the turn's transaction. Build `Scene.image`,
     `Scene.portraits` and `StorySummary.cover_url` with `media.lookups.scene_images`,
-    `portrait_urls` and `cover_urls`.
+    `portrait_urls` and `cover_urls`, and fill the memory and status views' picture URLs
+    (`engine.visibility`) with `portrait_urls(story, character_ids)` and
+    `place_urls(story, place_ids)` or `place_url(story, place_id)`.
   - **WS7 (credits):** replace the three bodies in `media/billing.py` (`start`, `charge`,
     `release`) with the meter's `astart`, `charge_image` and `arelease`.
-  - **WS6 (accounts):** deletion needs nothing (files go with the cascade); the export receiver
-    connects to `accounts.signals.account_exporting` when it exists. Point
-    `media.api.owned_story` at `stories.api.load_owned_story` once it lands.
+  - **WS6 (accounts):** deletion needs nothing (files go with the cascade, after the commit); the
+    export adds `images` through `accounts.signals.account_exporting`. The picture endpoints use
+    `stories.access.owned_story`, so the rating limit (F8) applies to pictures too.
   - **WS11 (director):** the picture decision's `subject_id` is the character or place id; a
     portrait redraw for a permanent change (M5, G17) is a `PictureDecision` the turn plans with
     `redraw=True`.

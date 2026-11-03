@@ -12,9 +12,16 @@ from media.models import Image, ImageStatus, Payer
 from media.plans import plan_picture
 from media.prompts import Brief
 from media.storage import get_storage
-from tests.media.conftest import make_scene, make_story
+from tests.conftest import auth_headers
+from tests.media.conftest import make_scene, make_story, story_owner
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+@pytest.fixture
+def headers() -> dict[str, str]:
+    """Signed in as the player who owns the test stories."""
+    return auth_headers(story_owner())
 
 
 def _in_thread(target):
@@ -31,18 +38,18 @@ def _in_thread(target):
     return thread, results
 
 
-def test_requests_that_arrive_while_a_picture_is_drawn_get_pending(painters, meter):
+def test_requests_that_arrive_while_a_picture_is_drawn_get_pending(painters, meter, headers):
     story = make_story()
     plan_picture(make_scene(story, 2), kind="scene", trigger="fight_start", brief=Brief())
     url = f"/v1/stories/{story.id}/scenes/2/image"
     painters.ours.gate = threading.Event()
 
-    drawer, drawn = _in_thread(lambda: Client().post(url).json())
+    drawer, drawn = _in_thread(lambda: Client(headers=headers).post(url).json())
     assert painters.ours.started.wait(10)
-    waiting = [Client().post(url).json() for _ in range(3)]
+    waiting = [Client(headers=headers).post(url).json() for _ in range(3)]
     painters.ours.gate.set()
     drawer.join(10)
-    after = Client().post(url).json()
+    after = Client(headers=headers).post(url).json()
 
     assert [body["status"] for body in waiting] == ["pending"] * 3
     assert drawn[0]["status"] == after["status"] == "ready"
@@ -50,7 +57,7 @@ def test_requests_that_arrive_while_a_picture_is_drawn_get_pending(painters, met
     assert (len(meter.started), len(meter.charged), meter.released) == (1, 1, [])
 
 
-def test_two_requests_at_the_same_instant_draw_once(painters, meter):
+def test_two_requests_at_the_same_instant_draw_once(painters, meter, headers):
     story = make_story()
     plan_picture(make_scene(story, 2), kind="scene", trigger="fight_start", brief=Brief())
     url = f"/v1/stories/{story.id}/scenes/2/image"
@@ -59,7 +66,7 @@ def test_two_requests_at_the_same_instant_draw_once(painters, meter):
 
     def ask():
         start.wait(10)
-        return Client().post(url).json()["status"]
+        return Client(headers=headers).post(url).json()["status"]
 
     threads = [_in_thread(ask) for _ in range(2)]
     assert painters.ours.started.wait(10)
@@ -76,7 +83,7 @@ def test_two_requests_at_the_same_instant_draw_once(painters, meter):
     assert len(meter.charged) == 1
 
 
-def test_a_slow_request_that_lost_its_claim_keeps_the_winners_picture(painters, meter):
+def test_a_slow_request_that_lost_its_claim_keeps_the_winners_picture(painters, meter, headers):
     """A request whose claim ran out finishes after another request made the picture: it
     charges nothing, releases its hold and deletes its own file."""
     story = make_story()
@@ -84,7 +91,7 @@ def test_a_slow_request_that_lost_its_claim_keeps_the_winners_picture(painters, 
     url = f"/v1/stories/{story.id}/scenes/2/image"
     painters.ours.gate = threading.Event()
 
-    slow, result = _in_thread(lambda: Client().post(url).json())
+    slow, result = _in_thread(lambda: Client(headers=headers).post(url).json())
     assert painters.ours.started.wait(10)
     get_storage().save("stories/winner.png", b"winner", "image/png")
     Image.objects.filter(pk=image.pk).update(
@@ -99,7 +106,9 @@ def test_a_slow_request_that_lost_its_claim_keeps_the_winners_picture(painters, 
     assert not get_storage().exists(f"stories/{story.id}/{image.id}.png")
 
 
-def test_a_slow_drawing_still_counts_when_the_picture_was_put_back_meanwhile(painters, meter):
+def test_a_slow_drawing_still_counts_when_the_picture_was_put_back_meanwhile(
+    painters, meter, headers
+):
     """A request whose claim ran out finishes while nobody else is drawing (another request took
     over and was rate limited, which puts the picture back): the finished drawing is kept."""
     story = make_story()
@@ -107,7 +116,7 @@ def test_a_slow_drawing_still_counts_when_the_picture_was_put_back_meanwhile(pai
     url = f"/v1/stories/{story.id}/scenes/2/image"
     painters.ours.gate = threading.Event()
 
-    slow, result = _in_thread(lambda: Client().post(url).json())
+    slow, result = _in_thread(lambda: Client(headers=headers).post(url).json())
     assert painters.ours.started.wait(10)
     Image.objects.filter(pk=image.pk).update(status=ImageStatus.PLANNED, claim=None)
     painters.ours.gate.set()
@@ -118,13 +127,13 @@ def test_a_slow_drawing_still_counts_when_the_picture_was_put_back_meanwhile(pai
     assert (len(meter.charged), meter.released) == (1, [])
 
 
-def test_a_story_deleted_while_its_picture_is_drawn_leaves_no_file(painters, meter):
+def test_a_story_deleted_while_its_picture_is_drawn_leaves_no_file(painters, meter, headers):
     story = make_story()
     image = plan_picture(make_scene(story, 2), kind="scene", trigger="t", brief=Brief()).image
     url = f"/v1/stories/{story.id}/scenes/2/image"
     painters.ours.gate = threading.Event()
 
-    slow, result = _in_thread(lambda: Client().post(url).json())
+    slow, result = _in_thread(lambda: Client(headers=headers).post(url).json())
     assert painters.ours.started.wait(10)
     story.delete()
     painters.ours.gate.set()

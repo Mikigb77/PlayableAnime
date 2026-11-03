@@ -121,7 +121,8 @@ charge so T5's numbers stay honest.
 - **`DELETE /v1/me`** deletes the account and everything it owns at once and for good: stories,
   scenes, signed-in devices and pictures. There is no undo, so the app confirms first.
 - **`GET /v1/me/export`** is a JSON download (`Content-Disposition: attachment`). Its stories are
-  the export shape below, oldest first, and it adds `images` once pictures exist (M4). The world
+  the export shape below, oldest first, and `images` lists every ready picture with a fresh URL,
+  and the turns that show it (M4). A scene's own `image` has no URL; use `images`. The world
   state isn't exported, because it holds truths the player hasn't learned (C6, N7).
 
 ```text
@@ -299,8 +300,9 @@ Picture {status: "ready"|"pending"|"skipped",
 - With the player's own key (`X-LLM-*` headers) the picture is drawn on their key at no charge. A
   key that can't draw pictures (rejected, or a free-tier Gemini key, which has no image models)
   falls back to credits; a server error on their key skips the picture instead (M7).
-- Errors: `404 not_found` for an unknown story, scene or picture, `403 forbidden` for another
-  player's story, `400 validation_error` for an unsupported `X-LLM-Provider`, and `429
+- Errors: `401 unauthenticated` without a valid access token, `404 not_found` for an unknown
+  story, scene or picture, `403 forbidden` for another player's story or one above the account's
+  rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, and `429
   rate_limited` from the credit meter, after which the picture is still planned.
 
 ### Memory and status (C6, G16)

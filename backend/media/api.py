@@ -16,7 +16,8 @@ from ninja import Router, Schema
 from lucid.errors import ApiError, ErrorCode, field_error
 from media.models import Image
 from media.service import PictureResult, result_for, scene_picture
-from stories.models import Scene, Story
+from stories.access import owned_story
+from stories.models import Scene
 
 media_router = Router(tags=["pictures"])
 
@@ -63,32 +64,12 @@ async def _scene_picture(
     result = await scene_picture(
         story,
         scene,
-        user=caller(request),
+        user=request.auth,
         illustrate=illustrate,
         byok_provider=provider,
         byok_key=key,
     )
     return _out(request, result)
-
-
-def caller(request: HttpRequest):
-    """The signed-in user (WS6 sets `request.auth`), or None before sign-in exists."""
-    from accounts.models import User
-
-    user = getattr(request, "auth", None)
-    return user if isinstance(user, User) else None
-
-
-async def owned_story(request: HttpRequest, story_id: str) -> Story:
-    """The story, if the caller may see it: 404 when it doesn't exist, 403 when it belongs to
-    someone else (S8). A story from before sign-in has no owner."""
-    story = await Story.objects.filter(pk=_uuid(story_id)).afirst()
-    if story is None:
-        raise ApiError(ErrorCode.NOT_FOUND, "Story not found.")
-    user = caller(request)
-    if story.owner_id is not None and (user is None or user.pk != story.owner_id):
-        raise ApiError(ErrorCode.FORBIDDEN)
-    return story
 
 
 def _byok(request: HttpRequest) -> tuple[str | None, str | None]:
@@ -106,7 +87,7 @@ def _byok(request: HttpRequest) -> tuple[str | None, str | None]:
     return provider, (key or "").strip() or None
 
 
-def _uuid(value: str, what: str = "Story") -> uuid.UUID:
+def _uuid(value: str, what: str) -> uuid.UUID:
     try:
         return uuid.UUID(value)
     except ValueError:

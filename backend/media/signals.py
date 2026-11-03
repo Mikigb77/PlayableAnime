@@ -2,7 +2,8 @@
 
 Deleting a story or an account cascades to its `Image` rows, and each deleted row's file is
 removed from storage once the transaction commits, so a delete that rolls back never loses a
-picture. This covers WS6's account deletion with no receiver of its own.
+picture. That covers `accounts.services.delete_account` too, which deletes the user inside a
+transaction, so pictures need no `account_deleting` receiver.
 """
 
 import logging
@@ -36,18 +37,14 @@ def delete_file(sender, instance: Image, **kwargs) -> None:
 
 
 def export_for(sender, user, **kwargs) -> dict:
-    """WS6's account export: the user's pictures, with fresh signed URLs."""
+    """`account_exporting`'s receiver: the user's pictures, with fresh signed URLs."""
     from media.lookups import export_pictures
 
     return {"images": export_pictures(user)}
 
 
 def connect() -> None:
+    from accounts.signals import account_exporting
+
     post_delete.connect(delete_file, sender=Image, dispatch_uid="media.delete_file")
-    try:
-        from accounts import signals as account_signals
-    except ImportError:  # WS6's signals haven't landed yet
-        return
-    exporting = getattr(account_signals, "account_exporting", None)
-    if exporting is not None:
-        exporting.connect(export_for, dispatch_uid="media.export_for")
+    account_exporting.connect(export_for, dispatch_uid="media.export_for")

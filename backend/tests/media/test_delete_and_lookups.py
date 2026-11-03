@@ -9,8 +9,16 @@ from asgiref.sync import async_to_sync
 from django.db import transaction
 
 from accounts.models import User
+from accounts.services import delete_account, export_account
 from media import signals
-from media.lookups import cover_urls, export_pictures, portrait_urls, scene_images
+from media.lookups import (
+    cover_urls,
+    export_pictures,
+    place_url,
+    place_urls,
+    portrait_urls,
+    scene_images,
+)
 from media.models import Image, ImageStatus, SkipReason
 from media.plans import plan_picture
 from media.prompts import Brief
@@ -79,7 +87,7 @@ def test_deleting_an_account_deletes_every_picture_of_its_stories(
         keys.append(_draw(story, 2).storage_key)
 
     with django_capture_on_commit_callbacks(execute=True):
-        rosa.delete()
+        delete_account(rosa)
 
     assert not any(get_storage().exists(key) for key in keys)
     assert get_storage().exists(kept)
@@ -150,6 +158,23 @@ def test_a_characters_current_portrait_is_its_latest_ready_one(painters):
     assert second.storage_key in after["rosa"].url
 
 
+def test_a_places_current_picture_is_its_latest_ready_one(painters):
+    story = make_story()
+    _plan(story, 1, "place", "harbor")
+    harbor = _draw(story, 1)
+    _plan(story, 2, "portrait", "harbor")  # a character who shares the id is not the place
+    _draw(story, 2)
+    _plan(story, 3, "place", "tower")  # planned, never drawn
+
+    urls = place_urls(story, ["harbor", "tower", "nowhere"])
+
+    assert list(urls) == ["harbor"]
+    assert harbor.storage_key in urls["harbor"].url
+    assert place_url(story, "harbor") == urls["harbor"]
+    assert place_url(story, "tower") is None
+    assert place_url(make_story(), "harbor") is None
+
+
 def test_covers_are_listed_per_story(painters):
     with_cover = make_story()
     without = make_story()
@@ -174,13 +199,13 @@ def test_the_export_holds_every_ready_picture_of_the_users_stories(painters):
     _plan(make_story(), 2)
     _draw(Image.objects.exclude(story=story).get().story, 2)
 
-    exported = signals.export_for(None, user=rosa)["images"]
+    exported = export_account(rosa, {})["images"]
 
     assert [(p["id"], p["kind"], p["turns"]) for p in exported] == [
         (str(portrait.id), "portrait", [1, 4])
     ]
     assert exported[0]["url"].startswith("/media/")
-    assert exported == export_pictures(rosa)
+    assert exported == export_pictures(rosa) == signals.export_for(None, user=rosa)["images"]
 
 
 def test_loading_the_app_doesnt_load_the_cloud_storage_client():

@@ -40,8 +40,9 @@ class Ticket:
 async def start(user, *, story_id: uuid.UUID, image_id: uuid.UUID) -> Ticket:
     """Holds one picture's estimated cost for `user`, before drawing on our account.
 
-    `user` is None for a story from before sign-in. WS7: `await billing.meter.astart(user,
-    billing.meter.IMAGE, byok=False)`, turning its `out_of_credits` into `NoCredits`.
+    `user` is the signed-in player (None only in tests that call the service directly).
+    WS7: `await billing.meter.astart(user, billing.meter.IMAGE, byok=False)`, turning its
+    `out_of_credits` into `NoCredits`.
     """
     if user is not None and getattr(user, "is_owner", False):
         return Ticket(Payer.OWNER)
