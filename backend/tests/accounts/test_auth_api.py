@@ -99,7 +99,8 @@ def test_a_new_google_account_is_created_verified_and_signed_in(google_tokens):
         "role": "player",
         "max_rating": "mature",
         "content_prefs": {"gore": "medium", "romance": True, "dark_themes": True},
-        "credits": {"balance_cents": 0, "unlimited": False},
+        # A verified account starts with K1's $0.50.
+        "credits": {"balance_cents": 50, "unlimited": False},
     }
     user = User.objects.get()
     assert (user.google_sub, user.email_verified, user.birth_date) == (

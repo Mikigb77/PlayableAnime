@@ -4,13 +4,11 @@ from datetime import datetime
 from typing import Literal
 
 from asgiref.sync import sync_to_async
-from django.contrib.auth import get_user_model
 from ninja import Query, Router, Schema
 from pydantic import Field
 
 from billing import credits
 from billing.models import LedgerEntry
-from lucid.errors import ApiError, ErrorCode
 
 credits_router = Router(tags=["account"])
 
@@ -36,21 +34,10 @@ class CreditsQuery(Schema):
     limit: int = Field(default=50, ge=1, le=200)
 
 
-async def caller(request):
-    """The signed-in user. WS6's bearer auth puts it in `request.auth`; until that lands, a
-    Django session (the admin's) is accepted."""
-    user = getattr(request, "auth", None)
-    if not isinstance(user, get_user_model()):
-        user = await request.auser()
-    if not user.is_authenticated:
-        raise ApiError(ErrorCode.UNAUTHENTICATED)
-    return user
-
-
 @credits_router.get("", response=CreditsOut)
 async def get_credits(request, query: Query[CreditsQuery]) -> CreditsOut:
-    user = await caller(request)
-    return await sync_to_async(_credits)(user, query.limit)
+    """The signed-in user's own credits: the API's bearer auth puts them in `request.auth`."""
+    return await sync_to_async(_credits)(request.auth, query.limit)
 
 
 def _credits(user, limit: int) -> CreditsOut:

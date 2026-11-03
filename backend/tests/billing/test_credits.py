@@ -37,31 +37,30 @@ def test_an_unverified_email_account_waits_for_the_starter_credit(make_user):
     assert _balance(user) == 0
     assert not LedgerEntry.objects.filter(user=user).exists()
 
-    # Linking a Google sign-in verifies the email, so the starter credit arrives then, once.
-    user.google_sub = "google-linked"
-    user.save(update_fields=["google_sub"])
+    user.email_verified = True
+    user.save(update_fields=["email_verified"])
     user.save()
     assert _balance(user) == 50
     assert LedgerEntry.objects.filter(user=user, kind=EntryKind.STARTER).count() == 1
 
 
-def test_ws6s_email_verified_flag_grants_it_once_it_is_set(make_user, monkeypatch):
-    """WS6 adds `User.email_verified`; billing reads it when it is there."""
-    monkeypatch.setattr(User, "email_verified", False, raising=False)
+def test_a_google_sign_in_that_takes_over_an_email_account_grants_it(make_user):
+    """WS6 links Google to an existing email account with a full save."""
     user = make_user(google=False)
-    assert not credits.qualifies_for_starter(user)
-    assert _balance(user) == 0
 
-    user.email_verified = True
+    user.google_sub = "google-linked"
     user.save()
 
     assert _balance(user) == 50
 
 
-def test_a_google_account_counts_as_verified_whatever_the_flag_says(make_user, monkeypatch):
-    monkeypatch.setattr(User, "email_verified", False, raising=False)
+def test_a_google_account_counts_as_verified_whatever_the_flag_says(make_user):
+    user = make_user(google=False)
+    user.google_sub = "google-late"
+    user.save(update_fields=["google_sub"])
 
-    assert _balance(make_user(google=True)) == 50
+    assert not user.email_verified
+    assert _balance(user) == 50
 
 
 def test_saves_that_cant_verify_an_account_skip_the_check(make_user, django_assert_num_queries):

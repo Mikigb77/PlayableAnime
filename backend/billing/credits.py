@@ -33,12 +33,12 @@ def qualifies_for_starter(user) -> bool:
     """Whether the account gets K1's starter credit now.
 
     With the default "verified" policy only a verified account does, so throwaway emails can't
-    farm it: a Google account at once, and an email account once WS6's `email_verified` is set.
+    farm it: a Google account at once, and an email account once `email_verified` is set.
     """
     if get_config().starter_policy == StarterPolicy.ALL:
         return True
     # Google verified the email of any account that signed in with it.
-    return bool(getattr(user, "email_verified", False)) or bool(user.google_sub)
+    return user.email_verified or bool(user.google_sub)
 
 
 def locked_account(user_id, *, user=None, now: datetime | None = None) -> CreditAccount:

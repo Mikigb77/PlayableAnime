@@ -5,6 +5,7 @@ from django.test import Client
 
 from accounts.models import Role, User
 from billing.pricing import ModelCall
+from tests.conftest import auth_headers
 
 # Known numbers for every billing test, whatever the env says.
 BILLING = {
@@ -30,13 +31,14 @@ _counter = iter(range(1, 1_000_000))
 
 @pytest.fixture
 def make_user(db):
-    """A user as WS6 creates them: verified when signed up with Google."""
+    """A user as sign-in creates them: verified when signed up with Google (WS6)."""
 
     def make(*, google: bool = True, owner: bool = False, email: str | None = None) -> User:
         n = next(_counter)
         return User.objects.create_user(
             email or f"player{n}@example.com",
             google_sub=f"google-{n}" if google else None,
+            email_verified=google,
             role=Role.OWNER if owner else Role.PLAYER,
         )
 
@@ -56,12 +58,10 @@ def owner(make_user) -> User:
 
 @pytest.fixture
 def auth_client():
-    """A client signed in as `user`. Uses the Django session until WS6's bearer tokens land."""
+    """A client signed in as `user`, with a bearer token (T8)."""
 
     def signed_in(user: User) -> Client:
-        client = Client()
-        client.force_login(user)
-        return client
+        return Client(headers=auth_headers(user))
 
     return signed_in
 

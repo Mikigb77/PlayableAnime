@@ -98,8 +98,8 @@ draft or revision, a picture) is checked before it starts, in this order:
 A request that is refused counts against nothing. The real cost is charged when the request
 completes, in the same transaction as what it saved, so a turn that fails or loses a version race
 costs nothing. These checks are wired into each endpoint as it moves to this contract (the turn
-endpoint, drafting and pictures); the legacy endpoints described under Stories have no signed-in
-user yet, so they aren't metered.
+endpoint, drafting and pictures). The legacy story endpoints described under Stories aren't
+metered: the streamed turn endpoint replaces them.
 
 **Signing in.** Every auth endpoint answers `200` with a `Session`, except `logout` (`204`).
 

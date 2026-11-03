@@ -382,8 +382,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   `tests/billing/test_cost_spread.py` runs them on token budgets estimated from K8's bounds,
   priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
   same check on the turn graph's own telemetry.
-- **Not wired yet.** The legacy endpoints have no signed-in user, so nothing calls `billing.meter`
-  until the turn endpoint (WS3), pictures (WS8) and drafting (WS12) land; whichever side lands
+- **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
+  `billing.credits.summary(user)`. The legacy story endpoints aren't metered; `billing.meter` is
+  called by the turn endpoint (WS3), pictures (WS8) and drafting (WS12), and whichever side lands
   second wires the calls.
 
 ## Voice input

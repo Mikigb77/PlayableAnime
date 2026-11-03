@@ -13,6 +13,7 @@ from ninja import Field, Router, Schema, Status
 
 from accounts import google, rules, services, throttle, tokens
 from accounts.models import SignInMethod, User
+from billing import credits
 from lucid import logs
 from lucid.errors import ApiError, ErrorCode
 
@@ -83,8 +84,9 @@ class MePatch(Schema):
 
 
 def credits_for(user: User) -> dict[str, Any]:
-    """The `credits` part of `User` (K1, K7). Billing (WS7) wires the ledger balance in here."""
-    return {"balance_cents": 0, "unlimited": user.is_owner}
+    """The `credits` part of `User` (K1, K7), from the ledger. Reads the database, so call it,
+    and `user_data`, off the event loop."""
+    return credits.summary(user)
 
 
 def user_data(user: User) -> dict[str, Any]:
@@ -130,7 +132,7 @@ async def sign_in_with_google(request: HttpRequest, body: GoogleIn) -> dict[str,
     """Signs in with a Google ID token, creating the account on first use. A new account needs
     `birth_date` (F8), or the answer is `birth_date_required` and the app asks for it."""
     issued = await sync_to_async(_google)(body.id_token, body.birth_date)
-    return _session(issued)
+    return await sync_to_async(_session)(issued)
 
 
 def _register(body: RegisterIn, ip: str) -> tokens.IssuedTokens:
@@ -147,7 +149,7 @@ def _register(body: RegisterIn, ip: str) -> tokens.IssuedTokens:
 @auth_router.post("/register", response=SessionOut)
 async def register(request: HttpRequest, body: RegisterIn) -> dict[str, Any]:
     issued = await sync_to_async(_register)(body, throttle.client_ip(request))
-    return _session(issued)
+    return await sync_to_async(_session)(issued)
 
 
 def _log_in(email: str, password: str, ip: str) -> tokens.IssuedTokens:
@@ -168,14 +170,14 @@ async def log_in(request: HttpRequest, body: LoginIn) -> dict[str, Any]:
     """A wrong email or password is `unauthenticated`. Repeated failures for one email or from
     one address are `rate_limited` for a while."""
     issued = await sync_to_async(_log_in)(body.email, body.password, throttle.client_ip(request))
-    return _session(issued)
+    return await sync_to_async(_session)(issued)
 
 
 @auth_router.post("/refresh", response=SessionOut)
 async def refresh(request: HttpRequest, body: RefreshIn) -> dict[str, Any]:
     """A new access token and a new refresh token; the old refresh token is spent."""
     issued = await sync_to_async(tokens.refresh)(body.refresh_token)
-    return _session(issued)
+    return await sync_to_async(_session)(issued)
 
 
 @auth_router.post("/logout", response={204: None})
@@ -192,14 +194,14 @@ async def log_out(request: HttpRequest, body: RefreshIn) -> Status:
 
 @me_router.get("", response=UserOut)
 async def get_me(request: HttpRequest) -> dict[str, Any]:
-    return user_data(request.auth)
+    return await sync_to_async(user_data)(request.auth)
 
 
 @me_router.patch("", response=UserOut)
 async def update_me(request: HttpRequest, body: MePatch) -> dict[str, Any]:
     prefs = body.content_prefs.model_dump(exclude_none=True) if body.content_prefs else None
     user = await sync_to_async(services.update_profile)(request.auth, body.display_name, prefs)
-    return user_data(user)
+    return await sync_to_async(user_data)(user)
 
 
 @me_router.delete("", response={204: None})
@@ -213,7 +215,8 @@ async def delete_me(request: HttpRequest) -> Status:
 async def export_me(request: HttpRequest) -> JsonResponse:
     """Everything the account holds, as one JSON download (T12)."""
     user = request.auth
-    data = await sync_to_async(services.export_account)(user, user_data(user))
+    profile = await sync_to_async(user_data)(user)
+    data = await sync_to_async(services.export_account)(user, profile)
     response = JsonResponse(data, json_dumps_params={"ensure_ascii": False})
     response["Content-Disposition"] = 'attachment; filename="lucid-saga-export.json"'
     return response
