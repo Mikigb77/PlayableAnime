@@ -7,6 +7,6 @@
 - `prompts`: the house style, the world's look and the mild-in-every-rating rules (S7, M5, M6).
 - `drawing`: the picture model behind a small interface, on `graph.llm` (M8).
 - `storage`: private Cloud Storage with signed URLs, or local files in development and tests.
-- `billing`: where a picture is paid for (M7), wired to the credit ledger by WS7.
+- `billing`: where a picture is paid for (M7), through the credit meter (`billing.meter`).
 - `lookups`: picture URLs for scenes, portraits, covers and the account export.
 """

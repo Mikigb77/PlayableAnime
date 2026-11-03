@@ -10,6 +10,7 @@ from decimal import Decimal
 
 import pytest
 
+from billing.pricing import ModelCall
 from media import billing, drawing, storage
 from media.drawing import Drawn
 from media.models import Payer
@@ -47,7 +48,12 @@ class FakePictureModel:
         outcome = self.outcomes.popleft() if self.outcomes else PNG
         if isinstance(outcome, BaseException):
             raise outcome
-        return Drawn(outcome, "image/png", self.model, Decimal("0.034"), calls=("call",))
+        return Drawn(outcome, "image/png", self.model, Decimal("0.034"), calls=(self.call,))
+
+    @property
+    def call(self) -> ModelCall:
+        """The call record billing charges from, as the model layer would write it (T5)."""
+        return ModelCall(model=self.model, images=1, cost_usd=Decimal("0.034"), byok=self.byok)
 
     async def aclose(self) -> None:
         self.closed += 1
@@ -114,6 +120,13 @@ def meter(monkeypatch) -> Meter:
     monkeypatch.setattr(billing, "charge", charge)
     monkeypatch.setattr(billing, "release", release)
     return meter
+
+
+@pytest.fixture(autouse=True)
+def starter_credit_for_everyone(settings):
+    """Tests that don't fake the meter draw on real credits, and the shared `make_user` makes
+    unverified email accounts, which get no starter credit under the default policy (K1)."""
+    settings.BILLING = {**settings.BILLING, "STARTER_POLICY": "all"}
 
 
 @pytest.fixture(autouse=True)

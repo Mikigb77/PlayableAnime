@@ -383,9 +383,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
   same check on the turn graph's own telemetry.
 - **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
-  `billing.credits.summary(user)`. The legacy story endpoints aren't metered; `billing.meter` is
-  called by the turn endpoint (WS3), pictures (WS8) and drafting (WS12), and whichever side lands
-  second wires the calls.
+  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. The legacy story
+  endpoints aren't metered; the turn endpoint (WS3) and drafting (WS12) call `billing.meter` when
+  they land.
 
 ## Voice input
 
@@ -485,11 +485,12 @@ app                   shows the narration, then asks for the picture in its own 
   credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
   Illustrate tries a skipped scene picture again. The scenes showing a picture keep
   `Scene.image_status` in step with it.
-- **Paying (M7, K7).** `media/billing.py` is the seam to WS7's credit meter: `start` holds the
-  estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
+- **Paying (M7, K7).** `media/billing.py` calls the credit meter (`billing.meter`): `start` holds
+  the estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
   `rate_limited`, with the picture planned again), `charge` takes the real cost plus margin in the
-  transaction that marks the picture ready, and `release` lets a hold go when the picture isn't
-  drawn. Until the meter lands, pictures are free and the owner's are recorded as the owner's.
+  transaction that marks the picture ready (`charge_image`), and `release` lets a hold go when the
+  picture isn't drawn. The owner's pictures are recorded at no charge, and a story from before
+  sign-in, with no owner, draws free.
 - **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
   `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
   `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last
