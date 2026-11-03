@@ -139,16 +139,16 @@ def apply_event(
     a faction's answer (W2, W5, W10, W13). It may schedule new events, which fire in turn if they
     fall due within the same stretch of time.
 
-    Default: the event is marked fired and changes nothing else. WS10 replaces it.
+    Default: the event is marked applied and changes nothing else. WS10 replaces it.
     """
     stored = state.pending_events.get(event.id)
     if stored is None or stored.status is not EventStatus.PENDING:
         raise ValueError(f"event {event.id!r} is not a pending event of this state")
     new = state.model_copy(deep=True)
     fired = new.pending_events[event.id]
-    fired.status = EventStatus.FIRED
-    fired.fired_turn = ctx.turn
-    fired.fired_s = new.world_s
+    fired.status = EventStatus.APPLIED
+    fired.applied_turn = ctx.turn
+    fired.applied_s = new.world_s
     return new
 
 

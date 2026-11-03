@@ -165,7 +165,7 @@ def test_due_events_are_pending_on_this_timeline_and_in_time_order():
                 event("late", 50),
                 event("first", 10),
                 event("tied", 10),
-                event("fired", 5, status=EventStatus.FIRED),
+                event("applied", 5, status=EventStatus.APPLIED),
                 event("other-timeline", 5, timeline_id="rewound"),
                 event("future", 500),
             ]

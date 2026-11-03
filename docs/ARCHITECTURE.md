@@ -139,7 +139,10 @@ a new one.
   `world_s + personal_offset_s`, so it moves with the world for free, and a time stop only adds to
   the user's offset. World processes such as rumor spread, clock steps and faction answers are
   pending events with due times, so they fire in time order wherever time passes, at the start of
-  a turn and during a long action alike.
+  a turn and during a long action alike. The rows live in `stories_pendingevent` (B12): the turn
+  graph loads the story's pending rows on its timeline into `state.pending_events` and writes back
+  the ones the turn applied, cancelled or scheduled. `EventStatus` uses the table's values
+  (`pending`, `applied`, `cancelled`).
 - **Knowledge is recorded on the record.** Anything a character can know carries `known_by`, a
   list of character ids, plus `met_by` on characters, `visited_by` on places and `heard_at` on
   rumors. The Memory screen shows only records whose lists hold the player character (C6). Hidden

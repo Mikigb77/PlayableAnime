@@ -236,8 +236,8 @@ def test_default_catch_up_and_apply_event():
     fired = pipeline.apply_event(state, state.pending_events["council-meets"], ctx(), rng())
 
     assert passage.state is state and passage.elapsed_s == 0 and passage.fired == ()
-    assert fired.pending_events["council-meets"].status is EventStatus.FIRED
-    assert fired.pending_events["council-meets"].fired_turn == 2
+    assert fired.pending_events["council-meets"].status is EventStatus.APPLIED
+    assert fired.pending_events["council-meets"].applied_turn == 2
     assert state.pending_events["council-meets"].status is EventStatus.PENDING
 
 

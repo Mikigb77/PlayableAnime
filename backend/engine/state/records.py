@@ -309,8 +309,10 @@ class Clock(EngineModel):
 
 
 class EventStatus(StrEnum):
+    """The same values as the `stories_pendingevent` table's status."""
+
     PENDING = "pending"
-    FIRED = "fired"
+    APPLIED = "applied"
     CANCELLED = "cancelled"
 
 
@@ -337,8 +339,8 @@ class PendingEvent(EngineModel):
     seed: str | None = None
     created_turn: int = Field(default=0, ge=0)
     created_s: WorldSeconds = 0
-    fired_turn: int | None = None
-    fired_s: WorldSeconds | None = None
+    applied_turn: int | None = None
+    applied_s: WorldSeconds | None = None
 
 
 class StepResult(StrEnum):
