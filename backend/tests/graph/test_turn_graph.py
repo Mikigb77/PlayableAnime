@@ -6,6 +6,7 @@ block and telemetry code a live turn does.
 
 import subprocess
 import sys
+from contextlib import aclosing
 
 import pytest
 
@@ -19,10 +20,12 @@ from engine.contracts import (
     StandingAction,
     StepResolution,
 )
+from engine.invariants import InvariantError
+from engine.pipeline import TimePassage
 from engine.samples import cultivation_world, grounded_world
 from engine.state.records import StepResult
 from engine.state.world import Chapter
-from graph.llm import Block, Fail, LLMUnavailable, Node, Reply
+from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
     CHAPTER_TURNS,
     NarrationDelta,
@@ -148,14 +151,12 @@ def test_a_turn_runs_end_to_end(fake, make_client, telemetry):
     assert dumped["details"]["steps"][0]["class"] == "certain"
     assert dumped["standing_actions"] == ["wait", "observe"]
 
-    # The narrator's update: the scene end and the summary apply; the rest waits for
-    # engine.apply, and a dead or unknown person is never placed in the scene (C1).
+    # The narrator's update goes through engine.apply with the C1 invariants: the new character
+    # joins, the scene ends where it said, and a person who doesn't exist is never placed in it.
     assert result.state.scene.ended_on == "Zhao wipes the blood from his brow and laughs."
     assert result.state.scene.present_ids == ["lin", "zhao"]
     assert result.state.summary == "Lin struck back at Zhao."
-    assert "elder_mo" not in result.state.characters
-    codes = [i.code for i in result.issues]
-    assert codes.count("rejected") == 2  # the unknown person, and the new character
+    assert result.state.characters["elder_mo"].name == "Elder Mo"
 
     # The input state is never touched.
     assert turn.state.model_dump(mode="json") == before
@@ -362,11 +363,17 @@ def test_an_action_that_fits_nothing_still_plays(fake, make_client):
     assert result.intent.steps[0].kind is ActionKind.INSTANT
 
 
-def test_a_chapter_summary_every_twenty_turns(fake, make_client, telemetry):
-    """C3: chapter summaries keep older scenes without keeping them in the prompt."""
+def saved_turns(count: int):
+    """A story with `count` saved turns, and their scenes."""
     state = cultivation_world()
-    state.turn = CHAPTER_TURNS - 1
-    scenes = tuple(PastScene(t, f"scene {t}") for t in range(1, CHAPTER_TURNS))
+    state.turn = count
+    return state, tuple(PastScene(t, f"scene {t}", f"action {t}") for t in range(1, count + 1))
+
+
+def test_a_chapter_summary_every_twenty_turns(fake, make_client, telemetry):
+    """C3: once 20 turns are saved, the next turn summarizes them as a chapter, so older scenes
+    leave the prompt without being lost. The summary runs alongside the turn's other calls."""
+    state, scenes = saved_turns(CHAPTER_TURNS)
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
     fake.script(Node.SUMMARIZER, Reply(json={"summary": " Lin endured Zhao for weeks. "}))
@@ -376,31 +383,138 @@ def test_a_chapter_summary_every_twenty_turns(fake, make_client, telemetry):
     ]
     [request] = fake.calls(Node.SUMMARIZER)
     text = request.prompt.messages[-1].text
-    assert '"narration":"scene 1"' in text
-    assert SCENE["narration"] in text  # this turn's scene too
-    assert [c.node for c in telemetry.calls] == ["interpret", "narrator", "summarizer"]
+    assert '"narration":"scene 1"' in text and f'"narration":"scene {CHAPTER_TURNS}"' in text
+    assert SCENE["narration"] not in text  # this turn goes into the next chapter
+    assert sorted(c.node for c in telemetry.calls) == ["interpret", "narrator", "summarizer"]
+    # The narrator still reads the latest scenes in full.
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    assert f'"narration":"scene {CHAPTER_TURNS}"' in told
 
 
 def test_no_chapter_before_twenty_turns_have_passed(fake, make_client):
-    state = cultivation_world()
-    state.turn = CHAPTER_TURNS + 3
+    state, scenes = saved_turns(CHAPTER_TURNS + 3)
     state.chapters = [Chapter(index=1, from_turn=1, to_turn=CHAPTER_TURNS, summary="Before.")]
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
-    _, result = play(make_client(), turn_input(state))
+    _, result = play(make_client(), turn_input(state, scenes=scenes[-3:]))
     assert fake.calls(Node.SUMMARIZER) == []
     assert len(result.state.chapters) == 1
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    assert f'"narration":"scene {CHAPTER_TURNS + 3}"' in told
 
 
 def test_a_failed_chapter_summary_is_tried_again_next_turn(fake, make_client):
-    state = cultivation_world()
-    state.turn = CHAPTER_TURNS - 1
+    state, scenes = saved_turns(CHAPTER_TURNS)
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
     fake.script(Node.SUMMARIZER, Fail(), Fail())
-    _, result = play(make_client(), turn_input(state))
+    _, result = play(make_client(), turn_input(state, scenes=scenes))
     assert result.state.chapters == []
     assert "chapter_skipped" in [i.code for i in result.issues]
+    assert result.narration_mode == "full"  # the turn itself stands
+
+
+def test_a_rejected_key_on_the_summary_doesnt_fail_the_turn(fake, make_client):
+    """A BYOK key the summarizer's model refuses must not stop the story at turn 20."""
+    state, scenes = saved_turns(CHAPTER_TURNS)
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Fail(kind="auth", status=403))
+    _, result = play(make_client(byok=True), turn_input(state, scenes=scenes))
+    assert result.state.chapters == []
+    assert "chapter_skipped" in [i.code for i in result.issues]
+
+
+def test_a_late_chapter_summary_is_dropped(fake, make_client, monkeypatch):
+    """B8: the turn waits a little for the summary, then saves without it."""
+    from graph.turn import nodes
+
+    monkeypatch.setattr(nodes, "CHAPTER_GRACE_S", 0.01)
+    state, scenes = saved_turns(CHAPTER_TURNS)
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Hang())
+    _, result = play(make_client(), turn_input(state, scenes=scenes))
+    assert result.state.chapters == []
+    assert "chapter_late" in [i.code for i in result.issues]
+
+
+def test_a_chapter_summary_is_cancelled_when_the_turn_fails(fake, make_client, telemetry):
+    state, scenes = saved_turns(CHAPTER_TURNS)
+    fake.script(Node.INTERPRET, Block())
+    fake.script(Node.SUMMARIZER, Hang())
+    with pytest.raises(UnreadableAction):
+        play(make_client(), turn_input(state, scenes=scenes))
+    assert len(fake.calls(Node.SUMMARIZER)) == 1  # it started alongside the turn
+    summaries = [c.outcome for c in telemetry.calls if c.node == "summarizer"]
+    assert summaries == ["cancelled"]  # and nothing outlived the turn (B8)
+
+
+def test_a_player_who_leaves_mid_scene_stops_everything(fake, make_client, telemetry):
+    """B8: when the app drops the stream, the turn's model calls are cancelled with it."""
+    state, scenes = saved_turns(CHAPTER_TURNS)
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Hang())
+
+    async def leave_after_the_first_words():
+        stream = run_turn(turn_input(state, scenes=scenes), make_client())
+        async with aclosing(stream) as events:
+            async for event in events:
+                if isinstance(event, NarrationDelta):
+                    return
+
+    run(leave_after_the_first_words())
+    assert [c.outcome for c in telemetry.calls if c.node == "summarizer"] == ["cancelled"]
+
+
+def test_a_turn_that_breaks_c1_is_never_returned(fake, make_client, monkeypatch):
+    """The C1 check on the turn's first and last states: an engine bug is caught, not saved."""
+
+    def rewinding_catch_up(state, until_s, ctx, rng):
+        broken = state.model_copy(update={"world_s": state.world_s - 50})
+        return TimePassage(state=broken, started_s=state.world_s, ended_s=broken.world_s)
+
+    monkeypatch.setattr(pipeline, "catch_up", rewinding_catch_up)
+    state = cultivation_world()
+    state.world_s = 1000
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    with pytest.raises(InvariantError, match="time never runs backwards"):
+        play(make_client(), turn_input(state))
+
+
+def test_a_blank_narration_is_retried(fake, make_client):
+    """A blank answer counts as a failed one, so the model layer asks once more (T7)."""
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"narration": "  "}), Reply(json=SCENE))
+    _, result = play(make_client(), turn_input())
+    assert result.scene.narration == SCENE["narration"]
+    assert len(fake.calls(Node.NARRATOR)) == 2
+
+
+def test_a_blank_scene_end_keeps_the_last_moment(fake, make_client):
+    """R3: the next scene must start somewhere, so a blank ending keeps the previous one."""
+    update = SCENE["update"] | {"scene_end": {"ended_on": "   ", "present_ids": ["lin"]}}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": update}))
+    turn = turn_input()
+    _, result = play(make_client(), turn)
+    assert result.state.scene.ended_on == turn.state.scene.ended_on
+    assert "blank_scene_end" in [i.code for i in result.issues]
+
+
+def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines):
+    """T6: story text only at DEBUG. An issue's subject can be the player's own words."""
+    fake.script(
+        Node.INTERPRET,
+        Reply(json={"steps": [STONE["steps"][0] | {"target_ids": ["the-hidden-killer"]}]}),
+    )
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    play(make_client(), turn_input())
+    above_debug = [line for line in log_lines() if line["severity"] != "DEBUG"]
+    assert any(line.get("turn_issue") == {"code": "unknown_target"} for line in above_debug)
+    assert not any("the-hidden-killer" in str(line) for line in above_debug)
 
 
 def test_turn_inputs_are_checked():

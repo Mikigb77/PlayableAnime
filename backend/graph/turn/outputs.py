@@ -4,9 +4,14 @@ The interpret node returns `engine.contracts.Intent` as it is. The narrator's ob
 `narration` first, so its text streams to the player while the rest is still being written (S3).
 """
 
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, StringConstraints
 
 from engine.contracts import ChoiceKind, StateDelta
+
+# A blank answer is a failed answer: the model layer retries it once, then gives up (T7).
+Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class SuggestionOut(BaseModel):
@@ -19,7 +24,7 @@ class SuggestionOut(BaseModel):
 class NarratorOutput(BaseModel):
     """B5 step 5. The scene, its suggestions, the picture prompt and the proposed state update."""
 
-    narration: str = Field(description="The scene, as the player reads it.")
+    narration: Text = Field(description="The scene, as the player reads it.")
     suggestions: list[SuggestionOut] = Field(
         default_factory=list, description="As many as asked for, 0 to 4 (S2)."
     )
@@ -35,4 +40,4 @@ class NarratorOutput(BaseModel):
 class ChapterOutput(BaseModel):
     """C3. A chapter summary, so older scenes can leave the prompt without being lost."""
 
-    summary: str = Field(description="What happened in these scenes, in at most 200 words.")
+    summary: Text = Field(description="What happened in these scenes, in at most 200 words.")

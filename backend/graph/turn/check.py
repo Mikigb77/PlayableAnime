@@ -6,9 +6,12 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 (CLAUDE.md rule 2).
 
 - `check_intent`: the interpret step's proposal against the state (V3, B5).
-- `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, R6).
+- `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
+- `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
 """
+
+from dataclasses import dataclass
 
 from engine.context import GoreLevel, ImageSetting, Rating, TurnContext
 from engine.contracts import (
@@ -19,6 +22,7 @@ from engine.contracts import (
     OutcomeClass,
     PictureTrigger,
     Resolution,
+    StateDelta,
     StepResolution,
     StopReason,
     SuggestionPlan,
@@ -29,25 +33,37 @@ from engine.state.records import StepResult
 from engine.state.world import WorldState
 from graph.turn.types import Issue
 
-# R6: a chained plan this long is already more than one scene can play.
+# R6: a chained plan this long is already more than one scene can play. The steps past it are
+# handed back unplayed.
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
 
 
-def check_intent(intent: Intent, state: WorldState, action: str) -> tuple[Intent, list[Issue]]:
+@dataclass(frozen=True)
+class CheckedIntent:
+    intent: Intent
+    issues: list[Issue]
+    overflow: list[str]  # the text of steps past MAX_STEPS, which the scene hands back (R6)
+
+
+def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedIntent:
     """The intent with references the state can't resolve turned back into words.
 
+    The actor is the player character unless the intent names a living character in the story.
     The interpret step never refuses (B5), so an intent with no step and no standing action
     becomes one step that carries the player's words as they are.
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
-    if intent.actor_id is not None and intent.actor_id not in state.characters:
-        issues.append(Issue("unknown_actor", "the actor isn't in the story", intent.actor_id))
-        intent.actor_id = None
-    if intent.actor_id == state.player_id:
-        intent.actor_id = None
+    if intent.actor_id is not None:
+        actor = state.characters.get(intent.actor_id)
+        if actor is None or actor.status is CharacterStatus.DEAD:
+            reason = "dead" if actor is not None else "not in the story"
+            issues.append(Issue("bad_actor", f"the actor is {reason}", intent.actor_id))
+            intent.actor_id = None
+        elif intent.actor_id == state.player_id:
+            intent.actor_id = None
 
     known = state.characters.keys() | state.places.keys() | state.factions.keys()
     for step in intent.steps:
@@ -56,9 +72,17 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> tuple[Intent
             issues.append(Issue("unknown_target", "kept as words", ", ".join(unknown)))
             step.target_ids = [ref for ref in step.target_ids if ref in known]
             step.targets = list(dict.fromkeys([*step.targets, *unknown]))
+        facts = step.facts
+        unknown = [ref for ref in facts.opposition_ids if ref not in known]
+        if unknown:
+            issues.append(Issue("unknown_opposition", "kept as words", ", ".join(unknown)))
+            facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
+            facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
 
+    overflow: list[str] = []
     if len(intent.steps) > MAX_STEPS:
-        issues.append(Issue("too_many_steps", f"kept the first {MAX_STEPS}"))
+        overflow = [step.text for step in intent.steps[MAX_STEPS:]]
+        issues.append(Issue("too_many_steps", f"the last {len(overflow)} are handed back"))
         intent.steps = intent.steps[:MAX_STEPS]
 
     if not intent.steps and intent.standing is None:
@@ -73,15 +97,19 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> tuple[Intent
             )
         ]
         intent.summary = intent.summary or text
-    return intent, issues
+    return CheckedIntent(intent=intent, issues=issues, overflow=overflow)
 
 
-def check_resolution(resolution: Resolution) -> tuple[Resolution, list[Issue]]:
-    """Resolve's outcome, held to A2 and R6 before the steps play out.
+def check_resolution(
+    resolution: Resolution, overflow: list[str] | None = None
+) -> tuple[Resolution, list[Issue]]:
+    """Resolve's outcome, held to A2, A3 and R6 before the steps play out.
 
     A2: no roll can overturn a certain or ruled-out step, so the class wins over a result that
-    disagrees with it. R6: a chained plan stops at its first step that doesn't cleanly succeed,
-    and the steps after it are listed as unplayed, so the narrator hands the scene back.
+    disagrees with it. A3: a contested or long-shot step is decided by its roll, so the roll's
+    result wins. R6: a chained plan stops at its first step that doesn't cleanly succeed, and the
+    steps after it, with any `overflow` past `MAX_STEPS`, are listed as unplayed, so the narrator
+    hands the scene back.
     """
     issues: list[Issue] = []
     steps: list[StepResolution] = []
@@ -90,27 +118,19 @@ def check_resolution(resolution: Resolution) -> tuple[Resolution, list[Issue]]:
     stop_reason = resolution.stop_reason
 
     for position, original in enumerate(resolution.steps):
-        step = original
-        settled = _settled_result(step.outcome_class)
-        if settled is not None and (step.result is not settled or step.roll is not None):
-            issues.append(
-                Issue(
-                    "class_result_mismatch",
-                    f"a {step.outcome_class} step can't be rolled or end in {step.result}",
-                    str(step.index),
-                )
-            )
-            step = step.model_copy(update={"result": settled, "roll": None})
+        step, found = _check_step(original)
+        issues += found
         steps.append(step)
 
         later = resolution.steps[position + 1 :]
-        declared = resolution.stopped_at_step is not None and step.index == stopped_at
+        declared = step.index == resolution.stopped_at_step
         if later and (declared or not step.clean_success):
             issues.append(
                 Issue("plan_not_stopped", "the steps after it were not played", str(step.index))
             )
             stopped_at = step.index
-            stop_reason = stop_reason or _stop_reason(step)
+            if not declared:
+                stop_reason = _stop_reason(step)
             unplayed = [*(s.text for s in later if s.text not in unplayed), *unplayed]
             break
 
@@ -123,10 +143,31 @@ def check_resolution(resolution: Resolution) -> tuple[Resolution, list[Issue]]:
             "steps": steps,
             "stopped_at_step": stopped_at,
             "stop_reason": stop_reason,
-            "unplayed": unplayed,
+            "unplayed": [*unplayed, *(overflow or [])],
         }
     )
     return repaired, issues
+
+
+def _check_step(step: StepResolution) -> tuple[StepResolution, list[Issue]]:
+    settled = _settled_result(step.outcome_class)
+    if settled is not None:
+        if step.result is settled and step.roll is None:
+            return step, []
+        issue = Issue(
+            "class_result_mismatch",
+            f"a {step.outcome_class} step can't be rolled or end in {step.result}",
+            str(step.index),
+        )
+        return step.model_copy(update={"result": settled, "roll": None}), [issue]
+    if step.roll is None:
+        return step, [
+            Issue("unrolled", f"a {step.outcome_class} step has no roll", str(step.index))
+        ]
+    if step.roll.result is not step.result:
+        issue = Issue("roll_result_mismatch", "the roll decides", str(step.index))
+        return step.model_copy(update={"result": step.roll.result}), [issue]
+    return step, []
 
 
 def _settled_result(outcome_class: OutcomeClass) -> StepResult | None:
@@ -138,13 +179,42 @@ def _settled_result(outcome_class: OutcomeClass) -> StepResult | None:
 
 
 def _stop_reason(step: StepResolution) -> StopReason:
-    if step.interrupted:
-        return StopReason.INTERRUPTED
+    """Why a plan stops at a step that didn't cleanly succeed. An interruption is `play_out`'s
+    to record, since events fire only as the steps play out (W10)."""
     if step.outcome_class is OutcomeClass.RULED_OUT:
         return StopReason.RULED_OUT
     if step.result is StepResult.PARTIAL:
         return StopReason.PARTIAL
     return StopReason.FAILED
+
+
+def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list[Issue]]:
+    """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
+
+    A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
+    dead can't be present (C1), and the rolling summary is never blanked.
+    """
+    issues: list[Issue] = []
+    delta = delta.model_copy(deep=True)
+    end = delta.scene_end
+    if end is not None:
+        end.ended_on = end.ended_on.strip()
+        if not end.ended_on:
+            issues.append(Issue("blank_scene_end", "kept the last scene's ending"))
+            end.ended_on = state.scene.ended_on
+        present = []
+        for character_id in dict.fromkeys(end.present_ids):
+            character = state.characters.get(character_id)
+            if character is not None and character.status is CharacterStatus.DEAD:
+                issues.append(Issue("dead_present", "left out of the scene", character_id))
+            else:
+                # Someone new in this same delta is added first; apply_delta drops ids that
+                # still name nobody.
+                present.append(character_id)
+        end.present_ids = present
+    if delta.summary is not None and not delta.summary.strip():
+        delta.summary = None
+    return delta, issues
 
 
 def check_plan(

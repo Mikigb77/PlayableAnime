@@ -19,15 +19,22 @@ from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
 from graph.llm import Prompt
 from graph.turn import prompts
-from graph.turn.types import PastScene
+from graph.turn.types import RECENT_SCENES, PastScene
 
-# The narrator reads this many of the latest scenes in full.
-RECENT_SCENES = 3
 # Facts this important, which the player character knows, always reach the narrator.
 KEY_FACT_IMPORTANCE = 4
 
 # What the interpret step needs of the world to judge what it allows (G6, G8).
-_INTERPRET_WORLD = {"genre", "era", "physics", "extraordinary", "rules", "peoples", "creatures"}
+_INTERPRET_WORLD = {
+    "genre",
+    "era",
+    "physics",
+    "extraordinary",
+    "rules",
+    "peoples",
+    "creatures",
+    "medicine",
+}
 _RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin"}
 _NPC_HIDDEN = {
     "secrets": True,
@@ -83,6 +90,14 @@ def _player_view(state: WorldState) -> dict[str, Any]:
 def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     hidden = dict.fromkeys(_RECORD_NOISE, True) | _NPC_HIDDEN
     view = {"id": character.id} | _dump(character, exclude=hidden)
+    sheet = view.get("sheet", {})
+    if "powers" in sheet:
+        # A power kept secret stays out until it is used, and resolve's outcome tells of it then.
+        shown = [_dump(power) for power in character.sheet.powers if not power.secret]
+        if shown:
+            sheet["powers"] = shown
+        else:
+            del sheet["powers"]
     attitude = character.sheet.disposition.attitudes.get(state.player_id)
     if attitude is not None:
         view["toward_you"] = _dump(attitude)
@@ -133,8 +148,18 @@ def _known_view(state: WorldState) -> dict[str, Any]:
     return {"people": people, "places": places, "factions": factions}
 
 
-def _world_view(state: WorldState) -> dict[str, Any]:
-    return _dump(state.bible, exclude={"mysteries", "title"})
+def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str, Any]:
+    """The world bible without its hidden answers. The settings a model can't assume are always
+    shown, defaults included: how strict physics is (A9), whether the dead can come back (C1) and
+    whether news travels instantly (W2)."""
+    bible = state.bible
+    view = _dump(bible, include=include, exclude={"mysteries", "title"})
+    view["physics"] = bible.physics.value
+    if include is None or "medicine" in include:
+        view.setdefault("medicine", {})["resurrection"] = bible.medicine.resurrection.value
+    if include is None or "travel" in include:
+        view.setdefault("travel", {})["instant_messages"] = bible.travel.instant_messages
+    return view
 
 
 def _continuity(state: WorldState) -> list[str]:
@@ -198,7 +223,7 @@ def interpret_prompt(state: WorldState, action: str) -> Prompt:
     frame = state.scene
     user = render(
         [
-            ("WORLD", _dump(state.bible, include=_INTERPRET_WORLD)),
+            ("WORLD", _world_view(state, include=_INTERPRET_WORLD)),
             ("PLAYER CHARACTER", _player_view(state)),
             ("SCENE", _scene_view(state)),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
@@ -283,8 +308,9 @@ def narration_brief(
             sections.append(("ACTION", _action_view(intent)))
         sections.append(("OUTCOME", _outcome_view(resolution)))
         sections.append(("TIME", _time_view(before, after)))
-    if fired:
-        sections.append(("FIRED", [_event_view(e) for e in fired]))
+    seen = [e for e in fired if _perceived(e, after)]
+    if seen:
+        sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:
         sections.append(("EVENT", _dump(plan.event, exclude={"source", "source_id"})))
     callbacks = [after.threads[t] for t in plan.callbacks if t in after.threads]
@@ -359,6 +385,15 @@ def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
     if lived != elapsed:
         view["your_seconds_lived"] = lived
     return view
+
+
+def _perceived(event: PendingEvent, state: WorldState) -> bool:
+    """Whether the player character could notice an event that fired: it needs them, involves
+    them, or happens where they are. Everything else stays off-screen (C6)."""
+    if event.needs_player or state.player_id in event.subject_ids:
+        return True
+    here = state.scene.place_id or state.player.location_id
+    return event.place_id is not None and event.place_id == here
 
 
 def _event_view(event: PendingEvent) -> dict[str, Any]:

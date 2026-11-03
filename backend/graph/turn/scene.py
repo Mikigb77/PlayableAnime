@@ -73,6 +73,8 @@ def choices(narration: NarratorOutput, count: int) -> list[Choice]:
     each label short and unique."""
     picked: list[Choice] = []
     seen: set[str] = set()
+    if count <= 0:
+        return picked
     for suggestion in narration.suggestions:
         label = " ".join(suggestion.label.split())[:MAX_CHOICE_CHARS]
         key = label.casefold().rstrip(".!")

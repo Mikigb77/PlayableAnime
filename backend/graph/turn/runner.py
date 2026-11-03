@@ -11,6 +11,7 @@ running after the response ends (B8). LangGraph loads on the first turn, not at 
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import logging
 from collections.abc import AsyncIterator
@@ -54,6 +55,16 @@ def turn_graph() -> CompiledStateGraph:
     return builder.compile(name="turn")
 
 
+async def _settle(tasks: list[asyncio.Task[Any]]) -> None:
+    """Cancels model calls the turn started alongside itself and didn't wait for, such as a
+    chapter summary when the turn failed, so nothing outlives the response (B8)."""
+    for task in tasks:
+        task.cancel()
+    # Collects each task's outcome, so none is left unretrieved, without swallowing a cancel
+    # aimed at the turn itself.
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
 async def run_turn(turn: TurnInput, llm: ModelClient) -> AsyncIterator[TurnEvent]:
     """Plays one turn, yielding the narration as it is written and then the finished turn.
 
@@ -63,16 +74,18 @@ async def run_turn(turn: TurnInput, llm: ModelClient) -> AsyncIterator[TurnEvent
     """
     final: dict[str, Any] = {}
     initial: TurnState = {"input": turn, "issues": [], "timings_ms": {}}
-    stream = turn_graph().astream(
-        initial, context=TurnDeps(llm=llm), stream_mode=["custom", "values"]
-    )
-    async with aclosing(stream) as chunks:
-        async for mode, chunk in chunks:
-            if mode == "custom":
-                if isinstance(chunk, NarrationDelta | NarrationReset):
-                    yield chunk
-            elif mode == "values":
-                final = chunk
+    deps = TurnDeps(llm=llm)
+    stream = turn_graph().astream(initial, context=deps, stream_mode=["custom", "values"])
+    try:
+        async with aclosing(stream) as chunks:
+            async for mode, chunk in chunks:
+                if mode == "custom":
+                    if isinstance(chunk, NarrationDelta | NarrationReset):
+                        yield chunk
+                elif mode == "values":
+                    final = chunk
+    finally:
+        await _settle(deps.tasks)
     result: TurnResult | None = final.get("result")
     if result is None:
         raise RuntimeError("the turn graph ended without a result")

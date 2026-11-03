@@ -14,6 +14,9 @@ from engine.contracts import (
     PictureTrigger,
     PlannedEvent,
     Resolution,
+    SceneEnd,
+    StateDelta,
+    StepFacts,
     StepResolution,
     StopReason,
     SuggestionPlan,
@@ -23,7 +26,13 @@ from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
 from engine.state.records import RollRecord, StepResult, ThreadStatus
 from engine.state.world import EventSize
-from graph.turn.check import MAX_STEPS, check_intent, check_plan, check_resolution
+from graph.turn.check import (
+    MAX_STEPS,
+    check_intent,
+    check_plan,
+    check_resolution,
+    check_update,
+)
 
 
 def ctx(**settings) -> TurnContext:
@@ -61,41 +70,65 @@ def roll(result=StepResult.FAILURE) -> RollRecord:
 
 def test_unknown_or_player_actor_becomes_the_player():
     state = cultivation_world()
-    intent, issues = check_intent(Intent(actor_id="ghost", steps=[step()]), state, "x")
-    assert intent.actor_id is None
-    assert [i.code for i in issues] == ["unknown_actor"]
-    intent, issues = check_intent(Intent(actor_id="lin", steps=[step()]), state, "x")
-    assert intent.actor_id is None and issues == []
+    checked = check_intent(Intent(actor_id="ghost", steps=[step()]), state, "x")
+    assert checked.intent.actor_id is None
+    assert [i.code for i in checked.issues] == ["bad_actor"]
+    checked = check_intent(Intent(actor_id="lin", steps=[step()]), state, "x")
+    assert checked.intent.actor_id is None and checked.issues == []
+
+
+def test_the_dead_never_act():
+    """C1: a dead character can't be the actor, so the player character acts."""
+    state = cultivation_world()
+    zhao = state.characters["zhao"]
+    checked = check_intent(Intent(actor_id="zhao", steps=[step()]), state, "x")
+    assert checked.intent.actor_id == "zhao" and checked.issues == []
+    zhao.status, zhao.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    checked = check_intent(Intent(actor_id="zhao", steps=[step()]), state, "x")
+    assert checked.intent.actor_id is None
+    assert [i.detail for i in checked.issues] == ["the actor is dead"]
 
 
 def test_unknown_targets_are_kept_as_words():
     state = cultivation_world()
     proposed = Intent(steps=[step(target_ids=["zhao", "senior-brother-jo"], targets=["a bucket"])])
-    intent, issues = check_intent(proposed, state, "x")
-    assert intent.steps[0].target_ids == ["zhao"]
-    assert intent.steps[0].targets == ["a bucket", "senior-brother-jo"]
-    assert [i.code for i in issues] == ["unknown_target"]
+    checked = check_intent(proposed, state, "x")
+    assert checked.intent.steps[0].target_ids == ["zhao"]
+    assert checked.intent.steps[0].targets == ["a bucket", "senior-brother-jo"]
+    assert [i.code for i in checked.issues] == ["unknown_target"]
     assert proposed.steps[0].target_ids == ["zhao", "senior-brother-jo"]  # never mutated
 
 
+def test_unknown_opposition_is_kept_as_words():
+    facts = StepFacts(opposition_ids=["zhao", "troll"], opposition="a crowd")
+    checked = check_intent(Intent(steps=[step(facts=facts)]), cultivation_world(), "x")
+    assert checked.intent.steps[0].facts.opposition_ids == ["zhao"]
+    assert checked.intent.steps[0].facts.opposition == "a crowd; troll"
+    assert [i.code for i in checked.issues] == ["unknown_opposition"]
+
+
 def test_an_action_that_fits_nothing_still_becomes_a_step():
-    intent, issues = check_intent(Intent(), cultivation_world(), "  I sing to the moon ")
-    assert [s.text for s in intent.steps] == ["I sing to the moon"]
-    assert intent.summary == "I sing to the moon"
-    assert [i.code for i in issues] == ["no_step"]
+    checked = check_intent(Intent(), cultivation_world(), "  I sing to the moon ")
+    assert [s.text for s in checked.intent.steps] == ["I sing to the moon"]
+    assert checked.intent.summary == "I sing to the moon"
+    assert [i.code for i in checked.issues] == ["no_step"]
 
 
 def test_a_standing_action_needs_no_step():
-    intent, issues = check_intent(Intent(standing="wait"), cultivation_world(), "wait")
-    assert intent.steps == [] and issues == []
+    checked = check_intent(Intent(standing="wait"), cultivation_world(), "wait")
+    assert checked.intent.steps == [] and checked.issues == []
 
 
-def test_too_many_steps_are_cut():
-    intent, issues = check_intent(
-        Intent(steps=[step(f"s{i}") for i in range(MAX_STEPS + 3)]), cultivation_world(), "x"
-    )
-    assert len(intent.steps) == MAX_STEPS
-    assert [i.code for i in issues] == ["too_many_steps"]
+def test_steps_past_the_limit_are_handed_back():
+    """R6: a run-on plan longer than a scene can play keeps its first steps; the rest come back
+    unplayed, never silently dropped."""
+    steps = [step(f"s{i}") for i in range(MAX_STEPS + 3)]
+    checked = check_intent(Intent(steps=steps), cultivation_world(), "x")
+    assert len(checked.intent.steps) == MAX_STEPS
+    assert checked.overflow == [f"s{i}" for i in range(MAX_STEPS, MAX_STEPS + 3)]
+    assert [i.code for i in checked.issues] == ["too_many_steps"]
+    resolution, _ = check_resolution(Resolution(steps=[resolved(0)]), checked.overflow)
+    assert resolution.unplayed == checked.overflow
 
 
 # check_resolution
@@ -144,7 +177,10 @@ def test_a_chained_plan_stops_at_its_first_step_that_doesnt_cleanly_succeed():
 
 def test_stop_reasons_follow_the_step():
     partial = Resolution(
-        steps=[resolved(0, StepResult.PARTIAL, OutcomeClass.CONTESTED, roll=roll()), resolved(1)]
+        steps=[
+            resolved(0, StepResult.PARTIAL, OutcomeClass.CONTESTED, roll=roll(StepResult.PARTIAL)),
+            resolved(1),
+        ]
     )
     assert check_resolution(partial)[0].stop_reason is StopReason.PARTIAL
     ruled_out = Resolution(
@@ -270,3 +306,49 @@ def test_callbacks_pull_in_only_open_or_dormant_threads():
 def test_suggestions_follow_the_players_setting():
     plan, _ = check_plan(cultivation_world(), DirectorPlan(), ctx(suggestions=False))
     assert plan.suggestions == SuggestionPlan(count=0, kinds=[])
+
+
+def test_a_rolled_step_is_decided_by_its_roll():
+    """A3: a contested step's result is its roll's."""
+    step0 = resolved(0, StepResult.SUCCESS, OutcomeClass.CONTESTED, roll=roll(StepResult.FAILURE))
+    checked, issues = check_resolution(Resolution(steps=[step0]))
+    assert checked.steps[0].result is StepResult.FAILURE
+    assert [i.code for i in issues] == ["roll_result_mismatch"]
+    unrolled = resolved(0, StepResult.SUCCESS, OutcomeClass.LONG_SHOT)
+    checked, issues = check_resolution(Resolution(steps=[unrolled]))
+    assert checked.steps[0].result is StepResult.SUCCESS
+    assert [i.code for i in issues] == ["unrolled"]
+
+
+def test_a_moved_stop_takes_the_reason_of_the_step_it_stops_at():
+    resolution = Resolution(
+        steps=[
+            resolved(0, StepResult.FAILURE, OutcomeClass.RULED_OUT),
+            resolved(1),
+            resolved(2),
+        ],
+        stopped_at_step=2,
+        stop_reason=StopReason.INTERRUPTED,
+    )
+    checked, _ = check_resolution(resolution)
+    assert checked.stopped_at_step == 0
+    assert checked.stop_reason is StopReason.RULED_OUT
+
+
+# check_update
+
+
+def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
+    state = grounded_world()
+    bartender = state.characters["bartender"]
+    bartender.status, bartender.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    delta = StateDelta(
+        scene_end=SceneEnd(ended_on="  ", present_ids=["luca", "bartender", "new_guard"]),
+        summary="   ",
+    )
+    checked, issues = check_update(delta, state)
+    assert checked.scene_end.ended_on == state.scene.ended_on
+    assert checked.scene_end.present_ids == ["luca", "new_guard"]
+    assert checked.summary is None
+    assert [i.code for i in issues] == ["blank_scene_end", "dead_present"]
+    assert delta.scene_end.present_ids == ["luca", "bartender", "new_guard"]  # never mutated

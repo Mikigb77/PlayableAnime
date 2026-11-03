@@ -9,6 +9,7 @@ from engine.context import (
     TurnContext,
 )
 from engine.contracts import (
+    ChoiceKind,
     DirectorPlan,
     Intent,
     OutcomeClass,
@@ -22,7 +23,8 @@ from engine.contracts import (
 )
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
-from engine.state.records import StepResult
+from engine.state.records import PendingEvent, StepResult
+from engine.state.sheet import Power
 from graph.turn import prompts
 from graph.turn.context import (
     RECENT_SCENES,
@@ -31,6 +33,8 @@ from graph.turn.context import (
     narration_brief,
     present_characters,
 )
+from graph.turn.outputs import NarratorOutput, SuggestionOut
+from graph.turn.scene import choices
 from graph.turn.types import PastScene
 
 SECRET = "He ordered the killing of Luca's father."
@@ -195,3 +199,61 @@ def test_the_chapter_prompt_holds_the_scenes():
     prompt = chapter_prompt([PastScene(3, "Zhao falls.", "I stop time")])
     assert prompt.system == prompts.SUMMARIZER_SYSTEM
     assert '"narration":"Zhao falls."' in prompt.messages[-1].text
+
+
+def test_a_present_characters_secret_power_stays_hidden():
+    """G20: hidden strength shows when it is used, never in the prompt beforehand."""
+    state = cultivation_world()
+    zhao = state.characters["zhao"]
+    zhao.sheet.powers = [
+        Power(id="iron-palm", name="iron palm", description="KNOWN-POWER"),
+        Power(id="hidden-blade", name="hidden blade", description="SECRET-POWER", secret=True),
+    ]
+    for text in (interpret_prompt(state, "x").messages[-1].text, brief(state).user):
+        assert "KNOWN-POWER" in text
+        assert "SECRET-POWER" not in text
+    zhao.sheet.powers = zhao.sheet.powers[1:]
+    assert '"hidden-blade"' not in brief(state).user
+
+
+def test_world_settings_show_even_at_their_defaults():
+    """A model can't assume fun-first physics or no resurrection (A9, C1)."""
+    state = cultivation_world()
+    assert state.bible.physics.value == "fun_first"
+    for text in (interpret_prompt(state, "x").messages[-1].text, brief(state).user):
+        assert '"physics":"fun_first"' in text
+        assert '"resurrection":"none"' in text
+
+
+def test_only_events_the_player_could_notice_reach_the_narrator():
+    """C6: an event far away stays off-screen until word of it arrives."""
+    state = cultivation_world()
+    events = [
+        PendingEvent(id="e1", kind="arrival", title="NEEDS-YOU", due_s=0, needs_player=True),
+        PendingEvent(id="e2", kind="rumor", title="ABOUT-YOU", due_s=0, subject_ids=["lin"]),
+        PendingEvent(id="e3", kind="visit", title="RIGHT-HERE", due_s=0, place_id="well"),
+        PendingEvent(id="e4", kind="plot", title="FAR-AWAY", due_s=0, place_id="inner-court"),
+        PendingEvent(id="e5", kind="plot", title="NOWHERE", due_s=0),
+    ]
+    text = narration_brief(
+        before=state,
+        after=state,
+        ctx=ctx(),
+        intent=None,
+        resolution=Resolution(),
+        plan=DirectorPlan(),
+        fired=events,
+        scenes=(),
+    ).user
+    for title in ("NEEDS-YOU", "ABOUT-YOU", "RIGHT-HERE"):
+        assert title in text
+    for title in ("FAR-AWAY", "NOWHERE"):
+        assert title not in text
+
+
+def test_no_suggestions_when_none_were_asked_for():
+    narration = NarratorOutput(
+        narration="x", suggestions=[SuggestionOut(label="Run", kind=ChoiceKind.THREAD)]
+    )
+    assert choices(narration, 0) == []
+    assert [c.label for c in choices(narration, 1)] == ["Run"]

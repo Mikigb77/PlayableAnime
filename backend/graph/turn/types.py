@@ -6,6 +6,7 @@ The turn endpoint (WS3's PR 3) loads the story, builds a `TurnInput`, runs `run_
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
 
 # C3: a chapter summary every this many turns.
 CHAPTER_TURNS = 20
+# The narrator reads this many of the latest scenes in full.
+RECENT_SCENES = 3
 
 NarrationMode = Literal["full", "cutaway", "template"]
 ResetReason = Literal["cutaway", "template", "retry"]
@@ -60,8 +63,9 @@ class TurnInput:
 
     `state` is the story's world state as loaded, with its pending events on the current timeline
     (B12). `ctx.turn` is the turn being played, one more than `state.turn`. `action` is the
-    player's text, or the label of the suggestion they picked. `scenes` are the saved scenes since
-    the last chapter summary, oldest first (C3); the narrator reads the last few of them.
+    player's text, or the label of the suggestion they picked. `scenes` are saved scenes, oldest
+    first: every one since the last chapter summary (C3), and never fewer than the last
+    `RECENT_SCENES`, which the narrator reads in full.
     """
 
     state: WorldState
@@ -88,9 +92,11 @@ class TurnInput:
 @dataclass(frozen=True)
 class TurnDeps:
     """What the nodes use but don't keep: the request's model client (S9: a BYOK client lives
-    only as long as its request)."""
+    only as long as its request), and the model calls running alongside the turn, which the
+    runner cancels if the turn ends first (B8)."""
 
     llm: ModelClient
+    tasks: list[asyncio.Task[Any]] = field(default_factory=list)
 
 
 # Events `run_turn` yields while the turn runs. The endpoint sends them as API.md's SSE events.
@@ -231,7 +237,9 @@ class TurnState(TypedDict, total=False):
     seed: str
     world: WorldState  # the state after the latest code step
     passage: TimePassage
+    chapter: Any  # graph.turn.nodes.PendingChapter, a summary running alongside the turn
     intent: Intent | None
+    overflow: list[str]  # steps past the most one scene plays, handed back (R6)
     resolution: Resolution
     played: PlayOut
     plan: DirectorPlan
