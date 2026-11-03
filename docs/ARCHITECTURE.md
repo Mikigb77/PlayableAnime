@@ -170,7 +170,8 @@ these functions and saves the result.
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
-| `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS9, WS10 and WS11 replace. |
+| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
+| `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` and `direct` have default bodies that WS9 and WS11 replace. |
 | `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
@@ -178,11 +179,11 @@ a new one.
 
 | B5 step | Function | Owner |
 | --- | --- | --- |
-| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order through `apply_event`, stopping at the first that needs the player. Nothing fires during a time stop | WS10 |
+| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order, stopping at the first that needs the player. It first makes sure every running clock has its next step pending and that the world tick is spaced so the stretch holds at most 24 ticks (K8), then runs `engine.timekeeping.advance_clock` with the world's handler. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
 | 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
-| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
-| | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
+| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events | WS10 |
+| | `apply_event(state, event, ctx, rng) -> WorldState` applies one pending event that fell due, rolling from the event's own seed, and records on the applied event whether it needed the player. Kinds it doesn't own, such as `director.*`, are only marked applied | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
 | 6. Apply the update | `apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR) -> Applied`. Refused changes come back in `Applied.rejected` for the log and the C5 check; the rest applies. Before saving, the graph runs `check_transition(first, last)`, and a violation is an engine bug: log it and don't save | WS2 |
 
@@ -217,6 +218,37 @@ a new one.
   a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,
   no earlier than the change it undoes, by a mechanism the world bible allows (resurrection, a
   presumed death that was false, a revival with survivors, rebuilding).
+- **The living world runs on pending events** (W2, W5, W6, W10, W13, E2). Whatever the world
+  does later is a `PendingEvent` with a due time and its own seed, of a kind in
+  `engine.world.Kind`: `world.report` (a witness reaches a faction), `world.answer` (a faction's
+  answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of a death reaches
+  the victim's family and friends), `world.discovery` (a look at a secret deed's traces),
+  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival` and `world.tick`. Whether an
+  event needs the player is decided when it applies, from the state at that moment, and stored on
+  the applied event: guards who find the player where they came need them, and guards who find
+  them gone search instead. Delays come from the map: a witness walks to the faction's seat (the
+  outermost place it holds, else where its leader is) or calls where the world has phones (G6),
+  and the answer then gathers and travels back. Where the map doesn't say, a trip takes about an
+  hour, never no time. Every figure is in `engine/world/tuning.py`.
+- **Who learns what, and what it does.** A deed is known to its doer and witnesses (asleep or
+  unconscious people see nothing; in stopped time only those immune to it do). Others learn it
+  from a rumor they believe, which loses accuracy with each hop and, once far enough off, turns
+  into a version that no longer names the doer, or from a report. Each faction counts each deed
+  once (`Deed.known_by_factions`); one deed moves esteem or fear by at most 15 points, less the
+  further it already is from neutral (W9). A faction shrugs off what its own members do unless it
+  is severity 4 or worse, and never answers its own leader. NPCs' deeds run through the same code
+  (E5); the player character never reacts by itself (G15).
+- **Clocks** step with time (`interval_s`, from `next_step_s`) and with deeds. An `advances_on` or
+  `reverses_on` entry names a deed kind (`kill`) or a kind and a victim, target or place
+  (`kill:carmine`, `burn:mill`). A full clock gets a `clock_end` event; when it arrives where the
+  player is (the event's place, else its owner's seat), it is a scene, and otherwise it happens
+  without them, closing a tied thread of ambition, quest, threat or debt as resolved without the
+  player. Mysteries, rivalries and romances stay open.
+- **The cast stays bounded** (W15, K8). At most 8 key NPCs and 4 factions are active; the least
+  involved go dormant, kept in state, never deleted. New characters and factions (an avenger, a
+  resistance in a conquered place, a successor) carry an `origin`. A destroyed faction gets one
+  look at a revival, and comes back only with survivors, as rebuilding, with a `Cause` pointing at
+  the revival event (C1); it stays rebuilding for the rest of that turn.
 - **What the player sees** (C6). `engine.visibility` reads only records whose knowledge lists
   hold the player character: `known_by`, `met_by`, `visited_by`, `Rumor.heard_at`, and the
   `known_by` on each status change, so an off-screen death shows only once the player hears of
