@@ -38,19 +38,13 @@ from engine.contracts.direction import (
     PictureTrigger,
     SuggestionPlan,
 )
-from engine.contracts.intent import ActionKind, Intent, OutcomeClass, StandingAction
+from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
+from engine.resolve import resolve_intent
 from engine.rng import SeededRng
-from engine.state.records import Deed, EventStatus, PendingEvent, StepResult, Visibility
+from engine.state.records import Deed, EventStatus, PendingEvent, Visibility
 from engine.state.world import WorldState
-from engine.timekeeping import (
-    TimePassage,
-    advance_clock,
-    bound_duration,
-    in_time_stop,
-    stop_power_used,
-    world_stopped,
-)
+from engine.timekeeping import TimePassage, advance_clock, world_stopped
 
 __all__ = [
     "PlayOut",
@@ -62,8 +56,6 @@ __all__ = [
     "record_consequences",
     "resolve",
 ]
-
-STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 
 
 @dataclass(frozen=True)
@@ -104,51 +96,12 @@ def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) 
 def resolve(state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng) -> Resolution:
     """Step 3. Settle each step from the facts and roll only what they leave open (A2, A3).
 
-    Default: every step is certain and succeeds in its proposed duration, bounded by its kind.
-    Inside a time stop (one already in effect, or one a step starts), the world clock stands
-    still while the actor's runs, for as long as the stop lasts (W10a). WS9 replaces it.
+    `engine.resolve` (WS9): the world's rules, the sheet and the beats, who stands in the way and
+    whether they can respond at all, the power gap, then a seeded roll only for contested and
+    long-shot steps and close calls. A chained plan stops at the first step that doesn't cleanly
+    succeed (R6). Inside a time stop the world clock stands still while the actor's runs (W10a).
     """
-    actor_id = intent.actor_id or state.player_id
-    frozen = in_time_stop(state, actor_id)
-    stop_left_s: int | None = None
-    steps: list[StepResolution] = []
-    for i, step in enumerate(intent.steps):
-        power = stop_power_used(state, actor_id, step)
-        if power is not None:
-            frozen = True
-            stop_left_s = power.time.lasts_s
-        proposed_lived = step.proposed_personal_s
-        if frozen and proposed_lived is None:
-            proposed_lived = step.proposed_duration_s
-        lived = None if proposed_lived is None else bound_duration(step.kind, proposed_lived)
-        steps.append(
-            StepResolution(
-                index=i,
-                text=step.text,
-                outcome_class=OutcomeClass.CERTAIN,
-                reason="Nothing stands in the way.",
-                result=StepResult.SUCCESS,
-                duration_s=bound_duration(step.kind, step.proposed_duration_s, world_frozen=frozen),
-                personal_s=lived,
-            )
-        )
-        if frozen and stop_left_s is not None:
-            stop_left_s -= lived or 0
-            if stop_left_s <= 0:
-                frozen, stop_left_s = False, None
-    if not steps and intent.standing is not None:
-        kind = ActionKind(intent.standing.value)
-        steps = [
-            StepResolution(
-                index=0,
-                text=intent.standing.value,
-                outcome_class=OutcomeClass.CERTAIN,
-                reason="Nothing stands in the way.",
-                result=StepResult.SUCCESS,
-                duration_s=bound_duration(kind, STANDING_DURATIONS_S[intent.standing]),
-            )
-        ]
-    return Resolution(actor_id=intent.actor_id, steps=steps)
+    return resolve_intent(state, intent, ctx, rng)
 
 
 def apply_event(

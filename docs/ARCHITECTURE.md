@@ -171,6 +171,7 @@ these functions and saves the result.
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS9, WS10 and WS11 replace. |
+| `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). |
 | `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
@@ -232,6 +233,76 @@ a new one.
   engine's is refused, so an old revision can't drop fields it doesn't know and save the stripped
   state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
   meaning.
+
+### Resolve: logic first, then dice
+
+`engine/resolve/` (WS9) is what `pipeline.resolve` calls. It turns the interpret step's `Intent` into
+a `Resolution` in code, before anything is narrated, so the narrator writes the outcome it is given
+(A3) and a blocked narration never blocks the deed (F4). The model proposes facts; code checks them
+against the state wherever the state can tell, and decides. Each step goes through these checks in
+order, and the first one that settles it ends the step:
+
+1. **World and sheet** (`checks.py`; G8, G14). A step against one of the world's rules, or any power
+   in a world with nothing extraordinary, is ruled out with the rule as the reason, whatever the
+   interpret step proposed, for NPCs too. A power the actor doesn't have or hasn't recovered, a
+   technique they never learned and an item that isn't on them (vehicles and property are used
+   where they stand) are ruled out too.
+2. **Beats** (`checks.py`; R2). Whatever a beat uses must be the body, a power, something carried,
+   something the scene holds (props, people, the place) or something an earlier beat made canon.
+   Something new is canon when the place plausibly holds it, rolled for when that is uncertain, and
+   an empty search when it can't, which fails the step. A claim that the scene holds something it
+   doesn't is judged as new. Each check is in `StepResolution.beats`.
+3. **Who stands in the way** (`core._opposition`; A2, A8). The targets of a harmful aim and of a
+   social step always stand in the way, so leaving them out of the facts buys no free kill. The
+   dead never do. A time stop freezes everyone but its user (W10a), a helpless state on the sheet
+   (asleep, bound, stunned, subdued, dying) means they can't respond whatever was proposed, and the
+   model's word that they can't respond (unaware) is taken unless it claims a time stop that isn't
+   in effect.
+4. **The class** (A2, G18). Power is measured on the step's axis (`power.py`), from the sheet's
+   tier raised to its ladder rung, minus condition (wounds, exhaustion, an empty reserve,
+   weakening). Gaps are counted in steps: the rungs of the world's ladder on that axis, or two
+   tiers where it has none. Each other opponent within a step of the strongest adds half a step,
+   up to one. Against someone who can respond: two or more steps up is ruled out head-on, one is a
+   long shot, closer is contested, and two or more down is certain. When nothing can push back, the
+   proposed means decide (clearly enough is certain, clearly not is ruled out, a close call is
+   rolled between full harm and partial harm), capped by how far the target's body stands above
+   the actor's might, so no proposal gets a kitchen knife through a sleeping dragon. A harmful aim
+   always meets that body check, whatever axis the step names. Where nothing can be measured (a
+   faction, a storm), the step is contested, or harder if the interpret step judged it so; a
+   proposed class can lower the outcome there but never raise it.
+5. **Chains** (`chain.py`; A9). A step with a chain of cause and effect goes around the strength
+   instead of meeting it, so the gap doesn't apply. Anyone who can respond may see it coming, which
+   is rolled first. Then each link holds, is rolled if the model judged it open, or breaks: when it
+   rests on a fact that isn't true or on someone dead, when the model ruled it out, or when a target
+   who isn't asleep or bound has an answer on their sheet. `ChainLink.answers` lists the answers in
+   plain words ("teleport", "breathe without air"), and code looks for them in the target's ready
+   powers, techniques, carried items and traits, which the interpret step may not see. The chain
+   stops at the first link that breaks, and each link's time is added to the step (W10).
+6. **The roll** (`odds.py`; A3, A5). Only contested and long-shot steps, close calls, uncertain
+   finds and open links are rolled, each from its own seeded stream under
+   `rng.child("resolve", "step", i)`. Odds start from the gap (even at no gap; a long shot starts
+   at 1 in 10 one step up and falls toward 1 in 33), then edges, hindrances, skill, technique,
+   traits and, for social steps, the target's real attitude (A3, not the one they show) shift them
+   in log-odds. Each class keeps its odds in a band whatever the shifts and the difficulty do:
+   contested 5 to 95%, long shot 2 to 15%, close call 20 to 80%. Difficulty shifts only those odds,
+   never a certain or ruled-out step. Below the odds is a success; a quarter of the rest is a
+   partial success where the facts allow one.
+7. **Time** (`durations.py`; W10). Durations are bounded by the kind of action. An uncertain one is
+   rolled across orders of magnitude around the proposal (a thirtieth to thirty times), still
+   within the kind's bounds, and recorded on the step's roll. Inside a time stop the world clock
+   stands still and the actor's lived time counts down the stop.
+8. **Effects, deeds and costs** (`effects.py`; F4, W1, A1). `IntentStep.aim` says what success
+   does to the targets: a kill that succeeds is a confirmed death, a partial kill leaves them badly
+   wounded, a wound or a subdual does less. Only a settled step's aim on living targets changes
+   the state, so claimed outcomes (A6) and injected text (A7) change nothing. Any step against
+   someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8);
+   `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
+
+A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`
+(R6). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
+Formation against you at Qi Condensation: head-on, there is no contest."). Time stop's own rules
+(immunity, hit modes, rulings on the player's theories) and growth are WS9b's, in
+`engine/resolve/powers/`.
 
 ## Model layer
 
