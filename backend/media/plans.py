@@ -10,11 +10,14 @@ from __future__ import annotations
 
 from django.db import IntegrityError, transaction
 
-from media.models import Image, ImageStatus, ScenePicture
+from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
 from stories.models import ImageKind, Scene, Story
 
 ILLUSTRATE = "illustrate"
+# A portrait or place skipped for these reasons is tried again when code next plans it. A blocked
+# one would most likely be blocked again, so only Illustrate tries it again (M3).
+RETRIED_WHEN_PLANNED = (SkipReason.FAILED, SkipReason.NO_CREDITS)
 # A scene marked planned without a plan (`Scene.image_planned`), such as by hand in a test.
 SCENE_FLAG = "scene_flag"
 
@@ -46,11 +49,12 @@ def plan_picture(
     """Plans the picture `scene` shows: a portrait, a place, the scene itself or the cover.
 
     Call it after the scene is saved, inside the turn's transaction. A portrait or place that
-    already has a picture is reused instead of drawn again (M4), and one that was skipped is
-    planned again. `redraw` draws a character's portrait anew because they changed for good
-    (M5): once per change, since asking again with the same appearance reuses it. `planned` is
-    false for a picture the player asked for with Illustrate (M2). Planning a scene that already
-    has a picture returns its existing plan.
+    already has a picture is reused instead of drawn again (M4), and one that failed or wasn't
+    affordable is planned again; a blocked one is tried again only through Illustrate (M3).
+    `redraw` draws a character's portrait anew because they changed for good (M5): once per
+    change, since asking again with the same appearance reuses it. `planned` is false for a
+    picture the player asked for with Illustrate (M2). Planning a scene that already has a
+    picture returns its existing plan.
     """
     subject = subject_for(kind, scene, subject_id)
     with transaction.atomic():
@@ -60,9 +64,13 @@ def plan_picture(
         if existing is not None:
             return existing
         image = _image_for(scene.story_id, kind, subject, trigger, brief, redraw=redraw)
-        return ScenePicture.objects.create(
+        link = ScenePicture.objects.create(
             scene=scene, image=image, planned=planned, trigger=trigger
         )
+        fields = {"image_kind": kind} | ({"image_planned": True} if planned else {})
+        Scene.objects.filter(pk=scene.pk).update(**fields)
+        image.sync_scenes()
+        return link
 
 
 def replan(image: Image, *, trigger: str) -> Image:
@@ -72,6 +80,7 @@ def replan(image: Image, *, trigger: str) -> Image:
         if image.status == ImageStatus.SKIPPED:
             _reset(image, trigger)
             image.save()
+            image.sync_scenes()
         return image
 
 
@@ -96,7 +105,7 @@ def _image_for(
                 latest.save()
                 return latest
             return _create(story_id, kind, subject, latest.version + 1, trigger, brief)
-    if latest.status == ImageStatus.SKIPPED:
+    if latest.status == ImageStatus.SKIPPED and latest.skip_reason in RETRIED_WHEN_PLANNED:
         _reset(latest, trigger)
         latest.brief = brief.to_json()
         latest.save()

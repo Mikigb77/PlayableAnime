@@ -108,7 +108,7 @@ class GraphPictureModel:
         except LLMBlocked as exc:
             raise DrawBlocked(tuple(exc.categories)) from exc
         except LLMError as exc:
-            if self.byok:
+            if self.byok and _key_cannot_draw(exc, self.telemetry.calls[before:]):
                 raise KeyCannotDraw(exc.code) from exc
             raise DrawFailed(exc.code) from exc
         calls = self.telemetry.calls[before:]
@@ -118,6 +118,18 @@ class GraphPictureModel:
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+
+def _key_cannot_draw(error: Exception, calls) -> bool:
+    """Whether a player's key failed because it can't make pictures (M7): it was rejected, has no
+    picture quota (the free tier answers 429 with a limit of zero), or can't use the model. A
+    timeout or a server error isn't the key's fault, so that picture is skipped instead."""
+    from graph.llm import BadKey
+
+    if isinstance(error, BadKey):
+        return True
+    reason = (calls[-1].error_kind or "") if calls else ""
+    return reason in ("auth", "invalid") or reason.startswith("transient_429")
 
 
 def build_picture_model(*, rating: str, byok_provider: str | None, byok_key: str | None):

@@ -140,6 +140,37 @@ def test_a_skipped_portrait_is_planned_again_when_it_comes_up_again():
     assert (again.status, again.skip_reason, again.attempts) == (ImageStatus.PLANNED, "", 0)
 
 
+def test_a_blocked_portrait_is_not_tried_again_by_a_later_plan():
+    """M3: a block would most likely happen again, so only Illustrate retries it."""
+    story = make_story()
+    blocked = plan_picture(
+        make_scene(story, 2), kind="portrait", subject_id="mo", trigger="first_meeting", brief=ELDER
+    ).image
+    Image.objects.filter(pk=blocked.pk).update(
+        status=ImageStatus.SKIPPED, skip_reason=SkipReason.BLOCKED
+    )
+
+    again = plan_picture(
+        make_scene(story, 7), kind="portrait", subject_id="mo", trigger="fight_start", brief=ELDER
+    ).image
+
+    assert (again.pk, again.status) == (blocked.pk, ImageStatus.SKIPPED)
+
+
+def test_planning_marks_the_scene_row():
+    story = make_story()
+    scene = make_scene(story, 2)
+
+    plan_picture(scene, kind="portrait", subject_id="mo", trigger="first_meeting", brief=ELDER)
+
+    scene.refresh_from_db()
+    assert (scene.image_planned, scene.image_kind, scene.image_status) == (
+        True,
+        "portrait",
+        "planned",
+    )
+
+
 def test_a_storys_own_look_comes_from_its_bible():
     story = make_story(genre="cultivation")
 

@@ -286,8 +286,9 @@ Picture {status: "ready"|"pending"|"skipped",
   a picture the scene says is planned; any other scene answers `skipped`, and so does a picture not
   drawn yet while the story's `images` setting is `off`.
 - `skipped` means the picture failed, was blocked or wasn't affordable. Leave the scene quietly
-  without one (M3, M7). A repeat answers `skipped` again without trying; only `illustrate` tries a
-  skipped picture again.
+  without one (M3, M7). A repeat answers `skipped` again without trying; `illustrate` tries it
+  again. A portrait or place that failed or wasn't affordable is also planned again the next time
+  the story shows that character or place.
 - `illustrate` draws the scene's planned picture if it has one, or a picture of the scene itself,
   even with pictures off. On a scene whose picture is ready it returns that picture at no charge.
 - Pictures are reused: a character's portrait or a place's picture is drawn once and every scene
@@ -295,8 +296,9 @@ Picture {status: "ready"|"pending"|"skipped",
   arrives: portraits and covers are 3:4, places and scenes 16:9.
 - `url` is a signed URL that works until `expires_at`, about an hour. After that, ask
   `GET .../images/{image_id}` for a fresh one, and cache the picture by `image_id`, not by URL.
-- With the player's own key (`X-LLM-*` headers) the picture is drawn on their key at no charge; a
-  key that can't draw pictures, such as a free-tier Gemini key, falls back to credits (M7).
+- With the player's own key (`X-LLM-*` headers) the picture is drawn on their key at no charge. A
+  key that can't draw pictures (rejected, or a free-tier Gemini key, which has no image models)
+  falls back to credits; a server error on their key skips the picture instead (M7).
 - Errors: `404 not_found` for an unknown story, scene or picture, `403 forbidden` for another
   player's story, `400 validation_error` for an unsupported `X-LLM-Provider`, and `429
   rate_limited` from the credit meter, after which the picture is still planned.

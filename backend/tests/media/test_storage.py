@@ -87,6 +87,38 @@ def test_signed_urls_are_reused_until_half_their_life_is_gone(settings, monkeypa
     assert len(signed) == 2
 
 
+def test_many_urls_are_signed_together_and_cached(settings):
+    keys = [f"stories/s1/{n}.png" for n in range(5)]
+
+    urls = storage.signed_urls([*keys, keys[0]])
+
+    assert list(urls) == keys
+    assert all(urls[key].url.startswith(f"/media/{key}?") for key in keys)
+    assert storage.signed_urls(keys[:2]) == {key: urls[key] for key in keys[:2]}
+
+
+def test_a_real_deployment_needs_a_bucket():
+    """With Vertex AI on and DEBUG off, pictures on one instance's disk would be lost."""
+    import subprocess
+
+    def settings_with(**env):
+        code = "import lucid.settings"
+        base = {
+            "PATH": "/usr/bin:/bin",
+            "DJANGO_SECRET_KEY": "k",
+            "DATABASE_URL": "postgresql://x/y",
+        }
+        return subprocess.run(
+            [sys.executable, "-c", code], env=base | env, capture_output=True, text=True
+        )
+
+    missing = settings_with(DEBUG="0", LLM_PROVIDER="vertex", MEDIA_BUCKET="")
+    assert missing.returncode != 0
+    assert "MEDIA_BUCKET is required" in missing.stderr
+    assert settings_with(DEBUG="0", LLM_PROVIDER="vertex", MEDIA_BUCKET="b").returncode == 0
+    assert settings_with(DEBUG="0", LLM_PROVIDER="fake", MEDIA_BUCKET="").returncode == 0
+
+
 def test_a_bucket_setting_picks_cloud_storage_without_loading_its_client(settings):
     settings.MEDIA_BUCKET = "lucid-pictures"
     sys.modules.pop("google.cloud.storage", None)
@@ -154,9 +186,22 @@ class FakeClient:
         return self.buckets.setdefault(name, FakeBucket(name))
 
 
+def test_cloud_runs_service_account_email_is_learned_by_a_refresh():
+    """On Cloud Run, ADC's email reads "default" until the credentials are refreshed."""
+    client = FakeClient()
+    client._credentials.valid = True
+    client._credentials.token = "early-token"
+    gcs = GcsStorage("lucid-pictures", client=client, credentials=client._credentials)
+
+    gcs.url("stories/s1/a.png", 60)
+
+    signed = client.buckets["lucid-pictures"].signed[0]
+    assert signed["service_account_email"].startswith("playable-anime-api@")
+
+
 def test_cloud_storage_keeps_files_private_and_signs_urls_through_iam():
     client = FakeClient()
-    gcs = GcsStorage("lucid-pictures", client=client)
+    gcs = GcsStorage("lucid-pictures", client=client, credentials=client._credentials)
 
     gcs.save("stories/s1/a.png", b"png", "image/png")
     url = gcs.url("stories/s1/a.png", 900)

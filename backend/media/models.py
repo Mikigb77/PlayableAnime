@@ -94,6 +94,18 @@ class Image(models.Model):
     def __str__(self) -> str:
         return f"{self.kind} {self.subject} v{self.version} ({self.status})"
 
+    @property
+    def scene_status(self) -> str:
+        """The state a scene shows (`SceneImage.status` in docs/API.md): planned until drawn."""
+        if self.status in (ImageStatus.READY, ImageStatus.SKIPPED):
+            return self.status
+        return ImageStatus.PLANNED
+
+    def sync_scenes(self) -> None:
+        """Keeps `Scene.image_status` of every scene showing this picture in step with it, for
+        the stories admin and anything reading the scene row. Signed URLs are never stored."""
+        Scene.objects.filter(picture__image=self).update(image_status=self.scene_status)
+
 
 class ScenePicture(models.Model):
     """The picture a scene shows. Many scenes can show one portrait or place (M4)."""

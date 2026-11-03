@@ -99,6 +99,25 @@ def test_a_slow_request_that_lost_its_claim_keeps_the_winners_picture(painters, 
     assert not get_storage().exists(f"stories/{story.id}/{image.id}.png")
 
 
+def test_a_slow_drawing_still_counts_when_the_picture_was_put_back_meanwhile(painters, meter):
+    """A request whose claim ran out finishes while nobody else is drawing (another request took
+    over and was rate limited, which puts the picture back): the finished drawing is kept."""
+    story = make_story()
+    image = plan_picture(make_scene(story, 2), kind="scene", trigger="t", brief=Brief()).image
+    url = f"/v1/stories/{story.id}/scenes/2/image"
+    painters.ours.gate = threading.Event()
+
+    slow, result = _in_thread(lambda: Client().post(url).json())
+    assert painters.ours.started.wait(10)
+    Image.objects.filter(pk=image.pk).update(status=ImageStatus.PLANNED, claim=None)
+    painters.ours.gate.set()
+    slow.join(10)
+
+    assert result[0]["status"] == "ready"
+    assert Image.objects.get(pk=image.pk).status == ImageStatus.READY
+    assert (len(meter.charged), meter.released) == (1, [])
+
+
 def test_a_story_deleted_while_its_picture_is_drawn_leaves_no_file(painters, meter):
     story = make_story()
     image = plan_picture(make_scene(story, 2), kind="scene", trigger="t", brief=Brief()).image

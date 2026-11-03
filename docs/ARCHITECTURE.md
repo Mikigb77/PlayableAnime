@@ -392,8 +392,8 @@ app                   shows the narration, then asks for the picture in its own 
 - **One `Image` per subject (M4).** `media.Image` is keyed by story, kind (portrait, place, scene,
   cover), subject (a character id, a place id, `turn-12`, `cover`) and version. A portrait or place
   is drawn once and every later scene that shows it links to the same row through
-  `media.ScenePicture`. A planned subject that was skipped is planned again the next time it comes
-  up. `plan_picture(..., redraw=True)` with a new appearance draws a character's portrait again as
+  `media.ScenePicture`. A portrait or place that failed or wasn't affordable is planned again the
+  next time it comes up; a blocked one only through Illustrate. `plan_picture(..., redraw=True)` with a new appearance draws a character's portrait again as
   the next version, once per change (M5); the earlier portrait goes along as the reference.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
   prompt, the world's genre, era, tone and setting from the bible, and the known characters in the
@@ -406,15 +406,20 @@ app                   shows the narration, then asks for the picture in its own 
   narration, which the same rules keep mild.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
-  failures and call records. A player's own key draws for free (K6); a key that can't draw, such as
-  a free-tier key, which has no image models, falls back to credits (M7).
+  failures and call records. A player's own key draws for free (K6). A key that can't draw falls
+  back to credits (M7): one that is rejected, has no picture quota (a free-tier key answers 429,
+  since the free tier has no image models) or can't use the model. A timeout or server error on
+  their key skips the picture instead, so an outage never spends their credits.
 - **At most once (M3).** The first request to find a picture planned claims it under a row lock
   and draws it inside that request; requests that arrive meanwhile answer `pending`. A claim is a
   lease of 300 seconds, longer than a Cloud Run request can live, so a claim left by a request that
   died is taken over, at most three attempts in all. The first request to finish wins: a late one
-  keeps the winner's picture, charges nothing and deletes its own file. A failure, a block or no
+  keeps the winner's picture, charges nothing and deletes its own file. When the player leaves
+  mid-drawing, Django cancels the request: its hold is released and the picture is planned again
+  for the next request, since nothing may run after a response ends (B8). A failure, a block or no
   credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
-  Illustrate tries a skipped picture again.
+  Illustrate tries a skipped scene picture again. The scenes showing a picture keep
+  `Scene.image_status` in step with it.
 - **Paying (M7, K7).** `media/billing.py` is the seam to WS7's credit meter: `start` holds the
   estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
   `rate_limited`, with the picture planned again), `charge` takes the real cost plus margin in the
@@ -426,8 +431,11 @@ app                   shows the narration, then asks for the picture in its own 
   `PICTURE_URL_TTL_S` (an hour by default), signed through IAM's signBlob as the runtime service
   account with Application Default Credentials, so no key file exists. That needs
   `roles/iam.serviceAccountTokenCreator` for the service account on itself and object access on the
-  bucket ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)). A URL is reused while more than half its life remains, so a list of
-  scenes doesn't sign the same picture again. Without a bucket, files go to `PICTURE_ROOT`
+  bucket ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)). A URL is reused while more than half
+  its life remains, and a list of pictures is signed in parallel, so a story with many pictures
+  costs one round of IAM calls. The service refuses to start with `LLM_PROVIDER=vertex`, DEBUG off
+  and no `MEDIA_BUCKET`, because pictures on one instance's disk would be lost. Without a bucket,
+  files go to `PICTURE_ROOT`
   (`backend/media-local/`) and `/media/<key>` serves them behind an HMAC-signed, expiring URL.
 - **Deleting and exporting (T12).** Deleting a story or an account cascades to its pictures, and a
   `post_delete` receiver removes each file once the transaction commits, so a delete that rolls

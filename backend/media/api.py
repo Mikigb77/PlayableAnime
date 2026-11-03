@@ -82,7 +82,7 @@ def caller(request: HttpRequest):
 async def owned_story(request: HttpRequest, story_id: str) -> Story:
     """The story, if the caller may see it: 404 when it doesn't exist, 403 when it belongs to
     someone else (S8). A story from before sign-in has no owner."""
-    story = await Story.objects.select_related("owner").filter(pk=_uuid(story_id)).afirst()
+    story = await Story.objects.filter(pk=_uuid(story_id)).afirst()
     if story is None:
         raise ApiError(ErrorCode.NOT_FOUND, "Story not found.")
     user = caller(request)

@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 import threading
 import time
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -26,6 +28,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
 
+_CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform"
 _SAFE_KEY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/_.-]{0,511}$")
 _LOCAL_SALT = "media.storage.local"
 LOCAL_URL_PREFIX = "/media/"
@@ -108,18 +111,25 @@ def verify_local_signature(key: str, expires: str, signature: str) -> bool:
 class GcsStorage:
     """A private Cloud Storage bucket. Pass `client` to test without Google Cloud."""
 
-    def __init__(self, bucket: str, *, project: str = "", client: Any = None) -> None:
+    def __init__(
+        self, bucket: str, *, project: str = "", client: Any = None, credentials: Any = None
+    ) -> None:
         self.bucket_name = bucket
         self.project = project
         self._client = client
+        self._credentials = credentials
         self._lock = threading.Lock()
 
     def _get_client(self) -> Any:
         with self._lock:
             if self._client is None:
-                from google.cloud import storage  # loads on first use (B10)
+                import google.auth  # loads on first use (B10)
+                from google.cloud import storage
 
-                self._client = storage.Client(project=self.project or None)
+                # Application Default Credentials: the runtime service account on Cloud Run.
+                credentials, _ = google.auth.default(scopes=[_CLOUD_PLATFORM])
+                self._credentials = credentials
+                self._client = storage.Client(project=self.project or None, credentials=credentials)
             return self._client
 
     def _blob(self, key: str) -> Any:
@@ -156,10 +166,13 @@ class GcsStorage:
         return SignedUrl(url, expires_at)
 
     def _signing_identity(self) -> tuple[str, str]:
-        """The service account and a fresh access token, for signing through IAM (B11)."""
-        credentials = self._get_client()._credentials
+        """The service account and a fresh access token, for signing through IAM (B11). On Cloud
+        Run the account's email is only known after a refresh."""
+        self._get_client()
+        credentials = self._credentials
         with self._lock:
-            if not credentials.valid or not getattr(credentials, "service_account_email", ""):
+            email = getattr(credentials, "service_account_email", "") or ""
+            if not credentials.valid or email in ("", "default"):
                 from google.auth.transport.requests import Request
 
                 credentials.refresh(Request())
@@ -203,6 +216,19 @@ def signed_url(key: str) -> SignedUrl:
             _url_cache.clear()
         _url_cache[cache_key] = url
     return url
+
+
+def signed_urls(keys: Iterable[str]) -> dict[str, SignedUrl]:
+    """Signed URLs for many pictures, signing the ones not cached at the same time, so a story
+    with many pictures costs one round of IAM calls, not one after another."""
+    keys = list(dict.fromkeys(keys))
+    if len(keys) <= 1:
+        return {key: signed_url(key) for key in keys}
+    with ThreadPoolExecutor(max_workers=min(_SIGNING_THREADS, len(keys))) as pool:
+        return dict(zip(keys, pool.map(signed_url, keys), strict=True))
+
+
+_SIGNING_THREADS = 8
 
 
 def storage_key(story_id: object, image_id: object, mime_type: str) -> str:

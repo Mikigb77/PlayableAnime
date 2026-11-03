@@ -87,6 +87,22 @@ def test_a_planned_picture_is_drawn_stored_and_served(client, painters, meter, l
     assert "swordsmen" not in str(line)  # never the prompt (T6)
 
 
+def test_the_scenes_showing_a_picture_follow_its_state(client, painters, meter):
+    story = make_story()
+    _planned_scene(story, 2)
+    _planned_scene(story, 3)
+    painters.ours.script(PNG, DrawFailed("x"))
+
+    _image(client, story, 2)
+    _image(client, story, 3)
+
+    from stories.models import Scene
+
+    statuses = dict(Scene.objects.filter(story=story).values_list("turn", "image_status"))
+    assert statuses == {2: "ready", 3: "skipped"}
+    assert not Scene.objects.filter(story=story).exclude(image_url=None).exists()
+
+
 def test_asking_again_never_draws_or_charges_twice(client, painters, meter):
     story = make_story()
     _planned_scene(story)
@@ -364,6 +380,42 @@ def test_a_storage_failure_skips_the_picture_and_releases_its_hold(
     assert _image(client, story, 2).json()["status"] == "skipped"
     assert meter.released == [1]
     assert meter.charged == []
+
+
+def test_a_player_who_leaves_mid_drawing_leaves_the_picture_for_the_next_request(painters, meter):
+    """Django cancels the view when the client disconnects. Nothing runs on (B8): the hold is
+    released and the picture is planned again, not stuck as pending."""
+    import asyncio
+    import threading
+
+    from asgiref.sync import async_to_sync
+
+    from media.service import scene_picture
+    from stories.models import Scene
+
+    story = make_story()
+    _planned_scene(story)
+    scene = Scene.objects.get(story=story, turn=2)
+    painters.ours.gate = threading.Event()
+
+    async def leave_mid_drawing():
+        task = asyncio.create_task(scene_picture(story, scene, user=None))
+        await asyncio.to_thread(painters.ours.started.wait, 10)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            return "cancelled"
+        finally:
+            painters.ours.gate.set()
+
+    assert async_to_sync(leave_mid_drawing)() == "cancelled"
+
+    image = Image.objects.get()
+    assert (image.status, image.claim, image.attempts) == (ImageStatus.PLANNED, None, 0)
+    assert meter.released == [1]
+    assert meter.charged == []
+    assert not any(get_storage().root.rglob("*.png"))
 
 
 def test_a_picture_is_fetched_again_with_a_fresh_url(client, painters, meter):

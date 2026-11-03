@@ -66,6 +66,9 @@ class _Attempt:
     byok_fell_back: bool = False
     references: int = 0
     categories: tuple[str, ...] = ()
+    # The credit hold until it is charged or released, and a stored file not yet the picture's.
+    ticket: billing.Ticket | None = None
+    saved_key: str | None = None
 
 
 def pictures_off(story: Story) -> bool:
@@ -162,6 +165,7 @@ def _claim(image_id: uuid.UUID) -> tuple[Image, uuid.UUID | None]:
         if image.attempts >= MAX_ATTEMPTS:
             _mark_skipped(image, SkipReason.FAILED)
             image.save()
+            image.sync_scenes()
             logger.warning(
                 "Picture skipped after %s attempts",
                 image.attempts,
@@ -188,7 +192,28 @@ async def _draw(
     byok_key: str | None,
 ) -> PictureResult:
     attempt = _Attempt()
-    ticket: billing.Ticket | None = None
+    try:
+        return await _draw_claimed(
+            story, scene, image, token, attempt, user, trigger, byok_provider, byok_key
+        )
+    except asyncio.CancelledError:
+        # The player left and Django cancelled the request. Nothing may run after it ends (B8),
+        # so let the hold go and put the picture back for the next request to draw.
+        await asyncio.shield(_abandon(image.pk, token, attempt))
+        raise
+
+
+async def _draw_claimed(
+    story: Story,
+    scene: Scene,
+    image: Image,
+    token: uuid.UUID,
+    attempt: _Attempt,
+    user,
+    trigger: str,
+    byok_provider: str | None,
+    byok_key: str | None,
+) -> PictureResult:
     try:
         request = await _draw_request(story, image)
         attempt.references = len(request.references)
@@ -200,10 +225,10 @@ async def _draw(
                 attempt.byok_fell_back = True
         if drawn is None:
             try:
-                ticket = await billing.start(user, story_id=story.id, image_id=image.id)
+                attempt.ticket = await billing.start(user, story_id=story.id, image_id=image.id)
             except billing.NoCredits:
                 return await _skip(image, token, SkipReason.NO_CREDITS, attempt, trigger)
-            attempt.payer = ticket.payer
+            attempt.payer = attempt.ticket.payer
             drawn = await _draw_once(story, request, attempt, None, None)
             if drawn is None:
                 raise drawing.DrawFailed("no picture")
@@ -215,32 +240,54 @@ async def _draw(
         raise
     except DrawBlocked as exc:
         attempt.categories = exc.categories
-        return await _skip(image, token, SkipReason.BLOCKED, attempt, trigger, ticket)
+        return await _skip(image, token, SkipReason.BLOCKED, attempt, trigger)
     except DrawError:
-        return await _skip(image, token, SkipReason.FAILED, attempt, trigger, ticket)
+        return await _skip(image, token, SkipReason.FAILED, attempt, trigger)
     except Exception:
         logger.exception("Drawing a picture failed", extra={"image_id": str(image.id)})
-        return await _skip(image, token, SkipReason.FAILED, attempt, trigger, ticket)
+        return await _skip(image, token, SkipReason.FAILED, attempt, trigger)
 
     attempt.model, attempt.cost_usd = drawn.model, drawn.cost_usd
     key = storage_key(story.id, image.id, drawn.mime_type)
     try:
+        attempt.saved_key = key
         await asyncio.to_thread(get_storage().save, key, drawn.data, drawn.mime_type)
-        finished, won = await _finish(image.pk, key, drawn, ticket, scene.turn, attempt)
+        finished, won = await _finish(image.pk, key, drawn, attempt.ticket, scene.turn, attempt)
     except Exception:
         logger.exception("Storing a picture failed", extra={"image_id": str(image.id)})
         await asyncio.to_thread(_delete_quietly, key)
-        return await _skip(image, token, SkipReason.FAILED, attempt, trigger, ticket)
+        attempt.saved_key = None
+        return await _skip(image, token, SkipReason.FAILED, attempt, trigger)
     if not won:
         # Another request finished it first (after our claim ran out), or the story is gone.
-        if ticket is not None:
-            await billing.release(ticket)
+        await _release(attempt)
         await asyncio.to_thread(_delete_quietly, key)
+        attempt.saved_key = None
         if finished is None:
             return PictureResult("skipped")
         return await result_for(finished)
+    attempt.saved_key = None  # it is the picture now
+    attempt.ticket = None  # charged with it
     _log(finished, "ready", "", attempt, trigger)
     return await result_for(finished)
+
+
+async def _release(attempt: _Attempt) -> None:
+    ticket, attempt.ticket = attempt.ticket, None
+    if ticket is not None:
+        await billing.release(ticket)
+
+
+async def _abandon(image_id: uuid.UUID, token: uuid.UUID, attempt: _Attempt) -> None:
+    try:
+        await _release(attempt)
+        if attempt.saved_key is not None:
+            await asyncio.to_thread(_delete_quietly, attempt.saved_key)
+        await _unclaim(image_id, token)
+    except Exception:
+        logger.exception(
+            "Cleaning up a cancelled picture failed", extra={"image_id": str(image_id)}
+        )
 
 
 async def _draw_once(
@@ -325,10 +372,11 @@ def _finish(
     attempt: _Attempt,
 ) -> tuple[Image | None, bool]:
     """Marks the picture ready and charges it, together. The first request to finish a picture
-    wins; a later one (whose claim ran out) gets the winner's picture and charges nothing."""
+    wins, even one whose claim ran out meanwhile: a finished drawing is never thrown away for one
+    still in progress. A later finisher gets the winner's picture and charges nothing."""
     with transaction.atomic():
         image = Image.objects.select_for_update().filter(pk=image_id).first()
-        if image is None or image.status != ImageStatus.PENDING:
+        if image is None or image.status == ImageStatus.READY:
             return image, False
         payer = Payer.BYOK
         if ticket is not None:
@@ -352,19 +400,14 @@ def _finish(
         image.claim = None
         image.ready_at = timezone.now()
         image.save()
+        image.sync_scenes()
         return image, True
 
 
 async def _skip(
-    image: Image,
-    token: uuid.UUID,
-    reason: str,
-    attempt: _Attempt,
-    trigger: str,
-    ticket: billing.Ticket | None = None,
+    image: Image, token: uuid.UUID, reason: str, attempt: _Attempt, trigger: str
 ) -> PictureResult:
-    if ticket is not None:
-        await billing.release(ticket)
+    await _release(attempt)
     current = await _mark_skipped_if_claimed(image.pk, token, reason)
     if current is None:
         return PictureResult("skipped")
@@ -380,6 +423,7 @@ def _mark_skipped_if_claimed(image_id: uuid.UUID, token: uuid.UUID, reason: str)
         if image is not None and image.claim == token:
             _mark_skipped(image, reason)
             image.save()
+            image.sync_scenes()
         return image
 
 

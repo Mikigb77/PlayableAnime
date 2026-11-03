@@ -79,12 +79,24 @@ def test_a_picture_that_fails_twice_fails():
         asyncio.run(_model(fake).draw(REQUEST))
 
 
-@pytest.mark.parametrize("step", [Fail(kind="auth", status=403), Fail(status=429)])
+@pytest.mark.parametrize(
+    "step", [Fail(kind="auth", status=403), Fail(status=429), Fail(kind="invalid", status=404)]
+)
 def test_a_players_key_that_cant_draw_falls_back(step):
-    """M7: a rejected key, or a free-tier key that has no image models, falls back to credits."""
+    """M7: a rejected key, a free-tier key with no picture quota, or a model the key can't use
+    falls back to credits."""
     fake = FakeBackend().script(Node.PICTURE, step, step)
 
     with pytest.raises(KeyCannotDraw):
+        asyncio.run(_model(fake, byok=True).draw(REQUEST))
+
+
+@pytest.mark.parametrize("step", [Fail(status=503), Fail(status=500)])
+def test_a_players_key_that_hits_an_outage_doesnt_spend_their_credits(step):
+    """A server error isn't the key's fault: the picture is skipped, not charged to credits."""
+    fake = FakeBackend().script(Node.PICTURE, step, step)
+
+    with pytest.raises(DrawFailed):
         asyncio.run(_model(fake, byok=True).draw(REQUEST))
 
 

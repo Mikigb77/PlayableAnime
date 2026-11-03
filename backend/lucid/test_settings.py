@@ -19,6 +19,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 LLM_PROVIDER = "fake"
 # Pictures go to a throwaway folder, never Cloud Storage. Tests that look at files use their own.
 MEDIA_BUCKET = ""
-PICTURE_ROOT = tempfile.mkdtemp(prefix="lucid-pictures-")
+# Nothing is created unless a test stores a picture without its own folder.
+PICTURE_ROOT = os.path.join(tempfile.gettempdir(), "lucid-test-pictures")
 # The admin's assets straight from the apps, so tests don't need `collectstatic`.
 SERVESTATIC_USE_FINDERS = True

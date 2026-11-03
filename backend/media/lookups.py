@@ -1,8 +1,9 @@
 """Picture URLs for the endpoints that show scenes, portraits, covers and the export.
 
 The story, library, memory and export endpoints (WS3, WS6, WS15) call these instead of reading
-the media tables themselves. They query in bulk, one query per call. URLs are signed, so call
-them off the event loop (`sync_to_async`), and pass the request to make local URLs absolute.
+the media tables themselves. Each call is one query, and the URLs it needs are signed together
+(`media.storage.signed_urls`). Signing can call IAM, so call these off the event loop
+(`sync_to_async`), and pass the request to make local development's URLs absolute.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from django.http import HttpRequest
 
 from media.api import absolute_url
 from media.models import Image, ImageStatus, ScenePicture
-from media.storage import SignedUrl, signed_url
+from media.storage import SignedUrl, signed_urls
 from stories.models import ImageKind, Scene, Story
 
 
@@ -29,24 +30,26 @@ def scene_images(
         link.scene_id: link
         for link in ScenePicture.objects.select_related("image").filter(scene__in=scenes)
     }
+    urls = _urls([link.image for link in links.values()], request)
     images: dict[int, dict[str, Any]] = {}
     for scene in scenes:
         link = links.get(scene.pk)
         if link is not None:
             image = link.image
-            status = image.status if image.status in _FINAL else ImageStatus.PLANNED
             images[scene.turn] = {
                 "planned": link.planned,
                 "kind": image.kind,
-                "status": str(status),
+                "status": str(image.scene_status),
                 "image_id": str(image.id),
-                **_url_fields(image, request),
             }
+            if image.pk in urls:
+                url = urls[image.pk]
+                images[scene.turn] |= {"url": url.url, "expires_at": url.expires_at}
         elif scene.image_planned:
             images[scene.turn] = {
                 "planned": True,
                 "kind": scene.image_kind or ImageKind.SCENE,
-                "status": ImageStatus.PLANNED,
+                "status": str(ImageStatus.PLANNED),
             }
     return images
 
@@ -55,14 +58,17 @@ def portrait_urls(
     story: Story | Any, character_ids: Iterable[str], *, request: HttpRequest | None = None
 ) -> dict[str, SignedUrl]:
     """The current portrait of each character that has one ready (M4, M5), by character id."""
-    ids = list(dict.fromkeys(character_ids))
-    latest: dict[str, Image] = {}
     portraits = Image.objects.filter(
-        story=story, kind=ImageKind.PORTRAIT, subject__in=ids, status=ImageStatus.READY
+        story=story,
+        kind=ImageKind.PORTRAIT,
+        subject__in=list(dict.fromkeys(character_ids)),
+        status=ImageStatus.READY,
     ).order_by("subject", "-version")
+    latest: dict[str, Image] = {}
     for portrait in portraits:
         latest.setdefault(portrait.subject, portrait)
-    return {subject: _signed(image, request) for subject, image in latest.items()}
+    urls = _urls(latest.values(), request)
+    return {subject: urls[image.pk] for subject, image in latest.items() if image.pk in urls}
 
 
 def cover_urls(
@@ -75,45 +81,43 @@ def cover_urls(
     latest: dict[str, Image] = {}
     for cover in covers:
         latest.setdefault(str(cover.story_id), cover)
-    return {story_id: _signed(image, request) for story_id, image in latest.items()}
+    urls = _urls(latest.values(), request)
+    return {story_id: urls[image.pk] for story_id, image in latest.items() if image.pk in urls}
 
 
 def export_pictures(user, *, request: HttpRequest | None = None) -> list[dict[str, Any]]:
     """Every ready picture of the user's stories, with fresh URLs, for the export (T12, M4)."""
-    images = (
+    images = list(
         Image.objects.filter(story__owner=user, status=ImageStatus.READY)
         .prefetch_related("scene_links__scene")
         .order_by("story_id", "created_at")
     )
-    exported = []
-    for image in images:
-        url = _signed(image, request)
-        exported.append(
-            {
-                "id": str(image.id),
-                "story_id": str(image.story_id),
-                "kind": image.kind,
-                "subject": image.subject,
-                "version": image.version,
-                "turns": sorted(link.scene.turn for link in image.scene_links.all()),
-                "url": url.url,
-                "expires_at": url.expires_at.isoformat(),
-                "created_at": image.created_at.isoformat(),
-            }
+    urls = _urls(images, request)
+    return [
+        {
+            "id": str(image.id),
+            "story_id": str(image.story_id),
+            "kind": image.kind,
+            "subject": image.subject,
+            "version": image.version,
+            "turns": sorted(link.scene.turn for link in image.scene_links.all()),
+            "url": urls[image.pk].url,
+            "expires_at": urls[image.pk].expires_at.isoformat(),
+            "created_at": image.created_at.isoformat(),
+        }
+        for image in images
+        if image.pk in urls
+    ]
+
+
+def _urls(images: Iterable[Image], request: HttpRequest | None) -> dict[Any, SignedUrl]:
+    """Signed URLs for the ready pictures among `images`, by image id."""
+    ready = [i for i in images if i.status == ImageStatus.READY and i.storage_key]
+    signed = signed_urls(image.storage_key for image in ready)
+    return {
+        image.pk: SignedUrl(
+            absolute_url(request, signed[image.storage_key].url),
+            signed[image.storage_key].expires_at,
         )
-    return exported
-
-
-_FINAL = (ImageStatus.READY, ImageStatus.SKIPPED)
-
-
-def _url_fields(image: Image, request: HttpRequest | None) -> dict[str, Any]:
-    if image.status != ImageStatus.READY or not image.storage_key:
-        return {}
-    url = _signed(image, request)
-    return {"url": url.url, "expires_at": url.expires_at}
-
-
-def _signed(image: Image, request: HttpRequest | None) -> SignedUrl:
-    url = signed_url(image.storage_key)
-    return SignedUrl(absolute_url(request, url.url), url.expires_at)
+        for image in ready
+    }
