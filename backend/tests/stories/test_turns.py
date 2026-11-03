@@ -144,7 +144,8 @@ def test_an_action_plays_with_its_input_mode_and_shows_why(player, make_story, m
     assert step["text"] == "step around Zhao"
     assert step["class"] in {"certain", "contested", "long_shot", "ruled_out"}
     assert step["reason"]
-    assert scene["image"] is None
+    # M1: the director plans the Library cover from the second scene, once.
+    assert scene["image"]["kind"] == "cover"
     assert played.completed["story"]["version"] == 3
     assert Scene.objects.get(story=story, turn=2).input_mode == "voice"
     assert LedgerEntry.objects.filter(user_id=player.pk, kind="turn").count() == 2
