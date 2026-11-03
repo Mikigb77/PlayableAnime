@@ -92,18 +92,31 @@ class Choice {
   final String kind;
 }
 
-/// A scene's picture (docs/API.md `SceneImage`).
+/// A scene's picture (docs/API.md `SceneImage` and `Picture`).
 class SceneImage {
-  const SceneImage({required this.status, this.url});
+  const SceneImage({required this.status, this.url, this.kind = 'scene', this.imageId});
 
-  factory SceneImage.fromJson(Json json) =>
-      SceneImage(status: json['status'] as String? ?? 'planned', url: json['url'] as String?);
+  factory SceneImage.fromJson(Json json) => SceneImage(
+    status: json['status'] as String? ?? 'planned',
+    url: json['url'] as String?,
+    kind: json['kind'] as String? ?? 'scene',
+    imageId: json['image_id'] as String?,
+  );
 
   /// planned, ready or skipped.
   final String status;
   final String? url;
 
+  /// portrait, place, scene or cover: it sets the slot's shape before the picture arrives.
+  final String kind;
+
+  /// The picture's id, the same wherever it is reused (M4). Cache by it, not by the signed URL.
+  final String? imageId;
+
   bool get isReady => status == 'ready' && url != null;
+
+  /// Portraits and covers are 3:4, places and scenes 16:9 (docs/API.md).
+  double get aspectRatio => kind == 'portrait' || kind == 'cover' ? 3 / 4 : 16 / 9;
 }
 
 class ScenePortrait {

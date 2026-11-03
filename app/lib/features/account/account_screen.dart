@@ -55,7 +55,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final theme = Theme.of(context);
     final colors = context.lucid;
     final session = ref.watch(sessionProvider);
-    final name = session.session?.displayName;
+    final name = session.session?.displayName ?? session.session?.user['email'] as String?;
     final mode = ref.watch(themeModeProvider);
 
     return Scaffold(
@@ -70,7 +70,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 children: [
                   PageHeader(
                     title: l10n.accountTitle,
-                    subtitle: name == null ? l10n.accountGuest : l10n.accountSignedInAs(name),
+                    subtitle: name == null ? null : l10n.accountSignedInAs(name),
                   ),
                   SectionLabel(l10n.accountAppearance),
                   Padding(

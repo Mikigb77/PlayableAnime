@@ -268,6 +268,9 @@ void main() {
       final ready = await stories.picture(story.id, scene.turn);
       expect(ready.status, 'ready');
       expect(ready.url, startsWith('asset:'));
+      expect(ready.imageId, isNotNull);
+      final again = await api.get('/v1/stories/${story.id}/images/${ready.imageId}') as JsonMap;
+      expect(again['url'], ready.url);
       expect(await balance(), closeTo(afterTurn - 3.4, 0.001));
 
       // Asking again is free.

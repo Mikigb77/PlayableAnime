@@ -53,6 +53,8 @@ class PortraitAvatar extends StatelessWidget {
         : Image(
             image: appImage(url, cacheWidth: (size * dpr).round()),
             fit: BoxFit.cover,
+            // Portraits are 3:4, head and shoulders: keep the face in the circle.
+            alignment: const Alignment(0, -0.4),
             width: size,
             height: size,
             excludeFromSemantics: true,

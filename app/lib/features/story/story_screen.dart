@@ -388,29 +388,48 @@ class _ScenePictureState extends ConsumerState<ScenePicture> {
     _tries++;
     SceneImage result;
     try {
-      result = await ref.read(storyRepositoryProvider).picture(widget.storyId, widget.turn);
+      result = await ref
+          .read(storyRepositoryProvider)
+          .picture(widget.storyId, widget.turn, kind: widget.image.kind);
     } on ApiException catch (e) {
       // A picture is never an error (M3): retry quietly while it might work, then give up.
-      result = SceneImage(status: e.code.isRetryable && _tries < _maxTries ? 'planned' : 'skipped');
+      result = SceneImage(
+        status: e.code.isRetryable && _tries < _maxTries ? 'planned' : 'skipped',
+        kind: widget.image.kind,
+      );
     }
     if (!mounted) return;
     if (result.status == 'planned' && _tries < _maxTries) {
       _timer = Timer(_interval, _ask);
     } else {
-      widget.onChanged(result.status == 'planned' ? const SceneImage(status: 'skipped') : result);
+      widget.onChanged(
+        result.status == 'planned' ? SceneImage(status: 'skipped', kind: result.kind) : result,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final image = widget.image;
+    final status = switch (image.status) {
+      'ready' => PictureStatus.ready,
+      'skipped' => PictureStatus.skipped,
+      _ => PictureStatus.pending,
+    };
+    if (image.aspectRatio < 1) {
+      // A portrait or cover is tall: shown at a portrait's width, centered, so it doesn't fill
+      // the whole screen.
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 280),
+          child: PictureSlot(status: status, url: image.url, aspectRatio: image.aspectRatio),
+        ),
+      );
+    }
     return PictureSlot(
-      status: switch (image.status) {
-        'ready' => PictureStatus.ready,
-        'skipped' => PictureStatus.skipped,
-        _ => PictureStatus.pending,
-      },
+      status: status,
       url: image.url,
+      aspectRatio: image.aspectRatio,
       // Edge to edge on phones; rounded once the reading column floats in a wider screen.
       borderRadius: MediaQuery.sizeOf(context).width > Layout.readingWidth
           ? Radii.picture

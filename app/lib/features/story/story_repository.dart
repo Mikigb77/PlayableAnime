@@ -74,8 +74,9 @@ class StoryRepository {
   /// Takes a turn and streams it. Errors before the stream starts throw `ApiException`; the
   /// stream ends with [SceneCompleted] or [TurnFailed].
   ///
-  /// Today's backend answers with one JSON object instead of a stream; that reply is replayed as
-  /// the same events, so the play screen has one code path.
+  /// Until the turn graph lands (WS3), the backend answers with one JSON object,
+  /// `{scene, state, version}`, instead of a stream; that reply is replayed as the same events, so
+  /// the play screen has one code path.
   Future<Stream<TurnEvent>> takeTurn(
     String id,
     TurnInput input, {
@@ -88,12 +89,17 @@ class StoryRepository {
     return Stream.fromIterable([
       TurnStarted((scene['turn'] as num).toInt()),
       NarrationDelta(scene['narration'] as String),
-      SceneCompleted(scene: scene, version: expectedVersion + 1, clock: const {}),
+      SceneCompleted(
+        scene: scene,
+        version: (json['version'] as num?)?.toInt() ?? expectedVersion + 1,
+        clock: const {},
+      ),
     ]);
   }
 
   /// Asks for a scene's planned picture (M3). Safe to repeat: the server makes and charges it once.
-  Future<SceneImage> picture(String id, int turn) async {
+  /// [kind] is the scene's, kept when the answer leaves it out.
+  Future<SceneImage> picture(String id, int turn, {String kind = 'scene'}) async {
     final json = await _api.post('/v1/stories/$id/scenes/$turn/image', null) as Json;
     return SceneImage(
       status: switch (json['status']) {
@@ -102,6 +108,8 @@ class StoryRepository {
         _ => 'skipped',
       },
       url: json['url'] as String?,
+      kind: json['kind'] as String? ?? kind,
+      imageId: json['image_id'] as String?,
     );
   }
 }

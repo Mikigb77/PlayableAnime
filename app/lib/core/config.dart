@@ -17,11 +17,6 @@ abstract final class AppConfig {
 
   static const isFake = apiMode == ApiMode.fake;
 
-  /// Until sign-in lands on the backend (T8), the real-mode app offers "Continue without an
-  /// account" so it still works against today's backend. The accounts work (WS13) removes this
-  /// together with the backend's own auth. `--dart-define=ALLOW_GUEST=false` hides it.
-  static const allowGuest = !isFake && bool.fromEnvironment('ALLOW_GUEST', defaultValue: true);
-
   /// The widget gallery at /gallery, for development: debug builds and the fake API only.
   static const showGallery = kDebugMode || isFake;
 }

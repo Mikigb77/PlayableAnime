@@ -18,7 +18,7 @@
 
 | Path | What |
 | --- | --- |
-| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage |
+| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage, speech_to_text. See [app/README.md](../app/README.md) and [app/DESIGN.md](../app/DESIGN.md) |
 | `backend/` | Python 3.13, Django and Django Ninja over ASGI (uvicorn), managed with uv, deployed to Cloud Run. Layout in [backend/README.md](../backend/README.md#layout) and [PLAN.md](PLAN.md#target-layout) |
 | `neon.ts`, `package.json` | Neon config as code (`@neon/config`). Node is used only for the Neon CLI and this config. |
 | `docs/` | Product and architecture notes |
@@ -540,6 +540,35 @@ flowchart LR
   logger with tokens, cost and outcome, never the premise or the prompt (T6).
 - **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
   the Naples vendetta for a grounded starter, the cultivation sample otherwise.
+
+## App
+
+The Flutter app (`app/`) is written against the v1 API in [API.md](API.md), and also reads the
+interim shapes the backend serves until the turn graph lands (WS3): a turn answered as one JSON
+object, and the raw world state as memory.
+
+- **Design system** (`app/lib/design/`): tokens, a dark and a light theme, a per-story accent picked
+  from the genre, bundled fonts, motion, and the shared components, all on show at `/gallery`.
+  The rules are in [app/DESIGN.md](../app/DESIGN.md), and the picture house style in
+  `backend/media/prompts.py` follows its "Pictures" section.
+- **API client** (`app/lib/core/api/`): JSON over `http` with the session's bearer token. On a 401
+  it refreshes once (one refresh shared by every request that hit it, as API.md asks) and retries;
+  if the refresh is refused, the session ends and the router returns to the welcome screen. Errors
+  are an `ApiException` with a typed code from API.md's error envelope, plus `network`, `timeout`
+  and `server` for failures without one (T7). The player's own key rides only on POSTs under
+  `/v1/drafts` and `/v1/stories` that may call a model.
+- **Turns stream** as Server-Sent Events (S3). The client parses them into `TurnEvent`s that always
+  end in `SceneCompleted` or `TurnFailed`, so a dropped connection is a typed error, not a hang.
+  An interim JSON answer is replayed as the same events.
+- **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
+  request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
+  if it fails.
+- **Session** (`app/lib/core/session/`): tokens in the platform's secure storage. Sign-in screens
+  (WS13) post to `/v1/auth/*` through `authApiClientProvider` and hand the `Session` to
+  `SessionController.signIn`.
+- **Fake API** (`--dart-define=API_MODE=fake`): an `http.Client` inside the app that speaks API.md,
+  with one file per area, so the app runs and is tested end to end without a server.
+- **Strings** are in `app/lib/l10n/app_en.arb`, generated at `flutter pub get` (S10).
 
 ## Bring your own key
 

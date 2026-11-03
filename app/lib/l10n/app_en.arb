@@ -28,10 +28,6 @@
   "@welcomeDemoSignIn": {
     "description": "Only in the offline fake-API build."
   },
-  "welcomeGuest": "Continue without an account",
-  "@welcomeGuest": {
-    "description": "Development only, until accounts exist."
-  },
   "welcomeSignInSoon": "Sign-in with Google and email is on its way.",
   "discoverTitle": "Discover",
   "discoverSubtitle": "Pick a world, or dream up your own.",
@@ -114,7 +110,6 @@
       }
     }
   },
-  "accountGuest": "Playing without an account",
   "accountAppearance": "Appearance",
   "themeDark": "Dark",
   "themeLight": "Light",

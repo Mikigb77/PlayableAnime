@@ -36,6 +36,7 @@ void registerPictureRoutes(FakeBackend b) {
     }
     current
       ..['status'] = 'ready'
+      ..['image_id'] = 'img_${story.id}_$turn'
       ..['url'] = _pictureFor(story, turn!);
     if (!r.usesOwnKey && b.data.pictures.charged.add(key)) {
       // A picture never takes the balance below zero (M7).
@@ -57,7 +58,7 @@ void registerPictureRoutes(FakeBackend b) {
   b.route('POST', '/v1/stories/:id/scenes/:turn/illustrate', (r) => picture(r, illustrate: true));
   b.route('GET', '/v1/stories/:id/images/:image', (r) {
     final story = b.data.stories.get(r.param('id'), r.userId!);
-    final turn = int.tryParse(r.param('image').split('-').last);
+    final turn = int.tryParse(r.param('image').split('_').last);
     final scene = story.scenes.where((s) => s['turn'] == turn).firstOrNull;
     final image = scene?['image'] as JsonMap?;
     if (image == null) throw const FakeError.notFound('No such picture');
@@ -67,6 +68,8 @@ void registerPictureRoutes(FakeBackend b) {
 
 JsonMap _ready(FakeBackend b, JsonMap image) => {
   'status': 'ready',
+  'image_id': image['image_id'],
+  'kind': image['kind'] ?? 'scene',
   'url': image['url'],
   'expires_at': b.now().add(const Duration(hours: 1)).toUtc().toIso8601String(),
 };

@@ -23,9 +23,9 @@ Against a real backend, set its URL (the default is `http://localhost:8080`):
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-(`10.0.2.2` is how an Android emulator reaches your machine.) Until sign-in ships (T8), a real-mode
-build also offers **Continue without an account** for today's backend; `--dart-define=ALLOW_GUEST=false`
-turns it off.
+(`10.0.2.2` is how an Android emulator reaches your machine.) The backend needs a signed-in player
+for everything but `/health` and `/v1/auth/*`; until the sign-in screens land (WS13), use the fake
+API to get past the welcome screen.
 
 ### Web
 

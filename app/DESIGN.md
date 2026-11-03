@@ -4,7 +4,7 @@ The look and feel of the app, and the rules every screen follows. The code lives
 and every component is on show in the widget gallery (`/gallery`). Requirements are cited by id
 from [`docs/REQUIREMENTS.md`](../docs/REQUIREMENTS.md).
 
-![The play screen, Discover and the gallery](docs/screenshots/overview.png)
+![The play screen, Discover and the gallery](docs/screenshots/overview.jpg)
 
 ## Direction: a reading room at night
 
@@ -123,16 +123,26 @@ here and add it to the gallery.
 
 ## Pictures
 
-The app frames pictures; the image work (WS8) makes them. So they sit well in this interface:
+The app frames pictures and the pictures backend (`backend/media/`, WS8) makes them. Its house style
+(`HOUSE_STYLE` and `FRAMING` in `backend/media/prompts.py`) follows this section; change the two
+together.
 
-- **Scenes are 16:9**, shown edge to edge on a phone and with 12 px corners in a wider column. The
-  slot fades the bottom edge into the page, so keep the subject in the upper two thirds and leave
-  the bottom calm.
-- **Portraits are square**, head and shoulders, on a plain dark background, so they read at 28 px in
-  a stack and at full width in Memory.
-- **The house style (S7, M5)** suits a dark page: painterly, cinematic light, atmospheric depth and a
-  limited palette, in the world's own era and look. No text, logos or borders in the image. Mild in
-  every rating (M6).
+- **Shapes come from the kind** (docs/API.md): places and scenes are 16:9, portraits and covers 3:4.
+  The slot takes its shape from the scene's `image.kind` before the picture arrives, so nothing
+  jumps when it lands.
+- **Scenes and places** run edge to edge on a phone and get 12 px corners in a wider column. The app
+  adds its own vignette and fades the bottom edge into the page, so the image keeps its focal point
+  in the upper two thirds, leaves the bottom calm and dark, and has no vignette or border of its
+  own.
+- **Portraits** are head and shoulders with the face in the upper half, on a dark, simple
+  background, so they still read cropped to a 28 px circle in a stack; in the feed a portrait is
+  shown at most 280 px wide.
+- **Covers** leave calm, darker space in the lower third, where `CoverCard` sets the genre and title
+  over a scrim. In the Library they are a small 4:5 thumbnail.
+- **The house style (S7, M5)** suits the dark page: stylised and cinematic with an anime influence,
+  painterly low-key light, deep ink shadows, atmospheric depth and a restrained palette with one
+  strong accent, in the world's own era and look. No text, logos, panels or borders. Mild in every
+  rating (M6).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
 ## Voice

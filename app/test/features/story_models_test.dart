@@ -100,6 +100,11 @@ void main() {
       expect(scene.image?.isReady, isFalse);
       expect(scene.portraits.single.name, 'Elder Wen');
       expect(scene.withImage(const SceneImage(status: 'ready', url: 'u')).image?.isReady, isTrue);
+      expect(scene.image?.aspectRatio, 16 / 9);
+      expect(
+        SceneImage.fromJson(const {'status': 'planned', 'kind': 'portrait'}).aspectRatio,
+        3 / 4,
+      );
     });
 
     test('a story reads its version and clock, and a new scene moves both', () {

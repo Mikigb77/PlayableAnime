@@ -37,7 +37,7 @@ void main() {
               'password': FakeAuthState.demoPassword,
             }, authenticated: false)
             as JsonMap;
-    store.value = StoredSignedIn(Session.fromApi(json));
+    store.value = Session.fromApi(json);
   }
 
   Future<void> launch(WidgetTester tester) async {

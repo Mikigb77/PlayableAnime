@@ -98,11 +98,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                         onPressed: _busy ? null : _demoSignIn,
                         child: Text(l10n.welcomeDemoSignIn),
                       ),
-                    if (AppConfig.allowGuest)
-                      FilledButton(
-                        onPressed: () => ref.read(sessionProvider.notifier).continueAsGuest(),
-                        child: Text(l10n.welcomeGuest),
-                      ),
                     const SizedBox(height: Space.md),
                     Text(
                       l10n.welcomeSignInSoon,

@@ -50,24 +50,9 @@ class Session {
   String toString() => 'Session(user: ${user['id']}, expiresAt: $expiresAt)';
 }
 
-/// What survives an app restart.
-sealed class StoredSession {
-  const StoredSession();
-}
-
-class StoredSignedIn extends StoredSession {
-  const StoredSignedIn(this.session);
-  final Session session;
-}
-
-/// The development guest mode (see `AppConfig.allowGuest`).
-class StoredGuest extends StoredSession {
-  const StoredGuest();
-}
-
 abstract interface class SessionStore {
-  Future<StoredSession?> read();
-  Future<void> write(StoredSession session);
+  Future<Session?> read();
+  Future<void> write(Session session);
   Future<void> clear();
 }
 
@@ -79,13 +64,11 @@ class SecureSessionStore implements SessionStore {
   final FlutterSecureStorage _storage;
 
   @override
-  Future<StoredSession?> read() async {
+  Future<Session?> read() async {
     try {
       final raw = await _storage.read(key: _key);
       if (raw == null) return null;
-      final json = jsonDecode(raw) as Map<String, dynamic>;
-      if (json['guest'] == true) return const StoredGuest();
-      return StoredSignedIn(Session.fromStorage(json));
+      return Session.fromStorage(jsonDecode(raw) as Map<String, dynamic>);
     } on Object catch (e) {
       // A corrupt entry or an unavailable keychain means signed out, never a crash.
       debugPrint('Session restore failed: ${e.runtimeType}');
@@ -94,13 +77,8 @@ class SecureSessionStore implements SessionStore {
   }
 
   @override
-  Future<void> write(StoredSession session) => _storage.write(
-    key: _key,
-    value: jsonEncode(switch (session) {
-      StoredSignedIn(:final session) => session.toStorage(),
-      StoredGuest() => {'guest': true},
-    }),
-  );
+  Future<void> write(Session session) =>
+      _storage.write(key: _key, value: jsonEncode(session.toStorage()));
 
   @override
   Future<void> clear() => _storage.delete(key: _key);
@@ -110,13 +88,13 @@ class SecureSessionStore implements SessionStore {
 class MemorySessionStore implements SessionStore {
   MemorySessionStore([this.value]);
 
-  StoredSession? value;
+  Session? value;
 
   @override
-  Future<StoredSession?> read() async => value;
+  Future<Session?> read() async => value;
 
   @override
-  Future<void> write(StoredSession session) async => value = session;
+  Future<void> write(Session session) async => value = session;
 
   @override
   Future<void> clear() async => value = null;

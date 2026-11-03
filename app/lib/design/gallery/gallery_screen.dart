@@ -420,15 +420,20 @@ class _GalleryScreenState extends State<GalleryScreen> {
               Container(
                 constraints: const BoxConstraints(minWidth: 96, minHeight: 56),
                 padding: const EdgeInsets.all(Space.sm),
-                alignment: Alignment.bottomLeft,
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(Radii.sm),
                   border: Border.all(color: theme.colorScheme.outlineVariant),
                 ),
-                child: Text(
-                  name,
-                  style: theme.textTheme.labelSmall!.copyWith(color: onColor(color)),
+                // Grows with large text, and otherwise stays a small tile.
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: Text(
+                    name,
+                    style: theme.textTheme.labelSmall!.copyWith(color: onColor(color)),
+                  ),
                 ),
               ),
           ],

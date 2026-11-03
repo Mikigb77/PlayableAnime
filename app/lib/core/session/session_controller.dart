@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../api/api_error.dart';
 import '../api/api_providers.dart';
-import '../config.dart';
 import 'session.dart';
 
 enum SessionStatus {
@@ -13,9 +12,6 @@ enum SessionStatus {
   restoring,
   signedOut,
   signedIn,
-
-  /// The development guest mode (`AppConfig.allowGuest`): no account, no token.
-  guest,
 }
 
 class SessionState {
@@ -23,13 +19,12 @@ class SessionState {
 
   static const restoring = SessionState(SessionStatus.restoring);
   static const signedOut = SessionState(SessionStatus.signedOut);
-  static const guest = SessionState(SessionStatus.guest);
 
   final SessionStatus status;
   final Session? session;
 
   /// Whether the signed-in part of the app is open.
-  bool get canEnterApp => status == SessionStatus.signedIn || status == SessionStatus.guest;
+  bool get canEnterApp => status == SessionStatus.signedIn;
 }
 
 /// Owns the session: restore at startup, sign in, refresh, sign out. It is the [TokenSource] the
@@ -50,24 +45,14 @@ class SessionController extends Notifier<SessionState> implements TokenSource {
     final stored = await _store.read();
     // A sign-in that finished first wins over what was stored.
     if (state.status != SessionStatus.restoring) return;
-    state = switch (stored) {
-      StoredSignedIn(:final session) => SessionState(SessionStatus.signedIn, session),
-      StoredGuest() when AppConfig.allowGuest => SessionState.guest,
-      _ => SessionState.signedOut,
-    };
+    state = stored == null ? SessionState.signedOut : SessionState(SessionStatus.signedIn, stored);
   }
 
   /// Starts a session from the API's `Session` JSON.
   Future<void> signIn(Map<String, dynamic> sessionJson) async {
     final session = Session.fromApi(sessionJson);
-    await _store.write(StoredSignedIn(session));
+    await _store.write(session);
     state = SessionState(SessionStatus.signedIn, session);
-  }
-
-  Future<void> continueAsGuest() async {
-    if (!AppConfig.allowGuest) return;
-    await _store.write(const StoredGuest());
-    state = SessionState.guest;
   }
 
   /// Signs out on the server too (revoking the refresh token) when it can, then forgets the

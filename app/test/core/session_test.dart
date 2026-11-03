@@ -56,7 +56,7 @@ void main() {
     final state = container.read(sessionProvider);
     expect(state.status, SessionStatus.signedIn);
     expect(state.session!.displayName, 'Demo player');
-    expect(store.value, isA<StoredSignedIn>());
+    expect(store.value, isA<Session>());
 
     final next = make();
     final again = await restored(next);
@@ -85,7 +85,7 @@ void main() {
     expect(after.refreshToken, isNot(before.refreshToken));
     final refreshes = backend.requests.where((r) => r.uri.path == '/v1/auth/refresh');
     expect(refreshes, hasLength(1));
-    expect((store.value! as StoredSignedIn).session.accessToken, after.accessToken);
+    expect(store.value!.accessToken, after.accessToken);
   });
 
   test('a refresh the server refuses signs the player out', () async {
