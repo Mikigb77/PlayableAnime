@@ -1,10 +1,15 @@
 from django.contrib import admin
 
+from moderation.access import StoryTextAdmin
 from stories.models import PendingEvent, Scene, Story
 
+# T16: story text is read only by staff handling reports (`moderation.access`). Everyone else on
+# the staff sees titles, ratings, turns and numbers.
 
-class SceneInline(admin.TabularInline):
+
+class SceneInline(StoryTextAdmin, admin.TabularInline):
     model = Scene
+    story_text_fields = ("player_action",)
     extra = 0
     fields = ("turn", "kind", "player_action", "input_mode", "time_label", "image_status")
     readonly_fields = fields
@@ -17,7 +22,8 @@ class SceneInline(admin.TabularInline):
 
 
 @admin.register(Story)
-class StoryAdmin(admin.ModelAdmin):
+class StoryAdmin(StoryTextAdmin, admin.ModelAdmin):
+    story_text_fields = ("premise", "state")
     list_display = ("title", "owner", "genre", "rating", "engine", "turn", "updated_at")
     list_filter = ("rating", "engine")
     search_fields = ("id", "title", "owner__email")
@@ -42,7 +48,15 @@ class StoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Scene)
-class SceneAdmin(admin.ModelAdmin):
+class SceneAdmin(StoryTextAdmin, admin.ModelAdmin):
+    story_text_fields = (
+        "player_action",
+        "narration",
+        "choices",
+        "details",
+        "event",
+        "image_prompt",
+    )
     list_display = ("story", "turn", "kind", "input_mode", "image_status", "created_at")
     list_filter = ("kind", "input_mode", "image_status")
     search_fields = ("story__id", "story__title")
@@ -51,7 +65,8 @@ class SceneAdmin(admin.ModelAdmin):
 
 
 @admin.register(PendingEvent)
-class PendingEventAdmin(admin.ModelAdmin):
+class PendingEventAdmin(StoryTextAdmin, admin.ModelAdmin):
+    story_text_fields = ("payload",)
     list_display = ("story", "kind", "timeline_id", "due_world_s", "status", "created_turn")
     list_filter = ("status", "kind")
     search_fields = ("story__id", "story__title", "kind")

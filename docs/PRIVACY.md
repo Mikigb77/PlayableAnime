@@ -34,7 +34,8 @@ write to [privacy contact email]. We answer within one month.
 | **Pictures** made for your stories | Shown in your stories, made at key moments | Contract |
 | **Credits:** your balance and what each turn or picture cost | To charge fairly and show you your spending | Contract |
 | **Signed-in devices:** when each one signed in and was last used | To keep you signed in and let you sign a device out | Contract |
-| **Technical logs:** request ids, your account id, the story id, errors, timings, and costs per turn | To keep the service running, fix bugs and control costs | Legitimate interest |
+| **Technical logs:** request ids, your account id, the story id, errors, timings, costs per turn, and when a scene was blocked by our safety rules and under which category (never the story's text) | To keep the service running, fix bugs and control costs | Legitimate interest |
+| **Reports:** the scene you reported, the reason you picked, any note you wrote, whether you blocked the scene, and what our staff decided | To review scenes that may break our content rules, fix the narrator, and keep a scene you blocked hidden | Legitimate interest |
 | **Sign-in protection:** short-lived counts of failed sign-ins per email and per network address, stored only as one-way keys, never the email or address itself | To stop password guessing and fake sign-ups | Legitimate interest |
 
 We never sell your data, show you ads, or use your stories to train AI models.
@@ -72,6 +73,7 @@ our server uses it for that request only and never stores or logs it.
 ## How long we keep it
 
 - **Your account, stories and pictures:** until you delete them.
+- **Reports:** until you delete the story or your account.
 - **Deleting your account** (Settings, Delete account) removes your account, every story, every
   picture and every signed-in device from the live database and storage at once. Copies in the
   database's restore history disappear when they age out of it, within [N] days.
@@ -99,6 +101,10 @@ age signed up, we delete the account.
 All traffic is encrypted. Passwords are stored only as salted hashes, sign-in tokens as one-way
 hashes, and our own keys and passwords live in Google Secret Manager. Signing out on a device ends
 its sign-in at once, and repeated wrong passwords are slowed down.
+
+In our admin tools, only the owner and the staff who handle reports can read story text, and they
+read it to review reports. Other staff, who help with accounts and credits, see a story's title,
+rating and numbers, never what is written in it.
 
 ## Changes
 

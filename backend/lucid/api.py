@@ -13,6 +13,7 @@ from billing.api import credits_router
 from drafts.api import drafts_router, premises_router
 from lucid import errors
 from media.api import media_router
+from moderation.api import reports_router
 from stories.api import stories_router
 
 api = NinjaAPI(
@@ -31,4 +32,5 @@ api.add_router("/premises", premises_router)
 api.add_router("/drafts", drafts_router)
 api.add_router("/stories", stories_router)
 api.add_router("/stories", media_router)
+api.add_router("/stories", reports_router)
 api.add_router("/me/credits", credits_router)
