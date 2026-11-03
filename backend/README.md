@@ -202,6 +202,11 @@ graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
   turn/           The LangGraph turn graph (B5): nodes, prompts, checks before narration (C5)
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
+moderation/       Reports and blocks on scenes, the review queue (F6, T16): see ARCHITECTURE.md
+  api.py          POST /v1/stories/{id}/scenes/{turn}/report
+  service.py      Filing a report, blocked_turns() for the scene list, reports in the export
+  access.py       Who reads story text in the admin, and the mixin that hides it from others
+  evals/          T15's content-line cases as data, for the eval runner (WS17)
 billing/          Credits, quotas and rate limits (K1, K2, T9): see ARCHITECTURE.md
   meter.py        start, charge, charge_image, release: the guard and charge around model calls
   credits.py      Accounts, the starter credit, the append-only ledger, summary(user)
@@ -215,6 +220,9 @@ engine/           The rules engine, plain Python with no web or model imports (B
   rng.py          Seeded random numbers for rolls (A3)
   timekeeping.py  Duration bounds and the clock through pending events (W10, W10a)
   apply.py        apply_delta: proposed changes applied with the C1 invariants
+  limits.py       The hard limits in code: adults only in romance, Teen's line, real people,
+                  real-world instructions (F3, F2, G12)
+  real_entities.py  Real people and organisations that never become characters or factions
   invariants.py   C1 checks on one state or between two
   labels.py       Time in words: the world's calendar, "+8 h", "2 days ago"
   visibility.py   What the player character knows (C6): the Memory and status views
