@@ -54,12 +54,18 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 - [ ] Accounts and sign-in (needed before any public deploy)
 - [ ] Premise → world bible expansion (setting, rules, factions, key NPCs, tone)
 - [ ] Streaming narration (SSE) so text appears as it's written
+- [ ] Narration that plays out the player's action step by step, from where the last scene ended,
+      before its outcome (R1 to R7)
+- [ ] Voice dictation of actions, premises and `/ooc`, with a live transcript the player edits before
+      sending (V1 to V7)
 - [ ] Basic safety: content rating per story, model safety settings, report button
 - [ ] Deploy the API to Cloud Run
 
 ### P1
 
-- [ ] Character portraits and scene images: one per character, cached and reused
+- [ ] Character portraits and scene images at key moments: one per character, cached and reused
+      (M1 to M8)
+- [ ] Speech recognition with Gemini 3.5 Transcribe that knows the story's names (V6)
 - [ ] Edit, pin or forget memories; undo the last turn; branch a save
 - [ ] Optional RPG layer per story: HP, inventory, skills, dice checks
 - [ ] Relationship meters, endings and achievements
@@ -73,6 +79,7 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 - [ ] Publish, share and remix stories; likes and follows
 - [ ] Creator tools: world-bible editor, NPC sheets, lorebook
 - [ ] Voice narration (TTS)
+- [ ] Hands-free voice mode that sends after a pause (V2)
 - [ ] Monetisation for players without their own key (credits or subscription)
 - [ ] Shared multiplayer worlds
 
