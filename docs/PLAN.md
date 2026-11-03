@@ -397,8 +397,8 @@ screens.
     portrait redraw for a permanent change (M5, G17) is a `PictureDecision` the turn plans with
     `redraw=True`.
   - **WS14 (play screen):** see the Pictures section of [API.md](API.md#pictures-m1-to-m8).
-  - The house style in `media/prompts.py` follows the direction above; align it with
-    `app/DESIGN.md` when WS4 lands it.
+  - The house style in `media/prompts.py` follows the "Pictures" section of `app/DESIGN.md`
+    (aligned in WS4's PR); change the two together.
 
 ### WS9 Resolve: logic first, then dice (wave 2b, after WS2's PR 1)
 

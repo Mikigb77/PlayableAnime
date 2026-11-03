@@ -18,19 +18,24 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="AI-driven interactive story app">
+  <meta name="description" content="Lucid Saga: an endless story that remembers everything you do.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="playable_anime">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0B0D12">
+  <meta name="apple-mobile-web-app-title" content="Lucid Saga">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>playable_anime</title>
+  <title>Lucid Saga</title>
   <link rel="manifest" href="manifest.json">
+  <!-- The app is dark first: its background shows before Flutter paints, with no white flash. -->
+  <style>
+    body { margin: 0; background: #0B0D12; }
+  </style>
 </head>
 <body>
   <!--

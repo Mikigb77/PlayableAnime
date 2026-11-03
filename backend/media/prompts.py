@@ -1,9 +1,9 @@
 """What a picture shows and how it is asked for (S7, M5, M6). Plain Python, no Django.
 
-Every picture shares one house style that matches the app's look (the cinematic, dark-first
-direction in docs/PLAN.md, WS4; `app/DESIGN.md` once it lands), dressed in the world's own era
-and look, so a 1970s crime family wears suits and a cultivation sect wears robes (S7). Known
-characters' portraits go along as reference images so a face stays the same (M5).
+Every picture shares one house style that matches the app's look (`app/DESIGN.md`, "Pictures"),
+dressed in the world's own era and look, so a 1970s crime family wears suits and a cultivation
+sect wears robes (S7). Known characters' portraits go along as reference images so a face stays
+the same (M5).
 
 Pictures stay mild in every rating (M6): the text carries the graphic detail, the picture never
 does. The rules say so to the model, and the picture safety settings in `graph.llm.safety` back
@@ -16,14 +16,17 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-# Matches the app's direction: cinematic, deep ink shadows, one accent colour per story, full
-# bleed with a soft vignette. Change it together with app/DESIGN.md.
+# Matches app/DESIGN.md: a dark reading page with one accent colour per story, where the picture
+# runs edge to edge and the app adds its own vignette and fades the bottom edge into the page.
+# Change the two together.
 HOUSE_STYLE = (
     "A stylised, cinematic illustration with an anime-influenced look: clean confident linework, "
-    "painterly lighting, deep ink-dark shadows and a restrained palette with one strong accent "
-    "colour, a soft vignette at the edges and a clear focal point that reads on a phone screen. "
-    "One single image that fills the frame edge to edge: no borders, panels, split screens, "
-    "text, lettering, captions, speech bubbles, signatures, watermarks, logos or interface."
+    "painterly low-key lighting, atmospheric depth, deep ink-dark shadows and a restrained "
+    "palette with one strong accent colour. A clear focal point that reads on a phone screen, "
+    "kept in the upper two thirds of the frame; the bottom edge stays calm and dark, because it "
+    "fades into a dark page. One single image that fills the frame edge to edge: no borders, "
+    "panels, split screens, vignettes, text, lettering, captions, speech bubbles, signatures, "
+    "watermarks, logos or interface."
 )
 
 # M6, F3 and G12, in every rating, Mature included.
@@ -39,7 +42,8 @@ MILD_RULES = (
 FRAMING = {
     "portrait": (
         "A character portrait: head and shoulders, facing three-quarters toward the viewer, the "
-        "face clearly lit, with a hint of the world behind them."
+        "face clearly lit and centred in the upper half of the frame, against a dark, simple "
+        "background with a hint of the world, so it still reads cropped to a small circle."
     ),
     "place": (
         "A wide establishing shot of a place, with no one in the foreground, so its "
@@ -51,7 +55,7 @@ FRAMING = {
     ),
     "cover": (
         "A cover image for the story: an evocative, iconic composition of its world and its "
-        "main character, with calm space near the top."
+        "main character, with calm, darker space in the lower third, where the title is set."
     ),
 }
 
