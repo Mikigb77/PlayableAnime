@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "stories",
+    "media",
 ]
 
 MIDDLEWARE = [
@@ -131,6 +132,14 @@ GOOGLE_OAUTH_CLIENT_IDS = split_csv(ENV.google_oauth_client_ids)
 OWNER_EMAILS = [email.lower() for email in split_csv(ENV.owner_emails)]
 MIN_SIGNUP_AGE = ENV.min_signup_age
 TRUSTED_PROXY_HOPS = ENV.trusted_proxy_hops
+# Pictures (M4): a private Cloud Storage bucket in production, local files otherwise.
+MEDIA_BUCKET = ENV.media_bucket
+PICTURE_ROOT = ENV.picture_root or BACKEND_DIR / "media-local"
+PICTURE_URL_TTL_S = ENV.picture_url_ttl_s
+if not DEBUG and LLM_PROVIDER == "vertex" and not MEDIA_BUCKET:
+    # A real deployment would keep pictures on one instance's ephemeral disk, where other
+    # instances can't serve them and a restart loses them.
+    raise ImproperlyConfigured("MEDIA_BUCKET is required when LLM_PROVIDER is vertex.")
 
 # JSON lines on stdout, which Cloud Run sends to Cloud Logging (T4 to T6, B3).
 LOGGING = {

@@ -7,7 +7,7 @@ Precedence: environment variables, then `backend/.env`, then the repo-root `.env
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +57,12 @@ class Env(BaseSettings):
     # How many proxies append to X-Forwarded-For before the request reaches us: 1 on Cloud Run
     # (Google's front end). Raise it if a load balancer goes in front.
     trusted_proxy_hops: int = 1
+    # Pictures (M4). With a bucket, files go to that private Cloud Storage bucket and the app gets
+    # signed URLs; without one, to `picture_root` on local disk (development and tests).
+    media_bucket: str = ""
+    picture_root: str = ""
+    # How long a picture's signed URL works. The app asks for a fresh one after that.
+    picture_url_ttl_s: int = Field(default=3600, ge=60, le=7 * 24 * 3600)
 
     @field_validator("log_level", mode="before")
     @classmethod

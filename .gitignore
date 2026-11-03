@@ -20,3 +20,5 @@ node_modules/
 
 # Django collectstatic output
 backend/staticfiles/
+# Pictures in local development (M4)
+backend/media-local/

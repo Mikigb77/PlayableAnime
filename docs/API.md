@@ -64,7 +64,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
 | GET | `/v1/me` | | `User` |
 | PATCH | `/v1/me` | `{display_name?, content_prefs?}` | `User` |
 | DELETE | `/v1/me` | | `204`. Deletes the account, stories and pictures (T12, M4). |
-| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes]}` (T12) |
+| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture]}` (T12, M4) |
 | GET | `/v1/me/credits` | `?limit=50` | `{balance_cents, unlimited, entries: [LedgerEntry]}` (K1, K2) |
 
 ```text
@@ -74,6 +74,7 @@ User         {id, email, display_name, role: "player"|"owner", max_rating: "teen
               credits: {balance_cents, unlimited}}
 LedgerEntry  {id, kind: "starter"|"turn"|"image"|"topup"|"adjustment", amount_cents,
               balance_after_cents, story_id?, turn?, created_at}
+ExportedPicture {id, story_id, kind, subject, version, turns: [int], url, expires_at, created_at}
 ```
 
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
@@ -120,7 +121,8 @@ charge so T5's numbers stay honest.
 - **`DELETE /v1/me`** deletes the account and everything it owns at once and for good: stories,
   scenes, signed-in devices and pictures. There is no undo, so the app confirms first.
 - **`GET /v1/me/export`** is a JSON download (`Content-Disposition: attachment`). Its stories are
-  the export shape below, oldest first, and it adds `images` once pictures exist (M4). The world
+  the export shape below, oldest first, and `images` lists every ready picture with a fresh URL,
+  and the turns that show it (M4). A scene's own `image` has no URL; use `images`. The world
   state isn't exported, because it holds truths the player hasn't learned (C6, N7).
 
 ```text
@@ -257,8 +259,10 @@ SceneDetails {steps: [{text,                                    # the step in pl
               chain?: [{link, class, reason}],                   # a cause-and-effect chain (A9)
               stopped_at_step?: int}                             # a chained plan stopped here (R6)
 
-SceneImage {planned: bool, kind: "portrait"|"place"|"scene"|"cover",
-            status: "planned"|"ready"|"skipped", url?, expires_at?}
+SceneImage {planned: bool,                  # code planned it (M1); false for Illustrate (M2)
+            kind: "portrait"|"place"|"scene"|"cover",
+            status: "planned"|"ready"|"skipped", # "planned" until it is drawn: ask for it (M3)
+            image_id?, url?, expires_at?}
 ```
 
 ### Pictures (M1 to M8)
@@ -268,13 +272,38 @@ its own request (M3, B8).
 
 | Method | Path | Response |
 | --- | --- | --- |
-| POST | `/v1/stories/{id}/scenes/{turn}/image` | `{status: "ready"|"pending"|"skipped", url?, expires_at?}` |
-| POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | Same. The player paid for an extra picture of any scene (M2). |
-| GET | `/v1/stories/{id}/images/{image_id}` | `{status, url?, expires_at?}`. Refreshes an expired signed URL. |
+| POST | `/v1/stories/{id}/scenes/{turn}/image` | `Picture` |
+| POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | `Picture`. The player asks and pays for a picture of any scene (M2). |
+| GET | `/v1/stories/{id}/images/{image_id}` | `Picture`. Refreshes an expired signed URL; never draws. |
 
-`POST .../image` is safe to repeat: it generates and charges at most once per scene, and a repeat
-while generation runs returns `pending`. `skipped` means the picture failed, was blocked or wasn't
-affordable, and the app quietly leaves the scene without one (M3, M7).
+```text
+Picture {status: "ready"|"pending"|"skipped",
+         image_id?, kind?: "portrait"|"place"|"scene"|"cover",
+         url?, expires_at?}        # url and expires_at only when ready
+```
+
+- `POST .../image` is safe to repeat: it draws and charges at most once per picture, and a repeat
+  while the picture is drawn answers `pending`, so ask again after a couple of seconds. It draws only
+  a picture the scene says is planned; any other scene answers `skipped`, and so does a picture not
+  drawn yet while the story's `images` setting is `off`.
+- `skipped` means the picture failed, was blocked or wasn't affordable. Leave the scene quietly
+  without one (M3, M7). A repeat answers `skipped` again without trying; `illustrate` tries it
+  again. A portrait or place that failed or wasn't affordable is also planned again the next time
+  the story shows that character or place.
+- `illustrate` draws the scene's planned picture if it has one, or a picture of the scene itself,
+  even with pictures off. On a scene whose picture is ready it returns that picture at no charge.
+- Pictures are reused: a character's portrait or a place's picture is drawn once and every scene
+  that shows it answers with the same `image_id` (M4). Size the slot by `kind` before the picture
+  arrives: portraits and covers are 3:4, places and scenes 16:9.
+- `url` is a signed URL that works until `expires_at`, about an hour. After that, ask
+  `GET .../images/{image_id}` for a fresh one, and cache the picture by `image_id`, not by URL.
+- With the player's own key (`X-LLM-*` headers) the picture is drawn on their key at no charge. A
+  key that can't draw pictures (rejected, or a free-tier Gemini key, which has no image models)
+  falls back to credits; a server error on their key skips the picture instead (M7).
+- Errors: `401 unauthenticated` without a valid access token, `404 not_found` for an unknown
+  story, scene or picture, `403 forbidden` for another player's story or one above the account's
+  rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, and `429
+  rate_limited` from the credit meter, after which the picture is still planned.
 
 ### Memory and status (C6, G16)
 

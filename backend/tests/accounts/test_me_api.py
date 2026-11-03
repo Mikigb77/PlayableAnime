@@ -186,16 +186,18 @@ def test_export_has_the_account_and_every_story_with_all_its_scenes(
 
 
 def test_export_includes_what_other_apps_add_but_never_replaces_the_core(player_client, player):
-    def images(sender, user, **kwargs):
-        return {"images": [{"id": "img-1"}], "user": "overwritten?"}
+    # `images` is taken by the pictures app's own receiver, so this one adds something else.
+    def badges(sender, user, **kwargs):
+        return {"badges": [{"id": "badge-1"}], "user": "overwritten?"}
 
-    account_exporting.connect(images)
+    account_exporting.connect(badges)
     try:
         data = player_client.get("/v1/me/export").json()
     finally:
-        account_exporting.disconnect(images)
+        account_exporting.disconnect(badges)
 
-    assert data["images"] == [{"id": "img-1"}]
+    assert data["badges"] == [{"id": "badge-1"}]
+    assert data["images"] == []
     assert data["user"]["id"] == str(player.pk)
 
 
