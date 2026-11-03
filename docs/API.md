@@ -226,6 +226,12 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
   returns the same story.
+- **Real people (G12).** A premise, a revision's `instruction`, an edited summary line or a rule
+  that names a real living person is refused before any model call, at no cost, with `400
+  validation_error`: `details.fields` has the field (`premise`, `instruction`, `world_lines.3`,
+  `advanced.rules.1.text`) with `type: "real_person"`, and the message names who, to show as it
+  is. Real organisations are fine as a backdrop ("a rookie FBI agent"). A line sent back unchanged
+  is never refused. Real people and organisations the model drafts are left out of the world.
 - **Model failures** are the usual codes: `422 unreadable_action` when the safety filter blocked the
   request (offer a rephrase), `422 bad_key`, `503 llm_unavailable`. Nothing is saved or charged.
 

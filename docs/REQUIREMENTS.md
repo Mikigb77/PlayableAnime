@@ -94,8 +94,9 @@ in code whatever a model or a player says:
   yet is introduced by the narrator, whose prompt requires an adult age, and is checked from then
   on.
 - In a Teen story a step beyond a kiss, or a sexual assault, never plays (F2).
-- No step targets a real living person, and no new character or faction is named after a real
-  person or organisation; the names come from a curated list (G12).
+- No step targets a real living person, and no character or faction, drafted or new, is named
+  after a real person or organisation; a premise, revision or edit that names a real person is
+  refused. The names come from a curated list (G12).
 - A narration that reads as working drug, weapon or hacking instructions is retold as a cut-away
   (F3, F4).
 - A step that crosses one of these lines ends the turn before anything resolves, with

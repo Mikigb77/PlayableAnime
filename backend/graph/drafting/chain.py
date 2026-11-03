@@ -3,7 +3,8 @@ directly (G1, G2, S1). Plain Python on the model layer, with no Django (B4).
 
 A `Draft` holds only inputs: the model's latest proposal and what the player set up. Its world
 state is a pure function of them (`Draft.state()`), so a revision replaces one part of the
-proposal and code re-decides everything else, the same way every time.
+proposal and code re-decides everything else, the same way every time. Every proposal is cleaned
+of real people and organisations as soon as the model returns it (G12, `real_names`).
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from graph.drafting.prompts import (
     rules_instruction,
     system_prompt,
 )
+from graph.drafting.real_names import without_real_names
 from graph.drafting.schema import CharacterProposal, DraftProposal, RuleP, WorldProposal
 from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
 from graph.llm import ModelClient, Node, Prompt
@@ -121,7 +123,7 @@ async def create(
             player_rules=[" ".join(r.text.split()) for r in rules or []],
         ),
     )
-    proposal = await llm.structured(Node.DRAFTER, prompt, DraftProposal)
+    proposal = without_real_names(await llm.structured(Node.DRAFTER, prompt, DraftProposal))
     world = proposal.world.model_copy(update={"dropped_rule_ids": []})
     draft = replace(draft, proposal=proposal.model_copy(update={"world": world}))
     if rules:
@@ -251,6 +253,7 @@ async def _revise_world(llm: ModelClient, draft: Draft, instruction: str) -> Dra
     world = await llm.structured(
         Node.DRAFTER, _revise_prompt(draft, state, "world", instruction), WorldProposal
     )
+    world = without_real_names(world)
     world = keep_fixed_rules(current_rules(state), world)
     dropped = frozenset(world.dropped_rule_ids)
     template_ids = draft.template.rule_ids if draft.template else frozenset()
@@ -267,6 +270,7 @@ async def _revise_character(llm: ModelClient, draft: Draft, instruction: str) ->
     character = await llm.structured(
         Node.DRAFTER, _revise_prompt(draft, state, "character", instruction), CharacterProposal
     )
+    character = without_real_names(character)
     return replace(draft, proposal=DraftProposal(world=draft.proposal.world, character=character))
 
 
