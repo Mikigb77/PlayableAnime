@@ -218,12 +218,16 @@ T7, K6.
 `backend/legacy/`, `backend/tests/graph/`.
 
 - **PR 1, model layer (start now; needs nothing else):** the model for each node set in config (B6:
-  interpret, narrator, checker, summarizer, picture); Vertex AI through `langchain-google-vertexai`
-  with Application Default Credentials (B11); a per-request BYOK client that is never stored or
+  interpret, narrator, checker, summarizer, picture); Vertex AI through `langchain-google-genai`'s
+  `ChatGoogleGenerativeAI` (`ChatVertexAI` is deprecated) with Application Default Credentials (B11); a per-request BYOK client that is never stored or
   logged; safety settings per rating at the most permissive level the policy allows (F5);
   structured output and token streaming; one retry and then a typed error (`llm_unavailable`,
   `blocked`, `bad_key`, T7); a telemetry record per call (model, tokens, latency, estimated cost,
-  blocks, retries; T5) that WS7 bills from; a scripted fake model for tests.
+  blocks, retries; T5) that WS7 bills from; a scripted fake model for tests. **Landed** as
+  `backend/graph/llm/` (see [ARCHITECTURE.md](ARCHITECTURE.md#model-layer)): WS7 charges each
+  non-BYOK `CallRecord.cost_usd` in `TurnTelemetry.calls`, the raw cost from
+  `graph/llm/pricing.py`, plus its margin; WS8 calls `ModelClient.image()`; WS12 uses the
+  `drafter` node.
 - **PR 2, the turn graph (after WS2's PR 1):** the seven B5 nodes in LangGraph. Prompts: interpret
   turns typed or dictated text into an `Intent` (V3, R2, A9, W10, N4) and never refuses; narrate
   plays the action, then the outcome, then the world's reaction, from the exact moment the last scene

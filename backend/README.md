@@ -54,7 +54,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `LOG_LEVEL` | `INFO` | `DEBUG` logs story text and SQL, so never in production (T6). |
 | `LLM_PROVIDER` | `fake` | `vertex` or `fake`. |
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
-| `NARRATOR_MODEL` | `gemini-3.5-flash` | The legacy narrator's model. WS3 adds one per graph node (B6). |
+| `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
 
 ## Database (Neon Postgres)
 
@@ -137,13 +137,26 @@ lucid/            Django project
 accounts/         The custom User model (email login, display name, birth date, role, Google id)
 stories/          Story, Scene and PendingEvent models, admin, the story API
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
+graph/            Model calls and the turn graph, with no Django imports (B4)
+  llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
-tests/<area>/     Tests per package
+engine/           The rules engine, plain Python with no web or model imports (B4)
+  state/          World state models (C2): bible, cast, sheets, records
+  contracts/      Step contracts (B5): Intent, Resolution, DirectorPlan, StateDelta
+  context.py      Per-turn inputs: story settings, rating, content preferences
+  rng.py          Seeded random numbers for rolls (A3)
+  timekeeping.py  Duration bounds per kind of action (W10)
+  pipeline.py     The functions the turn graph calls
+  samples.py      Two sample worlds for tests and development
+tests/<area>/     Tests per package (engine tests in tests/engine/)
 ```
 
 Keep heavy imports (model SDKs, LangChain) inside the code that needs them, not at module level, so
 a cold start stays fast (B10, T3). A test checks that loading the app and its URLs doesn't import
 them.
+
+`legacy/` is today's one-call narrator. `engine/` replaces it once the turn graph lands; see
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#engine-package-backendengine).
 
 ## Deploy to Cloud Run
 

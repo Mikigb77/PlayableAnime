@@ -97,12 +97,160 @@ the outcome, and nothing yet breaks the action into beats or stops a chained pla
 inside its one call. Nothing yet works out the facts, follows a chain of cause and effect, sorts each
 step into certain, contested, long shot or ruled out, or rolls in code.
 
+## Engine package (`backend/engine/`)
+
+The rules engine that replaces the one-call narrator above (WS2 in [PLAN.md](PLAN.md)). It is plain
+Python and Pydantic, with no Django, Ninja, LangChain or model SDK imports (B4), and
+`tests/engine/test_purity.py` fails if one creeps in. The turn graph (WS3) loads the story, calls
+these functions and saves the result.
+
+| Module | What |
+| --- | --- |
+| `engine/state/` | The world state (C2): `WorldState`, `WorldBible` (G6, G7, G18, W11, N7), `Character` with its `CharacterSheet` (G13, A1, A8, A9), `Faction`, `Place`, `Deed`, `Rumor`, `Fact`, `Goal`, `Lead`, `Thread`, `Clock`, `PendingEvent` and `RollRecord`. |
+| `engine/contracts/` | What flows between the turn's steps (B5): `Intent` (interpret), `Resolution` (resolve), `DirectorPlan` (director) and `StateDelta` (what the narrator or the engine proposes to change). |
+| `engine/context.py` | `TurnContext`: the story id, the turn number, story settings (S6), rating (F2) and content preferences (F7), which live outside the world state. |
+| `engine/rng.py` | `SeededRng`, the seeded random numbers behind every roll (A3). |
+| `engine/timekeeping.py` | How long each kind of action may take (W10). |
+| `engine/pipeline.py` | The functions the turn graph calls, with trivial default bodies that WS9, WS10 and WS11 replace. |
+| `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
+
+**The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
+a new one.
+
+| B5 step | Function | Owner |
+| --- | --- | --- |
+| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) | WS10 |
+| 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order: the clocks move by each step's duration and the step's consequences are recorded at its end. From WS2's second PR, events due during a step fire in time order and one that needs the player cuts the plan short | WS2 |
+| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
+| | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
+| 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
+| 6. Apply the update | `apply_delta` with the C1 invariants (WS2's second PR) | WS2 |
+
+**Decisions the package makes:**
+
+- **Records are keyed by id.** `WorldState.characters`, `factions`, `places`, `deeds` and the rest
+  are maps from id to record, and each record's `id` must match its key. The player character is in
+  `characters` under `player_id`, so attitudes, witnesses and knowledge treat everyone the same
+  way (E5). `state.new_id("deed")` hands out stable ids. Never rely on map order, because Postgres
+  JSONB reorders object keys: sort by time or id wherever order matters, as `due_events` does.
+- **In-world time is whole seconds since the story's epoch** (W10). Everything that happens in time
+  carries a `timeline_id` and a world second (W10a). A character's personal clock is
+  `world_s + personal_offset_s`, so it moves with the world for free, and a time stop only adds to
+  the user's offset. World processes such as rumor spread, clock steps and faction answers are
+  pending events with due times, so they fire in time order wherever time passes, at the start of
+  a turn and during a long action alike. The rows live in `stories_pendingevent` (B12): the turn
+  graph loads the story's pending rows on its timeline into `state.pending_events` and writes back
+  the ones the turn applied, cancelled or scheduled. `EventStatus` uses the table's values
+  (`pending`, `applied`, `cancelled`).
+- **Knowledge is recorded on the record.** Anything a character can know carries `known_by`, a
+  list of character ids, plus `met_by` on characters, `visited_by` on places and `heard_at` on
+  rumors. The Memory screen shows only records whose lists hold the player character (C6). Hidden
+  truth lives in fields the projection never shows: `is_true` on rumors and facts, secrets, mystery
+  answers, real attitudes behind an `apparent_affinity`.
+- **Proposals versus decisions.** `StateDelta` serves the narrator and the engine. Fields marked
+  engine only (terminal changes such as deaths, anything that needs a C1 `Cause`, rulings, gains,
+  accepted backstory, rule changes) are rejected when the narrator proposes them, because resolve
+  records the outcome in code before narration (F4). Resolve puts its own changes for each step in
+  `StepResolution.effects`.
+- **Rolls are replayable.** The graph makes one `SeededRng.for_turn(story_id, timeline_id, turn)` per
+  turn, and each seam derives child streams with stable labels, such as
+  `rng.child("resolve", "step", 0)`. Draws come from SHA-256, so a seed recorded on a scene replays
+  its roll on any machine, and retrying a turn never rerolls.
+- **The state is stored as JSONB.** Unknown keys are ignored on load and new fields need defaults,
+  so a state saved by an older engine still loads. A state whose `schema_version` is newer than the
+  engine's is refused, so an old revision can't drop fields it doesn't know and save the stripped
+  state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
+  meaning.
+
+## Model layer
+
+`backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with
+no Django imports (B4), and importing it loads no model SDK: LangChain and google-genai load on the
+first real call (B10). Today's one-call narrator in `backend/legacy/` still serves the legacy
+endpoints until the turn graph replaces it (WS3's PR 2 and 3).
+
+```python
+telemetry = TurnTelemetry()
+llm = build_client(rating=story.rating, byok=parse_byok(provider_header, key_header),
+                   recorder=telemetry)
+intent = await llm.structured(Node.INTERPRET, Prompt.build(system, action), Intent)
+async with aclosing(llm.stream_structured(Node.NARRATOR, prompt, NarratorOutput,
+                                          field="narration")) as events:
+    async for event in events:  # TextDelta, StreamRestart, then Completed(value)
+        ...
+picture = await llm.image(Node.PICTURE, Prompt.build(style, scene, images=portraits))
+```
+
+**Nodes and models (B6, B8).** Each node has a model and defaults in `graph/llm/config.py`,
+overridable with `<NODE>_MODEL` and `<NODE>_THINKING`, read like Django's settings from the
+environment, `backend/.env` and the repo-root `.env.local`:
+
+| Node | Default model | Price per 1M tokens in / out | Why |
+| --- | --- | --- | --- |
+| `narrator` | `gemini-3.5-flash`, thinking `low` | $1.50 / $9.00 | The one large call on the critical path. Low thinking keeps the first words under 2 s (S3). |
+| `interpret` | `gemini-3.5-flash-lite`, thinking `low` | $0.30 / $2.50 | Cheap, but it reasons about cause and effect (A9), so the graph can raise its thinking for a turn that rests on a chain. |
+| `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
+| `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
+| `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+
+Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
+`graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
+the estimate never undercounts. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
+
+**Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
+with `vertexai=True` and Application Default Credentials (B11). `langchain-google-vertexai`'s
+`ChatVertexAI` was deprecated in 3.2.0 in favour of this class, so we use it directly. Every node
+shares one google-genai client (and its connections) per event loop, or per request for a player's
+key. `LLM_PROVIDER=fake` (the default) is the offline model,
+which answers any schema with placeholder values. Don't set `GOOGLE_API_KEY` or `LANGSMITH_TRACING`
+on the service: the first changes which credentials LangChain picks, the second would send prompts
+to LangSmith.
+
+**Calls.** Every call streams from the backend, so blocks and usage look the same everywhere. The
+client gives each attempt the node's deadline, counting only time spent waiting on the model and
+never the caller's time between chunks, retries a transient failure (timeout, 408, 429, 499, 5xx, a
+cut-off or unparseable answer) once, and otherwise raises a typed error with the API's code: `LLMUnavailable`
+(`llm_unavailable`), `LLMBlocked` (`blocked`, with the categories and whether the prompt or the
+response was blocked) or `BadKey` (`bad_key`, only for a player's key). A safety block is never
+retried blindly: the graph retells a blocked narration as a cut-away, then a template line (F4),
+and turns a blocked interpret step into `unreadable_action`.
+
+**Streaming the narration (S3, B7).** The narrator returns one JSON object, and
+`stream_structured` streams the decoded text of its `narration` field as it is written, with
+`graph/llm/jsonstream.py`. The full JSON is still validated at the end. If an attempt fails after
+text was shown, the client yields `StreamRestart` before retrying, which the turn endpoint sends as
+`narration.reset` with reason `retry` ([API.md](API.md)).
+
+**Safety settings (F5).** `graph/llm/safety.py` holds the table and the reasons behind it:
+harassment off in Mature; hate speech, dangerous content and, in Mature, sexual content filtered
+only at high probability as backstops for G12, F3 and the fade-out rule; Teen filters sexual
+content from medium; pictures filter from medium, and sexual content from low (M6). WS16 tunes it
+against T15's content-line evals.
+
+**Telemetry (T5).** Each call leaves one `CallRecord` (node, model, provider, BYOK or not, outcome,
+tokens in, out and thinking, pictures, latency, time to first text, attempts, retry reasons,
+blocks with categories, estimated cost) with the request's `TurnTelemetry`. The turn endpoint logs
+`summary()` as the turn's T5 line. `cost_usd` is always the raw cost, and billing charges the
+calls made on our own account (`billable_cost_usd`; BYOK calls are free, K6) plus its margin (K2). Records hold
+no prompt or story text, and a `Prompt`'s repr shows only its size (T6).
+
+**Tests** script the fake per node: `FakeBackend().script(Node.NARRATOR, Fail(), Reply(json=...))`
+for a failure and its retry, `Block(after_text=...)` for a block mid-stream, `Hang()` for a
+timeout. `tests/graph/test_gemini.py` runs the real LangChain model with google-genai's network
+call replaced, to check the Gemini translation: messages, safety settings, blocks, usage, errors.
+
 ## Bring your own key
 
 - The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and
   `X-LLM-Api-Key`.
-- The backend uses the key for that request only. It must never be persisted or logged.
-- Only `gemini` is supported for now (same SDK, `genai.Client(api_key=...)`).
+- `graph.llm.parse_byok` wraps it in a `ByokKey` whose repr is masked and which refuses to be
+  pickled, and `build_client` makes a Gemini API client for that request only, never cached. It is
+  never persisted or logged, and error details are scrubbed of it.
+- The client's base URL is pinned to `generativelanguage.googleapis.com`, so no environment
+  variable (such as LangChain's `LANGSMITH_GATEWAY`) can route a player's key anywhere else.
+- Only `gemini` is supported for now. A rejected key is `bad_key`, never retried.
 
 ## Voice input
 
