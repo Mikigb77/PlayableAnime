@@ -17,7 +17,8 @@ code and this doc disagree, fix one of them in the same change.
    proportion and over time.
 3. **The engine owns the truth.** The model proposes changes; the backend decides what sticks and
    enforces the invariants. A forgetful model can't break the world.
-4. **Memory you can see.** Everything the world remembers about the player can be shown on screen.
+4. **Memory you can see.** Everything your character knows can be shown on screen. Hidden world
+   state stays off screen until an arc ends.
 5. **Cheap to play.** A turn has a cost budget, and long stories must not get more expensive per
    turn.
 
@@ -203,7 +204,7 @@ the story does. Today's engine already covers C1 and part of C2.
 | C3 | **Chapter summaries** every N turns (about 20), so older scenes leave the prompt but aren't lost. | P0 |
 | C4 | **Retrieval:** facts, deeds and past scenes are embedded (pgvector on Neon), and the prompt gets the most relevant ones for the current scene and the characters in it. The prompt stays within a fixed token budget however long the story runs. | P1 |
 | C5 | **Continuity check:** a cheap second pass compares the draft scene with the invariants and with what the characters present know. It fixes the scene or regenerates it before the player sees it. | P1 |
-| C6 | **Player-visible memory:** a Memory screen with characters, factions, places, deeds and reputation, facts and goals. | P0 |
+| C6 | **Player-visible memory shows only what the character knows** (decided by Miki 2026-11-03): their own deeds, people and places they have met, goals, and rumors they have heard, marked unconfirmed. Hidden world state (whether a rumor is true from W13, NPC trust from W4, faction plans from W6) stays off screen, except in a spoiler view after an arc ends. Facts carry a truth value and a list of who knows them, so the screen can filter by the player character's knowledge. | P0 |
 | C7 | **Editable memory:** the player can pin, edit or forget entries. Edits are logged so that support can explain odd behavior later. | P1 |
 | C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. | P1 |
 | C9 | **Character consistency:** stable personality, speech style and appearance per character, kept in their entry and reused for portraits. | P1 |
