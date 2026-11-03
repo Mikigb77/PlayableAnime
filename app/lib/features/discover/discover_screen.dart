@@ -4,16 +4,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/l10n.dart';
 import '../../design/design.dart';
-import '../story/story_models.dart';
-import '../story/story_repository.dart';
+import '../../router.dart';
+import 'premises.dart';
 
-/// Starter premises, signature worlds first (S1), and a way to start from your own idea.
+/// Starter premises, the flagship worlds first and large (S1), a way to start from your own idea,
+/// then the other worlds as a shelf of covers.
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final header = ContentColumn(
+      child: PageHeader(title: l10n.discoverTitle, subtitle: l10n.discoverSubtitle),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -23,9 +27,7 @@ class DiscoverScreen extends ConsumerWidget {
           loading: (_) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ContentColumn(
-                child: PageHeader(title: l10n.discoverTitle, subtitle: l10n.discoverSubtitle),
-              ),
+              header,
               const Expanded(child: ContentColumn(child: SkeletonList(imageHeight: 220))),
             ],
           ),
@@ -36,23 +38,30 @@ class DiscoverScreen extends ConsumerWidget {
               onRefresh: () => ref.refresh(premisesProvider.future),
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(
-                    child: ContentColumn(
-                      child: PageHeader(title: l10n.discoverTitle, subtitle: l10n.discoverSubtitle),
+                  SliverToBoxAdapter(child: header),
+                  if (premises.isEmpty)
+                    SliverToBoxAdapter(
+                      child: EmptyState(
+                        icon: Icons.explore_outlined,
+                        title: l10n.discoverEmptyTitle,
+                        message: l10n.discoverEmptyBody,
+                        actionLabel: l10n.discoverCreateAction,
+                        onAction: () => context.push(Routes.create),
+                      ),
                     ),
-                  ),
                   if (signature.isNotEmpty) ...[
                     SliverToBoxAdapter(
                       child: ContentColumn(child: SectionLabel(l10n.discoverSignature)),
                     ),
                     _PremiseGrid(premises: signature, badge: l10n.discoverBadge),
                   ],
-                  SliverToBoxAdapter(child: ContentColumn(child: _CreateYourOwn())),
+                  if (premises.isNotEmpty)
+                    const SliverToBoxAdapter(child: ContentColumn(child: _CreateYourOwn())),
                   if (more.isNotEmpty) ...[
                     SliverToBoxAdapter(
                       child: ContentColumn(child: SectionLabel(l10n.discoverMore)),
                     ),
-                    _PremiseGrid(premises: more),
+                    _PremiseGrid(premises: more, compact: true),
                   ],
                   const SliverToBoxAdapter(child: SizedBox(height: Space.xxxl)),
                 ],
@@ -65,20 +74,36 @@ class DiscoverScreen extends ConsumerWidget {
   }
 }
 
-/// One column on phones, two from tablet width, within the content column.
+void _open(BuildContext context, Premise premise) =>
+    context.push(Routes.createFrom(premise.id), extra: premise);
+
+/// Large cards, one column on phones and two from tablet width; or, [compact], a shelf of covers
+/// in their own 3:4 shape, two to four across.
 class _PremiseGrid extends StatelessWidget {
-  const _PremiseGrid({required this.premises, this.badge});
+  const _PremiseGrid({required this.premises, this.badge, this.compact = false});
 
   final List<Premise> premises;
   final String? badge;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    // Cards grow with the text size, so large type never clips.
+    final grow = scale > 1 ? 1 + (scale - 1) * 0.6 : 1.0;
     return SliverLayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.crossAxisExtent.clamp(0.0, Layout.contentWidth);
-        final columns = width >= 640 ? 2 : 1;
+        final inner = width - Space.gutter * 2;
+        final columns = compact
+            ? (inner >= 760
+                  ? 4
+                  : inner >= 520
+                  ? 3
+                  : 2)
+            : (inner >= 600 ? 2 : 1);
         final side = (constraints.crossAxisExtent - width) / 2 + Space.gutter;
+        final tile = (inner - Space.lg * (columns - 1)) / columns;
         return SliverPadding(
           padding: EdgeInsets.symmetric(horizontal: side),
           sliver: SliverGrid.builder(
@@ -86,19 +111,21 @@ class _PremiseGrid extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: Space.lg,
               crossAxisSpacing: Space.lg,
-              mainAxisExtent: _cardHeight(context),
+              mainAxisExtent: compact ? tile * 4 / 3 * grow : 260 * grow,
             ),
             itemCount: premises.length,
             itemBuilder: (context, i) {
               final premise = premises[i];
+              if (compact) {
+                return _CompactCover(premise: premise, onTap: () => _open(context, premise));
+              }
               return CoverCard(
                 title: premise.title,
                 genre: premise.genre,
                 subtitle: premise.tagline ?? premise.premise,
                 imageUrl: premise.coverUrl,
                 badge: badge,
-                height: 260,
-                onTap: () => context.push('/create', extra: premise),
+                onTap: () => _open(context, premise),
               );
             },
           ),
@@ -106,14 +133,116 @@ class _PremiseGrid extends StatelessWidget {
       },
     );
   }
+}
 
-  static double _cardHeight(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(context).scale(1);
-    return 260 * (scale > 1 ? 1 + (scale - 1) * 0.6 : 1);
+/// A premise as a book on a shelf: its cover in its own 3:4 shape, the genre and title over the
+/// scrim in its lower third (DESIGN.md, Pictures). Without a cover, a glow in the genre's accent.
+class _CompactCover extends StatelessWidget {
+  const _CompactCover({required this.premise, required this.onTap});
+
+  final Premise premise;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = accentFor(GenreAccent.forGenre(premise.genre), Brightness.dark);
+    final url = premise.coverUrl;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final fallback = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(0.4, -0.5),
+          radius: 1.2,
+          colors: [blend(Palette.inkContainer, accent, 0.5), Palette.inkBackground],
+        ),
+      ),
+    );
+    return Semantics(
+      button: true,
+      label: [
+        if (premise.genre.isNotEmpty) premise.genre,
+        premise.title,
+        ?premise.tagline,
+      ].join('. '),
+      excludeSemantics: true,
+      child: ClipRRect(
+        borderRadius: Radii.card,
+        child: Material(
+          color: Palette.inkContainer,
+          child: InkWell(
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (url == null)
+                  fallback
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) => Image(
+                      image: appImage(url, cacheWidth: (constraints.maxWidth * dpr).round()),
+                      fit: BoxFit.cover,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => fallback,
+                    ),
+                  ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Palette.inkBackground.withValues(alpha: 0),
+                        Palette.inkBackground.withValues(alpha: 0.7),
+                        Palette.inkBackground.withValues(alpha: 0.96),
+                      ],
+                      stops: const [0.3, 0.62, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: Space.md,
+                  right: Space.md,
+                  bottom: Space.md,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (premise.genre.isNotEmpty) ...[
+                        Text(
+                          premise.genre.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.lucidText.overline.copyWith(color: accent),
+                        ),
+                        const SizedBox(height: Space.xs),
+                      ],
+                      Text(
+                        premise.title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge!.copyWith(
+                          fontFamily: theme.textTheme.headlineSmall!.fontFamily,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          color: Palette.inkTextPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class _CreateYourOwn extends StatelessWidget {
+  const _CreateYourOwn();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -122,18 +251,22 @@ class _CreateYourOwn extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(Space.gutter, Space.xl, Space.gutter, 0),
       child: Card(
+        margin: EdgeInsets.zero,
         color: colors.accentSoft,
         shape: RoundedRectangleBorder(
           borderRadius: Radii.card,
           side: BorderSide(color: colors.accent.withValues(alpha: 0.35)),
         ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/create'),
+          onTap: () => context.push(Routes.create),
           child: Padding(
             padding: const EdgeInsets.all(Space.gutter),
             child: Row(
               children: [
-                Icon(Icons.auto_awesome_rounded, color: colors.onAccentSoft, size: 28),
+                ExcludeSemantics(
+                  child: Icon(Icons.auto_awesome_rounded, color: colors.onAccentSoft, size: 28),
+                ),
                 const SizedBox(width: Space.lg),
                 Expanded(
                   child: Column(
@@ -149,7 +282,9 @@ class _CreateYourOwn extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Space.sm),
-                Icon(Icons.arrow_forward_rounded, color: colors.onAccentSoft),
+                ExcludeSemantics(
+                  child: Icon(Icons.arrow_forward_rounded, color: colors.onAccentSoft),
+                ),
               ],
             ),
           ),

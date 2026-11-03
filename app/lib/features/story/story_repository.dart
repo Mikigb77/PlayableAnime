@@ -46,28 +46,7 @@ class StoryRepository {
 
   final ApiClient _api;
 
-  Future<List<Premise>> premises() async => [
-    for (final json in await _api.get('/v1/premises') as List) Premise.fromJson(json as Json),
-  ];
-
-  Future<List<StorySummary>> stories() async => [
-    for (final json in await _api.get('/v1/stories') as List) StorySummary.fromJson(json as Json),
-  ];
-
-  /// Today's backend creates a story straight from a premise. The create work (WS15) moves this to
-  /// drafts (`POST /v1/drafts`, then `/start`).
-  Future<Story> create({required String premise, String? title}) async {
-    final json = await _api.post('/v1/stories', {
-      'premise': premise,
-      if (title != null && title.isNotEmpty) 'title': title,
-    });
-    return Story.fromJson(json as Json);
-  }
-
   Future<Story> get(String id) async => Story.fromJson(await _api.get('/v1/stories/$id') as Json);
-
-  Future<MemoryData> memory(String id) async =>
-      MemoryData.fromJson(await _api.get('/v1/stories/$id/memory') as Json);
 
   Future<StatusData> status(String id) async =>
       StatusData.fromJson(await _api.get('/v1/stories/$id/status') as Json);
@@ -123,16 +102,6 @@ class StoryRepository {
 }
 
 final storyRepositoryProvider = Provider((ref) => StoryRepository(ref.watch(apiClientProvider)));
-
-final premisesProvider = FutureProvider((ref) => ref.watch(storyRepositoryProvider).premises());
-
-final storiesProvider = FutureProvider.autoDispose(
-  (ref) => ref.watch(storyRepositoryProvider).stories(),
-);
-
-final memoryProvider = FutureProvider.autoDispose.family<MemoryData, String>(
-  (ref, storyId) => ref.watch(storyRepositoryProvider).memory(storyId),
-);
 
 final statusProvider = FutureProvider.autoDispose.family<StatusData, String>(
   (ref, storyId) => ref.watch(storyRepositoryProvider).status(storyId),

@@ -23,6 +23,7 @@ class FakePace {
     required this.firstWords,
     required this.perChunk,
     required this.picture,
+    this.drafting = Duration.zero,
   });
 
   static const instant = FakePace(
@@ -37,6 +38,7 @@ class FakePace {
     firstWords: Duration(milliseconds: 700),
     perChunk: Duration(milliseconds: 45),
     picture: Duration(milliseconds: 2600),
+    drafting: Duration(milliseconds: 3200),
   );
 
   /// Before any JSON reply.
@@ -50,6 +52,9 @@ class FakePace {
 
   /// How long a picture stays `pending` (M3).
   final Duration picture;
+
+  /// How long drafting or redrafting a world takes, on top of [latency] (G1).
+  final Duration drafting;
 }
 
 class FakeRequest {

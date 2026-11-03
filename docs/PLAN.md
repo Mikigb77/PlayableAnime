@@ -575,6 +575,11 @@ memory page in `app/lib/features/story/`.
 - The library with covers, turn and in-world time, and delete. The memory screen showing only what
   the character knows, in the world's words (C6, G16).
 - **Done when** the flows work against the fake API, with widget tests and screenshots in the PR.
+- **Landed.** `discover/premises.dart`; `create/` with the draft model and `redraftFor` (what a
+  change costs, by `chain.plan_edit`'s rules), `DraftRepository`, `CreateFlow`, the premise step,
+  drafting view, review and its sheets; `library/library.dart`; and `story/memory.dart` with
+  `memory_screen.dart`. Start only navigates: the play screen asks for the opening (WS14). An
+  `out_of_credits` error offers Account until WS13's `showOutOfCreditsSheet` takes its place.
 
 ### WS16 Safety, ratings and reports (wave 3, after WS6 and WS3's PR 2)
 

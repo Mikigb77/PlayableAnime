@@ -79,7 +79,7 @@ void main() {
 
     // Discover: the signature worlds.
     expect(find.text(l10n.discoverSubtitle), findsOneWidget);
-    expect(find.text('The Ninth Peak'), findsOneWidget);
+    expect(find.text('The Last Outer Disciple'), findsOneWidget);
     expect(find.byType(CoverCard), findsWidgets);
 
     // Library: the story in progress.

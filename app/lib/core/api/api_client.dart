@@ -192,11 +192,16 @@ class ApiClient {
   }
 
   /// Model-calling requests are the POSTs under drafts and stories (creating, revising, starting,
-  /// turns, pictures). Nothing else gets the player's key, or the longer timeout.
-  static bool _callsModel(String method, String path) =>
-      method == 'POST' &&
+  /// turns, pictures) and a draft's direct edits, which redraft the world or the character when
+  /// lines, rules, the gift or the rating change. Nothing else gets the player's key, or the longer
+  /// timeout.
+  static bool _callsModel(String method, String path) => switch (method) {
+    'POST' =>
       (path.startsWith('/v1/drafts') || path.startsWith('/v1/stories')) &&
-      !path.endsWith('/report');
+          !path.endsWith('/report'),
+    'PATCH' => path.startsWith('/v1/drafts'),
+    _ => false,
+  };
 
   Duration _timeoutFor(String method, String path) =>
       _callsModel(method, path) ? modelTimeout : timeout;

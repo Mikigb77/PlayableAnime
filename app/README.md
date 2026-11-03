@@ -15,8 +15,11 @@ a demo account, the starter worlds, a story in progress, streamed turns, picture
 seconds after the text, and typed errors. Put a trigger in an action to try the error states:
 `[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:llm_unavailable]` (fails mid-stream),
 `[fail:version_conflict]`, `[fail:picture]` (a planned picture that is then skipped) or `[reset]`.
-The fake lives in `lib/core/fake/`, one
-file per area of the API, so each feature thread extends its own.
+The same triggers work in a premise or in a change asked of a draft, as do `[fail:quota_exceeded]`,
+`[fail:unreadable_action]` and `[fail:bad_key]`. Drafting takes about three seconds and is charged
+like the real thing (3 cents a model call, free on your own key), so the costs the review shows can
+be checked against the balance. The fake lives in `lib/core/fake/`, one file per area of the API,
+so each feature thread extends its own.
 
 Sign-in works offline too. **Try the demo account** on the welcome screen, or sign in with
 `demo@lucid.test` and the password `lucid-demo`. **Continue with Google** opens a picker that stands
@@ -93,10 +96,12 @@ lib/
     byok_store.dart         The player's own Gemini key (S9)
   features/
     auth/                   Welcome, Google sign-in, email sign-in and sign-up, birth date (T8, F8)
-    discover/               Starter worlds
-    create/                 New story from a premise
-    story/                  Models, repository, play screen, memory, status
-    library/                Your stories
+    discover/               Starter worlds: the signature ones first, then a shelf of covers
+    create/                 A new story: premise, drafting, the world and character review with
+                            what each change costs (draft.dart redraftFor), rating, start
+    story/                  Models, repository, play screen, status, and the memory page
+                            (memory.dart, memory_screen.dart: only what the character knows)
+    library/                Your stories, with the turn and in-world time, and delete
     account/                Profile, credits and history, own key, content preferences (F7),
                             privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: speech engine, controller, button, input mode (V1–V7)
@@ -127,6 +132,7 @@ assets/
   send `tracker.mode.wire` as the turn's `input_mode` (V7).
 - **Your own key** (S9) is `byokStoreProvider`, which holds the signed-in account's key only.
 - **Tests** can run any flow on `FakeBackend.standard(pace: FakePace.instant)`; see
-  `test/app_test.dart` and `test/helpers.dart`. A test that answers requests by hand makes its
+  `test/app_test.dart` and `test/helpers.dart`. `AppHarness` in `test/features/harness.dart` signs
+  in and opens the whole app at any location, with the requests it sent to check. A test that answers requests by hand makes its
   `Completer`s inside the test body, not in `setUp`, or they never complete under the test clock
   (see `test/features/story_screen_test.dart`).

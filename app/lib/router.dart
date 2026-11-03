@@ -11,6 +11,7 @@ import 'features/account/privacy_screen.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/create/create_story_screen.dart';
 import 'features/discover/discover_screen.dart';
+import 'features/discover/premises.dart';
 import 'features/library/library_screen.dart';
 import 'features/story/memory_screen.dart';
 import 'features/story/status_screen.dart';
@@ -29,6 +30,10 @@ abstract final class Routes {
   static const gallery = '/gallery';
   static const credits = '/credits';
   static const privacy = '/privacy';
+
+  /// A new story from a starter premise (S1).
+  static String createFrom(String premiseId) =>
+      '$create?premise=${Uri.encodeQueryComponent(premiseId)}';
 
   static String story(String id) => '/story/$id';
   static String memory(String id) => '/story/$id/memory';
@@ -99,7 +104,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: Routes.create,
-        builder: (_, state) => CreateStoryScreen(premise: _extra<Premise>(state)),
+        builder: (_, state) => CreateStoryScreen(
+          premise: _extra<Premise>(state),
+          premiseId: state.uri.queryParameters['premise'],
+        ),
       ),
       GoRoute(
         path: '/story/:id',

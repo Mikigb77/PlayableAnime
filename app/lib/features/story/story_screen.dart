@@ -10,6 +10,7 @@ import '../../core/api/turn_events.dart';
 import '../../core/l10n.dart';
 import '../../core/navigation.dart';
 import '../../design/design.dart';
+import '../library/library.dart';
 import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
 import 'story_models.dart';

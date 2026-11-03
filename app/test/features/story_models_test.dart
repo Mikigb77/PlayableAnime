@@ -35,34 +35,6 @@ void main() {
       expect(scene.standingActions, isEmpty);
       expect(scene.durationLabel, isNull);
     });
-
-    test('a summary without v1 fields reads', () {
-      final summary = StorySummary.fromJson(const {
-        'id': 'abc',
-        'title': 'T',
-        'premise': 'P',
-        'turn': 4,
-      });
-      expect(summary.turn, 4);
-      expect(summary.coverUrl, isNull);
-    });
-
-    test('world state reads as memory', () {
-      final memory = MemoryData.fromJson(const {
-        'turn': 3,
-        'summary': 'You passed.',
-        'goals': ['Find the missing proctor'],
-        'characters': [
-          {'id': 'p1', 'name': 'Proctor Vale', 'description': 'Stern', 'affinity': 40},
-        ],
-        'factions': <Object>[],
-        'facts': [
-          {'text': 'The bell is cursed', 'turn': 2, 'importance': 5},
-        ],
-      });
-      final titles = [for (final s in memory.sections) ...s.items.map((i) => i.title)];
-      expect(titles, containsAll(['Find the missing proctor', 'Proctor Vale']));
-    });
   });
 
   group('the v1 API', () {
