@@ -1031,7 +1031,7 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T10 | **Concurrency:** a story row carries a version number. Two turns at the same time can't overwrite each other, and the loser gets a 409. | P0 |
 | T11 | **Secrets:** Secret Manager only (`database-url` and others), mounted as env vars. | P0 |
 | T12 | **Privacy (EU users):** delete my account and data (pictures included, M4), export my stories, and a privacy policy that also says where speech goes (V5). Neon point-in-time restore is our backup. | P0 |
-| T13 | **Deploy:** CI (lint and tests for both halves) must be green. Deploy runs from `main` through Cloud Build, or `gcloud run deploy --source`, with the migration step before it. | P1 |
+| T13 | **Deploy:** CI (lint and tests for both halves) must be green on the commit. Deploy runs from `main`, started by hand, through a GitHub Actions workflow that builds one image, pushes it to Artifact Registry, runs the migrations as a Cloud Run job, then deploys the service and rolls back if its health check fails ([DEPLOY.md](DEPLOY.md)). | P1 |
 | T14 | **Cost target:** a cost-per-turn ceiling for the default model, set once T5 gives us real numbers. | P1 |
 
 **T15 Narrative evals (P0).** A fixed set of scripted scenarios runs nightly and before each model or

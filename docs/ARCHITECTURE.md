@@ -313,8 +313,10 @@ Plan:
 1. The turn response says whether a picture is planned for the scene (M1). The app shows the text
    first, then calls an image endpoint for that scene, which generates the picture, stores it and
    returns its URL (M3). This keeps the work inside a request, as B8 requires.
-2. Pictures go to a private Cloud Storage bucket in `europe-west3`, served through short-lived signed
-   URLs, keyed by character, place or scene, and reused (M4).
+2. Pictures go to the private Cloud Storage bucket `gs://playable-anime-pictures` in `europe-west3`,
+   served through short-lived signed URLs that the runtime account signs without a key
+   ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)), keyed by character, place or scene, and reused
+   (M4).
 3. A scene with known characters passes their portraits as reference images, so faces stay the same
    (M5).
 4. The model is set in config per use (portrait, place, scene, cover), so it can change as prices and
@@ -326,12 +328,18 @@ Plan:
 | --- | --- |
 | Project | `playable-anime` (number 528988811295), owned by tech.garbar@gmail.com, billing on |
 | gcloud configuration | `playable-anime` (not the active one; use `--configuration=playable-anime`) |
-| Region | `europe-southwest1` (Madrid) for Cloud Run; Vertex AI on the `global` endpoint |
-| APIs enabled | Cloud Run, Artifact Registry, Cloud Build, Secret Manager, Vertex AI, IAM |
-| Runtime service account | `playable-anime-api@playable-anime.iam.gserviceaccount.com` with `aiplatform.user`, `secretmanager.secretAccessor`, `logging.logWriter` |
+| Region | `europe-west3` (Frankfurt), next to Neon, for Cloud Run, Artifact Registry, Secret Manager and the pictures bucket (T1); Vertex AI on the `global` endpoint |
+| APIs enabled | Cloud Run, Artifact Registry, Cloud Build, Secret Manager, Vertex AI, IAM; `infra/bootstrap.sh` enables the rest the deploy needs |
+| Runtime service account | `playable-anime-api@playable-anime.iam.gserviceaccount.com` with `aiplatform.user`, `secretmanager.secretAccessor`, `logging.logWriter`; the bootstrap adds access to each secret and to the pictures bucket, and lets it sign URLs as itself |
 | Default narrator model | `gemini-3.5-flash` (checked working on 2026-11-03) |
+| API service | Cloud Run `playable-anime-api`, 0 to 3 instances, 300 s timeout, startup CPU boost, at `https://playable-anime-api-528988811295.europe-west3.run.app` once deployed |
+| Images | Artifact Registry `europe-west3-docker.pkg.dev/playable-anime/playable-anime/api` |
+| Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` in Secret Manager (T11) |
+| Pictures | `gs://playable-anime-pictures`, private (M4) |
+| Deploys | `.github/workflows/deploy.yml`, started by hand on `main`, signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11) |
+| Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
 
-Deploying is described in [backend/README.md](../backend/README.md#deploy-to-cloud-run).
+Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 **Don't deploy publicly before auth exists:** an open endpoint lets anyone spend our Vertex budget.
 
 ## Neon Postgres
@@ -361,15 +369,12 @@ them deletes production data, so it waits for Miki.
 1. Run `neon checkout <feature> --create` (this repoints `.env.local`).
 2. Run `uv run python manage.py migrate --database direct` in `backend/`, then test.
 3. Run `neon diff` to review schema changes.
-4. After merging, run `neon checkout production` and migrate again.
+4. After merging, don't migrate `production` by hand: the deploy workflow migrates it before each
+   deploy ([DEPLOY.md](DEPLOY.md#deploying)).
 
-**Latency.** The database is in Frankfurt. Deploying Cloud Run to `europe-west3` (Frankfurt) instead
-of `europe-southwest1` (Madrid) would avoid a cross-region hop on every query.
+**Latency.** The database is in Frankfurt, and so is Cloud Run (`europe-west3`), so queries never
+cross regions (T1).
 
-**Cloud Run.** Store the pooled URL in Secret Manager and mount it as an env var:
-
-```bash
-gcloud secrets create database-url --replication-policy=automatic --data-file=- --configuration=playable-anime
-```
-
-Then deploy with `--set-secrets=DATABASE_URL=database-url:latest`.
+**Cloud Run.** `infra/bootstrap.sh` stores the production branch's pooled URL as the secret
+`database-url` and its direct URL as `database-url-direct`. The service gets the pooled one and the
+migration job the direct one, both as `DATABASE_URL` ([DEPLOY.md](DEPLOY.md#what-the-container-gets)).
