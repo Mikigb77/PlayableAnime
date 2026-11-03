@@ -97,6 +97,66 @@ the outcome, and nothing yet breaks the action into beats or stops a chained pla
 inside its one call. Nothing yet works out the facts, follows a chain of cause and effect, sorts each
 step into certain, contested, long shot or ruled out, or rolls in code.
 
+## Engine package (`backend/engine/`)
+
+The rules engine that replaces the one-call narrator above (WS2 in [PLAN.md](PLAN.md)). It is plain
+Python and Pydantic, with no Django, Ninja, LangChain or model SDK imports (B4), and
+`tests/engine/test_purity.py` fails if one creeps in. The turn graph (WS3) loads the story, calls
+these functions and saves the result.
+
+| Module | What |
+| --- | --- |
+| `engine/state/` | The world state (C2): `WorldState`, `WorldBible` (G6, G7, G18, W11, N7), `Character` with its `CharacterSheet` (G13, A1, A8, A9), `Faction`, `Place`, `Deed`, `Rumor`, `Fact`, `Goal`, `Lead`, `Thread`, `Clock`, `PendingEvent` and `RollRecord`. |
+| `engine/contracts/` | What flows between the turn's steps (B5): `Intent` (interpret), `Resolution` (resolve), `DirectorPlan` (director) and `StateDelta` (what the narrator or the engine proposes to change). |
+| `engine/context.py` | `TurnContext`: the story id, the turn number, story settings (S6), rating (F2) and content preferences (F7), which live outside the world state. |
+| `engine/rng.py` | `SeededRng`, the seeded random numbers behind every roll (A3). |
+| `engine/timekeeping.py` | How long each kind of action may take (W10). |
+| `engine/pipeline.py` | The functions the turn graph calls, with trivial default bodies that WS9, WS10 and WS11 replace. |
+| `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
+
+**The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
+a new one.
+
+| B5 step | Function | Owner |
+| --- | --- | --- |
+| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) | WS10 |
+| 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order: the clocks move by each step's duration, events due during it fire, and the step's consequences are recorded at its end | WS2 |
+| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
+| | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
+| 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
+| 6. Apply the update | `apply_delta` with the C1 invariants (WS2's second PR) | WS2 |
+
+**Decisions the package makes:**
+
+- **Records are keyed by id.** `WorldState.characters`, `factions`, `places`, `deeds` and the rest
+  are maps from id to record, and each record's `id` must match its key. The player character is in
+  `characters` under `player_id`, so attitudes, witnesses and knowledge treat everyone the same
+  way (E5). `state.new_id("deed")` hands out stable ids.
+- **In-world time is whole seconds since the story's epoch** (W10). Everything that happens in time
+  carries a `timeline_id` and a world second (W10a). A character's personal clock is
+  `world_s + personal_offset_s`, so it moves with the world for free, and a time stop only adds to
+  the user's offset. World processes such as rumor spread, clock steps and faction answers are
+  pending events with due times, so they fire in time order wherever time passes, at the start of
+  a turn and during a long action alike.
+- **Knowledge is recorded on the record.** Anything a character can know carries `known_by`, a
+  list of character ids, plus `met_by` on characters, `visited_by` on places and `heard_at` on
+  rumors. The Memory screen shows only records whose lists hold the player character (C6). Hidden
+  truth lives in fields the projection never shows: `is_true` on rumors and facts, secrets, mystery
+  answers, real attitudes behind an `apparent_affinity`.
+- **Proposals versus decisions.** `StateDelta` serves the narrator and the engine. Fields marked
+  engine only (terminal changes such as deaths, anything that needs a C1 `Cause`, rulings, gains,
+  accepted backstory, rule changes) are rejected when the narrator proposes them, because resolve
+  records the outcome in code before narration (F4). Resolve puts its own changes for each step in
+  `StepResolution.effects`.
+- **Rolls are replayable.** The graph makes one `SeededRng.for_turn(story_id, timeline_id, turn)` per
+  turn, and each seam derives child streams with stable labels, such as
+  `rng.child("resolve", "step", 0)`. Draws come from SHA-256, so a seed recorded on a scene replays
+  its roll on any machine, and retrying a turn never rerolls.
+- **The state is stored as JSONB.** Unknown keys are ignored on load and new fields need defaults,
+  so a state saved by an older engine still loads. `schema_version` marks the shape for a future
+  migration of stored states.
+
 ## Bring your own key
 
 - The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and
