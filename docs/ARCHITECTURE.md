@@ -56,6 +56,10 @@ facts and scenes with pgvector on Neon, so the prompt stays small however long t
 player's action, but not to play it out step by step from where the last scene ended before telling
 the outcome, and nothing yet breaks the action into beats or stops a chained plan where it fails.
 
+**Still to build for outcomes (A2, A9):** today the narrator model decides whether an action works
+inside its one call. Nothing yet works out the facts, follows a chain of cause and effect, sorts each
+step into certain, contested, long shot or ruled out, or rolls in code.
+
 ## Bring your own key
 
 - The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and

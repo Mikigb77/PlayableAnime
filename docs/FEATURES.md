@@ -56,6 +56,8 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 - [ ] Streaming narration (SSE) so text appears as it's written
 - [ ] Narration that plays out the player's action step by step, from where the last scene ended,
       before its outcome (R1 to R7)
+- [ ] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
+      workarounds reasoned through by cause and effect (A2, A9)
 - [ ] Voice dictation of actions, premises and `/ooc`, with a live transcript the player edits before
       sending (V1 to V7)
 - [ ] Basic safety: content rating per story, model safety settings, report button
