@@ -60,7 +60,14 @@ jobs:
           TOKEN=$(curl -sf -X POST localhost:8080/v1/auth/register -H 'Content-Type: application/json' \
             -d '{"email": "ci@example.com", "password": "a long ci passphrase", "display_name": "CI", "birth_date": "1990-01-01"}' \
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
-          curl -sf -X POST localhost:8080/v1/stories -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN" -d '{"premise": "A courier finds a strange package."}'
+          AUTH="Authorization: Bearer $TOKEN"
+          # Stories come from drafts; seed_story makes one without a model, ready for its opening.
+          STORY=$(docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api \
+            python manage.py seed_story ci@example.com)
+          curl -sf localhost:8080/v1/stories -H "$AUTH" | grep -q "$STORY"
+          curl -sf "localhost:8080/v1/stories/$STORY" -H "$AUTH" > /dev/null
+          curl -sf "localhost:8080/v1/stories/$STORY/memory" -H "$AUTH" > /dev/null
+          curl -sf localhost:8080/v1/premises -H "$AUTH" > /dev/null
           curl -sf localhost:8080/static/admin/css/base.css > /dev/null
       - if: always()
         run: docker logs api || true
