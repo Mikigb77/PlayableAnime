@@ -431,7 +431,9 @@ screens.
   `ChainLink.answers` (what would let a target escape a link, in plain words), and
   `StepResolution.beats` (R2's beat checks, for the scene details). WS10's `record_consequences`
   receives one proposed deed per step against someone, with a first-guess severity to weigh by the
-  world's norms. WS9b plugs time stop's own rules into `engine/resolve/powers/`.
+  world's norms. WS9b plugs time stop's own rules into `engine/resolve/powers/`. WS3's PR4 asks
+  the interpret prompt for `aim` and `answers`, forces the player as the actor (A6), and sends the
+  beat checks to the narrator's OUTCOME and the scene's `details.steps[].beats`.
 
 ### WS9b Powers, theories and growth (wave 3, after WS9)
 

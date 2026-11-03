@@ -68,11 +68,18 @@ def roll(result=StepResult.FAILURE) -> RollRecord:
 # check_intent
 
 
-def test_unknown_or_player_actor_becomes_the_player():
+def test_the_player_only_ever_plays_their_own_character():
+    """A6: whoever the interpret step names as the actor, the player character acts."""
     state = cultivation_world()
-    checked = check_intent(Intent(actor_id="ghost", steps=[step()]), state, "x")
-    assert checked.intent.actor_id is None
-    assert [i.code for i in checked.issues] == ["bad_actor"]
+    for actor, detail in (
+        ("ghost", "the actor is not in the story, so the player character acts"),
+        ("zhao", "the player plays only their own character (A6)"),
+    ):
+        checked = check_intent(Intent(actor_id=actor, steps=[step()]), state, "x")
+        assert checked.intent.actor_id is None
+        assert [(i.code, i.detail, i.subject) for i in checked.issues] == [
+            ("not_the_player", detail, actor)
+        ]
     checked = check_intent(Intent(actor_id="lin", steps=[step()]), state, "x")
     assert checked.intent.actor_id is None and checked.issues == []
 
@@ -81,12 +88,10 @@ def test_the_dead_never_act():
     """C1: a dead character can't be the actor, so the player character acts."""
     state = cultivation_world()
     zhao = state.characters["zhao"]
-    checked = check_intent(Intent(actor_id="zhao", steps=[step()]), state, "x")
-    assert checked.intent.actor_id == "zhao" and checked.issues == []
     zhao.status, zhao.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
     checked = check_intent(Intent(actor_id="zhao", steps=[step()]), state, "x")
     assert checked.intent.actor_id is None
-    assert [i.detail for i in checked.issues] == ["the actor is dead"]
+    assert [i.detail for i in checked.issues] == ["the actor is dead, so the player character acts"]
 
 
 def test_unknown_targets_are_kept_as_words():
