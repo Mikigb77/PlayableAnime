@@ -90,7 +90,8 @@ async def run_turn(turn: TurnInput, llm: ModelClient) -> AsyncIterator[TurnEvent
     if result is None:
         raise RuntimeError("the turn graph ended without a result")
     result = dataclasses.replace(result, timings_ms=dict(final.get("timings_ms") or {}))
-    logger.info(
+    # The endpoint writes T5's line for the turn; this one is for evals and debugging.
+    logger.debug(
         "turn played",
         extra={
             "turn_graph": {
