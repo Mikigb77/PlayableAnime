@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents`. |
+  | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents` and `details.available_cents`. |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -65,21 +65,41 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
 | PATCH | `/v1/me` | `{display_name?, content_prefs?}` | `User` |
 | DELETE | `/v1/me` | | `204`. Deletes the account, stories and pictures (T12, M4). |
 | GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture]}` (T12, M4) |
-| GET | `/v1/me/credits` | `?limit=50` | `{balance_cents, unlimited, entries: [LedgerEntry]}` (K1, K2) |
+| GET | `/v1/me/credits` | `?limit=50` (1 to 200) | `{balance_cents, unlimited, entries: [LedgerEntry]}`, newest first (K1, K2) |
 
 ```text
 Session      {access_token, refresh_token, expires_in, user: User}
 User         {id, email, display_name, role: "player"|"owner", max_rating: "teen"|"mature",
               content_prefs: {gore: "low"|"medium"|"high", romance: bool, dark_themes: bool},
               credits: {balance_cents, unlimited}}
-LedgerEntry  {id, kind: "starter"|"turn"|"image"|"topup"|"adjustment", amount_cents,
+LedgerEntry  {id, kind: "starter"|"turn"|"draft"|"image"|"topup"|"adjustment", amount_cents,
               balance_after_cents, story_id?, turn?, created_at}
 ExportedPicture {id, story_id, kind, subject, version, turns: [int], url, expires_at, created_at}
 ```
 
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
-integer. The owner account (K7) has `unlimited: true`; its ledger still records costs at zero
-charge so T5's numbers stay honest.
+integer. It is positive when credits are added and negative when they are spent, and a balance
+never goes below zero. The owner account (K7) has `unlimited: true`; its ledger still records costs
+at zero charge so T5's numbers stay honest. A turn, draft or picture on the player's own key (K6)
+uses no credits and writes no entry.
+
+**Credits, rate limits and quotas (K2, K6, T9).** Every request that calls a model (a turn, a
+draft or revision, a picture) is checked before it starts, in this order:
+
+1. A per-user rate limit per minute, on any key, BYOK included: `429 rate_limited` with
+   `details.retry_after_s`. Turns, drafts and pictures each have their own limit.
+2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
+   (ISO 8601, the next midnight UTC). BYOK requests don't count.
+3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
+   or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents` and
+   `details.available_cents` (less than the balance while another request of the same player is
+   running). A picture that can't be paid for is `skipped` instead (M7).
+
+A request that is refused counts against nothing. The real cost is charged when the request
+completes, in the same transaction as what it saved, so a turn that fails or loses a version race
+costs nothing. These checks are wired into each endpoint as it moves to this contract (the turn
+endpoint, drafting and pictures). The legacy story endpoints described under Stories aren't
+metered: the streamed turn endpoint replaces them.
 
 **Signing in.** Every auth endpoint answers `200` with a `Session`, except `logout` (`204`).
 

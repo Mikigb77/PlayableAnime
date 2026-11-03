@@ -345,6 +345,13 @@ screens.
 - The turn endpoint (WS3) calls the pre-turn check and the debit, and the picture endpoint (WS8)
   calls `charge_image()`. Whichever side lands second wires the call.
 - **Done when** concurrent debits can't overdraw and the ledger reconciles with the balance.
+- **Landed** as `backend/billing/` (see [ARCHITECTURE.md](ARCHITECTURE.md#credits-quotas-and-rate-limits)).
+  The price table is the model layer's (`graph/llm/pricing.py`) and billing adds the margin from
+  config. WS3's turn endpoint calls `meter.astart(user, meter.TURN, byok=...)` before streaming,
+  `meter.charge(ticket, telemetry.calls, story_id=, turn=)` inside its save transaction and
+  `meter.arelease(ticket)` in a `finally`; WS12 does the same with `meter.DRAFT`. Already wired:
+  WS8's `media/billing.py` (`meter.astart(user, meter.IMAGE)`, `meter.charge_image(...)`,
+  `meter.arelease(...)`) and WS6's `User.credits` (`billing.credits.summary(user)`).
 
 ### WS8 Pictures backend (wave 2a, after WS1)
 
@@ -376,7 +383,7 @@ screens.
     (`engine.visibility`) with `portrait_urls(story, character_ids)` and
     `place_urls(story, place_ids)` or `place_url(story, place_id)`.
   - **WS7 (credits):** replace the three bodies in `media/billing.py` (`start`, `charge`,
-    `release`) with the meter's `astart`, `charge_image` and `arelease`.
+    `release`) with the meter's `astart`, `charge_image` and `arelease`. Done in WS7's PR.
   - **WS6 (accounts):** deletion needs nothing (files go with the cascade, after the commit); the
     export adds `images` through `accounts.signals.account_exporting`. The picture endpoints use
     `stories.access.owned_story`, so the rating limit (F8) applies to pictures too.

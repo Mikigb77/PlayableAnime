@@ -49,6 +49,7 @@ def test_me_returns_the_account(player_client, player):
         "role": "player",
         "max_rating": "mature",
         "content_prefs": {"gore": "medium", "romance": True, "dark_themes": True},
+        # An email account gets K1's starter credit once its address is verified.
         "credits": {"balance_cents": 0, "unlimited": False},
     }
 

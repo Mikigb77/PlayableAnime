@@ -322,6 +322,71 @@ call replaced, to check the Gemini translation: messages, safety settings, block
   variable (such as LangChain's `LANGSMITH_GATEWAY`) can route a player's key anywhere else.
 - Only `gemini` is supported for now. A rejected key is `bad_key`, never retried.
 
+## Credits, quotas and rate limits
+
+Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the app sees it through
+`GET /v1/me/credits` and the errors in [API.md](API.md#auth-and-account-t8-s8-f8-k7-t12).
+
+- **Accounts and the ledger.** One `CreditAccount` per user holds the balance, in cents to four
+  decimals. Every change locks that row, applies the change and appends a `LedgerEntry` in one
+  transaction, so balances can't race and always equal the sum of their entries. The ledger is
+  append-only: the model refuses edits and a database trigger refuses any `UPDATE`, so a
+  correction is a new adjustment entry. A check constraint refuses a negative balance. Everything
+  is deleted with the account (T12); when real payments arrive (K4, K5), their records will need
+  keeping for accounting. `manage.py check_ledger` checks every balance against its ledger.
+- **Starter credit (K1).** A `post_save` receiver on `accounts.User` opens the account in the
+  transaction that creates the user. A verified account (one with a Google sign-in at once, an
+  email account once `email_verified` is set) gets $0.50, once; any later save that verifies the
+  account grants it then. An account that is missing is opened on first use.
+- **Staff.** The admin shows balances and the ledger read-only. Deleting a user there still
+  takes their billing rows with it (T12); deleting billing rows on their own is refused.
+- **Prices.** The per-model prices are the model layer's (`graph/llm/pricing.py`): each call's
+  telemetry record (T5) carries its raw cost. Billing charges that cost times `1 + BILLING_MARGIN`
+  and adds no fixed fee, so the spread between turn kinds is the spread of their model cost (K8).
+  Only calls on our key are charged (K6), which is `TurnTelemetry.billable_cost_usd`. A model
+  missing from the price table is priced at its dearest fallback, so a charge never undercounts;
+  the entry says `price_known: false` and a warning is logged so the table gets fixed.
+- **The flow around a model call** (`billing.meter`), the same for turns, drafts and pictures:
+
+  ```python
+  ticket = await meter.astart(user, meter.TURN, byok=byok_key is not None)  # before streaming
+  ...  # the model calls, collecting telemetry
+  with transaction.atomic():  # the turn's own save
+      ...  # scene, state, version bump
+      meter.charge(ticket, telemetry.calls, story_id=story.id, turn=turn)
+  ...
+  await meter.arelease(ticket)  # in a finally: gives back the hold, a no-op after charge
+  ```
+
+  `start` counts the per-minute rate limit (any key) and the daily quota (our key), then holds the
+  estimated cost (`BILLING["RESERVE_CENTS"]`), all in one transaction, so a refused request counts
+  against nothing. Holds are rows that count against the available balance until charged,
+  released or expired (10 minutes, longer than Cloud Run's request timeout), so concurrent turns
+  on several stories can't spend the same credits, and a request that died never locks credits
+  for long. `charge` runs in the caller's transaction, so a turn and its charge are saved together
+  or not at all. It is idempotent per ticket and never takes a balance below zero: a charge above
+  the balance takes it to zero and records the shortfall (`detail.uncovered_cents`). Pictures use
+  `charge_image`, and `out_of_credits` from `start` means the picture is skipped (M7).
+- **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits and gets
+  an entry at zero charge that keeps what it would have cost (`detail.list_cents`). A request on
+  the player's own key holds nothing, charges nothing, writes no entry and doesn't count toward
+  the daily quota, but is rate-limited (K6).
+- **Rate limits and quotas (T9).** `billing.limits.hit()` is a fixed-window counter in Postgres,
+  one row per user and bucket (`turn:minute`, `turn:day`, `image:minute`...) that rolls over in
+  place, incremented by a single `INSERT ... ON CONFLICT DO UPDATE`, so it counts exactly across
+  Cloud Run instances. Day windows end at midnight UTC. The owner has the daily quota too, as a
+  guard on a leaked token. The limits are in `BILLING` in `lucid/settings.py`, with the turn ones
+  from env (`TURN_RATE_PER_MINUTE`, `DAILY_TURN_QUOTA`).
+- **K8 cost tests.** `billing.pricing.cost_spread()` and `K8_MAX_COST_MULTIPLE` (3 for now)
+  compare what a quiet, a montage and an event turn charge a normal account.
+  `tests/billing/test_cost_spread.py` runs them on token budgets estimated from K8's bounds,
+  priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
+  same check on the turn graph's own telemetry.
+- **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
+  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. The legacy story
+  endpoints aren't metered; the turn endpoint (WS3) and drafting (WS12) call `billing.meter` when
+  they land.
+
 ## Voice input
 
 Requirements: V1 to V7 in [REQUIREMENTS.md](REQUIREMENTS.md#voice-input).
@@ -420,11 +485,12 @@ app                   shows the narration, then asks for the picture in its own 
   credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
   Illustrate tries a skipped scene picture again. The scenes showing a picture keep
   `Scene.image_status` in step with it.
-- **Paying (M7, K7).** `media/billing.py` is the seam to WS7's credit meter: `start` holds the
-  estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
+- **Paying (M7, K7).** `media/billing.py` calls the credit meter (`billing.meter`): `start` holds
+  the estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
   `rate_limited`, with the picture planned again), `charge` takes the real cost plus margin in the
-  transaction that marks the picture ready, and `release` lets a hold go when the picture isn't
-  drawn. Until the meter lands, pictures are free and the owner's are recorded as the owner's.
+  transaction that marks the picture ready (`charge_image`), and `release` lets a hold go when the
+  picture isn't drawn. The owner's pictures are recorded at no charge, and a story from before
+  sign-in, with no owner, draws free.
 - **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
   `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
   `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last

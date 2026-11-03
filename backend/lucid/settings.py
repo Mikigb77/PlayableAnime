@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "accounts",
     "stories",
     "media",
+    "billing",
 ]
 
 MIDDLEWARE = [
@@ -140,6 +141,24 @@ if not DEBUG and LLM_PROVIDER == "vertex" and not MEDIA_BUCKET:
     # A real deployment would keep pictures on one instance's ephemeral disk, where other
     # instances can't serve them and a restart loses them.
     raise ImproperlyConfigured("MEDIA_BUCKET is required when LLM_PROVIDER is vertex.")
+
+# Credits, quotas and rate limits (K1, K2, K6, K7, M7, T9), read by `billing.config`. Amounts
+# are in cents. The model prices themselves are the model layer's; billing adds the margin.
+BILLING = {
+    "STARTER_CENTS": ENV.starter_credit_cents,
+    "STARTER_POLICY": ENV.starter_credit_policy,
+    "MARGIN": ENV.billing_margin,
+    # Held before a model call starts, so concurrent calls can't spend the same credits: about
+    # 1.5 times a typical charge (a turn is about 2 cents of model cost, a picture 3.4 cents).
+    # A call can't start with less than this available.
+    "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6},
+    # A hold left by a request that died is ignored after this. Longer than Cloud Run's timeout.
+    "HOLD_TTL_S": 600,
+    # Per user per minute, on any key (T9, K6).
+    "PER_MINUTE": {"turn": ENV.turn_rate_per_minute, "draft": 6, "image": 20},
+    # Per user per UTC day, on our key only (T9).
+    "PER_DAY": {"turn": ENV.daily_turn_quota, "draft": 30, "image": 60},
+}
 
 # JSON lines on stdout, which Cloud Run sends to Cloud Logging (T4 to T6, B3).
 LOGGING = {

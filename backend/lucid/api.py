@@ -9,6 +9,7 @@ from ninja import NinjaAPI
 
 from accounts.api import auth_router, me_router
 from accounts.auth import BearerAuth
+from billing.api import credits_router
 from lucid import errors
 from media.api import media_router
 from stories.api import premises_router, stories_router
@@ -28,3 +29,4 @@ api.add_router("/me", me_router)
 api.add_router("/premises", premises_router)
 api.add_router("/stories", stories_router)
 api.add_router("/stories", media_router)
+api.add_router("/me/credits", credits_router)

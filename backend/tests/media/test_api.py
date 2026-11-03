@@ -71,7 +71,13 @@ def test_a_planned_picture_is_drawn_stored_and_served(client, painters, meter, l
     assert request.aspect_ratio == "16:9"
     assert len(meter.started) == 1
     assert meter.charged == [
-        {"hold": 1, "calls": ("call",), "cost": image.cost_usd, "turn": 2, "image": image.id}
+        {
+            "hold": 1,
+            "calls": (painters.ours.call,),
+            "cost": image.cost_usd,
+            "turn": 2,
+            "image": image.id,
+        }
     ]
     picture_lines = [line for line in log_lines() if line.get("picture")]
     assert len(picture_lines) == 1
