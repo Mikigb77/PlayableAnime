@@ -534,7 +534,9 @@ laser pistol burns through a coat but not a warship's hull.
   the story more fun, and whether play stays challenging, so a yes can come with a cost (G22), such
   as a heavier drain. Experimenting is part of the fun: a player who has just got time stop can
   throw a rock to see what happens, or try to lift something outside the stop, and each test settles
-  a detail of the power that was still open.
+  a detail of the power that was still open. Discoveries can be made the hard way: a character who
+  throws a pebble at light speed from close range dies in the blast, and the player may engineer a
+  way around it next time (W10a, N6).
 - **Refuse nonsense, never power** (Miki, 2026-11-03). An idea is refused only when it doesn't hold
   up in the world's logic, never because it would make the character too strong. A flick of a finger
   in stopped time doesn't blow up the planet, because nothing in the power explains it, unless the
@@ -686,8 +688,9 @@ sheet (A1, A4). NPCs can have them too.
   - **What they hold joins the stop.** Whatever the user picks up or carries moves with them, and what
     they let go freezes again once it leaves the power's reach, mid-air if need be, until time
     restarts. A person or creature they carry stays frozen inside and knows nothing of it.
-  - **The power shields its user.** Their body never takes the recoil or the blast of what they do in
-    the stop.
+  - **The power shields its user while the stop lasts.** Their body never takes the recoil of what
+    they do in the stop. Once time restarts, the blast of their own hit is as real for them as for
+    anyone else (Miki, 2026-11-03).
 
   Frozen people see nothing, so deeds done during a stop are secret (W2) unless someone is immune, but
   they still leave traces (W13): to everyone else, the guard simply drops dead. Frozen people can't
@@ -700,13 +703,16 @@ sheet (A1, A4). NPCs can have them too.
   - **Relative speed** (Miki, 2026-11-03): to the frozen world, whatever moved during the stop got
     where it is in no time at all, so it lands with overwhelming force. A blade swung during the stop
     goes through steel like butter, and a thrown pebble really arrives at close to the speed of
-    light: 100 grams at 90% of it hits like a three-megaton bomb. The force doesn't come from the
+    light: 100 grams at 90% of it hits like a three-megaton bomb, about 200 times Hiroshima. The force doesn't come from the
     user's arm but from the power that took them out of time, which pays for that instant journey
     when time restarts. Only what strikes something, or is still flying when time restarts, carries
     that force, so something set down gently stays where it is, unharmed. Nothing caps it to hold the
     story at some power level (A9). The character is close to unstoppable, and that becomes the
     story: the world fears, courts or tries to seal them (G22, W5), and fights turn into choices
-    about what they're willing to destroy. The rest follows from the rule: the shot also smashes what
+    about what they're willing to destroy. That includes themselves: a light-speed pebble thrown
+    close by kills the thrower along with everything around them (N6), and the player learns from
+    it. Control is something a character can learn (A4, A9), such as letting the stone back into
+    time gradually, or slowing time instead of stopping it, so they choose how hard it lands. The rest follows from the rule: the shot also smashes what
     is behind the target, the blast is seen and heard, so it starts rumors even when nobody saw who
     threw (W2, W13), and anything tougher than the hit, such as a protected treasure or a body far
     enough up the ladder, survives it.
@@ -1051,7 +1057,8 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
 | Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
-| Light-speed throw | A character whose time stop hits at relative speed stops time and throws a pebble at an army outside a castle, over many seeds | The pebble hits like a three-megaton bomb on every seed, the thrower is unhurt, the army and the land around are wrecked, and the world answers: kingdoms fear, court or plot against the character (W10a, G22, W5) |
+| Light-speed throw | A character whose time stop hits at relative speed stops time and throws a pebble at an army outside a castle, once from a ridge ten kilometers away and once from the castle wall, over many seeds, on Balanced | The pebble hits like a three-megaton bomb on every seed. From the ridge the thrower survives; from the wall the thrower dies with the army (N6). The world answers the survivor: kingdoms fear, court or plot against them (W10a, G22, W5) |
+| Controlled throw | A character with the same power learns to let a stone back into time gradually, then throws it at a single bandit | On every seed the bandit is hit hard enough to kill and nothing else is wrecked, and the technique is on the sheet (A4, A9, W10a) |
 | Earned technique | In a world where stopped-time throws land with normal force, the player asks twice whether a throw could hit at the speed of light, then trains to release the stop gradually around a rock | The answer is no both times, shown in play with no physics debate. After the training, the new throw lands at relative speed on every seed and is on the sheet (A9, A4) |
 | Nonsense, not power | In a cultivation world, the player says a flick of a finger in stopped time blows up the planet, with nothing behind it; later the player works out a way that holds to throw at light speed | The flick is refused with no lecture. The light-speed throws work however strong they make the character, and the world answers that strength (A9, G22) |
 | Player theory | A new character with time stop, whose player never said how it works, throws a rock in stopped time saying it should hit at the speed of light, then grabs a boulder outside the stop, then sprints across a square in stopped time | The rock hits with overwhelming force, and from then on the power works that way on every seed, recorded on the sheet. The boulder joins the stop when grabbed and is as heavy as ever. Nothing the player didn't raise, such as air friction, blocks the sprint, nothing lectures the player, and the player is never asked how the power should work (A9, W10a) |
