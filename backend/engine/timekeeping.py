@@ -88,6 +88,11 @@ def world_stopped(state: WorldState) -> bool:
 
 
 EventHandler = Callable[[WorldState, PendingEvent], WorldState]
+NeedsPlayer = Callable[[WorldState, PendingEvent], bool]
+
+
+def _flagged(state: WorldState, event: PendingEvent) -> bool:
+    return event.needs_player
 
 
 @dataclass(frozen=True)
@@ -114,6 +119,7 @@ def advance_clock(
     until_s: int,
     apply: EventHandler,
     *,
+    needs_player: NeedsPlayer = _flagged,
     max_events: int = MAX_EVENTS_PER_PASSAGE,
 ) -> TimePassage:
     """Move the world clock to `until_s`, applying each pending event due on the way (W10).
@@ -125,7 +131,10 @@ def advance_clock(
     at the same second after it wait for the next stretch.
 
     `apply(state, event)` returns the new state with the event no longer pending, and must not
-    move the clock or change the timeline. The input state is never changed.
+    move the clock or change the timeline. `needs_player(state, event)` decides, once the event
+    has applied, whether it stops the clock; by default it reads `event.needs_player`, and the
+    living world can decide from the state instead (guards arriving where the player no longer
+    is aren't an interruption). The input state is never changed.
     """
     if until_s < state.world_s:
         raise ValueError(f"time never runs backwards: {until_s} is before {state.world_s}")
@@ -146,7 +155,7 @@ def advance_clock(
         if stored is None or stored.status is EventStatus.PENDING:
             raise RuntimeError(f"applying event {event.id!r} left it pending")
         fired.append(stored)
-        if event.needs_player:
+        if needs_player(current, stored):
             return TimePassage(current, started, at, tuple(fired), interrupted_by=stored)
     current.world_s = until_s
     return TimePassage(current, started, until_s, tuple(fired))

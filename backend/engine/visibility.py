@@ -196,15 +196,17 @@ def _status_words(status: str, presumed: bool = False) -> str:
     return status.replace("_", " ").capitalize()
 
 
-def believed_status(history: list[StatusChange], current: str, player_id: str) -> tuple[str, bool]:
+def believed_status(
+    history: list[StatusChange], current: str, player_id: str, *, initial: str
+) -> tuple[str, bool]:
     """The status the player character believes, and whether a death was presumed (C6): the
-    latest change they know of. With none, it is the status before the first change, or the
-    current one if it never changed."""
+    latest change they know of. With none, it is the status before the first change (`initial`
+    if that wasn't recorded), or the current one if it never changed."""
     known = [h for h in history if player_id in h.known_by]
     if known:
         return known[-1].status, known[-1].presumed
     if history:
-        return history[0].from_status or CharacterStatus.ALIVE.value, False
+        return history[0].from_status or initial, False
     return current, False
 
 
@@ -219,6 +221,19 @@ class _Knowledge:
         self.player_id = state.player_id
         self.now = state.world_s
         self.timeline = state.timeline_id
+        # The facts the player character knows, by subject, in the order they were learned.
+        known = sorted(
+            (
+                f
+                for f in state.facts.values()
+                if self.player_id in f.known_by and f.timeline_id == self.timeline
+            ),
+            key=lambda f: (f.world_s, natural_key(f.id)),
+        )
+        self.facts_by_subject: dict[str, list[str]] = {}
+        for fact in known:
+            for subject_id in dict.fromkeys(fact.subject_ids):
+                self.facts_by_subject.setdefault(subject_id, []).append(fact.text)
 
     def knows(self, record) -> bool:
         return self.player_id in record.known_by
@@ -231,13 +246,7 @@ class _Knowledge:
         return None
 
     def facts_about(self, subject_id: str) -> list[str]:
-        facts = [
-            f
-            for f in self.state.facts.values()
-            if subject_id in f.subject_ids and self.knows(f) and f.timeline_id == self.timeline
-        ]
-        facts.sort(key=lambda f: (f.world_s, natural_key(f.id)))
-        return [f.text for f in facts]
+        return list(self.facts_by_subject.get(subject_id, []))
 
     def deeds(self) -> list[Deed]:
         deeds = [
@@ -280,10 +289,10 @@ class _Knowledge:
         lines += self.facts_about(c.id)
         attitude = None
         if self.player_id in c.met_by:
-            shown = c.attitude_toward(self.player_id)
-            if shown is not None:
-                attitude = attitude_label(shown.shown_affinity)
-        status, presumed = believed_status(c.status_history, c.status.value, self.player_id)
+            attitude = attitude_label(c.attitude_toward(self.player_id).shown_affinity)
+        status, presumed = believed_status(
+            c.status_history, c.status.value, self.player_id, initial=CharacterStatus.ALIVE.value
+        )
         return PersonEntry(
             id=c.id,
             name=c.name,
@@ -296,7 +305,9 @@ class _Knowledge:
         lines = [_cap(p.kind)] if p.kind else []
         if p.description:
             lines.append(p.description)
-        status, _ = believed_status(p.status_history, p.status.value, self.player_id)
+        status, _ = believed_status(
+            p.status_history, p.status.value, self.player_id, initial=PlaceStatus.THRIVING.value
+        )
         if status != PlaceStatus.THRIVING.value:
             lines.append(_status_words(status))
         if self.player_id not in p.visited_by:
@@ -308,7 +319,9 @@ class _Knowledge:
         lines = [_cap(f.kind)] if f.kind else []
         if f.description:
             lines.append(f.description)
-        status, _ = believed_status(f.status_history, f.status.value, self.player_id)
+        status, _ = believed_status(
+            f.status_history, f.status.value, self.player_id, initial=FactionStatus.INTACT.value
+        )
         if status != FactionStatus.INTACT.value:
             lines.append(_status_words(status))
         lines += self.facts_about(f.id)

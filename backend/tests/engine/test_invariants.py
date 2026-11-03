@@ -201,3 +201,16 @@ def test_assert_valid_transition_raises_with_every_violation():
 
     assert len(error.value.violations) == 2
     assert "records are archived, never deleted" in str(error.value)
+
+
+def test_check_state_finds_parents_that_loop():
+    state = grounded_world()
+    state.places["bar"].parent_id = "naples"
+    state.places["naples"].parent_id = "bar"
+
+    found = check_state(state)
+
+    assert [(v.subject, v.detail) for v in found] == [
+        ("place bar", "its parents loop back to it"),
+        ("place naples", "its parents loop back to it"),
+    ]

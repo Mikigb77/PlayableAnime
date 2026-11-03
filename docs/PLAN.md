@@ -204,8 +204,9 @@ the clock and the visibility filter.
   - `catch_up(state, until_s, ctx, rng) -> TimePassage` (WS10)
   - `resolve(state, intent, ctx, rng) -> Resolution` (WS9)
   - `play_out(state, resolution, ctx, rng) -> PlayOut` (WS2): the steps happen in order on
-    in-world time; pending events fire on the way and one that needs the player cuts the plan
-    short; each step's `effects` apply as the engine's, then `record_consequences` runs
+    in-world time; the world catches up to each step's end through `catch_up`, and an event that
+    needs the player cuts the plan short; each step's `effects` apply as the engine's, then
+    `record_consequences` runs
   - `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, once per finished
     step (WS10)
   - `apply_event(state, event, ctx, rng) -> WorldState`, once per pending event that falls due

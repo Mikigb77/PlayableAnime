@@ -28,7 +28,7 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
-from engine.apply import DeltaSource, Rejection, apply_delta
+from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.context import ImageSetting, TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
 from engine.contracts.direction import (
@@ -71,13 +71,15 @@ class PlayOut:
     """The plan after it played out: the new state, the resolution with each step's start and end
     times (truncated where an event cut it short), the events applied along the way in time
     order, the event that needed the player if one stopped the plan, and any of the steps' own
-    changes that the C1 invariants refused (a bug in resolve if it ever happens)."""
+    changes that the C1 invariants refused (a bug in resolve if it ever happens). `capped` means
+    a step hit the cap on events per stretch, which only a runaway handler causes; log it."""
 
     state: WorldState
     resolution: Resolution
     fired: tuple[PendingEvent, ...] = field(default_factory=tuple)
     interrupted_by: PendingEvent | None = None
     rejected: tuple[Rejection, ...] = field(default_factory=tuple)
+    capped: bool = False
 
 
 def _event_handler(ctx: TurnContext, rng: SeededRng):
@@ -224,36 +226,45 @@ def play_out(
 ) -> PlayOut:
     """Play the resolved steps in order on in-world time (W10, W10a, R6).
 
-    For each step the world clock moves by the step's duration through `advance_clock`, which
-    applies every pending event due on the way, in time order, through `apply_event`. The actor's
-    personal clock moves by their lived time. At the step's end its `effects` are applied as the
-    engine's own changes, with the C1 invariants, and its consequences are recorded.
+    For each step that takes world time, the world catches up to the step's end through
+    `catch_up`, so every pending event due on the way applies in time order, from the one loop
+    the living world owns. It gets the turn's own `rng`, so an event rolls the same however the
+    time around it is split into steps. The actor's personal clock moves by their lived time. At
+    the step's end its `effects` apply as the engine's, with the C1 invariants, and then its
+    consequences are recorded, so a victim is already dead when witnesses are worked out.
 
-    The first event that needs the player stops the plan at its due time. A step it cuts short
-    gets only the time it ran for (lived time in proportion) and is marked `interrupted`; its
-    effects and deeds don't happen, since resolve settled them for the whole step. The steps
-    after it go to `unplayed`, so the narrator hands the scene back there. Inside a time stop the
-    world clock stands still, so nothing fires.
+    The first event that needs the player stops the plan at its time. A step it cuts short gets
+    only the time it ran for (lived time in proportion) and is marked `interrupted`; its effects
+    and deeds don't happen, since resolve settled them for the whole step. The steps after it go
+    to `unplayed`, so the narrator hands the scene back there. A step in a time stop takes no
+    world time (resolve gives it none), and while a stop holds the world, the world clock never
+    moves (W10a).
 
     Rulings are recorded on the actor's sheet once, never flipped (A9).
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
     actor_id = resolution.actor_id or state.player_id
-    handler = _event_handler(ctx, rng)
     played: list[StepResolution] = []
     fired: list[PendingEvent] = []
     rejected: list[Rejection] = []
     interrupted_by: PendingEvent | None = None
+    capped = False
     for step in resolution.steps:
         start_s = current.world_s
-        if step.duration_s > 0:
-            passage = advance_clock(current, start_s + step.duration_s, handler)
+        planned_end = start_s + step.duration_s
+        if step.duration_s > 0 and not world_stopped(current):
+            passage = catch_up(current, planned_end, ctx, rng)
             current = passage.state
             fired.extend(passage.fired)
             interrupted_by = passage.interrupted_by
+            if interrupted_by is None and current.world_s < planned_end:
+                # The cap stopped the clock early. The step still takes its time; what is left
+                # pending is overdue and applies at the next catch-up.
+                capped = True
+                current.world_s = planned_end
         elapsed = current.world_s - start_s
-        cut = elapsed < step.duration_s
+        cut = interrupted_by is not None and elapsed < step.duration_s
         lived = step.duration_s if step.personal_s is None else step.personal_s
         if cut:
             lived = lived * elapsed // step.duration_s
@@ -265,15 +276,14 @@ def play_out(
                 "start_s": start_s,
                 "end_s": current.world_s,
                 "duration_s": elapsed,
-                "personal_s": None if step.personal_s is None else lived,
+                "personal_s": None if step.personal_s is None and lived == elapsed else lived,
                 "interrupted": cut,
             }
         )
         played.append(timed)
         if not cut:
             if not step.effects.empty:
-                applied = apply_delta(current, step.effects, ctx, source=DeltaSource.ENGINE)
-                current = applied.state
+                applied = apply_in_place(current, step.effects, ctx, source=DeltaSource.ENGINE)
                 rejected.extend(applied.rejected)
             step_rng = rng.child("play_out", "step", step.index)
             current = record_consequences(current, resolution, timed, ctx, step_rng)
@@ -282,9 +292,7 @@ def play_out(
 
     if resolution.rulings and actor_id in current.characters:
         rulings = StateDelta(characters=[CharacterChange(id=actor_id, rulings=resolution.rulings)])
-        applied = apply_delta(current, rulings, ctx, source=DeltaSource.ENGINE)
-        current = applied.state
-        rejected.extend(applied.rejected)
+        rejected.extend(apply_in_place(current, rulings, ctx, source=DeltaSource.ENGINE).rejected)
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]
@@ -300,6 +308,7 @@ def play_out(
         fired=tuple(fired),
         interrupted_by=interrupted_by,
         rejected=tuple(rejected),
+        capped=capped,
     )
 
 

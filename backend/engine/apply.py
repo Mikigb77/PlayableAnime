@@ -39,6 +39,7 @@ from engine.contracts.delta import (
     StateDelta,
 )
 from engine.invariants import (
+    ancestry,
     cause_problem,
     death_reversal_problem,
     faction_revival_problem,
@@ -105,7 +106,15 @@ def apply_delta(
 
     Places and factions go first, so characters in the same delta can refer to them.
     """
-    applier = _Applier(state.model_copy(deep=True), source, ctx.turn)
+    return apply_in_place(state.model_copy(deep=True), delta, ctx, source=source)
+
+
+def apply_in_place(
+    state: WorldState, delta: StateDelta, ctx: TurnContext, *, source: DeltaSource
+) -> Applied:
+    """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
+    in place instead of copying the whole state again. `Applied.state` is that same object."""
+    applier = _Applier(state, source, ctx.turn)
     for change in delta.places:
         applier.place(change)
     for change in delta.factions:
@@ -183,8 +192,9 @@ class _Applier:
             known_by=[player] if known else [],
         )
 
-    def known_to_player(self, subject_id: str, flagged: bool) -> bool:
-        return flagged or subject_id in self.state.scene.present_ids
+    def known_to_player(self, character_id: str, flagged: bool) -> bool:
+        """Whether the player character learns of a change to someone: flagged, or in the scene."""
+        return flagged or character_id in self.state.scene.present_ids
 
     def cause_of(self, subject: str, change) -> Cause | None:
         """The change's cause, which only the engine may give (C1)."""
@@ -211,10 +221,12 @@ class _Applier:
             if value is not None:
                 setattr(place, attr, value)
         if change.parent_id is not None:
-            if change.parent_id in self.state.places and change.parent_id != place.id:
-                place.parent_id = change.parent_id
-            else:
+            if change.parent_id not in self.state.places:
                 self.reject(subject, "parent", f"no place {change.parent_id!r}")
+            elif place.id in ancestry(self.state.places, change.parent_id):
+                self.reject(subject, "parent", f"{change.parent_id!r} lies within it")
+            else:
+                place.parent_id = change.parent_id
         if change.controller_id is not None:
             if change.controller_id in self.state.factions or change.controller_id in (
                 self.state.characters
@@ -239,7 +251,8 @@ class _Applier:
 
     def place_status(self, place: Place, change: PlaceChange, cause: Cause | None) -> None:
         subject = f"place {place.id}"
-        known = self.known_to_player(place.id, change.known_to_player or change.visited)
+        # The player character sees what happens to the place they're in.
+        known = change.known_to_player or change.visited or self.state.scene.place_id == place.id
         if place.status is PlaceStatus.RUINED:
             if not self.engine_only(subject, "rebuild"):
                 return
@@ -276,10 +289,12 @@ class _Applier:
             if value is not None:
                 setattr(faction, attr, value)
         if change.parent_id is not None:
-            if change.parent_id in self.state.factions and change.parent_id != faction.id:
-                faction.parent_id = change.parent_id
-            else:
+            if change.parent_id not in self.state.factions:
                 self.reject(subject, "parent", f"no faction {change.parent_id!r}")
+            elif faction.id in ancestry(self.state.factions, change.parent_id):
+                self.reject(subject, "parent", f"{change.parent_id!r} is part of it")
+            else:
+                faction.parent_id = change.parent_id
         if (change.esteem or change.fear) and self.engine_only(subject, "reputation"):
             rep = faction.player_reputation
             rep.esteem = _clamp(rep.esteem + change.esteem, ESTEEM_MIN, ESTEEM_MAX)

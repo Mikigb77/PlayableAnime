@@ -368,3 +368,60 @@ def test_deeds_in_stopped_time_leave_their_immune_witnesses_unnoticed():
 
     (deed,) = played.state.deeds.values()
     assert deed.witness_ids == ["elder-mo"] and deed.unnoticed_witness_ids == ["elder-mo"]
+
+
+def test_a_needs_player_check_can_read_the_state():
+    state = with_events(event("guards", 60, needs_player=True), event("knock", 120))
+
+    def only_where_the_player_is(s, e):
+        return e.id == "knock"
+
+    passage = advance_clock(state, 300, Recorder(), needs_player=only_where_the_player_is)
+
+    assert passage.interrupted_by.id == "knock" and passage.ended_s == 120
+
+
+def test_play_out_goes_through_catch_up_with_the_turns_own_rng(monkeypatch):
+    calls = []
+    original = pipeline.catch_up
+
+    def spy(state, until_s, context, stream):
+        calls.append((state.world_s, until_s, stream.seed))
+        return original(state, until_s, context, stream)
+
+    monkeypatch.setattr(pipeline, "catch_up", spy)
+    resolution = Resolution(steps=[settled(0, 60), settled(1, 0), settled(2, 30)])
+
+    pipeline.play_out(grounded_world(), resolution, ctx(), rng())
+
+    assert calls == [(0, 60, rng().seed), (60, 90, rng().seed)]
+
+
+def test_a_capped_stretch_still_takes_the_steps_time(monkeypatch):
+    def runaway(state, e):
+        new = Recorder()(state, e)
+        n = len(new.pending_events)
+        new.pending_events[f"e-{n}"] = event(f"e-{n}", new.world_s, created_s=n)
+        return new
+
+    def capped_catch_up(state, until_s, context, stream):
+        return advance_clock(state, until_s, runaway, max_events=5)
+
+    monkeypatch.setattr(pipeline, "catch_up", capped_catch_up)
+    resolution = Resolution(steps=[settled(0, 100), settled(1, 10)])
+
+    played = pipeline.play_out(with_events(event("e-0", 10)), resolution, ctx(), rng())
+
+    assert played.capped and played.interrupted_by is None
+    assert [s.end_s for s in played.resolution.steps] == [100, 110]
+    assert not played.resolution.steps[0].interrupted
+
+
+def test_someone_elses_time_stop_holds_the_world_during_play_out():
+    state = stopped(cultivation_world())
+    state.player_id = "zhao"  # Zhao acts while Lin's stop holds the world
+    state.pending_events = {"e": event("e", 5)}
+
+    played = pipeline.play_out(state, Resolution(steps=[settled(0, 60)]), ctx(), rng())
+
+    assert played.state.world_s == 0 and played.fired == ()

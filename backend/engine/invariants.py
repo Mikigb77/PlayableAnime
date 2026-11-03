@@ -101,9 +101,7 @@ def cause_problem(
         event = state.pending_events.get(cause.ref_id)
         if event is None:
             return f"no recorded event {cause.ref_id!r}"
-        if event.status is EventStatus.CANCELLED or (
-            event.status is EventStatus.PENDING and event.due_s > state.world_s
-        ):
+        if event.status is not EventStatus.APPLIED:
             return f"event {cause.ref_id!r} hasn't happened"
         when = event.applied_s if event.applied_s is not None else event.due_s
         timeline, named = event.timeline_id, event.subject_ids
@@ -162,6 +160,24 @@ def place_rebuild_problem(state: WorldState, place_id: str, cause: Cause) -> str
     )
 
 
+def ancestry(records: dict, record_id: str | None) -> list[str]:
+    """`record_id` and its parents, nearest first, stopping before any loop."""
+    chain: list[str] = []
+    while record_id is not None and record_id in records and record_id not in chain:
+        chain.append(record_id)
+        record_id = records[record_id].parent_id
+    return chain
+
+
+def _loops(records: dict) -> list[str]:
+    """Ids whose chain of parents comes back round to them."""
+    looped = []
+    for record_id, record in records.items():
+        if record.parent_id is not None and record_id in ancestry(records, record.parent_id):
+            looped.append(record_id)
+    return sorted(looped)
+
+
 def _bounds(state: WorldState) -> list[Violation]:
     try:
         WorldState.model_validate(state.model_dump())
@@ -199,6 +215,11 @@ def check_state(state: WorldState) -> list[Violation]:
     for p in state.places.values():
         if p.parent_id is not None and p.parent_id not in state.places:
             found.append(Violation(f"place {p.id}", "reference", "unknown parent place"))
+    for kind, records in (("faction", state.factions), ("place", state.places)):
+        found.extend(
+            Violation(f"{kind} {i}", "reference", "its parents loop back to it")
+            for i in _loops(records)
+        )
     return found
 
 

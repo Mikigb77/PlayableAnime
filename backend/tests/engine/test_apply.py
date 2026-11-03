@@ -566,3 +566,44 @@ def test_the_scene_end_keeps_only_real_people_and_places():
     scene = applied.state.scene
     assert (scene.place_id, scene.present_ids, scene.ended_on) == ("bar", ["luca"], "A shot")
     assert applied.state.summary == "Luca fired."
+
+
+def test_the_player_sees_what_happens_to_the_place_they_are_in():
+    state = grounded_world()  # Luca is in the bar
+    ruin = [PlaceChange(id="bar", status=PlaceStatus.RUINED)]
+    away = [PlaceChange(id="questura", status=PlaceStatus.DAMAGED)]
+
+    applied = apply(state, ENGINE, places=ruin + away)
+
+    assert applied.state.places["bar"].status_history[-1].known_by == ["luca"]
+    assert applied.state.places["questura"].status_history[-1].known_by == []
+
+
+def test_parents_never_loop():
+    state = grounded_world()
+    state.places["bar"].parent_id = "naples"
+
+    looped = apply(state, places=[PlaceChange(id="naples", parent_id="bar")])
+    itself = apply(state, factions=[FactionChange(id="police", parent_id="police")])
+    fine = apply(state, factions=[FactionChange(id="carmine-crew", parent_id="esposito")])
+
+    assert looped.state.places["naples"].parent_id is None
+    assert reasons(looped) == ["'bar' lies within it"]
+    assert reasons(itself) == ["'police' is part of it"]
+    assert fine.state.factions["carmine-crew"].parent_id == "esposito"
+
+
+def test_an_event_that_is_due_but_never_applied_is_no_cause():
+    state = resurrection_world()
+    state.pending_events["return"] = PendingEvent(
+        id="return", kind="revival", due_s=500, subject_ids=["zhao"]
+    )
+    back = CharacterChange(
+        id="zhao",
+        status=CharacterStatus.ALIVE,
+        cause=cause(CauseMechanism.RESURRECTION, "return", CauseRef.EVENT),
+    )
+
+    applied = apply(state, ENGINE, characters=[back])
+
+    assert reasons(applied) == ["event 'return' hasn't happened"]

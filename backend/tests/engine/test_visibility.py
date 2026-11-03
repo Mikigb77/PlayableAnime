@@ -319,3 +319,20 @@ def test_status_shows_money_and_what_is_carried():
 
     assert "200,000 lire" in lines and "Beretta pistol" in lines
     assert "Alfa Romeo Giulia" not in lines  # parked, not carried
+
+
+def test_a_change_recorded_without_its_old_status_falls_back_to_the_kinds_start():
+    from engine.state import StatusChange
+
+    state = grounded_world()
+    state.places["bar"].status = PlaceStatus.RUINED
+    state.places["bar"].status_history.append(StatusChange(status="ruined", turn=1, world_s=0))
+    state.factions["police"].status = FactionStatus.DESTROYED
+    state.factions["police"].status_history.append(
+        StatusChange(status="destroyed", turn=1, world_s=0)
+    )
+
+    view = memory_view(state)
+
+    assert {p.id: p.lines for p in view.places}["bar"] == ["Building"]
+    assert {f.id: f.lines for f in view.factions}["police"] == ["Police"]
