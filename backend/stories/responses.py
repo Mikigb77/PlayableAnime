@@ -16,6 +16,7 @@ from engine.state.bible import Calendar
 from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView, clock_view, memory_view, status_view
 from media.lookups import cover_urls, place_urls, portrait_urls, scene_images
+from moderation.models import Report
 from stories.models import Scene, Story
 from stories.schemas import (
     ChoiceOut,
@@ -32,19 +33,36 @@ LIBRARY_SIZE = 50
 
 
 def scenes_out(
-    story: Story, scenes: Sequence[Scene], *, request: HttpRequest | None = None
+    story: Story,
+    scenes: Sequence[Scene],
+    *,
+    request: HttpRequest | None = None,
+    blocked: set[int] | None = None,
 ) -> list[SceneOut]:
-    """API.md's `Scene` for each of `scenes`, with its picture and the portraits of the known
-    characters in it (M3, M4, M5)."""
+    """API.md's `Scene` for each of `scenes`, with its picture, the portraits of the known
+    characters in it (M3, M4, M5) and whether the player blocked it (F6). Pass `blocked` when
+    it is already known, as for a scene just played, which nobody can have blocked yet."""
     if not scenes:
         return []
+    if blocked is None:
+        blocked = blocked_turns(story, [scene.turn for scene in scenes])
     images = scene_images(scenes, request=request)
     ids = {entry.get("character_id") for scene in scenes for entry in _cast(scene)}
     portraits = portrait_urls(story, sorted(filter(None, ids)), request=request) if ids else {}
-    return [_scene_out(scene, images.get(scene.turn), portraits) for scene in scenes]
+    return [
+        _scene_out(scene, images.get(scene.turn), portraits, scene.turn in blocked)
+        for scene in scenes
+    ]
 
 
-def _scene_out(scene: Scene, image: dict | None, portraits: dict) -> SceneOut:
+def blocked_turns(story: Story, turns: Sequence[int]) -> set[int]:
+    """Which of `turns` the player blocked (F6), like `moderation.service.blocked_turns` but
+    for synchronous code and only for the scenes being shown."""
+    rows = Report.objects.filter(story=story, block=True, scene__turn__in=list(turns))
+    return set(rows.values_list("scene__turn", flat=True))
+
+
+def _scene_out(scene: Scene, image: dict | None, portraits: dict, blocked: bool) -> SceneOut:
     return SceneOut(
         turn=scene.turn,
         kind=scene.kind,
@@ -73,13 +91,14 @@ def _scene_out(scene: Scene, image: dict | None, portraits: dict) -> SceneOut:
             for entry in _cast(scene)
             if entry.get("character_id")
         ],
+        blocked=blocked,
         created_at=scene.created_at,
     )
 
 
 def bare_scene(scene: Scene) -> SceneOut:
-    """The scene without its picture or portrait URLs, for when they can't be read."""
-    return _scene_out(scene, None, {})
+    """A scene just played, without its picture or portrait URLs, for when they can't be read."""
+    return _scene_out(scene, None, {}, blocked=False)
 
 
 def _cast(scene: Scene) -> list[dict]:

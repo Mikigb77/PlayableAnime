@@ -85,6 +85,28 @@ Why the lines are where they are:
 - **Testing.** Before launch, run a set of gory and romance test stories through Gemini (T15) to
   confirm that its filters draw the line where this table does.
 
+**What the code enforces** ([ARCHITECTURE.md](ARCHITECTURE.md#safety-ratings-and-reports)). The
+prompts ask for the lines above and Gemini's filters back them, but the turn graph (B5) holds these
+in code whatever a model or a player says:
+
+- A romantic or sexual step plays only when everyone in it is a known character with an age of 18
+  or more recorded and nothing childlike in their description (F3). A partner the story hasn't met
+  yet is introduced by the narrator, whose prompt requires an adult age, and is checked from then
+  on.
+- In a Teen story a step beyond a kiss, or a sexual assault, never plays (F2).
+- No step targets a real living person, and no new character or faction is named after a real
+  person or organisation; the names come from a curated list (G12).
+- A narration that reads as working drug, weapon or hacking instructions is retold as a cut-away
+  (F3, F4).
+- A step that crosses one of these lines ends the turn before anything resolves, with
+  `unreadable_action` and a message that names the line, so the player can say it another way.
+  Every block, from the code or from Gemini, is logged with its category (F4).
+- A story above the account's rating limit is closed on every story route (F8). The interpret step
+  in a Mature story turns Gemini's text filters off except dangerous content, so the engine, not a
+  filter, reads the action (F5).
+- A report is one per scene and player, and a block is never undone. Only superusers and staff in
+  the report handlers group read story text in the admin (F6, T16).
+
 ## Worlds, genres and characters
 
 A story can happen in any kind of world: a fantasy realm of dragons and mages, a modern city where

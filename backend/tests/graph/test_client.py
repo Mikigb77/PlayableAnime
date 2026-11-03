@@ -61,6 +61,21 @@ def test_the_request_carries_the_nodes_model_settings_and_the_ratings_safety(fak
     assert request.image is None
 
 
+def test_each_node_gets_its_own_safety_settings(fake, make_client):
+    # F5, F4: Mature interpret reads the action with the text filters off.
+    fake.script(Node.INTERPRET, Reply(json=SCENE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    client = make_client(rating="mature")
+
+    run(client.structured(Node.INTERPRET, PROMPT, Narration))
+    run(client.structured(Node.NARRATOR, PROMPT, Narration))
+
+    interpret, narrator = fake.requests
+    assert interpret.safety == safety_settings("mature", node=Node.INTERPRET)
+    assert narrator.safety == safety_settings("mature")
+    assert interpret.safety != narrator.safety
+
+
 def test_a_transient_failure_is_retried_once(fake, make_client, telemetry):
     fake.script(Node.NARRATOR, Fail(status=503), Reply(json=SCENE))
 

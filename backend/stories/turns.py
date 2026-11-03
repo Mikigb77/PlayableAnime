@@ -354,7 +354,7 @@ def save(
     story.turn = state.turn
     # The turn is saved and charged now, so nothing after this may fail it.
     try:
-        shown = responses.scenes_out(story, [scene], request=request)[0]
+        shown = responses.scenes_out(story, [scene], request=request, blocked=set())[0]
     except Exception as error:
         log_failure("A saved scene's pictures couldn't be read, so it is sent without", error)
         shown = responses.bare_scene(scene)

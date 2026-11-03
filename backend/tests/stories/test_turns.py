@@ -6,7 +6,9 @@ from asgiref.sync import async_to_sync
 from django.db.models import F
 
 from billing.models import CreditHold, LedgerEntry
+from engine import limits
 from graph.llm import Block, Fail, Node, Reply
+from graph.turn import UnreadableAction
 from media.models import Image, ScenePicture
 from stories import pending, turns
 from stories.models import PendingEvent, PendingEventStatus, Scene, Story
@@ -286,6 +288,27 @@ def test_an_unreadable_action_is_an_error_event_and_saves_nothing(player, make_s
     [error] = played.named("error")
     assert error["code"] == "unreadable_action"
     assert error["message"]
+    assert_nothing_saved(story, player)
+
+
+def test_a_hard_limit_ends_the_turn_with_its_own_message_and_category(player, make_story, model):
+    """F3, G12: the stream's error carries the limit's message and `details.category`."""
+    story = opened(player, make_story, model)
+    step = {"text": "punch Taylor Swift", "verb": "punch", "targets": ["Taylor Swift"]}
+    model.backend.script(
+        Node.INTERPRET,
+        Reply(json={"steps": [{**step, "kind": "instant", "proposed_duration_s": 2}]}),
+    )
+
+    played = play(
+        player, story, {"kind": "action", "action": "I punch Taylor Swift", "expected_version": 2}
+    )
+
+    assert played.names == ["turn.started", "error"]
+    [error] = played.named("error")
+    assert (error["code"], error["details"]) == ("unreadable_action", {"category": "real_person"})
+    assert error["message"] == limits.MESSAGES[limits.LimitCategory.REAL_PERSON]
+    assert error["message"] != UnreadableAction.default_message
     assert_nothing_saved(story, player)
 
 
