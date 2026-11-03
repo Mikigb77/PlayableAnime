@@ -251,22 +251,23 @@ def test_apply_event_refuses_an_event_that_is_not_pending_here():
         pipeline.apply_event(state, PendingEvent(id="elsewhere", kind="x", due_s=0), ctx(), rng())
 
 
-def test_default_director_plans_the_opening_portrait_and_suggestions():
+def test_direct_plans_the_opening_portrait_and_suggestions_through_the_director():
     state = cultivation_world()
     nothing = Resolution()
 
     opening = pipeline.direct(state, nothing, ctx(turn=1), rng())
-    later = pipeline.direct(state, nothing, ctx(turn=5), rng())
     quiet = pipeline.direct(
         state, nothing, ctx(turn=1, images=ImageSetting.OFF, suggestions=False), rng()
     )
 
     assert opening.picture.trigger is PictureTrigger.STORY_START
     assert opening.picture.subject_id == "lin"
-    assert later.picture is None and later.event is None
+    assert opening.event is None
     assert opening.suggestions.count == 3
     assert quiet.picture is None
     assert quiet.suggestions.count == 0 and quiet.suggestions.kinds == []
+    recorded = pipeline.record_direction(state, opening, ctx(turn=1))
+    assert recorded.director.pictured == ["portrait:lin"]
 
 
 def test_seams_never_change_their_input_state():

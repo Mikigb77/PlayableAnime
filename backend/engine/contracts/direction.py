@@ -8,8 +8,9 @@ from enum import StrEnum
 
 from pydantic import Field
 
-from engine.base import EngineModel
-from engine.state.world import EventSize
+from engine.base import EngineModel, WorldSeconds
+from engine.state.records import Goal, Lead, PendingEvent, Thread, ThreadStatus
+from engine.state.world import DirectorState, EventSize
 
 
 class EventKind(StrEnum):
@@ -50,15 +51,30 @@ class Theme(StrEnum):
 
 
 class PlannedEvent(EngineModel):
+    """W16, E4. Something new that enters the scene. A deck draw is generic on purpose: the
+    narrator dresses it in the world's own form (G9) and reuses `cast_ids` before inventing anyone.
+    `title` is shown to the player (API.md `Scene.event`), so it never names hidden things (C6)."""
+
     size: EventSize
     kind: EventKind
     source: EventSource
     source_id: str | None = Field(default=None, description="The clock, thread or event behind it.")
+    card_id: str | None = Field(default=None, description="The deck card, for a deck draw.")
     title: str
     brief: str = Field(description="What happens, for the narrator to tell in the world's form.")
     themes: list[Theme] = Field(default_factory=list)
     thread_id: str | None = Field(default=None, description="The thread it opens or continues.")
+    cast_ids: list[str] = Field(
+        default_factory=list, description="Existing characters the narrator should use (E4)."
+    )
+    place_id: str | None = None
     needs_decision: bool = True
+    consequence: str = Field(
+        default="", description="What happens if the player ignores it (W16), for foreshadowing."
+    )
+    plays_out_s: WorldSeconds | None = Field(
+        default=None, description="When it plays out if nobody takes it up (W10, W16)."
+    )
 
 
 class PictureKind(StrEnum):
@@ -107,19 +123,64 @@ class ChoiceKind(StrEnum):
 
 class SuggestionPlan(EngineModel):
     """S2. How many suggestions the narrator writes (0 to 4) and of which kinds. Wait and observe
-    are always offered on top."""
+    are always offered on top. `thread_id` is the current thread that `thread` choices follow."""
 
     count: int = Field(default=3, ge=0, le=4)
     kinds: list[ChoiceKind] = Field(
         default_factory=lambda: [ChoiceKind.THREAD, ChoiceKind.PERSONAL, ChoiceKind.SIDE]
     )
+    thread_id: str | None = None
+
+
+class ThreadChange(EngineModel):
+    """N1. A change the director makes to a thread: it wakes, goes dormant or closes. `active`
+    marks it moving this turn, with the player or through an ignored event playing out;
+    `taken_up` marks that the player took it up (W16)."""
+
+    thread_id: str
+    status: ThreadStatus | None = None
+    active: bool = False
+    taken_up: bool = False
+    reason: str = ""
+
+
+class DirectorUpdates(EngineModel):
+    """What `pipeline.record_direction` writes into the state for this plan. `direct` decides and
+    never changes the state; recording is mechanical. Ids of new records are provisional: one
+    already taken by the time the plan is recorded gets a fresh id, and references follow it."""
+
+    memory: DirectorState = Field(default_factory=DirectorState)
+    new_threads: list[Thread] = Field(default_factory=list)
+    thread_changes: list[ThreadChange] = Field(default_factory=list)
+    schedule: list[PendingEvent] = Field(
+        default_factory=list, description="Play-outs of events nobody takes up yet (W16)."
+    )
+    cancel_ids: list[str] = Field(
+        default_factory=list, description="The director's pending events that were taken up."
+    )
+    applied_ids: list[str] = Field(
+        default_factory=list,
+        description="The director's pending events that came due and this plan handled.",
+    )
+    new_leads: list[Lead] = Field(default_factory=list, description="N2: offers the world makes.")
+    expired_lead_ids: list[str] = Field(default_factory=list)
+    taken_lead_ids: list[str] = Field(default_factory=list)
+    new_goals: list[Goal] = Field(
+        default_factory=list, description="N2: only goals the player stated or accepted."
+    )
 
 
 class DirectorPlan(EngineModel):
     event: PlannedEvent | None = None
+    happenings: list[PlannedEvent] = Field(
+        default_factory=list,
+        description="Other things that came due during the turn, such as a festival in a time "
+        "skip or an ignored event playing out, for the narrator to mention (W10, E7).",
+    )
     callbacks: list[str] = Field(
         default_factory=list, max_length=2, description="Dormant thread ids pulled in (N1)."
     )
     picture: PictureDecision | None = None
     suggestions: SuggestionPlan = Field(default_factory=SuggestionPlan)
     stall_pressure: float = Field(default=0.0, ge=0.0, description="W16, for logs and tuning.")
+    updates: DirectorUpdates = Field(default_factory=DirectorUpdates)
