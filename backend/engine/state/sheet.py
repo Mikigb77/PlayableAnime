@@ -195,6 +195,9 @@ class Technique(EngineModel):
     cost: str = ""
     requirements: str = ""
     learned_from: str = ""
+    power_id: str | None = Field(
+        default=None, description="The power it is a way of using, if any (A9, W10a)."
+    )
 
 
 class Grudge(EngineModel):
@@ -352,6 +355,11 @@ class LadderPosition(EngineModel):
     ladder_id: str
     rung: int = Field(ge=0, description="Index into the ladder's rungs, lowest first.")
     stage: str = Field(default="", description="Finer steps in the world's words: 'third stage'.")
+    shown_rung: int | None = Field(
+        default=None,
+        ge=0,
+        description="G20: the rung others sense while strength is hidden; None if not hiding.",
+    )
 
 
 class RulingSource(StrEnum):
@@ -392,6 +400,15 @@ class Gain(EngineModel):
     world_s: WorldSeconds = 0
 
 
+class Practice(EngineModel):
+    """A4. Effort toward a gain not made yet, in lived seconds, so training over many sessions
+    adds up. `key` names what it is for, such as `skill:swordsmanship`."""
+
+    key: str = Field(min_length=1)
+    what: str
+    effort_s: Seconds = 0
+
+
 class BackstoryClaim(EngineModel):
     """N4. A fact about the character's own past or inner life that the engine accepted."""
 
@@ -415,6 +432,7 @@ class CharacterSheet(EngineModel):
     ladders: list[LadderPosition] = Field(default_factory=list)
     rulings: list[Ruling] = Field(default_factory=list)
     growth: list[Gain] = Field(default_factory=list)
+    practice: list[Practice] = Field(default_factory=list)
     backstory: list[BackstoryClaim] = Field(default_factory=list)
 
     def power(self, power_id: str) -> Power | None:
@@ -426,6 +444,12 @@ class CharacterSheet(EngineModel):
     def skill(self, name: str) -> Skill | None:
         wanted = name.casefold()
         return next((s for s in self.skills if s.name.casefold() == wanted), None)
+
+    def technique(self, technique_id: str) -> Technique | None:
+        return next((t for t in self.techniques if t.id == technique_id), None)
+
+    def practiced(self, key: str) -> Practice | None:
+        return next((p for p in self.practice if p.key == key), None)
 
     def ruling(self, topic: str, power_id: str | None = None) -> Ruling | None:
         return next(

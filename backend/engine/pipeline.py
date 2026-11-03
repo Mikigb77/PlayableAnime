@@ -38,10 +38,12 @@ from engine.contracts.direction import (
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
 from engine.resolve import resolve_intent
+from engine.resolve.powers import growth
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
+from engine.state.sheet import Practice
 from engine.state.world import WorldState
-from engine.timekeeping import TimePassage, world_stopped
+from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
 
 __all__ = [
     "PlayOut",
@@ -144,7 +146,12 @@ def play_out(
     world time (resolve gives it none), and while a stop holds the world, the world clock never
     moves (W10a).
 
-    Rulings are recorded on the actor's sheet once, never flipped (A9).
+    A step that starts inside a stop and outlasts it lives out the stop first and then takes
+    world time for the rest (W10a).
+
+    Rulings are recorded on the actor's sheet once, never flipped (A9), and then the plan's own
+    `effects` apply (settled details of powers, accepted backstory). Time effects that ran out
+    on their user's clock are cleared at the end.
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
@@ -157,6 +164,15 @@ def play_out(
     for step in resolution.steps:
         start_s = current.world_s
         planned_end = start_s + step.duration_s
+        lived_total = step.duration_s if step.personal_s is None else step.personal_s
+        frozen_part = 0
+        if step.duration_s > 0 and world_stopped(current):
+            # W10a. A step that starts inside a stop and outlasts it: the actor lives out the rest
+            # of the stop first, which ends it, and then the world's time runs again.
+            frozen_part = max(0, lived_total - step.duration_s)
+            actor = current.characters.get(actor_id)
+            if actor is not None:
+                actor.personal_offset_s += frozen_part
         if step.duration_s > 0 and not world_stopped(current):
             # A day or more is a montage: the director rolls its W16 events first, so the first
             # that needs a decision stops the clock there (E7).
@@ -173,12 +189,13 @@ def play_out(
                 current.world_s = planned_end
         elapsed = current.world_s - start_s
         cut = interrupted_by is not None and elapsed < step.duration_s
-        lived = step.duration_s if step.personal_s is None else step.personal_s
+        lived = lived_total - frozen_part
         if cut:
             lived = lived * elapsed // step.duration_s
         actor = current.characters.get(actor_id)
         if actor is not None:
             actor.personal_offset_s += lived - elapsed
+        lived += frozen_part
         timed = step.model_copy(
             update={
                 "start_s": start_s,
@@ -189,6 +206,10 @@ def play_out(
             }
         )
         played.append(timed)
+        if cut and step.training is not None:
+            # A4. Training cut short keeps the effort put in, and makes the gain if that was
+            # enough before the interruption.
+            rejected.extend(_keep_training(current, actor_id, step, lived - frozen_part, ctx))
         if not cut:
             if not step.effects.empty:
                 applied = apply_in_place(current, step.effects, ctx, source=DeltaSource.ENGINE)
@@ -201,6 +222,10 @@ def play_out(
     if resolution.rulings and actor_id in current.characters:
         rulings = StateDelta(characters=[CharacterChange(id=actor_id, rulings=resolution.rulings)])
         rejected.extend(apply_in_place(current, rulings, ctx, source=DeltaSource.ENGINE).rejected)
+    if not resolution.effects.empty:
+        applied = apply_in_place(current, resolution.effects, ctx, source=DeltaSource.ENGINE)
+        rejected.extend(applied.rejected)
+    prune_time_effects(current)
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]
@@ -218,6 +243,20 @@ def play_out(
         rejected=tuple(rejected),
         capped=capped,
     )
+
+
+def _keep_training(
+    current: WorldState, actor_id: str, step: StepResolution, lived_s: int, ctx: TurnContext
+) -> list[Rejection]:
+    so_far = step.training
+    assert so_far is not None
+    effort = so_far.before_s + growth.effort_s(lived_s) * so_far.rate
+    if effort >= so_far.need_s:
+        delta = step.effects
+    else:
+        kept = Practice(key=so_far.key, what=so_far.what, effort_s=int(effort))
+        delta = StateDelta(characters=[CharacterChange(id=actor_id, practice=[kept])])
+    return list(apply_in_place(current, delta, ctx, source=DeltaSource.ENGINE).rejected)
 
 
 def direct(

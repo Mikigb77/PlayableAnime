@@ -449,8 +449,23 @@ and slow, local reversal), A4, G19, G20, N4.
 - Player theories ruled on once and recorded on the sheet, never flipped, refused only for nonsense,
   and earnable later as growth (A9). Growth with traits, effort, teachers and the world's ceilings
   (A4); breakthroughs as events (G19); sensing and hiding power (G20); backstory claims (N4).
-- **Done when** the T17 time-stop, stopped-time throw, light-speed throw, player theory, earned
-  technique and stopped-time rescue scenarios pass as unit tests over many seeds.
+- **Done when** the T17 time-stop, stopped-time throw, light-speed throw, unrivalled, controlled
+  throw, earned technique, nonsense-not-power, player theory and stopped-time rescue scenarios pass
+  as unit tests over many seeds.
+- **Landed** as `backend/engine/resolve/powers/` (see
+  [ARCHITECTURE.md](ARCHITECTURE.md#powers-theories-and-growth)), with W10a's decided figures in
+  REQUIREMENTS.md. For WS3's interpret prompt, `IntentStep` gained `contact`, `mass_kg`,
+  `range_m`, `full_force`, `training` and `show_strength`, `PowerTheory` gained the fields the
+  engine rules on, `Intent.backstory` holds `PastClaim`s, and `ChainLink` gained `place_id` and
+  `place_harm` for links that burn or bring down a place. `StepResolution` gained `training`, so
+  training cut short by an event keeps its effort. `Resolution` gained `claims` (N4's verdicts)
+  and `effects` (settled details of powers and accepted backstory, applied by
+  `play_out`). `CharacterChange` gained engine-only `powers`, `techniques`, `ladders`, `practice`
+  and `skills`, and `StateDelta` gained `time_effects`, so stops and hastes persist across turns.
+  For WS10, `answers` measures might with `might_with_powers` (a light-speed thrower is measured by
+  the force of their throw once the world could know of it), `attribution_odds` takes `stopped=`
+  so plain-sight traces of a stopped-time deed never point at the doer, and a user's death ends
+  their time effects. Local reversal (W10a) is deferred.
 
 ### WS10 Living world: deeds, rumors, reputation and the world tick (wave 2b, after WS2's PR 1)
 

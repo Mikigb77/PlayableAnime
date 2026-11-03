@@ -12,7 +12,9 @@ Who may change what:
   status changes, the scene's end and the summary.
 - **Engine only:** deaths, destroyed factions and ruined places (resolve records the outcome
   before narration, F4); anything that undoes one, which also needs a recorded `Cause`; faction
-  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7).
+  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7); and
+  the state of powers (cooldowns and settled details, never changed once set), skills,
+  techniques, ladders, practice and time effects (A4, G19, G20, W10a).
 """
 
 from dataclasses import dataclass, field
@@ -35,6 +37,7 @@ from engine.contracts.delta import (
     FactionChange,
     ItemChange,
     PlaceChange,
+    PowerChange,
     RuleChange,
     StateDelta,
 )
@@ -67,8 +70,18 @@ from engine.state.records import (
     StatusChange,
 )
 from engine.state.scene import SceneFrame
-from engine.state.sheet import Attitude, BackstoryClaim, Grudge, Item, ItemKind, PassingState, Wound
-from engine.state.world import WorldState
+from engine.state.sheet import (
+    Attitude,
+    BackstoryClaim,
+    Grudge,
+    Item,
+    ItemKind,
+    LadderPosition,
+    PassingState,
+    Wound,
+)
+from engine.state.world import ActiveTimeEffect, WorldState
+from engine.timekeeping import effect_over
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
@@ -129,6 +142,8 @@ def apply_in_place(
         applier.lead(lead)
     for rule in delta.rule_changes:
         applier.rule(rule)
+    for effect in delta.time_effects:
+        applier.time_effect(effect)
     if delta.scene_end is not None:
         end = delta.scene_end
         new = applier.state
@@ -384,6 +399,25 @@ class _Applier:
         if change.backstory and self.engine_only(subject, "backstory"):
             for claim in change.backstory:
                 character.sheet.backstory.append(BackstoryClaim(text=claim, turn=self.turn))
+        if change.powers and self.engine_only(subject, "powers"):
+            for power_change in change.powers:
+                self.power(character, power_change)
+        if change.techniques and self.engine_only(subject, "techniques"):
+            for technique in change.techniques:
+                if character.sheet.technique(technique.id) is None:
+                    character.sheet.techniques.append(technique.model_copy(deep=True))
+        if change.ladders and self.engine_only(subject, "ladders"):
+            for position in change.ladders:
+                self.ladder(character, position)
+        if change.practice and self.engine_only(subject, "practice"):
+            for practice in change.practice:
+                kept = [p for p in character.sheet.practice if p.key != practice.key]
+                character.sheet.practice = [*kept, practice.model_copy()]
+        if change.skills and self.engine_only(subject, "skills"):
+            for skill in change.skills:
+                wanted = skill.name.casefold()
+                kept = [s for s in character.sheet.skills if s.name.casefold() != wanted]
+                character.sheet.skills = [*kept, skill.model_copy()]
 
     def new_character(self, change: CharacterChange) -> Character | None:
         """A character the story hasn't met before. One can start dead or missing, such as a body
@@ -537,6 +571,66 @@ class _Applier:
             sheet.rulings.append(
                 ruling.model_copy(update={"turn": self.turn, "world_s": self.state.world_s})
             )
+
+    def power(self, character: Character, change: PowerChange) -> None:
+        """A power's cooldown, and details settled once and never changed (A9)."""
+        subject = f"character {character.id}"
+        power = character.sheet.power(change.id)
+        if power is None:
+            self.reject(subject, f"power {change.id}", "no such power")
+            return
+        if change.ready_at_personal_s is not None:
+            power.ready_at_personal_s = change.ready_at_personal_s
+        if change.hit_mode is not None:
+            if power.time is None:
+                self.reject(subject, f"power {change.id} hit mode", "not a power over time")
+            elif power.time.hit_mode is None:
+                power.time.hit_mode = change.hit_mode
+            elif power.time.hit_mode is not change.hit_mode:
+                self.reject(subject, f"power {change.id} hit mode", "settled for good (A9)")
+        for setting in change.settings:
+            settled = power.settings.get(setting.key)
+            if settled is None:
+                power.settings[setting.key] = setting.value
+            elif settled != setting.value:
+                self.reject(
+                    subject, f"power {change.id} setting {setting.key}", "settled for good (A9)"
+                )
+
+    def ladder(self, character: Character, position: LadderPosition) -> None:
+        """A new place on one of the world's ladders (G19), or strength hidden (G20)."""
+        subject = f"character {character.id}"
+        ladder = self.state.bible.ladder(position.ladder_id)
+        if ladder is None:
+            self.reject(subject, f"ladder {position.ladder_id}", "no such ladder")
+            return
+        if position.rung >= len(ladder.rungs):
+            self.reject(subject, f"ladder {position.ladder_id}", "no such rung")
+            return
+        if position.shown_rung is not None and position.shown_rung > position.rung:
+            self.reject(subject, f"ladder {position.ladder_id}", "can't show more than they have")
+            return
+        kept = [p for p in character.sheet.ladders if p.ladder_id != position.ladder_id]
+        character.sheet.ladders = [*kept, position.model_copy()]
+
+    def time_effect(self, effect: ActiveTimeEffect) -> None:
+        """W10a. A time power taking hold, replacing the same power's earlier effect. Effects that
+        have run out on their user's clock are cleared."""
+        subject = f"character {effect.character_id}"
+        if not self.engine_only(subject, "time effect"):
+            return
+        character = self.state.characters.get(effect.character_id)
+        if character is None or character.sheet.power(effect.power_id) is None:
+            self.reject(subject, f"time effect {effect.power_id}", "no such power")
+            return
+        same = (effect.character_id, effect.power_id)
+        self.state.time_effects = [
+            e
+            for e in self.state.time_effects
+            if (e.character_id, e.power_id) != same and not effect_over(self.state, e)
+        ]
+        if not effect_over(self.state, effect):
+            self.state.time_effects.append(effect.model_copy())
 
     # --- records ----------------------------------------------------------------------------
 

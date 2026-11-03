@@ -5,7 +5,8 @@ One shape serves both proposers. The narrator's structured output (B5 step 5) fi
 fields; it replaces `legacy`'s `StateUpdate`. Some fields are **engine only** and are rejected when
 the narrator proposes them, because the engine owns the truth: terminal changes (a death, a
 destroyed faction, a ruined place), anything that needs a `Cause` (C1), faction reputation (W3),
-rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7). The narrator moves an
+rulings (A9), gains (A4), accepted backstory (N4), rule changes (G7), and the state of powers,
+skills, techniques, ladders, practice and time effects (A4, G19, W10a). The narrator moves an
 attitude by at most `engine.apply.NARRATOR_ATTITUDE_CAP` per delta (W4). Resolve puts the
 engine's changes for each step in `StepResolution.effects`.
 
@@ -25,7 +26,18 @@ from engine.state.cast import (
     Route,
 )
 from engine.state.records import Cause, FactKind
-from engine.state.sheet import Gain, Health, ItemKind, Ruling
+from engine.state.sheet import (
+    Gain,
+    Health,
+    HitMode,
+    ItemKind,
+    LadderPosition,
+    Practice,
+    Ruling,
+    Skill,
+    Technique,
+)
+from engine.state.world import ActiveTimeEffect
 
 
 class AttitudeShift(EngineModel):
@@ -43,6 +55,24 @@ class ConditionChange(EngineModel):
     wounds: list[str] = Field(default_factory=list)
     states: list[str] = Field(default_factory=list, description="Passing states that begin.")
     cleared_states: list[str] = Field(default_factory=list)
+
+
+class PowerSetting(EngineModel):
+    """A detail of a power the engine settled (A9), by key, such as `throws: relative_speed`."""
+
+    key: str
+    value: str
+
+
+class PowerChange(EngineModel):
+    """Engine only. A power after use: when it is ready again on the user's own clock (W10a), and
+    details the engine settled (A9). A settled detail is never changed: a different value for a
+    hit mode or a setting already set is refused."""
+
+    id: str
+    ready_at_personal_s: int | None = None
+    hit_mode: HitMode | None = None
+    settings: list[PowerSetting] = Field(default_factory=list)
 
 
 class CharacterChange(EngineModel):
@@ -69,6 +99,21 @@ class CharacterChange(EngineModel):
     rulings: list[Ruling] = Field(default_factory=list, description="Engine only (A9).")
     gains: list[Gain] = Field(default_factory=list, description="Engine only (A4, G17).")
     backstory: list[str] = Field(default_factory=list, description="Engine only (N4).")
+    powers: list[PowerChange] = Field(default_factory=list, description="Engine only (A9, W10a).")
+    techniques: list[Technique] = Field(
+        default_factory=list, description="Engine only: techniques learned (A4, G25)."
+    )
+    ladders: list[LadderPosition] = Field(
+        default_factory=list,
+        description="Engine only: a new place on a ladder (G19) or strength hidden (G20).",
+    )
+    practice: list[Practice] = Field(
+        default_factory=list, description="Engine only: effort so far toward a gain (A4)."
+    )
+    skills: list[Skill] = Field(
+        default_factory=list,
+        description="Engine only: a skill learned or raised by training (A4), by name.",
+    )
 
 
 class FactionChange(EngineModel):
@@ -162,6 +207,10 @@ class StateDelta(EngineModel):
     items: list[ItemChange] = Field(default_factory=list)
     leads: list[NewLead] = Field(default_factory=list)
     rule_changes: list[RuleChange] = Field(default_factory=list, description="Engine only (G7).")
+    time_effects: list[ActiveTimeEffect] = Field(
+        default_factory=list,
+        description="Engine only: a time power taking hold, such as a stop that outlasts the turn.",
+    )
     scene_end: SceneEnd | None = None
     summary: str | None = Field(default=None, description="The rolling summary, if it changed.")
 

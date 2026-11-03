@@ -15,7 +15,7 @@ from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.contracts.intent import ActionKind, IntentStep, SheetPart
 from engine.state.records import EventStatus, PendingEvent
 from engine.state.sheet import Power, TimeEffect
-from engine.state.world import WorldState
+from engine.state.world import ActiveTimeEffect, WorldState
 
 # A guard against a handler that keeps scheduling events due at once. A real stretch of time,
 # even a decade's time skip, applies far fewer.
@@ -51,9 +51,9 @@ def bound_duration(kind: ActionKind, proposed_s: int, *, world_frozen: bool = Fa
 
 def in_time_stop(state: WorldState, actor_id: str) -> bool:
     """W10a. Whether a time stop of the actor's own is in effect, so the world clock stands still
-    while theirs runs."""
+    while theirs runs. A stop ends with its user's death."""
     actor = state.characters.get(actor_id)
-    if actor is None:
+    if actor is None or not actor.alive:
         return False
     lived = actor.personal_s(state.world_s)
     return any(
@@ -62,6 +62,33 @@ def in_time_stop(state: WorldState, actor_id: str) -> bool:
         and (e.ends_personal_s is None or lived < e.ends_personal_s)
         for e in state.time_effects
     )
+
+
+def effect_over(state: WorldState, effect: ActiveTimeEffect) -> bool:
+    """W10a. Whether a time effect has run out on its user's own clock, or its user is dead."""
+    user = state.characters.get(effect.character_id)
+    if user is None or not user.alive:
+        return True
+    return effect.ends_personal_s is not None and user.personal_s(state.world_s) >= (
+        effect.ends_personal_s
+    )
+
+
+def prune_time_effects(state: WorldState) -> None:
+    """Drop the time effects that have run out, in place."""
+    state.time_effects = [e for e in state.time_effects if not effect_over(state, e)]
+
+
+def tempo_effect(state: WorldState, actor_id: str) -> ActiveTimeEffect | None:
+    """W10a. A haste or slow of the actor's own still in effect, if any."""
+    for effect in state.time_effects:
+        if (
+            effect.character_id == actor_id
+            and effect.effect in (TimeEffect.HASTE, TimeEffect.SLOW)
+            and not effect_over(state, effect)
+        ):
+            return effect
+    return None
 
 
 def stop_power_used(state: WorldState, actor_id: str, step: IntentStep) -> Power | None:

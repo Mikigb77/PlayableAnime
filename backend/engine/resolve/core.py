@@ -24,36 +24,58 @@ For each step, in order:
 5. **The roll** (A3, A5), only for contested and long-shot steps and close calls, with odds held
    inside the class's band whatever the edges, skills and difficulty do.
 
-A chain's own time is added to the step's world time; inside a time stop the world stands still
-and the chain's time is left to the powers rules (WS9b). A chained plan stops at the first step
-that doesn't cleanly succeed (R6). What the player claims
-about outcomes or other people's reactions plays only as a hope (A6), and nothing in the intent
-changes the state except a settled step's aim on living targets (A7).
+Powers (`engine.resolve.powers`, WS9b) come into it at each stage. The player's theories about
+their powers are ruled on first, once, so every step follows the answer (A9), and backstory
+claims are judged (N4). In a time stop (W10a), everyone but its user and those immune to it is
+frozen; how each blow, throw or lift lands follows the power's settled hit mode, which code
+settles itself the first time it matters and never asks the player; air and friction never get in
+the user's way; a relative-speed hit is measured by its own force, not the user's arm, and a throw
+that lands that way blasts whatever is near, its thrower too once time restarts. A step that
+starts in a stop and outlasts it lives out the stop and then takes world time. A training step
+grows the character (A4), a breakthrough is rolled (G19), and hiding or revealing strength
+changes what others sense (G20).
+
+A chain's own time is added to the step's world time; inside a time stop the chain plays out once
+time restarts, and a link that burns or ruins a place changes it (A9, W7). A chained plan stops at
+the first step that doesn't cleanly succeed (R6). What the player claims about outcomes or other
+people's reactions plays only as a hope (A6), and nothing in the intent changes the state except
+what code settles from it (A7).
 """
 
 from dataclasses import dataclass, field
 
 from engine.context import TurnContext
-from engine.contracts.delta import StateDelta
+from engine.contracts.delta import (
+    CharacterChange,
+    PlaceChange,
+    PowerChange,
+    PowerSetting,
+    StateDelta,
+)
 from engine.contracts.intent import (
     ActionKind,
+    Contact,
+    GrowthKind,
     Intent,
     IntentStep,
     MeansVerdict,
     OutcomeClass,
+    PlaceHarm,
     StandingAction,
 )
 from engine.contracts.resolution import (
     BeatResolution,
     LinkResolution,
+    ProposedDeed,
     Resolution,
     StepResolution,
     StopReason,
+    TrainingSoFar,
 )
 from engine.resolve import odds as odds_mod
 from engine.resolve.chain import settle_chain
 from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world_check
-from engine.resolve.durations import step_timing
+from engine.resolve.durations import lived_estimate, step_timing
 from engine.resolve.effects import aim_effects, power_costs, proposed_deed
 from engine.resolve.power import (
     Standing,
@@ -62,13 +84,26 @@ from engine.resolve.power import (
     scale,
     standing,
 )
-from engine.resolve.words import cap, is_are, mentions, name
+from engine.resolve.powers import claims as claims_mod
+from engine.resolve.powers import growth, sensing
+from engine.resolve.powers import theories as theories_mod
+from engine.resolve.powers import time_stop as stop
+from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
-from engine.state.cast import Character
-from engine.state.records import RollRecord, StepResult
-from engine.state.sheet import Power, PowerAxis, SkillLevel, TimeEffect, TraitKind
-from engine.state.world import WorldState
-from engine.timekeeping import bound_duration, in_time_stop
+from engine.state.cast import Character, PlaceStatus
+from engine.state.records import RollRecord, StepResult, Trace, TraceKind
+from engine.state.sheet import (
+    HitMode,
+    Power,
+    PowerAxis,
+    Ruling,
+    RulingSource,
+    SkillLevel,
+    TimeEffect,
+    TraitKind,
+)
+from engine.state.world import ActiveTimeEffect, WorldState
+from engine.timekeeping import bound_duration, effect_over, in_time_stop
 
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 NOTHING_IN_THE_WAY = "Nothing stands in the way."
@@ -89,15 +124,36 @@ INTIMIDATION = ("intimidate", "threaten", "menace", "scare", "frighten", "coerce
 
 _MEANS_ORDER = [MeansVerdict.CLEARLY_NOT, MeansVerdict.CLOSE_CALL, MeansVerdict.CLEARLY_ENOUGH]
 _HARDER = [OutcomeClass.CERTAIN, OutcomeClass.CONTESTED, OutcomeClass.LONG_SHOT]
+_TEMPO = (TimeEffect.HASTE, TimeEffect.SLOW)
+_FIRE_STEMS = stems("burn burns fire fires flame flames blaze alight ablaze torch")
+
+
+@dataclass
+class _Tempo:
+    """W10a. A haste or slow in effect: the actor's lived seconds per world second."""
+
+    power: Power
+    rate: float
+    left_s: int | None
 
 
 @dataclass
 class _Frame:
-    """What carries from one step of a plan to the next: a time stop and this turn's canon."""
+    """What carries from one step of a plan to the next: a time stop or a haste, the actor's own
+    clock, what this plan settled about powers, effort toward gains, and this turn's canon."""
 
     frozen: bool
     stop_left_s: int | None
     canon: list[str] = field(default_factory=list)
+    personal_s: int = 0
+    stop_power: Power | None = None  # the actor's stop holding the world, if one does
+    tempo: _Tempo | None = None
+    ready_at: dict[str, int] = field(default_factory=dict)  # cooldowns on the actor's clock
+    training: TrainingSoFar | None = None  # the current step's training so far, if any
+    settled: stop.Settlements = field(default_factory=stop.Settlements)
+    rulings: list[Ruling] = field(default_factory=list)
+    practice: dict[str, float] = field(default_factory=dict)
+    gone: str | None = None  # why the actor can't act any more, such as their own blast
 
 
 @dataclass
@@ -132,7 +188,14 @@ def resolve_intent(
     """
     actor_id = intent.actor_id if intent.actor_id in state.characters else state.player_id
     actor = state.characters[actor_id]
-    frame = _Frame(frozen=in_time_stop(state, actor_id), stop_left_s=_stop_left(state, actor))
+    frame = _frame(state, actor)
+    # A9. Theories are ruled on before anything is tried, so every step follows the answer.
+    theories = theories_mod.rule_on_theories(state, actor, intent.theories, frame.settled, [])
+    frame.rulings.extend(theories.rulings)
+    verdicts, effects = claims_mod.judge_claims(state, actor, intent.backstory)
+    if theories.powers:
+        changes = StateDelta(characters=[CharacterChange(id=actor.id, powers=theories.powers)])
+        effects = _merge(effects, changes)
 
     steps: list[StepResolution] = []
     stopped_at: int | None = None
@@ -165,7 +228,10 @@ def resolve_intent(
         stopped_at_step=stopped_at,
         stop_reason=stop_reason,
         unplayed=unplayed,
+        rulings=theories.rulings,
         canon=frame.canon,
+        claims=verdicts,
+        effects=effects,
         stakes=stakes,
     )
 
@@ -180,6 +246,33 @@ def _standing_step(standing_action: StandingAction) -> StepResolution:
         result=StepResult.SUCCESS,
         duration_s=bound_duration(kind, STANDING_DURATIONS_S[standing_action]),
     )
+
+
+def _frame(state: WorldState, actor: Character) -> _Frame:
+    """The plan starts where the state is: in a stop or a haste of the actor's own, or not."""
+    lived = actor.personal_s(state.world_s)
+    frame = _Frame(
+        frozen=in_time_stop(state, actor.id),
+        stop_left_s=_stop_left(state, actor),
+        personal_s=lived,
+    )
+    # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
+    # turn can't be started afresh once it runs out partway through this plan.
+    for power in actor.sheet.powers:
+        if power.ready_at_personal_s is not None and power.ready_at_personal_s > lived:
+            frame.ready_at[power.id] = power.ready_at_personal_s
+    for effect in state.time_effects:
+        if effect.character_id != actor.id or effect_over(state, effect):
+            continue
+        power = actor.sheet.power(effect.power_id)
+        if power is None or power.time is None:
+            continue
+        if effect.effect is TimeEffect.STOP and frame.frozen:
+            frame.stop_power = power
+        elif effect.effect in _TEMPO and power.time.rate:
+            left = None if effect.ends_personal_s is None else effect.ends_personal_s - lived
+            frame.tempo = _Tempo(power, power.time.rate, left)
+    return frame
 
 
 def _stop_left(state: WorldState, actor: Character) -> int | None:
@@ -211,28 +304,78 @@ def _settle_step(
     stopped_at_link: int | None = None
     chain_s = 0
     opposition: _Opposition | None = None
-    stop_power = None
+    new_stop: Power | None = None  # a time stop this step starts
+    new_tempo: Power | None = None  # a haste or slow this step starts
+    hit: stop.StoppedHit | None = None
+    extra = StateDelta()  # the engine's changes besides the aim's
+    deeds: list[ProposedDeed] = []
+    after: list[str] = []  # what follows from the outcome, in words, after its reason
 
-    settled = world_check(state, actor, step) or sheet_check(state, actor, step, drawn)
+    if frame.gone is not None:
+        settled = Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, frame.gone)
+    else:
+        settled = world_check(state, actor, step) or sheet_check(state, actor, step, drawn)
     attempted = settled is None
     if settled is None:
         found = beat_check(state, actor, step, frame.canon, drawn, ctx, rng)
         beats = found.checks
         frame.canon.extend(found.canon)
-        settled = found.settled
-        # W10a. A time stop the step uses, named on the step or in a beat, freezes the world.
-        stop_power = next((p for p in drawn.powers if _stops_time(p)), None)
-    frozen = frame.frozen or stop_power is not None
+        settled = found.settled or _recovered(state, actor, drawn, frame)
+    if attempted and not (settled is not None and settled.reason.endswith(_NOT_RECOVERED)):
+        # W10a. A time stop the step uses, named on the step or in a beat, freezes the world;
+        # the stop already holding it is the same use carrying on.
+        new_stop = next(
+            (p for p in drawn.powers if stop.stops_time(p) and not _continuing(frame, p)), None
+        )
+        new_tempo = next(
+            (p for p in drawn.powers if _tempo_power(p) and not _continuing(frame, p)), None
+        )
+    holding = new_stop or (frame.stop_power if frame.frozen else None)
+    frozen = frame.frozen or new_stop is not None
+    stop_left = None
+    if frozen:
+        stop_left = stop.lasts_s(new_stop) if new_stop is not None else frame.stop_left_s
+    # A step that outlasts the stop finishes once time runs again, so those it acts on can
+    # answer by then (W10a).
+    outlasts = frozen and stop_left is not None and lived_estimate(step) > stop_left
+    frozen_now = frozen and not outlasts
+    if frozen and holding is not None:
+        step = _in_the_stop(step)
+
+    growing = showing = False
+    if settled is None and step.training is not None:
+        growing = True
+        settled = growth.check(state, actor, step, frame.canon)
+        if settled is None and step.training.kind is GrowthKind.BREAKTHROUGH:
+            settled = growth.breakthrough(state, actor, step, rng, ctx.settings.difficulty)
+        elif settled is None:
+            settled = Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
+        else:
+            growing = settled.outcome_class is not OutcomeClass.RULED_OUT
+    elif settled is None and step.show_strength is not None:
+        settled = sensing.check(state, actor, step)
+        showing = settled is None
+        settled = settled or Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
+
     if settled is None:
-        opposition = _opposition(state, actor, step, frozen)
+        opposition = _opposition(state, actor, step, frozen_now)
+        if holding is not None and frozen_now:
+            hit, tested = _stopped_hit(state, actor, step, holding, frame, opposition)
+            extra = _merge(extra, tested)
+            if hit is not None and hit.blocked:
+                settled = Settled(
+                    OutcomeClass.RULED_OUT, StepResult.FAILURE, _sentence(hit.blocked)
+                )
+    if settled is None:
+        assert opposition is not None
         if step.chain:
             settled, outcome = _with_chain(state, actor, step, opposition, drawn, ctx, rng)
             if outcome is not None:
                 chain, stopped_at_link, chain_s = outcome.links, outcome.stopped_at, outcome.takes_s
         elif opposition.can_push_back:
-            settled = _contested(state, actor, step, opposition, drawn, ctx, rng)
+            settled = _contested(state, actor, step, opposition, drawn, ctx, rng, hit)
         else:
-            settled = _unopposed(state, actor, step, opposition, drawn, ctx, rng)
+            settled = _unopposed(state, actor, step, opposition, drawn, ctx, rng, hit)
 
     # W10, A3. An uncertain duration on a rolled step is the second draw of that roll's own seed,
     # so the one recorded seed replays both the outcome and the time; otherwise it has its own.
@@ -241,13 +384,30 @@ def _settle_step(
     if roll is not None:
         duration_rng = SeededRng(roll.seed)
         duration_rng.random()  # the outcome's draw
+    timed_step = step
+    if growing and step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
+        timed_step = step.model_copy(update={"duration_uncertain": True})  # G19
+    tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
     timing = step_timing(
-        step,
+        timed_step,
         frozen=frozen,
         rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
         rng=duration_rng,
+        stop_left_s=stop_left,
+        outlasts=outlasts if frozen else None,
+        rate=tempo,
+        rate_left_s=tempo_left,
     )
-    duration = timing.duration_s if frozen else timing.duration_s + chain_s
+    duration = timing.duration_s
+    personal = timing.personal_s
+    if not frozen:
+        duration += chain_s
+    elif duration > 0 and chain_s:
+        # Outlasting the stop, the chain plays out once time runs again, and the actor lives it.
+        duration += chain_s
+        personal = (personal or 0) + chain_s
+    # Set off and left inside the stop, a chain is settled now, like a stopped-time throw, and
+    # plays out once time restarts without holding the actor, who can't wait on frozen time.
     if timing.rolled_s is not None:
         if roll is not None:
             roll = roll.model_copy(update={"duration_s": timing.rolled_s})
@@ -264,18 +424,65 @@ def _settle_step(
                 duration_s=timing.rolled_s,
             )
 
-    if stop_power is not None:
-        frame.frozen, frame.stop_left_s = True, stop_power.time.lasts_s
+    started = frame.personal_s
+    if new_stop is not None:
+        extra = _merge(extra, _takes_hold(actor, new_stop, started, frame))
+        frame.frozen, frame.stop_left_s, frame.stop_power = True, stop.lasts_s(new_stop), new_stop
     if frame.frozen and frame.stop_left_s is not None:
         frame.stop_left_s -= timing.personal_s or 0
         if frame.stop_left_s <= 0:
-            frame.frozen, frame.stop_left_s = False, None
+            frame.frozen, frame.stop_left_s, frame.stop_power = False, None, None
+    if new_tempo is not None:
+        extra = _merge(extra, _takes_hold(actor, new_tempo, started, frame))
+        lasts = stop.lasts_s(new_tempo)
+        frame.tempo = _Tempo(new_tempo, new_tempo.time.rate or 1.0, lasts)
+    lived = personal if personal is not None else duration
+    if frame.tempo is not None and frame.tempo.left_s is not None:
+        frame.tempo.left_s -= lived
+        if frame.tempo.left_s <= 0:
+            frame.tempo = None
+    frame.personal_s += lived
 
     targets = opposition.targets if opposition is not None else []
     effects = StateDelta()
-    if settled.outcome_class is not OutcomeClass.RULED_OUT:
+    happened = settled.outcome_class is not OutcomeClass.RULED_OUT
+    if happened:
         effects = aim_effects(step, settled.result, targets)
-    deed = None
+    effects = _merge(effects, extra)
+    reason = settled.reason
+    # W10a. A stopped-time hit that was made lands however the target fares: a throw that a
+    # target's body takes, or that misses, still lets its blast loose where it strikes.
+    released = hit is not None and not hit.blocked
+    if released and hit.reason:
+        after.append(hit.reason)
+    if released and hit.blast is not None:
+        blasted = stop.blast_outcome(state, actor, step, hit, targets)
+        effects = _merge(effects, blasted.effects)
+        after.append(blasted.reason)
+        if blasted.deed is not None:
+            deeds.append(blasted.deed)
+        if blasted.actor_dies:
+            frame.gone = f"{cap(name(state, actor.id))} died in the blast of {_own(state, actor)}."
+    frame.training = None
+    if growing and happened:
+        why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration)
+        reason = f"{reason} {why}".strip()
+        effects = _merge(effects, grown)
+        if deed is not None:
+            deeds.append(deed)
+    if showing:
+        why, shown, deed = sensing.settle(state, actor, step)
+        reason = why
+        effects = _merge(effects, shown)
+        if deed is not None:
+            deeds.append(deed)
+    if chain:
+        places, deed = _chain_places(state, actor, step, chain)
+        effects = _merge(effects, places)
+        if deed is not None:
+            deeds.append(deed)
+    reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
+
     if opposition is not None:
         deed = proposed_deed(
             step,
@@ -284,37 +491,320 @@ def _settle_step(
             actor.id if actor.id != state.player_id else None,
             targets=targets,
             others=[c for c in opposition.characters if c not in targets],
-            in_stopped_time=frozen,
+            in_stopped_time=frozen_now,
         )
+        if deed is not None and frozen_now and holding is not None:
+            deed = _stopped_deed(state, actor, step, deed, holding, hit, targets, settled)
+        if deed is not None:
+            deeds.insert(0, deed)
     stakes = bool(
         step.aim.harmful
         or roll is not None
         or (opposition is not None and (opposition.characters or opposition.unmeasured))
+        or (hit is not None and hit.blast is not None)
     )
+    used = [p for p in drawn.powers if p is new_stop or p is new_tempo or not _time_power(p)]
     resolution = StepResolution(
         index=index,
         text=step.text,
         outcome_class=settled.outcome_class,
-        reason=settled.reason,
+        reason=reason,
         roll=roll,
         result=settled.result,
-        costs=power_costs(drawn.powers) if attempted else [],
+        costs=power_costs(used) if attempted else [],
         duration_s=duration,
-        personal_s=timing.personal_s,
+        personal_s=personal,
         beats=beats,
         chain=chain,
         stopped_at_link=stopped_at_link,
         effects=effects,
-        deeds=[deed] if deed is not None else [],
+        deeds=deeds,
+        training=frame.training,
     )
     return resolution, stakes
+
+
+_NOT_RECOVERED = "hasn't recovered yet."
+
+
+def _time_power(power: Power) -> bool:
+    return power.time is not None and (stop.stops_time(power) or _tempo_power(power))
+
+
+def _tempo_power(power: Power) -> bool:
+    return power.time is not None and power.time.effect in _TEMPO and bool(power.time.rate)
+
+
+def _continuing(frame: _Frame, power: Power) -> bool:
+    """W10a. Naming a stop or a haste that is already in effect carries it on: it is not a new use,
+    with no new cost and no new cooldown."""
+    if frame.frozen and frame.stop_power is not None and frame.stop_power.id == power.id:
+        return True
+    return frame.tempo is not None and frame.tempo.power.id == power.id
+
+
+def _recovered(state: WorldState, actor: Character, drawn: Drawn, frame: _Frame) -> Settled | None:
+    """A1. A power used earlier in this plan is on cooldown until the actor's own clock reaches
+    it."""
+    for power in drawn.powers:
+        ready_at = frame.ready_at.get(power.id)
+        if ready_at is not None and frame.personal_s < ready_at and not _continuing(frame, power):
+            return Settled(
+                OutcomeClass.RULED_OUT,
+                StepResult.FAILURE,
+                f"{cap(possessive(state, actor.id))} {power.name} {_NOT_RECOVERED}",
+            )
+    return None
+
+
+def _rate(new_tempo: Power | None, frame: _Frame) -> tuple[float | None, int | None]:
+    """W10a. A haste or slow's rate for this step, and how many lived seconds it has left."""
+    if new_tempo is not None and new_tempo.time is not None:
+        return new_tempo.time.rate, stop.lasts_s(new_tempo)
+    if frame.tempo is not None:
+        return frame.tempo.rate, frame.tempo.left_s
+    return None, None
+
+
+def _takes_hold(actor: Character, power: Power, started: int, frame: _Frame) -> StateDelta:
+    """W10a, A1. A stop or a haste takes hold on the user's own clock: it lasts its time from the
+    step's start, so a stop that outlasts the plan still holds the world next turn, and the power
+    is ready again a recharge after it ends."""
+    assert power.time is not None
+    ends = started + stop.lasts_s(power)
+    effect = ActiveTimeEffect(
+        character_id=actor.id,
+        power_id=power.id,
+        effect=power.time.effect,
+        started_personal_s=started,
+        ends_personal_s=ends,
+    )
+    ready_at = ends + stop.recharge_s(power, frame.settled)
+    frame.ready_at[power.id] = ready_at
+    change = CharacterChange(
+        id=actor.id, powers=[PowerChange(id=power.id, ready_at_personal_s=ready_at)]
+    )
+    return StateDelta(characters=[change], time_effects=[effect])
+
+
+def _in_the_stop(step: IntentStep) -> IntentStep:
+    """W10a. The user moves and breathes freely in their own stop: hindrances about air,
+    friction or breath never get in the way. When they were all the doubt the interpret step
+    saw, the means it doubted are enough."""
+    kept = stop.drop_convention_hindrances(step.facts.hindrances)
+    if kept == step.facts.hindrances:
+        return step
+    update: dict = {"hindrances": kept}
+    if not any(h.strip() for h in kept) and step.facts.means is not MeansVerdict.CLEARLY_ENOUGH:
+        update.update(means=None, proposed_class=None)
+    return step.model_copy(update={"facts": step.facts.model_copy(update=update)})
+
+
+def _ruled(actor: Character, frame: _Frame, topic: str, power: Power) -> bool:
+    if actor.sheet.ruling(topic, power.id) is not None:
+        return True
+    return any((r.topic, r.power_id) == (topic, power.id) for r in frame.rulings)
+
+
+def _stopped_hit(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    power: Power,
+    frame: _Frame,
+    opposition: _Opposition,
+) -> tuple[stop.StoppedHit | None, StateDelta]:
+    """W10a, A9. How a blow, a throw or a lift lands in the actor's own stop. The first time it
+    matters, code settles the power's way, never asking the player, and records the ruling."""
+    contact = stop.contact_of(step)
+    if contact is Contact.NONE:
+        return None, StateDelta()
+    rulings: list[Ruling] = []
+    change = PowerChange(id=power.id)
+    known = stop.known_hit_mode(power, frame.settled)
+    mode = known or stop.default_hit_mode(power)
+    if contact is Contact.LIFT:
+        movable = frame.settled.get(power, stop.MOVE_FROZEN)
+        if movable is None:
+            movable = stop.NO if mode is HitMode.UNTOUCHABLE else stop.YES
+            frame.settled.put(power, stop.MOVE_FROZEN, movable)
+            change.settings.append(PowerSetting(key=stop.MOVE_FROZEN, value=movable))
+            if not _ruled(actor, frame, stop.MOVE_FROZEN, power):
+                rulings.append(
+                    stop.ruling(
+                        power,
+                        stop.MOVE_FROZEN,
+                        question=step.text,
+                        answer=stop.MOVE_FROZEN_ANSWERS[movable],
+                        holds=movable == stop.YES,
+                        source=RulingSource.TEST,
+                    )
+                )
+        if movable == stop.NO:
+            mode = HitMode.UNTOUCHABLE
+    elif known is None:
+        frame.settled.put(power, stop.HIT_MODE, mode.value)
+        change.hit_mode = mode
+        if not _ruled(actor, frame, stop.HIT_MODE, power):
+            rulings.append(
+                stop.ruling(
+                    power,
+                    stop.HIT_MODE,
+                    question=step.text,
+                    answer=stop.HIT_MODE_ANSWERS[mode],
+                    holds=True,
+                    source=RulingSource.TEST,
+                )
+            )
+    frame.rulings.extend(rulings)
+    hit = stop.stopped_hit(state, actor, step, power, mode, frame.settled, opposition.targets)
+    if not rulings and change == PowerChange(id=power.id):
+        return hit, StateDelta()
+    powers = [change] if change != PowerChange(id=power.id) else []
+    tested = CharacterChange(id=actor.id, rulings=rulings, powers=powers)
+    return hit, StateDelta(characters=[tested])
+
+
+def _stopped_deed(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    deed: ProposedDeed,
+    power: Power,
+    hit: stop.StoppedHit | None,
+    targets: list[Character],
+    settled: Settled,
+) -> ProposedDeed:
+    """W10a, W13. Done in stopped time: only someone immune to the stop saw it, and it leaves
+    the traces nobody can miss, such as a guard who drops dead with nobody near."""
+    killed = []
+    if step.aim.harmful and settled.outcome_class is not OutcomeClass.RULED_OUT:
+        if settled.result is StepResult.SUCCESS and step.aim.value == "kill":
+            killed = [t for t in targets if t.alive]
+    traces = [*deed.traces, *stop.stopped_traces(state, actor, power, hit, killed)]
+    return deed.model_copy(
+        update={
+            "witness_ids": stop.witnesses(state, actor, exclude={k.id for k in killed}),
+            "traces": traces,
+        }
+    )
+
+
+def _grow(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    settled: Settled,
+    frame: _Frame,
+    personal: int | None,
+    duration: int,
+) -> tuple[str, StateDelta, ProposedDeed | None]:
+    """A4, G19. What a stretch of training or a breakthrough attempt did."""
+    training = step.training
+    assert training is not None
+    if training.kind is GrowthKind.BREAKTHROUGH:
+        assert settled.roll is not None
+        return growth.breakthrough_effects(state, actor, step, settled.result, settled.roll)
+    key = growth.practice_key(step)
+    so_far = frame.practice.get(key)
+    if so_far is None:
+        recorded = actor.sheet.practiced(key)
+        so_far = float(recorded.effort_s) if recorded is not None else 0.0
+    lived = personal if personal is not None else duration
+    made = growth.progress(state, actor, step, lived, so_far, frame.settled)
+    frame.practice[key] = made.effort_s
+    rate, need = growth.pace_and_need(state, actor, step)
+    frame.training = TrainingSoFar(
+        key=key, what=training.what, before_s=so_far, rate=rate, need_s=need
+    )
+    return made.reason, made.effects, None
+
+
+def _chain_places(
+    state: WorldState, actor: Character, step: IntentStep, links: list[LinkResolution]
+) -> tuple[StateDelta, ProposedDeed | None]:
+    """A9, W7. A link that held and burns or ruins a place changes it, and the burning is a deed
+    of its own that everyone nearby can see (agreed with the living world, WS10)."""
+    places: list[PlaceChange] = []
+    traces: list[Trace] = []
+    worst = PlaceHarm.NONE
+    fire = False
+    for link, settled in zip(step.chain, links, strict=False):
+        if not settled.holds or link.place_harm is PlaceHarm.NONE:
+            continue
+        place = state.places.get(link.place_id or "")
+        if place is None or place.status is PlaceStatus.RUINED:
+            continue
+        status = PlaceStatus.RUINED if link.place_harm is PlaceHarm.RUINED else PlaceStatus.DAMAGED
+        if status is PlaceStatus.DAMAGED and place.status is not PlaceStatus.THRIVING:
+            continue
+        places.append(PlaceChange(id=place.id, status=status, known_to_player=True))
+        fire = fire or bool(stems(f"{step.verb} {link.text}") & _FIRE_STEMS)
+        if link.place_harm is PlaceHarm.RUINED:
+            worst = PlaceHarm.RUINED
+        elif worst is PlaceHarm.NONE:
+            worst = PlaceHarm.DAMAGED
+        words = "lies in ruins" if status is PlaceStatus.RUINED else "is badly damaged"
+        traces.append(
+            Trace(kind=TraceKind.DAMAGE, text=f"{cap(place.name)} {words}.", strength=100)
+        )
+    if not places:
+        return StateDelta(), None
+    if fire:
+        kind = "burn"
+    else:
+        kind = "raze" if worst is PlaceHarm.RUINED else "destroy"
+    severity = 4 if worst is PlaceHarm.RUINED else 2
+    deed = ProposedDeed(
+        kind=kind,
+        text=f"{step.text} ({', '.join(state.places[p.id].name for p in places)})",
+        actor_id=actor.id if actor.id != state.player_id else None,
+        target_ids=[p.id for p in places],
+        place_id=places[0].id,
+        severity=severity,
+        traces=traces,
+    )
+    return StateDelta(places=places), deed
+
+
+def _own(state: WorldState, actor: Character) -> str:
+    return "your own throw" if actor.id == state.player_id else "their own throw"
+
+
+def _sentence(text: str) -> str:
+    text = text.strip()
+    return text if not text or text.endswith((".", "!", "?")) else f"{text}."
+
+
+def _merge(*deltas: StateDelta) -> StateDelta:
+    """One delta holding every change of the given ones, in order."""
+    merged = StateDelta()
+    for delta in deltas:
+        if delta.empty:
+            continue
+        merged = merged.model_copy(
+            update={
+                name_: [*getattr(merged, name_), *getattr(delta, name_)]
+                for name_ in (
+                    "characters",
+                    "factions",
+                    "places",
+                    "facts",
+                    "items",
+                    "leads",
+                    "rule_changes",
+                    "time_effects",
+                )
+            }
+        )
+    return merged
 
 
 def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: bool) -> _Opposition:
     """A2, A8. Who stands in the way, checked against the state.
 
     The targets of a harmful aim, or of a social step, stand in the way whatever was proposed. The
-    dead never do. A time stop freezes everyone but its user (W10a; immunity is WS9b's), a
+    dead never do. A time stop freezes everyone but its user and those immune to it (W10a), a
     helpless state on the sheet (asleep, bound, stunned) means they can't respond whatever was
     proposed, and the model's word that they can't respond (unaware, cornered) is taken unless it
     claims a time stop that isn't there.
@@ -337,7 +827,7 @@ def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: b
     found = _Opposition()
     for person in people:
         on_sheet = helpless_state(person)
-        why = FROZEN if frozen else on_sheet
+        why = FROZEN if frozen and not stop.immune(person) else on_sheet
         if why is None and says_cannot and not refuted:
             why = facts.why_not.strip() or "unable to respond"
         if why is None:
@@ -375,6 +865,7 @@ def _contested(
     drawn: Drawn,
     ctx: TurnContext,
     rng: SeededRng,
+    hit: stop.StoppedHit | None = None,
 ) -> Settled:
     """Someone or something can push back. The power gap decides the class where both sides can
     be measured; otherwise it is contested, or harder if the interpret step judged it so."""
@@ -388,7 +879,12 @@ def _contested(
         for t in opposition.targets
         if axis is not PowerAxis.MIGHT or t not in opposition.responsive
     ]
-    if step.aim.harmful and unmet:
+    if step.aim.harmful and unmet and hit is not None and hit.force_tier is not None:
+        # W10a. A relative-speed hit is measured by its own force, not the user's arm.
+        margin, body = stop.force_ceiling_margin(state, unmet, hit.force_tier)
+        if margin >= stop.TAKES_IT_MARGIN:
+            return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, _takes_it(state, body))
+    elif step.aim.harmful and unmet:
         gap, toughest = _body(state, actor, unmet)
         if gap >= odds_mod.RULED_OUT_AT:
             reason = f"{_beyond_harm(state, toughest)}."
@@ -455,19 +951,33 @@ def _unopposed(
     drawn: Drawn,
     ctx: TurnContext,
     rng: SeededRng,
+    hit: stop.StoppedHit | None = None,
 ) -> Settled:
     """A2. When nothing can push back, the only question is whether the means are enough. The
     interpret step proposes the verdict; where the target has a body to measure, code caps it by
     how far that body stands above the actor's might, so no proposal makes a kitchen knife bite an
-    ancient dragon."""
+    ancient dragon.
+
+    A hit that lands at relative speed in stopped time is measured by its own force instead, and
+    code decides it alone, whatever the interpret step thought a pebble could do (W10a, A9): it
+    is enough unless a body tough enough takes it, and a close call within half a tier of it."""
     facts = step.facts
     means = facts.means or _means_from_class(facts.proposed_class)
     # With no verdict on the means, a step the interpret step called a long shot stays one.
     long_shot = facts.means is None and facts.proposed_class is OutcomeClass.LONG_SHOT
     ceiling: MeansVerdict | None = None
     toughest: Standing | None = None
+    takes_it: Character | None = None
     bodies = opposition.targets if step.aim.harmful else [c for c, _ in opposition.helpless]
-    if (step.aim.harmful or step.axis is PowerAxis.MIGHT) and bodies:
+    if hit is not None and hit.force_tier is not None and bodies:
+        margin, body = stop.force_ceiling_margin(state, bodies, hit.force_tier)
+        if margin >= stop.TAKES_IT_MARGIN:
+            ceiling, takes_it = MeansVerdict.CLEARLY_NOT, body
+        elif margin > -stop.TAKES_IT_MARGIN:
+            ceiling = MeansVerdict.CLOSE_CALL
+        else:
+            ceiling = MeansVerdict.CLEARLY_ENOUGH
+    elif (step.aim.harmful or step.axis is PowerAxis.MIGHT) and bodies:
         gap, toughest = _body(state, actor, bodies)
         if gap >= odds_mod.RULED_OUT_AT:
             ceiling = MeansVerdict.CLEARLY_NOT
@@ -475,14 +985,21 @@ def _unopposed(
             ceiling = MeansVerdict.CLOSE_CALL
         else:
             ceiling = MeansVerdict.CLEARLY_ENOUGH
-    verdict = means if ceiling is None else min(means, ceiling, key=_MEANS_ORDER.index)
+    if hit is not None and hit.overwhelming:
+        # Code follows the force through; the interpret step's word on the means doesn't count.
+        verdict = ceiling or MeansVerdict.CLEARLY_ENOUGH
+        long_shot = False
+    else:
+        verdict = means if ceiling is None else min(means, ceiling, key=_MEANS_ORDER.index)
 
     lead = _helpless_lead(state, opposition)
     if verdict is MeansVerdict.CLEARLY_ENOUGH:
         reason = f"{lead}: no contest." if lead else NOTHING_IN_THE_WAY
         return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason)
     if verdict is MeansVerdict.CLEARLY_NOT:
-        if ceiling is MeansVerdict.CLEARLY_NOT and toughest is not None:
+        if takes_it is not None:
+            why = _takes_it(state, takes_it).rstrip(".")
+        elif ceiling is MeansVerdict.CLEARLY_NOT and toughest is not None:
             why = _beyond_harm(state, toughest)
         else:
             why = "; ".join(h for h in facts.hindrances if h.strip()) or "The means aren't enough"
@@ -599,8 +1116,8 @@ def _beyond_harm(state: WorldState, toughest: Standing) -> str:
     return f"{cap(body)} {is_are(state, toughest.character.id)} far beyond what this can hurt"
 
 
-def _stops_time(power: Power) -> bool:
-    return power.time is not None and power.time.effect is TimeEffect.STOP
+def _takes_it(state: WorldState, body: Character) -> str:
+    return f"{cap(name(state, body.id))} {is_are(state, body.id)} tough enough to take it unhurt."
 
 
 def _means_from_class(proposed: OutcomeClass | None) -> MeansVerdict:

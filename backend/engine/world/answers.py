@@ -10,6 +10,7 @@ faction has gathered and travelled (W10). The narrator dresses it in the world's
 
 from enum import StrEnum
 
+from engine.resolve.powers import might_with_powers
 from engine.state.bible import Law, Zeal
 from engine.state.cast import Character, Faction, FactionStatus
 from engine.state.records import Deed, Origin, OriginKind, PendingEvent
@@ -80,8 +81,10 @@ ANSWER_TEXT = {
 }
 
 
-def _might(character: Character) -> int:
-    return max(0, character.sheet.axes.might - character.sheet.condition.weakened_tiers)
+def _might(state: WorldState, character: Character) -> int:
+    """The might the world can measure them by (A8, W5): a light-speed time stop once the world
+    could know of it, hidden strength as what it shows (G20), less any weakening."""
+    return max(0, might_with_powers(state, character) - character.sheet.condition.weakened_tiers)
 
 
 def members(state: WorldState, faction_id: str) -> list[Character]:
@@ -100,14 +103,14 @@ def faction_might(state: WorldState, faction: Faction, *, excluding: str | None 
     leaving out the one it would strike at. A faction with nobody on record counts as ordinary
     people."""
     return max(
-        (_might(c) for c in members(state, faction.id) if c.id != excluding),
+        (_might(state, c) for c in members(state, faction.id) if c.id != excluding),
         default=1,
     )
 
 
 def actor_might(state: WorldState, character_id: str) -> int:
     character = state.characters.get(character_id)
-    return _might(character) if character is not None else 1
+    return _might(state, character) if character is not None else 1
 
 
 def enforced_law(state: WorldState, faction_id: str) -> Law | None:
@@ -160,12 +163,13 @@ def choose_answer(
     state = w.state
     if enforcing:
         return Answer.ARREST
-    gap = actor_might(state, target_id) - faction_might(state, faction, excluding=target_id)
+    target_might = actor_might(state, target_id)
+    gap = target_might - faction_might(state, faction, excluding=target_id)
     reputation = faction.player_reputation if target_id == state.player_id else None
     esteem = reputation.esteem if reputation else 0
     fear = reputation.fear if reputation else 0
     has_champion = any(
-        _might(c) >= actor_might(state, target_id) - 1
+        _might(state, c) >= target_might - 1
         for c in members(state, faction.id)
         if c.id != target_id
     )
