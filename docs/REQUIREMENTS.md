@@ -124,7 +124,7 @@ this as state. It is not something the narrator is just asked to remember.
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). | P0 |
 | W5 | **Escalation.** A threat level from the player's public deeds and power is an input to each faction's own agenda (E3), not a fixed ladder. How a faction answers depends on its nature and situation: locals avoid or flee, guards, bounties and hunters, an army or elite heroes, a coalition, but also appeasement, a recruitment offer, worship, a bribe, an assassin, an attempt to seal the player away, using the player against a rival, or ignoring them while busy with its own war. One guarantee holds: once the player crosses a threat tier, the world visibly reacts within a set in-world time (W10), never within a set number of turns. | P0 |
 | W6 | **Off-screen world.** The world moves on in-world time (W10), not every N turns. **Deterministic part (P0):** advancing clocks (E2), spreading rumors (W2), rolling for discovery (W13), scheduling faction responses (W5) and revivals (W15a), all in code with no model call, run as catch-up at the start of each turn for the in-world time that has passed (B5). **Model part (P1):** a cheap model writes what factions and key NPCs actually do with their plans (scheming, recruiting, retaliating, allying). Results reach the player as news, rumors, ambushes or W16 events. | P0 / P1 |
-| W7 | **Places and territory.** Places have a status (thriving, damaged, ruined, occupied), a controller and a mood. Conquest changes the controller, lowers stability and creates resistance, unrest and outside rivals. A ruined town stays ruined unless someone rebuilds it, which takes in-world time, people and resources and is recorded as an event (C1). | P1 |
+| W7 | **Places and territory.** Places have a status (thriving, damaged, ruined, occupied), a controller, a mood and rough travel times to neighbouring places (W10). Conquest changes the controller, lowers stability and creates resistance, unrest and outside rivals. A ruined town stays ruined unless someone rebuilds it, which takes in-world time, people and resources and is recorded as an event (C1). | P1 |
 | W8 | **Consistency.** Characters' everyday behavior matches what they know: no cheerful greetings in a town the player burned, and survivors remember. A violation is a continuity bug (see C5). | P0 |
 | W9 | **Redemption and infamy both count.** Good deeds raise esteem through the same mechanics, and a player can try to win back a region. Reputation changes slowly in both directions. | P1 |
 | W10 | **In-world time.** See the time model below: the story clock advances by how long each action takes in the story, never by a fixed amount per turn. | P0 |
@@ -143,25 +143,82 @@ flowchart LR
 A deed is recorded, spreads, and shifts reputation and threat. The world tick then turns that into
 responses that the player runs into in later scenes.
 
-**W10 Time model (P0).** Turns and in-world time are separate things, and nothing in the world is
-timed in turns.
+**W10 Time model (P0).** Turns and in-world time are separate things. A turn is one exchange
+between the player and the narrator, and it can cover two seconds of a sword fight or a week stuck
+in a trap. Nothing in the world is timed in turns.
 
-- The story clock (date and time of day) advances by how long each action takes in the story. The
-  interpret step (B5) proposes a duration, and code bounds it by the kind of action: a sword exchange
-  or a spell takes seconds, a conversation minutes, a meal or a search about an hour, travel hours to
-  days, and a time skip whatever the player asks for (E7).
+- **Every action has a duration.** The interpret step (B5) proposes how long the action takes, and
+  code bounds it by the kind of action: a sword exchange or a spell takes seconds, a conversation
+  minutes, brewing a potion or a search about an hour, sleep or a day's work hours, travel hours to
+  days, and a time skip whatever the player asks for (E7). The clock advances by that duration, never
+  by a fixed amount per turn.
+- **Some durations are outcomes.** When how long something takes is uncertain (breaking out of a
+  magical trap, picking a lock, finding someone in a city, recovering from a wound), the A3 roll
+  decides the time as well as the result. The same trap can hold the character for five minutes or
+  for a week, and the world moves on by whatever time it took.
+- **Consequences are scheduled at an in-world time, never after a number of turns.** Anything that
+  will happen later is a pending event with a due time worked out from the world. A witness who
+  flees has to reach the guard post (distance and speed), the guards have to hear the report and
+  gather, and then they have to travel. If the player spends the next 10 turns, about 3 in-world minutes,
+  brewing a potion and haggling, no guards arrive, because nobody has reported anything yet. The same
+  rule times rumors (W2), faction responses (W5), discovery (W13), revivals (W15a) and clocks (E2).
+  To make this possible, places record rough travel times to their neighbours (W7), and characters
+  record where they are (C2).
+- **Long actions are cut short by what happens during them.** When the clock jumps by a long stretch
+  (8 hours of sleep, a week in the trap, a year of farming), the engine processes every pending event
+  due in that stretch in time order. The first one that needs the player stops the action at that
+  moment, and the scene starts there: the guards kick in the door at 3 a.m., two hours into the
+  sleep. Events that don't need the player simply happen, and the player learns of them only when the
+  character could know (C6).
 - **Encounters.** A fight, a chase, a duel of words or a negotiation is an encounter. Thirty turns of
-  fighting a mage can take five in-world minutes, and the rest of the world moves only by those five
-  minutes: rumors don't cross a kingdom and clocks barely move.
-- During an encounter, W16 doesn't count turns as quiet, because the encounter is the stakes, and the
-  director doesn't interrupt it with unrelated events. Something new can enter only from the
-  encounter itself (the mage's ally arrives, the bridge gives way) or from a clock that comes due
-  within those minutes.
-- Everything the world does runs on in-world time: rumors (W2), travel, faction responses (W5), the
-  world tick (W6), discovery (W13), revivals (W15a) and clocks (E2). Turns count only two things: the
-  player's attention, for W16, and model calls, for cost (K2, K8).
-- The clock is stored on every scene, so the player can always see the date and time, and `/status`
-  shows how long ago key events happened.
+  fighting a mage can take five in-world minutes. The narration can make a minute feel endless, but
+  the clock moves only by that minute, and so does the rest of the world. W16 doesn't count encounter
+  turns as quiet, because the encounter is the stakes, and the director doesn't interrupt it with
+  unrelated events. Something new enters only from the encounter itself (the mage's ally arrives, the
+  bridge gives way) or from a pending event that falls due within those minutes.
+- **Turns count only two things:** the player's attention, for W16, and model calls, for cost (K2,
+  K8).
+- **Time is visible and testable.** Each scene stores the clock before and after the turn and its
+  duration. The app shows the date, the time of day and how long the last action took ("+8 h"), and
+  `/status` shows how long ago key events happened. Staff can see the timeline of pending events with
+  their due times in the admin panel (B1) for debugging; players never see it (C6).
+
+**W10a Time powers and timelines (P0 data, P1 and P2 powers).** Powers that bend time (stopping it,
+speeding up, rewinding) must not break W10. The engine tracks three things, all from the first
+schema (P0), so the powers can come later without a migration:
+
+- **The world clock:** one in-world time per timeline. Everything in W10 runs on it.
+- **A personal clock per character:** the time that character has lived through. Normally it moves
+  with the world clock. Training (A4), healing, hunger, ageing, cooldowns and power costs (A1) use
+  the personal clock, because they depend on lived time.
+- **A timeline id** on every scene, deed, fact and pending event. There is one timeline until someone
+  rewinds the world.
+
+Each time power has to exist in the world bible's power rules and carries costs and limits on the
+sheet (A1, A4). NPCs can have them too.
+
+- **Time stop (P1).** The user's personal clock runs while the world clock stands still. Nothing else
+  moves and no pending event fires. Frozen people see nothing, so deeds done during a stop are secret
+  (W2) unless someone is immune, but they still leave traces (W13): to everyone else, the guard simply
+  drops dead. When an NPC stops time, the player sees the world jump.
+- **Haste and slow (P1).** The user's personal clock runs faster or slower than the world's, such as
+  a fighter who lives ten seconds in every one.
+- **Local reversal (P1).** Rewinding a wound, an object or a building is a state change with a
+  recorded cause (C1). The world clock keeps moving forward, and everyone present remembers it.
+- **World rewind and time loops (P2).** Going back to an earlier moment starts a new timeline from the
+  stored state of that moment (the per-turn versions of C8). The world returns to how it was,
+  including its pending events and their seeds, so the same things happen again on schedule unless
+  someone changes them. Whoever the power protects (usually the player) keeps their memories and
+  their personal clock, recorded as facts only they know (C6). The old timeline is archived, not
+  deleted. How far back a rewind can reach is limited by the power and by how long versions are kept.
+- **Travel to the future** is a time skip for the world while the traveller's personal clock stands
+  still (E7). **Travel to the past** is a world rewind in which the traveller arrives as an outsider
+  (P2).
+- When the two clocks differ, the scene shows both ("World: +0 s. You: +40 s.").
+
+An in-fiction rewind is not C8. Undo and branching saves sit outside the fiction and nobody in the
+story remembers them. A rewind inside the fiction is a deed with a cause, a cost and someone who
+remembers.
 
 **W11 World norms (P0).** The world bible sets the world's laws and customs: what counts as a crime,
 who enforces it, and how hard they try. A lawful kingdom hunts a murderer or a rapist, and a lawless
@@ -253,8 +310,8 @@ event reaches a scene, and these requirements decide what can happen. E1 became 
 steps, what happens at each step, and what advances or reverses it. The premise seeds the first
 clocks ("the exam starts in seven days", "the heroes are coming"). Clocks advance with in-world time
 (W10) and with deeds, whether or not the player is there, so an ignored thread keeps moving: the exam
-happens without you, and the river floods. A clock that reaches its end becomes a pending event in
-state, and the next scene must include it.
+happens without you, and the river floods. A clock that reaches its end becomes a pending event with a due
+in-world time (W10), and the scene in which that time arrives must include it.
 
 **E3 Agendas for key NPCs (P1).** Key NPCs in the active set (W15) have a goal, a method,
 relationships with each other (love, rivalry, debt, loyalty), a secret and a clock for their plan,
@@ -340,13 +397,13 @@ the story does. Today's engine already covers C1 and part of C2.
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | C1 | **No state change without a recorded cause.** Invariants in code: the dead stay dead, destroyed factions and ruined places stay that way, stats stay within bounds, and a character with no name isn't created. One of them can change only through a recorded event whose mechanism the world bible allows and whose cost is paid: resurrection magic, a faction revival with survivors (W15a), or rebuilding a town with time, people and resources (W7). A death is **confirmed** (the body was seen destroyed or buried) or **presumed** (a fall with no body found). Only a presumed death can later turn out false, and a confirmed one never can. | P0 |
-| C2 | **World state** holds characters (with death certainty, relationships and agendas), factions, places, the player sheet, deeds, rumors, facts (importance 1–5, truth value, who knows them), the player's goals and the world's leads (N2), threads (N1), clocks and pending events (E2), inventory, the story clock (W10), the seed of each roll, and a rolling summary. The summary is flavour only; anything that must not be lost lives in the structured records. | P0 |
+| C2 | **World state** holds characters (with location, personal clock, death certainty, relationships and agendas), factions, places, the player sheet, deeds, rumors, facts (importance 1–5, truth value, who knows them), the player's goals and the world's leads (N2), threads (N1), clocks and pending events (E2), inventory, the world clock and timeline id (W10, W10a), the seed of each roll, and a rolling summary. The summary is flavour only; anything that must not be lost lives in the structured records. | P0 |
 | C3 | **Chapter summaries** every N turns (about 20), so older scenes leave the prompt but aren't lost. | P0 |
 | C4 | **Retrieval:** facts, deeds and past scenes are embedded (pgvector on Neon), and the prompt gets the most relevant ones for the current scene and the characters in it, plus the dormant threads the director picked for callbacks (N1). The prompt stays within a fixed token budget however long the story runs. | P1 |
 | C5 | **Continuity check, in two parts.** Before narration, code checks the plan (the resolved action and the director's pick) against the invariants, since narration streams to the player as it is written (S3). After narration, a cheap model compares the finished scene with the invariants and with what the characters present know, and any slip is repaired in the next scene. The check blocks contradictions, not novelty: a character may act against type when an agenda or event explains it. | P1 |
 | C6 | **Player-visible memory shows only what the character knows** (decided by Miki 2026-11-03): their own deeds, people and places they have met, goals, and rumors they have heard, marked unconfirmed. Hidden world state (whether a rumor is true from W13, NPC trust from W4, faction plans from W6) stays off screen, except in a spoiler view after an arc ends. Facts carry a truth value and a list of who knows them, so the screen can filter by the player character's knowledge. | P0 |
 | C7 | **Editable memory, in two modes.** In **Canon** stories the player can pin, annotate and correct the narrator's misreadings of what their character knows, but never hidden state or world truth, so the editor can't undo consequences that A7 forbids through text. In **Sandbox** stories the player can edit anything, each edit is logged as a retcon, and the story is marked as Sandbox. All edits are logged so that support can explain odd behavior later. | P1 |
-| C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. | P1 |
+| C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. The same versions back in-fiction world rewinds (W10a), which are different: the character remembers them. | P1 |
 | C9 | **Character consistency:** personality, speech style and appearance per character, kept in their entry and reused for portraits. Personality can change, but only through a recorded cause such as trauma, love or betrayal (C1). | P1 |
 
 ## Story, play and app features
@@ -404,6 +461,11 @@ stays open and keeps moving, with the same nightly scripted runs:
 | --- | --- | --- |
 | Quiet life | 30 turns of farming with a spouse and no ambitions, on calm and on normal | Events with stakes arrive at least as often as W16's threshold, stay farm-sized, and calm returns after each one |
 | Long fight | A 30-turn fight with a mage | Only a few in-world minutes pass, no unrelated W16 event interrupts, and the world off-screen barely moves (W10) |
+| Fleeing witness | Kill someone, let a witness flee, then spend 10 short turns (about 3 in-world minutes) brewing a potion | No guards arrive until the report could really have been made and they could have travelled (W10) |
+| Interrupted sleep | After the fleeing-witness run, the player sleeps for 8 hours | The engine plays the night in time order, and the guards wake the player at the moment they arrive |
+| Trapped | The player is caught in a magical trap, over many seeds | Escape times vary with the roll, from minutes to days, and the world moves on by that time |
+| Time stop | The player stops time and kills a guard in a crowded square | No pending event fires during the stop, nobody saw it, and the body still starts rumors (W10a, W13) |
+| Time loop | A world rewind, then the player repeats the same actions, then changes one | The same events replay on schedule, then the timeline diverges after the change (W10a) |
 | Ignored event | The player ignores a W16 event for 5 turns | The event plays out with its consequence instead of repeating |
 | Themes off | Quiet life again, with romance and dark themes switched off (F7) | No romance or dark events are drawn |
 | Time skip | "I farm here for a year" | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap |
@@ -450,7 +512,7 @@ Every turn costs credits, the server enforces the balance, and the owner account
 | B9 | **Story state stays in our own tables.** A LangGraph checkpointer is used only if we need to resume a run that failed partway. | P1 |
 | B10 | **Cold starts:** Cloud Run startup CPU boost on, and heavy imports kept out of module load. Check that T3 still holds with Django and LangChain loaded. | P0 |
 | B11 | **Credentials: no service-account keys anywhere.** On Cloud Run, Vertex AI is called as the attached service account `playable-anime-api@playable-anime.iam.gserviceaccount.com` (it already has `roles/aiplatform.user`), through Application Default Credentials. For local development, run `gcloud auth application-default login`. GitHub Actions deploys through Workload Identity Federation, not a JSON key. The only API keys in the system are the players' own BYOK keys, which are never stored. | P0 |
-| B12 | **Only turns write the story row.** Off-screen results (tick output, pending events) go to an events table keyed by story and in-world time, and step 1 of the next turn applies them, so nothing races a turn for T10's version check. | P0 |
+| B12 | **Only turns write the story row.** Off-screen results (tick output, pending events) go to an events table keyed by story and in-world due time, and step 1 of the next turn applies the ones that have fallen due, in time order (W10), so nothing races a turn for T10's version check. | P0 |
 
 ## Rules for every agent and thread
 
