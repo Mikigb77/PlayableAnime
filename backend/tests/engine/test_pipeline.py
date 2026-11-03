@@ -229,13 +229,15 @@ def test_a_ruling_is_stamped_with_when_it_was_settled():
     assert (recorded.turn, recorded.world_s) == (40, 90)
 
 
-def test_default_catch_up_and_apply_event():
+def test_catch_up_sets_the_worlds_own_processes_going_and_apply_event_settles_one():
     state = grounded_world()
 
     passage = pipeline.catch_up(state, state.world_s, ctx(), rng())
     fired = pipeline.apply_event(state, state.pending_events["council-meets"], ctx(), rng())
 
-    assert passage.state == state and passage.elapsed_s == 0 and passage.fired == ()
+    assert passage.elapsed_s == 0 and passage.fired == ()
+    kinds = sorted(e.kind for e in passage.state.pending_events.values())
+    assert kinds == ["clock_end", "world.clock_step", "world.tick"]
     assert fired.pending_events["council-meets"].status is EventStatus.APPLIED
     assert fired.pending_events["council-meets"].applied_turn == 2
     assert state.pending_events["council-meets"].status is EventStatus.PENDING

@@ -464,6 +464,11 @@ and slow, local reversal), A4, G19, G20, N4.
   in a fixed number of steps (K8, E7).
 - **Done when** the "fleeing witness", "interrupted sleep", "phone witness", "idle world" and
   "ignored hook" scenarios pass as unit tests.
+- **For other workstreams:** the event kinds the world schedules are `engine.world.Kind`, and
+  events of any other kind (`director.*` for WS11) are only marked applied, keeping the
+  `needs_player` they were scheduled with. The graph (WS3) saves the world's events like any other
+  pending row. The tick leaves agenda facts (origin `agenda`, the latest three per faction or NPC)
+  for the director (W16) and for the model part of the tick (W6, P1) to tell.
 
 ### WS11 Director, threads and the picture decision (wave 2b, after WS2's PR 1)
 

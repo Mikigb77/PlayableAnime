@@ -27,6 +27,8 @@ from engine.state import (
     WorldState,
 )
 from engine.timekeeping import advance_clock, world_stopped
+from engine.world import passage as passage_module
+from engine.world.scheduling import event_rng
 
 
 def ctx(turn: int = 2) -> TurnContext:
@@ -192,9 +194,14 @@ def test_catch_up_applies_what_fell_due_through_apply_event():
     passage = pipeline.catch_up(state, state.world_s, ctx(), rng())
 
     applied = passage.state.pending_events["council-meets"]
-    assert [e.id for e in passage.fired] == ["council-meets"]
+    assert "council-meets" in [e.id for e in passage.fired]
     assert applied.status is EventStatus.APPLIED
     assert (applied.applied_turn, applied.applied_s) == (2, 11 * DAY)
+    # The council's clock caught up on its overdue steps first, in their own time order.
+    ids = [e.id for e in passage.fired]
+    steps = [e for e in passage.fired if e.kind == "world.clock_step"]
+    assert [e.due_s for e in steps] == sorted(e.due_s for e in steps)
+    assert ids.index("council-meets") > ids.index(steps[2].id)
 
 
 def stopped(state: WorldState) -> WorldState:
@@ -332,23 +339,20 @@ def test_nothing_fires_inside_a_time_stop():
     assert played.state.player.personal_offset_s == 3
 
 
-def test_an_event_rolls_the_same_however_the_time_around_it_is_split():
+def test_an_event_rolls_the_same_however_the_time_around_it_is_split(monkeypatch):
     seeds: list[str] = []
-    original = pipeline.apply_event
+    original = passage_module.apply_in_place
 
     def spy(state, e, context, stream):
-        seeds.append(stream.seed)
+        seeds.append(event_rng(e, stream).seed)
         return original(state, e, context, stream)
 
+    monkeypatch.setattr(passage_module, "apply_in_place", spy)
     state = with_events(event("e", 90))
     one_step = Resolution(steps=[settled(0, 120)])
     two_steps = Resolution(steps=[settled(0, 60), settled(1, 60)])
-    pipeline.apply_event = spy
-    try:
-        pipeline.play_out(state, one_step, ctx(), rng())
-        pipeline.play_out(state, two_steps, ctx(), rng())
-    finally:
-        pipeline.apply_event = original
+    pipeline.play_out(state, one_step, ctx(), rng())
+    pipeline.play_out(state, two_steps, ctx(), rng())
 
     assert len(seeds) == 2 and seeds[0] == seeds[1]
     assert seeds[0].endswith("/event/e")
