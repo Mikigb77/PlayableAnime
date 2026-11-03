@@ -9,20 +9,21 @@ consistent. If a character dies, they stay dead.
 | Folder | Stack |
 | --- | --- |
 | [`app/`](app/) | Flutter mobile app (iOS and Android, plus web for quick testing) |
-| [`backend/`](backend/) | Python FastAPI story engine for Cloud Run, with Gemini on Vertex AI |
+| [`backend/`](backend/) | Python Django and Django Ninja story engine for Cloud Run, with Gemini on Vertex AI |
 | [`docs/`](docs/) | [Requirements](docs/REQUIREMENTS.md) · [Plan](docs/PLAN.md) · [API](docs/API.md) · [Feature list](docs/FEATURES.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 ## Quick start
 
-Backend. It uses an offline fake narrator unless configured otherwise, and keeps stories in memory
-until a Neon database is linked:
+Backend. It uses an offline fake narrator unless configured otherwise, and stores stories in a
+local Postgres (or a Neon branch, see [backend/README.md](backend/README.md#database-neon-postgres)):
 
 ```bash
-neon env pull            # optional: link Neon Postgres (needs `npm i -g neon` and `neon login`)
+docker run -d --name lucid-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:18
+docker exec lucid-pg createdb -U postgres lucid
 cd backend
 uv sync
-uv run python -m app.migrate   # only with Neon linked
-uv run uvicorn app.main:app --reload --port 8080
+uv run python manage.py migrate
+DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 ```
 
 App, in a second terminal:

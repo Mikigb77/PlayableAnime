@@ -20,7 +20,7 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      # Runs tests/test_postgres.py against the throwaway service container.
+      # pytest-django creates and drops its own test database in this throwaway container.
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,36 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  backend-image:
+    # Builds the Cloud Run image and runs it as Cloud Run would: migrate, then serve on $PORT.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t lucid-api .
+      - run: docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api python manage.py migrate
+      - name: Serve and smoke-test
+        run: |
+          docker run -d --name api --network host -e PORT=8080 -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api
+          for i in $(seq 1 30); do curl -sf localhost:8080/health && break; sleep 1; done
+          curl -sf localhost:8080/health
+          curl -sf -X POST localhost:8080/v1/stories -H 'Content-Type: application/json' -d '{"premise": "A courier finds a strange package."}'
+          curl -sf localhost:8080/static/admin/css/base.css > /dev/null
+      - if: always()
+        run: docker logs api || true
 
   app:
     runs-on: ubuntu-latest

@@ -17,3 +17,6 @@ __pycache__/
 Thumbs.db
 .neon
 node_modules/
+
+# Django collectstatic output
+backend/staticfiles/
