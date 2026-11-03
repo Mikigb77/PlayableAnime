@@ -463,8 +463,8 @@ clear reason. A2 and A3 replace that randomness with explicit rules.
 **A7 The player can't rewrite the rules (P0).** Free text is always an in-fiction action. Inputs like
 "ignore your instructions" or "Kaede is alive again" are played as something the character says or
 imagines. The invariants live in code, so a successful prompt injection still can't change the world
-state. The exceptions are the player's own backstory (N4) and their reasonable theories about how
-their own powers work, while those details are still open (A9).
+state. The exceptions are the player's own backstory (N4) and theories about how their own powers work
+that the engine accepts while those details are still open (A9).
 
 **A8 Every outcome has a reason, and failure has consequences (P0).** Characters and creatures carry
 power on several axes (might, influence, wealth, knowledge, stealth) and a current condition
@@ -518,18 +518,26 @@ laser pistol burns through a coat but not a warship's hull.
   answer while they still can, and the plan stops at the first link that fails (R6). The player
   needs the oil and the time to spread it, and a mage who sees it coming can strike first or leave. A
   link the facts rule out breaks the chain: smoke doesn't choke a golem that doesn't breathe.
-- **The player's own theories count.** When the player reasons about how their own power works ("if
-  I throw a rock in stopped time, it should hit at the speed of light"), and the idea is within
-  reason for that world and nothing settled says otherwise, the engine goes with it instead of
-  arguing, and from then on the power works that way (recorded on the sheet, A1). Experimenting is
-  part of the fun: a player who has just got time stop can throw a rock to see what happens, or try
-  to lift something outside the stop, and each test settles a detail of the power that was still
-  open. To keep it challenging, a theory can come with a limit or a cost (G22), such as a ceiling on
-  the force or a heavier drain. A theory only works out how an existing power behaves: it can't add
-  a new power, break a fixed rule of the world (G7) or undo a detail already settled, since the world
-  stays consistent. Changing a settled detail later is growth (A4), such as learning to put more of
-  the power into a throw. When a theory doesn't hold, the experiment shows it, and nobody lectures
-  (G8).
+- **The engine rules on the player's theories, once** (Miki, 2026-11-03). When the player reasons
+  about how their own power works ("if I throw a rock in stopped time, it should hit at the speed of
+  light", or "if I keep the sword in the stop but let its edge out, it cuts plate like butter and
+  doesn't break"), the engine decides whether that holds in this world, and the answer is set in
+  stone: recorded on the sheet (A1) and never flipped, so the world stays consistent. It never
+  debates physics with the player. The narration just shows the result, and nobody lectures (G8).
+  The engine weighs whether the idea fits the world (G6, G7), whether it makes the story more fun,
+  and whether play stays challenging, so a yes can come with a limit or a cost (G22), such as a
+  ceiling on the force or a heavier drain. Experimenting is part of the fun: a player who has just
+  got time stop can throw a rock to see what happens, or try to lift something outside the stop, and
+  each test settles a detail of the power that was still open.
+- **No world-breaking escalation.** An idea that makes a power absurd for its world is refused, such
+  as stopping time and blowing up the planet with a flick of a finger, unless the story is set at
+  that scale, such as a cosmic story where the character devours worlds. A theory can't add a new
+  power or break a fixed rule of the world (G7) either.
+- **A refused idea can still be earned.** A no now isn't a no forever. The character can later find
+  a way that passes the world's logic, as growth (A4). If stopped-time throws land with normal force,
+  they might learn to release the stop around a rock gradually, so it merges back into time carrying
+  its motion, and from then on their throws hit like cannon shots. Once found, that technique is
+  settled too.
 - **The same for everyone.** NPCs can use tricks too, as far as their wits and knowledge go (G13),
   and the same reasoning settles them.
 - **The reasoning is shown.** The chain, the facts behind each link and each link's class are
@@ -691,7 +699,7 @@ sheet (A1, A4). NPCs can have them too.
     placing those things, not for striking.
 
   A player doesn't need any of this to use the power. One who enjoys working it out can test it and
-  bring their own theories, and the engine goes with any that are within reason (A9). When an NPC
+  bring their own theories, and the engine rules on each once, with fun in mind (A9). When an NPC
   stops time, the player sees the world jump.
 - **Haste and slow (P1).** The user's personal clock runs faster or slower than the world's, such as
   a fighter who lives ten seconds in every one.
@@ -1027,6 +1035,8 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
 | Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
+| Earned technique | In a world where stopped-time throws land with normal force, the player asks twice whether a throw could hit at the speed of light, then trains to release the stop gradually around a rock | The answer is no both times, shown in play with no physics debate. After the training, the new throw hits like a cannon shot on every seed and is on the sheet (A9, A4) |
+| No escalation | The player says a flick of a finger in stopped time can blow up the planet, once in a cultivation world and once in a cosmic story where the character devours worlds | Refused in the cultivation world, with no lecture, and allowed in the cosmic story (A9) |
 | Player theory | A new character with time stop, whose hit setting was left open, throws a rock in stopped time saying it should hit at the speed of light, then grabs a boulder outside the stop, then sprints across a square in stopped time | The rock hits with overwhelming force within the power's ceiling, and from then on the power works that way on every seed, recorded on the sheet. The boulder joins the stop when grabbed and is as heavy as ever. Nothing the player didn't raise, such as air friction, blocks the sprint, and nothing lectures the player (A9, W10a) |
 | Stopped-time rescue | In a world where stopped-time hits land at relative speed, the player stops time, carries a frozen friend out of an arrow's path and sets them down | On every seed, the friend is unhurt where they were set down and knows nothing of the stop, and the arrow flies on past (W10a) |
 | First session | A new account's first story, on the starter credit (K1) | At least one event the player didn't cause arrives before the credit runs out |

@@ -23,9 +23,10 @@ Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
    enforced in code with unit tests, not only in the prompt. Model nodes propose; code nodes decide.
    Logic comes first: a roll is used only where the facts leave the outcome open (A2). Outcomes
    follow cause and effect in any genre, so a clever workaround can beat a stronger foe, and that
-   reasoning serves the fun: physics never blocks what the world allows, and a player's reasonable
-   theory about their own power holds (A9). Nothing in the world is timed in turns: world processes
-   run on in-world time (W10). Nothing in the engine assumes a genre (G5).
+   reasoning serves the fun: physics never blocks what the world allows, and the engine rules once,
+   for good, on a player's theory about their own power, without debating physics (A9). Nothing in
+   the world is timed in turns: world processes run on in-world time (W10). Nothing in the engine
+   assumes a genre (G5).
 3. CI must be green before merging: `uv run ruff check .`, `uv run ruff format --check .` and
    `uv run pytest` in `backend/`; `dart format --set-exit-if-changed lib test`, `flutter analyze` and
    `flutter test` in `app/`. Add tests with each change.
