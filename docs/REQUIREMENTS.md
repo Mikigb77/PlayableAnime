@@ -24,19 +24,23 @@ code and this doc disagree, fix one of them in the same change.
 6. **The world doesn't wait for the player.** Things happen whether or not the player is there, and
    every story keeps moving, even a quiet one. There is no planned storyline: the plot is whatever
    the player and the world make of the situation.
+7. **Any world, one game.** A fantasy realm, a modern crime family or a starship crew: the world
+   decides what exists and what people can do, and the same rules run every story.
 
-Requirement ids (W1, C1, T1…) are stable, so threads and PRs can cite them. Priorities: **P0** = MVP,
-**P1** = soon after, **P2** = later. The E and N ids come from the
-[open-play critique](https://claude.ai/artifact/UHXgKEeybZKKC3SK4sznUP) (2026-11-03), which Miki
-accepted in full; E1 became W16.
+Requirement ids (W1, C1, T1…) are stable, so threads and PRs can cite them. Priorities: **P0** =
+MVP, **P1** = soon after, **P2** = later. Requirements say what the game must do. How each one is
+built (data, schema, prompts) is decided when that work starts, unless the doc marks it as decided,
+such as the stack in B1 to B12 (Miki, 2026-11-03). The E and N ids come from the [open-play
+critique](https://claude.ai/artifact/UHXgKEeybZKKC3SK4sznUP) (2026-11-03), which Miki accepted in
+full; E1 became W16.
 
 ## Player freedom and content limits
 
-In-fiction morality is the player's choice. Mature stories can hold gory superpowered violence, cruel
-villains, dark crimes and romance that fades out at the bedroom door, and the world reacts to all of
-it. Everything runs on Gemini, in the store apps, with no separate adult tier (decided 2026-11-03).
-The limits come from Google's model terms and the app stores. The system enforces them, and the
-narrator never moralizes.
+In-fiction morality is the player's choice. Mature stories can hold gory violence, superpowered or
+not, cruel villains, dark crimes and romance that fades out at the bedroom door, and the world
+reacts to all of it. Everything runs on Gemini, in the store apps, with no separate adult tier
+(decided 2026-11-03). The limits come from Google's model terms and the app stores. The system
+enforces them, and the narrator never moralizes.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
@@ -69,12 +73,365 @@ Why the lines are where they are:
 - **The app stores.** [Apple 1.1.4](https://developer.apple.com/app-store/review/Guidelines/) bans
   explicit sexual descriptions "intended to stimulate erotic rather than aesthetic or emotional
   feelings". Apple 1.1.2 bans "realistic portrayals of people … being killed, maimed, tortured", but
-  17+ apps and games with intense violence are allowed, and stylised superpowered fiction fits there.
-  Store screenshots and the icon must stay 4+ (2.3.8).
-  [Google Play](https://support.google.com/googleplay/android-developer/answer/14094294) bans AI apps
+  17+ apps and games with intense violence are allowed, and stylised superpowered fiction fits
+  there. Grounded stories, such as a mafia shooting, are where 1.1.2 bites hardest, so images stay
+  mild in every genre and T15's content-line cases include a grounded story. The same guideline says
+  "enemies" in a game "cannot solely target a specific race, culture, real government, corporation,
+  or any other real entity", which is why stories use fictional people and organisations (G12).
+  Store screenshots and the icon must stay 4+ (2.3.8). [Google
+  Play](https://support.google.com/googleplay/android-developer/answer/14094294) bans AI apps
   "primarily intended to be sexually gratifying".
 - **Testing.** Before launch, run a set of gory and romance test stories through Gemini (T15) to
   confirm that its filters draw the line where this table does.
+
+## Worlds, genres and characters
+
+A story can happen in any kind of world: a fantasy realm of dragons and mages, a modern city where
+you are a mafia boss's son hunting the rival inside the family who murdered your father, a far
+future of flying cars and starships, or a mix, such as a modern city with hidden magic. The player
+picks or describes the world, and the game works the same way in all of them. A character might
+throw fireballs and stop time, or might only be a good shot with a pistol and never see anything
+supernatural.
+
+**The flagship genre is fantasy with magic, monsters and power ladders** (Miki's favourite):
+oriental fantasy with cultivators, sects and ancient masters; medieval fantasy with knights,
+swordsmanship, aura, levels and huge power gaps; many races and monsters; and being reborn in a new
+world, with or without a special gift, which can be anything from a small edge to an overpowered
+power such as time stop. The starter premises lead with these (S1), the evals cover them in depth
+(T17), and G18 to G25 cover what they need. Everything else stays open, so a mafia vendetta or a
+quiet farming life works just as well.
+
+This section says what the game must do and how a story flows. How it is built is decided later
+(Miki, 2026-11-03). The few suggestions are marked as such and aren't decided.
+
+### How a story flows
+
+```mermaid
+flowchart LR
+  premise["Premise<br/>(a starter or one line · S1)"] --> world["World drafted<br/>(what is real, what never changes · G1)"]
+  world --> char["Character drafted<br/>(what they're made of · G2)"]
+  char --> review["Player reviews<br/>(changes anything, or just starts)"]
+  review --> turn["A turn<br/>(act, judge, time, world, narrate · G3)"]
+  turn -- next turn --> turn
+  turn --> long["Over many turns<br/>(growth, loss, the world moves · G4)"]
+  long --> turn
+```
+
+**G1 Setting up the world (P0).** The player picks a starter premise or writes their own, and one
+line is enough: "I'm the son of a mafia boss in 1970s Naples, and someone inside the family killed
+my father", or "I'm reborn as the weakest outer disciple of the Azure Cloud Sect, with my past
+life's memories and the power to stop time." The AI drafts the world from it (S1): genre and tone,
+what is real in it (G6), which rules never change (G7), places, factions and the factions inside
+them (G10), key NPCs with their temperaments and agendas (E3), the first clocks (E2), and the answer
+to any major mystery (N7). The player sees a short summary in plain words ("Grounded: no magic and
+nothing supernatural, and that won't change. Naples, 1974. The Esposito family has three crews, and
+its council picks the next boss in ten days." Or: "Cultivation world, realms from Qi Condensation to
+Nascent Soul and beyond. The Azure Cloud Sect, its outer and inner courts, and a ranking tournament
+in two days.") and can change any line, ask for something different, or just start. Whatever the
+character doesn't know stays hidden, such as who ordered the killing (C6). A player who wants to set
+everything by hand can open the advanced fields.
+
+**G2 Making the character (P0).** The AI drafts the opening character from the premise and the
+world, with the parts in G13, and shows it in the world's words (G16): "Luca Esposito, 24. Steady
+nerves, good with a pistol and a knife, a hot temper. No powers, since this world has none. His
+father's name, three loyal soldiers and a grudge." Or: "Lin Feng, 16. Third stage of Qi
+Condensation, the lowest in the outer court. A past life's memories, a calm temperament, and time
+stop that lasts three heartbeats." The player can change any of it: what they're good at, their
+temperament, their backstory and what they carry. A strong start is fine when the premise calls for
+it, such as the Demon Lord's right hand or the boss of a crime family, and the world reacts to that
+power from the first scene (W5). The story then opens on the premise's situation (N5).
+
+**G3 Every turn (P0).** Every turn goes through the same steps, in every genre. B5 says how the
+backend runs them; this is what the player and the world go through. The examples follow one turn
+of each story from G1 and G2, and the same steps run for a pilot dodging a patrol or a farmer facing
+a flood.
+
+| Step | What happens | Mafia story | Cultivation story |
+| --- | --- | --- | --- |
+| 1. The world catches up | Anything that fell due since the last turn happens first, in time order: rumors spread, clocks advance, factions move (W6, W10). | Overnight, word that Luca is back in Naples reached Carmine, the underboss. | Overnight, the ranking tournament's clock moved: it starts tomorrow. |
+| 2. The player acts | In free text or by picking a suggestion (S2). Anything can be tried. | "I walk into Carmine's bar and shoot him." | "When Senior Brother Zhao kicks my water bucket over again, I stop time and break his arm." |
+| 3. The game reads the action | What the character tries, how, against whom, what it uses from the sheet (G13), and how long it should take (W10). | An attack with a pistol on Carmine and his two bodyguards, taking seconds. | Time stop, then a strike at Zhao, who is a full realm above, taking three heartbeats for Lin Feng and none for the world. |
+| 4. The world's rules | Whether the world allows it (G8). If not, it plays as what it really is. | Allowed. A fireball would have been a man thrusting his palm at someone. | Allowed: time stop exists in this world, and Lin Feng has it. |
+| 5. The odds and the roll | What the character brings, set against what stands in the way, adjusted for preparation, allies and condition, makes the action trivial, contested, a long shot or ruled out (A2, A8, G14). A roll then decides, and any cost is paid: a power's toll, bullets, money, a favour (A3). | Pistol and nerve against two armed men on their own ground: a long shot. The roll leaves Carmine wounded and Luca getting away, but the bartender sees his face. | A straight strike at someone a realm above would be ruled out (G18), but Zhao is frozen and can't defend. The roll succeeds, and the stop leaves Lin Feng drained. |
+| 6. Time passes | The clock moves by how long the action really took. Anything due during it happens in order, and anything that needs the player cuts the action short (W10). | Three minutes. The bartender is already on the phone to Carmine's men (G6). | World: +0 s. Lin Feng: +3 heartbeats (W10a). |
+| 7. Something new, if it's time | The director decides whether an event comes in, drawing on the world's own state first and in the world's own form (W16, G9). It never interrupts an encounter with something unrelated. | Nothing new: the chase is the stakes. | The ripple of stopped time draws an inner-court elder who was passing. It comes from the encounter itself, so it can enter. |
+| 8. The narrator tells it | In the world's voice, with the outcome it was given (A3), ending on something the player can act on (S4). The reason shows in the scene details (A8). | A noir scene of the shot, the screaming and the alley, ending as headlights turn the corner behind him. | To the crowd, Zhao's arm simply snaps and he screams, while Lin Feng hasn't moved. |
+| 9. The world remembers | Deeds, witnesses, wounds, attitudes, what the character learned, and any growth or loss are kept (W1–W4, G17). The player sees only what their character knows (C6), in the world's words (G16). | Attempted murder, witnessed. Carmine wants Luca dead, two of the three crews now fear him, and the police will hear by morning. Luca knows only that he was seen. | A dozen disciples saw Zhao fall but not why (W10a, G20). Zhao has a grudge, and the elder is curious. Lin Feng knows the crowd saw nothing, but not that the elder felt it. |
+
+**G4 Over many turns (P0).**
+
+- **The character changes.** Skills grow with practice, teachers and time (A4), and things are lost
+  to wounds, age or a sealed power (G17), each with a reason in the story. Temperament drifts with
+  what the character does (G15): months after the bar, Luca can be a calmer man, a colder one or a
+  crueller one. Lin Feng can break through to Foundation Establishment (G19).
+- **The world moves on its own.** Clocks run, NPCs pursue their agendas, factions answer the
+  player's threat in their own ways (W5, W6, E2, E3), and events arrive when the story goes quiet
+  (W16). The council picks its boss on day ten, with or without Luca, and the tournament runs with
+  or without Lin Feng.
+- **The rules hold.** Rules that never change don't (G7). Open rules change only through a discovery
+  in the story, and then for everyone.
+- **The plot goes where the player takes it.** Luca's revenge can turn into a bid for the family, a
+  deal with the police or a new life abroad (N5, G11). Threads open and close, and arcs are named
+  afterwards (N1).
+
+Suggestions, not decided:
+
+- The world summary in G1 fits on one screen, and the player can ask for changes in plain words
+  ("add hidden vampires") instead of editing fields.
+- Skills use one ladder of words in every world (untrained, novice, fair, skilled, expert, master),
+  and the world's own ranks (made man, capo, boss) are kept for standing.
+- A "show numbers" option for players who want them, in any world (P2).
+
+### The world's rules
+
+**G5 Any genre, one game (P0).** Every story runs on the same rules for actions, consequences, time,
+events and memory (A, W, E, N and C), whatever its genre. A fantasy war, a mafia vendetta and a
+starship mutiny all get deeds that spread, factions that answer, clocks that run and events that
+arrive. Nothing in those rules assumes a genre: there is no mana, level, gun or starship unless the
+world has one. What changes from story to story is the world (G6), and the narration takes its voice
+from the world's tone: noir for a crime story, wonder for a space opera, dread for horror.
+
+**G6 Every world says what is real in it (P0).** The world bible (G1) states:
+
+- **Era and technology:** swords and sailing ships; pistols, cars and phones; flying cars, starships
+  and AI.
+- **What extraordinary things exist, and how common they are:** nothing at all (a grounded story),
+  hidden (a modern city with secret vampires), rare, or everywhere. This covers any kind: magic,
+  gods and spirits, psychic powers, cybernetics, superpowers, mutations, or an in-world "system"
+  with status windows and levels.
+- **Peoples and creatures:** which races and monsters exist, if any (G23, G24).
+- **How far each kind of ability can go** (A4). In a grounded world the limit is what a real person
+  could do: a marksman, a brilliant surgeon, a feared boss, never a fireball.
+- **How people and news travel** (W10): on foot and by messenger; by car, plane and phone, so a
+  witness can call the police within seconds; or by jump drive between star systems, with days of
+  travel and messages that lag.
+- **Medicine and death:** how wounds heal and how long that takes (healing magic, a hospital and
+  weeks of rest, a medbay), and whether anything can bring back the dead (C1).
+- **Laws, customs and who enforces them** (W11): a kingdom's guards, a city's police and courts, a
+  crime family's own code, a fleet's military law.
+
+**G7 Rules that never change, and open rules (P0).** Each rule in G6 is either fixed or open. A
+fixed rule holds for the whole story: a grounded mafia story never gets magic, however the plot
+turns, and a backstory claim (N4) can't add it, so "I'm secretly a wizard" is something the
+character believes or says. An open rule can be broken by a discovery made in the story (A4), such
+as a lost technology or a new law of magic, and then it changes for everyone in that world. By
+default, whether something extraordinary exists at all is fixed, and how far it can go is open. The
+player can see and change these when setting up the story (G1). After that, only a Sandbox story can
+change a fixed rule, as a logged retcon (C7).
+
+**G8 What the world rules out, nobody can do (P0).** An action the world rules out (A2) plays as
+what it really is. In a grounded story, "I throw a fireball" is a man thrusting his palm at someone,
+and the people around him react to that (A7). The scene's details give the reason ("there is no
+magic in this world", A8), and the narrator never lectures. The same goes for NPCs: nobody in a
+grounded world gets a power the world doesn't have.
+
+**G9 Events and consequences take the world's own form (P0).** The same kinds of event (E4) and
+faction response (W5) happen in every genre, in the shape the world gives them. In a mafia story, an
+arrival is a cousin from the old country, a disaster is a police raid, a betrayal is an informant, a
+bounty is a contract on your head, and discovery (W13) runs on forensics, cameras and phone records.
+In a space story, a disaster is a hull breach and the law is a fleet patrol. A grounded story never
+draws a dragon, just as a farming story never draws a demon invasion (W16).
+
+**G10 Factions within factions (P1).** A faction can sit inside a larger one: a crew inside a crime
+family, a noble house inside an empire, a ship inside a fleet, a clique inside an academy. Each has
+its own leaders, agenda and grudges (E3), so politics happens inside a family as well as between
+families. The player can rise through one, play its parts against each other, split it or take it
+over (N9).
+
+**G11 Mixed and shifting genres (P1).** Worlds can mix genres: a space western, a samurai drama with
+spirits, a mafia story in a city where vampires run the night clubs. The plot can change genre
+freely (N5), so a revenge story can become a political one and a heist can turn into a romance. The
+world's fixed rules (G7) don't change with it, so a grounded revenge story stays grounded.
+
+**G12 Real places, fictional people (P0).** A modern or historical story can use real cities, real
+history and real technology as its backdrop, but its people and organisations are fictional. No real
+living person and no real crime family, political party, company or government appears as a
+character or a faction. Historical figures who died long ago can appear in a historical story,
+within F3. This follows Apple 1.1.2 (see the ratings notes) and F3. Real-world know-how is told as
+an outcome, never as instructions: the character cooks a batch, hacks the bank or builds a bomb, and
+the narration says what happened, not how to do it (F3).
+
+### Characters
+
+The same description fits every character in every genre; only what it holds changes. A mafia boss's
+son, a court mage and a starship pilot are all described by the parts in G13. Key NPCs get the full
+description and minor ones a line or two (W15). Creatures, monsters and machines get whichever parts
+apply to them.
+
+**G13 What a character is made of (P0).**
+
+- **Attributes:** the basic capacities every person has. Body is strength, speed and toughness. Mind
+  is wits, knowledge and willpower. Presence is charm, nerve and how they come across. Every world
+  has attributes, grounded or not, and a world with superhumans lets them go past human limits (G6).
+- **Skills:** what the character has learned: shooting, knife work, swordsmanship, driving,
+  piloting, surgery, hacking, negotiation, lying, farming, leadership, and anything else the world
+  has. Skills are open-ended, never picked from a fixed list.
+- **Traits:** what makes the character unusual, gifts and flaws alike: a genius for machines, a
+  photographic memory, a copycat eye, a bad knee, a famous face, a fear of water. Traits can bend
+  the usual rules (A4).
+- **Powers:** extraordinary abilities, only where the world has them (G6): a fireball, time stop
+  (W10a), telepathy, cybernetic reflexes. Each has limits and a cost, such as exhaustion, a
+  cooldown, or a price in blood or years. Some are known to the world and some are secret.
+- **Disposition,** in two parts. **Temperament** is who they are: hot-headed or cold, loyal or
+  greedy, cautious or reckless, their values, what they love, fear and want, and how they talk.
+  **Attitude** is how they feel about particular people: affinity, fear and trust (W4).
+- **Resources and standing:** equipment and weapons, money, property, vehicles and ships, a title or
+  rank, a family name, reputation (W3), and connections: people who owe them, trust them or fear
+  them.
+- **Condition:** health and wounds, fatigue, hunger and stress, injuries that last (a lost eye), and
+  passing states such as drunk, poisoned, grieving or drained by a power. Each takes in-world time
+  to pass (W10).
+
+For example:
+
+- **A reborn cultivator:** a weak body at the third stage of Qi Condensation, a past life's
+  memories, a calm and patient temperament, time stop that lasts three heartbeats, and a fallen
+  clan's name that others sneer at.
+- **A mafia boss's son:** steady nerves, good with a pistol and a knife, a hot temper, no powers,
+  his father's name, three loyal soldiers and a grudge.
+- **A court mage:** a sharp mind, fire magic that tires her, a cautious temperament and a seat on
+  the council.
+- **A starship pilot:** quick reflexes, a gift for piloting, a gambler's streak, a ship with a debt
+  on it and a crew who trust her.
+
+**G14 Everything on the sheet counts (P0).** Any part of a character can matter in an action. A2, A3
+and A8 weigh what the character brings to that action against what stands in the way. A gunfight
+weighs shooting, nerve, the gun and the cover. A negotiation weighs charm, influence and the debts
+held. A fireball weighs the power and what it costs. The reasons the player sees use the world's own
+ranks and words (A8): "you're a made man and he's the boss's bodyguard: an outside chance".
+
+**G15 Disposition shapes characters but never takes control from the player (P0).** NPCs act from
+their temperament, attitudes and agendas (E3): a greedy capo can be bought and a loyal one can't,
+and a hot-headed one starts the war early. The player's character has a temperament too. It colours
+how others see them and can make some actions harder or easier (keeping calm under an insult is
+harder for a hot-headed character), but it never makes a choice for the player (principle 1).
+Temperament changes slowly through what the character does and lives through, always with a cause
+(C9): a soft-hearted character who keeps choosing cruelty hardens.
+
+**G16 The sheet speaks the world's language (P0, P1 for system worlds).** The player sees their own
+character through `/status` and the Memory screen in words that fit the world (a fair shot, an
+expert pilot, feared in three districts), not as numbers. In a world with an in-world system, such
+as an isekai with status windows, the sheet shows levels and numbers as part of the story (P1). The
+player sees other characters' abilities only as far as their character has seen or heard of them
+(C6): you don't know how good the rival is with a knife until you watch him use one, or someone
+tells you.
+
+**G17 Characters can lose things too (P1).** Besides growing (A4), a character can lose things: a
+crippling wound, old age, an addiction, a sealed power, a lost fortune, a disgraced name, a crew
+that deserts. Every loss has a cause in the story, like every gain (C1), and some can be won back.
+
+### The flagship: magic, monsters and power ladders
+
+These cover the flagship genre. They use the same rules as every other world (G5), and a world
+without a power ladder simply doesn't use them.
+
+**G18 Power ladders and power gaps (P0).** A world can have a ladder of power: cultivation realms
+(Qi Condensation, Foundation Establishment, Core Formation, Nascent Soul and beyond), aura ranks
+(squire, knight, aura master, sword saint), adventurer ranks or numbered levels. The ladder is part
+of what is real in the world (G6), and its rungs are the world's names for the tiers in A8. The gaps
+are large and felt. One realm up is a long shot at best. Two or more is ruled out in a straight
+fight unless something changes the odds: a power such as time stop, a trick, a treasure, or an
+opponent who is wounded or weakened (A8). Standing follows the ladder where the world says so: in a
+sect, a higher realm means a senior's respect, and a lower one means bowing. The player sees their
+rung in the world's words or, in a world with an in-world system, as levels and numbers (G16).
+
+**G19 Breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers. A breakthrough
+needs what the world says it needs: resources (spirit stones, pills, a beast core), insight, time in
+seclusion, a master's guidance, or a trial that can fail and wound, such as a heavenly tribulation.
+The attempt is a roll whose duration can also be an outcome (W10): a seclusion of a month or of
+three years. Seclusion is a time skip (E7) that the world can interrupt. A loud breakthrough, such
+as lightning over the mountain, is a public deed (W1, W2) that draws attention. Bottlenecks are
+real: a character can be stuck at a rung until they find what they lack (A4).
+
+**G20 Sensing and hiding power (P1).** Where the world allows it, characters sense each other's
+strength (a cultivator's pressure, the weight of an aura), but only up to about their own rung: a
+hidden elder looks like an ordinary old man. Characters can hide their strength, so NPCs judge by
+what they can perceive (C6, W8). When the truth comes out, attitudes and reputation change at once
+(W3, W4): the young master who mocked you goes pale, and the sect that ignored you sends an
+invitation. Revealing hidden strength in public is a deed that spreads (W1, W2).
+
+**G21 Reincarnation and transmigration (P1).** The player's character can come from somewhere else:
+reborn as a baby (with childhood as time skips, E7), waking in someone else's body, or summoned to
+another world. Waking in another body brings that body's past: relatives, debts, enemies and a
+reputation that others remember and the character doesn't (C6). The character keeps what they knew
+in their past life, and two kinds of knowledge need care:
+
+- **Know-how from our world**, such as gunpowder or double-entry bookkeeping, changes the new world
+  when it is used, and it is told as an outcome, not as instructions (G12).
+- **Knowledge of the future**, for a character who wakes inside a story they once read, starts out
+  true: the world's clocks and agendas (E2, E3) begin as the book described them. It goes stale as
+  the character changes things, just as a time loop diverges (W10a).
+
+**G22 Special gifts, up to overpowered (P1).** A gift is optional. A premise can grant none, a small
+edge (a nose for herbs, a feel for the wind), a rare talent, or something overpowered: time stop, a
+cheat "system", a talent of the highest grade, a sealed ancient soul. The player chooses how strong
+it is when making the character (G2). A strong gift is made fun rather than flat:
+
+- **It is really strong.** A8 counts it in full, and it wins fights it should win.
+- **It has limits that make choices interesting.** By default, time stop lasts three heartbeats and
+  needs a breath to recharge. The player can make the limits lighter or heavier (G2).
+- **The world answers it.** Others notice, covet, fear, worship or try to seal it (W5). Stronger
+  rungs and older monsters exist above the player (G18).
+- **Not every problem is a fight.** Politics, love, a sect's rules, a debt or a heart demon can't be
+  stopped with time stop, and the events the director draws reach every part of the character's life
+  (W16).
+
+**G23 Races and peoples (P1).** A world can have many races: humans, elves, dwarves, beastkin,
+demons, dragons in human form, spirits, or ones the world invents. Each one comes with:
+
+- **Body and gifts:** what it is naturally good or bad at, how long it lives, and what it can do
+  that others can't (G13): an elf's long life and feel for magic, a dwarf's endurance and craft, a
+  beastkin's senses.
+- **Culture:** its customs, laws and what it honours (W11), so the same deed can be a crime among
+  one people and a duty among another.
+- **Relations with the other races:** old wars, alliances, trade and prejudice. These set how
+  strangers of that race treat a character before they know them (W4): a human in an elven city is
+  watched. Prejudice is a fact of the world that the player can fight, use or share, and the
+  narrator never lectures about it (principle 1).
+- **Its own path on the ladder:** some races climb faster, start higher or have their own ways to
+  power (G18).
+
+The player can be any race the world has, of mixed blood, or a monster (G24). A long life changes
+how time plays: an elf can wait out a human dynasty (W10, E7). Races are fictional peoples, never a
+stand-in for a real-world ethnic group (G12).
+
+**G24 Monsters (P1).** Monsters are part of the world, not just enemies that turn up.
+
+- **They have a place on the ladder** (G18): a goblin is beneath a trained knight, and an ancient
+  dragon is several rungs above almost everyone.
+- **They live somewhere and want something.** Forests, dungeons, ruins and the deep sea have their
+  dangers, and crossing them is a risk (W7, W10). Strong monsters have agendas and clocks like key
+  NPCs (E2, E3): the dragon wakes, the beast tide comes every ten years, the demon king stirs.
+- **They are worth something.** Cores, hides, blood and bones feed breakthroughs, crafting and trade
+  (G19), so hunting has a reason and a market.
+- **Some can be talked to, tamed or bound:** a contracted beast, a familiar, a dragon who bargains.
+  A tamed monster is a companion with its own sheet and loyalty (W14).
+- **Killing them has consequences too.** A monster's mate, its pack or the sect that kept it can
+  come for revenge (W4), and wiping out a forest's monsters changes the forest (W7).
+
+A player can be reborn as a monster (G21), with that body's strengths and limits, and the world's
+fear of it.
+
+**G25 Swordsmanship, magic and techniques (P1).** Fighting and magic have depth beyond a rung on the
+ladder.
+
+- **Styles and techniques.** A sword school, a family spear art, a school of fire magic, a
+  cultivation method. Each has named techniques, learned in order from a master, a manual or by
+  watching (A4), and the world decides which are common and which are lost or forbidden. Each
+  technique has an effect, a cost (aura, qi, mana or stamina) and requirements (a rung, an affinity,
+  a weapon).
+- **Technique matters most within a gap.** Between characters on the same rung or one apart, skill,
+  style, knowing the opponent and the right technique shift the odds a lot (A3, A8). Across a large
+  gap, technique alone doesn't close it (G18), but a perfect counter can buy time or an escape.
+- **The world's fighting energy.** Aura, qi, mana or something else, with its own reserves and
+  recovery time (W10). A character who runs dry is weakened until it comes back (G13).
+- **Weapons and gear.** A famous sword, armour, a spirit treasure or a staff adds to what a
+  character brings (G14), and can be lost, stolen, broken or inherited. Legendary items have
+  histories, and people who want them.
+- **Talent and affinity.** A character's talent for a path (an affinity with fire, a born sword
+  body, blocked meridians) sets how fast they learn and how high they can go (A4, G18).
+- **Knights and orders.** Knightly orders, sword sects and mage towers are factions (W14, G10) with
+  oaths, ranks and codes. Breaking an oath is a deed (W1, W11).
 
 ## Actions and player power
 
@@ -83,10 +440,10 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| A1 | A player character sheet per story: identity, traits, powers or skills, their limits and costs, equipment, and wounds or HP. It is built from the premise at story start and stored in the world state. | P0 |
-| A2 | Every turn classifies the action as trivial, contested, long shot or impossible for the character as they stand. Trivial actions just happen. Contested ones can fail, partly succeed or cost something. Long shots have small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. Impossible is kept for what the world bible rules out, and is narrated as a failed attempt. | P0 |
+| A1 | A player character sheet per story, holding everything in G13: attributes, skills, traits, powers where the world has them (with their limits and costs), disposition, resources and standing, and condition. It is drafted from the premise at story start, and the player can change it before playing (G2). | P0 |
+| A2 | Every turn classifies the action as trivial, contested, long shot or impossible for the character as they stand. Trivial actions just happen. Contested ones can fail, partly succeed or cost something. Long shots have small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. Impossible is kept for what the world bible rules out, and is narrated as a failed attempt that plays as what it really is (G8). | P0 |
 | A3 | Outcomes are decided by the engine, not by the narrator's mood: a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. | P1 |
-| A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find. Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. | P1 |
+| A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. | P1 |
 | A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds in A3, not what the world remembers. | P1 |
 | A6 | The player can't write other characters' reactions or outcomes. "I kill him and everyone cheers" plays as an attempt to kill him, and the narrator decides how people react. | P0 |
 
@@ -101,14 +458,15 @@ state. The one exception is the player's own backstory (N4).
 **A8 Every outcome has a reason, and failure has consequences (P0).** Characters and creatures carry
 power on several axes (might, influence, wealth, knowledge, stealth) and a current condition
 (wounded, exhausted, weakened by a war among the gods) in the engine, so a schemer, a merchant or a
-cult leader has something to roll with, not just a fighter. A2 and A3 compare the gap on the axis the
-action uses, adjusted for condition, preparation, allies and items, and record the reason on the
-scene: "you are tier 1, the god is tier 9 but has lost most of its power: an
-outside chance". A newcomer swinging a sword at a full-strength god fails, and the god notices: the
-attempt is a deed (W1) with its own consequences. The same swing against a god left near death by its
-rivals can succeed. Failing is never just "nothing happens". It costs something or changes something:
-a wound, an enemy, a lost item, a lesson. Players can see the reasons with `/status`, or in the
-scene's details.
+cult leader has something to roll with, not just a fighter. What a character has on each axis comes
+from everything on their sheet (G13, G14), and a world's power ladder names the tiers (G18). A2 and
+A3 compare the gap on the axis the action uses, adjusted for condition, preparation, allies and
+items, and record the reason on the scene: "you are tier 1, the god is tier 9 but has lost most of
+its power: an outside chance". A newcomer swinging a sword at a full-strength god fails, and the god
+notices: the attempt is a deed (W1) with its own consequences. The same swing against a god left
+near death by its rivals can succeed. Failing is never just "nothing happens". It costs something or
+changes something: a wound, an enemy, a lost item, a lesson. Players can see the reasons with
+`/status`, or in the scene's details.
 
 ## World reactivity
 
@@ -159,11 +517,12 @@ in a trap. Nothing in the world is timed in turns.
 - **Consequences are scheduled at an in-world time, never after a number of turns.** Anything that
   will happen later is a pending event with a due time worked out from the world. A witness who
   flees has to reach the guard post (distance and speed), the guards have to hear the report and
-  gather, and then they have to travel. If the player spends the next 10 turns, about 3 in-world minutes,
-  brewing a potion and haggling, no guards arrive, because nobody has reported anything yet. The same
-  rule times rumors (W2), faction responses (W5), discovery (W13), revivals (W15a) and clocks (E2).
-  To make this possible, places record rough travel times to their neighbours (W7), and characters
-  record where they are (C2).
+  gather, and then they have to travel. In a world with phones (G6), the call takes seconds, but the
+  police still have to drive there. If the player spends the next 10 turns, about 3 in-world
+  minutes, brewing a potion and haggling, no guards arrive, because nobody has reported anything
+  yet. The same rule times rumors (W2), faction responses (W5), discovery (W13), revivals (W15a) and
+  clocks (E2). To make this possible, places record rough travel times to their neighbours (W7), and
+  characters record where they are (C2).
 - **Long actions are cut short by what happens during them.** When the clock jumps by a long stretch
   (8 hours of sleep, a week in the trap, a year of farming), the engine processes every pending event
   due in that stretch in time order. The first one that needs the player stops the action at that
@@ -221,9 +580,10 @@ story remembers them. A rewind inside the fiction is a deed with a cause, a cost
 remembers.
 
 **W11 World norms (P0).** The world bible sets the world's laws and customs: what counts as a crime,
-who enforces it, and how hard they try. A lawful kingdom hunts a murderer or a rapist, and a lawless
-wasteland may not care at all. Even then, victims, families and witnesses react as people, unless the
-setting truly makes the act normal there. Every crime against a person records a victim who
+who enforces it, and how hard they try. A lawful kingdom hunts a murderer or a rapist, a modern city
+has police, courts and officials who can be bought, a crime family has its own code, and a lawless
+wasteland may not care at all. Even then, victims, families and witnesses react as people, unless
+the setting truly makes the act normal there. Every crime against a person records a victim who
 remembers. Through W2 and W5 it can lead to someone noticing, an investigation, a bounty or personal
 revenge, so serious crimes are noticed sooner or later.
 
@@ -231,16 +591,17 @@ revenge, so serious crimes are noticed sooner or later.
 monstrous (killing children, sexual assault, massacres) raises fear and hostility faster, and spreads
 further, than a tavern brawl.
 
-**W13 Discovery without witnesses (P0).** A deed with no witnesses is secret, not forgotten. Each one
-records what it left behind: how connected the victims were (family, trade, a lord who will miss the
-taxes), physical traces (bodies, wounds only a power like yours makes, a burned town visible from the
-road), and any hidden survivor or magical means of finding out. The world tick (W6) rolls for
-discovery, with the odds set by those traces. When something is discovered, it starts **rumors that
-may be wrong**: the town "fell to a plague", "a monster did it", "the rival clan did it" (which can
-start a war between factions), or the truth, attached to the player. Each rumor records whether it is
-true and who believes it. The player can also cover their tracks or frame someone else, and either one
-is a deed too. A hermit with no ties, who leaves no trace, can vanish without anyone noticing, and
-that is a valid outcome.
+**W13 Discovery without witnesses (P0).** A deed with no witnesses is secret, not forgotten. Each
+one records what it left behind: how connected the victims were (family, trade, a lord who will miss
+the taxes), physical traces (bodies, wounds only a power like yours makes, a burned town visible
+from the road), and any hidden survivor or other means of finding out, magical or technical
+(scrying, forensics, cameras, phone records; G9). The world tick (W6) rolls for discovery, with the
+odds set by those traces. When something is discovered, it starts **rumors that may be wrong**: the
+town "fell to a plague", "a monster did it", "the rival clan did it" (which can start a war between
+factions), or the truth, attached to the player. Each rumor records whether it is true and who
+believes it. The player can also cover their tracks or frame someone else, and either one is a deed
+too. A hermit with no ties, who leaves no trace, can vanish without anyone noticing, and that is a
+valid outcome.
 
 **W14 Player-founded factions (P1).** The player can found a faction, such as a gang, a sect, a
 kingdom or a company, by recruiting members. It has a name, goals, territory, resources and a loyalty
@@ -322,9 +683,10 @@ own to ask for help, confess, betray or propose.
 **E4 Seeded event deck (P0 minimal, P1 full).** Code draws fresh events with a seeded roll from
 weighted tables: arrival, loss, windfall, disaster, temptation, betrayal, discovery, rival, a rumor
 about you. Weights come from the setting, the story's scale, the event-frequency setting, the
-switched-on themes (F7) and the player's wishes (N8). The narrator dresses the draw in the scene and
-reuses existing characters and threads before inventing new ones; new ones go through W15 with a
-recorded origin. The P0 version is one table per event size (personal, local, world).
+switched-on themes (F7) and the player's wishes (N8). The narrator dresses the draw in the world's
+own form (G9) and reuses existing characters and threads before inventing new ones; new ones go
+through W15 with a recorded origin. The P0 version is one table per event size (personal, local,
+world).
 
 **E5 One reaction loop for every actor (P1).** Deeds, rumors, reputation, grudges and discovery
 (W1–W4, W13) apply to NPC and faction deeds as well as the player's. An NPC who murders a rival gets
@@ -358,14 +720,15 @@ summons); they can expire and never overwrite goals.
 knows them. Deaths are confirmed or presumed (C1).
 
 **N4 Backstory claims (P1).** The player can state facts about their own character's past and inner
-life ("I have a sister in the capital", "I'm afraid of water"). If a claim doesn't contradict canon or
-grant power, the engine records it and the world can use it later. Claims about other people's
-reactions stay forbidden (A6, A7).
+life ("I have a sister in the capital", "I'm afraid of water"). If a claim doesn't contradict canon,
+grant power or break a fixed world rule (G7), the engine records it and the world can use it later.
+Claims about other people's reactions stay forbidden (A6, A7).
 
 **N5 The premise is a situation, not a script (P0).** A premise sets the opening situation and its
-first clocks (E2). The player can walk away from it, skip the exam and become a pirate. The premise's
-clocks keep running without them, and the story follows the player. The world bible's tone doesn't
-lock the genre, so a samurai drama can turn into a merchant story.
+first clocks (E2). The player can walk away from it, skip the exam and become a pirate. The
+premise's clocks keep running without them, and the story follows the player. The world bible's tone
+doesn't lock the genre, so a samurai drama can turn into a merchant story, but the world's fixed
+rules still hold (G7, G11).
 
 **N6 Endings, death and legacy (P1).** The player character can die on Balanced and Brutal. On
 Story, a fatal outcome becomes a defeat instead: captured, maimed, or rescued at a price. After a
@@ -384,7 +747,9 @@ of: rivals, romance, politics, mystery, a quiet life. Wishes weight W16's choice
 (E4). They never decide outcomes.
 
 **N9 Joining existing powers (P1).** Beyond founding a faction (W14), the player can join one, rise
-through its ranks, stage a coup or marry into a dynasty.
+through its ranks, stage a coup or marry into a dynasty. Factions can sit inside larger ones, such
+as a crew inside a crime family or an inner court inside a sect, so this works from inside too
+(G10).
 
 **N10 Masks and aliases (P2).** Deeds attach to the identity the player used. A masked vigilante
 builds the mask's reputation, and the world can link the mask to the player through discovery (W13).
@@ -404,7 +769,7 @@ the story does. Today's engine already covers C1 and part of C2.
 | C6 | **Player-visible memory shows only what the character knows** (decided by Miki 2026-11-03): their own deeds, people and places they have met, goals, and rumors they have heard, marked unconfirmed. Hidden world state (whether a rumor is true from W13, NPC trust from W4, faction plans from W6) stays off screen, except in a spoiler view after an arc ends. Facts carry a truth value and a list of who knows them, so the screen can filter by the player character's knowledge. | P0 |
 | C7 | **Editable memory, in two modes.** In **Canon** stories the player can pin, annotate and correct the narrator's misreadings of what their character knows, but never hidden state or world truth, so the editor can't undo consequences that A7 forbids through text. In **Sandbox** stories the player can edit anything, each edit is logged as a retcon, and the story is marked as Sandbox. All edits are logged so that support can explain odd behavior later. | P1 |
 | C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. The same versions back in-fiction world rewinds (W10a), which are different: the character remembers them. | P1 |
-| C9 | **Character consistency:** personality, speech style and appearance per character, kept in their entry and reused for portraits. Personality can change, but only through a recorded cause such as trauma, love or betrayal (C1). | P1 |
+| C9 | **Character consistency:** personality, speech style and appearance per character, kept in their entry and reused for portraits. Personality can change, but only through a recorded cause such as trauma, love or betrayal (C1), and the player's own temperament follows G15. | P1 |
 
 ## Story, play and app features
 
@@ -413,13 +778,13 @@ These are the parts of the product the player sees, most of them already listed 
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| S1 | Start from a starter premise or from one box of your own. The AI expands it into a world bible (setting, rules of power, laws and customs, factions, key NPCs, tone) and the player sheet, plus the premise's first clocks (E2). Advanced fields stay hidden unless asked for. The bible keeps growing as the player explores (N7). | P0 |
+| S1 | Start from a starter premise or from one box of your own. The AI expands it into a world bible (setting, what is real in the world and which rules never change, laws and customs, factions, key NPCs, tone) and the player sheet, plus the premise's first clocks (E2), following the flow in G1 and G2. Advanced fields stay hidden unless asked for. The bible keeps growing as the player explores (N7). Starter premises lead with the flagship genre (cultivation, knights and aura, magic, monsters and many races, reincarnation with or without a special gift) and also cover at least a grounded modern story, science fiction and a modern world with a hidden supernatural side. | P0 |
 | S2 | Free text is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
 | S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. | P1 |
-| S7 | Portraits for characters and occasional key scenes, generated once and reused. | P1 |
+| S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
 | S9 | Bring your own key (Gemini now, more providers later) alongside paid credits for everyone else. | P0 / P1 |
 | S10 | Spanish and English. | P1 |
@@ -477,6 +842,17 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Secret holds | A planted traitor | The betrayal isn't visible on the Memory screen or through `/thoughts` before it happens |
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | First session | A new account's first story, on the starter credit (K1) | At least one event the player didn't cause arrives before the credit runs out |
+| Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | It fails almost every time and the elder reacts to the insult. The same attack using time stop, or against a gravely wounded elder, can succeed (G18, A8) |
+| Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10) |
+| Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
+| Strong gift | A reborn character with time stop plays 50 turns | The gift wins the fights it should, the world notices and answers it, and at least one event with stakes can't be solved by fighting (G22) |
+| Race relations | A human walks into an elven city, then a beastkin enters a human town that once fought beastkin | Strangers react according to the races' history before they know the player, and that changes with what the player does (G23) |
+| Monster hunt | The player hunts a forest beast for its core, then passes through its territory again later | The core is worth what the world says, and the pack remembers (G24) |
+| Technique duel | Two swordsmen on the same rung, one with a counter to the other's style, over many seeds; then the same counter against someone two rungs up | The counter clearly shifts the odds between equals, and against the stronger foe it buys an escape at best (G25, G18) |
+| Grounded world | A mafia story in which the player tries to throw a fireball and claims to be a secret wizard | Nothing supernatural happens, the people present react to the gesture, the scene details give the reason, and nothing fantastic (magic, levels, monsters) appears in 50 turns (G7, G8) |
+| Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
+| Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
+| Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
 
 **T16 Sensitive data (P0).** Story text can reveal a player's sexual preferences, which GDPR treats as
 special-category data. It is encrypted at rest (Neon does this), never logged (T6), only staff
@@ -523,8 +899,8 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
    on in the PR description.
 2. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against `production`.
-3. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2) are enforced in backend code, with unit tests,
-   not only in the prompt.
+3. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18) are enforced in backend
+   code, with unit tests, not only in the prompt.
 4. CI must be green: ruff and pytest for the backend, and dart format, analyze and test for the app.
    Add tests with each change.
 5. Schema changes go in a new numbered migration. Never edit an applied migration.
@@ -555,4 +931,6 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |
+| Genres | Decided 2026-11-03: any genre, with fantasy with magic, monsters and power ladders as the flagship (cultivation, knights and aura, many races, reincarnation with an optional gift) | Done. See the worlds, genres and characters section (G1 to G25). |
+| Real people and organisations | Fictional only, or allow real public figures and organisations | Fictional only, with long-dead historical figures allowed in historical stories (G12). Real entities as enemies run into Apple 1.1.2. |
 | Image generator | See ARCHITECTURE.md | Vertex Gemini image model for portraits. No sexual images, and only mild gore in images. The text carries the graphic detail. |
