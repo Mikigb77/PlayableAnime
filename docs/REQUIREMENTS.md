@@ -703,12 +703,11 @@ sheet (A1, A4). NPCs can have them too.
     flying when time restarts, carries that force, so something set down gently stays where it is,
     unharmed. How much force is part of the world, which the engine decides without asking the player
     (Miki, 2026-11-03): a ceiling, by default that cannon shot, or no ceiling at all, so a thrown
-    pebble really arrives at close to the speed of light. A ceiling isn't a wall: a player who works
-    out a way past it that holds gets it (A9). A 100-gram pebble at 90% of
-    the speed of light hits like a three-megaton bomb. Without a ceiling the character is close to
-    unstoppable, and that becomes the story: the world fears, courts or tries to seal them (G22, W5),
-    and fights turn into choices about what they're willing to destroy. Either way, the rest follows
-    from the rule: the shot also smashes what is behind the target, the blast is seen and heard, so
+    pebble really arrives at close to the speed of light, and 100 grams at 90% of it hits like a
+    three-megaton bomb. Without a ceiling the character is close to unstoppable, and that becomes the
+    story: the world fears, courts or tries to seal them (G22, W5), and fights turn into choices about
+    what they're willing to destroy. A ceiling isn't a wall: a player who works out a way past it that
+    holds gets it (A9). Either way, the rest follows from the rule: the shot also smashes what is behind the target, the blast is seen and heard, so
     it starts rumors even when nobody saw who threw (W2, W13), and anything tougher than the hit,
     such as a body several rungs up or a protected treasure, survives it.
   - **Untouchable:** frozen things can't be moved or changed until time restarts, not even picked up,
