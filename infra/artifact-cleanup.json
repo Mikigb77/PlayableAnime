@@ -1,0 +1,12 @@
+[
+  {
+    "name": "keep-the-10-newest",
+    "action": { "type": "Keep" },
+    "mostRecentVersions": { "keepCount": 10 }
+  },
+  {
+    "name": "delete-the-rest-after-30-days",
+    "action": { "type": "Delete" },
+    "condition": { "tagState": "any", "olderThan": "30d" }
+  }
+]

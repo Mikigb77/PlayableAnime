@@ -76,3 +76,17 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+
+  # The deploy scripts and workflows (docs/DEPLOY.md). No credentials: gcloud, gh and curl are
+  # fakes in the tests, and the real gcloud runs offline and signed out to check every flag.
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -x infra/*.sh infra/tests/*.sh infra/tests/fakes/*
+      # Only the deploy workflow: the other workflows belong to other work and aren't held to it.
+      - run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/deploy.yml
+      - run: infra/tests/run.sh
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - run: infra/tests/check-gcloud-flags.sh

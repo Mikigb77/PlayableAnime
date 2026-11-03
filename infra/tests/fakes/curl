@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# A stand-in for curl in the infra tests. It answers $FAKE_HTTP_CODE (200 by default) and keeps
+# the arguments and the header file it was given.
+set -euo pipefail
+state="${FAKE_STATE:?FAKE_STATE is not set}"
+printf '%s\n' "$*" >>"$state/curl.log"
+output=/dev/null
+previous=''
+for arg in "$@"; do
+  case "$previous" in
+    --output) output="$arg" ;;
+    --header) [[ "$arg" == @* ]] && cp "${arg#@}" "$state/curl-headers" ;;
+  esac
+  previous="$arg"
+done
+printf '{"status": "fake"}' >"$output"
+printf '%s' "${FAKE_HTTP_CODE:-200}"

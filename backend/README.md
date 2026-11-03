@@ -149,5 +149,6 @@ them.
 
 Not deployed yet. Nothing goes public before auth (T8) and rate limits (T9). The image serves
 `uvicorn lucid.asgi:application --host 0.0.0.0 --port $PORT`; before each deploy, run
-`python manage.py migrate` from the same image with `DATABASE_URL` set to Neon's direct URL. WS5
-prepares the Cloud Run, Secret Manager and migration job setup in `infra/`.
+`python manage.py migrate` from the same image with `DATABASE_URL` set to Neon's direct URL. The
+pipeline that does both, its one-time setup, costs and rollback are in
+[docs/DEPLOY.md](../docs/DEPLOY.md).

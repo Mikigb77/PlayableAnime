@@ -1,0 +1,145 @@
+# Deploys the API to Cloud Run. Started by hand from main only (T13). See docs/DEPLOY.md.
+#
+# 1. CI must have passed on this exact commit.
+# 2. Sign in to Google Cloud through Workload Identity Federation, with no key (B11).
+# 3. Build the backend image once and push it to Artifact Registry.
+# 4. Run migrations as a Cloud Run job over the direct database URL (T2).
+# 5. Deploy the service to europe-west3 and move all traffic to it (T1, B10).
+# 6. Check /health, and roll traffic back to the previous revision if it fails.
+#
+# "Dry run" signs in, checks the setup and builds the image, then only prints steps 4 to 6.
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run (sign in, check and build, but push and deploy nothing)
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci-green:
+    name: CI passed on this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: infra/require-green-ci.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  deploy:
+    name: ${{ inputs.dry_run && 'Dry run' || 'Deploy' }}
+    needs: ci-green
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+          token_format: access_token
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Check the bootstrap
+        run: infra/deploy.sh preflight
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        if: ${{ !inputs.dry_run }}
+        with:
+          registry: ${{ steps.config.outputs.registry_host }}
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - id: build
+        name: Build the image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: backend
+          platforms: linux/amd64
+          push: ${{ !inputs.dry_run }}
+          provenance: false
+          tags: ${{ steps.config.outputs.image }}:${{ github.sha }}
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - id: image
+        name: Pin the image by digest
+        env:
+          IMAGE: ${{ steps.config.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          if [ -n "$DRY_RUN" ] || [ -z "$DIGEST" ]; then
+            echo "ref=$IMAGE:$GITHUB_SHA" >>"$GITHUB_OUTPUT"
+          else
+            echo "ref=$IMAGE@$DIGEST" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Run migrations
+        run: infra/deploy.sh migrate "$IMAGE_REF"
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+
+      - id: service
+        name: Deploy the service
+        run: infra/deploy.sh service "$IMAGE_REF"
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+
+      # Minted here, not earlier: a federated ID token lasts only 10 minutes.
+      - id: id_token
+        if: ${{ !inputs.dry_run }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.url }}
+          id_token_include_email: true
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - id: smoke
+        name: Check /health
+        if: ${{ !inputs.dry_run }}
+        run: infra/deploy.sh smoke "$SERVICE_URL"
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+          SMOKE_ID_TOKEN: ${{ steps.id_token.outputs.id_token }}
+
+      - name: Roll back to the previous revision
+        if: ${{ failure() && steps.smoke.outcome == 'failure' && steps.service.outputs.previous_revision != '' }}
+        run: infra/deploy.sh rollback "$PREVIOUS_REVISION"
+        env:
+          PREVIOUS_REVISION: ${{ steps.service.outputs.previous_revision }}
