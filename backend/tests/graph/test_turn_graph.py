@@ -416,12 +416,18 @@ def test_only_beats_that_found_something_new_are_explained(fake, make_client):
     the body add nothing to the scene's details or the narrator's outcome."""
     found = {
         "steps": [
-            {**SEARCH["steps"][0], "beats": [SEARCH["steps"][0]["beats"][0]]},
             {
-                **SEARCH["steps"][0],
+                "text": "crouch",
+                "verb": "crouch",
+                "kind": "instant",
+                "proposed_duration_s": 1,
+                "beats": [SEARCH["steps"][0]["beats"][0]],
+            },
+            {
                 "text": "pick up a stick",
-                "aim": "none",
-                "target_ids": [],
+                "verb": "pick up",
+                "kind": "instant",
+                "proposed_duration_s": 2,
                 "beats": [
                     {
                         "text": "pick up a stick",
@@ -439,6 +445,7 @@ def test_only_beats_that_found_something_new_are_explained(fake, make_client):
     _, result = play(make_client(), turn_input())
 
     steps = result.scene.model_dump(mode="json")["details"]["steps"]
+    assert [step["class"] for step in steps] == ["certain", "certain"]
     assert steps[0]["beats"] is None
     assert steps[1]["beats"] == [
         {
