@@ -138,7 +138,8 @@ together.
   background, so they still read cropped to a 28 px circle in a stack; in the feed a portrait is
   shown at most 280 px wide.
 - **Covers** leave calm, darker space in the lower third, where `CoverCard` sets the genre and title
-  over a scrim. In the Library they are a small 4:5 thumbnail.
+  over a scrim. In the Library they are a small 4:5 thumbnail; on Discover's shelf of more worlds
+  they show whole, in their own 3:4 shape.
 - **The house style (S7, M5)** suits the dark page: stylised and cinematic with an anime influence,
   painterly low-key light, deep ink shadows, atmospheric depth and a restrained palette with one
   strong accent, in the world's own era and look. No text, logos, panels or borders. Mild in every
@@ -175,6 +176,9 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 - Sentence case, plain words, full sentences. Say what happened and what to do next: "You're
   offline. Check your connection and try again."
 - Errors never show a status code or a stack trace (T7).
+- **A change says what it costs before the player makes it**, next to its button: "Free: nothing
+  needs redrafting", or which parts get redrafted with credits (K2). The create review does this
+  with `CostNote`, from the same rules the server uses.
 
 ## Accessibility
 

@@ -5,6 +5,9 @@ import 'package:playable_anime/core/api/turn_events.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/json.dart';
+import 'package:playable_anime/features/discover/premises.dart';
+import 'package:playable_anime/features/library/library.dart';
+import 'package:playable_anime/features/story/memory.dart';
 import 'package:playable_anime/features/story/story_models.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
 
@@ -16,6 +19,7 @@ void main() {
   late FakeBackend backend;
   late TestTokens tokens;
   late StoryRepository stories;
+  late LibraryRepository library;
 
   Future<JsonMap> signIn() async {
     final session =
@@ -39,6 +43,7 @@ void main() {
     backend = fake.backend;
     tokens = fake.tokens;
     stories = StoryRepository(api);
+    library = LibraryRepository(api);
   });
 
   group('auth', () {
@@ -96,23 +101,27 @@ void main() {
     setUp(signIn);
 
     test('lists premises with the flagship worlds first', () async {
-      final premises = await stories.premises();
-      expect(premises, hasLength(greaterThanOrEqualTo(4)));
+      final premises = [
+        for (final p in await api.get('/v1/premises') as List) Premise.fromJson(p as JsonMap),
+      ];
+      expect(premises, hasLength(11));
       expect(premises.take(4).every((p) => p.flagship), isTrue);
       expect(premises.first.coverUrl, startsWith('asset:'));
     });
 
     test('the demo account starts with a story in progress', () async {
-      final list = await stories.stories();
+      final list = await library.stories();
       final story = await stories.get(list.single.id);
       expect(story.scenes, hasLength(story.scenes.last.turn));
       expect(story.scenes.last.choices, isNotEmpty);
-      final memory = await stories.memory(story.id);
+      final memory = MemoryView.fromJson(
+        await api.get('/v1/stories/${story.id}/memory') as JsonMap,
+      );
       expect(memory.sections, isNotEmpty);
     });
 
     test('a turn streams words, then saves the scene and charges for it', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final before = await balance();
       final events = await collect(
         await stories.takeTurn(
@@ -138,7 +147,7 @@ void main() {
     });
 
     test('a stale version is a conflict that names the current one', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       await expectLater(
         stories.takeTurn(story.id, const TurnInput.standing('wait'), expectedVersion: 0),
         throwsA(
@@ -150,7 +159,7 @@ void main() {
     });
 
     test('a choice that is not offered is a validation error', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       await expectLater(
         stories.takeTurn(story.id, const TurnInput.choice('nope'), expectedVersion: story.version),
         throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
@@ -158,7 +167,7 @@ void main() {
     });
 
     test('out of credits stops the turn before it starts', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       await expectLater(
         stories.takeTurn(
           story.id,
@@ -174,7 +183,7 @@ void main() {
     });
 
     test('a storyteller failure mid-stream saves nothing', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
@@ -189,7 +198,7 @@ void main() {
     });
 
     test('a reset clears the words and the scene still completes', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
@@ -212,8 +221,9 @@ void main() {
       backend = fake.backend;
       api = own;
       stories = StoryRepository(own);
+      library = LibraryRepository(own);
       await signIn();
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final before = await balance();
       await collect(
         await stories.takeTurn(
@@ -247,11 +257,12 @@ void main() {
       tokens = TestTokens();
       api = ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend, tokens: tokens);
       stories = StoryRepository(api);
+      library = LibraryRepository(api);
       await signIn();
     });
 
     test('a fight plans a picture that is painted after the text and charged once', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
@@ -279,7 +290,7 @@ void main() {
     });
 
     test('a scene without a planned picture is skipped', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
@@ -295,7 +306,7 @@ void main() {
     });
 
     test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
-      final story = await stories.get((await stories.stories()).single.id);
+      final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
@@ -362,7 +373,7 @@ void main() {
     final scene = Scene.fromJson((events.last as SceneCompleted).scene);
     expect(scene.turn, 1);
     expect(scene.choices, isNotEmpty);
-    expect((await stories.stories()).map((s) => s.id), contains(id));
+    expect((await library.stories()).map((s) => s.id), contains(id));
   });
 
   test('an unknown route is not found', () async {

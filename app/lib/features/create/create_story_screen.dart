@@ -2,177 +2,221 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/api/api_error_text.dart';
 import '../../core/l10n.dart';
 import '../../core/navigation.dart';
 import '../../design/design.dart';
-import '../story/story_models.dart';
-import '../story/story_repository.dart';
-import '../voice/dictation_button.dart';
-import '../voice/input_mode.dart';
+import '../account/account_repository.dart';
+import '../discover/premises.dart';
+import '../library/library.dart';
+import 'create_flow.dart';
+import 'draft.dart';
+import 'draft_repository.dart';
+import 'draft_review.dart';
+import 'draft_widgets.dart';
+import 'drafting_view.dart';
+import 'premise_step.dart';
 
-/// Starts a new story, from a Discover premise or the player's own idea, which they can type or
-/// dictate (V1). The create work (WS15) turns this into the drafting flow (G1, G2).
+/// A new story (G1, G2, S1): a premise from Discover or the player's own idea, then the drafted
+/// world and character to review, change and start. Starting opens the play screen, which plays
+/// the opening scene.
 class CreateStoryScreen extends ConsumerStatefulWidget {
-  const CreateStoryScreen({super.key, this.premise});
+  const CreateStoryScreen({super.key, this.premise, this.premiseId});
 
+  /// The starter, when Discover passed it along.
   final Premise? premise;
+
+  /// The starter's id, from the link, for when the starter itself didn't come along (a reload).
+  final String? premiseId;
 
   @override
   ConsumerState<CreateStoryScreen> createState() => _CreateStoryScreenState();
 }
 
 class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
-  late final _title = TextEditingController(text: widget.premise?.title);
-  late final _premise = TextEditingController(text: widget.premise?.premise);
-  late final _premiseMode = InputModeTracker(_premise);
-  bool _busy = false;
-  Object? _error;
+  late final _flow = CreateFlow(
+    ref.read(draftRepositoryProvider),
+    // Drafting spends credits: the balance shown elsewhere is read again (K2).
+    onCharged: () {
+      if (mounted) ref.read(meProvider.notifier).refreshQuietly();
+    },
+  );
+
+  /// The premise step's words and choices, kept here so a failed draft returns to them.
+  PremiseForm? _form;
 
   @override
   void dispose() {
-    _premiseMode.dispose();
-    _title.dispose();
-    _premise.dispose();
+    _flow.dispose();
+    _form?.dispose();
     super.dispose();
   }
 
+  /// Back from a link with nothing under it goes to Discover, asking first like a pop would.
+  Widget? _back(BuildContext context) {
+    if (GoRouter.of(context).canPop()) return null;
+    return BackButton(
+      onPressed: () async {
+        if (_flow.hasUnsavedDraft && !await _confirmLeave()) return;
+        if (context.mounted) context.go('/discover');
+      },
+    );
+  }
+
+  /// Drafts what the premise step holds. Out of credits offers the player's own key, and drafts
+  /// again on it once they add one (K2, K6).
+  Future<void> _draft(Premise? starter) async {
+    final form = _form!;
+    final text = form.text.text.trim();
+    // The starter's own words go by id, so the draft keeps them word for word.
+    final own = starter == null || normalizeLine(text) != normalizeLine(starter.premise);
+    await _flow.create(
+      premise: own ? text : null,
+      premiseId: starter?.id,
+      quote: text,
+      rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : form.rating,
+      choices: DraftChoices(
+        physics: form.physics,
+        giftStrength: form.gift,
+        difficulty: form.difficulty,
+        eventFrequency: form.events,
+      ),
+    );
+    if (mounted && await offerOwnKey(context, _flow.error) && mounted) await _draft(starter);
+  }
+
   Future<void> _start() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final story = await ref
-          .read(storyRepositoryProvider)
-          .create(premise: _premise.text.trim(), title: _title.text.trim());
-      ref.invalidate(storiesProvider);
-      if (mounted) context.pushReplacement('/story/${story.id}', extra: story);
-    } catch (e) {
-      if (mounted) setState(() => _error = e);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    final storyId = await _flow.start();
+    if (storyId == null || !mounted) return;
+    ref.invalidate(storiesProvider);
+    context.pushReplacement('/story/${Uri.encodeComponent(storyId)}');
+  }
+
+  Future<bool> _confirmLeave() async {
+    final l10n = context.l10n;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.reviewLeaveTitle),
+        content: Text(l10n.reviewLeaveBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.reviewLeaveStay),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.reviewLeave),
+          ),
+        ],
+      ),
+    );
+    return leave ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
+    final id = widget.premise?.id ?? widget.premiseId;
+    if (widget.premise == null && id != null) {
+      // Opened from a link: find the starter first. An unknown one starts from a blank page.
+      return ref
+          .watch(premiseProvider(id))
+          .when(
+            skipLoadingOnRefresh: true,
+            data: (starter) => _screen(context, starter),
+            error: (_, _) => _screen(context, null),
+            loading: () => _Loading(label: context.l10n.createLoadingStarter),
+          );
+    }
+    return _screen(context, widget.premise);
+  }
+
+  Widget _screen(BuildContext context, Premise? starter) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = context.lucid;
-    final premise = widget.premise;
-    return StoryTheme(
-      genre: premise?.genre,
-      child: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            leading: backOr(context, '/discover'),
-            title: Text(premise == null ? l10n.createNewTitle : l10n.createStartTitle),
-          ),
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(Space.gutter, Space.sm, Space.gutter, Space.xxl),
-              children: [
-                ContentColumn.reading(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (premise != null) ...[
-                        PictureSlot(
-                          status: premise.coverUrl == null
-                              ? PictureStatus.skipped
-                              : PictureStatus.ready,
-                          url: premise.coverUrl,
-                          aspectRatio: 21 / 9,
-                        ),
-                        const SizedBox(height: Space.xl),
-                        Text(premise.genre.toUpperCase(), style: context.lucidText.overline),
-                        const SizedBox(height: Space.xs),
-                      ],
-                      Text(
-                        premise?.title ?? l10n.createHeading,
-                        style: theme.textTheme.headlineLarge,
+    return ListenableBuilder(
+      listenable: _flow,
+      builder: (context, _) {
+        final stage = _flow.stage;
+        final genre = _flow.draft?.genre ?? starter?.genre;
+        return PopScope(
+          canPop: !_flow.hasUnsavedDraft,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop) return;
+            final navigator = Navigator.of(context);
+            if (await _confirmLeave()) navigator.pop();
+          },
+          child: StoryTheme(
+            genre: genre,
+            child: Builder(
+              builder: (context) => Scaffold(
+                appBar: AppBar(
+                  leading: _back(context),
+                  title: Text(switch (stage) {
+                    CreateStage.review => l10n.reviewTitle,
+                    _ when starter != null => l10n.createStartTitle,
+                    _ => l10n.createNewTitle,
+                  }),
+                ),
+                body: SafeArea(
+                  bottom: stage != CreateStage.review,
+                  child: AnimatedSwitcher(
+                    duration: Motion.of(context, Motion.slow),
+                    switchInCurve: Motion.standard,
+                    switchOutCurve: Motion.exit,
+                    child: switch (stage) {
+                      CreateStage.premise => PremiseStep(
+                        key: const ValueKey(CreateStage.premise),
+                        flow: _flow,
+                        form: _form ??= PremiseForm(premise: starter?.premise),
+                        onDraft: () => _draft(starter),
+                        starter: starter,
                       ),
-                      const SizedBox(height: Space.sm),
-                      Text(
-                        premise?.tagline ?? l10n.createSubheading,
-                        style: theme.textTheme.bodyLarge!.copyWith(color: colors.textSecondary),
+                      CreateStage.drafting => DraftingView(
+                        key: const ValueKey(CreateStage.drafting),
+                        premise: _flow.draftingPremise ?? '',
                       ),
-                      const SizedBox(height: Space.xl),
-                      TextField(
-                        controller: _premise,
-                        minLines: 5,
-                        maxLines: 12,
-                        textCapitalization: TextCapitalization.sentences,
-                        style: context.lucidText.narration.copyWith(fontSize: 17),
-                        decoration: InputDecoration(
-                          labelText: l10n.createPremiseLabel,
-                          hintText: l10n.createPremiseHint,
-                          alignLabelWithHint: true,
-                          suffixIcon: Align(
-                            alignment: Alignment.topRight,
-                            widthFactor: 1,
-                            heightFactor: 1,
-                            child: DictationButton(tracker: _premiseMode),
-                          ),
-                        ),
+                      CreateStage.review => DraftReview(
+                        key: const ValueKey(CreateStage.review),
+                        flow: _flow,
+                        starter: starter,
                       ),
-                      const SizedBox(height: Space.lg),
-                      TextField(
-                        controller: _title,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: InputDecoration(labelText: l10n.createTitleLabel),
-                      ),
-                      if (_error case final error?) ...[
-                        const SizedBox(height: Space.lg),
-                        Text(
-                          describeError(l10n, error).message,
-                          style: theme.textTheme.bodyMedium!.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: Space.xl),
-                      ListenableBuilder(
-                        listenable: _premise,
-                        builder: (context, _) {
-                          final short = _premise.text.trim().length < 10;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              FilledButton.icon(
-                                onPressed: _busy || short ? null : _start,
-                                icon: _busy
-                                    ? SizedBox.square(
-                                        dimension: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: colors.onAccent,
-                                        ),
-                                      )
-                                    : const Icon(Icons.play_arrow_rounded),
-                                label: Text(l10n.createBegin),
-                              ),
-                              if (short && _premise.text.isNotEmpty) ...[
-                                const SizedBox(height: Space.sm),
-                                Text(
-                                  l10n.createTooShort,
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ],
-                            ],
-                          );
-                        },
-                      ),
-                    ],
+                    },
                   ),
                 ),
-              ],
+                bottomNavigationBar: stage == CreateStage.review
+                    ? StartBar(flow: _flow, onStart: _start)
+                    : null,
+              ),
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(leading: backOr(context, '/discover')),
+    body: Semantics(
+      label: label,
+      child: const ContentColumn.reading(
+        child: Padding(
+          padding: EdgeInsets.all(Space.gutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SkeletonBox(height: 180, radius: Radii.md),
+              SizedBox(height: Space.xl),
+              SkeletonText(lines: 4),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

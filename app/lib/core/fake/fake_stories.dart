@@ -51,8 +51,6 @@ class FakeStory {
     'world_time_label': fakeWorldLabel(worldS),
     'cover_url': coverUrl,
     'updated_at': updatedAt.toUtc().toIso8601String(),
-    // Legacy field the current app still reads; the library work (WS15) drops it.
-    'premise': premise,
   };
 
   JsonMap toJson({int last = 20, bool allScenes = false}) => {
@@ -144,8 +142,9 @@ void registerStoryRoutes(FakeBackend b) {
   });
 
   b.route('GET', '/v1/stories/:id/memory', (r) {
-    stories.get(r.param('id'), r.userId!);
-    return FakeResponse.json(_seedMemory);
+    final story = stories.get(r.param('id'), r.userId!);
+    if (story.id == 'story_ninth_peak') return FakeResponse.json(_seedMemory);
+    return FakeResponse.json(_newMemory(b.data.drafts.byStory[story.id]));
   });
 
   b.route('GET', '/v1/stories/:id/status', (r) {
@@ -168,42 +167,6 @@ void registerStoryRoutes(FakeBackend b) {
         {'text': 'Elder Wen\'s verdict', 'ago_label': '6 hours ago'},
       ],
     });
-  });
-
-  // Legacy: today's backend creates a story straight from a premise. The create work (WS15) moves
-  // the app to drafts and deletes this route.
-  b.route('POST', '/v1/stories', (r) {
-    final premise = (r.json['premise'] as String? ?? '').trim();
-    if (premise.length < 10) throw const FakeError.validation('Write a little more.');
-    final story = stories.add(
-      FakeStory(
-        id: b.data.id('story'),
-        ownerId: r.userId!,
-        title: (r.json['title'] as String?)?.trim().isNotEmpty ?? false
-            ? (r.json['title'] as String).trim()
-            : premise.split(RegExp(r'[.!?]')).first.split(' ').take(5).join(' '),
-        genre: 'Your own',
-        premise: premise,
-        updatedAt: b.now(),
-        coverUrl: FakeAssets.forest,
-      ),
-    );
-    story.scenes.add({
-      'turn': 1,
-      'kind': 'opening',
-      'narration': premise,
-      'choices': [
-        {'id': 'c1', 'label': 'Look around', 'kind': 'thread'},
-        {'id': 'c2', 'label': 'Think about how you got here', 'kind': 'personal'},
-      ],
-      'standing_actions': ['wait', 'observe'],
-      'time': {'world_start_s': 0, 'world_end_s': 0, 'label': fakeWorldLabel(0)},
-      'details': {'steps': <Object>[]},
-      'portraits': <Object>[],
-      'created_at': b.now().toUtc().toIso8601String(),
-    });
-    story.version = 1;
-    return FakeResponse.json(story.toJson(), status: 201);
   });
 }
 
@@ -353,11 +316,13 @@ List<JsonMap> _seedScenes() => <JsonMap>[
   },
 ];
 
+/// The seeded story's memory: only what Shen Yu knows (C6), worded as `engine.visibility` words it.
 const _seedMemory = <String, Object?>{
   'character': {
     'name': 'Shen Yu',
     'lines': [
       'Outer disciple of the Azure Cloud Sect, to be expelled at dawn.',
+      'Meridians cut, not shattered, says the voice in the scroll.',
       'Carries a sealed scroll that speaks.',
     ],
     'portrait_url': 'asset:assets/fake/portrait-3.jpg',
@@ -367,6 +332,7 @@ const _seedMemory = <String, Object?>{
       'id': 'voice',
       'name': 'The voice in the scroll',
       'lines': ['Claims to have been cast out of this sect nine hundred years ago.'],
+      'attitude_label': 'Curious about you',
       'portrait_url': 'asset:assets/fake/portrait-2.jpg',
       'status_label': 'Bound to the scroll',
     },
@@ -379,10 +345,24 @@ const _seedMemory = <String, Object?>{
       'status_label': 'Alive',
     },
     {
+      'id': 'gu',
+      'name': 'Old Gu',
+      'lines': ['Night warden of the library. Started his round early.'],
+      'attitude_label': 'Wary',
+      'portrait_url': 'asset:assets/fake/portrait-1.jpg',
+      'status_label': 'Alive',
+    },
+    {
       'id': 'wen',
       'name': 'Elder Wen',
       'lines': ['Signed your expulsion.'],
       'status_label': 'Alive',
+    },
+    {
+      'id': 'master-hu',
+      'name': 'Master Hu',
+      'lines': ['Your first teacher. Fell from the cliff path last winter, they say.'],
+      'status_label': 'Presumed dead',
     },
   ],
   'places': [
@@ -391,6 +371,11 @@ const _seedMemory = <String, Object?>{
       'name': 'The forbidden library',
       'lines': ['Lamps that burn without oil. Wards on every sealed text.'],
       'image_url': 'asset:assets/fake/scene-peaks.jpg',
+    },
+    {
+      'id': 'cliff-path',
+      'name': 'The cliff path',
+      'lines': ['The back way down the outer peak, unlit and unguarded.'],
     },
   ],
   'factions': [
@@ -406,6 +391,11 @@ const _seedMemory = <String, Object?>{
   ],
   'leads': [
     {'id': 'l1', 'text': 'The voice says the cut was careful', 'expires_label': null},
+    {
+      'id': 'l2',
+      'text': 'Senior Sister Lan will wait at her pavilion',
+      'expires_label': 'Until dawn',
+    },
   ],
   'rumors': [
     {
@@ -420,10 +410,23 @@ const _seedMemory = <String, Object?>{
       'id': 'd1',
       'text': 'Stole a sealed scroll from the forbidden library',
       'when_label': 'Day 1, dawn',
-      'known_label': 'The wards know. Nobody else, yet.',
+      'known_label': 'No one saw, as far as you know',
     },
   ],
   'threads': [
-    {'id': 't1', 'title': 'The voice in the scroll', 'status': 'active'},
+    {'id': 't1', 'title': 'The voice in the scroll', 'status': 'open'},
+    {'id': 't2', 'title': 'The ranking of the outer court', 'status': 'failed'},
   ],
 };
+
+/// A story just started from a draft knows only its character.
+JsonMap _newMemory(JsonMap? draft) {
+  final lines = [for (final line in draft?['character_lines'] as List? ?? const []) line as String];
+  final name = switch (lines.firstOrNull?.split(RegExp(r'[,.]')).first.trim()) {
+    final name? when name.isNotEmpty && name.split(' ').length <= 4 => name,
+    _ => 'You',
+  };
+  return {
+    'character': {'name': name, 'lines': lines},
+  };
+}

@@ -182,7 +182,7 @@ BYOK request is free (K6).
 | GET | `/v1/drafts/{id}` | | `Draft` |
 | PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
 | POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires") |
-| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
+| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings, expected_version?}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text
 Draft            {id, premise, premise_id?, rating, title, genre, tone,
@@ -225,7 +225,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
 - **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
   the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
-  returns the same story.
+  returns the same story. The app sends `expected_version` here as with every change; the server
+  doesn't check it on start yet.
 - **Real people (G12).** A premise, a revision's `instruction`, an edited summary line or a rule
   that names a real living person is refused before any model call, at no cost, with `400
   validation_error`: `details.fields` has the field (`premise`, `instruction`, `world_lines.3`,

@@ -270,13 +270,17 @@ void main() {
     await api.get('/v1/stories');
     await api.post('/v1/stories/s1/turns', {});
     await api.post('/v1/drafts', {});
+    await api.patch('/v1/drafts/d1', {});
+    await api.get('/v1/drafts/d1');
     await api.post('/v1/stories/s1/scenes/3/image', null);
     await api.post('/v1/stories/s1/scenes/3/report', {});
     await api.patch('/v1/me', {});
+    await api.patch('/v1/stories/s1', {});
     await api.post('/v1/auth/login', {}, authenticated: false);
     expect(keyed, [
       'POST /v1/stories/s1/turns',
       'POST /v1/drafts',
+      'PATCH /v1/drafts/d1',
       'POST /v1/stories/s1/scenes/3/image',
     ]);
   });

@@ -1,6 +1,7 @@
 /// Client models for stories. They read the v1 contract (docs/API.md) and, until the backend moves
 /// over (WS1, WS3), the legacy payloads of today's FastAPI backend, so the app works against both.
-/// The play screen work (WS14) and the library work (WS15) replace these with full v1 models.
+/// The play screen work (WS14) replaces these with full v1 models. Premises, the library's
+/// summaries and memory have their own models in `discover/`, `library/` and `story/memory.dart`.
 library;
 
 import '../../core/json.dart';
@@ -15,66 +16,6 @@ List<String> _strings(Object? json) => [
   for (final item in json as List? ?? const [])
     if (item is String) item else if (item is Json) (item['text'] ?? item['title'] ?? '') as String,
 ];
-
-class Premise {
-  const Premise({
-    required this.id,
-    required this.title,
-    required this.genre,
-    required this.premise,
-    this.tagline,
-    this.flagship = false,
-    this.coverUrl,
-  });
-
-  factory Premise.fromJson(Json json) => Premise(
-    id: json['id'] as String,
-    title: json['title'] as String,
-    genre: json['genre'] as String? ?? '',
-    premise: json['premise'] as String,
-    tagline: json['tagline'] as String?,
-    flagship: json['flagship'] as bool? ?? false,
-    coverUrl: json['cover_url'] as String?,
-  );
-
-  final String id;
-  final String title;
-  final String genre;
-  final String premise;
-  final String? tagline;
-  final bool flagship;
-  final String? coverUrl;
-}
-
-class StorySummary {
-  const StorySummary({
-    required this.id,
-    required this.title,
-    required this.turn,
-    this.genre = '',
-    this.premise,
-    this.worldTimeLabel,
-    this.coverUrl,
-  });
-
-  factory StorySummary.fromJson(Json json) => StorySummary(
-    id: json['id'] as String,
-    title: json['title'] as String,
-    turn: (json['turn'] as num? ?? 0).toInt(),
-    genre: json['genre'] as String? ?? '',
-    premise: json['premise'] as String?,
-    worldTimeLabel: json['world_time_label'] as String?,
-    coverUrl: json['cover_url'] as String?,
-  );
-
-  final String id;
-  final String title;
-  final int turn;
-  final String genre;
-  final String? premise;
-  final String? worldTimeLabel;
-  final String? coverUrl;
-}
 
 class Choice {
   const Choice({required this.id, required this.label, this.kind = 'thread'});
@@ -255,139 +196,6 @@ class Story {
 
   Story withScene(Scene scene, {required int version, String? clockLabel}) =>
       copyWith(scenes: [...scenes, scene], version: version, clockLabel: clockLabel);
-}
-
-/// One entry on the memory screen.
-class MemoryItem {
-  const MemoryItem({
-    required this.title,
-    this.lines = const [],
-    this.trailing,
-    this.imageUrl,
-    this.muted = false,
-  });
-
-  final String title;
-  final List<String> lines;
-  final String? trailing;
-  final String? imageUrl;
-
-  /// Struck through: a dead character or a destroyed faction.
-  final bool muted;
-}
-
-enum MemorySectionKind {
-  you,
-  people,
-  places,
-  factions,
-  goals,
-  leads,
-  rumors,
-  deeds,
-  threads,
-  summary,
-  facts,
-}
-
-class MemorySection {
-  const MemorySection(this.kind, this.items);
-
-  final MemorySectionKind kind;
-  final List<MemoryItem> items;
-}
-
-/// What the character knows (C6): the v1 `MemoryView`, or today's backend's world state.
-class MemoryData {
-  const MemoryData(this.sections);
-
-  factory MemoryData.fromJson(Json json) =>
-      json.containsKey('people') || json.containsKey('character')
-      ? _fromView(json)
-      : _fromLegacy(json);
-
-  static MemoryData _fromView(Json json) {
-    MemoryItem entity(Json e, {String? trailingKey, String? imageKey}) => MemoryItem(
-      title: e['name'] as String? ?? e['text'] as String? ?? e['title'] as String? ?? '',
-      lines: _strings(e['lines']),
-      trailing: trailingKey == null ? null : e[trailingKey] as String?,
-      imageUrl: imageKey == null ? null : e[imageKey] as String?,
-      muted: (e['status_label'] as String? ?? '').toLowerCase() == 'dead',
-    );
-    final character = json['character'] as Json?;
-    return MemoryData([
-      if (character != null)
-        MemorySection(MemorySectionKind.you, [entity(character, imageKey: 'portrait_url')]),
-      MemorySection(MemorySectionKind.goals, [
-        for (final g in json['goals'] as List? ?? const [])
-          MemoryItem(title: (g as Json)['text'] as String),
-      ]),
-      MemorySection(MemorySectionKind.people, [
-        for (final p in json['people'] as List? ?? const [])
-          entity(p as Json, trailingKey: 'attitude_label', imageKey: 'portrait_url'),
-      ]),
-      MemorySection(MemorySectionKind.places, [
-        for (final p in json['places'] as List? ?? const [])
-          entity(p as Json, imageKey: 'image_url'),
-      ]),
-      MemorySection(MemorySectionKind.factions, [
-        for (final f in json['factions'] as List? ?? const [])
-          entity(f as Json, trailingKey: 'standing_label'),
-      ]),
-      MemorySection(MemorySectionKind.leads, [
-        for (final l in json['leads'] as List? ?? const [])
-          MemoryItem(title: (l as Json)['text'] as String, trailing: l['expires_label'] as String?),
-      ]),
-      MemorySection(MemorySectionKind.rumors, [
-        for (final r in json['rumors'] as List? ?? const [])
-          MemoryItem(title: (r as Json)['text'] as String, lines: [?r['heard_label'] as String?]),
-      ]),
-      MemorySection(MemorySectionKind.deeds, [
-        for (final d in json['deeds'] as List? ?? const [])
-          MemoryItem(
-            title: (d as Json)['text'] as String,
-            lines: [?d['when_label'] as String?, ?d['known_label'] as String?],
-          ),
-      ]),
-      MemorySection(MemorySectionKind.threads, [
-        for (final t in json['threads'] as List? ?? const [])
-          MemoryItem(title: (t as Json)['title'] as String, trailing: t['status'] as String?),
-      ]),
-    ]);
-  }
-
-  static MemoryData _fromLegacy(Json json) => MemoryData([
-    MemorySection(MemorySectionKind.summary, [
-      if ((json['summary'] as String? ?? '').isNotEmpty)
-        MemoryItem(title: json['summary'] as String),
-    ]),
-    MemorySection(MemorySectionKind.goals, [
-      for (final g in _strings(json['goals'])) MemoryItem(title: g),
-    ]),
-    MemorySection(MemorySectionKind.people, [
-      for (final c in json['characters'] as List? ?? const [])
-        MemoryItem(
-          title: (c as Json)['name'] as String,
-          lines: [if ((c['description'] as String? ?? '').isNotEmpty) c['description'] as String],
-          muted: c['status'] == 'dead',
-        ),
-    ]),
-    MemorySection(MemorySectionKind.factions, [
-      for (final f in json['factions'] as List? ?? const [])
-        MemoryItem(
-          title: (f as Json)['name'] as String,
-          lines: [if ((f['description'] as String? ?? '').isNotEmpty) f['description'] as String],
-          trailing: f['stance'] as String?,
-          muted: f['stance'] == 'destroyed',
-        ),
-    ]),
-    MemorySection(MemorySectionKind.facts, [
-      for (final f in (json['facts'] as List? ?? const []).reversed)
-        MemoryItem(title: (f as Json)['text'] as String),
-    ]),
-  ]);
-
-  final List<MemorySection> sections;
 }
 
 /// The `/status` page (S5): the sheet, reputation and the date (docs/API.md `StatusView`).
