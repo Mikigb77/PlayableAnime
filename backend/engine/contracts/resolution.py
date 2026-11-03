@@ -11,7 +11,7 @@ from pydantic import Field
 
 from engine.base import EngineModel, Severity
 from engine.contracts.delta import StateDelta
-from engine.contracts.intent import OutcomeClass
+from engine.contracts.intent import OutcomeClass, UseSource
 from engine.state.records import RollRecord, StepResult, Trace, Visibility
 from engine.state.sheet import CostKind, Ruling
 
@@ -34,6 +34,26 @@ class LinkResolution(EngineModel):
     holds: bool
     roll: RollRecord | None = None
     takes_s: int = Field(default=0, ge=0)
+
+
+class BeatVerdict(StrEnum):
+    """R2. How a beat's use was checked."""
+
+    HOLDS = "holds"  # the body, a power, something carried, the scene or this turn's canon
+    MADE_CANON = "made_canon"  # something new the place plausibly holds, or a roll found it
+    EMPTY = "empty"  # a search that comes up empty or a thing not there: the step goes no further
+
+
+class BeatResolution(EngineModel):
+    """R2. One thing a beat uses, checked against the body, powers, what the character carries,
+    the scene and what this turn made canon."""
+
+    text: str = Field(description="The beat.")
+    thing: str = Field(description="What it uses, in plain words.")
+    source: UseSource
+    verdict: BeatVerdict
+    reason: str = ""
+    roll: RollRecord | None = Field(default=None, description="When the place might hold it.")
 
 
 class ProposedDeed(EngineModel):
@@ -77,6 +97,7 @@ class StepResolution(EngineModel):
     personal_s: int | None = Field(
         default=None, ge=0, description="The actor's lived seconds, when they differ (W10a)."
     )
+    beats: list[BeatResolution] = Field(default_factory=list, description="R2's beat check.")
     chain: list[LinkResolution] = Field(default_factory=list)
     stopped_at_link: int | None = None
     effects: StateDelta = Field(default_factory=StateDelta)
