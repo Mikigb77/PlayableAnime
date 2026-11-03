@@ -140,6 +140,7 @@ class _ReviewField extends StatelessWidget {
     this.hint,
     this.minLines = 2,
     this.autofocus = false,
+    this.errorText,
   });
 
   final InputModeTracker tracker;
@@ -148,6 +149,9 @@ class _ReviewField extends StatelessWidget {
   final String? hint;
   final int minLines;
   final bool autofocus;
+
+  /// The server's refusal of these words, such as a real person named (G12).
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) => TextField(
@@ -162,6 +166,8 @@ class _ReviewField extends StatelessWidget {
     decoration: InputDecoration(
       labelText: label,
       hintText: hint,
+      errorText: errorText,
+      errorMaxLines: 4,
       alignLabelWithHint: true,
       suffixIcon: Align(
         alignment: Alignment.topRight,
@@ -206,6 +212,11 @@ class _LineSheetState extends State<_LineSheet> {
   late final _tracker = InputModeTracker(_text);
   Object? _error;
 
+  /// The words last sent, so a refusal shows under them only while they are still there.
+  String? _sent;
+
+  String get _field => '${widget.part.wire}_lines.${widget.index}';
+
   @override
   void dispose() {
     _tracker.dispose();
@@ -225,6 +236,7 @@ class _LineSheetState extends State<_LineSheet> {
 
   Future<void> _save({bool remove = false}) async {
     final edit = _edit(remove: remove);
+    _sent = _text.text;
     final cost = redraftFor(widget.flow.draft!, edit);
     final failure = await _runChange(context, cost, () => widget.flow.edit(edit));
     if (mounted) setState(() => _error = failure);
@@ -241,7 +253,12 @@ class _LineSheetState extends State<_LineSheet> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ReviewField(tracker: _tracker, maxLength: DraftLimits.line, autofocus: true),
+            _ReviewField(
+              tracker: _tracker,
+              maxLength: DraftLimits.line,
+              autofocus: true,
+              errorText: _text.text == _sent ? fieldMessage(_error, _field) : null,
+            ),
             if (text.isEmpty)
               Text(
                 l10n.lineEmpty,
@@ -253,7 +270,7 @@ class _LineSheetState extends State<_LineSheet> {
               flow: widget.flow,
               cost: redraftFor(widget.flow.draft!, _edit()),
               label: l10n.save,
-              error: _error,
+              error: fieldMessage(_error, _field) == null ? _error : null,
               onSave: changed && text.isNotEmpty ? _save : null,
               secondary: widget.flow.draft!.linesOf(widget.part).length > 1
                   ? TextButton.icon(
@@ -303,6 +320,9 @@ class _ReviseSheetState extends State<_ReviseSheet> {
   late final _tracker = InputModeTracker(_text);
   Object? _error;
 
+  /// The words last sent, so a refusal shows under them only while they are still there.
+  String? _sent;
+
   Redraft get _cost =>
       Redraft(world: widget.part == DraftPart.world, character: widget.part == DraftPart.character);
 
@@ -315,6 +335,7 @@ class _ReviseSheetState extends State<_ReviseSheet> {
 
   Future<void> _save() async {
     final instruction = _text.text.trim();
+    _sent = instruction;
     final failure = await _runChange(
       context,
       _cost,
@@ -341,12 +362,13 @@ class _ReviseSheetState extends State<_ReviseSheet> {
             },
             minLines: 3,
             autofocus: true,
+            errorText: _text.text.trim() == _sent ? fieldMessage(_error, 'instruction') : null,
           ),
           _SheetActions(
             flow: widget.flow,
             cost: _cost,
             label: l10n.reviseAction,
-            error: _error,
+            error: fieldMessage(_error, 'instruction') == null ? _error : null,
             onSave: _text.text.trim().isEmpty ? null : _save,
           ),
         ],
@@ -456,6 +478,9 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
   late final List<_RuleField> _rules = [for (final rule in _start.rules) _RuleField(rule)];
   Object? _error;
 
+  /// The rules last sent, with their words then, to place a refusal under the one it is about.
+  List<(_RuleField, String)> _sent = const [];
+
   @override
   void dispose() {
     for (final rule in _rules) {
@@ -464,9 +489,15 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
     super.dispose();
   }
 
+  /// The rules to send: blank ones are left out, as the server refuses an empty rule.
+  List<_RuleField> get _kept => [
+    for (final rule in _rules)
+      if (normalizeLine(rule.text.text).isNotEmpty) rule,
+  ];
+
   /// Only what changed, so an untouched field never costs anything.
   DraftEdit get _edit {
-    final rules = [for (final rule in _rules) rule.rule];
+    final rules = [for (final rule in _kept) rule.rule];
     return DraftEdit(
       physics: _physics == _start.physics ? null : _physics,
       giftStrength: _gift == _start.giftStrength ? null : _gift,
@@ -503,9 +534,20 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
 
   Future<void> _save() async {
     final edit = _edit;
+    _sent = [for (final rule in _kept) (rule, rule.text.text)];
     final cost = redraftFor(widget.flow.draft!, edit);
     final failure = await _runChange(context, cost, () => widget.flow.edit(edit));
     if (mounted) setState(() => _error = failure);
+  }
+
+  /// The server's refusal of a rule's words (G12), while they are still there.
+  String? _refusalOf(_RuleField rule) {
+    for (final (i, (sent, text)) in _sent.indexed) {
+      if (sent == rule && rule.text.text == text) {
+        return fieldMessage(_error, 'advanced.rules.$i.text');
+      }
+    }
+    return null;
   }
 
   @override
@@ -513,6 +555,9 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = context.lucid;
+    final atRule = [
+      for (final (i, _) in _sent.indexed) fieldMessage(_error, 'advanced.rules.$i.text'),
+    ].nonNulls.isNotEmpty;
     return ListenableBuilder(
       // Rebuilt as rule texts change, so the cost stays right.
       listenable: Listenable.merge([for (final rule in _rules) rule.text]),
@@ -562,6 +607,7 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
               padding: const EdgeInsets.only(top: Space.md),
               child: _RuleEditor(
                 rule: rule,
+                errorText: _refusalOf(rule),
                 onFixed: (fixed) => setState(() => rule.fixed = fixed),
                 onRemove: () => _removeRule(rule),
               ),
@@ -581,7 +627,7 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
             flow: widget.flow,
             cost: redraftFor(widget.flow.draft!, _edit),
             label: l10n.save,
-            error: _error,
+            error: atRule ? null : _error,
             onSave: _changed ? _save : null,
           ),
         ],
@@ -591,9 +637,15 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
 }
 
 class _RuleEditor extends StatelessWidget {
-  const _RuleEditor({required this.rule, required this.onFixed, required this.onRemove});
+  const _RuleEditor({
+    required this.rule,
+    required this.onFixed,
+    required this.onRemove,
+    this.errorText,
+  });
 
   final _RuleField rule;
+  final String? errorText;
   final ValueChanged<bool> onFixed;
   final VoidCallback onRemove;
 
@@ -620,6 +672,8 @@ class _RuleEditor extends StatelessWidget {
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: l10n.ruleHint,
+              errorText: errorText,
+              errorMaxLines: 4,
               counterText: '',
               filled: false,
               border: InputBorder.none,

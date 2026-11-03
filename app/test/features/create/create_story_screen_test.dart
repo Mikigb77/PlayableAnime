@@ -190,6 +190,56 @@ void main() {
     );
   });
 
+  const realPerson =
+      'The person you named is a real person, and stories only have fictional people. '
+      'Try someone made up instead.';
+
+  testWidgets('a real person in the premise is refused under the box (G12)', (tester) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester, premise: 'I am the bodyguard of [fail:real_person] in Rome.');
+    expect(find.text(l10n.createHeading), findsOneWidget);
+    expect(find.text(realPerson), findsOneWidget);
+    expect(find.byType(InlineError), findsNothing);
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.decoration!.errorText, realPerson);
+
+    // Changing the words takes the refusal away.
+    await tester.enterText(find.byType(TextField).first, 'I am the bodyguard of a senator.');
+    await tester.pump();
+    expect(find.text(realPerson), findsNothing);
+  });
+
+  testWidgets('a refused rule shows under that rule, and blank rules are never sent', (
+    tester,
+  ) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    await scrollTo(tester, find.text(l10n.reviewAdvanced));
+    await tapAndSettle(tester, find.text(l10n.reviewAdvanced), frames: 6);
+
+    // A blank rule, then one naming a real person.
+    final add = inSheet(find.text(l10n.ruleAdd));
+    await tapAndSettle(tester, add, frames: 2);
+    await tapAndSettle(tester, add, frames: 2);
+    final rules = inSheet(find.widgetWithText(TextField, l10n.ruleHint));
+    await tester.enterText(rules.last, '[fail:real_person] rules the sea.');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(const Duration(seconds: 1));
+    expect(inSheet(find.text(l10n.costWorld)), findsOneWidget);
+    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+
+    final sent = app.sent('PATCH', (p) => p.startsWith('/v1/drafts/')).single.json;
+    final sentRules = (sent['advanced'] as Map)['rules'] as List;
+    expect(sentRules, hasLength(3));
+    expect(sentRules.last, {'text': '[fail:real_person] rules the sea.', 'fixed': true});
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.ensureVisible(inSheet(find.text(realPerson)));
+    expect(inSheet(find.text(realPerson)), findsOneWidget);
+    expect(inSheet(find.byType(InlineError)), findsNothing);
+  });
+
   testWidgets('a failed change keeps the sheet open with what was written', (tester) async {
     final app = AppHarness();
     await app.launch(tester, location: '/create');

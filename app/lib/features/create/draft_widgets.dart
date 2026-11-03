@@ -331,6 +331,33 @@ class CostNote extends StatelessWidget {
 
 /// A failure in the player's words, in place, with what to do next (T7). Out of credits points
 /// to Account, where the player can add their own key.
+/// The server's words about one field of a `validation_error`, such as a real person named in it
+/// (G12, docs/API.md): shown under that field as they are. Null when [error] says nothing about
+/// [field].
+String? fieldMessage(Object? error, String field) {
+  if (error case ApiException(code: ApiErrorCode.validationError, :final fields)) {
+    for (final entry in fields) {
+      if (entry case {
+        'field': final String f,
+        'message': final String message,
+      } when f == field && message.isNotEmpty) {
+        return message;
+      }
+    }
+  }
+  return null;
+}
+
+/// A real person named somewhere in a change (G12): the server's message, which names who.
+String? _realPerson(Object error) {
+  if (error case ApiException(code: ApiErrorCode.validationError, :final fields)) {
+    for (final entry in fields) {
+      if (entry case {'type': 'real_person', 'message': final String message}) return message;
+    }
+  }
+  return null;
+}
+
 class InlineError extends StatelessWidget {
   const InlineError(this.error, {super.key});
 
@@ -340,7 +367,11 @@ class InlineError extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final copy = describeError(context.l10n, error);
+    final described = describeError(context.l10n, error);
+    final copy = switch (_realPerson(error)) {
+      final message? => (title: described.title, message: message),
+      null => described,
+    };
     final outOfCredits = switch (error) {
       ApiException(code: ApiErrorCode.outOfCredits) => true,
       _ => false,

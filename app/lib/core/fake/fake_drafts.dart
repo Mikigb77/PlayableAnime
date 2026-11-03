@@ -13,7 +13,8 @@ import 'fake_stories.dart';
 /// backend's `chain.plan_edit`. To try the app's error handling, put a trigger in the premise or
 /// the instruction: `[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:quota_exceeded]`,
 /// `[fail:unreadable_action]`, `[fail:bad_key]`, `[fail:llm_unavailable]` or
-/// `[fail:version_conflict]`.
+/// `[fail:version_conflict]`. `[fail:real_person]` in a premise, an instruction, a line or a rule
+/// is refused at that field as naming a real person (G12), at no cost.
 class FakeDraftState {
   final drafts = <String, (String ownerId, JsonMap draft)>{};
 
@@ -60,6 +61,7 @@ void registerDraftRoutes(FakeBackend b) {
     }
     final rating = r.json['rating'] as String? ?? 'teen';
     _checkRating(b, r, rating);
+    if (r.json['premise'] case final String own) _refuseRealPeople([('premise', own)]);
     _failOn(premise);
     await _meter(b, r, calls: 1);
 
@@ -96,6 +98,27 @@ void registerDraftRoutes(FakeBackend b) {
       }
     }
     final advanced = body['advanced'] as JsonMap? ?? const {};
+    if (advanced['rules'] case final List rules
+        when rules.any((rule) => ((rule as JsonMap)['text'] as String? ?? '').isEmpty)) {
+      throw const FakeError.validation('A rule is 1 to 300 characters.');
+    }
+    _refuseRealPeople([
+      ..._newTexts('world_lines', body['world_lines'] as List?, draft['world_lines'] as List),
+      ..._newTexts(
+        'character_lines',
+        body['character_lines'] as List?,
+        draft['character_lines'] as List,
+      ),
+      ..._newTexts(
+        'advanced.rules',
+        [for (final rule in advanced['rules'] as List? ?? const []) (rule as JsonMap)['text']],
+        [
+          for (final rule in (draft['advanced'] as JsonMap)['rules'] as List)
+            (rule as JsonMap)['text'],
+        ],
+        leaf: '.text',
+      ),
+    ]);
     final calls = _editCalls(draft, body, advanced);
     _failOn([...?body['world_lines'] as List?, ...?body['character_lines'] as List?].join(' '));
     await _meter(b, r, calls: calls);
@@ -116,6 +139,7 @@ void registerDraftRoutes(FakeBackend b) {
     if (instruction.isEmpty || instruction.length > 1000) {
       throw const FakeError.validation('Say what to change, in up to 1000 characters.');
     }
+    _refuseRealPeople([('instruction', instruction)]);
     _failOn(instruction);
     await _meter(b, r, calls: 1);
     final lines = [...draft[key] as List, _asLine(instruction)];
@@ -172,6 +196,37 @@ void _checkRating(FakeBackend b, FakeRequest r, String rating) {
   if (rating == 'mature' && limit != 'mature') {
     throw const FakeError(403, 'forbidden', 'This rating is above your account\'s limit.');
   }
+}
+
+/// G12: a text of the player's that names a real living person is refused at its field, before
+/// any model call. The fake's real person is the `[fail:real_person]` trigger.
+void _refuseRealPeople(List<(String, Object?)> texts) {
+  for (final (field, text) in texts) {
+    if (text is String && text.contains('[fail:real_person]')) {
+      const message =
+          'The person you named is a real person, and stories only have fictional people. '
+          'Try someone made up instead.';
+      throw FakeError(400, 'validation_error', message, {
+        'fields': [
+          {'field': field, 'source': 'body', 'message': message, 'type': 'real_person'},
+        ],
+      });
+    }
+  }
+}
+
+/// The player's own texts in a list, by dotted path: those not already in the draft.
+List<(String, Object?)> _newTexts(
+  String field,
+  List<Object?>? texts,
+  List<Object?> kept, {
+  String leaf = '',
+}) {
+  final same = {for (final text in kept) _normal(text)};
+  return [
+    for (final (i, text) in (texts ?? const []).indexed)
+      if (!same.contains(_normal(text))) ('$field.$i$leaf', text),
+  ];
 }
 
 /// Answers with the error a `[fail:code]` trigger names, as the real backend would.

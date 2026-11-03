@@ -230,6 +230,30 @@ void main() {
     expect(await flow.start(), started['story_id']);
   });
 
+  test('a real person is refused at the field that names them, free of charge (G12)', () async {
+    final draft = await drafted();
+    final before = await balance();
+    final failure = await flow.revise(DraftPart.world, 'Add [fail:real_person] as the sect master');
+    expect(
+      failure,
+      isA<ApiException>()
+          .having((e) => e.code, 'code', ApiErrorCode.validationError)
+          .having((e) => (e.fields.single as Map)['field'], 'field', 'instruction')
+          .having((e) => (e.fields.single as Map)['type'], 'type', 'real_person'),
+    );
+    final lines = [...draft.worldLines]..[2] = 'Ruled by [fail:real_person].';
+    final edit = await flow.edit(DraftEdit.lines(DraftPart.world, lines));
+    expect((edit! as ApiException).fields.single, containsPair('field', 'world_lines.2'));
+    final rules = [...draft.advanced.rules, const DraftRule(text: '[fail:real_person] is a god.')];
+    final rule = await flow.edit(DraftEdit(rules: rules));
+    expect(
+      (rule! as ApiException).fields.single,
+      containsPair('field', 'advanced.rules.${rules.length - 1}.text'),
+    );
+    expect(await balance(), before);
+    expect(flow.draft!.version, draft.version);
+  });
+
   test('a failed draft says why, and a trigger names the failure', () async {
     await flow.create(premise: 'A quiet village [fail:llm_unavailable]', rating: Rating.teen);
     expect(flow.stage, CreateStage.premise);

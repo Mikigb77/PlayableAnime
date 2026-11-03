@@ -41,6 +41,13 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
     super.dispose();
   }
 
+  /// The server's refusal of the premise, while the box still holds the words it refused.
+  String? _refused() {
+    final message = fieldMessage(widget.flow.error, 'premise');
+    if (message == null || _premise.text.trim() != widget.flow.draftingPremise) return null;
+    return message;
+  }
+
   void _draft() {
     final starter = widget.starter;
     final text = _premise.text.trim();
@@ -110,31 +117,37 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                   style: theme.textTheme.bodyLarge!.copyWith(color: colors.textSecondary),
                 ),
                 const SizedBox(height: Space.xl),
-                TextField(
-                  controller: _premise,
-                  minLines: 5,
-                  maxLines: 12,
-                  maxLength: DraftLimits.premiseMax,
-                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: context.lucidText.narration.copyWith(fontSize: 17),
-                  // The counter only near the limit.
-                  buildCounter:
-                      (context, {required currentLength, required isFocused, maxLength}) =>
-                          currentLength > DraftLimits.premiseMax - 400
-                          ? Text(l10n.composerCount(currentLength, DraftLimits.premiseMax))
-                          : null,
-                  decoration: InputDecoration(
-                    labelText: l10n.createPremiseLabel,
-                    hintText: l10n.createPremiseHint,
-                    helperText: starter == null ? null : l10n.createStarterPremiseHelp,
-                    helperMaxLines: 2,
-                    alignLabelWithHint: true,
-                    suffixIcon: Align(
-                      alignment: Alignment.topRight,
-                      widthFactor: 1,
-                      heightFactor: 1,
-                      child: DictationButton(tracker: _tracker),
+                ListenableBuilder(
+                  listenable: Listenable.merge([_premise, widget.flow]),
+                  builder: (context, _) => TextField(
+                    controller: _premise,
+                    minLines: 5,
+                    maxLines: 12,
+                    maxLength: DraftLimits.premiseMax,
+                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: context.lucidText.narration.copyWith(fontSize: 17),
+                    // The counter only near the limit.
+                    buildCounter:
+                        (context, {required currentLength, required isFocused, maxLength}) =>
+                            currentLength > DraftLimits.premiseMax - 400
+                            ? Text(l10n.composerCount(currentLength, DraftLimits.premiseMax))
+                            : null,
+                    decoration: InputDecoration(
+                      labelText: l10n.createPremiseLabel,
+                      hintText: l10n.createPremiseHint,
+                      helperText: starter == null ? null : l10n.createStarterPremiseHelp,
+                      helperMaxLines: 2,
+                      // A refusal about these very words, such as a real person named (G12).
+                      errorText: _refused(),
+                      errorMaxLines: 4,
+                      alignLabelWithHint: true,
+                      suffixIcon: Align(
+                        alignment: Alignment.topRight,
+                        widthFactor: 1,
+                        heightFactor: 1,
+                        child: DictationButton(tracker: _tracker),
+                      ),
                     ),
                   ),
                 ),
@@ -165,7 +178,8 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (widget.flow.error case final error?) ...[
+                        if (widget.flow.error case final error?
+                            when fieldMessage(error, 'premise') == null) ...[
                           const SizedBox(height: Space.xl),
                           InlineError(error),
                         ],

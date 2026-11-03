@@ -16,7 +16,8 @@ seconds after the text, and typed errors. Put a trigger in an action to try the 
 `[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:llm_unavailable]` (fails mid-stream),
 `[fail:version_conflict]`, `[fail:picture]` (a planned picture that is then skipped) or `[reset]`.
 The same triggers work in a premise or in a change asked of a draft, as do `[fail:quota_exceeded]`,
-`[fail:unreadable_action]` and `[fail:bad_key]`. Drafting takes about three seconds and is charged
+`[fail:unreadable_action]`, `[fail:bad_key]` and `[fail:real_person]` (refused under the field
+that names one, G12). Drafting takes about three seconds and is charged
 like the real thing (3 cents a model call, free on your own key), so the costs the review shows can
 be checked against the balance. The fake lives in `lib/core/fake/`, one file per area of the API,
 so each feature thread extends its own.
