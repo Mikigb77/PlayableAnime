@@ -638,3 +638,39 @@ def test_a_row_of_another_story_is_never_touched(player, make_story, model):
     assert (theirs.story_id, theirs.status, theirs.due_world_s) == (elsewhere.pk, "pending", 99)
     mine = PendingEvent.objects.get(pk=pending.row_id(story.pk, str(theirs.pk)))
     assert mine.story_id == story.pk
+
+
+def test_a_story_started_from_a_draft_opens_on_the_drafts_moment(player, model, monkeypatch):
+    """WS12's start saves the story at turn 0; the opening turn plays from the moment the draft
+    ended on (R3)."""
+    from django.test import Client
+
+    from drafts import service
+    from graph.llm import FakeBackend
+    from tests.conftest import auth_headers
+    from tests.drafts.conftest import _sample_reply
+
+    drafting = FakeBackend(default=_sample_reply)
+    monkeypatch.setattr(service, "model_backend", lambda *, grounded, byok: drafting)
+    client = Client(headers=auth_headers(player))
+    draft = client.post(
+        "/v1/drafts",
+        {"premise_id": "naples-vendetta", "rating": "mature"},
+        content_type="application/json",
+    ).json()
+    started = client.post(
+        f"/v1/drafts/{draft['id']}/start", {}, content_type="application/json"
+    ).json()
+    story = Story.objects.get(pk=started["story_id"])
+    moment = story.state["scene"]["ended_on"]
+    model.backend.script(
+        Node.NARRATOR,
+        Reply(json=OPENING | {"update": {"scene_end": {"ended_on": "The cards stay face down."}}}),
+    )
+
+    played = play(player, story, {"kind": "opening", "expected_version": started["version"]})
+
+    assert played.names[-1] == "scene.completed"
+    assert moment
+    [narrator] = model.backend.calls(Node.NARRATOR)
+    assert moment in narrator.prompt.messages[-1].text

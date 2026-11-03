@@ -298,8 +298,7 @@ def start_story(row_id: uuid.UUID, settings: dict[str, Any]) -> Story:
             engine=Engine.GRAPH,
             state=state.model_dump(mode="json"),
             turn=0,
-            # A story exists from version 1, as one created by the legacy endpoint does; the
-            # opening turn expects this version (T10).
+            # A story exists from version 1, and the opening turn expects this version (T10).
             version=1,
         )
         Draft.objects.filter(pk=row.pk).update(
