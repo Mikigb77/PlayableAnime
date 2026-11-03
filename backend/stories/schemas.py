@@ -155,6 +155,8 @@ class SceneOut(BaseModel):
     event: dict[str, Any] | None = None
     image: SceneImageOut | None = None
     portraits: list[PortraitOut] = Field(default_factory=list)
+    # The player blocked this scene (F6), so the app shows a placeholder instead of its text.
+    blocked: bool = False
     created_at: datetime
 
 

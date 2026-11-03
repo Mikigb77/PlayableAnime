@@ -7,6 +7,7 @@ from django.test import Client
 
 from graph.llm import Node, Reply
 from media.models import Image, ImageStatus
+from moderation.service import report_scene
 from stories.models import Engine, PendingEvent, Scene, Story
 from tests.conftest import auth_headers
 from tests.stories.conftest import opening, play
@@ -80,6 +81,30 @@ def test_a_story_comes_with_its_last_scenes_settings_and_clock(client, player, m
     assert [s["turn"] for s in last["scenes"]] == [2, 3]
     assert none["scenes"] == []
     assert client.get(f"/v1/stories/{story.pk}?scenes=51").status_code == 400
+
+
+def test_a_scene_the_player_blocked_comes_back_blocked(client, player, make_story, model):
+    """F6: a blocked scene says so wherever scenes are served, and the others don't."""
+    story = opened(player, make_story, model)
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+    play(player, story, {"kind": "standing", "standing": "wait", "expected_version": 2})
+    report_scene(
+        story, Scene.objects.get(story=story, turn=1), player, category="other", note="", block=True
+    )
+    report_scene(
+        story,
+        Scene.objects.get(story=story, turn=2),
+        player,
+        category="other",
+        note="",
+        block=False,
+    )
+
+    loaded = client.get(f"/v1/stories/{story.pk}").json()["scenes"]
+    scrolled = client.get(f"/v1/stories/{story.pk}/scenes").json()
+
+    for scenes in (loaded, scrolled):
+        assert [(s["turn"], s["blocked"]) for s in scenes] == [(1, True), (2, False)]
 
 
 def test_older_scenes_come_back_for_scrollback(client, player, make_story, model):
