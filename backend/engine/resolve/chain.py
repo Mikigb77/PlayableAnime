@@ -18,18 +18,22 @@ from engine.resolve.durations import CHAIN_MAX_S
 from engine.resolve.words import cap, is_are, mentions, name, possessive
 from engine.rng import SeededRng
 from engine.state.cast import Character
-from engine.state.records import StepResult
+from engine.state.records import RollRecord, StepResult
 from engine.state.world import WorldState
 
 
 @dataclass(frozen=True)
 class ChainOutcome:
+    """How the chain settled. `roll` is the roll that decided it, if one did: the link roll it
+    broke on, or, when every link held, the last roll of the hardest class among them."""
+
     links: list[LinkResolution]
     holds: bool
     stopped_at: int | None
     outcome_class: OutcomeClass
     takes_s: int
     reason: str
+    roll: RollRecord | None = None
 
 
 def settle_chain(
@@ -42,25 +46,23 @@ def settle_chain(
     """Settle `step.chain` against `targets`, the characters who can still answer it."""
     links: list[LinkResolution] = []
     takes = 0
-    rolled: set[OutcomeClass] = set()
+    rolled: dict[OutcomeClass, RollRecord] = {}
     for j, link in enumerate(step.chain):
         settled = _settle_link(state, link, targets, ctx, rng.child("link", j))
         takes = min(CHAIN_MAX_S, takes + settled.takes_s)
         links.append(settled)
         if settled.roll is not None:
-            rolled.add(settled.outcome_class)
+            rolled[settled.outcome_class] = settled.roll
         if not settled.holds:
             reason = f"It breaks at “{link.text}”. {settled.reason}"
-            return ChainOutcome(links, False, j, settled.outcome_class, takes, reason)
-    if OutcomeClass.LONG_SHOT in rolled:
-        outcome_class = OutcomeClass.LONG_SHOT
-    elif rolled:
-        outcome_class = OutcomeClass.CONTESTED
-    else:
-        outcome_class = OutcomeClass.CERTAIN
+            return ChainOutcome(links, False, j, settled.outcome_class, takes, reason, settled.roll)
+    outcome_class = OutcomeClass.CERTAIN
+    for harder in (OutcomeClass.CONTESTED, OutcomeClass.LONG_SHOT):
+        if harder in rolled:
+            outcome_class = harder
     last = step.chain[-1].text if step.chain else ""
     reason = f"Every link holds: {last}" if last else "Every link holds."
-    return ChainOutcome(links, True, None, outcome_class, takes, reason)
+    return ChainOutcome(links, True, None, outcome_class, takes, reason, rolled.get(outcome_class))
 
 
 def _settle_link(

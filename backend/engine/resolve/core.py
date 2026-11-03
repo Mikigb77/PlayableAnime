@@ -88,6 +88,7 @@ MAX_NUMBERS = 1.0
 INTIMIDATION = ("intimidate", "threaten", "menace", "scare", "frighten", "coerce", "bully")
 
 _MEANS_ORDER = [MeansVerdict.CLEARLY_NOT, MeansVerdict.CLOSE_CALL, MeansVerdict.CLEARLY_ENOUGH]
+_HARDER = [OutcomeClass.CERTAIN, OutcomeClass.CONTESTED, OutcomeClass.LONG_SHOT]
 
 
 @dataclass
@@ -567,11 +568,16 @@ def _with_chain(
         return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, f"{cap(why)}."), None
 
     outcome = settle_chain(state, step, opposition.answering, ctx, rng)
-    outcome_class = outcome.outcome_class
-    if outcome.holds and outcome_class is OutcomeClass.CERTAIN:
-        outcome_class = setup_class
-    result = StepResult.SUCCESS if outcome.holds else StepResult.FAILURE
-    return Settled(outcome_class, result, outcome.reason, setup), outcome
+    if not outcome.holds:
+        # The link it broke on decides: ruled out with no roll, or the roll that failed (A2, A3).
+        return Settled(
+            outcome.outcome_class, StepResult.FAILURE, outcome.reason, outcome.roll
+        ), outcome
+    # Every link held: the step is as hard as the hardest roll it took, which is its roll.
+    outcome_class, roll = setup_class, setup
+    if _HARDER.index(outcome.outcome_class) > _HARDER.index(setup_class):
+        outcome_class, roll = outcome.outcome_class, outcome.roll
+    return Settled(outcome_class, StepResult.SUCCESS, outcome.reason, roll), outcome
 
 
 def _body(state: WorldState, actor: Character, people: list[Character]) -> tuple[float, Standing]:

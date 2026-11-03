@@ -286,7 +286,9 @@ order, and the first one that settles it ends the step:
    who isn't asleep or bound has an answer on their sheet. `ChainLink.answers` lists the answers in
    plain words ("teleport", "breathe without air"), and code looks for them in the target's ready
    powers, techniques, carried items and traits, which the interpret step may not see. The chain
-   stops at the first link that breaks, and each link's time is added to the step (W10).
+   stops at the first link that breaks, and each link's time is added to the step (W10). The
+   step's roll is the one that decided it: the roll of the link it broke on, or, when every link
+   held, the hardest roll it took (the setup or an open link).
 6. **The roll** (`odds.py`; A3, A5). Only contested and long-shot steps, close calls, uncertain
    finds and open links are rolled, each from its own seeded stream under
    `rng.child("resolve", "step", i)`. Odds start from the gap (even at no gap; a long shot starts
@@ -413,7 +415,7 @@ async with aclosing(run_turn(turn, llm)) as events:
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
 | 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. `check_intent` turns unknown ids back into words, never lets the dead act, hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). |
-| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player) and `direct`, then `check_plan` (pictures, events and callbacks against the state and the player's settings, F7, M1, M2). This is C5's code part, before anything streams. |
+| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player) and `direct`, then `check_plan` (pictures, events and callbacks against the state and the player's settings, F7, M1, M2). This is C5's code part, before anything streams. |
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time that passed, the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment and leaves the dead out of the scene, then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
