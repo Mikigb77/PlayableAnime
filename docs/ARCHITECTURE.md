@@ -152,10 +152,11 @@ these functions and saves the result.
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
+| `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
-| `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` has a default body that WS11 replaces. |
+| `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). |
-| `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
+| `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
 a new one.
@@ -164,10 +165,11 @@ a new one.
 | --- | --- | --- |
 | 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order, stopping at the first that needs the player. It first makes sure every running clock has its next step pending and that the world tick is spaced so the stretch holds at most 24 ticks (K8), then runs `engine.timekeeping.advance_clock` with the world's handler. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
-| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision. At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
 | | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState` applies one pending event that fell due, rolling from the event's own seed, and records on the applied event whether it needed the player. Kinds it doesn't own, such as `director.*`, are only marked applied | WS10 |
-| 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
+| 3. Direct | `direct(state, resolution, ctx, rng, intent=None) -> DirectorPlan`, on the state `play_out` returned, with the turn's `Intent` (its `responds_to` and `goals`). It only decides and never changes the state | WS11 |
+| | `record_direction(state, plan, ctx) -> WorldState` writes `plan.updates` into the state. Call it right after `direct`, before the narrator's changes apply, so the plan's ids stay the ones the narrator sees | WS11 |
 | 6. Apply the update | `apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR) -> Applied`. Refused changes come back in `Applied.rejected` for the log and the C5 check; the rest applies. Before saving, the graph runs `check_transition(first, last)`, and a violation is an engine bug: log it and don't save | WS2 |
 
 **Decisions the package makes:**
@@ -254,6 +256,60 @@ a new one.
   engine's is refused, so an old revision can't drop fields it doesn't know and save the stripped
   state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
   meaning.
+
+### The story director
+
+`engine/director/` fills the `direct` step (WS11). Model nodes propose and code decides: every
+choice below is made in plain Python with the turn's seeded `rng`, and the narrator only dresses
+what it is given in the world's own form (G9).
+
+| Module | What it decides |
+| --- | --- |
+| `pressure.py` | W16's stall pressure: turns since the last decision with stakes, plus half a point for each repeat of the same low-stakes action, plus a point for each running clock one step from its end with that step within two days (at most two). An encounter turn or a decision with stakes resets it. The thresholds are 10, 5 and 3 for calm, normal and dramatic; an event may come early from 60% of the threshold. E6's drift moves the threshold by up to 20% either way: it rises 0.1 a turn while the player is comfortably in control and drops 0.6 after a big event. |
+| `sources.py`, `deck.py` | W16's order once pressure calls for an event: what came due, then key NPCs and factions with plans the player is tied to (E3, W6), then a dormant thread quiet for at least 8 turns, then a character or faction that emerged (W15), then a draw from the seeded deck (E4). The deck has one table per size with good things in each; the size comes from the story's scale (personal, local or world, read from threat, fear and memberships), so a farm never draws a world event. A source used in the last 6 events waits. Titles never name what the player doesn't know (C6). |
+| `themes.py` | F7, F2, F3: an event carries only themes the player switched on, gore only in Mature with gore above low, and romance only for a player character with an adult age recorded. A romance event casts only adults. |
+| `plan.py` | `direct` itself, in this order: what came due, play-outs of events the player took up (cancelled), something new if it's time, thread changes and callbacks, suggestions, the picture, the director's memory, goals and leads. One decision at a time: when two events that need one come due in a turn, the second waits for the next scene. |
+| `threads.py` | N1: a thread nobody touched for 12 turns goes dormant; acting on its people or naming it wakes it; it closes when its mystery is solved, its clock ends (unless it is a mystery), or everyone it pits the player against is dead. One or two dormant threads the player knows are called back each scene. |
+| `goals.py` | N2: goals come only from `Intent.goals` or from taking up a lead (`responds_to` names it); nothing else adds or changes one. Leads expire on in-world time. |
+| `suggestions.py` | S2: zero to four choices, always at least one personal, side or wild, and none when suggestions are off. |
+| `pictures.py` | M1, M2: the trigger list in priority order and the budget (below). |
+| `montage.py` | E7, K8: a stretch of a day or more is split into at most 12 steps, each with a chance of an event from the frequency setting (a mean gap of a year, six months or three months), and rolling stops at the first event that needs a decision. Rolls the clock never reached, because something earlier cut the stretch short, are cancelled. |
+| `record.py`, `ids.py` | `record_direction`: mechanical writes of the plan's updates, with provisional ids that are remapped if one was taken in the meantime. |
+
+**Ignoring an event is a choice** (W16, W10). An event that needs a decision opens a thread and
+schedules a `director.plays_out` pending event at the end of its in-world window (a day to a week
+by size, or the card's own). If the player names the thread or a lead in `Intent.responds_to`, or
+acts on the event's people, the play-out is cancelled. Otherwise it comes due through `catch_up`
+like any world event, and the director tells it as a happening with the event's consequence: its
+thread goes dormant if the matter lingers, else it closes as resolved without the player. A
+play-out that the clock applied during the very action that took it up is cancelled after the
+fact.
+
+**Pending event kinds the director owns.** `director.event` is an event rolled inside a time skip
+(its payload holds the pick, and `needs_player` stops the clock at it). `director.plays_out` is an
+ignored event's play-out. `apply_event` only marks either applied, since the director plays them
+out itself. A world event that needs the player
+(`needs_player`) becomes the scene's event as it is; WS10 can give it a size, kind, brief and
+themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": "...", "themes":
+[]}`), and the director defaults to a personal arrival without them.
+
+**Pictures** (M1, M2). At most one a scene, highest first: the player's portrait at the start; a
+key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
+power ladder; hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
+fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
+local or world event; the cover from the second scene; a place ruined or occupied; a key NPC's
+first portrait; a place on the first visit. Portraits, places and the cover come once each, keyed
+in `DirectorState.pictured`, and don't spend the budget. Key scenes spend a credit from a bucket
+that refills 0.1 a turn on key moments (0.2 on more, capped at 2 and 3), so about one in ten turns.
+A key scene needs a full credit; a fight's start may spend down to zero and its decisive blow, once
+the start was pictured, down to −2, so a fight gets both pictures and the average still holds.
+`PictureDecision.subject_id` is the character for portraits, deaths, blows, fight starts,
+breakthroughs and reveals, the place for places, the deed for a big deed, and the thread for an
+arc end or an event.
+
+**The director's memory** lives in `WorldState.director` (`DirectorState`): the stall counters, the
+last action's signature, the drift, the last few sources used, the picture credit and what was
+pictured, and the key fight being followed.
 
 ### Resolve: logic first, then dice
 
@@ -439,8 +495,8 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
-| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player) and `direct`, then `check_plan` (pictures, events and callbacks against the state and the player's settings, F7, M1, M2). This is C5's code part, before anything streams. |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
+| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time that passed, the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |

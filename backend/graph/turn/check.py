@@ -14,7 +14,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 from dataclasses import dataclass
 
 from engine import limits
-from engine.context import GoreLevel, ImageSetting, Rating, TurnContext
+from engine.context import ImageSetting, TurnContext
 from engine.contracts import (
     ActionKind,
     DirectorPlan,
@@ -27,10 +27,10 @@ from engine.contracts import (
     StepResolution,
     StopReason,
     SuggestionPlan,
-    Theme,
 )
+from engine.director.themes import allowed_themes, fits
 from engine.state.cast import CharacterStatus
-from engine.state.records import RollRecord, StepResult
+from engine.state.records import LeadStatus, RollRecord, StepResult
 from engine.state.world import WorldState
 from graph.turn.types import Issue
 
@@ -39,6 +39,8 @@ from graph.turn.types import Issue
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
+# M1: the only pictures a dead character can be the subject of.
+LAST_PICTURES = (PictureTrigger.DEATH, PictureTrigger.DECISIVE_BLOW)
 # G12: the issue code for a real person or organisation left out of the narrator's update.
 REAL_ENTITY = "real_entity"
 
@@ -79,6 +81,18 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_opposition", "kept as words", ", ".join(unknown)))
             facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
+
+    # W16, N1, N2: only open threads the player knows and leads still on offer can be taken up.
+    taken_up = []
+    for ref in dict.fromkeys(intent.responds_to):
+        thread, lead = state.threads.get(ref), state.leads.get(ref)
+        if thread is not None and not thread.status.closed and state.player_id in thread.known_by:
+            taken_up.append(ref)
+        elif lead is not None and lead.status is LeadStatus.OPEN:
+            taken_up.append(ref)
+        else:
+            issues.append(Issue("unknown_response", "not an open thread or lead", ref))
+    intent.responds_to = taken_up
 
     overflow: list[str] = []
     if len(intent.steps) > MAX_STEPS:
@@ -241,10 +255,11 @@ def check_plan(
     """The director's pick, held to the state and the player's settings.
 
     A picture needs pictures switched on (M2) and a subject that exists, and a dead character is
-    drawn only for their death. An event may only start themes the player switched on and the
-    rating allows (F7, F2), and may only point at threads, clocks and events that exist.
-    Callbacks pull in only dormant or open threads (N1). Suggestions follow the player's setting
-    (S2).
+    drawn only for their death or the blow that ended their fight. An event, and anything told
+    as having happened, may only carry themes the director may start: switched on, within the
+    rating, and romance only for an adult player character (F7, F2, F3). An event may only point
+    at threads, clocks, events, characters and factions that exist. Callbacks pull in only
+    dormant or open threads (N1). Suggestions follow the player's setting (S2).
     """
     issues: list[Issue] = []
     plan = plan.model_copy(deep=True)
@@ -256,9 +271,10 @@ def check_plan(
             issues.append(Issue("picture_dropped", reason, picture.subject_id))
             plan.picture = None
 
+    allowed = allowed_themes(state, ctx)
     event = plan.event
     if event is not None:
-        refused = [theme for theme in event.themes if not _theme_allowed(theme, ctx)]
+        refused = [theme for theme in event.themes if theme not in allowed]
         if refused:
             names = ", ".join(sorted(theme.value for theme in refused))
             issues.append(Issue("event_dropped", f"themes switched off: {names}", event.title))
@@ -267,10 +283,24 @@ def check_plan(
             if event.thread_id is not None and event.thread_id not in state.threads:
                 issues.append(Issue("unknown_thread", "event's thread cleared", event.thread_id))
                 event.thread_id = None
-            known_sources = state.clocks.keys() | state.threads.keys() | state.pending_events.keys()
+            known_sources = (
+                state.clocks.keys()
+                | state.threads.keys()
+                | state.pending_events.keys()
+                | state.characters.keys()
+                | state.factions.keys()
+            )
             if event.source_id is not None and event.source_id not in known_sources:
                 issues.append(Issue("unknown_source", "event's source cleared", event.source_id))
                 event.source_id = None
+
+    happenings = []
+    for happening in plan.happenings:
+        if fits(happening.themes, allowed):
+            happenings.append(happening)
+        else:
+            issues.append(Issue("happening_dropped", "a theme is switched off", happening.title))
+    plan.happenings = happenings
 
     callbacks = []
     for thread_id in plan.callbacks:
@@ -295,20 +325,9 @@ def _picture_problem(
         return None
     character = state.characters.get(subject_id)
     if character is not None:
-        if character.status is CharacterStatus.DEAD and trigger is not PictureTrigger.DEATH:
+        if character.status is CharacterStatus.DEAD and trigger not in LAST_PICTURES:
             return "the subject is dead"
         return None
-    if subject_id in state.places or subject_id in state.deeds:
+    if subject_id in state.places or subject_id in state.deeds or subject_id in state.threads:
         return None
     return "the subject isn't in the story"
-
-
-def _theme_allowed(theme: Theme, ctx: TurnContext) -> bool:
-    prefs = ctx.content_prefs
-    if theme is Theme.ROMANCE:
-        return prefs.romance
-    if theme is Theme.DARK:
-        return prefs.dark_themes
-    if theme is Theme.GORE:
-        return ctx.rating is Rating.MATURE and prefs.gore is not GoreLevel.LOW
-    return True

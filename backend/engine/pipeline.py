@@ -28,16 +28,12 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
-from engine import world
+from engine import director, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
-from engine.context import ImageSetting, TurnContext
+from engine.context import TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
 from engine.contracts.direction import (
     DirectorPlan,
-    PictureDecision,
-    PictureKind,
-    PictureTrigger,
-    SuggestionPlan,
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
@@ -55,6 +51,7 @@ __all__ = [
     "direct",
     "play_out",
     "record_consequences",
+    "record_direction",
     "resolve",
 ]
 
@@ -161,6 +158,10 @@ def play_out(
         start_s = current.world_s
         planned_end = start_s + step.duration_s
         if step.duration_s > 0 and not world_stopped(current):
+            # A day or more is a montage: the director rolls its W16 events first, so the first
+            # that needs a decision stops the clock there (E7).
+            stretch_rng = rng.child("director", "stretch", step.index)
+            current = director.schedule_stretch(current, start_s, planned_end, ctx, stretch_rng)
             passage = catch_up(current, planned_end, ctx, rng)
             current = passage.state
             fired.extend(passage.fired)
@@ -220,23 +221,25 @@ def play_out(
 
 
 def direct(
-    state: WorldState, resolution: Resolution, ctx: TurnContext, rng: SeededRng
+    state: WorldState,
+    resolution: Resolution,
+    ctx: TurnContext,
+    rng: SeededRng,
+    intent: Intent | None = None,
 ) -> DirectorPlan:
     """Decide whether an event comes in, which dormant threads to call back, the suggestions and
-    whether the scene gets a picture (W16, E4, N1, S2, M1, M2).
+    whether the scene gets a picture (W16, E4, N1, S2, M1, M2), in `engine.director` (WS11).
 
-    Default: nothing new comes in, three suggestions (none if the player turned them off), and the
-    player character's portrait on the opening turn. WS11 replaces it.
+    Call it after `play_out`, with the played-out state and resolution. Pass the turn's `intent`
+    so the director sees the goals the player stated, what they took up (`responds_to`) and
+    repeated low-stakes actions; without it the director reads the resolution alone. It never
+    changes the state: `record_direction` writes the plan's updates.
     """
-    picture = None
-    if ctx.turn <= 1 and ctx.settings.images is not ImageSetting.OFF:
-        picture = PictureDecision(
-            kind=PictureKind.PORTRAIT,
-            trigger=PictureTrigger.STORY_START,
-            subject_id=state.player_id,
-            reason="The story starts.",
-        )
-    suggestions = (
-        SuggestionPlan() if ctx.settings.suggestions else SuggestionPlan(count=0, kinds=[])
-    )
-    return DirectorPlan(picture=picture, suggestions=suggestions)
+    return director.direct(state, resolution, ctx, rng, intent)
+
+
+def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> WorldState:
+    """Write a director plan's updates into the state, once per turn after `direct` and before
+    saving: the director's memory, the event's thread and its play-out, thread changes, leads that
+    expired and goals the player stated (W16, N1, N2, M2)."""
+    return director.record(state, plan, ctx)

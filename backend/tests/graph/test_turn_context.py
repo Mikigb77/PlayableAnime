@@ -11,11 +11,14 @@ from engine.context import (
 from engine.contracts import (
     ChoiceKind,
     DirectorPlan,
+    EventKind,
+    EventSource,
     Intent,
     OutcomeClass,
     PictureDecision,
     PictureKind,
     PictureTrigger,
+    PlannedEvent,
     Resolution,
     StepResolution,
     StopReason,
@@ -25,6 +28,7 @@ from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
 from engine.state.records import PendingEvent, StepResult
 from engine.state.sheet import Power
+from engine.state.world import EventSize
 from graph.turn import prompts
 from graph.turn.context import (
     RECENT_SCENES,
@@ -257,6 +261,78 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
         assert title in text
     for title in ("FAR-AWAY", "NOWHERE"):
         assert title not in text
+
+
+def test_the_directors_own_events_reach_the_narrator_as_the_event_and_happenings():
+    """W16, E7: an ignored event playing out, or a festival inside a time skip, is told from the
+    director's plan, never twice from the raw pending event."""
+    state = cultivation_world()
+    raw = PendingEvent(
+        id="director-event-1", kind="director.plays_out", title="RAW", due_s=0, needs_player=True
+    )
+    happened = PlannedEvent(
+        size=EventSize.LOCAL,
+        kind=EventKind.CELEBRATION,
+        source=EventSource.DUE,
+        source_id="director-event-1",
+        card_id="good-season",
+        title="A good season",
+        brief="HARVEST-FESTIVAL",
+        needs_decision=False,
+        plays_out_s=40,
+    )
+    text = narration_brief(
+        before=state,
+        after=state,
+        ctx=ctx(),
+        intent=None,
+        resolution=Resolution(),
+        plan=DirectorPlan(happenings=[happened]),
+        fired=[raw],
+        scenes=(),
+    ).user
+    assert "HAPPENINGS" in text and "HARVEST-FESTIVAL" in text
+    assert "RAW" not in text and "FIRED" not in text
+    assert "good-season" not in text and "plays_out_s" not in text
+
+
+def test_a_world_event_the_director_made_the_scenes_event_is_told_once():
+    state = cultivation_world()
+    raw = PendingEvent(id="e1", kind="arrival", title="GUARDS", due_s=0, needs_player=True)
+    planned = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.ARRIVAL,
+        source=EventSource.DUE,
+        source_id="e1",
+        title="GUARDS",
+        brief="The guards are at the door.",
+    )
+    text = narration_brief(
+        before=state,
+        after=state,
+        ctx=ctx(),
+        intent=None,
+        resolution=Resolution(),
+        plan=DirectorPlan(event=planned),
+        fired=[raw],
+        scenes=(),
+    ).user
+    assert text.count("GUARDS") == 1 and "FIRED" not in text
+
+
+def test_thread_choices_name_the_thread_they_follow():
+    state = cultivation_world()
+    plan = DirectorPlan(
+        suggestions=SuggestionPlan(
+            count=3,
+            kinds=[ChoiceKind.THREAD, ChoiceKind.PERSONAL, ChoiceKind.SIDE],
+            thread_id="tournament",
+        )
+    )
+    text = brief(state, plan=plan).user
+    assert '"thread":{"id":"tournament","title":"The ranking tournament"}' in text
+    off = plan.model_copy(update={"suggestions": SuggestionPlan(count=0, kinds=[])})
+    assert '"thread":{' not in brief(state, plan=off).user
 
 
 def test_no_suggestions_when_none_were_asked_for():

@@ -228,6 +228,13 @@ class Intent(EngineModel):
     goals: list[str] = Field(
         default_factory=list, description="N2: goals the player states for their character."
     )
+    responds_to: list[str] = Field(
+        default_factory=list,
+        description=(
+            "W16, N1, N2: ids of the open threads or leads in the scene's context that this "
+            "action takes up. Code checks each id against the state."
+        ),
+    )
     outcome_claims: list[str] = Field(
         default_factory=list,
         description="A6: outcomes or others' reactions the player wrote, which play as hopes.",

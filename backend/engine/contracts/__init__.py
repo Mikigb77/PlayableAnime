@@ -23,6 +23,7 @@ from engine.contracts.delta import (
 from engine.contracts.direction import (
     ChoiceKind,
     DirectorPlan,
+    DirectorUpdates,
     EventKind,
     EventSource,
     PictureDecision,
@@ -31,6 +32,7 @@ from engine.contracts.direction import (
     PlannedEvent,
     SuggestionPlan,
     Theme,
+    ThreadChange,
 )
 from engine.contracts.intent import (
     ActionKind,
@@ -75,6 +77,7 @@ __all__ = [
     "ConditionChange",
     "Cost",
     "DirectorPlan",
+    "DirectorUpdates",
     "EventKind",
     "EventSource",
     "FactionChange",
@@ -106,5 +109,6 @@ __all__ = [
     "StopReason",
     "SuggestionPlan",
     "Theme",
+    "ThreadChange",
     "UseSource",
 ]

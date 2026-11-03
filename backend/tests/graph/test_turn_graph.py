@@ -678,3 +678,73 @@ def test_importing_the_turn_package_loads_no_langgraph():
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     ).stdout
     assert out.strip() == "False"
+
+
+FARMING = {
+    "summary": "Tomas works the fields.",
+    "steps": [
+        {"text": "work the fields", "verb": "farm", "kind": "work", "proposed_duration_s": 3600}
+    ],
+}
+QUIET_SCENE = {"narration": "The furrows run straight and the day goes by.", "suggestions": []}
+
+
+def quiet_farm(turn: int = 3):
+    from engine.samples import farm_world
+
+    state = farm_world()
+    state.turn = turn - 1
+    state.director.turns_without_stakes = 9  # W16: the story has been quiet too long
+    state.director.pictured = ["portrait:tomas", "portrait:ilse", "cover", "place:farm"]
+    return state
+
+
+def test_the_directors_event_and_its_records_are_in_place_before_narration(fake, make_client):
+    """W16, N1: the event's thread and its play-out are recorded in the turn's state, and the
+    narrator is told the event."""
+    fake.script(Node.INTERPRET, Reply(json=FARMING))
+    fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
+    _, result = play(make_client(), turn_input(quiet_farm(), action="I work the fields"))
+
+    event = result.plan.event
+    assert event is not None and event.needs_decision
+    assert event.thread_id in result.state.threads
+    assert result.state.threads[event.thread_id].known_by == ["tomas"]
+    waiting = [
+        e
+        for e in result.state.pending_events.values()
+        if e.kind == "director.plays_out" and e.payload["thread_id"] == event.thread_id
+    ]
+    assert len(waiting) == 1 and waiting[0].due_s == event.plays_out_s
+    assert result.state.director.turns_without_stakes == 0
+    assert result.scene.event is not None and result.scene.event.title == event.title
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    assert "EVENT" in told and event.title in told
+    assert "plays_out_s" not in told  # bookkeeping stays out of the brief
+    assert not [i for i in result.issues if i.code in ("unknown_thread", "unknown_source")]
+
+
+def test_an_action_that_takes_up_the_event_stops_it_from_playing_out(fake, make_client):
+    """W16: the interpret step names the thread the action takes up, code checks it, and the
+    event's play-out is cancelled."""
+    fake.script(Node.INTERPRET, Reply(json=FARMING))
+    fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
+    _, first = play(make_client(), turn_input(quiet_farm(), action="I work the fields"))
+    thread_id = first.plan.event.thread_id
+
+    answer = {**FARMING, "summary": "Tomas deals with it.", "responds_to": [thread_id, "ghost"]}
+    fake.script(Node.INTERPRET, Reply(json=answer))
+    fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
+    _, second = play(make_client(), turn_input(first.state, action="I deal with it"))
+
+    assert second.intent.responds_to == [thread_id]
+    assert "unknown_response" in [i.code for i in second.issues]
+    waiting = [
+        e
+        for e in second.state.pending_events.values()
+        if e.kind == "director.plays_out" and e.payload["thread_id"] == thread_id
+    ]
+    assert [e.status.value for e in waiting] == ["cancelled"]
+    assert second.state.threads[thread_id].taken_up_turn == second.state.turn
+    interpret = fake.calls(Node.INTERPRET)[-1].prompt.messages[-1].text
+    assert thread_id in interpret  # the interpret step sees the ids it can take up
