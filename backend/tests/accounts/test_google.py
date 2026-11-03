@@ -129,7 +129,7 @@ def test_certificates_are_cached_and_refetched_when_google_rotates_keys(keys, ce
     assert len(fetches) == 1
 
     published.add("k2")
-    monkeypatch.setattr(google, "_MIN_REFETCH_S", 0)
+    google._cache._next_fetch_at = 0  # a minute later
     assert google.verify_id_token(_token(keys, kid="k2")).sub == "1234567890"
     assert len(fetches) == 2
 
@@ -148,14 +148,38 @@ def test_an_unknown_key_refetches_at_most_once_a_minute(keys, certs):
 def test_google_being_unreachable_is_unavailable_not_invalid(keys, monkeypatch, settings):
     settings.GOOGLE_OAUTH_CLIENT_IDS = [CLIENT_ID]
     google._cache.clear()
+    attempts = []
 
     def down():
+        attempts.append(1)
         raise OSError("network is unreachable")
 
     monkeypatch.setattr(google, "fetch_certs", down)
 
-    with pytest.raises(google.GoogleUnavailable):
-        google.verify_id_token(_token(keys))
+    for _ in range(3):
+        with pytest.raises(google.GoogleUnavailable):
+            google.verify_id_token(_token(keys))
+    # Later sign-ins fail fast instead of each waiting on Google.
+    assert len(attempts) == 1
+    google._cache.clear()
+
+
+def test_an_outage_keeps_using_the_cached_certificates_without_waiting(keys, certs, monkeypatch):
+    _, fetches = certs
+    google.verify_id_token(_token(keys))
+    attempts = []
+
+    def down():
+        attempts.append(1)
+        raise OSError("network is unreachable")
+
+    monkeypatch.setattr(google, "fetch_certs", down)
+    google._cache._expires_at = 0  # the cached set has gone stale
+    google._cache._next_fetch_at = 0
+
+    for _ in range(3):
+        assert google.verify_id_token(_token(keys)).sub == "1234567890"
+    assert len(attempts) == 1
 
 
 def test_sign_in_is_off_without_client_ids(keys, settings):

@@ -3,7 +3,7 @@ from django.test import Client
 from django.urls import reverse
 
 from accounts import tokens
-from accounts.models import AuthSession, SignInMethod
+from accounts.models import AuthSession, RefreshToken, SignInMethod
 
 pytestmark = pytest.mark.django_db
 
@@ -31,6 +31,7 @@ def test_staff_see_a_players_devices_and_can_sign_them_out(staff_client, player)
 
     assert response.status_code == 302
     assert AuthSession.objects.get().revoked_reason == "admin"
+    assert not RefreshToken.objects.exists()
     assert Client().get("/v1/me", headers=headers).status_code == 401
 
 

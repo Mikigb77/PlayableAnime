@@ -10,6 +10,7 @@ from django.utils import timezone
 from accounts import google, throttle, tokens
 from accounts.google import GoogleIdentity, GoogleTokenError
 from accounts.models import AuthSession, Role, Throttle, User
+from lucid.errors import ApiError
 from tests.conftest import ADULT_BIRTH_DATE, PASSWORD, auth_headers
 
 pytestmark = pytest.mark.django_db
@@ -154,20 +155,21 @@ def test_an_unverified_google_email_cant_create_or_claim_an_account(google_token
     assert User.objects.get().google_sub is None
 
 
-def test_a_bad_google_token_is_unauthenticated():
+def test_a_bad_google_token_is_unauthenticated(google_tokens):
     response = _google("forged")
 
     assert response.status_code == 401
     assert _error(response)["code"] == "unauthenticated"
 
 
-def test_google_sign_in_off_or_down_is_a_clear_401(settings, log_lines):
+def test_google_sign_in_off_or_down_is_a_retryable_503(settings, log_lines):
+    """Not a 401: the app tells "try again soon" apart from a rejected sign-in."""
     settings.GOOGLE_OAUTH_CLIENT_IDS = []
 
     response = _google("anything", ADULT_BIRTH_DATE)
 
-    assert response.status_code == 401
-    assert "isn't available" in _error(response)["message"]
+    assert response.status_code == 503
+    assert _error(response)["code"] == "sign_in_unavailable"
     assert any(line["severity"] == "ERROR" for line in log_lines())
 
 
@@ -301,6 +303,14 @@ def test_register_is_limited_per_address():
     assert 0 < _error(response)["details"]["retry_after_s"] <= 3600
 
 
+def test_sign_ups_that_fail_validation_dont_use_up_the_limit():
+    """Many players can share one carrier address, so only accounts made count."""
+    for _ in range(throttle.REGISTRATIONS_PER_IP.max_hits + 5):
+        assert _register(password="short").status_code == 400
+
+    assert _register().status_code == 200
+
+
 def test_login_with_the_right_password(make_user):
     user = make_user("ren@example.com")
 
@@ -352,15 +362,55 @@ def test_a_successful_login_clears_the_emails_failures(make_user):
         _post("login", {"email": "ren@example.com", "password": "wrong password"})
 
     assert _post("login", {"email": "ren@example.com", "password": PASSWORD}).status_code == 200
-    assert throttle.retry_after(limit, "ren@example.com") is None
+    assert not Throttle.objects.filter(hits__gte=limit.max_hits).exists()
     assert _post("login", {"email": "ren@example.com", "password": "nope"}).status_code == 401
+
+
+def test_a_burst_of_parallel_guesses_is_cut_off_at_the_limit():
+    """Each attempt is counted before its password is checked, so attempts racing each other
+    can't all see a count under the limit."""
+    limit = throttle.LOGIN_FAILURES_PER_EMAIL
+    for _ in range(limit.max_hits):
+        throttle.take((limit, "ren@example.com"))
+
+    with pytest.raises(ApiError) as raised:
+        throttle.take((limit, "ren@example.com"))
+    assert raised.value.code == "rate_limited"
+
+
+def test_a_right_password_doesnt_count_against_a_shared_address(make_user):
+    make_user("ren@example.com")
+    for _ in range(throttle.LOGIN_FAILURES_PER_IP.max_hits + 5):
+        assert _post("login", {"email": "ren@example.com", "password": PASSWORD}).status_code == 200
+
+
+def test_every_login_runs_the_hasher_once_whatever_the_case(make_user, google_tokens, monkeypatch):
+    """No timing tells an unknown email, a Google-only account and a wrong password apart."""
+    from django.contrib.auth.hashers import check_password as real_check
+    from django.contrib.auth.hashers import make_password as real_make
+
+    from accounts import services
+
+    runs = []
+    monkeypatch.setattr(services, "make_password", lambda p: runs.append(1) or real_make(p))
+    monkeypatch.setattr(
+        "django.contrib.auth.base_user.check_password",
+        lambda *a, **k: runs.append(1) or real_check(*a, **k),
+    )
+    make_user("ren@example.com")
+    _google(google_tokens(), ADULT_BIRTH_DATE)
+
+    for email in ("nobody@example.com", "kaede@gmail.com", "ren@example.com"):
+        runs.clear()
+        _post("login", {"email": email, "password": "wrong password"})
+        assert runs == [1], email
 
 
 def test_one_address_guessing_across_many_emails_is_limited(settings):
     settings.TRUSTED_PROXY_HOPS = 1
     limit = throttle.LOGIN_FAILURES_PER_IP
     for _ in range(limit.max_hits):
-        throttle.hit(limit, "203.0.113.9")
+        throttle.take((limit, "203.0.113.9"))
 
     response = _post(
         "login",
@@ -382,7 +432,7 @@ def test_the_client_address_is_the_one_the_trusted_proxy_saw(rf, settings):
 
 
 def test_throttle_keys_never_hold_the_email_or_address():
-    throttle.hit(throttle.LOGIN_FAILURES_PER_EMAIL, "ren@example.com")
+    throttle.take((throttle.LOGIN_FAILURES_PER_EMAIL, "ren@example.com"))
 
     [row] = Throttle.objects.all()
     assert "ren" not in row.key and len(row.key) == 64

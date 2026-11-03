@@ -41,6 +41,7 @@ class ErrorCode(StrEnum):
     QUOTA_EXCEEDED = "quota_exceeded"
     INTERNAL_ERROR = "internal_error"
     LLM_UNAVAILABLE = "llm_unavailable"
+    SIGN_IN_UNAVAILABLE = "sign_in_unavailable"
 
 
 # The HTTP status for each code, as in API.md's table.
@@ -59,6 +60,7 @@ STATUS = {
     ErrorCode.QUOTA_EXCEEDED: 429,
     ErrorCode.INTERNAL_ERROR: 500,
     ErrorCode.LLM_UNAVAILABLE: 503,
+    ErrorCode.SIGN_IN_UNAVAILABLE: 503,
 }
 
 # What the app can show when a view gives no message of its own.
@@ -77,6 +79,7 @@ DEFAULT_MESSAGES = {
     ErrorCode.QUOTA_EXCEEDED: "Today's turns are used up.",
     ErrorCode.INTERNAL_ERROR: "Something went wrong on our side.",
     ErrorCode.LLM_UNAVAILABLE: "The storyteller is unavailable. Try again in a moment.",
+    ErrorCode.SIGN_IN_UNAVAILABLE: "Google sign-in isn't available right now. Try again soon.",
 }
 
 # Ninja raises plain HttpErrors for some statuses (a body that isn't JSON is a 400).

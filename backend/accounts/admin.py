@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
-from django.utils import timezone
 
+from accounts import tokens
 from accounts.models import AuthSession, User
 
 
@@ -74,7 +74,5 @@ class AuthSessionAdmin(admin.ModelAdmin):
 
     @admin.action(description="Sign out the selected sessions")
     def revoke(self, request, queryset) -> None:
-        count = queryset.filter(revoked_at__isnull=True).update(
-            revoked_at=timezone.now(), revoked_reason="admin"
-        )
+        count = tokens.revoke(queryset, "admin")
         self.message_user(request, f"Signed out {count} session(s).")

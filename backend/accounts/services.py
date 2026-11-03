@@ -7,7 +7,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -55,14 +55,14 @@ def _sign_in_with_google(identity: GoogleIdentity, birth_date: date | None) -> U
                     "Verify the email on your Google account, then try again.",
                 )
             user = User.objects.select_for_update().filter(email=identity.email).first()
-            if user is not None and user.google_sub:
+            if user is not None and user.google_sub and user.google_sub != identity.sub:
                 # The email's account belongs to another Google account. Moving it silently would
                 # hand it to whoever now holds the address (a recycled work email, say).
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
                     "This email is already used by another Google account. Sign in with that one.",
                 )
-            if user is not None:
+            if user is not None and not user.google_sub:
                 _take_over_with_google(user, identity)
         if user is not None and not user.is_active:
             raise ApiError(ErrorCode.FORBIDDEN, "This account is disabled.")
@@ -166,10 +166,13 @@ def _check_password(password: str, user: User) -> None:
 
 
 def log_in(email: str, password: str) -> User | None:
-    """The account for these credentials, or None. Runs the password hasher even for an unknown
-    email, so the answer takes as long either way."""
-    user = authenticate(None, username=email.strip().lower(), password=password)
-    if user is None:
+    """The account for these credentials, or None. The password hasher runs once whatever the
+    case (unknown email, Google-only account, wrong password), so timing reveals nothing."""
+    user = User.objects.filter(email=email.strip().lower()).first()
+    if user is None or not user.has_usable_password():
+        make_password(password)
+        return None
+    if not user.check_password(password) or not user.is_active:
         return None
     user.last_login = timezone.now()
     user.save(update_fields=["last_login"])

@@ -120,9 +120,7 @@ def _google(id_token: str, birth_date: date | None) -> tokens.IssuedTokens:
         raise ApiError(ErrorCode.UNAUTHENTICATED, "Google sign-in failed. Try again.") from None
     except google.GoogleUnavailable:
         logger.exception("Google sign-in is unavailable")
-        raise ApiError(
-            ErrorCode.UNAUTHENTICATED, "Google sign-in isn't available right now. Try again soon."
-        ) from None
+        raise ApiError(ErrorCode.SIGN_IN_UNAVAILABLE) from None
     user = services.sign_in_with_google(identity, birth_date)
     return tokens.issue(user, SignInMethod.GOOGLE)
 
@@ -136,9 +134,13 @@ async def sign_in_with_google(request: HttpRequest, body: GoogleIn) -> dict[str,
 
 
 def _register(body: RegisterIn, ip: str) -> tokens.IssuedTokens:
-    throttle.check((throttle.REGISTRATIONS_PER_IP, ip))
-    throttle.hit(throttle.REGISTRATIONS_PER_IP, ip)
-    user = services.register(body.email, body.password, body.display_name, body.birth_date)
+    throttle.take((throttle.REGISTRATIONS_PER_IP, ip))
+    try:
+        user = services.register(body.email, body.password, body.display_name, body.birth_date)
+    except ApiError:
+        # Only accounts made count, so a typo doesn't use up a shared address's allowance.
+        throttle.give_back(throttle.REGISTRATIONS_PER_IP, ip)
+        raise
     return tokens.issue(user, SignInMethod.PASSWORD)
 
 
@@ -150,13 +152,14 @@ async def register(request: HttpRequest, body: RegisterIn) -> dict[str, Any]:
 
 def _log_in(email: str, password: str, ip: str) -> tokens.IssuedTokens:
     email = email.strip().lower()
-    throttle.check((throttle.LOGIN_FAILURES_PER_EMAIL, email), (throttle.LOGIN_FAILURES_PER_IP, ip))
+    # Counted as a failure before the password is checked, so parallel guesses can't all slip
+    # under the limit, and handed back if it was right.
+    throttle.take((throttle.LOGIN_FAILURES_PER_EMAIL, email), (throttle.LOGIN_FAILURES_PER_IP, ip))
     user = services.log_in(email, password)
     if user is None:
-        throttle.hit(throttle.LOGIN_FAILURES_PER_EMAIL, email)
-        throttle.hit(throttle.LOGIN_FAILURES_PER_IP, ip)
         raise ApiError(ErrorCode.UNAUTHENTICATED, "Wrong email or password.")
     throttle.reset(throttle.LOGIN_FAILURES_PER_EMAIL, email)
+    throttle.give_back(throttle.LOGIN_FAILURES_PER_IP, ip)
     return tokens.issue(user, SignInMethod.PASSWORD)
 
 

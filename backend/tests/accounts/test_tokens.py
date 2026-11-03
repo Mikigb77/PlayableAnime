@@ -66,6 +66,25 @@ def test_a_retry_within_the_leeway_gets_a_fresh_pair_instead_of_a_sign_out(playe
     assert not AuthSession.objects.get().is_revoked
 
 
+def test_a_replay_within_the_leeway_spends_the_pair_it_replaces(player):
+    """A session has one live refresh token, so a stolen token replayed inside the leeway can't
+    start a second chain: whoever is left holding the spent one trips the theft check."""
+    first = tokens.issue(player, SignInMethod.PASSWORD)
+    legit = tokens.refresh(first.refresh_token)
+    replayed = tokens.refresh(first.refresh_token)
+    assert RefreshToken.objects.filter(used_at__isnull=True).count() == 1
+    RefreshToken.objects.filter(used_at__isnull=False).update(
+        used_at=timezone.now() - timedelta(seconds=tokens.REUSE_LEEWAY_S + 1)
+    )
+
+    with pytest.raises(ApiError):
+        tokens.refresh(legit.refresh_token)
+
+    assert AuthSession.objects.get().revoked_reason == "refresh_reuse"
+    with pytest.raises(ApiError):
+        tokens.refresh(replayed.refresh_token)
+
+
 def test_a_rotated_token_used_again_later_revokes_the_session(player, log_lines):
     """Two holders of one refresh token means one stole it: both are signed out."""
     first = tokens.issue(player, SignInMethod.PASSWORD)

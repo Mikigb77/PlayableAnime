@@ -8,7 +8,10 @@
 
 A refresh token presented again after it rotated means two holders, so the session is revoked
 (theft detection), except within `REUSE_LEEWAY_S` of the first use, when a retry whose response
-was lost on a mobile network gets a fresh pair instead of a sign-out.
+was lost on a mobile network gets a fresh pair instead of a sign-out. Either way a session has one
+live refresh token: issuing one spends any other, so a replay inside the leeway can't start a
+second chain that would go unnoticed. Whichever holder is left with a spent token trips the theft
+check on its next refresh.
 
 These functions are sync and touch the database; call them through `sync_to_async`.
 """
@@ -23,7 +26,7 @@ from datetime import timedelta
 
 from django.core import signing
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from accounts.models import AuthSession, RefreshToken, SignInMethod, User
@@ -110,13 +113,15 @@ def refresh(raw: str) -> IssuedTokens:
             raise ApiError(ErrorCode.UNAUTHENTICATED, SESSION_EXPIRED)
         reused = token.used_at is not None
         if reused and (now - token.used_at).total_seconds() > REUSE_LEEWAY_S:
-            _revoke(session, "refresh_reuse", now)
+            revoke(AuthSession.objects.filter(pk=session.pk), "refresh_reuse")
             stolen = True
         else:
             stolen = False
             if not reused:
                 token.used_at = now
                 token.save(update_fields=["used_at"])
+            # One live token per session: spend the one a lost response carried, if any.
+            RefreshToken.objects.filter(session=session, used_at__isnull=True).update(used_at=now)
             new_refresh = _new_refresh_token(session)
             session.last_used_at = now
             session.save(update_fields=["last_used_at"])
@@ -145,23 +150,28 @@ def revoke_by_refresh_token(raw: str) -> AuthSession | None:
         )
         if token is None or token.session.is_revoked:
             return None
-        _revoke(token.session, "logout", timezone.now())
+        revoke(AuthSession.objects.filter(pk=token.session_id), "logout")
         return token.session
 
 
 def revoke_all(user: User, reason: str) -> int:
     """Signs a user out everywhere. Returns how many sessions were open."""
-    return AuthSession.objects.filter(user=user, revoked_at__isnull=True).update(
-        revoked_at=timezone.now(), revoked_reason=reason
-    )
+    return revoke(AuthSession.objects.filter(user=user), reason)
 
 
-def _revoke(session: AuthSession, reason: str, now) -> None:
-    session.revoked_at = now
-    session.revoked_reason = reason
-    session.save(update_fields=["revoked_at", "revoked_reason"])
-    # A revoked session can never refresh again, so its tokens are only clutter.
-    session.tokens.all().delete()
+def revoke(sessions: QuerySet[AuthSession], reason: str) -> int:
+    """Signs these sessions out at once: their access tokens stop working on the next request and
+    their refresh tokens are deleted. Every sign-out goes through here. Returns how many were
+    still open."""
+    with transaction.atomic():
+        open_sessions = sessions.filter(revoked_at__isnull=True)
+        ids = list(open_sessions.values_list("pk", flat=True))
+        AuthSession.objects.filter(pk__in=ids).update(
+            revoked_at=timezone.now(), revoked_reason=reason
+        )
+        # A revoked session can never refresh again, so its tokens are only clutter.
+        RefreshToken.objects.filter(session_id__in=ids).delete()
+    return len(ids)
 
 
 def prune() -> int:

@@ -5,6 +5,20 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def refuse_ownerless_stories(apps, schema_editor):
+    """Stories made before sign-in have no owner, and no one can open them now (S8). Deleting
+    them is a call for whoever owns the database (on Neon `production`, only Miki), so stop with
+    a clear message instead of failing on the NOT NULL constraint."""
+    Story = apps.get_model("stories", "Story")
+    count = Story.objects.using(schema_editor.connection.alias).filter(owner__isnull=True).count()
+    if count:
+        raise RuntimeError(
+            f"{count} stories have no owner (made before sign-in). Give them an owner or delete "
+            "them, for example with `Story.objects.filter(owner=None).delete()` in "
+            "`manage.py shell` on a development database, then run migrate again."
+        )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("stories", "0001_initial"),
@@ -12,6 +26,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(refuse_ownerless_stories, migrations.RunPython.noop),
         migrations.AlterField(
             model_name="story",
             name="owner",

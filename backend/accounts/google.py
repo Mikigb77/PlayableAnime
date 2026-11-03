@@ -29,6 +29,8 @@ _DEFAULT_CERTS_TTL_S = 3600
 # A token naming an unknown key refetches at most this often, so junk tokens can't make us
 # hammer Google.
 _MIN_REFETCH_S = 60
+# After a failed fetch, sign-ins use what is cached (or fail fast) for this long.
+_RETRY_AFTER_FAILURE_S = 10
 _MAX_AGE = re.compile(r"max-age=(\d+)")
 
 
@@ -51,31 +53,33 @@ class GoogleIdentity:
 class _CertCache:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._certs: dict[str, str] = {}
-        self._expires_at = 0.0
-        self._fetched_at = 0.0
+        self.clear()
 
     def get(self, key_id: str | None) -> dict[str, str]:
         with self._lock:
             now = time.monotonic()
             stale = now >= self._expires_at
             unknown_key = key_id is not None and key_id not in self._certs
-            may_refetch = now - self._fetched_at >= _MIN_REFETCH_S
-            if stale or (unknown_key and may_refetch):
+            if (stale or unknown_key) and now >= self._next_fetch_at:
                 try:
                     self._certs, ttl = fetch_certs()
-                    self._fetched_at = now
                     self._expires_at = now + ttl
-                except Exception as exc:
-                    if not self._certs:
-                        raise GoogleUnavailable("Couldn't fetch Google's certificates") from exc
-                    # Keep using the last good set; Google keeps keys valid well past rotation.
-                    logger.warning("Couldn't refresh Google's certificates", exc_info=True)
+                    self._next_fetch_at = now + _MIN_REFETCH_S
+                except Exception:
+                    # Wait a little before trying again, so an outage doesn't make every
+                    # sign-in wait on Google. Meanwhile the last good set still works: Google
+                    # keeps keys valid well past rotation.
+                    self._next_fetch_at = now + _RETRY_AFTER_FAILURE_S
+                    logger.warning("Couldn't fetch Google's certificates", exc_info=True)
+            if not self._certs:
+                raise GoogleUnavailable("Google's certificates aren't available")
             return dict(self._certs)
 
     def clear(self) -> None:
         with self._lock:
-            self._certs, self._expires_at, self._fetched_at = {}, 0.0, 0.0
+            self._certs: dict[str, str] = {}
+            self._expires_at = 0.0
+            self._next_fetch_at = 0.0
 
 
 _cache = _CertCache()
