@@ -1,0 +1,418 @@
+"""Building what the model nodes read (B5 step 4), from the world state and the turn so far.
+
+Every prompt is a few titled sections of JSON or plain text. What a section holds is chosen in code:
+the scene the last turn ended on (R3), the people present, the player character's sheet, what the
+engine resolved, the director's pick and the story so far (C3). Hidden truth a character could
+never show, such as secrets or a mystery's answer, stays out. Retrieval over older facts and scenes
+(C4) comes later; until then the rolling summary and the chapter summaries carry the past.
+"""
+
+import json
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from typing import Any
+
+from engine.context import TurnContext
+from engine.contracts import DirectorPlan, Intent, Resolution
+from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
+from engine.state.records import GoalStatus, LeadStatus, PendingEvent
+from engine.state.world import WorldState
+from graph.llm import Prompt
+from graph.turn import prompts
+from graph.turn.types import RECENT_SCENES, PastScene
+
+# Facts this important, which the player character knows, always reach the narrator.
+KEY_FACT_IMPORTANCE = 4
+
+# What the interpret step needs of the world to judge what it allows (G6, G8).
+_INTERPRET_WORLD = {
+    "genre",
+    "era",
+    "physics",
+    "extraordinary",
+    "rules",
+    "peoples",
+    "creatures",
+    "medicine",
+}
+_RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin"}
+_NPC_HIDDEN = {
+    "secrets": True,
+    "personal_offset_s": True,
+    "agenda": {"secret"},
+    "sheet": {"rulings": True, "growth": True, "backstory": True, "disposition": {"attitudes"}},
+}
+
+
+def section(title: str, body: Any) -> str:
+    text = body if isinstance(body, str) else _json(body)
+    return f"## {title}\n{text}"
+
+
+def render(sections: Iterable[tuple[str, Any]]) -> str:
+    return "\n\n".join(section(title, body) for title, body in sections)
+
+
+def _json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
+
+
+def _dump(model: Any, exclude: Any = None, include: Any = None) -> dict[str, Any]:
+    return model.model_dump(mode="json", include=include, exclude=exclude, exclude_defaults=True)
+
+
+def present_characters(state: WorldState) -> list[Character]:
+    """Who is in the scene with the player character, living, in a stable order. A dead character
+    can't be present (C1)."""
+    present = []
+    for character_id in dict.fromkeys(state.scene.present_ids):
+        character = state.characters.get(character_id)
+        if character is None or character_id == state.player_id:
+            continue
+        if character.status is not CharacterStatus.ALIVE:
+            continue
+        present.append(character)
+    return present
+
+
+def place_name(state: WorldState) -> str | None:
+    place_id = state.scene.place_id or state.player.location_id
+    place = state.places.get(place_id) if place_id else None
+    return place.name if place else None
+
+
+def _player_view(state: WorldState) -> dict[str, Any]:
+    return {"id": state.player_id} | _dump(
+        state.player, exclude={*_RECORD_NOISE, "personal_offset_s"}
+    )
+
+
+def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
+    hidden = dict.fromkeys(_RECORD_NOISE, True) | _NPC_HIDDEN
+    view = {"id": character.id} | _dump(character, exclude=hidden)
+    sheet = view.get("sheet", {})
+    if "powers" in sheet:
+        # A power kept secret stays out until it is used, and resolve's outcome tells of it then.
+        shown = [_dump(power) for power in character.sheet.powers if not power.secret]
+        if shown:
+            sheet["powers"] = shown
+        else:
+            del sheet["powers"]
+    attitude = character.sheet.disposition.attitudes.get(state.player_id)
+    if attitude is not None:
+        view["toward_you"] = _dump(attitude)
+    return view
+
+
+def _scene_view(state: WorldState) -> dict[str, Any]:
+    frame = state.scene
+    place_id = frame.place_id or state.player.location_id
+    place = state.places.get(place_id) if place_id else None
+    return {
+        "place": ({"id": place.id} | _dump(place, exclude=_RECORD_NOISE)) if place else None,
+        "present": [_npc_view(c, state) for c in present_characters(state)],
+        "positions": frame.positions,
+        "props": frame.props,
+        "encounter": _dump(frame.encounter) if frame.encounter else None,
+    }
+
+
+def _known_view(state: WorldState) -> dict[str, Any]:
+    """Names the player character knows, for mapping misheard names (V3) and for continuity."""
+    you = state.player_id
+    present = {c.id for c in present_characters(state)}
+    people = [
+        {
+            "id": c.id,
+            "name": c.name,
+            **({"aliases": c.aliases} if c.aliases else {}),
+            **({"status": c.status.value} if c.status is not CharacterStatus.ALIVE else {}),
+        }
+        for c in sorted(state.npcs(), key=lambda c: c.id)
+        if c.id not in present and (you in c.known_by or you in c.met_by)
+    ]
+    places = [
+        {
+            "id": p.id,
+            "name": p.name,
+            **({"status": p.status.value} if p.status is not PlaceStatus.THRIVING else {}),
+        }
+        for p in sorted(state.places.values(), key=lambda p: p.id)
+        if you in p.known_by or you in p.visited_by
+    ]
+    factions = [
+        {"id": f.id, "name": f.name, "status": f.status.value}
+        for f in sorted(state.factions.values(), key=lambda f: f.id)
+        if you in f.known_by
+    ]
+    return {"people": people, "places": places, "factions": factions}
+
+
+def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str, Any]:
+    """The world bible without its hidden answers. The settings a model can't assume are always
+    shown, defaults included: how strict physics is (A9), whether the dead can come back (C1) and
+    whether news travels instantly (W2)."""
+    bible = state.bible
+    view = _dump(bible, include=include, exclude={"mysteries", "title"})
+    view["physics"] = bible.physics.value
+    if include is None or "medicine" in include:
+        view.setdefault("medicine", {})["resurrection"] = bible.medicine.resurrection.value
+    if include is None or "travel" in include:
+        view.setdefault("travel", {})["instant_messages"] = bible.travel.instant_messages
+    return view
+
+
+def _continuity(state: WorldState) -> list[str]:
+    """Lines the narrator must never contradict (C1), worked out in code."""
+    lines = []
+    for c in sorted(state.npcs(), key=lambda c: c.id):
+        if c.status is CharacterStatus.DEAD:
+            lines.append(f"{c.name} ({c.id}) is dead.")
+    for f in sorted(state.factions.values(), key=lambda f: f.id):
+        if f.status is FactionStatus.DESTROYED:
+            lines.append(f"{f.name} ({f.id}) is destroyed and no longer acts as one.")
+    for p in sorted(state.places.values(), key=lambda p: p.id):
+        if p.status is not PlaceStatus.THRIVING:
+            lines.append(f"{p.name} ({p.id}) is {p.status.value}.")
+    you = state.player_id
+    for fact in sorted(state.facts.values(), key=lambda f: (-f.importance, f.id)):
+        if fact.importance >= KEY_FACT_IMPORTANCE and you in fact.known_by:
+            belief = "" if fact.is_true else " (the character believes this; it isn't true)"
+            lines.append(f"{fact.text}{belief}")
+    return lines
+
+
+def _past(state: WorldState, scenes: Sequence[PastScene]) -> dict[str, Any]:
+    return {
+        "chapters": [
+            {"turns": f"{c.from_turn}-{c.to_turn}", "summary": c.summary}
+            for c in sorted(state.chapters, key=lambda c: c.index)
+        ],
+        "summary": state.summary or "(the story is just beginning)",
+        "recent_scenes": [
+            {"turn": s.turn, "action": s.player_action, "narration": s.narration}
+            for s in scenes[-RECENT_SCENES:]
+        ],
+    }
+
+
+def _goals_and_threads(state: WorldState) -> dict[str, Any]:
+    """The player's goals, the open threads they know of and the leads on offer (N1, N2)."""
+    you = state.player_id
+    return {
+        "goals": [
+            g.text
+            for g in sorted(state.goals.values(), key=lambda g: g.id)
+            if g.status is GoalStatus.ACTIVE
+        ],
+        "threads": [
+            {"id": t.id, "title": t.title, "stakes": t.stakes, "status": t.status.value}
+            for t in sorted(state.threads.values(), key=lambda t: t.id)
+            if not t.status.closed and you in t.known_by
+        ],
+        "leads": [
+            {"id": lead.id, "text": lead.text}
+            for lead in sorted(state.leads.values(), key=lambda lead: lead.id)
+            if lead.status is LeadStatus.OPEN
+        ],
+    }
+
+
+def interpret_prompt(state: WorldState, action: str) -> Prompt:
+    """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`."""
+    frame = state.scene
+    user = render(
+        [
+            ("WORLD", _world_view(state, include=_INTERPRET_WORLD)),
+            ("PLAYER CHARACTER", _player_view(state)),
+            ("SCENE", _scene_view(state)),
+            ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
+            ("KNOWN", _known_view(state)),
+            ("GOALS AND THREADS", _goals_and_threads(state)),
+            ("ACTION", action.strip()),
+        ]
+    )
+    return Prompt.build(prompts.INTERPRET_SYSTEM, user)
+
+
+@dataclass(frozen=True)
+class NarrationBrief:
+    """Everything the narrate node needs: the prompt, and what its fallbacks use (F4)."""
+
+    system: str
+    user: str
+    place: str | None
+    suggestions: int
+
+    def prompt(self, *, cutaway: bool = False) -> Prompt:
+        system = self.system + (prompts.CUTAWAY_SYSTEM if cutaway else "")
+        return Prompt.build(system, self.user)
+
+    def template_line(self) -> str:
+        where = f"in {self.place}" if self.place else "there"
+        return prompts.TEMPLATE_LINE.format(where=where)
+
+
+def narration_brief(
+    *,
+    before: WorldState,
+    after: WorldState,
+    ctx: TurnContext,
+    intent: Intent | None,
+    resolution: Resolution,
+    plan: DirectorPlan,
+    fired: Sequence[PendingEvent],
+    scenes: Sequence[PastScene],
+    premise: str = "",
+) -> NarrationBrief:
+    """B5 step 4: the narrator's prompt.
+
+    `before` is the state the turn started from, so the scene picks up where the last one ended
+    (R3). `after` is the state once the steps played out, with the time that passed and every
+    consequence the engine recorded.
+    """
+    settings = ctx.settings
+    tone = before.bible.tone or "the genre's own voice"
+    if settings.tone:
+        tone = f"{tone}; the player asked for: {settings.tone}"
+    style = {
+        "genre": before.bible.genre,
+        "tone": tone,
+        "length": prompts.LENGTHS[settings.narration_length],
+    }
+    content = prompts.content_rules(
+        ctx.rating,
+        ctx.content_prefs.gore,
+        romance=ctx.content_prefs.romance,
+        dark_themes=ctx.content_prefs.dark_themes,
+    )
+    sections: list[tuple[str, Any]] = [
+        ("STYLE", style),
+        ("CONTENT", content),
+        ("WORLD", _world_view(before)),
+        ("STORY SO FAR", _past(before, scenes)),
+        ("CONTINUITY", _continuity(after) or ["(nothing yet)"]),
+        ("GOALS AND THREADS", _goals_and_threads(before)),
+        ("PLAYER CHARACTER", _player_view(after)),
+        ("KNOWN", _known_view(after)),
+        ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
+        ("SCENE", _scene_view(before)),
+    ]
+    if premise and ctx.turn <= 1:
+        sections.insert(2, ("PREMISE", premise))
+
+    if intent is None and not resolution.steps:
+        sections.append(("TASK", prompts.OPENING_TASK))
+    else:
+        if intent is not None:
+            sections.append(("ACTION", _action_view(intent)))
+        sections.append(("OUTCOME", _outcome_view(resolution)))
+        sections.append(("TIME", _time_view(before, after)))
+    seen = [e for e in fired if _perceived(e, after)]
+    if seen:
+        sections.append(("FIRED", [_event_view(e) for e in seen]))
+    if plan.event is not None:
+        sections.append(("EVENT", _dump(plan.event, exclude={"source", "source_id"})))
+    callbacks = [after.threads[t] for t in plan.callbacks if t in after.threads]
+    if callbacks:
+        sections.append(
+            ("CALLBACKS", [{"id": t.id, "title": t.title, "stakes": t.stakes} for t in callbacks])
+        )
+    suggestions = plan.suggestions.count
+    kinds = [kind.value for kind in plan.suggestions.kinds][:suggestions]
+    sections.append(("SUGGESTIONS", {"count": suggestions, "kinds": kinds}))
+    if plan.picture is not None:
+        subject = plan.picture.subject_id
+        sections.append(
+            (
+                "PICTURE",
+                {
+                    "kind": plan.picture.kind.value,
+                    "subject": _subject_name(after, subject) if subject else None,
+                    "why": plan.picture.reason,
+                },
+            )
+        )
+    return NarrationBrief(
+        system=prompts.NARRATOR_SYSTEM,
+        user=render(sections),
+        place=place_name(after),
+        suggestions=suggestions,
+    )
+
+
+def _action_view(intent: Intent) -> dict[str, Any]:
+    return _dump(intent, exclude={"actor_id"})
+
+
+def _outcome_view(resolution: Resolution) -> dict[str, Any]:
+    steps = []
+    for step in resolution.steps:
+        view: dict[str, Any] = {
+            "step": step.text,
+            "class": step.outcome_class.value,
+            "result": step.result.value,
+            "why": step.reason,
+        }
+        if step.roll is not None:
+            view["odds"] = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
+        if step.costs:
+            view["costs"] = [c.text for c in step.costs]
+        if step.chain:
+            view["chain"] = [
+                {"link": link.text, "holds": link.holds, "why": link.reason} for link in step.chain
+            ]
+        if step.interrupted:
+            view["interrupted"] = True
+        steps.append(view)
+    outcome: dict[str, Any] = {"steps": steps}
+    if resolution.stopped_at_step is not None:
+        outcome["stopped_at_step"] = resolution.stopped_at_step
+        outcome["stop_reason"] = resolution.stop_reason.value if resolution.stop_reason else None
+    if resolution.unplayed:
+        outcome["unplayed"] = resolution.unplayed
+    if resolution.canon:
+        outcome["now_canon"] = resolution.canon
+    if resolution.rulings:
+        outcome["rulings"] = [_dump(r) for r in resolution.rulings]
+    return outcome
+
+
+def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
+    elapsed = after.world_s - before.world_s
+    lived = after.player.personal_s(after.world_s) - before.player.personal_s(before.world_s)
+    view: dict[str, Any] = {"world_seconds_passed": elapsed}
+    if lived != elapsed:
+        view["your_seconds_lived"] = lived
+    return view
+
+
+def _perceived(event: PendingEvent, state: WorldState) -> bool:
+    """Whether the player character could notice an event that fired: it needs them, involves
+    them, or happens where they are. Everything else stays off-screen (C6)."""
+    if event.needs_player or state.player_id in event.subject_ids:
+        return True
+    here = state.scene.place_id or state.player.location_id
+    return event.place_id is not None and event.place_id == here
+
+
+def _event_view(event: PendingEvent) -> dict[str, Any]:
+    return {
+        "title": event.title or event.kind,
+        "kind": event.kind,
+        "needs_you": event.needs_player,
+    }
+
+
+def _subject_name(state: WorldState, subject_id: str) -> str:
+    for records in (state.characters, state.places, state.deeds):
+        record = records.get(subject_id)
+        if record is not None:
+            return getattr(record, "name", None) or getattr(record, "text", subject_id)
+    return subject_id
+
+
+def chapter_prompt(scenes: Sequence[PastScene]) -> Prompt:
+    """C3: the summarizer's prompt for one chapter of scenes."""
+    body = [{"turn": s.turn, "action": s.player_action, "narration": s.narration} for s in scenes]
+    return Prompt.build(prompts.SUMMARIZER_SYSTEM, render([("SCENES", body)]))

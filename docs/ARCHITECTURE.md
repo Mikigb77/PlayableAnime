@@ -115,7 +115,7 @@ The code is in `backend/accounts/`.
 
 Today's turn still runs the one-call narrator, moved unchanged from the FastAPI app to
 `backend/legacy/` and wired to the Django models by `stories/legacy_bridge.py`. WS3's LangGraph turn
-graph (B5) replaces both. The legacy endpoints only serve stories the legacy narrator wrote
+graph (B5, [below](#turn-graph)) is built and replaces both once the turn endpoint lands. The legacy endpoints only serve stories the legacy narrator wrote
 (`Story.engine`), so they never overwrite a graph story's state. One turn
 (`backend/legacy/engine/narrator.py`):
 
@@ -237,8 +237,8 @@ a new one.
 
 `backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with
 no Django imports (B4), and importing it loads no model SDK: LangChain and google-genai load on the
-first real call (B10). Today's one-call narrator in `backend/legacy/` still serves the legacy
-endpoints until the turn graph replaces it (WS3's PR 2 and 3).
+first real call (B10). The turn graph below is its main caller. Today's one-call narrator in
+`backend/legacy/` still serves the legacy endpoints until the turn endpoint replaces it (WS3's PR 3).
 
 ```python
 telemetry = TurnTelemetry()
@@ -310,6 +310,58 @@ no prompt or story text, and a `Prompt`'s repr shows only its size (T6).
 for a failure and its retry, `Block(after_text=...)` for a block mid-stream, `Hang()` for a
 timeout. `tests/graph/test_gemini.py` runs the real LangChain model with google-genai's network
 call replaced, to check the Gemini translation: messages, safety settings, blocks, usage, errors.
+
+## Turn graph
+
+`backend/graph/turn/` plays one turn as LangGraph's B5 graph: seven nodes, one after the other,
+with no checkpointer, because story state lives in our own tables (B9). It has no Django imports
+(B4), and LangGraph loads on the first turn, not at startup (B10). The turn endpoint (WS3's PR 3)
+loads the story, runs the graph and saves what it returns.
+
+```python
+turn = TurnInput(state=world, ctx=TurnContext(story_id=..., turn=world.turn + 1, ...),
+                 kind=TurnKind.ACTION, action="I throw a stone at Zhao, then run for the gate",
+                 scenes=scenes)  # every scene since the last chapter, and at least the last 3
+async with aclosing(run_turn(turn, llm)) as events:
+    async for event in events:  # NarrationDelta, NarrationReset, then TurnCompleted(result)
+        ...
+```
+
+| B5 step | Node | Kind | What it does |
+| --- | --- | --- | --- |
+| 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. `check_intent` turns unknown ids back into words, never lets the dead act, hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). |
+| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player) and `direct`, then `check_plan` (pictures, events and callbacks against the state and the player's settings, F7, M1, M2). This is C5's code part, before anything streams. |
+| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time that passed, the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
+| 5 | `narrate` | model (`narrator`), streamed | One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
+| 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment and leaves the dead out of the scene, then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
+| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
+
+**Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
+and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent
+only when text was shown: `retry` when the model failed partway and is being retried, `cutaway`
+and `template` when the narration was blocked. `TurnCompleted.result` carries the state to save,
+the scene, the intent, the resolution, the plan, the pending events that fired, the issues the
+checks found and each node's time in milliseconds for the T5 line.
+
+**Errors.** `UnreadableAction` (`unreadable_action`, 422) when the interpret step is blocked, the
+one block the player sees (F4). `LLMUnavailable` and `BadKey` from the model layer otherwise, and
+`InvariantError` for an engine bug. Nothing is saved on any of them, and a chapter summary still
+running is cancelled, so nothing outlives the response (B8).
+
+**Proposals versus decisions.** The interpret and narrator outputs are proposals. What
+`engine.apply` refuses, and what the checks repair, is kept on the result as `Issue`s and logged as
+`turn check` lines with the code only; the details can hold story text, so they are logged at
+DEBUG (T6).
+
+**Prompts** live in `graph/turn/prompts.py` with the requirement behind each rule: the interpret
+prompt (V3, R2, R6, R7, A6, A9, N2, N4, W10) and the narrator's (R1 to R7, S2, S4, F1 to F3, F7,
+G5, M1, C1), whose content rules follow the ratings table above.
+
+**Tests** in `tests/graph/test_turn_*.py` run whole turns on the scripted fake: the stream, a
+standing action, the opening, a blocked interpret step, a cut-away, the template, a failure mid-
+stream, a careless resolve cut short by the checks, chapter summaries, replaying a turn and the
+offline model.
 
 ## Bring your own key
 
