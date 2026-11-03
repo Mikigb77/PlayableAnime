@@ -6,6 +6,8 @@ import 'core/config.dart';
 import 'core/session/session_controller.dart';
 import 'design/gallery/gallery_screen.dart';
 import 'features/account/account_screen.dart';
+import 'features/account/credits_screen.dart';
+import 'features/account/privacy_screen.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/create/create_story_screen.dart';
 import 'features/discover/discover_screen.dart';
@@ -25,13 +27,15 @@ abstract final class Routes {
   static const account = '/account';
   static const create = '/create';
   static const gallery = '/gallery';
+  static const credits = '/credits';
+  static const privacy = '/privacy';
 
   static String story(String id) => '/story/$id';
   static String memory(String id) => '/story/$id/memory';
   static String status(String id) => '/story/$id/status';
 
   /// Reachable while signed out.
-  static const _public = {splash, welcome, gallery};
+  static const _public = {splash, welcome, gallery, privacy};
 }
 
 /// Signed out: the welcome and sign-in screens (WS13). Signed in: the tabs (Discover, Library,
@@ -72,6 +76,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', redirect: (_, _) => Routes.discover),
       GoRoute(path: Routes.splash, builder: (_, _) => const SizedBox.shrink()),
       GoRoute(path: Routes.welcome, builder: (_, _) => const WelcomeScreen()),
+      GoRoute(path: Routes.privacy, builder: (_, _) => const PrivacyScreen()),
+      GoRoute(path: Routes.credits, builder: (_, _) => const CreditsScreen()),
       if (AppConfig.showGallery)
         GoRoute(
           path: Routes.gallery,

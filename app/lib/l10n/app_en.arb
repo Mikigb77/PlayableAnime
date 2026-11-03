@@ -24,11 +24,84 @@
   "welcomePointSpeak": "Type or say anything. The world decides what follows.",
   "welcomePointWorld": "Every deed leaves a mark, and the world moves on without you.",
   "welcomePointPictures": "Pictures at the moments that matter.",
-  "welcomeDemoSignIn": "Sign in to the demo account",
+  "welcomeDemoSignIn": "Try the demo account",
   "@welcomeDemoSignIn": {
     "description": "Only in the offline fake-API build."
   },
-  "welcomeSignInSoon": "Sign-in with Google and email is on its way.",
+  "authContinueWithGoogle": "Continue with Google",
+  "authSignUpWithEmail": "Sign up with email",
+  "authHaveAccount": "I already have an account",
+  "authAgreement": "By continuing, you accept the {policy}.",
+  "@authAgreement": {
+    "description": "Under the sign-in buttons. {policy} is the link authPolicyLink.",
+    "placeholders": {
+      "policy": {
+        "type": "String"
+      }
+    }
+  },
+  "authPolicyLink": "privacy policy",
+  "@authPolicyLink": {
+    "description": "The link inside authAgreement."
+  },
+  "authSignInTitle": "Welcome back",
+  "authSignInSubtitle": "Sign in with your email and password.",
+  "authRegisterTitle": "Create your account",
+  "authRegisterSubtitle": "Your stories, credits and settings stay with it on every device.",
+  "authNameLabel": "Name",
+  "authEmailLabel": "Email",
+  "authPasswordLabel": "Password",
+  "authPasswordHelper": "At least 8 characters.",
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password",
+  "authBirthDateLabel": "Birth date",
+  "authBirthDateHint": "Choose a date",
+  "authBirthDateHelper": "We ask once, to set which story ratings you can play.",
+  "authSignIn": "Sign in",
+  "authCreateAccount": "Create account",
+  "authToRegister": "New here? Create an account",
+  "authToSignIn": "Have an account? Sign in",
+  "authWrongPassword": "That email and password don't match an account.",
+  "authNeedName": "Enter a name.",
+  "authNeedEmail": "Enter your email.",
+  "authBadEmail": "Enter a valid email address.",
+  "authEmailTaken": "An account with this email already exists. Sign in instead.",
+  "authNeedPassword": "Enter your password.",
+  "authPasswordShort": "Use at least 8 characters.",
+  "authPasswordCommon": "That password is too easy to guess. Try another.",
+  "authPasswordSimilar": "That password is too close to your name or email.",
+  "authPasswordNumeric": "Use some letters, not only numbers.",
+  "authNeedBirthDate": "Choose your birth date.",
+  "authBirthDateFuture": "Your birth date can't be in the future.",
+  "authBirthDateImplausible": "Check your birth date.",
+  "authTooYoung": "Sorry, you can't create an account yet.",
+  "authFieldInvalid": "Check this field.",
+  "authBirthDateTitle": "One more step",
+  "authBirthDateBody": "Tell us your birth date. We ask once, to set which story ratings you can play.",
+  "authContinue": "Continue",
+  "authGoogleExpired": "Your Google sign-in timed out. Go back and try again.",
+  "authGoogleFailed": "Google sign-in didn't work. Try again, or use email.",
+  "authGoogleUnverified": "Verify the email on your Google account, then try again.",
+  "fakeGoogleTitle": "Choose an account",
+  "@fakeGoogleTitle": {
+    "description": "Only in the offline fake-API build."
+  },
+  "fakeGoogleBody": "The offline build stands in for Google with these accounts.",
+  "@fakeGoogleBody": {
+    "description": "Only in the offline fake-API build."
+  },
+  "fakeGoogleDemo": "Demo player",
+  "@fakeGoogleDemo": {
+    "description": "Only in the offline fake-API build."
+  },
+  "fakeGoogleNew": "New player, asks for a birth date",
+  "@fakeGoogleNew": {
+    "description": "Only in the offline fake-API build."
+  },
+  "fakeGoogleOwner": "Story owner, unlimited credits",
+  "@fakeGoogleOwner": {
+    "description": "Only in the offline fake-API build."
+  },
   "discoverTitle": "Discover",
   "discoverSubtitle": "Pick a world, or dream up your own.",
   "discoverSignature": "Signature worlds",
@@ -125,6 +198,137 @@
   "accountApiFake": "Fake API, offline",
   "accountGallery": "Widget gallery",
   "accountSignOut": "Sign out",
+  "accountEditName": "Edit name",
+  "accountNameTitle": "Your name",
+  "accountNameHelper": "Shown on your account. Your characters have their own names.",
+  "accountSave": "Save",
+  "accountOwner": "Owner",
+  "accountRatingMature": "Teen and Mature stories",
+  "accountRatingTeen": "Teen stories",
+  "accountTeenNote": "Mature stories open on your 17th birthday.",
+  "accountCredits": "Credits",
+  "accountUnlimited": "Unlimited",
+  "accountUnlimitedBody": "The owner account plays free. Costs are still recorded.",
+  "accountBalance": "Balance",
+  "accountCreditsBody": "Each turn, world draft and picture uses a few cents.",
+  "accountTopUpsSoon": "Top-ups are coming soon. Until then, turns on your own Gemini key use no credits.",
+  "accountCreditHistory": "History",
+  "accountKeyFree": "Turns, drafts and pictures on your key use no credits.",
+  "accountKeyEnding": "Gemini key ending in {last}",
+  "@accountKeyEnding": {
+    "placeholders": {
+      "last": {
+        "type": "String"
+      }
+    }
+  },
+  "accountKeyHelper": "Create one in Google AI Studio. A free-tier key can't make pictures.",
+  "accountKeyShow": "Show key",
+  "accountKeyHide": "Hide key",
+  "accountContent": "Story content",
+  "accountContentBody": "The world and its people only bring up the themes you switch on. Your own actions are limited only by the story's rating.",
+  "accountGore": "Gore",
+  "accountGoreBody": "How much blood and injury Mature stories show. Teen stories never show gore.",
+  "accountGoreLow": "Low",
+  "accountGoreMedium": "Medium",
+  "accountGoreHigh": "High",
+  "accountRomance": "Romance",
+  "accountRomanceBody": "Love interests and romantic scenes, never explicit.",
+  "accountDarkThemes": "Dark themes",
+  "accountDarkThemesBody": "Bleak and disturbing turns, such as cruelty and despair.",
+  "accountPrivacy": "Privacy and data",
+  "accountPrivacyPolicy": "Privacy policy",
+  "accountPrivacyPolicyBody": "What we keep, why, and for how long.",
+  "accountExport": "Export my data",
+  "accountExportBody": "Your account, stories and pictures as a JSON file. Picture links in it work for about an hour.",
+  "accountExportReady": "Your data is ready.",
+  "accountDelete": "Delete account",
+  "accountDeleteBody": "Your account and everything in it, for good.",
+  "deleteTitle": "Delete your account?",
+  "deleteIntro": "This deletes your account and everything in it, at once and for good:",
+  "deleteStories": "Every story and scene",
+  "deletePictures": "Every picture",
+  "deleteCredits": "Your credits, including any you have left",
+  "deleteDevices": "Your sign-in on every device",
+  "deleteNoUndo": "There's no undo. If you want a copy, export your data first.",
+  "deleteWord": "delete",
+  "@deleteWord": {
+    "description": "The word the player types to confirm deleting their account. Lowercase."
+  },
+  "deleteTypeLabel": "Type “{word}” to confirm",
+  "@deleteTypeLabel": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteConfirm": "Delete my account",
+  "deleteDone": "Your account and everything in it were deleted.",
+  "privacyTitle": "Privacy policy",
+  "creditsTitle": "Credits",
+  "creditsHistory": "History",
+  "creditsEmptyTitle": "No credit activity yet",
+  "creditsEmptyBody": "What each turn, draft and picture costs shows up here.",
+  "creditsKindStarter": "Starter credit",
+  "creditsKindTurn": "Turn",
+  "creditsKindDraft": "World draft",
+  "creditsKindImage": "Picture",
+  "creditsKindTopup": "Top-up",
+  "creditsKindAdjustment": "Adjustment",
+  "creditsStoryTurn": "{story} · turn {turn}",
+  "@creditsStoryTurn": {
+    "placeholders": {
+      "story": {
+        "type": "String"
+      },
+      "turn": {
+        "type": "int"
+      }
+    }
+  },
+  "creditsTurn": "Turn {turn}",
+  "@creditsTurn": {
+    "placeholders": {
+      "turn": {
+        "type": "int"
+      }
+    }
+  },
+  "creditsBalanceAfter": "Balance {amount}",
+  "@creditsBalanceAfter": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "creditsFree": "Free",
+  "@creditsFree": {
+    "description": "A cost recorded at zero charge on the owner account."
+  },
+  "creditsLatest": "Your latest {count} entries.",
+  "@creditsLatest": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "oocTitle": "You're out of credits",
+  "oocBalance": "You have {balance} left, which isn't enough for this.",
+  "@oocBalance": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "oocHeld": "Part of it is set aside for a request that is still running.",
+  "oocTopUps": "Top-ups are coming soon. Until then, you can keep playing on your own Gemini API key, and turns on it use no credits.",
+  "oocUseKey": "Use my own Gemini key",
+  "oocHistory": "See credit history",
+  "oocKeySaved": "Key saved. Try again to carry on.",
   "sceneDetails": "How it played out",
   "@sceneDetails": {
     "description": "Opens the steps, odds and reasons behind a scene."

@@ -155,6 +155,8 @@ void main() {
     final l10n = await english();
     await tester.tap(find.text(l10n.navAccount));
     await settle(tester);
+    await tester.ensureVisible(find.text(l10n.accountSignOut));
+    await settle(tester);
     await tester.tap(find.text(l10n.accountSignOut));
     await settle(tester);
     expect(find.text(l10n.welcomeTagline), findsOneWidget);
