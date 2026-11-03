@@ -371,7 +371,9 @@ it is when making the character (G2). A strong gift is made fun rather than flat
 - **It is really strong.** A8 counts it in full, and it wins fights it should win. Time stop against a
   foe the character's blow can kill is a certain kill, not a roll (A2).
 - **It has limits that make choices interesting.** By default, time stop lasts three heartbeats and
-  needs a breath to recharge. The player can make the limits lighter or heavier (G2).
+  needs a breath to recharge. The player can make the limits lighter or heavier (G2). How its hits
+  land is one of its settings (W10a): an overpowered time stop hits at relative speed by default, and
+  a modest one with normal force.
 - **The world answers it.** Others notice, covet, fear, worship or try to seal it (W5). Stronger
   rungs and older monsters exist above the player (G18).
 - **Not every problem is a fight.** Politics, love, a sect's rules, a debt or a heart demon can't be
@@ -443,7 +445,7 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | A1 | A player character sheet per story, holding everything in G13: attributes, skills, traits, powers where the world has them (with their limits and costs), disposition, resources and standing, and condition. It is drafted from the premise at story start, and the player can change it before playing (G2). | P0 |
-| A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales, frozen or not). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
+| A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time hits like a cannon shot, the troll dies, the wall behind it breaks and the blast is heard (W10a). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
 | A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. | P1 |
 | A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. | P1 |
 | A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. | P1 |
@@ -592,14 +594,27 @@ Each time power has to exist in the world bible's power rules and carries costs 
 sheet (A1, A4). NPCs can have them too.
 
 - **Time stop (P1).** The user's personal clock runs while the world clock stands still. Nothing else
-  moves and no pending event fires. Frozen people see nothing, so deeds done during a stop are secret
-  (W2) unless someone is immune, but they still leave traces (W13): to everyone else, the guard simply
-  drops dead. Frozen people can't react either, so an action against them is unopposed, and A2 settles it
-  from what the character's means can do, with no roll unless it is a genuinely close call. The stop takes
-  away the target's defence, not its toughness, and adds no force: by default a blow lands with the
-  strength the character has, though a world's power rules can say otherwise, such as momentum that
-  builds up while time is stopped and lands all at once when it restarts (G6). When an NPC stops time,
-  the player sees the world jump.
+  moves and no pending event fires. What the user holds moves with them, and what they let go freezes
+  once it leaves the power's reach, mid-air if need be, until time restarts. Frozen people see nothing,
+  so deeds done during a stop are secret (W2) unless someone is immune, but they still leave traces
+  (W13): to everyone else, the guard simply drops dead. Frozen people can't react either, so an action
+  against them is unopposed, and A2 settles it with no roll unless it is a genuinely close call. How
+  hard stopped-time hits land is a setting of the power (G22), chosen when the character is made (G2)
+  and fixed after that (G7), and the engine follows it as logic (A2):
+  - **Normal force:** a blow or a throw lands as it would have; the target just couldn't defend. A
+    thrown rock hangs in the air and carries on at throwing speed when time restarts.
+  - **Relative speed** (Miki, 2026-11-03): to the frozen world, whatever moved during the stop got
+    where it is in no time at all, so it lands with overwhelming force. A rock thrown during the stop
+    strikes like a cannon shot when time restarts, and a blade swung during it goes through steel like
+    butter. The power sets a ceiling, by default that cannon shot, because taken literally a 100-gram
+    pebble at 90% of the speed of light hits like a three-megaton bomb and would kill the thrower too.
+    The rest follows from the rule: the shot also smashes what is behind the target, the blast is seen
+    and heard, so it starts rumors even when nobody saw who threw (W2, W13), and anything tougher than
+    the ceiling, such as a body several rungs up or a protected treasure, survives it.
+  - **Untouchable:** frozen things can't be changed until time restarts, so the stop is for moving,
+    escaping and setting things up, not for striking.
+
+  When an NPC stops time, the player sees the world jump.
 - **Haste and slow (P1).** The user's personal clock runs faster or slower than the world's, such as
   a fighter who lives ten seconds in every one.
 - **Local reversal (P1).** Rewinding a wound, an object or a building is a state change with a
@@ -932,7 +947,8 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Goal ownership | 50 turns of normal play | The player's goals never change without the player's input (N2) |
 | Secret holds | A planted traitor | The betrayal isn't visible on the Memory screen or through `/thoughts` before it happens |
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
-| Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a frozen ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
+| Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |
+| Stopped-time throw | The player stops time and throws a pebble at a troll standing in front of a wall, once in a world where stopped-time hits land with normal force and once at relative speed, over many seeds | Normal force: the pebble bounces off the troll. Relative speed: the troll and the wall behind it are smashed on every seed, and the blast starts rumors (W10a, A2) |
 | First session | A new account's first story, on the starter credit (K1) | At least one event the player didn't cause arrives before the credit runs out |
 | Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | It fails almost every time and the elder reacts to the insult. Against a gravely wounded elder, the same attack can succeed (G18, A8). Using time stop, the result is the same on every seed, with no roll: whatever the world's rules say a disciple's strike can do to a body that strong (A2) |
 | Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10) |
