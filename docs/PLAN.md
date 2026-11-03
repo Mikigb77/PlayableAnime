@@ -249,7 +249,13 @@ T7, K6.
   player can act on (S4). A blocked narration retries as a cut-away and then falls back to a template
   line, and the deed still stands (F4). Context building with chapter summaries every 20 turns (C3)
   and the last scene's ending (R3). Code checks the plan against invariants before narrating (C5).
-  Steps 1, 3 and 6 call `engine.pipeline`, so WS9, WS10 and WS11 plug in without touching the graph.
+  Steps 1, 3 and 6 call `engine.pipeline`, so WS9, WS10 and WS11 plug in without touching the graph. **Landed** as
+  `backend/graph/turn/` (see [ARCHITECTURE.md](ARCHITECTURE.md#turn-graph)): `run_turn(TurnInput,
+  ModelClient)` streams `NarrationDelta` and `NarrationReset` and ends with `TurnCompleted`, whose
+  `result` holds the state, the `SceneDraft` and the fired events for PR 3 to save. The seams are
+  called in `graph/turn/nodes.py`'s `resolve` node; WS11's `direct(..., intent=)` and
+  `record_direction` go there. Step 6 swaps its stand-in for `engine.apply.apply_delta` when WS2's
+  PR 2 lands.
 - **PR 3, the turn endpoint (needs WS1):** `POST /v1/stories/{id}/turns` as server-sent events per
   API.md (B7, S3), the version check (T10), saving state, scene and pending events in one
   transaction, the opening turn, one structured T5 log line per turn with the input mode (V7). Delete

@@ -175,6 +175,7 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
+  turn/           The LangGraph turn graph (B5): nodes, prompts, checks before narration (C5)
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
 engine/           The rules engine, plain Python with no web or model imports (B4)
@@ -192,8 +193,8 @@ engine/           The rules engine, plain Python with no web or model imports (B
 tests/<area>/     Tests per package (engine tests in tests/engine/)
 ```
 
-Keep heavy imports (model SDKs, LangChain) inside the code that needs them, not at module level, so
-a cold start stays fast (B10, T3). A test checks that loading the app and its URLs doesn't import
+Keep heavy imports (model SDKs, LangChain, LangGraph) inside the code that needs them, not at module
+level, so a cold start stays fast (B10, T3). A test checks that loading the app and its URLs doesn't import
 them.
 
 `legacy/` is today's one-call narrator. `engine/` replaces it once the turn graph lands; see

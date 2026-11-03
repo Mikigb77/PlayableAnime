@@ -1,0 +1,197 @@
+"""What the model nodes read: the interpret prompt and the narrator's brief (B5 step 4)."""
+
+from engine.context import (
+    ContentPrefs,
+    GoreLevel,
+    NarrationLength,
+    Rating,
+    StorySettings,
+    TurnContext,
+)
+from engine.contracts import (
+    DirectorPlan,
+    Intent,
+    OutcomeClass,
+    PictureDecision,
+    PictureKind,
+    PictureTrigger,
+    Resolution,
+    StepResolution,
+    StopReason,
+    SuggestionPlan,
+)
+from engine.samples import cultivation_world, grounded_world
+from engine.state.cast import CharacterStatus, DeathCertainty
+from engine.state.records import StepResult
+from graph.turn import prompts
+from graph.turn.context import (
+    RECENT_SCENES,
+    chapter_prompt,
+    interpret_prompt,
+    narration_brief,
+    present_characters,
+)
+from graph.turn.types import PastScene
+
+SECRET = "He ordered the killing of Luca's father."
+MYSTERY_ANSWER = "Carmine Russo, the underboss."
+
+
+def ctx(turn=2, rating=Rating.TEEN, **settings) -> TurnContext:
+    prefs = settings.pop("prefs", ContentPrefs())
+    return TurnContext(
+        story_id="s",
+        turn=turn,
+        rating=rating,
+        content_prefs=prefs,
+        settings=StorySettings(**settings),
+    )
+
+
+def brief(state=None, *, intent=None, resolution=None, plan=None, scenes=(), **kwargs):
+    state = state or grounded_world()
+    return narration_brief(
+        before=state,
+        after=kwargs.pop("after", state),
+        ctx=kwargs.pop("context", ctx()),
+        intent=intent,
+        resolution=resolution or Resolution(),
+        plan=plan or DirectorPlan(),
+        fired=(),
+        scenes=scenes,
+        **kwargs,
+    )
+
+
+def stopped_plan() -> Resolution:
+    return Resolution(
+        steps=[
+            StepResolution(
+                index=0,
+                text="throw the stone",
+                outcome_class=OutcomeClass.CONTESTED,
+                reason="The troll's hide is thick.",
+                result=StepResult.FAILURE,
+                duration_s=2,
+            )
+        ],
+        stopped_at_step=0,
+        stop_reason=StopReason.FAILED,
+        unplayed=["run for the tunnel"],
+    )
+
+
+def test_present_characters_are_living_and_known():
+    state = grounded_world()
+    assert [c.id for c in present_characters(state)] == ["carmine", "bartender"]
+    bartender = state.characters["bartender"]
+    bartender.status, bartender.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    state.scene.present_ids.append("nobody")
+    assert [c.id for c in present_characters(state)] == ["carmine"]
+
+
+def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
+    state = cultivation_world()
+    prompt = interpret_prompt(state, "  I throw a stone at Senior Brother Jo ")
+    text = prompt.messages[-1].text
+    assert prompt.system == prompts.INTERPRET_SYSTEM
+    assert "## ACTION\nI throw a stone at Senior Brother Jo" in text
+    assert "Zhao grins and draws back his foot" in text  # the last moment (R3)
+    assert '"aliases":["Senior Brother Zhao"]' in text  # misheard names map to ids (V3)
+    assert '"tournament"' in text  # open threads, for what the action takes up
+
+
+def test_hidden_truth_never_reaches_a_prompt():
+    """Secrets, an agenda's secret and a mystery's answer stay out (C6)."""
+    state = grounded_world()
+    texts = [
+        interpret_prompt(state, "I ask Carmine about my father").messages[-1].text,
+        brief(state).user,
+    ]
+    for text in texts:
+        assert SECRET not in text
+        assert MYSTERY_ANSWER not in text
+
+
+def test_the_opening_brief_asks_for_an_opening():
+    state = cultivation_world()
+    opening = brief(state, context=ctx(turn=1), premise="A weak disciple remembers a past life.")
+    assert "## TASK\n" + prompts.OPENING_TASK in opening.user
+    assert "## PREMISE\nA weak disciple remembers a past life." in opening.user
+    assert "## OUTCOME" not in opening.user
+
+
+def test_an_action_brief_carries_the_outcome_and_where_the_plan_stopped():
+    state = grounded_world()
+    after = state.model_copy(deep=True)
+    after.world_s += 2
+    action = brief(
+        state, after=after, intent=Intent(summary="throw, then run"), resolution=stopped_plan()
+    )
+    assert '"stopped_at_step":0' in action.user
+    assert '"unplayed":["run for the tunnel"]' in action.user
+    assert '"why":"The troll\'s hide is thick."' in action.user
+    assert '"world_seconds_passed":2' in action.user
+    assert "## TASK" not in action.user
+
+
+def test_the_brief_follows_the_rating_and_the_players_preferences():
+    teen = brief(context=ctx(rating=Rating.TEEN)).user
+    assert "Rating: Teen." in teen and "no gore" in teen
+    mature = brief(
+        context=ctx(rating=Rating.MATURE, prefs=ContentPrefs(gore=GoreLevel.HIGH, romance=False))
+    ).user
+    assert "Rating: Mature (17+)." in mature
+    assert "graphic, cinematic gore is in" in mature
+    assert "never start romance" in mature
+    assert "fades out once sex begins" in mature
+
+
+def test_the_brief_carries_length_tone_and_the_story_so_far():
+    scenes = [PastScene(turn=t, narration=f"scene {t}") for t in range(1, 6)]
+    text = brief(
+        scenes=scenes, context=ctx(narration_length=NarrationLength.SHORT, tone="grim")
+    ).user
+    assert prompts.LENGTHS[NarrationLength.SHORT] in text
+    assert "the player asked for: grim" in text
+    shown = [t for t in range(1, 6) if f'"narration":"scene {t}"' in text]
+    assert shown == list(range(6 - RECENT_SCENES, 6))
+
+
+def test_suggestions_and_pictures_are_asked_for_only_when_planned():
+    plain = brief(plan=DirectorPlan(suggestions=SuggestionPlan(count=0, kinds=[])))
+    assert plain.suggestions == 0
+    assert '"count":0' in plain.user
+    assert "## PICTURE" not in plain.user
+    planned = brief(
+        plan=DirectorPlan(
+            picture=PictureDecision(
+                kind=PictureKind.PORTRAIT,
+                trigger=PictureTrigger.FIRST_MEETING,
+                subject_id="carmine",
+            )
+        )
+    )
+    assert "## PICTURE" in planned.user and "Carmine" in planned.user
+
+
+def test_the_continuity_section_names_the_dead():
+    state = grounded_world()
+    bartender = state.characters["bartender"]
+    bartender.status, bartender.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    assert f"{bartender.name} (bartender) is dead." in brief(state).user
+
+
+def test_the_cutaway_prompt_and_the_template_line():
+    narration = brief(cultivation_world())
+    assert narration.prompt().system == prompts.NARRATOR_SYSTEM
+    assert narration.prompt(cutaway=True).system.endswith(prompts.CUTAWAY_SYSTEM)
+    assert narration.template_line() == (
+        "What happened in the outer-court well stays off the page. Its consequences won't."
+    )
+
+
+def test_the_chapter_prompt_holds_the_scenes():
+    prompt = chapter_prompt([PastScene(3, "Zhao falls.", "I stop time")])
+    assert prompt.system == prompts.SUMMARIZER_SYSTEM
+    assert '"narration":"Zhao falls."' in prompt.messages[-1].text
