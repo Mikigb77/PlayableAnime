@@ -32,7 +32,8 @@ MVP, **P1** = soon after, **P2** = later. Requirements say what the game must do
 built (data, schema, prompts) is decided when that work starts, unless the doc marks it as decided,
 such as the stack in B1 to B12 (Miki, 2026-11-03). The E and N ids come from the [open-play
 critique](https://claude.ai/artifact/UHXgKEeybZKKC3SK4sznUP) (2026-11-03), which Miki accepted in
-full; E1 became W16.
+full; E1 became W16. The R, V and M ids (narration, voice input and images) come from Miki's first
+functional and technical requirements (2026-11-03).
 
 ## Player freedom and content limits
 
@@ -149,13 +150,13 @@ a flood.
 | Step | What happens | Mafia story | Cultivation story |
 | --- | --- | --- | --- |
 | 1. The world catches up | Anything that fell due since the last turn happens first, in time order: rumors spread, clocks advance, factions move (W6, W10). | Overnight, word that Luca is back in Naples reached Carmine, the underboss. | Overnight, the ranking tournament's clock moved: it starts tomorrow. |
-| 2. The player acts | In free text or by picking a suggestion (S2). Anything can be tried. | "I walk into Carmine's bar and shoot him." | "When Senior Brother Zhao kicks my water bucket over again, I stop time and break his arm." |
-| 3. The game reads the action | What the character tries, how, against whom, what it uses from the sheet (G13), and how long it should take (W10). | An attack with a pistol on Carmine and his two bodyguards, taking seconds. | Time stop, then a strike at Zhao, who is a full realm above, taking three heartbeats for Lin Feng and none for the world. |
+| 2. The player acts | In free text, typed or spoken (V1), or by picking a suggestion (S2). Anything can be tried. | "I walk into Carmine's bar and shoot him." | "When Senior Brother Zhao kicks my water bucket over again, I stop time and break his arm." |
+| 3. The game reads the action | What the character tries, how, against whom, what it uses from the sheet (G13), the steps it takes (R2), and how long it should take (W10). | An attack with a pistol on Carmine and his two bodyguards, taking seconds. | Time stop, then a strike at Zhao, who is a full realm above, taking three heartbeats for Lin Feng and none for the world. |
 | 4. The world's rules | Whether the world allows it (G8). If not, it plays as what it really is. | Allowed. A fireball would have been a man thrusting his palm at someone. | Allowed: time stop exists in this world, and Lin Feng has it. |
 | 5. The odds and the roll | What the character brings, set against what stands in the way, adjusted for preparation, allies and condition, makes the action trivial, contested, a long shot or ruled out (A2, A8, G14). A roll then decides, and any cost is paid: a power's toll, bullets, money, a favour (A3). | Pistol and nerve against two armed men on their own ground: a long shot. The roll leaves Carmine wounded and Luca getting away, but the bartender sees his face. | A straight strike at someone a realm above would be ruled out (G18), but Zhao is frozen and can't defend. The roll succeeds, and the stop leaves Lin Feng drained. |
 | 6. Time passes | The clock moves by how long the action really took. Anything due during it happens in order, and anything that needs the player cuts the action short (W10). | Three minutes. The bartender is already on the phone to Carmine's men (G6). | World: +0 s. Lin Feng: +3 heartbeats (W10a). |
 | 7. Something new, if it's time | The director decides whether an event comes in, drawing on the world's own state first and in the world's own form (W16, G9). It never interrupts an encounter with something unrelated. | Nothing new: the chase is the stakes. | The ripple of stopped time draws an inner-court elder who was passing. It comes from the encounter itself, so it can enter. |
-| 8. The narrator tells it | In the world's voice, with the outcome it was given (A3), ending on something the player can act on (S4). The reason shows in the scene details (A8). | A noir scene of the shot, the screaming and the alley, ending as headlights turn the corner behind him. | To the crowd, Zhao's arm simply snaps and he screams, while Lin Feng hasn't moved. |
+| 8. The narrator tells it | In the world's voice, picking up where the last scene ended, it shows the character doing what the player said, step by step, then the outcome it was given (R1, A3), ending on something the player can act on (S4). The reason shows in the scene details (A8). | Luca pushes through the door, finds Carmine in the back booth and fires twice before the bodyguards can draw. One bullet takes Carmine in the shoulder. Then the screaming, the back door and the alley, ending as headlights turn the corner behind him. | The bucket clatters, the world freezes mid-splash, and Lin Feng walks between the hanging droplets to break Zhao's arm. To the crowd, Zhao's arm simply snaps and he screams, while Lin Feng hasn't moved. |
 | 9. The world remembers | Deeds, witnesses, wounds, attitudes, what the character learned, and any growth or loss are kept (W1–W4, G17). The player sees only what their character knows (C6), in the world's words (G16). | Attempted murder, witnessed. Carmine wants Luca dead, two of the three crews now fear him, and the police will hear by morning. Luca knows only that he was seen. | A dozen disciples saw Zhao fall but not why (W10a, G20). Zhao has a grudge, and the elder is curious. Lin Feng knows the crowd saw nothing, but not that the elder felt it. |
 
 **G4 Over many turns (P0).**
@@ -468,6 +469,38 @@ near death by its rivals can succeed. Failing is never just "nothing happens". I
 changes something: a wound, an enemy, a lost item, a lesson. Players can see the reasons with
 `/status`, or in the scene's details.
 
+## Narration
+
+The player says what their character does, often in a few rough words, typed or spoken (V1). The
+narrator turns that into the next moment of the story: the character doing it, step by step, and
+then what happens. It never jumps straight to the result. Narration is in the second person and the
+present tense ("you reach for the stone"), as it is today.
+
+For example, the last scene ended with a troll lumbering toward the player across a cave, and the
+player says "I grab a stone and throw it at the troll".
+
+- **Not this:** "The troll staggers back, its eye ruined." The action is skipped, and the scene
+  starts from its result.
+- **This:** "You drop to a crouch and sweep your hand across the wet floor. Your fingers close on a
+  stone the size of an egg. You come up throwing. It skips once off the rock, cracks into the
+  troll's eye, and the beast reels back howling, one hand clawing at its face."
+
+| Id | Requirement | Pri |
+| --- | --- | --- |
+| R1 | **Play the action, then the outcome.** The narration first shows the character carrying out the player's action, in the order it happens, then the outcome the engine resolved (A3), then how the world reacts, and it ends on something the player can act on (S4). It never opens with the result ("the troll lies dead"), with a recap, or with the player's words repeated back. An action phrased as a result ("I kill the troll") is shown as the attempt that leads there (A6), and the roll decides whether it does. | P0 |
+| R2 | **Fill in the steps the action implies, and nothing the player didn't choose.** The interpret step (B5) breaks the action into beats: the small steps it takes (crouch, feel along the floor, find a stone, throw). The narration adds those steps, the senses and the details of the place, but never a new decision: no extra attack, no change of target, no retreat, no line the player didn't give (R7), and no feeling that amounts to a choice (G15). When the action needs something the scene hasn't established (a stone on the floor, a bottle on the bar), the interpret step judges whether the place plausibly holds it. If it does, it becomes canon (N7). If that's uncertain, a roll decides (A3). If it doesn't, the beat becomes a search that comes up empty or finds something else, and the outcome follows from that. Code checks every beat: whatever it uses has to be the character's own body or powers, something they carry, something the scene holds, or something this turn made canon. | P0 |
+| R3 | **Pick up where the last scene ended, at the action's own pace.** The scene starts at the exact moment the last one stopped: same place, same people, same positions, same things in hand, so the troll that was lunging is still lunging. Time moves only by what the action takes (W10). The action gets the space its weight deserves: a quick swing is a sentence or two, a desperate climb a paragraph, a night's sleep a few lines, and a year of farming a montage (E7). | P0 |
+| R4 | **How the character does it shows who they are.** The action looks like the character's sheet (G13, G14): a sword saint's single clean cut is not a farmhand's wild swing, and a power shows its cost (A1). Temperament colours the telling (a hot-headed character kicks the door in) without adding a choice (G15), and the tone is the world's (G5). | P0 |
+| R5 | **Failure is an attempt that meets something.** When the outcome is a failure or a partial success, the narration plays the action up to the moment it goes wrong and shows why, matching the reason A8 recorded: the stone glances off the troll's brow, or the elder catches the blade between two fingers. An action the world rules out plays as what it really is (G8). | P0 |
+| R6 | **A plan with several steps stops where it breaks.** When the player chains steps ("I throw the stone, then run for the tunnel"), the engine resolves them in order and stops at the first one that doesn't cleanly succeed, or when something that needs the player happens during them (W10). The narration plays the steps up to that point and hands the scene back: if the stone misses and the troll charges, the player decides whether to still run. Code decides where the plan stops (B5, step 3), never the narrator. | P0 |
+| R7 | **The player's words are the character's words.** When the player gives the character's lines ("I tell him: you'll pay for this"), the narration uses those words, cleaned only of dictation filler such as "um" or "okay so" (V3). When the player gives only the gist ("I threaten him"), the narrator phrases it in the character's voice (C9). | P0 |
+
+**How it is checked.** R2's beat check and R6's stopping point are engine rules, decided in code
+with unit tests. The rest is how the prose reads: the narration evals in T18 track it every night,
+and the C5 continuity check flags a skipped action, an outcome other than the one the engine
+resolved, or an added decision. Suggestion, not decided: the narrate step's structured output marks
+where the action ends and the outcome begins, so code can also check that the action came first.
+
 ## World reactivity
 
 The world reacts to what the player does. If you wipe out a town, word spreads, people are afraid,
@@ -779,16 +812,67 @@ These are the parts of the product the player sees, most of them already listed 
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | S1 | Start from a starter premise or from one box of your own. The AI expands it into a world bible (setting, what is real in the world and which rules never change, laws and customs, factions, key NPCs, tone) and the player sheet, plus the premise's first clocks (E2), following the flow in G1 and G2. Advanced fields stay hidden unless asked for. The bible keeps growing as the player explores (N7). Starter premises lead with the flagship genre (cultivation, knights and aura, magic, monsters and many races, reincarnation with or without a special gift) and also cover at least a grounded modern story, science fiction and a modern world with a hidden supernatural side. | P0 |
-| S2 | Free text is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
+| S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
 | S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. | P1 |
-| S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. | P1 |
+| S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. See the images section (M1 to M8). | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
 | S9 | Bring your own key (Gemini now, more providers later) alongside paid credits for everyone else. | P0 / P1 |
 | S10 | Spanish and English. | P1 |
 | S11 | Sharing, remixing and creator tools. | P2 |
+
+## Voice input
+
+The player can speak instead of typing anywhere they write to the game: an action, a line of
+dialogue, an `/ooc` wish or a premise. Speech becomes text that the player sees and can fix before
+it is sent, and from then on it is an ordinary action. The engine treats it like typed text, only
+expecting it to be messier. Reading the narration aloud is a separate feature and stays P2
+([FEATURES.md](FEATURES.md)).
+
+| Id | Requirement | Pri |
+| --- | --- | --- |
+| V1 | **A microphone button wherever the player types:** the action box, the premise box (S1), slash commands such as `/ooc` (S5), and the fields of the world and character review (G1, G2). Tap to start, and tap again or pause to stop. On the web build the button appears only where the browser supports speech recognition. | P0 |
+| V2 | **The transcript appears live and is never sent on its own.** Words show in the box as the player speaks. When they stop, the text stays there to edit, extend (tapping the mic again adds to it) or send. Deeds are permanent, so a misheard "kiss" must never become "kill" without the player seeing it. A hands-free mode that sends after a pause, with a visible countdown to cancel, is P2. | P0 |
+| V3 | **Spoken input is messy, and that's fine.** The interpret step (B5) reads filler ("okay so"), self-corrections ("I throw the… no, wait, I grab the sword") and run-on sentences, and acts on the final intent. It maps misheard names to the people, places and things the character knows, preferring whoever is in the scene, so "Senior Brother Jo" is Zhao, and the narration uses the right name. Typed text with typos gets the same treatment. | P0 |
+| V4 | **The story's language.** Recognition uses the story's language: English first, and Spanish when S10 ships. A Chinese or Italian name inside an English story is still just a name (V3). | P0 / P1 |
+| V5 | **Private by default.** The app asks for microphone permission (and speech recognition permission on iOS) the first time the player taps the mic, with a sentence that says why. If the player says no, the button explains how to turn it on, and typing always works. The mic is on only while the button shows it is listening. We never store or log audio. The transcript is story text, so T6 and T16 apply to it. The privacy policy (T12) names the service that turns speech into text and says whether audio leaves the phone. | P0 |
+| V6 | **The recognizer: the phone's own first, Gemini when names matter.** P0 uses the phone's built-in recognizer (Apple's Speech framework, Android's SpeechRecognizer) through a Flutter plugin, on the device itself where the phone supports it. It costs nothing, shows words instantly and keeps audio on the phone. Its limits: it doesn't know the story's names, Android stops after a pause of a few seconds, and iOS stops after about a minute of listening, so a long action can take more than one tap (V2). P1 adds **Gemini 3.5 Transcribe** on Vertex AI, streamed through our API, with the names the character knows passed as custom vocabulary (only names C6 lets the character know, never hidden ones). It costs about $0.009 per minute of speech, a fraction of a cent per action, billed like any model call (K2) and within T9's limits. T18's name-accuracy eval decides which recognizer is the default on each platform, and the app reaches both through one interface. | P0 / P1 |
+| V7 | **Telemetry.** Each turn records how the action was entered (typed, dictated, dictated then edited, or a suggestion) on the scene and in T5's log line, never with the audio, and never with the text outside DEBUG (T6). This shows how many players use voice and how often they have to fix what it heard. | P0 |
+
+## Images
+
+Pictures come at key moments, not every turn, and each one is generated once, stored and reused.
+With Google's cheapest Gemini image models, a picture at phone resolution costs about $0.034 (Vertex
+AI prices checked 2026-11-03), about as much as one or two narrated turns. So images are affordable
+as long as they stay occasional and are never generated twice. Models and prices are in
+[ARCHITECTURE.md](ARCHITECTURE.md#images).
+
+What a 100-turn story would cost, as an estimate until T5 gives real numbers:
+
+| Item | Count | Cost |
+| --- | --- | --- |
+| Narrated turns, at about 2¢ each on Gemini 3.5 Flash (about 8,000 tokens in, under 1,000 out) | 100 | about $2.00 |
+| Portraits: the player character and key NPCs | about 7 | $0.24 |
+| Places, on the first visit | about 4 | $0.14 |
+| Key scenes | about 8 | $0.27 |
+| Library cover | 1 | $0.03 |
+| **All pictures** | **about 20** | **about $0.68** |
+
+Pictures add about a third to the cost of a story. The same 20 pictures on Gemini 3 Pro Image, the
+top model, would cost about $2.70, more than the text.
+
+| Id | Requirement | Pri |
+| --- | --- | --- |
+| M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined or occupied (W7); a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1); and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
+| M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits. A per-story setting (S6) picks off, key moments only (the default), or more often. | P1 |
+| M3 | **Pictures never slow the story.** The narration streams first (S3), and the picture fills its place in the scene when it is ready, usually a few seconds later. The app asks for it in its own request when the scene says one is planned, because nothing may run after a response ends on Cloud Run (B8). The request is safe to repeat, so the app asks again if a picture never arrived, and it is never paid for twice. A picture that fails or is blocked is skipped quietly, never shown as an error, and the scene is complete without it. | P1 |
+| M4 | **Made once, reused.** Pictures are stored in Cloud Storage in Frankfurt, keyed by character, place or scene. A portrait is reused wherever that character appears, and a place's picture whenever the player returns, until the place changes. Pictures are exported with the stories and deleted with the account (T12). | P1 |
+| M5 | **The same face every time.** Every picture uses the app's house style (S7) and the world's era and look. A scene with a known character passes that character's portrait to the model as a reference image, along with the appearance kept in their entry (C9). When a character changes for good (a lost eye, old age, G17), the portrait is redrawn once. | P1 |
+| M6 | **Pictures stay mild in every rating.** No nudity or sexual content, and violence with no more than mild gore, even in Mature stories: the text carries the graphic detail and the image prompt never does. F3 applies in full: no minor in any romantic or suggestive picture, and no real person (G12). Store screenshots stay 4+. | P1 |
+| M7 | **Billing.** Each picture is a ledger entry at its real cost plus margin (K2), logged with its model and cost (T5). The owner pays nothing (K7). A picture never takes a balance below zero: without credits it is skipped, and the turn goes on. A Gemini API key on the free tier can't make pictures, so a BYOK player's pictures use their key if it is on a paid tier, then credits if they have any, and otherwise there are none. | P1 |
+| M8 | **The model is a config setting** (B6). The default is the cheapest Gemini image model that passes T18's image evals, at 1K, which fits a phone screen. Today that means Gemini 3.1 Flash-Lite Image or Nano Banana 2.1, about $0.034 a picture. Batch pricing is half that but can take hours, so it suits only work that can wait. | P1 |
 
 ## Technical requirements
 
@@ -802,14 +886,14 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T2 | **Neon:** the `production` branch for live data, one branch per feature that expires after 7 days, the pooled URL for the app and the direct URL for migrations, and compute that scales to zero. Migrations run before each deploy. | P0 |
 | T3 | **Cold start:** the first request after idle answers in under 5 s (Cloud Run start plus Neon wake). Health checks never touch the database. | P0 |
 | T4 | **Logging:** structured JSON logs to stdout, which Cloud Run sends to Cloud Logging. Every line has severity, request id, trace id (from `X-Cloud-Trace-Context`), user id and story id. | P0 |
-| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens, latency, estimated cost, safety blocks and retries. These feed a log-based metric and a cost dashboard. | P0 |
+| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens, latency, estimated cost, safety blocks, retries and how the action was entered (V7). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
 | T6 | **Never logged:** API keys (BYOK or ours), auth tokens and full prompts. Story text is logged only at DEBUG, and DEBUG is off in production. | P0 |
 | T7 | **Errors:** uncaught exceptions reach Error Reporting. LLM failures are retried once and then return a typed error the app can show (`llm_unavailable`, `blocked`, `bad_key`, `out_of_credits`), never a bare 500. | P0 |
 | T8 | **Auth:** no Firebase. Sign in with Google, through an OAuth client in the `playable-anime` GCP project, plus our own email login in Django. On iOS, Apple requires an equivalent login option when Google sign-in is offered (guideline 4.8), so plan for Sign in with Apple there. The backend verifies Google's ID token once at sign-in, then issues its own short-lived access token and a refresh token. These are checked on every request except `/health`. | P0 |
 | T9 | **Abuse and cost guards:** per-user rate limits and a daily turn quota on our own key, plus a budget alert on the GCP project. Nothing goes public before T8 and T9. | P0 |
 | T10 | **Concurrency:** a story row carries a version number. Two turns at the same time can't overwrite each other, and the loser gets a 409. | P0 |
 | T11 | **Secrets:** Secret Manager only (`database-url` and others), mounted as env vars. | P0 |
-| T12 | **Privacy (EU users):** delete my account and data, export my stories, and a privacy policy. Neon point-in-time restore is our backup. | P0 |
+| T12 | **Privacy (EU users):** delete my account and data (pictures included, M4), export my stories, and a privacy policy that also says where speech goes (V5). Neon point-in-time restore is our backup. | P0 |
 | T13 | **Deploy:** CI (lint and tests for both halves) must be green. Deploy runs from `main` through Cloud Build, or `gcloud run deploy --source`, with the migration step before it. | P1 |
 | T14 | **Cost target:** a cost-per-turn ceiling for the default model, set once T5 gives us real numbers. | P1 |
 
@@ -858,6 +942,23 @@ stays open and keeps moving, with the same nightly scripted runs:
 special-category data. It is encrypted at rest (Neon does this), never logged (T6), only staff
 handling reports can read it, and it is deleted with the account.
 
+**T18 Narration, voice and picture evals (P0 for narration and voice, P1 for pictures).** The same
+nightly scripted runs as T15 and T17, scored against a written rubric by a model judge that staff
+spot-check:
+
+| Eval | Script | Passes when |
+| --- | --- | --- |
+| Stone and troll | The scene ends with a troll lunging, and the player says "I grab a stone and throw it at the troll" | The scene opens on the lunge and shows the search, the find and the throw, in that order, before any result, with no decision added (R1 to R3) |
+| Result as action | "I pick up the sword and kill the troll", over many seeds | The kill is played as an attempt that succeeds at roughly the roll's odds, and a miss is shown as a swing that meets something (R1, R5, A6) |
+| Skill shows | The same sword stroke by a novice and by a sword saint | The two scenes look clearly different, and each fits its sheet (R4) |
+| Broken plan | "I throw the stone, then run for the tunnel", with seeds where the throw misses | After a miss the scene stops, and the player decides whether to run (R6) |
+| Nothing there | "I grab a stone" in a marble throne room | No stone appears from nowhere: the character finds something else, or nothing (R2) |
+| Own words | "I tell him, um, you'll pay for this with your life" | The character says "You'll pay for this with your life" (R7) |
+| Spoken mess | Dictated transcripts with filler, self-corrections and misheard names, such as "I attack Senior Brother Jo, no wait, I bow to him", in English (and Spanish with S10) | The interpret step reads the final intent and the right person (V3) |
+| Name accuracy | Recorded clips of players speaking actions full of the story's names, through each recognizer | Reports the share of names heard right, per recognizer and language. This sets V6's default |
+| Same face | One key NPC in ten key scenes | Judges see the same person every time (M5) |
+| Mild pictures | The gore and romance cases from the ratings table, drawn as key scenes | No nudity or sexual content, and no more than mild gore, in any picture (M6) |
+
 ### Credits and billing
 
 Every turn costs credits, the server enforces the balance, and the owner account plays free.
@@ -881,8 +982,8 @@ Every turn costs credits, the server enforces the balance, and the owner account
 | B2 | **Neon with Django:** psycopg 3, the pooled URL with `DISABLE_SERVER_SIDE_CURSORS = True` and `CONN_MAX_AGE = 0` (PgBouncer transaction mode), and the direct URL for `migrate`. Django migrations replace `backend/migrations/*.sql`. | P0 |
 | B3 | **Logging:** Django `LOGGING` sends JSON to stdout, with a middleware that adds request id, trace id, user and story to every line (T4–T6). | P0 |
 | B4 | **Story engine as its own package**, with no Django imports. Invariants, state updates, reputation and escalation are deterministic Python with unit tests. Django views only load the story, run the graph and save the result. | P0 |
-| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text into an open intent, a free-form verb plus target, method, stakes, duration (W10) and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal → (3) resolve and direct: roll the outcome (A2, A3), advance the clock and clocks (W10, E2), and let the director pick an event and callbacks (W16, E4, N1), all in code → (4) build context (retrieval, C4) → (5) narrate: one large structured-output model call, streamed → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
-| B6 | **Models through Vertex AI** with `langchain-google-vertexai`. The model for each node is set in config (narrator, checker, tick, summarizer). A BYOK key builds that request's model client and is never stored. | P0 |
+| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus target, method, stakes, duration (W10), the beats it takes (R2) and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal → (3) resolve and direct: check the beats against the scene and the sheet (R2), roll the outcome (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
+| B6 | **Models through Vertex AI** with `langchain-google-vertexai`. The model for each node is set in config (interpret, narrator, checker, tick, summarizer, and the picture and speech models from M8 and V6). A BYOK key builds that request's model client and is never stored. | P0 |
 | B7 | **Streaming:** the narrate node streams tokens through LangGraph `astream` to an SSE response (S3). | P0 |
 | B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call. The checker and the model part of the world tick use the cheapest model. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
 | B9 | **Story state stays in our own tables.** A LangGraph checkpointer is used only if we need to resume a run that failed partway. | P1 |
@@ -899,8 +1000,8 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
    on in the PR description.
 2. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against `production`.
-3. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18) are enforced in backend
-   code, with unit tests, not only in the prompt.
+3. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are enforced
+   in backend code, with unit tests, not only in the prompt.
 4. CI must be green: ruff and pytest for the backend, and dart format, analyze and test for the app.
    Add tests with each change.
 5. Schema changes go in a new numbered migration. Never edit an applied migration.
@@ -933,4 +1034,5 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |
 | Genres | Decided 2026-11-03: any genre, with fantasy with magic, monsters and power ladders as the flagship (cultivation, knights and aura, many races, reincarnation with an optional gift) | Done. See the worlds, genres and characters section (G1 to G25). |
 | Real people and organisations | Fictional only, or allow real public figures and organisations | Fictional only, with long-dead historical figures allowed in historical stories (G12). Real entities as enemies run into Apple 1.1.2. |
-| Image generator | See ARCHITECTURE.md | Vertex Gemini image model for portraits. No sexual images, and only mild gore in images. The text carries the graphic detail. |
+| Image generator | Gemini 3.1 Flash-Lite Image, Nano Banana 2.1, Nano Banana 2 or Gemini 3 Pro Image on Vertex (Imagen was shut down in August 2026). Prices in ARCHITECTURE.md | The cheapest model that passes T18's picture evals, at 1K, about $0.034 a picture, at key moments only (M1, M2, M8). No sexual images, and only mild gore in images (M6). The text carries the graphic detail. |
+| Speech recognition | The phone's own recognizer, or Gemini 3.5 Transcribe on Vertex | The phone's recognizer at P0 (free, instant, audio stays on the phone). Gemini 3.5 Transcribe at P1, made the default wherever T18 shows the phone getting the story's names wrong too often (V6). |
