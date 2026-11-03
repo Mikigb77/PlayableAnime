@@ -95,6 +95,8 @@ _FLAW_STEMS = stems("untalented")
 _FLAW_PHRASES = ("slow learner", "learns slowly", "no talent", "no aptitude")
 _COPY_STEMS = stems("copycat copy copies mimic mimics")
 _MASTER_STEMS = stems("master teacher guidance mentor")
+# Teachers who must be a living character beside the learner to count (A4).
+_GUIDES = (Teacher.MASTER, Teacher.RIVAL, Teacher.WATCHING)
 
 GRANT_WORDS = {
     PowerGrant.RELATIVE_SPEED_THROWS: (
@@ -273,9 +275,7 @@ def _need_met(
     ]
     if any(_matches(text, need) for text in [*carried, *techniques, *facts, *canon]):
         return True
-    if stems(need) & _MASTER_STEMS and training.teacher is Teacher.MASTER:
-        return _teacher_present(state, step)
-    return False
+    return bool(stems(need) & _MASTER_STEMS) and teacher_of(state, actor, step) is Teacher.MASTER
 
 
 def _matches(text: str, need: str) -> bool:
@@ -287,17 +287,39 @@ def _matches(text: str, need: str) -> bool:
     return wanted <= have or (have <= wanted and len(have) >= len(wanted) - 1)
 
 
-def _teacher_present(state: WorldState, step: IntentStep) -> bool:
+def _here(state: WorldState, actor: Character, other: Character) -> bool:
+    if other.location_id is not None and other.location_id == actor.location_id:
+        return True
+    present = state.scene.present_ids
+    return actor.id in present and other.id in present
+
+
+def teacher_of(state: WorldState, actor: Character, step: IntentStep) -> Teacher:
+    """A4. The teacher the step really has. A master, a rival or someone to watch counts only
+    as a living character here, named by the step; otherwise the character learns alone."""
     training = step.training
     assert training is not None
-    if training.teacher_id is None:
-        return True
-    teacher = state.characters.get(training.teacher_id)
-    return teacher is not None and teacher.alive
+    if training.teacher not in _GUIDES:
+        return training.teacher
+    guide = state.characters.get(training.teacher_id) if training.teacher_id else None
+    if guide is None or guide.id == actor.id or not guide.alive or not _here(state, actor, guide):
+        return Teacher.SELF
+    return training.teacher
+
+
+def _shows_it(state: WorldState, step: IntentStep) -> bool:
+    """Whether the one being watched knows the technique, so a copycat can take it at once."""
+    training = step.training
+    assert training is not None
+    guide = state.characters.get(training.teacher_id) if training.teacher_id else None
+    return guide is not None and any(
+        mentions(t.name, training.what) for t in guide.sheet.techniques
+    )
 
 
 def _teacher_missing(state: WorldState, actor: Character, step: IntentStep) -> str:
-    """A teacher, rival or manual the step names has to be there: alive, or on the sheet."""
+    """A teacher, rival or manual the step names has to be there: alive and here, or on the
+    sheet."""
     training = step.training
     assert training is not None
     ref = training.teacher_id
@@ -307,6 +329,8 @@ def _teacher_missing(state: WorldState, actor: Character, step: IntentStep) -> s
     if character is not None:
         if not character.alive:
             return f"{cap(character.name)} is dead."
+        if training.teacher in _GUIDES and not _here(state, actor, character):
+            return f"{cap(character.name)} isn't here."
         return ""
     if training.teacher is Teacher.BOOK:
         item = actor.sheet.item(ref)
@@ -349,7 +373,7 @@ def breakthrough(
     assert ladder is not None
     rung = ladder.rungs[(position.rung if position is not None else -1) + 1]
     shift = 0.0
-    if training.teacher is Teacher.MASTER:
+    if teacher_of(state, actor, step) is Teacher.MASTER:
         shift += MASTER_SHIFT
     if learning_gift(actor):
         shift += GIFT_SHIFT
@@ -483,13 +507,18 @@ def progress(
     enough. A copycat watching a technique learns it at once."""
     training = step.training
     assert training is not None
-    rate = pace(actor, training.teacher)
+    teacher = teacher_of(state, actor, step)
+    if teacher is not training.teacher:
+        training = training.model_copy(update={"teacher": teacher})
+        step = step.model_copy(update={"training": training})
+    rate = pace(actor, teacher)
     total = effort_so_far + effort_s(lived_s) * rate
     need = needed_hours(actor, step) * HOUR
     instant = (
         training.kind is GrowthKind.TECHNIQUE
-        and training.teacher is Teacher.WATCHING
+        and teacher is Teacher.WATCHING
         and copycat(actor)
+        and _shows_it(state, step)
     )
     key = practice_key(step)
     who = name(state, actor.id)

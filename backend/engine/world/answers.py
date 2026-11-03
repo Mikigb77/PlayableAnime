@@ -163,12 +163,13 @@ def choose_answer(
     state = w.state
     if enforcing:
         return Answer.ARREST
-    gap = actor_might(state, target_id) - faction_might(state, faction, excluding=target_id)
+    target_might = actor_might(state, target_id)
+    gap = target_might - faction_might(state, faction, excluding=target_id)
     reputation = faction.player_reputation if target_id == state.player_id else None
     esteem = reputation.esteem if reputation else 0
     fear = reputation.fear if reputation else 0
     has_champion = any(
-        _might(state, c) >= actor_might(state, target_id) - 1
+        _might(state, c) >= target_might - 1
         for c in members(state, faction.id)
         if c.id != target_id
     )

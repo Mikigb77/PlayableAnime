@@ -60,6 +60,7 @@ HIT_MODE = "hit_mode"  # the topic of the ruling on how hits land
 MOVE_FROZEN = "move_frozen"  # the topic of the ruling on picking up frozen things
 THROWS = "throws"  # a setting: "relative_speed" once a technique makes throws land that way
 CONTROL = "control"  # a setting: "controlled" once the user can choose how hard hits land
+STOP_IMMUNITY = "stop_immunity"  # a setting: "yes" when the user moves in others' stops
 DRAIN = "drain"  # a setting: "heavy" when a yes came with a heavier drain (A9, G22)
 RELATIVE = "relative_speed"
 CONTROLLED = "controlled"
@@ -75,6 +76,8 @@ UNKNOWN_DISTANCE_M = 1000.0
 TAKES_IT_MARGIN = 0.5
 # A controlled hit lands this many tiers past the toughest target's body: hard enough, no more.
 CONTROLLED_MARGIN = 1.0
+# How long a stop or haste lasts, in its user's seconds, when the sheet doesn't say.
+UNSTATED_LASTS_S = 5
 # A crowd sees a body drop the moment time restarts (W13); alone, it may lie unfound a while.
 CROWD_BODY_STRENGTH = 100
 LONE_BODY_STRENGTH = 40
@@ -103,6 +106,7 @@ HEAVY_DRAIN_COST = "Each stop drains far more and takes twice as long to recover
 _CONVENTION_STEMS = stems(
     "air friction drag wind breath breathe breathing suffocate vacuum resistance turbulence"
 )
+_YES = frozenset({"yes", "true", "immune"})
 _IMMUNE_STEMS = stems("immune immunity unaffected unbound untouched")
 _MOVES_STEMS = stems("move moves sees walks acts")
 _TIME_STEMS = stems("time")
@@ -134,18 +138,21 @@ def stops_time(power: Power | None) -> bool:
 
 def immune(character: Character) -> bool:
     """W10a. Whether something on the sheet lets the character move or see in someone else's
-    stopped time: a power, a technique, a trait or an item that says so."""
+    stopped time: a power's `stop_immunity` setting, or a power, technique, trait or item that
+    says so. A stop of one's own that "only its user moves in" says nothing about anyone else's
+    stop, so it only counts when it says immune or unaffected."""
     sheet = character.sheet
-    texts = [f"{p.name} {p.description}" for p in sheet.powers]
-    texts += [f"{p.settings.get('stop_immunity', '')}" for p in sheet.powers]
-    texts += [f"{t.name} {t.effect}" for t in sheet.techniques]
-    texts += [f"{t.name} {t.description}" for t in sheet.traits]
-    texts += [f"{i.name} {i.description}" for i in sheet.resources.items if i.carried]
-    for text in texts:
+    if any(p.settings.get(STOP_IMMUNITY, "").strip().casefold() in _YES for p in sheet.powers):
+        return True
+    texts = [(f"{p.name} {p.description}", stops_time(p)) for p in sheet.powers]
+    texts += [(f"{t.name} {t.effect}", False) for t in sheet.techniques]
+    texts += [(f"{t.name} {t.description}", False) for t in sheet.traits]
+    texts += [(f"{i.name} {i.description}", False) for i in sheet.resources.items if i.carried]
+    for text, own_stop in texts:
         said = stems(text)
         if not (_TIME_STEMS & said and _STOP_STEMS & said):
             continue
-        if _IMMUNE_STEMS & said or _MOVES_STEMS & said:
+        if _IMMUNE_STEMS & said or (not own_stop and _MOVES_STEMS & said):
             return True
     return False
 
@@ -193,6 +200,13 @@ def throw_mode(power: Power, mode: HitMode, settled: Settlements) -> HitMode:
 
 def controlled(power: Power, settled: Settlements) -> bool:
     return settled.get(power, CONTROL) == CONTROLLED
+
+
+def lasts_s(power: Power) -> int:
+    """How long one use of a stop or haste lasts on its user's own clock. A sheet that doesn't
+    say gets a few heartbeats, so an unstated length never holds the world for good."""
+    lasts = power.time.lasts_s if power.time is not None else None
+    return UNSTATED_LASTS_S if lasts is None else lasts
 
 
 def recharge_s(power: Power, settled: Settlements) -> int:
@@ -624,14 +638,11 @@ def might_with_powers(state: WorldState, character: Character) -> int:
 
 def _shown(state: WorldState, character: Character) -> bool:
     """Whether a deed this character did in stopped time has been laid at their door."""
-    for deed in state.deeds.values():
-        if deed.actor_id != character.id or not deed.in_stopped_time:
-            continue
-        if deed.known_by_factions or any(k != character.id for k in deed.known_by):
-            return True
-        if any(
-            r.deed_id == deed.id and r.is_true and character.id in r.about_ids
-            for r in state.rumors.values()
-        ):
-            return True
-    return False
+    mine = [d for d in state.deeds.values() if d.actor_id == character.id and d.in_stopped_time]
+    if any(d.known_by_factions or any(k != character.id for k in d.known_by) for d in mine):
+        return True
+    ids = {d.id for d in mine}
+    return bool(ids) and any(
+        r.deed_id in ids and r.is_true and character.id in r.about_ids
+        for r in state.rumors.values()
+    )

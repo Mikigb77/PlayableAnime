@@ -471,7 +471,7 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 | A1 | A player character sheet per story, holding everything in G13: attributes, skills, traits, powers where the world has them (with their limits and costs), disposition, resources and standing, and condition. It is drafted from the premise at story start, and the player can change it before playing (G2). | P0 |
 | A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time lands with overwhelming force, the troll dies, the wall behind it breaks and the blast is heard (W10a). The same reasoning holds in every genre and for every means, from a bazooka to a force field (A9). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. A plan that goes around the opponent's strength instead of meeting it is judged on its own facts, link by link (A9). **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
 | A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. | P1 |
-| A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. | P1 |
+| A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. Decided in WS9b: effort counts in full for the first 12 hours of a stretch and a third after that; a master, a rival or someone to watch counts only as a living character beside the learner, and a copycat learns a move at once only from someone who knows it. The rough figures are in `engine/resolve/powers/growth.py`. | P1 |
 | A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. | P1 |
 | A6 | The player can't write other characters' reactions or outcomes. "I kill him and everyone cheers" plays as an attempt to kill him, and the narrator decides how people react. | P0 |
 
@@ -561,7 +561,10 @@ laser pistol burns through a coat but not a warship's hull.
   weakling a knight can kill can die, and the story makes its own turns from there. Nor does the
   world conjure a foe that couldn't exist to beat the player: something that survives three
   megatons appears only if the world already holds it, such as a god (G6). A theory can't add a new
-  power or break a fixed rule of the world (G7).
+  power or break a fixed rule of the world (G7). Decided in WS9b: a theory that nothing in the
+  power, the sheet or the world stands behind is refused at any scale, and one about a power the
+  character doesn't hold, or that can't be told from their other powers, isn't ruled on at all, so
+  it plays as something said and nothing is set in stone by a slip.
 - **A refused idea can still be earned.** The verdict stands, but the character can later find
   another way that passes the world's logic, as growth (A4). If stopped-time throws can't reach light
   speed, they might learn to release the stop around a rock gradually, so it merges back into time
@@ -754,7 +757,8 @@ sheet (A1, A4). NPCs can have them too.
     kilotons (about 7 km for three megatons) unless their body takes it, and hurts out to 1.6 times
     that. It ruins the place it lands in (and the thrower's, if within reach) when its deadly reach
     is 50 m or more, and wipes out a host it was thrown at, such as an army in its camp, when that
-    reach is a kilometer or more. The thrower is as far away as the step says, ten meters when it
+    reach is a kilometer or more. A throw whose target takes it unhurt still lets the blast loose
+    on everything else. The thrower is as far away as the step says, ten meters when it
     lands where they stand, or a route's travel time at a walk. Once time restarts, a thrower inside
     the deadly reach dies and the plan goes no further; one inside the outer ring is knocked down.
   - **Lifting.** What the user picks up joins the stop as heavy as ever: about 25 kg at feeble
@@ -764,13 +768,16 @@ sheet (A1, A4). NPCs can have them too.
     world settled normal force, or let the user choose how hard a hit lands: just hard enough to
     beat the toughest target's body, and no blast, unless the player asks for everything.
   - **Clocks.** A stop lasts its time on the user's own clock from the moment it starts and can
-    outlast the turn, so the next turn starts still in stopped time. Naming the stop again while it
+    outlast the turn, so the next turn starts still in stopped time. A sheet that gives no length
+    gets about five seconds. Naming the stop again while it
     holds carries it on, with no new cost. It recovers its recharge time after it ends (twice that
     with a heavier drain). A step that starts inside the stop and outlasts it lives out the stop
-    first and then takes world time, and whoever it acts on can answer by then. A stop ends with
-    its user's death.
-  - **Who sees it.** Someone whose sheet says they move or see in stopped time is immune: they can
-    respond and they witness what is done. Everyone else is frozen. A body dropping in a crowd is
+    first and then takes world time, and whoever it acts on can answer by then; a rolled length
+    keeps to that, so a step settled inside the stop finishes by its end. A stop ends with its
+    user's death.
+  - **Who sees it.** Someone whose sheet says they move or see in someone else's stopped time is
+    immune: they can respond and they witness what is done. A stop of one's own that only its user
+    moves in doesn't make anyone immune to another's. Everyone else is frozen. A body dropping in a crowd is
     noticed the moment time restarts, but a body, a noise or a ruin from stopped time never points
     at the doer; a wound only the power makes does, once the power is known.
   - **The world's measure.** Factions measure a light-speed thrower by the force of their throw

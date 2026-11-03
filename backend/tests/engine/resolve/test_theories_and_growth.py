@@ -42,6 +42,7 @@ from engine.state import (
     RulingSource,
     SkillLevel,
     StepResult,
+    Technique,
     TimeEffect,
     TimePower,
     Trait,
@@ -290,27 +291,65 @@ def test_training_adds_up_across_sessions_until_the_skill_climbs():
     assert lin.sheet.growth[-1].what == "swordsmanship"
 
 
+def with_master(state):
+    state.characters["elder-mo"].location_id = "well"
+    return state
+
+
+def palm_lesson(**kw):
+    kw.setdefault("teacher", Teacher.MASTER)
+    return train(GrowthKind.TECHNIQUE, "Drifting Cloud Palm", 40, **kw)
+
+
 def test_a_master_and_a_gift_for_learning_speed_it_up():
-    slow = sect()
-    fast = sect()
+    slow = with_master(sect())
+    fast = with_master(sect())
     fast.characters["lin"].sheet.traits.append(Trait(name="a genius", kind=TraitKind.GIFT))
-    lesson = train(GrowthKind.TECHNIQUE, "Drifting Cloud Palm", 40, teacher=Teacher.MASTER)
+    lesson = palm_lesson(teacher_id="elder-mo")
 
     assert "progress" in resolve(slow, Intent(steps=[lesson])).steps[0].reason
     learned = play(fast, Intent(steps=[lesson]))
     assert learned.state.characters["lin"].sheet.techniques[0].name == "Drifting Cloud Palm"
 
 
-def test_a_copycat_watching_learns_a_technique_at_once():
-    state = sect()
+def test_a_master_counts_only_when_they_are_really_there():
+    genius = Trait(name="a genius", kind=TraitKind.GIFT)
+    unnamed = sect()
+    unnamed.characters["lin"].sheet.traits.append(genius)
+    # No master the world holds: the genius learns alone, too slowly to finish in 40 hours.
+    alone = resolve(unnamed, Intent(steps=[palm_lesson()])).steps[0]
+    assert "progress" in alone.reason
+
+    away = sect()
+    away.characters["lin"].sheet.traits.append(genius)
+    settled = resolve(away, Intent(steps=[palm_lesson(teacher_id="elder-mo")])).steps[0]
+    assert settled.outcome_class is OutcomeClass.RULED_OUT and "isn't here" in settled.reason
+
+
+def copycat_watch(state, teacher_id="zhao"):
     state.characters["lin"].sheet.traits.append(Trait(name="copycat eyes", kind=TraitKind.GIFT))
-    watch = train(
-        GrowthKind.TECHNIQUE, "Iron Fist", 0.1, teacher=Teacher.WATCHING, teacher_id="zhao"
+    return train(
+        GrowthKind.TECHNIQUE, "Iron Fist", 0.1, teacher=Teacher.WATCHING, teacher_id=teacher_id
     )
 
-    played = play(state, Intent(steps=[watch]))
+
+def test_a_copycat_watching_learns_a_technique_at_once():
+    state = sect()
+    state.characters["zhao"].sheet.techniques.append(Technique(id="iron-fist", name="Iron Fist"))
+    played = play(state, Intent(steps=[copycat_watch(state)]))
+
     assert "just by watching" in played.resolution.steps[0].reason
     assert played.state.characters["lin"].sheet.techniques[0].learned_from == "zhao"
+
+
+def test_a_copycat_learns_nothing_at_once_from_someone_who_doesnt_know_it_or_from_no_one():
+    state = sect()
+    from_zhao = resolve(state, Intent(steps=[copycat_watch(state)])).steps[0]
+    assert "progress" in from_zhao.reason
+
+    nobody = sect()
+    alone = resolve(nobody, Intent(steps=[copycat_watch(nobody, None)])).steps[0]
+    assert "progress" in alone.reason
 
 
 def test_no_power_grows_in_a_world_with_nothing_extraordinary():
@@ -565,3 +604,55 @@ def test_training_time_counts_on_the_trainers_own_clock_in_a_long_time_skip():
     settled = resolve(state, Intent(steps=[year])).steps[0]
     assert settled.duration_s == 365 * DAY
     assert "Falling Leaf Sword" in settled.reason
+
+
+# --- From review: grounding, ambiguous powers and a master's guidance ----------------------------
+
+
+def test_a_theory_nothing_stands_behind_is_refused_at_any_scale():
+    state = sect()
+    small = PowerTheory(
+        topic="stop_heals",
+        claim="Stopping time heals my wounds.",
+        scale=EffectScale.PERSON,
+    )
+    (ruling,) = resolve(state, Intent(theories=[small])).rulings
+    assert not ruling.holds and ruling.answer == NOTHING_BEHIND_IT
+
+
+def test_a_theory_about_a_power_the_engine_cant_tell_apart_sets_nothing_in_stone():
+    state = sect()
+    state.characters["lin"].sheet.powers.append(
+        Power(id="flame", name="spirit flame", description="Calls up a pale flame.")
+    )
+    vague = PowerTheory(
+        topic="melt_steel",
+        claim="It should melt steel.",
+        rests_on=["heat"],
+        about=TheoryAbout.OTHER,
+    )
+    assert resolve(state, Intent(theories=[vague])).rulings == []
+
+    named = vague.model_copy(update={"claim": "My spirit flame should melt steel."})
+    (ruling,) = resolve(state, Intent(theories=[named])).rulings
+    assert ruling.power_id == "flame" and ruling.holds
+
+
+def test_a_rung_that_needs_a_masters_guidance_needs_a_master_who_is_there():
+    state = sect()
+    state.bible.ladders[0].rungs[1].needs = ["a master's guidance"]
+    guided = train(
+        GrowthKind.BREAKTHROUGH,
+        "Foundation Establishment",
+        30,
+        ladder_id="realms",
+        teacher=Teacher.MASTER,
+    )
+    settled = resolve(state, Intent(steps=[guided])).steps[0]
+    assert settled.outcome_class is OutcomeClass.RULED_OUT and "bottleneck" in settled.reason
+
+    with_master(state)
+    named = guided.model_copy(
+        update={"training": guided.training.model_copy(update={"teacher_id": "elder-mo"})}
+    )
+    assert resolve(state, Intent(steps=[named])).steps[0].outcome_class is OutcomeClass.CONTESTED

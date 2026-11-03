@@ -26,11 +26,11 @@ from engine.contracts.intent import EffectScale, PowerTheory, TheoryAbout
 from engine.resolve.power import base_tier
 from engine.resolve.powers import force as force_mod
 from engine.resolve.powers import time_stop as stop
+from engine.resolve.words import mentions
 from engine.state.cast import Character
 from engine.state.sheet import GiftStrength, HitMode, Power, PowerAxis, Ruling, RulingSource
 from engine.state.world import WorldState
 
-NO_SUCH_POWER = "There is no such power to work that way."
 NEW_POWER = "That would be a new power, not a way of using this one."
 NOTHING_BEHIND_IT = "No: nothing in the power makes that happen."
 TOO_BIG = "No: nothing in the power reaches that far."
@@ -58,10 +58,14 @@ def rule_on_theories(
     outcome = TheoryOutcome()
     for theory in theories:
         power = _power(actor, theory)
+        if power is None:
+            # A power the character doesn't hold, or one the engine can't tell from their
+            # others, has nothing to rule on: the theory plays as something said, and nothing
+            # is set in stone by a slip.
+            continue
         topic = canonical_topic(theory)
-        power_id = power.id if power is not None else theory.power_id
-        earlier = actor.sheet.ruling(topic, power_id) or next(
-            (r for r in [*known, *outcome.rulings] if (r.topic, r.power_id) == (topic, power_id)),
+        earlier = actor.sheet.ruling(topic, power.id) or next(
+            (r for r in [*known, *outcome.rulings] if (r.topic, r.power_id) == (topic, power.id)),
             None,
         )
         if earlier is not None:
@@ -84,12 +88,16 @@ def canonical_topic(theory: PowerTheory) -> str:
 
 
 def _power(actor: Character, theory: PowerTheory) -> Power | None:
+    """The power the theory is about: the one it names, else the only one it can be, else the
+    only one whose name the claim mentions."""
     if theory.power_id:
         return actor.sheet.power(theory.power_id)
+    candidates = actor.sheet.powers
     if theory.about in (TheoryAbout.HIT_FORCE, TheoryAbout.MOVE_FROZEN):
-        stoppers = [p for p in actor.sheet.powers if stop.stops_time(p)]
-        return stoppers[0] if len(stoppers) == 1 else None
-    return actor.sheet.powers[0] if len(actor.sheet.powers) == 1 else None
+        candidates = [p for p in candidates if stop.stops_time(p)]
+    if len(candidates) > 1:
+        candidates = [p for p in candidates if mentions(theory.claim, p.name)]
+    return candidates[0] if len(candidates) == 1 else None
 
 
 @dataclass(frozen=True)
@@ -98,10 +106,10 @@ class _Found:
     change: PowerChange | None = None
 
 
-def _refused(theory: PowerTheory, topic: str, power_id: str | None, answer: str) -> _Found:
+def _refused(theory: PowerTheory, topic: str, power_id: str, answer: str) -> _Found:
     return _Found(
         Ruling(
-            id=f"ruling-{power_id or 'none'}-{topic}",
+            id=f"ruling-{power_id}-{topic}",
             topic=topic,
             power_id=power_id,
             question=theory.claim,
@@ -116,12 +124,10 @@ def _rule(
     state: WorldState,
     actor: Character,
     theory: PowerTheory,
-    power: Power | None,
+    power: Power,
     topic: str,
     settled: stop.Settlements,
 ) -> _Found:
-    if power is None:
-        return _refused(theory, topic, theory.power_id, NO_SUCH_POWER)
     fixed = [r for r in (state.bible.rule(i) for i in theory.against_rule_ids) if r and r.fixed]
     if fixed:
         return _refused(theory, topic, power.id, _rule_text(fixed[0].text))
@@ -208,11 +214,11 @@ def _other(
 ) -> _Found:
     """A9. Any other detail: it holds when something real stands behind it and its scale is one
     the power or the world can reach. Power alone is never a reason to refuse."""
+    if not _grounded_in(state, actor, theory.rests_on):
+        return _refused(theory, topic, power.id, NOTHING_BEHIND_IT)
     world_reach = force_mod.joules_for(strongest_tier(state), state.bible.force)
     needed = force_mod.SCALE_JOULES[theory.scale] if theory.scale is not None else 0.0
     in_scale = needed <= world_reach
-    if not _grounded_in(state, actor, theory.rests_on) and not (theory.scale and in_scale):
-        return _refused(theory, topic, power.id, NOTHING_BEHIND_IT)
     if needed > reach(state, actor, power, settled) and not in_scale:
         return _refused(theory, topic, power.id, TOO_BIG)
     cost = ""

@@ -572,3 +572,87 @@ def test_a_stop_that_outlasts_the_turn_still_holds_the_world_next_turn_with_no_n
     assert second.outcome_class is OutcomeClass.CERTAIN
     assert "frozen in stopped time" in second.reason
     assert second.costs == [] and second.duration_s == 0
+
+
+# --- From review: cooldowns, unstated lengths, rolled times, immunity and survived throws -------
+
+
+def test_a_stop_carried_over_that_runs_out_mid_plan_cant_be_started_again_without_recharge():
+    state = sect()
+    lin_power(state).time.lasts_s = 5
+    lin_power(state).time.recharge_s = 60
+    first = play(state, Intent(steps=[stop_time()]))  # 1 s lived, 4 s of the stop left
+    walk = step("walk over", ActionKind.TASK, 5, verb="walk", proposed_personal_s=5)
+
+    later = resolve(first.state, Intent(steps=[walk, stop_time()]), turn=4)
+    assert later.steps[1].outcome_class is OutcomeClass.RULED_OUT
+    assert "hasn't recovered" in later.steps[1].reason
+
+
+def test_a_stop_whose_sheet_gives_no_length_lasts_a_few_heartbeats():
+    state = sect()
+    lin_power(state).time.lasts_s = None
+    long_task = step("tidy the courtyard", ActionKind.TASK, 600, verb="tidy")
+
+    played = play(state, Intent(steps=[stop_time(), long_task]))
+    assert played.state.time_effects == []  # lived out, so it never holds the world for good
+    assert played.resolution.steps[1].duration_s == 600 - (stop.UNSTATED_LASTS_S - 1)
+    assert lin_power(played.state).ready_at_personal_s is not None
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_a_rolled_time_in_a_stop_keeps_to_how_the_step_was_settled(seed):
+    state = sect()
+    lin_power(state).time.lasts_s = 10
+    inside = strike("zhao", proposed_personal_s=8, duration_uncertain=True)
+    outside = strike("zhao", proposed_personal_s=12, duration_uncertain=True)
+
+    within = resolve(state, Intent(steps=[stop_time(), inside]), seed).steps[1]
+    assert "frozen in stopped time" in within.reason and within.duration_s == 0
+    past = resolve(state, Intent(steps=[stop_time(), outside]), seed).steps[1]
+    assert "frozen in stopped time" not in past.reason and past.duration_s > 0
+
+
+def test_immunity_comes_from_a_setting_or_words_that_say_so_not_from_a_stop_of_ones_own():
+    state = sect()
+    elder = state.characters["elder-mo"]
+    rival = stop_power_like_lins("The World", "Stops time; only the user moves.")
+    elder.sheet.powers.append(rival)
+    assert not stop.immune(elder)
+
+    rival.settings[stop.STOP_IMMUNITY] = "yes"
+    assert stop.immune(elder)
+    rival.settings.clear()
+    rival.description = "Stops time, and its user is immune to anyone else's stop."
+    assert stop.immune(elder)
+
+
+def stop_power_like_lins(name: str, description: str):
+    from engine.state import Power, TimeEffect, TimePower
+
+    return Power(
+        id="the-world",
+        name=name,
+        description=description,
+        time=TimePower(effect=TimeEffect.STOP, lasts_s=5),
+    )
+
+
+def test_a_throw_the_target_survives_still_lets_its_blast_loose():
+    state = with_wall(sect())
+    state.characters["troll"].sheet.axes.might = 15  # far above three megatons
+    bystander = Character(
+        id="farmer",
+        name="a farmer",
+        location_id="wall",
+        sheet=CharacterSheet(axes=PowerAxes(might=1)),
+    )
+    add(state, bystander)
+
+    stone = resolve(state, Intent(steps=[stop_time(), throw(["troll"], range_m=9_000)])).steps[1]
+    assert stone.outcome_class is OutcomeClass.RULED_OUT
+    assert "unhurt" in stone.reason and "blast tears through" in stone.reason
+    assert not any(c.id == "troll" and c.status for c in stone.effects.characters)
+    assert any(
+        c.id == "farmer" and c.status is CharacterStatus.DEAD for c in stone.effects.characters
+    )

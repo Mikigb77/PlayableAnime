@@ -147,7 +147,7 @@ class _Frame:
     personal_s: int = 0
     stop_power: Power | None = None  # the actor's stop holding the world, if one does
     tempo: _Tempo | None = None
-    ready_at: dict[str, int] = field(default_factory=dict)  # cooldowns started in this plan
+    ready_at: dict[str, int] = field(default_factory=dict)  # cooldowns on the actor's clock
     settled: stop.Settlements = field(default_factory=stop.Settlements)
     rulings: list[Ruling] = field(default_factory=list)
     practice: dict[str, float] = field(default_factory=dict)
@@ -254,6 +254,11 @@ def _frame(state: WorldState, actor: Character) -> _Frame:
         stop_left_s=_stop_left(state, actor),
         personal_s=lived,
     )
+    # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
+    # turn can't be started afresh once it runs out partway through this plan.
+    for power in actor.sheet.powers:
+        if power.ready_at_personal_s is not None and power.ready_at_personal_s > lived:
+            frame.ready_at[power.id] = power.ready_at_personal_s
     for effect in state.time_effects:
         if effect.character_id != actor.id or effect_over(state, effect):
             continue
@@ -327,7 +332,7 @@ def _settle_step(
     frozen = frame.frozen or new_stop is not None
     stop_left = None
     if frozen:
-        stop_left = new_stop.time.lasts_s if new_stop is not None else frame.stop_left_s
+        stop_left = stop.lasts_s(new_stop) if new_stop is not None else frame.stop_left_s
     # A step that outlasts the stop finishes once time runs again, so those it acts on can
     # answer by then (W10a).
     outlasts = frozen and stop_left is not None and lived_estimate(step) > stop_left
@@ -387,6 +392,7 @@ def _settle_step(
         rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
         rng=duration_rng,
         stop_left_s=stop_left,
+        outlasts=outlasts if frozen else None,
         rate=tempo,
         rate_left_s=tempo_left,
     )
@@ -398,6 +404,8 @@ def _settle_step(
         # Outlasting the stop, the chain plays out once time runs again, and the actor lives it.
         duration += chain_s
         personal = (personal or 0) + chain_s
+    # Set off and left inside the stop, a chain is settled now, like a stopped-time throw, and
+    # plays out once time restarts without holding the actor, who can't wait on frozen time.
     if timing.rolled_s is not None:
         if roll is not None:
             roll = roll.model_copy(update={"duration_s": timing.rolled_s})
@@ -417,14 +425,14 @@ def _settle_step(
     started = frame.personal_s
     if new_stop is not None:
         extra = _merge(extra, _takes_hold(actor, new_stop, started, frame))
-        frame.frozen, frame.stop_left_s, frame.stop_power = True, new_stop.time.lasts_s, new_stop
+        frame.frozen, frame.stop_left_s, frame.stop_power = True, stop.lasts_s(new_stop), new_stop
     if frame.frozen and frame.stop_left_s is not None:
         frame.stop_left_s -= timing.personal_s or 0
         if frame.stop_left_s <= 0:
             frame.frozen, frame.stop_left_s, frame.stop_power = False, None, None
     if new_tempo is not None:
         extra = _merge(extra, _takes_hold(actor, new_tempo, started, frame))
-        lasts = new_tempo.time.lasts_s
+        lasts = stop.lasts_s(new_tempo)
         frame.tempo = _Tempo(new_tempo, new_tempo.time.rate or 1.0, lasts)
     lived = personal if personal is not None else duration
     if frame.tempo is not None and frame.tempo.left_s is not None:
@@ -440,19 +448,19 @@ def _settle_step(
         effects = aim_effects(step, settled.result, targets)
     effects = _merge(effects, extra)
     reason = settled.reason
-    if hit is not None and hit.reason and happened:
+    # W10a. A stopped-time hit that was made lands however the target fares: a throw that a
+    # target's body takes, or that misses, still lets its blast loose where it strikes.
+    released = hit is not None and not hit.blocked
+    if released and hit.reason:
         after.append(hit.reason)
-    if hit is not None and hit.blast is not None and happened:
-        if settled.result is not StepResult.FAILURE:
-            blasted = stop.blast_outcome(state, actor, step, hit, targets)
-            effects = _merge(effects, blasted.effects)
-            after.append(blasted.reason)
-            if blasted.deed is not None:
-                deeds.append(blasted.deed)
-            if blasted.actor_dies:
-                frame.gone = (
-                    f"{cap(name(state, actor.id))} died in the blast of {_own(state, actor)}."
-                )
+    if released and hit.blast is not None:
+        blasted = stop.blast_outcome(state, actor, step, hit, targets)
+        effects = _merge(effects, blasted.effects)
+        after.append(blasted.reason)
+        if blasted.deed is not None:
+            deeds.append(blasted.deed)
+        if blasted.actor_dies:
+            frame.gone = f"{cap(name(state, actor.id))} died in the blast of {_own(state, actor)}."
     if growing and happened:
         why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration)
         reason = f"{reason} {why}".strip()
@@ -548,7 +556,7 @@ def _recovered(state: WorldState, actor: Character, drawn: Drawn, frame: _Frame)
 def _rate(new_tempo: Power | None, frame: _Frame) -> tuple[float | None, int | None]:
     """W10a. A haste or slow's rate for this step, and how many lived seconds it has left."""
     if new_tempo is not None and new_tempo.time is not None:
-        return new_tempo.time.rate, new_tempo.time.lasts_s
+        return new_tempo.time.rate, stop.lasts_s(new_tempo)
     if frame.tempo is not None:
         return frame.tempo.rate, frame.tempo.left_s
     return None, None
@@ -559,30 +567,20 @@ def _takes_hold(actor: Character, power: Power, started: int, frame: _Frame) -> 
     step's start, so a stop that outlasts the plan still holds the world next turn, and the power
     is ready again a recharge after it ends."""
     assert power.time is not None
-    lasts = power.time.lasts_s
-    recharge = stop.recharge_s(power, frame.settled)
-    ends = started + lasts if lasts is not None else None
-    effects: list[ActiveTimeEffect] = []
-    if ends is not None:
-        effects.append(
-            ActiveTimeEffect(
-                character_id=actor.id,
-                power_id=power.id,
-                effect=power.time.effect,
-                started_personal_s=started,
-                ends_personal_s=ends,
-            )
-        )
-    ready_at = (ends if ends is not None else started) + recharge if recharge else ends
-    changes: list[CharacterChange] = []
-    if ready_at is not None:
-        frame.ready_at[power.id] = ready_at
-        changes.append(
-            CharacterChange(
-                id=actor.id, powers=[PowerChange(id=power.id, ready_at_personal_s=ready_at)]
-            )
-        )
-    return StateDelta(characters=changes, time_effects=effects)
+    ends = started + stop.lasts_s(power)
+    effect = ActiveTimeEffect(
+        character_id=actor.id,
+        power_id=power.id,
+        effect=power.time.effect,
+        started_personal_s=started,
+        ends_personal_s=ends,
+    )
+    ready_at = ends + stop.recharge_s(power, frame.settled)
+    frame.ready_at[power.id] = ready_at
+    change = CharacterChange(
+        id=actor.id, powers=[PowerChange(id=power.id, ready_at_personal_s=ready_at)]
+    )
+    return StateDelta(characters=[change], time_effects=[effect])
 
 
 def _in_the_stop(step: IntentStep) -> IntentStep:

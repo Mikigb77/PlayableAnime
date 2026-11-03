@@ -54,6 +54,7 @@ def step_timing(
     rolls: bool,
     rng: SeededRng,
     stop_left_s: int | None = None,
+    outlasts: bool | None = None,
     rate: float | None = None,
     rate_left_s: int | None = None,
 ) -> Timing:
@@ -61,7 +62,9 @@ def step_timing(
     rolled; a step that never got going (ruled out) takes only its proposed time.
 
     In a time stop with `stop_left_s` lived seconds left, a step that outlasts it lives out the
-    stop and then takes world time for the rest (W10a). With a haste or slow, `rate` is the
+    stop and then takes world time for the rest (W10a). `outlasts` is what the step was settled
+    as, so a rolled time keeps to it: a step settled as done inside the stop finishes by the
+    stop's end, and one settled as outlasting it runs past. With a haste or slow, `rate` is the
     actor's lived seconds per world second, for `rate_left_s` more lived seconds if it runs out.
     """
     uncertain = step.duration_uncertain and rolls
@@ -73,6 +76,9 @@ def step_timing(
         rolled_value = None
         if uncertain:
             lived, rolled_value = _spread(step, proposed_lived, rng)
+        if stop_left_s is not None and outlasts is not None:
+            edge = max(0, stop_left_s)
+            lived = max(lived, edge + 1) if outlasts else min(lived, edge)
         world = 0
         if stop_left_s is not None and lived > stop_left_s:
             world = lived - max(0, stop_left_s)

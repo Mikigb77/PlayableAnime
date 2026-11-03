@@ -373,7 +373,8 @@ each figure is a named constant at the top of its module, rough as A9 asks.
 How a turn goes through it:
 
 1. **Theories first.** `Intent.theories` are ruled before any step, so the first step already
-   uses the answer. A ruling is final: asking again gets the recorded answer, and a ruling the
+   uses the answer. A theory about a power the actor doesn't hold, or that can't be told from
+   their others, isn't ruled on. A ruling is final: asking again gets the recorded answer, and a ruling the
    sheet already holds wins over anything new. The rulings go in `Resolution.rulings`, and the
    settled details of the power (a hit mode, a setting, a heavier drain) go in
    `Resolution.effects`, which `play_out` applies after the steps. Backstory claims are judged
@@ -382,11 +383,14 @@ How a turn goes through it:
    `WorldState.time_effects`, timed on the user's own clock, and sets its recharge
    (`Power.ready_at_personal_s`). While a stop holds, `world_stopped` keeps the world clock and
    catch-up still, and it carries into the next turn until the user has lived it out or dies.
-   Naming the stop again while it holds continues it at no cost. A haste divides the world time
-   of the user's steps by its rate for as long as it lasts (`durations.step_timing`).
+   Naming the stop again while it holds continues it at no cost, and once it ends, its recharge
+   holds even when the stop began in an earlier turn. A sheet that gives no length gets
+   `UNSTATED_LASTS_S`. A haste divides the world time of the user's steps by its rate for as long
+   as it lasts (`durations.step_timing`).
 3. **Frozen and immune.** Inside a stop, everyone whose sheet doesn't say they move or see in
    stopped time is frozen and can't respond. A step that outlasts the stop is lived out to the
-   stop's end and then takes world time, so its targets can respond (`durations.lived_estimate`).
+   stop's end and then takes world time, so its targets can respond (`durations.lived_estimate`);
+   a rolled length keeps to that decision.
    Hindrances that only the conventions explain (air resistance, holding one's breath) are
    dropped.
 4. **Stopped hits.** A blow or throw at a frozen target settles the hit mode once, as a test
@@ -394,15 +398,16 @@ How a turn goes through it:
    the hit is measured by its own force against the body (`takes_it`), never the user's arm, and
    a controlled hit lands just hard enough. In untouchable mode a blow is ruled out, and a throw
    freezes past the hand and carries on at throwing speed when time restarts.
-5. **Blast.** A full-force relative-speed throw is followed after the step: everyone within the
-   deadly reach of where it lands, and around the thrower when close, dies unless their body takes
-   it, places are ruined or damaged, a host it was thrown at is wiped out, and one public deed
+5. **Blast.** A full-force relative-speed throw is followed after the step, whether or not its
+   target survived it: everyone within the deadly reach of where it lands, and around the thrower
+   when close, dies unless their body takes it, places are ruined or damaged, a host it was thrown at is wiped out, and one public deed
    with traces is proposed. A thrower who dies in it stops the plan.
 6. **Secret deeds.** Deeds done in stopped time have no witnesses but the immune, and leave
    traces (`stopped_traces`). Discovery never pins a body, a noise or a ruin from stopped time on
    the doer (`attribution_odds(..., stopped=True)`).
 7. **Training, breakthroughs and strength.** A step with `training` is checked by `growth.check`
-   (fixed rules, a missing teacher, the world's ceilings, missing needs for a rung), then adds
+   (fixed rules, a teacher who is dead or elsewhere, the world's ceilings, missing needs for a
+   rung; a master, rival or someone to watch counts only as a living character here), then adds
    lived effort to `practice` until the gain is made, recorded with a `Gain`. A breakthrough is
    rolled, its duration always uncertain, and a loud rung is a public deed. A step with
    `show_strength` hides or reveals the actor's rung, and a reveal shifts attitudes.
