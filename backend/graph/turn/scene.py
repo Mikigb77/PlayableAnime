@@ -14,6 +14,7 @@ from engine.contracts import (
     Resolution,
     StepResolution,
 )
+from engine.looks import place_looks
 from engine.state.records import RollRecord
 from engine.state.world import WorldState
 from graph.turn.outputs import NarratorOutput
@@ -157,7 +158,7 @@ def fallback_prompt(state: WorldState, decision: PictureDecision) -> str:
         return f"Portrait of {character.name}. {looks}".strip()
     place = state.places.get(subject_id) if subject_id else None
     if place is not None:
-        return f"{place.name}. {place.description}".strip()
+        return f"{place.name}. {place_looks(place)}".strip()
     deed = state.deeds.get(subject_id) if subject_id else None
     if deed is not None:
         return deed.text

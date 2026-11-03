@@ -94,6 +94,7 @@ class PictureTrigger(StrEnum):
     FIRST_MEETING = "first_meeting"  # a key NPC met for the first time (W15)
     FIRST_VISIT = "first_visit"  # a place on the first visit (W7)
     PLACE_CHANGED = "place_changed"  # a place changed for good, such as ruined or occupied
+    LOOK_CHANGED = "look_changed"  # a character changed for good, such as a lost eye (M5, G17)
     BIG_DEED = "big_deed"  # a deed of severity 4 or 5 (W1)
     EVENT = "event"  # a local or world event arriving (W16)
     BREAKTHROUGH = "breakthrough"  # G19
@@ -112,6 +113,12 @@ class PictureDecision(EngineModel):
     kind: PictureKind
     trigger: PictureTrigger
     subject_id: str | None = Field(default=None, description="The character, place or deed.")
+    version: int | None = Field(
+        default=None,
+        ge=1,
+        description="M4, M5: the look version of a portrait or place (`engine.looks`). Each "
+        "version is drawn once and reused until the look changes for good.",
+    )
     reason: str = ""
 
 

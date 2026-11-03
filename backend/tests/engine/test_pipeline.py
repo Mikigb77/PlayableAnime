@@ -269,7 +269,7 @@ def test_direct_plans_the_opening_portrait_and_suggestions_through_the_director(
     assert quiet.picture is None
     assert quiet.suggestions.count == 0 and quiet.suggestions.kinds == []
     recorded = pipeline.record_direction(state, opening, ctx(turn=1))
-    assert recorded.director.pictured == ["portrait:lin"]
+    assert recorded.director.pictured == ["portrait:lin", "portrait:lin:v1"]
 
 
 def test_seams_never_change_their_input_state():

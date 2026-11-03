@@ -42,7 +42,7 @@ _INTERPRET_WORLD = {
     "creatures",
     "medicine",
 }
-_RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin"}
+_RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin", "look_version"}
 _NPC_HIDDEN = {
     "secrets": True,
     "personal_offset_s": True,

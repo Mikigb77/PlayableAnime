@@ -11,6 +11,7 @@ from accounts.models import Role, User
 from lucid.errors import ApiError, ErrorCode
 from media import billing
 from media.drawing import DrawBlocked, DrawFailed, KeyCannotDraw
+from media.lookups import place_url, portrait_urls
 from media.models import Image, ImageStatus, Payer, SkipReason
 from media.plans import plan_picture
 from media.prompts import Brief, Figure
@@ -337,7 +338,7 @@ def test_a_redrawn_portrait_is_drawn_from_the_earlier_one(client, painters, mete
     )  # fmt: skip
     _image(client, story, 1)
     plan_picture(
-        make_scene(story, 8), kind="portrait", subject_id="mo", trigger="changed", redraw=True,
+        make_scene(story, 8), kind="portrait", subject_id="mo", trigger="look_changed", version=2,
         brief=Brief(subject_name="Mo", subject_appearance="one eye lost"),
     )  # fmt: skip
 
@@ -349,6 +350,73 @@ def test_a_redrawn_portrait_is_drawn_from_the_earlier_one(client, painters, mete
     assert "earlier portrait" in redraw.prompt
     assert redraw.aspect_ratio == "3:4"
     assert Image.objects.get(pk=body["image_id"]).version == 2
+    # Paid once each, and asking again for either scene draws and charges nothing more (M3, M7).
+    assert _image(client, story, 8).json()["image_id"] == body["image_id"]
+    assert _image(client, story, 1).json()["status"] == "ready"
+    assert (painters.drawings, len(meter.charged)) == (2, 2)
+
+
+def test_the_redrawn_portrait_is_the_reference_from_then_on(client, painters, meter):
+    """M5: once a changed face is drawn, every later scene shows and references the new one."""
+    story = make_story()
+    for turn, version, looks in ((1, 1, "two eyes"), (8, 2, "one eye lost")):
+        plan_picture(
+            make_scene(story, turn), kind="portrait", subject_id="mo", trigger="x",
+            version=version, brief=Brief(subject_name="Mo", subject_appearance=looks),
+        )  # fmt: skip
+        assert _image(client, story, turn).json()["status"] == "ready"
+    _planned_scene(story, 9, description="Mo at the gate.", figures=(Figure("mo", "Mo", "x"),))
+
+    assert _image(client, story, 9).json()["status"] == "ready"
+
+    scene = painters.ours.requests[2]
+    redrawn = Image.objects.get(subject="mo", version=2)
+    assert [(ref.name, ref.data) for ref in scene.references] == [("Mo", PNG)]
+    assert get_storage().load(redrawn.storage_key) == scene.references[0].data
+    assert portrait_urls(story, ["mo"])["mo"].url.split("?")[0].endswith(redrawn.storage_key)
+
+
+def test_a_redraw_without_credits_is_skipped_and_the_old_portrait_stays(client, painters, meter):
+    """M7: a picture never takes a balance below zero, a redraw included; the face shown and
+    referenced stays the last one drawn until the new one is."""
+    story = make_story()
+    plan_picture(
+        make_scene(story, 1), kind="portrait", subject_id="mo", trigger="x", version=1,
+        brief=Brief(subject_name="Mo", subject_appearance="two eyes"),
+    )  # fmt: skip
+    assert _image(client, story, 1).json()["status"] == "ready"
+    plan_picture(
+        make_scene(story, 8), kind="portrait", subject_id="mo", trigger="look_changed", version=2,
+        brief=Brief(subject_name="Mo", subject_appearance="one eye lost"),
+    )  # fmt: skip
+    meter.refuse = billing.NoCredits()
+
+    assert _image(client, story, 8).json()["status"] == "skipped"
+    assert _image(client, story, 8).json()["status"] == "skipped"  # asking again doesn't retry
+
+    first = Image.objects.get(subject="mo", version=1)
+    assert Image.objects.get(subject="mo", version=2).skip_reason == SkipReason.NO_CREDITS
+    assert (painters.drawings, len(meter.charged)) == (1, 1)
+    assert portrait_urls(story, ["mo"])["mo"].url.split("?")[0].endswith(first.storage_key)
+
+
+def test_a_changed_place_is_drawn_from_its_earlier_picture(client, painters, meter):
+    """M1: a place that changed for good is drawn once more, as the same place as it is now."""
+    story = make_story()
+    for turn, version, looks in ((2, 1, "a busy inn"), (9, 2, "a busy inn. It is ruined now.")):
+        plan_picture(
+            make_scene(story, turn), kind="place", subject_id="inn", trigger="x",
+            version=version, brief=Brief(subject_name="The Inn", subject_appearance=looks),
+        )  # fmt: skip
+        assert _image(client, story, turn).json()["status"] == "ready"
+
+    changed = painters.ours.requests[1]
+    assert [ref.name for ref in changed.references] == ["The Inn"]
+    assert "this place's earlier picture" in changed.prompt
+    assert "ruined now" in changed.prompt
+    assert changed.aspect_ratio == "16:9"
+    changed_key = Image.objects.get(subject="inn", version=2).storage_key
+    assert place_url(story, "inn").url.split("?")[0].endswith(changed_key)
 
 
 def test_the_owner_pays_nothing(client, painters):

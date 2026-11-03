@@ -312,15 +312,14 @@ async def _draw_once(
 
 @sync_to_async
 def _references(story: Story, image: Image) -> tuple[list[tuple[str, Image]], bool]:
-    """The portraits to send with a picture (M5): the earlier portrait of a character being
-    redrawn, or the ready portraits of the known characters in a scene or cover."""
+    """The pictures to send with a picture (M5): the earlier picture of a character or place
+    drawn again because it changed for good, or the ready portraits of the known characters in a
+    scene or cover."""
     brief = Brief.from_json(image.brief)
-    portraits = Image.objects.filter(
-        story=story, kind=ImageKind.PORTRAIT, status=ImageStatus.READY
-    ).exclude(storage_key="")
-    if image.kind == ImageKind.PORTRAIT:
+    ready = Image.objects.filter(story=story, status=ImageStatus.READY).exclude(storage_key="")
+    if image.kind in (ImageKind.PORTRAIT, ImageKind.PLACE):
         earlier = (
-            portraits.filter(subject=image.subject, version__lt=image.version)
+            ready.filter(kind=image.kind, subject=image.subject, version__lt=image.version)
             .order_by("-version")
             .first()
         )
@@ -329,6 +328,7 @@ def _references(story: Story, image: Image) -> tuple[list[tuple[str, Image]], bo
         return [(brief.subject_name or image.subject, earlier)], True
     if image.kind not in (ImageKind.SCENE, ImageKind.COVER):
         return [], False
+    portraits = ready.filter(kind=ImageKind.PORTRAIT)
     ids = [figure.id for figure in brief.figures if figure.id]
     latest: dict[str, Image] = {}
     for portrait in portraits.filter(subject__in=ids).order_by("subject", "-version"):

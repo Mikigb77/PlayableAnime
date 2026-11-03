@@ -358,8 +358,9 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
 @timed("apply_update")
 async def apply_update(state: TurnState) -> dict[str, Any]:
     """Step 6, code: the narrator's update applied with the C1 invariants by `engine.apply`, the
-    turn closed and the scene built. A refused change is logged and the rest still applies (C5
-    repairs the next scene). A template line proposes nothing."""
+    planned picture settled on the look the scene left (M5), the turn closed and the scene built.
+    A refused change is logged and the rest still applies (C5 repairs the next scene). A template
+    line proposes nothing."""
     turn = state["input"]
     narration: NarratorOutput = state["narration"]
     mode = state["narration_mode"]
@@ -377,16 +378,18 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         issues += [_rejected("rejected", r) for r in applied.rejected]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
     world = world.model_copy(update={"turn": turn.ctx.turn})
+    # M4, M5: a scene that changed the look it pictures draws the new look.
+    world, plan = pipeline.settle_picture(world, state["plan"])
     scene = scene_draft(
         turn,
         before=state["passage"].state,
         after=world,
         resolution=state["resolution"],
-        plan=state["plan"],
+        plan=plan,
         narration=narration,
         mode=mode,
     )
-    return {"world": world, "scene": scene, "issues": _issues(state, issues)}
+    return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 
 @timed("after_turn")

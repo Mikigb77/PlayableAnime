@@ -7,8 +7,9 @@
    when it ends, and an event that needs the player cuts the plan short (W10, R6).
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
-   update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)` and
-   runs `engine.invariants.check_transition` on the turn's first and last states before saving)
+   update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
+   `settle_picture`, and runs `engine.invariants.check_transition` on the turn's first and last
+   states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
 own package, without changing the signature: resolve is `engine.resolve` (WS9), `catch_up`,
@@ -282,3 +283,10 @@ def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) ->
     saving: the director's memory, the event's thread and its play-out, thread changes, leads that
     expired and goals the player stated (W16, N1, N2, M2)."""
     return director.record(state, plan, ctx)
+
+
+def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:
+    """After the narrator's update is applied (step 6): the look version a planned portrait or
+    place is drawn at, with the director's memory to match, so a scene that changed the look it
+    pictures draws the new one, once (M4, M5)."""
+    return director.settle_look(state, plan)

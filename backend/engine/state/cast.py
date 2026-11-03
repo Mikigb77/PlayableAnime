@@ -78,6 +78,12 @@ class Character(EngineModel):
     prominence: Prominence = Prominence.MINOR
     description: str = Field(default="", description="How they come across to anyone who meets.")
     appearance: str = Field(default="", description="Kept for portraits (C9, M5).")
+    look_version: int = Field(
+        default=1,
+        ge=1,
+        description="M5: moves on each time the look changes for good (`engine.looks`), so the "
+        "portrait is drawn once more.",
+    )
     age: int | None = Field(default=None, ge=0, description="Years; adults need one (F3).")
     people_id: str | None = Field(default=None, description="Their race, from the bible (G23).")
     status: CharacterStatus = CharacterStatus.ALIVE
