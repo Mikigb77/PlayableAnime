@@ -154,6 +154,20 @@ refuses, the mic shows a struck-through icon and explains how to allow it, and t
 Where the platform has no recognizer, the mic hides. The tracker reports `typed`, `voice`,
 `voice_edited` or `choice` with each turn (V7).
 
+## Sign-in and account
+
+- **Google's button** follows Google's branding rules: the four-colour G, "Continue with Google", and
+  Google's dark or light fill and stroke, never the app accent. On the web the page shows the button
+  Google draws itself, since Google allows no other sign-in button on the web.
+- **The birth-date step is neutral** (F8): the date starts empty and in typed entry, the copy says
+  why we ask, and a refusal never names the minimum age, so nobody learns which date to type.
+- **Credits** read as cents below a dollar (`44.6¢`) and as dollars from one (`$1.20`), with a real
+  minus sign; the owner sees "Unlimited" and still sees each cost in the history.
+- **Destructive steps** say exactly what goes, offer the export first, and ask the player to type a
+  word before the red button works.
+- Problems the server finds on a form show under their field once the player has tried to submit,
+  and clear as soon as that field changes.
+
 ## Words
 
 - Every string the player sees is in `lib/l10n/app_en.arb`, ready for Spanish (S10). Read them with

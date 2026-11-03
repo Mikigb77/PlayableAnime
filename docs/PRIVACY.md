@@ -4,6 +4,10 @@
 > how the first version is built (T12, V5). Before it goes live, Miki should settle the open
 > questions below and have it checked by someone who knows EU data protection law.
 >
+> The app shows this policy from "Who we are" on, from a copy in `app/assets/legal/privacy_en.md`.
+> An app test fails when the two differ, so after a change run
+> `awk '/^## Who we are/{p=1} p' docs/PRIVACY.md > app/assets/legal/privacy_en.md`.
+>
 > **Open questions for Miki**
 >
 > 1. **Who the controller is** and the contact address for privacy requests (placeholders below).
@@ -74,7 +78,7 @@ our server uses it for that request only and never stores or logs it.
 
 - **Your account, stories and pictures:** until you delete them.
 - **Reports:** until you delete the story or your account.
-- **Deleting your account** (Settings, Delete account) removes your account, every story, every
+- **Deleting your account** (Account, Delete account) removes your account, every story, every
   picture and every signed-in device from the live database and storage at once. Copies in the
   database's restore history disappear when they age out of it, within [N] days.
 - **Logs:** [30] days.
@@ -83,9 +87,9 @@ our server uses it for that request only and never stores or logs it.
 
 You can, at any time:
 
-- **Download everything** we hold about you as a file (Settings, Export my data).
-- **Delete your account** and everything in it (Settings, Delete account).
-- **Correct** your display name and preferences in Settings, or ask us to correct anything else.
+- **Download everything** we hold about you as a file (Account, Export my data).
+- **Delete your account** and everything in it (Account, Delete account).
+- **Correct** your display name and preferences in Account, or ask us to correct anything else.
 - **Object** to processing based on legitimate interest, or ask us to restrict it.
 - **Complain** to a data protection authority, such as [the authority for the controller's
   country, for example Spain's AEPD].

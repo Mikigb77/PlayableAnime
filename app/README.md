@@ -18,15 +18,37 @@ seconds after the text, and typed errors. Put a trigger in an action to try the 
 The fake lives in `lib/core/fake/`, one
 file per area of the API, so each feature thread extends its own.
 
+Sign-in works offline too. **Try the demo account** on the welcome screen, or sign in with
+`demo@lucid.test` and the password `lucid-demo`. **Continue with Google** opens a picker that stands
+in for Google: the demo player, a new player (who is asked for a birth date) and the owner (unlimited
+credits). Email sign-up checks what the backend checks and, like the backend, grants the 50¢
+starter credit only once an address is verified, so a new email account starts at 0.
+
 Against a real backend, set its URL (the default is `http://localhost:8080`):
 
 ```bash
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-(`10.0.2.2` is how an Android emulator reaches your machine.) The backend needs a signed-in player
-for everything but `/health` and `/v1/auth/*`; until the sign-in screens land (WS13), use the fake
-API to get past the welcome screen.
+(`10.0.2.2` is how an Android emulator reaches your machine.) Email sign-in and sign-up work against
+any backend. Google sign-in needs the OAuth client ids (T8), passed at build time:
+
+```bash
+flutter run --dart-define=API_BASE_URL=… \
+  --dart-define=GOOGLE_WEB_CLIENT_ID=….apps.googleusercontent.com \
+  --dart-define=GOOGLE_IOS_CLIENT_ID=….apps.googleusercontent.com
+```
+
+- **Web:** the web client id. The page shows Google's own button, and the web client lists the
+  app's origins (`http://localhost:<port>` for `flutter run -d chrome --web-port <port>`).
+- **Android:** the web client id again, as the server client id. Google matches the app by its
+  package name and signing SHA-1, so add an Android OAuth client with both in the Google Cloud
+  console (`./gradlew signingReport` prints the SHA-1).
+- **iOS:** the iOS client id, and its reversed form (`com.googleusercontent.apps.…`) as a URL scheme
+  under `CFBundleURLTypes` in `ios/Runner/Info.plist`.
+- The backend's `GOOGLE_OAUTH_CLIENT_IDS` lists every one of these ids, or it refuses the tokens.
+
+Without an id, the Google button is hidden on that platform and email still works.
 
 ### Web
 
@@ -70,17 +92,19 @@ lib/
     l10n.dart               context.l10n
     byok_store.dart         The player's own Gemini key (S9)
   features/
-    auth/                   Welcome (sign-in screens come with WS13)
+    auth/                   Welcome, Google sign-in, email sign-in and sign-up, birth date (T8, F8)
     discover/               Starter worlds
     create/                 New story from a premise
     story/                  Models, repository, play screen, memory, status
     library/                Your stories
-    account/                Appearance, own key, sign out
+    account/                Profile, credits and history, own key, content preferences (F7),
+                            privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: speech engine, controller, button, input mode (V1–V7)
   l10n/app_en.arb           Every string the player sees (S10)
 assets/
   fonts/                    Literata and Inter, SIL Open Font License
   fake/                     Placeholder pictures for the fake API
+  legal/                    The privacy policy the app shows, a copy of docs/PRIVACY.md (T12)
 ```
 
 ## Building on it
@@ -89,8 +113,16 @@ assets/
 - **API calls** go through `apiClientProvider`. Errors arrive as `ApiException` with a typed `code`;
   `describeError` turns one into the player's words (T7). A turn is `StoryRepository.takeTurn`, a
   stream of `TurnEvent`s that always ends in `SceneCompleted` or `TurnFailed`.
-- **Sign-in** screens post to `/v1/auth/*` through `authApiClientProvider` and hand the `Session`
-  JSON to `ref.read(sessionProvider.notifier).signIn(...)`. The router follows the session.
+- **Sign-in** goes through `authRepositoryProvider` (`signInWithGoogle`, `logIn`, `register`,
+  `signOut`), which posts to `/v1/auth/*` and hands the `Session` to the `SessionController`. The
+  router follows the session. `fieldErrors` turns a `validation_error` into a message per field.
+- **Out of credits:** on a `402 out_of_credits`, call `showOutOfCreditsSheet(context, error)`. It
+  shows the balance, says top-ups are coming soon and offers the player's own key; it answers
+  `OutOfCreditsOutcome.keyAdded` when a key was saved, so the caller can retry the turn.
+- **The account** is `meProvider` (`GET /v1/me`, refreshed when the Account tab shows) and
+  `creditsHistoryProvider`; `formatCredits` writes an amount the way the app shows it (50¢, $1.20).
+- **The privacy policy** is `app/assets/legal/privacy_en.md`, everything in `docs/PRIVACY.md` from
+  "Who we are" on. A test fails when the two differ, so a change to the policy copies it over.
 - **Voice:** put `DictationButton(tracker: InputModeTracker(controller))` next to any text box and
   send `tracker.mode.wire` as the turn's `input_mode` (V7).
 - **Your own key** (S9) is `byokStoreProvider`, which holds the signed-in account's key only.
