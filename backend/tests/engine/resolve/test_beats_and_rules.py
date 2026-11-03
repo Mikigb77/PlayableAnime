@@ -100,6 +100,16 @@ def test_a_claim_that_the_scene_holds_something_it_doesnt_is_judged_as_new():
     assert rolled == {True}
 
 
+def test_naming_something_the_scene_holds_doesnt_make_what_is_beside_it_real():
+    state = grounded_world()
+    claim = Intent(steps=[throw("the knife Gennaro keeps under the counter", UseSource.SCENE)])
+
+    checks = [resolve(state, claim, seed).steps[0].beats[0] for seed in SEEDS]
+
+    assert all(c.roll is not None for c in checks)
+    assert {c.verdict for c in checks} == {BeatVerdict.MADE_CANON, BeatVerdict.EMPTY}
+
+
 def test_canon_from_an_earlier_beat_this_turn_holds_and_unsupported_canon_does_not():
     state = cultivation_world()
     beats = [
@@ -189,6 +199,39 @@ def test_a_power_must_be_on_the_sheet_and_ready():
     tired = resolve(state, Intent(steps=[step("stop time", uses=[power("time-stop")])])).steps[0]
     assert tired.reason == "Your time stop hasn't recovered yet."
     assert tired.costs == []
+
+
+def stop_time_in_a_beat():
+    beats = [
+        Beat(
+            text="stop time",
+            uses=[BeatUse(source=UseSource.POWER, thing="time stop", ref="time-stop")],
+        )
+    ]
+    return step(
+        "stop time and slip past Zhao", ActionKind.MOVE, 2, proposed_personal_s=2, beats=beats
+    )
+
+
+def test_a_power_a_beat_uses_must_be_ready_too():
+    state = cultivation_world()
+    state.player.sheet.powers[0].ready_at_personal_s = 5
+
+    (settled,) = resolve(state, Intent(steps=[stop_time_in_a_beat()])).steps
+
+    assert settled.beats[0].verdict is BeatVerdict.EMPTY
+    assert (settled.outcome_class, settled.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+    assert settled.reason == "Your time stop hasn't recovered yet."
+    assert settled.costs == [] and settled.duration_s == 2
+
+
+def test_a_time_stop_used_in_a_beat_stops_the_world_clock():
+    state = cultivation_world()
+
+    (settled,) = resolve(state, Intent(steps=[stop_time_in_a_beat()])).steps
+
+    assert (settled.duration_s, settled.personal_s) == (0, 2)
+    assert [c.ref for c in settled.costs] == ["time-stop"]
 
 
 def test_a_power_used_pays_its_costs():

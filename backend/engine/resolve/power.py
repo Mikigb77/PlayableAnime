@@ -6,10 +6,11 @@ what the world says it means; elsewhere one step is two tiers. Condition counts:
 weakened character stands lower than their sheet (A8).
 """
 
+import re
 from dataclasses import dataclass
 from statistics import median
 
-from engine.resolve.words import mentions
+from engine.resolve.words import stems
 from engine.state.bible import PowerLadder
 from engine.state.cast import Character
 from engine.state.sheet import Health, PowerAxis
@@ -34,21 +35,16 @@ HEALTH_WORDS = {
 FATIGUE_PENALTY = {3: 0.25, 4: 0.5}
 DRY_RESERVE_PENALTY = 0.5
 
-# Passing states that leave someone unable to respond at all (A2, A8).
-HELPLESS_STATES = (
-    "asleep",
-    "sleeping",
-    "unconscious",
-    "knocked out",
-    "bound",
-    "tied up",
-    "paralysed",
-    "paralyzed",
-    "petrified",
-    "stunned",
-    "subdued",
-    "helpless",
+# Passing states that leave someone unable to respond at all (A2, A8), matched on whole words of
+# the state's name, so "sleepless" or "bound by an oath" doesn't count. "Bound" counts only alone.
+HELPLESS_WORDS = frozenset(
+    """asleep sleeping unconscious paralysed paralyzed petrified stunned subdued helpless
+    shackled chained""".split()
 )
+HELPLESS_PHRASES = ("knocked out", "tied up", "bound hand and foot", "bound and gagged")
+HELPLESS_NAMES = frozenset({"bound"})
+# Words that turn a helpless state into its opposite or less: "half asleep", "no longer bound".
+NOT_HELPLESS = frozenset("not no never half barely nearly almost longer".split())
 SUBDUED_STATE = "subdued"
 
 
@@ -143,13 +139,29 @@ def helpless_state(character: Character) -> str | None:
     if character.sheet.condition.health is Health.DYING:
         return "dying"
     for state in character.sheet.condition.states:
-        if any(mentions(state.name, word) for word in HELPLESS_STATES):
+        if _helpless(state.name):
             return state.name
     return None
 
 
-def claims_frozen_in_time(why_not: str) -> bool:
-    """Whether a proposed reason for not responding is a time stop, which the state can check."""
-    if mentions(why_not, "stopped time") or mentions(why_not, "time stop"):
+def _helpless(state_name: str) -> bool:
+    words = re.findall(r"[a-z]+", state_name.casefold())
+    if not words or NOT_HELPLESS.intersection(words):
+        return False
+    text = " ".join(words)
+    if text in HELPLESS_NAMES:
         return True
-    return mentions(why_not, "frozen in time") or mentions(why_not, "time frozen")
+    return bool(HELPLESS_WORDS.intersection(words)) or any(
+        re.search(rf"\b{phrase}\b", text) for phrase in HELPLESS_PHRASES
+    )
+
+
+_TIME = stems("time")
+_STOPPED = stems("stop stopped frozen froze freeze halted paused")
+
+
+def claims_frozen_in_time(why_not: str) -> bool:
+    """Whether a proposed reason for not responding is a time stop, which the state can check:
+    it speaks of time and of time stopping or freezing."""
+    said = stems(why_not)
+    return bool(_TIME & said) and bool(_STOPPED & said)

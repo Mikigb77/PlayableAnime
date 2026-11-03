@@ -69,20 +69,24 @@ def proposed_deed(
     outcome_class: OutcomeClass,
     result: StepResult,
     actor_id: str | None,
-    targets: list[Character],
     *,
+    targets: list[Character],
+    others: list[Character],
     in_stopped_time: bool,
 ) -> ProposedDeed | None:
-    """W1, A8. An attempt on someone is a deed even when it fails: the god notices the swing.
-    Steps with no one on the other side aren't deeds here."""
-    if not targets:
+    """W1, A8. An attempt on someone is a deed even when it fails: the god notices the swing. The
+    aim's targets are its victims when it did them harm; everyone else who stood in the way, and
+    targets it didn't harm, are the deed's targets. Steps with no one on the other side aren't
+    deeds here."""
+    if not targets and not others:
         return None
     harmed = (
         step.aim.harmful
         and result is not StepResult.FAILURE
         and outcome_class is not OutcomeClass.RULED_OUT
     )
-    ids = [t.id for t in targets]
+    victims = [t.id for t in targets] if harmed else []
+    rest = [c.id for c in (others if harmed else [*targets, *others])]
     outcome = {
         StepResult.SUCCESS: "it worked",
         StepResult.PARTIAL: "it partly worked",
@@ -92,8 +96,8 @@ def proposed_deed(
         kind=step.verb or step.aim.value,
         text=f"{step.text} ({outcome})",
         actor_id=actor_id,
-        victim_ids=ids if harmed else [],
-        target_ids=[] if harmed else ids,
+        victim_ids=victims,
+        target_ids=list(dict.fromkeys(rest)),
         severity=_SEVERITY[step.aim][result],
         in_stopped_time=in_stopped_time,
     )

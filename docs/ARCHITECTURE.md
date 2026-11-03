@@ -251,13 +251,19 @@ order, and the first one that settles it ends the step:
    something the scene holds (props, people, the place) or something an earlier beat made canon.
    Something new is canon when the place plausibly holds it, rolled for when that is uncertain, and
    an empty search when it can't, which fails the step. A claim that the scene holds something it
-   doesn't is judged as new. Each check is in `StepResolution.beats`.
+   doesn't is judged as new. A power a beat uses must be ready, as in step 1, and a time stop used
+   in a beat stops the world clock like one named on the step. Each check is in
+   `StepResolution.beats`. Words are matched one way only (`words.py`): every meaningful word the
+   model wrote must be in what the state holds, so "the knife Gennaro keeps under the counter"
+   doesn't hold just because Gennaro is there. The model gives ids (`ref`) where it can.
 3. **Who stands in the way** (`core._opposition`; A2, A8). The targets of a harmful aim and of a
    social step always stand in the way, so leaving them out of the facts buys no free kill. The
    dead never do. A time stop freezes everyone but its user (W10a), a helpless state on the sheet
-   (asleep, bound, stunned, subdued, dying) means they can't respond whatever was proposed, and the
-   model's word that they can't respond (unaware) is taken unless it claims a time stop that isn't
-   in effect.
+   (asleep, tied up, stunned, subdued, dying, read on whole words so "half asleep" or "bound by an
+   oath" doesn't count) means they can't respond whatever was proposed, and the model's word that
+   they can't respond (unaware, frozen with fear) is taken unless it claims stopped time that isn't
+   in effect. A harmful aim lands only on the targets the step names, if they are alive; on whoever
+   stands in the way only when it names no one.
 4. **The class** (A2, G18). Power is measured on the step's axis (`power.py`), from the sheet's
    tier raised to its ladder rung, minus condition (wounds, exhaustion, an empty reserve,
    weakening). Gaps are counted in steps: the rungs of the world's ladder on that axis, or two
@@ -265,9 +271,12 @@ order, and the first one that settles it ends the step:
    up to one. Against someone who can respond: two or more steps up is ruled out head-on, one is a
    long shot, closer is contested, and two or more down is certain. When nothing can push back, the
    proposed means decide (clearly enough is certain, clearly not is ruled out, a close call is
-   rolled between full harm and partial harm), capped by how far the target's body stands above
-   the actor's might, so no proposal gets a kitchen knife through a sleeping dragon. A harmful aim
-   always meets that body check, whatever axis the step names. Where nothing can be measured (a
+   rolled: between full harm and partial harm for a blow that lands, between any result for
+   anything else), capped by how far the target's body stands above the actor's might, so no
+   proposal gets a kitchen knife through a sleeping dragon. A step proposed as a long shot with no
+   verdict on the means is rolled as one. A harmful aim always meets that body check for every
+   target it doesn't meet head-on, whatever axis the step names and whoever else stands awake
+   beside them. Where nothing can be measured (a
    faction, a storm), the step is contested, or harder if the interpret step judged it so; a
    proposed class can lower the outcome there but never raise it.
 5. **Chains** (`chain.py`; A9). A step with a chain of cause and effect goes around the strength
@@ -289,13 +298,15 @@ order, and the first one that settles it ends the step:
    partial success where the facts allow one.
 7. **Time** (`durations.py`; W10). Durations are bounded by the kind of action. An uncertain one is
    rolled across orders of magnitude around the proposal (a thirtieth to thirty times), still
-   within the kind's bounds, and recorded on the step's roll. Inside a time stop the world clock
-   stands still and the actor's lived time counts down the stop.
+   within the kind's bounds, and recorded on the step's roll. On a rolled step the time is the
+   second draw of that roll's own seed, so the one recorded seed replays both. Inside a time stop
+   the world clock stands still and the actor's lived time counts down the stop.
 8. **Effects, deeds and costs** (`effects.py`; F4, W1, A1). `IntentStep.aim` says what success
    does to the targets: a kill that succeeds is a confirmed death, a partial kill leaves them badly
    wounded, a wound or a subdual does less. Only a settled step's aim on living targets changes
    the state, so claimed outcomes (A6) and injected text (A7) change nothing. Any step against
-   someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8);
+   someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8). The
+   targets it harmed are the deed's victims and everyone else who stood in the way its targets;
    `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
 
 A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`

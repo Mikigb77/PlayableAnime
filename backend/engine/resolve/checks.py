@@ -92,7 +92,6 @@ def sheet_check(
     must be theirs and on them, unless it is a vehicle or a property, used where it stands. Skills
     and traits the actor lacks simply don't help."""
     sheet = actor.sheet
-    lived = actor.personal_s(state.world_s)
     who = name(state, actor.id)
     for use in step.uses:
         if use.part is SheetPart.POWER:
@@ -103,11 +102,9 @@ def sheet_check(
                     StepResult.FAILURE,
                     f"{cap(who)} {_have(state, actor)} no power like that.",
                 )
-            if power.ready_at_personal_s is not None and lived < power.ready_at_personal_s:
+            if not _ready(state, actor, power):
                 return Settled(
-                    OutcomeClass.RULED_OUT,
-                    StepResult.FAILURE,
-                    f"{cap(possessive(state, actor.id))} {power.name} hasn't recovered yet.",
+                    OutcomeClass.RULED_OUT, StepResult.FAILURE, _not_recovered(state, actor, power)
                 )
             _add(drawn.powers, power)
         elif use.part is SheetPart.TECHNIQUE:
@@ -137,6 +134,16 @@ def sheet_check(
 
 def _have(state: WorldState, actor: Character) -> str:
     return "have" if actor.id == state.player_id else "has"
+
+
+def _ready(state: WorldState, actor: Character, power: Power) -> bool:
+    """A1. A power on cooldown can't be used until the character's own clock reaches it."""
+    ready_at = power.ready_at_personal_s
+    return ready_at is None or actor.personal_s(state.world_s) >= ready_at
+
+
+def _not_recovered(state: WorldState, actor: Character, power: Power) -> str:
+    return f"{cap(possessive(state, actor.id))} {power.name} hasn't recovered yet."
 
 
 def _add(items: list, item) -> None:
@@ -246,6 +253,8 @@ def _check_use(
                 BeatVerdict.EMPTY,
                 f"{cap(name(state, actor.id))} {_have(state, actor)} no power like that.",
             )
+        if not _ready(state, actor, power):
+            return verdict(BeatVerdict.EMPTY, _not_recovered(state, actor, power))
         _add(drawn.powers, power)
         return verdict(BeatVerdict.HOLDS)
     if use.source is UseSource.CARRIED:

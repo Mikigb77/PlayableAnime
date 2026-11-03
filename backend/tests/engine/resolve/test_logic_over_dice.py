@@ -7,10 +7,12 @@ import pytest
 
 from engine.context import Difficulty
 from engine.contracts import Aim, Intent, MeansVerdict, OutcomeClass
-from engine.state import CharacterStatus, PowerAxis, StepResult
+from engine.state import CharacterStatus, Condition, PassingState, PowerAxis, StepResult
 
 from .worlds import (
     SEEDS,
+    add,
+    disciple,
     facts,
     item,
     naples_with_sleeping_guard,
@@ -130,3 +132,47 @@ def test_calling_the_stab_a_matter_of_stealth_doesnt_get_a_knife_through_dragon_
         (settled,) = resolve(state, Intent(steps=[sneaky]), seed).steps
         assert (settled.outcome_class, settled.roll) == (OutcomeClass.RULED_OUT, None)
         assert settled.effects.empty
+
+
+def test_a_guard_awake_beside_a_sleeping_elder_doesnt_make_the_elder_easier_to_hurt():
+    # Elder Mo sleeps two realms up while a disciple of Lin's own realm keeps watch: getting past
+    # the disciple is a contest, but the sword still can't hurt the elder's body (A2, G18).
+    state = add(sect(), disciple("wei", "Wei"))
+    state.characters["elder-mo"].sheet.condition = Condition(states=[PassingState(name="asleep")])
+    attack = cut_throat(
+        "elder-mo",
+        "sword",
+        axis=PowerAxis.MIGHT,
+        facts=facts(opposition_ids=["elder-mo", "wei"], can_respond=True),
+    )
+
+    for seed in SEEDS:
+        (settled,) = resolve(state, Intent(steps=[attack]), seed).steps
+        assert (settled.outcome_class, settled.roll) == (OutcomeClass.RULED_OUT, None)
+        assert settled.reason == "Elder Mo at Core Formation is far beyond what this can hurt."
+
+
+@pytest.mark.parametrize(
+    ("state_name", "helpless"),
+    [
+        ("asleep", True),
+        ("fast asleep", True),
+        ("tied up", True),
+        ("bound", True),
+        ("chained to the wall", True),
+        ("half asleep", False),
+        ("sleepless", False),
+        ("bound by an oath", False),
+        ("no longer bound", False),
+    ],
+)
+def test_only_a_state_that_really_leaves_someone_helpless_stops_them_responding(
+    state_name, helpless
+):
+    state = naples_with_sleeping_guard(asleep_on_sheet=False)
+    state.characters["guard"].sheet.condition = Condition(states=[PassingState(name=state_name)])
+    attack = cut_throat("guard", "knife", facts=facts(opposition_ids=["guard"], can_respond=True))
+
+    (settled,) = resolve(state, Intent(steps=[attack])).steps
+
+    assert (settled.roll is None) is helpless

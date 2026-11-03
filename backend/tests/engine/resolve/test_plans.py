@@ -7,17 +7,22 @@ from engine.contracts import (
     ActionKind,
     Aim,
     Intent,
+    IntentStep,
     MeansVerdict,
     OutcomeClass,
     StandingAction,
     StopReason,
 )
+from engine.resolve import odds as odds_mod
+from engine.resolve.durations import step_timing
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
     ActiveTimeEffect,
     CharacterStatus,
+    Condition,
     DeathCertainty,
+    PassingState,
     PowerAxis,
     StepResult,
     TimeEffect,
@@ -110,6 +115,18 @@ def test_a_claim_that_someone_is_frozen_in_time_needs_a_time_stop():
     (settled,) = resolve(state, Intent(steps=[lie])).steps
 
     assert settled.outcome_class is OutcomeClass.LONG_SHOT
+
+
+def test_frozen_with_fear_is_not_a_claim_of_stopped_time():
+    state = sect()
+    afraid = facts(opposition_ids=["zhao"], can_respond=False, why_not="frozen with fear")
+    lie = facts(opposition_ids=["zhao"], can_respond=False, why_not="time froze around him")
+
+    (scared,) = resolve(state, Intent(steps=[strike("zhao", facts=afraid)])).steps
+    (lied,) = resolve(state, Intent(steps=[strike("zhao", facts=lie)])).steps
+
+    assert "frozen with fear and can't respond" in scared.reason
+    assert lied.outcome_class is OutcomeClass.LONG_SHOT
 
 
 def test_injected_text_plays_as_words_and_changes_nothing():
@@ -258,3 +275,77 @@ def test_an_unknown_actor_falls_back_to_the_player():
 
     assert resolution.actor_id is None
     assert resolution.steps[0].result is StepResult.SUCCESS
+
+
+def asleep_in_the_bar():
+    """Tonino and Gennaro both asleep in Carmine's bar."""
+    state = naples_with_sleeping_guard()
+    state.characters["bartender"].sheet.condition = Condition(states=[PassingState(name="asleep")])
+    return state
+
+
+def shoot(target: str, **kw) -> IntentStep:
+    kw.setdefault("facts", facts(opposition_ids=["guard", "bartender"]))
+    return step(f"shoot {target}", verb="shoot", aim=Aim.KILL, target_ids=[target], **kw)
+
+
+def test_the_aim_lands_only_on_whom_the_step_names():
+    (settled,) = resolve(asleep_in_the_bar(), Intent(steps=[shoot("guard")])).steps
+
+    (dead,) = settled.effects.characters
+    assert (dead.id, dead.status) == ("guard", CharacterStatus.DEAD)
+    (deed,) = settled.deeds
+    assert (deed.victim_ids, deed.target_ids) == (["guard"], ["bartender"])
+
+
+def test_an_aim_at_the_dead_harms_no_one_else_in_the_way():
+    state = asleep_in_the_bar()
+    carmine = state.characters["carmine"]
+    carmine.status, carmine.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+
+    (settled,) = resolve(state, Intent(steps=[shoot("carmine")])).steps
+
+    assert settled.effects.empty
+    assert settled.deeds[0].victim_ids == []
+
+
+def test_a_close_call_with_no_one_to_harm_can_simply_fail():
+    pick = step(
+        "pick the lock",
+        ActionKind.TASK,
+        60,
+        verb="pick",
+        facts=facts(means=MeansVerdict.CLOSE_CALL),
+    )
+
+    steps = [resolve(grounded_world(), Intent(steps=[pick]), seed).steps[0] for seed in SEEDS]
+
+    assert {s.result for s in steps} == set(odds_mod.ALL_RESULTS)
+    assert all(s.roll.allowed == odds_mod.ALL_RESULTS for s in steps)
+    assert steps[0].reason == "A close call, even odds."
+
+
+def test_a_long_shot_with_nothing_in_the_way_stays_a_long_shot():
+    leap = step(
+        "leap the gap between the roofs",
+        verb="leap",
+        facts=facts(proposed_class=OutcomeClass.LONG_SHOT),
+    )
+
+    steps = [resolve(grounded_world(), Intent(steps=[leap]), seed).steps[0] for seed in SEEDS]
+
+    assert {s.outcome_class for s in steps} == {OutcomeClass.LONG_SHOT}
+    assert all(s.roll.odds <= odds_mod.LONG_SHOT_BAND[1] for s in steps)
+    assert steps[0].reason.startswith("A long shot, about 1 in")
+
+
+def test_one_recorded_seed_replays_both_the_outcome_and_the_time_it_took():
+    state = sect()
+    timed = strike("zhao", duration_uncertain=True)
+
+    for seed in range(20):
+        (settled,) = resolve(state, Intent(steps=[timed]), seed).steps
+        replay = SeededRng(settled.roll.seed)
+        assert replay.random() == settled.roll.value
+        timing = step_timing(timed, frozen=False, rolls=True, rng=replay)
+        assert timing.rolled_s == settled.roll.duration_s == settled.duration_s

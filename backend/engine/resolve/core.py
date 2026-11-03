@@ -18,8 +18,9 @@ For each step, in order:
    two steps up is ruled out head-on, one is a long shot, closer is contested, and two below is
    certain. When nothing can push back, only the means count, and a code check caps them by how
    tough the target's body is: clearly enough is certain, clearly not is ruled out, and a close
-   call is rolled between doing harm and doing full harm, never bouncing off harmlessly. A plan
-   that goes around the strength is settled link by link instead (A9).
+   call is rolled. A blow that lands is rolled between doing harm and doing full harm, never
+   bouncing off harmlessly; anything else can simply fail. A plan that goes around the strength
+   is settled link by link instead (A9).
 5. **The roll** (A3, A5), only for contested and long-shot steps and close calls, with odds held
    inside the class's band whatever the edges, skills and difficulty do.
 
@@ -65,9 +66,9 @@ from engine.resolve.words import cap, is_are, mentions, name
 from engine.rng import SeededRng
 from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
-from engine.state.sheet import PowerAxis, SkillLevel, TimeEffect, TraitKind
+from engine.state.sheet import Power, PowerAxis, SkillLevel, TimeEffect, TraitKind
 from engine.state.world import WorldState
-from engine.timekeeping import bound_duration, in_time_stop, stop_power_used
+from engine.timekeeping import bound_duration, in_time_stop
 
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 NOTHING_IN_THE_WAY = "Nothing stands in the way."
@@ -213,14 +214,14 @@ def _settle_step(
 
     settled = world_check(state, actor, step) or sheet_check(state, actor, step, drawn)
     attempted = settled is None
-    if attempted:
-        stop_power = stop_power_used(state, actor.id, step)
-    frozen = frame.frozen or stop_power is not None
     if settled is None:
         found = beat_check(state, actor, step, frame.canon, drawn, ctx, rng)
         beats = found.checks
         frame.canon.extend(found.canon)
         settled = found.settled
+        # W10a. A time stop the step uses, named on the step or in a beat, freezes the world.
+        stop_power = next((p for p in drawn.powers if _stops_time(p)), None)
+    frozen = frame.frozen or stop_power is not None
     if settled is None:
         opposition = _opposition(state, actor, step, frozen)
         if step.chain:
@@ -232,20 +233,26 @@ def _settle_step(
         else:
             settled = _unopposed(state, actor, step, opposition, drawn, ctx, rng)
 
+    # W10, A3. An uncertain duration on a rolled step is the second draw of that roll's own seed,
+    # so the one recorded seed replays both the outcome and the time; otherwise it has its own.
+    roll = settled.roll
+    duration_rng = rng.child("duration")
+    if roll is not None:
+        duration_rng = SeededRng(roll.seed)
+        duration_rng.random()  # the outcome's draw
     timing = step_timing(
         step,
         frozen=frozen,
         rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
-        rng=rng.child("duration"),
+        rng=duration_rng,
     )
     duration = timing.duration_s if frozen else timing.duration_s + chain_s
-    roll = settled.roll
     if timing.rolled_s is not None:
         if roll is not None:
             roll = roll.model_copy(update={"duration_s": timing.rolled_s})
         else:
             roll = RollRecord(
-                seed=rng.child("duration").seed,
+                seed=duration_rng.seed,
                 label="how long it takes",
                 odds=1.0,
                 odds_label="certain",
@@ -274,7 +281,8 @@ def _settle_step(
             settled.outcome_class,
             settled.result,
             actor.id if actor.id != state.player_id else None,
-            opposition.characters,
+            targets=targets,
+            others=[c for c in opposition.characters if c not in targets],
             in_stopped_time=frozen,
         )
     stakes = bool(
@@ -345,8 +353,9 @@ def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: b
         else:
             found.unmeasured = True
     if step.aim.harmful:
-        aimed = [p for p in people if p.id in target_ids]
-        found.targets = aimed or people
+        # The aim lands on whom the step names, if they're alive; on whoever stands in the way
+        # only when it names no one.
+        found.targets = [p for p in people if p.id in target_ids] if step.target_ids else people
     return found
 
 
@@ -370,9 +379,16 @@ def _contested(
     be measured; otherwise it is contested, or harder if the interpret step judged it so."""
     axis = _axis(step)
     difficulty = ctx.settings.difficulty
-    if step.aim.harmful and axis is not PowerAxis.MIGHT and opposition.targets:
-        # Getting the blow in by stealth or a trick doesn't make it hurt a body far above it.
-        gap, toughest = _body(state, actor, opposition.targets)
+    # A harmful aim still has to get through the body of each target it doesn't meet head-on:
+    # getting the blow in by stealth, or past a guard while the target sleeps, doesn't make it
+    # hurt a body far above it.
+    unmet = [
+        t
+        for t in opposition.targets
+        if axis is not PowerAxis.MIGHT or t not in opposition.responsive
+    ]
+    if step.aim.harmful and unmet:
+        gap, toughest = _body(state, actor, unmet)
         if gap >= odds_mod.RULED_OUT_AT:
             reason = f"{_beyond_harm(state, toughest)}."
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
@@ -445,10 +461,13 @@ def _unopposed(
     ancient dragon."""
     facts = step.facts
     means = facts.means or _means_from_class(facts.proposed_class)
+    # With no verdict on the means, a step the interpret step called a long shot stays one.
+    long_shot = facts.means is None and facts.proposed_class is OutcomeClass.LONG_SHOT
     ceiling: MeansVerdict | None = None
     toughest: Standing | None = None
-    if (step.aim.harmful or step.axis is PowerAxis.MIGHT) and opposition.helpless:
-        gap, toughest = _body(state, actor, [c for c, _ in opposition.helpless])
+    bodies = opposition.targets if step.aim.harmful else [c for c, _ in opposition.helpless]
+    if (step.aim.harmful or step.axis is PowerAxis.MIGHT) and bodies:
+        gap, toughest = _body(state, actor, bodies)
         if gap >= odds_mod.RULED_OUT_AT:
             ceiling = MeansVerdict.CLEARLY_NOT
         elif gap >= odds_mod.LONG_SHOT_AT:
@@ -472,17 +491,27 @@ def _unopposed(
 
     difficulty = ctx.settings.difficulty
     shift = _shift(state, actor, step, drawn, opposition, None)
-    odds = odds_mod.settle(0.0, shift, odds_mod.CLOSE_CALL_BAND, difficulty)
+    # A2. A blow that lands on someone who can't respond does harm either way; the close call is
+    # only how much. Anything else can still simply fail.
+    harm_lands = step.aim.harmful and bool(opposition.targets)
+    allowed = odds_mod.HARM_DONE if harm_lands else odds_mod.ALL_RESULTS
+    if long_shot:
+        outcome_class, band = OutcomeClass.LONG_SHOT, odds_mod.LONG_SHOT_BAND
+        base = odds_mod.logit(odds_mod.UNMEASURED_ODDS[OutcomeClass.LONG_SHOT])
+    else:
+        outcome_class, band, base = OutcomeClass.CONTESTED, odds_mod.CLOSE_CALL_BAND, 0.0
+    odds = odds_mod.settle(base, shift, band, difficulty)
     roll = odds_mod.roll(
-        rng.child("outcome"),
-        odds,
-        label=step.text,
-        allowed=odds_mod.HARM_DONE,
-        difficulty=difficulty,
+        rng.child("outcome"), odds, label=step.text, allowed=allowed, difficulty=difficulty
     )
-    close = f"a close call, {roll.odds_label} it goes all the way"
+    if long_shot:
+        close = f"a long shot, {roll.odds_label}"
+    elif harm_lands:
+        close = f"a close call, {roll.odds_label} it goes all the way"
+    else:
+        close = f"a close call, {roll.odds_label}"
     reason = f"{lead}, but it's {close}." if lead else f"{cap(close)}."
-    return Settled(OutcomeClass.CONTESTED, roll.result, reason, roll)
+    return Settled(outcome_class, roll.result, reason, roll)
 
 
 def _with_chain(
@@ -562,6 +591,10 @@ def _beyond_harm(state: WorldState, toughest: Standing) -> str:
     if toughest.rung:
         body = f"{body} at {toughest.rung}"
     return f"{cap(body)} {is_are(state, toughest.character.id)} far beyond what this can hurt"
+
+
+def _stops_time(power: Power) -> bool:
+    return power.time is not None and power.time.effect is TimeEffect.STOP
 
 
 def _means_from_class(proposed: OutcomeClass | None) -> MeansVerdict:

@@ -2,10 +2,12 @@
 in the world's words (A8).
 
 The interpret step names things in words ("a stone the size of an egg", "teleport"), and the state
-names them in words too (a scene prop, a power's description). Matching is on word stems, with
-every meaningful word of the shorter side found in the longer one, so "my pistol" finds the
-"Beretta pistol" and "teleport" finds "Void Step: teleports her a mile", while "the bar" doesn't
-find "a bottle of grappa on the bar" by accident. It is deliberately simple and genre-free (G5).
+names them in words too (a scene prop, a power's description). Matching is on word stems and goes
+one way only: every meaningful word the model wrote must be in what the state holds. So "my pistol"
+finds the "Beretta pistol" and "teleport" finds "Void Step: teleports her a mile", while "a shotgun
+under the bar" doesn't find the bar, and a trait called "Fire" doesn't answer "put out the fire".
+A word the state doesn't hold is never a match, so the model gives ids (`ref`) where it can and
+words are the fallback. It is deliberately simple and genre-free (G5).
 """
 
 import re
@@ -43,17 +45,8 @@ def stems(text: str) -> frozenset[str]:
 
 
 def mentions(haystack: str, needle: str) -> bool:
-    """Whether the needle names the same thing as the haystack: every meaningful word of the
-    shorter one appears in the longer one."""
-    hay, wanted = stems(haystack), stems(needle)
-    if not hay or not wanted:
-        return False
-    return wanted <= hay or hay <= wanted
-
-
-def contains(haystack: str, needle: str) -> bool:
-    """Whether every meaningful word of the needle appears in the haystack, one way only, so a
-    trait called "Fire" doesn't answer "put out the fire"."""
+    """Whether the needle names something the haystack holds: every meaningful word of the needle
+    appears in the haystack. One way only, so extra words in the needle never match by accident."""
     hay, wanted = stems(haystack), stems(needle)
     return bool(wanted) and wanted <= hay
 

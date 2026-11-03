@@ -15,7 +15,7 @@ from engine.contracts.intent import ChainLink, IntentStep, OutcomeClass
 from engine.contracts.resolution import LinkResolution
 from engine.resolve import odds as odds_mod
 from engine.resolve.durations import CHAIN_MAX_S
-from engine.resolve.words import cap, contains, is_are, name, possessive
+from engine.resolve.words import cap, is_are, mentions, name, possessive
 from engine.rng import SeededRng
 from engine.state.cast import Character
 from engine.state.records import StepResult
@@ -155,17 +155,17 @@ def find_answer(state: WorldState, target: Character, answer: str) -> str | None
     for power in sheet.powers:
         if power.ready_at_personal_s is not None and lived < power.ready_at_personal_s:
             continue
-        if contains(f"{power.name} {power.description}", answer):
+        if mentions(f"{power.name} {power.description}", answer):
             return _named(power.name, power.description)
     for technique in sheet.techniques:
-        if contains(f"{technique.name} {technique.effect}", answer):
+        if mentions(f"{technique.name} {technique.effect}", answer):
             return _named(technique.name, technique.effect)
     for item in sheet.resources.items:
         usable = item.carried and item.quantity > 0
-        if usable and contains(f"{item.name} {item.description}", answer):
+        if usable and mentions(f"{item.name} {item.description}", answer):
             return _named(item.name, item.description)
     for trait in sheet.traits:
-        if contains(f"{trait.name} {trait.description}", answer):
+        if mentions(f"{trait.name} {trait.description}", answer):
             return _named(trait.name, trait.description)
     return None
 
