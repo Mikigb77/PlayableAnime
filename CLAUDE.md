@@ -5,7 +5,9 @@ a Python backend on Cloud Run, Neon Postgres and Gemini on Vertex AI.
 
 **Read [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) before any change.** It is the single source of
 requirements for every agent and thread. Cite its ids (F1, A4, W13, T8, K7…) in PR descriptions.
-Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The first-version work
+plan, with workstreams, file ownership and the rules for parallel threads, is in
+[`docs/PLAN.md`](docs/PLAN.md), and the app to backend contract is in [`docs/API.md`](docs/API.md).
 
 ## Current state vs target
 

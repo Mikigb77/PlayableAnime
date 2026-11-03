@@ -10,7 +10,7 @@ consistent. If a character dies, they stay dead.
 | --- | --- |
 | [`app/`](app/) | Flutter mobile app (iOS and Android, plus web for quick testing) |
 | [`backend/`](backend/) | Python FastAPI story engine for Cloud Run, with Gemini on Vertex AI |
-| [`docs/`](docs/) | [Requirements](docs/REQUIREMENTS.md) · [Feature list](docs/FEATURES.md) · [Architecture](docs/ARCHITECTURE.md) |
+| [`docs/`](docs/) | [Requirements](docs/REQUIREMENTS.md) · [Plan](docs/PLAN.md) · [API](docs/API.md) · [Feature list](docs/FEATURES.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 ## Quick start
 

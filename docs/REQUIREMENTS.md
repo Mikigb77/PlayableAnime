@@ -979,6 +979,8 @@ expecting it to be messier. Reading the narration aloud is a separate feature an
 ## Images
 
 Pictures come at key moments, not every turn, and each one is generated once, stored and reused.
+Miki pulled pictures into the first version on 2026-11-03, fights included, so M1 to M8 are built
+alongside the P0 work ([PLAN.md](PLAN.md)).
 With Google's cheapest Gemini image models, a picture at phone resolution costs about $0.034 (Vertex
 AI prices checked 2026-11-03), about as much as one or two narrated turns. So images are affordable
 as long as they stay occasional and are never generated twice. Models and prices are in
@@ -1000,7 +1002,7 @@ top model, would cost about $2.70, more than the text.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined or occupied (W7); a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1); and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
+| M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined or occupied (W7); a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1), and in a fight with a key NPC or a strong monster, its start and its decisive blow (Miki, 2026-11-03); and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
 | M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits. A per-story setting (S6) picks off, key moments only (the default), or more often. | P1 |
 | M3 | **Pictures never slow the story.** The narration streams first (S3), and the picture fills its place in the scene when it is ready, usually a few seconds later. The app asks for it in its own request when the scene says one is planned, because nothing may run after a response ends on Cloud Run (B8). The request is safe to repeat, so the app asks again if a picture never arrived, and it is never paid for twice. A picture that fails or is blocked is skipped quietly, never shown as an error, and the scene is complete without it. | P1 |
 | M4 | **Made once, reused.** Pictures are stored in Cloud Storage in Frankfurt, keyed by character, place or scene. A portrait is reused wherever that character appears, and a place's picture whenever the player returns, until the place changes. Pictures are exported with the stories and deleted with the account (T12). | P1 |
