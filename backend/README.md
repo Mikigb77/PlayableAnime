@@ -174,7 +174,11 @@ engine/           The rules engine, plain Python with no web or model imports (B
   contracts/      Step contracts (B5): Intent, Resolution, DirectorPlan, StateDelta
   context.py      Per-turn inputs: story settings, rating, content preferences
   rng.py          Seeded random numbers for rolls (A3)
-  timekeeping.py  Duration bounds per kind of action (W10)
+  timekeeping.py  Duration bounds and the clock through pending events (W10, W10a)
+  apply.py        apply_delta: proposed changes applied with the C1 invariants
+  invariants.py   C1 checks on one state or between two
+  labels.py       Time in words: the world's calendar, "+8 h", "2 days ago"
+  visibility.py   What the player character knows (C6): the Memory and status views
   pipeline.py     The functions the turn graph calls
   samples.py      Two sample worlds for tests and development
 tests/<area>/     Tests per package (engine tests in tests/engine/)

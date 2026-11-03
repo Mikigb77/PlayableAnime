@@ -10,7 +10,7 @@ class EngineModel(BaseModel):
 
     Unknown keys are ignored when loading, so a state saved by an older or newer engine version
     still loads (new fields need defaults). Values are validated when a model is built or loaded,
-    not on every assignment: engine code mutates copies freely, and `engine.invariants` (PR 2)
+    not on every assignment: engine code mutates copies freely, and `engine.invariants`
     re-checks a state before it is saved.
     """
 

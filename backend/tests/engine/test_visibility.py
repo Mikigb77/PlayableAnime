@@ -1,0 +1,321 @@
+"""C6: the Memory and status screens show only what the player character knows."""
+
+import json
+
+import pytest
+
+from engine.apply import DeltaSource, apply_delta
+from engine.base import DAY, HOUR
+from engine.context import TurnContext
+from engine.contracts import CharacterChange, PlaceChange, StateDelta
+from engine.samples import cultivation_world, grounded_world
+from engine.state import (
+    CharacterStatus,
+    DeathCertainty,
+    Deed,
+    Fact,
+    FactionStatus,
+    Lead,
+    LeadStatus,
+    PlaceStatus,
+    Reputation,
+    Rumor,
+    Visibility,
+    WorldState,
+)
+from engine.visibility import attitude_label, memory_view, standing_label, status_view
+
+
+def dumped(view) -> str:
+    return json.dumps(view.model_dump(mode="json"))
+
+
+def engine(state: WorldState, **delta) -> WorldState:
+    applied = apply_delta(
+        state, StateDelta(**delta), TurnContext(story_id="s1", turn=4), source=DeltaSource.ENGINE
+    )
+    assert not applied.rejected
+    return applied.state
+
+
+def test_hidden_truth_never_reaches_the_memory_screen():
+    state = grounded_world()
+    state.rumors["r1"] = Rumor(
+        id="r1",
+        text="The Calabrians did it.",
+        is_true=False,
+        accuracy=10,
+        heard_at={"luca": 0},
+    )
+    state.rumors["r2"] = Rumor(id="r2", text="Carmine gave the order.", is_true=True)
+    state.facts["f1"] = Fact(
+        id="f1", text="Carmine was at the docks that night.", subject_ids=["carmine"]
+    )
+    state.world_s = 2 * HOUR
+
+    view = memory_view(state)
+    text = dumped(view)
+
+    for hidden in (
+        "ordered the killing",  # Carmine's secret and agenda
+        "Buy the crews",
+        "Carmine Russo, the underboss.",  # the mystery's answer
+        "Carmine gave the order.",  # a rumor Luca never heard
+        "at the docks",  # a fact Luca doesn't know
+        "is_true",
+        "accuracy",
+        "trust",
+    ):
+        assert hidden not in text
+    assert [(r.text, r.heard_label, r.unconfirmed) for r in view.rumors] == [
+        ("The Calabrians did it.", "Heard 2 hours ago", True)
+    ]
+    # Carmine smiles at Luca and hates him: the screen shows the smile (W4).
+    (carmine,) = view.people
+    assert carmine.attitude_label == "Friendly"
+
+
+def test_people_are_the_ones_the_player_knows():
+    state = grounded_world()
+    names = [p.name for p in memory_view(state).people]
+    state.characters["bartender"].known_by.append("luca")
+
+    assert names == ["Carmine Russo"]
+    assert [p.name for p in memory_view(state).people] == ["Carmine Russo", "Gennaro"]
+    # Known but never met: no attitude to read.
+    assert memory_view(state).people[1].attitude_label is None
+
+
+def test_known_facts_join_the_lines_true_or_not():
+    state = grounded_world()
+    state.facts["f1"] = Fact(
+        id="f1",
+        text="Carmine says he was in Rome that night.",
+        is_true=False,
+        subject_ids=["carmine"],
+        known_by=["luca"],
+    )
+
+    (carmine,) = memory_view(state).people
+
+    assert carmine.lines[-1] == "Carmine says he was in Rome that night."
+
+
+def test_a_death_shows_only_once_the_player_knows_of_it():
+    state = grounded_world()
+    state.scene.present_ids = ["luca"]
+    unseen = engine(state, characters=[CharacterChange(id="carmine", status=CharacterStatus.DEAD)])
+    seen = engine(
+        state,
+        characters=[
+            CharacterChange(id="carmine", status=CharacterStatus.DEAD, known_to_player=True)
+        ],
+    )
+    presumed = engine(
+        state,
+        characters=[
+            CharacterChange(
+                id="carmine",
+                status=CharacterStatus.DEAD,
+                death_certainty=DeathCertainty.PRESUMED,
+                known_to_player=True,
+            )
+        ],
+    )
+
+    assert memory_view(unseen).people[0].status_label == "Alive"
+    assert memory_view(seen).people[0].status_label == "Dead"
+    assert memory_view(presumed).people[0].status_label == "Presumed dead"
+
+
+def test_a_change_nobody_told_the_player_leaves_their_belief_alone():
+    state = grounded_world()
+    state.scene.present_ids = ["luca"]
+    missing = engine(
+        state,
+        characters=[
+            CharacterChange(id="carmine", status=CharacterStatus.MISSING, known_to_player=True)
+        ],
+    )
+    back = engine(missing, characters=[CharacterChange(id="carmine", status=CharacterStatus.ALIVE)])
+
+    assert memory_view(back).people[0].status_label == "Missing"
+
+
+def own_deed(state: WorldState, deed_id: str, **kwargs) -> None:
+    fields = {
+        "actor_id": state.player_id,
+        "kind": "shoot",
+        "text": "Shot at Carmine",
+        "turn": 3,
+        "world_s": 0,
+    }
+    state.deeds[deed_id] = Deed(id=deed_id, **(fields | kwargs))
+
+
+def known_labels(state: WorldState) -> dict[str, str]:
+    return {d.id: d.known_label for d in memory_view(state).deeds}
+
+
+def test_who_saw_a_deed_as_far_as_the_player_knows():
+    state = grounded_world()
+    own_deed(state, "seen-by-strangers", witness_ids=["bartender"], visibility=Visibility.WITNESSED)
+    own_deed(state, "seen-by-known", witness_ids=["carmine", "bartender"])
+    own_deed(state, "secret")
+    own_deed(state, "spied-on", witness_ids=["bartender"], unnoticed_witness_ids=["bartender"])
+    own_deed(state, "public", visibility=Visibility.PUBLIC)
+
+    assert known_labels(state) == {
+        "seen-by-strangers": "You were seen",
+        "seen-by-known": "Seen by Carmine Russo and 1 other",
+        "secret": "No one saw, as far as you know",
+        "spied-on": "No one saw, as far as you know",
+        "public": "Done in public",
+    }
+
+
+def test_others_deeds_show_only_when_the_player_knows_of_them():
+    state = grounded_world()
+    own_deed(state, "hidden", actor_id="carmine", text="Paid the killer")
+    own_deed(state, "heard", actor_id="carmine", text="Threatened Gennaro", known_by=["luca"])
+    own_deed(
+        state,
+        "saw",
+        actor_id="carmine",
+        text="Slapped Gennaro",
+        witness_ids=["luca"],
+        known_by=["luca"],
+    )
+    own_deed(state, "rewound", timeline_id="t2")
+
+    assert known_labels(state) == {"heard": "You heard of it", "saw": "You saw it"}
+    assert memory_view(state).deeds[0].when_label == "14 May 1974, 21:00"
+
+
+def test_a_stopped_time_deed_seen_by_an_immune_elder_looks_unseen():
+    from engine import pipeline
+    from engine.context import TurnContext
+    from engine.contracts import OutcomeClass, ProposedDeed, Resolution, StepResolution
+    from engine.rng import SeededRng
+    from engine.state import StepResult
+
+    strike = ProposedDeed(
+        kind="strike", text="Struck Zhao", witness_ids=["elder-mo"], in_stopped_time=True
+    )
+    step = StepResolution(
+        index=0,
+        text="strike",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="",
+        result=StepResult.SUCCESS,
+        duration_s=0,
+        personal_s=2,
+        deeds=[strike],
+    )
+    played = pipeline.play_out(
+        cultivation_world(),
+        Resolution(steps=[step]),
+        TurnContext(story_id="s2", turn=3),
+        SeededRng("s2"),
+    )
+
+    assert [d.known_label for d in memory_view(played.state).deeds] == [
+        "No one saw, as far as you know"
+    ]
+
+
+def test_leads_goals_and_threads():
+    state = grounded_world()
+    state.world_s = DAY
+    state.leads = {
+        "open": Lead(id="open", text="Meet the priest", expires_s=DAY + 3 * HOUR),
+        "forever": Lead(id="forever", text="The old ledger"),
+        "gone": Lead(id="gone", text="A boat at midnight", expires_s=DAY - 1),
+        "taken": Lead(id="taken", text="Taken", status=LeadStatus.TAKEN),
+    }
+    state.threads["revenge"].known_by = []
+
+    view = memory_view(state)
+
+    assert [(le.id, le.expires_label) for le in view.leads] == [
+        ("forever", None),
+        ("open", "Ends in 3 hours"),
+    ]
+    assert [g.id for g in view.goals] == ["find-killer"]
+    assert view.threads == []
+
+
+def test_places_and_factions_show_known_status_only():
+    state = grounded_world()
+    state.scene.present_ids = ["luca"]
+    seen_ruin = engine(
+        state, places=[PlaceChange(id="questura", status=PlaceStatus.RUINED, known_to_player=True)]
+    )
+    unseen_ruin = engine(state, places=[PlaceChange(id="naples", status=PlaceStatus.DAMAGED)])
+    state.factions["police"].status = FactionStatus.WEAKENED  # no history: the start of the story
+
+    places = {p.id: p.lines for p in memory_view(seen_ruin).places}
+    unseen = {p.id: p.lines for p in memory_view(unseen_ruin).places}
+    factions = {f.id: f.lines for f in memory_view(state).factions}
+
+    assert "Ruined" in places["questura"]
+    assert unseen["naples"] == ["City", "You haven't been there."]
+    assert "You haven't been there." not in places["bar"]
+    assert factions["police"][-1] == "Weakened"
+    assert [f.name for f in memory_view(state).factions] == [
+        "Carmine's crew",
+        "the Esposito family",
+        "the Polizia di Stato in Naples",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("esteem", "fear", "label"),
+    [
+        (0, 0, "Neutral"),
+        (70, 0, "Admired"),
+        (30, 70, "Respected and feared"),
+        (-30, 30, "Disliked and wary of you"),
+        (-90, 0, "Despised"),
+        (0, 80, "Feared"),
+    ],
+)
+def test_standing_in_words(esteem, fear, label):
+    assert standing_label(Reputation(esteem=esteem, fear=fear)) == label
+
+
+@pytest.mark.parametrize(
+    ("affinity", "label"),
+    [(80, "Warm"), (30, "Friendly"), (0, "Neutral"), (-30, "Cold"), (-80, "Hostile")],
+)
+def test_attitudes_in_words(affinity, label):
+    assert attitude_label(affinity) == label
+
+
+def test_status_shows_the_sheet_the_clock_and_how_long_ago():
+    state = cultivation_world()
+    state.world_s = 2 * DAY
+    lin = state.player
+    lin.personal_offset_s = 10
+    lin.sheet.powers[0].ready_at_personal_s = state.world_s + 10 + 3 * HOUR
+    own_deed(state, "old", text="Beat Zhao at the well", world_s=0)
+    own_deed(state, "new", text="Bowed to the elder", world_s=DAY)
+    state.factions["outer-court"].player_reputation = Reputation(esteem=30)
+
+    view = status_view(state)
+
+    assert view.clock.label == "Day 3, morning" and view.clock.world_s == 2 * DAY
+    assert "Time stop: ready in 3 hours" in view.character.lines
+    assert "Qi: 40%" in view.character.lines
+    assert [(s.text, s.ago_label) for s in view.since] == [
+        ("Bowed to the elder", "a day ago"),
+        ("Beat Zhao at the well", "2 days ago"),
+    ]
+    assert {r.name: r.label for r in view.reputation}["the outer court"] == "Respected"
+
+
+def test_status_shows_money_and_what_is_carried():
+    lines = status_view(grounded_world()).character.lines
+
+    assert "200,000 lire" in lines and "Beretta pistol" in lines
+    assert "Alfa Romeo Giulia" not in lines  # parked, not carried

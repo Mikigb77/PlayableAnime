@@ -111,7 +111,7 @@ class PowerLadder(EngineModel):
 
 
 class CalendarStyle(StrEnum):
-    """How the world names its dates (W10). Labels are made in `engine.labels` (PR 2)."""
+    """How the world names its dates (W10). Labels are made in `engine.labels`."""
 
     GREGORIAN = "gregorian"  # "14 May 1974, 23:10"
     DAY_COUNT = "day_count"  # "Day 3, dusk"

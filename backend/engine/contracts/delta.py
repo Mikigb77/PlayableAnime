@@ -1,12 +1,13 @@
-"""State changes that a narrator or the engine proposes, applied by `engine.apply.apply_delta`
-(PR 2), which enforces C1.
+"""State changes that a narrator or the engine proposes, applied by `engine.apply.apply_delta`,
+which enforces C1.
 
 One shape serves both proposers. The narrator's structured output (B5 step 5) fills the ordinary
 fields; it replaces `legacy`'s `StateUpdate`. Some fields are **engine only** and are rejected when
 the narrator proposes them, because the engine owns the truth: terminal changes (a death, a
-destroyed faction, a ruined place), anything that needs a `Cause` (C1), rulings (A9), gains (A4),
-accepted backstory (N4) and rule changes (G7). Resolve puts the engine's changes for each step in
-`StepResolution.effects`.
+destroyed faction, a ruined place), anything that needs a `Cause` (C1), faction reputation (W3),
+rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7). The narrator moves an
+attitude by at most `engine.apply.NARRATOR_ATTITUDE_CAP` per delta (W4). Resolve puts the
+engine's changes for each step in `StepResolution.effects`.
 
 Number fields on changes are deltas, clamped to their bounds when applied. `None` means
 "unchanged".
@@ -78,8 +79,12 @@ class FactionChange(EngineModel):
     parent_id: str | None = None
     status: FactionStatus | None = None
     cause: Cause | None = Field(default=None, description="Engine only (C1).")
-    esteem: int = Field(default=0, ge=-100, le=100, description="Player esteem delta (W3).")
-    fear: int = Field(default=0, ge=-100, le=100, description="Player fear delta (W3).")
+    esteem: int = Field(
+        default=0, ge=-100, le=100, description="Player esteem delta. Engine only (W3)."
+    )
+    fear: int = Field(
+        default=0, ge=-100, le=100, description="Player fear delta. Engine only (W3)."
+    )
     known_to_player: bool = False
 
 

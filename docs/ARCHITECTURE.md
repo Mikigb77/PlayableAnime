@@ -165,8 +165,12 @@ these functions and saves the result.
 | `engine/contracts/` | What flows between the turn's steps (B5): `Intent` (interpret), `Resolution` (resolve), `DirectorPlan` (director) and `StateDelta` (what the narrator or the engine proposes to change). |
 | `engine/context.py` | `TurnContext`: the story id, the turn number, story settings (S6), rating (F2) and content preferences (F7), which live outside the world state. |
 | `engine/rng.py` | `SeededRng`, the seeded random numbers behind every roll (A3). |
-| `engine/timekeeping.py` | How long each kind of action may take (W10). |
-| `engine/pipeline.py` | The functions the turn graph calls, with trivial default bodies that WS9, WS10 and WS11 replace. |
+| `engine/timekeeping.py` | How long each kind of action may take, and `advance_clock`, which moves the world clock through pending events in time order and stops at the first that needs the player (W10, W10a). |
+| `engine/apply.py` | `apply_delta`: a proposed `StateDelta` applied with the C1 invariants, on behalf of the narrator or the engine, returning the new state and what it refused. |
+| `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
+| `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
+| `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
+| `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS9, WS10 and WS11 replace. |
 | `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
@@ -174,13 +178,13 @@ a new one.
 
 | B5 step | Function | Owner |
 | --- | --- | --- |
-| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) | WS10 |
+| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order through `apply_event`, stopping at the first that needs the player. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
-| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order: the clocks move by each step's duration and the step's consequences are recorded at its end. From WS2's second PR, events due during a step fire in time order and one that needs the player cuts the plan short | WS2 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world clock moves by each step's duration and the actor's by their lived time; events due during a step fire in time order, and one that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
 | | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng) -> DirectorPlan` | WS11 |
-| 6. Apply the update | `apply_delta` with the C1 invariants (WS2's second PR) | WS2 |
+| 6. Apply the update | `apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR) -> Applied`. Refused changes come back in `Applied.rejected` for the log and the C5 check; the rest applies. Before saving, the graph runs `check_transition(first, last)`, and a violation is an engine bug: log it and don't save | WS2 |
 
 **Decisions the package makes:**
 
@@ -204,10 +208,21 @@ a new one.
   truth lives in fields the projection never shows: `is_true` on rumors and facts, secrets, mystery
   answers, real attitudes behind an `apparent_affinity`.
 - **Proposals versus decisions.** `StateDelta` serves the narrator and the engine. Fields marked
-  engine only (terminal changes such as deaths, anything that needs a C1 `Cause`, rulings, gains,
-  accepted backstory, rule changes) are rejected when the narrator proposes them, because resolve
-  records the outcome in code before narration (F4). Resolve puts its own changes for each step in
-  `StepResolution.effects`.
+  engine only (terminal changes such as deaths, anything that needs a C1 `Cause`, faction
+  reputation, rulings, gains, accepted backstory, rule changes) are rejected when the narrator
+  proposes them, because resolve records the outcome in code before narration (F4). Resolve puts
+  its own changes for each step in `StepResolution.effects`. The narrator can still introduce
+  people, places and factions with real names, nudge an attitude by up to 10 points per scene,
+  record facts, items and leads, and end the scene. A death, destruction or ruin is undone only by
+  a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,
+  no earlier than the change it undoes, by a mechanism the world bible allows (resurrection, a
+  presumed death that was false, a revival with survivors, rebuilding).
+- **What the player sees** (C6). `engine.visibility` reads only records whose knowledge lists
+  hold the player character: `known_by`, `met_by`, `visited_by`, `Rumor.heard_at`, and the
+  `known_by` on each status change, so an off-screen death shows only once the player hears of
+  it. A witness the player didn't notice (a hidden watcher, anyone immune to a time stop) is on
+  `Deed.unnoticed_witness_ids`, so the deed reads as unseen. People show the attitude they let
+  on (`apparent_affinity`), never trust or what they hide.
 - **Rolls are replayable.** The graph makes one `SeededRng.for_turn(story_id, timeline_id, turn)` per
   turn, and each seam derives child streams with stable labels, such as
   `rng.child("resolve", "step", 0)`. Draws come from SHA-256, so a seed recorded on a scene replays
