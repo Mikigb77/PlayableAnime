@@ -249,7 +249,13 @@ T7, K6.
   player can act on (S4). A blocked narration retries as a cut-away and then falls back to a template
   line, and the deed still stands (F4). Context building with chapter summaries every 20 turns (C3)
   and the last scene's ending (R3). Code checks the plan against invariants before narrating (C5).
-  Steps 1, 3 and 6 call `engine.pipeline`, so WS9, WS10 and WS11 plug in without touching the graph.
+  Steps 1, 3 and 6 call `engine.pipeline`, so WS9, WS10 and WS11 plug in without touching the graph. **Landed** as
+  `backend/graph/turn/` (see [ARCHITECTURE.md](ARCHITECTURE.md#turn-graph)): `run_turn(TurnInput,
+  ModelClient)` streams `NarrationDelta` and `NarrationReset` and ends with `TurnCompleted`, whose
+  `result` holds the state, the `SceneDraft` and the fired events for PR 3 to save. The seams are
+  called in `graph/turn/nodes.py`'s `resolve` node; WS11's `direct(..., intent=)` and
+  `record_direction` go there. Step 6 applies the narrator's update with `engine.apply.apply_delta`
+  and step 7 runs `engine.invariants.check_transition` on the whole turn.
 - **PR 3, the turn endpoint (needs WS1):** `POST /v1/stories/{id}/turns` as server-sent events per
   API.md (B7, S3), the version check (T10), saving state, scene and pending events in one
   transaction, the opening turn, one structured T5 log line per turn with the input mode (V7). Delete
@@ -415,6 +421,13 @@ screens.
   as something the character says (A7).
 - **Done when** the "logic over dice", "fair long shots", "power gap", "cause and effect" and
   "workaround" scenarios from T17 pass as unit tests over many seeds.
+- **Landed** as `backend/engine/resolve/` (see
+  [ARCHITECTURE.md](ARCHITECTURE.md#resolve-logic-first-then-dice)). For WS3's interpret prompt, the
+  contract gained `IntentStep.aim` (what success does to the targets: kill, wound, subdue, or none),
+  `ChainLink.answers` (what would let a target escape a link, in plain words), and
+  `StepResolution.beats` (R2's beat checks, for the scene details). WS10's `record_consequences`
+  receives one proposed deed per step against someone, with a first-guess severity to weigh by the
+  world's norms. WS9b plugs time stop's own rules into `engine/resolve/powers/`.
 
 ### WS9b Powers, theories and growth (wave 3, after WS9)
 
