@@ -2,10 +2,14 @@
 
 Plain Python with no Django, so the turn graph, the picture code and the evals can use it too.
 
-The per-model prices are the model layer's: each model call's telemetry record (T5) carries its
-raw cost in dollars, worked out from its tokens and pictures. Billing adds the margin and nothing
-else, so a turn's charge is proportional to its model cost, with no fixed fee that would weigh
-more on a cheap turn than on a dear one (K8).
+The per-model prices are the model layer's (`graph/llm/pricing.py`): each model call's telemetry
+record (`graph.llm.CallRecord`, T5) carries its raw cost in dollars, worked out from its tokens
+and pictures. Billing adds the margin and nothing else, so a turn's charge is proportional to its
+model cost, with no fixed fee that would weigh more on a cheap turn than on a dear one (K8).
+
+A model missing from the price table is priced at the table's dearest fallback, so a charge never
+undercounts what we pay. Its entry says `price_known: false` and a warning is logged, so the
+table gets fixed.
 """
 
 from __future__ import annotations
@@ -38,6 +42,9 @@ class BillableCall(Protocol):
     def cost_usd(self) -> Decimal: ...
     @property
     def byok(self) -> bool: ...
+    # False when the model wasn't in the price table, so `cost_usd` is the dearest fallback.
+    @property
+    def price_known(self) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -50,6 +57,7 @@ class ModelCall:
     images: int = 0
     cost_usd: Decimal = Decimal(0)
     byok: bool = False
+    price_known: bool = True
 
 
 @dataclass(frozen=True)
@@ -68,6 +76,9 @@ class Bill:
     output_tokens: int
     images: int
     models: tuple[str, ...]
+    # Whether every call on our key was priced from the table. When one wasn't, the model layer
+    # priced it at the dearest fallback, so the charge never undercounts our cost.
+    price_known: bool = True
 
     @property
     def used_our_key(self) -> bool:
@@ -75,7 +86,7 @@ class Bill:
 
     def detail(self) -> dict:
         """The numbers a ledger entry keeps: never prompt or story text (T6)."""
-        return {
+        detail = {
             "cost_usd": str(self.cost_usd),
             "calls": self.calls,
             "byok_calls": self.byok_calls,
@@ -84,6 +95,9 @@ class Bill:
             "images": self.images,
             "models": list(self.models),
         }
+        if not self.price_known:
+            detail["price_known"] = False
+        return detail
 
 
 def to_cents(dollars: Decimal) -> Decimal:
@@ -115,6 +129,7 @@ def bill(calls: Iterable[BillableCall], margin: Decimal) -> Bill:
         output_tokens=sum(c.output_tokens for c in calls),
         images=sum(c.images for c in calls),
         models=tuple(sorted({c.model for c in calls})),
+        price_known=all(c.price_known for c in ours),
     )
 
 

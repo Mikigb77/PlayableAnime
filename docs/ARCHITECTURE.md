@@ -341,7 +341,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
 - **Prices.** The per-model prices are the model layer's (`graph/llm/pricing.py`): each call's
   telemetry record (T5) carries its raw cost. Billing charges that cost times `1 + BILLING_MARGIN`
   and adds no fixed fee, so the spread between turn kinds is the spread of their model cost (K8).
-  Only calls on our key are charged (K6).
+  Only calls on our key are charged (K6), which is `TurnTelemetry.billable_cost_usd`. A model
+  missing from the price table is priced at its dearest fallback, so a charge never undercounts;
+  the entry says `price_known: false` and a warning is logged so the table gets fixed.
 - **The flow around a model call** (`billing.meter`), the same for turns, drafts and pictures:
 
   ```python

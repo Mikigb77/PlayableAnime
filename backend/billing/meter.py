@@ -162,6 +162,11 @@ def charge(
         if not billed.used_our_key:
             return None
         detail = billed.detail()
+        if not billed.price_known:
+            logger.warning(
+                "A model call had no price in the table, so it was charged at the fallback",
+                extra={"billing": {"use": str(ticket.use), "models": list(billed.models)}},
+            )
         if ticket.unlimited:
             # The owner plays free, and the entry keeps what it would have cost (K7).
             amount = Decimal(0)

@@ -6,9 +6,9 @@ event are charged within `K8_MAX_COST_MULTIPLE` of each other.
 The turns' token budgets below are estimates until T5 gives real numbers (T14). They follow K8's
 bounds: the world tick, catch-up, rolls, rumors and the director are code with no model call, so
 a montage or an event turn makes the same two model calls as a quiet one (interpret, then
-narrate), with a bounded digest of what happened added to the narrator's context. The prices
-are Vertex AI's for the default models (ARCHITECTURE.md), as the model layer's telemetry would
-price them. The same check runs on the turn graph's own telemetry once the turn endpoint lands:
+narrate), with a bounded digest of what happened added to the narrator's context. The calls are
+priced by the model layer's own table (`graph/llm/pricing.py`), as its telemetry would price
+them. The same check runs on the turn graph's own telemetry once the turn endpoint lands:
 pass its calls to `meter.charge` and the charges to `cost_spread`.
 """
 
@@ -18,19 +18,16 @@ import pytest
 
 from billing import credits, meter
 from billing.pricing import K8_MAX_COST_MULTIPLE, ModelCall, cost_spread
+from graph.llm.pricing import estimate_cost
+from graph.llm.types import Usage
 
 pytestmark = pytest.mark.django_db
 
-# Dollars per million tokens, in and out.
-PRICES = {
-    "gemini-3.5-flash-lite": (Decimal("0.30"), Decimal("2.50")),
-    "gemini-3.5-flash": (Decimal("1.50"), Decimal("9.00")),
-}
-
 
 def _call(model: str, tokens_in: int, tokens_out: int) -> ModelCall:
-    price_in, price_out = PRICES[model]
-    cost = (tokens_in * price_in + tokens_out * price_out) / Decimal(1_000_000)
+    """A call priced by the model layer's own table, as its telemetry record would be."""
+    cost, known = estimate_cost(model, Usage(tokens_in, tokens_out))
+    assert known
     return ModelCall(model, input_tokens=tokens_in, output_tokens=tokens_out, cost_usd=cost)
 
 
