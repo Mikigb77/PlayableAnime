@@ -121,12 +121,17 @@ stories (S8). Sign-in and the account:
 
 To try the API locally, register in `/v1/docs` (or with curl) and use the `access_token` from the
 answer with the docs page's Authorize button. Until WS3's turn graph lands, the story endpoints are
-today's, ported from FastAPI with the same paths and shapes so the current app keeps working:
+today's, ported from FastAPI with the same paths and shapes so the current app keeps working; the
+premises and drafts endpoints are the new contract from API.md:
 
 | Method | Path | |
 | --- | --- | --- |
 | GET | `/health` | Liveness, `{"status": "ok"}` |
-| GET | `/v1/premises` | Starter premises |
+| GET | `/v1/premises` | Starter premises, flagship genres first, each with its genre's fixed rules (S1, G7) |
+| POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?}` → a drafted world and character (G1, G2) |
+| GET, PATCH | `/v1/drafts/{id}` | A draft, and direct edits of its summary lines and advanced fields |
+| POST | `/v1/drafts/{id}/revise` | `{target, instruction}`: a change in plain words |
+| POST | `/v1/drafts/{id}/start` | Creates the story from the draft (engine `graph`) → `{story_id, version}` |
 | POST | `/v1/stories` | `{premise, title?}` → story with its opening scene and `version` |
 | GET | `/v1/stories` | Story summaries, most recently played first |
 | GET | `/v1/stories/{id}` | Full story with `version` |

@@ -164,36 +164,74 @@ Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
-then at least a grounded modern story, science fiction and a modern world with a hidden
-supernatural side.
+then a grounded modern story (the Naples vendetta), science fiction, a modern world with a hidden
+supernatural side and a few more. Each starter's genre fixes some rules (G7), which every draft
+from it keeps until the player changes them.
 
 ## Drafting a world and a character (G1, G2, S1, A1)
 
 A draft holds the AI's proposal until the player starts the story. Drafting calls a model, so it
-needs credits or a BYOK key like a turn does.
+needs credits or a BYOK key like a turn does: the credit meter checks the rate limit, the daily
+draft quota and the balance first (`429 rate_limited`, `429 quota_exceeded`, `402 out_of_credits`),
+and each create, revise or edit that calls the model is charged as a `draft` ledger entry (K2). A
+BYOK request is free (K6).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/v1/drafts` | `{premise, premise_id?, rating, advanced?: DraftAdvanced}` | `Draft` |
+| POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
-| PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?, rating?}` | `Draft` (direct edits) |
-| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction}` | `Draft` (plain-words change, such as "add hidden vampires") |
-| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings}` | `{story_id}`. The app then opens the play screen and streams the opening turn. |
+| PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
+| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires") |
+| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text
-Draft          {id, premise, rating, title, genre, tone,
-                world_lines: [string],       # the one-screen summary in plain words (G1)
-                character_lines: [string],   # the character in the world's words (G2, G16)
-                advanced: DraftAdvanced, created_at}
-DraftAdvanced  {physics: "fun_first"|"strict",                      # A9
-                rules: [{id, text, fixed: bool}],                    # G6, G7
-                gift_strength?: "none"|"small"|"rare"|"overpowered", # G22
-                difficulty: "story"|"balanced"|"brutal",             # A5, default balanced
-                event_frequency: "calm"|"normal"|"dramatic"}         # W16, default normal
+Draft            {id, premise, premise_id?, rating, title, genre, tone,
+                  world_lines: [string],       # the one-screen summary in plain words (G1)
+                  character_lines: [string],   # the character in the world's words (G2, G16)
+                  advanced: DraftAdvanced,
+                  version: int,                # bumped by every saved change (T10)
+                  story_id?: string,           # set once started
+                  created_at, updated_at}
+DraftAdvanced    {physics: "fun_first"|"strict",                     # A9
+                  rules: [{id, text, fixed: bool}],                   # G6, G7
+                  gift_strength: "none"|"small"|"rare"|"overpowered", # G22, the strongest gift held
+                  difficulty: "story"|"balanced"|"brutal",            # A5, default balanced
+                  event_frequency: "calm"|"normal"|"dramatic"}        # W16, default normal
+DraftAdvancedIn  the same fields, each optional; a rule without an id is a new rule
 ```
 
-Hidden parts of the draft (the answer to a major mystery, NPC secrets, N7, C6) never appear in this
-response.
+- **Creating.** `premise` is 10 to 4000 characters. With `premise_id` alone the starter's own text
+  is the premise; with both, the player's text is the premise and the starter's genre still holds.
+  An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
+  `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
+  word, in the same model call; one with the id of a drafted rule replaces it.
+- **The summary is written by code** from the world's public parts, never by the model, so it always
+  matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
+  peoples, the factions, deadlines and questions the character knows, and the key people they know.
+  At most 10 lines each.
+- **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
+  `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
+  model call and costs nothing. Rewriting `world_lines` or `character_lines` (each line up to 300
+  characters), rewriting or adding rules, or choosing a different gift strength redrafts the world
+  or the character to match, in one model call each; lowering `rating` to `teen` redrafts both
+  within Teen (F2). `advanced.rules` is the whole list the player sees, kept word for word.
+  Removing, rewriting or opening up one of a starter's fixed rules lets the genre's rule go for
+  this story (G7), and so does a revision that asks for it; putting it back word for word, still
+  fixed, holds it again.
+- **Versions (T10).** Send `expected_version` with the `version` last seen; a stale one answers
+  `409 version_conflict` with `details.current_version`, before any model call. Two saves at once
+  can't overwrite each other either way: the later one answers `409` too, and its model call is
+  still charged, since it ran.
+- **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
+  the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
+  started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
+  returns the same story.
+- **Model failures** are the usual codes: `422 unreadable_action` when the safety filter blocked the
+  request (offer a rephrase), `422 bad_key`, `503 llm_unavailable`. Nothing is saved or charged.
+
+Hidden parts of the draft (the answer to a major mystery and its clues, NPC secrets and agendas,
+faction plans, what others remember of the character's body that the character doesn't, and anyone
+the character doesn't know of, N7, C6) never appear in these responses.
 
 ## Stories
 

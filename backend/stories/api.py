@@ -17,14 +17,12 @@ from legacy.domain import Scene as LegacyScene
 from legacy.domain import Story as LegacyStory
 from legacy.domain import StorySummary, WorldState
 from legacy.engine.narrator import RECENT_SCENES
-from legacy.premises import SEED_PREMISES, Premise
 from lucid import logs
 from lucid.errors import field_error, version_conflict
 from stories import legacy_bridge
 from stories.access import owned_story
 from stories.models import Engine, InputMode, Scene, SceneKind, Story
 
-premises_router = Router(tags=["premises"])
 stories_router = Router(tags=["stories"])
 
 LIBRARY_SIZE = 50
@@ -61,11 +59,6 @@ class TurnOut(BaseModel):
     scene: LegacyScene
     state: WorldState
     version: int
-
-
-@premises_router.get("", response=list[Premise])
-async def list_premises(request) -> list[Premise]:
-    return SEED_PREMISES
 
 
 @stories_router.post("", response={201: StoryOut})
