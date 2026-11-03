@@ -10,6 +10,7 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "django-ninja>=1.7.3",
     "google-genai>=2.34.0",
+    "langchain-google-genai>=4.4.2",
     "psycopg[binary]>=3.3.7",
     "pydantic>=2.14.2",
     "pydantic-settings>=2.16.2",

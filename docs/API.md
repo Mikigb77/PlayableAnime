@@ -175,7 +175,7 @@ stream starts and come back as ordinary JSON errors. Once the server answers `20
 | --- | --- | --- |
 | `turn.started` | `{turn}` | Sent at once, so the app can show the action and a typing state. |
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
-| `narration.reset` | `{reason: "cutaway"|"template"}` | The narration was blocked and is being rewritten (F4). The app clears the partial text. |
+| `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
 | `error` | `{code, message}` | The turn failed after streaming began (`llm_unavailable`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry. |
 
