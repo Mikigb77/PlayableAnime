@@ -323,12 +323,37 @@ void main() {
             })
             as JsonMap;
     expect(draft['world_lines'], isNotEmpty);
+    expect(draft['version'], 1);
+    final path = '/v1/drafts/${draft['id']}';
+    final edited =
+        await api.patch(path, {
+              'advanced': {'difficulty': 'brutal'},
+              'expected_version': 1,
+            })
+            as JsonMap;
+    expect(edited['version'], 2);
+    await expectLater(
+      api.post('$path/revise', {
+        'target': 'world',
+        'instruction': 'Add hidden vampires',
+        'expected_version': 1,
+      }),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.versionConflict)),
+    );
+
     final started =
-        await api.post('/v1/drafts/${draft['id']}/start', {
+        await api.post('$path/start', {
               'settings': {'pictures': 'key_scenes'},
             })
             as JsonMap;
     final id = started['story_id'] as String;
+    expect(started['version'], 1);
+    // Starting again returns the same story, and a started draft can't change.
+    expect((await api.post('$path/start', {}) as JsonMap)['story_id'], id);
+    await expectLater(
+      api.patch(path, {'rating': 'mature'}),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.forbidden)),
+    );
     final fresh = await stories.get(id);
     expect(fresh.scenes, isEmpty);
 

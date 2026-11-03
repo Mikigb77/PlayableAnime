@@ -14,19 +14,44 @@ class FakeDraftState {
     if (entry == null || entry.$1 != userId) throw const FakeError.notFound('No such draft');
     return entry.$2;
   }
+
+  /// A draft about to change: not started yet, and at the version the app last saw (T10).
+  JsonMap editable(FakeRequest r) {
+    final draft = get(r.param('id'), r.userId!);
+    if (draft['story_id'] case final String storyId) {
+      throw FakeError(403, 'forbidden', 'This draft has started.', {'story_id': storyId});
+    }
+    final expected = (r.json['expected_version'] as num?)?.toInt();
+    if (expected != null && expected != draft['version']) {
+      throw FakeError(409, 'version_conflict', 'The draft changed.', {
+        'current_version': draft['version'],
+      });
+    }
+    return draft;
+  }
 }
+
+JsonMap _saved(FakeBackend b, JsonMap draft) => draft
+  ..['version'] = (draft['version'] as int) + 1
+  ..['updated_at'] = b.now().toUtc().toIso8601String();
 
 void registerDraftRoutes(FakeBackend b) {
   final state = b.data.drafts;
 
   b.route('POST', '/v1/drafts', (r) {
-    final premise = (r.json['premise'] as String? ?? '').trim();
-    if (premise.length < 10) throw const FakeError.validation('Write a little more.');
     final starter = fakePremises.where((p) => p['id'] == r.json['premise_id']).firstOrNull;
+    if (r.json['premise_id'] != null && starter == null) {
+      throw const FakeError.validation('No such starter.');
+    }
+    // With a starter alone, its own text is the premise.
+    final premise = (r.json['premise'] as String? ?? starter?['premise'] as String? ?? '').trim();
+    if (premise.length < 10) throw const FakeError.validation('Write a little more.');
     final id = b.data.id('draft');
+    final now = b.now().toUtc().toIso8601String();
     final draft = <String, dynamic>{
       'id': id,
       'premise': premise,
+      'premise_id': ?starter?['id'],
       'rating': r.json['rating'] ?? 'teen',
       'title': starter?['title'] ?? 'A story of your own',
       'genre': starter?['genre'] ?? 'Your own',
@@ -47,11 +72,14 @@ void registerDraftRoutes(FakeBackend b) {
           {'id': 'r1', 'text': 'The dead stay dead.', 'fixed': true},
           {'id': 'r2', 'text': 'Power grows through effort, teachers and luck.', 'fixed': false},
         ],
+        'gift_strength': 'small',
         'difficulty': 'balanced',
         'event_frequency': 'normal',
         ...?r.json['advanced'] as JsonMap?,
       },
-      'created_at': b.now().toUtc().toIso8601String(),
+      'version': 1,
+      'created_at': now,
+      'updated_at': now,
     };
     state.drafts[id] = (r.userId!, draft);
     return FakeResponse.json(draft, status: 201);
@@ -60,27 +88,31 @@ void registerDraftRoutes(FakeBackend b) {
   b.route('GET', '/v1/drafts/:id', (r) => FakeResponse.json(state.get(r.param('id'), r.userId!)));
 
   b.route('PATCH', '/v1/drafts/:id', (r) {
-    final draft = state.get(r.param('id'), r.userId!);
+    final draft = state.editable(r);
     for (final key in ['world_lines', 'character_lines', 'rating']) {
       if (r.json.containsKey(key)) draft[key] = r.json[key];
     }
     if (r.json['advanced'] case final JsonMap advanced) {
       draft['advanced'] = {...draft['advanced'] as JsonMap, ...advanced};
     }
-    return FakeResponse.json(draft);
+    return FakeResponse.json(_saved(b, draft));
   });
 
   b.route('POST', '/v1/drafts/:id/revise', (r) {
-    final draft = state.get(r.param('id'), r.userId!);
+    final draft = state.editable(r);
     final target = r.json['target'] == 'character' ? 'character_lines' : 'world_lines';
     final instruction = (r.json['instruction'] as String? ?? '').trim();
     if (instruction.isEmpty) throw const FakeError.validation('Say what to change.');
     draft[target] = [...draft[target] as List, 'Now: $instruction.'];
-    return FakeResponse.json(draft);
+    return FakeResponse.json(_saved(b, draft));
   });
 
   b.route('POST', '/v1/drafts/:id/start', (r) {
     final draft = state.get(r.param('id'), r.userId!);
+    // Starting again returns the same story.
+    if (draft['story_id'] case final String storyId) {
+      return FakeResponse.json({'story_id': storyId, 'version': 1});
+    }
     final story = b.data.stories.add(
       FakeStory(
         id: b.data.id('story'),
@@ -96,7 +128,8 @@ void registerDraftRoutes(FakeBackend b) {
     if (r.json['settings'] case final JsonMap settings) {
       story.settings = {...story.settings, ...settings};
     }
-    state.drafts.remove(r.param('id'));
-    return FakeResponse.json({'story_id': story.id}, status: 201);
+    story.version = 1;
+    draft['story_id'] = story.id;
+    return FakeResponse.json({'story_id': story.id, 'version': story.version});
   });
 }
