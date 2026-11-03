@@ -20,6 +20,8 @@ class Rating(models.TextChoices):
 class Engine(models.TextChoices):
     """Which engine wrote `Story.state`, so a newer engine never misreads an older story."""
 
+    # Stories from before the turn graph. The one-call narrator that wrote them is gone, so no
+    # endpoint serves them; they stay in the database until their owner's account is deleted.
     LEGACY = "legacy", "Legacy one-call narrator"
     GRAPH = "graph", "Turn graph"
 
@@ -116,6 +118,9 @@ class Scene(models.Model):
     duration_label = models.CharField(max_length=60, blank=True)
     personal_label = models.CharField(max_length=120, blank=True)
     timeline_id = models.CharField(max_length=64, default="main")
+    # The other characters the player knew who were there when the scene ended, as
+    # [{character_id, name}], for the scene's portraits (M4, M5).
+    cast = models.JSONField(default=list, blank=True)
     # The picture for this scene (M1 to M3): whether code planned one, and what became of it.
     image_planned = models.BooleanField(default=False)
     image_kind = models.CharField(max_length=16, choices=ImageKind.choices, null=True, blank=True)

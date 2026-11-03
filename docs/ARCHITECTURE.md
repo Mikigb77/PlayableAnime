@@ -115,44 +115,24 @@ The code is in `backend/accounts/`.
 
 ## Story engine
 
-Today's turn still runs the one-call narrator, moved unchanged from the FastAPI app to
-`backend/legacy/` and wired to the Django models by `stories/legacy_bridge.py`. WS3's LangGraph turn
-graph (B5, [below](#turn-graph)) is built and replaces both once the turn endpoint lands. The legacy endpoints only serve stories the legacy narrator wrote
-(`Story.engine`), so they never overwrite a graph story's state. One turn
-(`backend/legacy/engine/narrator.py`):
-
-1. **Build the prompt** from the premise, rolling summary, continuity rules, goals, known characters
-   and factions, the last 3 scenes and the player's action.
-2. **Call Gemini** with a JSON response schema (`NarratorOutput`): narration, 3 choices, an image
-   prompt and a `state_update` describing what changed.
-3. **Apply the update** (`backend/legacy/engine/memory.py`). The engine owns the invariants: a dead
-   character can't come back, a destroyed faction can't be restored, affinity is clamped to ±100,
-   and nameless "new" characters are ignored.
-4. **Save** the new state and the scene in one transaction, only if the story's `version` is still
-   the one the turn read, and bump it. The losing turn of a race gets `409 version_conflict` (T10).
+A turn is played by the [turn graph](#turn-graph) (B5) on the rules engine
+([below](#engine-package-backendengine)) and served by `POST /v1/stories/{id}/turns` as
+server-sent events (B7, S3); see [Turn endpoint](#turn-endpoint).
 
 How the reference app's memory layers map onto ours:
 
 | Layer | Here |
 | --- | --- |
-| Long-term memory | `facts` (importance 1–5) + `summary` |
+| Long-term memory | the structured records (facts with importance 1–5, deeds, rumors, threads), chapter summaries every 20 turns (C3) and the rolling `summary` |
 | Short-term memory | the last `RECENT_SCENES` scenes in the prompt |
-| Relationships | `Character.affinity`, `Faction.stance` |
-| Current goals | `goals` |
+| Relationships | characters' attitudes, factions' stances and the player's reputation (W3, W4) |
+| Current goals | `goals` and `leads` (N2) |
 
 Facts with importance ≥ 4 and all deaths and destructions are restated as **continuity rules** on
 every turn.
 
-**Still to build for endless stories:** chapter summaries every N turns, and retrieval of relevant
-facts and scenes with pgvector on Neon, so the prompt stays small however long the story runs.
-
-**Still to build for narration (R1 to R7):** today's prompt asks the narrator to react to the
-player's action, but not to play it out step by step from where the last scene ended before telling
-the outcome, and nothing yet breaks the action into beats or stops a chained plan where it fails.
-
-**Still to build for outcomes (A2, A9):** today the narrator model decides whether an action works
-inside its one call. Nothing yet works out the facts, follows a chain of cause and effect, sorts each
-step into certain, contested, long shot or ruled out, or rolls in code.
+**Still to build for endless stories:** retrieval of relevant facts and scenes with pgvector on
+Neon (C4), so the prompt stays small however long the story runs.
 
 ## Engine package (`backend/engine/`)
 
@@ -203,8 +183,8 @@ a new one.
   the user's offset. World processes such as rumor spread, clock steps and faction answers are
   pending events with due times, so they fire in time order wherever time passes, at the start of
   a turn and during a long action alike. The rows live in `stories_pendingevent` (B12): the turn
-  graph loads the story's pending rows on its timeline into `state.pending_events` and writes back
-  the ones the turn applied, cancelled or scheduled. `EventStatus` uses the table's values
+  endpoint loads the story's pending rows on its timeline into `state.pending_events` and writes
+  back the ones the turn applied, cancelled or scheduled. `EventStatus` uses the table's values
   (`pending`, `applied`, `cancelled`).
 - **Knowledge is recorded on the record.** Anything a character can know carries `known_by`, a
   list of character ids, plus `met_by` on characters, `visited_by` on places and `heard_at` on
@@ -362,8 +342,7 @@ Formation against you at Qi Condensation: head-on, there is no contest."). Time 
 
 `backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with
 no Django imports (B4), and importing it loads no model SDK: LangChain and google-genai load on the
-first real call (B10). The turn graph below is its main caller. Today's one-call narrator in
-`backend/legacy/` still serves the legacy endpoints until the turn endpoint replaces it (WS3's PR 3).
+first real call (B10). The turn graph below is its main caller.
 
 ```python
 telemetry = TurnTelemetry()
@@ -445,8 +424,8 @@ call replaced, to check the Gemini translation: messages, safety settings, block
 
 `backend/graph/turn/` plays one turn as LangGraph's B5 graph: seven nodes, one after the other,
 with no checkpointer, because story state lives in our own tables (B9). It has no Django imports
-(B4), and LangGraph loads on the first turn, not at startup (B10). The turn endpoint (WS3's PR 3)
-loads the story, runs the graph and saves what it returns.
+(B4), and LangGraph loads on the first turn, not at startup (B10). The [turn
+endpoint](#turn-endpoint) loads the story, runs the graph and saves what it returns.
 
 ```python
 turn = TurnInput(state=world, ctx=TurnContext(story_id=..., turn=world.turn + 1, ...),
@@ -493,6 +472,67 @@ G5, M1, C1), whose content rules follow the ratings table above.
 standing action, the opening, a blocked interpret step, a cut-away, the template, a failure mid-
 stream, a careless resolve cut short by the checks, chapter summaries, replaying a turn and the
 offline model.
+
+## Turn endpoint
+
+`backend/stories/` serves API.md's Stories contract on graph stories. A story is made by starting a
+draft (WS12's `POST /v1/drafts/{id}/start`) or, in development, by
+`uv run python manage.py seed_story <email> [--world grounded|cultivation]`, and its first turn is
+`kind: "opening"`, which opens on the moment the draft's `scene.ended_on` describes. Stories the old
+one-call narrator wrote (`Story.engine == "legacy"`), and stories whose world state was never
+filled in, are not served.
+
+`POST /v1/stories/{id}/turns` (`stories/api.py`, `stories/turns.py`):
+
+1. **Before the stream**, in API.md's order: auth, ownership and rating (`owned_story`), the
+   version (T10), the BYOK headers, the request against the story (an opening only on a story with
+   no scenes, a choice only from the last scene's suggestions), then `billing.meter.astart` (rate
+   limit, quota and credit hold). Each failure is an ordinary JSON error, and none counts against
+   the rate limit or quota.
+2. **Read** (`turns.prepare`): the world state with the story's pending rows on its timeline
+   merged in (`stories/pending.py`, B12), the scenes the next chapter summary covers (those since
+   the last chapter, at most 60, so summaries that were late for long catch up a window at a time)
+   and at least the last 3 (C3), the player's content preferences (F7) and the story's settings
+   (S6).
+3. **Stream**: `turn.started` at once, then `run_turn`'s narration as `narration.delta` and
+   `narration.reset`. The model client and LangGraph are built off the event loop, since the first
+   turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
+   `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
+   charged.
+4. **Save** (`turns.save`), in one transaction: the state, `turn` and `version` with an optimistic
+   check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
+   `version_conflict`), the `Scene` row with its time labels in the world's calendar
+   (`engine.labels.scene_time`) and its cast, the pending events the turn scheduled, applied or
+   cancelled, the picture plan (`media.plans.plan_picture`, M1; drawn in the app's own request, M3)
+   and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
+   one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
+   the new version and clock; if its picture URLs can't be read then, it goes without them,
+   since the turn is already saved.
+5. **Always**, however the turn ends: the credit hold is released (a no-op after the charge; a
+   stream Django closes before it started releases it too), a BYOK client is closed, and T5's one
+   line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
+   `abandoned` when the player left before it was saved, or the error code), `sent` (false for a
+   turn saved after its player left), the time to the first text (S3), each node's time, the issue
+   codes and the telemetry summary (calls, models, tokens, cost, retries, blocks). Never the
+   action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
+   values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
+
+**Pending events (B12).** A row's id is derived from the story and the engine's event id, and its
+`payload` holds the engine's `PendingEvent`. When a turn reads them, a row's columns (status, due
+time, kind) win over the state, so an event cancelled in the admin stays cancelled. A row written
+outside a turn needs only its columns: it is read in with the row's id as the event's, and fires
+when it falls due. Every read and write is scoped to the story.
+
+The other endpoints read the same rows: the Library (its `world_time_label` comes from the state's
+calendar and clock, read in the database, so no whole world state is loaded), a story with its last
+scenes, scrollback, `PATCH` (title and settings only, under a row lock, so two changes sent
+together both count and a turn saved meanwhile is never undone),
+`DELETE`, and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
+URLs from `media.lookups`).
+
+**Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
+meter and picture planner: every event, each error before and after the stream starts, a lost
+version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
 
 ## Drafting a world and a character
 
@@ -708,9 +748,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
   same check on the turn graph's own telemetry.
 - **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
-  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. Drafting meters every
-  model call with `meter.DRAFT` (WS12). The legacy story endpoints aren't metered; the turn
-  endpoint (WS3) calls `billing.meter` when it lands.
+  `billing.credits.summary(user)`, pictures pay through `media/billing.py`, drafting meters
+  every model call with `meter.DRAFT` (WS12), and the [turn endpoint](#turn-endpoint) calls
+  `billing.meter` around every turn.
 
 ## Voice input
 
@@ -747,8 +787,8 @@ or `choice` (V7).
 ## Images
 
 Requirements: M1 to M8 in [REQUIREMENTS.md](REQUIREMENTS.md#images). The pictures backend is
-`backend/media/` (WS8), described [below](#how-pictures-work). The legacy narrator still writes
-`Scene.image_prompt` every turn; M1 limits it to scenes that get a picture once the turn graph lands.
+`backend/media/` (WS8), described [below](#how-pictures-work). A turn writes `Scene.image_prompt`
+only for a scene code planned a picture for (M1), and plans that picture as it saves the scene.
 
 Gemini image models on Vertex AI, at standard prices on the global endpoint, from the [Vertex AI
 pricing page](https://cloud.google.com/vertex-ai/generative-ai/pricing) on 2026-11-03:
@@ -880,8 +920,8 @@ endpoint lets anyone spend our Vertex budget.
 | `accounts_refreshtoken` | Refresh tokens as SHA-256 hashes, per session, with expiry and when each was spent. |
 | `accounts_throttle` | Sign-in brute-force counters: an HMAC key, the window start and the hits. |
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
-| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, and the picture flag, kind and prompt (M1). The picture itself and its state live in `media_image`. |
-| `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". |
+| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
+| `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". A row's id is derived from the story and the engine's event id, and its payload holds the engine's `PendingEvent` (see [Turn endpoint](#turn-endpoint)). |
 | `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |
 | `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |

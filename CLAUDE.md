@@ -12,9 +12,10 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
 ## Current state vs target
 
 - The backend is **Django + Django Ninja over ASGI** (`backend/lucid`, `accounts`, `stories`), on
-  Postgres through psycopg 3. Turns still run today's one-call narrator in `backend/legacy/` until
-  the **LangGraph turn graph on Vertex AI** replaces it (B5 to B9). Keep engine logic in plain
-  Python with no Django or LangChain imports (B4).
+  Postgres through psycopg 3. Turns run the **LangGraph turn graph on Vertex AI**
+  (`backend/graph/turn`, B5 to B9) on the rules engine (`backend/engine`), streamed as server-sent
+  events by `backend/stories`. Keep engine logic in plain Python with no Django or LangChain
+  imports (B4).
 - Errors use the API.md envelope (`lucid.errors.ApiError`), and logs are JSON with request, trace,
   user and story ids (`lucid.logs`). Tests run on Postgres (`TEST_DATABASE_URL`, a local Docker
   Postgres by default), never on Neon.

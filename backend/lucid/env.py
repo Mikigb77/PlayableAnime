@@ -41,11 +41,10 @@ class Env(BaseSettings):
     csrf_trusted_origins: str = ""
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
-    # Models (B6). "fake" runs a canned offline narrator, so nothing needs cloud credentials.
+    # Models (B6). "fake" is an offline model, so nothing needs cloud credentials. Vertex AI's
+    # location and the per-node models are read by `graph.llm.config` from the same files.
     llm_provider: Literal["vertex", "fake"] = "fake"
     gcp_project: str = "playable-anime"
-    vertex_location: str = "global"
-    narrator_model: str = "gemini-3.5-flash"
 
     # Sign-in (T8, K7, F8). Comma-separated OAuth client ids (web, Android, iOS) from the
     # `playable-anime` project: a Google ID token must name one of them as its audience. Empty

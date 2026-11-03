@@ -15,6 +15,8 @@ from graph.turn.outputs import ChapterOutput, NarratorOutput, SuggestionOut
 from graph.turn.runner import run_turn, turn_graph
 from graph.turn.types import (
     CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
+    RECENT_SCENES,
     Choice,
     Issue,
     NarrationDelta,
@@ -35,6 +37,8 @@ from graph.turn.types import (
 
 __all__ = [
     "CHAPTER_TURNS",
+    "MAX_CHAPTER_TURNS",
+    "RECENT_SCENES",
     "ChapterOutput",
     "Choice",
     "Issue",
