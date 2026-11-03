@@ -7,6 +7,7 @@ turn is `kind: "opening"`. Stories from before the turn graph (`Engine.LEGACY`) 
 """
 
 from asgiref.sync import sync_to_async
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from ninja import Query, Router, Schema
 from pydantic import Field
@@ -68,20 +69,28 @@ async def update_story(request: HttpRequest, story_id: str, body: StoryPatch) ->
     """Renames a story or changes its settings (S6). Only what is sent changes. This writes the
     title and settings alone, so it never undoes a turn saved meanwhile (B12, T10)."""
     story = await _load(request, story_id)
-    fields = []
-    if body.title is not None:
-        story.title = body.title
-        fields.append("title")
-    if body.settings is not None:
-        changes = body.settings.model_dump(mode="json", exclude_unset=True)
-        if changes:
-            settings = responses.settings_of(story).model_dump(mode="json") | changes
-            story.settings = StorySettings.model_validate(settings).model_dump(mode="json")
-            fields.append("settings")
-    if fields:
-        # Not `updated_at`: the Library lists stories by when they were last played.
-        await story.asave(update_fields=fields)
+    story = await sync_to_async(_patch)(story, body)
     return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
+
+
+def _patch(story: Story, body: StoryPatch) -> Story:
+    changes = body.settings.model_dump(mode="json", exclude_unset=True) if body.settings else {}
+    if body.title is None and not changes:
+        return story
+    with transaction.atomic():
+        # Locked, so two changes sent together both count.
+        current = Story.objects.select_for_update().only("settings").get(pk=story.pk)
+        fields = []
+        if body.title is not None:
+            story.title = body.title
+            fields.append("title")
+        if changes:
+            merged = responses.settings_of(current).model_dump(mode="json") | changes
+            story.settings = StorySettings.model_validate(merged).model_dump(mode="json")
+            fields.append("settings")
+        # Not `updated_at`: the Library lists stories by when they were last played.
+        story.save(update_fields=fields)
+    return story
 
 
 @stories_router.delete("/{story_id}", response={204: None})
@@ -101,27 +110,29 @@ async def take_turn(request: HttpRequest, story_id: str, body: TurnIn):
     byok = _byok(request)
     prepared = await sync_to_async(turns.prepare)(story, body, request.auth)
     ticket = await meter.astart(request.auth, meter.TURN, byok=byok is not None)
-    return turns.event_stream(turns.stream(prepared, ticket=ticket, byok=byok, request=request))
+    return turns.TurnStream(
+        turns.stream(prepared, ticket=ticket, byok=byok, request=request), ticket
+    )
 
 
 @stories_router.get("/{story_id}/memory", response=MemoryView)
 async def get_memory(request: HttpRequest, story_id: str) -> MemoryView:
     """What the player character knows, in the world's words (C6)."""
     story = await _load(request, story_id)
-    state = WorldState.model_validate(story.state)
-    return await sync_to_async(responses.memory_out)(story, state, request=request)
+    return await sync_to_async(responses.memory_out)(story, request=request)
 
 
 @stories_router.get("/{story_id}/status", response=StatusView)
 async def get_status(request: HttpRequest, story_id: str) -> StatusView:
     """`/status`: the sheet, reputation, the clock and how long ago things happened (A8, G16)."""
     story = await _load(request, story_id)
-    return responses.status_out(WorldState.model_validate(story.state))
+    return await sync_to_async(responses.status_out)(story)
 
 
 def _stories():
-    """Stories the turn graph plays. One from the old narrator would misread its world state."""
-    return Story.objects.filter(engine=Engine.GRAPH)
+    """Stories the turn graph plays: not one from the old narrator, whose world state it would
+    misread, nor one whose world state was never filled in."""
+    return Story.objects.filter(engine=Engine.GRAPH, state__has_key="player_id")
 
 
 async def _load(request: HttpRequest, story_id: str) -> Story:

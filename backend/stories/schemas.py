@@ -82,6 +82,16 @@ class SettingsPatch(BaseModel):
     images: ImageSetting | None = None
     suggestions: bool | None = None
 
+    @model_validator(mode="after")
+    def _no_nulls(self) -> Self:
+        """Leave a field out to keep it. Only `tone` can be cleared, with null."""
+        cleared = [
+            name for name in self.model_fields_set if name != "tone" and getattr(self, name) is None
+        ]
+        if cleared:
+            raise ValueError(f"{', '.join(sorted(cleared))} can't be null: leave it out instead.")
+        return self
+
 
 class StoryPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=TITLE_CHARS)

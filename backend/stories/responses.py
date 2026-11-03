@@ -77,6 +77,11 @@ def _scene_out(scene: Scene, image: dict | None, portraits: dict) -> SceneOut:
     )
 
 
+def bare_scene(scene: Scene) -> SceneOut:
+    """The scene without its picture or portrait URLs, for when they can't be read."""
+    return _scene_out(scene, None, {})
+
+
 def _cast(scene: Scene) -> list[dict]:
     return [entry for entry in scene.cast or [] if isinstance(entry, dict)]
 
@@ -136,8 +141,9 @@ def with_clock(stories):
     )
 
 
-def memory_out(story: Story, state: WorldState, *, request: HttpRequest | None) -> MemoryView:
+def memory_out(story: Story, *, request: HttpRequest | None) -> MemoryView:
     """The Memory screen (C6) with the pictures the player has seen (M4)."""
+    state = WorldState.model_validate(story.state)
     view = memory_view(state)
     portraits = portrait_urls(
         story, [state.player_id, *(person.id for person in view.people)], request=request
@@ -154,5 +160,5 @@ def memory_out(story: Story, state: WorldState, *, request: HttpRequest | None) 
     return view
 
 
-def status_out(state: WorldState) -> StatusView:
-    return status_view(state)
+def status_out(story: Story) -> StatusView:
+    return status_view(WorldState.model_validate(story.state))

@@ -471,7 +471,8 @@ offline model.
 draft (WS12's `POST /v1/drafts/{id}/start`) or, in development, by
 `uv run python manage.py seed_story <email> [--world grounded|cultivation]`, and its first turn is
 `kind: "opening"`, which opens on the moment the draft's `scene.ended_on` describes. Stories the old
-one-call narrator wrote (`Story.engine == "legacy"`) are not served.
+one-call narrator wrote (`Story.engine == "legacy"`), and stories whose world state was never
+filled in, are not served.
 
 `POST /v1/stories/{id}/turns` (`stories/api.py`, `stories/turns.py`):
 
@@ -481,10 +482,13 @@ one-call narrator wrote (`Story.engine == "legacy"`) are not served.
    limit, quota and credit hold). Each failure is an ordinary JSON error, and none counts against
    the rate limit or quota.
 2. **Read** (`turns.prepare`): the world state with the story's pending rows on its timeline
-   merged in (`stories/pending.py`, B12), every scene since the last chapter and at least the last
-   3 (C3, at most 60), the player's content preferences (F7) and the story's settings (S6).
+   merged in (`stories/pending.py`, B12), the scenes the next chapter summary covers (those since
+   the last chapter, at most 60, so summaries that were late for long catch up a window at a time)
+   and at least the last 3 (C3), the player's content preferences (F7) and the story's settings
+   (S6).
 3. **Stream**: `turn.started` at once, then `run_turn`'s narration as `narration.delta` and
-   `narration.reset`. A failure from here on is an `error` event (`unreadable_action`,
+   `narration.reset`. The model client and LangGraph are built off the event loop, since the first
+   turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
    `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
    charged.
 4. **Save** (`turns.save`), in one transaction: the state, `turn` and `version` with an optimistic
@@ -494,28 +498,33 @@ one-call narrator wrote (`Story.engine == "legacy"`) are not served.
    cancelled, the picture plan (`media.plans.plan_picture`, M1; drawn in the app's own request, M3)
    and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
    one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
-   the new version and clock.
-5. **Always**, however the turn ends: the credit hold is released (a no-op after the charge), a
-   BYOK client is closed, and T5's one line is written, `Turn <outcome>`, with the turn, kind,
-   input mode (V7), outcome (`ok`, `abandoned` when the player left mid-turn, or the error code),
-   the time to the first text (S3), each node's time, the issue codes and the telemetry summary
-   (calls, models, tokens, cost, retries, blocks). Never the action, the narration or a prompt
-   (T6).
+   the new version and clock; if its picture URLs can't be read then, it goes without them,
+   since the turn is already saved.
+5. **Always**, however the turn ends: the credit hold is released (a no-op after the charge; a
+   stream Django closes before it started releases it too), a BYOK client is closed, and T5's one
+   line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
+   `abandoned` when the player left before it was saved, or the error code), `sent` (false for a
+   turn saved after its player left), the time to the first text (S3), each node's time, the issue
+   codes and the telemetry summary (calls, models, tokens, cost, retries, blocks). Never the
+   action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
+   values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
 
 **Pending events (B12).** A row's id is derived from the story and the engine's event id, and its
 `payload` holds the engine's `PendingEvent`. When a turn reads them, a row's columns (status, due
 time, kind) win over the state, so an event cancelled in the admin stays cancelled. A row written
-outside a turn needs only its columns: it is read in, and fires when it falls due.
+outside a turn needs only its columns: it is read in with the row's id as the event's, and fires
+when it falls due. Every read and write is scoped to the story.
 
 The other endpoints read the same rows: the Library (its `world_time_label` comes from the state's
 calendar and clock, read in the database, so no whole world state is loaded), a story with its last
-scenes, scrollback, `PATCH` (title and settings only, so it never undoes a turn saved meanwhile),
+scenes, scrollback, `PATCH` (title and settings only, under a row lock, so two changes sent
+together both count and a turn saved meanwhile is never undone),
 `DELETE`, and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
 URLs from `media.lookups`).
 
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
 meter and picture planner: every event, each error before and after the stream starts, a lost
-version race, a player who leaves mid-turn, pending rows both ways, and the T5 line.
+version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
 
 ## Drafting a world and a character
 

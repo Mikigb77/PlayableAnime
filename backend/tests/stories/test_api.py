@@ -222,3 +222,49 @@ def test_seed_story_makes_a_story_ready_for_its_opening(player, model, capsys):
     assert play(player, story, opening(story)).names[-1] == "scene.completed"
     with pytest.raises(CommandError):
         call_command("seed_story", "nobody@example.com")
+
+
+def test_every_story_endpoint_needs_a_signed_in_player(player, make_story):
+    """T8: no story endpoint answers an anonymous caller."""
+    story = make_story(player)
+    anonymous = Client()
+    calls = [
+        ("get", "/v1/stories"),
+        ("get", f"/v1/stories/{story.pk}"),
+        ("patch", f"/v1/stories/{story.pk}"),
+        ("delete", f"/v1/stories/{story.pk}"),
+        ("get", f"/v1/stories/{story.pk}/scenes"),
+        ("post", f"/v1/stories/{story.pk}/turns"),
+        ("get", f"/v1/stories/{story.pk}/memory"),
+        ("get", f"/v1/stories/{story.pk}/status"),
+        ("get", "/v1/premises"),
+    ]
+    for method, path in calls:
+        response = getattr(anonymous, method)(path, {}, content_type="application/json")
+        assert response.status_code == 401, (method, path)
+        assert response.json()["error"]["code"] == "unauthenticated"
+    assert Story.objects.filter(pk=story.pk).exists()
+
+
+def test_patch_refuses_null_settings_except_tone(client, player, make_story):
+    story = make_story(player, settings={"tone": "wry"})
+
+    refused = client.patch(
+        f"/v1/stories/{story.pk}",
+        {"settings": {"narration_length": None}},
+        content_type="application/json",
+    )
+    cleared = client.patch(
+        f"/v1/stories/{story.pk}", {"settings": {"tone": None}}, content_type="application/json"
+    )
+
+    assert (refused.status_code, refused.json()["error"]["code"]) == (400, "validation_error")
+    assert cleared.status_code == 200
+    assert cleared.json()["settings"]["tone"] is None
+
+
+def test_a_story_whose_world_was_never_filled_in_is_not_served(client, player):
+    empty = Story.objects.create(owner=player, title="Empty", premise="P", engine=Engine.GRAPH)
+
+    assert client.get("/v1/stories").json() == []
+    assert client.get(f"/v1/stories/{empty.pk}").status_code == 404

@@ -9,7 +9,9 @@ transaction that saves the turn.
 A row's id is derived from the story and the engine's event id, so writing an event back twice
 updates one row. `payload` holds the engine's `PendingEvent` as JSON; the columns hold what staff
 see and may change, and they win over the payload when a row is read. A row written outside a
-turn needs only its columns, with the event's own payload under `payload.payload`.
+turn needs only its columns, with the event's own payload under `payload.payload`; its event
+takes the row's id as its own. Every read and write is scoped to the story, so no event of one
+story can touch another's rows.
 """
 
 from __future__ import annotations
@@ -34,22 +36,39 @@ _COLUMNS = ("timeline_id", "due_world_s", "kind", "payload", "status", "created_
 
 
 def row_id(story_id: uuid.UUID | str, event_id: str) -> uuid.UUID:
-    """The table row of the engine's event `event_id`. An event read from a row written outside
-    a turn keeps that row's id as its own."""
+    """The row derived from the story and the engine's event `event_id`."""
+    return uuid.uuid5(_NAMESPACE, f"{story_id}:{event_id}")
+
+
+def _own_row(event_id: str) -> uuid.UUID | None:
+    """The row an event read from a row written outside a turn came from: its id is the row's."""
     try:
         return uuid.UUID(event_id)
     except ValueError:
-        return uuid.uuid5(_NAMESPACE, f"{story_id}:{event_id}")
+        return None
+
+
+def _row_ids(story: Story, event_ids) -> dict[str, uuid.UUID]:
+    """Each event's row: the one it came from, if that is this story's, else its derived one."""
+    ids = {event_id: row_id(story.pk, event_id) for event_id in event_ids}
+    own = {event_id: pk for event_id in ids if (pk := _own_row(event_id)) is not None}
+    if own:
+        mine = set(
+            Row.objects.filter(story=story, pk__in=list(own.values())).values_list("pk", flat=True)
+        )
+        ids.update({event_id: pk for event_id, pk in own.items() if pk in mine})
+    return ids
 
 
 def load(story: Story, state: WorldState) -> WorldState:
     """`state` with the story's pending rows on its timeline added, and with each row's columns
     (status, due time, kind) over the matching event's, so staff changes count."""
-    waiting = {
-        row_id(story.pk, event.id): event.id
-        for event in state.pending_events.values()
-        if event.status is EventStatus.PENDING
-    }
+    waiting: dict[uuid.UUID, str] = {}
+    for event in state.pending_events.values():
+        if event.status is EventStatus.PENDING:
+            waiting[row_id(story.pk, event.id)] = event.id
+            if (pk := _own_row(event.id)) is not None:
+                waiting[pk] = event.id
     rows = list(
         Row.objects.filter(story=story).filter(
             Q(status=PendingEventStatus.PENDING, timeline_id=state.timeline_id)
@@ -69,9 +88,11 @@ def load(story: Story, state: WorldState) -> WorldState:
 def write_back(story: Story, before: WorldState, after: WorldState) -> int:
     """Saves the events the turn changed or added, as rows. Call it in the turn's transaction.
     Returns how many rows it wrote."""
-    ids = {event.id: row_id(story.pk, event.id) for event in after.pending_events.values()}
+    ids = _row_ids(story, list(after.pending_events))
     # An event saved with the state but never as a row, such as one in a new story's state.
-    saved = set(Row.objects.filter(pk__in=list(ids.values())).values_list("pk", flat=True))
+    saved = set(
+        Row.objects.filter(story=story, pk__in=list(ids.values())).values_list("pk", flat=True)
+    )
     changed = [
         event
         for event in after.pending_events.values()
@@ -99,12 +120,10 @@ def write_back(story: Story, before: WorldState, after: WorldState) -> int:
             update_fields=[*_COLUMNS, "applied_turn"],
         )
     # An event the engine dropped from the state never fires, so its row shouldn't either.
-    dropped = [
-        row_id(story.pk, event_id)
-        for event_id in before.pending_events.keys() - after.pending_events.keys()
-    ]
-    if dropped:
-        Row.objects.filter(pk__in=dropped, status=PendingEventStatus.PENDING).update(
+    gone = before.pending_events.keys() - after.pending_events.keys()
+    if gone:
+        dropped = list(_row_ids(story, gone).values())
+        Row.objects.filter(story=story, pk__in=dropped, status=PendingEventStatus.PENDING).update(
             status=PendingEventStatus.CANCELLED
         )
     return len(rows)

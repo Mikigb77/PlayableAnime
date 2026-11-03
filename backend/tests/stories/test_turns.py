@@ -494,3 +494,147 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     logged = str(log_lines())
     assert "I step around Zhao." not in logged
     assert AFTER["narration"] not in logged
+
+
+def test_a_turn_saved_after_its_player_left_is_logged_as_saved(
+    player, make_story, model, log_lines, monkeypatch
+):
+    """The player leaves while the turn is being saved. The save still commits in its thread, so
+    T5 says `ok` and unsent, never `abandoned`."""
+    import asyncio
+    import threading
+
+    from billing import meter
+
+    story = opened(player, make_story, model)
+    prepared = turns.prepare(
+        story, TurnIn(kind="standing", standing="wait", expected_version=2), player
+    )
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+    saving, release = threading.Event(), threading.Event()
+    real_save = turns.save
+
+    def slow_save(*args, **kwargs):
+        saving.set()
+        release.wait(10)
+        return real_save(*args, **kwargs)
+
+    monkeypatch.setattr(turns, "asave", turns.sync_to_async(slow_save))
+
+    async def leave_during_save() -> None:
+        ticket = await meter.astart(player, meter.TURN)
+        chunks = turns.stream(prepared, ticket=ticket, byok=None)
+
+        async def read_all():
+            async for _ in chunks:
+                pass
+
+        reader = asyncio.ensure_future(read_all())
+        await asyncio.to_thread(saving.wait, 10)
+        reader.cancel()
+        release.set()
+        try:
+            await reader
+        except asyncio.CancelledError:
+            pass
+
+    async_to_sync(leave_during_save)()
+
+    assert Scene.objects.filter(story=story).count() == 2
+    [line] = [line for line in log_lines() if line["message"] == "Turn ok"][-1:]
+    assert (line["turn"]["turn"], line["turn"]["sent"]) == (2, False)
+    assert not CreditHold.objects.exists()
+
+
+def test_closing_a_stream_that_never_started_gives_the_hold_back(player, make_story, model):
+    from django.core import signals
+    from django.db import close_old_connections
+
+    from billing import meter
+
+    story = make_story(player)
+    prepared = turns.prepare(story, TurnIn(kind="opening", expected_version=1), player)
+    ticket = async_to_sync(meter.astart)(player, meter.TURN)
+    assert CreditHold.objects.filter(pk=ticket.id).exists()
+
+    response = turns.TurnStream(turns.stream(prepared, ticket=ticket, byok=None), ticket)
+    # Closing a response ends the request, which would close the test's database connection.
+    signals.request_finished.disconnect(close_old_connections)
+    try:
+        response.close()
+    finally:
+        signals.request_finished.connect(close_old_connections)
+
+    assert not CreditHold.objects.exists()
+
+
+def test_a_scene_whose_pictures_cant_be_read_is_still_sent(player, make_story, model, monkeypatch):
+    """The turn is saved and charged before the scene's picture URLs are read, so failing to
+    read them sends the scene without them instead of an error."""
+    from stories import responses
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("IAM is down")
+
+    monkeypatch.setattr(responses, "scenes_out", broken)
+    story = make_story(player)
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+
+    played = play(player, story, opening(story))
+
+    scene = played.completed["scene"]
+    assert scene["narration"] == OPENING["narration"]
+    assert scene["portraits"] == [{"character_id": "zhao", "name": "Zhao Kun", "url": None}]
+    assert played.completed["story"]["version"] == 2
+
+
+def test_an_unexpected_validation_error_is_logged_without_story_text(
+    player, make_story, model, monkeypatch, log_lines
+):
+    """T6: a Pydantic error quotes what it rejected. The ERROR line keeps the traceback and the
+    field names, never the values."""
+    from pydantic import BaseModel
+
+    class Strict(BaseModel):
+        count: int
+
+    secret = "Lin's hidden scar"
+
+    def broken(*args, **kwargs):
+        Strict.model_validate({"count": secret})
+
+    monkeypatch.setattr(turns, "asave", turns.sync_to_async(broken))
+    story = make_story(player)
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+
+    played = play(player, story, opening(story))
+
+    assert played.named("error")[0]["code"] == "internal_error"
+    [line] = [line for line in log_lines() if line["message"].startswith("A turn failed")]
+    assert line["severity"] == "ERROR"
+    assert "count: int_parsing" in line["stack_trace"]
+    errors = [line for line in log_lines() if line["severity"] != "DEBUG"]
+    assert secret not in str(errors)
+
+
+def test_a_row_of_another_story_is_never_touched(player, make_story, model):
+    """B12: an event whose id is another story's row id gets this story's own row."""
+    elsewhere = make_story(player, world="grounded")
+    theirs = PendingEvent.objects.create(story=elsewhere, due_world_s=99, kind="rumor")
+    story = make_story(player)
+    state = story.state
+    state["pending_events"][str(theirs.pk)] = {
+        "id": str(theirs.pk),
+        "kind": "rumor",
+        "due_s": 0,
+    }
+    Story.objects.filter(pk=story.pk).update(state=state)
+    story.refresh_from_db()
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+
+    assert play(player, story, opening(story)).names[-1] == "scene.completed"
+
+    theirs.refresh_from_db()
+    assert (theirs.story_id, theirs.status, theirs.due_world_s) == (elsewhere.pk, "pending", 99)
+    mine = PendingEvent.objects.get(pk=pending.row_id(story.pk, str(theirs.pk)))
+    assert mine.story_id == story.pk

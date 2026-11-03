@@ -28,6 +28,8 @@ from engine.state.world import Chapter
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
     CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
+    RECENT_SCENES,
     NarrationDelta,
     NarrationReset,
     PastScene,
@@ -412,6 +414,23 @@ def test_a_failed_chapter_summary_is_tried_again_next_turn(fake, make_client):
     assert result.state.chapters == []
     assert "chapter_skipped" in [i.code for i in result.issues]
     assert result.narration_mode == "full"  # the turn itself stands
+
+
+def test_summaries_late_for_long_catch_up_a_window_at_a_time(fake, make_client):
+    """C3: after many failed summaries, a chapter covers at most `MAX_CHAPTER_TURNS` turns, the
+    oldest first, so no scene is left out of every chapter."""
+    state, scenes = saved_turns(MAX_CHAPTER_TURNS + 10)
+    first_window = tuple(s for s in scenes if s.turn <= MAX_CHAPTER_TURNS)
+    recent = scenes[-RECENT_SCENES:]
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Reply(json={"summary": "The first weeks."}))
+    _, result = play(make_client(), turn_input(state, scenes=first_window + recent))
+    [chapter] = result.state.chapters
+    assert (chapter.from_turn, chapter.to_turn) == (1, MAX_CHAPTER_TURNS)
+    text = fake.calls(Node.SUMMARIZER)[0].prompt.messages[-1].text
+    assert f'"narration":"scene {MAX_CHAPTER_TURNS}"' in text
+    assert f'"narration":"scene {MAX_CHAPTER_TURNS + 1}"' not in text
 
 
 def test_a_rejected_key_on_the_summary_doesnt_fail_the_turn(fake, make_client):

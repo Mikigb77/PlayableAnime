@@ -3,7 +3,7 @@ saves it (B5, B7, B12, S3, T5, T10, K2, V7).
 
     prepared = await sync_to_async(prepare)(story, body, user)  # may raise validation errors
     ticket = await meter.astart(user, meter.TURN, byok=byok is not None)
-    return event_stream(stream(prepared, ticket=ticket, byok=byok, request=request))
+    return TurnStream(stream(prepared, ticket=ticket, byok=byok, request=request), ticket)
 
 The checks that can fail (auth, ownership, rating, version, the request itself, then credits,
 rate limit and quota) run before the stream starts, so they come back as JSON errors. Once the
@@ -14,19 +14,21 @@ bump are saved in one transaction, or none of them are (API.md).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.http import HttpRequest, StreamingHttpResponse
 from django.utils import timezone
+from pydantic import ValidationError
 
 from billing import meter
 from engine.context import ContentPrefs, Rating, TurnContext
@@ -37,7 +39,8 @@ from engine.state.world import WorldState
 from engine.visibility import clock_view
 from graph.llm import BadKey, ByokKey, LLMError, LLMUnavailable, TurnTelemetry, build_client
 from graph.turn import (
-    CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
+    RECENT_SCENES,
     NarrationDelta,
     NarrationReset,
     PastScene,
@@ -47,20 +50,16 @@ from graph.turn import (
     TurnResult,
     UnreadableAction,
     run_turn,
+    turn_graph,
 )
-from graph.turn.types import RECENT_SCENES
-from lucid.errors import DEFAULT_MESSAGES, ApiError, ErrorCode, field_error, version_conflict
-from media.plans import plan_picture
-from media.prompts import MAX_FIGURES, Brief, Figure, WorldLook
+from lucid.errors import ApiError, ErrorCode, envelope, field_error, version_conflict
+from media.plans import look_for_story, plan_picture
+from media.prompts import MAX_FIGURES, Brief, Figure
 from stories import pending, responses
 from stories.models import Scene, Story
 from stories.schemas import TurnIn
 
 logger = logging.getLogger("stories.turns")
-
-# Scenes since the last chapter are read in full for the next summary (C3). If summaries keep
-# failing, older scenes stop being read past this many, so a turn's reads stay bounded.
-MAX_PAST_SCENES = 3 * CHAPTER_TURNS
 
 
 @dataclass(frozen=True)
@@ -117,11 +116,14 @@ def _choice_label(story: Story, turn: int, choice_id: str | None) -> str:
 
 
 def _past_scenes(story: Story, state: WorldState) -> tuple[PastScene, ...]:
-    """Every scene since the last chapter, and never fewer than the last `RECENT_SCENES`."""
+    """The scenes the next chapter covers (at most `MAX_CHAPTER_TURNS` since the last chapter,
+    C3), and never fewer than the last `RECENT_SCENES`, which the narrator reads in full."""
     last_chapter = max((chapter.to_turn for chapter in state.chapters), default=0)
-    after = max(min(last_chapter, state.turn - RECENT_SCENES), state.turn - MAX_PAST_SCENES, 0)
+    chapter = Q(turn__gt=last_chapter, turn__lte=last_chapter + MAX_CHAPTER_TURNS)
+    recent = Q(turn__gt=state.turn - RECENT_SCENES)
     rows = (
-        Scene.objects.filter(story=story, turn__gt=after, turn__lte=state.turn)
+        Scene.objects.filter(story=story, turn__lte=state.turn)
+        .filter(chapter | recent)
         .order_by("turn")
         .values_list("turn", "narration", "player_action")
     )
@@ -130,12 +132,30 @@ def _past_scenes(story: Story, state: WorldState) -> tuple[PastScene, ...]:
     )
 
 
-def event_stream(events: AsyncIterator[bytes]) -> StreamingHttpResponse:
-    response = StreamingHttpResponse(events, content_type="text/event-stream; charset=utf-8")
-    response["Cache-Control"] = "no-cache"
-    # Proxies must pass each event on as it comes (S3).
-    response["X-Accel-Buffering"] = "no"
-    return response
+class TurnStream(StreamingHttpResponse):
+    """The turn's event stream. If Django closes it before it ever started, as when the player
+    left at once, it gives the credit hold back itself; once started, the stream does."""
+
+    def __init__(self, events: AsyncIterator[bytes], ticket: meter.Ticket) -> None:
+        self._ticket = ticket
+        self._started = False
+        super().__init__(self._tracked(events), content_type="text/event-stream; charset=utf-8")
+        self["Cache-Control"] = "no-cache"
+        # Proxies must pass each event on as it comes (S3).
+        self["X-Accel-Buffering"] = "no"
+
+    async def _tracked(self, events: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
+        self._started = True
+        async with aclosing(events) as chunks:
+            async for chunk in chunks:
+                yield chunk
+
+    def close(self) -> None:
+        try:
+            if not self._started:
+                meter.release(self._ticket)
+        finally:
+            super().close()
 
 
 def sse(event: str, data: dict[str, Any]) -> bytes:
@@ -144,14 +164,21 @@ def sse(event: str, data: dict[str, Any]) -> bytes:
 
 
 def _error(code: ErrorCode, message: str | None = None, details: dict | None = None) -> bytes:
-    return sse(
-        "error",
-        {
-            "code": str(code),
-            "message": message or DEFAULT_MESSAGES[code],
-            "details": details or {},
-        },
-    )
+    """The `error` event, with the same fields as a JSON error's envelope."""
+    return sse("error", envelope(code, message or ApiError(code).message, details)["error"])
+
+
+@dataclass
+class _Run:
+    """What the T5 line reports about one turn."""
+
+    started: float = field(default_factory=time.monotonic)
+    # Until the turn ends one way or another: a player who leaves before it is saved abandons it.
+    outcome: str = "abandoned"
+    # Whether `scene.completed` went out. A turn saved after its player left is `ok` but unsent.
+    sent: bool = False
+    first_text_ms: int | None = None
+    result: TurnResult | None = None
 
 
 async def stream(
@@ -166,47 +193,56 @@ async def stream(
     The credit hold is given back whatever happens, including the player leaving mid-turn."""
     turn = prepared.input
     telemetry = TurnTelemetry()
-    started = time.monotonic()
-    first_text_ms: int | None = None
-    # Until the turn ends one way or another: a player who leaves mid-turn abandons it.
-    outcome = "abandoned"
-    result: TurnResult | None = None
+    run = _Run()
     llm = None
     try:
         yield sse("turn.started", {"turn": turn.ctx.turn})
-        llm = build_client(rating=turn.ctx.rating.value, byok=byok, recorder=telemetry)
+        # The model SDK and LangGraph load on the first turn (B10), and a player's key gets a
+        # client of its own: both off the event loop, so other streams don't stall (S3).
+        llm = await asyncio.to_thread(
+            build_client, rating=turn.ctx.rating.value, byok=byok, recorder=telemetry
+        )
+        await asyncio.to_thread(turn_graph)
         async with aclosing(run_turn(turn, llm)) as events:
             async for event in events:
                 if isinstance(event, NarrationDelta):
-                    if first_text_ms is None:
-                        first_text_ms = int((time.monotonic() - started) * 1000)
+                    if run.first_text_ms is None:
+                        run.first_text_ms = int((time.monotonic() - run.started) * 1000)
                     yield sse("narration.delta", {"text": event.text})
                 elif isinstance(event, NarrationReset):
                     yield sse("narration.reset", {"reason": event.reason})
                 else:
-                    result = event.result
-        if result is None:
+                    run.result = event.result
+        if run.result is None:
             raise RuntimeError("the turn ended without a result")
-        completed = await asave(
-            prepared, result, telemetry=telemetry, ticket=ticket, request=request
+        saving = asyncio.ensure_future(
+            asave(prepared, run.result, telemetry=telemetry, ticket=ticket, request=request)
         )
-        outcome = "ok"
+        try:
+            completed = await asyncio.shield(saving)
+        except asyncio.CancelledError:
+            # The player left while the turn was being saved. The save finishes in its thread
+            # either way, so wait for it, for the T5 line to say what happened.
+            run.outcome = await _outcome_of(saving)
+            raise
+        run.outcome = "ok"
         yield sse("scene.completed", completed)
+        run.sent = True
     except UnreadableAction as error:
         # F4: the one block the player sees. The app offers to rephrase or retry.
-        outcome = error.code
+        run.outcome = error.code
         yield _error(ErrorCode.UNREADABLE_ACTION, error.message, getattr(error, "details", None))
     except BadKey:
-        outcome = "bad_key"
+        run.outcome = "bad_key"
         yield _error(ErrorCode.BAD_KEY, BadKey.default_message)
     except LLMError:
         # T7: the model failed twice. A provider's own message can carry details, so it's
         # never passed on.
-        outcome = "llm_unavailable"
+        run.outcome = "llm_unavailable"
         yield _error(ErrorCode.LLM_UNAVAILABLE, LLMUnavailable.default_message)
     except ApiError as error:
         # Another turn was saved first (T10), or the story was deleted mid-turn.
-        outcome = str(error.code)
+        run.outcome = str(error.code)
         yield _error(error.code, error.message, error.details)
     except InvariantError as error:
         # C1: an engine bug. The rules and ids, never the details, which can quote the story.
@@ -217,11 +253,11 @@ async def stream(
             },
         )
         logger.debug("Invariant details: %s", error)
-        outcome = "internal_error"
+        run.outcome = "internal_error"
         yield _error(ErrorCode.INTERNAL_ERROR)
-    except Exception:
-        logger.exception("A turn failed, so nothing was saved")
-        outcome = "internal_error"
+    except Exception as error:
+        log_failure("A turn failed, so nothing was saved", error)
+        run.outcome = "internal_error"
         yield _error(ErrorCode.INTERNAL_ERROR)
     finally:
         try:
@@ -229,7 +265,34 @@ async def stream(
                 await llm.aclose()
         finally:
             await meter.arelease(ticket)
-            _log(prepared, result, telemetry, outcome, started, first_text_ms)
+            _log(prepared, run, telemetry)
+
+
+async def _outcome_of(saving: asyncio.Future) -> str:
+    try:
+        await saving
+    except ApiError as error:
+        return str(error.code)
+    except Exception as error:
+        log_failure("A turn failed, so nothing was saved", error)
+        return "internal_error"
+    return "ok"
+
+
+def log_failure(message: str, error: BaseException) -> None:
+    """Logs an unexpected error with its traceback for Error Reporting. A Pydantic error's text
+    quotes the values it rejected, which can be story text, so it is logged without them at
+    ERROR and in full only at DEBUG (T6)."""
+    if not isinstance(error, ValidationError):
+        logger.error(message, exc_info=error)
+        return
+    problems = "; ".join(
+        f"{'.'.join(str(part) for part in problem['loc']) or '(root)'}: {problem['type']}"
+        for problem in error.errors(include_input=False, include_url=False)
+    )
+    safe = ValueError(f"{error.error_count()} validation errors for {error.title}: {problems}")
+    logger.error(message, exc_info=(ValueError, safe, error.__traceback__))
+    logger.debug("Validation details: %s", error)
 
 
 def save(
@@ -289,7 +352,12 @@ def save(
         meter.charge(ticket, telemetry.calls, story_id=story.pk, turn=scene.turn)
     story.version = prepared.read_version + 1
     story.turn = state.turn
-    shown = responses.scenes_out(story, [scene], request=request)[0]
+    # The turn is saved and charged now, so nothing after this may fail it.
+    try:
+        shown = responses.scenes_out(story, [scene], request=request)[0]
+    except Exception as error:
+        log_failure("A saved scene's pictures couldn't be read, so it is sent without", error)
+        shown = responses.bare_scene(scene)
     return {
         "scene": shown.model_dump(mode="json"),
         "story": {"version": story.version, "clock": clock_view(state).model_dump(mode="json")},
@@ -330,20 +398,14 @@ def _plan_picture(story: Story, scene: Scene, state: WorldState, result: TurnRes
                 # M5: a portrait whose subject looks different now is drawn again, once.
                 redraw=picture.kind is PictureKind.PORTRAIT,
             )
-    except Exception:
-        logger.exception(
-            "A scene's picture couldn't be planned, so the scene has none",
-            extra={"picture": {"kind": picture.kind.value, "trigger": decision.trigger.value}},
-        )
+    except Exception as error:
+        log_failure("A scene's picture couldn't be planned, so the scene has none", error)
 
 
 def brief(story: Story, state: WorldState, picture: ScenePicture) -> Brief:
     """What to draw: the prompt, the world's look (S7), and the subject or the known people in
     the scene with the appearance kept in their entries (C9, M5)."""
-    bible = state.bible
-    look = WorldLook(
-        genre=bible.genre or story.genre, era=bible.era, tone=bible.tone, setting=story.premise
-    )
+    look = look_for_story(story)
     subject_id = picture.subject_id
     if picture.kind is PictureKind.PORTRAIT and subject_id in state.characters:
         character = state.characters[subject_id]
@@ -369,26 +431,21 @@ def brief(story: Story, state: WorldState, picture: ScenePicture) -> Brief:
     return Brief(description=picture.prompt, look=look, figures=figures)
 
 
-def _log(
-    prepared: PreparedTurn,
-    result: TurnResult | None,
-    telemetry: TurnTelemetry,
-    outcome: str,
-    started: float,
-    first_text_ms: int | None,
-) -> None:
+def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
     """T5's one line per turn, with how the action was entered (V7). Numbers, names and codes
     only: never the action, the narration or a prompt (T6)."""
     turn = prepared.input
+    result = run.result
     fields: dict[str, Any] = {
         "turn": turn.ctx.turn,
         "kind": turn.kind.value,
         "input_mode": prepared.input_mode,
-        "outcome": outcome,
-        "duration_ms": int((time.monotonic() - started) * 1000),
-        "first_text_ms": first_text_ms,
+        "outcome": run.outcome,
+        "sent": run.sent,
+        "duration_ms": int((time.monotonic() - run.started) * 1000),
+        "first_text_ms": run.first_text_ms,
         "narration_mode": result.narration_mode if result else None,
         "issues": [issue.code for issue in result.issues] if result else [],
         "node_ms": dict(result.timings_ms) if result else {},
     } | telemetry.summary()
-    logger.info("Turn %s", outcome, extra={"turn": fields})
+    logger.info("Turn %s", run.outcome, extra={"turn": fields})
