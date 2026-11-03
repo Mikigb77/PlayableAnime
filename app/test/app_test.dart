@@ -12,6 +12,9 @@ import 'package:playable_anime/core/json.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
 import 'package:playable_anime/design/design.dart';
+import 'package:playable_anime/design/gallery/gallery_screen.dart';
+import 'package:playable_anime/features/auth/welcome_screen.dart';
+import 'package:playable_anime/features/story/story_screen.dart';
 import 'package:playable_anime/features/voice/speech_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,21 +32,26 @@ void main() {
     store = MemorySessionStore();
   });
 
-  Future<void> signInStored() async {
-    final api = ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend);
-    final json =
-        await api.post('/v1/auth/login', {
-              'email': FakeAuthState.demoEmail,
-              'password': FakeAuthState.demoPassword,
-            }, authenticated: false)
-            as JsonMap;
-    store.value = Session.fromApi(json);
+  Future<JsonMap> login() async =>
+      await ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend).post('/v1/auth/login', {
+            'email': FakeAuthState.demoEmail,
+            'password': FakeAuthState.demoPassword,
+          }, authenticated: false)
+          as JsonMap;
+
+  Future<void> signInStored() async => store.value = Session.fromApi(await login());
+
+  /// Starts the app at [location], as a link or a browser address would.
+  void openAt(WidgetTester tester, String location) {
+    tester.platformDispatcher.defaultRouteNameTestValue = location;
+    addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
   }
 
   Future<void> launch(WidgetTester tester) async {
     usePhone(tester);
     await tester.pumpWidget(
       ProviderScope(
+        retry: retryTransient,
         overrides: [
           httpClientProvider.overrideWithValue(backend),
           apiBaseUrlProvider.overrideWithValue(FakeBackend.baseUrl),
@@ -121,6 +129,24 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await settle(tester);
     expect(find.byType(StoryTile), findsOneWidget);
+  });
+
+  testWidgets('a link to a public page opens it while signed out', (tester) async {
+    openAt(tester, '/gallery?theme=light');
+    await launch(tester);
+    expect(find.byType(GalleryScreen), findsOneWidget);
+  });
+
+  testWidgets('a link to a story opened signed out leads there after sign-in', (tester) async {
+    openAt(tester, '/story/story_ninth_peak');
+    await launch(tester);
+    expect(find.byType(WelcomeScreen), findsOneWidget);
+
+    final container = ProviderScope.containerOf(tester.element(find.byType(WelcomeScreen)));
+    await container.read(sessionProvider.notifier).signIn(await login());
+    await settle(tester, frames: 10);
+    expect(find.byType(StoryScreen), findsOneWidget);
+    expect(find.text('The Ninth Peak'), findsWidgets);
   });
 
   testWidgets('signing out returns to the welcome screen', (tester) async {

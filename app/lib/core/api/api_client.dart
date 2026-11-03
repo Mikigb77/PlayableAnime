@@ -42,7 +42,20 @@ class ApiStreamResponse {
 
   Stream<TurnEvent> turnEvents() => parseTurnEvents(events());
 
-  Future<Object?> json() async => _decode(await http.ByteStream(_body).toBytes());
+  /// The whole body as JSON. Like every other call, a failure comes back as [ApiException].
+  Future<Object?> json() async {
+    try {
+      return _decode(await http.ByteStream(_body).toBytes());
+    } on ApiException {
+      rethrow;
+    } on FormatException {
+      throw ApiException(ApiErrorCode.server, status: statusCode);
+    } on http.ClientException catch (e) {
+      throw ApiException(ApiErrorCode.network, message: e.message);
+    } on Exception catch (e) {
+      throw ApiException(ApiErrorCode.network, message: '$e');
+    }
+  }
 }
 
 Object? _decode(List<int> bytes) => bytes.isEmpty ? null : jsonDecode(utf8.decode(bytes));
@@ -56,7 +69,8 @@ class ApiClient {
     this.byok,
     this.tokens,
     this.timeout = const Duration(seconds: 30),
-    this.streamIdleTimeout = const Duration(seconds: 60),
+    this.modelTimeout = const Duration(minutes: 3),
+    this.streamIdleTimeout = const Duration(seconds: 150),
   }) : _http = httpClient;
 
   final String baseUrl;
@@ -67,7 +81,13 @@ class ApiClient {
   /// How long to wait for a reply's headers and, for JSON, its body.
   final Duration timeout;
 
-  /// How long a stream may stay silent before it counts as dropped.
+  /// The same for a request that calls a model (creating, drafting, a turn, a picture). Those
+  /// answer only when the model has, and the model layer allows a node up to 120 s plus a retry;
+  /// giving up sooner would not stop the server, which would still save the result.
+  final Duration modelTimeout;
+
+  /// How long a stream may stay silent before it counts as dropped: longer than the narrator's
+  /// whole budget, because a turn can think for a while before its first words.
   final Duration streamIdleTimeout;
 
   Future<Object?> get(String path, {Map<String, String>? query}) =>
@@ -116,7 +136,7 @@ class ApiClient {
       query: query,
       authenticated: authenticated,
     );
-    final bytes = await _guard(response.stream.toBytes());
+    final bytes = await _guard(response.stream.toBytes(), _timeoutFor(method, path));
     try {
       return _decode(bytes);
     } on FormatException {
@@ -133,7 +153,8 @@ class ApiClient {
     String accept = 'application/json',
   }) async {
     final tokens = authenticated ? this.tokens : null;
-    final byokKey = _sendsKey(method, path) ? await byok?.readGeminiKey() : null;
+    final byokKey = _callsModel(method, path) ? await byok?.readGeminiKey() : null;
+    final wait = _timeoutFor(method, path);
 
     Future<http.StreamedResponse> attempt() async {
       final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
@@ -148,7 +169,7 @@ class ApiClient {
         request.headers['Content-Type'] = 'application/json; charset=utf-8';
         request.body = jsonEncode(body);
       }
-      return _guard(_http.send(request));
+      return _guard(_http.send(request), wait);
     }
 
     var response = await attempt();
@@ -164,22 +185,25 @@ class ApiClient {
       if (response.statusCode == 401) await tokens.onSessionExpired();
     }
     if (response.statusCode >= 400) {
-      final text = utf8.decode(await _guard(response.stream.toBytes()), allowMalformed: true);
+      final text = utf8.decode(await _guard(response.stream.toBytes(), wait), allowMalformed: true);
       throw ApiException.fromResponse(response.statusCode, text);
     }
     return response;
   }
 
   /// Model-calling requests are the POSTs under drafts and stories (creating, revising, starting,
-  /// turns, pictures). Nothing else gets the player's key.
-  static bool _sendsKey(String method, String path) =>
+  /// turns, pictures). Nothing else gets the player's key, or the longer timeout.
+  static bool _callsModel(String method, String path) =>
       method == 'POST' &&
       (path.startsWith('/v1/drafts') || path.startsWith('/v1/stories')) &&
       !path.endsWith('/report');
 
-  Future<T> _guard<T>(Future<T> future) async {
+  Duration _timeoutFor(String method, String path) =>
+      _callsModel(method, path) ? modelTimeout : timeout;
+
+  Future<T> _guard<T>(Future<T> future, Duration wait) async {
     try {
-      return await future.timeout(timeout);
+      return await future.timeout(wait);
     } on ApiException {
       rethrow;
     } on TimeoutException {

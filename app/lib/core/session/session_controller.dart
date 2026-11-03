@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
@@ -49,10 +50,29 @@ class SessionController extends Notifier<SessionState> implements TokenSource {
   }
 
   /// Starts a session from the API's `Session` JSON.
+  ///
+  /// The new tokens are used at once, before they are saved: after a refresh the server has
+  /// already spent the old refresh token, and using it again would sign the device out. If saving
+  /// fails, the session works until the app closes and the stored one is dropped.
   Future<void> signIn(Map<String, dynamic> sessionJson) async {
     final session = Session.fromApi(sessionJson);
-    await _store.write(session);
     state = SessionState(SessionStatus.signedIn, session);
+    try {
+      await _store.write(session);
+    } on Object catch (e) {
+      debugPrint('Session save failed: ${e.runtimeType}');
+      await _forget();
+    }
+  }
+
+  /// Drops the stored session. Never throws: a keychain that fails here only means the next start
+  /// may need a sign-in.
+  Future<void> _forget() async {
+    try {
+      await _store.clear();
+    } on Object catch (e) {
+      debugPrint('Session clear failed: ${e.runtimeType}');
+    }
   }
 
   /// Signs out on the server too (revoking the refresh token) when it can, then forgets the
@@ -68,8 +88,8 @@ class SessionController extends Notifier<SessionState> implements TokenSource {
         // Best effort: the token expires on its own.
       }
     }
-    await _store.clear();
     state = SessionState.signedOut;
+    await _forget();
   }
 
   @override
@@ -97,8 +117,8 @@ class SessionController extends Notifier<SessionState> implements TokenSource {
   @override
   Future<void> onSessionExpired() async {
     if (state.status != SessionStatus.signedIn) return;
-    await _store.clear();
     state = SessionState.signedOut;
+    await _forget();
   }
 }
 

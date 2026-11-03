@@ -53,15 +53,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             ? null
             : '${Routes.splash}?to=${Uri.encodeComponent(state.uri.toString())}';
       }
-      final inApp = session.value.canEnterApp;
-      if (!inApp && !Routes._public.contains(path)) return Routes.welcome;
-      if (!inApp && path == Routes.splash) return Routes.welcome;
-      if (inApp && (path == Routes.welcome || path == Routes.splash)) {
-        final to = state.uri.queryParameters['to'];
-        return to != null && to.startsWith('/') && !to.startsWith(Routes.splash)
-            ? to
-            : Routes.discover;
+      final to = _target(state);
+      if (!session.value.canEnterApp) {
+        // A link opened while signed out goes where it points when that is public, such as the
+        // gallery; otherwise welcome keeps it for after sign-in.
+        if (path == Routes.splash) {
+          if (to != null && Routes._public.contains(Uri.parse(to).path)) return to;
+          return to == null || to == Routes.discover
+              ? Routes.welcome
+              : '${Routes.welcome}?to=${Uri.encodeComponent(to)}';
+        }
+        return Routes._public.contains(path) ? null : Routes.welcome;
       }
+      if (path == Routes.welcome || path == Routes.splash) return to ?? Routes.discover;
       return null;
     },
     routes: [
@@ -113,6 +117,15 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(router.dispose);
   return router;
 });
+
+/// The `to` a splash or welcome location carries: where the player was going. Only a path inside
+/// the app, and never back to the splash or welcome screens.
+String? _target(GoRouterState state) {
+  final to = state.uri.queryParameters['to'];
+  if (to == null || !to.startsWith('/') || to.startsWith('//')) return null;
+  final path = Uri.tryParse(to)?.path;
+  return path == null || path == Routes.splash || path == Routes.welcome ? null : to;
+}
 
 /// A route's `extra` when it is a [T]. Extras are a shortcut only: a reload or a link drops them,
 /// and every screen works without one.

@@ -104,6 +104,22 @@ void main() {
       expect(engine.listens, isEmpty);
     });
 
+    test('after a refusal, the mic works once the player allows it in settings', () async {
+      engine
+        ..grants = false
+        ..permission = false;
+      await dictation.start();
+      expect(await dictation.retryPermission(), isFalse);
+      expect(dictation.phase, DictationPhase.denied);
+
+      engine
+        ..grants = true
+        ..permission = true;
+      expect(await dictation.retryPermission(), isTrue);
+      expect(dictation.phase, DictationPhase.listening);
+      expect(engine.listens, hasLength(1));
+    });
+
     test('a device without a recognizer is unavailable', () async {
       engine
         ..grants = false

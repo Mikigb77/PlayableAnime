@@ -10,7 +10,8 @@ ErrorCopy describeError(AppLocalizations l10n, Object error) {
   return switch (code) {
     ApiErrorCode.network => (title: l10n.errorNetworkTitle, message: l10n.errorNetwork),
     ApiErrorCode.timeout => (title: l10n.errorTimeoutTitle, message: l10n.errorTimeout),
-    ApiErrorCode.server => (title: l10n.errorGenericTitle, message: l10n.errorServer),
+    ApiErrorCode.server ||
+    ApiErrorCode.internalError => (title: l10n.errorGenericTitle, message: l10n.errorServer),
     ApiErrorCode.unauthenticated => (
       title: l10n.errorUnauthenticatedTitle,
       message: l10n.errorUnauthenticated,
@@ -47,6 +48,11 @@ ErrorCopy describeError(AppLocalizations l10n, Object error) {
       title: l10n.errorBirthDateTitle,
       message: l10n.errorBirthDate,
     ),
+    ApiErrorCode.signInUnavailable => (
+      title: l10n.errorSignInUnavailableTitle,
+      message: l10n.errorSignInUnavailable,
+    ),
+    ApiErrorCode.methodNotAllowed ||
     ApiErrorCode.unknown => (title: l10n.errorGenericTitle, message: l10n.errorUnknown),
   };
 }

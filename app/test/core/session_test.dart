@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/api/api_providers.dart';
@@ -121,6 +125,59 @@ void main() {
     );
   });
 
+  test('a server failure during a refresh keeps the session', () async {
+    container = ProviderContainer(
+      overrides: [
+        httpClientProvider.overrideWithValue(
+          MockClient((request) async {
+            if (request.url.path == '/v1/auth/refresh') {
+              return http.Response(
+                jsonEncode({
+                  'error': {'code': 'internal_error', 'message': 'Database hiccup'},
+                }),
+                500,
+              );
+            }
+            return http.Response.fromStream(await backend.send(request));
+          }),
+        ),
+        apiBaseUrlProvider.overrideWithValue(FakeBackend.baseUrl),
+        sessionStoreProvider.overrideWithValue(store),
+      ],
+    );
+    addTearDown(container.dispose);
+    await restored(container);
+    await container.read(sessionProvider.notifier).signIn(await login());
+    backend.data.auth.expireAccessTokens();
+
+    await expectLater(
+      container.read(apiClientProvider).get('/v1/stories'),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.internalError)),
+    );
+    expect(container.read(sessionProvider).status, SessionStatus.signedIn);
+    expect(store.value, isNotNull);
+  });
+
+  test('a refresh that cannot be saved still uses the new tokens', () async {
+    final broken = _BrokenStore();
+    store = broken;
+    container = make();
+    await restored(container);
+    await container.read(sessionProvider.notifier).signIn(await login());
+    broken.failWrites = true;
+    final api = container.read(apiClientProvider);
+
+    // Two refreshes in a row: the second only works with the token the first one got.
+    backend.data.auth.expireAccessTokens();
+    await api.get('/v1/stories');
+    backend.data.auth.expireAccessTokens();
+    await api.get('/v1/stories');
+
+    expect(container.read(sessionProvider).status, SessionStatus.signedIn);
+    // The stored session would hold a spent refresh token, so it is dropped.
+    expect(broken.value, isNull);
+  });
+
   test('a session expires when the API says, and survives storage', () {
     final now = DateTime.utc(2026, 11, 3, 12);
     final session = Session.fromApi(const {
@@ -134,4 +191,14 @@ void main() {
     expect(back.expiresAt, session.expiresAt);
     expect(back.displayName, 'Ren');
   });
+}
+
+class _BrokenStore extends MemorySessionStore {
+  bool failWrites = false;
+
+  @override
+  Future<void> write(Session session) async {
+    if (failWrites) throw Exception('The keychain is locked');
+    await super.write(session);
+  }
 }

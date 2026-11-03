@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/api/turn_events.dart';
 import 'story_models.dart';
 
-/// A turn to take (docs/API.md `TurnRequest`).
+/// A turn to take (docs/API.md `TurnRequest`). The interim endpoint takes the same body.
 class TurnInput {
   const TurnInput.action(String this.action, {required this.inputMode})
     : kind = 'action',
@@ -84,17 +85,24 @@ class StoryRepository {
   }) async {
     final response = await _api.openStream('/v1/stories/$id/turns', input.toJson(expectedVersion));
     if (response.isEventStream) return response.turnEvents();
-    final json = await response.json() as Json;
-    final scene = json['scene'] as Json;
-    return Stream.fromIterable([
-      TurnStarted((scene['turn'] as num).toInt()),
-      NarrationDelta(scene['narration'] as String),
-      SceneCompleted(
-        scene: scene,
-        version: (json['version'] as num?)?.toInt() ?? expectedVersion + 1,
-        clock: const {},
-      ),
-    ]);
+    final json = await response.json();
+    if (json
+        case {
+              'scene':
+                  {'turn': final num turn, 'narration': final String narration} && final Json scene,
+            } &&
+            final Json reply) {
+      return Stream.fromIterable([
+        TurnStarted(turn.toInt()),
+        NarrationDelta(narration),
+        SceneCompleted(
+          scene: scene,
+          version: (reply['version'] as num?)?.toInt() ?? expectedVersion + 1,
+          clock: const {},
+        ),
+      ]);
+    }
+    throw ApiException(ApiErrorCode.server, status: response.statusCode);
   }
 
   /// Asks for a scene's planned picture (M3). Safe to repeat: the server makes and charges it once.

@@ -11,6 +11,9 @@ import 'fake_stories.dart';
 class FakePictureState {
   final requestedAt = <String, DateTime>{};
   final charged = <String>{};
+
+  /// Scenes played with `[fail:picture]`, as `<story id>-<turn>`.
+  final failing = <String>{};
 }
 
 void registerPictureRoutes(FakeBackend b) {
@@ -19,17 +22,20 @@ void registerPictureRoutes(FakeBackend b) {
     final turn = int.tryParse(r.param('turn'));
     final scene = story.scenes.where((s) => s['turn'] == turn).firstOrNull;
     if (scene == null) throw const FakeError.notFound('No such scene');
+    final key = '${story.id}-$turn';
     final image = scene['image'] as JsonMap?;
     if (illustrate && image == null) {
       scene['image'] = {'planned': true, 'kind': 'scene', 'status': 'planned'};
-    } else if (image == null ||
-        (scene['player_action'] as String? ?? '').contains('[fail:picture]')) {
+    } else if (image == null) {
       return FakeResponse.json({'status': 'skipped'});
     }
     final current = scene['image'] as JsonMap;
+    if (b.data.pictures.failing.contains(key)) {
+      current['status'] = 'skipped';
+      return FakeResponse.json({'status': 'skipped'});
+    }
     if (current['status'] == 'ready') return FakeResponse.json(_ready(b, current));
 
-    final key = '${story.id}-$turn';
     final first = b.data.pictures.requestedAt.putIfAbsent(key, b.now);
     if (b.now().difference(first) < b.pace.picture) {
       return FakeResponse.json({'status': 'pending'});

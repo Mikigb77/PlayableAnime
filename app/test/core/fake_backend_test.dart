@@ -293,6 +293,25 @@ void main() {
       expect(scene.image, isNull);
       expect((await stories.picture(story.id, scene.turn)).status, 'skipped');
     });
+
+    test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
+      final story = await stories.get((await stories.stories()).single.id);
+      final events = await collect(
+        await stories.takeTurn(
+          story.id,
+          const TurnInput.action('[fail:picture] I look at the sky', inputMode: 'typed'),
+          expectedVersion: story.version,
+        ),
+      );
+      final scene = Scene.fromJson((events.last as SceneCompleted).scene);
+      expect(scene.playerAction, 'I look at the sky');
+      expect(scene.image?.status, 'planned');
+
+      final afterTurn = await balance();
+      now = now.add(const Duration(seconds: 4));
+      expect((await stories.picture(story.id, scene.turn)).status, 'skipped');
+      expect(await balance(), afterTurn);
+    });
   });
 
   test('a draft starts a story that opens with its first scene', () async {

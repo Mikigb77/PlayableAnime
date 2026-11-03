@@ -191,6 +191,29 @@ void main() {
       expect(find.byType(Image), findsOneWidget);
       expect(find.bySemanticsLabel('Misty peaks'), findsOneWidget);
     });
+
+    testWidgets('the shimmer stops once the picture has faded in', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const SizedBox(
+            width: 320,
+            child: PictureSlot(
+              status: PictureStatus.ready,
+              url: 'asset:assets/fake/scene-peaks.jpg',
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(Shimmer), findsOneWidget);
+      // Let the real image load and decode, then run the fade.
+      for (var i = 0; i < 5 && find.byType(Shimmer).evaluate().isNotEmpty; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump();
+      }
+      expect(find.byType(Shimmer), findsNothing);
+      expect(find.byType(Image), findsOneWidget);
+    });
   });
 
   group('portraits', () {

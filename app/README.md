@@ -14,7 +14,8 @@ flutter run --dart-define=API_MODE=fake
 a demo account, the starter worlds, a story in progress, streamed turns, pictures that arrive a few
 seconds after the text, and typed errors. Put a trigger in an action to try the error states:
 `[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:llm_unavailable]` (fails mid-stream),
-`[fail:version_conflict]`, `[fail:picture]` or `[reset]`. The fake lives in `lib/core/fake/`, one
+`[fail:version_conflict]`, `[fail:picture]` (a planned picture that is then skipped) or `[reset]`.
+The fake lives in `lib/core/fake/`, one
 file per area of the API, so each feature thread extends its own.
 
 Against a real backend, set its URL (the default is `http://localhost:8080`):
@@ -92,5 +93,8 @@ assets/
   JSON to `ref.read(sessionProvider.notifier).signIn(...)`. The router follows the session.
 - **Voice:** put `DictationButton(tracker: InputModeTracker(controller))` next to any text box and
   send `tracker.mode.wire` as the turn's `input_mode` (V7).
+- **Your own key** (S9) is `byokStoreProvider`, which holds the signed-in account's key only.
 - **Tests** can run any flow on `FakeBackend.standard(pace: FakePace.instant)`; see
-  `test/app_test.dart` and `test/helpers.dart`.
+  `test/app_test.dart` and `test/helpers.dart`. A test that answers requests by hand makes its
+  `Completer`s inside the test body, not in `setUp`, or they never complete under the test clock
+  (see `test/features/story_screen_test.dart`).

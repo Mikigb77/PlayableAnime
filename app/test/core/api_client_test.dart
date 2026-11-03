@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:playable_anime/core/api/api_client.dart';
 import 'package:playable_anime/core/api/api_error.dart';
+import 'package:playable_anime/core/api/api_providers.dart';
 import 'package:playable_anime/core/api/turn_events.dart';
 
 class FakeTokens implements TokenSource {
@@ -52,6 +53,7 @@ ApiClient client(MockClient mock, {TokenSource? tokens, ByokSource? byok}) => Ap
   tokens: tokens,
   byok: byok,
   timeout: const Duration(milliseconds: 200),
+  modelTimeout: const Duration(seconds: 2),
 );
 
 void main() {
@@ -113,6 +115,45 @@ void main() {
     );
   });
 
+  test('every server code is known, and a 5xx is worth retrying', () {
+    for (final (status, wire, code) in [
+      (405, 'method_not_allowed', ApiErrorCode.methodNotAllowed),
+      (500, 'internal_error', ApiErrorCode.internalError),
+      (503, 'sign_in_unavailable', ApiErrorCode.signInUnavailable),
+      // A code added later is still a server failure on a 5xx.
+      (503, 'brand_new', ApiErrorCode.server),
+    ]) {
+      final e = ApiException.fromResponse(status, '{"error": {"code": "$wire", "message": ""}}');
+      expect(e.code, code, reason: wire);
+    }
+    expect(ApiErrorCode.internalError.isRetryable, isTrue);
+    expect(ApiErrorCode.methodNotAllowed.isRetryable, isFalse);
+  });
+
+  test('reads retry on their own only after failures that may pass', () {
+    Duration? retry(int count, ApiErrorCode code) => retryTransient(count, ApiException(code));
+    expect(
+      [for (var i = 0; i < 4; i++) retry(i, ApiErrorCode.network)],
+      [
+        const Duration(milliseconds: 500),
+        const Duration(seconds: 1),
+        const Duration(seconds: 2),
+        null,
+      ],
+    );
+    expect(retry(0, ApiErrorCode.internalError), isNotNull);
+    for (final code in [
+      ApiErrorCode.notFound,
+      ApiErrorCode.forbidden,
+      ApiErrorCode.rateLimited,
+      ApiErrorCode.quotaExceeded,
+      ApiErrorCode.unauthenticated,
+    ]) {
+      expect(retry(0, code), isNull, reason: code.wire);
+    }
+    expect(retryTransient(0, StateError('a bug')), isNull);
+  });
+
   test('a reply without the envelope becomes a status-based code', () async {
     final api = client(MockClient((_) async => http.Response('<html>Bad gateway</html>', 502)));
     await expectLater(
@@ -120,6 +161,30 @@ void main() {
       throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.server)),
     );
     expect(ApiException.fromResponse(404, '').code, ApiErrorCode.notFound);
+  });
+
+  test('a request that calls a model may take longer than the others', () async {
+    final api = client(
+      MockClient((_) => Future.delayed(const Duration(milliseconds: 500), () => json({}))),
+    );
+    expect(await api.post('/v1/stories', {'premise': 'A long one'}), isEmpty);
+    await expectLater(
+      api.get('/v1/stories'),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.timeout)),
+    );
+  });
+
+  test('a JSON reply to a streamed request fails with a typed error', () async {
+    ApiStreamResponse reply(Stream<List<int>> body) =>
+        ApiStreamResponse(200, 'application/json', body);
+    await expectLater(
+      reply(Stream.error(http.ClientException('Connection closed'))).json(),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.network)),
+    );
+    await expectLater(
+      reply(Stream.value(utf8.encode('{"scene": '))).json(),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.server)),
+    );
   });
 
   test('a connection failure is a network error', () async {

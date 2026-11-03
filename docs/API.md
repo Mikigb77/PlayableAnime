@@ -238,7 +238,8 @@ the character doesn't know of, N7, C6) never appear in these responses.
 **Until WS3's turn graph lands,** the backend still serves today's endpoints with today's shapes, so
 the current app keeps working: `POST /v1/stories` with `{premise, title?}` returns the whole story
 with its opening scene, `POST /v1/stories/{id}/turns` takes `{choice_id}` or `{action}` (plus
-optional `input_mode` and `expected_version`) and returns `{scene, state, version}` as plain JSON,
+optional `input_mode` and `expected_version`, with the same limits as `TurnRequest` below, so the
+app sends one body to both) and returns `{scene, state, version}` as plain JSON,
 and `GET /v1/stories/{id}/memory` returns the raw world state. Stories and turns already carry
 `version` (T10) and errors already use the envelope above. The contract below is the target.
 

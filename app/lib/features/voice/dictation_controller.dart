@@ -104,6 +104,19 @@ class DictationController extends ChangeNotifier {
     }
   }
 
+  /// After a refusal, asks again whether the mic is allowed: the player may have turned it on in
+  /// the system settings since. If it is, dictation starts; returns false while it is still
+  /// refused, so the caller can explain how to allow it.
+  Future<bool> retryPermission() async {
+    if (_phase != DictationPhase.denied) return true;
+    final allowed = await engine.hasPermission();
+    if (_disposed || !allowed || _phase != DictationPhase.denied) return allowed;
+    _ready = false;
+    _set(DictationPhase.idle);
+    await start();
+    return true;
+  }
+
   Future<void> stop() async {
     if (_phase != DictationPhase.listening && _phase != DictationPhase.starting) return;
     _set(DictationPhase.idle);

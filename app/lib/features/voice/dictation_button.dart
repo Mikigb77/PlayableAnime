@@ -64,6 +64,10 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
     setState(() {});
   }
 
+  Future<void> _retryOrExplain() async {
+    if (!await _dictation.retryPermission() && mounted) _explainDenied();
+  }
+
   void _explainDenied() {
     final l10n = context.l10n;
     showAppSheet<void>(
@@ -99,7 +103,7 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
         DictationPhase.denied => MicVisual.denied,
       },
       level: _dictation.level,
-      onPressed: phase == DictationPhase.denied ? _explainDenied : _dictation.toggle,
+      onPressed: phase == DictationPhase.denied ? _retryOrExplain : _dictation.toggle,
     );
   }
 }

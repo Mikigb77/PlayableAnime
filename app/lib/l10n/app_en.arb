@@ -222,5 +222,7 @@
   "errorValidationTitle": "Check what you entered",
   "errorValidation": "Something in the form needs a fix.",
   "errorBirthDateTitle": "One more step",
-  "errorBirthDate": "We need your birth date to set your story ratings."
+  "errorBirthDate": "We need your birth date to set your story ratings.",
+  "errorSignInUnavailableTitle": "Sign-in is unavailable",
+  "errorSignInUnavailable": "Google sign-in can't be checked right now. Try again later, or use email."
 }

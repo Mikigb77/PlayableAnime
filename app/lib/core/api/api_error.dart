@@ -8,12 +8,15 @@ enum ApiErrorCode {
   outOfCredits('out_of_credits'),
   forbidden('forbidden'),
   notFound('not_found'),
+  methodNotAllowed('method_not_allowed'),
   versionConflict('version_conflict'),
   unreadableAction('unreadable_action'),
   badKey('bad_key'),
   rateLimited('rate_limited'),
   quotaExceeded('quota_exceeded'),
+  internalError('internal_error'),
   llmUnavailable('llm_unavailable'),
+  signInUnavailable('sign_in_unavailable'),
 
   // Client side: no envelope came back.
 
@@ -43,7 +46,21 @@ enum ApiErrorCode {
 
   /// Whether simply trying again may work.
   bool get isRetryable => switch (this) {
-    network || timeout || server || llmUnavailable || rateLimited || versionConflict => true,
+    network ||
+    timeout ||
+    server ||
+    internalError ||
+    llmUnavailable ||
+    signInUnavailable ||
+    rateLimited ||
+    versionConflict => true,
+    _ => false,
+  };
+
+  /// Whether the failure may pass on its own, so a read can be retried without asking: the
+  /// connection or the server, never the request itself, and never a limit (T9).
+  bool get isTransient => switch (this) {
+    network || timeout || server || internalError => true,
     _ => false,
   };
 }
@@ -62,8 +79,10 @@ class ApiException implements Exception {
       decoded = null;
     }
     if (decoded case {'error': final Map<String, dynamic> error}) {
+      final code = ApiErrorCode.fromWire(error['code'] as String?);
       return ApiException(
-        ApiErrorCode.fromWire(error['code'] as String?),
+        // A code this build doesn't know is still a server failure when the status says so.
+        code == ApiErrorCode.unknown && status >= 500 ? ApiErrorCode.server : code,
         message: error['message'] as String? ?? '',
         status: status,
         details: error['details'] as Map<String, dynamic>? ?? const {},
@@ -83,7 +102,7 @@ class ApiException implements Exception {
   final ApiErrorCode code;
 
   /// The server's human-readable text. The app shows its own localized copy instead
-  /// (see `describeApiError`), so this is for logs and debugging.
+  /// (see `describeError`), so this is for logs and debugging.
   final String message;
   final int? status;
   final Map<String, dynamic> details;

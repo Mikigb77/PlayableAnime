@@ -61,10 +61,20 @@ class PictureSlot extends StatefulWidget {
 class _PictureSlotState extends State<PictureSlot> {
   bool _failed = false;
 
+  /// The picture has faded in, so the shimmer under it can stop.
+  bool _shown = false;
+
   @override
   void didUpdateWidget(PictureSlot old) {
     super.didUpdateWidget(old);
-    if (old.url != widget.url) _failed = false;
+    if (old.url != widget.url) _failed = _shown = false;
+  }
+
+  void _markShown() {
+    if (_shown) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_shown) setState(() => _shown = true);
+    });
   }
 
   @override
@@ -97,18 +107,23 @@ class _PictureSlotState extends State<PictureSlot> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  const Shimmer(child: SkeletonBox(radius: 0)),
+                  if (!ready || !_shown) const Shimmer(child: SkeletonBox(radius: 0)),
                   if (ready)
                     Image(
                       image: appImage(url, cacheWidth: cacheWidth),
                       fit: BoxFit.cover,
                       excludeFromSemantics: true,
                       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded) return child;
+                        final fade = Motion.of(context, Motion.slow);
+                        if (wasSynchronouslyLoaded || (frame != null && fade == Duration.zero)) {
+                          _markShown();
+                          return child;
+                        }
                         return AnimatedOpacity(
                           opacity: frame == null ? 0 : 1,
-                          duration: Motion.of(context, Motion.slow),
+                          duration: fade,
                           curve: Motion.standard,
+                          onEnd: frame == null ? null : _markShown,
                           child: child,
                         );
                       },

@@ -100,22 +100,43 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       _failedTurn = null;
     });
     _scrollToEnd();
+    final Stream<TurnEvent> events;
     try {
-      final events = await ref
+      events = await ref
           .read(storyRepositoryProvider)
           .takeTurn(widget.storyId, input, expectedVersion: story.version);
-      if (input.kind == 'action') _action.clear();
-      _turn = events.listen((event) => _onEvent(event, input), onDone: () => _turn = null);
-    } on ApiException catch (e) {
+    } on Object catch (e, stack) {
+      // Anything but an API error is a bug: it is reported, and the screen still recovers.
+      if (e is! ApiException) {
+        FlutterError.reportError(
+          FlutterErrorDetails(exception: e, stack: stack, library: 'play screen'),
+        );
+      }
       if (!mounted) return;
       setState(() {
         _busy = false;
         _pendingAction = null;
       });
-      if (e.code == ApiErrorCode.versionConflict) unawaited(_load());
+      if (e case ApiException(code: ApiErrorCode.versionConflict)) unawaited(_load());
       final copy = describeError(context.l10n, e);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(copy.message)));
+      return;
     }
+    if (!mounted) {
+      // The player left while the turn started. The server still finishes it; stop listening.
+      unawaited(events.listen(null).cancel());
+      return;
+    }
+    // The turn is under way: empty the box, unless the player has started writing the next one.
+    if (input.kind == 'action' && _action.text.trim() == input.action) _action.clear();
+    _turn = events.listen(
+      (event) => _onEvent(event, input),
+      onError: (Object e) => _onEvent(
+        TurnFailed(e is ApiException ? e : const ApiException(ApiErrorCode.network)),
+        input,
+      ),
+      onDone: () => _turn = null,
+    );
   }
 
   void _onEvent(TurnEvent event, TurnInput input) {
@@ -256,10 +277,13 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
               scene: scene,
               ornament: i < story.scenes.length - 1 || _busy || _turnError != null,
               onPicture: (image) => setState(() {
-                final scenes = [...story.scenes];
+                // From the story as it is now: a turn or another picture may have landed since
+                // this was built.
+                final current = _story!;
+                final scenes = [...current.scenes];
                 final index = scenes.indexWhere((s) => s.turn == scene.turn);
                 if (index >= 0) scenes[index] = scenes[index].withImage(image);
-                _story = story.copyWith(scenes: scenes);
+                _story = current.copyWith(scenes: scenes);
               }),
             ),
           ),

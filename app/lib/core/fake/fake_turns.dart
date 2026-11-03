@@ -12,7 +12,8 @@ import 'fake_stories.dart';
 ///   `[fail:unreadable_action]`, `[fail:bad_key]` or `[fail:version_conflict]` answer with that
 ///   error before the stream starts;
 /// - `[fail:llm_unavailable]` streams a few words, then sends an `error` event;
-/// - `[reset]` streams a few words, then `narration.reset` and a cut-away (F4).
+/// - `[reset]` streams a few words, then `narration.reset` and a cut-away (F4);
+/// - `[fail:picture]` plans a picture that is then skipped, as a blocked one would be (M3).
 ///
 /// Words such as "attack" or "duel" plan a picture (M1 counts fights), as does every third turn.
 void registerTurnRoutes(FakeBackend b) {
@@ -39,6 +40,7 @@ void registerTurnRoutes(FakeBackend b) {
 
     final turn = story.turn + 1;
     final scene = _buildScene(b, story, r.json, turn);
+    if (trigger == 'picture') b.data.pictures.failing.add('${story.id}-$turn');
     final narration = scene['narration'] as String;
     final chunks = _chunks(narration);
     final pace = b.pace;
@@ -169,7 +171,11 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
 
   final suggestions = story.settings['suggestions'] != false;
   final pool = [..._choicePool]..shuffle(math.Random(turn));
-  final picture = kind == 'opening' || fight || turn % 3 == 0;
+  final picture =
+      kind == 'opening' ||
+      fight ||
+      turn % 3 == 0 ||
+      (body['action'] as String? ?? '').contains('[fail:picture]');
   final eventSize = turn % 4 == 0 ? const ['personal', 'local', 'world'][(turn ~/ 4) % 3] : null;
 
   return {
