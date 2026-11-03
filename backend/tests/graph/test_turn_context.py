@@ -105,6 +105,14 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     assert '"tournament"' in text  # open threads, for what the action takes up
 
 
+def test_the_interpret_step_is_asked_for_the_aim_the_answers_and_no_other_actor():
+    """F4, A9, A6: what code relies on is asked for by name, since the interpret step fills it."""
+    system = prompts.INTERPRET_SYSTEM
+    assert "- aim: what the step does to the characters it targets" in system
+    assert "list in answers what would let the target escape or" in system
+    assert "Leave actor_id empty: the player plays only their own character (A6)" in system
+
+
 def test_hidden_truth_never_reaches_a_prompt():
     """Secrets, an agenda's secret and a mystery's answer stay out (C6)."""
     state = grounded_world()

@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "media",
     "billing",
     "drafts",
+    "moderation",
 ]
 
 MIDDLEWARE = [
@@ -126,8 +127,7 @@ CORS_EXPOSE_HEADERS = ["x-request-id"]
 # The API's own settings, read through `django.conf.settings`.
 LLM_PROVIDER = ENV.llm_provider
 GCP_PROJECT = ENV.gcp_project
-VERTEX_LOCATION = ENV.vertex_location
-NARRATOR_MODEL = ENV.narrator_model
+# Vertex AI's location and each node's model are read by `graph.llm.config` (B6).
 
 # Sign-in (T8, K7, F8); see accounts/.
 GOOGLE_OAUTH_CLIENT_IDS = split_csv(ENV.google_oauth_client_ids)

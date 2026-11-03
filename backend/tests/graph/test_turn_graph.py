@@ -28,6 +28,8 @@ from engine.state.world import Chapter
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
     CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
+    RECENT_SCENES,
     NarrationDelta,
     NarrationReset,
     PastScene,
@@ -355,6 +357,111 @@ def test_the_plan_is_checked_before_narration(fake, make_client, monkeypatch):
     assert "plan_not_stopped" in [i.code for i in result.issues]
 
 
+SEARCH = {
+    "actor_id": "zhao",
+    "summary": "Lin feels for a stone to throw at Zhao.",
+    "steps": [
+        {
+            "text": "find a stone and throw it at Zhao",
+            "verb": "throw",
+            "target_ids": ["zhao"],
+            "aim": "wound",
+            "kind": "exchange",
+            "proposed_duration_s": 3,
+            "beats": [
+                {"text": "crouch", "uses": [{"source": "body", "thing": "legs"}]},
+                {
+                    "text": "feel along the floor for a stone",
+                    "uses": [{"source": "new", "thing": "a stone", "plausibility": "absent"}],
+                },
+                {"text": "throw it", "uses": [{"source": "canon", "thing": "the stone"}]},
+            ],
+        }
+    ],
+}
+
+
+def test_an_empty_search_stops_the_step_and_the_scene_says_why(fake, make_client):
+    """R2: the beats as checked reach the narrator, up to the one that came up empty, and the
+    scene's details say why. A6: the player's words never make someone else the actor."""
+    fake.script(Node.INTERPRET, Reply(json=SEARCH))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input(action="I feel for a stone and throw it at Zhao"))
+
+    [step] = result.resolution.steps
+    assert (step.outcome_class, step.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+    assert result.resolution.actor_id is None
+    assert "not_the_player" in [i.code for i in result.issues]
+    details = result.scene.model_dump(mode="json")["details"]
+    assert details["steps"][0]["beats"] == [
+        {
+            "beat": "feel along the floor for a stone",
+            "thing": "a stone",
+            "verdict": "empty",
+            "reason": "There is no stone to be found here.",
+            "roll": None,
+        }
+    ]
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    # The body needs no check, and the throw comes after the beat that came up empty.
+    assert (
+        '"beats":[{"beat":"feel along the floor for a stone","uses":"a stone","check":"empty",'
+        '"why":"There is no stone to be found here."}]'
+    ) in told
+
+
+def test_only_beats_that_found_something_new_are_explained(fake, make_client):
+    """R2: a thing the place plausibly holds becomes canon and is explained; beats that only used
+    the body add nothing to the scene's details or the narrator's outcome."""
+    found = {
+        "steps": [
+            {
+                "text": "crouch",
+                "verb": "crouch",
+                "kind": "instant",
+                "proposed_duration_s": 1,
+                "beats": [SEARCH["steps"][0]["beats"][0]],
+            },
+            {
+                "text": "pick up a stick",
+                "verb": "pick up",
+                "kind": "instant",
+                "proposed_duration_s": 2,
+                "beats": [
+                    {
+                        "text": "pick up a stick",
+                        "uses": [
+                            {"source": "new", "thing": "a stick", "plausibility": "plausible"}
+                        ],
+                    }
+                ],
+            },
+        ]
+    }
+    fake.script(Node.INTERPRET, Reply(json=found))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input())
+
+    steps = result.scene.model_dump(mode="json")["details"]["steps"]
+    assert [step["class"] for step in steps] == ["certain", "certain"]
+    assert steps[0]["beats"] is None
+    assert steps[1]["beats"] == [
+        {
+            "beat": "pick up a stick",
+            "thing": "a stick",
+            "verdict": "made_canon",
+            "reason": "There is a stick here.",
+            "roll": None,
+        }
+    ]
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    outcome = told.split("## OUTCOME\n")[1].split("\n## ")[0]
+    assert outcome.count('"beats":') == 1
+    assert '{"beat":"pick up a stick","uses":"a stick","check":"made_canon"' in outcome
+
+
 def test_an_action_that_fits_nothing_still_plays(fake, make_client):
     fake.script(Node.INTERPRET, Reply(json={"summary": ""}))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
@@ -412,6 +519,23 @@ def test_a_failed_chapter_summary_is_tried_again_next_turn(fake, make_client):
     assert result.state.chapters == []
     assert "chapter_skipped" in [i.code for i in result.issues]
     assert result.narration_mode == "full"  # the turn itself stands
+
+
+def test_summaries_late_for_long_catch_up_a_window_at_a_time(fake, make_client):
+    """C3: after many failed summaries, a chapter covers at most `MAX_CHAPTER_TURNS` turns, the
+    oldest first, so no scene is left out of every chapter."""
+    state, scenes = saved_turns(MAX_CHAPTER_TURNS + 10)
+    first_window = tuple(s for s in scenes if s.turn <= MAX_CHAPTER_TURNS)
+    recent = scenes[-RECENT_SCENES:]
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Reply(json={"summary": "The first weeks."}))
+    _, result = play(make_client(), turn_input(state, scenes=first_window + recent))
+    [chapter] = result.state.chapters
+    assert (chapter.from_turn, chapter.to_turn) == (1, MAX_CHAPTER_TURNS)
+    text = fake.calls(Node.SUMMARIZER)[0].prompt.messages[-1].text
+    assert f'"narration":"scene {MAX_CHAPTER_TURNS}"' in text
+    assert f'"narration":"scene {MAX_CHAPTER_TURNS + 1}"' not in text
 
 
 def test_a_rejected_key_on_the_summary_doesnt_fail_the_turn(fake, make_client):

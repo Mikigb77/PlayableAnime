@@ -65,16 +65,6 @@ def test_the_asgi_app_loads_without_the_model_sdk():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_the_offline_narrator_never_loads_the_model_sdk():
-    result = _python(
-        "import sys; from legacy.config import Settings; "
-        "from legacy.llm.factory import build_provider; build_provider(Settings()); "
-        "sys.exit(1 if 'google.genai' in sys.modules else 0)"
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
 @pytest.mark.django_db
 def test_the_models_and_migrations_agree():
     call_command("makemigrations", "--check", "--dry-run", verbosity=0)

@@ -13,6 +13,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 
 from dataclasses import dataclass
 
+from engine import limits
 from engine.context import GoreLevel, ImageSetting, Rating, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -38,6 +39,8 @@ from graph.turn.types import Issue
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
+# G12: the issue code for a real person or organisation left out of the narrator's update.
+REAL_ENTITY = "real_entity"
 
 
 @dataclass(frozen=True)
@@ -50,20 +53,18 @@ class CheckedIntent:
 def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedIntent:
     """The intent with references the state can't resolve turned back into words.
 
-    The actor is the player character unless the intent names a living character in the story.
-    The interpret step never refuses (B5), so an intent with no step and no standing action
+    The actor is always the player character: the player plays their own character and can't
+    make anyone else act (A6), so words that have someone else act are the character's order or
+    hope. The interpret step never refuses (B5), so an intent with no step and no standing action
     becomes one step that carries the player's words as they are.
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
-    if intent.actor_id is not None:
-        actor = state.characters.get(intent.actor_id)
-        if actor is None or actor.status is CharacterStatus.DEAD:
-            reason = "dead" if actor is not None else "not in the story"
-            issues.append(Issue("bad_actor", f"the actor is {reason}", intent.actor_id))
-            intent.actor_id = None
-        elif intent.actor_id == state.player_id:
-            intent.actor_id = None
+    if intent.actor_id is not None and intent.actor_id != state.player_id:
+        issues.append(
+            Issue("not_the_player", _actor_reason(state, intent.actor_id), intent.actor_id)
+        )
+    intent.actor_id = None
 
     known = state.characters.keys() | state.places.keys() | state.factions.keys()
     for step in intent.steps:
@@ -98,6 +99,15 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
         ]
         intent.summary = intent.summary or text
     return CheckedIntent(intent=intent, issues=issues, overflow=overflow)
+
+
+def _actor_reason(state: WorldState, actor_id: str) -> str:
+    actor = state.characters.get(actor_id)
+    if actor is None:
+        return "the actor is not in the story, so the player character acts"
+    if actor.status is CharacterStatus.DEAD:
+        return "the actor is dead, so the player character acts"
+    return "the player plays only their own character (A6)"
 
 
 def check_resolution(
@@ -198,10 +208,12 @@ def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
     A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
-    dead can't be present (C1), and the rolling summary is never blanked.
+    dead can't be present (C1), and the rolling summary is never blanked. A new character or
+    faction named after a real person or organisation is left out, and a known one keeps its
+    name (G12).
     """
-    issues: list[Issue] = []
-    delta = delta.model_copy(deep=True)
+    delta, hits = limits.strip_real_entities(delta, state)
+    issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()

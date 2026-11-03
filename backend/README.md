@@ -21,6 +21,7 @@ uv sync
 cp .env.example .env                      # optional; DEBUG=1 is the easy start
 uv run python manage.py migrate
 uv run python manage.py createsuperuser   # for the admin
+uv run python manage.py seed_story you@example.com --world cultivation  # a story to play
 DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 ```
 
@@ -28,8 +29,12 @@ DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 - http://localhost:8080/admin/ is the Django admin, for staff (B1).
 - http://localhost:8080/health is the liveness check. It never touches the database (T3).
 
-By default `LLM_PROVIDER=fake` returns a canned scene, so everything works offline. For real
-stories, either:
+`seed_story` makes a story for an existing account from one of the example worlds (`grounded` or
+`cultivation`), ready for its opening turn, until starting a draft (WS12) makes stories. It prints
+the story id.
+
+By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, so everything
+works offline. For real stories, either:
 
 - send your own Gemini key in the `X-LLM-Api-Key` header (the app's Settings screen does this), or
 - set `LLM_PROVIDER=vertex` and give Application Default Credentials access to the
@@ -120,9 +125,8 @@ stories (S8). Sign-in and the account:
 | GET | `/v1/me/export` | Everything the account holds, as a JSON download (T12) |
 
 To try the API locally, register in `/v1/docs` (or with curl) and use the `access_token` from the
-answer with the docs page's Authorize button. Until WS3's turn graph lands, the story endpoints are
-today's, ported from FastAPI with the same paths and shapes so the current app keeps working; the
-premises and drafts endpoints are the new contract from API.md:
+answer with the docs page's Authorize button. Make a story by drafting and starting one, or with
+`seed_story`, and play it:
 
 | Method | Path | |
 | --- | --- | --- |
@@ -132,15 +136,19 @@ premises and drafts endpoints are the new contract from API.md:
 | GET, PATCH | `/v1/drafts/{id}` | A draft, and direct edits of its summary lines and advanced fields |
 | POST | `/v1/drafts/{id}/revise` | `{target, instruction}`: a change in plain words |
 | POST | `/v1/drafts/{id}/start` | Creates the story from the draft (engine `graph`) → `{story_id, version}` |
-| POST | `/v1/stories` | `{premise, title?}` → story with its opening scene and `version` |
-| GET | `/v1/stories` | Story summaries, most recently played first |
-| GET | `/v1/stories/{id}` | Full story with `version` |
-| POST | `/v1/stories/{id}/turns` | `{choice_id}` or `{action, input_mode?}`, plus optional `expected_version` → `{scene, state, version}` |
-| GET | `/v1/stories/{id}/memory` | World state |
+| GET | `/v1/stories` | The Library: your stories, most recently played first |
+| GET, PATCH, DELETE | `/v1/stories/{id}` | A story with its last scenes; rename it or change its settings; delete it |
+| GET | `/v1/stories/{id}/scenes` | Older scenes, for scrollback |
+| POST | `/v1/stories/{id}/turns` | A turn (`{kind, action?, choice_id?, standing?, input_mode?, expected_version}`) as server-sent events: `turn.started`, `narration.delta`, `narration.reset`, then `scene.completed` or `error` |
+| GET | `/v1/stories/{id}/memory` | What the player character knows (C6) |
+| GET | `/v1/stories/{id}/status` | Sheet, reputation, clock and how long ago things happened |
 | POST | `/v1/stories/{id}/scenes/{turn}/image` | The scene's planned picture, drawn at most once (M3) |
 | POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | A picture of any scene, which the player pays for (M2) |
 | GET | `/v1/stories/{id}/images/{image_id}` | A picture with a fresh signed URL |
 | GET | `/v1/me/credits` | Balance and ledger, for the signed-in user (K1, K2) |
+
+To watch a turn stream: `curl -N -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"
+-d '{"kind": "opening", "expected_version": 1}' localhost:8080/v1/stories/$STORY/turns`.
 
 Errors use the envelope from API.md: `{"error": {"code", "message", "details"}}`. A turn saves only
 if no other turn was saved since it read the story, so the loser of a race gets `409
@@ -181,20 +189,30 @@ accounts/         Users, sign-in and the account endpoints (T8, F8, K7, T12)
   services.py     Sign-in, sign-up, profile, delete and export
   signals.py      account_deleting and account_exporting, for other apps
 stories/          Story, Scene and PendingEvent models, admin, the story API
+  api.py          The story endpoints from API.md, the turn endpoint among them
+  turns.py        A turn over HTTP: checks, the event stream, the one-transaction save (B7, T10)
+  pending.py      Pending events between the world state and their table (B12)
+  responses.py    Scenes, stories, the Library, Memory and status as the endpoints answer them
+  schemas.py      The request and response shapes
+  premises.py     Starter premises for Discover, until the drafting catalog replaces them
   access.py       owned_story(): the caller's story, within their rating limit (S8, F8)
   export.py       Stories as plain data for the account export
-  legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
+  management/     seed_story: a story from an example world, for development
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
   turn/           The LangGraph turn graph (B5): nodes, prompts, checks before narration (C5)
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
+moderation/       Reports and blocks on scenes, the review queue (F6, T16): see ARCHITECTURE.md
+  api.py          POST /v1/stories/{id}/scenes/{turn}/report
+  service.py      Filing a report, blocked_turns() for the scene list, reports in the export
+  access.py       Who reads story text in the admin, and the mixin that hides it from others
+  evals/          T15's content-line cases as data, for the eval runner (WS17)
 billing/          Credits, quotas and rate limits (K1, K2, T9): see ARCHITECTURE.md
   meter.py        start, charge, charge_image, release: the guard and charge around model calls
   credits.py      Accounts, the starter credit, the append-only ledger, summary(user)
   limits.py       Per-user fixed-window counters in Postgres
   pricing.py      Cost and charge arithmetic, K8's cost spread (plain Python)
   api.py          GET /v1/me/credits
-legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
 engine/           The rules engine, plain Python with no web or model imports (B4)
   state/          World state models (C2): bible, cast, sheets, records
   contracts/      Step contracts (B5): Intent, Resolution, DirectorPlan, StateDelta
@@ -202,6 +220,9 @@ engine/           The rules engine, plain Python with no web or model imports (B
   rng.py          Seeded random numbers for rolls (A3)
   timekeeping.py  Duration bounds and the clock through pending events (W10, W10a)
   apply.py        apply_delta: proposed changes applied with the C1 invariants
+  limits.py       The hard limits in code: adults only in romance, Teen's line, real people,
+                  real-world instructions (F3, F2, G12)
+  real_entities.py  Real people and organisations that never become characters or factions
   invariants.py   C1 checks on one state or between two
   labels.py       Time in words: the world's calendar, "+8 h", "2 days ago"
   visibility.py   What the player character knows (C6): the Memory and status views
@@ -214,8 +235,8 @@ Keep heavy imports (model SDKs, LangChain, LangGraph) inside the code that needs
 level, so a cold start stays fast (B10, T3). A test checks that loading the app and its URLs doesn't import
 them.
 
-`legacy/` is today's one-call narrator. `engine/` replaces it once the turn graph lands; see
-[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#engine-package-backendengine).
+How a turn runs, from the request to the saved scene, is in
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#turn-endpoint).
 
 ## Deploy to Cloud Run
 

@@ -539,12 +539,15 @@ def test_a_started_draft_cant_change(player_client, model):
     assert player_client.get(f"/v1/drafts/{draft_id}").json()["story_id"] == story_id
 
 
-def test_the_legacy_story_endpoints_leave_a_graph_story_alone(player_client, model):
+def test_a_started_story_is_in_the_library_ready_for_its_opening(player_client, model):
     draft_id = _draft(player_client)["id"]
     story_id = _start(player_client, draft_id).json()["story_id"]
 
-    assert player_client.get("/v1/stories").json() == []
-    assert player_client.get(f"/v1/stories/{story_id}").status_code == 404
+    [listed] = player_client.get("/v1/stories").json()
+    story = player_client.get(f"/v1/stories/{story_id}").json()
+
+    assert listed["id"] == story_id
+    assert (story["turn"], story["version"], story["scenes"]) == (0, 1, [])
 
 
 # Model failures (T7, S9).

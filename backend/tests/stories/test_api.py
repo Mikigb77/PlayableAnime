@@ -1,21 +1,19 @@
-"""The endpoints ported from FastAPI, with today's shapes, on Django and Postgres, each scoped to
-the signed-in player (S8)."""
-
-from datetime import date
+"""The story endpoints besides turns (API.md: Stories, Memory and status), each scoped to the
+signed-in player (S8, F8)."""
 
 import pytest
-from asgiref.sync import async_to_sync
-from django.test import AsyncClient, Client
+from django.core.management import CommandError, call_command
+from django.test import Client
 
-from legacy.llm.fake import FakeNarratorProvider
-from lucid.errors import ApiError
-from stories import legacy_bridge
-from stories.models import Engine, InputMode, Rating, Scene, SceneKind, Story
+from graph.llm import Node, Reply
+from media.models import Image, ImageStatus
+from moderation.service import report_scene
+from stories.models import Engine, PendingEvent, Scene, Story
 from tests.conftest import auth_headers
+from tests.stories.conftest import opening, play
+from tests.stories.test_turns import AFTER, OPENING, opened
 
 pytestmark = pytest.mark.django_db
-
-PREMISE = "A courier finds a strange package."
 
 
 @pytest.fixture
@@ -23,327 +21,275 @@ def client(player) -> Client:
     return Client(headers=auth_headers(player))
 
 
-def _create_story(client: Client, **headers) -> dict:
-    response = client.post(
-        "/v1/stories", {"premise": PREMISE}, content_type="application/json", headers=headers
+def test_the_library_lists_your_own_stories_most_recently_played_first(
+    client, player, make_user, make_story, model
+):
+    older = make_story(player, title="Older")
+    make_story(player, world="grounded", title="Newer")
+    make_story(make_user("other@example.com"), title="Not yours")
+    Story.objects.create(owner=player, title="Legacy", premise="P", engine=Engine.LEGACY)
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+    play(player, older, opening(older))
+
+    library = client.get("/v1/stories").json()
+
+    assert [s["title"] for s in library] == ["Older", "Newer"]
+    first = library[0]
+    assert set(first) == {
+        "id",
+        "title",
+        "genre",
+        "rating",
+        "turn",
+        "world_time_label",
+        "cover_url",
+        "updated_at",
+    }
+    assert (first["id"], first["genre"], first["rating"], first["turn"]) == (
+        str(older.pk),
+        "cultivation",
+        "mature",
+        1,
     )
-    assert response.status_code == 201, response.content
-    return response.json()
+    assert first["world_time_label"]
+    assert library[1]["world_time_label"]
+    assert first["cover_url"] is None
 
 
-def _turn(client: Client, story_id: str, body: dict, **headers):
-    return client.post(
-        f"/v1/stories/{story_id}/turns", body, content_type="application/json", headers=headers
+def test_a_story_comes_with_its_last_scenes_settings_and_clock(client, player, make_story, model):
+    story = opened(player, make_story, model)
+    for version in (2, 3):
+        model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+        play(player, story, {"kind": "standing", "standing": "wait", "expected_version": version})
+
+    loaded = client.get(f"/v1/stories/{story.pk}").json()
+    last = client.get(f"/v1/stories/{story.pk}?scenes=2").json()
+    none = client.get(f"/v1/stories/{story.pk}?scenes=0").json()
+
+    assert (loaded["version"], loaded["turn"]) == (4, 3)
+    assert [s["turn"] for s in loaded["scenes"]] == [1, 2, 3]
+    assert loaded["scenes"][0]["image"]["kind"] == "portrait"
+    assert loaded["settings"] == {
+        "narration_length": "medium",
+        "tone": None,
+        "difficulty": "balanced",
+        "event_frequency": "normal",
+        "images": "key_moments",
+        "suggestions": True,
+    }
+    assert set(loaded["clock"]) == {"world_s", "label", "timeline_id"}
+    assert [s["turn"] for s in last["scenes"]] == [2, 3]
+    assert none["scenes"] == []
+    assert client.get(f"/v1/stories/{story.pk}?scenes=51").status_code == 400
+
+
+def test_a_scene_the_player_blocked_comes_back_blocked(client, player, make_story, model):
+    """F6: a blocked scene says so wherever scenes are served, and the others don't."""
+    story = opened(player, make_story, model)
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+    play(player, story, {"kind": "standing", "standing": "wait", "expected_version": 2})
+    report_scene(
+        story, Scene.objects.get(story=story, turn=1), player, category="other", note="", block=True
     )
-
-
-def test_premises_are_listed(client):
-    premises = client.get("/v1/premises").json()
-
-    assert len(premises) >= 1
-    assert {"id", "title", "genre", "premise"} <= premises[0].keys()
-
-
-def test_creating_a_story_generates_and_saves_the_opening_scene(client, player):
-    story = _create_story(client)
-
-    assert story["title"] == PREMISE
-    assert story["version"] == 1
-    assert len(story["scenes"]) == 1
-    assert story["scenes"][0]["player_action"] is None
-    assert [c["id"] for c in story["scenes"][0]["choices"]] == ["c1", "c2", "c3"]
-    assert story["state"]["turn"] == 1
-    row = Story.objects.get(pk=story["id"])
-    assert (row.engine, row.version, row.turn) == (Engine.LEGACY, 1, 1)
-    assert row.owner == player
-    assert row.scenes.get().kind == SceneKind.OPENING
-
-
-def test_turns_advance_the_story_and_its_memory(client):
-    story = _create_story(client)
-
-    by_choice = _turn(client, story["id"], {"choice_id": "c1"}).json()
-    by_action = _turn(client, story["id"], {"action": "I climb.", "input_mode": "voice"}).json()
-
-    assert by_choice["scene"]["player_action"] == "Follow the sound of the bell"
-    assert by_action["scene"]["player_action"] == "I climb."
-    assert (by_choice["version"], by_action["version"]) == (2, 3)
-    memory = client.get(f"/v1/stories/{story['id']}/memory").json()
-    assert memory["turn"] == 3
-    assert [(c["id"], c["affinity"]) for c in memory["characters"]] == [("ren", 3)]
-    scenes = Scene.objects.filter(story_id=story["id"]).order_by("turn")
-    assert [(s.kind, s.input_mode) for s in scenes] == [
-        (SceneKind.OPENING, None),
-        (SceneKind.CHOICE, InputMode.CHOICE),
-        (SceneKind.ACTION, InputMode.VOICE),
-    ]
-
-
-def test_a_story_reloads_with_every_scene(client):
-    story = _create_story(client)
-    _turn(client, story["id"], {"choice_id": "c2"})
-
-    loaded = client.get(f"/v1/stories/{story['id']}").json()
-
-    assert [s["player_action"] for s in loaded["scenes"]] == [None, "Search for allies"]
-    assert (loaded["version"], loaded["state"]["turn"]) == (2, 2)
-
-
-def test_library_lists_the_most_recently_played_story_first(client):
-    older = _create_story(client)
-    newer = _create_story(client)
-    _turn(client, older["id"], {"choice_id": "c1"})
-
-    summaries = client.get("/v1/stories").json()
-
-    assert [s["id"] for s in summaries[:2]] == [older["id"], newer["id"]]
-    assert summaries[0] == {"id": older["id"], "title": PREMISE, "premise": PREMISE, "turn": 2}
-
-
-def test_turn_needs_exactly_one_of_choice_or_action(client):
-    story = _create_story(client)
-
-    for body in ({}, {"choice_id": "c1", "action": "Both"}):
-        response = _turn(client, story["id"], body)
-        assert response.status_code == 400
-        assert response.json()["error"]["code"] == "validation_error"
-
-
-def test_turns_take_the_apps_turn_request(client):
-    """The app already sends the streamed endpoint's TurnRequest; the extra fields are ignored."""
-    story = _create_story(client)
-
-    by_choice = _turn(
-        client,
-        story["id"],
-        {"kind": "choice", "choice_id": "c1", "input_mode": "choice", "expected_version": 1},
-    )
-    long_action = "I climb, " * 222  # 1998 characters
-    by_action = _turn(
-        client,
-        story["id"],
-        {"kind": "action", "action": long_action, "input_mode": "typed", "expected_version": 2},
+    report_scene(
+        story,
+        Scene.objects.get(story=story, turn=2),
+        player,
+        category="other",
+        note="",
+        block=False,
     )
 
-    assert (by_choice.status_code, by_action.status_code) == (200, 200), by_action.content
-    assert by_action.json()["version"] == 3
-    kinds = (
-        Scene.objects.filter(story_id=story["id"])
-        .order_by("turn")
-        .values_list("kind", "input_mode")
+    loaded = client.get(f"/v1/stories/{story.pk}").json()["scenes"]
+    scrolled = client.get(f"/v1/stories/{story.pk}/scenes").json()
+
+    for scenes in (loaded, scrolled):
+        assert [(s["turn"], s["blocked"]) for s in scenes] == [(1, True), (2, False)]
+
+
+def test_older_scenes_come_back_for_scrollback(client, player, make_story, model):
+    story = opened(player, make_story, model)
+    for version in (2, 3, 4):
+        model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+        play(player, story, {"kind": "standing", "standing": "wait", "expected_version": version})
+
+    page = client.get(f"/v1/stories/{story.pk}/scenes?before=4&limit=2").json()
+    everything = client.get(f"/v1/stories/{story.pk}/scenes").json()
+
+    assert [s["turn"] for s in page] == [2, 3]
+    assert [s["turn"] for s in everything] == [1, 2, 3, 4]
+    assert client.get(f"/v1/stories/{story.pk}/scenes?limit=0").status_code == 400
+
+
+def test_a_new_story_has_no_scenes_yet(client, player, make_story):
+    story = make_story(player)
+
+    loaded = client.get(f"/v1/stories/{story.pk}").json()
+
+    assert (loaded["turn"], loaded["version"], loaded["scenes"]) == (0, 1, [])
+    assert loaded["clock"]["world_s"] == 0
+
+
+def test_patch_renames_and_changes_only_the_settings_sent(client, player, make_story):
+    story = make_story(player)
+
+    response = client.patch(
+        f"/v1/stories/{story.pk}",
+        {"title": "  A  new name ", "settings": {"images": "off", "narration_length": "long"}},
+        content_type="application/json",
     )
-    assert list(kinds)[1:] == [
-        (SceneKind.CHOICE, InputMode.CHOICE),
-        (SceneKind.ACTION, InputMode.TYPED),
-    ]
+
+    assert response.status_code == 200, response.content
+    body = response.json()
+    assert body["title"] == "A new name"
+    assert body["settings"]["images"] == "off"
+    assert body["settings"]["narration_length"] == "long"
+    assert body["settings"]["difficulty"] == "balanced"
+    story.refresh_from_db()
+    assert story.settings["images"] == "off"
+    assert story.version == 1
+    for bad in ({"settings": {"images": "always"}}, {"title": ""}, {"title": "   "}):
+        response = client.patch(f"/v1/stories/{story.pk}", bad, content_type="application/json")
+        assert response.status_code == 400, bad
 
 
-def test_a_turn_request_out_of_bounds_is_rejected(client):
-    story = _create_story(client)
+def test_delete_removes_the_story_with_its_scenes_and_events(client, player, make_story, model):
+    story = opened(player, make_story, model, world="grounded")
+    assert PendingEvent.objects.filter(story=story).exists()
 
-    for body in (
-        {"action": "x" * 2001},
-        {"action": "I climb.", "input_mode": "choice"},
-        {"choice_id": "c1", "input_mode": "telepathy"},
-    ):
-        response = _turn(client, story["id"], body)
-        assert response.status_code == 400, body
-        assert response.json()["error"]["code"] == "validation_error"
+    response = client.delete(f"/v1/stories/{story.pk}")
 
-
-def test_unknown_choice_is_rejected(client):
-    story = _create_story(client)
-
-    response = _turn(client, story["id"], {"choice_id": "c9"})
-
-    assert response.status_code == 400
-    assert response.json()["error"]["details"]["fields"][0]["field"] == "choice_id"
+    assert response.status_code == 204
+    assert not Story.objects.filter(pk=story.pk).exists()
+    assert not Scene.objects.exists()
+    assert not PendingEvent.objects.exists()
+    assert client.get(f"/v1/stories/{story.pk}").status_code == 404
 
 
-def test_unknown_story_is_404(client):
+def test_memory_shows_only_what_the_character_knows_with_their_pictures(
+    client, player, make_story, settings, tmp_path
+):
+    story = make_story(player)
+    Image.objects.create(
+        story=story,
+        kind="portrait",
+        subject="zhao",
+        status=ImageStatus.READY,
+        storage_key=f"stories/{story.pk}/zhao.png",
+    )
+
+    memory = client.get(f"/v1/stories/{story.pk}/memory").json()
+
+    assert memory["character"]["name"] == "Lin Feng"
+    assert memory["character"]["portrait_url"] is None
+    people = {person["id"]: person for person in memory["people"]}
+    assert people["zhao"]["portrait_url"].startswith("http://testserver/")
+    text = str(memory)
+    state = story.state
+    for character in state["characters"].values():
+        for secret in character.get("secrets", []):
+            assert secret not in text
+
+
+def test_status_shows_the_sheet_and_the_clock(client, player, make_story):
+    story = make_story(player)
+
+    status = client.get(f"/v1/stories/{story.pk}/status").json()
+
+    assert status["character"]["name"] == "Lin Feng"
+    assert status["clock"]["world_s"] == 0
+    assert status["clock"]["label"]
+
+
+def test_stories_from_the_old_narrator_are_not_served(client, player):
+    legacy = Story.objects.create(
+        owner=player, title="Old", premise="P", engine=Engine.LEGACY, state={"turn": 1}
+    )
+
+    for path in ("", "/memory", "/status", "/scenes"):
+        assert client.get(f"/v1/stories/{legacy.pk}{path}").status_code == 404
+    assert client.delete(f"/v1/stories/{legacy.pk}").status_code == 404
+
+
+def test_unknown_and_other_players_stories(client, make_user, make_story):
+    theirs = make_story(make_user("other@example.com"))
+
     for story_id in ("missing", "8b2b5a8e-0000-4000-8000-000000000000"):
         response = client.get(f"/v1/stories/{story_id}")
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "not_found"
+    assert client.get(f"/v1/stories/{theirs.pk}").status_code == 403
+    assert client.delete(f"/v1/stories/{theirs.pk}").status_code == 403
+    assert Story.objects.filter(pk=theirs.pk).exists()
 
 
-def test_the_legacy_endpoints_never_touch_a_turn_graph_story(client, player):
-    graph = Story.objects.create(
-        owner=player, title="Graph", premise="P", state={"clock": {"world_s": 0}}
-    )
-
-    assert client.get(f"/v1/stories/{graph.pk}").status_code == 404
-    assert _turn(client, str(graph.pk), {"action": "I wait."}).status_code == 404
-    assert client.get("/v1/stories").json() == []
-    graph.refresh_from_db()
-    assert (graph.state, graph.version) == ({"clock": {"world_s": 0}}, 0)
-
-
-def test_a_wrong_method_gets_the_envelope_and_the_allow_header(client):
-    response = client.put("/v1/stories", {}, content_type="application/json")
+def test_stories_are_made_by_drafts_not_by_posting_a_premise(client):
+    response = client.post("/v1/stories", {"premise": "x" * 20}, content_type="application/json")
 
     assert response.status_code == 405
     assert response.json()["error"]["code"] == "method_not_allowed"
-    assert set(response["Allow"].split(", ")) == {"GET", "POST"}
-    assert response["X-Request-Id"]
+    assert response["Allow"] == "GET"
 
 
-def test_unsupported_byok_provider_is_rejected(client):
-    response = client.post(
-        "/v1/stories",
-        {"premise": PREMISE},
-        content_type="application/json",
-        headers={"X-LLM-Provider": "nope", "X-LLM-Api-Key": "test-key"},
+def test_seed_story_makes_a_story_ready_for_its_opening(player, model, capsys):
+    call_command("seed_story", player.email, "--world", "grounded")
+
+    story = Story.objects.get(pk=capsys.readouterr().out.strip())
+    assert (story.owner, story.engine, story.turn, story.version) == (
+        player,
+        Engine.GRAPH,
+        0,
+        1,
     )
-
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "validation_error"
-
-
-def test_a_stale_expected_version_is_a_conflict_before_any_model_call(client, monkeypatch):
-    story = _create_story(client)
-    _turn(client, story["id"], {"choice_id": "c1"})
-    calls = []
-    monkeypatch.setattr(FakeNarratorProvider, "generate", lambda *a, **k: calls.append(1))
-
-    response = _turn(client, story["id"], {"choice_id": "c1", "expected_version": 1})
-
-    assert response.status_code == 409
-    assert response.json()["error"] == {
-        "code": "version_conflict",
-        "message": "Another turn was saved first.",
-        "details": {"current_version": 2},
-    }
-    assert calls == []
+    assert (story.title, story.rating) == ("The Esposito Succession", "mature")
+    assert story.settings["images"] == "key_moments"
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+    assert play(player, story, opening(story)).names[-1] == "scene.completed"
+    with pytest.raises(CommandError):
+        call_command("seed_story", "nobody@example.com")
 
 
-def test_the_loser_of_two_concurrent_turns_saves_nothing(client):
-    """T10: both turns read version 1; the first to save wins, the second gets a 409 and its
-    scene is rolled back."""
-    created = _create_story(client)
-    stale = Story.objects.get(pk=created["id"])
-    _turn(client, created["id"], {"choice_id": "c1"})
-    current = legacy_bridge.to_legacy(stale, list(stale.scenes.all()))
-    advanced = current.model_copy(
-        update={"scenes": [*current.scenes, current.scenes[-1].model_copy(update={"turn": 2})]}
-    )
-
-    with pytest.raises(ApiError) as raised:
-        async_to_sync(legacy_bridge.save_turn)(stale, advanced, SceneKind.CHOICE, InputMode.CHOICE)
-
-    assert raised.value.code == "version_conflict"
-    assert raised.value.details == {"current_version": 2}
-    assert Scene.objects.filter(story_id=created["id"]).count() == 2
-    assert Story.objects.get(pk=created["id"]).version == 2
-
-
-def test_a_model_failure_is_llm_unavailable_and_saves_nothing(client, monkeypatch, log_lines):
-    story = _create_story(client)
-
-    async def fail(*args, **kwargs):
-        raise TimeoutError("vertex timed out")
-
-    monkeypatch.setattr(FakeNarratorProvider, "generate", fail)
-
-    response = _turn(client, story["id"], {"action": "I run."})
-
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "llm_unavailable"
-    assert Story.objects.get(pk=story["id"]).version == 1
-    [line] = [line for line in log_lines() if line["message"] == "Narration failed"]
-    assert line["story_id"] == story["id"]
-    assert "TimeoutError" in line["stack_trace"]
-
-
-def test_a_rejected_byok_key_is_bad_key_and_the_key_is_never_logged(client, monkeypatch, log_lines):
-    from google.genai.errors import ClientError
-
-    from legacy.llm import gemini
-
-    async def reject(*args, **kwargs):
-        raise ClientError(400, {"error": {"message": "API key not valid.", "status": "INVALID"}})
-
-    monkeypatch.setattr(gemini.GeminiProvider, "generate", reject)
-    key = "AIza-very-secret-key"
-
-    response = client.post(
-        "/v1/stories",
-        {"premise": PREMISE},
-        content_type="application/json",
-        headers={"X-LLM-Provider": "gemini", "X-LLM-Api-Key": key},
-    )
-
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "bad_key"
-    assert not Story.objects.exists()
-    assert key not in str(log_lines())
-
-
-def test_the_ported_endpoints_run_over_asgi(player):
-    headers = auth_headers(player)
-
-    async def play() -> tuple[int, int]:
-        # Headers go on each request: AsyncClient(headers=...) sends them under WSGI names.
-        client = AsyncClient()
-        created = await client.post(
-            "/v1/stories", {"premise": PREMISE}, content_type="application/json", headers=headers
-        )
-        story_id = created.json()["id"]
-        turn = await client.post(
-            f"/v1/stories/{story_id}/turns",
-            {"choice_id": "c3", "expected_version": 1},
-            content_type="application/json",
-            headers=headers,
-        )
-        return created.status_code, turn.json()["version"]
-
-    assert async_to_sync(play)() == (201, 2)
-
-
-# Ownership and the rating limit (S8, F8)
-
-
-def test_every_story_endpoint_needs_a_signed_in_player(client):
-    story = _create_story(client)
+def test_every_story_endpoint_needs_a_signed_in_player(player, make_story):
+    """T8: no story endpoint answers an anonymous caller."""
+    story = make_story(player)
     anonymous = Client()
-
-    for method, path in [
-        ("get", "/v1/premises"),
+    calls = [
         ("get", "/v1/stories"),
-        ("post", "/v1/stories"),
-        ("get", f"/v1/stories/{story['id']}"),
-        ("get", f"/v1/stories/{story['id']}/memory"),
-        ("post", f"/v1/stories/{story['id']}/turns"),
-    ]:
+        ("get", f"/v1/stories/{story.pk}"),
+        ("patch", f"/v1/stories/{story.pk}"),
+        ("delete", f"/v1/stories/{story.pk}"),
+        ("get", f"/v1/stories/{story.pk}/scenes"),
+        ("post", f"/v1/stories/{story.pk}/turns"),
+        ("get", f"/v1/stories/{story.pk}/memory"),
+        ("get", f"/v1/stories/{story.pk}/status"),
+        ("get", "/v1/premises"),
+    ]
+    for method, path in calls:
         response = getattr(anonymous, method)(path, {}, content_type="application/json")
-        assert response.status_code == 401, path
+        assert response.status_code == 401, (method, path)
         assert response.json()["error"]["code"] == "unauthenticated"
+    assert Story.objects.filter(pk=story.pk).exists()
 
 
-def test_a_player_never_sees_or_plays_someone_elses_story(client, make_user):
-    story = _create_story(client)
-    other = Client(headers=auth_headers(make_user("other@example.com")))
+def test_patch_refuses_null_settings_except_tone(client, player, make_story):
+    story = make_story(player, settings={"tone": "wry"})
 
-    assert other.get("/v1/stories").json() == []
-    for response in (
-        other.get(f"/v1/stories/{story['id']}"),
-        other.get(f"/v1/stories/{story['id']}/memory"),
-        _turn(other, story["id"], {"choice_id": "c1"}),
-    ):
-        assert response.status_code == 403
-        assert response.json()["error"]["code"] == "forbidden"
-    assert Story.objects.get(pk=story["id"]).version == 1
-
-
-def test_a_teen_account_cant_open_a_mature_story(make_user):
-    """F8: under 17, Teen only. The limit lifts on the 17th birthday with nothing to update."""
-    today = date.today()
-    teen = make_user("teen@example.com", birth_date=today.replace(year=today.year - 15))
-    mature = Story.objects.create(
-        owner=teen, title="M", premise="P", engine=Engine.LEGACY, rating=Rating.MATURE
+    refused = client.patch(
+        f"/v1/stories/{story.pk}",
+        {"settings": {"narration_length": None}},
+        content_type="application/json",
+    )
+    cleared = client.patch(
+        f"/v1/stories/{story.pk}", {"settings": {"tone": None}}, content_type="application/json"
     )
 
-    response = Client(headers=auth_headers(teen)).get(f"/v1/stories/{mature.pk}")
+    assert (refused.status_code, refused.json()["error"]["code"]) == (400, "validation_error")
+    assert cleared.status_code == 200
+    assert cleared.json()["settings"]["tone"] is None
 
-    assert response.status_code == 403
-    assert "rating" in response.json()["error"]["message"]
+
+def test_a_story_whose_world_was_never_filled_in_is_not_served(client, player):
+    empty = Story.objects.create(owner=player, title="Empty", premise="P", engine=Engine.GRAPH)
+
+    assert client.get("/v1/stories").json() == []
+    assert client.get(f"/v1/stories/{empty.pk}").status_code == 404

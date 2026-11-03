@@ -19,7 +19,9 @@ run-on sentence as one plan.
 - Map names to the ids under KNOWN and SCENE, preferring whoever is in the scene, so a misheard or \
 misspelled name is the closest known one. Put ids in target_ids; describe anything with no id in \
 targets.
-- Leave actor_id empty for the player character.
+- Leave actor_id empty: the player plays only their own character (A6). Words that have someone \
+else act ("and Mei throws me the key") are the character's request or hope, so they go in \
+outcome_claims, never in a step of their own.
 
 Steps and beats (R2, R6, A9, W10):
 - Split a chained plan into steps in the order they happen ("I throw the stone, then run for the \
@@ -28,9 +30,15 @@ tunnel" is two steps). Never add a step, a target or a decision the player didn'
 everything a beat uses, give its source: body, power, carried, scene (a prop or the place itself), \
 canon (made canon by an earlier beat this turn) or new. For something new, judge whether the place \
 plausibly holds it: plausible, uncertain or absent.
+- aim: what the step does to the characters it targets if it works. kill, wound, subdue (knocked \
+out, pinned or bound), or none for anything that doesn't harm them: a warning shot, a shove out \
+of the way, a threat. Read it from the player's words ("I cut him down" is kill, "I knock him \
+out" is subdue), never harsher than they chose. A harmful aim puts its targets in the way.
 - When a step's outcome rests on cause and effect that isn't obvious, write the chain link by \
 link, with the facts each link rests on (rule, power or character ids, or plain words) and the \
-in-world seconds it takes.
+in-world seconds it takes. For each link, list in answers what would let the target escape or \
+undo it, in plain words ("teleport", "breathe without air", "put out the fire"). You may not \
+see the target's whole sheet; code looks there for them.
 - kind and proposed_duration_s: the kind of action and the in-world seconds it should take. A \
 sword exchange takes seconds, crossing a square a minute or two, a night's sleep about eight \
 hours, "I train here for a year" a year (time_skip). Inside a time stop the world's clock stands \
@@ -95,6 +103,9 @@ moment it goes wrong and show why, matching the step's reason. An action the wor
 plays as what it really is.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
+- When a step in OUTCOME lists its beats, play them in that order. made_canon is something the \
+place turned out to hold, so it is there now. empty is a search that comes up empty or a thing \
+that isn't there: play the reach for it, and the step stops at that beat (R2).
 - rulings under OUTCOME say how a power works here, settled for good: show them in play, with no \
 physics lecture and never a question to the player about how the power should work (A9). A \
 backstory claim that wasn't recorded plays as something the character says or believes (N4).
@@ -135,7 +146,8 @@ and the things in hand or in the scene that matter next.
 OPENING_TASK = """\
 Write the opening scene. Introduce the player character where the story starts, establish the \
 world and its tone through what the character sees and does, and end on something to act on. \
-Play no action for the character beyond small natural movement.\
+When LAST MOMENT names a moment, the scene opens on it, with the people, positions and props \
+SCENE lists. Play no action for the character beyond small natural movement.\
 """
 
 CUTAWAY_SYSTEM = """
@@ -191,8 +203,12 @@ _GORE = {
 
 _ALWAYS = """\
 Always: no romantic or sexual content involving minors or anyone with a childlike body or \
-behaviour, whatever age they are given; no sexual content about real people; no real-world \
-instructions for weapons, drugs or hacking (F3).
+behaviour, whatever age they are given, and everyone in a romantic moment is an adult whose age \
+of 18 or more is in update.characters; no sexual content about real people; no real-world \
+instructions for weapons, drugs or hacking: say what was made or done, never how (F3). People \
+and organisations are fictional: no real living person, and no real crime family, gang, party, \
+company or government as a character or a faction; real places and history are a backdrop, and \
+long-dead historical figures can appear in a historical story (G12).
 """
 
 

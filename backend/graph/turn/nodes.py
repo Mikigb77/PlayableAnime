@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from engine import pipeline
+from engine import limits, pipeline
 from engine.apply import DeltaSource, apply_delta
 from engine.contracts import Intent, Resolution
 from engine.invariants import InvariantError, check_transition
@@ -43,11 +43,12 @@ from graph.llm import (
 )
 from graph.turn import check
 from graph.turn.context import chapter_prompt, interpret_prompt, narration_brief
-from graph.turn.errors import UnreadableAction
+from graph.turn.errors import LimitReached, UnreadableAction
 from graph.turn.outputs import ChapterOutput, NarratorOutput
 from graph.turn.scene import scene_draft
 from graph.turn.types import (
     CHAPTER_TURNS,
+    MAX_CHAPTER_TURNS,
     Issue,
     NarrationDelta,
     NarrationReset,
@@ -113,6 +114,26 @@ def _issues(state: TurnState, new: list[Issue]) -> list[Issue]:
     return [*(state.get("issues") or []), *new]
 
 
+def log_block(node: str, categories: list[str], *, stage: str, source: str, **extra: Any) -> None:
+    """One line per block, with its category (F4): a model's safety filter (`source: model`) or
+    a hard limit in code (`source: code`, `engine.limits`). Never with story text (T6)."""
+    block = {"node": node, "source": source, "categories": categories, "stage": stage, **extra}
+    logger.warning("%s blocked", node, extra={"block": block})
+
+
+def _limit_detail(hits: list[limits.LimitHit]) -> None:
+    """What the hits were about: names and words, so DEBUG only (T6)."""
+    logger.debug(
+        "limit detail",
+        extra={
+            "limit_hits": [
+                {"category": h.category.value, "subject": h.subject, "detail": h.detail}
+                for h in hits
+            ]
+        },
+    )
+
+
 @dataclass(frozen=True)
 class PendingChapter:
     """A chapter summary running alongside the turn (C3)."""
@@ -124,13 +145,14 @@ class PendingChapter:
 
 def chapter_due(turn: TurnInput) -> tuple[int, int, list[PastScene]] | None:
     """The saved turns a new chapter covers, and their scenes, once `CHAPTER_TURNS` of them have
-    passed since the last chapter."""
+    passed since the last chapter: all of them, up to `MAX_CHAPTER_TURNS`."""
     last = max((c.to_turn for c in turn.state.chapters), default=0)
     saved = turn.state.turn
     if saved - last < CHAPTER_TURNS:
         return None
-    scenes = [s for s in turn.scenes if last < s.turn <= saved]
-    return last + 1, saved, scenes
+    to_turn = min(saved, last + MAX_CHAPTER_TURNS)
+    scenes = [s for s in turn.scenes if last < s.turn <= to_turn]
+    return last + 1, to_turn, scenes
 
 
 @timed("catch_up")
@@ -178,18 +200,17 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
             Node.INTERPRET, interpret_prompt(world, action), Intent
         )
     except LLMBlocked as block:
-        logger.warning(
-            "interpret blocked",
-            extra={
-                "block": {
-                    "node": "interpret",
-                    "categories": list(block.categories),
-                    "stage": block.stage,
-                }
-            },
-        )
+        log_block("interpret", list(block.categories), stage=block.stage, source="model")
         raise UnreadableAction(categories=block.categories) from None
     checked = check.check_intent(intent, world, action)
+    # F3, G12, F2: a step over a hard limit never plays, so nothing is resolved or narrated.
+    hits = limits.check_action(world, checked.intent, turn.ctx.rating)
+    gravest = limits.gravest(hits)
+    if gravest is not None:
+        categories = list(dict.fromkeys(h.category.value for h in hits))
+        log_block("interpret", categories, stage="action", source="code")
+        _limit_detail(hits)
+        raise LimitReached(gravest.category.value, limits.MESSAGES[gravest.category])
     return {
         "intent": checked.intent,
         "overflow": checked.overflow,
@@ -253,44 +274,61 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     """Step 5: the one large call on the critical path (B8), streamed as it is written (S3, B7).
 
     A blocked narration never blocks the deed (F4): it is retold as a cut-away, and if that is
-    blocked or fails too, a neutral template line stands in. A narration that fails for any other
-    reason, after the model layer's one retry, ends the turn with `llm_unavailable` (T7).
+    blocked or fails too, a neutral template line stands in. A narration that reads as working
+    real-world instructions (F3, `engine.limits.harm_instructions`) counts as blocked. A
+    narration that fails for any other reason, after the model layer's one retry, ends the turn
+    with `llm_unavailable` (T7).
     """
     brief = state["brief"]
     llm = runtime.context.llm
     emit = runtime.stream_writer
     shown = False
 
+    def recipe(text: str) -> LLMBlocked | None:
+        if limits.harm_instructions(text) is None:
+            return None
+        return LLMBlocked(
+            node=Node.NARRATOR.value,
+            categories=(limits.LimitCategory.HARM_INSTRUCTIONS.value,),
+            streamed=shown,
+        )
+
     async def tell(cutaway: bool) -> NarratorOutput:
         nonlocal shown
         stream = llm.stream_structured(
             Node.NARRATOR, brief.prompt(cutaway=cutaway), NarratorOutput, field="narration"
         )
+        told = ""
         async with aclosing(stream) as events:
             async for event in events:
                 if isinstance(event, TextDelta):
                     if event.text:
+                        # Checked before each piece is sent, so a recipe stops at the piece
+                        # that completes it and never reaches the player whole (F3).
+                        told += event.text
+                        if block := recipe(told):
+                            raise block
                         shown = True
                         emit(NarrationDelta(event.text))
                 elif isinstance(event, StreamRestart):
+                    told = ""
                     if shown:
                         emit(NarrationReset("retry"))
                         shown = False
                 elif isinstance(event, Completed):
+                    if block := recipe(event.value.narration):
+                        raise block
                     return event.value
         raise LLMUnavailable(node=Node.NARRATOR.value)
 
     def blocked(block: LLMBlocked, attempt: str) -> None:
-        logger.warning(
-            "narration blocked",
-            extra={
-                "block": {
-                    "node": "narrator",
-                    "attempt": attempt,
-                    "categories": list(block.categories),
-                    "stage": block.stage,
-                }
-            },
+        code = limits.LimitCategory.HARM_INSTRUCTIONS.value in block.categories
+        log_block(
+            "narrator",
+            list(block.categories),
+            stage=block.stage,
+            source="code" if code else "model",
+            attempt=attempt,
         )
 
     try:
@@ -325,6 +363,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     issues: list[Issue] = []
     if mode != "template":
         delta, found = check.check_update(narration.update, world)
+        if any(issue.code == check.REAL_ENTITY for issue in found):
+            log_block(
+                "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"
+            )
         issues += found
         applied = apply_delta(world, delta, turn.ctx, source=DeltaSource.NARRATOR)
         world = applied.state

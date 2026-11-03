@@ -1,11 +1,15 @@
 from django.contrib import admin
 
 from media.models import Image, ScenePicture
+from moderation.access import StoryTextAdmin
 
 
 @admin.register(Image)
-class ImageAdmin(admin.ModelAdmin):
-    """Read-only: pictures are drawn and charged by the picture endpoints, never by hand."""
+class ImageAdmin(StoryTextAdmin, admin.ModelAdmin):
+    """Read-only: pictures are drawn and charged by the picture endpoints, never by hand. What a
+    picture shows comes from the story's text, so only staff handling reports read it (T16)."""
+
+    story_text_fields = ("brief",)
 
     list_display = ("story", "kind", "subject", "version", "status", "skip_reason", "model")
     list_filter = ("kind", "status", "skip_reason", "payer")
