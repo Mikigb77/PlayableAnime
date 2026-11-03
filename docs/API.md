@@ -315,7 +315,10 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing",
 SceneDetails {steps: [{text,                                    # the step in plain words
                        class: "certain"|"contested"|"long_shot"|"ruled_out",
                        reason,                                   # in the world's words (A8, G14)
-                       roll?: {odds_label, result: "success"|"partial"|"failure", seed}}],
+                       roll?: {odds_label, result: "success"|"partial"|"failure", seed},
+                       beats?: [{beat, thing,                    # R2: only beats that found
+                                 verdict: "made_canon"|"empty",  # something new or came up
+                                 reason, roll?}]}],              # empty; empty stopped the step
               chain?: [{link, class, reason}],                   # a cause-and-effect chain (A9)
               stopped_at_step?: int}                             # a chained plan stopped here (R6)
 

@@ -1,20 +1,24 @@
 """The scene a turn saves, in API.md's shape, built in code from what the turn decided.
 
 The narrator writes the text, the suggestions and the picture prompt. Everything else on the
-scene comes from the engine: the steps with their class, reason and roll (A2, A8), the chain
-(A9), where a plan stopped (R6), the event (W16), the picture code planned (M1) and the time.
+scene comes from the engine: the steps with their class, reason and roll (A2, A8), the beats
+that found something new or came up empty (R2), the chain (A9), where a plan stopped (R6), the
+event (W16), the picture code planned (M1) and the time.
 """
 
 from engine.contracts import (
+    BeatVerdict,
     DirectorPlan,
     PictureDecision,
     PictureKind,
     Resolution,
     StepResolution,
 )
+from engine.state.records import RollRecord
 from engine.state.world import WorldState
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import (
+    BeatDetail,
     Choice,
     LinkDetail,
     NarrationMode,
@@ -102,13 +106,31 @@ def details(resolution: Resolution) -> SceneDetails:
 
 
 def _step_detail(step: StepResolution) -> StepDetail:
-    roll = None
-    if step.roll is not None:
-        odds_label = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
-        roll = RollDetail(odds_label=odds_label, result=step.roll.result, seed=step.roll.seed)
+    beats = [
+        BeatDetail(
+            beat=beat.text,
+            thing=beat.thing,
+            verdict=beat.verdict,
+            reason=beat.reason,
+            roll=_roll_detail(beat.roll),
+        )
+        for beat in step.beats
+        if beat.verdict is not BeatVerdict.HOLDS
+    ]
     return StepDetail(
-        text=step.text, outcome_class=step.outcome_class, reason=step.reason, roll=roll
+        text=step.text,
+        outcome_class=step.outcome_class,
+        reason=step.reason,
+        roll=_roll_detail(step.roll),
+        beats=beats or None,
     )
+
+
+def _roll_detail(roll: RollRecord | None) -> RollDetail | None:
+    if roll is None:
+        return None
+    odds_label = roll.odds_label or f"{round(roll.odds * 100)}%"
+    return RollDetail(odds_label=odds_label, result=roll.result, seed=roll.seed)
 
 
 def picture(
