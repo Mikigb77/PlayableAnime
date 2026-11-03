@@ -288,6 +288,45 @@ def test_the_directors_own_events_reach_the_narrator_as_the_event_and_happenings
     assert "good-season" not in text and "plays_out_s" not in text
 
 
+def test_a_world_event_the_director_made_the_scenes_event_is_told_once():
+    state = cultivation_world()
+    raw = PendingEvent(id="e1", kind="arrival", title="GUARDS", due_s=0, needs_player=True)
+    planned = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.ARRIVAL,
+        source=EventSource.DUE,
+        source_id="e1",
+        title="GUARDS",
+        brief="The guards are at the door.",
+    )
+    text = narration_brief(
+        before=state,
+        after=state,
+        ctx=ctx(),
+        intent=None,
+        resolution=Resolution(),
+        plan=DirectorPlan(event=planned),
+        fired=[raw],
+        scenes=(),
+    ).user
+    assert text.count("GUARDS") == 1 and "FIRED" not in text
+
+
+def test_thread_choices_name_the_thread_they_follow():
+    state = cultivation_world()
+    plan = DirectorPlan(
+        suggestions=SuggestionPlan(
+            count=3,
+            kinds=[ChoiceKind.THREAD, ChoiceKind.PERSONAL, ChoiceKind.SIDE],
+            thread_id="tournament",
+        )
+    )
+    text = brief(state, plan=plan).user
+    assert '"thread":{"id":"tournament","title":"The ranking tournament"}' in text
+    off = plan.model_copy(update={"suggestions": SuggestionPlan(count=0, kinds=[])})
+    assert '"thread":{' not in brief(state, plan=off).user
+
+
 def test_no_suggestions_when_none_were_asked_for():
     narration = NarratorOutput(
         narration="x", suggestions=[SuggestionOut(label="Run", kind=ChoiceKind.THREAD)]

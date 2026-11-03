@@ -255,3 +255,20 @@ def test_a_minor_player_character_never_draws_a_romance_event():
     for story in SEEDS:
         pick = pick_event(state, ctx(), seeded(story), allowed, recent=[])
         assert Theme.ROMANCE not in pick.event.themes
+
+
+def test_a_returning_romance_thread_casts_only_adults():
+    """F3: the dormant source checks ages too, not only the deck."""
+    state = minor_nearby(farm_world())
+    state.threads["crush"] = Thread(
+        id="crush",
+        title="A crush",
+        kind=ThreadKind.ROMANCE,
+        involved_ids=["tomas", "kid", "ilse"],
+        origin=Origin(kind=OriginKind.EVENT),
+        status=ThreadStatus.DORMANT,
+        known_by=["tomas"],
+    )
+    pick = pick_event(state, ctx(30), seeded("crush"), ALL, recent=[])
+    assert pick.event.source is EventSource.THREAD and Theme.ROMANCE in pick.event.themes
+    assert pick.event.cast_ids == ["ilse"]

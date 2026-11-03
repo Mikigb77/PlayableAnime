@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine.context import TurnContext
-from engine.contracts import DirectorPlan, Intent, Resolution
+from engine.contracts import DirectorPlan, EventSource, Intent, Resolution
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
@@ -308,8 +308,18 @@ def narration_brief(
             sections.append(("ACTION", _action_view(intent)))
         sections.append(("OUTCOME", _outcome_view(resolution)))
         sections.append(("TIME", _time_view(before, after)))
-    # The director tells its own events as EVENT and HAPPENINGS (W16, E7).
-    seen = [e for e in fired if _perceived(e, after) and not e.kind.startswith("director.")]
+    # The director tells its own events, and the world's events it made the scene's event or a
+    # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
+    told = {
+        e.source_id
+        for e in (plan.event, *plan.happenings)
+        if e is not None and e.source is EventSource.DUE
+    }
+    seen = [
+        e
+        for e in fired
+        if _perceived(e, after) and not e.kind.startswith("director.") and e.id not in told
+    ]
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:
@@ -325,7 +335,11 @@ def narration_brief(
         )
     suggestions = plan.suggestions.count
     kinds = [kind.value for kind in plan.suggestions.kinds][:suggestions]
-    sections.append(("SUGGESTIONS", {"count": suggestions, "kinds": kinds}))
+    asked: dict[str, Any] = {"count": suggestions, "kinds": kinds}
+    current = after.threads.get(plan.suggestions.thread_id or "")
+    if suggestions and current is not None and "thread" in kinds:
+        asked["thread"] = {"id": current.id, "title": current.title}  # what thread choices follow
+    sections.append(("SUGGESTIONS", asked))
     if plan.picture is not None:
         subject = plan.picture.subject_id
         sections.append(

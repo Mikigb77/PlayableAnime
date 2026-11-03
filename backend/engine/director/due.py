@@ -159,3 +159,19 @@ def open_playouts(state: WorldState) -> list[PendingEvent]:
         ),
         key=lambda e: (e.due_s, natural_key(e.id)),
     )
+
+
+def unreached_rolls(state: WorldState) -> list[PendingEvent]:
+    """Events rolled for a time skip that the clock never reached, because something earlier cut
+    the stretch short. They belong to time that was never lived, so they never happen (E7)."""
+    return sorted(
+        (
+            e
+            for e in state.pending_events.values()
+            if e.kind == MONTAGE_KIND
+            and e.status is EventStatus.PENDING
+            and e.timeline_id == state.timeline_id
+            and e.due_s > state.world_s
+        ),
+        key=lambda e: (e.due_s, natural_key(e.id)),
+    )

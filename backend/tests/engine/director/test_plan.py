@@ -225,3 +225,64 @@ def test_the_first_turn_after_a_skip_lands_starts_on_the_event_it_stopped_at():
             assert played.plan.event.plays_out_s is not None
             stops += 1
     assert stops >= len(SEEDS) // 2  # in a year, the Esposito family's plans reach Luca
+
+
+def test_events_rolled_for_time_that_was_never_lived_never_happen():
+    """E7: a skip cut short by something earlier leaves its later rolls behind; they are dropped."""
+    story = next(  # the first seed whose year holds something
+        s
+        for s in (f"roll-{i}" for i in range(50))
+        if schedule_stretch(farm_world(), 0, YEAR, ctx(2, story=s), rng(s)).pending_events
+    )
+    rolled = schedule_stretch(farm_world(), 0, YEAR, ctx(2, story=story), rng(story))
+    later = [e for e in rolled.pending_events.values() if e.kind == MONTAGE_KIND]
+    # Something stopped the clock on day two, before any of them.
+    rolled.world_s = 2 * DAY
+    for event in later:
+        event.due_s = max(event.due_s, 3 * DAY)
+    context = ctx(2, story=story)
+    resolution = pipeline.resolve(rolled, farming(), context, rng(story))
+    plan = pipeline.direct(rolled, resolution, context, rng(story), intent=farming())
+    assert set(plan.updates.cancel_ids) >= {e.id for e in later}
+    after = pipeline.record_direction(rolled, plan, context)
+    assert {after.pending_events[e.id].status for e in later} == {EventStatus.CANCELLED}
+
+
+def two_decisions_due(state):
+    """A world event that needs the player and a rolled event that needs a decision, both due."""
+    from engine.director.deck import CARDS
+    from engine.director.due import pick_payload
+    from engine.director.sources import from_card
+
+    state.world_s = DAY
+    state.pending_events["guards"] = PendingEvent(
+        id="guards", kind="arrival", title="The bailiff comes", due_s=DAY, needs_player=True
+    )
+    pick = from_card(state, CARDS["nature-turns"], rng())
+    state.pending_events["director-event-1"] = PendingEvent(
+        id="director-event-1",
+        kind=MONTAGE_KIND,
+        title=pick.event.title,
+        due_s=DAY,
+        payload={"pick": pick_payload(pick)},
+    )
+    return state
+
+
+def test_a_second_event_needing_a_decision_waits_for_the_next_scene():
+    """One decision at a time: the other one is neither lost nor told as settled (W16, E2)."""
+    state = two_decisions_due(farm_world())
+    first = play_turn(state, 2, act("Look up", "look", ActionKind.INSTANT, 2))
+    assert first.plan.event is not None and first.plan.event.title == "The bailiff comes"
+    assert first.plan.happenings == []
+    waiting = [
+        e
+        for e in first.state.pending_events.values()
+        if e.kind == MONTAGE_KIND and e.status is EventStatus.PENDING
+    ]
+    assert len(waiting) == 1 and waiting[0].due_s == first.state.world_s
+
+    second = play_turn(first.state, 3, act("Look up", "look", ActionKind.INSTANT, 2))
+    assert second.plan.event is not None and second.plan.event.needs_decision
+    assert second.plan.event.title == waiting[0].title
+    assert second.plan.event.thread_id in second.state.threads

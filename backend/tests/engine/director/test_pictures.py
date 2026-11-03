@@ -174,6 +174,13 @@ def test_a_local_or_world_event_is_pictured_and_a_personal_one_is_not():
     assert picture(state, 2, event=event(EventSize.PERSONAL)) is None
     decision = picture(state, 3, event=event(EventSize.LOCAL))
     assert decision.trigger is PictureTrigger.EVENT and decision.subject_id == "thread-1"
+    # A world event that came due has a pending event behind it, which is no subject to draw.
+    world = event(EventSize.LOCAL).model_copy(
+        update={"thread_id": None, "source": EventSource.DUE, "source_id": "event-7"}
+    )
+    state.director.picture_credit = 1
+    decision = picture(state, 4, event=world)
+    assert decision.trigger is PictureTrigger.EVENT and decision.subject_id is None
 
 
 def test_a_place_that_changed_for_good_is_pictured_again_once():

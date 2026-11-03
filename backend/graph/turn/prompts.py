@@ -97,7 +97,8 @@ you.
 
 suggestions (S2): exactly the number SUGGESTIONS asks for, of the kinds it lists, each a short \
 action of at most 12 words, meaningfully different, with at least one away from the current \
-thread. Never suggest waiting or observing: those are always offered.
+thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. Never \
+suggest waiting or observing: those are always offered.
 
 image_prompt (M1): only when PICTURE is given, one or two sentences describing the picture's \
 subject and composition, true to the characters' appearance. Otherwise null.

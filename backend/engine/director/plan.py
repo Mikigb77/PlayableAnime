@@ -25,7 +25,16 @@ from engine.contracts.direction import (
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
 from engine.director import rules
-from engine.director.due import PLAYS_OUT_KIND, came_due, open_playouts, playout_event, world_event
+from engine.director.due import (
+    MONTAGE_KIND,
+    PLAYS_OUT_KIND,
+    came_due,
+    open_playouts,
+    pick_payload,
+    playout_event,
+    unreached_rolls,
+    world_event,
+)
 from engine.director.goals import expired_leads, player_goals
 from engine.director.ids import IdProbe
 from engine.director.pictures import decide_picture
@@ -128,6 +137,28 @@ def _open_event(
     return event
 
 
+def _defer(
+    state: WorldState, ctx: TurnContext, pick: Pick, ids: IdProbe, updates: DirectorUpdates
+) -> None:
+    """A second event needing a decision in one turn waits for the next scene, rather than being
+    told as settled: it comes due again at once, and the next turn opens it (W16, E2)."""
+    updates.schedule.append(
+        PendingEvent(
+            id=ids.new("director-event"),
+            kind=MONTAGE_KIND,
+            title=pick.event.title,
+            due_s=state.world_s,
+            timeline_id=state.timeline_id,
+            subject_ids=list(pick.event.cast_ids),
+            place_id=pick.event.place_id,
+            origin=Origin(kind=OriginKind.ENGINE, text="W16: waits for the next scene"),
+            payload={"pick": pick_payload(pick)},
+            created_turn=ctx.turn,
+            created_s=state.world_s,
+        )
+    )
+
+
 def direct(
     state: WorldState,
     resolution: Resolution,
@@ -155,13 +186,17 @@ def direct(
         if event is None:
             event = planned
         else:
-            happenings.append(planned)
+            # One decision at a time: a second one waits for the next scene (E2 still holds).
+            window = rules.SOURCE_WINDOW_S[planned.size.value]
+            _defer(state, ctx, Pick(planned, f"due:{pending.id}", window, True), ids, updates)
     for _pending, pick in due.rolled:
-        if pick.event.needs_decision and event is None:
+        if not pick.event.needs_decision:
+            happenings.append(pick.event)
+        elif event is None:
             event = _open_event(state, ctx, pick, ids, updates)
             recent.append(pick.key)
         else:
-            happenings.append(pick.event)
+            _defer(state, ctx, pick, ids, updates)
     for pending in due.plays_out:
         if _taken_up(pending, facts):
             # Taken up by the very action it would have played out during: it never happens.
@@ -179,10 +214,12 @@ def direct(
         else:
             happenings.append(planned)
 
-    # 2. Events still waiting for the player that they took up this turn stop waiting.
+    # 2. Events still waiting for the player that they took up this turn stop waiting, and events
+    # rolled for a stretch the clock never reached (something cut it short) never happen.
     for pending in open_playouts(state):
         if _taken_up(pending, facts):
             updates.cancel_ids.append(pending.id)
+    updates.cancel_ids.extend(e.id for e in unreached_rolls(state))
     updates.applied_ids = [i for i in updates.applied_ids if i not in updates.cancel_ids]
 
     # 3. Something new, if it's time (W16). Never during an encounter or on the opening scene.

@@ -256,10 +256,14 @@ def _dormant_thread(
     thread = rng.weighted(candidates, weights)
     known = state.player_id in thread.known_by
     size = EventSize.LOCAL if thread.kind is ThreadKind.THREAT else EventSize.PERSONAL
+    romance = Theme.ROMANCE in thread_themes(thread)
     cast = [
         i
         for i in thread.involved_ids
-        if i != state.player_id and i in state.characters and state.characters[i].alive
+        if i != state.player_id
+        and i in state.characters
+        and state.characters[i].alive
+        and (not romance or is_adult(state.characters[i].age))  # F3
     ][:2]
     return Pick(
         event=PlannedEvent(

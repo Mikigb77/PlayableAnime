@@ -237,7 +237,7 @@ def candidates(
             Candidate(
                 PictureTrigger.EVENT,
                 PictureKind.SCENE,
-                event.thread_id or event.source_id,
+                event.thread_id,  # a world event's source is a pending event, not a subject
                 f"{event.title} arrives.",
                 SCENE,
             )

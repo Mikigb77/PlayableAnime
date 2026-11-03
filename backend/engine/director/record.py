@@ -1,9 +1,10 @@
 """`record`: write a director plan's updates into the state (`pipeline.record_direction`).
 
-Mechanical on purpose: every decision was made in `direct`. Call it once per turn, after `direct`
-and before saving. The plan's ids for new records are provisional: one already taken by the time
-the plan is recorded (by the narrator's own lead, say) gets a fresh id, and the plan's references
-to it follow, so a plan never overwrites a record.
+Mechanical on purpose: every decision was made in `direct`. Call it once per turn, right after
+`direct` and before anything else changes the state (the turn graph does), so the plan's
+provisional ids are still free and the plan the narrator sees names the records as saved. If one
+was taken anyway, it gets a fresh id and the references inside the updates follow it, so a plan
+never overwrites a record; the plan's own fields (its event's thread, say) keep the old id.
 """
 
 import re
