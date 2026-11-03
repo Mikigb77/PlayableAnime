@@ -93,7 +93,9 @@ The code is in `backend/accounts/`.
   password, because someone may have signed up first with an address they don't own.
 - **Brute force (`accounts/throttle.py`).** Fixed-window counters in Postgres, so they hold across
   Cloud Run instances: 10 wrong passwords per email and 100 per address in 15 minutes, and 10
-  sign-up attempts per address per hour. Keys are HMACs, so the table holds no emails or addresses. The
+  new accounts per address per hour. Each attempt is counted before it runs, in one atomic
+  upsert, so parallel guesses can't all slip under a limit, and a correct password or a sign-up
+  that fails validation is handed back. Keys are HMACs, so the table holds no emails or addresses. The
   address is the `X-Forwarded-For` entry `TRUSTED_PROXY_HOPS` from the right (1 on Cloud Run, where
   Google's front end appends the address it saw). Per-user rate limits on the rest of the API are
   T9's, in `billing/`.
@@ -216,12 +218,94 @@ a new one.
   state back during a rolling deploy. Bump `SCHEMA_VERSION` when a field is removed or changes
   meaning.
 
+## Model layer
+
+`backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with
+no Django imports (B4), and importing it loads no model SDK: LangChain and google-genai load on the
+first real call (B10). Today's one-call narrator in `backend/legacy/` still serves the legacy
+endpoints until the turn graph replaces it (WS3's PR 2 and 3).
+
+```python
+telemetry = TurnTelemetry()
+llm = build_client(rating=story.rating, byok=parse_byok(provider_header, key_header),
+                   recorder=telemetry)
+intent = await llm.structured(Node.INTERPRET, Prompt.build(system, action), Intent)
+async with aclosing(llm.stream_structured(Node.NARRATOR, prompt, NarratorOutput,
+                                          field="narration")) as events:
+    async for event in events:  # TextDelta, StreamRestart, then Completed(value)
+        ...
+picture = await llm.image(Node.PICTURE, Prompt.build(style, scene, images=portraits))
+```
+
+**Nodes and models (B6, B8).** Each node has a model and defaults in `graph/llm/config.py`,
+overridable with `<NODE>_MODEL` and `<NODE>_THINKING`, read like Django's settings from the
+environment, `backend/.env` and the repo-root `.env.local`:
+
+| Node | Default model | Price per 1M tokens in / out | Why |
+| --- | --- | --- | --- |
+| `narrator` | `gemini-3.5-flash`, thinking `low` | $1.50 / $9.00 | The one large call on the critical path. Low thinking keeps the first words under 2 s (S3). |
+| `interpret` | `gemini-3.5-flash-lite`, thinking `low` | $0.30 / $2.50 | Cheap, but it reasons about cause and effect (A9), so the graph can raise its thinking for a turn that rests on a chain. |
+| `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
+| `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
+| `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+
+Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
+`graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
+the estimate never undercounts. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
+
+**Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
+with `vertexai=True` and Application Default Credentials (B11). `langchain-google-vertexai`'s
+`ChatVertexAI` was deprecated in 3.2.0 in favour of this class, so we use it directly. Every node
+shares one google-genai client (and its connections) per event loop, or per request for a player's
+key. `LLM_PROVIDER=fake` (the default) is the offline model,
+which answers any schema with placeholder values. Don't set `GOOGLE_API_KEY` or `LANGSMITH_TRACING`
+on the service: the first changes which credentials LangChain picks, the second would send prompts
+to LangSmith.
+
+**Calls.** Every call streams from the backend, so blocks and usage look the same everywhere. The
+client gives each attempt the node's deadline, counting only time spent waiting on the model and
+never the caller's time between chunks, retries a transient failure (timeout, 408, 429, 499, 5xx, a
+cut-off or unparseable answer) once, and otherwise raises a typed error with the API's code: `LLMUnavailable`
+(`llm_unavailable`), `LLMBlocked` (`blocked`, with the categories and whether the prompt or the
+response was blocked) or `BadKey` (`bad_key`, only for a player's key). A safety block is never
+retried blindly: the graph retells a blocked narration as a cut-away, then a template line (F4),
+and turns a blocked interpret step into `unreadable_action`.
+
+**Streaming the narration (S3, B7).** The narrator returns one JSON object, and
+`stream_structured` streams the decoded text of its `narration` field as it is written, with
+`graph/llm/jsonstream.py`. The full JSON is still validated at the end. If an attempt fails after
+text was shown, the client yields `StreamRestart` before retrying, which the turn endpoint sends as
+`narration.reset` with reason `retry` ([API.md](API.md)).
+
+**Safety settings (F5).** `graph/llm/safety.py` holds the table and the reasons behind it:
+harassment off in Mature; hate speech, dangerous content and, in Mature, sexual content filtered
+only at high probability as backstops for G12, F3 and the fade-out rule; Teen filters sexual
+content from medium; pictures filter from medium, and sexual content from low (M6). WS16 tunes it
+against T15's content-line evals.
+
+**Telemetry (T5).** Each call leaves one `CallRecord` (node, model, provider, BYOK or not, outcome,
+tokens in, out and thinking, pictures, latency, time to first text, attempts, retry reasons,
+blocks with categories, estimated cost) with the request's `TurnTelemetry`. The turn endpoint logs
+`summary()` as the turn's T5 line. `cost_usd` is always the raw cost, and billing charges the
+calls made on our own account (`billable_cost_usd`; BYOK calls are free, K6) plus its margin (K2). Records hold
+no prompt or story text, and a `Prompt`'s repr shows only its size (T6).
+
+**Tests** script the fake per node: `FakeBackend().script(Node.NARRATOR, Fail(), Reply(json=...))`
+for a failure and its retry, `Block(after_text=...)` for a block mid-stream, `Hang()` for a
+timeout. `tests/graph/test_gemini.py` runs the real LangChain model with google-genai's network
+call replaced, to check the Gemini translation: messages, safety settings, blocks, usage, errors.
+
 ## Bring your own key
 
 - The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and
   `X-LLM-Api-Key`.
-- The backend uses the key for that request only. It must never be persisted or logged.
-- Only `gemini` is supported for now (same SDK, `genai.Client(api_key=...)`).
+- `graph.llm.parse_byok` wraps it in a `ByokKey` whose repr is masked and which refuses to be
+  pickled, and `build_client` makes a Gemini API client for that request only, never cached. It is
+  never persisted or logged, and error details are scrubbed of it.
+- The client's base URL is pinned to `generativelanguage.googleapis.com`, so no environment
+  variable (such as LangChain's `LANGSMITH_GATEWAY`) can route a player's key anywhere else.
+- Only `gemini` is supported for now. A rejected key is `bad_key`, never retried.
 
 ## Voice input
 
@@ -284,8 +368,10 @@ Plan:
 1. The turn response says whether a picture is planned for the scene (M1). The app shows the text
    first, then calls an image endpoint for that scene, which generates the picture, stores it and
    returns its URL (M3). This keeps the work inside a request, as B8 requires.
-2. Pictures go to a private Cloud Storage bucket in `europe-west3`, served through short-lived signed
-   URLs, keyed by character, place or scene, and reused (M4).
+2. Pictures go to the private Cloud Storage bucket `gs://playable-anime-pictures` in `europe-west3`,
+   served through short-lived signed URLs that the runtime account signs without a key
+   ([DEPLOY.md](DEPLOY.md#signed-urls-without-a-key)), keyed by character, place or scene, and reused
+   (M4).
 3. A scene with known characters passes their portraits as reference images, so faces stay the same
    (M5).
 4. The model is set in config per use (portrait, place, scene, cover), so it can change as prices and
@@ -297,12 +383,18 @@ Plan:
 | --- | --- |
 | Project | `playable-anime` (number 528988811295), owned by tech.garbar@gmail.com, billing on |
 | gcloud configuration | `playable-anime` (not the active one; use `--configuration=playable-anime`) |
-| Region | `europe-southwest1` (Madrid) for Cloud Run; Vertex AI on the `global` endpoint |
-| APIs enabled | Cloud Run, Artifact Registry, Cloud Build, Secret Manager, Vertex AI, IAM |
-| Runtime service account | `playable-anime-api@playable-anime.iam.gserviceaccount.com` with `aiplatform.user`, `secretmanager.secretAccessor`, `logging.logWriter` |
+| Region | `europe-west3` (Frankfurt), next to Neon, for Cloud Run, Artifact Registry, Secret Manager and the pictures bucket (T1); Vertex AI on the `global` endpoint |
+| APIs enabled | Cloud Run, Artifact Registry, Cloud Build, Secret Manager, Vertex AI, IAM; `infra/bootstrap.sh` enables the rest the deploy needs |
+| Runtime service account | `playable-anime-api@playable-anime.iam.gserviceaccount.com` with `aiplatform.user`, `secretmanager.secretAccessor`, `logging.logWriter`; the bootstrap adds access to each secret and to the pictures bucket, and lets it sign URLs as itself |
 | Default narrator model | `gemini-3.5-flash` (checked working on 2026-11-03) |
+| API service | Cloud Run `playable-anime-api`, 0 to 3 instances, 300 s timeout, startup CPU boost, at `https://playable-anime-api-528988811295.europe-west3.run.app` once deployed |
+| Images | Artifact Registry `europe-west3-docker.pkg.dev/playable-anime/playable-anime/api` |
+| Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` in Secret Manager (T11) |
+| Pictures | `gs://playable-anime-pictures`, private (M4) |
+| Deploys | `.github/workflows/deploy.yml`, started by hand on `main`, signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11) |
+| Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
 
-Deploying is described in [backend/README.md](../backend/README.md#deploy-to-cloud-run).
+Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 **Don't deploy publicly before rate limits and quotas (T9) exist alongside sign-in (T8):** an open
 endpoint lets anyone spend our Vertex budget.
 
@@ -336,15 +428,12 @@ them deletes production data, so it waits for Miki.
 1. Run `neon checkout <feature> --create` (this repoints `.env.local`).
 2. Run `uv run python manage.py migrate --database direct` in `backend/`, then test.
 3. Run `neon diff` to review schema changes.
-4. After merging, run `neon checkout production` and migrate again.
+4. After merging, don't migrate `production` by hand: the deploy workflow migrates it before each
+   deploy ([DEPLOY.md](DEPLOY.md#deploying)).
 
-**Latency.** The database is in Frankfurt. Deploying Cloud Run to `europe-west3` (Frankfurt) instead
-of `europe-southwest1` (Madrid) would avoid a cross-region hop on every query.
+**Latency.** The database is in Frankfurt, and so is Cloud Run (`europe-west3`), so queries never
+cross regions (T1).
 
-**Cloud Run.** Store the pooled URL in Secret Manager and mount it as an env var:
-
-```bash
-gcloud secrets create database-url --replication-policy=automatic --data-file=- --configuration=playable-anime
-```
-
-Then deploy with `--set-secrets=DATABASE_URL=database-url:latest`.
+**Cloud Run.** `infra/bootstrap.sh` stores the production branch's pooled URL as the secret
+`database-url` and its direct URL as `database-url-direct`. The service gets the pooled one and the
+migration job the direct one, both as `DATABASE_URL` ([DEPLOY.md](DEPLOY.md#what-the-container-gets)).

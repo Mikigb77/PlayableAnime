@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# A stand-in for gh in the infra tests. Each call prints the next line of $FAKE_GH_RESPONSES, and
+# the last line again once only one is left.
+set -euo pipefail
+responses="${FAKE_GH_RESPONSES:?FAKE_GH_RESPONSES is not set}"
+printf '%s\n' "$*" >>"${responses}.calls"
+line="$(head -n 1 "$responses")"
+if [ "$(wc -l <"$responses")" -gt 1 ]; then
+  tail -n +2 "$responses" >"$responses.next"
+  mv "$responses.next" "$responses"
+fi
+if [ "$line" = "!fail" ]; then
+  echo "gh: HTTP 502 (fake)" >&2
+  exit 1
+fi
+printf '%s\n' "$line"

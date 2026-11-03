@@ -56,7 +56,7 @@ first time you tap the mic, and typing always works.
 
 | Service | What it does | Where |
 | --- | --- | --- |
-| Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures and logs | EU: Madrid (server) and Frankfurt (pictures) |
+| Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures and logs | EU: Frankfurt |
 | Google Cloud: Vertex AI (Gemini) | Writes the story and draws the pictures. Google doesn't use this data to train its models | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
 | Neon | Hosts the database | Frankfurt (AWS eu-central-1) |
 | Google Sign-In | Confirms who you are when you sign in with Google | Google |

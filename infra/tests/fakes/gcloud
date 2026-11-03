@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# A stand-in for gcloud in the infra tests. It logs every call to $FAKE_STATE/calls.log and keeps
+# just enough state to show whether the scripts create each thing once and re-run cleanly.
+set -euo pipefail
+
+state="${FAKE_STATE:?FAKE_STATE is not set}"
+mkdir -p "$state/res"
+{
+  printf 'gcloud'
+  for arg in "$@"; do printf ' %q' "$arg"; done
+  printf '\n'
+} >>"$state/calls.log"
+
+positional=()
+format=''
+display_name=''
+for arg in "$@"; do
+  case "$arg" in
+    --format=*) format="${arg#--format=}" ;;
+    --display-name=*) display_name="${arg#--display-name=}" ;;
+    --env-vars-file=*) cp "${arg#--env-vars-file=}" "$state/last-env.yaml" ;;
+    -*) ;;
+    *) positional+=("$arg") ;;
+  esac
+done
+
+verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding get-value "
+group=''
+verb=''
+resource=''
+for i in "${!positional[@]}"; do
+  word="${positional[$i]}"
+  if [[ "$verbs" == *" $word "* ]]; then
+    verb="$word"
+    resource="${positional[$((i + 1))]:-}"
+    break
+  fi
+  group="${group:+$group }$word"
+done
+resource="${resource%%@*}"
+resource="${resource#gs://}"
+if [[ "$group" == "billing budgets" && "$verb" == create ]]; then
+  resource="$display_name"
+fi
+if [[ "$group" == run && "$verb" == deploy ]]; then
+  group="run services"
+fi
+key="$(printf '%s %s' "$group" "$resource" | tr ' /' '__')"
+exists() { [[ -e "$state/res/$key" ]]; }
+
+service_url="https://playable-anime-api-abc123xyz-ey.a.run.app"
+
+case "$group/$verb" in
+  "config/get-value") echo "miki@example.com" ;;
+  "config configurations/describe") [[ -n "${FAKE_HAS_CONFIGURATION:-}" ]] ;;
+  "projects/describe") echo "528988811295" ;;
+  "billing projects/describe") echo "billingAccounts/000000-AAAAAA-BBBBBB" ;;
+  "billing budgets/list")
+    if compgen -G "$state/res/billing_budgets_*" >/dev/null; then
+      echo "billingAccounts/000000-AAAAAA-BBBBBB/budgets/budget-1"
+    fi
+    ;;
+  "secrets versions/add")
+    cat >"$state/secret-$resource"
+    touch "$state/res/$key"
+    ;;
+  "secrets versions/list")
+    [[ -z "${FAKE_FAIL_SECRET_LIST:-}" ]] || exit 1
+    if exists; then echo 1; fi
+    ;;
+  "run services/deploy")
+    [[ -z "${FAKE_FAIL_DEPLOY:-}" ]] || exit 1
+    touch "$state/res/$key"
+    echo $(($(cat "$state/deploys" 2>/dev/null || echo 0) + 1)) >"$state/deploys"
+    ;;
+  "run jobs/deploy") touch "$state/res/$key" ;;
+  "run jobs/execute") [[ -z "${FAKE_FAIL_MIGRATION:-}" ]] ;;
+  "run services/describe")
+    exists || exit 1
+    [[ "$format" == json ]] || exit 2
+    revision="playable-anime-api-0000$(cat "$state/deploys" 2>/dev/null || echo 0)-abc"
+    traffic="{\"revisionName\": \"$revision\", \"percent\": 100, \"latestRevision\": true}"
+    if [[ -n "${FAKE_TRAFFIC_SPLIT:-}" ]]; then
+      # A tagged preview listed first with no traffic, then a 30/70 split.
+      traffic="{\"revisionName\": \"preview-rev\", \"tag\": \"preview\"},
+        {\"revisionName\": \"minor-rev\", \"percent\": 30},
+        {\"revisionName\": \"major-rev\", \"percent\": 70}"
+    fi
+    cat <<JSON
+{
+  "metadata": {"annotations": {"run.googleapis.com/urls":
+    "[\"$service_url\",\"https://playable-anime-api-528988811295.europe-west3.run.app\"]"}},
+  "status": {"url": "$service_url", "latestReadyRevisionName": "$revision",
+    "traffic": [$traffic]}
+}
+JSON
+    ;;
+  */create | */create-oidc)
+    if exists; then
+      echo "ERROR: (fake) $group $resource already exists" >&2
+      exit 1
+    fi
+    touch "$state/res/$key"
+    ;;
+  */describe)
+    exists || exit 1
+    case "$format" in
+      *state*) if [[ -n "${FAKE_DELETED:-}" ]]; then echo DELETED; else echo ACTIVE; fi ;;
+      *) echo "$resource" ;;
+    esac
+    ;;
+  *) ;;
+esac

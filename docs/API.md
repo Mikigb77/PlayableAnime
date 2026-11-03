@@ -40,6 +40,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
   | 500 | `internal_error` | A bug on our side. It is logged with its traceback for Error Reporting, and the message never shows internals. |
   | 503 | `llm_unavailable` | The model failed twice (one retry, T7). Nothing was saved. |
+  | 503 | `sign_in_unavailable` | Google sign-in can't be checked right now (Google unreachable, or not configured yet). Email sign-in still works. |
 
 - **Request ids (T4):** every response carries an `X-Request-Id` header, the id on the server's log
   lines for that request. The app may send its own (up to 64 letters, digits, `.`, `_` or `-`), and
@@ -85,7 +86,9 @@ charge so T5's numbers stay honest.
   clients and sends it once; the server checks it and from then on only our own tokens are used.
   A first sign-in without `birth_date` gets `400 birth_date_required`, and the app asks for the
   date and sends the same request again with it (an ID token lasts an hour). A Google account whose
-  email Google hasn't verified gets `403 forbidden`. If an email and password account already has
+  email Google hasn't verified gets `403 forbidden`. When Google can't be reached, or Google
+  sign-in isn't configured yet, the answer is `503 sign_in_unavailable`: try again later or use
+  email. If an email and password account already has
   that email, the Google sign-in takes it over: Google vouches for the email and nobody verified
   the password, so the password stops working and that account's devices are signed out. An
   account already tied to a different Google account answers `403 forbidden`.
@@ -96,7 +99,7 @@ charge so T5's numbers stay honest.
   (`future`, `implausible`, `too_young`). Login answers `401 unauthenticated` with the same message
   for a wrong password and an unknown email. After 10 failures for one email in 15 minutes, or 100
   from one address, login answers `429 rate_limited` until the window ends; so does register after
-  10 attempts from one address in an hour.
+  10 new accounts from one address in an hour (attempts that fail validation don't count).
 - **Ages (F8).** The youngest age that can sign up is the `MIN_SIGNUP_AGE` setting (13). Under 17,
   `max_rating` is `teen`, and it becomes `mature` on the 17th birthday with nothing to update. A
   story whose rating is above the account's `max_rating` answers `403 forbidden`.
@@ -105,8 +108,9 @@ charge so T5's numbers stay honest.
 - **Tokens.** `expires_in` is the access token's lifetime in seconds (900). A refresh token is good
   for one refresh within 30 days and is replaced by the one in the response, so the app keeps only
   the newest. The app should refresh one request at a time: sending a spent refresh token again
-  within 60 seconds still works (a retry after a lost response), but later it signs that device out,
-  because two holders of one token means one of them stole it. `/v1/auth/refresh` answers
+  within 60 seconds still works (a retry after a lost response) and spends the token the lost
+  response carried, but later it signs that device out, because two holders of one token means one
+  of them stole it. `/v1/auth/refresh` answers
   `401 unauthenticated` when the session is over, and the app then signs out. Logout takes the
   refresh token, needs no access token and is safe to repeat.
 - **Other people's stories (S8).** A story that exists but belongs to someone else answers
@@ -223,7 +227,7 @@ stream starts and come back as ordinary JSON errors. Once the server answers `20
 | --- | --- | --- |
 | `turn.started` | `{turn}` | Sent at once, so the app can show the action and a typing state. |
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
-| `narration.reset` | `{reason: "cutaway"|"template"}` | The narration was blocked and is being rewritten (F4). The app clears the partial text. |
+| `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
 | `error` | `{code, message}` | The turn failed after streaming began (`llm_unavailable`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry. |
 

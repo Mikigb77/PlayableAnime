@@ -54,8 +54,8 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `LOG_LEVEL` | `INFO` | `DEBUG` logs story text and SQL, so never in production (T6). |
 | `LLM_PROVIDER` | `fake` | `vertex` or `fake`. |
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
-| `NARRATOR_MODEL` | `gemini-3.5-flash` | The legacy narrator's model. WS3 adds one per graph node (B6). |
-| `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off. Not secrets. |
+| `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
+| `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |
 | `OWNER_EMAILS` | `mikigb77@gmail.com` | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). |
 | `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
 | `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
@@ -166,6 +166,8 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   access.py       owned_story(): the caller's story, within their rating limit (S8, F8)
   export.py       Stories as plain data for the account export
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
+graph/            Model calls and the turn graph, with no Django imports (B4)
+  llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
 engine/           The rules engine, plain Python with no web or model imports (B4)
   state/          World state models (C2): bible, cast, sheets, records
@@ -189,5 +191,6 @@ them.
 
 Not deployed yet. Nothing goes public before rate limits and quotas (T9) join sign-in (T8). The image serves
 `uvicorn lucid.asgi:application --host 0.0.0.0 --port $PORT`; before each deploy, run
-`python manage.py migrate` from the same image with `DATABASE_URL` set to Neon's direct URL. WS5
-prepares the Cloud Run, Secret Manager and migration job setup in `infra/`.
+`python manage.py migrate` from the same image with `DATABASE_URL` set to Neon's direct URL. The
+pipeline that does both, its one-time setup, costs and rollback are in
+[docs/DEPLOY.md](../docs/DEPLOY.md).
