@@ -487,6 +487,11 @@ starter premises.
   (the Naples vendetta), science fiction and a hidden supernatural city (S1).
 - **Done when** drafting runs on the fake model in tests, hidden parts never leak into the response,
   and each starter premise drafts into a bible that respects its genre's fixed rules.
+- **Landed.** `graph.drafting` (`chain.create`, `chain.revise`, `chain.plan_edit` and
+  `chain.finish_edit`, `assemble`, `view`, the starter `catalog`) and the `drafts` app. Start saves a
+  graph story at turn 0 and version 1 with no scenes, `scene.ended_on` holding the opening moment,
+  and clocks with `next_step_s` but no pending events. `/v1/premises` moved from `stories` to
+  `drafts`, and drafting is metered with `meter.DRAFT`.
 
 ### WS13 App: sign-in, onboarding and account (wave 2c, after WS4)
 

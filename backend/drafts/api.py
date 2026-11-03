@@ -1,0 +1,305 @@
+"""`/v1/premises` and `/v1/drafts` (docs/API.md, G1, G2, S1, A1, S6, G7, G22).
+
+A draft is drafted, revised and edited by `graph.drafting`, saved as inputs only, and shown through
+`graph.drafting.view`, which writes the summary from the world's public parts. No response carries
+the draft's hidden truth: mystery answers and clues, secrets, agendas, faction plans, a body's
+forgotten past, or anyone the character doesn't know (N7, C6).
+"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from datetime import datetime
+from typing import Literal, Self
+
+from ninja import Field, Router, Schema, Status
+from pydantic import model_validator
+
+from drafts import service
+from drafts.models import Difficulty, Draft, EventFrequency
+from engine.context import ImageSetting, NarrationLength
+from engine.state import GiftStrength, PhysicsMode, WorldState
+from graph.drafting import chain
+from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
+from lucid import logs
+from lucid.errors import field_error
+
+premises_router = Router(tags=["premises"])
+drafts_router = Router(tags=["drafts"])
+
+RatingIn = Literal["teen", "mature"]
+PhysicsIn = Literal["fun_first", "strict"]
+GiftIn = Literal["none", "small", "rare", "overpowered"]
+DifficultyIn = Literal["story", "balanced", "brutal"]
+FrequencyIn = Literal["calm", "normal", "dramatic"]
+
+MAX_LINES = 20
+MAX_RULES = 12
+
+
+# Starter premises (S1).
+
+
+class PremiseOut(Schema):
+    id: str
+    title: str
+    genre: str
+    tagline: str
+    premise: str
+    flagship: bool
+    cover_url: str | None = None
+
+
+@premises_router.get("", response=list[PremiseOut])
+async def list_premises(request) -> list[dict]:
+    """Flagship genres first, then the rest (S1)."""
+    return [premise.public() for premise in STARTER_PREMISES]
+
+
+# Drafts.
+
+
+class RuleIn(Schema):
+    """A rule as the player set it. Without an id, it is a new rule."""
+
+    id: str | None = Field(default=None, max_length=64)
+    text: str = Field(min_length=1, max_length=300)
+    fixed: bool = True
+
+
+class AdvancedIn(Schema):
+    """The advanced fields, hidden by default in the app (G1). Fields not sent stay as they are."""
+
+    physics: PhysicsIn | None = None
+    rules: list[RuleIn] | None = Field(default=None, max_length=MAX_RULES)
+    gift_strength: GiftIn | None = None
+    difficulty: DifficultyIn | None = None
+    event_frequency: FrequencyIn | None = None
+
+
+class CreateDraftIn(Schema):
+    """`premise` may be left out when `premise_id` names a starter premise (S1)."""
+
+    premise: str | None = Field(default=None, min_length=10, max_length=4000)
+    premise_id: str | None = Field(default=None, max_length=64)
+    rating: RatingIn
+    advanced: AdvancedIn | None = None
+
+    @model_validator(mode="after")
+    def _premise_given(self) -> Self:
+        if self.premise is None and self.premise_id is None:
+            raise ValueError("Send a premise, or the id of a starter premise")
+        return self
+
+
+class PatchDraftIn(Schema):
+    """Direct edits (G1, G2). `expected_version` refuses an edit made on a stale copy (T10)."""
+
+    world_lines: list[str] | None = Field(default=None, max_length=MAX_LINES)
+    character_lines: list[str] | None = Field(default=None, max_length=MAX_LINES)
+    advanced: AdvancedIn | None = None
+    rating: RatingIn | None = None
+    expected_version: int | None = None
+
+
+class ReviseIn(Schema):
+    """A change in plain words, such as "add hidden vampires" (G1, G2)."""
+
+    target: Literal["world", "character"]
+    instruction: str = Field(min_length=1, max_length=1000)
+    expected_version: int | None = None
+
+
+class StartSettingsIn(Schema):
+    """`StorySettings` (S6); fields not sent take the draft's choices, then the defaults."""
+
+    narration_length: NarrationLength | None = None
+    tone: str | None = Field(default=None, max_length=200)
+    difficulty: DifficultyIn | None = None
+    event_frequency: FrequencyIn | None = None
+    images: ImageSetting | None = None
+    suggestions: bool | None = None
+
+
+class StartIn(Schema):
+    settings: StartSettingsIn | None = None
+
+
+class RuleOut(Schema):
+    id: str
+    text: str
+    fixed: bool
+
+
+class AdvancedOut(Schema):
+    physics: PhysicsIn
+    rules: list[RuleOut]
+    gift_strength: GiftIn
+    difficulty: DifficultyIn
+    event_frequency: FrequencyIn
+
+
+class DraftOut(Schema):
+    id: str
+    premise: str
+    premise_id: str | None
+    rating: RatingIn
+    title: str
+    genre: str
+    tone: str
+    world_lines: list[str]
+    character_lines: list[str]
+    advanced: AdvancedOut
+    version: int
+    story_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class StartOut(Schema):
+    story_id: str
+    version: int
+
+
+def draft_out(row: Draft, state: WorldState | None = None) -> dict:
+    """The `Draft` shape, from the state's public parts only (N7, C6)."""
+    state = state or service.to_chain(row).state()
+    bible = state.bible
+    return {
+        "id": str(row.id),
+        "premise": row.premise,
+        "premise_id": row.premise_id or None,
+        "rating": row.rating,
+        "title": bible.title,
+        "genre": bible.genre,
+        "tone": bible.tone,
+        "world_lines": world_lines(state),
+        "character_lines": character_lines(state),
+        "advanced": {
+            "physics": bible.physics.value,
+            "rules": [{"id": r.id, "text": r.text, "fixed": r.fixed} for r in public_rules(state)],
+            "gift_strength": gift_strength(state).value,
+            "difficulty": row.difficulty,
+            "event_frequency": row.event_frequency,
+        },
+        "version": row.version,
+        "story_id": str(row.story_id) if row.story_id else None,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
+def _settings(advanced: AdvancedIn | None) -> dict[str, str]:
+    if advanced is None:
+        return {}
+    chosen = {"difficulty": advanced.difficulty, "event_frequency": advanced.event_frequency}
+    return {name: value for name, value in chosen.items() if value is not None}
+
+
+def _rule_edits(advanced: AdvancedIn | None) -> list[chain.RuleEdit] | None:
+    if advanced is None or advanced.rules is None:
+        return None
+    return [chain.RuleEdit(text=r.text, fixed=r.fixed, id=r.id) for r in advanced.rules]
+
+
+@drafts_router.post("", response={201: DraftOut})
+async def create_draft(request, body: CreateDraftIn):
+    """The first draft of the world and the character from a premise (G1, G2, S1)."""
+    found = None
+    if body.premise_id is not None:
+        found = starter(body.premise_id)
+        if found is None:
+            raise field_error("premise_id", "No starter premise has this id.", type="unknown")
+    premise = body.premise if body.premise is not None else found.premise
+    service.check_rating(request.auth, body.rating)
+    advanced = body.advanced or AdvancedIn()
+    async with service.model_call(
+        request, rating=body.rating, action="create", premise_id=body.premise_id
+    ) as call:
+        draft = await chain.create(
+            call.client,
+            premise,
+            rating=body.rating,
+            premise_id=body.premise_id,
+            physics=PhysicsMode(advanced.physics or PhysicsMode.FUN_FIRST),
+            gift=GiftStrength(advanced.gift_strength) if advanced.gift_strength else None,
+        )
+        if (rules := _rule_edits(advanced)) is not None:
+            draft = await chain.edit(call.client, draft, chain.Edits(rules=rules))
+        row = await service.create_row(
+            request.auth,
+            draft,
+            call,
+            difficulty=advanced.difficulty or Difficulty.BALANCED,
+            event_frequency=advanced.event_frequency or EventFrequency.NORMAL,
+        )
+    logs.bind(draft_id=str(row.id))
+    return Status(201, draft_out(row, draft.state()))
+
+
+@drafts_router.get("/{draft_id}", response=DraftOut)
+async def get_draft(request, draft_id: str):
+    row = await service.owned_draft(request, draft_id)
+    return draft_out(row)
+
+
+@drafts_router.patch("/{draft_id}", response=DraftOut)
+async def edit_draft(request, draft_id: str, body: PatchDraftIn):
+    """Direct edits of the summary lines and the advanced fields (G1, G2, G7, G22, A9, S6).
+    Only the edits that need the world or the character redrafted call the model."""
+    row = await service.owned_draft(request, draft_id)
+    service.refuse_started(row)
+    service.check_version(row, body.expected_version)
+    if body.rating is not None:
+        service.check_rating(request.auth, body.rating)
+    advanced = body.advanced or AdvancedIn()
+    draft = service.to_chain(row)
+    if body.rating is not None:
+        draft = replace(draft, rating=body.rating)
+    plan = chain.plan_edit(
+        draft,
+        chain.Edits(
+            world_lines=body.world_lines,
+            character_lines=body.character_lines,
+            rules=_rule_edits(advanced),
+            physics=PhysicsMode(advanced.physics) if advanced.physics else None,
+            gift=GiftStrength(advanced.gift_strength) if advanced.gift_strength else None,
+        ),
+    )
+    settings = _settings(advanced)
+    if not plan.needs_model:
+        row = await service.save_row(row, plan.draft, **settings)
+        return draft_out(row)
+    async with service.model_call(
+        request, rating=draft.rating, action="edit", premise_id=draft.premise_id
+    ) as call:
+        draft = await chain.finish_edit(call.client, plan)
+        row = await service.save_row(row, draft, call, **settings)
+    return draft_out(row, draft.state())
+
+
+@drafts_router.post("/{draft_id}/revise", response=DraftOut)
+async def revise_draft(request, draft_id: str, body: ReviseIn):
+    """A change in plain words to the world or the character (G1, G2)."""
+    row = await service.owned_draft(request, draft_id)
+    service.refuse_started(row)
+    service.check_version(row, body.expected_version)
+    draft = service.to_chain(row)
+    async with service.model_call(
+        request, rating=draft.rating, action="revise", premise_id=draft.premise_id
+    ) as call:
+        draft = await chain.revise(call.client, draft, body.target, body.instruction)
+        row = await service.save_row(row, draft, call)
+    return draft_out(row, draft.state())
+
+
+@drafts_router.post("/{draft_id}/start", response=StartOut)
+async def start_draft(request, draft_id: str, body: StartIn | None = None):
+    """Creates the story with its opening world state (engine `graph`, turn 0). The app then
+    asks for the opening scene (`kind: "opening"`). Starting again returns the same story."""
+    row = await service.owned_draft(request, draft_id)
+    settings = body.settings.model_dump(exclude_none=True) if body and body.settings else {}
+    story = await service.start_story(row.pk, settings)
+    logs.bind(story_id=str(story.id))
+    return {"story_id": str(story.id), "version": story.version}

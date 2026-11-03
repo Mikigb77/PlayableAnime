@@ -311,6 +311,59 @@ for a failure and its retry, `Block(after_text=...)` for a block mid-stream, `Ha
 timeout. `tests/graph/test_gemini.py` runs the real LangChain model with google-genai's network
 call replaced, to check the Gemini translation: messages, safety settings, blocks, usage, errors.
 
+## Drafting a world and a character
+
+Requirements: G1, G2, S1, A1, G6, G7, G8, G18, G22, N7, C6, E2, W15. The chain is
+`backend/graph/drafting/` (plain Python on the model layer, no Django, B4); `backend/drafts/` stores
+drafts, serves `/v1/premises` and `/v1/drafts` ([API.md](API.md#drafting-a-world-and-a-character-g1-g2-s1-a1))
+and creates the story on start.
+
+```mermaid
+flowchart LR
+  premise["Premise<br/>(starter or the player's own)"] --> drafter["drafter node<br/>(one call, DraftProposal)"]
+  drafter --> assemble["assemble()<br/>code decides"]
+  catalog["Starter template<br/>(fixed rules, kinds, ladder, peoples, gift)"] --> assemble
+  options["Player's setup<br/>(physics, gift, released rules)"] --> assemble
+  assemble --> state["WorldState<br/>(turn 0)"]
+  state --> view["view: summary lines,<br/>rules, gift (public parts only)"]
+  state --> start["start: Story<br/>(engine graph, version 1)"]
+```
+
+- **A draft stores inputs, never state.** The `Draft` row holds the model's latest proposal
+  (`schema.DraftProposal`), the premise and starter id, and what the player set up (physics, gift
+  strength, the starter rules they let go of, difficulty, event frequency). The world state is
+  `assemble()` of those inputs, the same every time, so a revision replaces one half of the
+  proposal (the world or the character) and code re-decides everything else. The state is copied
+  into the story only on start.
+- **The model proposes; `assemble` decides.** The proposal schemas are compact and unbounded, and
+  code cleans them: unique slug ids with references resolved by id or name and dangling ones
+  dropped, the player always `player` with a real name, list and text sizes capped, and every C1
+  invariant checked. G7: a starter's fixed rules and kinds hold, every kind has a fixed existence
+  rule, and a proposal that contradicts its genre (a grounded claim in a world of qi, qi in the
+  Naples vendetta) loses that part. G8: no power in a grounded world or from a kind that doesn't
+  exist, and attributes stop at 5 where nothing extraordinary exists. G18: rungs are A8 tiers two
+  apart and a rung sets its axis. G22: the player's gift pick beats the premise's, which beats the
+  model's, `none` removes the gift, and time stop defaults to three heartbeats with a breath to
+  recharge, hitting at relative speed only when overpowered. C6: secrets, agendas, faction plans,
+  mystery answers and a body's forgotten past are kept where only code and the narrator see them.
+  W15: at most 8 key characters and 4 factions start active. Clocks get `interval_s` and
+  `next_step_s` in world seconds, with no pending events yet.
+- **What the player reads is written by code** (`view.py`) from public fields only: the summary
+  lines, the character lines and the rules. As a last guard, any line or rule that quotes five or
+  more words of hidden text, or names someone the character doesn't know, is dropped.
+- **Revisions and edits.** `revise(target, instruction)` sends the whole draft, hidden parts
+  included, so the change fits the world, and keeps every fixed rule the model doesn't explicitly
+  list in `dropped_rule_ids`; a dropped starter rule is released for this story. Direct edits
+  (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
+  rewritten summary lines, rewritten rules or a new gift strength, one call for the world and one
+  for the character. Rules the player wrote stay word for word.
+- **Around each model call** (`drafts/service.model_call`): the BYOK headers (S9), the credit meter
+  with `meter.DRAFT` (the charge lands in the transaction that saves the draft), the client for the
+  draft's rating (F5), the model errors as API errors (T7), and one T5 log line on the `drafts`
+  logger with tokens, cost and outcome, never the premise or the prompt (T6).
+- **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
+  the Naples vendetta for a grounded starter, the cultivation sample otherwise.
+
 ## Bring your own key
 
 - The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and
@@ -383,9 +436,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
   same check on the turn graph's own telemetry.
 - **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
-  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. The legacy story
-  endpoints aren't metered; the turn endpoint (WS3) and drafting (WS12) call `billing.meter` when
-  they land.
+  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. Drafting meters every
+  model call with `meter.DRAFT` (WS12). The legacy story endpoints aren't metered; the turn
+  endpoint (WS3) calls `billing.meter` when it lands.
 
 ## Voice input
 
