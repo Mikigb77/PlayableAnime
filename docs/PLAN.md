@@ -345,6 +345,13 @@ screens.
 - The turn endpoint (WS3) calls the pre-turn check and the debit, and the picture endpoint (WS8)
   calls `charge_image()`. Whichever side lands second wires the call.
 - **Done when** concurrent debits can't overdraw and the ledger reconciles with the balance.
+- **Landed** as `backend/billing/` (see [ARCHITECTURE.md](ARCHITECTURE.md#credits-quotas-and-rate-limits)).
+  The price table is the model layer's (`graph/llm/pricing.py`) and billing adds the margin from
+  config. WS3's turn endpoint calls `meter.astart(user, meter.TURN, byok=...)` before streaming,
+  `meter.charge(ticket, telemetry.calls, story_id=, turn=)` inside its save transaction and
+  `meter.arelease(ticket)` in a `finally`; WS12 does the same with `meter.DRAFT`; WS8 calls
+  `meter.astart(user, meter.IMAGE)`, `meter.charge_image(...)` and `meter.arelease(...)`; WS6's
+  `User.credits` is `billing.credits.summary(user)`.
 
 ### WS8 Pictures backend (wave 2a, after WS1)
 

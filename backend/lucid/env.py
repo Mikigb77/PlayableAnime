@@ -4,6 +4,7 @@ Precedence: environment variables, then `backend/.env`, then the repo-root `.env
 `neon env pull` and `neon checkout` write. Django's `settings.py` reads this once at startup.
 """
 
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -63,6 +64,20 @@ class Env(BaseSettings):
     picture_root: str = ""
     # How long a picture's signed URL works. The app asks for a fresh one after that.
     picture_url_ttl_s: int = Field(default=3600, ge=60, le=7 * 24 * 3600)
+
+    # Credits, quotas and rate limits (K1, K2, T9). The rest of the billing settings are in
+    # settings.py's BILLING.
+    # K1's starter credit, in cents ($0.50).
+    starter_credit_cents: Decimal = Field(default=Decimal(50), ge=0)
+    # "verified": only a verified account gets it (a Google account at once, an email account
+    # when its address is verified), so throwaway emails can't farm it. "all": every account.
+    starter_credit_policy: Literal["verified", "all"] = "verified"
+    # The margin on our model cost (K2): 0.5 charges the cost plus half.
+    billing_margin: Decimal = Field(default=Decimal("0.5"), ge=0)
+    # T9: turns per user per minute, BYOK included (K6), and turns on our key per user per UTC
+    # day. A quota of 0 stops every turn on our key.
+    turn_rate_per_minute: int = Field(default=10, ge=1)
+    daily_turn_quota: int = Field(default=300, ge=0)
 
     @field_validator("log_level", mode="before")
     @classmethod

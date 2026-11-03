@@ -63,6 +63,11 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `MEDIA_BUCKET` | none | The private Cloud Storage bucket for pictures (M4). Unset, pictures are stored on local disk. |
 | `PICTURE_ROOT` | `backend/media-local/` | Where pictures go without a bucket, served at `/media/` behind signed URLs. |
 | `PICTURE_URL_TTL_S` | `3600` | How long a picture's signed URL works. |
+| `STARTER_CREDIT_CENTS` | `50` | K1's starter credit, once per account. |
+| `STARTER_CREDIT_POLICY` | `verified` | `verified`: Google accounts at once, email accounts once their address is verified. `all`: every account. |
+| `BILLING_MARGIN` | `0.5` | Turns, drafts and pictures charge our model cost times 1 + margin (K2). |
+| `TURN_RATE_PER_MINUTE` | `10` | Turns per user per minute, on any key (T9, K6). |
+| `DAILY_TURN_QUOTA` | `300` | Turns per user per UTC day on our key (T9). `0` stops every turn on our key. |
 
 ## Database (Neon Postgres)
 
@@ -130,6 +135,7 @@ today's, ported from FastAPI with the same paths and shapes so the current app k
 | POST | `/v1/stories/{id}/scenes/{turn}/image` | The scene's planned picture, drawn at most once (M3) |
 | POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | A picture of any scene, which the player pays for (M2) |
 | GET | `/v1/stories/{id}/images/{image_id}` | A picture with a fresh signed URL |
+| GET | `/v1/me/credits` | Balance and ledger, for the signed-in user (K1, K2) |
 
 Errors use the envelope from API.md: `{"error": {"code", "message", "details"}}`. A turn saves only
 if no other turn was saved since it read the story, so the loser of a race gets `409
@@ -176,6 +182,12 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
+billing/          Credits, quotas and rate limits (K1, K2, T9): see ARCHITECTURE.md
+  meter.py        start, charge, charge_image, release: the guard and charge around model calls
+  credits.py      Accounts, the starter credit, the append-only ledger, summary(user)
+  limits.py       Per-user fixed-window counters in Postgres
+  pricing.py      Cost and charge arithmetic, K8's cost spread (plain Python)
+  api.py          GET /v1/me/credits
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
 engine/           The rules engine, plain Python with no web or model imports (B4)
   state/          World state models (C2): bible, cast, sheets, records
