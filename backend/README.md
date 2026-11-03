@@ -167,12 +167,23 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   export.py       Stories as plain data for the account export
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
 legacy/           Today's one-call narrator, moved unchanged from FastAPI; WS3 deletes it
-tests/<area>/     Tests per package
+engine/           The rules engine, plain Python with no web or model imports (B4)
+  state/          World state models (C2): bible, cast, sheets, records
+  contracts/      Step contracts (B5): Intent, Resolution, DirectorPlan, StateDelta
+  context.py      Per-turn inputs: story settings, rating, content preferences
+  rng.py          Seeded random numbers for rolls (A3)
+  timekeeping.py  Duration bounds per kind of action (W10)
+  pipeline.py     The functions the turn graph calls
+  samples.py      Two sample worlds for tests and development
+tests/<area>/     Tests per package (engine tests in tests/engine/)
 ```
 
 Keep heavy imports (model SDKs, LangChain) inside the code that needs them, not at module level, so
 a cold start stays fast (B10, T3). A test checks that loading the app and its URLs doesn't import
 them.
+
+`legacy/` is today's one-call narrator. `engine/` replaces it once the turn graph lands; see
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#engine-package-backendengine).
 
 ## Deploy to Cloud Run
 
