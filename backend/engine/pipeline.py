@@ -45,7 +45,7 @@ from engine.resolve import resolve_intent
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
 from engine.state.world import WorldState
-from engine.timekeeping import TimePassage, world_stopped
+from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
 
 __all__ = [
     "PlayOut",
@@ -147,7 +147,12 @@ def play_out(
     world time (resolve gives it none), and while a stop holds the world, the world clock never
     moves (W10a).
 
-    Rulings are recorded on the actor's sheet once, never flipped (A9).
+    A step that starts inside a stop and outlasts it lives out the stop first and then takes
+    world time for the rest (W10a).
+
+    Rulings are recorded on the actor's sheet once, never flipped (A9), and then the plan's own
+    `effects` apply (settled details of powers, accepted backstory). Time effects that ran out
+    on their user's clock are cleared at the end.
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
@@ -160,6 +165,15 @@ def play_out(
     for step in resolution.steps:
         start_s = current.world_s
         planned_end = start_s + step.duration_s
+        lived_total = step.duration_s if step.personal_s is None else step.personal_s
+        frozen_part = 0
+        if step.duration_s > 0 and world_stopped(current):
+            # W10a. A step that starts inside a stop and outlasts it: the actor lives out the rest
+            # of the stop first, which ends it, and then the world's time runs again.
+            frozen_part = max(0, lived_total - step.duration_s)
+            actor = current.characters.get(actor_id)
+            if actor is not None:
+                actor.personal_offset_s += frozen_part
         if step.duration_s > 0 and not world_stopped(current):
             passage = catch_up(current, planned_end, ctx, rng)
             current = passage.state
@@ -172,12 +186,13 @@ def play_out(
                 current.world_s = planned_end
         elapsed = current.world_s - start_s
         cut = interrupted_by is not None and elapsed < step.duration_s
-        lived = step.duration_s if step.personal_s is None else step.personal_s
+        lived = lived_total - frozen_part
         if cut:
             lived = lived * elapsed // step.duration_s
         actor = current.characters.get(actor_id)
         if actor is not None:
             actor.personal_offset_s += lived - elapsed
+        lived += frozen_part
         timed = step.model_copy(
             update={
                 "start_s": start_s,
@@ -200,6 +215,10 @@ def play_out(
     if resolution.rulings and actor_id in current.characters:
         rulings = StateDelta(characters=[CharacterChange(id=actor_id, rulings=resolution.rulings)])
         rejected.extend(apply_in_place(current, rulings, ctx, source=DeltaSource.ENGINE).rejected)
+    if not resolution.effects.empty:
+        applied = apply_in_place(current, resolution.effects, ctx, source=DeltaSource.ENGINE)
+        rejected.extend(applied.rejected)
+    prune_time_effects(current)
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]

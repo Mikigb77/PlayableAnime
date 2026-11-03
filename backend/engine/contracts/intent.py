@@ -11,10 +11,10 @@ handles poorly.
 
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from engine.base import EngineModel
-from engine.state.sheet import PowerAxis
+from engine.state.sheet import HitMode, PowerAxis
 
 
 class ActionKind(StrEnum):
@@ -125,6 +125,14 @@ class Beat(EngineModel):
     uses: list[BeatUse] = Field(default_factory=list)
 
 
+class PlaceHarm(StrEnum):
+    """A9, W7. What a link of a chain does to a place, such as a hall that burns down."""
+
+    NONE = "none"
+    DAMAGED = "damaged"
+    RUINED = "ruined"
+
+
 class ChainLink(EngineModel):
     """A9. One link in a chain of cause and effect, with the facts it rests on. Code settles each
     link as A2 does, and the chain stops at the first link that fails."""
@@ -144,6 +152,88 @@ class ChainLink(EngineModel):
         ),
     )
     proposed_class: OutcomeClass | None = None
+    place_id: str | None = Field(
+        default=None, description="A place this link changes, such as the hall that burns."
+    )
+    place_harm: PlaceHarm = Field(
+        default=PlaceHarm.NONE, description="What the link does to that place, if it holds."
+    )
+
+
+class Contact(StrEnum):
+    """W10a, A9. How a step touches what it acts on, which decides how it plays in stopped time:
+    a strike stays in the user's hand, a throw leaves their reach, and a lift picks something up
+    or carries it, so it joins the stop."""
+
+    NONE = "none"
+    STRIKE = "strike"  # a fist, a kick, a blade or a club that stays in hand
+    THROW = "throw"  # a stone, a knife, an arrow or a bullet that leaves the user's reach
+    LIFT = "lift"  # picking up, carrying or moving a thing or a person
+
+
+class GrowthKind(StrEnum):
+    """A4, G19, G25. What a training step works toward."""
+
+    SKILL = "skill"
+    TECHNIQUE = "technique"  # a named technique of a style, from a master, a manual or watching
+    POWER = "power"  # a new way to use a power the character has, such as a refused idea earned
+    BREAKTHROUGH = "breakthrough"  # the next rung of one of the world's ladders (G19)
+
+
+class Teacher(StrEnum):
+    """A4. What the character learns from."""
+
+    SELF = "self"  # their own experiments
+    MASTER = "master"
+    BOOK = "book"  # a manual, a scroll, a record
+    RIVAL = "rival"  # sparring, or a rival's example
+    WATCHING = "watching"  # watching someone use it
+
+
+class PowerGrant(StrEnum):
+    """W10a, A9. What a technique found for a time stop lets its user do, which code follows."""
+
+    NONE = "none"
+    # Released gradually, a thrown thing merges back into time carrying its motion: throws land
+    # at relative speed even where the world settled normal force.
+    RELATIVE_SPEED_THROWS = "relative_speed_throws"
+    # The user chooses how hard a stopped-time hit lands, from a tap to everything it has.
+    CONTROLLED_FORCE = "controlled_force"
+
+
+class Training(EngineModel):
+    """A4, G19, G25. A step spent learning or breaking through. Code judges the gain from the
+    character's traits, the effort and time, what they learn from and the world's rules."""
+
+    kind: GrowthKind
+    what: str = Field(description="The skill's or technique's name, or the new use in words.")
+    effect: str = Field(default="", description="What a new technique does, in plain words.")
+    power_id: str | None = Field(default=None, description="The power a new use is for.")
+    ladder_id: str | None = Field(default=None, description="The ladder of a breakthrough.")
+    teacher: Teacher = Teacher.SELF
+    teacher_id: str | None = Field(
+        default=None, description="The master's or rival's character id, or the manual's item id."
+    )
+    invents: bool = Field(default=False, description="Nobody taught it: a technique of their own.")
+    grants: PowerGrant = PowerGrant.NONE
+    rests_on: list[str] = Field(
+        default_factory=list,
+        description="What makes it possible: power, item, rule or fact ids, or plain words.",
+    )
+    against_rule_ids: list[str] = Field(
+        default_factory=list, description="World rules it would break, if any (G7)."
+    )
+
+
+class ShowStrength(EngineModel):
+    """G20. Hiding one's strength, or revealing it."""
+
+    ladder_id: str
+    shown_rung: int | None = Field(
+        default=None,
+        ge=0,
+        description="The rung others may sense, counted from the lowest; None reveals the truth.",
+    )
 
 
 class StepFacts(EngineModel):
@@ -197,6 +287,23 @@ class IntentStep(EngineModel):
         description="W10a: the actor's own lived seconds, when they differ, as in a time stop.",
     )
     stakes: str = ""
+    contact: Contact = Field(
+        default=Contact.NONE, description="W10a: strike, throw or lift, which a time stop follows."
+    )
+    mass_kg: float | None = Field(
+        default=None, gt=0, description="The mass of what is thrown, swung or lifted, in kg."
+    )
+    range_m: float | None = Field(
+        default=None, ge=0, description="How far from the actor it lands or strikes, in meters."
+    )
+    full_force: bool = Field(
+        default=False,
+        description="W10a: the player asked for everything a controlled time stop can give.",
+    )
+    training: Training | None = Field(default=None, description="A4, G19: what the step trains.")
+    show_strength: ShowStrength | None = Field(
+        default=None, description="G20: hiding or revealing strength."
+    )
 
 
 class StandingAction(StrEnum):
@@ -206,12 +313,73 @@ class StandingAction(StrEnum):
     OBSERVE = "observe"
 
 
+class TheoryAbout(StrEnum):
+    """A9, W10a. The details of a time stop that code rules on itself. Anything else is `other`,
+    ruled on from the facts the theory rests on."""
+
+    HIT_FORCE = "hit_force"  # how hard stopped-time hits land
+    MOVE_FROZEN = "move_frozen"  # whether frozen things can be picked up and moved
+    OTHER = "other"
+
+
+class EffectScale(StrEnum):
+    """A9. How big an effect a theory claims, so code can tell when nothing in the power explains
+    it: a flick of a finger doesn't blow up the planet unless the world works at that scale."""
+
+    PERSON = "person"
+    BUILDING = "building"
+    TOWN = "town"
+    CITY = "city"
+    REGION = "region"
+    WORLD = "world"  # a planet
+    STARS = "stars"
+
+
 class PowerTheory(EngineModel):
-    """A9. The player reasoning about how their own power works. The engine rules on it once."""
+    """A9. The player reasoning about how their own power works. The engine rules on it once,
+    from the facts it rests on, and never because it would make the character too strong."""
 
     power_id: str | None = None
     topic: str = Field(description="A stable key for what it settles, such as 'throw_speed'.")
     claim: str = Field(description="The theory in the player's words.")
+    about: TheoryAbout = TheoryAbout.OTHER
+    claims_hit_mode: HitMode | None = Field(
+        default=None, description="For hit_force: the way of landing the player expects."
+    )
+    rests_on: list[str] = Field(
+        default_factory=list,
+        description=(
+            "What in the power, the sheet or the world explains it: ids or plain words. Empty"
+            " when nothing does."
+        ),
+    )
+    scale: EffectScale | None = Field(default=None, description="How big an effect it claims.")
+    adds_power: bool = Field(
+        default=False, description="It would give an ability the character doesn't have."
+    )
+    against_rule_ids: list[str] = Field(
+        default_factory=list, description="World rules it would break, if any (G7)."
+    )
+
+
+class PastClaim(EngineModel):
+    """N4. A fact the player states about their own character's past or inner life, with the
+    interpret step's reading of it. Code decides whether it is recorded."""
+
+    text: str
+    grants_power: bool = Field(
+        default=False,
+        description="It would give an ability, an item, a rank or an ally the sheet doesn't hold.",
+    )
+    against_rule_ids: list[str] = Field(
+        default_factory=list, description="World rules it would break (G7)."
+    )
+    contradicts_ids: list[str] = Field(
+        default_factory=list, description="Fact or character ids it contradicts."
+    )
+    about_others: bool = Field(
+        default=False, description="It says how other people feel or react (A6, A7)."
+    )
 
 
 class Intent(EngineModel):
@@ -222,7 +390,7 @@ class Intent(EngineModel):
     steps: list[IntentStep] = Field(default_factory=list)
     standing: StandingAction | None = None
     theories: list[PowerTheory] = Field(default_factory=list)
-    backstory: list[str] = Field(
+    backstory: list[PastClaim] = Field(
         default_factory=list, description="N4: claims about the character's own past."
     )
     goals: list[str] = Field(
@@ -232,3 +400,11 @@ class Intent(EngineModel):
         default_factory=list,
         description="A6: outcomes or others' reactions the player wrote, which play as hopes.",
     )
+
+    @field_validator("backstory", mode="before")
+    @classmethod
+    def _plain_claims(cls, value):
+        """A claim given as plain words is a claim with nothing flagged."""
+        if isinstance(value, list):
+            return [{"text": v} if isinstance(v, str) else v for v in value]
+        return value

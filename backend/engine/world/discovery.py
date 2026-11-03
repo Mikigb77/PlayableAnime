@@ -60,9 +60,12 @@ def find_odds(traces: list[Trace], attempt: int) -> float:
     return (1 - missed) * DISCOVERY_FADE**attempt
 
 
-def attribution_odds(traces: list[Trace], attempt: int) -> float:
-    """Once found, the chance the traces point at the doer."""
-    best = max((TRACE_ATTRIBUTION[t.kind.value] for t in traces), default=0.0)
+def attribution_odds(traces: list[Trace], attempt: int, *, stopped: bool = False) -> float:
+    """Once found, the chance the traces point at the doer. Done in stopped time, a body, a
+    noise or a ruin shows nobody near it, so only traces such as a wound only the doer's power
+    makes can point at them (W10a)."""
+    pointing = [t for t in traces if not (stopped and t.kind in _PLAIN_SIGHT)]
+    best = max((TRACE_ATTRIBUTION[t.kind.value] for t in pointing), default=0.0)
     return best * DISCOVERY_FADE**attempt
 
 
@@ -112,13 +115,13 @@ def on_discovery(w: World, event: PendingEvent) -> None:
             schedule_look(w, deed, attempt=attempt + 1)
             return
         deed.discovered = True
-        if stream.chance(attribution_odds(deed.traces, attempt)):
+        if stream.chance(attribution_odds(deed.traces, attempt, stopped=deed.in_stopped_time)):
             name_the_doer(w, deed)
             return
         _unexplained(w, deed, stream)
         schedule_look(w, deed, attempt=attempt + 1)
         return
-    if stream.chance(attribution_odds(deed.traces, attempt)):
+    if stream.chance(attribution_odds(deed.traces, attempt, stopped=deed.in_stopped_time)):
         name_the_doer(w, deed)
     else:
         schedule_look(w, deed, attempt=attempt + 1)

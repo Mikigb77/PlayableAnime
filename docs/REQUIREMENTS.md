@@ -350,6 +350,12 @@ The attempt is a roll whose duration can also be an outcome (W10): a seclusion o
 three years. Seclusion is a time skip (E7) that the world can interrupt. A loud breakthrough, such
 as lightning over the mountain, is a public deed (W1, W2) that draws attention. Bottlenecks are
 real: a character can be stuck at a rung until they find what they lack (A4).
+Decided in WS9b: a rung lists what climbing to it needs, and each need must be met by something
+carried, a technique, a true fact the character knows, this turn's canon or a living master's
+guidance, or the attempt is a bottleneck with no roll. Otherwise it is rolled at even odds,
+shifted by a master, a gift or flaw for learning, and the edges: success climbs the rung, a partial
+result leaves the character shaken and a failure wounds them, and how long it takes is always
+rolled.
 
 **G20 Sensing and hiding power (P1).** Where the world allows it, characters sense each other's
 strength (a cultivator's pressure, the weight of an aura), but only up to about their own rung: a
@@ -357,6 +363,11 @@ hidden elder looks like an ordinary old man. Characters can hide their strength,
 what they can perceive (C6, W8). When the truth comes out, attitudes and reputation change at once
 (W3, W4): the young master who mocked you goes pale, and the sect that ignored you sends an
 invitation. Revealing hidden strength in public is a deed that spreads (W1, W2).
+Decided in WS9b: a character can show any rung up to their own, never above it. Only someone
+already above their true rung sees through it, and where the ladder is sensed, nobody perceives
+more than one rung above their own. The world measures a hider's might by the rung they show. On a
+reveal, each onlooker who underestimated them gains 20 fear per rung of surprise (and a little
+respect where rank earns it), at once.
 
 **G21 Reincarnation and transmigration (P1).** The player's character can come from somewhere else:
 reborn as a baby (with childhood as time skips, E7), waking in someone else's body, or summoned to
@@ -728,8 +739,47 @@ sheet (A1, A4). NPCs can have them too.
   A player doesn't need any of this to use the power. One who enjoys working it out can test it and
   bring their own theories, and the engine rules on each once, with fun in mind (A9). When an NPC
   stops time, the player sees the world jump.
+
+  How the engine follows it (decided in WS9b, 2026-11-03; rough figures, as A9 asks):
+  - **Defaults.** Until a theory or a test settles it, an overpowered stop hits at relative speed and
+    a smaller one with normal force (G22). The first blow or throw in a stop settles it for good,
+    recorded as a ruling; the first lift settles whether frozen things can be picked up.
+  - **Force.** The world bible's force scale puts tiers on raw energy: a body at tier 1 takes about
+    10 kJ, and each tier takes ten times more, so three megatons is about tier 13. A cosmic story
+    raises the step. A relative-speed hit is measured by its own force, never the user's arm: a
+    body half a tier or more above it takes it unhurt, within half a tier is a close call, and
+    anything below dies or takes the full aim. A thrown pebble is 100 g and a blow 1 kg when
+    nothing says.
+  - **Blast.** A relative-speed throw kills everyone within 500 m times the cube root of its
+    kilotons (about 7 km for three megatons) unless their body takes it, and hurts out to 1.6 times
+    that. It ruins the place it lands in (and the thrower's, if within reach) when its deadly reach
+    is 50 m or more, and wipes out a host it was thrown at, such as an army in its camp, when that
+    reach is a kilometer or more. The thrower is as far away as the step says, ten meters when it
+    lands where they stand, or a route's travel time at a walk. Once time restarts, a thrower inside
+    the deadly reach dies and the plan goes no further; one inside the outer ring is knocked down.
+  - **Lifting.** What the user picks up joins the stop as heavy as ever: about 25 kg at feeble
+    strength, 100 kg for an average person, 450 kg at the peak of what a person can be, and a
+    thousand times more for each step beyond human.
+  - **Control.** A technique learned later can make throws land at relative speed even where the
+    world settled normal force, or let the user choose how hard a hit lands: just hard enough to
+    beat the toughest target's body, and no blast, unless the player asks for everything.
+  - **Clocks.** A stop lasts its time on the user's own clock from the moment it starts and can
+    outlast the turn, so the next turn starts still in stopped time. Naming the stop again while it
+    holds carries it on, with no new cost. It recovers its recharge time after it ends (twice that
+    with a heavier drain). A step that starts inside the stop and outlasts it lives out the stop
+    first and then takes world time, and whoever it acts on can answer by then. A stop ends with
+    its user's death.
+  - **Who sees it.** Someone whose sheet says they move or see in stopped time is immune: they can
+    respond and they witness what is done. Everyone else is frozen. A body dropping in a crowd is
+    noticed the moment time restarts, but a body, a noise or a ruin from stopped time never points
+    at the doer; a wound only the power makes does, once the power is known.
+  - **The world's measure.** Factions measure a light-speed thrower by the force of their throw
+    once the world could know of the power (it isn't secret, or a deed done with it was laid at
+    their door), so they appease, worship, plot or seal rather than send a champion who couldn't
+    exist (W5).
 - **Haste and slow (P1).** The user's personal clock runs faster or slower than the world's, such as
-  a fighter who lives ten seconds in every one.
+  a fighter who lives ten seconds in every one. The power's rate is the user's lived seconds per
+  world second, for as long as it lasts on their own clock (decided in WS9b).
 - **Local reversal (P1).** Rewinding a wound, an object or a building is a state change with a
   recorded cause (C1). The world clock keeps moving forward, and everyone present remembers it.
 - **World rewind and time loops (P2).** Going back to an earlier moment starts a new timeline from the
@@ -890,7 +940,9 @@ knows them. Deaths are confirmed or presumed (C1).
 **N4 Backstory claims (P1).** The player can state facts about their own character's past and inner
 life ("I have a sister in the capital", "I'm afraid of water"). If a claim doesn't contradict canon,
 grant power or break a fixed world rule (G7), the engine records it and the world can use it later.
-Claims about other people's reactions stay forbidden (A6, A7).
+Claims about other people's reactions stay forbidden (A6, A7). A refused claim plays as something
+the character says; one that breaks a fixed rule is kept as their belief, not the truth (decided in
+WS9b).
 
 **N5 The premise is a situation, not a script (P0).** A premise sets the opening situation and its
 first clocks (E2). The player can walk away from it, skip the exam and become a pirate. The

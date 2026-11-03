@@ -373,8 +373,15 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
         outcome["unplayed"] = resolution.unplayed
     if resolution.canon:
         outcome["now_canon"] = resolution.canon
-    if resolution.rulings:
-        outcome["rulings"] = [_dump(r) for r in resolution.rulings]
+    # A9. Rulings made this turn: on the player's theories, and those a step settled by trying.
+    rulings = [*resolution.rulings]
+    rulings += [r for s in resolution.steps for c in s.effects.characters for r in c.rulings]
+    if rulings:
+        outcome["rulings"] = [_dump(r) for r in rulings]
+    if resolution.claims:
+        outcome["backstory"] = [
+            {"claim": c.text, "recorded": c.accepted, "why": c.reason} for c in resolution.claims
+        ]
     return outcome
 
 

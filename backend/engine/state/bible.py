@@ -87,11 +87,15 @@ class Creature(EngineModel):
 
 
 class Rung(EngineModel):
-    """A rung on a power ladder, named in the world's words, mapped to an A8 tier."""
+    """A rung on a power ladder, named in the world's words, mapped to an A8 tier. `needs` is
+    what a breakthrough to it takes (G19), such as a pill, insight or a master's guidance, and a
+    loud rung's breakthrough is seen from afar (lightning over the mountain)."""
 
     name: Name
     tier: Tier
     description: str = ""
+    needs: list[str] = Field(default_factory=list, description="What climbing to it takes (G19).")
+    loud: bool = Field(default=False, description="Its breakthrough is a public deed (G19, W1).")
 
 
 class PowerLadder(EngineModel):
@@ -108,6 +112,18 @@ class PowerLadder(EngineModel):
     sensing: bool = Field(
         default=False, description="Whether characters sense strength up to their own rung (G20)."
     )
+
+
+class ForceScale(EngineModel):
+    """A9, W10a. How tiers compare with raw force, so the engine can follow a hit that doesn't
+    come from an arm, such as a pebble thrown in stopped time at close to the speed of light: a
+    body at tier 1 takes about `tier1_joules` and each tier up takes `per_tier` times more. With
+    the defaults, tier 13 is about three megatons, so a world whose strongest body is below that
+    holds nothing that survives such a throw. A cosmic story, where beings devour worlds, raises
+    `per_tier`. Rough figures are enough."""
+
+    tier1_joules: float = Field(default=1e4, gt=0)
+    per_tier: float = Field(default=10.0, gt=1)
 
 
 class CalendarStyle(StrEnum):
@@ -219,6 +235,7 @@ class WorldBible(EngineModel):
         default_factory=list, description="Where nature works differently from ours (A9)."
     )
     physics: PhysicsMode = PhysicsMode.FUN_FIRST
+    force: ForceScale = Field(default_factory=ForceScale)
     ladders: list[PowerLadder] = Field(default_factory=list)
     calendar: Calendar = Field(default_factory=Calendar)
     travel: Travel = Field(default_factory=Travel)

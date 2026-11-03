@@ -25,6 +25,7 @@ from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
 from engine.state.sheet import Item, Power, Technique
 from engine.state.world import WorldState
+from engine.timekeeping import effect_over
 
 # The odds that a place holds something it plausibly might, before difficulty (R2, A5).
 FIND_ODDS = 0.5
@@ -137,9 +138,15 @@ def _have(state: WorldState, actor: Character) -> str:
 
 
 def _ready(state: WorldState, actor: Character, power: Power) -> bool:
-    """A1. A power on cooldown can't be used until the character's own clock reaches it."""
+    """A1. A power on cooldown can't be used until the character's own clock reaches it. A power
+    still in effect, such as a stop that holds the world, is in use, not recovering (W10a)."""
     ready_at = power.ready_at_personal_s
-    return ready_at is None or actor.personal_s(state.world_s) >= ready_at
+    if ready_at is None or actor.personal_s(state.world_s) >= ready_at:
+        return True
+    return any(
+        e.character_id == actor.id and e.power_id == power.id and not effect_over(state, e)
+        for e in state.time_effects
+    )
 
 
 def _not_recovered(state: WorldState, actor: Character, power: Power) -> str:

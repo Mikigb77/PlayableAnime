@@ -172,7 +172,7 @@ these functions and saves the result.
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` has a default body that WS11 replaces. |
-| `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). |
+| `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
 | `engine/samples.py` | Two sample worlds from the requirements, the Naples vendetta and the Azure Cloud Sect, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
@@ -297,7 +297,8 @@ order, and the first one that settles it ends the step:
    doesn't hold just because Gennaro is there. The model gives ids (`ref`) where it can.
 3. **Who stands in the way** (`core._opposition`; A2, A8). The targets of a harmful aim and of a
    social step always stand in the way, so leaving them out of the facts buys no free kill. The
-   dead never do. A time stop freezes everyone but its user (W10a), a helpless state on the sheet
+   dead never do. A time stop freezes everyone but its user and the immune, unless the step outlasts
+it (W10a), a helpless state on the sheet
    (asleep, tied up, stunned, subdued, dying, read on whole words so "half asleep" or "bound by an
    oath" doesn't count) means they can't respond whatever was proposed, and the model's word that
    they can't respond (unaware, frozen with fear) is taken unless it claims stopped time that isn't
@@ -341,7 +342,8 @@ order, and the first one that settles it ends the step:
    rolled across orders of magnitude around the proposal (a thirtieth to thirty times), still
    within the kind's bounds, and recorded on the step's roll. On a rolled step the time is the
    second draw of that roll's own seed, so the one recorded seed replays both. Inside a time stop
-   the world clock stands still and the actor's lived time counts down the stop.
+   the world clock stands still and the actor's lived time counts down the stop; a step that
+   outlasts it takes world time for the rest. A haste divides world time by its rate.
 8. **Effects, deeds and costs** (`effects.py`; F4, W1, A1). `IntentStep.aim` says what success
    does to the targets: a kill that succeeds is a confirmed death, a partial kill leaves them badly
    wounded, a wound or a subdual does less. Only a settled step's aim on living targets changes
@@ -352,9 +354,69 @@ order, and the first one that settles it ends the step:
 
 A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`
 (R6). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
-Formation against you at Qi Condensation: head-on, there is no contest."). Time stop's own rules
-(immunity, hit modes, rulings on the player's theories) and growth are WS9b's, in
-`engine/resolve/powers/`.
+Formation against you at Qi Condensation: head-on, there is no contest.").
+
+### Powers, theories and growth
+
+`engine/resolve/powers/` (WS9b) is called from `resolve/core.py`. Each module is plain Python, and
+each figure is a named constant at the top of its module, rough as A9 asks.
+
+| Module | What |
+| --- | --- |
+| `time_stop.py` | W10a's time stop: who is immune, which hit mode a stop uses (`default_hit_mode`, `throw_mode`, `controlled`), the conventions (`drop_convention_hindrances`), `stopped_hit` for a blow or throw at a frozen target, `blast_outcome` once time restarts, `witnesses` and `stopped_traces` for its secret deeds, and `might_with_powers`, the measure the world answers (W5). |
+| `force.py` | Raw force (A9): energy at 0.9c, tiers on the bible's `ForceScale`, blast reach, and the lift each strength allows, with the words reasons use ("about three megatons", "7 km"). |
+| `theories.py` | `rule_on_theories`: the player's theories ruled once (A9, G22). Refuses nonsense, a new power or a fixed rule, never strength; a modest power that gains relative-speed hits or city reach pays a heavier drain. |
+| `growth.py` | A4 and G19: `check`, `progress` and `breakthrough`. Effort, teachers, gifts, flaws and the world's ceilings turn training into practice, then a skill rank, a technique or a new way of using a power. |
+| `sensing.py` | G20: hiding and revealing strength, and the rung others sense (`perceived_rung`, `apparent_tier`). |
+| `claims.py` | N4: `judge_claims` on backstory the player states. |
+
+How a turn goes through it:
+
+1. **Theories first.** `Intent.theories` are ruled before any step, so the first step already
+   uses the answer. A ruling is final: asking again gets the recorded answer, and a ruling the
+   sheet already holds wins over anything new. The rulings go in `Resolution.rulings`, and the
+   settled details of the power (a hit mode, a setting, a heavier drain) go in
+   `Resolution.effects`, which `play_out` applies after the steps. Backstory claims are judged
+   here too, into `Resolution.claims` and, when accepted, `Resolution.effects`.
+2. **Stops and hastes take hold.** A step that uses a time power starts an `ActiveTimeEffect` on
+   `WorldState.time_effects`, timed on the user's own clock, and sets its recharge
+   (`Power.ready_at_personal_s`). While a stop holds, `world_stopped` keeps the world clock and
+   catch-up still, and it carries into the next turn until the user has lived it out or dies.
+   Naming the stop again while it holds continues it at no cost. A haste divides the world time
+   of the user's steps by its rate for as long as it lasts (`durations.step_timing`).
+3. **Frozen and immune.** Inside a stop, everyone whose sheet doesn't say they move or see in
+   stopped time is frozen and can't respond. A step that outlasts the stop is lived out to the
+   stop's end and then takes world time, so its targets can respond (`durations.lived_estimate`).
+   Hindrances that only the conventions explain (air resistance, holding one's breath) are
+   dropped.
+4. **Stopped hits.** A blow or throw at a frozen target settles the hit mode once, as a test
+   ruling, if nothing has yet. With normal force the usual body check applies. At relative speed
+   the hit is measured by its own force against the body (`takes_it`), never the user's arm, and
+   a controlled hit lands just hard enough. In untouchable mode a blow is ruled out, and a throw
+   freezes past the hand and carries on at throwing speed when time restarts.
+5. **Blast.** A full-force relative-speed throw is followed after the step: everyone within the
+   deadly reach of where it lands, and around the thrower when close, dies unless their body takes
+   it, places are ruined or damaged, a host it was thrown at is wiped out, and one public deed
+   with traces is proposed. A thrower who dies in it stops the plan.
+6. **Secret deeds.** Deeds done in stopped time have no witnesses but the immune, and leave
+   traces (`stopped_traces`). Discovery never pins a body, a noise or a ruin from stopped time on
+   the doer (`attribution_odds(..., stopped=True)`).
+7. **Training, breakthroughs and strength.** A step with `training` is checked by `growth.check`
+   (fixed rules, a missing teacher, the world's ceilings, missing needs for a rung), then adds
+   lived effort to `practice` until the gain is made, recorded with a `Gain`. A breakthrough is
+   rolled, its duration always uncertain, and a loud rung is a public deed. A step with
+   `show_strength` hides or reveals the actor's rung, and a reveal shifts attitudes.
+8. **Places.** A chain link that names `place_id` and `place_harm` ruins or damages that place
+   when the link holds, with a burn, raze or destroy deed.
+
+New in the contracts for this: `IntentStep.contact`, `mass_kg`, `range_m`, `full_force`,
+`training` and `show_strength`; richer `PowerTheory` fields (`about`, `claims_hit_mode`,
+`rests_on`, `scale`, `adds_power`, `against_rule_ids`); `Intent.backstory` as `PastClaim`s with
+their flags; `ChainLink.place_id` and `place_harm`. `CharacterChange` gained engine-only `powers`
+(`PowerChange`, which sets a power's settled details once and its recharge), `techniques`,
+`ladders`, `practice` and `skills`, and `StateDelta.time_effects` starts a stop or haste. In state: `Rung.needs` and `loud`, `WorldBible.force`, `Technique.power_id`,
+`LadderPosition.shown_rung` and `CharacterSheet.practice`. A user's death ends their time effects
+(`timekeeping`). Local reversal (W10a) is deferred.
 
 ## Model layer
 

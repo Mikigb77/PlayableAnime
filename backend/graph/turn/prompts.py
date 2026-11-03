@@ -41,11 +41,31 @@ clearly not, whether the world's rules allow it, edges and hindrances, and the c
 certain, contested, long_shot or ruled_out. Code checks these against the state and decides.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
 filler (R7). gist: what to say when the player gives only the gist ("I threaten him").
+- A link that burns down or wrecks a place: its place_id and place_harm (damaged or ruined).
+
+Powers and growth (W10a, A4, G19, G20):
+- contact: how the step touches what it acts on. strike for a fist, kick or blade that stays in \
+hand; throw for a stone, knife, arrow or bullet that leaves the hand; lift for picking up, \
+carrying or moving a thing or a person. mass_kg for what is thrown, swung or lifted, and range_m \
+for how far away it lands, when the player says or the scene shows. full_force only when the \
+player asks for everything a power can give.
+- training: a step spent learning. kind skill, technique, power (a new way to use a power, such \
+as releasing a stopped-time throw gradually) or breakthrough (the next rung of a ladder). Who or \
+what they learn from (self, master, book, rival, watching, with its id), whether they invent it, \
+and for a time stop what the new way grants (relative_speed_throws or controlled_force).
+- show_strength: hiding strength (the ladder id and the rung to show) or revealing it (no rung).
 
 Also record:
-- theories: when the player reasons about how their own power works, the claim and a stable topic \
-key such as "throw_speed" (A9). Never question it; the engine rules on it.
-- backstory: claims the player makes about the character's own past (N4).
+- theories: when the player reasons about how their own power works, the claim, a stable topic \
+key such as "throw_speed", what it is about (hit_force for how hard stopped-time hits land, \
+move_frozen for picking up frozen things, otherwise other), the way of landing claimed, what in \
+the power, sheet or world it rests on (empty when nothing does), how big an effect it claims \
+(person to stars), and whether it would add a new power or break a world rule (A9). Never \
+question it, never ask the player how a power works, and never argue physics: the engine rules \
+on it.
+- backstory: each claim the player makes about the character's own past or inner life, flagging \
+one that would give the sheet a power, item, rank or ally it lacks, one about how others feel, \
+one that contradicts a known fact or person (their ids), and world rules it breaks (N4).
 - goals: goals the player states for their character (N2).
 - outcome_claims: outcomes or other characters' reactions the player wrote ("and everyone \
 cheers"). They are hopes, not facts, and the step is the attempt (A6).
@@ -75,6 +95,9 @@ moment it goes wrong and show why, matching the step's reason. An action the wor
 plays as what it really is.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
+- rulings under OUTCOME say how a power works here, settled for good: show them in play, with no \
+physics lecture and never a question to the player about how the power should work (A9). A \
+backstory claim that wasn't recorded plays as something the character says or believes (N4).
 - Add no decision the player didn't make: no extra attack, no change of target, no retreat, no \
 line they didn't give. Use the character's lines exactly as given; when the player gave only the \
 gist, phrase it in the character's voice. Outcome claims in the action are hopes: others react as \

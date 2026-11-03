@@ -113,6 +113,15 @@ class StepResolution(EngineModel):
         return self.result is StepResult.SUCCESS and not self.interrupted
 
 
+class ClaimVerdict(EngineModel):
+    """N4. What the engine made of a backstory claim: recorded, or played as something the
+    character says or believes, with the reason."""
+
+    text: str
+    accepted: bool
+    reason: str = ""
+
+
 class StopReason(StrEnum):
     """R6. Why a chained plan stopped before its last step."""
 
@@ -135,6 +144,14 @@ class Resolution(EngineModel):
     rulings: list[Ruling] = Field(default_factory=list, description="A9, settled for good.")
     canon: list[str] = Field(
         default_factory=list, description="Details this turn made canon (R2, N7)."
+    )
+    claims: list[ClaimVerdict] = Field(default_factory=list, description="N4's verdicts.")
+    effects: StateDelta = Field(
+        default_factory=StateDelta,
+        description=(
+            "The engine's changes for the plan as a whole, applied after its steps: details of"
+            " powers settled (A9) and accepted backstory (N4)."
+        ),
     )
     stakes: bool = Field(default=False, description="W16: whether the turn held real stakes.")
 
