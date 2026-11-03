@@ -1,0 +1,231 @@
+{
+  "@@locale": "en",
+  "appTitle": "Lucid Saga",
+  "@appTitle": {
+    "description": "The app's name."
+  },
+  "retry": "Try again",
+  "gotIt": "Got it",
+  "cancel": "Cancel",
+  "close": "Close",
+  "navDiscover": "Discover",
+  "@navDiscover": {
+    "description": "Bottom tab."
+  },
+  "navLibrary": "Library",
+  "@navLibrary": {
+    "description": "Bottom tab."
+  },
+  "navAccount": "Account",
+  "@navAccount": {
+    "description": "Bottom tab."
+  },
+  "welcomeTagline": "An endless story that remembers everything you do.",
+  "welcomePointSpeak": "Type or say anything. The world decides what follows.",
+  "welcomePointWorld": "Every deed leaves a mark, and the world moves on without you.",
+  "welcomePointPictures": "Pictures at the moments that matter.",
+  "welcomeDemoSignIn": "Sign in to the demo account",
+  "@welcomeDemoSignIn": {
+    "description": "Only in the offline fake-API build."
+  },
+  "welcomeGuest": "Continue without an account",
+  "@welcomeGuest": {
+    "description": "Development only, until accounts exist."
+  },
+  "welcomeSignInSoon": "Sign-in with Google and email is on its way.",
+  "discoverTitle": "Discover",
+  "discoverSubtitle": "Pick a world, or dream up your own.",
+  "discoverSignature": "Signature worlds",
+  "@discoverSignature": {
+    "description": "Section of the flagship premises."
+  },
+  "discoverMore": "More worlds",
+  "discoverBadge": "Signature",
+  "@discoverBadge": {
+    "description": "Badge on a flagship premise card."
+  },
+  "discoverCreateTitle": "Start from your own idea",
+  "discoverCreateBody": "One line is enough. The storyteller builds the world around it.",
+  "discoverCreateAction": "Create your own",
+  "libraryTitle": "Library",
+  "librarySubtitle": "Your stories, where you left them.",
+  "libraryEmptyTitle": "No stories yet",
+  "libraryEmptyBody": "Pick a world in Discover, or start from your own idea.",
+  "libraryEmptyAction": "Discover worlds",
+  "libraryTurn": "Turn {turn}",
+  "@libraryTurn": {
+    "placeholders": {
+      "turn": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryMeta": "Turn {turn} · {time}",
+  "@libraryMeta": {
+    "description": "Turn number and the in-world time, such as 'Day 3, dusk'.",
+    "placeholders": {
+      "turn": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "createNewTitle": "New story",
+  "createStartTitle": "Start this story",
+  "createHeading": "What's your story?",
+  "createSubheading": "Who you are, where you are, and what is about to go wrong. The storyteller does the rest.",
+  "createPremiseLabel": "Premise",
+  "createPremiseHint": "A disgraced knight wakes up in the enemy's camp…",
+  "createTitleLabel": "Title (optional)",
+  "createBegin": "Begin",
+  "createTooShort": "A sentence or two is enough.",
+  "storyFallbackTitle": "Story",
+  "storyMemory": "Memory",
+  "storyStatus": "Status",
+  "storyBeginning": "The story is about to begin.",
+  "storyTurnFailed": "The scene wasn't saved, so nothing changed. Try again.",
+  "memoryTitle": "Memory",
+  "memorySubtitle": "What you know, in the world's words.",
+  "memoryYou": "You",
+  "memoryPeople": "People",
+  "memoryPlaces": "Places",
+  "memoryFactions": "Factions",
+  "memoryGoals": "Goals",
+  "memoryLeads": "Leads",
+  "memoryRumors": "Rumors",
+  "memoryDeeds": "Deeds",
+  "memoryThreads": "Threads",
+  "memorySummary": "Story so far",
+  "memoryFacts": "Facts",
+  "memoryUnconfirmed": "Unconfirmed",
+  "memoryDead": "Dead",
+  "memoryNothing": "Nothing yet.",
+  "statusTitle": "Status",
+  "statusReputation": "Reputation",
+  "statusSince": "Since then",
+  "accountTitle": "Account",
+  "accountSignedInAs": "Signed in as {name}",
+  "@accountSignedInAs": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountGuest": "Playing without an account",
+  "accountAppearance": "Appearance",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "themeSystem": "System",
+  "accountOwnKey": "Your own API key",
+  "accountOwnKeyBody": "Use your own Gemini API key instead of credits. It stays on this device and is sent only with requests that call the storyteller.",
+  "accountKeySaved": "Gemini key saved",
+  "accountKeyLabel": "Gemini API key",
+  "accountKeySave": "Save key",
+  "accountKeyRemove": "Remove",
+  "accountDeveloper": "Developer",
+  "accountApi": "API",
+  "accountApiFake": "Fake API, offline",
+  "accountGallery": "Widget gallery",
+  "accountSignOut": "Sign out",
+  "sceneDetails": "How it played out",
+  "@sceneDetails": {
+    "description": "Opens the steps, odds and reasons behind a scene."
+  },
+  "sceneMore": "Scene options",
+  "youDid": "You: {action}",
+  "@youDid": {
+    "description": "Screen-reader label for the player's action above a scene.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "narrationWriting": "The story is being written",
+  "picturePending": "A picture is being painted",
+  "portraitOf": "Portrait of {name}",
+  "@portraitOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventPersonal": "Personal event",
+  "eventLocal": "Local event",
+  "eventWorld": "World event",
+  "choiceKindThread": "Main thread",
+  "choiceKindPersonal": "Personal",
+  "choiceKindSide": "Side path",
+  "choiceKindWild": "Wild card",
+  "standingWait": "Wait",
+  "standingObserve": "Observe",
+  "composerHint": "What do you do?",
+  "composerSend": "Send",
+  "composerCommands": "Commands",
+  "composerCount": "{count} / {max}",
+  "@composerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "slashStatus": "Your sheet, reputation and the date",
+  "slashOoc": "Talk to the narrator",
+  "slashRecap": "The story so far",
+  "slashThoughts": "What a character lets show",
+  "slashThoughtsArg": "<character>",
+  "micStart": "Dictate",
+  "micStarting": "Starting the microphone",
+  "micStop": "Stop dictating",
+  "micDeniedTitle": "Microphone is off",
+  "micDeniedBody": "To speak your actions, allow the microphone and speech recognition for Lucid Saga in your device's settings. Typing always works.",
+  "micUnavailable": "Speech recognition isn't available here, so type instead.",
+  "micError": "Didn't catch that. Tap the mic to try again.",
+  "errorGenericTitle": "Something went wrong",
+  "errorUnknown": "Try again in a moment.",
+  "errorServer": "Something went wrong on our side. Try again in a moment.",
+  "errorNetworkTitle": "You're offline",
+  "errorNetwork": "Check your connection and try again.",
+  "errorTimeoutTitle": "That took too long",
+  "errorTimeout": "The server didn't answer in time. Try again.",
+  "errorUnauthenticatedTitle": "Signed out",
+  "errorUnauthenticated": "Your session ended. Sign in again to carry on.",
+  "errorOutOfCreditsTitle": "Out of credits",
+  "errorOutOfCredits": "You need more credits for that, or add your own API key in Account.",
+  "errorForbiddenTitle": "Not available",
+  "errorForbidden": "This isn't available to your account.",
+  "errorNotFoundTitle": "Not found",
+  "errorNotFound": "It may have been deleted.",
+  "errorVersionConflictTitle": "The story moved on",
+  "errorVersionConflict": "Another device played a turn. Showing the latest scene.",
+  "errorUnreadableActionTitle": "The storyteller couldn't read that",
+  "errorUnreadableAction": "Try saying it another way.",
+  "errorBadKeyTitle": "Your key was rejected",
+  "errorBadKey": "Check your Gemini API key in Account.",
+  "errorRateLimitedTitle": "Slow down a little",
+  "errorRateLimited": "Too many requests. Try again in a moment.",
+  "errorRateLimitedWait": "{seconds, plural, =1{Try again in a second.} other{Try again in {seconds} seconds.}}",
+  "@errorRateLimitedWait": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "errorQuotaTitle": "Today's limit reached",
+  "errorQuota": "Come back tomorrow, or add your own API key in Account to keep playing.",
+  "errorLlmTitle": "The storyteller is unavailable",
+  "errorLlm": "Nothing was saved and nothing was charged. Try again.",
+  "errorValidationTitle": "Check what you entered",
+  "errorValidation": "Something in the form needs a fix.",
+  "errorBirthDateTitle": "One more step",
+  "errorBirthDate": "We need your birth date to set your story ratings."
+}

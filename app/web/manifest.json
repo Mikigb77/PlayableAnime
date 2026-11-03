@@ -1,11 +1,11 @@
 {
-    "name": "playable_anime",
-    "short_name": "playable_anime",
+    "name": "Lucid Saga",
+    "short_name": "Lucid Saga",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "AI-driven interactive story app",
+    "background_color": "#0B0D12",
+    "theme_color": "#0B0D12",
+    "description": "An endless story that remembers everything you do.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

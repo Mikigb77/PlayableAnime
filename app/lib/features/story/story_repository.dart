@@ -1,7 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_client.dart';
+import '../../core/api/api_client.dart';
+import '../../core/api/api_providers.dart';
+import '../../core/api/turn_events.dart';
 import 'story_models.dart';
+
+/// A turn to take (docs/API.md `TurnRequest`).
+class TurnInput {
+  const TurnInput.action(String this.action, {required this.inputMode})
+    : kind = 'action',
+      choiceId = null,
+      standing = null;
+
+  const TurnInput.choice(String this.choiceId)
+    : kind = 'choice',
+      action = null,
+      standing = null,
+      inputMode = 'choice';
+
+  const TurnInput.standing(String this.standing)
+    : kind = 'standing',
+      action = null,
+      choiceId = null,
+      inputMode = 'choice';
+
+  final String kind;
+  final String? action;
+  final String? choiceId;
+  final String? standing;
+  final String inputMode;
+
+  Json toJson(int expectedVersion) => {
+    'kind': kind,
+    'action': ?action,
+    'choice_id': ?choiceId,
+    'standing': ?standing,
+    'input_mode': inputMode,
+    'expected_version': expectedVersion,
+  };
+}
 
 class StoryRepository {
   StoryRepository(this._api);
@@ -16,6 +53,8 @@ class StoryRepository {
     for (final json in await _api.get('/v1/stories') as List) StorySummary.fromJson(json as Json),
   ];
 
+  /// Today's backend creates a story straight from a premise. The create work (WS15) moves this to
+  /// drafts (`POST /v1/drafts`, then `/start`).
   Future<Story> create({required String premise, String? title}) async {
     final json = await _api.post('/v1/stories', {
       'premise': premise,
@@ -26,16 +65,44 @@ class StoryRepository {
 
   Future<Story> get(String id) async => Story.fromJson(await _api.get('/v1/stories/$id') as Json);
 
-  Future<WorldState> memory(String id) async =>
-      WorldState.fromJson(await _api.get('/v1/stories/$id/memory') as Json);
+  Future<MemoryData> memory(String id) async =>
+      MemoryData.fromJson(await _api.get('/v1/stories/$id/memory') as Json);
 
-  /// Advances the story with either one of the offered choices or a free-text action.
-  Future<TurnResult> takeTurn(String id, {String? choiceId, String? action}) async {
-    final json = await _api.post('/v1/stories/$id/turns', {
-      'choice_id': ?choiceId,
-      'action': ?action,
-    });
-    return TurnResult.fromJson(json as Json);
+  Future<StatusData> status(String id) async =>
+      StatusData.fromJson(await _api.get('/v1/stories/$id/status') as Json);
+
+  /// Takes a turn and streams it. Errors before the stream starts throw `ApiException`; the
+  /// stream ends with [SceneCompleted] or [TurnFailed].
+  ///
+  /// Today's backend answers with one JSON object instead of a stream; that reply is replayed as
+  /// the same events, so the play screen has one code path.
+  Future<Stream<TurnEvent>> takeTurn(
+    String id,
+    TurnInput input, {
+    required int expectedVersion,
+  }) async {
+    final response = await _api.openStream('/v1/stories/$id/turns', input.toJson(expectedVersion));
+    if (response.isEventStream) return response.turnEvents();
+    final json = await response.json() as Json;
+    final scene = json['scene'] as Json;
+    return Stream.fromIterable([
+      TurnStarted((scene['turn'] as num).toInt()),
+      NarrationDelta(scene['narration'] as String),
+      SceneCompleted(scene: scene, version: expectedVersion + 1, clock: const {}),
+    ]);
+  }
+
+  /// Asks for a scene's planned picture (M3). Safe to repeat: the server makes and charges it once.
+  Future<SceneImage> picture(String id, int turn) async {
+    final json = await _api.post('/v1/stories/$id/scenes/$turn/image', null) as Json;
+    return SceneImage(
+      status: switch (json['status']) {
+        'ready' => 'ready',
+        'pending' => 'planned',
+        _ => 'skipped',
+      },
+      url: json['url'] as String?,
+    );
   }
 }
 
@@ -47,6 +114,10 @@ final storiesProvider = FutureProvider.autoDispose(
   (ref) => ref.watch(storyRepositoryProvider).stories(),
 );
 
-final memoryProvider = FutureProvider.autoDispose.family<WorldState, String>(
+final memoryProvider = FutureProvider.autoDispose.family<MemoryData, String>(
   (ref, storyId) => ref.watch(storyRepositoryProvider).memory(storyId),
+);
+
+final statusProvider = FutureProvider.autoDispose.family<StatusData, String>(
+  (ref, storyId) => ref.watch(storyRepositoryProvider).status(storyId),
 );

@@ -1,28 +1,137 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:playable_anime/app.dart';
-import 'package:playable_anime/features/story/story_models.dart';
-import 'package:playable_anime/features/story/story_repository.dart';
+import 'package:playable_anime/core/api/api_client.dart';
+import 'package:playable_anime/core/api/api_providers.dart';
+import 'package:playable_anime/core/fake/fake_auth.dart';
+import 'package:playable_anime/core/fake/fake_backend.dart';
+import 'package:playable_anime/core/json.dart';
+import 'package:playable_anime/core/session/session.dart';
+import 'package:playable_anime/core/session/session_controller.dart';
+import 'package:playable_anime/design/design.dart';
+import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers.dart';
+
+/// The whole app on the fake backend: the signed-out welcome, then the tabs, a story and a turn.
 void main() {
-  testWidgets('Discover lists premises inside the tab shell', (tester) async {
+  late FakeBackend backend;
+  late MemorySessionStore store;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    backend = FakeBackend.standard(pace: FakePace.instant);
+    store = MemorySessionStore();
+  });
+
+  Future<void> signInStored() async {
+    final api = ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend);
+    final json =
+        await api.post('/v1/auth/login', {
+              'email': FakeAuthState.demoEmail,
+              'password': FakeAuthState.demoPassword,
+            }, authenticated: false)
+            as JsonMap;
+    store.value = StoredSignedIn(Session.fromApi(json));
+  }
+
+  Future<void> launch(WidgetTester tester) async {
+    usePhone(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          premisesProvider.overrideWith(
-            (ref) async => const [
-              Premise(id: 'p1', title: 'Test Premise', genre: 'Test', premise: 'A premise.'),
-            ],
-          ),
+          httpClientProvider.overrideWithValue(backend),
+          apiBaseUrlProvider.overrideWithValue(FakeBackend.baseUrl),
+          sessionStoreProvider.overrideWithValue(store),
+          speechEngineProvider.overrideWithValue(FakeSpeechEngine()),
         ],
         child: const App(),
       ),
     );
-    await tester.pumpAndSettle();
+    await settle(tester);
+  }
 
-    expect(find.text('Test Premise'), findsOneWidget);
-    expect(find.text('Create your own'), findsOneWidget);
-    expect(find.text('Library'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+  testWidgets('signed out, the app opens on the welcome screen', (tester) async {
+    await launch(tester);
+    final l10n = await english();
+    expect(find.text(l10n.appTitle), findsOneWidget);
+    expect(find.text(l10n.welcomeTagline), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('signed in, a player browses, opens a story and takes a turn', (tester) async {
+    await signInStored();
+    await launch(tester);
+    final l10n = await english();
+
+    // Discover: the signature worlds.
+    expect(find.text(l10n.discoverSubtitle), findsOneWidget);
+    expect(find.text('The Ninth Peak'), findsOneWidget);
+    expect(find.byType(CoverCard), findsWidgets);
+
+    // Library: the story in progress.
+    await tester.tap(find.text(l10n.navLibrary));
+    await settle(tester);
+    expect(find.byType(StoryTile), findsOneWidget);
+    await tester.tap(find.byType(StoryTile));
+    await settle(tester, frames: 12);
+
+    // The play screen opens on the newest scene, with its choices below.
+    final newest = find.textContaining('The scroll is warm', findRichText: true);
+    expect(newest, findsOneWidget);
+    expect(tester.getTopLeft(newest).dy, inInclusiveRange(0, 844));
+    final feed = find.ancestor(of: find.byType(SceneCard).first, matching: find.byType(Scrollable));
+    await tester.scrollUntilVisible(find.byType(StoryChoices), 300, scrollable: feed.first);
+    await settle(tester);
+
+    // A typed turn streams in and lands as a new scene.
+    await tester.enterText(find.byType(TextField), 'I listen at the door');
+    await tester.pump();
+    await tester.tap(find.byTooltip(l10n.composerSend));
+    await settle(tester, frames: 12);
+    expect(find.textContaining('I listen at the door'), findsOneWidget);
+    await tester.scrollUntilVisible(find.byType(StoryChoices), 300, scrollable: feed.first);
+    expect(find.byType(StoryChoices), findsOneWidget);
+    final turn = backend.requests.lastWhere((r) => r.uri.path.endsWith('/turns'));
+    expect(turn.json['input_mode'], 'typed');
+    expect(turn.json['expected_version'], 3);
+
+    // Memory opens in the story's accent.
+    await tester.tap(find.byTooltip(l10n.storyMemory));
+    await settle(tester, frames: 10);
+    expect(find.text(l10n.memoryTitle), findsOneWidget);
+    final accent = Theme.of(
+      tester.element(find.text(l10n.memoryYou.toUpperCase())),
+    ).extension<LucidColors>()!.accent;
+    expect(accent, accentFor(GenreAccent.jade, Brightness.dark));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a story opened from a link has a way back', (tester) async {
+    await signInStored();
+    await launch(tester);
+    GoRouter.of(tester.element(find.byType(NavigationBar))).go('/story/story_ninth_peak');
+    await settle(tester, frames: 10);
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await settle(tester);
+    expect(find.byType(StoryTile), findsOneWidget);
+  });
+
+  testWidgets('signing out returns to the welcome screen', (tester) async {
+    await signInStored();
+    await launch(tester);
+    final l10n = await english();
+    await tester.tap(find.text(l10n.navAccount));
+    await settle(tester);
+    await tester.tap(find.text(l10n.accountSignOut));
+    await settle(tester);
+    expect(find.text(l10n.welcomeTagline), findsOneWidget);
+    expect(store.value, isNull);
   });
 }
