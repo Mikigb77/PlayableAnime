@@ -476,6 +476,18 @@ and slow, local reversal), A4, G19, G20, N4.
   and the story's picture setting.
 - **Done when** the "quiet life", "long fight", "ignored event", "themes off", "time skip" and
   "goal ownership" scenarios pass as unit tests.
+- **Landed** as `backend/engine/director/` (see
+  [ARCHITECTURE.md](ARCHITECTURE.md#the-story-director)), with the six scenarios in
+  `tests/engine/director/test_scenarios.py`. It added `Intent.responds_to`, the
+  `record_direction` seam and the `schedule_stretch` hook in `play_out`, and wired them into the
+  turn graph's resolve node. What other workstreams need to know:
+  - **WS10 (living world):** `apply_event` must keep marking `director.event` and
+    `director.plays_out` events applied and nothing else. A world event that needs the player can
+    carry `payload["event"]` with a size, kind, brief and themes for the director.
+  - **WS3 and WS8 (pictures):** `PictureDecision.subject_id` is a character, place, deed or thread
+    id (see ARCHITECTURE.md). A place that changed for good (`place_changed`) needs a new picture
+    of the same place, so plan it with a redraw rather than reusing the first one (M4). M5's
+    portrait redraw for a permanent change has no trigger yet.
 
 ### WS12 Drafting a world and a character (wave 2b, after WS2's PR 1 and WS3's PR 1)
 

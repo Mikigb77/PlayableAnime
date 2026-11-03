@@ -58,7 +58,10 @@ class PlannedEvent(EngineModel):
     size: EventSize
     kind: EventKind
     source: EventSource
-    source_id: str | None = Field(default=None, description="The clock, thread or event behind it.")
+    source_id: str | None = Field(
+        default=None,
+        description="The clock, thread, pending event, character or faction behind it.",
+    )
     card_id: str | None = Field(default=None, description="The deck card, for a deck draw.")
     title: str
     brief: str = Field(description="What happens, for the narrator to tell in the world's form.")

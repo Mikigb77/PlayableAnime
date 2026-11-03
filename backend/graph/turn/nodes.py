@@ -2,7 +2,8 @@
 
 1. `catch_up` (code): the world catches up on what fell due (W6, W10, B12).
 2. `interpret` (model): the player's words become an `Intent`, checked in code (V3, R2, A9).
-3. `resolve` (code): resolve, play out and direct, then the plan is checked (A2, R6, W16, M1, C5).
+3. `resolve` (code): resolve, play out, direct and record the director's plan, then the plan is
+   checked (A2, R6, W16, M1, C5).
 4. `build_context` (code): the narrator's brief (R3, C3).
 5. `narrate` (model, streamed): the scene, with F4's cut-away and template fallbacks (S3, B7).
 6. `apply_update` (code): the narrator's update applied and checked (C1), the scene built.
@@ -21,7 +22,7 @@ import logging
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import aclosing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
@@ -216,7 +217,10 @@ async def resolve(state: TurnState) -> dict[str, Any]:
         issues += [_rejected("engine_rejected", r) for r in played.rejected]
         if played.capped:
             issues.append(Issue("events_capped", "a step hit the event cap"))
-    plan = pipeline.direct(played.state, played.resolution, turn.ctx, rng)
+    # The director decides, then its records go in before anything is narrated, so the plan's
+    # new threads and leads are in the state the check and the narrator see (W16, N1, N2).
+    plan = pipeline.direct(played.state, played.resolution, turn.ctx, rng, intent=intent)
+    played = replace(played, state=pipeline.record_direction(played.state, plan, turn.ctx))
     plan, found = check.check_plan(played.state, plan, turn.ctx)
     issues += found
     return {

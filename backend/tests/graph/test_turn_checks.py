@@ -24,7 +24,7 @@ from engine.contracts import (
 )
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
-from engine.state.records import RollRecord, StepResult, ThreadStatus
+from engine.state.records import Lead, LeadStatus, RollRecord, StepResult, ThreadStatus
 from engine.state.world import EventSize
 from graph.turn.check import (
     MAX_STEPS,
@@ -216,6 +216,27 @@ def test_a_stop_naming_no_step_is_cleared():
     assert [i.code for i in issues] == ["bad_stop"]
 
 
+def test_only_open_threads_the_player_knows_and_open_leads_can_be_taken_up():
+    """W16, N1, N2: what the action takes up is checked against the state."""
+    state = grounded_world()
+    state.leads["lead-1"] = Lead(id="lead-1", text="A job at the docks")
+    state.leads["lead-2"] = Lead(id="lead-2", text="Gone", status=LeadStatus.EXPIRED)
+    state.threads["secret"] = state.threads["revenge"].model_copy(
+        update={"id": "secret", "known_by": []}
+    )
+    state.threads["over"] = state.threads["revenge"].model_copy(
+        update={"id": "over", "status": ThreadStatus.RESOLVED}
+    )
+    proposed = Intent(
+        steps=[step()],
+        responds_to=["revenge", "lead-1", "revenge", "lead-2", "secret", "over", "ghost"],
+    )
+    checked = check_intent(proposed, state, "x")
+    assert checked.intent.responds_to == ["revenge", "lead-1"]
+    dropped = [i.subject for i in checked.issues if i.code == "unknown_response"]
+    assert dropped == ["lead-2", "secret", "over", "ghost"]
+
+
 # check_plan
 
 
@@ -249,6 +270,27 @@ def test_a_dead_subject_is_drawn_only_for_their_death():
     assert check_plan(state, portrait("zhao"), ctx())[0].picture is None
     death = portrait("zhao", PictureTrigger.DEATH)
     assert check_plan(state, death, ctx())[0].picture is not None
+
+
+def test_a_fights_decisive_blow_can_picture_the_foe_it_killed():
+    state = cultivation_world()
+    zhao = state.characters["zhao"]
+    zhao.status, zhao.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    blow = DirectorPlan(
+        picture=PictureDecision(
+            kind=PictureKind.SCENE, trigger=PictureTrigger.DECISIVE_BLOW, subject_id="zhao"
+        )
+    )
+    assert check_plan(state, blow, ctx())[0].picture is not None
+
+
+def test_an_arc_or_event_picture_can_name_its_thread():
+    arc = DirectorPlan(
+        picture=PictureDecision(
+            kind=PictureKind.SCENE, trigger=PictureTrigger.ARC_END, subject_id="tournament"
+        )
+    )
+    assert check_plan(cultivation_world(), arc, ctx())[0].picture is not None
 
 
 def test_a_picture_of_nothing_is_dropped():
@@ -287,6 +329,12 @@ def test_an_events_unknown_references_are_cleared():
         cultivation_world(), DirectorPlan(event=event(thread_id="tournament")), ctx()
     )
     assert kept.event.thread_id == "tournament"
+    # An NPC's or a faction's plans are the source of an agenda event (W16, E3).
+    for source in ("zhao", "outer-court"):
+        kept, issues = check_plan(
+            cultivation_world(), DirectorPlan(event=event(source_id=source)), ctx()
+        )
+        assert kept.event.source_id == source and issues == []
 
 
 def test_callbacks_pull_in_only_open_or_dormant_threads():

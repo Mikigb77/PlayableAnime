@@ -29,7 +29,7 @@ from engine.contracts import (
     Theme,
 )
 from engine.state.cast import CharacterStatus
-from engine.state.records import StepResult
+from engine.state.records import LeadStatus, StepResult
 from engine.state.world import WorldState
 from graph.turn.types import Issue
 
@@ -38,6 +38,8 @@ from graph.turn.types import Issue
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
+# M1: the only pictures a dead character can be the subject of.
+LAST_PICTURES = (PictureTrigger.DEATH, PictureTrigger.DECISIVE_BLOW)
 
 
 @dataclass(frozen=True)
@@ -78,6 +80,18 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_opposition", "kept as words", ", ".join(unknown)))
             facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
+
+    # W16, N1, N2: only open threads the player knows and leads still on offer can be taken up.
+    taken_up = []
+    for ref in dict.fromkeys(intent.responds_to):
+        thread, lead = state.threads.get(ref), state.leads.get(ref)
+        if thread is not None and not thread.status.closed and state.player_id in thread.known_by:
+            taken_up.append(ref)
+        elif lead is not None and lead.status is LeadStatus.OPEN:
+            taken_up.append(ref)
+        else:
+            issues.append(Issue("unknown_response", "not an open thread or lead", ref))
+    intent.responds_to = taken_up
 
     overflow: list[str] = []
     if len(intent.steps) > MAX_STEPS:
@@ -223,10 +237,10 @@ def check_plan(
     """The director's pick, held to the state and the player's settings.
 
     A picture needs pictures switched on (M2) and a subject that exists, and a dead character is
-    drawn only for their death. An event may only start themes the player switched on and the
-    rating allows (F7, F2), and may only point at threads, clocks and events that exist.
-    Callbacks pull in only dormant or open threads (N1). Suggestions follow the player's setting
-    (S2).
+    drawn only for their death or the blow that ended their fight. An event may only start
+    themes the player switched on and the rating allows (F7, F2), and may only point at threads,
+    clocks, events, characters and factions that exist. Callbacks pull in only dormant or open
+    threads (N1). Suggestions follow the player's setting (S2).
     """
     issues: list[Issue] = []
     plan = plan.model_copy(deep=True)
@@ -249,7 +263,13 @@ def check_plan(
             if event.thread_id is not None and event.thread_id not in state.threads:
                 issues.append(Issue("unknown_thread", "event's thread cleared", event.thread_id))
                 event.thread_id = None
-            known_sources = state.clocks.keys() | state.threads.keys() | state.pending_events.keys()
+            known_sources = (
+                state.clocks.keys()
+                | state.threads.keys()
+                | state.pending_events.keys()
+                | state.characters.keys()
+                | state.factions.keys()
+            )
             if event.source_id is not None and event.source_id not in known_sources:
                 issues.append(Issue("unknown_source", "event's source cleared", event.source_id))
                 event.source_id = None
@@ -277,10 +297,10 @@ def _picture_problem(
         return None
     character = state.characters.get(subject_id)
     if character is not None:
-        if character.status is CharacterStatus.DEAD and trigger is not PictureTrigger.DEATH:
+        if character.status is CharacterStatus.DEAD and trigger not in LAST_PICTURES:
             return "the subject is dead"
         return None
-    if subject_id in state.places or subject_id in state.deeds:
+    if subject_id in state.places or subject_id in state.deeds or subject_id in state.threads:
         return None
     return "the subject isn't in the story"
 
