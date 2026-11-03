@@ -72,3 +72,10 @@ class Story(BaseModel):
     premise: str
     scenes: list[Scene] = []
     state: WorldState = Field(default_factory=WorldState)
+
+
+class StorySummary(BaseModel):
+    id: str
+    title: str
+    premise: str
+    turn: int

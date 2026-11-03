@@ -12,6 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY app ./app
+COPY migrations ./migrations
 
 # Cloud Run injects PORT; 8080 is the local default.
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

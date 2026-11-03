@@ -50,7 +50,7 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 - [x] Memory screen, read-only *(scaffold)*
 - [x] Library of your stories *(scaffold, in-memory only)*
 - [x] Bring your own Gemini key, stored on the device *(scaffold)*
-- [ ] Persistence on Neon Postgres
+- [x] Persistence on Neon Postgres *(stories as JSONB; normalised schema later)*
 - [ ] Accounts and sign-in (needed before any public deploy)
 - [ ] Premise → world bible expansion (setting, rules, factions, key NPCs, tone)
 - [ ] Streaming narration (SSE) so text appears as it's written

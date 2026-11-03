@@ -21,6 +21,26 @@ stories, either:
   tech.garbar@gmail.com. Note that ADC is machine-wide, so this replaces whatever ADC you use for
   other projects.
 
+## Database (Neon Postgres)
+
+Stories are stored in Neon when `DATABASE_URL` is set; otherwise they are kept in memory. From the
+repo root, the Neon CLI writes the linked branch's URLs to `.env.local`, which this service reads:
+
+```bash
+npm i -g neon            # once
+neon login               # once per machine
+neon env pull            # or: neon checkout <branch> --create
+```
+
+Apply migrations (`migrations/*.sql`) over the direct URL:
+
+```bash
+uv run python -m app.migrate
+```
+
+Work on a Neon branch per feature, never directly on `production`. The details are in
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#neon-postgres).
+
 ## Test and lint
 
 ```bash
@@ -28,6 +48,10 @@ uv run pytest
 uv run ruff check .
 uv run ruff format .
 ```
+
+`tests/test_postgres.py` runs only when `TEST_DATABASE_URL` is set, and optionally
+`TEST_DATABASE_URL_UNPOOLED`. Point them at a dev branch or a local Postgres, never at production:
+the tests write and delete rows.
 
 ## API
 
@@ -48,10 +72,12 @@ Optional headers: `X-LLM-Provider: gemini` and `X-LLM-Api-Key: <key>` (bring you
 ```
 app/
   main.py            FastAPI app and routers
-  config.py          Settings from env / .env
+  config.py          Settings from env, .env and the repo-root .env.local
   domain.py          Story, Scene, WorldState, Character, Faction, Fact
   premises.py        Starter premises
-  storage.py         StoryRepository protocol + in-memory implementation
+  db.py              asyncpg pool and the migration runner
+  migrate.py         `python -m app.migrate`
+  storage.py         StoryRepository protocol: Postgres and in-memory implementations
   api/               HTTP routes and dependencies
   engine/
     narrator.py      Prompt building and one story turn
@@ -62,6 +88,7 @@ app/
     gemini.py        Gemini via Vertex AI or an API key
     fake.py          Offline narrator for dev and tests
     factory.py       Picks a provider per request (BYOK first)
+migrations/          SQL migrations, applied in name order
 ```
 
 ## Deploy to Cloud Run
@@ -69,5 +96,9 @@ app/
 Not deployed yet. Add auth first: an open endpoint lets anyone spend the Vertex budget. When ready:
 
 ```bash
-gcloud run deploy playable-anime-api --source . --configuration=playable-anime --region=europe-southwest1 --service-account=playable-anime-api@playable-anime.iam.gserviceaccount.com --set-env-vars=LLM_PROVIDER=vertex
+gcloud run deploy playable-anime-api --source . --configuration=playable-anime --region=europe-west3 --service-account=playable-anime-api@playable-anime.iam.gserviceaccount.com --set-env-vars=LLM_PROVIDER=vertex --set-secrets=DATABASE_URL=database-url:latest
 ```
+
+`europe-west3` (Frankfurt) is the same region as the Neon database. Create the `database-url`
+secret first (see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#neon-postgres)), and run
+`uv run python -m app.migrate` against production before deploying a schema change.
