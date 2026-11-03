@@ -35,6 +35,38 @@ def test_backstops_hold_in_every_rating():
         assert settings["sexually_explicit"] != "off"
 
 
+def test_mature_interpret_reads_the_action_with_the_text_filters_off():
+    # F4: a blocked interpret step is the one block that stops the deed itself.
+    interpret = safety_settings("mature", node="interpret")
+    narrator = safety_settings("mature", node="narrator")
+    strictness = {name: rank for rank, name in enumerate(THRESHOLDS)}
+
+    assert interpret["sexually_explicit"] == "off" and interpret["hate_speech"] == "off"
+    assert interpret["dangerous_content"] == narrator["dangerous_content"] != "off"
+    for category in HARM_CATEGORIES:
+        assert strictness[interpret[category]] <= strictness[narrator[category]]
+    # Teen keeps the narrator's settings, and pictures stay mild whoever draws them.
+    assert safety_settings("teen", node="interpret") == safety_settings("teen")
+    assert safety_settings("mature", picture=True, node="interpret") == safety_settings(
+        "mature", picture=True
+    )
+
+
+@pytest.mark.parametrize("rating", ["teen", "mature"])
+@pytest.mark.parametrize("node", [None, "interpret", "narrator"])
+@pytest.mark.parametrize("picture", [False, True])
+def test_every_setting_is_one_gemini_accepts(rating, node, picture):
+    from google.genai.types import HarmBlockThreshold
+
+    from graph.llm.gemini import to_safety_settings
+
+    settings = to_safety_settings(safety_settings(rating, node=node, picture=picture))
+
+    assert len(settings) == len(HARM_CATEGORIES)
+    # BLOCK_NONE is restricted to approved projects, so it is never used.
+    assert HarmBlockThreshold.BLOCK_NONE not in settings.values()
+
+
 def test_an_unknown_rating_is_refused():
     with pytest.raises(ValueError):
         safety_settings("adult")  # type: ignore[arg-type]

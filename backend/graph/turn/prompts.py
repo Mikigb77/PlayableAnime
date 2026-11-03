@@ -168,8 +168,12 @@ _GORE = {
 
 _ALWAYS = """\
 Always: no romantic or sexual content involving minors or anyone with a childlike body or \
-behaviour, whatever age they are given; no sexual content about real people; no real-world \
-instructions for weapons, drugs or hacking (F3).
+behaviour, whatever age they are given, and everyone in a romantic moment is an adult whose age \
+of 18 or more is in update.characters; no sexual content about real people; no real-world \
+instructions for weapons, drugs or hacking: say what was made or done, never how (F3). People \
+and organisations are fictional: no real living person, and no real crime family, gang, party, \
+company or government as a character or a faction; real places and history are a backdrop, and \
+long-dead historical figures can appear in a historical story (G12).
 """
 
 

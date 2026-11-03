@@ -34,7 +34,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
   | 409 | `version_conflict` | `expected_version` is stale: another turn won (T10). `details.current_version`. |
-  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). |
+  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). When the action crosses a hard limit, `details.category` names it (`minor`, `sexual`, `sexual_violence` or `real_person`, F2, F3, G12) and `message` says which line it is, so show the message as it is. |
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |
   | 429 | `rate_limited` | Per-user rate limit (T9). `details.retry_after_s`. |
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
@@ -64,7 +64,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
 | GET | `/v1/me` | | `User` |
 | PATCH | `/v1/me` | `{display_name?, content_prefs?}` | `User` |
 | DELETE | `/v1/me` | | `204`. Deletes the account, stories and pictures (T12, M4). |
-| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture]}` (T12, M4) |
+| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture], "reports": [ExportedReport]}` (T12, M4, F6) |
 | GET | `/v1/me/credits` | `?limit=50` (1 to 200) | `{balance_cents, unlimited, entries: [LedgerEntry]}`, newest first (K1, K2) |
 
 ```text
@@ -75,6 +75,8 @@ User         {id, email, display_name, role: "player"|"owner", max_rating: "teen
 LedgerEntry  {id, kind: "starter"|"turn"|"draft"|"image"|"topup"|"adjustment", amount_cents,
               balance_after_cents, story_id?, turn?, created_at}
 ExportedPicture {id, story_id, kind, subject, version, turns: [int], url, expires_at, created_at}
+ExportedReport  {story_id, turn, category, note, block, status: "open"|"actioned"|"dismissed",
+                 created_at}                                # the player's own reports, oldest first
 ```
 
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
@@ -290,7 +292,7 @@ stream starts and come back as ordinary JSON errors. Once the server answers `20
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
-| `error` | `{code, message}` | The turn failed after streaming began (`llm_unavailable`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry. |
+| `error` | `{code, message, details?}` | The turn failed after streaming began: `llm_unavailable`, or `unreadable_action` with the same `details` as the JSON error (a hard limit's `details.category`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry, or a rephrase for `unreadable_action`. |
 
 A turn is all or nothing: the world state, the scene, the ledger entry and the version bump are saved
 together only when the turn completes.
@@ -309,6 +311,7 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing",
        event?: {size: "personal"|"local"|"world", title},        # a W16 event arrived
        image?: SceneImage,
        portraits: [{character_id, name, url?}],                  # known characters in the scene (M4, M5)
+       blocked: bool,                                            # the player blocked this scene (F6)
        created_at}
 
 SceneDetails {steps: [{text,                                    # the step in plain words
@@ -389,6 +392,17 @@ StatusView {character: {name, lines: [string]},
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/v1/stories/{id}/scenes/{turn}/report` | `{category: "sexual"|"minor"|"hate"|"real_person"|"self_harm"|"other", note?, block: bool}` | `204` |
+| POST | `/v1/stories/{id}/scenes/{turn}/report` | `{category: "sexual"|"minor"|"hate"|"real_person"|"self_harm"|"other", note?, block?: bool}` (block defaults to false) | `204` |
 
-`block: true` hides the scene's text in the app at once. Staff review reports in the Django admin.
+- **One report per scene and player.** Reporting a scene again updates the category (and the note,
+  when one is sent) and puts the report back in the review queue. Both answer `204`.
+- **`block: true` hides the scene's text** in the app at once, and from then on the scene comes
+  back with `blocked: true`, so the app shows a placeholder in its place. A block is never undone,
+  even by a later report with `block: false`. The story itself goes on as before.
+- `note` is up to 1000 characters. It is kept with the report, read only by staff handling
+  reports, and never logged.
+- **Errors:** `401`, `403 forbidden` for someone else's story or a rating above the account's
+  limit (F8), `404 not_found` for an unknown story or a turn with no scene, `400
+  validation_error` for an unknown category or a note that is too long.
+- Staff review reports in the Django admin's queue
+  (T16, [ARCHITECTURE.md](ARCHITECTURE.md#safety-ratings-and-reports)).

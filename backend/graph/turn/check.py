@@ -13,6 +13,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 
 from dataclasses import dataclass
 
+from engine import limits
 from engine.context import GoreLevel, ImageSetting, Rating, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -38,6 +39,8 @@ from graph.turn.types import Issue
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
+# G12: the issue code for a real person or organisation left out of the narrator's update.
+REAL_ENTITY = "real_entity"
 
 
 @dataclass(frozen=True)
@@ -198,10 +201,12 @@ def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
     A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
-    dead can't be present (C1), and the rolling summary is never blanked.
+    dead can't be present (C1), and the rolling summary is never blanked. A new character or
+    faction named after a real person or organisation is left out, and a known one keeps its
+    name (G12).
     """
-    issues: list[Issue] = []
-    delta = delta.model_copy(deep=True)
+    delta, hits = limits.strip_real_entities(delta, state)
+    issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()

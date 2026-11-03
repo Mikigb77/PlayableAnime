@@ -191,7 +191,7 @@ class ModelClient:
             model=settings.model,
             prompt=prompt,
             options=opts,
-            safety=safety_settings(self._rating, picture=image is not None),
+            safety=safety_settings(self._rating, picture=image is not None, node=node),
             json_schema=_json_schema(schema) if schema is not None else None,
             image=image,
         )
