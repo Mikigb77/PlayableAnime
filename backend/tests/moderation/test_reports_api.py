@@ -7,7 +7,7 @@ from asgiref.sync import async_to_sync
 from django.test import Client
 
 from moderation.models import Report, ReportStatus
-from moderation.service import blocked_turns
+from moderation.service import blocked_turns, report_scene
 from tests.conftest import auth_headers
 from tests.moderation.conftest import TEEN_BIRTH_DATE
 
@@ -104,6 +104,15 @@ def test_a_bad_report_is_a_validation_error(player_client, story, body):
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_a_scene_is_reported_only_with_its_own_story(player, make_story, story):
+    other = make_story(player, title="Another story")
+    with pytest.raises(ValueError):
+        report_scene(
+            other, story.scenes.get(turn=1), player, category="other", note="", block=False
+        )
+    assert not Report.objects.exists()
 
 
 def test_reports_leave_with_the_story_and_the_account(player, player_client, story):

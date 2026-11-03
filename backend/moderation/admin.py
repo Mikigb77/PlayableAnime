@@ -131,11 +131,11 @@ class ReportAdmin(admin.ModelAdmin):
             self._reviewed(request, obj)
         super().save_model(request, obj, form, change)
 
-    @admin.action(description="Mark the selected reports as actioned")
+    @admin.action(description="Mark the selected reports as actioned", permissions=["change"])
     def mark_actioned(self, request, queryset) -> None:
         self._close(request, queryset, ReportStatus.ACTIONED)
 
-    @admin.action(description="Dismiss the selected reports")
+    @admin.action(description="Dismiss the selected reports", permissions=["change"])
     def mark_dismissed(self, request, queryset) -> None:
         self._close(request, queryset, ReportStatus.DISMISSED)
 

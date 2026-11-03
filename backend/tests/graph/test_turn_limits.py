@@ -7,7 +7,14 @@ from engine.context import Rating, TurnContext
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character
 from graph.llm import Block, Node, Reply
-from graph.turn import NarrationReset, TurnCompleted, TurnInput, TurnKind, run_turn
+from graph.turn import (
+    NarrationDelta,
+    NarrationReset,
+    TurnCompleted,
+    TurnInput,
+    TurnKind,
+    run_turn,
+)
 from graph.turn.check import REAL_ENTITY
 from graph.turn.errors import LimitReached
 from moderation.evals import build_world, load_cases
@@ -121,6 +128,21 @@ def test_a_narration_that_reads_as_a_recipe_is_retold_as_a_cutaway(fake, make_cl
             "attempt": "full",
         }
     ]
+
+
+def test_a_recipe_is_stopped_before_the_piece_that_completes_it(fake, make_client):
+    opening = "The trailer is quiet. You lay it all out:\n"
+    recipe = opening + "1. Crush the pseudoephedrine tablets.\n2. Dissolve them in solvent.\n"
+    told = "By dawn the trays glitter."
+    fake.script(Node.INTERPRET, Reply(json=intent("cook a batch of meth")))
+    fake.script(Node.NARRATOR, Reply(json={"narration": recipe}), Reply(json={"narration": told}))
+
+    events, result = play(make_client(), turn_input(grounded_world(), "I cook a batch"))
+
+    reset = events.index(NarrationReset("cutaway"))
+    sent = "".join(e.text for e in events[:reset] if isinstance(e, NarrationDelta))
+    assert sent.startswith(opening) and "2. Dissolve" not in sent
+    assert result.narration_mode == "cutaway" and result.scene.narration == told
 
 
 def test_a_model_block_is_logged_with_its_category(fake, make_client, log_lines):

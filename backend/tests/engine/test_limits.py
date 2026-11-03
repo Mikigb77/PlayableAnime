@@ -49,6 +49,9 @@ def test_only_a_recorded_age_of_eighteen_or_more_counts():
         "The body of a ten-year-old, the eyes of an old woman.",
         "A girl of fourteen in a red coat.",
         "A loli vampire with a parasol.",
+        "She is 15 years old and small for it.",
+        "Lia's fifteen, and quick with a knife.",
+        "He just turned sixteen.",
     ],
 )
 def test_a_childlike_look_rules_out_romance_whatever_age_is_recorded(appearance):
@@ -66,6 +69,12 @@ def test_a_childlike_look_rules_out_romance_whatever_age_is_recorded(appearance)
         "A high school teacher with ink on her fingers.",
         "2 swords on her back, a mother of ten.",
         "In her late teens, quick to laugh.",
+        "Appears 7 feet tall in her armour.",
+        "Her daughter is 6 years old.",
+        "Leads a body of 12 riders.",
+        "She was 15 when the war came.",
+        "Seems 3 times stronger than she looks.",
+        "A face of 40 winters.",
     ],
 )
 def test_ordinary_adult_descriptions_pass(text):
@@ -91,6 +100,15 @@ def test_ordinary_adult_descriptions_pass(text):
         ("let my blade kiss his throat", None),
         ("visit my married sister", None),
         ("throw a stone at Zhao", None),
+        ("grope her in the dark", Intimacy.SEXUAL),
+        ("strip her naked", Intimacy.SEXUAL),
+        ("fondle Lia", Intimacy.SEXUAL),
+        ("strip them of their weapons", None),
+        ("grope in the dark for the lever", None),
+        ("grope my way along the wall", None),
+        ("check the sex of the foal", None),
+        ("bed them down in the barn", None),
+        ("fondle the hilt of my sword", None),
     ],
 )
 def test_romantic_and_sexual_steps_are_recognised(text, kind):
@@ -202,6 +220,7 @@ def test_every_category_has_a_message_for_the_player():
         ("the FBI", "FBI"),
         ("the Gambino family", "Gambino family"),
         ("Google", "Google"),
+        ("Microsoft founder Bill Gates", "Bill Gates"),  # the person wins over the company
     ],
 )
 def test_real_people_and_organisations_are_recognised(name, entity):
@@ -231,6 +250,15 @@ def test_a_step_at_a_real_person_never_plays():
     [hit] = limits.check_action(grounded_world(), intent, Rating.MATURE)
 
     assert hit.category is LimitCategory.REAL_PERSON and hit.subject == "Elon Musk"
+
+
+def test_a_real_person_named_after_their_company_never_plays():
+    target = "the Google boss Sundar Pichai"
+    intent = Intent(steps=[step(f"rob {target}", targets=[target])])
+
+    [hit] = limits.check_action(grounded_world(), intent, Rating.MATURE)
+
+    assert hit.subject == "Sundar Pichai"
 
 
 def test_naming_a_real_organisation_in_an_action_is_a_backdrop():

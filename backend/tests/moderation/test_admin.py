@@ -169,6 +169,24 @@ def test_a_decision_in_the_form_records_the_reviewer(story):
     assert (report.category, report.note, report.block) == ("sexual", "Please look.", True)
 
 
+def test_only_staff_who_can_change_reports_can_close_them(story):
+    report = file_report(story)
+    viewer = User.objects.create_user("viewer@example.com", "pw", is_staff=True)
+    viewer.user_permissions.add(
+        *Permission.objects.filter(codename__in=["view_report", "handle_reports"])
+    )
+    client = Client()
+    client.force_login(viewer)
+
+    client.post(
+        reverse("admin:moderation_report_changelist"),
+        {"action": "mark_actioned", "_selected_action": [str(report.pk)]},
+    )
+
+    report.refresh_from_db()
+    assert report.status == ReportStatus.OPEN and report.reviewer is None
+
+
 def test_staff_never_file_or_delete_reports_unless_superuser(story):
     report = file_report(story)
     client = staff("mod@example.com", handler=True)

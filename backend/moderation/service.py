@@ -20,6 +20,8 @@ def report_scene(
     A repeat takes the new category, and the new note when there is one, and reopens a report
     staff had closed. A block is never undone by a later report without one.
     """
+    if scene.story_id != story.id:
+        raise ValueError("The scene belongs to another story.")
     with transaction.atomic():
         report, created = Report.objects.select_for_update().get_or_create(
             scene=scene,

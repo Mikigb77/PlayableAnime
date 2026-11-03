@@ -86,8 +86,8 @@ Why the lines are where they are:
   confirm that its filters draw the line where this table does.
 
 **What the code enforces** ([ARCHITECTURE.md](ARCHITECTURE.md#safety-ratings-and-reports)). The
-prompts ask for the lines above and Gemini's filters back them, but these hold in code whatever a
-model or a player says:
+prompts ask for the lines above and Gemini's filters back them, but the turn graph (B5) holds these
+in code whatever a model or a player says:
 
 - A romantic or sexual step plays only when everyone in it is a known character with an age of 18
   or more recorded and nothing childlike in their description (F3). A partner the story hasn't met

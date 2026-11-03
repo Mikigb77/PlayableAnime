@@ -123,6 +123,13 @@ _NUMBERS = {
 _AGE = r"(\d{1,3}|" + "|".join(_NUMBERS) + r")"
 _YEARS_OLD = r"(?:years? old|year old|yo)"
 _PERSON = r"(?:girl|boy|child|kid|body|form|frame|face)"
+# A number followed by one of these is a size, a count or a time, not an age: "appears 7 feet
+# tall", "seems 3 times stronger", "looks 10 minutes older".
+_NOT_AN_AGE = (
+    r"(?! (?:feet|foot|ft|inch|inches|cm|centimet\w*|metres?|meters?|m|kg|kilos?|pounds?|lbs?|"
+    r"stone|tall|times|seconds?|minutes?|hours?|days?|weeks?|months?|steps|paces|miles?|yards?|"
+    r"percent|more|less|of)\b)"
+)
 
 # Words for a child's body or manner. "Childlike" is in on purpose: F3 counts a childlike body or
 # behaviour whatever age a character is given. "Teen", "young" or "petite" describe adults too,
@@ -152,17 +159,23 @@ _CHILDLIKE = _words(
 )
 # The age someone looks or is said to be: "looks about twelve", "a girl of fourteen", "the body
 # of a ten-year-old", "she is 15 years old", or an appearance that starts with the age ("16,
-# slight, black hair"). A "ten-year-old scar" is about the scar, so a bare age with no person in
-# it doesn't count.
+# slight, black hair"). A "ten-year-old scar" is about the scar, and "her daughter is 6 years
+# old" about someone else, so an age counts only when it is the character's own: how they look,
+# a person word, or a sentence about them (a pronoun or their name, `_own_age`).
 _AGE_PHRASES = (
     re.compile(
-        r"\b(?:looks?|looking|appears?|appearing|seems?|aged|body of|form of|frame of)"
+        r"\b(?:looks?|looking|appears?|appearing|seems?|aged)"
         rf"(?: (?:like|about|around|maybe|barely|only|just|no more than|at most|a|an))* {_AGE}"
-        rf"(?: {_YEARS_OLD})?\b"
+        rf"(?: {_YEARS_OLD})?\b{_NOT_AN_AGE}"
     ),
-    re.compile(rf"\b{_PERSON} of {_AGE}\b"),
+    re.compile(rf"\b(?:body|form|frame|face) of an? {_AGE} {_YEARS_OLD}\b"),
+    re.compile(rf"\b(?:girl|boy|child|kid) of {_AGE}\b{_NOT_AN_AGE}"),
     re.compile(rf"\b{_AGE} {_YEARS_OLD} {_PERSON}\b"),
-    re.compile(rf"\b(?:is|was|turned|turns|just|only|barely) {_AGE} {_YEARS_OLD}\b"),
+)
+# Present tense only: "she was 15 when the war came" is backstory, and the age now is `age`.
+_OWN_AGE_VERBS = (
+    r"(?: (?:s|is|are|am|just|only|barely|turns|turning|just turned|recently turned|"
+    r"has just turned))+"
 )
 # An appearance that opens with the age, as the drafter writes them: "16, slight, black hair".
 _LEADING_AGE = re.compile(r"^\s*(\d{1,3})\s*,")
@@ -172,8 +185,20 @@ def _age_value(value: str) -> int:
     return int(value) if value.isdigit() else _NUMBERS[value]
 
 
-def childlike_markers(text: str) -> list[str]:
-    """The words in a description that make a character read as a child (F3)."""
+@lru_cache(maxsize=256)
+def _own_age(names: tuple[str, ...]) -> re.Pattern[str]:
+    """ "She is 15 years old", "Mira's fifteen": an age stated about the character, by a pronoun
+    or one of their names."""
+    subjects = ["she", "he", "they", "who", "i", "you", *(re.escape(n) for n in names if n)]
+    return re.compile(
+        rf"\b(?:{'|'.join(subjects)}){_OWN_AGE_VERBS} {_AGE}(?: {_YEARS_OLD})?\b{_NOT_AN_AGE}"
+    )
+
+
+def childlike_markers(text: str, names: tuple[str, ...] = ()) -> list[str]:
+    """The words in a description that make a character read as a child (F3). `names` are the
+    character's own names, so "Mira is 15" counts and "her daughter is 6" doesn't."""
+    own_age = _own_age(tuple(dict.fromkeys(normalize(n) for n in names)))
     found = []
     for line in text.splitlines():
         leading = _LEADING_AGE.match(line)
@@ -181,7 +206,7 @@ def childlike_markers(text: str) -> list[str]:
             found.append(leading.group(0).strip())
         words = normalize(line)
         found += [m.group(0) for m in _CHILDLIKE.finditer(words)]
-        for pattern in _AGE_PHRASES:
+        for pattern in (*_AGE_PHRASES, own_age):
             for match in pattern.finditer(words):
                 if _age_value(match.group(1)) < ADULT_AGE:
                     found.append(match.group(0))
@@ -194,7 +219,10 @@ def adult_problem(character: Character) -> str | None:
         return "no age recorded"
     if character.age < ADULT_AGE:
         return f"aged {character.age}"
-    if childlike_markers(character.appearance) or childlike_markers(character.description):
+    names = (character.name, *character.name.split(), *character.aliases)
+    if childlike_markers(character.appearance, names) or childlike_markers(
+        character.description, names
+    ):
         return "described as childlike"
     return None
 
@@ -220,8 +248,11 @@ _SEXUAL_VIOLENCE = _words(
     r"(?:force|forces|forced|forcing) (?:myself|himself|herself|themselves|yourself) (?:on|upon)",
     r"violat(?:e|es|ed|ing) (?:her|him|them)",
 )
+# Each word needs its sexual sense: "the sex of the foal", "grope for the lever" and "strip them
+# of their weapons" are ordinary actions.
 _SEXUAL = _words(
-    r"sex",
+    r"(?:have|has|had|having) sex",
+    r"sex (?:with|act|acts|scene)",
     r"sexual(?:ly)?",
     r"sleep(?:s|ing)? with",
     r"slept with",
@@ -229,15 +260,18 @@ _SEXUAL = _words(
     r"love ?making",
     r"intercourse",
     r"foreplay",
-    r"fondl\w+",
-    r"grop\w+",
+    r"fondl(?:e|es|ed|ing)(?! (?:the|a|an|his|my|your|its|their|with)\b)",
+    r"grop(?:e|es|ed|ing)(?! (?:in|for|around|about|through|along|across|blindly|toward|towards|"
+    r"into|under|over|on|the|a|an|his|my|your|its|their|her way|one s)\b)",
     r"(?:undress|undresses|undressed|undressing) (?:her|him|them|each other)",
-    r"strip (?:her|him|them)",
+    r"(?:strip|strips|stripped|stripping) (?:her|him|them|each other) (?:naked|nude|bare)",
+    r"(?:strip|strips|stripped|stripping) (?:her|him|them) of (?:her|his|their) "
+    r"(?:clothes|clothing|dress|underwear)",
     r"(?:take|takes|took|taking) (?:her|his|their) clothes off",
     r"erotic\w*",
     r"lewd\w*",
     r"orgasm\w*",
-    r"bed (?:her|him|them)",
+    r"bed (?:her|him|them)(?! down\b)",
 )
 _ROMANCE = _words(
     r"kiss\w*",
@@ -311,15 +345,22 @@ def _real_names() -> tuple[re.Pattern[str], dict[str, RealEntity], dict[str, Rea
     return pattern, phrases, exact
 
 
-def real_entity(name: str) -> RealEntity | None:
-    """The real person or organisation a name refers to, or None (G12)."""
+def real_entities(name: str) -> list[RealEntity]:
+    """Every real person and organisation a name or phrase refers to, in order (G12)."""
     pattern, phrases, exact = _real_names()
     words = normalize(name)
     bare = words.removeprefix("the ")
     if bare in exact:
-        return exact[bare]
-    match = pattern.search(words)
-    return phrases[match.group(0)] if match else None
+        return [exact[bare]]
+    found = [phrases[match.group(0)] for match in pattern.finditer(words)]
+    return list(dict.fromkeys(found))
+
+
+def real_entity(name: str) -> RealEntity | None:
+    """The real person or organisation a name refers to, or None (G12). A person wins, so
+    "Microsoft founder Bill Gates" is Bill Gates."""
+    found = real_entities(name)
+    return next((e for e in found if e.kind == "person"), found[0] if found else None)
 
 
 def _names_of(state: WorldState, ids: list[str]) -> list[str]:

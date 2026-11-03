@@ -282,28 +282,40 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     emit = runtime.stream_writer
     shown = False
 
+    def recipe(text: str) -> LLMBlocked | None:
+        if limits.harm_instructions(text) is None:
+            return None
+        return LLMBlocked(
+            node=Node.NARRATOR.value,
+            categories=(limits.LimitCategory.HARM_INSTRUCTIONS.value,),
+            streamed=shown,
+        )
+
     async def tell(cutaway: bool) -> NarratorOutput:
         nonlocal shown
         stream = llm.stream_structured(
             Node.NARRATOR, brief.prompt(cutaway=cutaway), NarratorOutput, field="narration"
         )
+        told = ""
         async with aclosing(stream) as events:
             async for event in events:
                 if isinstance(event, TextDelta):
                     if event.text:
+                        # Checked before each piece is sent, so a recipe stops at the piece
+                        # that completes it and never reaches the player whole (F3).
+                        told += event.text
+                        if block := recipe(told):
+                            raise block
                         shown = True
                         emit(NarrationDelta(event.text))
                 elif isinstance(event, StreamRestart):
+                    told = ""
                     if shown:
                         emit(NarrationReset("retry"))
                         shown = False
                 elif isinstance(event, Completed):
-                    if limits.harm_instructions(event.value.narration) is not None:
-                        raise LLMBlocked(
-                            node=Node.NARRATOR.value,
-                            categories=(limits.LimitCategory.HARM_INSTRUCTIONS.value,),
-                            streamed=shown,
-                        )
+                    if block := recipe(event.value.narration):
+                        raise block
                     return event.value
         raise LLMUnavailable(node=Node.NARRATOR.value)
 
