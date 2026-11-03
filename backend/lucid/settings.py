@@ -90,7 +90,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "OPTIONS": {"user_attributes": ("email", "display_name")},
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -122,6 +125,12 @@ LLM_PROVIDER = ENV.llm_provider
 GCP_PROJECT = ENV.gcp_project
 VERTEX_LOCATION = ENV.vertex_location
 NARRATOR_MODEL = ENV.narrator_model
+
+# Sign-in (T8, K7, F8); see accounts/.
+GOOGLE_OAUTH_CLIENT_IDS = split_csv(ENV.google_oauth_client_ids)
+OWNER_EMAILS = [email.lower() for email in split_csv(ENV.owner_emails)]
+MIN_SIGNUP_AGE = ENV.min_signup_age
+TRUSTED_PROXY_HOPS = ENV.trusted_proxy_hops
 
 # JSON lines on stdout, which Cloud Run sends to Cloud Logging (T4 to T6, B3).
 LOGGING = {

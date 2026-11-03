@@ -52,7 +52,7 @@ enforces them, and the narrator never moralizes.
 | F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. | P0 |
 | F6 | Report and block on every scene, with reports reviewed in the Django admin. Apple requires this for AI content apps (guideline 1.2). | P0 |
 | F7 | **Player content preferences:** gore level (low, medium or high), romance on or off, and dark themes on or off. The world and NPCs only start themes that are switched on. The player's own actions are bounded only by the rating. | P1 |
-| F8 | **Age gate:** a declared birth date at sign-up, plus the store's 17+ rating. Apple 1.2.1 accepts verified or declared age. Under-17 accounts get Teen only. | P0 |
+| F8 | **Age gate:** a declared birth date at sign-up, plus the store's 17+ rating. Apple 1.2.1 accepts verified or declared age. Under-17 accounts get Teen only, and their limit lifts on the 17th birthday. Nobody under `MIN_SIGNUP_AGE` (13 for now, for Miki to confirm with the privacy policy) can sign up. | P0 |
 
 Where the lines fall, so that the narrator prompts and the evals (T15) use the same scale:
 
@@ -1026,7 +1026,7 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens, latency, estimated cost, safety blocks, retries and how the action was entered (V7). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
 | T6 | **Never logged:** API keys (BYOK or ours), auth tokens and full prompts. Story text is logged only at DEBUG, and DEBUG is off in production. | P0 |
 | T7 | **Errors:** uncaught exceptions reach Error Reporting. LLM failures are retried once and then return a typed error the app can show (`llm_unavailable`, `blocked`, `bad_key`, `out_of_credits`), never a bare 500. | P0 |
-| T8 | **Auth:** no Firebase. Sign in with Google, through an OAuth client in the `playable-anime` GCP project, plus our own email login in Django. On iOS, Apple requires an equivalent login option when Google sign-in is offered (guideline 4.8), so plan for Sign in with Apple there. The backend verifies Google's ID token once at sign-in, then issues its own short-lived access token and a refresh token. These are checked on every request except `/health`. | P0 |
+| T8 | **Auth:** no Firebase. Sign in with Google, through an OAuth client in the `playable-anime` GCP project, plus our own email login in Django. On iOS, Apple requires an equivalent login option when Google sign-in is offered (guideline 4.8), so plan for Sign in with Apple there. The backend verifies Google's ID token once at sign-in, then issues its own short-lived access token and a refresh token. These are checked on every request except `/health` and sign-in itself. Refresh tokens rotate on every use and are stored only as hashes, a reused one signs its device out, and repeated wrong passwords are throttled. | P0 |
 | T9 | **Abuse and cost guards:** per-user rate limits and a daily turn quota on our own key, plus a budget alert on the GCP project. Nothing goes public before T8 and T9. | P0 |
 | T10 | **Concurrency:** a story row carries a version number. Two turns at the same time can't overwrite each other, and the loser gets a 409. | P0 |
 | T11 | **Secrets:** Secret Manager only (`database-url` and others), mounted as env vars. | P0 |

@@ -1,4 +1,7 @@
-"""The endpoints ported from FastAPI, with today's shapes, on Django and Postgres."""
+"""The endpoints ported from FastAPI, with today's shapes, on Django and Postgres, each scoped to
+the signed-in player (S8)."""
+
+from datetime import date
 
 import pytest
 from asgiref.sync import async_to_sync
@@ -7,7 +10,8 @@ from django.test import AsyncClient, Client
 from legacy.llm.fake import FakeNarratorProvider
 from lucid.errors import ApiError
 from stories import legacy_bridge
-from stories.models import Engine, InputMode, Scene, SceneKind, Story
+from stories.models import Engine, InputMode, Rating, Scene, SceneKind, Story
+from tests.conftest import auth_headers
 
 pytestmark = pytest.mark.django_db
 
@@ -15,8 +19,8 @@ PREMISE = "A courier finds a strange package."
 
 
 @pytest.fixture
-def client() -> Client:
-    return Client()
+def client(player) -> Client:
+    return Client(headers=auth_headers(player))
 
 
 def _create_story(client: Client, **headers) -> dict:
@@ -40,7 +44,7 @@ def test_premises_are_listed(client):
     assert {"id", "title", "genre", "premise"} <= premises[0].keys()
 
 
-def test_creating_a_story_generates_and_saves_the_opening_scene(client):
+def test_creating_a_story_generates_and_saves_the_opening_scene(client, player):
     story = _create_story(client)
 
     assert story["title"] == PREMISE
@@ -51,6 +55,7 @@ def test_creating_a_story_generates_and_saves_the_opening_scene(client):
     assert story["state"]["turn"] == 1
     row = Story.objects.get(pk=story["id"])
     assert (row.engine, row.version, row.turn) == (Engine.LEGACY, 1, 1)
+    assert row.owner == player
     assert row.scenes.get().kind == SceneKind.OPENING
 
 
@@ -120,8 +125,10 @@ def test_unknown_story_is_404(client):
         assert response.json()["error"]["code"] == "not_found"
 
 
-def test_the_legacy_endpoints_never_touch_a_turn_graph_story(client):
-    graph = Story.objects.create(title="Graph", premise="P", state={"clock": {"world_s": 0}})
+def test_the_legacy_endpoints_never_touch_a_turn_graph_story(client, player):
+    graph = Story.objects.create(
+        owner=player, title="Graph", premise="P", state={"clock": {"world_s": 0}}
+    )
 
     assert client.get(f"/v1/stories/{graph.pk}").status_code == 404
     assert _turn(client, str(graph.pk), {"action": "I wait."}).status_code == 404
@@ -230,18 +237,71 @@ def test_a_rejected_byok_key_is_bad_key_and_the_key_is_never_logged(client, monk
     assert key not in str(log_lines())
 
 
-def test_the_ported_endpoints_run_over_asgi():
+def test_the_ported_endpoints_run_over_asgi(player):
+    headers = auth_headers(player)
+
     async def play() -> tuple[int, int]:
+        # Headers go on each request: AsyncClient(headers=...) sends them under WSGI names.
         client = AsyncClient()
         created = await client.post(
-            "/v1/stories", {"premise": PREMISE}, content_type="application/json"
+            "/v1/stories", {"premise": PREMISE}, content_type="application/json", headers=headers
         )
         story_id = created.json()["id"]
         turn = await client.post(
             f"/v1/stories/{story_id}/turns",
             {"choice_id": "c3", "expected_version": 1},
             content_type="application/json",
+            headers=headers,
         )
         return created.status_code, turn.json()["version"]
 
     assert async_to_sync(play)() == (201, 2)
+
+
+# Ownership and the rating limit (S8, F8)
+
+
+def test_every_story_endpoint_needs_a_signed_in_player(client):
+    story = _create_story(client)
+    anonymous = Client()
+
+    for method, path in [
+        ("get", "/v1/premises"),
+        ("get", "/v1/stories"),
+        ("post", "/v1/stories"),
+        ("get", f"/v1/stories/{story['id']}"),
+        ("get", f"/v1/stories/{story['id']}/memory"),
+        ("post", f"/v1/stories/{story['id']}/turns"),
+    ]:
+        response = getattr(anonymous, method)(path, {}, content_type="application/json")
+        assert response.status_code == 401, path
+        assert response.json()["error"]["code"] == "unauthenticated"
+
+
+def test_a_player_never_sees_or_plays_someone_elses_story(client, make_user):
+    story = _create_story(client)
+    other = Client(headers=auth_headers(make_user("other@example.com")))
+
+    assert other.get("/v1/stories").json() == []
+    for response in (
+        other.get(f"/v1/stories/{story['id']}"),
+        other.get(f"/v1/stories/{story['id']}/memory"),
+        _turn(other, story["id"], {"choice_id": "c1"}),
+    ):
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "forbidden"
+    assert Story.objects.get(pk=story["id"]).version == 1
+
+
+def test_a_teen_account_cant_open_a_mature_story(make_user):
+    """F8: under 17, Teen only. The limit lifts on the 17th birthday with nothing to update."""
+    today = date.today()
+    teen = make_user("teen@example.com", birth_date=today.replace(year=today.year - 15))
+    mature = Story.objects.create(
+        owner=teen, title="M", premise="P", engine=Engine.LEGACY, rating=Rating.MATURE
+    )
+
+    response = Client(headers=auth_headers(teen)).get(f"/v1/stories/{mature.pk}")
+
+    assert response.status_code == 403
+    assert "rating" in response.json()["error"]["message"]
