@@ -203,9 +203,9 @@ from the world's tone: noir for a crime story, wonder for a space opera, dread f
 - **Peoples and creatures:** which races and monsters exist, if any (G23, G24).
 - **How far each kind of ability can go** (A4). In a grounded world the limit is what a real person
   could do: a marksman, a brilliant surgeon, a feared boss, never a fireball.
-- **Where nature works differently.** Physics, chemistry and biology work as they do in our world
-  unless the world says otherwise (A9): fire needs air, people need to breathe. The bible only states
-  the differences, such as mana flames that burn without air.
+- **Where nature works differently** (A9). Physics, chemistry and biology work as they do in our
+  world unless the world says otherwise: fire needs air, people need to breathe. The bible only
+  states the differences, such as mana flames that burn without air.
 - **How people and news travel** (W10): on foot and by messenger; by car, plane and phone, so a
   witness can call the police within seconds; or by jump drive between star systems, with days of
   travel and messages that lag.
