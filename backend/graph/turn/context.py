@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine.context import TurnContext
-from engine.contracts import DirectorPlan, Intent, Resolution
+from engine.contracts import BeatResolution, BeatVerdict, DirectorPlan, Intent, Resolution
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
@@ -358,6 +358,10 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             view["odds"] = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
         if step.costs:
             view["costs"] = [c.text for c in step.costs]
+        if any(beat.verdict is not BeatVerdict.HOLDS for beat in step.beats):
+            # R2: the beats as checked, in order, when one found something new or came up empty.
+            # A step stops at its empty beat, so the beats after it never happen.
+            view["beats"] = [_beat_view(beat) for beat in step.beats]
         if step.chain:
             view["chain"] = [
                 {"link": link.text, "holds": link.holds, "why": link.reason} for link in step.chain
@@ -376,6 +380,13 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
     if resolution.rulings:
         outcome["rulings"] = [_dump(r) for r in resolution.rulings]
     return outcome
+
+
+def _beat_view(beat: BeatResolution) -> dict[str, Any]:
+    view: dict[str, Any] = {"beat": beat.text, "uses": beat.thing, "check": beat.verdict.value}
+    if beat.reason:
+        view["why"] = beat.reason
+    return view
 
 
 def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:

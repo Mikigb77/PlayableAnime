@@ -357,6 +357,104 @@ def test_the_plan_is_checked_before_narration(fake, make_client, monkeypatch):
     assert "plan_not_stopped" in [i.code for i in result.issues]
 
 
+SEARCH = {
+    "actor_id": "zhao",
+    "summary": "Lin feels for a stone to throw at Zhao.",
+    "steps": [
+        {
+            "text": "find a stone and throw it at Zhao",
+            "verb": "throw",
+            "target_ids": ["zhao"],
+            "aim": "wound",
+            "kind": "exchange",
+            "proposed_duration_s": 3,
+            "beats": [
+                {"text": "crouch", "uses": [{"source": "body", "thing": "legs"}]},
+                {
+                    "text": "feel along the floor for a stone",
+                    "uses": [{"source": "new", "thing": "a stone", "plausibility": "absent"}],
+                },
+                {"text": "throw it", "uses": [{"source": "canon", "thing": "the stone"}]},
+            ],
+        }
+    ],
+}
+
+
+def test_an_empty_search_stops_the_step_and_the_scene_says_why(fake, make_client):
+    """R2: the beats as checked reach the narrator, up to the one that came up empty, and the
+    scene's details say why. A6: the player's words never make someone else the actor."""
+    fake.script(Node.INTERPRET, Reply(json=SEARCH))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input(action="I feel for a stone and throw it at Zhao"))
+
+    [step] = result.resolution.steps
+    assert (step.outcome_class, step.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+    assert result.resolution.actor_id is None
+    assert "not_the_player" in [i.code for i in result.issues]
+    details = result.scene.model_dump(mode="json")["details"]
+    assert details["steps"][0]["beats"] == [
+        {
+            "beat": "feel along the floor for a stone",
+            "thing": "a stone",
+            "verdict": "empty",
+            "reason": "There is no stone to be found here.",
+            "roll": None,
+        }
+    ]
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    # The body needs no check, and the throw comes after the beat that came up empty.
+    assert (
+        '"beats":[{"beat":"feel along the floor for a stone","uses":"a stone","check":"empty",'
+        '"why":"There is no stone to be found here."}]'
+    ) in told
+
+
+def test_only_beats_that_found_something_new_are_explained(fake, make_client):
+    """R2: a thing the place plausibly holds becomes canon and is explained; beats that only used
+    the body add nothing to the scene's details or the narrator's outcome."""
+    found = {
+        "steps": [
+            {**SEARCH["steps"][0], "beats": [SEARCH["steps"][0]["beats"][0]]},
+            {
+                **SEARCH["steps"][0],
+                "text": "pick up a stick",
+                "aim": "none",
+                "target_ids": [],
+                "beats": [
+                    {
+                        "text": "pick up a stick",
+                        "uses": [
+                            {"source": "new", "thing": "a stick", "plausibility": "plausible"}
+                        ],
+                    }
+                ],
+            },
+        ]
+    }
+    fake.script(Node.INTERPRET, Reply(json=found))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input())
+
+    steps = result.scene.model_dump(mode="json")["details"]["steps"]
+    assert steps[0]["beats"] is None
+    assert steps[1]["beats"] == [
+        {
+            "beat": "pick up a stick",
+            "thing": "a stick",
+            "verdict": "made_canon",
+            "reason": "There is a stick here.",
+            "roll": None,
+        }
+    ]
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    outcome = told.split("## OUTCOME\n")[1].split("\n## ")[0]
+    assert outcome.count('"beats":') == 1
+    assert '{"beat":"pick up a stick","uses":"a stick","check":"made_canon"' in outcome
+
+
 def test_an_action_that_fits_nothing_still_plays(fake, make_client):
     fake.script(Node.INTERPRET, Reply(json={"summary": ""}))
     fake.script(Node.NARRATOR, Reply(json=SCENE))

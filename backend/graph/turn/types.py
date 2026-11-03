@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from engine.context import TurnContext
 from engine.contracts import (
+    BeatVerdict,
     ChoiceKind,
     DirectorPlan,
     Intent,
@@ -140,11 +141,24 @@ class RollDetail(_ApiModel):
     seed: str
 
 
+class BeatDetail(_ApiModel):
+    """R2: a beat whose check found something the scene hadn't established, or came up empty and
+    stopped the step there. Beats that used the body, a power, something carried or the scene
+    are left out: nothing about them needs explaining."""
+
+    beat: str
+    thing: str
+    verdict: BeatVerdict
+    reason: str
+    roll: RollDetail | None = None
+
+
 class StepDetail(_ApiModel):
     text: str
     outcome_class: OutcomeClass = Field(alias="class")
     reason: str
     roll: RollDetail | None = None
+    beats: list[BeatDetail] | None = None
 
 
 class LinkDetail(_ApiModel):
