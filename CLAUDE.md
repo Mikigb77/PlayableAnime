@@ -20,7 +20,8 @@ Architecture and setup are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 1. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against the `production` branch.
 2. Engine rules (A2–A8, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are
-   enforced in code with unit tests, not only in the prompt. Model nodes propose; code nodes decide. Nothing in the
+   enforced in code with unit tests, not only in the prompt. Model nodes propose; code nodes decide.
+   Logic comes first: a roll is used only where the facts leave the outcome open (A2). Nothing in the
    world is timed in turns: world processes run on in-world time (W10). Nothing in the engine
    assumes a genre (G5).
 3. CI must be green before merging: `uv run ruff check .`, `uv run ruff format --check .` and
