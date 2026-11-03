@@ -535,9 +535,9 @@ laser pistol burns through a coat but not a warship's hull.
   power or break a fixed rule of the world (G7) either.
 - **A refused idea can still be earned.** The verdict stands, but the character can later find
   another way that passes the world's logic, as growth (A4). If stopped-time throws land with normal
-  force, they might learn to release the stop around a rock gradually, so it merges back into time carrying
-  its motion, and from then on their throws hit like cannon shots. Once found, that technique is
-  settled too.
+  force, they might learn to release the stop around a rock gradually, so it merges back into time
+  carrying its motion, and from then on their throws hit like cannon shots. Once found, that
+  technique is settled too.
 - **The same for everyone.** NPCs can use tricks too, as far as their wits and knowledge go (G13),
   and the same reasoning settles them.
 - **The reasoning is shown.** The chain, the facts behind each link and each link's class are
