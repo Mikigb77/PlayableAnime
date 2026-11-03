@@ -55,19 +55,44 @@ def test_thinking_tokens_bill_as_output():
     assert with_thinking == without
 
 
-def test_versioned_ids_match_their_family_and_unknown_models_never_undercount():
-    assert price_for("gemini-3.5-flash-001") == price_for("gemini-3.5-flash")
-    assert price_for("gemini-3.5-flash-lite-preview")[0] == price_for("gemini-3.5-flash-lite")[0]
-    price, known = price_for("gemini-9-ultra")
+def test_a_1k_picture_costs_about_three_cents_and_bigger_ones_more():
+    one_k, known = estimate_cost("gemini-3.1-flash-lite-image", Usage(1120, 1120), images=1)
+    four_k, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(1120, 2520), images=1)
+
+    assert known
+    assert one_k == Decimal("0.00028") + Decimal("0.0336")
+    assert four_k > one_k
+
+
+def test_a_picture_never_costs_less_than_1k_even_without_usage():
+    cost, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(), images=2)
+
+    assert cost == 2 * Decimal("0.0336")
+
+
+def test_a_text_price_is_never_used_for_a_picture():
+    cost, known = estimate_cost("gemini-3.5-flash", Usage(0, 1120), images=1)
 
     assert not known
-    assert price == FALLBACK_PRICE
+    assert cost == Decimal(1120) * FALLBACK_PRICE.image_output_per_m / Decimal(1_000_000)
 
 
-def test_pictures_cost_per_image_plus_input():
-    cost, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(1120, 1200), images=1)
+@pytest.mark.parametrize(
+    ("model", "family"),
+    [
+        ("gemini-3.5-flash-001", "gemini-3.5-flash"),
+        ("gemini-3.5-flash-preview-09-2026", "gemini-3.5-flash"),
+        ("gemini-3.5-flash-lite-preview", "gemini-3.5-flash-lite"),
+        ("gemini-3.1-flash-lite-image-latest", "gemini-3.1-flash-lite-image"),
+    ],
+)
+def test_versioned_ids_match_their_family(model, family):
+    assert price_for(model) == (price_for(family)[0], True)
 
-    assert cost == Decimal("0.034") + Decimal(1120) * Decimal("0.25") / Decimal(1_000_000)
+
+@pytest.mark.parametrize("model", ["gemini-3.5-flash-image", "gemini-3.5-flashy", "gemini-9-ultra"])
+def test_other_models_that_only_start_the_same_are_unknown(model):
+    assert price_for(model) == (FALLBACK_PRICE, False)
 
 
 def test_regional_endpoints_cost_ten_percent_more():

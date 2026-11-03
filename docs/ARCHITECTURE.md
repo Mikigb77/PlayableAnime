@@ -167,8 +167,8 @@ a new one.
 
 `backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with
 no Django imports (B4), and importing it loads no model SDK: LangChain and google-genai load on the
-first real call (B10). Today's FastAPI narrator in `backend/app/llm/` still runs the live endpoints
-until the turn graph replaces it (WS3's PR 2 and 3).
+first real call (B10). Today's one-call narrator in `backend/legacy/` still serves the legacy
+endpoints until the turn graph replaces it (WS3's PR 2 and 3).
 
 ```python
 telemetry = TurnTelemetry()
@@ -183,7 +183,8 @@ picture = await llm.image(Node.PICTURE, Prompt.build(style, scene, images=portra
 ```
 
 **Nodes and models (B6, B8).** Each node has a model and defaults in `graph/llm/config.py`,
-overridable with `<NODE>_MODEL` and `<NODE>_THINKING` env vars:
+overridable with `<NODE>_MODEL` and `<NODE>_THINKING`, read like Django's settings from the
+environment, `backend/.env` and the repo-root `.env.local`:
 
 | Node | Default model | Price per 1M tokens in / out | Why |
 | --- | --- | --- | --- |
@@ -191,23 +192,26 @@ overridable with `<NODE>_MODEL` and `<NODE>_THINKING` env vars:
 | `interpret` | `gemini-3.5-flash-lite`, thinking `low` | $0.30 / $2.50 | Cheap, but it reasons about cause and effect (A9), so the graph can raise its thinking for a turn that rests on a chain. |
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
 | `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
-| `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture | The cheapest image model (M8). |
+| `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
-`graph/llm/pricing.py`. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+`graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
+the estimate never undercounts. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
 2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
 
 **Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
 with `vertexai=True` and Application Default Credentials (B11). `langchain-google-vertexai`'s
-`ChatVertexAI` was deprecated in 3.2.0 in favour of this class, so we use it directly. Its chat
-models are cached per model and event loop. `LLM_PROVIDER=fake` (the default) is the offline model,
+`ChatVertexAI` was deprecated in 3.2.0 in favour of this class, so we use it directly. Every node
+shares one google-genai client (and its connections) per event loop, or per request for a player's
+key. `LLM_PROVIDER=fake` (the default) is the offline model,
 which answers any schema with placeholder values. Don't set `GOOGLE_API_KEY` or `LANGSMITH_TRACING`
 on the service: the first changes which credentials LangChain picks, the second would send prompts
 to LangSmith.
 
 **Calls.** Every call streams from the backend, so blocks and usage look the same everywhere. The
-client applies the node's deadline, retries a transient failure (timeout, 429, 5xx, a cut-off or
-unparseable answer) once, and otherwise raises a typed error with the API's code: `LLMUnavailable`
+client gives each attempt the node's deadline, counting only time spent waiting on the model and
+never the caller's time between chunks, retries a transient failure (timeout, 408, 429, 499, 5xx, a
+cut-off or unparseable answer) once, and otherwise raises a typed error with the API's code: `LLMUnavailable`
 (`llm_unavailable`), `LLMBlocked` (`blocked`, with the categories and whether the prompt or the
 response was blocked) or `BadKey` (`bad_key`, only for a player's key). A safety block is never
 retried blindly: the graph retells a blocked narration as a cut-away, then a template line (F4),
@@ -228,7 +232,8 @@ against T15's content-line evals.
 **Telemetry (T5).** Each call leaves one `CallRecord` (node, model, provider, BYOK or not, outcome,
 tokens in, out and thinking, pictures, latency, time to first text, attempts, retry reasons,
 blocks with categories, estimated cost) with the request's `TurnTelemetry`. The turn endpoint logs
-`summary()` as the turn's T5 line, and billing debits `cost_usd` plus its margin (K2). Records hold
+`summary()` as the turn's T5 line. `cost_usd` is always the raw cost, and billing charges the
+calls made on our own account (`billable_cost_usd`; BYOK calls are free, K6) plus its margin (K2). Records hold
 no prompt or story text, and a `Prompt`'s repr shows only its size (T6).
 
 **Tests** script the fake per node: `FakeBackend().script(Node.NARRATOR, Fail(), Reply(json=...))`

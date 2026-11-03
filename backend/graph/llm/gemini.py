@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
-import weakref
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import aclosing
 from functools import lru_cache
@@ -68,8 +67,13 @@ _RECITATION = {"RECITATION", "IMAGE_RECITATION"}
 
 
 class GeminiBackend:
-    """One provider target. Chat models are cached per event loop, because their HTTP clients
-    belong to the loop that first used them."""
+    """One provider target: our Vertex AI project, or one request's player key.
+
+    All models share one google-genai client, made from the first model asked for, because each
+    client opens its own connections (a new TLS handshake per node would eat into S3's 2 s). The
+    client belongs to the event loop that first used it, so models are kept per loop, and the
+    models of a closed loop are dropped.
+    """
 
     def __init__(
         self,
@@ -81,9 +85,7 @@ class GeminiBackend:
         self.provider: Provider = provider
         self._make_model = make_model
         self._secret = secret
-        self._models: weakref.WeakKeyDictionary[
-            asyncio.AbstractEventLoop, dict[str, ChatGoogleGenerativeAI]
-        ] = weakref.WeakKeyDictionary()
+        self._loops: dict[asyncio.AbstractEventLoop, dict[str, ChatGoogleGenerativeAI]] = {}
 
     @classmethod
     def vertex(cls, *, project: str, location: str) -> GeminiBackend:
@@ -110,36 +112,45 @@ class GeminiBackend:
         return cls(provider="gemini_api", make_model=make_model, secret=api_key)
 
     async def stream(self, request: Request) -> AsyncIterator[Chunk]:
-        model = self._model(request.model)
+        failure: ProviderError | None = None
         try:
+            model = self._model(request.model)
             async with aclosing(
                 model.astream(to_messages(request.prompt), **call_kwargs(request))
             ) as messages:
                 async for message in messages:
                     yield to_chunk(message)
-        except ProviderError:
-            raise
         except Exception as error:
             failure = classify(error, byok=self._secret is not None)
-            if self._secret:
-                failure.detail = failure.detail.replace(self._secret, "***")
-                raise failure from None  # the original may carry request details
-            raise failure from error
+            if self._secret is None:
+                raise failure from error
+        if failure is not None and self._secret is not None:
+            # Raised outside the handler, so no traceback or `__context__` holds the original
+            # error, whose text could echo the player's key (T6).
+            raise ProviderError(
+                failure.kind, failure.detail.replace(self._secret, "***"), status=failure.status
+            )
 
     async def aclose(self) -> None:
-        for models in list(self._models.values()):
-            for model in models.values():
-                cleanup = getattr(model, "_client_cleanup", None)
-                if cleanup is not None:
-                    with contextlib.suppress(RuntimeError):  # closed on another loop
-                        await cleanup.aclose()
-        self._models.clear()
+        """Closes the client this loop uses. Clients of other loops are only dropped."""
+        models = self._loops.pop(asyncio.get_running_loop(), {})
+        self._loops.clear()
+        if models:
+            with contextlib.suppress(RuntimeError):
+                await next(iter(models.values())).aclose()
 
     def _model(self, name: str) -> ChatGoogleGenerativeAI:
-        per_loop = self._models.setdefault(asyncio.get_running_loop(), {})
-        if name not in per_loop:
-            per_loop[name] = self._make_model(name)
-        return per_loop[name]
+        for stale in [loop for loop in self._loops if loop.is_closed()]:
+            del self._loops[stale]
+        models = self._loops.setdefault(asyncio.get_running_loop(), {})
+        if name not in models:
+            if models:
+                # A copy shares the first model's client; only the model name changes.
+                first = next(iter(models.values()))
+                models[name] = first.model_copy(update={"model": name})
+            else:
+                models[name] = self._make_model(name)
+        return models[name]
 
 
 @lru_cache
@@ -293,6 +304,10 @@ def classify(error: BaseException, *, byok: bool) -> ProviderError:
     if isinstance(error, genai_errors.ClientError):
         return _classify_status(error.code, error, detail, byok=byok)
     if isinstance(error, ChatGoogleGenerativeAIError):
+        # LangChain wraps statuses it has no class for (408, 499, other 4xx) in the base class.
+        cause = error.__cause__
+        if isinstance(cause, genai_errors.APIError):
+            return _classify_status(cause.code, error, detail, byok=byok)
         return ProviderError("invalid", detail)
     if isinstance(error, httpx.TimeoutException | httpx.TransportError | TimeoutError):
         return ProviderError("transient", detail)
@@ -314,7 +329,7 @@ def _classify_status(
         return ProviderError("auth", detail, status=status)
     if status == 400 and byok and _mentions_api_key(error):
         return ProviderError("auth", detail, status=status)
-    if status in (408, 429):
+    if status in (408, 429, 499) or status >= 500:
         return ProviderError("transient", detail, status=status)
     return ProviderError("invalid", detail, status=status)
 

@@ -1,5 +1,6 @@
 """The Gemini backend, through the real LangChain model with google-genai's network call faked."""
 
+import asyncio
 import base64
 
 import pytest
@@ -108,7 +109,13 @@ def _client(script: Script, *, byok: bool = True, telemetry=None) -> ModelClient
 
     backend._make_model = patched
     return ModelClient(
-        backend, ModelConfig(), rating="mature", recorder=telemetry, byok=byok, retry_delay_s=0
+        backend,
+        ModelConfig(),
+        rating="mature",
+        recorder=telemetry,
+        byok=byok,
+        owns_backend=byok,
+        retry_delay_s=0,
     )
 
 
@@ -202,10 +209,74 @@ def test_an_invalid_player_key_is_bad_key_and_never_appears_in_errors(caplog):
     with pytest.raises(BadKey) as raised:
         run(_client(script).structured(Node.NARRATOR, PROMPT, Narration))
 
-    assert raised.value.__cause__ is None and raised.value.__context__ is not None
-    assert KEY not in str(raised.value)
+    chain, error = [], raised.value
+    while error is not None:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    assert len(chain) == 2  # BadKey, then the scrubbed ProviderError, and nothing older
+    for error in chain:
+        assert KEY not in str(error) and KEY not in repr(vars(error))
     for record in caplog.records:
         assert KEY not in record.getMessage() and KEY not in repr(record.__dict__)
+
+
+def test_an_invalid_key_reported_mid_stream_is_still_bad_key():
+    error = genai_errors.ClientError(
+        400, {"error": {"code": 400, "message": "API key expired.", "status": "INVALID_ARGUMENT"}}
+    )
+    script = Script([error])
+
+    with pytest.raises(BadKey):
+        run(_client(script).structured(Node.NARRATOR, PROMPT, Narration))
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        genai_errors.ClientError(408, {"error": {"code": 408}}),
+        genai_errors.ClientError(499, {"error": {"code": 499}}),
+        genai_errors.ServerError(504, {"error": {"code": 504}}),
+    ],
+)
+def test_statuses_langchain_wraps_generically_are_still_retried(error):
+    # Raised while iterating, where LangChain wraps unmapped statuses in its base error class.
+    script = Script([error], [_response(SCENE_JSON, finish=gt.FinishReason.STOP)])
+
+    result = run(_client(script, byok=False).structured(Node.NARRATOR, PROMPT, Narration))
+
+    assert result.narration == "You crouch. You throw."
+    assert len(script.requests) == 2
+
+
+def test_every_node_of_a_request_shares_one_client():
+    script = Script(
+        [_response(SCENE_JSON, finish=gt.FinishReason.STOP)],
+        [_response(SCENE_JSON, finish=gt.FinishReason.STOP)],
+    )
+    client = _client(script)
+
+    async def two_nodes():
+        await client.structured(Node.INTERPRET, PROMPT, Narration)
+        await client.structured(Node.NARRATOR, PROMPT, Narration)
+        models = list(client._backend._loops[asyncio.get_running_loop()].values())
+        await client.aclose()
+        return models
+
+    interpret, narrator = run(two_nodes())
+
+    assert [r["model"] for r in script.requests] == ["gemini-3.5-flash-lite", "gemini-3.5-flash"]
+    assert interpret.client is narrator.client
+    assert not client._backend._loops
+
+
+def test_models_of_closed_event_loops_are_dropped():
+    script = Script(*[[_response(SCENE_JSON, finish=gt.FinishReason.STOP)] for _ in range(3)])
+    client = _client(script, byok=False)
+
+    for _ in range(3):
+        run(client.structured(Node.NARRATOR, PROMPT, Narration))
+
+    assert len(client._backend._loops) == 1  # only the last loop, until the next call
 
 
 def test_an_overloaded_model_is_retried_once_then_unavailable():

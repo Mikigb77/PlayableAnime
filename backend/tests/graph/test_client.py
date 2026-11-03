@@ -1,5 +1,7 @@
+import asyncio
 import logging
 from contextlib import aclosing
+from decimal import Decimal
 
 import pytest
 
@@ -290,7 +292,7 @@ def test_a_picture_call_returns_the_image_and_bills_per_image(fake, make_client,
     assert request.safety == safety_settings("mature", picture=True)
     [record] = telemetry.calls
     assert record.images == 1
-    assert record.cost_usd >= 0.034
+    assert record.cost_usd >= Decimal("0.0336")
 
 
 def test_a_picture_call_with_no_image_is_retried(fake, make_client):
@@ -335,3 +337,58 @@ def test_turn_telemetry_sums_the_calls(fake, make_client, telemetry):
     assert summary["cost_usd"] == pytest.approx(float(telemetry.cost_usd))
     assert set(summary["by_node"]) == {"interpret", "narrator"}
     assert summary["input_tokens"] == sum(c.input_tokens for c in telemetry.calls)
+
+
+def test_a_slow_reader_never_times_out_a_healthy_stream(fake, make_client, telemetry):
+    fake.chunk_size = 3
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    async def slow_reader():
+        stream = make_client().stream_structured(
+            Node.NARRATOR, PROMPT, Narration, field="narration", options=CallOptions(timeout_s=0.05)
+        )
+        async with aclosing(stream) as events:
+            async for event in events:
+                await asyncio.sleep(0.01)  # 10+ deltas: far longer than the deadline in total
+                if isinstance(event, Completed):
+                    return event.value
+
+    assert run(slow_reader()) == SCENE
+    assert telemetry.calls[0].retries == 0
+
+
+def test_time_to_first_text_comes_from_the_attempt_the_player_keeps(fake, make_client, telemetry):
+    fake.script(Node.NARRATOR, Fail(after_text='{"narration": "You drop'), Reply(json=SCENE))
+
+    async def reader_that_pauses_on_restart():
+        stream = make_client().stream_structured(
+            Node.NARRATOR, PROMPT, Narration, field="narration"
+        )
+        async with aclosing(stream) as events:
+            async for event in events:
+                if isinstance(event, StreamRestart):
+                    await asyncio.sleep(0.05)  # the retry's first text comes after this
+
+    run(reader_that_pauses_on_restart())
+
+    assert telemetry.calls[0].first_token_ms >= 50
+
+
+def test_only_calls_on_our_own_account_are_billable(fake, telemetry):
+    from graph.llm import ModelClient, ModelConfig
+
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.PICTURE, Reply(images=(b"png",)))
+    player_key = ModelClient(fake, ModelConfig(), rating="mature", recorder=telemetry, byok=True)
+    our_key = ModelClient(fake, ModelConfig(), rating="mature", recorder=telemetry)
+
+    async def calls():
+        await player_key.structured(Node.NARRATOR, PROMPT, Narration)
+        await our_key.image(Node.PICTURE, PROMPT)
+
+    run(calls())
+
+    narration, picture = telemetry.calls
+    assert telemetry.cost_usd == narration.cost_usd + picture.cost_usd
+    assert telemetry.billable_cost_usd == picture.cost_usd
+    assert telemetry.summary()["billable_cost_usd"] == float(picture.cost_usd)

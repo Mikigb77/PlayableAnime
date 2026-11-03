@@ -10,11 +10,13 @@ one `CallRecord` with its recorder.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ValidationError
@@ -190,7 +192,7 @@ class ModelClient:
             prompt=prompt,
             options=opts,
             safety=safety_settings(self._rating, picture=image is not None),
-            json_schema=schema.model_json_schema() if schema is not None else None,
+            json_schema=_json_schema(schema) if schema is not None else None,
             image=image,
         )
         trace = _Trace(request, self._backend.provider, self._byok, self._config.location)
@@ -233,6 +235,7 @@ class ModelClient:
                         extra={"llm": trace.log_fields(reason=reason)},
                     )
                     if streamed:
+                        trace.first_token_ms = None  # the player sees the retry's text first
                         yield StreamRestart()
                     await asyncio.sleep(self._retry_delay_s)
                     continue
@@ -250,17 +253,25 @@ class ModelClient:
             self._emit(trace)
 
     async def _attempt(self, request: Request) -> AsyncIterator[Chunk]:
-        """One backend attempt under the node's deadline. Odd backend errors become `invalid`."""
-        timeout = request.options.timeout_s
-        deadline = asyncio.get_running_loop().time() + timeout if timeout else None
+        """One backend attempt under the node's deadline. Odd backend errors become `invalid`.
+
+        The deadline counts only time spent waiting for the model, never the caller's time
+        between chunks, so a slow reader can't time out a healthy stream. A call can wait at most
+        two deadlines, one per attempt, plus the retry delay.
+        """
+        budget = request.options.timeout_s or None
+        loop = asyncio.get_running_loop()
         stream = self._backend.stream(request)
         try:
             while True:
+                started = loop.time()
                 try:
-                    async with asyncio.timeout_at(deadline):
+                    async with asyncio.timeout(budget):
                         chunk = await anext(stream)
                 except StopAsyncIteration:
                     return
+                if budget is not None:
+                    budget = max(0.0, budget - (loop.time() - started))
                 yield chunk
         except (ProviderError, TimeoutError, AssertionError):
             raise  # an AssertionError is a bug (or a fake out of script), never a model failure
@@ -328,6 +339,17 @@ class ModelClient:
         if self._recorder is not None:
             self._recorder.record(record)
         logger.debug("Model call", extra={"llm_call": record.as_log()})
+
+
+@lru_cache(maxsize=256)
+def _schema_text(schema: type[BaseModel]) -> str:
+    return json.dumps(schema.model_json_schema())
+
+
+def _json_schema(schema: type[BaseModel]) -> dict[str, Any]:
+    """The schema's JSON schema, built once per class. A fresh copy each call, since the SDK
+    may rewrite it in place."""
+    return json.loads(_schema_text(schema))
 
 
 def _reason(failure: Exception) -> str:

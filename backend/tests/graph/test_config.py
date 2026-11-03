@@ -1,6 +1,7 @@
 import pytest
 
 from graph.llm import DEFAULT_NODES, CallOptions, ModelConfig, Node
+from graph.llm.config import read_env
 from graph.llm.pricing import price_for
 
 
@@ -67,3 +68,18 @@ def test_call_options_override_only_what_they_set():
 
     assert merged == CallOptions(thinking="high", max_output_tokens=100, seed=7, timeout_s=30)
     assert base.merged(None) is base
+
+
+def test_env_files_are_read_like_django_settings_with_the_environment_on_top(tmp_path):
+    neon = tmp_path / ".env.local"
+    neon.write_text("LLM_PROVIDER=fake\nGCP_PROJECT=from-neon\nDATABASE_URL=postgres://x\n")
+    local = tmp_path / ".env"
+    local.write_text("LLM_PROVIDER=vertex\nINTERPRET_THINKING=medium\nNARRATOR_MODEL=from-file\n")
+
+    env = read_env([neon, local, tmp_path / "missing"], environ={"NARRATOR_MODEL": "from-env"})
+    config = ModelConfig.from_env(env)
+
+    assert config.provider == "vertex"
+    assert config.project == "from-neon"
+    assert config.node(Node.INTERPRET).options.thinking == "medium"
+    assert config.node(Node.NARRATOR).model == "from-env"

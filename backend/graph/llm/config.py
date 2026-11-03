@@ -7,14 +7,18 @@ Read from environment variables so that Django settings, scripts and tests share
 - `GCP_PROJECT`, `VERTEX_LOCATION`: where Vertex AI runs. `global` is the cheapest endpoint.
 - `<NODE>_MODEL` and `<NODE>_THINKING` for each node, such as `NARRATOR_MODEL=gemini-3.5-flash`
   and `INTERPRET_THINKING=medium`.
+
+Like Django's settings (`lucid.env`), `get_model_config()` also reads `backend/.env` and the
+repo-root `.env.local`, with real environment variables winning over both.
 """
 
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, cast, get_args
 
 from graph.llm.types import CallOptions, Node, Thinking
@@ -31,13 +35,15 @@ class NodeSettings:
 # first words under 2 s (S3). The interpret step is cheap but reasons about cause and effect
 # (A9); the graph can raise its thinking for a turn that rests on a chain. Checker, tick and
 # summaries use the cheapest model (B8). Drafting is off the turn path, so it keeps the model's
-# own thinking default for quality. Image models take no thinking setting.
+# own thinking default for quality. Image models take no thinking setting. A deadline counts
+# only time spent waiting on the model, and a retry gets a fresh one, so the slowest turn
+# (interpret, then narrate, each timing out twice) still ends well inside Cloud Run's 300 s.
 DEFAULT_NODES: Mapping[Node, NodeSettings] = {
     Node.INTERPRET: NodeSettings(
-        "gemini-3.5-flash-lite", CallOptions(thinking="low", max_output_tokens=4096, timeout_s=30)
+        "gemini-3.5-flash-lite", CallOptions(thinking="low", max_output_tokens=4096, timeout_s=20)
     ),
     Node.NARRATOR: NodeSettings(
-        "gemini-3.5-flash", CallOptions(thinking="low", max_output_tokens=8192, timeout_s=90)
+        "gemini-3.5-flash", CallOptions(thinking="low", max_output_tokens=8192, timeout_s=60)
     ),
     Node.CHECKER: NodeSettings(
         "gemini-3.1-flash-lite", CallOptions(thinking="low", max_output_tokens=2048, timeout_s=30)
@@ -51,7 +57,7 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
     Node.DRAFTER: NodeSettings(
         "gemini-3.5-flash", CallOptions(max_output_tokens=16384, timeout_s=120)
     ),
-    Node.PICTURE: NodeSettings("gemini-3.1-flash-lite-image", CallOptions(timeout_s=90)),
+    Node.PICTURE: NodeSettings("gemini-3.1-flash-lite-image", CallOptions(timeout_s=60)),
 }
 
 ProviderSetting = Literal["vertex", "fake"]
@@ -96,7 +102,26 @@ class ModelConfig:
         )
 
 
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+# In rising precedence, as in `lucid.env`: `neon env pull` writes the first, developers the second.
+ENV_FILES = (_BACKEND_DIR.parent / ".env.local", _BACKEND_DIR / ".env")
+
+
+def read_env(
+    files: Sequence[Path] = ENV_FILES, environ: Mapping[str, str] | None = None
+) -> dict[str, str]:
+    """The env files' values, then the real environment on top."""
+    from dotenv import dotenv_values
+
+    merged: dict[str, str] = {}
+    for path in files:
+        if path.is_file():
+            merged.update({k: v for k, v in dotenv_values(path).items() if v is not None})
+    merged.update(os.environ if environ is None else environ)
+    return merged
+
+
 @lru_cache
 def get_model_config() -> ModelConfig:
-    """The process-wide config, read once from the environment."""
-    return ModelConfig.from_env()
+    """The process-wide config, read once at first use."""
+    return ModelConfig.from_env(read_env())

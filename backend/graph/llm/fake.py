@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
@@ -178,8 +179,24 @@ def offline_reply(request: Request) -> Reply:
     return Reply(text=OFFLINE_TEXT)
 
 
+_FORMATS = {
+    "date-time": "2026-01-01T00:00:00Z",
+    "date": "2026-01-01",
+    "time": "00:00:00",
+    "duration": "PT0S",
+    "uuid": "00000000-0000-4000-8000-000000000000",
+    "email": "offline@example.com",
+    "uri": "https://example.com/",
+}
+
+
 def fill_schema(schema: Mapping[str, Any]) -> Any:
-    """Builds a small value that satisfies a Pydantic-generated JSON schema."""
+    """Builds a small value that satisfies a Pydantic-generated JSON schema.
+
+    It handles types, enums, constants, defaults, references, unions, lengths, item counts,
+    number bounds and the common string formats. It can't satisfy a `pattern`, so a schema the
+    offline model must answer should not constrain strings by pattern.
+    """
     return _fill(schema, schema.get("$defs", {}), "value")
 
 
@@ -206,18 +223,34 @@ def _fill(schema: Mapping[str, Any], defs: Mapping[str, Any], name: str) -> Any:
         count = schema.get("minItems", 0)
         return [_fill(schema.get("items", {}), defs, name) for _ in range(count)]
     if kind == "string":
+        if schema.get("format") in _FORMATS:
+            return _FORMATS[schema["format"]]
         text = OFFLINE_TEXT if name in ("narration", "text") else f"(offline {name})"
         minimum = schema.get("minLength", 0)
         maximum = schema.get("maxLength")
         text = text.ljust(minimum, ".")
         return text[:maximum] if maximum is not None else text
     if kind in ("integer", "number"):
-        low = schema.get("minimum", schema.get("exclusiveMinimum", 0))
-        high = schema.get("maximum")
-        value = low + (1 if "exclusiveMinimum" in schema else 0)
-        if high is not None:
-            value = min(value, high)
-        return int(value) if kind == "integer" else float(value)
+        return _number(schema, integer=kind == "integer")
     if kind == "boolean":
         return False
     return None
+
+
+def _number(schema: Mapping[str, Any], *, integer: bool) -> int | float:
+    step = 1 if integer else 1e-6
+    low = schema.get("minimum")
+    if low is None and "exclusiveMinimum" in schema:
+        low = schema["exclusiveMinimum"] + step
+    high = schema.get("maximum")
+    if high is None and "exclusiveMaximum" in schema:
+        high = schema["exclusiveMaximum"] - step
+    if low is not None and high is not None:
+        value = low if integer else (low + high) / 2
+    elif low is not None:
+        value = low
+    elif high is not None:
+        value = min(0, high)
+    else:
+        value = 0
+    return math.ceil(value) if integer else float(value)

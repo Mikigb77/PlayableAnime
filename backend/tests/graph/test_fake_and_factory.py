@@ -1,5 +1,7 @@
 import pickle
+from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
 import pytest
 from pydantic import BaseModel, Field
@@ -45,6 +47,21 @@ def test_fill_schema_satisfies_nested_constrained_schemas():
     intent = Intent.model_validate(value)
     assert intent.steps and intent.steps[0].kind == "certain"
     assert intent.duration_s > 0
+
+
+class Dated(BaseModel):
+    at: datetime
+    on: date
+    id: UUID
+    below_zero: int = Field(lt=0)
+    fraction: float = Field(gt=0, lt=1)
+    rung: int = Field(ge=1, le=9)
+
+
+def test_fill_schema_handles_formats_and_exclusive_bounds():
+    value = Dated.model_validate(fill_schema(Dated.model_json_schema()))
+
+    assert value.below_zero < 0 and 0 < value.fraction < 1 and 1 <= value.rung <= 9
 
 
 def test_the_offline_model_answers_any_schema_text_and_pictures():

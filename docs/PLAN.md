@@ -224,9 +224,10 @@ T7, K6.
   structured output and token streaming; one retry and then a typed error (`llm_unavailable`,
   `blocked`, `bad_key`, T7); a telemetry record per call (model, tokens, latency, estimated cost,
   blocks, retries; T5) that WS7 bills from; a scripted fake model for tests. **Landed** as
-  `backend/graph/llm/` (see [ARCHITECTURE.md](ARCHITECTURE.md#model-layer)): WS7 debits
-  `TurnTelemetry.cost_usd`, the raw cost from `graph/llm/pricing.py`, plus its margin; WS8 calls
-  `ModelClient.image()`; WS12 uses the `drafter` node.
+  `backend/graph/llm/` (see [ARCHITECTURE.md](ARCHITECTURE.md#model-layer)): WS7 charges each
+  non-BYOK `CallRecord.cost_usd` in `TurnTelemetry.calls`, the raw cost from
+  `graph/llm/pricing.py`, plus its margin; WS8 calls `ModelClient.image()`; WS12 uses the
+  `drafter` node.
 - **PR 2, the turn graph (after WS2's PR 1):** the seven B5 nodes in LangGraph. Prompts: interpret
   turns typed or dictated text into an `Intent` (V3, R2, A9, W10, N4) and never refuses; narrate
   plays the action, then the outcome, then the world's reaction, from the exact moment the last scene

@@ -52,8 +52,8 @@ class CallRecorder(Protocol):
 class TurnTelemetry:
     """Collects the calls of one request (a turn, a draft or a picture).
 
-    WS7 debits `cost_usd` for a completed turn (K2), and the turn endpoint logs `summary()` as
-    the T5 line.
+    WS7 debits `billable_cost_usd` for a completed turn (K2), and the turn endpoint logs
+    `summary()` as the T5 line.
     """
 
     def __init__(self) -> None:
@@ -64,7 +64,16 @@ class TurnTelemetry:
 
     @property
     def cost_usd(self) -> Decimal:
+        """What the calls cost, whoever paid: the T5 figure."""
         return sum((c.cost_usd for c in self.calls), Decimal(0))
+
+    @property
+    def billable_cost_usd(self) -> Decimal:
+        """What the calls on our own account cost: the figure billing debits plus its margin.
+
+        Calls on a player's own key are free to them (K6), though they are still logged.
+        """
+        return sum((c.cost_usd for c in self.calls if not c.byok), Decimal(0))
 
     def summary(self) -> dict[str, Any]:
         calls = self.calls
@@ -77,6 +86,7 @@ class TurnTelemetry:
             "images": sum(c.images for c in calls),
             "latency_ms": sum(c.latency_ms for c in calls),
             "cost_usd": float(self.cost_usd),
+            "billable_cost_usd": float(self.billable_cost_usd),
             "price_known": all(c.price_known for c in calls),
             "retries": sum(c.retries for c in calls),
             "blocks": sum(1 for c in calls if c.blocked),
