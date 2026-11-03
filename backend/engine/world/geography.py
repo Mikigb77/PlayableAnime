@@ -1,9 +1,10 @@
 """Where things are and how long it takes to get between them (W7, W10).
 
 Places record rough travel times to their neighbours (`Place.routes`). A place inside another (a
-bar in a city) is `LOCAL_LINK_S` from it when no route says otherwise. Containment is never a
-shortcut between places that routes connect: two cities in one kingdom are as far apart as their
-routes say, however close each is to "the kingdom".
+bar in a city) is `LOCAL_LINK_S` from it when no route says otherwise, so two buildings in one
+city are a short walk apart. A region of its own (a city, a village, a kingdom) has no such link
+to the place it sits in: two cities in one kingdom are as far apart as their routes say, however
+close each is to "the kingdom". A route between two places is what the trip between them takes.
 """
 
 import heapq
@@ -34,6 +35,10 @@ def region_of(state: WorldState, place_id: str | None) -> str | None:
     return chain[-1] if chain else None
 
 
+def _is_region(state: WorldState, place_id: str) -> bool:
+    return state.places[place_id].kind.strip().casefold() in REGION_KINDS
+
+
 def _route_graph(state: WorldState) -> dict[str, dict[str, int]]:
     """Explicit routes, both ways: a route from A to B is also one from B to A unless B lists
     its own time back."""
@@ -52,47 +57,42 @@ def _route_graph(state: WorldState) -> dict[str, dict[str, int]]:
     return graph
 
 
-def travel_s(state: WorldState, from_id: str | None, to_id: str | None) -> int | None:
-    """Rough travel time between two places, or None when nothing connects them (W10).
+def _travel_graph(state: WorldState, routes: dict[str, dict[str, int]]) -> dict:
+    """Routes, plus the short walk between a place and the one it sits in, unless the place is
+    a region of its own."""
+    graph = {pid: dict(links) for pid, links in routes.items()}
+    for place in by_id(state.places.values()):
+        if place.parent_id in graph and not _is_region(state, place.id):
+            graph[place.id].setdefault(place.parent_id, LOCAL_LINK_S)
+            graph[place.parent_id].setdefault(place.id, LOCAL_LINK_S)
+    return graph
 
-    Leaving a place for the one it sits in, or entering a place inside another, costs
-    `LOCAL_LINK_S` per level. The time is the best over routes between any of the two places'
-    containers, and falls back on their nearest common container only when no route joins them.
-    """
+
+def travel_s(state: WorldState, from_id: str | None, to_id: str | None) -> int | None:
+    """Rough travel time between two places, or None when nothing on the map connects them
+    (W10). A route between the two is what it takes; otherwise the quickest way over routes and
+    the short walks between a place and the one it sits in."""
     if from_id is None or to_id is None or from_id not in state.places or to_id not in state.places:
         return None
     if from_id == to_id:
         return 0
-    starts = ancestors(state, from_id)
-    ends = {pid: depth for depth, pid in enumerate(ancestors(state, to_id))}
-    graph = _route_graph(state)
-
-    # Dijkstra from every container of the start, each at the cost of walking out to it. A node
-    # counts as reached only through at least one route, so containment alone is never a path.
-    best: int | None = None
-    frontier: list[tuple[int, str, bool]] = []
-    for depth, pid in enumerate(starts):
-        heapq.heappush(frontier, (depth * LOCAL_LINK_S, pid, False))
-    settled: set[tuple[str, bool]] = set()
+    routes = _route_graph(state)
+    if to_id in routes[from_id]:
+        return routes[from_id][to_id]
+    graph = _travel_graph(state, routes)
+    best: dict[str, int] = {from_id: 0}
+    frontier: list[tuple[int, str]] = [(0, from_id)]
     while frontier:
-        cost, pid, moved = heapq.heappop(frontier)
-        if (pid, moved) in settled:
+        cost, pid = heapq.heappop(frontier)
+        if pid == to_id:
+            return cost
+        if cost > best.get(pid, cost):
             continue
-        settled.add((pid, moved))
-        if best is not None and cost >= best:
-            break
-        if moved and pid in ends:
-            total = cost + ends[pid] * LOCAL_LINK_S
-            best = total if best is None else min(best, total)
-        for nxt, step in graph[pid].items():
-            if (nxt, True) not in settled:
-                heapq.heappush(frontier, (cost + step, nxt, True))
-    if best is not None:
-        return best
-
-    for depth, pid in enumerate(starts):
-        if pid in ends:
-            return (depth + ends[pid]) * LOCAL_LINK_S
+        for nxt, step in sorted(graph[pid].items()):
+            total = cost + step
+            if total < best.get(nxt, total + 1):
+                best[nxt] = total
+                heapq.heappush(frontier, (total, nxt))
     return None
 
 

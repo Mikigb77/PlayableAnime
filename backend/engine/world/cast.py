@@ -79,28 +79,24 @@ def _involved(state: WorldState, record_id: str) -> int:
 
 
 def enforce_caps(state: WorldState) -> None:
-    """Keep the active cast within its caps by sending the least involved to dormant (W15, K8).
-    Newer records win ties, so what just emerged gets its chance on stage."""
-    npcs = [
-        c
-        for c in state.npcs()
-        if c.alive and c.prominence is Prominence.KEY and c.activity is Activity.ACTIVE
-    ]
-    factions = [
-        f
-        for f in state.factions.values()
-        if f.status is not FactionStatus.DESTROYED and f.activity is Activity.ACTIVE
-    ]
+    """Keep the most involved key NPCs and factions active, up to the caps, and the rest
+    dormant (W15, K8). A dormant one that the story comes back to (in the scene, in an open
+    thread, with something on its way) takes its place on stage again. Ties keep whoever is
+    already active, then favour what just emerged."""
+    npcs = [c for c in state.npcs() if c.alive and c.prominence is Prominence.KEY]
+    factions = [f for f in state.factions.values() if f.status is not FactionStatus.DESTROYED]
     for records, cap in ((npcs, ACTIVE_NPC_CAP), (factions, ACTIVE_FACTION_CAP)):
-        if len(records) <= cap:
-            continue
         ranked = sorted(
             by_id(records),
-            key=lambda r: (_involved(state, r.id), _created(r)),
+            key=lambda r: (
+                _involved(state, r.id),
+                r.activity is Activity.ACTIVE,
+                _created(r),
+            ),
             reverse=True,
         )
-        for record in ranked[cap:]:
-            record.activity = Activity.DORMANT
+        for i, record in enumerate(ranked):
+            record.activity = Activity.ACTIVE if i < cap else Activity.DORMANT
 
 
 def _created(record) -> int:

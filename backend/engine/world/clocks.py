@@ -25,7 +25,7 @@ from engine.state.records import (
 from engine.world.geography import characters_at, faction_seat, is_within
 from engine.world.norms import canonical
 from engine.world.rumors import start_rumor
-from engine.world.scheduling import Kind, World, by_id, pending, schedule
+from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
 
 ENDS_WITHOUT_PLAYER = frozenset(
     {ThreadKind.AMBITION, ThreadKind.QUEST, ThreadKind.THREAT, ThreadKind.DEBT}
@@ -55,11 +55,11 @@ def ensure_clock_events(w: World) -> None:
             continue
         if clock.remaining == 0:
             _ensure_end(w, clock)
-        elif (
-            clock.interval_s is not None
-            and clock.next_step_s is not None
-            and not pending(w.state, Kind.CLOCK_STEP, clock_id=clock.id)
+        elif clock.interval_s is not None and not pending(
+            w.state, Kind.CLOCK_STEP, clock_id=clock.id
         ):
+            if clock.next_step_s is None:
+                clock.next_step_s = w.at_s + clock.interval_s
             schedule(
                 w,
                 Kind.CLOCK_STEP,
@@ -120,9 +120,16 @@ def advance(w: World, clock: Clock, steps: int = 1) -> None:
         _ensure_end(w, clock)
 
 
-def reverse(clock: Clock) -> None:
-    if clock.status is ClockStatus.RUNNING and clock.filled > 0:
-        clock.filled -= 1
+def reverse(w: World, clock: Clock) -> None:
+    """Set a running clock back a step. A clock that was full no longer ends: the end the world
+    scheduled when it filled is called off (an end the drafter set at a date still stands)."""
+    if clock.status is not ClockStatus.RUNNING or clock.filled == 0:
+        return
+    if clock.remaining == 0:
+        for event in _end_events(w, clock):
+            if event.payload.get("clock_id") == clock.id:
+                cancel(w, event)
+    clock.filled -= 1
 
 
 def on_clock_step(w: World, event: PendingEvent) -> None:
@@ -150,7 +157,7 @@ def deed_moves_clocks(w: World, deed: Deed) -> None:
         if any(matches(entry, deed) for entry in clock.advances_on):
             advance(w, clock)
         elif any(matches(entry, deed) for entry in clock.reverses_on):
-            reverse(clock)
+            reverse(w, clock)
 
 
 def where_it_ends(w: World, event: PendingEvent, clock: Clock) -> str | None:

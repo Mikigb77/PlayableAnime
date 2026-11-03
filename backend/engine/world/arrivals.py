@@ -30,8 +30,12 @@ def on_report(w: World, event: PendingEvent) -> None:
     witness = state.characters.get(str(event.payload.get("witness_id")))
     if deed is None or faction_id not in state.factions:
         return
+    # A witness who went to tell them is there now, unless they never left the player's scene
+    # (then they sent word with someone).
+    in_scene = witness is not None and witness.id in state.scene.present_ids
     if witness is not None and witness.alive and event.payload.get("moves") and event.place_id:
-        witness.location_id = event.place_id
+        if not in_scene:
+            witness.location_id = event.place_id
     faction_learns(w, faction_id, deed)
 
 

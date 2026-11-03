@@ -22,6 +22,7 @@ from engine.state import (
     Activity,
     Character,
     CharacterStatus,
+    ClockStatus,
     Connection,
     ConnectionKind,
     DeathCertainty,
@@ -29,6 +30,7 @@ from engine.state import (
     EventStatus,
     Faction,
     FactionStatus,
+    Law,
     OriginKind,
     PassingState,
     PendingEvent,
@@ -44,6 +46,8 @@ from engine.state import (
 )
 from engine.world import Kind
 from engine.world.answers import Answer, choose_answer
+from engine.world.discovery import name_the_doer
+from engine.world.geography import travel_s
 from engine.world.knowledge import faction_learns
 from engine.world.norms import assess_severity
 from engine.world.rumors import start_rumor
@@ -54,6 +58,7 @@ from engine.world.tuning import (
     AGENDA_FACTS_KEPT,
     CROWD_DELAY_S,
     GARBLED_BELOW,
+    LOCAL_LINK_S,
     MAX_TICKS_PER_PASSAGE,
     REACTION_WINDOW_S,
     REPUTATION_STEP_MAX,
@@ -687,3 +692,201 @@ def test_reports_without_phones_take_the_trip_and_move_the_witness():
     after, _ = idle(after, HOUR)
 
     assert after.characters["wei"].location_id == "inner-court"
+
+
+# --- What the self-review turned up ----------------------------------------------------------
+
+
+def kingdom() -> WorldState:
+    """Two cities in one kingdom, two days apart, each with a building or two inside."""
+    state = grounded_world()
+    state.places = {
+        "realm": Place(id="realm", name="the realm", kind="kingdom"),
+        "a": Place(
+            id="a",
+            name="Alba",
+            kind="city",
+            parent_id="realm",
+            routes=[Route(to_id="b", travel_s=2 * DAY)],
+        ),
+        "b": Place(id="b", name="Brenna", kind="city", parent_id="realm"),
+        "c": Place(id="c", name="Corvo", kind="city", parent_id="realm"),
+        "inn": Place(id="inn", name="the inn", kind="building", parent_id="a"),
+        "keep": Place(id="keep", name="the keep", kind="building", parent_id="a"),
+        "hall": Place(id="hall", name="the guildhall", kind="building", parent_id="b"),
+    }
+    return state
+
+
+def test_travel_inside_a_city_is_a_short_walk_and_between_cities_takes_the_road():
+    state = kingdom()
+
+    assert travel_s(state, "inn", "a") == LOCAL_LINK_S
+    assert travel_s(state, "inn", "keep") == 2 * LOCAL_LINK_S
+    assert travel_s(state, "a", "b") == 2 * DAY
+    assert travel_s(state, "inn", "hall") == 2 * DAY + 2 * LOCAL_LINK_S
+    assert travel_s(state, "a", "c") is None  # nothing on the map joins them
+    # A route between two places is what the trip takes.
+    assert travel_s(cultivation_world(), "well", "inner-court") == 40 * MINUTE
+
+
+def test_the_guards_of_another_city_dont_hear_of_a_crime_outside_their_reach():
+    state = kingdom()
+    state.factions = {
+        "watch-a": Faction(id="watch-a", name="Alba's watch", kind="watch"),
+        "watch-b": Faction(id="watch-b", name="Brenna's watch", kind="watch"),
+    }
+    state.places["keep"].controller_id = "watch-a"
+    state.places["hall"].controller_id = "watch-b"
+    state.bible.laws = [
+        Law(id="law-a", text="No brawling.", enforcer_faction_id="watch-a"),
+        Law(id="law-b", text="No brawling.", enforcer_faction_id="watch-b"),
+    ]
+    for cid in ("luca", "carmine", "bartender"):
+        state.characters[cid].location_id = "inn"
+        state.characters[cid].memberships = []
+    state.scene.place_id = "inn"
+    brawl = ProposedDeed(
+        kind="assault", text="Luca breaks a chair on Carmine", victim_ids=["carmine"]
+    )
+
+    after = play(state, deed_step(brawl)).state
+
+    told = {e.payload["faction_id"] for e in pending_of(after, Kind.REPORT)}
+    assert told == {"watch-a"}
+
+
+def test_when_a_secret_killing_comes_out_the_people_there_their_faction_and_region_learn():
+    state = with_a_sister(grounded_world())
+    state.characters["maria"].location_id = "bar"
+    state.characters["bartender"].status = CharacterStatus.DEAD
+    state.characters["bartender"].death_certainty = DeathCertainty.CONFIRMED
+    deed = Deed(
+        id="deed-1",
+        actor_id="luca",
+        kind="kill",
+        text="Gennaro was strangled in the cellar",
+        turn=1,
+        world_s=0,
+        place_id="bar",
+        victim_ids=["bartender"],
+        severity=4,
+        visibility=Visibility.SECRET,
+    )
+    state.deeds[deed.id] = deed
+
+    name_the_doer(at(state), deed)
+
+    attitude = state.characters["maria"].sheet.disposition.attitudes["luca"]
+    assert [g.deed_id for g in attitude.grudges] == ["deed-1"]
+    assert not pending_of(state, Kind.TIDINGS)  # she heard it there and then
+    assert "carmine-crew" in deed.known_by_factions
+    assert state.places["naples"].player_reputation.fear > 0
+
+
+def test_someone_who_only_heard_nobody_knows_who_did_it_still_learns_the_truth_later():
+    state = grounded_world()
+    w = at(state)
+    deed = Deed(
+        id="deed-1",
+        actor_id="luca",
+        kind="kill",
+        text="A man was found dead",
+        turn=1,
+        world_s=0,
+        place_id="questura",
+        victim_ids=["carmine"],
+        severity=4,
+        visibility=Visibility.SECRET,
+    )
+    state.deeds[deed.id] = deed
+    start_rumor(
+        w,
+        text="Nobody knows who did it",
+        is_true=True,
+        place_id="questura",
+        hops=0,
+        deed=deed,
+        about_ids=["carmine"],
+        heard_by=["bartender"],
+    )
+    start_rumor(
+        w,
+        text="Luca did it",
+        is_true=True,
+        place_id="questura",
+        hops=0,
+        deed=deed,
+        about_ids=["luca", "carmine"],
+        heard_by=["bartender"],
+        accuracy=80,
+    )
+
+    assert state.characters["bartender"].sheet.disposition.attitudes["luca"].fear > 0
+
+
+def test_a_dormant_npc_the_story_comes_back_to_takes_the_stage_again():
+    state = grounded_world()
+    for i in range(ACTIVE_NPC_CAP):
+        state.characters[f"capo-{i}"] = Character(
+            id=f"capo-{i}", name=f"Capo {i}", prominence=Prominence.KEY, location_id="naples"
+        )
+        state.threads["revenge"].involved_ids.append(f"capo-{i}")
+    state.scene.present_ids = ["luca"]
+    state.threads["revenge"].involved_ids.remove("carmine")
+    after, _ = idle(state, 2 * DAY)
+    assert after.characters["carmine"].activity is Activity.DORMANT
+
+    after.scene.present_ids = ["luca", "carmine"]
+    after, _ = idle(after, 4 * DAY)
+
+    assert after.characters["carmine"].activity is Activity.ACTIVE
+    active = [
+        c for c in after.npcs() if c.activity is Activity.ACTIVE and c.prominence is Prominence.KEY
+    ]
+    assert len(active) == ACTIVE_NPC_CAP
+
+
+def test_a_clock_given_only_an_interval_starts_moving_from_now():
+    state = cultivation_world()
+    state.clocks["tournament"].next_step_s = None
+
+    after, _ = idle(state, 20 * HOUR)
+
+    assert after.clocks["tournament"].filled == 1
+    assert after.clocks["tournament"].next_step_s == 32 * HOUR
+
+
+def test_a_full_clock_set_back_no_longer_ends():
+    state = grounded_world()
+    del state.pending_events["council-meets"]
+    clock = state.clocks["council"]
+    clock.filled = 3
+    clock.advances_on = ["kill:carmine"]
+    clock.reverses_on = ["save"]
+    kill = ProposedDeed(kind="kill", text="Luca kills Carmine", victim_ids=["carmine"])
+    save = ProposedDeed(
+        kind="save", text="Luca pulls a capo from the sea", target_ids=["bartender"]
+    )
+
+    after = play(state, deed_step(kill, save, dead=("carmine",))).state
+
+    assert after.clocks["council"].filled == 3
+    assert not pending_of(after, Kind.CLOCK_END)
+    after, _ = idle(after, DAY)
+    assert after.clocks["council"].status is ClockStatus.RUNNING
+
+
+def test_a_witness_still_in_the_players_scene_sends_word_instead_of_walking_off():
+    state = cultivation_world()
+    state.places["inner-court"].controller_id = "azure-cloud"
+    state.characters["wei"] = Character(id="wei", name="Wei", location_id="well")
+    state.scene.present_ids.append("wei")
+    shove = ProposedDeed(kind="assault", text="Lin shoves Zhao into the well", victim_ids=["zhao"])
+    after = play(state, deed_step(shove)).state
+
+    after, fired = idle(after, HOUR)
+
+    reports = [e for e in fired if e.kind == Kind.REPORT and e.payload["witness_id"] == "wei"]
+    assert reports and reports[0].payload["moves"]
+    assert after.characters["wei"].location_id == "well"

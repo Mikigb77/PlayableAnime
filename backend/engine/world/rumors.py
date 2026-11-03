@@ -56,10 +56,13 @@ def start_rumor(
         timeline_id=state.timeline_id,
     )
     state.rumors[rumor.id] = rumor
-    for character_id in heard_by or []:
+    for character_id in dict.fromkeys(heard_by or []):
+        news = not heard_before(state, character_id, rumor, deed)
         rumor.heard_at.setdefault(character_id, w.at_s)
         if believes(state, character_id, rumor, rumor.accuracy):
             rumor.believed_by.append(character_id)
+            if news and names_actor(rumor, deed):
+                character_learns(w, character_id, deed, weight=rumor.accuracy / 100)
     if place_id is not None:
         spread(w, rumor, place_id, hops_left=hops, accuracy=rumor.accuracy, first=True)
     return rumor
@@ -68,6 +71,16 @@ def start_rumor(
 def names_actor(rumor: Rumor, deed: Deed | None) -> bool:
     """Whether the rumor rightly says who did the deed."""
     return deed is not None and rumor.is_true and deed.actor_id in rumor.about_ids
+
+
+def knows_doer(state: WorldState, character_id: str, deed: Deed) -> bool:
+    """Whether someone knows who did a deed: they did it, saw it, were told, or heard a rumor
+    that rightly names the doer."""
+    return character_id in deed.known_by or any(
+        character_id in r.heard_at and names_actor(r, deed)
+        for r in state.rumors.values()
+        if r.deed_id == deed.id
+    )
 
 
 def believes(state: WorldState, character_id: str, rumor: Rumor, accuracy: int) -> bool:
@@ -147,14 +160,17 @@ def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     return variant
 
 
-def heard_before(state: WorldState, character_id: str, rumor: Rumor) -> bool:
-    """Whether they already heard this rumor, or another about the same deed."""
+def heard_before(state: WorldState, character_id: str, rumor: Rumor, deed: Deed | None) -> bool:
+    """Whether the rumor is old news to them: they heard it, or it names a doer they already
+    know, or it tells no more than another rumor about the same deed they heard."""
     if character_id in rumor.heard_at:
         return True
+    if names_actor(rumor, deed):
+        return knows_doer(state, character_id, deed)
     return rumor.deed_id is not None and any(
         character_id in other.heard_at
         for other in state.rumors.values()
-        if other.deed_id == rumor.deed_id
+        if other.deed_id == rumor.deed_id and other.id != rumor.id
     )
 
 
@@ -181,7 +197,7 @@ def on_rumor(w: World, event: PendingEvent) -> None:
     attributed = names_actor(rumor, deed)
 
     for character in characters_at(state, place_id):
-        if heard_before(state, character.id, rumor):
+        if heard_before(state, character.id, rumor, deed):
             continue
         rumor.heard_at[character.id] = w.at_s
         if not believes(state, character.id, rumor, accuracy):
@@ -199,17 +215,18 @@ def on_rumor(w: World, event: PendingEvent) -> None:
             region_learns(w, region, deed, weight=weight)
     elif not rumor.is_true and accuracy >= BELIEVED_FROM:
         if state.places[place_id].controller_id not in reached_holders:
-            _blame(w, rumor, deed, place_id)
+            blame(w, rumor, deed, place_id)
 
     spread(w, rumor, place_id, hops_left=int(event.payload.get("hops_left", 0)), accuracy=accuracy)
 
 
-def _blame(w: World, rumor: Rumor, deed: Deed | None, place_id: str) -> None:
+def blame(w: World, rumor: Rumor, deed: Deed | None, place_id: str | None) -> None:
     """W13: a wrong rumor that blames a faction turns the victims' factions against it, which
     can start a war between factions. It counts once per rumor, at the first place it reaches
     that the victims' faction holds."""
     state = w.state
-    holder = state.places[place_id].controller_id
+    place = state.places.get(place_id) if place_id else None
+    holder = place.controller_id if place else None
     if deed is None or holder is None:
         return
     blamed = [i for i in rumor.about_ids if i in state.factions and i != holder]

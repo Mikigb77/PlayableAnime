@@ -228,8 +228,11 @@ a new one.
   the applied event: guards who find the player where they came need them, and guards who find
   them gone search instead. Delays come from the map: a witness walks to the faction's seat (the
   outermost place it holds, else where its leader is) or calls where the world has phones (G6),
-  and the answer then gathers and travels back. Where the map doesn't say, a trip takes about an
-  hour, never no time. Every figure is in `engine/world/tuning.py`.
+  and the answer then gathers and travels back. A route between two places is what the trip
+  takes; a place inside another is a 15-minute walk from it, unless it is a region of its own (a
+  city, a village, a kingdom), so two cities are as far apart as their roads say. Where the map
+  doesn't say, a trip takes about an hour, never no time. Those who keep a law act within the
+  region their seat is in. Every figure is in `engine/world/tuning.py`.
 - **Who learns what, and what it does.** A deed is known to its doer and witnesses (asleep or
   unconscious people see nothing; in stopped time only those immune to it do). Others learn it
   from a rumor they believe, which loses accuracy with each hop and, once far enough off, turns
@@ -245,7 +248,8 @@ a new one.
   without them, closing a tied thread of ambition, quest, threat or debt as resolved without the
   player. Mysteries, rivalries and romances stay open.
 - **The cast stays bounded** (W15, K8). At most 8 key NPCs and 4 factions are active; the least
-  involved go dormant, kept in state, never deleted. New characters and factions (an avenger, a
+  involved go dormant, kept in state, never deleted, and come back on stage when the story returns
+  to them (in the scene, in an open thread, with something on its way). New characters and factions (an avenger, a
   resistance in a conquered place, a successor) carry an `origin`. A destroyed faction gets one
   look at a revival, and comes back only with survivors, as rebuilding, with a `Cause` pointing at
   the revival event (C1); it stays rebuilding for the rest of that turn.

@@ -13,11 +13,11 @@ import math
 from engine.state.records import Deed, PendingEvent, Trace, TraceKind, Visibility
 from engine.state.world import WorldState
 from engine.world.aftermath import on_attributed
-from engine.world.answers import Answer, enforced_law, open_answer, schedule_answer
-from engine.world.geography import characters_at
-from engine.world.knowledge import COMRADE, ties_of
+from engine.world.answers import Answer, law_at, open_answer, schedule_answer
+from engine.world.geography import characters_at, region_of
+from engine.world.knowledge import COMRADE, faction_learns, region_learns, ties_of
 from engine.world.norms import Nature, is_crime, is_killing, nature
-from engine.world.rumors import names_actor, start_rumor
+from engine.world.rumors import blame, names_actor, start_rumor
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
 from engine.world.tuning import (
     CROWD_DELAY_S,
@@ -125,11 +125,12 @@ def on_discovery(w: World, event: PendingEvent) -> None:
 
 
 def name_the_doer(w: World, deed: Deed) -> None:
-    """The truth comes out: a rumor naming the doer starts where it happened (W13)."""
+    """The truth comes out: a rumor naming the doer starts where it happened, among the people
+    and the faction there, and in the region (W3, W13)."""
     state = w.state
     actor = state.characters.get(deed.actor_id)
     who = actor.name if actor else "someone"
-    start_rumor(
+    rumor = start_rumor(
         w,
         text=f"{who} did it: {deed.text}",
         is_true=True,
@@ -140,6 +141,11 @@ def name_the_doer(w: World, deed: Deed) -> None:
         accuracy=80,
         heard_by=[c.id for c in characters_at(state, deed.place_id) if c.id != deed.actor_id],
     )
+    weight = rumor.accuracy / 100
+    place = state.places.get(deed.place_id) if deed.place_id else None
+    if place is not None and place.controller_id is not None:
+        faction_learns(w, place.controller_id, deed, weight=weight)
+    region_learns(w, region_of(state, deed.place_id), deed, weight=weight)
     on_attributed(w, deed)
 
 
@@ -164,7 +170,7 @@ def _unexplained(w: World, deed: Deed, stream) -> None:
     else:
         text = f"{names} {what}, and nobody knows who did it."
         is_true, about = True, list(deed.victim_ids)
-    start_rumor(
+    rumor = start_rumor(
         w,
         text=text,
         is_true=is_true,
@@ -175,6 +181,8 @@ def _unexplained(w: World, deed: Deed, stream) -> None:
         accuracy=70,
         heard_by=[c.id for c in characters_at(state, deed.place_id) if c.id != deed.actor_id],
     )
+    if not is_true:
+        blame(w, rumor, deed, deed.place_id)
     if is_crime(deed.kind, deed.severity, deed.victim_ids):
         _investigate(w, deed)
 
@@ -204,7 +212,7 @@ def _investigate(w: World, deed: Deed) -> None:
     scene is another chance to name the doer."""
     state = w.state
     for faction in by_id(state.factions.values()):
-        law = enforced_law(state, faction.id)
+        law = law_at(state, faction.id, deed.place_id)
         if law is None or open_answer(state, target_id=deed.actor_id, faction_id=faction.id):
             continue
         schedule_answer(

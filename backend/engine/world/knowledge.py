@@ -24,8 +24,8 @@ from engine.state.world import WorldState, natural_key
 from engine.world.answers import (
     actor_might,
     answer_threat,
-    enforced_law,
     faction_might,
+    law_at,
     schedule_revenge,
 )
 from engine.world.geography import is_within
@@ -257,7 +257,7 @@ def faction_learns(w: World, faction_id: str, deed: Deed, *, weight: float = 1.0
     helped = nature(deed.kind, deed.victim_ids) is Nature.HELP and any(
         in_faction(state, t, faction_id) for t in deed.target_ids
     )
-    law = enforced_law(state, faction_id)
+    law = law_at(state, faction_id, deed.place_id)
     enforcing = law is not None and is_crime(deed.kind, deed.severity, deed.victim_ids)
 
     if deed.actor_id == state.player_id:

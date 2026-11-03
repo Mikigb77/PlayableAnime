@@ -14,7 +14,7 @@ from engine.state.bible import Law, Zeal
 from engine.state.cast import Character, Faction, FactionStatus
 from engine.state.records import Deed, Origin, OriginKind, PendingEvent
 from engine.state.world import WorldState
-from engine.world.geography import faction_seat, travel_s
+from engine.world.geography import faction_seat, is_within, region_of, travel_s
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
 from engine.world.tuning import ANSWER_GATHER_S, UNKNOWN_TRIP_S, ZEAL_GATHER_FACTOR
 
@@ -119,6 +119,20 @@ def enforced_law(state: WorldState, faction_id: str) -> Law | None:
         if law.enforcer_faction_id == faction_id and law.zeal is not Zeal.NONE
     ]
     return min(laws, key=lambda law: (order[law.zeal], law.id)) if laws else None
+
+
+def law_at(state: WorldState, faction_id: str, place_id: str | None) -> Law | None:
+    """The law a faction keeps where something was done (W11): the one it enforces most
+    zealously, if the place is within its reach, the region its seat sits in. Where the map
+    doesn't place the faction, its law holds wherever the story is."""
+    law = enforced_law(state, faction_id)
+    faction = state.factions.get(faction_id)
+    if law is None or faction is None or place_id is None:
+        return law
+    seat = faction_seat(state, faction)
+    if seat is None or is_within(state, place_id, region_of(state, seat)):
+        return law
+    return None
 
 
 def rival_at_war(state: WorldState, faction: Faction) -> str | None:
@@ -294,7 +308,7 @@ def answer_threat(
             return None
         cancel(w, existing)
     answer = choose_answer(w, faction, target_id, tier, enforcing=enforcing, harmed=harmed)
-    law = enforced_law(w.state, faction.id) if enforcing else None
+    law = law_at(w.state, faction.id, deed.place_id) if enforcing else None
     return schedule_answer(
         w,
         answer,

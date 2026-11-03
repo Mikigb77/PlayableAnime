@@ -16,7 +16,7 @@ from engine.state.cast import Character
 from engine.state.records import Deed, TraceKind, Visibility
 from engine.state.world import WorldState, natural_key
 from engine.world.aftermath import on_attributed
-from engine.world.answers import enforced_law
+from engine.world.answers import law_at
 from engine.world.cast import maybe_resistance
 from engine.world.clocks import deed_moves_clocks
 from engine.world.discovery import attributed, schedule_look, ties_trace
@@ -170,7 +170,7 @@ def _leaders_who_saw(w: World, deed: Deed) -> None:
 
 def _report_targets(state: WorldState, deed: Deed) -> list[str]:
     """Factions a witness would tell (W11): whoever holds the place, those who keep the law
-    against a crime, and the witnesses' own factions when it is serious."""
+    there against a crime, and the witnesses' own factions when it is serious."""
     targets: list[str] = []
     for place_id in ancestors(state, deed.place_id):
         holder = state.places[place_id].controller_id
@@ -178,7 +178,7 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
             targets.append(holder)
             break
     if is_crime(deed.kind, deed.severity, deed.victim_ids):
-        targets.extend(f for f in sorted(state.factions) if enforced_law(state, f) is not None)
+        targets.extend(f for f in sorted(state.factions) if law_at(state, f, deed.place_id))
     if deed.severity >= 2:
         for witness_id in deed.witness_ids:
             witness = state.characters.get(witness_id)

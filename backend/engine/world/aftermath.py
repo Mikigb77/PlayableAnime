@@ -13,17 +13,12 @@ from engine.world.cast import maybe_avenger
 from engine.world.geography import travel_s
 from engine.world.knowledge import FRIEND, character_learns, ties_of
 from engine.world.norms import Nature, is_killing, nature
+from engine.world.rumors import knows_doer
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.tuning import NEWS_FACTOR, NEWS_FACTOR_INSTANT, NEWS_MIN_S
 
 # When nothing on the map connects the victim's kin to the place, word still gets there.
 FAR_NEWS_S = 7 * DAY
-
-
-def knows_of(w: World, character_id: str, deed: Deed) -> bool:
-    if character_id in deed.known_by:
-        return True
-    return any(character_id in r.heard_at for r in w.state.rumors.values() if r.deed_id == deed.id)
 
 
 def on_attributed(w: World, deed: Deed) -> None:
@@ -39,7 +34,7 @@ def on_attributed(w: World, deed: Deed) -> None:
             continue
         close = [(cid, tie) for cid, tie in ties_of(state, victim_id) if cid != deed.actor_id]
         for character_id, _ in close:
-            if knows_of(w, character_id, deed) or character_id == state.player_id:
+            if knows_doer(state, character_id, deed) or character_id == state.player_id:
                 continue
             if pending(state, Kind.TIDINGS, deed_id=deed.id, character_id=character_id):
                 continue
@@ -68,7 +63,7 @@ def on_tidings(w: World, event: PendingEvent) -> None:
     """Word of a death or a grave harm reaches someone close to the victim (W4)."""
     deed = w.state.deeds.get(str(event.payload.get("deed_id")))
     character_id = str(event.payload.get("character_id"))
-    if deed is None or knows_of(w, character_id, deed):
+    if deed is None or knows_doer(w.state, character_id, deed):
         return
     deed.known_by.append(character_id)
     character_learns(w, character_id, deed, weight=1.0)
