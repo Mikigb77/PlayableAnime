@@ -536,7 +536,7 @@ version race, a player who leaves mid-turn or mid-save, pending rows both ways, 
 
 ## Drafting a world and a character
 
-Requirements: G1, G2, S1, A1, G6, G7, G8, G18, G22, N7, C6, E2, W15. The chain is
+Requirements: G1, G2, S1, A1, G6, G7, G8, G12, G18, G22, N7, C6, E2, W15. The chain is
 `backend/graph/drafting/` (plain Python on the model layer, no Django, B4); `backend/drafts/` stores
 drafts, serves `/v1/premises` and `/v1/drafts` ([API.md](API.md#drafting-a-world-and-a-character-g1-g2-s1-a1))
 and creates the story on start.
@@ -558,6 +558,14 @@ flowchart LR
   `assemble()` of those inputs, the same every time, so a revision replaces one half of the
   proposal (the world or the character) and code re-decides everything else. The state is copied
   into the story only on start.
+- **Fictional people (G12, `real_names`).** The player's words (the premise, a revision, an edited
+  summary line or rule) are checked before any model call: one that names a real living person
+  is refused as a `validation_error` at that field, at no cost. A real organisation is a
+  backdrop and passes. Every proposal the model returns is cleaned before it is kept: a key
+  character or faction named after a real person or organisation is left out (references to
+  them resolve to nothing), a real alias or connection goes, and a player character given a real
+  name gets the default name. Each refusal and each cleaning is logged as a `drafter` block
+  ([Safety, ratings and reports](#safety-ratings-and-reports)).
 - **The model proposes; `assemble` decides.** The proposal schemas are compact and unbounded, and
   code cleans them: unique slug ids with references resolved by id or name and dangling ones
   dropped, the player always `player` with a real name, list and text sizes capped, and every C1
@@ -602,7 +610,7 @@ by the turn graph:
 | --- | --- | --- |
 | Adults only in romance (F3) | A romantic or sexual step (read from the intent's verb, text and beats) never plays unless the actor and every character it targets have an age of 18 or more recorded and nothing childlike in their appearance or description, whatever age they are given. A partner the story doesn't know yet is the narrator's to introduce as an adult with an age; once known, the check holds them to it. | `minor` |
 | Teen's line (F2) | In a Teen story a step beyond a kiss, or a sexual assault, never plays. Mature plays both within the table. | `sexual`, `sexual_violence` |
-| Fictional people (G12) | A step that targets a real living person never plays, and a new character or faction named after a real person or organisation is left out of the narrator's update (a known one keeps its name). The names are a curated backstop in `engine/real_entities.py`; naming a real organisation in an action is allowed, as a backdrop. | `real_person` |
+| Fictional people (G12) | A step that targets a real living person never plays, and a new character or faction named after a real person or organisation is left out of the narrator's update (a known one keeps its name). Drafting does the same: a premise, revision or edit that names a real person is refused, and the drafted world and character are cleaned ([Drafting](#drafting-a-world-and-a-character)). The names are a curated backstop in `engine/real_entities.py`; naming a real organisation in an action is allowed, as a backdrop. | `real_person` |
 | No instructions (F3) | A narration with real-world drug, weapon or hacking know-how that reads like a procedure (code or commands, numbered steps, or lab amounts with things to do with them) counts as blocked, so it is retold as a cut-away. It is checked before each streamed piece is sent, so the stream stops at the piece that would complete the recipe. Know-how told as an outcome passes. | `harm_instructions` |
 
 A step that never plays ends the turn with `LimitReached`, before anything resolves, so nothing is

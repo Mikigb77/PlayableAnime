@@ -8,6 +8,7 @@ forgotten past, or anyone the character doesn't know (N7, C6).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -20,6 +21,8 @@ from engine.context import Difficulty, EventFrequency, ImageSetting, NarrationLe
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.prompts import current_rules
+from graph.drafting.real_names import real_person_in
 from graph.drafting.view import (
     character_lines,
     gift_strength,
@@ -197,6 +200,27 @@ def _settings(advanced: AdvancedIn | None) -> dict[str, str]:
     return {name: value for name, value in chosen.items() if value is not None}
 
 
+def _refuse_real_people(fields: Iterable[tuple[str, str]]) -> None:
+    """G12: a premise, revision or edit that names a real living person is refused before any
+    model call, at the field it is in. Real organisations are allowed, as a backdrop."""
+    found = real_person_in(fields)
+    if found is not None:
+        raise field_error(found.field, found.message, type="real_person")
+
+
+def _new_texts(
+    field: str, texts: list[str] | None, kept: Iterable[str] = (), leaf: str = ""
+) -> list[tuple[str, str]]:
+    """The player's own texts in a list field, by dotted path. A text already in the draft
+    (`kept`) was written by the drafter, not the player, so only new ones are checked."""
+    same = {" ".join(text.split()) for text in kept}
+    return [
+        (f"{field}.{i}{leaf}", text)
+        for i, text in enumerate(texts or [])
+        if " ".join(text.split()) not in same
+    ]
+
+
 def _rule_edits(advanced: AdvancedIn | None) -> list[chain.RuleEdit] | None:
     if advanced is None or advanced.rules is None:
         return None
@@ -214,6 +238,10 @@ async def create_draft(request, body: CreateDraftIn):
     premise = body.premise if body.premise is not None else found.premise
     service.check_rating(request.auth, body.rating)
     advanced = body.advanced or AdvancedIn()
+    rules = [r.text for r in advanced.rules or []]
+    _refuse_real_people(
+        [("premise", body.premise or ""), *_new_texts("advanced.rules", rules, leaf=".text")]
+    )
     async with service.model_call(
         request, rating=body.rating, action="create", premise_id=body.premise_id
     ) as call:
@@ -253,8 +281,22 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     if body.rating is not None:
         service.check_rating(request.auth, body.rating)
     advanced = body.advanced or AdvancedIn()
+    current = service.to_chain(row)
+    state = current.state()
+    _refuse_real_people(
+        [
+            *_new_texts("world_lines", body.world_lines, world_lines(state)),
+            *_new_texts("character_lines", body.character_lines, character_lines(state)),
+            *_new_texts(
+                "advanced.rules",
+                [r.text for r in advanced.rules or []],
+                [r.text for r in current_rules(state)],
+                leaf=".text",
+            ),
+        ]
+    )
     plan = chain.plan_edit(
-        service.to_chain(row),
+        current,
         chain.Edits(
             world_lines=body.world_lines,
             character_lines=body.character_lines,
@@ -283,6 +325,7 @@ async def revise_draft(request, draft_id: str, body: ReviseIn):
     row = await service.owned_draft(request, draft_id)
     service.refuse_started(row)
     service.check_version(row, body.expected_version)
+    _refuse_real_people([("instruction", body.instruction)])
     draft = service.to_chain(row)
     async with service.model_call(
         request, rating=draft.rating, action="revise", premise_id=draft.premise_id
