@@ -12,11 +12,14 @@ consistent. If a character dies, they stay dead.
 
 ## Quick start
 
-Backend (it uses an offline fake narrator unless configured otherwise):
+Backend. It uses an offline fake narrator unless configured otherwise, and keeps stories in memory
+until a Neon database is linked:
 
 ```bash
+neon env pull            # optional: link Neon Postgres (needs `npm i -g neon` and `neon login`)
 cd backend
 uv sync
+uv run python -m app.migrate   # only with Neon linked
 uv run uvicorn app.main:app --reload --port 8080
 ```
 

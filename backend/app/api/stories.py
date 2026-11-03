@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
 
 from app.api.deps import get_narrator, get_repository
-from app.domain import Scene, Story, WorldState
+from app.domain import Scene, Story, StorySummary, WorldState
 from app.engine.narrator import Narrator
 from app.storage import StoryRepository
 
@@ -18,13 +18,6 @@ NarratorDep = Annotated[Narrator, Depends(get_narrator)]
 class CreateStoryRequest(BaseModel):
     premise: str = Field(min_length=10, max_length=4000)
     title: str | None = Field(default=None, max_length=120)
-
-
-class StorySummary(BaseModel):
-    id: str
-    title: str
-    premise: str
-    turn: int
 
 
 class TurnRequest(BaseModel):
@@ -59,10 +52,7 @@ async def create_story(body: CreateStoryRequest, repo: Repository, narrator: Nar
 
 @router.get("")
 async def list_stories(repo: Repository) -> list[StorySummary]:
-    return [
-        StorySummary(id=s.id, title=s.title, premise=s.premise, turn=s.state.turn)
-        for s in await repo.list()
-    ]
+    return await repo.list_summaries()
 
 
 @router.get("/{story_id}")

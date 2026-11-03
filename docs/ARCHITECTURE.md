@@ -6,7 +6,7 @@
 │ app/         │  X-LLM-* hdrs │ Cloud Run, backend/       │   │ (or the user's own key)  │
 │ iOS, Android │ ◀──────────── │ engine: narrator + memory │   └──────────────────────────┘
 └──────────────┘               │                           │   ┌──────────────────────────┐
-                               │                           │──▶│ Neon Postgres (pending)  │
+                               │                           │──▶│ Neon Postgres            │
                                │                           │   └──────────────────────────┘
                                │                           │   ┌──────────────────────────┐
                                │                           │──▶│ Cloud Storage: images    │
@@ -20,6 +20,7 @@
 | --- | --- |
 | `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage |
 | `backend/` | Python 3.13 + FastAPI, managed with uv, deployed to Cloud Run |
+| `neon.ts`, `package.json` | Neon config as code (`@neon/config`). Node is used only for the Neon CLI and this config. |
 | `docs/` | Product and architecture notes |
 | `.github/workflows/ci.yml` | Lint and test for both halves on every PR |
 
@@ -88,11 +89,34 @@ their own key can use their own free quota.
 Deploying is described in [backend/README.md](../backend/README.md#deploy-to-cloud-run).
 **Don't deploy publicly before auth exists:** an open endpoint lets anyone spend our Vertex budget.
 
-## Neon Postgres (pending)
+## Neon Postgres
 
-- Store the pooled connection string in Secret Manager as `database-url` and mount it as
-  `DATABASE_URL` on Cloud Run.
-- Swap `InMemoryStoryRepository` (`backend/app/storage.py`) for a Postgres repository behind the
-  same `StoryRepository` protocol.
-- Enable `pgvector` for memory retrieval.
-- The schema will be designed in a follow-up.
+| Item | Value |
+| --- | --- |
+| Project | `divine-rice-51324513` ("PleyableAnime") in org `org-winter-dew-32019906`, `aws-eu-central-1`, Postgres 18 |
+| Branches | `production` (default). Feature branches come from `neon checkout <name> --create` and expire after 7 days (see `neon.ts`). |
+| Local env | `neon deploy`, `neon checkout` and `neon env pull` write `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `NEON_BRANCH` to the repo-root `.env.local` (git-ignored). The backend reads that file. |
+| Driver | asyncpg pool on the pooled URL (at most 5 connections; idle ones close after 60 s so the compute can scale to zero) |
+| Migrations | `backend/migrations/*.sql`, applied in order by `uv run python -m app.migrate` over the **direct** URL and tracked in `schema_migrations` |
+| Without a DB | When `DATABASE_URL` is unset (tests, offline dev), stories live in memory |
+
+**Schema (v1).** One `stories` row per story, with `scenes` and world `state` stored as JSONB. It
+will be normalised once the data model settles: users, scenes, characters and facts with vector
+search for memory retrieval.
+
+**Branch-first workflow.** Per feature:
+1. Run `neon checkout <feature> --create` (this repoints `.env.local`).
+2. Run `uv run python -m app.migrate`, then test.
+3. Run `neon diff` to review schema changes.
+4. After merging, run `neon checkout production` and migrate again.
+
+**Latency.** The database is in Frankfurt. Deploying Cloud Run to `europe-west3` (Frankfurt) instead
+of `europe-southwest1` (Madrid) would avoid a cross-region hop on every query.
+
+**Cloud Run.** Store the pooled URL in Secret Manager and mount it as an env var:
+
+```bash
+gcloud secrets create database-url --replication-policy=automatic --data-file=- --configuration=playable-anime
+```
+
+Then deploy with `--set-secrets=DATABASE_URL=database-url:latest`.
