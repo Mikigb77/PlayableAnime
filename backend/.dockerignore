@@ -2,5 +2,7 @@
 __pycache__
 .pytest_cache
 .ruff_cache
+staticfiles
 tests
 .env
+.env.*

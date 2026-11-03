@@ -26,7 +26,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
 
   | HTTP | `code` | When |
   | --- | --- | --- |
-  | 400 | `validation_error` | The body or query is invalid. `details.fields` lists the problems. |
+  | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
   | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents`. |
@@ -37,7 +37,12 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |
   | 429 | `rate_limited` | Per-user rate limit (T9). `details.retry_after_s`. |
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
+  | 500 | `internal_error` | A bug on our side. It is logged with its traceback for Error Reporting, and the message never shows internals. |
   | 503 | `llm_unavailable` | The model failed twice (one retry, T7). Nothing was saved. |
+
+- **Request ids (T4):** every response carries an `X-Request-Id` header, the id on the server's log
+  lines for that request. The app may send its own (up to 64 letters, digits, `.`, `_` or `-`), and
+  the server keeps it.
 
 ## Health
 
@@ -116,6 +121,13 @@ Hidden parts of the draft (the answer to a major mystery, NPC secrets, N7, C6) n
 response.
 
 ## Stories
+
+**Until WS3's turn graph lands,** the backend still serves today's endpoints with today's shapes, so
+the current app keeps working: `POST /v1/stories` with `{premise, title?}` returns the whole story
+with its opening scene, `POST /v1/stories/{id}/turns` takes `{choice_id}` or `{action}` (plus
+optional `input_mode` and `expected_version`) and returns `{scene, state, version}` as plain JSON,
+and `GET /v1/stories/{id}/memory` returns the raw world state. Stories and turns already carry
+`version` (T10) and errors already use the envelope above. The contract below is the target.
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |

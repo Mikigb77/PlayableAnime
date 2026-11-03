@@ -4,7 +4,8 @@
     {
       "name": "backend",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--directory", "backend", "uvicorn", "app.main:app", "--port", "8080"],
+      "runtimeArgs": ["run", "--directory", "backend", "uvicorn", "lucid.asgi:application", "--port", "8080"],
+      "env": {"DEBUG": "1"},
       "port": 8080
     },
     {

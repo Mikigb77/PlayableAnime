@@ -28,7 +28,7 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 
 1. **Continuity the engine enforces.** The model *proposes* world changes and the backend decides
    what sticks: the dead stay dead and destroyed factions stay destroyed, no matter what the model
-   writes. This is already in the scaffold (`backend/app/engine/memory.py`).
+   writes. This is already in the scaffold (`backend/legacy/engine/memory.py`).
 2. **Memory you can see and fix.** A Memory screen with characters, factions, facts and goals. Later
    you can pin, edit or forget entries.
 3. **Cheaper play.** Bring-your-own-key, a fast default model, and images generated once per
