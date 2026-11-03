@@ -40,6 +40,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
   | 500 | `internal_error` | A bug on our side. It is logged with its traceback for Error Reporting, and the message never shows internals. |
   | 503 | `llm_unavailable` | The model failed twice (one retry, T7). Nothing was saved. |
+  | 503 | `sign_in_unavailable` | Google sign-in can't be checked right now (Google unreachable, or not configured yet). Email sign-in still works. |
 
 - **Request ids (T4):** every response carries an `X-Request-Id` header, the id on the server's log
   lines for that request. The app may send its own (up to 64 letters, digits, `.`, `_` or `-`), and
@@ -78,6 +79,57 @@ LedgerEntry  {id, kind: "starter"|"turn"|"image"|"topup"|"adjustment", amount_ce
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
 integer. The owner account (K7) has `unlimited: true`; its ledger still records costs at zero
 charge so T5's numbers stay honest.
+
+**Signing in.** Every auth endpoint answers `200` with a `Session`, except `logout` (`204`).
+
+- **Google** (`/v1/auth/google`). The app gets an ID token from Google Sign-In for one of our OAuth
+  clients and sends it once; the server checks it and from then on only our own tokens are used.
+  A first sign-in without `birth_date` gets `400 birth_date_required`, and the app asks for the
+  date and sends the same request again with it (an ID token lasts an hour). A Google account whose
+  email Google hasn't verified gets `403 forbidden`. When Google can't be reached, or Google
+  sign-in isn't configured yet, the answer is `503 sign_in_unavailable`: try again later or use
+  email. If an email and password account already has
+  that email, the Google sign-in takes it over: Google vouches for the email and nobody verified
+  the password, so the password stops working and that account's devices are signed out. An
+  account already tied to a different Google account answers `403 forbidden`.
+- **Email and password** (`/v1/auth/register`, `/v1/auth/login`). Register answers
+  `validation_error` with one entry in `details.fields` per problem: `email` (`invalid_email`,
+  `email_taken`), `password` (Django's checks, such as `password_too_short`,
+  `password_too_common`, `password_too_similar`), `display_name` (`missing`) or `birth_date`
+  (`future`, `implausible`, `too_young`). Login answers `401 unauthenticated` with the same message
+  for a wrong password and an unknown email. After 10 failures for one email in 15 minutes, or 100
+  from one address, login answers `429 rate_limited` until the window ends; so does register after
+  10 new accounts from one address in an hour (attempts that fail validation don't count).
+- **Ages (F8).** The youngest age that can sign up is the `MIN_SIGNUP_AGE` setting (13). Under 17,
+  `max_rating` is `teen`, and it becomes `mature` on the 17th birthday with nothing to update. A
+  story whose rating is above the account's `max_rating` answers `403 forbidden`.
+- **Owner (K7).** `role` is `owner` only for a Google sign-in whose verified email is in
+  `OWNER_EMAILS`, never through a password, and it follows that list at every Google sign-in.
+- **Tokens.** `expires_in` is the access token's lifetime in seconds (900). A refresh token is good
+  for one refresh within 30 days and is replaced by the one in the response, so the app keeps only
+  the newest. The app should refresh one request at a time: sending a spent refresh token again
+  within 60 seconds still works (a retry after a lost response) and spends the token the lost
+  response carried, but later it signs that device out, because two holders of one token means one
+  of them stole it. `/v1/auth/refresh` answers
+  `401 unauthenticated` when the session is over, and the app then signs out. Logout takes the
+  refresh token, needs no access token and is safe to repeat.
+- **Other people's stories (S8).** A story that exists but belongs to someone else answers
+  `403 forbidden`; a story that doesn't exist answers `404 not_found`.
+- **`PATCH /v1/me`** changes only the fields sent, and inside `content_prefs` only the keys sent.
+  `role`, `email` and `birth_date` can't be changed.
+- **`DELETE /v1/me`** deletes the account and everything it owns at once and for good: stories,
+  scenes, signed-in devices and pictures. There is no undo, so the app confirms first.
+- **`GET /v1/me/export`** is a JSON download (`Content-Disposition: attachment`). Its stories are
+  the export shape below, oldest first, and it adds `images` once pictures exist (M4). The world
+  state isn't exported, because it holds truths the player hasn't learned (C6, N7).
+
+```text
+ExportStory  {id, title, premise, genre, rating, settings, turn, version, created_at, updated_at,
+              scenes: [ExportScene]}                       # every scene, in turn order
+ExportScene  {turn, kind, player_action?, input_mode?, narration, choices, details, event?,
+              time: {world_start_s, world_end_s, label, duration_label, personal_label?},
+              image?: {kind, status, url?}, created_at}
+```
 
 ## Starter premises (S1)
 

@@ -3,8 +3,8 @@ current app keeps working (WS1). They still run the legacy one-call narrator. WS
 turn endpoint with the streamed turn graph from docs/API.md, and the others move to that contract
 as the app does.
 
-Stories aren't scoped to their owner yet: sign-in comes with WS6, which adds auth to every
-endpoint and filters stories by `owner` (S8).
+Every endpoint needs a signed-in player (T8), and a player sees and plays only their own stories
+(S8) within their account's rating limit (F8).
 """
 
 import uuid
@@ -19,8 +19,9 @@ from legacy.domain import StorySummary, WorldState
 from legacy.engine.narrator import RECENT_SCENES
 from legacy.premises import SEED_PREMISES, Premise
 from lucid import logs
-from lucid.errors import ApiError, ErrorCode, field_error, version_conflict
+from lucid.errors import field_error, version_conflict
 from stories import legacy_bridge
+from stories.access import owned_story
 from stories.models import Engine, InputMode, Scene, SceneKind, Story
 
 premises_router = Router(tags=["premises"])
@@ -75,35 +76,36 @@ async def create_story(request, body: CreateStoryIn):
         id=str(story_id), title=body.title or _title_from(body.premise), premise=body.premise
     )
     opened = await legacy_bridge.advance(request, draft)
-    await legacy_bridge.create_story(story_id, opened)
+    await legacy_bridge.create_story(story_id, opened, owner=request.auth)
     return Status(201, StoryOut(**dict(opened), version=1))
 
 
 @stories_router.get("", response=list[StorySummary])
 async def list_stories(request) -> list[StorySummary]:
-    """Most recently played first."""
+    """The caller's own stories, most recently played first."""
+    stories = _legacy_stories().filter(owner=request.auth).order_by("-updated_at")
     return [
         StorySummary(id=str(s.id), title=s.title, premise=s.premise, turn=s.turn)
-        async for s in _legacy_stories().order_by("-updated_at")[:LIBRARY_SIZE]
+        async for s in stories[:LIBRARY_SIZE]
     ]
 
 
 @stories_router.get("/{story_id}", response=StoryOut)
 async def get_story(request, story_id: str) -> StoryOut:
-    story = await _load(story_id)
+    story = await _load(request, story_id)
     scenes = [s async for s in Scene.objects.filter(story=story).order_by("turn")]
     return StoryOut(**dict(legacy_bridge.to_legacy(story, scenes)), version=story.version)
 
 
 @stories_router.get("/{story_id}/memory", response=WorldState)
 async def get_memory(request, story_id: str) -> WorldState:
-    story = await _load(story_id)
+    story = await _load(request, story_id)
     return WorldState.model_validate(story.state or {})
 
 
 @stories_router.post("/{story_id}/turns", response=TurnOut)
 async def take_turn(request, story_id: str, body: TurnIn) -> TurnOut:
-    story = await _load(story_id)
+    story = await _load(request, story_id)
     if body.expected_version is not None and body.expected_version != story.version:
         raise version_conflict(story.version)
     recent = [s async for s in Scene.objects.filter(story=story).order_by("-turn")[:RECENT_SCENES]]
@@ -127,15 +129,8 @@ def _legacy_stories():
     return Story.objects.filter(engine=Engine.LEGACY)
 
 
-async def _load(story_id: str) -> Story:
-    try:
-        pk = uuid.UUID(story_id)
-    except ValueError:
-        raise ApiError(ErrorCode.NOT_FOUND, "Story not found.") from None
-    story = await _legacy_stories().filter(pk=pk).afirst()
-    if story is None:
-        raise ApiError(ErrorCode.NOT_FOUND, "Story not found.")
-    return story
+async def _load(request, story_id: str) -> Story:
+    return await owned_story(request, story_id, _legacy_stories())
 
 
 def _choice_label(story: LegacyStory, choice_id: str | None) -> str:

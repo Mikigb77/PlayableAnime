@@ -1,4 +1,6 @@
-"""The custom User model, in the first migration so `AUTH_USER_MODEL` never has to change."""
+"""The custom User model, in the first migration so `AUTH_USER_MODEL` never has to change, and the
+records sign-in keeps: signed-in devices with their rotating refresh tokens, and throttle counters.
+"""
 
 import uuid
 
@@ -53,6 +55,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.PLAYER)
     # Google's stable subject id (`sub`) from a verified ID token. Null for email-only accounts.
     google_sub = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    # Whether someone proved they own the email: true once Google vouches for it. Email and
+    # password accounts stay unverified until an email provider exists.
+    email_verified = models.BooleanField(default=False)
+    # ContentPrefs from docs/API.md (F7): {gore, romance, dark_themes}. Missing keys take the
+    # defaults in `accounts.rules.CONTENT_PREF_DEFAULTS`.
+    content_prefs = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     # Staff can use the Django admin (B1).
     is_staff = models.BooleanField(default=False)
@@ -78,3 +86,62 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_owner(self) -> bool:
         return self.role == Role.OWNER
+
+
+class SignInMethod(models.TextChoices):
+    GOOGLE = "google", "Google"
+    PASSWORD = "password", "Email and password"
+
+
+class AuthSession(models.Model):
+    """One signed-in device (T8): the family of refresh tokens that rotate from one sign-in.
+
+    Access tokens name their session, so revoking it signs that device out at once: on logout,
+    when a refresh token is reused after it rotated (a sign of theft), when a Google sign-in takes
+    over an account that had an unverified password, and when the account is deleted.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_sessions")
+    method = models.CharField(max_length=16, choices=SignInMethod.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_reason = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["last_used_at"], name="auth_session_last_used_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.user_id} via {self.method}"
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+
+class RefreshToken(models.Model):
+    """A refresh token, stored only as its SHA-256 hash. Each is good for one refresh, which
+    returns a new one in the same session (rotation)."""
+
+    token_hash = models.CharField(max_length=64, unique=True)
+    session = models.ForeignKey(AuthSession, on_delete=models.CASCADE, related_name="tokens")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    # Set when the token is exchanged. A second exchange after the leeway revokes the session.
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"refresh token for session {self.session_id}"
+
+
+class Throttle(models.Model):
+    """A fixed-window counter in Postgres, so a limit holds across Cloud Run instances. The key
+    is an HMAC of what is counted (an email or an IP address), never the value itself."""
+
+    key = models.CharField(max_length=64, primary_key=True)
+    window_started_at = models.DateTimeField()
+    hits = models.PositiveIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return f"{self.key[:12]}: {self.hits}"

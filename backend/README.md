@@ -55,6 +55,10 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `LLM_PROVIDER` | `fake` | `vertex` or `fake`. |
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
 | `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
+| `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |
+| `OWNER_EMAILS` | `mikigb77@gmail.com` | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). |
+| `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
+| `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
 
 ## Database (Neon Postgres)
 
@@ -92,8 +96,23 @@ builds the image and smoke-tests it.
 
 ## API
 
-The target contract is [docs/API.md](../docs/API.md). Until WS3's turn graph lands, these are today's
-endpoints, ported from FastAPI with the same paths and shapes so the current app keeps working:
+The target contract is [docs/API.md](../docs/API.md). Every endpoint except `/health` and
+`/v1/auth/*` needs `Authorization: Bearer <access_token>` (T8), and a player sees only their own
+stories (S8). Sign-in and the account:
+
+| Method | Path | |
+| --- | --- | --- |
+| POST | `/v1/auth/google` | `{id_token, birth_date?}` → `Session`. A new account needs `birth_date` (F8). |
+| POST | `/v1/auth/register` | `{email, password, display_name, birth_date}` → `Session` |
+| POST | `/v1/auth/login` | `{email, password}` → `Session`, throttled against guessing |
+| POST | `/v1/auth/refresh` | `{refresh_token}` → `Session` with a new refresh token |
+| POST | `/v1/auth/logout` | `{refresh_token}` → `204` |
+| GET, PATCH, DELETE | `/v1/me` | The account, its name and content preferences, and deleting it with everything it owns (T12) |
+| GET | `/v1/me/export` | Everything the account holds, as a JSON download (T12) |
+
+To try the API locally, register in `/v1/docs` (or with curl) and use the `access_token` from the
+answer with the docs page's Authorize button. Until WS3's turn graph lands, the story endpoints are
+today's, ported from FastAPI with the same paths and shapes so the current app keeps working:
 
 | Method | Path | |
 | --- | --- | --- |
@@ -134,8 +153,18 @@ lucid/            Django project
   logs.py         JSON formatter and the per-request log context (T4 to T6)
   middleware.py   Request ids, trace, story id, one log line per request
   views.py        /health
-accounts/         The custom User model (email login, display name, birth date, role, Google id)
+accounts/         Users, sign-in and the account endpoints (T8, F8, K7, T12)
+  api.py          /v1/auth/* and /v1/me
+  auth.py         The bearer auth on every endpoint
+  tokens.py       Access tokens and rotating refresh tokens
+  google.py       The Google ID token check
+  throttle.py     Brute-force counters in Postgres
+  rules.py        Age gate, rating limit, content preferences, owner emails
+  services.py     Sign-in, sign-up, profile, delete and export
+  signals.py      account_deleting and account_exporting, for other apps
 stories/          Story, Scene and PendingEvent models, admin, the story API
+  access.py       owned_story(): the caller's story, within their rating limit (S8, F8)
+  export.py       Stories as plain data for the account export
   legacy_bridge.py  Glue between the models and the legacy narrator, removed with it by WS3
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
@@ -160,7 +189,7 @@ them.
 
 ## Deploy to Cloud Run
 
-Not deployed yet. Nothing goes public before auth (T8) and rate limits (T9). The image serves
+Not deployed yet. Nothing goes public before rate limits and quotas (T9) join sign-in (T8). The image serves
 `uvicorn lucid.asgi:application --host 0.0.0.0 --port $PORT`; before each deploy, run
 `python manage.py migrate` from the same image with `DATABASE_URL` set to Neon's direct URL. The
 pipeline that does both, its one-time setup, costs and rollback are in

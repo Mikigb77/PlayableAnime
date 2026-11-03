@@ -55,7 +55,8 @@ def test_the_asgi_app_loads_without_the_model_sdk():
     is imported too, as the first request would, so every view module is checked."""
     result = _python(
         "import sys, lucid.asgi, lucid.urls; "
-        "heavy = [m for m in ('google.genai', 'langchain_core', 'langgraph') if m in sys.modules]; "
+        "heavy = [m for m in ('google.genai', 'google.auth', 'langchain_core', 'langgraph') "
+        "if m in sys.modules]; "
         "print(heavy); sys.exit(1 if heavy else 0)",
         DJANGO_SECRET_KEY="test",
         DATABASE_URL="postgresql://nowhere/none",

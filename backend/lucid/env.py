@@ -46,6 +46,18 @@ class Env(BaseSettings):
     vertex_location: str = "global"
     narrator_model: str = "gemini-3.5-flash"
 
+    # Sign-in (T8, K7, F8). Comma-separated OAuth client ids (web, Android, iOS) from the
+    # `playable-anime` project: a Google ID token must name one of them as its audience. Empty
+    # turns Google sign-in off. Client ids aren't secrets.
+    google_oauth_client_ids: str = ""
+    # Comma-separated. A verified Google sign-in with one of these emails gets the owner role.
+    owner_emails: str = "mikigb77@gmail.com"
+    # The youngest age that can sign up. Under 17 gets Teen only (F8).
+    min_signup_age: int = 13
+    # How many proxies append to X-Forwarded-For before the request reaches us: 1 on Cloud Run
+    # (Google's front end). Raise it if a load balancer goes in front.
+    trusted_proxy_hops: int = 1
+
     @field_validator("log_level", mode="before")
     @classmethod
     def _upper(cls, value: object) -> object:

@@ -17,10 +17,10 @@ def staff_client() -> Client:
 
 
 def test_staff_can_browse_users_stories_scenes_and_pending_events(staff_client):
-    story = Story.objects.create(title="T", premise="P")
+    user = User.objects.get()
+    story = Story.objects.create(owner=user, title="T", premise="P")
     scene = Scene.objects.create(story=story, turn=1, kind="opening", narration="N")
     event = PendingEvent.objects.create(story=story, due_world_s=1, kind="k")
-    user = User.objects.get()
 
     for name, obj in [
         ("accounts_user", user),
@@ -35,7 +35,10 @@ def test_staff_can_browse_users_stories_scenes_and_pending_events(staff_client):
 
 def test_saving_a_story_in_the_admin_never_undoes_a_turn(staff_client):
     """B12, T10: staff edit the title while a turn saves a new world state."""
-    story = Story.objects.create(title="Old", premise="P", state={"turn": 1}, version=1)
+    owner = User.objects.get()
+    story = Story.objects.create(
+        owner=owner, title="Old", premise="P", state={"turn": 1}, version=1
+    )
     # A turn lands after staff opened the form.
     Story.objects.filter(pk=story.pk).update(state={"turn": 2, "dead": ["ren"]}, version=2)
 
@@ -47,7 +50,7 @@ def test_saving_a_story_in_the_admin_never_undoes_a_turn(staff_client):
             "genre": "",
             "rating": "teen",
             "settings": "{}",
-            "owner": "",
+            "owner": str(owner.pk),
             "scenes-TOTAL_FORMS": "0",
             "scenes-INITIAL_FORMS": "0",
         },

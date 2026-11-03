@@ -62,11 +62,12 @@ def _scene_row(
 
 
 @sync_to_async
-def create_story(story_id: uuid.UUID, legacy: LegacyStory) -> Story:
-    """Saves a new story with its opening scene, as version 1."""
+def create_story(story_id: uuid.UUID, legacy: LegacyStory, *, owner) -> Story:
+    """Saves a new story for `owner` with its opening scene, as version 1."""
     with transaction.atomic():
         story = Story.objects.create(
             id=story_id,
+            owner=owner,
             title=legacy.title,
             premise=legacy.premise,
             engine=Engine.LEGACY,

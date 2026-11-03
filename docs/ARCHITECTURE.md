@@ -44,8 +44,9 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
   lines go through the same formatter, and its plain-text access log is off. Fields named like keys,
   tokens, passwords or prompts are redacted, and headers, bodies and query strings are never logged.
 - **Users.** A custom `accounts.User` from the first migration: the email is the login (stored
-  lowercased), with display name, birth date (F8), role (`player` or `owner`, K7) and Google
-  subject id. Sign-in flows come with WS6.
+  lowercased), with display name, birth date (F8), role (`player` or `owner`, K7), Google subject
+  id, whether the email is verified, and content preferences (F7). Sign-in is described in
+  [Accounts and sign-in](#accounts-and-sign-in).
 - **Admin (B1).** `/admin/` for staff: users, stories with their scenes, and pending events. A
   story's world state and version are read-only there, and saving a story writes only the fields
   staff changed, so the admin never undoes a turn (B12, T10). Its static files are collected into
@@ -55,6 +56,60 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
   imported inside the code that uses them, off the event loop, and a test checks that loading the
   ASGI app and its URLs doesn't import them. The image answers its first `/health` about a second after the container
   starts.
+
+## Accounts and sign-in
+
+Requirements T8, S8, F8, K7 and T12; the endpoints are in [API.md](API.md#auth-and-account-t8-s8-f8-k7-t12).
+The code is in `backend/accounts/`.
+
+- **No Firebase (T8).** The app signs in with Google and sends the ID token once.
+  `accounts/google.py` checks it with `google-auth` against Google's public certificates (cached
+  for as long as Google's `Cache-Control` allows, refetched when a token names a new key, at most
+  once a minute): signed with RS256 by Google, issued by `accounts.google.com`, unexpired, and for
+  one of the OAuth clients in `GOOGLE_OAUTH_CLIENT_IDS`. Email and password accounts use Django's
+  own password hashing and validators.
+- **Our tokens (`accounts/tokens.py`).** An access token lives 15 minutes. It is signed with
+  `DJANGO_SECRET_KEY` (HMAC-SHA256 through `django.core.signing`, so no extra dependency) and names
+  the user and the session. A refresh token is 256 random bits, stored only as a SHA-256 hash, good
+  for one refresh within 30 days. Each refresh rotates it inside the same session
+  (`AuthSession`); a spent token used again after a 60-second leeway revokes the session, since two
+  holders means one stole it. Rotating `DJANGO_SECRET_KEY` signs everyone out within 15 minutes
+  unless the old key goes in `SECRET_KEY_FALLBACKS`.
+- **Every request (`accounts/auth.py`).** One Ninja auth on the whole API: it checks the access
+  token's signature and age without the database, then loads the session with its user in one
+  query, so logout, a revoked session, a disabled account and a deleted account all take effect at
+  once. It binds `user_id` to the request's log context (T4). Only `/v1/auth/*` opts out, and
+  `/health` lives outside Ninja.
+- **Ownership (S8, F8).** `stories/access.py` `owned_story()` loads a story for the signed-in
+  player: `404` when it doesn't exist, `403` when it is someone else's or its rating is above the
+  account's limit. Every story endpoint goes through it.
+- **Owner role (K7).** A Google sign-in whose verified email is in `OWNER_EMAILS` gets
+  `role = owner` with `is_staff` and `is_superuser`, and loses them at the next Google sign-in if
+  it leaves the list. A password never grants it, and the role is read-only in the admin. The
+  owner signs in with Google, so to use `/admin/` with a password, set one once with
+  `python manage.py changepassword mikigb77@gmail.com` against the target database.
+- **Taking over an email.** Email accounts are unverified until an email provider exists. When a
+  verified Google sign-in matches an email account, it takes that account over and drops its
+  password, because someone may have signed up first with an address they don't own.
+- **Brute force (`accounts/throttle.py`).** Fixed-window counters in Postgres, so they hold across
+  Cloud Run instances: 10 wrong passwords per email and 100 per address in 15 minutes, and 10
+  new accounts per address per hour. Each attempt is counted before it runs, in one atomic
+  upsert, so parallel guesses can't all slip under a limit, and a correct password or a sign-up
+  that fails validation is handed back. Keys are HMACs, so the table holds no emails or addresses. The
+  address is the `X-Forwarded-For` entry `TRUSTED_PROXY_HOPS` from the right (1 on Cloud Run, where
+  Google's front end appends the address it saw). Per-user rate limits on the rest of the API are
+  T9's, in `billing/`.
+- **Delete and export (T12).** `DELETE /v1/me` sends `accounts.signals.account_deleting` and then
+  deletes the user through the ORM inside one transaction, so stories, scenes, pending events,
+  sessions and anything else with a foreign key to them cascade, and picture files are removed on
+  commit. `GET /v1/me/export` collects the account and its stories (`stories/export.py`, without
+  the hidden world state) and asks `account_exporting` receivers for more, such as pictures.
+- **Sign in with Apple** is left for the App Store launch. Apple's guideline 4.8 requires it on iOS
+  once Google sign-in is offered there. It fits the same shape: the app sends Apple's identity
+  token to a `POST /v1/auth/apple`, which checks it against Apple's public keys (audience is our
+  bundle id or Services ID), keeps Apple's stable `sub` on the user like `google_sub`, and issues
+  our own tokens. Apple may hide the email behind a private relay address and sends the name only
+  on the first sign-in, so both are saved then. It needs the Apple developer account.
 
 ## Story engine
 
@@ -340,7 +395,8 @@ Plan:
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
-**Don't deploy publicly before auth exists:** an open endpoint lets anyone spend our Vertex budget.
+**Don't deploy publicly before rate limits and quotas (T9) exist alongside sign-in (T8):** an open
+endpoint lets anyone spend our Vertex budget.
 
 ## Neon Postgres
 
@@ -357,8 +413,11 @@ Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts ar
 
 | Table | What |
 | --- | --- |
-| `accounts_user` | Players and staff (custom `User`, UUID ids). |
-| `stories_story` | One row per story: owner (S8; null only until sign-in lands), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
+| `accounts_user` | Players and staff (custom `User`, UUID ids), with `email_verified` and `content_prefs` (F7). |
+| `accounts_authsession` | One signed-in device (T8): user, sign-in method, last use, and when and why it was revoked. |
+| `accounts_refreshtoken` | Refresh tokens as SHA-256 hashes, per session, with expiry and when each was spent. |
+| `accounts_throttle` | Sign-in brute-force counters: an HMAC key, the window start and the hits. |
+| `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
 | `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, and the picture fields (M1 to M3). |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". |
 

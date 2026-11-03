@@ -26,14 +26,10 @@ class Engine(models.TextChoices):
 
 class Story(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # Stories belong to a user and the Library shows only your own (S8). Null only until sign-in
-    # lands (WS6): the ported endpoints don't know who is calling yet.
+    # Stories belong to a user and the Library shows only your own (S8). Deleting the account
+    # deletes its stories (T12).
     owner = models.ForeignKey(
-        django_settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="stories",
+        django_settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stories"
     )
     title = models.CharField(max_length=200)
     premise = models.TextField()

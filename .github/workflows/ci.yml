@@ -55,7 +55,12 @@ jobs:
           docker run -d --name api --network host -e PORT=8080 -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api
           for i in $(seq 1 30); do curl -sf localhost:8080/health && break; sleep 1; done
           curl -sf localhost:8080/health
-          curl -sf -X POST localhost:8080/v1/stories -H 'Content-Type: application/json' -d '{"premise": "A courier finds a strange package."}'
+          # Every endpoint but /health and /v1/auth/* needs a signed-in player (T8).
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/v1/stories)" = 401
+          TOKEN=$(curl -sf -X POST localhost:8080/v1/auth/register -H 'Content-Type: application/json' \
+            -d '{"email": "ci@example.com", "password": "a long ci passphrase", "display_name": "CI", "birth_date": "1990-01-01"}' \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
+          curl -sf -X POST localhost:8080/v1/stories -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN" -d '{"premise": "A courier finds a strange package."}'
           curl -sf localhost:8080/static/admin/css/base.css > /dev/null
       - if: always()
         run: docker logs api || true

@@ -8,6 +8,8 @@ pytestmark = pytest.mark.django_db
 
 
 def _story(**fields) -> Story:
+    if "owner" not in fields:
+        fields["owner"] = User.objects.get_or_create(email="owner@example.com")[0]
     return Story.objects.create(title="The Drowned Capital", premise="A ronin wakes.", **fields)
 
 
@@ -17,7 +19,12 @@ def test_a_new_story_starts_empty_at_version_zero():
     assert (story.version, story.turn, story.state, story.settings) == (0, 0, {}, {})
     assert story.rating == Rating.TEEN
     assert story.engine == Engine.GRAPH
-    assert story.owner is None
+
+
+def test_every_story_has_an_owner():
+    """S8: stories belong to a user."""
+    with pytest.raises(IntegrityError):
+        Story.objects.create(title="T", premise="P")
 
 
 def test_the_world_state_round_trips_as_jsonb():
