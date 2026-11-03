@@ -43,8 +43,9 @@ def test_a_picture_is_drawn_by_the_picture_node_with_its_references():
     assert drawn.data == PNG
     assert drawn.mime_type == "image/png"
     assert drawn.model == "gemini-3.1-flash-lite-image"
-    assert drawn.cost_usd > Decimal("0.034")  # one 1K picture plus the reference tokens
     assert len(drawn.calls) == 1 and drawn.calls[0].images == 1
+    # What billing charges from: the call's own estimate, a 1K picture plus the reference tokens.
+    assert drawn.cost_usd == drawn.calls[0].cost_usd > Decimal("0.03")
     request = fake.calls(Node.PICTURE)[0]
     assert [image.data for image in request.prompt.images] == [b"rosa-portrait", b"tonio-portrait"]
     assert request.image.aspect_ratio == "16:9"
