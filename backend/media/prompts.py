@@ -148,7 +148,8 @@ def build_prompt(
 ) -> PicturePrompt:
     """The prompt for one picture of `kind`. `references` names the people whose reference
     portraits go with it, in the order the images are attached. `redraw` asks for the same
-    character as the attached earlier portrait, as they look now (M5)."""
+    character as the attached earlier portrait, as they look now (M5), or for a place, the same
+    place as it is now (M1)."""
     if kind not in FRAMING:
         raise ValueError(f"Unknown picture kind {kind!r}")
     system = "\n\n".join(
@@ -187,7 +188,12 @@ def build_prompt(
             for f in figures
         )
         lines.append(f"People in it: {people}.")
-    if redraw:
+    if redraw and kind == "place":
+        lines.append(
+            "The attached image is this place's earlier picture. Draw the same place from the "
+            "same view, as it is now."
+        )
+    elif redraw:
         lines.append(
             "The attached image is this character's earlier portrait. Draw the same person, with "
             "the same face, as they look now."

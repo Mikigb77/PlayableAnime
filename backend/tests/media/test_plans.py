@@ -1,5 +1,5 @@
-"""Planning a scene's picture: made once and reused (M4), redrawn once when a character changes
-for good (M5)."""
+"""Planning a scene's picture: made once and reused (M4), drawn once more when a place or a
+character changes for good (M1, M5)."""
 
 import pytest
 
@@ -75,7 +75,12 @@ def test_planning_a_scene_twice_keeps_the_first_plan():
 def test_a_changed_character_is_redrawn_once():
     story = make_story()
     v1 = plan_picture(
-        make_scene(story, 2), kind="portrait", subject_id="mo", trigger="first_meeting", brief=ELDER
+        make_scene(story, 2),
+        kind="portrait",
+        subject_id="mo",
+        trigger="first_meeting",
+        brief=ELDER,
+        version=1,
     ).image
     Image.objects.filter(pk=v1.pk).update(status=ImageStatus.READY)
     scarred = Brief(subject_name="Elder Mo", subject_appearance="white beard, one eye lost")
@@ -84,43 +89,75 @@ def test_a_changed_character_is_redrawn_once():
         make_scene(story, 9),
         kind="portrait",
         subject_id="mo",
-        trigger="changed",
+        trigger="look_changed",
         brief=scarred,
-        redraw=True,
+        version=2,
     ).image
     again = plan_picture(
         make_scene(story, 12),
         kind="portrait",
         subject_id="mo",
-        trigger="changed",
+        trigger="fight_start",
         brief=scarred,
-        redraw=True,
+        version=2,
+    ).image
+    latest = plan_picture(
+        make_scene(story, 13), kind="portrait", subject_id="mo", trigger="x", brief=scarred
     ).image
 
     assert redrawn.version == 2
     assert redrawn.status == ImageStatus.PLANNED
-    assert again == redrawn  # the same change doesn't redraw it again
+    assert Brief.from_json(redrawn.brief) == scarred
+    assert again == redrawn == latest  # the same look is drawn once and reused
     assert Image.objects.filter(subject="mo").count() == 2
 
 
-def test_a_redraw_before_the_first_portrait_is_drawn_just_draws_the_new_look():
+def test_a_changed_place_is_drawn_once_more_and_reused_on_every_return():
+    """M1, M4: a place keyed by its look version draws again only when it changed for good."""
     story = make_story()
-    plan_picture(
-        make_scene(story, 2), kind="portrait", subject_id="mo", trigger="first_meeting", brief=ELDER
-    )
-    scarred = Brief(subject_name="Elder Mo", subject_appearance="one eye lost")
+    inn = Brief(subject_name="The Inn", subject_appearance="Two storeys, lanterns.")
+    ruins = Brief(subject_name="The Inn", subject_appearance="Two storeys. It is ruined now.")
+
+    def visit(turn, version, brief):
+        return plan_picture(
+            make_scene(story, turn),
+            kind="place",
+            subject_id="inn",
+            trigger="place_changed" if version > 1 else "first_visit",
+            brief=brief,
+            version=version,
+        ).image
+
+    first = visit(2, 1, inn)
+    Image.objects.filter(pk=first.pk).update(status=ImageStatus.READY)
+    changed = visit(9, 2, ruins)
+    returns = [visit(turn, 2, ruins) for turn in (14, 20)]
+    old_scene = visit(21, 1, inn)
+
+    assert (first.version, changed.version) == (1, 2)
+    assert changed != first and changed.status == ImageStatus.PLANNED
+    assert returns == [changed, changed]
+    assert old_scene == first  # an earlier look is still the same picture
+    assert Image.objects.filter(subject="inn").count() == 2
+
+
+def test_a_place_first_seen_after_it_changed_starts_at_its_version():
+    story = make_story()
 
     image = plan_picture(
-        make_scene(story, 3),
-        kind="portrait",
-        subject_id="mo",
-        trigger="changed",
-        brief=scarred,
-        redraw=True,
+        make_scene(story, 4),
+        kind="place",
+        subject_id="inn",
+        trigger="first_visit",
+        brief=Brief(subject_name="The Inn"),
+        version=3,
+    ).image
+    scene = plan_picture(
+        make_scene(story, 5), kind="scene", trigger="big_deed", brief=Brief(), version=4
     ).image
 
-    assert image.version == 1
-    assert Brief.from_json(image.brief).subject_appearance == "one eye lost"
+    assert image.version == 3
+    assert scene.version == 1  # a scene or the cover has one version only
 
 
 def test_a_skipped_portrait_is_planned_again_when_it_comes_up_again():

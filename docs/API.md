@@ -362,8 +362,10 @@ Picture {status: "ready"|"pending"|"skipped",
 - `illustrate` draws the scene's planned picture if it has one, or a picture of the scene itself,
   even with pictures off. On a scene whose picture is ready it returns that picture at no charge.
 - Pictures are reused: a character's portrait or a place's picture is drawn once and every scene
-  that shows it answers with the same `image_id` (M4). Size the slot by `kind` before the picture
-  arrives: portraits and covers are 3:4, places and scenes 16:9.
+  that shows it answers with the same `image_id` (M4). When a place or a character changes for
+  good (ruined, occupied, a lost eye, old age), a later scene plans a new picture of it, with a new
+  `image_id`, and scenes from then on show that one; earlier scenes keep theirs (M1, M5). Size the
+  slot by `kind` before the picture arrives: portraits and covers are 3:4, places and scenes 16:9.
 - `url` is a signed URL that works until `expires_at`, about an hour. After that, ask
   `GET .../images/{image_id}` for a fresh one, and cache the picture by `image_id`, not by URL.
 - With the player's own key (`X-LLM-*` headers) the picture is drawn on their key at no charge. A

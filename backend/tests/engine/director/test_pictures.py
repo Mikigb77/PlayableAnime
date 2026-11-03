@@ -183,12 +183,116 @@ def test_a_local_or_world_event_is_pictured_and_a_personal_one_is_not():
     assert decision.trigger is PictureTrigger.EVENT and decision.subject_id is None
 
 
+def change_place(state, place_id, status, turn=2):
+    """A status change as `engine.apply` records it (W7, C1)."""
+    place = state.places[place_id]
+    place.status_history.append(
+        StatusChange(status=status.value, from_status=place.status.value, turn=turn, world_s=0)
+    )
+    place.status = status
+
+
 def test_a_place_that_changed_for_good_is_pictured_again_once():
     state = quiet_farm()
-    state.places["farm"].status = PlaceStatus.RUINED
+    change_place(state, "farm", PlaceStatus.RUINED)
     decision = picture(state, 2)
     assert decision.trigger is PictureTrigger.PLACE_CHANGED and decision.kind is PictureKind.PLACE
+    assert (decision.subject_id, decision.version) == ("farm", 2)
+    assert "place:farm:v2" in state.director.pictured
+    assert picture(state, 3) is None  # every return reuses it
+    # Rebuilt (C1), it is drawn once more; a place that was only damaged keeps its picture.
+    state.director.picture_credit = 1
+    change_place(state, "farm", PlaceStatus.THRIVING, turn=20)
+    assert picture(state, 20).version == 3
+    state.director.picture_credit = 1
+    change_place(state, "farm", PlaceStatus.DAMAGED, turn=30)
+    assert picture(state, 30) is None
+
+
+def test_a_changed_place_waits_for_the_budget_while_the_player_is_there():
+    """M2: drawing a changed place again spends a key-scene credit, so churn can't run up costs."""
+    state = quiet_farm()
+    state.director.pictured.append("place:village")
+    state.director.picture_credit = 0
+    change_place(state, "farm", PlaceStatus.OCCUPIED)
+    assert picture(state, 2) is None
+    state.player.location_id = state.scene.place_id = "village"
+    assert all(picture(state, turn) is None for turn in range(3, 20))  # away, nothing to see
+    state.player.location_id = state.scene.place_id = "farm"
+    decision = picture(state, 20)
+    assert decision.trigger is PictureTrigger.PLACE_CHANGED and decision.version == 2
+    assert state.director.picture_credit < 1
+
+
+def test_the_first_visit_to_a_ruined_place_draws_it_as_it_is_now():
+    state = quiet_farm()
+    state.director.pictured = ["portrait:tomas", "portrait:ilse", "cover"]
+    state.director.picture_credit = 0
+    change_place(state, "farm", PlaceStatus.RUINED)
+    decision = picture(state, 2)
+    assert (decision.trigger, decision.version) == (PictureTrigger.FIRST_VISIT, 2)
+    assert {"place:farm", "place:farm:v2"} <= set(state.director.pictured)
+    assert state.director.picture_credit > 0  # a first visit is outside the budget
     assert picture(state, 3) is None
+
+
+def test_a_place_pictured_before_versions_existed_is_not_drawn_again():
+    state = quiet_farm()  # remembers only "place:farm", as stories did before look versions
+    assert all(picture(state, turn) is None for turn in range(2, 6))
+
+
+def test_portraits_and_places_carry_their_look_version():
+    state = farm_world()
+    state.characters["ilse"].look_version = 3
+    seen = [picture(state, turn) for turn in range(1, 5)]
+    assert [(p.trigger, p.subject_id, p.version) for p in seen if p] == [
+        (PictureTrigger.STORY_START, "tomas", 1),
+        (PictureTrigger.COVER, None, None),
+        (PictureTrigger.FIRST_MEETING, "ilse", 3),
+        (PictureTrigger.FIRST_VISIT, "farm", 1),
+    ]
+    assert {"portrait:ilse", "portrait:ilse:v3", "place:farm:v1"} <= set(state.director.pictured)
+    assert picture(state, 5) is None  # met at the look she has now: no redraw
+
+
+def test_a_face_that_changed_for_good_is_drawn_once_more():
+    """M5: the player's or a present key NPC's portrait, once per change, within the budget."""
+    state = quiet_farm()
+    state.player.look_version = 2
+    decision = picture(state, 2)
+    assert decision.kind is PictureKind.PORTRAIT and decision.trigger is PictureTrigger.LOOK_CHANGED
+    assert (decision.subject_id, decision.version) == ("tomas", 2)
+    state.director.picture_credit = 1
+    assert picture(state, 3) is None  # once per change
+
+    state.characters["ilse"].look_version = 2
+    decision = picture(state, 4)
+    assert (decision.trigger, decision.subject_id) == (PictureTrigger.LOOK_CHANGED, "ilse")
+    assert decision.version == 2
+
+
+def test_a_changed_face_waits_until_they_are_seen_and_the_budget_allows():
+    state = quiet_farm()
+    state.characters["ilse"].look_version = 2
+    state.scene.present_ids = ["tomas"]
+    state.characters["ilse"].location_id = "village"
+    assert picture(state, 2) is None  # not in the scene
+    state.scene.present_ids = ["tomas", "ilse"]
+    state.director.picture_credit = 0
+    assert picture(state, 3) is None  # no credit yet
+    state.director.picture_credit = 1
+    assert picture(state, 4).trigger is PictureTrigger.LOOK_CHANGED
+    died(state, "ilse", 5)
+    state.characters["ilse"].look_version = 3
+    state.director.picture_credit = 1
+    assert picture(state, 6) is None  # the dead are not drawn again
+
+
+def test_a_face_never_pictured_is_not_redrawn():
+    state = quiet_farm()
+    state.director.pictured = ["portrait:ilse", "cover", "place:farm"]  # pictures were off at 1
+    state.player.look_version = 2
+    assert picture(state, 2) is None
 
 
 def test_an_arc_ending_and_a_breakthrough_are_key_scenes():

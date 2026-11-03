@@ -35,6 +35,7 @@ from engine.context import ContentPrefs, Rating, TurnContext
 from engine.contracts import PictureKind
 from engine.invariants import InvariantError
 from engine.labels import scene_time
+from engine.looks import place_looks
 from engine.state.world import WorldState
 from engine.visibility import clock_view
 from graph.llm import BadKey, ByokKey, LLMError, LLMUnavailable, TurnTelemetry, build_client
@@ -395,8 +396,8 @@ def _plan_picture(story: Story, scene: Scene, state: WorldState, result: TurnRes
                 trigger=decision.trigger.value,
                 brief=brief(story, state, picture),
                 subject_id=picture.subject_id,
-                # M5: a portrait whose subject looks different now is drawn again, once.
-                redraw=picture.kind is PictureKind.PORTRAIT,
+                # M1, M5: a place or face that changed for good is drawn once more, then reused.
+                version=decision.version,
             )
     except Exception as error:
         log_failure("A scene's picture couldn't be planned, so the scene has none", error)
@@ -421,7 +422,7 @@ def brief(story: Story, state: WorldState, picture: ScenePicture) -> Brief:
             description=picture.prompt,
             look=look,
             subject_name=place.name,
-            subject_appearance=place.description,
+            subject_appearance=place_looks(place),
         )
     people = [state.player, *(state.characters[e["character_id"]] for e in cast(state))]
     figures = tuple(

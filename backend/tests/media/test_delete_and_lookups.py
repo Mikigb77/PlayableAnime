@@ -144,7 +144,7 @@ def test_a_characters_current_portrait_is_its_latest_ready_one(painters):
     first = _draw(story, 1)
     scene = make_scene(story, 9)
     plan_picture(
-        scene, kind="portrait", subject_id="rosa", trigger="changed", redraw=True,
+        scene, kind="portrait", subject_id="rosa", trigger="look_changed", version=2,
         brief=Brief(subject_name="Rosa", subject_appearance="grey hair now"),
     )  # fmt: skip
 

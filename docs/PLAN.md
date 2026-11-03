@@ -387,7 +387,7 @@ screens.
     `media.plans.plan_picture(scene, kind=, subject_id=, trigger=, brief=Brief(description=<the
     narrator's image prompt>, look=WorldLook(<bible genre, era, tone, setting>),
     subject_name=, subject_appearance=, figures=(Figure(id, name, appearance), ...)),
-    redraw=)` after saving the scene, in the turn's transaction. Build `Scene.image`,
+    version=<PictureDecision.version>)` after saving the scene, in the turn's transaction. Build `Scene.image`,
     `Scene.portraits` and `StorySummary.cover_url` with `media.lookups.scene_images`,
     `portrait_urls` and `cover_urls`, and fill the memory and status views' picture URLs
     (`engine.visibility`) with `portrait_urls(story, character_ids)` and
@@ -397,12 +397,28 @@ screens.
   - **WS6 (accounts):** deletion needs nothing (files go with the cascade, after the commit); the
     export adds `images` through `accounts.signals.account_exporting`. The picture endpoints use
     `stories.access.owned_story`, so the rating limit (F8) applies to pictures too.
-  - **WS11 (director):** the picture decision's `subject_id` is the character or place id; a
-    portrait redraw for a permanent change (M5, G17) is a `PictureDecision` the turn plans with
-    `redraw=True`.
+  - **WS11 (director):** the picture decision's `subject_id` is the character or place id, and its
+    `version` the look version a portrait or place is drawn at (WS8b below).
   - **WS14 (play screen):** see the Pictures section of [API.md](API.md#pictures-m1-to-m8).
   - The house style in `media/prompts.py` follows the "Pictures" section of `app/DESIGN.md`
     (aligned in WS4's PR); change the two together.
+
+### WS8b Redraw pictures when places and faces change (wave 3, after WS8 and WS11)
+
+**Requirements:** M1, M2, M4, M5, M7, G17, W7.
+
+**Owns:** `backend/engine/looks.py`, and the picture parts of `backend/media/` and
+`backend/engine/director/pictures.py`.
+
+- A place that changed for good (ruined, occupied, rebuilt or freed) gets a fresh picture the next
+  time the player is there, and returns reuse it after that (M1, M4).
+- A character who changed for good (a lost eye, old age, G17) gets their portrait redrawn once from
+  the earlier one, and the new one is the reference from then on (M5).
+- Both spend the M2 budget and are paid once (M7); the idempotent picture request still holds (M3).
+- **Landed** as `engine/looks.py` (look versions), `Character.look_version` (moved on by `apply`),
+  `PictureDecision.version` and the `look_changed` trigger, and `plan_picture(..., version=)`. A
+  place's version comes from its status history, so anything that changes a place for good must
+  go through `PlaceChange.status` (WS9b's chains do), not only its description.
 
 ### WS9 Resolve: logic first, then dice (wave 2b, after WS2's PR 1)
 
@@ -519,9 +535,9 @@ and slow, local reversal), A4, G19, G20, N4.
     player can carry `payload["event"]` with a size, kind, brief and themes for the director, which
     otherwise tells it as a personal arrival from its title.
   - **WS3 and WS8 (pictures):** `PictureDecision.subject_id` is a character, place, deed or thread
-    id (see ARCHITECTURE.md). A place that changed for good (`place_changed`) needs a new picture
-    of the same place, so plan it with a redraw rather than reusing the first one (M4). M5's
-    portrait redraw for a permanent change has no trigger yet.
+    id (see ARCHITECTURE.md). WS8b keyed portraits and places by `PictureDecision.version`, so a
+    place that changed for good (`place_changed`) and a face that did (`look_changed`, M5) are
+    drawn once more and reused after that.
 
 ### WS12 Drafting a world and a character (wave 2b, after WS2's PR 1 and WS3's PR 1)
 

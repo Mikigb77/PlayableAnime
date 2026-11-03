@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from engine.context import TurnContext
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
+from engine.looks import LASTING_PLACE_STATUSES
 from engine.state.cast import CharacterStatus, PlaceStatus
 from engine.state.records import Deed, LeadStatus
 from engine.state.sheet import Gain, Health
 from engine.state.world import WorldState
 
 # A place that changed for good gets its picture again (M1, W7).
-LASTING_PLACE_CHANGES = (PlaceStatus.RUINED, PlaceStatus.OCCUPIED)
+LASTING_PLACE_CHANGES = LASTING_PLACE_STATUSES
 GRAVE_HEALTH = (Health.BADLY_WOUNDED, Health.DYING)
 
 

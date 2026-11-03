@@ -9,7 +9,8 @@ Who may change what:
 
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
   locations, small attitude nudges, condition, memberships, facts, items, leads, non-terminal
-  status changes, the scene's end and the summary.
+  status changes, the scene's end and the summary. An appearance that shows something new, or an
+  age in a new stage of life, moves the character's `look_version` on (M5, `engine.looks`).
 - **Engine only:** deaths, destroyed factions and ruined places (resolve records the outcome
   before narration, F4); anything that undoes one, which also needs a recorded `Cause`; faction
   reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7); and
@@ -49,6 +50,7 @@ from engine.invariants import (
     is_real_name,
     place_rebuild_problem,
 )
+from engine.looks import changes_look
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -364,6 +366,8 @@ class _Applier:
         for alias in change.aliases:
             if alias != character.name:
                 _add(character.aliases, alias)
+        if not created and changes_look(character, appearance=change.appearance, age=change.age):
+            character.look_version += 1  # M5: the portrait is drawn once more
         for attr in ("description", "appearance", "age", "people_id", "prominence"):
             value = getattr(change, attr)
             if value is not None:

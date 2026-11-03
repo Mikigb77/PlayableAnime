@@ -83,7 +83,8 @@ class DirectorState(EngineModel):
     pictured: list[str] = Field(
         default_factory=list,
         description="Subjects that already got their automatic picture: 'portrait:<id>', "
-        "'place:<id>', 'place:<id>:<status>', 'cover' (M1, M4).",
+        "'place:<id>' and 'cover', and each look drawn, 'portrait:<id>:v<n>' and "
+        "'place:<id>:v<n>' (M1, M4, M5).",
     )
     fight: KeyFight | None = None
     deck_draws: int = Field(default=0, ge=0)

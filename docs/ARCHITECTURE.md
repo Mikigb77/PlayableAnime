@@ -150,6 +150,7 @@ these functions and saves the result.
 | `engine/timekeeping.py` | How long each kind of action may take, and `advance_clock`, which moves the world clock through pending events in time order and stops at the first that needs the player (W10, W10a). |
 | `engine/apply.py` | `apply_delta`: a proposed `StateDelta` applied with the C1 invariants, on behalf of the narrator or the engine, returning the new state and what it refused. |
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
+| `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and what moves a character's `look_version` on. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
@@ -297,15 +298,26 @@ themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": ".
 key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
 power ladder; hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
 fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
-local or world event; the cover from the second scene; a place ruined or occupied; a key NPC's
-first portrait; a place on the first visit. Portraits, places and the cover come once each, keyed
-in `DirectorState.pictured`, and don't spend the budget. Key scenes spend a credit from a bucket
-that refills 0.1 a turn on key moments (0.2 on more, capped at 2 and 3), so about one in ten turns.
-A key scene needs a full credit; a fight's start may spend down to zero and its decisive blow, once
+local or world event; the cover from the second scene; the player's place when it changed for
+good since its picture (or a first visit to one already ruined or occupied); a key NPC's first
+portrait; a place on the first visit; and the portrait of the player or someone in the scene whose
+look changed for good since it was drawn. Portraits, places and the cover come once per subject and
+look version, keyed in `DirectorState.pictured` (`portrait:<id>`, `place:<id>`, `cover`, and
+`portrait:<id>:v<n>`, `place:<id>:v<n>` for each look drawn). A first portrait, a first visit and
+the cover don't spend the budget. Key scenes spend a credit from a bucket that refills 0.1 a turn
+on key moments (0.2 on more, capped at 2 and 3), so about one in ten turns. A key scene needs a
+full credit, and so does drawing a changed place or face again, which waits for it while the place
+or the person is still there. A fight's start may spend down to zero and its decisive blow, once
 the start was pictured, down to −2, so a fight gets both pictures and the average still holds.
 `PictureDecision.subject_id` is the character for portraits, deaths, blows, fight starts,
 breakthroughs and reveals, the place for places, the deed for a big deed, and the thread for an
-arc end or an event.
+arc end or an event. `PictureDecision.version` is the look version of a portrait or place
+(`engine.looks`): a place moves on each time it becomes or stops being ruined or occupied (its
+status history counts them, so a narrated occupation and a chain that burns a hall count the
+same), and a character's `look_version` moves on when `apply` sets an appearance that shows
+something new (the same words in another order, or filler words, don't count; a first appearance
+doesn't either) or an age in a new stage of life (13, 18, 30, 45, 60). The narrator is told to
+write a known character's appearance anew only for a lasting change, never for mud or blood.
 
 **The director's memory** lives in `WorldState.director` (`DirectorState`): the stall counters, the
 last action's signature, the drift, the last few sources used, the picture credit and what was
@@ -947,18 +959,23 @@ pricing page](https://cloud.google.com/vertex-ai/generative-ai/pricing) on 2026-
 
 ```text
 turn (WS3)            the director decides a scene gets a picture (M1, WS11)
-  └─ media.plans.plan_picture(scene, kind, subject_id, trigger, brief)   in the turn's transaction
+  └─ media.plans.plan_picture(scene, kind, subject_id, trigger, brief, version)   in the turn's transaction
 app                   shows the narration, then asks for the picture in its own request (M3, B8)
   └─ POST /v1/stories/{id}/scenes/{turn}/image  →  media.service.scene_picture
        claim (row lock) → hold credits → draw on graph.llm → store → mark ready + charge (one txn)
 ```
 
-- **One `Image` per subject (M4).** `media.Image` is keyed by story, kind (portrait, place, scene,
-  cover), subject (a character id, a place id, `turn-12`, `cover`) and version. A portrait or place
-  is drawn once and every later scene that shows it links to the same row through
-  `media.ScenePicture`. A portrait or place that failed or wasn't affordable is planned again the
-  next time it comes up; a blocked one only through Illustrate. `plan_picture(..., redraw=True)` with a new appearance draws a character's portrait again as
-  the next version, once per change (M5); the earlier portrait goes along as the reference.
+- **One `Image` per subject and look (M4).** `media.Image` is keyed by story, kind (portrait,
+  place, scene, cover), subject (a character id, a place id, `turn-12`, `cover`) and version. A
+  portrait or place is drawn once per look version, the director's `PictureDecision.version`
+  (`engine.looks`), and every later scene that shows it links to the same row through
+  `media.ScenePicture`. When a place or a face changes for good, the next version is drawn once,
+  with the earlier picture going along as its reference ("the same person, as they look now", or
+  "the same place, as it is now", M5), and the lookups show the latest ready version from then on,
+  so a changed face is also the reference for every later scene. Earlier versions stay with the
+  scenes that showed them and in the export (T12). A place's brief adds its state when it isn't
+  thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
+  again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
   prompt, the world's genre, era, tone and setting from the bible, and the known characters in the
   picture with the appearance from their entry (C9). `media/prompts.py` turns it into the prompt:

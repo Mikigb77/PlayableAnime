@@ -12,16 +12,22 @@ The triggers come from what the engine already records, at most one picture a sc
 8. The start of a fight with a key NPC or a strong monster.
 9. A local or world event arriving (W16).
 10. The Library cover, once, from the second scene.
-11. The player's place when it has changed for good, such as ruined or occupied (W7).
+11. The player's place when it has changed for good since its picture, such as ruined, occupied
+    or rebuilt (W7), or on the first visit to a place that is already ruined or occupied.
 12. A key NPC's portrait the first time they are in a scene (W15).
 13. A place on the first visit (W7).
+14. The portrait of the player or of someone in the scene whose look changed for good since it
+    was drawn, such as a lost eye or old age (M5, G17).
 
-Portraits, places and the cover come once per subject (M4 reuses them), outside the key-scene
-budget. Key scenes (2 to 9) spend the M2 budget, a bucket that refills each turn: about one picture
-per ten turns on key moments, one per five on more, and none at all when pictures are off. A key
-scene needs a full credit. A fight's start and its decisive blow may borrow against the coming
-turns, and a decisive blow whose fight start was pictured always may, so both pictures of a fight
-come and the average over the story still holds.
+Portraits, places and the cover come once per subject and look version (`engine.looks`), and
+`media` reuses each one wherever it appears (M4). A first portrait, a first visit and the cover
+come outside the key-scene budget. Key scenes (2 to 9) spend the M2 budget, a bucket that refills
+each turn: about one picture per ten turns on key moments, one per five on more, and none at all
+when pictures are off. A key scene needs a full credit, and so does drawing a changed place or face
+again (11 and 14), which waits for the credit while the place or the person is still there to see.
+A fight's start and its decisive blow may borrow against the coming turns, and a decisive blow
+whose fight start was pictured always may, so both pictures of a fight come and the average over
+the story still holds.
 """
 
 from dataclasses import dataclass
@@ -31,13 +37,13 @@ from engine.contracts.direction import PictureDecision, PictureKind, PictureTrig
 from engine.director import rules
 from engine.director.sources import here
 from engine.director.turn import TurnFacts
-from engine.state.cast import CharacterStatus, Prominence
+from engine.looks import LASTING_PLACE_STATUSES, place_version
+from engine.state.cast import Character, CharacterStatus, Place, Prominence
 from engine.state.records import Visibility
 from engine.state.scene import EncounterKind
 from engine.state.world import DirectorState, EventSize, KeyFight, WorldState, natural_key
 
 ONCE, SCENE, FIGHT = "once", "scene", "fight"
-LASTING = ("ruined", "occupied")
 
 
 @dataclass(frozen=True)
@@ -48,6 +54,16 @@ class Candidate:
     reason: str
     budget: str
     once_keys: tuple[str, ...] = ()
+    version: int | None = None
+
+
+def portrait_keys(character: Character) -> tuple[str, ...]:
+    """What a portrait marks pictured: the character, and their current look (M4, M5)."""
+    return (f"portrait:{character.id}", f"portrait:{character.id}:v{character.look_version}")
+
+
+def place_keys(place: Place) -> tuple[str, ...]:
+    return (f"place:{place.id}", f"place:{place.id}:v{place_version(place)}")
 
 
 def _might(state: WorldState, character_id: str) -> int:
@@ -139,7 +155,8 @@ def candidates(
                 player,
                 "The story starts.",
                 ONCE,
-                (f"portrait:{player}",),
+                portrait_keys(state.player),
+                state.player.look_version,
             )
         )
     for character_id in sorted(facts.died, key=natural_key):
@@ -255,18 +272,31 @@ def candidates(
         )
     place_id = here(state)
     place = state.places.get(place_id) if place_id else None
-    if place is not None and place.status.value in LASTING:
-        changed = f"place:{place.id}:{place.status.value}"
-        if changed not in pictured:
-            seen = f"place:{place.id}" in pictured
+    if place is not None:
+        seen, now = place_keys(place)
+        version = place_version(place)
+        if seen in pictured and version > 1 and now not in pictured:
             found.append(
                 Candidate(
-                    PictureTrigger.PLACE_CHANGED if seen else PictureTrigger.FIRST_VISIT,
+                    PictureTrigger.PLACE_CHANGED,
+                    PictureKind.PLACE,
+                    place.id,
+                    f"{place.name}, {place.status.value} now.",
+                    SCENE,
+                    (now,),
+                    version,
+                )
+            )
+        elif seen not in pictured and place.status in LASTING_PLACE_STATUSES:
+            found.append(
+                Candidate(
+                    PictureTrigger.FIRST_VISIT,
                     PictureKind.PLACE,
                     place.id,
                     f"{place.name}, {place.status.value}.",
                     ONCE,
-                    (changed, f"place:{place.id}"),
+                    (seen, now),
+                    version,
                 )
             )
     present = [*state.scene.present_ids, *(event.cast_ids if event else []), *sorted(facts.touched)]
@@ -287,7 +317,8 @@ def candidates(
                 character_id,
                 f"Meeting {character.name}.",
                 ONCE,
-                (f"portrait:{character_id}",),
+                portrait_keys(character),
+                character.look_version,
             )
         )
         break
@@ -299,9 +330,28 @@ def candidates(
                 place.id,
                 f"Arriving at {place.name}.",
                 ONCE,
-                (f"place:{place.id}",),
+                place_keys(place),
+                place_version(place),
             )
         )
+    for character_id in dict.fromkeys([player, *present]):
+        character = state.characters.get(character_id)
+        if character is None or not character.alive or character.look_version <= 1:
+            continue
+        seen, now = portrait_keys(character)
+        if seen in pictured and now not in pictured:
+            found.append(
+                Candidate(
+                    PictureTrigger.LOOK_CHANGED,
+                    PictureKind.PORTRAIT,
+                    character_id,
+                    f"{character.name} has changed for good.",
+                    SCENE,
+                    (now,),
+                    character.look_version,
+                )
+            )
+            break
     return found
 
 
@@ -357,6 +407,7 @@ def decide_picture(
                 kind=candidate.kind,
                 trigger=candidate.trigger,
                 subject_id=candidate.subject_id,
+                version=candidate.version,
                 reason=candidate.reason,
             )
             break

@@ -69,6 +69,16 @@ def test_a_redraw_asks_for_the_same_person_as_they_look_now():
     assert "earlier portrait. Draw the same person" in prompt.user
 
 
+def test_a_changed_place_is_asked_for_as_the_same_place_as_it_is_now():
+    brief = Brief(subject_name="The Inn", subject_appearance="Two storeys. It is ruined now.")
+
+    prompt = build_prompt("place", brief, references=["The Inn"], redraw=True)
+
+    assert "Subject: The Inn: Two storeys. It is ruined now." in prompt.user
+    assert "this place's earlier picture. Draw the same place" in prompt.user
+    assert "same person" not in prompt.user
+
+
 def test_long_descriptions_are_cut_so_the_rules_stay_in_charge():
     prompt = build_prompt("scene", Brief(description="word " * 2000))
 

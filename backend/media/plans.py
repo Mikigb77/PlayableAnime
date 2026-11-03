@@ -43,27 +43,30 @@ def plan_picture(
     trigger: str,
     brief: Brief,
     subject_id: str | None = None,
+    version: int | None = None,
     planned: bool = True,
-    redraw: bool = False,
 ) -> ScenePicture:
     """Plans the picture `scene` shows: a portrait, a place, the scene itself or the cover.
 
     Call it after the scene is saved, inside the turn's transaction. A portrait or place that
     already has a picture is reused instead of drawn again (M4), and one that failed or wasn't
     affordable is planned again; a blocked one is tried again only through Illustrate (M3).
-    `redraw` draws a character's portrait anew because they changed for good (M5): once per
-    change, since asking again with the same appearance reuses it. `planned` is false for a
+    `version` is the look version of a portrait or place (`engine.looks`): each version is drawn
+    once, so a place or face that changed for good is drawn once more and that picture is reused
+    from then on (M1, M5). Without one, the latest version is reused. `planned` is false for a
     picture the player asked for with Illustrate (M2). Planning a scene that already has a
     picture returns its existing plan.
     """
     subject = subject_for(kind, scene, subject_id)
+    if kind not in (ImageKind.PORTRAIT, ImageKind.PLACE):
+        version = None
     with transaction.atomic():
         # Serialises planning per scene, so two requests can't both plan it.
         Scene.objects.select_for_update().filter(pk=scene.pk).first()
         existing = ScenePicture.objects.select_related("image").filter(scene=scene).first()
         if existing is not None:
             return existing
-        image = _image_for(scene.story_id, kind, subject, trigger, brief, redraw=redraw)
+        image = _image_for(scene.story_id, kind, subject, trigger, brief, version=version)
         link = ScenePicture.objects.create(
             scene=scene, image=image, planned=planned, trigger=trigger
         )
@@ -85,31 +88,21 @@ def replan(image: Image, *, trigger: str) -> Image:
 
 
 def _image_for(
-    story_id, kind: str, subject: str, trigger: str, brief: Brief, *, redraw: bool
+    story_id, kind: str, subject: str, trigger: str, brief: Brief, *, version: int | None
 ) -> Image:
-    latest = (
-        Image.objects.select_for_update()
-        .filter(story_id=story_id, kind=kind, subject=subject)
-        .order_by("-version")
-        .first()
+    pictures = Image.objects.select_for_update().filter(
+        story_id=story_id, kind=kind, subject=subject
     )
-    if latest is None:
-        return _create(story_id, kind, subject, 1, trigger, brief)
-    if redraw and kind == ImageKind.PORTRAIT:
-        drawn = Brief.from_json(latest.brief)
-        if drawn.subject_appearance.strip() != brief.subject_appearance.strip():
-            if latest.status in (ImageStatus.PLANNED, ImageStatus.SKIPPED):
-                # Not drawn yet, so draw the new look instead.
-                _reset(latest, trigger)
-                latest.brief = brief.to_json()
-                latest.save()
-                return latest
-            return _create(story_id, kind, subject, latest.version + 1, trigger, brief)
-    if latest.status == ImageStatus.SKIPPED and latest.skip_reason in RETRIED_WHEN_PLANNED:
-        _reset(latest, trigger)
-        latest.brief = brief.to_json()
-        latest.save()
-    return latest
+    if version is not None:
+        pictures = pictures.filter(version=version)
+    image = pictures.order_by("-version").first()
+    if image is None:
+        return _create(story_id, kind, subject, version or 1, trigger, brief)
+    if image.status == ImageStatus.SKIPPED and image.skip_reason in RETRIED_WHEN_PLANNED:
+        _reset(image, trigger)
+        image.brief = brief.to_json()
+        image.save()
+    return image
 
 
 def _create(story_id, kind: str, subject: str, version: int, trigger: str, brief: Brief) -> Image:

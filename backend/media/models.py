@@ -2,8 +2,10 @@
 
 An `Image` is one drawing of one subject: a character's portrait, a place, a scene or the
 Library cover. It is drawn once and reused wherever its subject appears (M4): every scene that
-shows the same character's portrait links to the same row. When a character changes for good,
-the portrait is redrawn once as the next `version` of the same subject (M5).
+shows the same character's portrait links to the same row. A portrait or place is keyed by its
+look version too (`engine.looks`): when a character or a place changes for good, it is drawn once
+more as that `version` of the same subject, and the latest one ready is shown from then on (M1,
+M5). Earlier versions stay, for the scenes that showed them and the export (T12).
 
 A `ScenePicture` says which picture a scene shows, and whether code planned it (M1) or the player
 asked for it with Illustrate (M2). The file itself lives in storage under `storage_key`.
@@ -49,7 +51,8 @@ class Image(models.Model):
     # What is drawn: a character id for a portrait, a place id for a place, `turn-12` for a
     # scene and `cover` for the cover. The same subject is drawn once and reused (M4).
     subject = models.CharField(max_length=128)
-    # A portrait is redrawn once when its character changes for good (M5), as version 2, 3...
+    # A portrait or place's look version (`engine.looks`): drawn once more when its character or
+    # place changes for good (M1, M5). Always 1 for a scene or the cover.
     version = models.PositiveIntegerField(default=1)
     status = models.CharField(
         max_length=16, choices=ImageStatus.choices, default=ImageStatus.PLANNED
