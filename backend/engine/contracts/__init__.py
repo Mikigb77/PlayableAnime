@@ -36,6 +36,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import (
     ActionKind,
+    Aim,
     Beat,
     BeatUse,
     ChainLink,
@@ -52,6 +53,8 @@ from engine.contracts.intent import (
     UseSource,
 )
 from engine.contracts.resolution import (
+    BeatResolution,
+    BeatVerdict,
     Cost,
     LinkResolution,
     ProposedDeed,
@@ -62,8 +65,11 @@ from engine.contracts.resolution import (
 
 __all__ = [
     "ActionKind",
+    "Aim",
     "AttitudeShift",
     "Beat",
+    "BeatResolution",
+    "BeatVerdict",
     "BeatUse",
     "ChainLink",
     "CharacterChange",

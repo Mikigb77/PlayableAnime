@@ -157,6 +157,20 @@ def test_the_class_wins_over_a_result_that_contradicts_it():
     assert checked.steps[0].result is StepResult.FAILURE
 
 
+def test_a_certain_step_keeps_the_roll_that_only_picked_how_long_it_took():
+    """W10: an uncertain duration is rolled even when the outcome is certain."""
+    timed = RollRecord(seed="seed", odds=1.0, value=0.3, result=StepResult.SUCCESS, duration_s=5400)
+    resolution = Resolution(steps=[resolved(0, roll=timed)])
+    checked, issues = check_resolution(resolution)
+    assert checked == resolution and issues == []
+
+    # A roll that could have changed the outcome still goes.
+    outcome = Resolution(steps=[resolved(0, roll=roll(StepResult.SUCCESS))])
+    checked, issues = check_resolution(outcome)
+    assert checked.steps[0].roll is None
+    assert [i.code for i in issues] == ["class_result_mismatch"]
+
+
 def test_a_chained_plan_stops_at_its_first_step_that_doesnt_cleanly_succeed():
     """R6: the stone misses, so the run for the tunnel never happens."""
     resolution = Resolution(

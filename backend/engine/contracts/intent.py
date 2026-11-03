@@ -52,6 +52,23 @@ class MeansVerdict(StrEnum):
     CLEARLY_NOT = "clearly_not"
 
 
+class Aim(StrEnum):
+    """F4, A2. What a step does to the characters it targets if it works, so code records the
+    outcome before anything is narrated and a blocked narration never blocks the deed. A partial
+    success does less: a kill that only partly works leaves the target badly wounded. Anything
+    else a step changes comes back in the narrator's update. A harmful aim also makes its targets
+    the step's opposition, so leaving them out of the facts can't buy a free kill."""
+
+    NONE = "none"
+    KILL = "kill"
+    WOUND = "wound"
+    SUBDUE = "subdue"  # knocked out, pinned or bound
+
+    @property
+    def harmful(self) -> bool:
+        return self is not Aim.NONE
+
+
 class SheetPart(StrEnum):
     """G13, G14. Which part of the sheet a step draws on."""
 
@@ -118,6 +135,14 @@ class ChainLink(EngineModel):
         description="The facts this link rests on: rule, power, fact or character ids, or words.",
     )
     takes_s: int | None = Field(default=None, ge=0, description="In-world seconds it takes.")
+    answers: list[str] = Field(
+        default_factory=list,
+        description=(
+            "What would let the target escape or undo this link, in plain words: 'teleport',"
+            " 'breathe without air', 'put out the fire'. Code looks for them on the target's"
+            " sheet, which the interpret step may not see, and uses them if they are there."
+        ),
+    )
     proposed_class: OutcomeClass | None = None
 
 
@@ -150,6 +175,7 @@ class IntentStep(EngineModel):
     method: str = ""
     target_ids: list[str] = Field(default_factory=list)
     targets: list[str] = Field(default_factory=list, description="Targets in words.")
+    aim: Aim = Field(default=Aim.NONE, description="What success does to the targets (F4).")
     axis: PowerAxis | None = None
     uses: list[SheetUse] = Field(default_factory=list)
     beats: list[Beat] = Field(default_factory=list)

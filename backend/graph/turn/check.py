@@ -29,7 +29,7 @@ from engine.contracts import (
 )
 from engine.director.themes import allowed_themes, fits
 from engine.state.cast import CharacterStatus
-from engine.state.records import LeadStatus, StepResult
+from engine.state.records import LeadStatus, RollRecord, StepResult
 from engine.state.world import WorldState
 from graph.turn.types import Issue
 
@@ -166,7 +166,7 @@ def check_resolution(
 def _check_step(step: StepResolution) -> tuple[StepResolution, list[Issue]]:
     settled = _settled_result(step.outcome_class)
     if settled is not None:
-        if step.result is settled and step.roll is None:
+        if step.result is settled and (step.roll is None or _time_only(step.roll, settled)):
             return step, []
         issue = Issue(
             "class_result_mismatch",
@@ -182,6 +182,12 @@ def _check_step(step: StepResolution) -> tuple[StepResolution, list[Issue]]:
         issue = Issue("roll_result_mismatch", "the roll decides", str(step.index))
         return step.model_copy(update={"result": step.roll.result}), [issue]
     return step, []
+
+
+def _time_only(roll: RollRecord, settled: StepResult) -> bool:
+    """W10, A3. A roll that only picked how long a settled step took: certain odds, the settled
+    result, and the time it picked. Its seed is kept so the time replays."""
+    return roll.odds == 1 and roll.result is settled and roll.duration_s is not None
 
 
 def _settled_result(outcome_class: OutcomeClass) -> StepResult | None:

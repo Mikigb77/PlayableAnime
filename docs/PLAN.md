@@ -421,6 +421,13 @@ screens.
   as something the character says (A7).
 - **Done when** the "logic over dice", "fair long shots", "power gap", "cause and effect" and
   "workaround" scenarios from T17 pass as unit tests over many seeds.
+- **Landed** as `backend/engine/resolve/` (see
+  [ARCHITECTURE.md](ARCHITECTURE.md#resolve-logic-first-then-dice)). For WS3's interpret prompt, the
+  contract gained `IntentStep.aim` (what success does to the targets: kill, wound, subdue, or none),
+  `ChainLink.answers` (what would let a target escape a link, in plain words), and
+  `StepResolution.beats` (R2's beat checks, for the scene details). WS10's `record_consequences`
+  receives one proposed deed per step against someone, with a first-guess severity to weigh by the
+  world's norms. WS9b plugs time stop's own rules into `engine/resolve/powers/`.
 
 ### WS9b Powers, theories and growth (wave 3, after WS9)
 
