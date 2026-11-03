@@ -72,9 +72,6 @@ PICTURE_CAP: dict[ImageSetting, float] = {
 }
 PICTURE_FLOOR = -2.0
 
-# F3: every character in a romance scene has an adult age recorded.
-ADULT_AGE = 18
-
 # M1, E6: a deed this severe is a big moment (W1).
 BIG_DEED = 4
 

@@ -18,7 +18,8 @@ from engine.context import TurnContext
 from engine.contracts.direction import EventKind, EventSource, PlannedEvent, Theme
 from engine.director import deck, rules
 from engine.director.deck import Card, CastRole
-from engine.director.themes import fits, is_adult
+from engine.director.themes import fits
+from engine.limits import is_adult
 from engine.rng import SeededRng
 from engine.state.cast import Activity, Character, Faction, FactionStatus, Prominence
 from engine.state.records import ClockStatus, OriginKind, Thread, ThreadKind, ThreadStatus
@@ -104,7 +105,7 @@ def cast_for(state: WorldState, role: CastRole, rng: SeededRng, *, adults_only: 
     for npc in sorted(state.npcs(), key=lambda c: natural_key(c.id)):
         if not npc.alive or npc.activity is not Activity.ACTIVE or player not in npc.met_by:
             continue
-        if adults_only and not is_adult(npc.age):
+        if adults_only and not is_adult(npc):
             continue
         if npc.id not in present and npc.location_id not in near:
             continue
@@ -263,7 +264,7 @@ def _dormant_thread(
         if i != state.player_id
         and i in state.characters
         and state.characters[i].alive
-        and (not romance or is_adult(state.characters[i].age))  # F3
+        and (not romance or is_adult(state.characters[i]))  # F3
     ][:2]
     return Pick(
         event=PlannedEvent(

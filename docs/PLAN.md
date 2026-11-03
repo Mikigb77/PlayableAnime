@@ -397,8 +397,8 @@ screens.
     portrait redraw for a permanent change (M5, G17) is a `PictureDecision` the turn plans with
     `redraw=True`.
   - **WS14 (play screen):** see the Pictures section of [API.md](API.md#pictures-m1-to-m8).
-  - The house style in `media/prompts.py` follows the direction above; align it with
-    `app/DESIGN.md` when WS4 lands it.
+  - The house style in `media/prompts.py` follows the "Pictures" section of `app/DESIGN.md`
+    (aligned in WS4's PR); change the two together.
 
 ### WS9 Resolve: logic first, then dice (wave 2b, after WS2's PR 1)
 
@@ -464,6 +464,11 @@ and slow, local reversal), A4, G19, G20, N4.
   in a fixed number of steps (K8, E7).
 - **Done when** the "fleeing witness", "interrupted sleep", "phone witness", "idle world" and
   "ignored hook" scenarios pass as unit tests.
+- **For other workstreams:** the event kinds the world schedules are `engine.world.Kind`, and
+  events of any other kind (`director.*` for WS11) are only marked applied, keeping the
+  `needs_player` they were scheduled with. The graph (WS3) saves the world's events like any other
+  pending row. The tick leaves agenda facts (origin `agenda`, the latest three per faction or NPC)
+  for the director (W16) and for the model part of the tick (W6, P1) to tell.
 
 ### WS11 Director, threads and the picture decision (wave 2b, after WS2's PR 1)
 
@@ -488,9 +493,10 @@ and slow, local reversal), A4, G19, G20, N4.
   `tests/engine/director/test_scenarios.py`. It added `Intent.responds_to`, the
   `record_direction` seam and the `schedule_stretch` hook in `play_out`, and wired them into the
   turn graph's resolve node. What other workstreams need to know:
-  - **WS10 (living world):** `apply_event` must keep marking `director.event` and
-    `director.plays_out` events applied and nothing else. A world event that needs the player can
-    carry `payload["event"]` with a size, kind, brief and themes for the director.
+  - **WS10 (living world):** `apply_event` marks `director.event` and `director.plays_out`
+    events applied and does nothing else with them; keep it that way. A world event that needs the
+    player can carry `payload["event"]` with a size, kind, brief and themes for the director, which
+    otherwise tells it as a personal arrival from its title.
   - **WS3 and WS8 (pictures):** `PictureDecision.subject_id` is a character, place, deed or thread
     id (see ARCHITECTURE.md). A place that changed for good (`place_changed`) needs a new picture
     of the same place, so plan it with a redraw rather than reusing the first one (M4). M5's
@@ -512,6 +518,11 @@ starter premises.
   (the Naples vendetta), science fiction and a hidden supernatural city (S1).
 - **Done when** drafting runs on the fake model in tests, hidden parts never leak into the response,
   and each starter premise drafts into a bible that respects its genre's fixed rules.
+- **Landed.** `graph.drafting` (`chain.create`, `chain.revise`, `chain.plan_edit` and
+  `chain.finish_edit`, `assemble`, `view`, the starter `catalog`) and the `drafts` app. Start saves a
+  graph story at turn 0 and version 1 with no scenes, `scene.ended_on` holding the opening moment,
+  and clocks with `next_step_s` but no pending events. `/v1/premises` moved from `stories` to
+  `drafts`, and drafting is metered with `meter.DRAFT`.
 
 ### WS13 App: sign-in, onboarding and account (wave 2c, after WS4)
 

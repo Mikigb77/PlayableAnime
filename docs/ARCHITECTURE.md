@@ -18,7 +18,7 @@
 
 | Path | What |
 | --- | --- |
-| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage |
+| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage, speech_to_text. See [app/README.md](../app/README.md) and [app/DESIGN.md](../app/DESIGN.md) |
 | `backend/` | Python 3.13, Django and Django Ninja over ASGI (uvicorn), managed with uv, deployed to Cloud Run. Layout in [backend/README.md](../backend/README.md#layout) and [PLAN.md](PLAN.md#target-layout) |
 | `neon.ts`, `package.json` | Neon config as code (`@neon/config`). Node is used only for the Neon CLI and this config. |
 | `docs/` | Product and architecture notes |
@@ -49,8 +49,10 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
   [Accounts and sign-in](#accounts-and-sign-in).
 - **Admin (B1).** `/admin/` for staff: users, stories with their scenes, and pending events. A
   story's world state and version are read-only there, and saving a story writes only the fields
-  staff changed, so the admin never undoes a turn (B12, T10). Its static files are collected into
-  the image and served by ServeStatic.
+  staff changed, so the admin never undoes a turn (B12, T10). Story text (premises, actions,
+  narration, world state, pending event payloads, picture briefs, drafts) shows only to staff who
+  handle reports (T16, [Safety, ratings and reports](#safety-ratings-and-reports)). Its static
+  files are collected into the image and served by ServeStatic.
 - **Cold starts (B10, T3).** `/health` never touches the database, and the service refuses to start
   without `DATABASE_URL` and `DJANGO_SECRET_KEY` outside DEBUG. Model SDKs and LangChain are
   imported inside the code that uses them, off the event loop, and a test checks that loading the
@@ -171,7 +173,8 @@ these functions and saves the result.
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
-| `engine/pipeline.py` | The functions the turn graph calls, with default bodies that WS10 replaces. |
+| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
+| `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
@@ -180,11 +183,11 @@ a new one.
 
 | B5 step | Function | Owner |
 | --- | --- | --- |
-| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order through `apply_event`, stopping at the first that needs the player. Nothing fires during a time stop | WS10 |
+| 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order, stopping at the first that needs the player. It first makes sure every running clock has its next step pending and that the world tick is spaced so the stretch holds at most 24 ticks (K8), then runs `engine.timekeeping.advance_clock` with the world's handler. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
 | 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision. At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
-| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step | WS10 |
-| | `apply_event(state, event, ctx, rng) -> WorldState`, called for each pending event that falls due | WS10 |
+| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events | WS10 |
+| | `apply_event(state, event, ctx, rng) -> WorldState` applies one pending event that fell due, rolling from the event's own seed, and records on the applied event whether it needed the player. Kinds it doesn't own, such as `director.*`, are only marked applied | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng, intent=None) -> DirectorPlan`, on the state `play_out` returned, with the turn's `Intent` (its `responds_to` and `goals`). It only decides and never changes the state | WS11 |
 | | `record_direction(state, plan, ctx) -> WorldState` writes `plan.updates` into the state. Call it right after `direct`, before the narrator's changes apply, so the plan's ids stay the ones the narrator sees | WS11 |
 | 6. Apply the update | `apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR) -> Applied`. Refused changes come back in `Applied.rejected` for the log and the C5 check; the rest applies. Before saving, the graph runs `check_transition(first, last)`, and a violation is an engine bug: log it and don't save | WS2 |
@@ -220,6 +223,44 @@ a new one.
   a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,
   no earlier than the change it undoes, by a mechanism the world bible allows (resurrection, a
   presumed death that was false, a revival with survivors, rebuilding).
+- **The living world runs on pending events** (W2, W5, W6, W10, W13, E2). Whatever the world
+  does later is a `PendingEvent` with a due time and its own seed, of a kind in
+  `engine.world.Kind`: `world.report` (a witness reaches a faction), `world.answer` (a faction's
+  answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of a death reaches
+  the victim's family and friends), `world.discovery` (a look at a secret deed's traces),
+  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival` and `world.tick`. Whether an
+  event needs the player is decided when it applies, from the state at that moment, and stored on
+  the applied event: guards who find the player where they came need them, and guards who find
+  them gone search instead. Delays come from the map: a witness walks to the faction's seat (the
+  outermost place it holds, else where its leader is) or calls where the world has phones (G6),
+  and the answer then gathers and travels back. A route between two places is what the trip
+  takes; a place inside another is a 15-minute walk from it, unless it is a region of its own (a
+  city, a village, a kingdom), so two cities are as far apart as their roads say. Where the map
+  doesn't say, a trip takes about an hour, never no time. Those who keep a law act within the
+  region their seat is in. Every figure is in `engine/world/tuning.py`.
+- **Who learns what, and what it does.** A deed is known to its doer and witnesses (asleep or
+  unconscious people see nothing; in stopped time only those immune to it do). Others learn it
+  from a rumor they believe, which loses accuracy with each hop and, once far enough off, turns
+  into a version that no longer names the doer, or from a report. Each faction counts each deed
+  once (`Deed.known_by_factions`); one deed moves esteem or fear by at most 15 points, less the
+  further it already is from neutral (W9). A faction shrugs off what its own members do unless it
+  is severity 4 or worse, and never answers its own leader. NPCs' deeds run through the same code
+  (E5); the player character never reacts by itself (G15). Resolve proposes an attempt on someone
+  as a deed even when it fails: an attempt that harmed nobody is still harm when resolve weighed
+  it at 2 or more, so its target keeps a grudge and the law hears of it, and a killing nobody
+  died of counts as the wounding it was. Severity floors apply only when someone was harmed.
+- **Clocks** step with time (`interval_s`, from `next_step_s`) and with deeds. An `advances_on` or
+  `reverses_on` entry names a deed kind (`kill`) or a kind and a victim, target or place
+  (`kill:carmine`, `burn:mill`). A full clock gets a `clock_end` event; when it arrives where the
+  player is (the event's place, else its owner's seat), it is a scene, and otherwise it happens
+  without them, closing a tied thread of ambition, quest, threat or debt as resolved without the
+  player. Mysteries, rivalries and romances stay open.
+- **The cast stays bounded** (W15, K8). At most 8 key NPCs and 4 factions are active; the least
+  involved go dormant, kept in state, never deleted, and come back on stage when the story returns
+  to them (in the scene, in an open thread, with something on its way). New characters and factions (an avenger, a
+  resistance in a conquered place, a successor) carry an `origin`. A destroyed faction gets one
+  look at a revival, and comes back only with survivors, as rebuilding, with a `Cause` pointing at
+  the revival event (C1); it stays rebuilding for the rest of that turn.
 - **What the player sees** (C6). `engine.visibility` reads only records whose knowledge lists
   hold the player character: `known_by`, `met_by`, `visited_by`, `Rumor.heard_at`, and the
   `known_by` on each status change, so an off-screen death shows only once the player hears of
@@ -267,7 +308,7 @@ fact.
 **Pending event kinds the director owns.** `director.event` is an event rolled inside a time skip
 (its payload holds the pick, and `needs_player` stops the clock at it). `director.plays_out` is an
 ignored event's play-out. `apply_event` only marks either applied, since the director plays them
-out itself, and WS10's replacement must keep it that way. A world event that needs the player
+out itself. A world event that needs the player
 (`needs_player`) becomes the scene's event as it is; WS10 can give it a size, kind, brief and
 themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": "...", "themes":
 []}`), and the director defaults to a personal arrival without them.
@@ -436,8 +477,13 @@ text was shown, the client yields `StreamRestart` before retrying, which the tur
 **Safety settings (F5).** `graph/llm/safety.py` holds the table and the reasons behind it:
 harassment off in Mature; hate speech, dangerous content and, in Mature, sexual content filtered
 only at high probability as backstops for G12, F3 and the fade-out rule; Teen filters sexual
-content from medium; pictures filter from medium, and sexual content from low (M6). WS16 tunes it
-against T15's content-line evals.
+content from medium; pictures filter from medium, and sexual content from low (M6). The interpret
+step in Mature reads the action with harassment, hate speech and sexual content off, because a
+block there is the one that stops the deed itself (F4); the narrator's filters and the code's hard
+limits still bound what is told. WS16 checked the table against google-genai 2.34's options: the
+image categories exist only on Vertex AI and are refused by the Gemini API a player's key uses,
+so they stay unset until T18's live picture evals, and `BLOCK_NONE` stays unused because Vertex
+restricts it. T15's content-line evals tune the rest.
 
 **Telemetry (T5).** Each call leaves one `CallRecord` (node, model, provider, BYOK or not, outcome,
 tokens in, out and thinking, pictures, latency, time to first text, attempts, retry reasons,
@@ -470,11 +516,11 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. `check_intent` turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), never lets the dead act, hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. `check_intent` turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), never lets the dead act, hands back steps past the eighth unplayed, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
 | 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time that passed, the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
-| 5 | `narrate` | model (`narrator`), streamed | One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
-| 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment and leaves the dead out of the scene, then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
+| 5 | `narrate` | model (`narrator`), streamed | One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
+| 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
 | 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
 
 **Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
@@ -485,7 +531,8 @@ the scene, the intent, the resolution, the plan, the pending events that fired, 
 checks found and each node's time in milliseconds for the T5 line.
 
 **Errors.** `UnreadableAction` (`unreadable_action`, 422) when the interpret step is blocked, the
-one block the player sees (F4). `LLMUnavailable` and `BadKey` from the model layer otherwise, and
+one block the player sees (F4), and its subclass `LimitReached` when the action crosses a hard
+limit, with its own message and `details = {"category": ...}`. `LLMUnavailable` and `BadKey` from the model layer otherwise, and
 `InvariantError` for an engine bug. Nothing is saved on any of them, and a chapter summary still
 running is cancelled, so nothing outlives the response (B8).
 
@@ -503,10 +550,152 @@ standing action, the opening, a blocked interpret step, a cut-away, the template
 stream, a careless resolve cut short by the checks, chapter summaries, replaying a turn and the
 offline model.
 
+## Drafting a world and a character
+
+Requirements: G1, G2, S1, A1, G6, G7, G8, G18, G22, N7, C6, E2, W15. The chain is
+`backend/graph/drafting/` (plain Python on the model layer, no Django, B4); `backend/drafts/` stores
+drafts, serves `/v1/premises` and `/v1/drafts` ([API.md](API.md#drafting-a-world-and-a-character-g1-g2-s1-a1))
+and creates the story on start.
+
+```mermaid
+flowchart LR
+  premise["Premise<br/>(starter or the player's own)"] --> drafter["drafter node<br/>(one call, DraftProposal)"]
+  drafter --> assemble["assemble()<br/>code decides"]
+  catalog["Starter template<br/>(fixed rules, kinds, ladder, peoples, gift)"] --> assemble
+  options["Player's setup<br/>(physics, gift, released rules)"] --> assemble
+  assemble --> state["WorldState<br/>(turn 0)"]
+  state --> view["view: summary lines,<br/>rules, gift (public parts only)"]
+  state --> start["start: Story<br/>(engine graph, version 1)"]
+```
+
+- **A draft stores inputs, never state.** The `Draft` row holds the model's latest proposal
+  (`schema.DraftProposal`), the premise and starter id, and what the player set up (physics, gift
+  strength, the starter rules they let go of, difficulty, event frequency). The world state is
+  `assemble()` of those inputs, the same every time, so a revision replaces one half of the
+  proposal (the world or the character) and code re-decides everything else. The state is copied
+  into the story only on start.
+- **The model proposes; `assemble` decides.** The proposal schemas are compact and unbounded, and
+  code cleans them: unique slug ids with references resolved by id or name and dangling ones
+  dropped, the player always `player` with a real name, list and text sizes capped, and every C1
+  invariant checked. G7: a starter's fixed rules and kinds hold, every kind has a fixed existence
+  rule, and a proposal that contradicts its genre (a grounded claim in a world of qi, qi in the
+  Naples vendetta) loses that part. G8: no power in a grounded world or from a kind that doesn't
+  exist, and attributes stop at 5 where nothing extraordinary exists. G18: rungs are A8 tiers two
+  apart and a rung sets its axis. G22: the player's gift pick beats the premise's, which beats the
+  model's, `none` removes the gift, and time stop defaults to three heartbeats with a breath to
+  recharge, hitting at relative speed only when overpowered. C6: secrets, agendas, faction plans,
+  mystery answers and a body's forgotten past are kept where only code and the narrator see them.
+  W15: at most 8 key characters and 4 factions start active. Clocks get `interval_s` and
+  `next_step_s` in world seconds, with no pending events yet.
+- **What the player reads is written by code** (`view.py`) from public fields only: the summary
+  lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
+  more words of hidden text, or names someone the character doesn't know, is dropped.
+- **Revisions and edits.** `revise(target, instruction)` sends the whole draft, hidden parts
+  included, so the change fits the world, and keeps every fixed rule the model doesn't explicitly
+  list in `dropped_rule_ids`; a dropped starter rule is released for this story. Direct edits
+  (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
+  rewritten summary lines, rewritten rules, a new gift strength or a rating lowered to Teen, one
+  call for the world and one for the character. Rules the player wrote stay word for word, their
+  list decides which starter rules hold, and a rule the leak guard hides from them survives their
+  edit.
+- **Around each model call** (`drafts/service.model_call`): the BYOK headers (S9), the credit meter
+  with `meter.DRAFT` (the charge lands in the transaction that saves the draft), the client for the
+  draft's rating (F5), the model errors as API errors (T7), and one T5 log line on the `drafts`
+  logger with tokens, cost and outcome, never the premise or the prompt (T6).
+- **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
+  the Naples vendetta for a grounded starter, the cultivation sample otherwise.
+
+## Safety, ratings and reports
+
+WS16's part of F1 to F8, G12 and T16. The prompts ask the models to stay inside the ratings table,
+Gemini's filters back them (F5, above), and the code enforces what it can see, so neither a model
+nor a player can talk past a hard limit.
+
+**Hard limits in code (`engine/limits.py`, F3, F2, G12).** Plain Python with unit tests, called
+by the turn graph:
+
+| Limit | What the code does | Category |
+| --- | --- | --- |
+| Adults only in romance (F3) | A romantic or sexual step (read from the intent's verb, text and beats) never plays unless the actor and every character it targets have an age of 18 or more recorded and nothing childlike in their appearance or description, whatever age they are given. A partner the story doesn't know yet is the narrator's to introduce as an adult with an age; once known, the check holds them to it. | `minor` |
+| Teen's line (F2) | In a Teen story a step beyond a kiss, or a sexual assault, never plays. Mature plays both within the table. | `sexual`, `sexual_violence` |
+| Fictional people (G12) | A step that targets a real living person never plays, and a new character or faction named after a real person or organisation is left out of the narrator's update (a known one keeps its name). The names are a curated backstop in `engine/real_entities.py`; naming a real organisation in an action is allowed, as a backdrop. | `real_person` |
+| No instructions (F3) | A narration with real-world drug, weapon or hacking know-how that reads like a procedure (code or commands, numbered steps, or lab amounts with things to do with them) counts as blocked, so it is retold as a cut-away. It is checked before each streamed piece is sent, so the stream stops at the piece that would complete the recipe. Know-how told as an outcome passes. | `harm_instructions` |
+
+A step that never plays ends the turn with `LimitReached`, before anything resolves, so nothing is
+narrated, saved or charged, and the app shows its message like an unreadable action with a
+rephrase option ([API.md](API.md)).
+
+**Every block is logged (F4).** One WARNING line per block with a `block` field: `node`
+(`interpret` or `narrator`), `source` (`model` for a Gemini filter, `code` for a hard limit),
+`categories`, `stage` (`prompt`, `response`, `action` or `update`) and, for the narrator, the
+`attempt` (`full` or `cutaway`). It never carries story text; who or what a hard limit was about
+is logged at DEBUG only (T6).
+
+**Ratings per story (F2, F8).** A story's rating is set when it is created and can't be raised
+later. `stories.access.owned_story` answers `403 forbidden` for a story above the account's
+`max_rating`, and `tests/moderation/test_ratings.py` checks every route with a `{story_id}`, so a
+new endpoint can't skip it. The model client takes the story's rating, which picks the safety
+settings.
+
+**Reports and blocks (F6).** `POST /v1/stories/{id}/scenes/{turn}/report` files a
+`moderation.Report` (one per scene and player; a repeat updates it and reopens it, and a block
+is never undone). `moderation.service.blocked_turns(story)` gives the turns whose text the player
+hid, for the scene list's `blocked` flag. A `scene reported` WARNING line carries the category,
+turn and block, never the note. Reports go with the story or the account and into the export
+(T12).
+
+**The review queue (T16).** `/admin/moderation/report/` lists open reports first, oldest first,
+with the player's category and note, the scene's action and narration, and the scene before it.
+Staff record a decision (actioned or dismissed, with notes), which stamps the reviewer and time.
+Only superusers and staff in the **Report handlers** group (kept in step after every `migrate`)
+see the queue, and only they see story text anywhere in the admin: `moderation.access.
+StoryTextAdmin` hides those fields (a story's premise and state, a scene's action, narration and
+details, an event's payload, a picture's brief, a draft's premise and proposal) from other staff.
+Add a moderator by making them staff and putting them in the group.
+
+**Content-line evals (T15).** `moderation/evals/content_lines.json` holds the cases from the
+ratings table, both ratings, a grounded story and the hard limits, with a judge rubric, and
+`moderation.evals` loads them and builds each case's world. Deterministic cases run in CI today
+(`tests/graph/test_turn_limits.py`); live cases wait for Vertex access and WS17's runner.
+
+## App
+
+The Flutter app (`app/`) is written against the v1 API in [API.md](API.md), and also reads the
+interim shapes the backend serves until the turn graph lands (WS3): a turn answered as one JSON
+object, and the raw world state as memory.
+
+- **Design system** (`app/lib/design/`): tokens, a dark and a light theme, a per-story accent picked
+  from the genre, bundled fonts, motion, and the shared components, all on show at `/gallery`.
+  The rules are in [app/DESIGN.md](../app/DESIGN.md), and the picture house style in
+  `backend/media/prompts.py` follows its "Pictures" section.
+- **API client** (`app/lib/core/api/`): JSON over `http` with the session's bearer token. On a 401
+  it refreshes once (one refresh shared by every request that hit it, as API.md asks) and retries;
+  if the refresh is refused, the session ends and the router returns to the welcome screen. Errors
+  are an `ApiException` with a typed code from API.md's error envelope, plus `network`, `timeout`
+  and `server` for failures without one (T7). The player's own key rides only on POSTs under
+  `/v1/drafts` and `/v1/stories` that may call a model, and those wait up to 3 minutes for an
+  answer (other requests 30 s, and a turn's stream 150 s of silence), longer than the model
+  layer's own limits. Providers retry a failed read on their own only for a network or server
+  failure, three times at most (`retryTransient`); a 404, a 403 or a limit is final (T9).
+- **Turns stream** as Server-Sent Events (S3). The client parses them into `TurnEvent`s that always
+  end in `SceneCompleted` or `TurnFailed`, so a dropped connection is a typed error, not a hang.
+  An interim JSON answer is replayed as the same events.
+- **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
+  request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
+  if it fails.
+- **Session** (`app/lib/core/session/`): tokens in the platform's secure storage. Sign-in screens
+  (WS13) post to `/v1/auth/*` through `authApiClientProvider` and hand the `Session` to
+  `SessionController.signIn`, which uses new tokens at once, before saving them, because a
+  rotated refresh token can't be used twice. A link opened while signed out waits on the welcome
+  screen (`/welcome?to=…`) and opens after sign-in.
+- **Fake API** (`--dart-define=API_MODE=fake`): an `http.Client` inside the app that speaks API.md,
+  with one file per area, so the app runs and is tested end to end without a server.
+- **Strings** are in `app/lib/l10n/app_en.arb`, generated at `flutter pub get` (S10).
+
 ## Bring your own key
 
-- The app keeps the key in `flutter_secure_storage` and sends it per request as `X-LLM-Provider` and
-  `X-LLM-Api-Key`.
+- The app keeps the key in `flutter_secure_storage`, one per account on the device (so whoever signs
+  in next never plays on it), and sends it per request as `X-LLM-Provider` and `X-LLM-Api-Key`.
 - `graph.llm.parse_byok` wraps it in a `ByokKey` whose repr is masked and which refuses to be
   pickled, and `build_client` makes a Gemini API client for that request only, never cached. It is
   never persisted or logged, and error details are scrubbed of it.
@@ -575,9 +764,9 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   priced by the model layer's table. When the turn endpoint lands (WS3), its tests should run the
   same check on the turn graph's own telemetry.
 - **Wiring.** `User.credits` in `/v1/me` and the sign-in responses comes from
-  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. The legacy story
-  endpoints aren't metered; the turn endpoint (WS3) and drafting (WS12) call `billing.meter` when
-  they land.
+  `billing.credits.summary(user)`, and pictures pay through `media/billing.py`. Drafting meters every
+  model call with `meter.DRAFT` (WS12). The legacy story endpoints aren't metered; the turn
+  endpoint (WS3) calls `billing.meter` when it lands.
 
 ## Voice input
 
@@ -750,6 +939,7 @@ endpoint lets anyone spend our Vertex budget.
 | `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, and the picture flag, kind and prompt (M1). The picture itself and its state live in `media_image`. |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". |
 | `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
+| `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |
 | `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |
 
 The FastAPI version's `stories` and `schema_migrations` tables are left on Neon untouched. Dropping

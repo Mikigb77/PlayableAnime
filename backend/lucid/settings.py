@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "stories",
     "media",
     "billing",
+    "drafts",
+    "moderation",
 ]
 
 MIDDLEWARE = [

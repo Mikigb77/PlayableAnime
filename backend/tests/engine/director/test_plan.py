@@ -210,7 +210,9 @@ def test_recording_marks_due_director_events_applied_and_keeps_the_memory():
 
 
 def test_the_first_turn_after_a_skip_lands_starts_on_the_event_it_stopped_at():
-    stops = 0
+    """A year lying low in Naples always stops early: at the director's roll, or at the council
+    naming its boss on day ten (E2), whichever comes first. The scene starts on it."""
+    rolled = 0
     for story in SEEDS:
         played = play_turn(
             grounded_world(),
@@ -219,12 +221,21 @@ def test_the_first_turn_after_a_skip_lands_starts_on_the_event_it_stopped_at():
             story=story,
         )
         stop = played.play.interrupted_by
-        if stop is not None and stop.kind == MONTAGE_KIND:
-            assert played.plan.event is not None and played.plan.event.title == stop.title
+        assert stop is not None and played.state.world_s == stop.due_s < YEAR
+        assert played.plan.event is not None and played.plan.event.title == stop.title
+        if stop.kind == MONTAGE_KIND:
             assert played.state.pending_events[stop.id].status is EventStatus.APPLIED
             assert played.plan.event.plays_out_s is not None
-            stops += 1
-    assert stops >= len(SEEDS) // 2  # in a year, the Esposito family's plans reach Luca
+            rolled += 1
+        else:
+            assert played.plan.event.source is EventSource.DUE
+        # Nothing rolled for the months after the stop is left to fire later.
+        assert not [
+            e
+            for e in played.state.pending_events.values()
+            if e.kind == MONTAGE_KIND and e.status is EventStatus.PENDING
+        ]
+    assert rolled >= 1
 
 
 def test_events_rolled_for_time_that_was_never_lived_never_happen():

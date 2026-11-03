@@ -17,14 +17,12 @@ from legacy.domain import Scene as LegacyScene
 from legacy.domain import Story as LegacyStory
 from legacy.domain import StorySummary, WorldState
 from legacy.engine.narrator import RECENT_SCENES
-from legacy.premises import SEED_PREMISES, Premise
 from lucid import logs
 from lucid.errors import field_error, version_conflict
 from stories import legacy_bridge
 from stories.access import owned_story
 from stories.models import Engine, InputMode, Scene, SceneKind, Story
 
-premises_router = Router(tags=["premises"])
 stories_router = Router(tags=["stories"])
 
 LIBRARY_SIZE = 50
@@ -39,9 +37,11 @@ class TurnIn(Schema):
     """Either pick one of the offered choices or describe a free action."""
 
     choice_id: str | None = None
-    action: str | None = Field(default=None, min_length=1, max_length=1000)
-    # How a free action was entered (V7). A choice is always "choice".
-    input_mode: Literal["typed", "voice", "voice_edited"] | None = None
+    # The same limit as the streamed endpoint's TurnRequest (API.md), which the app already uses.
+    action: str | None = Field(default=None, min_length=1, max_length=2000)
+    # How the turn was entered (V7). The app sends "choice" with a choice, as TurnRequest asks;
+    # a choice is saved as "choice" either way.
+    input_mode: Literal["typed", "voice", "voice_edited", "choice"] | None = None
     # The story version the app last saw (T10). Optional here: today's app doesn't send it,
     # and a concurrent turn is refused at save time either way.
     expected_version: int | None = None
@@ -50,6 +50,8 @@ class TurnIn(Schema):
     def _exactly_one(self) -> Self:
         if (self.choice_id is None) == (self.action is None):
             raise ValueError("Send exactly one of choice_id or action")
+        if self.action is not None and self.input_mode == "choice":
+            raise ValueError("A free action is typed, voice or voice_edited")
         return self
 
 
@@ -61,11 +63,6 @@ class TurnOut(BaseModel):
     scene: LegacyScene
     state: WorldState
     version: int
-
-
-@premises_router.get("", response=list[Premise])
-async def list_premises(request) -> list[Premise]:
-    return SEED_PREMISES
 
 
 @stories_router.post("", response={201: StoryOut})

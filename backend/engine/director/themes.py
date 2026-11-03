@@ -7,26 +7,22 @@ consequence of their own deed still arrives whatever its theme.
 
 from engine.context import GoreLevel, Rating, TurnContext
 from engine.contracts.direction import Theme
-from engine.director.rules import ADULT_AGE
+from engine.limits import is_adult
 from engine.state.world import WorldState
-
-
-def is_adult(age: int | None) -> bool:
-    """F3: only a recorded adult age counts."""
-    return age is not None and age >= ADULT_AGE
 
 
 def allowed_themes(state: WorldState, ctx: TurnContext) -> frozenset[Theme]:
     """The themes an event the director starts may carry.
 
-    - Romance needs the player's romance switch on, and an adult age recorded for the player
-      character, because a romance event is about them or someone close to them (F3).
+    - Romance needs the player's romance switch on, and a player character `engine.limits` counts
+      as an adult (a recorded adult age, nothing childlike), because a romance event is about them
+      or someone close to them (F3).
     - Dark themes need the player's dark-themes switch on.
     - Gore needs a Mature story and a gore level above low (the ratings table: no gore in Teen).
     """
     prefs = ctx.content_prefs
     allowed: set[Theme] = set()
-    if prefs.romance and is_adult(state.player.age):
+    if prefs.romance and is_adult(state.player):
         allowed.add(Theme.ROMANCE)
     if prefs.dark_themes:
         allowed.add(Theme.DARK)

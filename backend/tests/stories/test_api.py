@@ -109,6 +109,48 @@ def test_turn_needs_exactly_one_of_choice_or_action(client):
         assert response.json()["error"]["code"] == "validation_error"
 
 
+def test_turns_take_the_apps_turn_request(client):
+    """The app already sends the streamed endpoint's TurnRequest; the extra fields are ignored."""
+    story = _create_story(client)
+
+    by_choice = _turn(
+        client,
+        story["id"],
+        {"kind": "choice", "choice_id": "c1", "input_mode": "choice", "expected_version": 1},
+    )
+    long_action = "I climb, " * 222  # 1998 characters
+    by_action = _turn(
+        client,
+        story["id"],
+        {"kind": "action", "action": long_action, "input_mode": "typed", "expected_version": 2},
+    )
+
+    assert (by_choice.status_code, by_action.status_code) == (200, 200), by_action.content
+    assert by_action.json()["version"] == 3
+    kinds = (
+        Scene.objects.filter(story_id=story["id"])
+        .order_by("turn")
+        .values_list("kind", "input_mode")
+    )
+    assert list(kinds)[1:] == [
+        (SceneKind.CHOICE, InputMode.CHOICE),
+        (SceneKind.ACTION, InputMode.TYPED),
+    ]
+
+
+def test_a_turn_request_out_of_bounds_is_rejected(client):
+    story = _create_story(client)
+
+    for body in (
+        {"action": "x" * 2001},
+        {"action": "I climb.", "input_mode": "choice"},
+        {"choice_id": "c1", "input_mode": "telepathy"},
+    ):
+        response = _turn(client, story["id"], body)
+        assert response.status_code == 400, body
+        assert response.json()["error"]["code"] == "validation_error"
+
+
 def test_unknown_choice_is_rejected(client):
     story = _create_story(client)
 

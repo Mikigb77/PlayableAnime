@@ -34,7 +34,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
   | 409 | `version_conflict` | `expected_version` is stale: another turn won (T10). `details.current_version`. |
-  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). |
+  | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). When the action crosses a hard limit, `details.category` names it (`minor`, `sexual`, `sexual_violence` or `real_person`, F2, F3, G12) and `message` says which line it is, so show the message as it is. |
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |
   | 429 | `rate_limited` | Per-user rate limit (T9). `details.retry_after_s`. |
   | 429 | `quota_exceeded` | Daily turn quota on our key (T9). `details.resets_at`. |
@@ -64,7 +64,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
 | GET | `/v1/me` | | `User` |
 | PATCH | `/v1/me` | `{display_name?, content_prefs?}` | `User` |
 | DELETE | `/v1/me` | | `204`. Deletes the account, stories and pictures (T12, M4). |
-| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture]}` (T12, M4) |
+| GET | `/v1/me/export` | | `{"user": User, "stories": [Story with all scenes], "images": [ExportedPicture], "reports": [ExportedReport]}` (T12, M4, F6) |
 | GET | `/v1/me/credits` | `?limit=50` (1 to 200) | `{balance_cents, unlimited, entries: [LedgerEntry]}`, newest first (K1, K2) |
 
 ```text
@@ -75,6 +75,8 @@ User         {id, email, display_name, role: "player"|"owner", max_rating: "teen
 LedgerEntry  {id, kind: "starter"|"turn"|"draft"|"image"|"topup"|"adjustment", amount_cents,
               balance_after_cents, story_id?, turn?, created_at}
 ExportedPicture {id, story_id, kind, subject, version, turns: [int], url, expires_at, created_at}
+ExportedReport  {story_id, turn, category, note, block, status: "open"|"actioned"|"dismissed",
+                 created_at}                                # the player's own reports, oldest first
 ```
 
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
@@ -164,43 +166,82 @@ Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
-then at least a grounded modern story, science fiction and a modern world with a hidden
-supernatural side.
+then a grounded modern story (the Naples vendetta), science fiction, a modern world with a hidden
+supernatural side and a few more. Each starter's genre fixes some rules (G7), which every draft
+from it keeps until the player changes them.
 
 ## Drafting a world and a character (G1, G2, S1, A1)
 
 A draft holds the AI's proposal until the player starts the story. Drafting calls a model, so it
-needs credits or a BYOK key like a turn does.
+needs credits or a BYOK key like a turn does: the credit meter checks the rate limit, the daily
+draft quota and the balance first (`429 rate_limited`, `429 quota_exceeded`, `402 out_of_credits`),
+and each create, revise or edit that calls the model is charged as a `draft` ledger entry (K2). A
+BYOK request is free (K6).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/v1/drafts` | `{premise, premise_id?, rating, advanced?: DraftAdvanced}` | `Draft` |
+| POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
-| PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?, rating?}` | `Draft` (direct edits) |
-| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction}` | `Draft` (plain-words change, such as "add hidden vampires") |
-| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings}` | `{story_id}`. The app then opens the play screen and streams the opening turn. |
+| PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
+| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires") |
+| POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text
-Draft          {id, premise, rating, title, genre, tone,
-                world_lines: [string],       # the one-screen summary in plain words (G1)
-                character_lines: [string],   # the character in the world's words (G2, G16)
-                advanced: DraftAdvanced, created_at}
-DraftAdvanced  {physics: "fun_first"|"strict",                      # A9
-                rules: [{id, text, fixed: bool}],                    # G6, G7
-                gift_strength?: "none"|"small"|"rare"|"overpowered", # G22
-                difficulty: "story"|"balanced"|"brutal",             # A5, default balanced
-                event_frequency: "calm"|"normal"|"dramatic"}         # W16, default normal
+Draft            {id, premise, premise_id?, rating, title, genre, tone,
+                  world_lines: [string],       # the one-screen summary in plain words (G1)
+                  character_lines: [string],   # the character in the world's words (G2, G16)
+                  advanced: DraftAdvanced,
+                  version: int,                # bumped by every saved change (T10)
+                  story_id?: string,           # set once started
+                  created_at, updated_at}
+DraftAdvanced    {physics: "fun_first"|"strict",                     # A9
+                  rules: [{id, text, fixed: bool}],                   # G6, G7
+                  gift_strength: "none"|"small"|"rare"|"overpowered", # G22, the strongest gift held
+                  difficulty: "story"|"balanced"|"brutal",            # A5, default balanced
+                  event_frequency: "calm"|"normal"|"dramatic"}        # W16, default normal
+DraftAdvancedIn  the same fields, each optional; a rule without an id is a new rule
 ```
 
-Hidden parts of the draft (the answer to a major mystery, NPC secrets, N7, C6) never appear in this
-response.
+- **Creating.** `premise` is 10 to 4000 characters. With `premise_id` alone the starter's own text
+  is the premise; with both, the player's text is the premise and the starter's genre still holds.
+  An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
+  `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
+  word, in the same model call; one with the id of a drafted rule replaces it.
+- **The summary is written by code** from the world's public parts, never by the model, so it always
+  matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
+  peoples, the factions, deadlines and questions the character knows, and the key people they know.
+  At most 10 lines each.
+- **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
+  `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
+  model call and costs nothing. Rewriting `world_lines` or `character_lines` (each line up to 300
+  characters), rewriting or adding rules, or choosing a different gift strength redrafts the world
+  or the character to match, in one model call each; lowering `rating` to `teen` redrafts both
+  within Teen (F2). `advanced.rules` is the whole list the player sees, kept word for word.
+  Removing, rewriting or opening up one of a starter's fixed rules lets the genre's rule go for
+  this story (G7), and so does a revision that asks for it; putting it back word for word, still
+  fixed, holds it again.
+- **Versions (T10).** Send `expected_version` with the `version` last seen; a stale one answers
+  `409 version_conflict` with `details.current_version`, before any model call. Two saves at once
+  can't overwrite each other either way: the later one answers `409` too, and its model call is
+  still charged, since it ran.
+- **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
+  the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
+  started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
+  returns the same story.
+- **Model failures** are the usual codes: `422 unreadable_action` when the safety filter blocked the
+  request (offer a rephrase), `422 bad_key`, `503 llm_unavailable`. Nothing is saved or charged.
+
+Hidden parts of the draft (the answer to a major mystery and its clues, NPC secrets and agendas,
+faction plans, what others remember of the character's body that the character doesn't, and anyone
+the character doesn't know of, N7, C6) never appear in these responses.
 
 ## Stories
 
 **Until WS3's turn graph lands,** the backend still serves today's endpoints with today's shapes, so
 the current app keeps working: `POST /v1/stories` with `{premise, title?}` returns the whole story
 with its opening scene, `POST /v1/stories/{id}/turns` takes `{choice_id}` or `{action}` (plus
-optional `input_mode` and `expected_version`) and returns `{scene, state, version}` as plain JSON,
+optional `input_mode` and `expected_version`, with the same limits as `TurnRequest` below, so the
+app sends one body to both) and returns `{scene, state, version}` as plain JSON,
 and `GET /v1/stories/{id}/memory` returns the raw world state. Stories and turns already carry
 `version` (T10) and errors already use the envelope above. The contract below is the target.
 
@@ -251,7 +292,7 @@ stream starts and come back as ordinary JSON errors. Once the server answers `20
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
-| `error` | `{code, message}` | The turn failed after streaming began (`llm_unavailable`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry. |
+| `error` | `{code, message, details?}` | The turn failed after streaming began: `llm_unavailable`, or `unreadable_action` with the same `details` as the JSON error (a hard limit's `details.category`). Nothing was saved and no credits were charged, so the app discards the partial scene and offers a retry, or a rephrase for `unreadable_action`. |
 
 A turn is all or nothing: the world state, the scene, the ledger entry and the version bump are saved
 together only when the turn completes.
@@ -270,6 +311,7 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing",
        event?: {size: "personal"|"local"|"world", title},        # a W16 event arrived
        image?: SceneImage,
        portraits: [{character_id, name, url?}],                  # known characters in the scene (M4, M5)
+       blocked: bool,                                            # the player blocked this scene (F6)
        created_at}
 
 SceneDetails {steps: [{text,                                    # the step in plain words
@@ -350,6 +392,17 @@ StatusView {character: {name, lines: [string]},
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/v1/stories/{id}/scenes/{turn}/report` | `{category: "sexual"|"minor"|"hate"|"real_person"|"self_harm"|"other", note?, block: bool}` | `204` |
+| POST | `/v1/stories/{id}/scenes/{turn}/report` | `{category: "sexual"|"minor"|"hate"|"real_person"|"self_harm"|"other", note?, block?: bool}` (block defaults to false) | `204` |
 
-`block: true` hides the scene's text in the app at once. Staff review reports in the Django admin.
+- **One report per scene and player.** Reporting a scene again updates the category (and the note,
+  when one is sent) and puts the report back in the review queue. Both answer `204`.
+- **`block: true` hides the scene's text** in the app at once, and from then on the scene comes
+  back with `blocked: true`, so the app shows a placeholder in its place. A block is never undone,
+  even by a later report with `block: false`. The story itself goes on as before.
+- `note` is up to 1000 characters. It is kept with the report, read only by staff handling
+  reports, and never logged.
+- **Errors:** `401`, `403 forbidden` for someone else's story or a rating above the account's
+  limit (F8), `404 not_found` for an unknown story or a turn with no scene, `400
+  validation_error` for an unknown category or a note that is too long.
+- Staff review reports in the Django admin's queue
+  (T16, [ARCHITECTURE.md](ARCHITECTURE.md#safety-ratings-and-reports)).

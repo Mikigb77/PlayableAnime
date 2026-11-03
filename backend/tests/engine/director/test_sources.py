@@ -9,7 +9,7 @@ from engine.contracts import EventSource, Theme
 from engine.director import rules
 from engine.director.deck import CARDS, DECK, CastRole, Tone, draw, playable, story_scale
 from engine.director.sources import cast_for, pick_event
-from engine.director.themes import allowed_themes, is_adult
+from engine.director.themes import allowed_themes
 from engine.rng import SeededRng
 from engine.samples import farm_world, grounded_world
 from engine.state import (
@@ -67,7 +67,10 @@ def test_themes_follow_the_switches_the_rating_and_an_adult_player():
     assert Theme.ROMANCE not in allowed_themes(state, ctx())
     state.player.age = None
     assert Theme.ROMANCE not in allowed_themes(state, ctx())
-    assert not is_adult(17) and is_adult(18) and not is_adult(None)
+    # The one F3 rule, from engine.limits: an adult age recorded and nothing childlike.
+    state.player.age = 34
+    state.player.appearance = "small and childlike, with a child's round face"
+    assert Theme.ROMANCE not in allowed_themes(state, ctx())
 
 
 def test_a_card_is_playable_only_within_the_rating_and_the_switched_on_themes():
