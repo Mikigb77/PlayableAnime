@@ -1,5 +1,7 @@
 # PlayableAnime
 
+> Working name **Lucid Saga**. Requirements for all work: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+
 An AI interactive-story app (working title): pick or write a premise, play through choices or
 free-text actions, and an LLM keeps the story going forever while a memory engine keeps it
 consistent. If a character dies, they stay dead.
@@ -8,7 +10,7 @@ consistent. If a character dies, they stay dead.
 | --- | --- |
 | [`app/`](app/) | Flutter mobile app (iOS and Android, plus web for quick testing) |
 | [`backend/`](backend/) | Python FastAPI story engine for Cloud Run, with Gemini on Vertex AI |
-| [`docs/`](docs/) | [Feature list](docs/FEATURES.md) · [Architecture](docs/ARCHITECTURE.md) |
+| [`docs/`](docs/) | [Requirements](docs/REQUIREMENTS.md) · [Feature list](docs/FEATURES.md) · [Architecture](docs/ARCHITECTURE.md) |
 
 ## Quick start
 
