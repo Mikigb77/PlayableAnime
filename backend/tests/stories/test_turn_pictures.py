@@ -11,7 +11,13 @@ from tests.stories.conftest import opening, play
 OPENING = {
     "narration": "Cold water slops over your sandals as you lift the bucket from the well.",
     "image_prompt": "Lin Feng at the well at dawn, a full bucket in hand.",
-    "update": {"scene_end": {"ended_on": "Zhao blocks the path.", "place_id": "well"}},
+    "update": {
+        "scene_end": {
+            "ended_on": "Zhao blocks the path.",
+            "place_id": "well",
+            "present_ids": ["lin", "zhao"],
+        }
+    },
 }
 LOOK_AROUND = {
     "summary": "Lin looks around.",
@@ -98,10 +104,10 @@ def test_a_face_that_changed_for_good_gets_its_portrait_drawn_once_more(player, 
     first = Image.objects.get(story=story, kind="portrait", subject="lin")
     change(story, seen_already)
 
-    # The narrator records the lost eye in Lin's kept appearance (C9); the next scene redraws him.
+    # The narrator records the lost eye (C9, G17); the next scene redraws him.
     lost_eye = narrated(
         {
-            "characters": [{"id": "lin", "appearance": SCARRED}],
+            "characters": [{"id": "lin", "appearance": SCARRED, "look_change": "lost an eye"}],
             "scene_end": {"ended_on": "Blood runs down Lin's face."},
         }
     )
@@ -114,12 +120,49 @@ def test_a_face_that_changed_for_good_gets_its_portrait_drawn_once_more(player, 
     assert (redrawn.kind, redrawn.subject, redrawn.version) == ("portrait", "lin", 2)
     assert redrawn.pk != first.pk and redrawn.trigger == "look_changed"
     assert redrawn.brief["subject_appearance"] == SCARRED
-    # The same look in other words is no change, and nothing is drawn again.
+    # An appearance written again without a lasting change is none, and nothing is drawn again.
     reworded = narrated(
-        {"characters": [{"id": "lin", "appearance": f"Slight, 16: {SCARRED[11:]}"}]}
+        {"characters": [{"id": "lin", "appearance": "Slight, 16, a scar over an empty socket."}]}
     )
     assert picture_of(act(player, story, model, reworded)) is None
     assert picture_of(act(player, story, model, narrated())) is None
     story.refresh_from_db()
     assert story.state["characters"]["lin"]["look_version"] == 2
     assert Image.objects.filter(story=story, subject="lin").count() == 2
+
+
+def test_a_scene_that_scars_the_person_it_pictures_draws_the_new_look_once(
+    player, make_story, model
+):
+    """The director picks Zhao's first portrait before the scene is told; the scene then scars
+    him. The portrait is drawn with the scar, at his new look, and never redrawn for it."""
+    story = opened(player, make_story, model)
+
+    def zhao_unmet(state: WorldState) -> None:
+        state.director.pictured += ["cover", "place:well", "place:well:v1"]
+
+    change(story, zhao_unmet)
+    scar = narrated(
+        {
+            "characters": [
+                {
+                    "id": "zhao",
+                    "appearance": "19, broad, a fresh scar across his jaw.",
+                    "look_change": "a scar across his jaw",
+                }
+            ]
+        },
+        prompt="Zhao Kun, a fresh scar on his jaw.",
+    )
+
+    met = picture_of(act(player, story, model, scar))
+
+    assert (met.kind, met.subject, met.trigger, met.version) == (
+        "portrait",
+        "zhao",
+        "first_meeting",
+        2,
+    )
+    assert met.brief["subject_appearance"] == "19, broad, a fresh scar across his jaw."
+    assert picture_of(act(player, story, model, narrated())) is None
+    assert Image.objects.filter(story=story, subject="zhao").count() == 1

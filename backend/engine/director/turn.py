@@ -15,8 +15,6 @@ from engine.state.records import Deed, LeadStatus
 from engine.state.sheet import Gain, Health
 from engine.state.world import WorldState
 
-# A place that changed for good gets its picture again (M1, W7).
-LASTING_PLACE_CHANGES = LASTING_PLACE_STATUSES
 GRAVE_HEALTH = (Health.BADLY_WOUNDED, Health.DYING)
 
 
@@ -80,7 +78,7 @@ def read_turn(
     changed_places = tuple(
         (place.id, place.status)
         for place in sorted(state.places.values(), key=lambda p: p.id)
-        if place.status in LASTING_PLACE_CHANGES
+        if place.status in LASTING_PLACE_STATUSES
         and any(
             h.status == place.status.value and h.turn == ctx.turn and h.timeline_id == timeline
             for h in place.status_history

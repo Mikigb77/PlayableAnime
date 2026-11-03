@@ -150,7 +150,7 @@ these functions and saves the result.
 | `engine/timekeeping.py` | How long each kind of action may take, and `advance_clock`, which moves the world clock through pending events in time order and stops at the first that needs the player (W10, W10a). |
 | `engine/apply.py` | `apply_delta`: a proposed `StateDelta` applied with the C1 invariants, on behalf of the narrator or the engine, returning the new state and what it refused. |
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
-| `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and what moves a character's `look_version` on. |
+| `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and the appearance a stated lasting change (`look_change`) leaves a character with. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
@@ -314,10 +314,14 @@ breakthroughs and reveals, the place for places, the deed for a big deed, and th
 arc end or an event. `PictureDecision.version` is the look version of a portrait or place
 (`engine.looks`): a place moves on each time it becomes or stops being ruined or occupied (its
 status history counts them, so a narrated occupation and a chain that burns a hall count the
-same), and a character's `look_version` moves on when `apply` sets an appearance that shows
-something new (the same words in another order, or filler words, don't count; a first appearance
-doesn't either) or an age in a new stage of life (13, 18, 30, 45, 60). The narrator is told to
-write a known character's appearance anew only for a lasting change, never for mud or blood.
+same; damage mends, so it doesn't), and a character's `look_version` moves on when `apply` gets a
+`CharacterChange.look_change` that names something, such as a lost eye or grey hair after years
+(G17). The narrator or the engine proposes it with the whole appearance written again; `apply`
+keeps that appearance if it shows something new, or adds the change to the old one, so the kept
+look always shows it. An appearance written again without a `look_change` never moves the look.
+The director decides before the scene is told, so after the narrator's update
+`pipeline.settle_picture` moves a planned portrait or place to the look the scene left it with and
+marks that look pictured: a first meeting that leaves a scar draws the scar, once.
 
 **The director's memory** lives in `WorldState.director` (`DirectorState`): the stall counters, the
 last action's signature, the drift, the last few sources used, the picture credit and what was

@@ -140,11 +140,11 @@ subject and composition, true to the characters' appearance. Otherwise null.
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
 appearance (an adult gets an age), and changes to known ones: where they are, their condition, \
-how they feel about the player, meeting the player. Reuse the ids given. Change a known \
-character's appearance only when their look changes for good, such as a lost eye, a scar or grey \
-hair, by writing the whole appearance again with the change: never for mud, blood, a disguise or \
-anything else that passes, which is their condition. Never set a death, a cause, rulings, gains \
-or backstory: the engine records those.
+how they feel about the player, meeting the player. Reuse the ids given. When a known \
+character's look changes for good, such as a lost eye, a scar or grey hair after years, say what \
+changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
+disguise or anything else that passes, which is their condition. Never set a death, a cause, \
+rulings, gains or backstory: the engine records those.
 - places, factions, facts, items and leads that this scene established or changed. Never mark a \
 place ruined or a faction destroyed: the engine does that.
 - scene_end: the exact moment this scene stops on, where, who is present and where they stand, \

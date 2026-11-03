@@ -9,10 +9,11 @@ more, and every later scene reuses that picture until it changes again.
   needs no field of its own, and every way a place changes counts the same: a narrated
   occupation, a ruin resolve recorded, a burning hall at the end of a chain (A9). A place that was
   only damaged keeps its picture.
-- **A character** changes for good when the appearance kept for their portrait (C9) shows
-  something new, such as a lost eye or a scar (G17), or their age moves on to another stage of
-  life, such as old age. `engine.apply` counts these in `Character.look_version`. The same look
-  in other words, or an appearance written for the first time, is no change.
+- **A character** changes for good when a change states a lasting difference to how they look
+  (`CharacterChange.look_change`), such as a lost eye, a scar or grey hair with the years (G17).
+  The narrator or the engine proposes it; `engine.apply` decides: the change must name something,
+  the kept appearance (C9) is made to show it, and `Character.look_version` moves on once. An
+  appearance written again without one, in the same words or others, never redraws a portrait.
 """
 
 import re
@@ -22,10 +23,6 @@ from engine.state.records import StatusChange
 
 LASTING_PLACE_STATUSES = frozenset({PlaceStatus.RUINED, PlaceStatus.OCCUPIED})
 _LASTING = frozenset(status.value for status in LASTING_PLACE_STATUSES)
-
-# The first age of each stage of life a portrait shows: child, teenager, young adult, adult,
-# middle age, old age.
-LIFE_STAGES = (13, 18, 30, 45, 60)
 
 # Words that change how an appearance reads but not what it shows.
 _FILLER = frozenset(
@@ -52,31 +49,28 @@ def appearance_words(text: str) -> frozenset[str]:
     return frozenset(w for w in _WORD.findall(text.casefold()) if w not in _FILLER)
 
 
-def appearance_changed(before: str, after: str) -> bool:
-    """Whether a new appearance shows something the kept one didn't, or no longer shows something
-    it did. Writing one for the first time, or the same look in other words, is no change."""
-    old, new = appearance_words(before), appearance_words(after)
-    return bool(old) and bool(new) and old != new
-
-
-def life_stage(age: int | None) -> int | None:
-    if age is None:
+def look_after(
+    character: Character, *, appearance: str | None, look_change: str | None
+) -> str | None:
+    """M5: the appearance a lasting change leaves the character with, or None when the change
+    isn't one. A change that names nothing is none. The appearance written with it is kept when it
+    shows something the old one didn't, or no longer shows something it did; otherwise the change
+    is added to the old appearance, so the kept look always shows it."""
+    change = " ".join((look_change or "").split()).strip(" .")
+    if not appearance_words(change):
         return None
-    return sum(age >= start for start in LIFE_STAGES)
-
-
-def changes_look(character: Character, *, appearance: str | None, age: int | None) -> bool:
-    """Whether setting this appearance or age (None: unchanged) changes the character's look for
-    good (M5)."""
-    if appearance is not None and appearance_changed(character.appearance, appearance):
-        return True
-    before, after = life_stage(character.age), life_stage(age)
-    return before is not None and after is not None and before != after
+    before = character.appearance.strip()
+    written = (appearance or "").strip()
+    if written and appearance_words(written) != appearance_words(before):
+        return written
+    kept = written or before
+    sentence = change[0].upper() + change[1:] + "."
+    return f"{kept} {sentence}" if kept else sentence
 
 
 def place_looks(place: Place) -> str:
-    """How a place looks for its picture: its description, and its state when it isn't
-    thriving, so a ruined or occupied place is drawn as it is now (M1, W7)."""
-    if place.status is PlaceStatus.THRIVING:
+    """How a place looks for its picture: its description, and its state when it is ruined or
+    occupied, so it is drawn as it is now (M1, W7). Damage mends, so a picture doesn't keep it."""
+    if place.status not in LASTING_PLACE_STATUSES:
         return place.description
     return f"{place.description} It is {place.status.value} now.".strip()

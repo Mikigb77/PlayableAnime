@@ -1,16 +1,11 @@
 """M1, M4, M5: a place or a face that changes for good gets a new look version, so its picture is
-drawn once more; anything less keeps the picture it has."""
+drawn once more; anything less keeps the picture it has. A face changes only through a stated
+lasting change (`look_change`), so the narrator rewording an appearance never redraws one."""
 
 from engine.apply import DeltaSource, apply_delta
 from engine.context import TurnContext
 from engine.contracts import CharacterChange, PlaceChange, StateDelta
-from engine.looks import (
-    appearance_changed,
-    changes_look,
-    life_stage,
-    place_looks,
-    place_version,
-)
+from engine.looks import appearance_words, look_after, place_looks, place_version
 from engine.samples import cultivation_world
 from engine.state import Cause, CauseMechanism, CauseRef, Deed, PlaceStatus, WorldState
 
@@ -27,42 +22,50 @@ def look(state: WorldState, character_id: str = "lin", **change) -> WorldState:
     return apply(state, characters=[CharacterChange(id=character_id, **change)])
 
 
-def test_the_same_look_in_other_words_is_no_change():
-    kept = "16, slight, black hair tied back, steady eyes."
-
-    assert not appearance_changed(kept, "Slight and 16, with steady eyes and black hair tied back")
-    assert not appearance_changed("", "16, slight")  # written for the first time
-    assert not appearance_changed(kept, "")
-    assert appearance_changed(kept, "16, slight, black hair tied back, one eye lost.")
-    assert appearance_changed(kept, "16, slight, steady eyes.")  # something no longer shows
-
-
-def test_old_age_is_a_new_stage_of_life_and_a_birthday_is_not():
-    assert [life_stage(age) for age in (None, 8, 16, 25, 40, 50, 70)] == [None, 0, 1, 2, 3, 4, 5]
+def test_only_a_stated_lasting_change_is_a_new_look():
     lin = cultivation_world().characters["lin"]
+    kept = lin.appearance
+    scarred = "16, slight, black hair tied back, a blade scar where his left eye was."
 
-    assert not changes_look(lin, appearance=None, age=17)
-    assert changes_look(lin, appearance=None, age=18)
-    assert not changes_look(lin, appearance=None, age=None)
+    assert look_after(lin, appearance=scarred, look_change=None) is None
+    assert look_after(lin, appearance=None, look_change=" . ") is None
+    assert look_after(lin, appearance=scarred, look_change="lost his left eye") == scarred
+    # Written without the change, or the same look in other words: the change is added to it.
+    same = "Slight and 16, with steady eyes and black hair tied back"
+    assert look_after(lin, appearance=same, look_change="lost his left eye") == (
+        f"{same} Lost his left eye."
+    )
+    assert look_after(lin, appearance=None, look_change="grey at the temples.") == (
+        f"{kept} Grey at the temples."
+    )
+    assert appearance_words(kept) == appearance_words(
+        "Steady eyes, slight; black hair tied back, 16"
+    )
 
 
 def test_a_lasting_change_to_a_face_moves_the_look_on_once():
     state = cultivation_world()
     assert state.characters["lin"].look_version == 1
+    scarred = "16, slight, black hair tied back, one eye lost to a blade."
 
-    state = look(state, appearance="16, slight, black hair tied back, one eye lost to a blade.")
+    state = look(state, appearance=scarred, look_change="lost an eye to Zhao's blade")
     assert state.characters["lin"].look_version == 2
-    # The narrator writes the same look again in other words, or only moves her: no change.
+    assert state.characters["lin"].appearance == scarred
+    # The narrator writes the appearance again, in other words or not, without a change: none.
     state = look(state, appearance="Slight, 16: black hair tied back, one eye lost to a blade.")
+    state = look(state, appearance="16, slight, a patch over one eye, a scar.", age=17)
     state = look(state, location_id="well")
     assert state.characters["lin"].look_version == 2
-    # Years later, both a new stage of life and a new appearance count once together.
-    state = look(state, age=61, appearance="61, stooped, white hair, one eye lost to a blade.")
+    # Years later, old age is a change of its own.
+    state = look(state, age=61, look_change="white-haired and stooped with age")
     assert state.characters["lin"].look_version == 3
+    assert state.characters["lin"].appearance.endswith("White-haired and stooped with age.")
 
 
 def test_a_new_character_starts_at_the_first_look():
-    state = look(cultivation_world(), "mo", name="Elder Mo", appearance="70, white beard", age=70)
+    state = look(
+        cultivation_world(), "mo", name="Elder Mo", appearance="70, white beard", look_change="x y"
+    )
 
     assert state.characters["mo"].look_version == 1
 
@@ -93,5 +96,7 @@ def test_a_place_counts_only_its_changes_for_good():
 def test_a_place_is_drawn_as_it_is_now():
     place = cultivation_world().places["well"]
     assert place_looks(place) == place.description
+    place.status = PlaceStatus.DAMAGED
+    assert place_looks(place) == place.description  # damage mends; the picture doesn't keep it
     place.status = PlaceStatus.OCCUPIED
     assert place_looks(place).endswith("It is occupied now.")

@@ -12,10 +12,13 @@ The pipeline calls three things here:
 - `record(state, plan, ctx)` to write the plan's updates back (`pipeline.record_direction`).
 - `schedule_stretch(state, start_s, end_s, ctx, rng)` from `play_out` before the clock moves
   through a day or more, so a time skip stops early when an event needs a decision (E7).
+- `settle_look(state, plan)` after the narrator's update, so a planned portrait or place is drawn
+  at the look the scene left it with (M4, M5, `pipeline.settle_picture`).
 """
 
 from engine.director.montage import schedule_stretch
+from engine.director.pictures import settle_look
 from engine.director.plan import direct
 from engine.director.record import record
 
-__all__ = ["direct", "record", "schedule_stretch"]
+__all__ = ["direct", "record", "schedule_stretch", "settle_look"]

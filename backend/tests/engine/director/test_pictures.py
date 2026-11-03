@@ -1,9 +1,17 @@
 """M1, M2: code decides when a picture appears, within the story's budget and its setting."""
 
 from engine.context import ImageSetting
-from engine.contracts import EventKind, EventSource, PictureKind, PictureTrigger, PlannedEvent
+from engine.contracts import (
+    DirectorPlan,
+    EventKind,
+    EventSource,
+    PictureDecision,
+    PictureKind,
+    PictureTrigger,
+    PlannedEvent,
+)
 from engine.director import rules
-from engine.director.pictures import decide_picture
+from engine.director.pictures import decide_picture, settle_look
 from engine.samples import cultivation_world, farm_world
 from engine.state import (
     CharacterSheet,
@@ -277,6 +285,7 @@ def test_a_changed_face_waits_until_they_are_seen_and_the_budget_allows():
     state.scene.present_ids = ["tomas"]
     state.characters["ilse"].location_id = "village"
     assert picture(state, 2) is None  # not in the scene
+    assert picture(state, 2, touched=frozenset({"ilse"})) is None  # named in a deed, still away
     state.scene.present_ids = ["tomas", "ilse"]
     state.director.picture_credit = 0
     assert picture(state, 3) is None  # no credit yet
@@ -324,3 +333,43 @@ def test_hidden_strength_revealed_needs_the_player_to_see_it():
     assert picture(world, 3, deeds=(reveal,)) is None
     seen = reveal.model_copy(update={"known_by": ["lin"]})
     assert picture(world, 3, deeds=(seen,)).trigger is PictureTrigger.STRENGTH_REVEALED
+
+
+def plan_with(decision):
+    return DirectorPlan(picture=decision)
+
+
+def test_a_scene_that_changes_the_look_it_pictures_draws_the_new_look_once():
+    """The director decides before the scene is told; the narrator's update can still leave a
+    scar on the person met or occupy the place visited. The plan follows, and so does memory."""
+    state = farm_world()
+    state.director.pictured = ["portrait:tomas", "portrait:tomas:v1", "cover"]
+    meeting = picture(state, 2)
+    assert (meeting.trigger, meeting.subject_id, meeting.version) == (
+        PictureTrigger.FIRST_MEETING,
+        "ilse",
+        1,
+    )
+    state.characters["ilse"].look_version = 2  # the scene's own update scarred her
+
+    settled, plan = settle_look(state, plan_with(meeting))
+
+    assert plan.picture.version == 2 and plan.picture.trigger is PictureTrigger.FIRST_MEETING
+    assert "portrait:ilse:v2" in settled.director.pictured
+    assert "portrait:ilse:v2" not in state.director.pictured  # the input is never changed
+    settled.director.picture_credit = 1
+    assert picture(settled, 3) is not None  # the farm's first visit
+    assert picture(settled, 4) is None  # and no redraw of the look already drawn
+
+
+def test_settling_a_look_that_didnt_move_changes_nothing():
+    state = quiet_farm()
+    change_place(state, "farm", PlaceStatus.OCCUPIED)
+    decision = picture(state, 2)
+    plan = plan_with(decision)
+    assert settle_look(state, plan) == (state, plan)
+    change_place(state, "farm", PlaceStatus.THRIVING, turn=2)  # freed in the same scene
+    settled, moved = settle_look(state, plan)
+    assert moved.picture.version == 3 and "place:farm:v3" in settled.director.pictured
+    scene = plan_with(PictureDecision(kind=PictureKind.SCENE, trigger=PictureTrigger.BIG_DEED))
+    assert settle_look(state, scene) == (state, scene)

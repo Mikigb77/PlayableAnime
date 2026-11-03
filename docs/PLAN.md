@@ -415,10 +415,13 @@ screens.
 - A character who changed for good (a lost eye, old age, G17) gets their portrait redrawn once from
   the earlier one, and the new one is the reference from then on (M5).
 - Both spend the M2 budget and are paid once (M7); the idempotent picture request still holds (M3).
-- **Landed** as `engine/looks.py` (look versions), `Character.look_version` (moved on by `apply`),
-  `PictureDecision.version` and the `look_changed` trigger, and `plan_picture(..., version=)`. A
-  place's version comes from its status history, so anything that changes a place for good must
-  go through `PlaceChange.status` (WS9b's chains do), not only its description.
+- **Landed** as `engine/looks.py` (look versions), `CharacterChange.look_change` and
+  `Character.look_version` (moved on by `apply`), `PictureDecision.version` and the `look_changed`
+  trigger, `pipeline.settle_picture` after the narrator's update, and
+  `plan_picture(..., version=)`. A place's version comes from its status history, so anything that
+  changes a place for good must go through `PlaceChange.status` (WS9b's chains do), not only its
+  description. Resolve can record a maiming the same way, with a `look_change` on the engine's
+  `CharacterChange`.
 
 ### WS9 Resolve: logic first, then dice (wave 2b, after WS2's PR 1)
 

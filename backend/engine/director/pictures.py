@@ -33,7 +33,13 @@ the story still holds.
 from dataclasses import dataclass
 
 from engine.context import ImageSetting, TurnContext
-from engine.contracts.direction import PictureDecision, PictureKind, PictureTrigger, PlannedEvent
+from engine.contracts.direction import (
+    DirectorPlan,
+    PictureDecision,
+    PictureKind,
+    PictureTrigger,
+    PlannedEvent,
+)
 from engine.director import rules
 from engine.director.sources import here
 from engine.director.turn import TurnFacts
@@ -57,13 +63,14 @@ class Candidate:
     version: int | None = None
 
 
-def portrait_keys(character: Character) -> tuple[str, ...]:
+def portrait_keys(character: Character) -> tuple[str, str]:
     """What a portrait marks pictured: the character, and their current look (M4, M5)."""
     return (f"portrait:{character.id}", f"portrait:{character.id}:v{character.look_version}")
 
 
-def place_keys(place: Place) -> tuple[str, ...]:
-    return (f"place:{place.id}", f"place:{place.id}:v{place_version(place)}")
+def place_keys(place: Place, version: int) -> tuple[str, str]:
+    """What a place's picture marks pictured: the place, and its look `version` (M1, M4)."""
+    return (f"place:{place.id}", f"place:{place.id}:v{version}")
 
 
 def _might(state: WorldState, character_id: str) -> int:
@@ -272,9 +279,9 @@ def candidates(
         )
     place_id = here(state)
     place = state.places.get(place_id) if place_id else None
+    version = place_version(place) if place is not None else None
     if place is not None:
-        seen, now = place_keys(place)
-        version = place_version(place)
+        seen, now = place_keys(place, version)
         if seen in pictured and version > 1 and now not in pictured:
             found.append(
                 Candidate(
@@ -330,11 +337,12 @@ def candidates(
                 place.id,
                 f"Arriving at {place.name}.",
                 ONCE,
-                place_keys(place),
-                place_version(place),
+                place_keys(place, version),
+                version,
             )
         )
-    for character_id in dict.fromkeys([player, *present]):
+    in_scene = [player, *state.scene.present_ids, *(event.cast_ids if event else [])]
+    for character_id in dict.fromkeys(in_scene):
         character = state.characters.get(character_id)
         if character is None or not character.alive or character.look_version <= 1:
             continue
@@ -416,3 +424,33 @@ def decide_picture(
         fight.blow_pictured = True  # one decisive blow per fight, pictured or not
     memory.fight = fight if on else None
     return decision
+
+
+def settle_look(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:
+    """M4, M5: the look a planned portrait or place is drawn at, once the narrator's update is in.
+
+    The director decides before the scene is told, so a scene that changes the look it pictures,
+    such as a first meeting that leaves a scar or a first visit as the town falls, draws the new
+    look. The director's memory marks that look drawn too, so the next scene doesn't draw it again.
+    Returns the state and the plan, copied where they change."""
+    decision = plan.picture
+    if decision is None or decision.subject_id is None:
+        return state, plan
+    if decision.kind is PictureKind.PORTRAIT and decision.subject_id in state.characters:
+        character = state.characters[decision.subject_id]
+        version, (_, key) = character.look_version, portrait_keys(character)
+    elif decision.kind is PictureKind.PLACE and decision.subject_id in state.places:
+        place = state.places[decision.subject_id]
+        version = place_version(place)
+        key = place_keys(place, version)[1]
+    else:
+        return state, plan
+    if decision.version == version:
+        return state, plan
+    pictured = list(dict.fromkeys([*state.director.pictured, key]))
+    director = state.director.model_copy(update={"pictured": pictured})
+    picture = decision.model_copy(update={"version": version})
+    return (
+        state.model_copy(update={"director": director}),
+        plan.model_copy(update={"picture": picture}),
+    )

@@ -84,6 +84,12 @@ class CharacterChange(EngineModel):
     prominence: Prominence | None = None
     description: str | None = None
     appearance: str | None = None
+    look_change: str | None = Field(
+        default=None,
+        description="M5, G17: a lasting change to how a known character looks, in a few words, "
+        "such as 'lost his left eye' or 'grey-haired with the years', with the whole appearance "
+        "written again. Never for mud, blood, clothes or anything else that passes.",
+    )
     age: int | None = Field(default=None, ge=0)
     people_id: str | None = None
     location_id: str | None = None
