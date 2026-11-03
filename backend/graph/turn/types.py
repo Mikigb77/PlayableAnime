@@ -142,9 +142,9 @@ class RollDetail(_ApiModel):
 
 
 class BeatDetail(_ApiModel):
-    """R2: a beat whose check found something the scene hadn't established, or came up empty and
-    stopped the step there. Beats that used the body, a power, something carried or the scene
-    are left out: nothing about them needs explaining."""
+    """R2: a beat whose check found something the scene hadn't established, or came up empty
+    (nothing there, or a power or item the character doesn't have) and stopped the step there.
+    Beats whose check simply held are left out: nothing about them needs explaining."""
 
     beat: str
     thing: str
