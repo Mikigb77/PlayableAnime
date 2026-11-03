@@ -203,20 +203,25 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
 - **Creating.** `premise` is 10 to 4000 characters. With `premise_id` alone the starter's own text
   is the premise; with both, the player's text is the premise and the starter's genre still holds.
   An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
-  `mature` (`403 forbidden`, F8).
+  `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
+  word, in the same model call; one with the id of a drafted rule replaces it.
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
   peoples, the factions, deadlines and questions the character knows, and the key people they know.
   At most 10 lines each.
 - **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
-  `gift_strength: "none"`, `difficulty`, `event_frequency` or `rating` needs no model call and costs
-  nothing. Rewriting `world_lines` or `character_lines`, rewriting or adding rules, or choosing a
-  different gift strength redrafts the world or the character to match, in one model call each.
-  Rules the player sets are kept word for word. Removing, rewriting or opening up one of a starter's
-  fixed rules lets the genre's rule go for this story (G7); so does a revision that asks for it.
+  `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
+  model call and costs nothing. Rewriting `world_lines` or `character_lines` (each line up to 300
+  characters), rewriting or adding rules, or choosing a different gift strength redrafts the world
+  or the character to match, in one model call each; lowering `rating` to `teen` redrafts both
+  within Teen (F2). `advanced.rules` is the whole list the player sees, kept word for word.
+  Removing, rewriting or opening up one of a starter's fixed rules lets the genre's rule go for
+  this story (G7), and so does a revision that asks for it; putting it back word for word, still
+  fixed, holds it again.
 - **Versions (T10).** Send `expected_version` with the `version` last seen; a stale one answers
   `409 version_conflict` with `details.current_version`, before any model call. Two saves at once
-  can't overwrite each other either way.
+  can't overwrite each other either way: the later one answers `409` too, and its model call is
+  still charged, since it ran.
 - **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
   the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again

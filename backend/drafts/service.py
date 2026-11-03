@@ -29,6 +29,7 @@ from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import starter
 from graph.drafting.schema import DraftProposal
+from graph.drafting.view import public_text
 from lucid.errors import ApiError, ErrorCode, field_error
 from stories.models import Engine, Story
 
@@ -262,14 +263,18 @@ def save_row(
         updated = Draft.objects.filter(pk=row.pk, version=row.version, story__isnull=True).update(
             **fields, version=F("version") + 1, updated_at=timezone.now()
         )
-        if not updated:
-            current = Draft.objects.filter(pk=row.pk).first()
-            if current is None:
-                raise ApiError(ErrorCode.NOT_FOUND, "Draft not found.")
-            refuse_started(current)
-            raise version_conflict(current.version)
-        if call is not None:
+        if updated and call is not None:
             call.charge()
+    if not updated:
+        if call is not None:
+            # The model ran for this request, so it is paid for even though another save won
+            # (K2).
+            call.charge()
+        current = Draft.objects.filter(pk=row.pk).first()
+        if current is None:
+            raise ApiError(ErrorCode.NOT_FOUND, "Draft not found.")
+        refuse_started(current)
+        raise version_conflict(current.version)
     return Draft.objects.get(pk=row.pk)
 
 
@@ -316,7 +321,7 @@ def story_settings(row: Draft, overrides: dict[str, Any]) -> dict[str, Any]:
 
 
 def _title(state: WorldState, premise: str) -> str:
-    if state.bible.title:
-        return state.bible.title[:200]
+    if title := public_text(state, state.bible.title):
+        return title[:200]
     words = premise.split()
     return " ".join(words[:6]) + ("…" if len(words) > 6 else "")

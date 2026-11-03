@@ -147,6 +147,11 @@ def character_lines(state: WorldState) -> list[str]:
     return _guard(state, lines)[:CHARACTER_LINES]
 
 
+def public_text(state: WorldState, text: str) -> str:
+    """A short public field, such as the title or the tone, or "" if it quotes hidden text."""
+    return text if _guard(state, [text]) else ""
+
+
 def public_rules(state: WorldState) -> list[WorldRule]:
     """G6, G7: the world's rules for the advanced fields, minus any that quotes hidden text."""
     kept = set(_guard(state, (r.text for r in state.bible.rules)))

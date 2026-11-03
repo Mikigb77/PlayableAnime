@@ -8,34 +8,34 @@ forgotten past, or anyone the character doesn't know (N7, C6).
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from ninja import Field, Router, Schema, Status
 from pydantic import model_validator
 
 from drafts import service
-from drafts.models import Difficulty, Draft, EventFrequency
-from engine.context import ImageSetting, NarrationLength
+from drafts.models import Draft
+from engine.context import Difficulty, EventFrequency, ImageSetting, NarrationLength, Rating
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import STARTER_PREMISES, starter
-from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
+from graph.drafting.view import (
+    character_lines,
+    gift_strength,
+    public_rules,
+    public_text,
+    world_lines,
+)
 from lucid import logs
 from lucid.errors import field_error
 
 premises_router = Router(tags=["premises"])
 drafts_router = Router(tags=["drafts"])
 
-RatingIn = Literal["teen", "mature"]
-PhysicsIn = Literal["fun_first", "strict"]
-GiftIn = Literal["none", "small", "rare", "overpowered"]
-DifficultyIn = Literal["story", "balanced", "brutal"]
-FrequencyIn = Literal["calm", "normal", "dramatic"]
-
 MAX_LINES = 20
 MAX_RULES = 12
+Line = Annotated[str, Field(max_length=300)]
 
 
 # Starter premises (S1).
@@ -71,11 +71,11 @@ class RuleIn(Schema):
 class AdvancedIn(Schema):
     """The advanced fields, hidden by default in the app (G1). Fields not sent stay as they are."""
 
-    physics: PhysicsIn | None = None
+    physics: PhysicsMode | None = None
     rules: list[RuleIn] | None = Field(default=None, max_length=MAX_RULES)
-    gift_strength: GiftIn | None = None
-    difficulty: DifficultyIn | None = None
-    event_frequency: FrequencyIn | None = None
+    gift_strength: GiftStrength | None = None
+    difficulty: Difficulty | None = None
+    event_frequency: EventFrequency | None = None
 
 
 class CreateDraftIn(Schema):
@@ -83,7 +83,7 @@ class CreateDraftIn(Schema):
 
     premise: str | None = Field(default=None, min_length=10, max_length=4000)
     premise_id: str | None = Field(default=None, max_length=64)
-    rating: RatingIn
+    rating: Rating
     advanced: AdvancedIn | None = None
 
     @model_validator(mode="after")
@@ -96,10 +96,10 @@ class CreateDraftIn(Schema):
 class PatchDraftIn(Schema):
     """Direct edits (G1, G2). `expected_version` refuses an edit made on a stale copy (T10)."""
 
-    world_lines: list[str] | None = Field(default=None, max_length=MAX_LINES)
-    character_lines: list[str] | None = Field(default=None, max_length=MAX_LINES)
+    world_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
+    character_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
     advanced: AdvancedIn | None = None
-    rating: RatingIn | None = None
+    rating: Rating | None = None
     expected_version: int | None = None
 
 
@@ -116,8 +116,8 @@ class StartSettingsIn(Schema):
 
     narration_length: NarrationLength | None = None
     tone: str | None = Field(default=None, max_length=200)
-    difficulty: DifficultyIn | None = None
-    event_frequency: FrequencyIn | None = None
+    difficulty: Difficulty | None = None
+    event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
 
@@ -133,18 +133,18 @@ class RuleOut(Schema):
 
 
 class AdvancedOut(Schema):
-    physics: PhysicsIn
+    physics: PhysicsMode
     rules: list[RuleOut]
-    gift_strength: GiftIn
-    difficulty: DifficultyIn
-    event_frequency: FrequencyIn
+    gift_strength: GiftStrength
+    difficulty: Difficulty
+    event_frequency: EventFrequency
 
 
 class DraftOut(Schema):
     id: str
     premise: str
     premise_id: str | None
-    rating: RatingIn
+    rating: Rating
     title: str
     genre: str
     tone: str
@@ -171,9 +171,9 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "premise": row.premise,
         "premise_id": row.premise_id or None,
         "rating": row.rating,
-        "title": bible.title,
-        "genre": bible.genre,
-        "tone": bible.tone,
+        "title": public_text(state, bible.title),
+        "genre": public_text(state, bible.genre),
+        "tone": public_text(state, bible.tone),
         "world_lines": world_lines(state),
         "character_lines": character_lines(state),
         "advanced": {
@@ -222,11 +222,10 @@ async def create_draft(request, body: CreateDraftIn):
             premise,
             rating=body.rating,
             premise_id=body.premise_id,
-            physics=PhysicsMode(advanced.physics or PhysicsMode.FUN_FIRST),
-            gift=GiftStrength(advanced.gift_strength) if advanced.gift_strength else None,
+            physics=advanced.physics or PhysicsMode.FUN_FIRST,
+            gift=advanced.gift_strength,
+            rules=_rule_edits(advanced),
         )
-        if (rules := _rule_edits(advanced)) is not None:
-            draft = await chain.edit(call.client, draft, chain.Edits(rules=rules))
         row = await service.create_row(
             request.auth,
             draft,
@@ -254,23 +253,22 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     if body.rating is not None:
         service.check_rating(request.auth, body.rating)
     advanced = body.advanced or AdvancedIn()
-    draft = service.to_chain(row)
-    if body.rating is not None:
-        draft = replace(draft, rating=body.rating)
     plan = chain.plan_edit(
-        draft,
+        service.to_chain(row),
         chain.Edits(
             world_lines=body.world_lines,
             character_lines=body.character_lines,
             rules=_rule_edits(advanced),
-            physics=PhysicsMode(advanced.physics) if advanced.physics else None,
-            gift=GiftStrength(advanced.gift_strength) if advanced.gift_strength else None,
+            physics=advanced.physics,
+            gift=advanced.gift_strength,
+            rating=body.rating,
         ),
     )
     settings = _settings(advanced)
     if not plan.needs_model:
         row = await service.save_row(row, plan.draft, **settings)
-        return draft_out(row)
+        return draft_out(row, plan.draft.state())
+    draft = plan.draft
     async with service.model_call(
         request, rating=draft.rating, action="edit", premise_id=draft.premise_id
     ) as call:

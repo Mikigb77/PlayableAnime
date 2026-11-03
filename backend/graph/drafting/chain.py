@@ -19,12 +19,13 @@ from graph.drafting.prompts import (
     draft_prompt,
     gift_instruction,
     lines_instruction,
+    rating_instruction,
     revise_prompt,
     rules_instruction,
     system_prompt,
 )
 from graph.drafting.schema import CharacterProposal, DraftProposal, RuleP, WorldProposal
-from graph.drafting.view import character_lines, gift_strength, world_lines
+from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
 from graph.llm import ModelClient, Node, Prompt
 
 Target = Literal["world", "character"]
@@ -58,7 +59,12 @@ class Draft:
         )
 
     def state(self) -> WorldState:
-        return assemble(self.proposal.world, self.proposal.character, self.options())
+        """The assembled state, built once per draft. Read it; never change it."""
+        built = self.__dict__.get("_state")
+        if built is None:
+            built = assemble(self.proposal.world, self.proposal.character, self.options())
+            object.__setattr__(self, "_state", built)
+        return built
 
 
 @dataclass(frozen=True)
@@ -79,6 +85,7 @@ class Edits:
     rules: list[RuleEdit] | None = None
     physics: PhysicsMode | None = None
     gift: GiftStrength | None = None
+    rating: str | None = None
 
 
 async def create(
@@ -89,8 +96,11 @@ async def create(
     premise_id: str | None = None,
     physics: PhysicsMode = PhysicsMode.FUN_FIRST,
     gift: GiftStrength | None = None,
+    rules: list[RuleEdit] | None = None,
 ) -> Draft:
-    """The first draft: the world, then the character in it, in one model call."""
+    """The first draft: the world, then the character in it, in one model call. `rules` are
+    rules the player set before drafting: they join the drafted ones word for word, and one with
+    the id of a drafted rule replaces it."""
     draft = Draft(
         premise=premise,
         proposal=DraftProposal(
@@ -104,11 +114,28 @@ async def create(
     )
     prompt = Prompt.build(
         system_prompt(rating),
-        draft_prompt(premise, template=draft.template, gift=_gift_hint(draft)),
+        draft_prompt(
+            premise,
+            template=draft.template,
+            gift=_gift_hint(draft),
+            player_rules=[" ".join(r.text.split()) for r in rules or []],
+        ),
     )
     proposal = await llm.structured(Node.DRAFTER, prompt, DraftProposal)
     world = proposal.world.model_copy(update={"dropped_rule_ids": []})
-    return replace(draft, proposal=proposal.model_copy(update={"world": world}))
+    draft = replace(draft, proposal=proposal.model_copy(update={"world": world}))
+    if rules:
+        current = current_rules(draft.state())
+        chosen = {r.id: r for r in rules if r.id}
+        merged = [chosen.pop(r.id, None) or RuleEdit(r.text, r.fixed, r.id) for r in current]
+        merged += [r for r in rules if not r.id or r.id in chosen]
+        forced = _player_rules(merged, current)
+        draft = replace(
+            draft,
+            proposal=_with_world(draft.proposal, rules=forced),
+            released_rules=_released_by(draft.template, forced),
+        )
+    return draft
 
 
 async def revise(llm: ModelClient, draft: Draft, target: Target, instruction: str) -> Draft:
@@ -134,9 +161,10 @@ class EditPlan:
 
 
 def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
-    """Physics, a rule's fixed flag and `gift: none` are code alone; rewritten summary lines,
-    rewritten rules and a new gift strength need the model to make the world or the character
-    match, in one call for each (`finish_edit`)."""
+    """Physics, a rule's fixed flag, `gift: none` and raising the rating are code alone;
+    rewritten summary lines, rewritten rules, a new gift strength and lowering the rating to Teen
+    need the model to make the world or the character match, in one call for each
+    (`finish_edit`)."""
     state = draft.state()
     world_asks: list[str] = []
     character_asks: list[str] = []
@@ -144,15 +172,28 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
 
     if edits.physics is not None:
         draft = replace(draft, physics=edits.physics)
+    if edits.rating is not None and edits.rating != draft.rating:
+        lowered = edits.rating == "teen"
+        draft = replace(draft, rating=edits.rating)
+        if lowered:
+            # F2: what was drafted for Mature 17+ is redrafted within Teen.
+            world_asks.append(rating_instruction(edits.rating))
+            character_asks.append(rating_instruction(edits.rating))
     if edits.rules is not None:
         current = current_rules(state)
+        # The player edits the rules they can see; a rule the leak guard hides stays (C6).
+        shown = [r for r in current if r.id in {p.id for p in public_rules(state)}]
+        hidden = [r for r in current if r not in shown]
         forced_rules = _player_rules(edits.rules, current)
+        forced_rules += [r for r in hidden if r.id not in {f.id for f in forced_rules}]
         draft = replace(
             draft,
             proposal=_with_world(draft.proposal, rules=forced_rules),
-            released_rules=draft.released_rules | _released_by(draft.template, forced_rules),
+            # The player's list says which of the starter's rules hold, so restoring one word
+            # for word holds it again (G7).
+            released_rules=_released_by(draft.template, forced_rules),
         )
-        if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in current]:
+        if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in shown + hidden]:
             world_asks.append(rules_instruction(forced_rules))
     if edits.world_lines is not None:
         before = world_lines(state)
@@ -184,12 +225,17 @@ async def finish_edit(llm: ModelClient, plan: EditPlan) -> Draft:
     if plan.world_asks:
         draft = await _revise_world(llm, draft, "\n\n".join(plan.world_asks))
         if plan.forced_rules is not None:
-            # A direct edit is the player's own words: the rules stay exactly as written.
+            # A direct edit is the player's own words: the rules stay exactly as written, and
+            # the model can't release a starter rule the player kept.
             about = {r.id: r.about for r in draft.proposal.world.rules}
             rules = [
                 r.model_copy(update={"about": about.get(r.id, r.about)}) for r in plan.forced_rules
             ]
-            draft = replace(draft, proposal=_with_world(draft.proposal, rules=rules))
+            draft = replace(
+                draft,
+                proposal=_with_world(draft.proposal, rules=rules),
+                released_rules=plan.draft.released_rules,
+            )
     if plan.character_asks:
         draft = await _revise_character(llm, draft, "\n\n".join(plan.character_asks))
     return draft

@@ -15,6 +15,7 @@ from graph.drafting.view import (
     gift_strength,
     hidden_texts,
     public_rules,
+    public_text,
     unknown_names,
     world_lines,
 )
@@ -159,3 +160,12 @@ def test_gift_strength_is_the_strongest_gift_held():
 )
 def test_durations_read_as_rough_words(seconds, words):
     assert duration(seconds) == words
+
+
+def test_a_title_that_quotes_a_secret_is_not_shown():
+    world = samples.naples_world()
+    world.title = world.mysteries[0].answer
+    state = _naples(world=world)
+
+    assert public_text(state, state.bible.title) == ""
+    assert public_text(state, state.bible.tone) == "noir"

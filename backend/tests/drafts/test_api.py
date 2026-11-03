@@ -4,19 +4,22 @@ C6, F8, K2, K6, T6, T7, T9, T10)."""
 import json
 import uuid
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from asgiref.sync import async_to_sync
 from django.test import Client
 
+from billing import meter
 from billing.models import CreditHold, EntryKind, LedgerEntry
+from billing.pricing import ModelCall
 from drafts import service
 from drafts.models import Draft
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
 from graph.drafting.view import hidden_texts
-from graph.llm import Block, Fail, Node, Reply
+from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
 from stories.models import Engine, Story
 from tests.conftest import auth_headers
 
@@ -143,21 +146,49 @@ def test_a_players_own_premise_drafts_with_their_choices(player_client, model):
     assert "special gift is small" in model.requests[0].prompt.messages[0].text
 
 
-def test_rules_sent_with_the_premise_shape_the_first_draft(player_client, model):
+def test_rules_sent_with_the_premise_join_the_first_draft(player_client, model):
     draft = _draft(
         player_client,
         {
-            "premise": MY_PREMISE,
+            "premise_id": "naples-vendetta",
             "rating": "teen",
-            "advanced": {"rules": [{"text": "The tide brings one strange thing a day."}]},
+            "advanced": {"rules": [{"text": "Every street has a saint."}]},
         },
     )
 
-    assert len(model.calls(Node.DRAFTER)) == 2  # the draft, then the world matched to the rules
-    rules = [r["text"] for r in draft["advanced"]["rules"]]
-    assert rules[0] == "The tide brings one strange thing a day."
-    # The sample world has nothing extraordinary, so code says so in a fixed rule (G7).
-    assert rules[1:] == ["Grounded: no magic and nothing supernatural, and that won't change."]
+    [request] = model.calls(Node.DRAFTER)
+    assert "- Every street has a saint." in request.prompt.messages[0].text
+    rules = {r["id"]: r for r in draft["advanced"]["rules"]}
+    assert rules["every-street-has-a-saint"]["fixed"] is True
+    # The starter's own rules still hold (G7).
+    assert {"no-supernatural", "human-limits", "omerta"} <= set(rules)
+    assert Draft.objects.get().released_rules == []
+
+
+def test_summary_lines_have_a_length_limit(player_client, model):
+    draft_id = _draft(player_client)["id"]
+
+    response = _patch(player_client, draft_id, {"world_lines": ["x" * 301]})
+
+    assert response.status_code == 400
+    assert _error(response)["code"] == "validation_error"
+
+
+def test_lowering_the_rating_redrafts_within_teen(player_client, model):
+    draft_id = _draft(player_client)["id"]
+    calls = len(model.requests)
+
+    response = _patch(player_client, draft_id, {"rating": "teen"})
+
+    assert response.status_code == 200, response.content
+    assert response.json()["rating"] == "teen"
+    redrafts = model.requests[calls:]
+    assert [r.json_schema["title"] for r in redrafts] == ["WorldProposal", "CharacterProposal"]
+    assert all("Rating: Teen" in r.prompt.system for r in redrafts)
+
+    raised = _patch(player_client, draft_id, {"rating": "mature"})
+    assert raised.json()["rating"] == "mature"
+    assert len(model.requests) == calls + 2  # raising the rating changes nothing drafted
 
 
 @pytest.mark.parametrize(
@@ -405,6 +436,28 @@ def test_a_stale_edit_is_refused_with_the_current_version(player_client, model):
         assert error["details"] == {"current_version": 1}
     assert len(model.requests) == calls
     assert Draft.objects.get(pk=draft_id).difficulty == "balanced"
+
+
+def test_a_save_that_loses_a_race_still_pays_for_its_model_call(player_client, model, player):
+    draft_id = _draft(player_client)["id"]
+    row = Draft.objects.get(pk=draft_id)
+    Draft.objects.filter(pk=draft_id).update(version=3)
+    telemetry = TurnTelemetry()
+    telemetry.calls.append(ModelCall(model="gemini-3.5-flash", cost_usd=Decimal("0.01")))
+    call = service.ModelCall(
+        client=None,
+        ticket=meter.start(player, meter.DRAFT),
+        telemetry=telemetry,
+        action="revise",
+        premise_id=None,
+    )
+
+    with pytest.raises(service.ApiError) as raised:
+        async_to_sync(service.save_row)(row, service.to_chain(row), call)
+
+    assert raised.value.code == "version_conflict"
+    assert LedgerEntry.objects.filter(user=player, kind=EntryKind.DRAFT).count() == 2
+    assert not CreditHold.objects.exists()
 
 
 def test_a_save_over_a_newer_draft_is_refused(player_client, model):

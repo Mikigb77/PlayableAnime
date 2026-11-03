@@ -2,6 +2,7 @@
 G7, G22). One model call for a draft, one per revision, none for edits code can make alone."""
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -313,3 +314,98 @@ def test_a_draft_round_trips_through_json():
     again = DraftProposal.model_validate(draft.proposal.model_dump(mode="json"))
 
     assert again == draft.proposal
+
+
+# What the review of the first version found.
+
+
+def test_rules_set_before_drafting_join_the_drafted_ones_in_one_call(fake, llm):
+    fake.script(Node.DRAFTER, Reply(json=samples.naples()))
+
+    draft = run(
+        chain.create(
+            llm,
+            samples.NAPLES_PREMISE,
+            rating="teen",
+            premise_id="naples-vendetta",
+            rules=[
+                chain.RuleEdit(text="Every street has a saint.", fixed=False),
+                chain.RuleEdit(id="omerta", text="Nobody talks, ever.", fixed=True),
+            ],
+        )
+    )
+
+    assert len(fake.requests) == 1
+    assert "- Every street has a saint." in _prompt_text(fake.requests[0])
+    rules = {r.id: (r.text, r.fixed) for r in draft.state().bible.rules}
+    assert rules["omerta"] == ("Nobody talks, ever.", True)
+    assert rules["every-street-has-a-saint"] == ("Every street has a saint.", False)
+    assert {"no-supernatural", "human-limits"} <= set(rules)
+    assert draft.released_rules == frozenset()
+
+
+def test_the_model_cant_release_a_starter_rule_the_player_kept(fake, llm):
+    draft = _naples_draft()
+    world = samples.naples_world()
+    world.dropped_rule_ids = ["no-supernatural", "human-limits"]
+    fake.script(Node.DRAFTER, Reply(json=world))
+    rules = [
+        chain.RuleEdit(id=r.id, text=r.text, fixed=r.fixed) for r in public_rules(draft.state())
+    ]
+    rules.append(chain.RuleEdit(text="Every street has a saint.", fixed=False))
+
+    edited = run(chain.edit(llm, draft, chain.Edits(rules=rules)))
+
+    assert edited.released_rules == frozenset()
+    assert edited.state().bible.grounded
+
+
+def test_restoring_a_starter_rule_word_for_word_holds_it_again():
+    draft = _naples_draft()
+    rules = public_rules(draft.state())
+    without = [chain.RuleEdit(id=r.id, text=r.text, fixed=r.fixed) for r in rules[1:]]
+    released = chain.plan_edit(draft, chain.Edits(rules=without)).draft
+    assert "no-supernatural" in released.released_rules
+
+    restored = chain.plan_edit(
+        released,
+        chain.Edits(rules=[chain.RuleEdit(id=r.id, text=r.text, fixed=r.fixed) for r in rules]),
+    ).draft
+
+    assert restored.released_rules == frozenset()
+
+
+def test_a_rule_the_guard_hides_survives_an_edit_of_the_shown_ones():
+    world = samples.naples_world()
+    world.rules.append(RuleP(id="leak", text=world.mysteries[0].answer, fixed=False))
+    draft = chain.Draft(
+        premise=samples.NAPLES_PREMISE,
+        proposal=DraftProposal(world=world, character=samples.naples_character()),
+    )
+    shown = [
+        chain.RuleEdit(id=r.id, text=r.text, fixed=r.fixed) for r in public_rules(draft.state())
+    ]
+
+    plan = chain.plan_edit(draft, chain.Edits(rules=shown))
+
+    assert not plan.needs_model
+    assert "leak" in {r.id for r in plan.draft.state().bible.rules}
+
+
+def test_lowering_the_rating_redrafts_both_halves_and_raising_it_doesnt():
+    draft = _naples_draft(rating="mature")
+
+    lowered = chain.plan_edit(draft, chain.Edits(rating="teen"))
+    raised = chain.plan_edit(_naples_draft(rating="teen"), chain.Edits(rating="mature"))
+
+    assert lowered.draft.rating == "teen"
+    assert len(lowered.world_asks) == len(lowered.character_asks) == 1
+    assert "Rating: Teen" in lowered.world_asks[0]
+    assert raised.draft.rating == "mature" and not raised.needs_model
+
+
+def test_a_draft_builds_its_state_once():
+    draft = _naples_draft()
+
+    assert draft.state() is draft.state()
+    assert replace(draft, physics=PhysicsMode.STRICT).state() is not draft.state()

@@ -7,43 +7,19 @@ proposal holds hidden truth (mystery answers, secrets, agendas), so it never lea
 """
 
 import uuid
+from enum import StrEnum
 
 from django.conf import settings as django_settings
 from django.db import models
 
+from engine.context import Difficulty, EventFrequency
+from engine.state import GiftStrength, PhysicsMode
 from stories.models import Rating, Story
 
 
-class Physics(models.TextChoices):
-    """A9: fun first by default, or strict for players who want things rougher."""
-
-    FUN_FIRST = "fun_first", "Fun first"
-    STRICT = "strict", "Strict"
-
-
-class GiftStrength(models.TextChoices):
-    """G22."""
-
-    NONE = "none", "None"
-    SMALL = "small", "Small"
-    RARE = "rare", "Rare"
-    OVERPOWERED = "overpowered", "Overpowered"
-
-
-class Difficulty(models.TextChoices):
-    """A5."""
-
-    STORY = "story", "Story"
-    BALANCED = "balanced", "Balanced"
-    BRUTAL = "brutal", "Brutal"
-
-
-class EventFrequency(models.TextChoices):
-    """W16."""
-
-    CALM = "calm", "Calm"
-    NORMAL = "normal", "Normal"
-    DRAMATIC = "dramatic", "Dramatic"
+def _choices(values: type[StrEnum]) -> list[tuple[str, str]]:
+    """Column choices from the engine's own enums, so the two can't drift apart."""
+    return [(v.value, v.value.replace("_", " ").capitalize()) for v in values]
 
 
 class Draft(models.Model):
@@ -58,19 +34,22 @@ class Draft(models.Model):
     rating = models.CharField(max_length=16, choices=Rating.choices)
     # The model's latest proposal: graph.drafting.schema.DraftProposal as JSON.
     proposal = models.JSONField()
-    physics = models.CharField(max_length=16, choices=Physics.choices, default=Physics.FUN_FIRST)
+    # A9: fun first by default, or strict for players who want things rougher.
+    physics = models.CharField(
+        max_length=16, choices=_choices(PhysicsMode), default=PhysicsMode.FUN_FIRST.value
+    )
     # The gift strength the player picked (G22); null keeps the premise's own.
     gift_strength = models.CharField(
-        max_length=16, choices=GiftStrength.choices, null=True, blank=True
+        max_length=16, choices=_choices(GiftStrength), null=True, blank=True
     )
     # The starter template's rules the player let go of while setting up the story (G7).
     released_rules = models.JSONField(default=list, blank=True)
     # Story settings chosen while drafting, copied into the story on start (S6).
     difficulty = models.CharField(
-        max_length=16, choices=Difficulty.choices, default=Difficulty.BALANCED
+        max_length=16, choices=_choices(Difficulty), default=Difficulty.BALANCED.value
     )
     event_frequency = models.CharField(
-        max_length=16, choices=EventFrequency.choices, default=EventFrequency.NORMAL
+        max_length=16, choices=_choices(EventFrequency), default=EventFrequency.NORMAL.value
     )
     # Set when the player starts the story; a started draft can't change. Deleting the story
     # deletes its draft, which holds the story's hidden truth.

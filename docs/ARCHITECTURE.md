@@ -349,14 +349,16 @@ flowchart LR
   W15: at most 8 key characters and 4 factions start active. Clocks get `interval_s` and
   `next_step_s` in world seconds, with no pending events yet.
 - **What the player reads is written by code** (`view.py`) from public fields only: the summary
-  lines, the character lines and the rules. As a last guard, any line or rule that quotes five or
+  lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
   more words of hidden text, or names someone the character doesn't know, is dropped.
 - **Revisions and edits.** `revise(target, instruction)` sends the whole draft, hidden parts
   included, so the change fits the world, and keeps every fixed rule the model doesn't explicitly
   list in `dropped_rule_ids`; a dropped starter rule is released for this story. Direct edits
   (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
-  rewritten summary lines, rewritten rules or a new gift strength, one call for the world and one
-  for the character. Rules the player wrote stay word for word.
+  rewritten summary lines, rewritten rules, a new gift strength or a rating lowered to Teen, one
+  call for the world and one for the character. Rules the player wrote stay word for word, their
+  list decides which starter rules hold, and a rule the leak guard hides from them survives their
+  edit.
 - **Around each model call** (`drafts/service.model_call`): the BYOK headers (S9), the credit meter
   with `meter.DRAFT` (the charge lands in the transaction that saves the draft), the client for the
   draft's rating (F5), the model errors as API errors (T7), and one T5 log line on the `drafts`

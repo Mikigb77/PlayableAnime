@@ -128,10 +128,14 @@ def draft_prompt(
     template: PremiseTemplate | None,
     gift: GiftStrength | None,
     released: frozenset[str] = frozenset(),
+    player_rules: list[str] | None = None,
 ) -> str:
     parts = [f"Premise, in the player's words:\n{premise.strip()}"]
     if block := template_block(template, released):
         parts.append(block)
+    if player_rules:
+        listed = "\n".join(f"- {text}" for text in player_rules)
+        parts.append(f"The player set these rules. Build the world around them:\n{listed}")
     if gift is not None:
         parts.append(GIFTS[gift])
     parts.append("Draft the world, then the player character in it.")
@@ -217,6 +221,13 @@ def rules_instruction(rules: list[RuleP]) -> str:
         f"{listed}\n"
         "Keep these rules word for word with the same ids, list the id of any fixed rule they "
         "remove in dropped_rule_ids, and change the rest of the world so it matches them."
+    )
+
+
+def rating_instruction(rating: str) -> str:
+    return (
+        f"The player changed the story's rating. {RATINGS.get(rating, RATINGS['teen'])} Bring "
+        "anything beyond that within it, and keep everything else."
     )
 
 
