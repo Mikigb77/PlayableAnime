@@ -60,7 +60,7 @@ class _OutOfCreditsSheetState extends ConsumerState<OutOfCreditsSheet> {
     super.initState();
     // The balance shown elsewhere is out of date now.
     Future.microtask(() {
-      if (mounted) ref.invalidate(meProvider);
+      if (mounted) ref.read(meProvider.notifier).refreshQuietly();
     });
   }
 

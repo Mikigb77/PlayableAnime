@@ -7,6 +7,7 @@ import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/features/account/privacy_screen.dart';
 import 'package:playable_anime/features/auth/auth_repository.dart';
+import 'package:playable_anime/features/auth/auth_widgets.dart';
 import 'package:playable_anime/features/auth/birth_date_screen.dart';
 import 'package:playable_anime/features/auth/email_auth_screen.dart';
 import 'package:playable_anime/features/auth/google_auth.dart';
@@ -123,6 +124,18 @@ void main() {
       expect(find.byType(BirthDateScreen), findsOneWidget);
       expect(find.text(l10n.authTooYoung), findsOneWidget);
       expect(store.value, isNull);
+      // A screen reader hears the problem on the field itself.
+      expect(
+        tester.getSemantics(find.byType(BirthDateField)),
+        isSemantics(
+          label: l10n.authBirthDateLabel,
+          value: 'January 15, $year',
+          hint: l10n.authTooYoung,
+          isButton: true,
+          isEnabled: true,
+          hasTapAction: true,
+        ),
+      );
     });
 
     testWidgets('backing out of Google does nothing', (tester) async {

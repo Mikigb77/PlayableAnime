@@ -57,8 +57,10 @@ class FakeAuthState {
   /// Google ID tokens of accounts that already signed in, and their users.
   final google = <String, String>{};
 
-  /// Failed logins per email, for the throttle.
-  final failures = <String, int>{};
+  /// When each email's recent logins failed, for the throttle: 10 in 15 minutes (API.md).
+  final failures = <String, List<DateTime>>{};
+  static const loginWindow = Duration(minutes: 15);
+  static const loginLimit = 10;
 
   final _access = <String, (String userId, DateTime expiresAt)>{};
   final _refresh = <String, String>{};
@@ -163,13 +165,17 @@ void registerAuthRoutes(FakeBackend b) {
 
   b.route('POST', '/v1/auth/login', (r) {
     final email = (r.json['email'] as String? ?? '').trim().toLowerCase();
-    if ((auth.failures[email] ?? 0) >= 10) {
-      throw const FakeError(429, 'rate_limited', 'Too many attempts. Try again later.', {
-        'retry_after_s': 900,
+    final now = b.now();
+    final failed = (auth.failures[email] ?? [])
+      ..removeWhere((at) => now.difference(at) >= FakeAuthState.loginWindow);
+    if (failed.length >= FakeAuthState.loginLimit) {
+      final retry = FakeAuthState.loginWindow - now.difference(failed.first);
+      throw FakeError(429, 'rate_limited', 'Too many attempts. Try again later.', {
+        'retry_after_s': (retry.inMilliseconds / 1000).ceil(),
       });
     }
     if (email.isEmpty || auth.passwords[email] != r.json['password']) {
-      auth.failures.update(email, (n) => n + 1, ifAbsent: () => 1);
+      auth.failures[email] = [...failed, now];
       throw const FakeError(401, 'unauthenticated', 'Wrong email or password.');
     }
     auth.failures.remove(email);
@@ -296,12 +302,14 @@ void registerAuthRoutes(FakeBackend b) {
 /// The `User` object (docs/API.md) for a fake user, with their credit balance.
 JsonMap fakeUserJson(FakeBackend b, String userId) {
   final user = b.data.auth.users[userId]!;
-  final owner = user['role'] == 'owner';
   return {
     for (final e in user.entries)
       if (e.key != 'birth_date') e.key: e.value,
     'max_rating': fakeMaxRating(user['birth_date'] as String?, b.now()),
-    'credits': {'balance_cents': b.data.account.balanceOf(userId), 'unlimited': owner},
+    'credits': {
+      'balance_cents': b.data.account.balanceOf(userId),
+      'unlimited': b.data.account.unlimited.contains(userId),
+    },
   };
 }
 

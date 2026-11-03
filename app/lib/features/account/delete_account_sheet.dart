@@ -55,7 +55,12 @@ class _DeleteAccountSheetState extends ConsumerState<DeleteAccountSheet> {
       final keys = ref.read(byokStoreProvider);
       final auth = ref.read(authRepositoryProvider);
       await ref.read(accountRepositoryProvider).deleteAccount();
-      await keys.clearGeminiKey();
+      // The account is gone now, so signing out must not wait on anything else working.
+      try {
+        await keys.clearGeminiKey();
+      } on Object catch (e) {
+        debugPrint('Clearing the own key after delete failed: ${e.runtimeType}');
+      }
       if (mounted) Navigator.of(context).pop(true);
       await auth.signOut();
     } on ApiException catch (e) {

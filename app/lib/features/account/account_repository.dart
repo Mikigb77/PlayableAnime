@@ -25,7 +25,10 @@ class AccountRepository {
             as JsonMap,
       );
 
-  Future<CreditsHistory> credits({int limit = 100}) async => CreditsHistory.fromJson(
+  /// How many ledger entries the credits page reads (the API allows up to 200).
+  static const creditsPage = 100;
+
+  Future<CreditsHistory> credits({int limit = creditsPage}) async => CreditsHistory.fromJson(
     await _api.get('/v1/me/credits', query: {'limit': '$limit'}) as JsonMap,
   );
 
@@ -77,13 +80,40 @@ class MeController extends AsyncNotifier<AccountUser> {
         _ => null,
       };
 
+  /// Changes started since this controller was built. A reload that overlaps one is dropped, since
+  /// it may carry the values from before the change.
+  var _writes = 0;
+
+  /// Reads the account again while the screen keeps showing what it has.
+  Future<void> reload() async {
+    final writes = _writes;
+    final user = await ref.read(accountRepositoryProvider).me();
+    if (ref.mounted && writes == _writes) state = AsyncData(user);
+  }
+
+  /// Reads the account again in the background, as when the Account tab comes back. A first load
+  /// still on its way is enough, and a failure leaves what is shown.
+  void refreshQuietly() {
+    if (state.isLoading) return;
+    reload().ignore();
+  }
+
+  /// Starts a change: a first load still on its way would land on top of it, so it lands first.
+  Future<void> _beginWrite() async {
+    _writes++;
+    if (state.isLoading) await future.then<void>((_) {}, onError: (Object _) {});
+  }
+
   Future<void> rename(String displayName) async {
+    await _beginWrite();
     final user = await ref.read(accountRepositoryProvider).update(displayName: displayName);
     if (ref.mounted) state = AsyncData(user);
   }
 
   /// Saves one content preference (F7) at once and puts it back if the server refuses it.
   Future<void> updatePrefs(ContentPrefs prefs) async {
+    await _beginWrite();
+    if (!ref.mounted) return;
     final before = current;
     if (before == null) return;
     final changed = {

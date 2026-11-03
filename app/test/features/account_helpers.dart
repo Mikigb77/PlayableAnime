@@ -1,14 +1,23 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/app.dart';
 import 'package:playable_anime/core/api/api_client.dart';
 import 'package:playable_anime/core/api/api_providers.dart';
+import 'package:playable_anime/core/byok_store.dart';
+import 'package:playable_anime/core/fake/fake_account.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
+import 'package:playable_anime/core/fake/fake_drafts.dart';
+import 'package:playable_anime/core/fake/fake_pictures.dart';
+import 'package:playable_anime/core/fake/fake_premises.dart';
+import 'package:playable_anime/core/fake/fake_reports.dart';
+import 'package:playable_anime/core/fake/fake_stories.dart';
+import 'package:playable_anime/core/fake/fake_turns.dart';
 import 'package:playable_anime/core/json.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
@@ -62,6 +71,41 @@ class RecordingExportSaver implements ExportSaver {
   }
 }
 
+/// A device whose secure storage refuses to write or delete, as a locked keychain can.
+class LockedByokStore extends ByokStore {
+  const LockedByokStore(super.userId);
+
+  @override
+  Future<void> saveGeminiKey(String key) async => throw PlatformException(code: 'locked');
+
+  @override
+  Future<void> clearGeminiKey() async => throw PlatformException(code: 'locked');
+}
+
+/// Overrides the key store with [LockedByokStore].
+final lockedKeys = byokStoreProvider.overrideWith(
+  (ref) =>
+      LockedByokStore(ref.watch(sessionProvider.select((s) => s.session?.user['id'] as String?))),
+);
+
+/// Every area of the fake API on [backend]. Routes the test registered first win, so a test can
+/// replace one route and keep the rest.
+FakeBackend withAllRoutes(FakeBackend backend) {
+  for (final register in [
+    registerAuthRoutes,
+    registerAccountRoutes,
+    registerPremiseRoutes,
+    registerDraftRoutes,
+    registerStoryRoutes,
+    registerTurnRoutes,
+    registerPictureRoutes,
+    registerReportRoutes,
+  ]) {
+    register(backend);
+  }
+  return backend;
+}
+
 /// Signs in on [backend] outside the app, as a stored session the app restores at launch.
 Future<Session> storedSession(FakeBackend backend, {String? email, String? password}) async {
   final json =
@@ -81,6 +125,7 @@ Future<void> launchApp(
   GoogleAuth? google,
   ExportSaver? saver,
   Size size = const Size(390, 844),
+  List<Override> overrides = const [],
 }) async {
   usePhone(tester, size: size);
   await tester.pumpWidget(
@@ -93,6 +138,7 @@ Future<void> launchApp(
         speechEngineProvider.overrideWithValue(FakeSpeechEngine()),
         googleAuthProvider.overrideWithValue(google ?? StubGoogleAuth()),
         exportSaverProvider.overrideWithValue(saver ?? RecordingExportSaver()),
+        ...overrides,
       ],
       child: const App(),
     ),

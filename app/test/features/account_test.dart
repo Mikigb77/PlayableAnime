@@ -7,15 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/byok_store.dart';
-import 'package:playable_anime/core/fake/fake_account.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
-import 'package:playable_anime/core/fake/fake_drafts.dart';
-import 'package:playable_anime/core/fake/fake_pictures.dart';
-import 'package:playable_anime/core/fake/fake_premises.dart';
-import 'package:playable_anime/core/fake/fake_reports.dart';
-import 'package:playable_anime/core/fake/fake_stories.dart';
-import 'package:playable_anime/core/fake/fake_turns.dart';
 import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/features/account/account_screen.dart';
@@ -135,20 +128,10 @@ void main() {
 
     testWidgets('a preference the server refuses goes back, with a message', (tester) async {
       // A backend whose PATCH fails, with every other route as usual.
-      backend = FakeBackend(pace: FakePace.instant)
-        ..route('PATCH', '/v1/me', (_) => throw const FakeError(503, 'llm_unavailable', 'x'));
-      for (final register in [
-        registerAuthRoutes,
-        registerAccountRoutes,
-        registerPremiseRoutes,
-        registerDraftRoutes,
-        registerStoryRoutes,
-        registerTurnRoutes,
-        registerPictureRoutes,
-        registerReportRoutes,
-      ]) {
-        register(backend);
-      }
+      backend = withAllRoutes(
+        FakeBackend(pace: FakePace.instant)
+          ..route('PATCH', '/v1/me', (_) => throw const FakeError(503, 'llm_unavailable', 'x')),
+      );
       await openAccount(tester);
       await tapVisible(tester, find.byKey(const Key('account.darkThemes')));
       expect(
@@ -156,6 +139,39 @@ void main() {
         isTrue,
       );
       expect(find.text(l10n.errorLlm), findsOneWidget);
+    });
+
+    testWidgets('a slow reload never undoes a change made while it loads', (tester) async {
+      // GET /v1/me answers with the account as it was when asked, once the test lets it.
+      Completer<void>? gate;
+      backend = withAllRoutes(
+        FakeBackend(pace: FakePace.instant)..route('GET', '/v1/me', (r) async {
+          final asked = fakeUserJson(backend, r.userId!);
+          await gate?.future;
+          return FakeResponse.json(asked);
+        }),
+      );
+      await openAccount(tester);
+      final reads = sent('GET', '/v1/me').length;
+      gate = Completer<void>();
+      await tester.tap(find.text(l10n.navLibrary));
+      await settle(tester);
+      await tester.tap(find.text(l10n.navAccount));
+      await settle(tester);
+      expect(sent('GET', '/v1/me'), hasLength(reads + 1));
+
+      await tapVisible(tester, find.byKey(const Key('account.romance')));
+      gate.complete();
+      await settle(tester);
+      expect(
+        tester.widget<SwitchListTile>(find.byKey(const Key('account.romance'))).value,
+        isFalse,
+      );
+    });
+
+    testWidgets('the first visit reads the account once', (tester) async {
+      await openAccount(tester);
+      expect(sent('GET', '/v1/me'), hasLength(1));
     });
 
     testWidgets('saves and removes your own key, for this account only', (tester) async {
@@ -170,6 +186,19 @@ void main() {
       await tapVisible(tester, find.text(l10n.accountKeyRemove));
       expect(find.byKey(const Key('account.ownKey')), findsOneWidget);
       expect(await container.read(byokStoreProvider).readGeminiKey(), isNull);
+    });
+
+    testWidgets('says so when the device cannot store the key', (tester) async {
+      store.value = await storedSession(backend);
+      await launchApp(tester, backend: backend, store: store, overrides: [lockedKeys]);
+      await tester.tap(find.text(l10n.navAccount));
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const Key('account.ownKey')));
+      await tester.enterText(find.byKey(const Key('account.ownKey')), 'AIza-test-key-9876');
+      await tapVisible(tester, find.byKey(const Key('account.ownKey.save')));
+      expect(find.text(l10n.accountKeyStoreFailed), findsOneWidget);
+      expect(find.text(l10n.accountKeyEnding('9876')), findsNothing);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('exports everything as a JSON file', (tester) async {
@@ -212,6 +241,20 @@ void main() {
       expect(google.signOuts, 1);
       // The key went with the account.
       expect(await const ByokStore(FakeAuthState.demoUserId).readGeminiKey(), isNull);
+    });
+
+    testWidgets('a deleted account signs out even when the key can\'t be cleared', (tester) async {
+      store.value = await storedSession(backend);
+      await launchApp(tester, backend: backend, store: store, overrides: [lockedKeys]);
+      await tester.tap(find.text(l10n.navAccount));
+      await settle(tester);
+      await tapVisible(tester, find.byKey(const Key('account.delete')));
+      await tester.enterText(find.byKey(const Key('delete.confirm')), l10n.deleteWord);
+      await settle(tester, frames: 2);
+      await tapVisible(tester, find.byKey(const Key('delete.submit')));
+      expect(sent('DELETE', '/v1/me'), hasLength(1));
+      expect(find.byType(WelcomeScreen), findsOneWidget);
+      expect(store.value, isNull);
     });
 
     testWidgets('signing out forgets the Google account too', (tester) async {

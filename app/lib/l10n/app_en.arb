@@ -222,6 +222,10 @@
       }
     }
   },
+  "accountKeyStoreFailed": "This device couldn't store the change to your key. Try again.",
+  "@accountKeyStoreFailed": {
+    "description": "Shown when the device's secure storage refuses to save or remove the player's own key."
+  },
   "accountKeyHelper": "Create one in Google AI Studio. A free-tier key can't make pictures.",
   "accountKeyShow": "Show key",
   "accountKeyHide": "Hide key",

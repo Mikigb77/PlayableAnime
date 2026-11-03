@@ -39,7 +39,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (visible && !_visible) {
       _visible = true;
       Future.microtask(() {
-        if (mounted) ref.invalidate(meProvider);
+        if (mounted) ref.read(meProvider.notifier).refreshQuietly();
       });
     } else if (!visible) {
       _visible = false;
@@ -112,7 +112,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () => ref.refresh(meProvider.future).then((_) {}, onError: _showError),
+          onRefresh: () => ref.read(meProvider.notifier).reload().then((_) {}, onError: _showError),
           child: ListView(
             padding: const EdgeInsets.only(bottom: Space.xxxl),
             children: [

@@ -70,8 +70,9 @@ class TestTokens implements TokenSource {
 /// An [ApiClient] on a fresh fake backend that answers at once.
 ({ApiClient api, FakeBackend backend, TestTokens tokens}) fakeApi({
   FakePace pace = FakePace.instant,
+  DateTime Function()? clock,
 }) {
-  final backend = FakeBackend.standard(pace: pace);
+  final backend = FakeBackend.standard(pace: pace, clock: clock);
   final tokens = TestTokens();
   final api = ApiClient(baseUrl: FakeBackend.baseUrl, httpClient: backend, tokens: tokens);
   return (api: api, backend: backend, tokens: tokens);

@@ -107,6 +107,9 @@ void registerAccountRoutes(FakeBackend b) {
 
   b.route('DELETE', '/v1/me', (r) {
     final userId = r.userId!;
+    final storyIds = {for (final story in b.data.stories.ownedBy(userId)) story.id};
+    b.data.reports.removeWhere((report) => storyIds.contains(report['story_id']));
+    b.data.pictures.charged.removeWhere((key) => storyIds.any((id) => key.startsWith('$id-')));
     b.data.stories.deleteAllOf(userId);
     b.data.account.delete(userId);
     b.data.auth.delete(userId);

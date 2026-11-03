@@ -120,20 +120,32 @@ void main() {
   });
 
   group('login', () {
-    test('ten wrong passwords for one email are rate limited', () async {
+    test('ten wrong passwords in 15 minutes for one email are rate limited', () async {
+      var now = DateTime(2026, 11, 3, 12);
+      final fake = fakeApi(clock: () => now);
+      Future<JsonMap> logIn(String password) async =>
+          await fake.api.post('/v1/auth/login', {
+                'email': FakeAuthState.demoEmail,
+                'password': password,
+              }, authenticated: false)
+              as JsonMap;
+
       for (var i = 0; i < 10; i++) {
-        await expectLater(
-          post('/v1/auth/login', {'email': FakeAuthState.demoEmail, 'password': 'nope'}),
-          throwsA(apiError(ApiErrorCode.unauthenticated)),
-        );
+        await expectLater(logIn('nope'), throwsA(apiError(ApiErrorCode.unauthenticated)));
+        now = now.add(const Duration(seconds: 30));
       }
       await expectLater(
-        post('/v1/auth/login', {
-          'email': FakeAuthState.demoEmail,
-          'password': FakeAuthState.demoPassword,
-        }),
-        throwsA(apiError(ApiErrorCode.rateLimited)),
+        logIn(FakeAuthState.demoPassword),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', ApiErrorCode.rateLimited)
+              .having((e) => e.details['retry_after_s'], 'retry_after_s', 600),
+        ),
       );
+
+      // Once the first failure is 15 minutes old, the right password works again.
+      now = DateTime(2026, 11, 3, 12, 15);
+      expect((await logIn(FakeAuthState.demoPassword))['user'], isNotNull);
     });
   });
 
@@ -316,6 +328,7 @@ void main() {
 
     test('the demo account comes back fresh after it is deleted', () async {
       await api.patch('/v1/me', {'display_name': 'Changed'});
+      await api.post('/v1/stories/story_ninth_peak/scenes/2/report', {'category': 'other'});
       await api.delete('/v1/me');
       use(
         await post('/v1/auth/login', {
@@ -326,6 +339,8 @@ void main() {
       final me = await api.get('/v1/me') as JsonMap;
       expect(me['display_name'], 'Demo player');
       expect(me['credits'], {'balance_cents': 50, 'unlimited': false});
+      // Nothing of the deleted account carries over, its reports included.
+      expect((await api.get('/v1/me/export') as JsonMap)['reports'], isEmpty);
     });
   });
 }

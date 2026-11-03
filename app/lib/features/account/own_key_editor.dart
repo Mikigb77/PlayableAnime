@@ -27,6 +27,7 @@ class _OwnKeyEditorState extends ConsumerState<OwnKeyEditor> {
   final _key = TextEditingController();
   var _obscure = true;
   var _saving = false;
+  var _failed = false;
 
   @override
   void dispose() {
@@ -37,19 +38,38 @@ class _OwnKeyEditorState extends ConsumerState<OwnKeyEditor> {
   Future<void> _save() async {
     final key = _key.text.trim();
     if (key.isEmpty || _saving) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _failed = false;
+    });
     try {
       await ref.read(byokStoreProvider).saveGeminiKey(key);
-      _key.clear();
-      ref.invalidate(ownKeyProvider);
-      widget.onSaved?.call();
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    } on Object catch (e) {
+      // The device's secure storage refused it; never log the key itself.
+      debugPrint('Saving the own key failed: ${e.runtimeType}');
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _failed = true;
+        });
+      }
+      return;
     }
+    _key.clear();
+    ref.invalidate(ownKeyProvider);
+    if (mounted) setState(() => _saving = false);
+    widget.onSaved?.call();
   }
 
   Future<void> _remove() async {
-    await ref.read(byokStoreProvider).clearGeminiKey();
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final failed = context.l10n.accountKeyStoreFailed;
+    try {
+      await ref.read(byokStoreProvider).clearGeminiKey();
+    } on Object catch (e) {
+      debugPrint('Removing the own key failed: ${e.runtimeType}');
+      messenger?.showSnackBar(SnackBar(content: Text(failed)));
+    }
     ref.invalidate(ownKeyProvider);
   }
 
@@ -79,10 +99,15 @@ class _OwnKeyEditorState extends ConsumerState<OwnKeyEditor> {
       enableSuggestions: false,
       enabled: !_saving,
       onSubmitted: (_) => _save(),
+      onChanged: (_) {
+        if (_failed) setState(() => _failed = false);
+      },
       decoration: InputDecoration(
         labelText: l10n.accountKeyLabel,
         helperText: l10n.accountKeyHelper,
         helperMaxLines: 3,
+        errorText: _failed ? l10n.accountKeyStoreFailed : null,
+        errorMaxLines: 3,
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

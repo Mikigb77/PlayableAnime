@@ -124,6 +124,11 @@ class PluginGoogleAuth implements GoogleAuth {
     } on GoogleSignInException catch (e) {
       if (_backedOut(e)) return null;
       throw GoogleSignInFailure(e.code.name);
+    } on GoogleSignInFailure {
+      rethrow;
+    } on Object catch (e) {
+      // A setup problem, such as a missing client id or URL scheme, arrives as a platform error.
+      throw GoogleSignInFailure(e.runtimeType.toString());
     }
   }
 

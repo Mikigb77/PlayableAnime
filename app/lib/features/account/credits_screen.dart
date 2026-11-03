@@ -63,7 +63,7 @@ class CreditsScreen extends ConsumerWidget {
                     else ...[
                       for (final entry in history.entries)
                         LedgerTile(entry: entry, storyTitle: titles[entry.storyId]),
-                      if (history.entries.length >= 100)
+                      if (history.entries.length >= AccountRepository.creditsPage)
                         Padding(
                           padding: const EdgeInsets.all(Space.gutter),
                           child: Text(

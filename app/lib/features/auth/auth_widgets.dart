@@ -216,6 +216,10 @@ class BirthDateField extends StatelessWidget {
       button: true,
       label: l10n.authBirthDateLabel,
       value: text,
+      hint: errorText ?? l10n.authBirthDateHelper,
+      enabled: enabled,
+      // The field's own semantics are left out, so the tap is given here.
+      onTap: enabled ? () => _pick(context) : null,
       excludeSemantics: true,
       child: InkWell(
         onTap: enabled ? () => _pick(context) : null,
