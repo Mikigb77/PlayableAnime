@@ -197,8 +197,24 @@ def test_status_shows_the_sheet_and_the_clock(client, player, make_story):
     status = client.get(f"/v1/stories/{story.pk}/status").json()
 
     assert status["character"]["name"] == "Lin Feng"
+    assert status["character"]["portrait_url"] is None  # not drawn yet
     assert status["clock"]["world_s"] == 0
     assert status["clock"]["label"]
+
+
+def test_status_shows_the_player_characters_portrait_once_drawn(client, player, make_story):
+    story = make_story(player)
+    Image.objects.create(
+        story=story,
+        kind="portrait",
+        subject=story.state["player_id"],
+        status=ImageStatus.READY,
+        storage_key=f"stories/{story.pk}/me.png",
+    )
+
+    status = client.get(f"/v1/stories/{story.pk}/status").json()
+
+    assert status["character"]["portrait_url"].startswith("http://testserver/")
 
 
 def test_stories_from_the_old_narrator_are_not_served(client, player):

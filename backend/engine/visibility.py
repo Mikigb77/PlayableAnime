@@ -118,6 +118,7 @@ class MemoryView(EngineModel):
 class StatusCharacter(EngineModel):
     name: str
     lines: list[str] = Field(default_factory=list)
+    portrait_url: str | None = None
 
 
 class ReputationEntry(EngineModel):

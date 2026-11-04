@@ -109,6 +109,7 @@ lib/
     fake/                   The fake API, one file per area: auth, account, premises, drafts,
                             stories, turns, pictures, reports
     l10n.dart               context.l10n
+    names.dart              Names from the world as headings ("The inner court")
     byok_store.dart         The player's own Gemini key (S9)
   features/
     auth/                   Welcome, Google sign-in, email sign-in and sign-up, birth date (T8, F8)

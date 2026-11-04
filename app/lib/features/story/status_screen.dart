@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n.dart';
+import '../../core/names.dart';
 import '../../design/design.dart';
 import 'story_models.dart';
 import 'story_repository.dart';
@@ -62,12 +63,12 @@ class _StatusView extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  PortraitAvatar(name: status.name, size: 56, ring: true),
+                  PortraitAvatar(name: status.name, url: status.portraitUrl, size: 56, ring: true),
                   const SizedBox(width: Space.lg),
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text(status.name, style: theme.textTheme.headlineMedium),
+                      child: Text(status.name.asHeading, style: theme.textTheme.headlineMedium),
                     ),
                   ),
                 ],
@@ -97,7 +98,7 @@ class _StatusView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name, style: theme.textTheme.titleMedium),
+                          Text(name.asHeading, style: theme.textTheme.titleMedium),
                           const SizedBox(height: Space.xxs),
                           Text(
                             standing,

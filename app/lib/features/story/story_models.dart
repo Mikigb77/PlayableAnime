@@ -539,12 +539,14 @@ class StatusData {
     required this.reputation,
     required this.since,
     this.clockLabel,
+    this.portraitUrl,
   });
 
   factory StatusData.fromJson(Json json) {
     final character = json['character'] as Json? ?? const {};
     return StatusData(
       name: character['name'] as String? ?? '',
+      portraitUrl: character['portrait_url'] as String?,
       lines: _strings(character['lines']),
       reputation: [
         for (final r in json['reputation'] as List? ?? const [])
@@ -563,4 +565,7 @@ class StatusData {
   final List<(String name, String label)> reputation;
   final List<(String text, String ago)> since;
   final String? clockLabel;
+
+  /// The player character's portrait, once it is drawn (M4).
+  final String? portraitUrl;
 }

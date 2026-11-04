@@ -44,7 +44,12 @@ class SceneDetailsView extends StatelessWidget {
         if (details.steps.isNotEmpty) ...[
           SectionLabel(l10n.detailsSteps, padding: label),
           for (final (i, step) in details.steps.indexed) ...[
-            _StepTile(number: i + 1, step: step, last: i == details.steps.length - 1),
+            _StepTile(
+              number: i + 1,
+              step: step,
+              text: scene.stepText(step, l10n),
+              last: i == details.steps.length - 1,
+            ),
             if (stoppedAt == i) const _Stopped(),
           ],
           if (stoppedAt != null && stoppedAt >= details.steps.length) const _Stopped(),
@@ -120,10 +125,16 @@ class OutcomeClassLabel extends StatelessWidget {
 }
 
 class _StepTile extends StatelessWidget {
-  const _StepTile({required this.number, required this.step, required this.last});
+  const _StepTile({
+    required this.number,
+    required this.step,
+    required this.text,
+    required this.last,
+  });
 
   final int number;
   final SceneStep step;
+  final String text;
   final bool last;
 
   @override
@@ -155,7 +166,7 @@ class _StepTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.text, style: theme.textTheme.titleMedium),
+                Text(text, style: theme.textTheme.titleMedium),
                 const SizedBox(height: Space.sm),
                 Wrap(
                   spacing: Space.sm,

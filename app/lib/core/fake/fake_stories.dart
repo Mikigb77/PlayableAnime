@@ -173,6 +173,9 @@ void registerStoryRoutes(FakeBackend b) {
           'Outer disciple of the Azure Cloud Sect, to be expelled at dawn.',
           'Meridians: cut, not shattered, says the voice in the scroll.',
         ],
+        // The seeded story's portrait is drawn; a new one's isn't yet.
+        if (story.id == 'story_ninth_peak')
+          'portrait_url': (_seedMemory['character'] as JsonMap)['portrait_url'],
       },
       'reputation': [
         {'name': 'Azure Cloud Sect', 'label': 'A failure they would rather forget'},

@@ -6,7 +6,7 @@ These read the database and sign picture URLs (`media.lookups`), so call them of
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from django.db.models.fields.json import KeyTransform
 from django.http import HttpRequest
@@ -16,6 +16,7 @@ from engine.state.bible import Calendar
 from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView, clock_view, memory_view, status_view
 from media.lookups import cover_urls, place_urls, portrait_urls, scene_images
+from media.storage import SignedUrl
 from moderation.models import Report
 from stories.models import Scene, Story
 from stories.schemas import (
@@ -168,8 +169,7 @@ def memory_out(story: Story, *, request: HttpRequest | None) -> MemoryView:
         story, [state.player_id, *(person.id for person in view.people)], request=request
     )
     places = place_urls(story, [place.id for place in view.places], request=request)
-    if state.player_id in portraits:
-        view.character.portrait_url = portraits[state.player_id].url
+    view.character.portrait_url = _url(portraits, state.player_id)
     for person in view.people:
         if person.id in portraits:
             person.portrait_url = portraits[person.id].url
@@ -179,5 +179,17 @@ def memory_out(story: Story, *, request: HttpRequest | None) -> MemoryView:
     return view
 
 
-def status_out(story: Story) -> StatusView:
-    return status_view(WorldState.model_validate(story.state))
+def status_out(story: Story, *, request: HttpRequest | None = None) -> StatusView:
+    """The `/status` screen (A8, G16) with the player character's portrait once it is drawn, the
+    same one Memory shows (M4)."""
+    state = WorldState.model_validate(story.state)
+    view = status_view(state)
+    portraits = portrait_urls(story, [state.player_id], request=request)
+    view.character.portrait_url = _url(portraits, state.player_id)
+    return view
+
+
+def _url(pictures: Mapping[str, SignedUrl], subject: str) -> str | None:
+    """The signed URL of `subject`'s drawn picture, or None while it has none."""
+    found = pictures.get(subject)
+    return found.url if found is not None else None

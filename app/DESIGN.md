@@ -156,11 +156,12 @@ failed turn](docs/screenshots/play-screen.jpg)
 ![How it played out (with a cause-and-effect chain, and a beat that made something true), story
 settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 
-- **Where it opens:** at the top of the newest scene, so the player picks up where they left off. A
-  title page with the genre and title sits above the opening scene, and a story whose newest scene
-  is its opening opens on that title page, which stays whole while the opening streams in. Older
-  scenes load above as the player scrolls back, and the page never moves under them. **Latest**
-  appears when they are far back.
+- **Where it opens:** at the top of the newest scene, a little below the bar, so the player picks
+  up where they left off and its first line never sits under the bar. A title page with the genre
+  and title sits above the opening scene, and a story whose newest scene is its opening opens on
+  that title page, which stays whole while the opening streams in. Older scenes load above as the
+  player scrolls back, and the page never moves under them. **Latest** appears when they are far
+  back.
 - **A turn:** the player's action appears at once, then the words stream in under it (S3). The page
   follows the scene as it grows but stops at its top, so it is read from the first word at the
   player's own pace. When it is saved, the time chip and event badge join it without moving the
@@ -171,7 +172,8 @@ settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
   and fade in when painted (M3). A picture that never comes leaves no trace.
 - **Why it went that way** (A8): each scene's "How it played out" sheet lists the steps with their
   outcome class (certain, contested, long shot, ruled out), any roll with its odds and result, the
-  reasons in the serif, where a plan stopped (R6) and the chain of cause and effect.
+  reasons in the serif, where a plan stopped (R6) and the chain of cause and effect. A standing
+  action's one step reads in the app's words too.
 - **When a turn fails** (T7), a calm card takes the scene's place and says what happened in plain
   words, with the way on: retry (counting down after a rate limit), say it another way, or open
   Account. Nothing was saved, and the words the player wrote are never lost. Running out of
@@ -179,7 +181,11 @@ settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 - **The scene menu** illustrates a scene (M2) or reports it (F6). A blocked scene collapses to one
   quiet line in its place.
 - **The app bar** keeps the title and the world's date and time in sight (W10), with `/status`,
-  Memory and the story's settings (S6) a tap away.
+  Memory and the story's settings (S6) a tap away. `/status` and Memory show the player
+  character's portrait once it is drawn (M4), and the initials until then.
+- **Names from the world** start with a capital where they stand as a heading or a card's title
+  (`"the inner court".asHeading` is "The inner court"), and keep the world's own spelling
+  everywhere else.
 
 ## Voice
 

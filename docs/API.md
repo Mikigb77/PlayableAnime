@@ -383,8 +383,11 @@ Picture {status: "ready"|"pending"|"skipped",
 - Errors: `401 unauthenticated` without a valid access token, `404 not_found` for an unknown
   story, scene or picture, `403 forbidden` for another player's story or one above the account's
   rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, `429
-  rate_limited` from the credit meter, after which the picture is still planned, and, for
-  `illustrate` only, `402 out_of_credits`.
+  rate_limited` from the credit meter, and, for `illustrate` only, `402 out_of_credits`. After
+  either, a picture the scene already had is as it was: a planned one still planned, a skipped
+  one still skipped. On a scene that had none, the picture Illustrate planned stays: `skipped`
+  after a `402`, so nothing draws it until the player asks again, and planned after a `429`, for
+  the app to ask again.
 
 ### Memory and status (C6, G16)
 
@@ -401,7 +404,7 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             deeds:    [{id, text, when_label, known_label}],
             threads:  [{id, title, status}]}
 
-StatusView {character: {name, lines: [string]},
+StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10)
