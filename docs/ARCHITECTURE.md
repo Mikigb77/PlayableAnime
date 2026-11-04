@@ -813,12 +813,16 @@ flowchart LR
   included and fields left at their defaults left out, so the change fits the world. A change to
   the world comes back as only what it touches (`schema.WorldChange`): the records it adds or
   changes, in full, the records it removes, and any text or part it alters. `chain.apply_change`
-  merges it in by id (then by name, keeping the old id so references hold), so everything else
-  stays word for word, fixed rules, secrets and clues included. Until 2026-11-04 the model wrote
-  the whole world back, which ran past the drafter's 16,384 output tokens on a real draft and
-  failed every change twice. A rule about a kind the change removes goes with it, and a starter
-  rule the change removes or lists in `dropped_rule_ids` is released for this story. A change to
-  the character still comes back as the whole character, which is small. Direct edits
+  merges it in by id, so everything else stays word for word, fixed rules, secrets and clues
+  included. Until 2026-11-04 the model wrote the whole world back, which ran past the drafter's
+  16,384 output tokens on a real draft and failed every change twice. A fixed rule goes only when
+  the change lists it in `dropped_rule_ids` (G7), and a starter rule among those is released for
+  this story; an open rule also goes when the change removes it, or every kind it is about. A
+  record the model gives a new id by mistake, under the name of one the world has, keeps the old
+  id, and the change's references to the new id move with it. A removal takes the record from the
+  list it names (also in the singular), or else from the one list that holds its id, and from
+  none when several or none do. A text or list the change leaves empty stays as it was. A change
+  to the character still comes back as the whole character, which is small. Direct edits
   (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
   rewritten summary lines, rewritten rules, a new gift strength or a rating lowered to Teen, one
   call for the world and one for the character. Rules the player wrote stay word for word, their

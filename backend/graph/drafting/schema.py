@@ -459,8 +459,9 @@ WORLD_SECTIONS: tuple[WorldSection, ...] = get_args(WorldSection)
 
 
 class RemovalP(Proposal):
-    # Any text passes, so a list named a little off ("people") doesn't fail the whole change;
-    # code reads it (`graph.drafting.chain.apply_change`).
+    # The schema lists the lists, and Gemini keeps to them when it takes the schema. Validation
+    # takes any text all the same: a schema sent in the prompt isn't enforced, and a list named a
+    # little off ("place") shouldn't fail the whole change. Code reads it (`chain.apply_change`).
     section: str = Field(
         description="The list the record is in.", json_schema_extra={"enum": list(WORLD_SECTIONS)}
     )

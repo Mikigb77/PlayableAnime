@@ -343,7 +343,8 @@ def test_races_asked_for_in_plain_words_join_the_world_and_nothing_else_changes(
                     PeopleP(id="demons", name="Demons"),
                 ],
                 removed=[RemovalP(section="extraordinary", id="supernatural")],
-                dropped_rule_ids=["human-limits"],
+                # G7: the starter's fixed rules go only because the change names them.
+                dropped_rule_ids=["no-supernatural", "human-limits"],
             )
         ),
     )

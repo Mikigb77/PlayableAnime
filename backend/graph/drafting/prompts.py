@@ -101,11 +101,11 @@ is. Write each record the change adds or changes in full, in its list: one with 
 the world replaces that record, and one with a new id is added. Put each record the change \
 removes in removed, with its list as section and its id, and remove whatever the change makes \
 untrue: a world that gains vampires loses its "magic or anything supernatural" kind with \
-prevalence none and the rules that say nothing supernatural exists. If the request removes or \
-changes a fixed rule, list that rule's id in dropped_rule_ids. Write the title, genre, tone, era, \
-summary, nature, norms, known facts, calendar, travel, medicine or opening only if the change \
-alters them, each in full. The character stays as it is, so keep what they belong to and where \
-they are unless the change removes it.\
+prevalence none and drops the rules that say nothing supernatural exists. A fixed rule goes only \
+when its id is in dropped_rule_ids, so list every fixed rule the request removes or changes \
+there. Write the title, genre, tone, era, summary, nature, norms, known facts, calendar, travel, \
+medicine or opening only if the change alters them, each in full. The character stays as it is, \
+so keep what they belong to and where they are unless the change removes it.\
 """
 
 
@@ -239,7 +239,8 @@ def rules_instruction(rules: list[RuleP]) -> str:
 def rating_instruction(rating: str) -> str:
     return (
         f"The player changed the story's rating. {RATINGS.get(rating, RATINGS['teen'])} Bring "
-        "anything beyond that within it, and keep everything else."
+        "anything beyond that within it: rewrite in full every part that goes beyond it, hidden "
+        "parts included (secrets, agendas, mystery answers and clues), and keep everything else."
     )
 
 
