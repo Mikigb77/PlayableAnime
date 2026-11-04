@@ -77,7 +77,22 @@ GARBLED_BELOW = 45
 # A hearer believes a rumor at least this accurate, unless they are devoted to the accused.
 BELIEVED_FROM = 50
 
-# --- Reputation and attitudes (W3, W4, W9) -----------------------------------------------------
+# --- Reputation and attitudes (W3, W4, W8, W9, W12) --------------------------------------------
+
+# How much a bystander who learns of harm done turns against the doer, by severity, before any
+# tie to the victims: a brawl barely moves them, a murder chills them, and a massacre turns even
+# a stranger who lived through it against the one who did it (W8, W12).
+BYSTANDER_HOSTILITY = {1: 0, 2: 4, 3: 10, 4: 25, 5: 70}
+BYSTANDER_FEAR = {1: 1, 2: 6, 3: 9, 4: 15, 5: 40}
+# Each step of closeness to the victims (comrade, friend, family) adds this much hostility per
+# point of severity (W4).
+TIE_HOSTILITY = 4
+# A hunted beast's kin, its pack or its mate, lose this much affinity per step of closeness, plus
+# one step, however small the hunt was to anyone else (W4, G24).
+KIN_HOSTILITY = 15
+# A faction shrugs off what its own people do below severity 4, unless it fell on its own people
+# and was at least this serious: a wounding, or one member trying to murder another (W5, W11).
+INSIDE_ANSWER_SEVERITY = 3
 
 # One deed moves esteem or fear by at most this much with one faction or region: reputation
 # changes slowly in both directions (W9).
@@ -140,6 +155,8 @@ CROWD_DELAY_S = (5, 2 * MINUTE)
 DISCOVERY_ATTEMPTS = 4
 DISCOVERY_FADE = 0.7  # each later look finds less
 DISCOVERY_GAP_FACTOR = 3  # and comes later
+# A body left where it fell, with nobody at the place but someone close by to come across it.
+BODY_NEARBY_STRENGTH = 50
 # Victims' ties as a trace: someone misses them (W13).
 TIES_STRENGTH_PER_TIE = 15
 TIES_STRENGTH_MAX = 80

@@ -91,7 +91,10 @@ class CharacterChange(EngineModel):
         "written again. Never for mud, blood, clothes or anything else that passes.",
     )
     age: int | None = Field(default=None, ge=0)
-    people_id: str | None = None
+    people_id: str | None = Field(
+        default=None,
+        description="The bible's id of their people (G23), or of their kind for a beast (G24).",
+    )
     location_id: str | None = None
     status: CharacterStatus | None = None
     death_certainty: DeathCertainty | None = None

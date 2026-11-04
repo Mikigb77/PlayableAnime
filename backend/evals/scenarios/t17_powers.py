@@ -366,11 +366,6 @@ async def light_speed_throw(ev: Eval) -> None:
         answered > 0,
         f"{answered} of the survivors were answered within a month",
         live=False,
-        gap=(
-            "a throw in stopped time leaves only weak traces, so within a month no rumor lays the "
-            "massacre at Lin's door and no kingdom answers him (W13, G22, W5); the unit tests "
-            "check the answers' choice directly"
-        ),
     )
 
 

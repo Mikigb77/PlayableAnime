@@ -728,6 +728,7 @@ def ashwood() -> WorldState:
             id=wolf_id,
             name=name,
             description="A grey wolf with embers for eyes.",
+            people_id="ash-wolf",  # a beast of the bible's kind, not a person (G24)
             location_id=place,
             memberships=[Membership(faction_id="ash-pack", rank="wolf", loyalty=90)],
             sheet=CharacterSheet(axes=PowerAxes(might=might)),

@@ -1,9 +1,12 @@
 """What learning of a deed does to people and factions (W2, W3, W4, W5, W9, W11, E5).
 
 People react only to what they could know (W2): a witness at once, others when a rumor they
-believe reaches them, close ties when word of a death arrives. The same loop runs for every
-actor (E5): an NPC who murders a rival gets grudges and avengers just as the player would. Only
-the player has a reputation with factions and regions (W3), and it changes slowly both ways (W9).
+believe reaches them, close ties when word of a death arrives. How hard they take it follows the
+deed's severity, steeply at the monstrous end (W12): a brawl barely moves a bystander, but
+whoever lived through a massacre turns against the one who did it and remembers (W4, W8). The
+same loop runs for every actor (E5): an NPC who murders a rival gets grudges and avengers just as
+the player would. Only the player has a reputation with factions and regions (W3), and it changes
+slowly both ways (W9).
 """
 
 from engine.base import (
@@ -31,7 +34,15 @@ from engine.world.answers import (
 from engine.world.geography import is_within
 from engine.world.norms import Nature, deed_nature, is_crime
 from engine.world.scheduling import World
-from engine.world.tuning import REPUTATION_STEP_MAX
+from engine.world.telling import account
+from engine.world.tuning import (
+    BYSTANDER_FEAR,
+    BYSTANDER_HOSTILITY,
+    INSIDE_ANSWER_SEVERITY,
+    KIN_HOSTILITY,
+    REPUTATION_STEP_MAX,
+    TIE_HOSTILITY,
+)
 
 
 def _clamp(value: float, low: int, high: int) -> int:
@@ -128,27 +139,39 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
         or character.id == state.player_id
     ):
         return
-    kind = deed_nature(deed)
+    kind = deed_nature(state, deed)
     sev = deed.severity
-    affected = [*deed.victim_ids, *deed.target_ids] if kind is Nature.HARM else deed.target_ids
+    harmful = kind in (Nature.HARM, Nature.HUNT)
+    affected = [*deed.victim_ids, *deed.target_ids] if harmful else deed.target_ids
     tie = max((closeness(state, character, v) for v in affected if v != character.id), default=0)
     affinity = fear = trust = 0.0
     keeps_grudge = False
-    if kind is Nature.HARM:
+    struck = character.id in deed.victim_ids or character.id in deed.target_ids
+    if harmful and struck:
+        # A hunted beast that lives remembers the hunt as any victim would (G24).
+        hurt = max(sev, 2) if kind is Nature.HUNT else sev
         if character.id in deed.victim_ids:
-            affinity, fear, trust = -10 * sev, 6 * sev, -8 * sev
-            keeps_grudge = sev >= 2
-        elif character.id in deed.target_ids:
-            # Aimed at, or in the way, and unharmed: they noticed the swing (A8).
-            affinity, fear, trust = -8 * sev, 4 * sev, -6 * sev
-            keeps_grudge = sev >= 2
-        elif tie:
-            affinity = -sev * (4 + 4 * tie)
-            trust, fear = affinity / 2, 2 * sev
-            keeps_grudge = (tie >= FRIEND and sev >= 3) or sev >= 4
+            affinity, fear, trust = -10 * hurt, 6 * hurt, -8 * hurt
         else:
-            affinity = -2 * sev if sev >= 2 else 0
-            fear = 3 * sev if sev >= 2 else sev
+            # Aimed at, or in the way, and unharmed: they noticed the swing (A8).
+            affinity, fear, trust = -8 * hurt, 4 * hurt, -6 * hurt
+        if kind is Nature.HARM:
+            # Nobody who lived through a monstrous deed takes it more lightly than a bystander.
+            affinity = min(affinity, -BYSTANDER_HOSTILITY[sev])
+            fear = max(fear, BYSTANDER_FEAR[sev])
+        keeps_grudge = hurt >= 2
+    elif kind is Nature.HARM:
+        affinity = -(BYSTANDER_HOSTILITY[sev] + TIE_HOSTILITY * sev * tie)
+        fear, trust = BYSTANDER_FEAR[sev], affinity / 2
+        keeps_grudge = (tie >= FRIEND and sev >= 3) or (tie and sev >= 4) or sev >= 5
+    elif kind is Nature.HUNT:
+        if tie:
+            # The beast's own kin, its pack or its mate, remember the hunter (W4, G24).
+            affinity = -KIN_HOSTILITY * (1 + tie)
+            fear, trust = 3 * sev, affinity / 2
+            keeps_grudge = True
+        elif sev >= 2:
+            fear = 3 * sev  # a show of strength to everyone else
     elif kind is Nature.HELP:
         if character.id in deed.target_ids:
             affinity, trust = 8 * sev, 6 * sev
@@ -161,7 +184,9 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
     elif sev >= 3:
         fear = sev
     grudge = (
-        Grudge(reason=deed.text, deed_id=deed.id, since_turn=w.ctx.turn) if keeps_grudge else None
+        Grudge(reason=account(state, deed), deed_id=deed.id, since_turn=w.ctx.turn)
+        if keeps_grudge
+        else None
     )
     new_grudge = shift_attitude(
         character,
@@ -202,13 +227,18 @@ def adjust_reputation(reputation: Reputation, *, esteem: float = 0, fear: float 
     reputation.fear = _toward(reputation.fear, fear, FEAR_MIN, FEAR_MAX)
 
 
-def reputation_shift(deed: Deed, *, harmed: bool, helped: bool) -> tuple[float, float]:
-    """W3: how a deed moves esteem and fear with those who learn of it."""
-    kind = deed_nature(deed)
+def reputation_shift(
+    state: WorldState, deed: Deed, *, harmed: bool, helped: bool
+) -> tuple[float, float]:
+    """W3: how a deed moves esteem and fear with those who learn of it. A hunt is harm only to
+    those whose beast it was; to anyone else it shows strength (G24)."""
+    kind = deed_nature(state, deed)
     sev = deed.severity
+    if kind in (Nature.HARM, Nature.HUNT) and harmed:
+        return -4 * sev, 3 * sev
+    if kind is Nature.HUNT:
+        return 0, (2 * sev if sev >= 2 else 0)
     if kind is Nature.HARM:
-        if harmed:
-            return -4 * sev, 3 * sev
         return (-sev if sev >= 3 else 0), (2 * sev if sev >= 2 else 0)
     if kind is Nature.HELP:
         return (4 * sev if helped else sev), 0
@@ -255,18 +285,23 @@ def faction_learns(w: World, faction_id: str, deed: Deed, *, weight: float = 1.0
     actor = state.characters.get(deed.actor_id)
     if actor is None or deed.actor_id in faction.leader_ids:
         return  # nobody answers their own leader
-    if in_faction(state, deed.actor_id, faction_id) and deed.severity < 4:
-        # A faction shrugs off most of what its own people do; only the worst turns it on them.
-        return
-    kind = deed_nature(deed)
-    struck = [*deed.victim_ids, *deed.target_ids] if kind is Nature.HARM else []
+    kind = deed_nature(state, deed)
+    struck = [*deed.victim_ids, *deed.target_ids] if kind in (Nature.HARM, Nature.HUNT) else []
     harmed = any(in_faction(state, v, faction_id) for v in struck)
+    if (
+        in_faction(state, deed.actor_id, faction_id)
+        and deed.severity < 4
+        and not (harmed and deed.severity >= INSIDE_ANSWER_SEVERITY)
+    ):
+        # A faction shrugs off most of what its own people do: only the worst turns it on them,
+        # or a serious attempt on one of its own, such as one member trying to murder another.
+        return
     helped = kind is Nature.HELP and any(in_faction(state, t, faction_id) for t in deed.target_ids)
     law = law_at(state, faction_id, deed.place_id)
-    enforcing = law is not None and is_crime(deed)
+    enforcing = law is not None and is_crime(state, deed)
 
     if deed.actor_id == state.player_id:
-        esteem, fear = reputation_shift(deed, harmed=harmed, helped=helped)
+        esteem, fear = reputation_shift(state, deed, harmed=harmed, helped=helped)
         adjust_reputation(faction.player_reputation, esteem=esteem * weight, fear=fear * weight)
         before = faction.threat
         faction.threat = threat_tier(state, faction, deed, harmed=harmed)
@@ -291,7 +326,7 @@ def threat_tier(state: WorldState, faction: Faction, deed: Deed, *, harmed: bool
     worst it has learned the player did, more when done to its own, with its fear, and with a
     power gap it can't match. It doesn't fall on its own."""
     sev = deed.severity
-    harmful = deed_nature(deed) in (Nature.HARM, Nature.DISPLAY)
+    harmful = deed_nature(state, deed) in (Nature.HARM, Nature.HUNT, Nature.DISPLAY)
     base = (sev - 1 if harmed else max(0, sev - 2)) if harmful else 0
     from_fear = faction.player_reputation.fear // 20
     gap = actor_might(state, deed.actor_id) - faction_might(state, faction, excluding=deed.actor_id)
@@ -307,5 +342,7 @@ def region_learns(w: World, region_id: str | None, deed: Deed, *, weight: float 
     if region is None or deed.actor_id != state.player_id:
         return
     local = is_within(state, deed.place_id, region.id)
-    esteem, fear = reputation_shift(deed, harmed=local, helped=local)
+    # A hunt among them harms nobody of theirs (G24).
+    harmed = local and deed_nature(state, deed) is not Nature.HUNT
+    esteem, fear = reputation_shift(state, deed, harmed=harmed, helped=local)
     adjust_reputation(region.player_reputation, esteem=esteem * weight, fear=fear * weight)

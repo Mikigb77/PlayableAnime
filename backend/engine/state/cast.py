@@ -85,7 +85,13 @@ class Character(EngineModel):
         "portrait is drawn once more.",
     )
     age: int | None = Field(default=None, ge=0, description="Years; adults need one (F3).")
-    people_id: str | None = Field(default=None, description="Their race, from the bible (G23).")
+    people_id: str | None = Field(
+        default=None,
+        description=(
+            "Their race (G23), or for a beast or monster its kind (G24), from the bible's"
+            " peoples or creatures."
+        ),
+    )
     status: CharacterStatus = CharacterStatus.ALIVE
     death_certainty: DeathCertainty | None = None
     status_history: list[StatusChange] = Field(default_factory=list)

@@ -33,6 +33,7 @@ from engine.state.world import WorldState
 from engine.world.answers import schedule_revenge
 from engine.world.knowledge import in_faction
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
+from engine.world.telling import account
 from engine.world.tuning import (
     ACTIVE_FACTION_CAP,
     ACTIVE_NPC_CAP,
@@ -160,7 +161,7 @@ def _emerge_avenger(w: World, event: PendingEvent) -> None:
     avenger.sheet.disposition.attitudes[target.id] = Attitude(
         affinity=-80,
         trust=-60,
-        grudges=[Grudge(reason=deed.text, deed_id=deed.id, since_turn=w.ctx.turn)],
+        grudges=[Grudge(reason=account(state, deed), deed_id=deed.id, since_turn=w.ctx.turn)],
     )
     state.characters[avenger.id] = avenger
     schedule_revenge(w, avenger, deed)

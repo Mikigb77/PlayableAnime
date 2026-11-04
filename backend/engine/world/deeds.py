@@ -19,7 +19,7 @@ from engine.world.aftermath import on_attributed
 from engine.world.answers import law_at
 from engine.world.cast import maybe_resistance
 from engine.world.clocks import deed_moves_clocks
-from engine.world.discovery import attributed, schedule_look, ties_trace
+from engine.world.discovery import attributed, body_trace, schedule_look, ties_trace
 from engine.world.geography import ancestors, characters_at, faction_seat, region_of, travel_s
 from engine.world.knowledge import (
     FRIEND,
@@ -28,9 +28,17 @@ from engine.world.knowledge import (
     faction_learns,
     region_learns,
 )
-from engine.world.norms import Nature, assess_severity, canonical, deed_nature, is_crime
+from engine.world.norms import (
+    Nature,
+    assess_severity,
+    canonical,
+    deed_nature,
+    is_beast,
+    is_crime,
+)
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import Kind, World, schedule
+from engine.world.telling import account
 from engine.world.tuning import (
     CALL_S,
     FLEE_S,
@@ -115,8 +123,13 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
         in_stopped_time=proposed.in_stopped_time,
         known_by=list(dict.fromkeys([actor_id, *witnesses])),
     )
-    if visibility is Visibility.SECRET and not any(t.kind is TraceKind.TIES for t in deed.traces):
-        ties = ties_trace(state, deed)
+    if visibility is Visibility.SECRET:
+        body = body_trace(state, deed)
+        if body is not None:
+            deed.traces.append(body)
+        ties = (
+            None if any(t.kind is TraceKind.TIES for t in deed.traces) else ties_trace(state, deed)
+        )
         if ties is not None:
             deed.traces.append(ties)
     state.deeds[deed.id] = deed
@@ -126,17 +139,15 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
 def react(w: World, deed: Deed) -> None:
     """The world's first reactions to a deed, at the moment it is done."""
     state = w.state
-    actor = state.characters.get(deed.actor_id)
     for witness_id in sorted(deed.witness_ids, key=natural_key):
         character_learns(w, witness_id, deed)
 
     if deed.visibility is not Visibility.SECRET:
         public = deed.visibility is Visibility.PUBLIC
         if deed.severity >= RUMOR_MIN_SEVERITY or public:
-            who = actor.name if actor else "Someone"
             start_rumor(
                 w,
-                text=f"{who}: {deed.text}",
+                text=account(state, deed),
                 is_true=True,
                 place_id=deed.place_id,
                 hops=RUMOR_HOPS[deed.severity] + (1 if public else 0),
@@ -172,14 +183,17 @@ def _leaders_who_saw(w: World, deed: Deed) -> None:
 
 def _report_targets(state: WorldState, deed: Deed) -> list[str]:
     """Factions a witness would tell (W11): whoever holds the place, those who keep the law
-    there against a crime, and the witnesses' own factions when it is serious."""
+    there against a crime, and the witnesses' own factions when it is serious. Nobody reports a
+    hunt too small to be news (G24)."""
     targets: list[str] = []
+    if deed_nature(state, deed) is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
+        return targets
     for place_id in ancestors(state, deed.place_id):
         holder = state.places[place_id].controller_id
         if holder in state.factions:
             targets.append(holder)
             break
-    if is_crime(deed):
+    if is_crime(state, deed):
         targets.extend(f for f in sorted(state.factions) if law_at(state, f, deed.place_id))
     if deed.severity >= 2:
         for witness_id in deed.witness_ids:
@@ -192,8 +206,11 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
 def would_report(state: WorldState, witness: Character, faction_id: str, deed: Deed) -> bool:
     """Whether a witness tells this faction (W11): not if they are devoted to the doer, too
     afraid of them (unless it is their own faction), or of a faction at odds with it, such as a
-    crime family's people with the police. The player's character never reports by itself."""
+    crime family's people with the police. The player's character never reports by itself, and
+    a beast tells nobody but its own pack (G24)."""
     if witness.id == state.player_id or not witness.alive:
+        return False
+    if is_beast(state, witness.id) and not witness.member_of(faction_id):
         return False
     toward = witness.sheet.disposition.attitudes.get(deed.actor_id)
     if toward is not None and toward.affinity >= LOYAL_AFFINITY:
@@ -274,7 +291,7 @@ def _mark_places(w: World, deed: Deed) -> None:
     elif (
         deed.visibility is not Visibility.SECRET
         and deed.severity >= 4
-        and deed_nature(deed) is Nature.HARM
+        and deed_nature(state, deed) is Nature.HARM
         and deed.place_id in state.places
     ):
         actor = state.characters.get(deed.actor_id)
