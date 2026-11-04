@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from django.db import IntegrityError, transaction
 
+from engine.contracts import FIRST_PICTURES
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
 from stories.models import ImageKind, Scene, Story
@@ -110,6 +111,7 @@ def _create(story_id, kind: str, subject: str, version: int, trigger: str, brief
                 subject=subject,
                 version=version,
                 trigger=trigger,
+                first_picture=trigger in FIRST_PICTURES,
                 brief=brief.to_json(),
             )
     except IntegrityError:

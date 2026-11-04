@@ -78,6 +78,14 @@ read_value() {
   "$@" 2>/dev/null || true
 }
 
+# Stops unless $1 looks like an OAuth client id (empty is allowed), so a value from infra/config.sh
+# can never break out of the env vars file or a --dart-define.
+check_client_id() {
+  case "$1" in
+    *[!A-Za-z0-9._-]*) die "infra/config.sh has a Google client id with odd characters: $1" ;;
+  esac
+}
+
 # Writes key=value to the step outputs inside GitHub Actions, or to stdout elsewhere.
 set_output() {
   if [ -n "${GITHUB_OUTPUT:-}" ]; then

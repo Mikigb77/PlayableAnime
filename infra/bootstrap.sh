@@ -9,7 +9,8 @@
 #   3. an Artifact Registry repository for the API image, with a cleanup policy
 #   4. the secrets database-url, database-url-direct and django-secret-key (T11)
 #   5. a private bucket in europe-west3 for pictures, with keyless signed URLs (M4, B11)
-#   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11)
+#   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11),
+#      and a custom role that lets it decide who may call the API
 #   7. a monthly budget alert on the project (T9)
 #
 # Run it with --dry-run first to see every command without changing anything.
@@ -31,8 +32,12 @@ Usage: infra/bootstrap.sh [--dry-run] [--yes]
 
 Environment, all optional:
   BUDGET_AMOUNT                        Monthly budget in the billing account's currency (default 25).
-  NEON_PRODUCTION_DATABASE_URL         Pooled URL of Neon's production branch. Asked for if needed.
-  NEON_PRODUCTION_DATABASE_URL_DIRECT  Direct URL of Neon's production branch. Asked for if needed.
+  NEON_PRODUCTION_DATABASE_URL         Pooled URL of Neon's production branch.
+  NEON_PRODUCTION_DATABASE_URL_DIRECT  Direct URL of Neon's production branch.
+
+The Neon URLs are needed only while their secrets have no value. Without these variables the script
+reads them with the Neon CLI (`neonctl`) when it is installed and signed in (`neonctl auth`), and
+asks for them otherwise.
 
 Secrets that already have a value are left alone. docs/DEPLOY.md says how to rotate them.
 EOF
@@ -60,10 +65,11 @@ iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com storage.goog
 cloudresourcemanager.googleapis.com cloudbilling.googleapis.com billingbudgets.googleapis.com
 aiplatform.googleapis.com logging.googleapis.com clouderrorreporting.googleapis.com"
 
-# Only the deploy workflow on main, started by hand, in this repository, gets in (B11).
+# Only the deploy workflow on main of this repository gets in (B11): run by a push to main (a merge
+# of dev, docs/DEPLOY.md) or started by hand there.
 WIF_ISSUER="https://token.actions.githubusercontent.com"
 WIF_ATTRIBUTE_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref"
-WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && assertion.event_name == 'workflow_dispatch' && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
+WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && (assertion.event_name == 'push' || assertion.event_name == 'workflow_dispatch') && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
 WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
 
 BUDGET_AMOUNT="${BUDGET_AMOUNT:-$BUDGET_DEFAULT_AMOUNT}"
@@ -128,6 +134,36 @@ read_secret_input() {
     printf '\n' >&2
   fi
   [ -n "$value" ] || die "$var is empty"
+  printf '%s' "$value"
+}
+
+# Prints a production URL of the given kind (pooled or direct) read with the Neon CLI, or fails
+# when neonctl isn't installed or signed in. Nothing is printed but the URL.
+neonctl_url() {
+  local kind="$1" url args
+  command -v neonctl >/dev/null 2>&1 || return 1
+  args=(connection-string "$NEON_PRODUCTION_BRANCH" --project-id "$NEON_PROJECT_ID")
+  if [ "$kind" = pooled ]; then
+    args+=(--pooled)
+  fi
+  url="$(neonctl "${args[@]}" 2>/dev/null | tail -n 1)" || return 1
+  case "$url" in
+    postgres://* | postgresql://*) printf '%s' "$url" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Prints a production URL: from the environment variable $2, else from neonctl, else asked for.
+neon_production_url() {
+  local kind="$1" var="$2" prompt="$3" value
+  value="${!var:-}"
+  if [ -z "$value" ] && value="$(neonctl_url "$kind")"; then
+    say "Read the $kind URL of Neon's $NEON_PRODUCTION_BRANCH branch with neonctl."
+  fi
+  if [ -z "$value" ]; then
+    # Command substitutions don't inherit set -e, so stop by hand if there is nothing to ask on.
+    value="$(read_secret_input "$var" "$prompt")" || exit 1
+  fi
   printf '%s' "$value"
 }
 
@@ -206,14 +242,14 @@ collect_inputs() {
     return 0
   fi
   if ! secret_has_version "$SECRET_DATABASE_URL"; then
-    DATABASE_URL_VALUE="$(read_secret_input NEON_PRODUCTION_DATABASE_URL \
+    DATABASE_URL_VALUE="$(neon_production_url pooled NEON_PRODUCTION_DATABASE_URL \
       'Neon production pooled URL (host has -pooler)')"
     check_neon_url "$DATABASE_URL_VALUE" pooled "The pooled URL"
   else
     say "$SECRET_DATABASE_URL already has a value; leaving it."
   fi
   if ! secret_has_version "$SECRET_DATABASE_URL_DIRECT"; then
-    DATABASE_URL_DIRECT_VALUE="$(read_secret_input NEON_PRODUCTION_DATABASE_URL_DIRECT \
+    DATABASE_URL_DIRECT_VALUE="$(neon_production_url direct NEON_PRODUCTION_DATABASE_URL_DIRECT \
       'Neon production direct URL (host has no -pooler)')"
     check_neon_url "$DATABASE_URL_DIRECT_VALUE" direct "The direct URL"
   else
@@ -306,11 +342,38 @@ setup_bucket() {
     roles/iam.serviceAccountTokenCreator
 }
 
+# The custom role the deploy uses to add or remove allUsers as the API's invoker: only the
+# permissions to read and set Cloud Run services' IAM policies. Granted on the project, because the
+# service may not exist yet. A role deleted in the last 7 days can't be created again, only
+# undeleted.
+setup_api_access_role() {
+  local name deleted
+  name="$(read_value gcloud iam roles describe "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --format='value(name)')"
+  if [ -z "$name" ]; then
+    run gcloud iam roles create "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+      --title="Lucid Saga API access" \
+      --description="Decide who may call the API: make it public or private again" \
+      --permissions="$API_ACCESS_PERMISSIONS" --stage=GA
+    return 0
+  fi
+  deleted="$(read_value gcloud iam roles describe "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --format='value(deleted)')"
+  case "$deleted" in
+    True | true) run gcloud iam roles undelete "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" ;;
+  esac
+  # Brings an existing role back to exactly these permissions.
+  run gcloud iam roles update "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --permissions="$API_ACCESS_PERMISSIONS"
+}
+
 setup_deployer() {
   step "6a. Deployer service account $DEPLOYER_SA"
   ensure_service_account "$DEPLOYER_SA_NAME" "GitHub Actions deploy"
-  # Deploys services and jobs, without IAM rights over them, so it can't make the API public.
+  # Deploys services and jobs. Its only IAM rights over them come from the custom role below.
   grant_project_role "serviceAccount:$DEPLOYER_SA" roles/run.developer
+  setup_api_access_role
+  grant_project_role "serviceAccount:$DEPLOYER_SA" "$API_ACCESS_ROLE"
   # Calls /health on a private service after a deploy.
   grant_project_role "serviceAccount:$DEPLOYER_SA" roles/run.invoker
   # Runs the service and the migration job as the runtime account.
@@ -409,7 +472,8 @@ Google Cloud is ready for the deploy workflow:
   Pictures bucket             gs://$MEDIA_BUCKET
 
 Next: in GitHub, run Actions > Deploy on main with "dry run" ticked. It signs in, checks this setup
-and builds the image without deploying anything (docs/DEPLOY.md).
+and builds the image without deploying anything. After that, merging dev into main deploys
+(docs/DEPLOY.md).
 EOF
 }
 

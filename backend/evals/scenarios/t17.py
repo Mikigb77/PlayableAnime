@@ -1730,22 +1730,33 @@ async def walk_away(ev: Eval) -> None:
     "t17.first-session",
     suite="T17",
     title="First session",
-    requirements=("K1", "K2", "W16", "N5", "T17"),
+    requirements=("K1", "K2", "M7", "W16", "N5", "T17"),
     passes_when="At least one event the player didn't cause arrives before the credit runs out",
     notes=(
         "Deterministic mode prices the real prompts with fixed answer sizes; live mode prices "
-        "what the models really used."
+        "what the models really used. The pictures the director plans are priced at the "
+        "picture model's price: the first story's first pictures on the house while its "
+        "allowance lasts (K1, M7), the rest from the credit."
     ),
 )
 async def first_session(ev: Eval) -> None:
     from decimal import Decimal
 
-    from billing.pricing import bill
+    from billing.pricing import bill, charge_cents, house_has_room
+    from engine.contracts import FIRST_PICTURES
+    from graph.llm import Node
+    from graph.llm.config import DEFAULT_NODES
+    from graph.llm.pricing import estimate_cost
+    from graph.llm.types import Usage
     from lucid.env import Env
 
-    starter = Decimal(Env.model_fields["starter_credit_cents"].default)
-    margin = Decimal(Env.model_fields["billing_margin"].default)
-    afforded = []
+    defaults = Env.model_fields
+    starter = Decimal(defaults["starter_credit_cents"].default)
+    margin = Decimal(defaults["billing_margin"].default)
+    allowance = Decimal(defaults["house_pictures_cents"].default)
+    model = DEFAULT_NODES[Node.PICTURE].model
+    picture = charge_cents(estimate_cost(model, Usage(500, 0), images=1)[0], margin)
+    afforded, on_the_house = [], []
     for seed in ev.seeds(6, live=1):
         story = ev.story(
             worlds.cultivation_world(),
@@ -1755,8 +1766,8 @@ async def first_session(ev: Eval) -> None:
                 "life's memories and the power to stop time."
             ),
         )
-        spent = Decimal(0)
-        turns = 0
+        spent = house = Decimal(0)
+        turns = free = 0
         arrived = None
         played = await story.open()
         while True:
@@ -1764,6 +1775,14 @@ async def first_session(ev: Eval) -> None:
             if spent > starter:
                 break
             turns += 1
+            drawn = played.plan.picture if played.completed else None
+            if drawn is not None:
+                if drawn.trigger in FIRST_PICTURES and house_has_room(house, 0, allowance):
+                    house += picture
+                    free += 1
+                elif spent + picture <= starter:
+                    spent += picture
+                # Otherwise the picture is skipped and the story goes on (M7).
             if played.event is not None and played.event.source is not EventSource.DUE:
                 arrived = arrived or played.turn
             if turns >= 60:
@@ -1773,9 +1792,11 @@ async def first_session(ev: Eval) -> None:
                 act("practise sword forms", "practise", ActionKind.TASK, HOUR),
             )
         afforded.append(turns)
+        on_the_house.append(free)
         ev.check(
             "an event the player didn't cause arrives before the credit runs out",
             arrived is not None,
             f"{seed}: {turns} turns on the starter credit, no event",
         )
     ev.metric("turns_on_starter_credit", afforded)
+    ev.metric("first_pictures_on_the_house", on_the_house)

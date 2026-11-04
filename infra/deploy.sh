@@ -25,9 +25,12 @@ Usage: infra/deploy.sh <command> [argument]
   migrate IMAGE    Run `python manage.py migrate` as a Cloud Run job over the direct database URL.
   service IMAGE    Deploy IMAGE to the API service and send all traffic to it.
   smoke URL        Check that URL/health answers 200. Uses SMOKE_ID_TOKEN when the service is private.
+  access           Make the API public, or private with API_ACCESS=private.
+  covers           Draw the starter premises' missing covers, as the migration job.
   rollback REV     Send all traffic back to revision REV.
 
 IMAGE is a full image reference, best pinned by digest. DRY_RUN=1 prints instead of running.
+API_ACCESS=private keeps the API private (docs/DEPLOY.md#who-may-call-the-api).
 EOF
 }
 
@@ -96,13 +99,28 @@ else:
 EOF
 }
 
+# Prints the OAuth client ids from infra/config.sh that the API accepts Google ID tokens for (T8),
+# comma-separated, and stops on anything that isn't a client id.
+google_client_ids() {
+  local id ids=''
+  for id in "$GOOGLE_WEB_CLIENT_ID" "$GOOGLE_ANDROID_CLIENT_ID" "$GOOGLE_IOS_CLIENT_ID"; do
+    check_client_id "$id"
+    if [ -n "$id" ]; then
+      ids="${ids:+$ids,}$id"
+    fi
+  done
+  printf '%s' "$ids"
+}
+
 # Writes the env vars file for a deploy: infra/cloudrun/env.yaml plus the values this script owns.
 render_env() {
-  local hosts="$1" out="$TMP_DIR/env-$RANDOM.yaml" origins
-  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
+  local hosts="$1" out="$TMP_DIR/env-$RANDOM.yaml" origins client_ids
+  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|GOOGLE_OAUTH_CLIENT_IDS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
     die "$ENV_FILE sets a variable that deploy.sh owns; remove it from the file"
   fi
   origins="$(printf '%s' "$hosts" | sed 's#\([^,][^,]*\)#https://\1#g')"
+  # Command substitutions don't inherit set -e, so a bad id must stop this one by hand.
+  client_ids="$(google_client_ids)" || exit 1
   {
     cat "$ENV_FILE"
     printf '\n# Added by infra/deploy.sh\n'
@@ -110,6 +128,9 @@ render_env() {
     printf 'MEDIA_BUCKET: "%s"\n' "$MEDIA_BUCKET"
     printf 'ALLOWED_HOSTS: "%s"\n' "$hosts"
     printf 'CSRF_TRUSTED_ORIGINS: "%s"\n' "$origins"
+    if [ -n "$client_ids" ]; then
+      printf 'GOOGLE_OAUTH_CLIENT_IDS: "%s"\n' "$client_ids"
+    fi
   } >"$out"
   if is_dry_run; then
     say "[dry-run] env vars file $out:"
@@ -133,6 +154,8 @@ cmd_github_outputs() {
   set_output registry_host "$REGISTRY_HOST"
   set_output image "$IMAGE"
   set_output service "$SERVICE"
+  set_output api_url "$API_URL"
+  set_output apk_asset "$APK_ASSET"
 }
 
 # Read-only, so it also runs in a dry run: it proves the workflow can sign in and see the setup.
@@ -179,8 +202,8 @@ cmd_service() {
   set_output previous_revision "$previous"
   env_file="$(render_env "$hosts")"
   step "Service $SERVICE in $REGION (T1, B10)"
-  # Min 0 and max 3 instances, 300 s for streamed turns, startup CPU boost. No IAM flags: a deploy
-  # never makes the API public (docs/DEPLOY.md#going-public).
+  # Min 0 and max 3 instances, 300 s for streamed turns, startup CPU boost. No IAM flags: who may
+  # call the API is the access step's job (docs/DEPLOY.md#who-may-call-the-api).
   run gcloud run deploy "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
     --image="$image" --service-account="$RUNTIME_SA" \
     --cpu=1 --memory=1Gi --concurrency=80 --min-instances=0 --max-instances=3 \
@@ -245,6 +268,68 @@ cmd_smoke() {
   done
 }
 
+# Whether allUsers may call the service now, from its IAM policy. Stops when the policy can't be
+# read: taking that as "private" would leave a public API open while saying it is closed.
+public_now() {
+  local policy="$TMP_DIR/policy.json"
+  if is_dry_run; then
+    say "[dry-run] $(quote_cmd gcloud run services get-iam-policy "$SERVICE" \
+      --project="$PROJECT_ID" --region="$REGION" --format=json)"
+    return 0
+  fi
+  gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
+    --format=json >"$policy" || die "can't read who may call $SERVICE, so it may still be public"
+  python3 -I - "$policy" <<'EOF'
+import json
+import sys
+
+with open(sys.argv[1]) as file:
+    policy = json.load(file)
+bindings = policy.get("bindings") or []
+public = any(
+    b.get("role") == "roles/run.invoker" and "allUsers" in (b.get("members") or []) for b in bindings
+)
+sys.exit(0 if public else 1)
+EOF
+}
+
+# Who may call the API (docs/DEPLOY.md#who-may-call-the-api). Public by default, so the app can
+# reach it; every request still needs a signed-in player except /health and sign-in (T8).
+cmd_access() {
+  local access="${API_ACCESS:-public}"
+  case "$access" in
+    public)
+      step "Access: anyone may call $SERVICE; the API checks who is signed in (T8)"
+      run_retry gcloud run services add-iam-policy-binding "$SERVICE" --project="$PROJECT_ID" \
+        --region="$REGION" --member=allUsers --role=roles/run.invoker --format=none
+      ;;
+    private)
+      step "Access: only callers with IAM access may call $SERVICE (API_ACCESS=private)"
+      if public_now; then
+        run gcloud run services remove-iam-policy-binding "$SERVICE" --project="$PROJECT_ID" \
+          --region="$REGION" --member=allUsers --role=roles/run.invoker --format=none
+      else
+        say "The service is already private."
+      fi
+      ;;
+    *) die "API_ACCESS must be public or private, not '$access'" ;;
+  esac
+}
+
+# Draws the starter premises' covers that are missing, as the migration job with other arguments
+# (S1, M4). Covers that exist are skipped, so after the first run this costs only the job's start.
+cmd_covers() {
+  step "Starter covers: job $MIGRATE_JOB runs draw_premise_covers"
+  if ! run gcloud run jobs execute "$MIGRATE_JOB" --project="$PROJECT_ID" --region="$REGION" \
+    --args=manage.py,draw_premise_covers --task-timeout=30m --wait; then
+    say "Some covers weren't drawn; Discover shows the genre's glow for them until the next deploy."
+    say "Its logs: $(quote_cmd gcloud logging read \
+      "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$MIGRATE_JOB\"" \
+      --project="$PROJECT_ID" --freshness=1h --limit=50)"
+    exit 1
+  fi
+}
+
 cmd_rollback() {
   local revision="$1"
   need_arg "$revision" REVISION
@@ -268,6 +353,8 @@ main() {
     migrate) cmd_migrate "${1:-}" ;;
     service) cmd_service "${1:-}" ;;
     smoke) cmd_smoke "${1:-}" ;;
+    access) cmd_access ;;
+    covers) cmd_covers ;;
     rollback) cmd_rollback "${1:-}" ;;
     -h | --help | help) usage ;;
     *)

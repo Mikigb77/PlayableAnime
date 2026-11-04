@@ -2,8 +2,9 @@
 # Runs every gcloud command the scripts can issue against the real gcloud, offline and signed out,
 # to prove that the installed gcloud accepts every command and flag. The commands come from the
 # dry runs and from the calls the scripts make against the fake gcloud on first runs, re-runs and
-# recoveries, which a dry run can't show (update-oidc, undelete, a budget update, the first
-# deploy's second revision, every read). Each must fail on the network, never on its arguments.
+# recoveries, which a dry run can't show (update-oidc, undelete, a role or budget update, the
+# first deploy's second revision, making the API private, every read). Each must fail on the
+# network, never on its arguments.
 # Nothing reaches Google Cloud: gcloud gets an empty configuration and a proxy that refuses every
 # connection.
 #
@@ -35,6 +36,8 @@ image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000
   DRY_RUN=1 "$INFRA/bootstrap.sh" --dry-run
   DRY_RUN=1 "$INFRA/deploy.sh" migrate "$image"
   DRY_RUN=1 "$INFRA/deploy.sh" service "$image"
+  DRY_RUN=1 "$INFRA/deploy.sh" access
+  DRY_RUN=1 "$INFRA/deploy.sh" covers
   DRY_RUN=1 "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
 } 2>&1 | sed -n 's/^\[dry-run\] \(gcloud .*\)$/\1/p' >"$WORK/dry-run-commands"
 
@@ -54,6 +57,9 @@ fake "$INFRA/deploy.sh" preflight
 fake "$INFRA/deploy.sh" migrate "$image"
 fake "$INFRA/deploy.sh" service "$image"
 fake "$INFRA/deploy.sh" service "$image"
+fake "$INFRA/deploy.sh" access
+fake env API_ACCESS=private "$INFRA/deploy.sh" access
+fake "$INFRA/deploy.sh" covers
 fake "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
 cat "$WORK/dry-run-commands" "$state/calls.log" | sort -u >"$WORK/commands"
 

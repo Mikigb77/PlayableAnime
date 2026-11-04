@@ -4,6 +4,12 @@
 set -euo pipefail
 responses="${FAKE_GH_RESPONSES:?FAKE_GH_RESPONSES is not set}"
 printf '%s\n' "$*" >>"${responses}.calls"
+# Keeps a copy of release notes, which the script deletes when it ends.
+previous=''
+for arg in "$@"; do
+  if [ "$previous" = --notes-file ]; then cp "$arg" "${responses}.notes"; fi
+  previous="$arg"
+done
 line="$(head -n 1 "$responses")"
 if [ "$(wc -l <"$responses")" -gt 1 ]; then
   tail -n +2 "$responses" >"$responses.next"

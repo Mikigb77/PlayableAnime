@@ -82,21 +82,25 @@ ExportedReport  {story_id, turn, category, note, block, status: "open"|"actioned
 `amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
 integer. It is positive when credits are added and negative when they are spent, and a balance
 never goes below zero. The owner account (K7) has `unlimited: true`; its ledger still records costs
-at zero charge so T5's numbers stay honest. A turn, draft or picture on the player's own key (K6)
-uses no credits and writes no entry.
+at zero charge so T5's numbers stay honest. A new player's first pictures in their first story
+(the player character's portrait, the cover, first meetings and first visits) are on the house
+while its allowance lasts (K1, M7): each is an `image` entry with `amount_cents: 0`, which the app
+shows as free. A turn, draft or picture on the player's own key (K6) uses no credits and writes no
+entry.
 
 **Credits, rate limits and quotas (K2, K6, T9).** Every request that calls a model (a turn, a
 draft or revision, a picture) is checked before it starts, in this order:
 
-1. A per-user rate limit per minute, on any key, BYOK included: `429 rate_limited` with
-   `details.retry_after_s`. Turns, drafts and pictures each have their own limit.
+1. A per-user rate limit per minute, on any key, BYOK and the owner included: `429 rate_limited`
+   with `details.retry_after_s`. Turns, drafts and pictures each have their own limit.
 2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
-   (ISO 8601, the next midnight UTC). BYOK requests don't count.
+   (ISO 8601, the next midnight UTC). BYOK requests don't count, and the owner (K7) has none.
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
    or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents` and
    `details.available_cents` (less than the balance while another request of the same player is
    running). A planned picture that can't be paid for is `skipped` instead (M7); Illustrate, which
-   the player asks for, answers the `402`.
+   the player asks for, answers the `402`. A first picture the house pays for (K1) needs no
+   credits.
 
 A request that is refused counts against nothing. The real cost is charged when the request
 completes, in the same transaction as what it saved, so a turn that fails or loses a version race

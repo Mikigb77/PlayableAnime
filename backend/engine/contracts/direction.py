@@ -106,6 +106,19 @@ class PictureTrigger(StrEnum):
     COVER = "cover"  # the Library cover
 
 
+# M1: each subject's first picture, drawn once per story and outside the key-scene budget (M2):
+# the player character's portrait, a key NPC's at the first meeting, a place on the first visit
+# and the Library cover. A redraw of a changed place or face (M5) is not one of them.
+FIRST_PICTURES = frozenset(
+    {
+        PictureTrigger.STORY_START,
+        PictureTrigger.FIRST_MEETING,
+        PictureTrigger.FIRST_VISIT,
+        PictureTrigger.COVER,
+    }
+)
+
+
 class PictureDecision(EngineModel):
     """M1, M2. Within the story's budget and its picture setting. The narrator writes an image
     prompt only when this is set."""

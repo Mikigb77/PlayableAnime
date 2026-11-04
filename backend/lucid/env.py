@@ -71,6 +71,10 @@ class Env(BaseSettings):
     # "verified": only a verified account gets it (a Google account at once, an email account
     # when its address is verified), so throwaway emails can't farm it. "all": every account.
     starter_credit_policy: Literal["verified", "all"] = "verified"
+    # K1, M7: in an account's first story the house pays for the once-only pictures (the player
+    # character's portrait, the cover, first meetings and first visits), up to this many cents
+    # per account, priced as the player would have paid. 0 turns it off.
+    house_pictures_cents: Decimal = Field(default=Decimal(30), ge=0)
     # The margin on our model cost (K2): 0.5 charges the cost plus half.
     billing_margin: Decimal = Field(default=Decimal("0.5"), ge=0)
     # T9: turns per user per minute, BYOK included (K6), and turns on our key per user per UTC

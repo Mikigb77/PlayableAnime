@@ -8,8 +8,9 @@ from django.core.management import CommandError, call_command
 from django.db import DatabaseError, IntegrityError, transaction
 
 from accounts.models import User
-from billing import credits
+from billing import credits, meter
 from billing.models import CreditAccount, CreditHold, EntryKind, LedgerEntry, UsageCounter
+from tests.billing.conftest import call
 
 pytestmark = pytest.mark.django_db
 
@@ -141,6 +142,19 @@ def test_check_ledger_reports_balances_that_dont_match(player, make_user):
     with pytest.raises(CommandError, match="1 of 2"):
         call_command("check_ledger", stdout=StringIO(), stderr=err)
     assert str(player.pk) in err.getvalue()
+
+
+def test_check_ledger_reports_house_pictures_that_dont_match(player):
+    """K1, M7: what the house paid for first pictures is kept on the account and in the ledger."""
+    ticket = meter.start(player, meter.IMAGE, house=True)
+    meter.charge_image(ticket, [call("0.034", images=1)])
+    call_command("check_ledger", stdout=StringIO())
+
+    CreditAccount.objects.filter(user=player).update(house_pictures_cents=0)
+    err = StringIO()
+    with pytest.raises(CommandError, match="1 of 1"):
+        call_command("check_ledger", stdout=StringIO(), stderr=err)
+    assert "house pictures 0.0000, ledger 5.1000" in err.getvalue()
 
 
 def test_deleting_the_account_deletes_its_credits_ledger_holds_and_counters(player):

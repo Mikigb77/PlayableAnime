@@ -1016,6 +1016,23 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   transaction that creates the user. A verified account (one with a Google sign-in at once, an
   email account once `email_verified` is set) gets $0.50, once; any later save that verifies the
   account grants it then. An account that is missing is opened on first use.
+- **A new player's first pictures (K1, M7).** In an account's first story (its oldest), a
+  subject's first picture (`engine.contracts.FIRST_PICTURES`: the player character's portrait,
+  the cover, a key NPC's first-meeting portrait, a place's first visit) is on the house.
+  `media.plans` marks such a picture `Image.first_picture` when it plans it, once, so planning it
+  again later (Illustrate after a failure or a block) never changes that; a scene Illustrate adds
+  is never one. `media.billing.start` asks the meter with `house=True` for a first picture in the
+  account's first story, and the meter decides under the account's row lock. The house pays for the
+  accounts that get the starter credit while `CreditAccount.house_pictures_cents` (what it has
+  paid, at the price the player would have paid) plus its live holds stays under
+  `BILLING["HOUSE_PICTURES_CENTS"]` (env `HOUSE_PICTURES_CENTS`, 30 by default, 0 turns it off),
+  so the picture that crosses the allowance is still free and pictures started at once can't
+  overrun it by more than one. Such a picture's hold is a `CreditHold` with `house` set, which
+  doesn't count against the player's balance, and its charge is an `image` entry with `house`
+  set, at zero, keeping `detail.list_cents`, which is added to the account's
+  `house_pictures_cents` in the same transaction. `check_ledger` checks that too. The allowance
+  lives on the account, so deleting the first story leaves only what is left of it to the next
+  oldest. Otherwise the picture is held and charged like any other.
 - **Staff.** The admin shows balances and the ledger read-only. Deleting a user there still
   takes their billing rows with it (T12); deleting billing rows on their own is refused.
 - **Prices.** The per-model prices are the model layer's (`graph/llm/pricing.py`): each call's
@@ -1046,15 +1063,16 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   the balance takes it to zero and records the shortfall (`detail.uncovered_cents`). Pictures use
   `charge_image`, and `out_of_credits` from `start` means a planned picture is skipped (M7),
   while Illustrate answers that `402` (M2).
-- **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits and gets
-  an entry at zero charge that keeps what it would have cost (`detail.list_cents`). A request on
-  the player's own key holds nothing, charges nothing, writes no entry and doesn't count toward
-  the daily quota, but is rate-limited (K6).
+- **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits, has no
+  daily quota (Miki, 2026-11-04) and gets an entry at zero charge that keeps what it would have
+  cost (`detail.list_cents`). A request on the player's own key holds nothing, charges nothing,
+  writes no entry and doesn't count toward the daily quota (K6). Both are rate-limited per minute.
 - **Rate limits and quotas (T9).** `billing.limits.hit()` is a fixed-window counter in Postgres,
   one row per user and bucket (`turn:minute`, `turn:day`, `image:minute`...) that rolls over in
   place, incremented by a single `INSERT ... ON CONFLICT DO UPDATE`, so it counts exactly across
-  Cloud Run instances. Day windows end at midnight UTC. The owner has the daily quota too, as a
-  guard on a leaked token. The limits are in `BILLING` in `lucid/settings.py`, with the turn ones
+  Cloud Run instances. Day windows end at midnight UTC. The owner has no daily quota (K7); the
+  per-minute limit is the guard on a runaway client or a leaked owner token, with the GCP budget
+  alert behind it. The limits are in `BILLING` in `lucid/settings.py`, with the turn ones
   from env (`TURN_RATE_PER_MINUTE`, `DAILY_TURN_QUOTA`).
 - **K8 cost tests.** `billing.pricing.cost_spread()` and `K8_MAX_COST_MULTIPLE` (3 for now)
   compare what a quiet, a montage and an event turn charge a normal account.
@@ -1176,7 +1194,10 @@ app                   shows the narration, then asks for the picture in its own 
   a rate limit: the API's `rate_limited`, with the picture put back), `charge` takes the real
   cost plus margin in the transaction that marks the picture ready (`charge_image`), and `release`
   lets a hold go when the picture isn't drawn. The owner's pictures are recorded at no charge, and
-  a story from before sign-in, with no owner, draws free.
+  a story from before sign-in, with no owner, draws free. In an account's first story, a
+  subject's first picture is on the house while its allowance lasts (K1,
+  [above](#credits-quotas-and-rate-limits)): its `payer` is `house`, and it draws even with no
+  credits left. A player's own key still draws first, and the house covers only its fallback.
 - **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
   `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
   `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last
@@ -1229,15 +1250,15 @@ app                   shows the narration, then asks for the picture in its own 
 | Images | Artifact Registry `europe-west3-docker.pkg.dev/playable-anime/playable-anime/api` |
 | Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` in Secret Manager (T11) |
 | Pictures | `gs://playable-anime-pictures`, private (M4) |
-| Deploys | `.github/workflows/deploy.yml`, started by hand on `main`, signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11) |
+| Deploys | `.github/workflows/deploy.yml`, run by each merge of `dev` into `main` (or by hand on `main`), signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11), and publishes the Android APK as the latest release's `lucid-saga.apk` |
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
 | Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 
-**Drawing the starter covers.** After a deploy that has the command, once Vertex AI answers for
-the runtime account, one command draws Discover's covers, about $0.37 for all eleven, paid by the
-house ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)):
+**Drawing the starter covers.** Each deploy draws the covers that are missing, so the first one
+draws Discover's eleven, about $0.37 in all, paid by the house, and later ones draw nothing
+([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)). To draw by hand:
 
 ```bash
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
@@ -1268,7 +1289,7 @@ endpoint lets anyone spend our Vertex budget.
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
 | `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". A row's id is derived from the story and the engine's event id, and its payload holds the engine's `PendingEvent` (see [Turn endpoint](#turn-endpoint)). |
-| `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
+| `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger and whether it is the subject's first picture (K1), the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |
 | `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |
 | `media_premisecover` | A starter premise's cover on Discover (S1), keyed by premise id: storage key, type and size, model and cost (T5), whether the offline model drew it, the brief it was drawn from and when. |

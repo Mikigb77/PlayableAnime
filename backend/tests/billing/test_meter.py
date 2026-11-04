@@ -9,7 +9,7 @@ from asgiref.sync import async_to_sync
 from django.db import transaction
 
 from billing import credits, meter
-from billing.models import CreditAccount, CreditHold, EntryKind, LedgerEntry
+from billing.models import CreditAccount, CreditHold, EntryKind, LedgerEntry, UsageCounter
 from lucid import logs
 from lucid.errors import ApiError, ErrorCode
 from tests.billing.conftest import call
@@ -182,6 +182,7 @@ def test_the_charge_is_logged_with_numbers_only(player, log_lines):
         "balance_after_cents": 47.0,
         "cost_usd": 0.02,
         "unlimited": False,
+        "house": False,
         "turn": 2,
     }
 
@@ -316,12 +317,22 @@ def test_the_daily_quota_counts_turns_on_our_key_until_midnight_utc(player, bill
     meter.start(player, meter.TURN, now=datetime(2026, 11, 4, 0, 0, 1, tzinfo=UTC))
 
 
-def test_the_owner_has_the_daily_quota_too(owner, billing_settings):
-    """A cost guard on our key (T9): it bounds even an owner token that leaked."""
-    billing_settings["PER_DAY"]["turn"] = 1
+def test_the_owner_has_no_daily_quota(owner, billing_settings):
+    """K7, T9 (Miki, 2026-11-04): the owner plays without daily caps on anything."""
+    billing_settings["PER_DAY"] = {"turn": 1, "draft": 1, "image": 1}
+    for use in (meter.TURN, meter.DRAFT, meter.IMAGE):
+        for _ in range(3):
+            meter.start(owner, use, now=NOW)
+
+    assert not UsageCounter.objects.filter(user=owner, bucket__endswith=":day").exists()
+
+
+def test_the_owner_still_has_the_rate_limit(owner, billing_settings):
+    """The per-minute limit stays, as the guard on a runaway client or a leaked token (T9)."""
+    billing_settings["PER_MINUTE"]["turn"] = 1
     meter.start(owner, meter.TURN, now=NOW)
 
-    assert _error(meter.start, owner, meter.TURN, now=NOW).code == ErrorCode.QUOTA_EXCEEDED
+    assert _error(meter.start, owner, meter.TURN, now=NOW).code == ErrorCode.RATE_LIMITED
 
 
 def test_turns_drafts_and_pictures_have_their_own_limits(player, billing_settings):

@@ -13,6 +13,13 @@
 
 A picture drawn with the player's own key on a paid tier needs no ticket (K6, M7). The owner's
 pictures are recorded at no charge (K7).
+
+A new player's first pictures are on the house (K1, M7): in an account's first story, the
+once-only pictures (`engine.contracts.FIRST_PICTURES`: the player character's portrait, the
+cover, a key NPC's first-meeting portrait and a place's first visit) are held against the house's
+allowance instead of the player's credits, for the accounts that get the starter credit, until
+the allowance (`HOUSE_PICTURES_CENTS`) is spent, however they are asked for. Key scenes, fights,
+redraws (M5) and the scenes Illustrate adds are always the player's.
 """
 
 from __future__ import annotations
@@ -23,10 +30,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from asgiref.sync import sync_to_async
+
 from billing import meter
 from billing.pricing import ModelCall
 from lucid.errors import ApiError, ErrorCode
 from media.models import Payer
+from stories.models import Story
 
 
 class NoCredits(Exception):
@@ -49,21 +59,41 @@ class Ticket:
     hold: meter.Ticket | None = None
 
 
-async def start(user, *, story_id: uuid.UUID, image_id: uuid.UUID) -> Ticket:
+async def start(
+    user, *, story_id: uuid.UUID, image_id: uuid.UUID, first_picture: bool = False
+) -> Ticket:
     """Holds one picture's estimated cost for `user`, before drawing on our account.
 
     `user` is the signed-in player, or None for a story from before sign-in, which has no ledger
-    to charge.
+    to charge. `first_picture`: the picture is a subject's first (`Image.first_picture`, M1),
+    so the house pays for it if this is the account's first story and its allowance has room.
     """
     if user is None:
         return Ticket(Payer.FREE)
+    house = first_picture and await first_story(user, story_id)
     try:
-        hold = await meter.astart(user, meter.IMAGE, byok=False)
+        hold = await meter.astart(user, meter.IMAGE, byok=False, house=house)
     except ApiError as exc:
         if exc.code == ErrorCode.OUT_OF_CREDITS:
             raise NoCredits(exc) from exc
         raise
-    return Ticket(Payer.OWNER if hold.unlimited else Payer.CREDITS, hold=hold)
+    if hold.unlimited:
+        return Ticket(Payer.OWNER, hold=hold)
+    return Ticket(Payer.HOUSE if hold.house else Payer.CREDITS, hold=hold)
+
+
+@sync_to_async
+def first_story(user, story_id: uuid.UUID) -> bool:
+    """Whether `story_id` is the account's first story: the oldest of its stories (K1, M7).
+    When that one is deleted, the next oldest takes its place, with only what is left of the
+    account's house allowance, which is kept on the account."""
+    first = (
+        Story.objects.filter(owner_id=user.pk)
+        .order_by("created_at", "id")
+        .values_list("id", flat=True)
+        .first()
+    )
+    return first is not None and str(first) == str(story_id)
 
 
 def charge(

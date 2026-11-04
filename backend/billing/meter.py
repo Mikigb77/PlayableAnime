@@ -14,13 +14,18 @@ The turn endpoint, drafting and pictures all follow the same three steps:
     finally:
         await meter.arelease(ticket)  # gives back the hold; does nothing after a charge
 
-`start` counts the request against the per-minute rate limit (always, BYOK included, K6) and,
-on our key, the daily quota, then holds an estimated cost so concurrent requests can't spend the
-same credits. `charge` turns the hold into a ledger entry at the real cost plus the margin, in the
-caller's transaction, so a turn and its charge are saved together or not at all. A charge never
-takes a balance below zero: if the real cost is more than the balance, the balance goes to zero
-and the shortfall is recorded. The owner (K7) passes every credit check and gets an entry at zero
-charge; the player's own key (K6) is never charged.
+`start` counts the request against the per-minute rate limit (always, BYOK and the owner
+included, K6, K7) and, on our key, the daily quota (not the owner's, K7), then holds an estimated
+cost so concurrent requests can't spend the same credits. `charge` turns the hold into a ledger
+entry at the real cost plus the margin, in the caller's transaction, so a turn and its charge are
+saved together or not at all. A charge never takes a balance below zero: if the real cost is more
+than the balance, the balance goes to zero and the shortfall is recorded. The owner (K7) passes
+every credit check and gets an entry at zero charge; the player's own key (K6) is never charged.
+
+A new player's first pictures can be on the house (K1, M7): a picture started with `house=True`
+is held against the account's house allowance instead of its balance while the allowance has
+room, and charged at zero, with what it would have cost kept on the entry and added to the
+allowance used. Otherwise it is held and charged like any picture.
 """
 
 from __future__ import annotations
@@ -39,7 +44,7 @@ from django.utils import timezone
 from billing import credits, limits
 from billing.config import Use, get_config
 from billing.models import CreditHold, EntryKind, LedgerEntry
-from billing.pricing import BillableCall, bill
+from billing.pricing import BillableCall, bill, house_has_room
 from lucid.errors import ApiError, ErrorCode
 
 logger = logging.getLogger("billing")
@@ -68,16 +73,27 @@ class Ticket:
     unlimited: bool
     # Credits held for this request; zero when nothing is (the owner, or the player's own key).
     held_cents: Decimal
+    # The house pays for this picture, a new player's first (K1, M7): its hold is against the
+    # house's allowance, and its charge takes nothing from the balance.
+    house: bool = False
 
 
-def start(user, use: Use, *, byok: bool = False, now: datetime | None = None) -> Ticket:
+def start(
+    user, use: Use, *, byok: bool = False, house: bool = False, now: datetime | None = None
+) -> Ticket:
     """Checks the rate limit, the daily quota and the credits, and holds the estimated cost.
 
     Raises `ApiError` with `rate_limited` (details `retry_after_s`), `quota_exceeded` (details
     `resets_at`) or `out_of_credits` (details `balance_cents`), before anything is streamed.
     Nothing is counted or held when it raises.
+
+    `house`: the request is one of a new player's first pictures, which the house pays for when
+    the account qualifies for the starter credit and the house allowance has room (K1, M7). The
+    ticket says whether it does; when it doesn't, the picture needs credits like any other.
     """
     use = Use(use)
+    if house and use != Use.IMAGE:
+        raise ValueError("Only a picture can be on the house.")
     now = now or timezone.now()
     config = get_config()
     unlimited = credits.is_unlimited(user)
@@ -96,7 +112,9 @@ def start(user, use: Use, *, byok: bool = False, now: datetime | None = None) ->
                 "Slow down a little, then try again.",
                 {"retry_after_s": rate.retry_after_s(now)},
             )
-        if on_our_key:
+        if on_our_key and not unlimited:
+            # The owner plays without daily caps (K7, Miki 2026-11-04); the per-minute limit
+            # above still guards a runaway client or a leaked token.
             quota = limits.hit(
                 user.pk, f"{use}:day", limit=config.per_day[use], window_s=limits.DAY, now=now
             )
@@ -107,34 +125,54 @@ def start(user, use: Use, *, byok: bool = False, now: datetime | None = None) ->
                     {"resets_at": quota.window_end.isoformat()},
                 )
         held = Decimal(0)
+        on_the_house = False
         ticket_id = uuid.uuid4()
         if on_our_key and not unlimited:
             held = config.reserve_cents[use]
             account = credits.locked_account(user.pk, user=user, now=now)
             # Holds left by requests that died no longer count.
             CreditHold.objects.filter(user_id=user.pk, expires_at__lte=now).delete()
-            available = account.balance_cents - credits.held_cents(user.pk, now)
-            if available < held:
-                raise ApiError(
-                    ErrorCode.OUT_OF_CREDITS,
-                    "You're out of credits.",
-                    {
-                        "balance_cents": float(account.balance_cents),
-                        # Less than the balance while another request holds part of it.
-                        "available_cents": float(max(available, Decimal(0))),
-                    },
-                )
+            on_the_house = house and _house_pays(account, user, config, now)
+            if not on_the_house:
+                available = account.balance_cents - credits.held_cents(user.pk, now)
+                if available < held:
+                    raise ApiError(
+                        ErrorCode.OUT_OF_CREDITS,
+                        "You're out of credits.",
+                        {
+                            "balance_cents": float(account.balance_cents),
+                            # Less than the balance while another request holds part of it.
+                            "available_cents": float(max(available, Decimal(0))),
+                        },
+                    )
             CreditHold.objects.create(
                 id=ticket_id,
                 user_id=user.pk,
                 use=use,
                 amount_cents=held,
+                house=on_the_house,
                 created_at=now,
                 expires_at=now + timedelta(seconds=config.hold_ttl_s),
             )
     return Ticket(
-        id=ticket_id, user_id=user.pk, use=use, byok=byok, unlimited=unlimited, held_cents=held
+        id=ticket_id,
+        user_id=user.pk,
+        use=use,
+        byok=byok,
+        unlimited=unlimited,
+        held_cents=held,
+        house=on_the_house,
     )
+
+
+def _house_pays(account, user, config, now: datetime) -> bool:
+    """Whether the house pays for one more of this account's first pictures (K1, M7): the same
+    accounts as the starter credit, while the allowance has room. Call it under the account's
+    row lock, so two pictures started at once can't both take the last of the allowance."""
+    if not credits.qualifies_for_starter(user):
+        return False
+    held = credits.held_cents(user.pk, now, house=True)
+    return house_has_room(account.house_pictures_cents, held, config.house_pictures_cents)
 
 
 def charge(
@@ -151,7 +189,8 @@ def charge(
     Call it inside the transaction that saves what the calls produced, so the charge and the
     result are saved together or not at all. Releases the ticket's hold. Charging a ticket twice
     returns the first entry and bills nothing more. Returns None when nothing ran on our key
-    (the player's own key, K6), which writes no entry.
+    (the player's own key, K6), which writes no entry. The owner's ticket (K7) and a house
+    ticket (K1, M7) write an entry at zero charge that keeps what it would have cost.
     """
     now = now or timezone.now()
     config = get_config()
@@ -183,6 +222,12 @@ def charge(
             # The owner plays free, and the entry keeps what it would have cost (K7).
             amount = Decimal(0)
             detail["list_cents"] = str(billed.charge_cents)
+        elif ticket.house:
+            # A new player's first picture (K1, M7): the house pays, the entry keeps what it
+            # would have cost, and that counts against the house allowance.
+            amount = Decimal(0)
+            detail["list_cents"] = str(billed.charge_cents)
+            account.house_pictures_cents += billed.charge_cents
         else:
             # Never below zero (M7). The rest is ours to absorb, and recorded so T5 stays honest.
             # Every hold on this account is the same player's, so a charge may use the whole
@@ -207,6 +252,7 @@ def charge(
             now=now,
             cost_usd=billed.cost_usd,
             unlimited=ticket.unlimited,
+            house=ticket.house,
             story_id=story_id,
             turn=turn,
             image_id=str(image_id or ""),

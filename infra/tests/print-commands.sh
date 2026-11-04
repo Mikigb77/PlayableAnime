@@ -24,6 +24,12 @@ echo
 echo "# infra/deploy.sh service IMAGE"
 "$INFRA/deploy.sh" service "$image" 2>&1 | commands
 echo
+echo "# infra/deploy.sh access (API_ACCESS=private removes the same binding instead)"
+"$INFRA/deploy.sh" access 2>&1 | commands
+echo
+echo "# infra/deploy.sh covers"
+"$INFRA/deploy.sh" covers 2>&1 | commands
+echo
 echo "# infra/deploy.sh rollback REVISION"
 "$INFRA/deploy.sh" rollback REVISION 2>&1 | commands
 echo

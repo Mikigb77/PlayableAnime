@@ -36,8 +36,8 @@ DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 already drawn unless `--force` (name premises to draw only those, and `--dry-run` shows what it
 would draw and cost). With the offline model the covers are plain placeholders, which a real model
 replaces on its first run; it refuses to put placeholders in a Cloud Storage bucket. Without
-covers, Discover shows a glow in each genre's colour. The real run is one command on Cloud Run
-([docs/DEPLOY.md](../docs/DEPLOY.md#drawing-the-starter-covers)).
+covers, Discover shows a glow in each genre's colour. On Cloud Run each deploy draws the missing
+ones ([docs/DEPLOY.md](../docs/DEPLOY.md#drawing-the-starter-covers)).
 
 By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, and every
 picture with a quiet gradient in the picture's shape, so everything works offline. For real
@@ -77,6 +77,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `PICTURE_URL_TTL_S` | `3600` | How long a picture's signed URL works. |
 | `STARTER_CREDIT_CENTS` | `50` | K1's starter credit, once per account. |
 | `STARTER_CREDIT_POLICY` | `verified` | `verified`: Google accounts at once, email accounts once their address is verified. `all`: every account. |
+| `HOUSE_PICTURES_CENTS` | `30` | The most the house pays, per account, for the first story's once-only pictures, priced as the player would have paid (K1, M7). `0` turns it off. |
 | `BILLING_MARGIN` | `0.5` | Turns, drafts and pictures charge our model cost times 1 + margin (K2). |
 | `TURN_RATE_PER_MINUTE` | `10` | Turns per user per minute, on any key (T9, K6). |
 | `DAILY_TURN_QUOTA` | `300` | Turns per user per UTC day on our key (T9). `0` stops every turn on our key. |

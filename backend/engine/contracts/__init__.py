@@ -23,6 +23,7 @@ from engine.contracts.delta import (
     StateDelta,
 )
 from engine.contracts.direction import (
+    FIRST_PICTURES,
     ChoiceKind,
     DirectorPlan,
     DirectorUpdates,
@@ -78,6 +79,7 @@ from engine.contracts.resolution import (
 )
 
 __all__ = [
+    "FIRST_PICTURES",
     "ActionKind",
     "Aim",
     "AttitudeShift",
