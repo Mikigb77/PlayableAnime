@@ -2,7 +2,7 @@
 //
 //   NODE_PATH="$(npm root -g)" node tool/app_icon/render.mjs      (from app/)
 //
-// Needs Node 22 or later and Playwright with its Chromium (`npm install -g playwright`, then
+// Needs Node 22.2 or later (for zlib.crc32) and Playwright with its Chromium (`npm install -g playwright`, then
 // `npx playwright install chromium`). It overwrites the PNGs below and nothing else.
 //
 // icon.svg is drawn on Android's 108 x 108 adaptive-icon grid and holds three layers:
@@ -11,7 +11,7 @@
 //   #mono  a one-colour silhouette in currentColor, for Android 13 themed icons
 // Each platform gets a square cut from the middle of the grid: Android's adaptive layers keep the
 // whole grid (the launcher masks the middle 72), iPhone and the web's own icons a side of 80, and
-// the web's maskable icons a side of 82, so the safe circle fills their 80% safe zone.
+// the web's maskable icons a side of 82.5, so the safe circle is exactly their 80% safe zone.
 
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -37,7 +37,7 @@ const IOS_SET = 'ios/Runner/Assets.xcassets/AppIcon.appiconset';
 // channel: App Store icons and full-bleed ones don't.
 const FULL = ['bg', 'fg'];
 const ICON = 80;
-const MASKABLE = 82;
+const MASKABLE = 66 / 0.8;
 
 function outputs() {
   const list = [];
@@ -45,7 +45,7 @@ function outputs() {
     const dir = `${ANDROID_RES}/mipmap-${density}`;
     const layer = { size: GRID * scale, crop: GRID };
     list.push(
-      // Android 7, which has no adaptive icons.
+      // Android before 8, which has no adaptive icons.
       {
         path: `${dir}/ic_launcher.png`,
         size: 48 * scale,
@@ -201,11 +201,17 @@ const inner = source.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
+  // Some outputs are the same picture under another name (a 40 px iPhone icon is 20 pt at 2x and
+  // 40 pt at 1x), so each picture is drawn once.
+  const drawn = new Map();
   for (const output of outputs()) {
     const { path, size, alpha = true } = output;
-    const pixels = await rasterize(page, compose(inner, output), size);
+    const key = JSON.stringify({ ...output, path: undefined });
+    if (!drawn.has(key)) {
+      drawn.set(key, encodePng(await rasterize(page, compose(inner, output), size), size, alpha));
+    }
     mkdirSync(dirname(join(APP, path)), { recursive: true });
-    writeFileSync(join(APP, path), encodePng(pixels, size, alpha));
+    writeFileSync(join(APP, path), drawn.get(key));
     console.log(`${path} (${size} px)`);
   }
 } finally {
