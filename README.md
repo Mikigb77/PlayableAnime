@@ -23,8 +23,11 @@ docker exec lucid-pg createdb -U postgres lucid
 cd backend
 uv sync
 uv run python manage.py migrate
-DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
+DEBUG=1 STARTER_CREDIT_POLICY=all uv run uvicorn lucid.asgi:application --reload --port 8080
 ```
+
+`STARTER_CREDIT_POLICY=all` gives every new account the starter credit (K1). By default only
+Google accounts and verified email addresses get it, and email verification isn't built yet.
 
 App, in a second terminal:
 
@@ -33,8 +36,13 @@ cd app
 flutter run
 ```
 
-On an Android emulator, add `--dart-define=API_BASE_URL=http://10.0.2.2:8080`.
+On an Android emulator, add `--dart-define=API_BASE_URL=http://10.0.2.2:8080`. To try the app with
+no backend at all, run it on its built-in fake of the API (see [app/README.md](app/README.md#run)):
+
+```bash
+flutter run --dart-define=API_MODE=fake
+```
 
 To get real stories, set `LLM_PROVIDER=vertex` in `backend/.env` (see
-[backend/README.md](backend/README.md)), or paste your own Gemini API key under **Settings** in the
+[backend/README.md](backend/README.md)), or paste your own Gemini API key under **Account** in the
 app.

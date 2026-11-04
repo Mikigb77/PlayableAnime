@@ -19,8 +19,9 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
 - Errors use the API.md envelope (`lucid.errors.ApiError`), and logs are JSON with request, trace,
   user and story ids (`lucid.logs`). Tests run on Postgres (`TEST_DATABASE_URL`, a local Docker
   Postgres by default), never on Neon.
-- No auth, credits or deploy exist yet. Nothing goes public before T8 (auth) and T9 (rate limits and
-  quotas).
+- Sign-in (T8), credits, quotas and rate limits (K1 to K8, T9), pictures (M1 to M8), ratings and
+  reports (F6 to F8) and the Cloud Run deploy pipeline (`infra/`, [docs/DEPLOY.md](docs/DEPLOY.md))
+  are built. Deploying, production data and the OAuth client ids wait on Miki.
 
 ## Rules
 
