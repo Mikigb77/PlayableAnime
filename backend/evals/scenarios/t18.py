@@ -28,7 +28,7 @@ from engine.contracts import (
 )
 from engine.state import SkillLevel, StepResult
 from evals import worlds
-from evals.judge import Rubric
+from evals.judge import PICTURE_INSTRUCTIONS, Rubric
 from evals.pictures import Picture
 from evals.runner import Eval
 from evals.scenario import LIVE_ONLY, REGISTRY
@@ -490,6 +490,10 @@ async def same_face(ev: Eval) -> None:
         portrait = await ev.draw_portrait(story, "mage", "portrait-mage")
         pictures: list[tuple[str, Picture]] = []
         redrawn = None
+        # How the mage looks after the strike, when it changed his look for good. The scripted
+        # narration takes his left eye; a live narrator decides for itself, so the rubric asks
+        # for whatever change it recorded, or none.
+        maimed_look: str | None = None
         for n, (said, verb, kind, seconds) in enumerate(FACE_SCENES):
             hit = n == MAIMED
             interpretation = (
@@ -506,7 +510,10 @@ async def same_face(ev: Eval) -> None:
                     "the maiming changes the mage's look for good",
                     mage.look_version == 2,
                     f"{seed}: version {mage.look_version}",
+                    live=False,
                 )
+                if mage.look_version > 1:
+                    maimed_look = mage.appearance
             if n == MAIMED + 1:
                 ev.check(
                     "and his portrait is drawn once more (M4, M5)",
@@ -516,9 +523,10 @@ async def same_face(ev: Eval) -> None:
                     f"{seed}: {played.plan.picture}",
                     live=False,
                 )
-                if portrait is not None:
+                if portrait is not None and maimed_look is not None:
                     redrawn = await ev.draw_portrait(story, "mage", "portrait-mage-maimed")
-            reference = redrawn if n > MAIMED and redrawn is not None else portrait
+            after = n > MAIMED and maimed_look is not None
+            reference = redrawn if after and redrawn is not None else portrait
             if reference is not None:
                 drawn = await ev.draw_scene(
                     story,
@@ -529,21 +537,24 @@ async def same_face(ev: Eval) -> None:
                 )
                 if isinstance(drawn, Picture):
                     pictures.append(
-                        (f"scene {n + 1}{' (after the maiming)' if n > MAIMED else ''}", drawn)
+                        (f"scene {n + 1}{' (after the maiming)' if after else ''}", drawn)
                     )
         if portrait is not None and pictures:
             shown = [("the portrait", portrait)]
             if redrawn is not None:
                 shown.append(("the portrait after the maiming", redrawn))
+            must = [
+                "Every picture shows the same man as the first portrait: the same face, age and "
+                "build, apart from a lasting change named below"
+            ]
+            if maimed_look is not None:
+                must.append(
+                    "The portrait after the maiming and every scene marked after the maiming show "
+                    f"the lasting change to his face; he now looks like this: {maimed_look}"
+                )
             await ev.judge_pictures(
                 "the same face in ten scenes",
-                Rubric(
-                    must=(
-                        "Every scene shows the same man as the first portrait: the same face, age "
-                        "and build",
-                        "From the scenes after the maiming on, his left eye is visibly gone",
-                    ),
-                ),
+                Rubric(must=tuple(must), instructions=PICTURE_INSTRUCTIONS),
                 shown + pictures,
             )
 

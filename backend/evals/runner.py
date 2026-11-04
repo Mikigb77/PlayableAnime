@@ -52,7 +52,7 @@ from evals.judge import (
     judge_pictures,
     judge_scenes,
 )
-from evals.pictures import NotDrawn, Picture, draw, portrait_brief, scene_brief
+from evals.pictures import NotDrawn, Picture, draw, ending, portrait_brief, scene_brief
 from evals.scenario import Mode, Scenario
 from evals.scripted import Line, Narration, ScriptedModel
 from graph.llm import (
@@ -466,13 +466,15 @@ class Tally:
     """A check, counted over every time the script made it.
 
     A check with a `gap` is a requirement the engine is known not to meet yet: it is expected to
-    fail, and its failures are reported without failing the run. Once it holds, the run fails
-    until the marker is taken off, so a fixed gap becomes a plain check (as pytest's strict
-    xfail does)."""
+    fail, and its failures are reported without failing the run. Once it holds, a deterministic
+    run fails until the marker is taken off, so a fixed gap becomes a plain check (as pytest's
+    strict xfail does). A live run plays a seed or two of whatever the models write, so a gap that
+    happens to hold there proves nothing and fails nothing (`strict` is off)."""
 
     name: str
     live: bool = True
     gap: str = ""
+    strict: bool = True
     passed: int = 0
     failed: int = 0
     details: list[str] = field(default_factory=list)
@@ -484,7 +486,7 @@ class Tally:
     @property
     def ok(self) -> bool:
         if self.gap:
-            return self.failed > 0
+            return self.failed > 0 or not self.strict
         return self.held
 
     def to_json(self) -> dict[str, Any]:
@@ -596,6 +598,8 @@ class Eval:
         self.pictures: list[Picture | NotDrawn] = []
         self.metrics: dict[str, Any] = {}
         self.judge_telemetry = TurnTelemetry()
+        # Live pictures' calls, so their spend counts in the scenario's cost.
+        self.picture_telemetry = TurnTelemetry()
         self.turns = 0
         self._judge: ModelClient | None = None
 
@@ -646,7 +650,7 @@ class Eval:
         for one whose truth depends on the scripted interpretation or on many seeds. `gap` marks
         a requirement the engine is known not to meet yet, saying what is missing (see
         `Tally`)."""
-        tally = self.tallies.setdefault(name, Tally(name, live=live, gap=gap))
+        tally = self.tallies.setdefault(name, Tally(name, live=live, gap=gap, strict=not self.live))
         if self.live and not tally.live:
             return passed
         if passed:
@@ -743,10 +747,9 @@ class Eval:
     def picture_model(self, story: Story):
         from media.drawing import GraphPictureModel
 
-        telemetry = TurnTelemetry()
-        client = self.models.client(story.rating.value, telemetry)
+        client = self.models.client(story.rating.value, self.picture_telemetry)
         model = self.models.resolved().node(Node.PICTURE).model
-        return GraphPictureModel(client, telemetry, model)
+        return GraphPictureModel(client, self.picture_telemetry, model)
 
     async def draw_portrait(
         self, story: Story, character_id: str, name: str = ""
@@ -775,7 +778,7 @@ class Eval:
         if not self.live or played.result is None:
             return None
         picture = played.scene.picture
-        description = picture.prompt if picture is not None else played.narration
+        description = picture.prompt if picture is not None else ending(played.narration)
         brief = scene_brief(played.state, description, premise=story.premise, people=people)
         drawn = await draw(
             self.picture_model(story),
@@ -809,6 +812,7 @@ class Eval:
         cost = (
             sum((c.cost_usd for s in self.stories for c in s.telemetry.calls), Decimal(0))
             + self.judge_telemetry.cost_usd
+            + self.picture_telemetry.cost_usd
         )
         tallies = [t for t in self.tallies.values() if not (self.live and not t.live)]
         return ScenarioResult(

@@ -127,6 +127,15 @@ def test_an_open_gap_is_reported_without_failing_the_run():
     assert result.to_json()["checks"][1]["gap"] == "nothing does it yet (W99)"
 
 
+def test_a_gap_that_holds_in_a_live_run_fails_nothing(offline_models):
+    async def script(ev: Eval) -> None:
+        ev.check("works", True)
+        ev.check("the engine does it", True, gap="nothing does it yet (W99)")
+
+    result = play(script, mode=Mode.LIVE, models=offline_models)
+    assert result.status == "passed" and result.gaps() == []
+
+
 def test_a_closed_gap_fails_until_its_marker_comes_off():
     async def script(ev: Eval) -> None:
         ev.check("the engine does it", True, gap="nothing does it yet (W99)")
@@ -232,6 +241,17 @@ def test_pictures_go_to_the_judge_as_images():
     images = [("portrait", TINY_PNG, "image/png"), ("scene 1", TINY_PNG, "image/png")]
     judgement = asyncio.run(judge_pictures(judge_client(look), "face", RUBRIC, images))
     assert judgement.passed and seen == [2]
+
+
+def test_a_scene_is_described_as_the_picture_endpoint_describes_it():
+    from evals.pictures import ending, scene_brief
+    from media.plans import _ending
+
+    long = "It begins. " + "The rain falls on the court. " * 60 + "Lin draws. The mage turns!"
+    for text in ("Short.", long, "x" * 1500, "  spaced   out.  "):
+        assert ending(text) == _ending(text)
+    # The narrator's image prompt goes in as written, however long.
+    assert scene_brief(worlds.farm(), long).description == long
 
 
 # --- results -----------------------------------------------------------------------------------

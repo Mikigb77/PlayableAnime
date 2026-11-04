@@ -205,24 +205,27 @@ def read_history(path: Path) -> list[dict[str, Any]]:
 
 
 def trend(runs: Sequence[dict[str, Any]], *, mode: str | None = None, last: int = 10) -> str:
-    """Each scenario's status and score over the last `last` runs, oldest first, with the runs'
-    average scores and costs on top: what changed after a model or prompt change shows here."""
+    """Each scenario's status and score over the last `last` runs, oldest first, with each run's
+    average score and cost listed above by its column number: what changed after a model or
+    prompt change shows here."""
     chosen = [r for r in runs if mode is None or r.get("mode") == mode][-last:]
     if not chosen:
         return "No runs in the history yet.\n"
     marks = {"passed": "✓", "failed": "✗", "error": "!", "pending": "…", "skipped": "-"}
-    names = sorted({s for r in chosen for s in r.get("scenarios", {})})
-    width = max(len(n) for n in names) if names else 10
-    lines = [
-        "Runs:  " + "  ".join(r["run"] for r in chosen),
-        "Score: " + "  ".join(_pct(r.get("score")) for r in chosen),
+    lines = ["Runs:"]
+    for n, r in enumerate(chosen, 1):
         # A deterministic run's cost is what its real prompts would have cost (marked ~).
-        "Cost:  "
-        + "  ".join(
-            f"{'' if r.get('mode') == Mode.LIVE.value else '~'}${r.get('cost_usd', 0):.2f}"
-            for r in chosen
-        ),
+        spent = "" if r.get("mode") == Mode.LIVE.value else "~"
+        lines.append(
+            f"{n:>4}  {r['run']}  score {_pct(r.get('score'))}  "
+            f"cost {spent}${r.get('cost_usd', 0):.2f}  {(r.get('sha') or '')[:7]}".rstrip()
+        )
+    names = sorted({s for r in chosen for s in r.get("scenarios", {})})
+    width = max((len(n) for n in names), default=8)
+    cell = 6
+    lines += [
         "",
+        "Scenario".ljust(width + 1) + "".join(f"{n:>{cell}}" for n in range(1, len(chosen) + 1)),
     ]
     for name in names:
         cells = []
@@ -234,7 +237,7 @@ def trend(runs: Sequence[dict[str, Any]], *, mode: str | None = None, last: int 
                 cells.append(f"{marks[s['status']]}{_pct(s['score'])}")
             else:
                 cells.append(marks.get(s["status"], "?"))
-        lines.append(f"{name.ljust(width)}  " + "  ".join(c.rjust(5) for c in cells))
+        lines.append(name.ljust(width + 1) + "".join(c.rjust(cell) for c in cells))
     return "\n".join(lines) + "\n"
 
 

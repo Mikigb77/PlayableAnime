@@ -296,8 +296,8 @@ themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": ".
 
 **Pictures** (M1, M2). At most one a scene, highest first: the player's portrait at the start; a
 key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
-power ladder (a gain with source `breakthrough`, or one named for a ladder or its rung, as growth
-records a breakthrough); hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
+power ladder (a gain growth records with source `breakthrough`, or one named for a ladder);
+hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
 fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
 local or world event; the cover from the second scene; the player's place when it changed for
 good since its picture (or a first visit to one already ruined or occupied); a key NPC's first
@@ -510,6 +510,7 @@ environment, `backend/.env` and the repo-root `.env.local`:
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
 | `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
 | `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+| `judge` | `gemini-3.1-pro-preview`, thinking `high` | $2.00 / $12.00 | The story evals' judge ([Story evals](#story-evals)), never in a turn. A judge that misreads a scene makes the scores worthless, so it gets a stronger model than the nodes it judges. |
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
 `graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
@@ -854,8 +855,10 @@ Nothing written holds a prompt, a key or a token (T6).
 
 **In CI.** The `backend` job's pytest runs `tests/evals`: the runner's own tests, a sample of
 deterministic scenarios, and every live scenario on the offline model with a judge that passes
-everything, so a script that breaks on a real model's answers fails its PR rather than a night's
-run. The `evals` job runs every deterministic scenario and puts the summary on the run's page.
+everything, so a script that crashes on a model's answers fails its PR rather than a night's
+run. (A live turn whose intent doesn't take the shape a script reads is a failed check, not a
+crash, so on the offline model's minimal answers many checks fail; the test asks only that the
+script runs to the end.) The `evals` job runs every deterministic scenario and puts the summary on the run's page.
 
 ### Switching on the nightly live run
 

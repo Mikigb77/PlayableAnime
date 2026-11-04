@@ -226,7 +226,7 @@ async def revisit(ev: Eval) -> None:
         )
         ev.check(
             "those who lived through it are cold or hostile",
-            all(label in ("Cold", "Hostile") for label in labels.values()),
+            bool(labels) and all(label in ("Cold", "Hostile") for label in labels.values()),
             f"{seed}: {labels}",
             gap=(
                 "a massacre moves its survivors and witnesses by only about thirty points of "

@@ -1,9 +1,12 @@
 """Drawing pictures in live mode the way the picture endpoint does (M1, M5, M6, S7, T18).
 
-The briefs, prompts, reference portraits and picture model are the product's own
-(`media.prompts`, `media.drawing`), so a picture eval judges what a player would see. Only the
-storage is left out: the eval keeps the bytes and writes them next to its results for staff to
-spot-check.
+The prompt builder, reference portraits and picture model are the product's own
+(`media.prompts`, `media.drawing`), so a picture eval judges what a player would see. The briefs
+are built from the story's state as `stories.turns.brief` and `media.plans.brief_for_scene` build
+them; those need Django, so the few lines are repeated here and a test keeps them alike. A
+portrait the eval asks for outside the director's plan is described as "Portrait of <name>.".
+Only the storage is left out: the eval keeps the bytes and writes them next to its results for
+staff to spot-check.
 """
 
 from __future__ import annotations
@@ -85,9 +88,11 @@ def scene_brief(
     premise: str = "",
     people: Sequence[str] = (),
 ) -> Brief:
-    """A scene picture: the narrator's image prompt, or the end of the scene's narration."""
+    """A scene picture, from the narrator's image prompt as written, or `ending()` of the
+    scene's narration when it wrote none (as `stories.turns.brief` and
+    `media.plans.brief_for_scene` build theirs)."""
     return Brief(
-        description=ending(description),
+        description=description,
         look=look(state, premise),
         figures=figures(state, people),
     )

@@ -413,7 +413,7 @@ def breakthrough_effects(
         gain = Gain(
             what=rung.name,
             change=f"broke through to {rung.name}",
-            source="breakthrough",
+            source=GrowthKind.BREAKTHROUGH.value,
             reason=step.text,
         )
         change = CharacterChange(id=actor.id, ladders=[climbed], gains=[gain])

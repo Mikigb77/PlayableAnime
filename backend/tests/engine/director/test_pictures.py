@@ -5,6 +5,7 @@ from engine.contracts import (
     DirectorPlan,
     EventKind,
     EventSource,
+    GrowthKind,
     PictureDecision,
     PictureKind,
     PictureTrigger,
@@ -324,7 +325,7 @@ def test_a_breakthrough_as_growth_records_it_is_a_key_scene():
     gain = Gain(
         what="Foundation Establishment",
         change="broke through to Foundation Establishment",
-        source="breakthrough",
+        source=GrowthKind.BREAKTHROUGH.value,
         reason="train Foundation Establishment",
         turn=4,
     )
