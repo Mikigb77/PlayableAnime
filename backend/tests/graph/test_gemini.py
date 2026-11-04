@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import logging
 
 import pytest
 from google.genai import errors as genai_errors
@@ -216,6 +217,31 @@ def test_an_invalid_player_key_is_bad_key_and_never_appears_in_errors(caplog):
     assert len(chain) == 2  # BadKey, then the scrubbed ProviderError, and nothing older
     for error in chain:
         assert KEY not in str(error) and KEY not in repr(vars(error))
+    for record in caplog.records:
+        assert KEY not in record.getMessage() and KEY not in repr(record.__dict__)
+
+
+def test_a_quota_error_logs_its_reason_without_the_player_key(caplog):
+    """A transient failure's log keeps the provider's words (which quota ran out) for whoever
+    reads the logs, but never the player's key (T6)."""
+    quota = genai_errors.ClientError(
+        429,
+        {
+            "error": {
+                "code": 429,
+                "message": f"Quota exceeded for key {KEY} on gemini-3.5-flash.",
+                "status": "RESOURCE_EXHAUSTED",
+            }
+        },
+    )
+    script = Script(quota, quota)
+    caplog.set_level(logging.WARNING, logger="graph.llm")
+
+    with pytest.raises(LLMUnavailable):
+        run(_client(script).structured(Node.NARRATOR, PROMPT, Narration))
+
+    details = [record.llm["detail"] for record in caplog.records if hasattr(record, "llm")]
+    assert details and all("Quota exceeded" in detail for detail in details)
     for record in caplog.records:
         assert KEY not in record.getMessage() and KEY not in repr(record.__dict__)
 

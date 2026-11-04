@@ -222,17 +222,20 @@ class ModelClient:
                     reason = _reason(failure)
                     if isinstance(failure, ProviderError) and failure.kind != "transient":
                         raise self._fatal(failure, trace) from None
+                    # The provider's own words, such as which quota ran out. A player's key is
+                    # already masked out of them by the backend (T6).
+                    detail = failure.detail if isinstance(failure, ProviderError) else ""
                     if attempt == ATTEMPTS:
                         trace.finish("unavailable", reason)
                         logger.error(
                             "Model call failed after a retry",
-                            extra={"llm": trace.log_fields(reason=reason)},
+                            extra={"llm": trace.log_fields(reason=reason, detail=detail)},
                         )
                         raise LLMUnavailable(node=node.value, model=request.model) from None
                     trace.retry_reasons.append(reason)
                     logger.warning(
                         "Model call failed, retrying once",
-                        extra={"llm": trace.log_fields(reason=reason)},
+                        extra={"llm": trace.log_fields(reason=reason, detail=detail)},
                     )
                     if streamed:
                         trace.first_token_ms = None  # the player sees the retry's text first

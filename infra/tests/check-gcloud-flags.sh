@@ -3,8 +3,8 @@
 # to prove that the installed gcloud accepts every command and flag. The commands come from the
 # dry runs and from the calls the scripts make against the fake gcloud on first runs, re-runs and
 # recoveries, which a dry run can't show (update-oidc, undelete, a role or budget update, the
-# first deploy's second revision, making the API private, every read). Each must fail on the
-# network, never on its arguments.
+# first deploy's second revision, making the API private, every read, a failed job's logs, the
+# Ops workflow's default command). Each must fail on the network, never on its arguments.
 # Nothing reaches Google Cloud: gcloud gets an empty configuration and a proxy that refuses every
 # connection.
 #
@@ -37,6 +37,7 @@ image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000
   DRY_RUN=1 "$INFRA/deploy.sh" migrate "$image"
   DRY_RUN=1 "$INFRA/deploy.sh" service "$image"
   DRY_RUN=1 "$INFRA/deploy.sh" access
+  DRY_RUN=1 "$INFRA/deploy.sh" models
   DRY_RUN=1 "$INFRA/deploy.sh" covers
   DRY_RUN=1 "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
 } 2>&1 | sed -n 's/^\[dry-run\] \(gcloud .*\)$/\1/p' >"$WORK/dry-run-commands"
@@ -45,7 +46,7 @@ state="$WORK/fake-state"
 mkdir -p "$state/res"
 touch "$state/res/iam_service-accounts_playable-anime-api"
 fake() {
-  env PATH="$INFRA/tests/fakes:$PATH" FAKE_STATE="$state" RETRY_SLEEP_SECONDS=0 \
+  env PATH="$INFRA/tests/fakes:$PATH" FAKE_STATE="$state" RETRY_SLEEP_SECONDS=0 LOGS_WAIT_SECONDS=0 \
     NEON_PRODUCTION_DATABASE_URL="postgresql://u:p@ep-x-pooler.eu-central-1.aws.neon.tech/db" \
     NEON_PRODUCTION_DATABASE_URL_DIRECT="postgresql://u:p@ep-x.eu-central-1.aws.neon.tech/db" \
     "$@" >/dev/null 2>&1
@@ -60,6 +61,11 @@ fake "$INFRA/deploy.sh" service "$image"
 fake "$INFRA/deploy.sh" access
 fake env API_ACCESS=private "$INFRA/deploy.sh" access
 fake "$INFRA/deploy.sh" covers
+fake env FAKE_FAIL_COVERS=1 "$INFRA/deploy.sh" covers || true # its logs are read
+fake "$INFRA/deploy.sh" models
+fake env OPS_COMMAND="" "$INFRA/ops.sh" run
+fake env OPS_COMMAND="run jobs executions list --job=playable-anime-migrate --region=europe-west3" \
+  "$INFRA/ops.sh" run
 fake "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
 cat "$WORK/dry-run-commands" "$state/calls.log" | sort -u >"$WORK/commands"
 

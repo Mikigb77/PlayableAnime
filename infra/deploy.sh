@@ -26,6 +26,7 @@ Usage: infra/deploy.sh <command> [argument]
   service IMAGE    Deploy IMAGE to the API service and send all traffic to it.
   smoke URL        Check that URL/health answers 200. Uses SMOKE_ID_TOKEN when the service is private.
   access           Make the API public, or private with API_ACCESS=private.
+  models           Call each model the app uses once, as the migration job (check_models).
   covers           Draw the starter premises' missing covers, as the migration job.
   rollback REV     Send all traffic back to revision REV.
 
@@ -172,8 +173,32 @@ cmd_preflight() {
   say "Preflight passed: the image repository and the runtime service account are in place."
 }
 
+# The migration job's log lines since $1 (an RFC 3339 time), oldest first, for a run that failed.
+# Needs roles/logging.viewer, which the bootstrap gives the deployer; without it, says how to read
+# them instead. Lines are the job's output and its JSON logs, which never hold a secret (T6).
+job_logs() {
+  local since="$1" filter
+  filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$MIGRATE_JOB\" AND timestamp>=\"$since\""
+  # Cloud Logging takes a few seconds to show a line.
+  sleep "${LOGS_WAIT_SECONDS:-20}"
+  say "The job's logs:"
+  if ! gcloud logging read "$filter" --project="$PROJECT_ID" --order=asc --limit=200 \
+    --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.llm,jsonPayload.stack_trace)' >&2; then
+    say "They couldn't be read here (the deployer needs roles/logging.viewer; re-run the bootstrap)."
+    say "Read them with: $(quote_cmd gcloud logging read "$filter" --project="$PROJECT_ID" --order=asc --limit=200)"
+  fi
+}
+
+# Runs the migration job once with other arguments ($1, comma-separated) and waits for it.
+execute_job() {
+  run gcloud run jobs execute "$MIGRATE_JOB" --project="$PROJECT_ID" --region="$REGION" \
+    --args="$1" --task-timeout="$2" --wait
+}
+
+now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
 cmd_migrate() {
-  local image="$1" env_file
+  local image="$1" env_file since
   need_arg "$image" IMAGE
   env_file="$(render_env "$SERVICE_DETERMINISTIC_HOST")"
   step "Migrations: job $MIGRATE_JOB over the direct database URL (T2, B2)"
@@ -182,11 +207,10 @@ cmd_migrate() {
     --command=python --args=manage.py,migrate,--noinput \
     --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=10m --cpu=1 --memory=1Gi \
     --env-vars-file="$env_file" --set-secrets="$MIGRATE_SECRETS" --labels="$(deploy_labels)"
+  since="$(now_utc)"
   if ! run gcloud run jobs execute "$MIGRATE_JOB" --project="$PROJECT_ID" --region="$REGION" --wait; then
     say "The migration failed, so the service was not deployed and still runs the old code."
-    say "Its logs: $(quote_cmd gcloud logging read \
-      "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$MIGRATE_JOB\"" \
-      --project="$PROJECT_ID" --freshness=1h --limit=50)"
+    job_logs "$since"
     exit 1
   fi
 }
@@ -319,13 +343,25 @@ cmd_access() {
 # Draws the starter premises' covers that are missing, as the migration job with other arguments
 # (S1, M4). Covers that exist are skipped, so after the first run this costs only the job's start.
 cmd_covers() {
+  local since
   step "Starter covers: job $MIGRATE_JOB runs draw_premise_covers"
-  if ! run gcloud run jobs execute "$MIGRATE_JOB" --project="$PROJECT_ID" --region="$REGION" \
-    --args=manage.py,draw_premise_covers --task-timeout=30m --wait; then
+  since="$(now_utc)"
+  if ! execute_job manage.py,draw_premise_covers 30m; then
     say "Some covers weren't drawn; Discover shows the genre's glow for them until the next deploy."
-    say "Its logs: $(quote_cmd gcloud logging read \
-      "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$MIGRATE_JOB\"" \
-      --project="$PROJECT_ID" --freshness=1h --limit=50)"
+    job_logs "$since"
+    exit 1
+  fi
+}
+
+# Calls each model the app uses once, on the service's settings and account (B6, T13), so a model
+# Vertex AI refuses fails the deploy run with its reason instead of failing players' turns.
+cmd_models() {
+  local since
+  step "Models: job $MIGRATE_JOB runs check_models"
+  since="$(now_utc)"
+  if ! execute_job manage.py,check_models 10m; then
+    say "A model the app uses didn't answer, so players see \"The storyteller is unavailable\"."
+    job_logs "$since"
     exit 1
   fi
 }
@@ -354,6 +390,7 @@ main() {
     service) cmd_service "${1:-}" ;;
     smoke) cmd_smoke "${1:-}" ;;
     access) cmd_access ;;
+    models) cmd_models ;;
     covers) cmd_covers ;;
     rollback) cmd_rollback "${1:-}" ;;
     -h | --help | help) usage ;;

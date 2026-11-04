@@ -56,6 +56,18 @@ WIF_POOL="github"
 WIF_PROVIDER="playable-anime-deploy"
 WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
 
+# Read-only Google Cloud for threads and anyone with write access to the repo: the Ops workflow
+# runs one read-only gcloud command and prints what it says, such as logs or a service's settings
+# (docs/DEPLOY.md#reading-google-cloud). It signs in as its own account through its own pool, so it
+# can never act as the deployer, and that account can read but never change or reveal a secret.
+OPS_WORKFLOW=".github/workflows/ops.yml"
+OPS_SA_NAME="github-ops"
+OPS_SA="${OPS_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+OPS_ROLES="roles/viewer roles/logging.viewer"
+OPS_WIF_POOL="github-ops"
+OPS_WIF_PROVIDER="playable-anime-ops"
+OPS_WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${OPS_WIF_POOL}/providers/${OPS_WIF_PROVIDER}"
+
 # The budget alert on the project (T9). The amount is in the billing account's currency.
 BUDGET_NAME="playable-anime-monthly"
 BUDGET_DEFAULT_AMOUNT="25"
