@@ -24,7 +24,7 @@ for arg in "$@"; do
   esac
 done
 
-verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding get-value "
+verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value "
 group=''
 verb=''
 resource=''
@@ -74,7 +74,33 @@ case "$group/$verb" in
     echo $(($(cat "$state/deploys" 2>/dev/null || echo 0) + 1)) >"$state/deploys"
     ;;
   "run jobs/deploy") touch "$state/res/$key" ;;
-  "run jobs/execute") [[ -z "${FAKE_FAIL_MIGRATION:-}" ]] ;;
+  "run jobs/execute")
+    if [[ " $* " == *" --args=manage.py,draw_premise_covers "* ]]; then
+      [[ -z "${FAKE_FAIL_COVERS:-}" ]]
+    else
+      [[ -z "${FAKE_FAIL_MIGRATION:-}" ]]
+    fi
+    ;;
+  # Who may call the service: $state/public exists while allUsers is an invoker.
+  "run services/add-iam-policy-binding")
+    [[ -z "${FAKE_FAIL_ACCESS:-}" ]] || exit 1
+    if [[ " $* " == *" --member=allUsers "* ]]; then touch "$state/public"; fi
+    ;;
+  "run services/remove-iam-policy-binding")
+    [[ -e "$state/public" ]] || {
+      echo "ERROR: (fake) Policy binding not found" >&2
+      exit 1
+    }
+    rm "$state/public"
+    ;;
+  "run services/get-iam-policy")
+    exists || exit 1
+    if [[ -e "$state/public" ]]; then
+      echo '{"bindings": [{"members": ["allUsers"], "role": "roles/run.invoker"}], "etag": "x"}'
+    else
+      echo '{"etag": "x"}'
+    fi
+    ;;
   "run services/describe")
     exists || exit 1
     [[ "$format" == json ]] || exit 2
@@ -106,6 +132,7 @@ JSON
     exists || exit 1
     case "$format" in
       *state*) if [[ -n "${FAKE_DELETED:-}" ]]; then echo DELETED; else echo ACTIVE; fi ;;
+      *deleted*) if [[ -n "${FAKE_DELETED:-}" ]]; then echo True; fi ;;
       *) echo "$resource" ;;
     esac
     ;;

@@ -1,17 +1,27 @@
-# Deploys the API to Cloud Run. Started by hand from main only (T13). See docs/DEPLOY.md.
+# Deploys everything from main (T13). See docs/DEPLOY.md.
 #
-# 1. CI must have passed on this exact commit.
+# Every PR goes into dep, and merging dep into main is the deploy: the push to main starts this.
+# It can also be started by hand on main, for a dry run or to deploy main again.
+#
+# 1. CI must have passed on this exact commit; this waits for it.
 # 2. Sign in to Google Cloud through Workload Identity Federation, with no key (B11).
 # 3. Build the backend image once and push it to Artifact Registry.
 # 4. Run migrations as a Cloud Run job over the direct database URL (T2).
 # 5. Deploy the service to europe-west3 and move all traffic to it (T1, B10).
 # 6. Check /health. If it or any step since the deploy began fails, roll traffic back.
+# 7. Let anyone call the API, which checks sign-in itself (T8), unless API_ACCESS is private.
+# 8. Draw the starter covers that are missing, in a job of its own whose failure doesn't fail the
+#    deploy.
+# Meanwhile the Android app is built, and once the API is up it is published as the latest
+# GitHub release's lucid-saga.apk, which the README links.
 #
-# "Dry run" signs in, checks the setup and builds the image, then only prints steps 4 to 6.
+# "Dry run" signs in, checks the setup and builds the image and the APK, then only prints the rest.
 
 name: Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -21,8 +31,9 @@ on:
 
 permissions: {}
 
+# One deploy at a time, and a queued one is never replaced by a dry run, which has its own queue.
 concurrency:
-  group: deploy-production
+  group: deploy-production${{ inputs.dry_run && '-dry-run' || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -141,9 +152,122 @@ jobs:
           SERVICE_URL: ${{ steps.service.outputs.url }}
           SMOKE_ID_TOKEN: ${{ steps.id_token.outputs.id_token }}
 
-      # Any failure once the deploy step has started, including the smoke test.
+      - id: access
+        name: Decide who may call the API
+        run: infra/deploy.sh access
+        env:
+          API_ACCESS: ${{ vars.API_ACCESS }}
+
+      # Any failure once the deploy step has started, including the smoke test, but not a failure to
+      # change who may call the API: the new revision is healthy then, and rolling back won't help.
       - name: Roll back to the previous revision
-        if: ${{ failure() && steps.service.outputs.previous_revision != '' }}
+        if: ${{ failure() && steps.service.outputs.previous_revision != '' && steps.access.outcome != 'failure' }}
         run: infra/deploy.sh rollback "$PREVIOUS_REVISION"
         env:
           PREVIOUS_REVISION: ${{ steps.service.outputs.previous_revision }}
+
+  # Skips the covers that exist, so only the first deploy draws (about $0.37 in all). Its own job,
+  # so the APK doesn't wait for it, and a failure here doesn't fail the deploy.
+  covers:
+    name: Draw the starter covers
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: infra/deploy.sh covers
+
+  # Runs alongside CI and the deploy. Nothing is published unless both pass.
+  apk:
+    name: Build the Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      signing: ${{ steps.build.outputs.signing }}
+      sha1: ${{ steps.build.outputs.sha1 }}
+      version_name: ${{ steps.build.outputs.version_name }}
+      version_code: ${{ steps.build.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.5
+          cache: true
+
+      # Signed with the release keystore from the repository's secrets, or with the debug key when
+      # there are none (docs/DEPLOY.md). The run number is the versionCode, so it always grows.
+      - id: build
+        name: Build the APK
+        run: infra/build-apk.sh "$RUNNER_TEMP/lucid-saga.apk"
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lucid-saga-apk
+          path: ${{ runner.temp }}/lucid-saga.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish the Android app
+    needs: [deploy, apk]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lucid-saga-apk
+          path: ${{ runner.temp }}/apk
+
+      - name: Publish the latest release
+        run: infra/publish-apk.sh "$RUNNER_TEMP/apk/lucid-saga.apk"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ needs.apk.outputs.version_code }}
+          VERSION_NAME: ${{ needs.apk.outputs.version_name }}
+          SIGNING: ${{ needs.apk.outputs.signing }}
+          SIGNING_SHA1: ${{ needs.apk.outputs.sha1 }}
