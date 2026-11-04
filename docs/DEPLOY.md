@@ -1,13 +1,26 @@
 # Deploying Lucid Saga
 
-How the API gets to Cloud Run: what Miki sets up once, what each deploy does, what it all costs, and
-how to roll back. Requirements: T1, T2, T3, T9, T11, T13, B10, B11 and M4 in
-[REQUIREMENTS.md](REQUIREMENTS.md). The scripts are in [`infra/`](../infra/), and the workflow is
+How the API gets to Cloud Run and the Android app to the README's download link: what Miki sets up
+once, what each deploy does, what it all costs, and how to roll back. Requirements: T1, T2, T3, T8,
+T9, T11, T13, B10, B11 and M4 in [REQUIREMENTS.md](REQUIREMENTS.md). The scripts are in
+[`infra/`](../infra/), and the workflow is
 [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
 
-**Nothing is deployed yet.** The Django backend already follows the image's runtime contract
-([below](#what-the-container-gets)), and nothing goes public before sign-in (T8) and rate limits and
-quotas (T9) are merged.
+## How changes reach production
+
+Every PR goes into the `dep` branch. Threads open their PRs against `dep`, review them, wait for
+green CI and merge them themselves (CLAUDE.md). **Merging `dep` into `main` is the deploy:** the
+push to `main` starts the deploy workflow, which deploys the whole backend and publishes the APK.
+A `dep` to `main` PR needs Miki's go-ahead (given for the first one on 2026-11-04), and is merged
+with **Create a merge commit**, never squashed, so `dep` and `main` keep one history.
+
+```text
+feature branch --PR, self-reviewed, green CI--> dep --PR, Miki's go-ahead, merge commit--> main --> deploy
+```
+
+CI runs on every PR and on every push to `dep` and `main`. A PR into `main` from any branch but
+`dep` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
+and the Workload Identity condition all work from it.
 
 ## What runs where
 
@@ -29,13 +42,27 @@ The names live in [`infra/config.sh`](../infra/config.sh). Plain settings for th
 
 ## One-time setup (Miki)
 
-These steps need Miki: they sign in as the project's owner, read the production database URLs and
-create things that are billed. Each one is safe to repeat.
+These steps need Miki: they sign in as the project's owner, read the production database URLs,
+create things that are billed and hold the app's signing key. Do them in this order; each one is
+safe to repeat. The commands work in a bash shell (Git Bash or WSL on Windows) with the
+[gcloud CLI](https://cloud.google.com/sdk/docs/install), the [GitHub CLI](https://cli.github.com)
+(`gh auth login`) and a JDK's `keytool` (Android Studio ships one under `jbr/bin`).
+
+1. [Sign in to gcloud](#1-sign-in).
+2. [Get the two production URLs from Neon](#2-get-the-two-production-urls-from-neon).
+3. [Run the bootstrap from `dep`](#3-run-the-bootstrap-from-dep), or run it again if it ran before.
+4. [Make the app's signing key and give it to GitHub](#4-make-the-apps-signing-key).
+5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web client (done) and
+   the Android client with the key's SHA-1.
+6. [Allow merge commits](#6-allow-merge-commits) in the repository's settings.
+7. [Dry-run the deploy](#7-dry-run-the-deploy) from `main`.
+8. Merge `dep` into `main` ([How changes reach production](#how-changes-reach-production)). That is
+   the first deploy.
 
 ### 1. Sign in
 
-On a machine with this repo and the [gcloud CLI](https://cloud.google.com/sdk/docs/install), sign in
-with the Google account that owns the `playable-anime` project and administers its billing account:
+On a machine with this repo, sign in with the Google account that owns the `playable-anime`
+project and administers its billing account:
 
 ```bash
 gcloud --configuration=playable-anime auth login
@@ -57,12 +84,17 @@ Don't paste them anywhere else. The script asks for them without echoing them, o
 `NEON_PRODUCTION_DATABASE_URL` and `NEON_PRODUCTION_DATABASE_URL_DIRECT`, and refuses a URL of the
 wrong kind before changing anything.
 
-### 3. Run the bootstrap
+### 3. Run the bootstrap, from `dep`
 
 ```bash
+git fetch origin && git checkout dep && git pull   # this setup is on dep until the first deploy
 infra/bootstrap.sh --dry-run       # prints every command, changes nothing, needs no sign-in
 BUDGET_AMOUNT=25 infra/bootstrap.sh
 ```
+
+**If the bootstrap already ran from an older `main`, run it again from `dep`.** The older one let
+GitHub sign in only for deploys started by hand, so the push to `main` would be refused, and it
+lacked the role that makes the API reachable. A re-run fixes both and changes nothing else.
 
 `BUDGET_AMOUNT` is the monthly alert threshold in the billing account's currency (25 by default).
 The script shows the account and project, asks for the two URLs, asks for confirmation, then runs
@@ -76,31 +108,92 @@ already right: secrets that have a value keep it, and the budget's amount is upd
 | 3. Artifact Registry | A Docker repository `playable-anime` in `europe-west3`, with a cleanup policy: keep the 10 newest images, delete the rest once 30 days old ([`artifact-cleanup.json`](../infra/artifact-cleanup.json)). | 0.5 GiB free, then about $0.10 per GiB-month. Expect a few cents a month. |
 | 4. Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` (generated), each stored in `europe-west3` only, with read access for the runtime account. | 6 versions and 10,000 reads a month are free; these are 3 versions. Free. |
 | 5. Pictures bucket | `gs://playable-anime-pictures` in `europe-west3`: uniform access, public access prevention enforced, soft delete off so a deleted account's pictures are gone at once (T12), and CORS that lets the web build read signed URLs ([`storage-cors.json`](../infra/storage-cors.json)). The runtime account gets `storage.objectUser` on the bucket and `iam.serviceAccountTokenCreator` on itself, which is what [signed URLs without a key](#signed-urls-without-a-key) need. | About $0.02 per GB-month (no free tier in Europe), $0.005 per 1,000 uploads, $0.12 per GB downloaded. 1,000 pictures of about 1.5 MB cost about $0.03 a month to keep and $0.18 to view once. |
-| 6. Deployer and federation | A `github-deployer` account with `run.developer` (deploy services and jobs, but not change who may call them), `run.invoker` (for the post-deploy health check), `iam.serviceAccountUser` on the runtime account only, and `artifactregistry.writer` on the repository only. A Workload Identity pool `github` with a provider that admits only `.github/workflows/deploy.yml` on `main` of this repository (by its numeric id), started by hand. | Free |
+| 6. Deployer and federation | A `github-deployer` account with `run.developer` (deploy services and jobs), a custom role `lucidSagaApiAccess` with only `run.services.getIamPolicy` and `run.services.setIamPolicy` (so the deploy can [decide who may call the API](#who-may-call-the-api)), `run.invoker` (for the post-deploy health check), `iam.serviceAccountUser` on the runtime account only, and `artifactregistry.writer` on the repository only. A Workload Identity pool `github` with a provider that admits only `.github/workflows/deploy.yml` on `main` of this repository (by its numeric id), run by a push to `main` or started by hand. | Free |
 | 7. Budget | A monthly budget on the project, measured before credits so free credits can't hide real usage. It alerts by email; it does not stop spending. | Free |
 
 Every command the bootstrap and the deploy run is listed under [Every command](#every-command).
 
-### 4. Test the pipeline without deploying
+### 4. Make the app's signing key
 
-In GitHub, open **Actions > Deploy > Run workflow**, keep the branch on `main`, tick **Dry run** and
-run it. From a terminal: `gh workflow run deploy.yml --ref main -f dry_run=true`.
+Android only installs an update signed with the same key as the installed app, and Google sign-in
+recognises the app by that key's SHA-1, so the release APK needs one key that never changes. Make
+it once, outside the repo, and keep a backup: a lost key means every player has to uninstall the
+app to get the next one.
 
-A dry run checks that CI passed on `main`, signs in through Workload Identity Federation, checks
-that the bootstrap's repository and runtime account are visible, builds the image without pushing
-it, and prints the migrate and deploy commands. It changes nothing in Google Cloud. If it fails at
-**google-github-actions/auth**, the bootstrap hasn't run or the provider's condition doesn't match
-(see [Troubleshooting](#troubleshooting)).
+```bash
+# A random password; keytool asks for it twice, then for a name (anything will do).
+openssl rand -base64 24 | tr -d '/+='
+keytool -genkeypair -v -keystore lucid-saga-upload.jks -storetype PKCS12 -keyalg RSA \
+  -keysize 4096 -validity 10000 -alias upload
+
+# The SHA-1 and SHA-256 fingerprints, for step 5.
+keytool -list -v -keystore lucid-saga-upload.jks -alias upload | grep -E 'SHA(1|256):'
+```
+
+Then the four repository secrets the deploy reads. A PKCS12 keystore has one password, so the key
+password is the keystore password. `gh secret set` asks for a value when none is piped in:
+
+```bash
+base64 -w0 lucid-saga-upload.jks | gh secret set ANDROID_KEYSTORE_BASE64   # macOS: base64 -i lucid-saga-upload.jks
+gh secret set ANDROID_KEYSTORE_PASSWORD
+gh secret set ANDROID_KEY_PASSWORD        # the same password
+gh secret set ANDROID_KEY_ALIAS --body upload
+```
+
+In PowerShell, the first line is
+`[Convert]::ToBase64String([IO.File]::ReadAllBytes("lucid-saga-upload.jks")) | gh secret set ANDROID_KEYSTORE_BASE64`.
+Without these secrets the deploy still publishes the APK, signed with a throwaway debug key and
+marked so in the release notes; Google sign-in doesn't work in it.
+
+### 5. Set up Google sign-in
+
+In the [Google Cloud console](https://console.cloud.google.com/auth/overview?project=playable-anime),
+under **Google Auth Platform**:
+
+1. **Branding and Audience** (the consent screen): app name Lucid Saga, a support email, the
+   audience **External**. While it is in **Testing**, only the test users listed there can sign
+   in, so add yours (and any tester's), or publish it: the app asks only for `openid`, `email` and
+   `profile`, which need no Google review.
+2. **Clients > Web application**: done. Its id is `GOOGLE_WEB_CLIENT_ID` in
+   [`infra/config.sh`](../infra/config.sh); the deploy gives it to the API and to the APK. Client
+   ids aren't secrets. Its client secret is never needed, because the app sends Google's ID token,
+   so don't store it anywhere.
+3. **Clients > Android**: package name `com.lucid.saga` and the **SHA-1** from step 4.
+   Nothing needs this client's id: on Android the app asks Google for an ID token for the Web
+   client, and Google checks the package name and signing key against this client.
+4. iOS, later: an iOS client, its id in `GOOGLE_IOS_CLIENT_ID` in `infra/config.sh`.
+
+### 6. Allow merge commits
+
+In the repository's **Settings > General > Pull Requests**, keep **Allow merge commits** on. A
+`dep` to `main` PR is merged with a merge commit so the two branches never drift apart; other PRs
+can keep squash merging.
+
+### 7. Dry-run the deploy
+
+```bash
+gh workflow run deploy.yml --ref main -f dry_run=true
+```
+
+Or **Actions > Deploy > Run workflow** on `main` with **Dry run** ticked. A dry run checks that CI
+passed on `main`, signs in through Workload Identity Federation, checks that the bootstrap's
+repository and runtime account are visible, builds the image without pushing it, builds the APK
+with the signing secrets, and prints the commands it would run. It changes nothing in Google Cloud
+and publishes nothing. If it fails at **google-github-actions/auth**, the bootstrap hasn't run or
+the provider's condition doesn't match (see [Troubleshooting](#troubleshooting)). Until this setup
+reaches `main` with the first deploy, `main`'s older workflow runs instead: it signs in and builds
+the image, but not the APK.
 
 ## Deploying
 
-A deploy is the same run without **Dry run**: **Actions > Deploy > Run workflow** on `main`, or
-`gh workflow run deploy.yml --ref main`. Only Miki starts one (CLAUDE.md), and only from `main`.
-Two deploys never run at once.
+Merging `dep` into `main` deploys. To deploy `main` again without a merge, run the workflow by
+hand: **Actions > Deploy > Run workflow** on `main`, or `gh workflow run deploy.yml --ref main`. It
+only ever deploys `main`, and two deploys never run at once.
 
 1. **CI passed on this commit** ([`require-green-ci.sh`](../infra/require-green-ci.sh)): the CI
-   workflow's run for this exact commit of `main` must have succeeded. If it is still running, the
-   deploy waits for it, up to 30 minutes. A red, cancelled or missing run stops the deploy (T13).
+   workflow's run for this exact commit of `main` must have succeeded. CI starts on the same push,
+   so the deploy waits for it, up to 30 minutes. A red, cancelled or missing run stops the deploy
+   (T13).
 2. **Sign in** as `github-deployer` through Workload Identity Federation. There is no key to leak
    (B11).
 3. **Build** `backend/` into one image, tag it with the commit, push it to Artifact Registry and pin
@@ -118,29 +211,37 @@ Two deploys never run at once.
    a 200, or any step fails once the deploy has started, traffic goes back to the revision that
    had the most traffic before this deploy, and the run fails. `/health` never touches the
    database (T3).
+7. **Decide who may call the API** (`infra/deploy.sh access`): anyone, by default, so the app can
+   reach it ([below](#who-may-call-the-api)). A failure here fails the run but keeps the new
+   revision, which passed its health check.
+8. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing
+   ([below](#drawing-the-starter-covers)). A failure here doesn't fail the deploy.
+9. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 8,
+   and published only once they pass.
 
-The run's summary shows the image, the new and previous revisions and the URL.
+The run's summary shows the image, the new and previous revisions, the URL and the APK's link.
 
 ### Drawing the starter covers
 
-Discover's eleven starter premises show a cover once the house has drawn it (S1, M4). Nothing
-draws them during a deploy: after the first deploy that has `draw_premise_covers`, and once Vertex
-AI answers for the runtime account, Miki runs it once as the migration job with other arguments.
-The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and the direct
-database URL, so nothing else is needed:
+Discover's eleven starter premises show a cover once the house has drawn it (S1, M4). Each deploy
+runs `manage.py draw_premise_covers` as the migration job with other arguments, after the health
+check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and the
+direct database URL. It skips every cover that exists, so the first deploy draws all eleven with
+`PICTURE_MODEL`, about $0.034 each and $0.37 in all, paid by the house (the logs show each cover's
+model and cost, `Premise cover ready`, and no player's ledger changes), and later deploys draw
+nothing. A cover that fails or is blocked is left out and the step is marked failed, without
+failing the deploy; the next deploy tries it again. Until then, and for a premise without a cover,
+Discover shows a glow in the genre's colour. The app shows a new cover the next time it loads the
+premises.
+
+To draw now, or draw one again with `--force`:
 
 ```bash
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
   --args=manage.py,draw_premise_covers --task-timeout=30m --wait
+# One cover again:   --args=manage.py,draw_premise_covers,naples-vendetta,--force
+# What it would draw and cost, without drawing:   --args=manage.py,draw_premise_covers,--dry-run
 ```
-
-It draws each cover once with `PICTURE_MODEL`, about $0.034 each and $0.37 for all eleven, paid by
-the house: the logs show each cover's model and cost (`Premise cover ready`), and no player's ledger
-changes. A cover that fails or is blocked is left out, and the job ends failed and names it; running
-the same command again draws only the missing ones. To draw one again, pass its id and `--force`:
-`--args=manage.py,draw_premise_covers,naples-vendetta,--force`. `--dry-run` lists what would be
-drawn and its cost without drawing. The app shows a cover the next time it loads the premises;
-until then, and for a premise without one, Discover shows a glow in the genre's colour.
 
 ### Service settings
 
@@ -153,7 +254,7 @@ until then, and for a premise without one, Discover shows a glow in the genre's 
 | CPU, memory, concurrency | 1 vCPU, 1 GiB, 80 | Django, LangGraph and the Google libraries need more than 512 MiB; the API is async. |
 | Billing | request-based | CPU is throttled after a response, so nothing may run after it (B8). |
 | Service account | `playable-anime-api` | Vertex AI through Application Default Credentials (B11). |
-| Who may call it | unchanged by deploys | A new service is private. See [Going public](#going-public). |
+| Who may call it | anyone, unless `API_ACCESS` is `private` | The API checks sign-in itself (T8). See [Who may call the API](#who-may-call-the-api). |
 
 ### What the container gets
 
@@ -165,8 +266,8 @@ directory.
 | --- | --- |
 | `DATABASE_URL` | Secret `database-url` (pooled) for the service, `database-url-direct` for the migrate job |
 | `DJANGO_SECRET_KEY` | Secret `django-secret-key` |
-| `LLM_PROVIDER`, `VERTEX_LOCATION`, `LOG_LEVEL`, `OWNER_EMAILS`, and later `GOOGLE_OAUTH_CLIENT_IDS`, `CORS_ORIGINS` and per-node model names | [`infra/cloudrun/env.yaml`](../infra/cloudrun/env.yaml) |
-| `GCP_PROJECT`, `MEDIA_BUCKET` | `infra/config.sh`, added by `deploy.sh` |
+| `LLM_PROVIDER`, `VERTEX_LOCATION`, `LOG_LEVEL`, `OWNER_EMAILS`, and later `CORS_ORIGINS` and per-node model names | [`infra/cloudrun/env.yaml`](../infra/cloudrun/env.yaml) |
+| `GCP_PROJECT`, `MEDIA_BUCKET`, `GOOGLE_OAUTH_CLIENT_IDS` | `infra/config.sh`, added by `deploy.sh`. The client ids are the Web client's and, later, the iOS client's (T8). |
 | `ALLOWED_HOSTS` | The service's hostnames, comma-separated, without a scheme, added by `deploy.sh` |
 | `CSRF_TRUSTED_ORIGINS` | The same hostnames as `https://` origins, for the Django admin |
 | `PORT`, `K_SERVICE`, `K_REVISION` | Cloud Run itself |
@@ -199,19 +300,54 @@ url = blob.generate_signed_url(
 )
 ```
 
-## Going public
+## Who may call the API
 
-A deploy never changes who may call the API, and a new service accepts only callers with IAM
-access. Once T8 (sign-in) and T9 (rate limits, quotas and this budget) are merged and deployed, and
-Miki agrees, this one command lets the app reach it:
+T8 (sign-in) and T9 (rate limits, quotas and the budget alert) are merged, and on 2026-11-04 Miki
+asked for the app to work from the APK, so each deploy lets anyone call the API: it makes sure
+`allUsers` has `roles/run.invoker` on the service. Cloud Run then passes every request on, and the
+API itself refuses everything but `/health` and sign-in without a signed-in player (T8), and holds
+each player to the rate limits and quotas (T9). The deployer can do this through the custom role
+`lucidSagaApiAccess`, and nothing more with IAM.
+
+To make it private again, in an emergency or otherwise, do both:
 
 ```bash
-gcloud run services add-iam-policy-binding playable-anime-api --project=playable-anime \
+gcloud run services remove-iam-policy-binding playable-anime-api --project=playable-anime \
   --region=europe-west3 --member=allUsers --role=roles/run.invoker
+gh variable set API_ACCESS --body private   # so the next deploys keep it private
 ```
 
-To make it private again, in an emergency or otherwise, run the same with
-`remove-iam-policy-binding`. Requests refused this way are not billed.
+Requests refused this way are not billed. To open it again, `gh variable delete API_ACCESS` (or set
+it to `public`) and deploy, or run the command above with `add-iam-policy-binding`.
+
+## The Android app
+
+Each deploy builds the Android app with [`infra/build-apk.sh`](../infra/build-apk.sh) and, once the
+API is deployed, publishes it as the asset `lucid-saga.apk` of a new GitHub release tagged
+`build-<run number>`, marked as the latest. The README's link,
+<https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk>, always
+downloads the newest. While the repository is private, only people with access to it can download.
+A release asset isn't in git and doesn't count against the repository's size.
+
+- **What it talks to:** `API_BASE_URL` is `https://playable-anime-api-528988811295.europe-west3.run.app`
+  (`API_URL` in `infra/config.sh`), and `GOOGLE_WEB_CLIENT_ID` is the Web client's id from the same
+  file.
+- **Signing:** with the release keystore from the four `ANDROID_*` secrets
+  ([setup step 4](#4-make-the-apps-signing-key)), read by
+  [`app/android/app/build.gradle.kts`](../app/android/app/build.gradle.kts) from
+  `ANDROID_KEYSTORE_PATH` and the passwords. Without the secrets, the debug key of that run signs
+  it and the release notes say so; with only some of them, the build stops. The run's log and the
+  release notes show the signing certificate's SHA-1.
+- **Version:** the name comes from `app/pubspec.yaml`; the version code is the deploy workflow's
+  run number, so every release installs over the one before.
+- **Installing:** open the link on the phone (or drag the file onto an emulator) and allow installs
+  from the browser or the Files app when Android asks.
+- **Checked in CI:** every CI run builds the same release APK with the debug key, so a change that
+  breaks the build fails its PR, not the deploy.
+
+To build a release-signed APK by hand, export `ANDROID_KEYSTORE_BASE64` (or point
+`ANDROID_KEYSTORE_PATH` at the keystore for a plain `flutter build apk`) and the three others, then
+run `infra/build-apk.sh out/lucid-saga.apk`.
 
 ## Rolling back
 
@@ -247,7 +383,7 @@ free tiers or a few cents a month.
 | Cloud Storage, pictures | About $0.02 per GB-month, $0.005 per 1,000 writes, $0.0004 per 1,000 reads, $0.12 per GB served to the internet. | Cents until there are many players. |
 | Workload Identity Federation, service accounts, IAM, budgets, enabling APIs | Free | Free |
 | Cloud Logging and Error Reporting | First 50 GiB of logs a month free | Free |
-| GitHub Actions | This private repo's free plan includes 2,000 minutes a month; a deploy takes about 5 to 10, the CI infra job about 2. | Free |
+| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
 | Neon | A deploy wakes the production compute for the migration. | Seconds of compute. |
 | Vertex AI (Gemini) | Per token and per picture ([ARCHITECTURE.md](ARCHITECTURE.md#images)) | The real cost, guarded by T9 and the budget alert. |
 
@@ -260,7 +396,12 @@ Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 
 | Symptom | Likely cause |
 | --- | --- |
-| `google-github-actions/auth` fails with `unauthorized_client` or `The given credential is rejected by the attribute condition` | The run wasn't started by hand from `main`, or the bootstrap hasn't run. The provider admits only `workflow_dispatch` runs of `deploy.yml` on `main`. |
+| `google-github-actions/auth` fails with `unauthorized_client` or `The given credential is rejected by the attribute condition` | The run isn't `deploy.yml` on `main`, or the bootstrap hasn't run, or ran from a version older than this one (it admitted only runs started by hand): run it again from `dep` or `main`. The provider admits only `push` and `workflow_dispatch` runs of `deploy.yml` on `main`. |
+| The access step fails with `Permission 'run.services.setIamPolicy' denied` | The deployer lacks the `lucidSagaApiAccess` role; run the bootstrap again. |
+| The access step fails with a message about `allUsers` and an organization policy | The project is under an organization whose policy blocks public members (domain-restricted sharing); an organization admin has to allow it for this project. |
+| The APK step fails with `only some of the signing secrets are set` | One of the four `ANDROID_*` secrets is missing or misspelt. |
+| Google sign-in fails in the app on Android | The APK is debug-signed, or the Android client's SHA-1 isn't the release key's, or your account isn't a test user of the consent screen. |
+| A PR fails CI's `into-main` check | It targets `main`. Change its base branch to `dep`. |
 | `Permission 'iam.serviceAccounts.getAccessToken' denied` | The `workloadIdentityUser` binding on `github-deployer` is missing; re-run the bootstrap. |
 | Preflight can't see the repository or the runtime account | The bootstrap hasn't run, or ran on another project. |
 | The deploy fails with `does not have permission to access secret` | The runtime account lost `secretAccessor` on a secret; re-run the bootstrap. |
@@ -279,16 +420,19 @@ Removing pieces is Miki's call and can't be undone; each command below deletes i
 `gcloud storage rm --recursive gs://playable-anime-pictures`, `gcloud secrets delete <name>`,
 `gcloud iam workload-identity-pools delete github --location=global` (it can be undeleted for 30
 days, and the bootstrap does that if it finds it deleted) and
-`gcloud iam service-accounts delete github-deployer@playable-anime.iam.gserviceaccount.com`, each
-with `--project=playable-anime`. Never delete the runtime account.
+`gcloud iam service-accounts delete github-deployer@playable-anime.iam.gserviceaccount.com` and
+`gcloud iam roles delete lucidSagaApiAccess` (it can be undeleted for 7 days, and the bootstrap
+does that), each with `--project=playable-anime`. Never delete the runtime account. Old releases
+can be deleted from the repository's **Releases** page; the latest one is what the README links.
 
 ## Every command
 
 Printed from the dry runs by [`infra/tests/print-commands.sh`](../infra/tests/print-commands.sh);
 CI fails if this copy falls out of date. A dry run assumes nothing exists yet, so it shows every
 create; a real run skips what already exists. On a re-run the bootstrap instead updates the
-provider (`update-oidc` with the same flags) and the budget (`billing budgets update <budget>
---budget-amount=…`), and undeletes a pool or provider that was deleted. On the first deploy,
+provider (`update-oidc` with the same flags), the custom role (`iam roles update` with the same
+permissions) and the budget (`billing budgets update <budget> --budget-amount=…`), and undeletes a
+pool, provider or role that was deleted. On the first deploy,
 `gcloud run services update … --env-vars-file=ENV_FILE` adds the service's second URL. CI checks
 all of these against the real gcloud too. Secret values go in on standard input, never as
 arguments, shown here as `<<< (where it comes from)`.
@@ -316,11 +460,13 @@ gcloud storage buckets add-iam-policy-binding gs://playable-anime-pictures --pro
 gcloud iam service-accounts add-iam-policy-binding playable-anime-api@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/iam.serviceAccountTokenCreator --format=none
 gcloud iam service-accounts create github-deployer --project=playable-anime '--display-name=GitHub Actions deploy'
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/run.developer --condition=None --format=none
+gcloud iam roles create lucidSagaApiAccess --project=playable-anime '--title=Lucid Saga API access' '--description=Decide who may call the API: make it public or private again' --permissions=run.services.getIamPolicy,run.services.setIamPolicy --stage=GA
+gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=projects/playable-anime/roles/lucidSagaApiAccess --condition=None --format=none
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/run.invoker --condition=None --format=none
 gcloud iam service-accounts add-iam-policy-binding playable-anime-api@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/iam.serviceAccountUser --format=none
 gcloud artifacts repositories add-iam-policy-binding playable-anime --project=playable-anime --location=europe-west3 --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/artifactregistry.writer --format=none
 gcloud iam workload-identity-pools create github --project=playable-anime --location=global '--display-name=GitHub Actions' '--description=Keyless sign-in for GitHub Actions'
-gcloud iam workload-identity-pools providers create-oidc playable-anime-deploy --project=playable-anime --location=global --workload-identity-pool=github '--display-name=PlayableAnime deploy workflow' --issuer-uri=https://token.actions.githubusercontent.com --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref '--attribute-condition=assertion.repository_id == '\''1444213567'\'' && assertion.repository_owner_id == '\''112938189'\'' && assertion.ref == '\''refs/heads/main'\'' && assertion.event_name == '\''workflow_dispatch'\'' && assertion.workflow_ref == '\''Mikigb77/PlayableAnime/.github/workflows/deploy.yml@refs/heads/main'\'''
+gcloud iam workload-identity-pools providers create-oidc playable-anime-deploy --project=playable-anime --location=global --workload-identity-pool=github '--display-name=PlayableAnime deploy workflow' --issuer-uri=https://token.actions.githubusercontent.com --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref '--attribute-condition=assertion.repository_id == '\''1444213567'\'' && assertion.repository_owner_id == '\''112938189'\'' && assertion.ref == '\''refs/heads/main'\'' && (assertion.event_name == '\''push'\'' || assertion.event_name == '\''workflow_dispatch'\'') && assertion.workflow_ref == '\''Mikigb77/PlayableAnime/.github/workflows/deploy.yml@refs/heads/main'\'''
 gcloud iam service-accounts add-iam-policy-binding github-deployer@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser --format=none
 gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID --billing-project=playable-anime --display-name=playable-anime-monthly --budget-amount=25 --calendar-period=month --filter-projects=projects/playable-anime --credit-types-treatment=exclude-all-credits --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 --threshold-rule=percent=1.0,basis=forecasted-spend
 
@@ -331,6 +477,12 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
 # infra/deploy.sh service IMAGE
 gcloud run deploy playable-anime-api --project=playable-anime --region=europe-west3 --image=europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:DIGEST --service-account=playable-anime-api@playable-anime.iam.gserviceaccount.com --cpu=1 --memory=1Gi --concurrency=80 --min-instances=0 --max-instances=3 --timeout=300 --cpu-boost --port=8080 --env-vars-file=ENV_FILE --set-secrets=DATABASE_URL=database-url:latest,DJANGO_SECRET_KEY=django-secret-key:latest --update-labels=deployed-by=github-actions,commit-sha=COMMIT_SHA
 gcloud run services update-traffic playable-anime-api --project=playable-anime --region=europe-west3 --to-latest
+
+# infra/deploy.sh access (API_ACCESS=private removes the same binding instead)
+gcloud run services add-iam-policy-binding playable-anime-api --project=playable-anime --region=europe-west3 --member=allUsers --role=roles/run.invoker --format=none
+
+# infra/deploy.sh covers
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait
 
 # infra/deploy.sh rollback REVISION
 gcloud run services update-traffic playable-anime-api --project=playable-anime --region=europe-west3 --to-revisions=REVISION=100
@@ -344,5 +496,6 @@ GCP_PROJECT: "playable-anime"
 MEDIA_BUCKET: "playable-anime-pictures"
 ALLOWED_HOSTS: "playable-anime-api-528988811295.europe-west3.run.app"
 CSRF_TRUSTED_ORIGINS: "https://playable-anime-api-528988811295.europe-west3.run.app"
+GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"
 ```
 <!-- every-command:end -->

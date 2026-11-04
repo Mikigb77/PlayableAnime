@@ -1229,15 +1229,15 @@ app                   shows the narration, then asks for the picture in its own 
 | Images | Artifact Registry `europe-west3-docker.pkg.dev/playable-anime/playable-anime/api` |
 | Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` in Secret Manager (T11) |
 | Pictures | `gs://playable-anime-pictures`, private (M4) |
-| Deploys | `.github/workflows/deploy.yml`, started by hand on `main`, signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11) |
+| Deploys | `.github/workflows/deploy.yml`, run by each merge of `dep` into `main` (or by hand on `main`), signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11), and publishes the Android APK as the latest release's `lucid-saga.apk` |
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
 | Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 
-**Drawing the starter covers.** After a deploy that has the command, once Vertex AI answers for
-the runtime account, one command draws Discover's covers, about $0.37 for all eleven, paid by the
-house ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)):
+**Drawing the starter covers.** Each deploy draws the covers that are missing, so the first one
+draws Discover's eleven, about $0.37 in all, paid by the house, and later ones draw nothing
+([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)). To draw by hand:
 
 ```bash
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \

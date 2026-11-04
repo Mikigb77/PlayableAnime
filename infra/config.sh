@@ -42,6 +42,11 @@ MEDIA_BUCKET="playable-anime-pictures"
 # GitHub Actions signs in through Workload Identity Federation as this account. No JSON key (B11).
 DEPLOYER_SA_NAME="github-deployer"
 DEPLOYER_SA="${DEPLOYER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+# A custom role that lets the deployer decide who may call the API and nothing else: add or remove
+# allUsers as an invoker (docs/DEPLOY.md#who-may-call-the-api).
+API_ACCESS_ROLE_ID="lucidSagaApiAccess"
+API_ACCESS_ROLE="projects/${PROJECT_ID}/roles/${API_ACCESS_ROLE_ID}"
+API_ACCESS_PERMISSIONS="run.services.getIamPolicy,run.services.setIamPolicy"
 WIF_POOL="github"
 WIF_PROVIDER="playable-anime-deploy"
 WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
@@ -50,5 +55,20 @@ WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdent
 BUDGET_NAME="playable-anime-monthly"
 BUDGET_DEFAULT_AMOUNT="25"
 
-# The service's deterministic URL, which exists before the first deploy.
+# The service's deterministic URL, which exists before the first deploy. The Android app calls it.
 SERVICE_DETERMINISTIC_HOST="${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+API_URL="https://${SERVICE_DETERMINISTIC_HOST}"
+
+# Google sign-in (T8): the OAuth clients in this project. Client ids aren't secrets. The client
+# secret is never needed, because the app sends Google's ID token, so it is never stored anywhere.
+# The web client is also the app's server client id on Android, so Android ID tokens carry it as
+# their audience; the Android client only has to exist, for the package name and the signing
+# key's SHA-1 (docs/DEPLOY.md). deploy.sh gives the API these ids, and build-apk.sh the app the
+# web one.
+GOOGLE_WEB_CLIENT_ID="528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"
+# The iOS client, once there is one.
+GOOGLE_IOS_CLIENT_ID=""
+
+# The Android app: each deploy publishes it as this asset of a GitHub release, which the README
+# links through releases/latest/download/.
+APK_ASSET="lucid-saga.apk"

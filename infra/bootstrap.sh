@@ -9,7 +9,8 @@
 #   3. an Artifact Registry repository for the API image, with a cleanup policy
 #   4. the secrets database-url, database-url-direct and django-secret-key (T11)
 #   5. a private bucket in europe-west3 for pictures, with keyless signed URLs (M4, B11)
-#   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11)
+#   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11),
+#      and a custom role that lets it decide who may call the API
 #   7. a monthly budget alert on the project (T9)
 #
 # Run it with --dry-run first to see every command without changing anything.
@@ -60,10 +61,11 @@ iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com storage.goog
 cloudresourcemanager.googleapis.com cloudbilling.googleapis.com billingbudgets.googleapis.com
 aiplatform.googleapis.com logging.googleapis.com clouderrorreporting.googleapis.com"
 
-# Only the deploy workflow on main, started by hand, in this repository, gets in (B11).
+# Only the deploy workflow on main of this repository gets in (B11): run by a push to main (a merge
+# of dep, docs/DEPLOY.md) or started by hand there.
 WIF_ISSUER="https://token.actions.githubusercontent.com"
 WIF_ATTRIBUTE_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref"
-WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && assertion.event_name == 'workflow_dispatch' && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
+WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && (assertion.event_name == 'push' || assertion.event_name == 'workflow_dispatch') && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
 WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
 
 BUDGET_AMOUNT="${BUDGET_AMOUNT:-$BUDGET_DEFAULT_AMOUNT}"
@@ -306,11 +308,37 @@ setup_bucket() {
     roles/iam.serviceAccountTokenCreator
 }
 
+# The custom role that lets the deploy add or remove allUsers as the API's invoker, and nothing
+# else. A role deleted in the last 7 days can't be created again, only undeleted.
+setup_api_access_role() {
+  local name deleted
+  name="$(read_value gcloud iam roles describe "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --format='value(name)')"
+  if [ -z "$name" ]; then
+    run gcloud iam roles create "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+      --title="Lucid Saga API access" \
+      --description="Decide who may call the API: make it public or private again" \
+      --permissions="$API_ACCESS_PERMISSIONS" --stage=GA
+    return 0
+  fi
+  deleted="$(read_value gcloud iam roles describe "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --format='value(deleted)')"
+  case "$deleted" in
+    True | true) run gcloud iam roles undelete "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" ;;
+  esac
+  # Brings an existing role back to exactly these permissions.
+  run gcloud iam roles update "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
+    --permissions="$API_ACCESS_PERMISSIONS"
+}
+
 setup_deployer() {
   step "6a. Deployer service account $DEPLOYER_SA"
   ensure_service_account "$DEPLOYER_SA_NAME" "GitHub Actions deploy"
-  # Deploys services and jobs, without IAM rights over them, so it can't make the API public.
+  # Deploys services and jobs. The IAM rights it has over them come only from the custom role
+  # below, so the one thing it can change about access is whether anyone may call the API.
   grant_project_role "serviceAccount:$DEPLOYER_SA" roles/run.developer
+  setup_api_access_role
+  grant_project_role "serviceAccount:$DEPLOYER_SA" "$API_ACCESS_ROLE"
   # Calls /health on a private service after a deploy.
   grant_project_role "serviceAccount:$DEPLOYER_SA" roles/run.invoker
   # Runs the service and the migration job as the runtime account.
@@ -409,7 +437,8 @@ Google Cloud is ready for the deploy workflow:
   Pictures bucket             gs://$MEDIA_BUCKET
 
 Next: in GitHub, run Actions > Deploy on main with "dry run" ticked. It signs in, checks this setup
-and builds the image without deploying anything (docs/DEPLOY.md).
+and builds the image without deploying anything. After that, merging dep into main deploys
+(docs/DEPLOY.md).
 EOF
 }
 

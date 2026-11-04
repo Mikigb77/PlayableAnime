@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# A stand-in for the Android SDK's apksigner in the infra tests: `verify --print-certs` prints a
+# certificate the way the real one does, or fails with FAKE_BAD_SIGNATURE.
+set -euo pipefail
+[ "${1:-}" = verify ] || exit 2
+[ -z "${FAKE_BAD_SIGNATURE:-}" ] || {
+  echo "DOES NOT VERIFY" >&2
+  exit 1
+}
+echo "Signer #1 certificate DN: CN=Android Debug, O=Android, C=US"
+echo "Signer #1 certificate SHA-256 digest: 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+echo "Signer #1 certificate SHA-1 digest: da39a3ee5e6b4b0d3255bfef95601890afd80709"
+echo "Signer #1 certificate MD5 digest: d41d8cd98f00b204e9800998ecf8427e"

@@ -36,8 +36,8 @@ DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 already drawn unless `--force` (name premises to draw only those, and `--dry-run` shows what it
 would draw and cost). With the offline model the covers are plain placeholders, which a real model
 replaces on its first run; it refuses to put placeholders in a Cloud Storage bucket. Without
-covers, Discover shows a glow in each genre's colour. The real run is one command on Cloud Run
-([docs/DEPLOY.md](../docs/DEPLOY.md#drawing-the-starter-covers)).
+covers, Discover shows a glow in each genre's colour. On Cloud Run each deploy draws the missing
+ones ([docs/DEPLOY.md](../docs/DEPLOY.md#drawing-the-starter-covers)).
 
 By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, and every
 picture with a quiet gradient in the picture's shape, so everything works offline. For real

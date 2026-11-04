@@ -84,8 +84,11 @@ test_bootstrap_dry_run() {
   contains "$out" "assertion.repository_id == '\\''1444213567'\\''"
   contains "$out" "assertion.repository_owner_id == '\\''112938189'\\''"
   contains "$out" "assertion.ref == '\\''refs/heads/main'\\''"
-  contains "$out" "assertion.event_name == '\\''workflow_dispatch'\\''"
+  contains "$out" "(assertion.event_name == '\\''push'\\'' || assertion.event_name == '\\''workflow_dispatch'\\'')"
   contains "$out" "Mikigb77/PlayableAnime/.github/workflows/deploy.yml@refs/heads/main"
+  contains "$out" "[dry-run] gcloud iam roles create lucidSagaApiAccess --project=playable-anime"
+  contains "$out" "--permissions=run.services.getIamPolicy,run.services.setIamPolicy --stage=GA"
+  contains "$out" "--member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=projects/playable-anime/roles/lucidSagaApiAccess"
   contains "$out" "--member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser"
   contains "$out" "[dry-run] gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID"
   contains "$out" "--budget-amount=25"
@@ -113,6 +116,7 @@ test_bootstrap_first_and_second_run() {
     "the existing runtime account must not be created again"
   contains "$state/calls.log" "gcloud iam workload-identity-pools create github"
   contains "$state/calls.log" "gcloud iam workload-identity-pools providers create-oidc playable-anime-deploy"
+  contains "$state/calls.log" "gcloud iam roles create lucidSagaApiAccess"
   contains "$state/calls.log" "gcloud billing budgets create --billing-account=000000-AAAAAA-BBBBBB"
   contains "$state/calls.log" "--budget-amount=30"
   equals "$(cat "$state/secret-database-url")" "$POOLED" "pooled URL stored in database-url"
@@ -135,6 +139,9 @@ test_bootstrap_first_and_second_run() {
   lacks "$state/calls-2.log" "create-oidc" "a re-run must not create the provider again"
   lacks "$state/calls-2.log" "secrets versions add" "a re-run must not overwrite a secret"
   contains "$state/calls-2.log" "providers update-oidc playable-anime-deploy"
+  # The fake logs arguments as printf %q does, which escapes commas.
+  contains "$state/calls-2.log" "gcloud iam roles update lucidSagaApiAccess --project=playable-anime --permissions=run.services.getIamPolicy\\,run.services.setIamPolicy"
+  lacks "$state/calls-2.log" "iam roles undelete" "a re-run must not undelete a role that is there"
   contains "$state/calls-2.log" "gcloud billing budgets update billingAccounts/000000-AAAAAA-BBBBBB/budgets/budget-1"
   contains "$state/calls-2.log" "--budget-amount=40"
   equals "$(cat "$state/secret-django-secret-key")" "$key" "the Django key must survive a re-run"
@@ -156,6 +163,8 @@ test_bootstrap_first_and_second_run() {
   contains "$state/calls-4.log" "gcloud iam workload-identity-pools undelete github"
   contains "$state/calls-4.log" "gcloud iam workload-identity-pools providers undelete playable-anime-deploy"
   contains "$state/calls-4.log" "providers update-oidc playable-anime-deploy"
+  contains "$state/calls-4.log" "gcloud iam roles undelete lucidSagaApiAccess --project=playable-anime"
+  lacks "$state/calls-4.log" "iam roles create" "a deleted role can only be undeleted"
 }
 
 test_bootstrap_rejects_bad_input() {
@@ -225,9 +234,107 @@ test_deploy_dry_run() {
   contains "$out" 'MEDIA_BUCKET: "playable-anime-pictures"'
   contains "$out" 'LLM_PROVIDER: "vertex"'
   contains "$out" "update-traffic playable-anime-api --project=playable-anime --region=europe-west3 --to-latest"
-  lacks "$out" "allow-unauthenticated" "a deploy must never change who can call the API"
-  lacks "$out" "invoker-iam-check" "a deploy must never change who can call the API"
+  lacks "$out" "allow-unauthenticated" "the service deploy leaves access to the access step"
+  lacks "$out" "invoker-iam-check" "the service deploy leaves access to the access step"
+  contains "$out" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"'
+
+  out="$state/out-access"
+  with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" access
+  equals "$status" 0 "access exit status"
+  contains "$out" "[dry-run] gcloud run services add-iam-policy-binding playable-anime-api --project=playable-anime --region=europe-west3 --member=allUsers --role=roles/run.invoker"
+
+  out="$state/out-covers"
+  with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" covers
+  equals "$status" 0 "covers exit status"
+  contains "$out" "[dry-run] gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait"
   if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
+}
+
+test_deploy_settings() {
+  local state out
+  start "deploy.sh gives the API the Google client ids, keeps them out of env.yaml, names the API"
+  state="$(new_state deploy-settings)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" migrate \
+    europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  equals "$status" 0 "migrate exit status"
+  contains "$state/last-env.yaml" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"'
+  lacks "$INFRA/config.sh" "GOCSPX" "an OAuth client secret must never be committed"
+
+  # A copy of infra/ whose env.yaml sets a variable deploy.sh owns.
+  cp -R "$INFRA" "$state/infra"
+  printf 'GOOGLE_OAUTH_CLIENT_IDS: "x"\n' >>"$state/infra/cloudrun/env.yaml"
+  out="$state/out-owned"
+  with_fakes "$out" env FAKE_STATE="$state" "$state/infra/deploy.sh" migrate \
+    europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  if [ "$status" -ne 0 ]; then ok; else bad "env.yaml was allowed to set GOOGLE_OAUTH_CLIENT_IDS"; fi
+  contains "$out" "sets a variable that deploy.sh owns"
+
+  # And one whose config has a client id that could break out of the env vars file.
+  sed -i.bak 's/^GOOGLE_IOS_CLIENT_ID=""/GOOGLE_IOS_CLIENT_ID="abc: x"/' "$state/infra/config.sh"
+  sed -i.bak '/^GOOGLE_OAUTH_CLIENT_IDS/d' "$state/infra/cloudrun/env.yaml"
+  : >"$state/calls.log"
+  out="$state/out-bad"
+  with_fakes "$out" env FAKE_STATE="$state" "$state/infra/deploy.sh" migrate \
+    europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted a client id with a colon and a space in it"; fi
+  contains "$out" "Google client id with odd characters"
+  lacks "$state/calls.log" "jobs deploy" "deployed with a bad client id"
+
+  out="$state/out-outputs"
+  with_fakes "$out" env FAKE_STATE="$state" GITHUB_OUTPUT="$state/outputs" "$INFRA/deploy.sh" github-outputs
+  contains "$state/outputs" "api_url=https://playable-anime-api-528988811295.europe-west3.run.app"
+  contains "$state/outputs" "apk_asset=lucid-saga.apk"
+}
+
+test_access() {
+  local state out
+  start "deploy.sh access makes the API public by default, private on request, and stops on typos"
+  state="$(new_state access)"
+  with_fakes "$state/out-0" env FAKE_STATE="$state" "$INFRA/deploy.sh" service \
+    europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:one
+  equals "$status" 0 "first deploy exit status"
+  out="$state/out-1"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" access
+  equals "$status" 0 "public exit status"
+  contains "$state/calls.log" "gcloud run services add-iam-policy-binding playable-anime-api --project=playable-anime --region=europe-west3 --member=allUsers --role=roles/run.invoker"
+  if [ -e "$state/public" ]; then ok; else bad "the API is not public"; fi
+
+  out="$state/out-2"
+  with_fakes "$out" env FAKE_STATE="$state" API_ACCESS=private "$INFRA/deploy.sh" access
+  equals "$status" 0 "private exit status"
+  contains "$state/calls.log" "gcloud run services remove-iam-policy-binding playable-anime-api --project=playable-anime --region=europe-west3 --member=allUsers --role=roles/run.invoker"
+  if [ -e "$state/public" ]; then bad "the API is still public"; else ok; fi
+
+  : >"$state/calls.log"
+  out="$state/out-3"
+  with_fakes "$out" env FAKE_STATE="$state" API_ACCESS=private "$INFRA/deploy.sh" access
+  equals "$status" 0 "private again exit status"
+  lacks "$state/calls.log" "remove-iam-policy-binding" "removed a binding that wasn't there"
+  contains "$out" "already private"
+
+  out="$state/out-4"
+  with_fakes "$out" env FAKE_STATE="$state" API_ACCESS=Public "$INFRA/deploy.sh" access
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted API_ACCESS=Public"; fi
+  contains "$out" "API_ACCESS must be public or private"
+
+  out="$state/out-5"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_ACCESS=1 "$INFRA/deploy.sh" access
+  if [ "$status" -ne 0 ]; then ok; else bad "a refused binding passed"; fi
+}
+
+test_covers() {
+  local state out
+  start "deploy.sh covers runs draw_premise_covers as the migration job and fails loudly"
+  state="$(new_state covers)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" covers
+  equals "$status" 0 "covers exit status"
+  contains "$state/calls.log" "gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py\\,draw_premise_covers --task-timeout=30m --wait"
+  out="$state/out-fail"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_COVERS=1 "$INFRA/deploy.sh" covers
+  if [ "$status" -ne 0 ]; then ok; else bad "failed covers passed"; fi
+  contains "$out" "gcloud logging read"
 }
 
 test_deploy_service() {
@@ -343,6 +450,119 @@ test_ci_gate() {
   if [ "$status" -ne 0 ]; then ok; else bad "a run from another branch passed"; fi
 }
 
+# A Flutter app with pubspec.yaml's version and an Android SDK whose apksigner is the fake one.
+new_app() { # state
+  mkdir -p "$1/app" "$1/sdk/build-tools/36.0.0"
+  printf 'name: playable_anime\nversion: 1.2.3+4\n' >"$1/app/pubspec.yaml"
+  ln -sf "$FAKES/apksigner" "$1/sdk/build-tools/36.0.0/apksigner"
+}
+
+build_apk() { # state out [env...]
+  local state="$1" out="$2"
+  shift 2
+  with_fakes "$out" env FAKE_STATE="$state" APP_DIR="$state/app" ANDROID_HOME="$state/sdk" \
+    GITHUB_OUTPUT="$state/outputs" ANDROID_KEYSTORE_BASE64='' ANDROID_KEYSTORE_PASSWORD='' \
+    ANDROID_KEY_ALIAS='' ANDROID_KEY_PASSWORD='' ANDROID_KEYSTORE_PATH='' "$@" \
+    "$INFRA/build-apk.sh" "$state/dist/lucid-saga.apk"
+}
+
+test_build_apk() {
+  local state out keystore
+  start "build-apk.sh builds for the API, signs with the keystore or the debug key, and reports it"
+  state="$(new_state build-apk-debug)"
+  new_app "$state"
+  out="$state/out"
+  build_apk "$state" "$out" BUILD_NUMBER=42
+  equals "$status" 0 "debug build exit status"
+  contains "$state/flutter.log" "flutter build apk --release --dart-define=API_BASE_URL=https://playable-anime-api-528988811295.europe-west3.run.app --dart-define=GOOGLE_WEB_CLIENT_ID=528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com --build-number=42"
+  contains "$state/flutter.log" "ANDROID_KEYSTORE_PATH="
+  lacks "$state/flutter.log" "ANDROID_KEYSTORE_PATH=/" "a debug build must not be given a keystore"
+  if [ -f "$state/dist/lucid-saga.apk" ]; then ok; else bad "no APK at the given path"; fi
+  contains "$state/outputs" "signing=debug"
+  contains "$state/outputs" "sha1=DA:39:A3:EE:5E:6B:4B:0D:32:55:BF:EF:95:60:18:90:AF:D8:07:09"
+  contains "$state/outputs" "version_name=1.2.3"
+  contains "$state/outputs" "version_code=42"
+  contains "$out" "signed with the debug key"
+
+  state="$(new_state build-apk-release)"
+  new_app "$state"
+  out="$state/out"
+  keystore="$(printf 'KEYSTORE-BYTES' | base64)"
+  build_apk "$state" "$out" ANDROID_KEYSTORE_BASE64="$keystore" \
+    ANDROID_KEYSTORE_PASSWORD=store-SENTINEL ANDROID_KEY_ALIAS=upload ANDROID_KEY_PASSWORD=key-SENTINEL
+  equals "$status" 0 "release build exit status"
+  contains "$state/flutter.log" "ANDROID_KEYSTORE_PATH=/"
+  equals "$(cat "$state/keystore-seen" 2>/dev/null)" "KEYSTORE-BYTES" "the keystore Gradle is given"
+  contains "$state/outputs" "signing=release"
+  contains "$state/outputs" "version_code=4"
+  lacks "$state/flutter.log" "--build-number" "no BUILD_NUMBER, so pubspec.yaml's"
+  lacks "$out" "SENTINEL" "a signing password was printed"
+  lacks "$state/flutter.log" "SENTINEL" "a signing password reached flutter's arguments"
+  if find "$WORK" -name 'lucid-apk.*' | grep -q .; then bad "the decoded keystore was left behind"; else ok; fi
+
+  state="$(new_state build-apk-partial)"
+  new_app "$state"
+  out="$state/out"
+  build_apk "$state" "$out" ANDROID_KEYSTORE_BASE64="$keystore" ANDROID_KEYSTORE_PASSWORD=x
+  if [ "$status" -ne 0 ]; then ok; else bad "built with only some of the signing secrets"; fi
+  contains "$out" "missing: ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD"
+  if [ -e "$state/flutter.log" ]; then bad "ran flutter with half the signing secrets"; else ok; fi
+
+  state="$(new_state build-apk-bad-number)"
+  new_app "$state"
+  build_apk "$state" "$state/out" BUILD_NUMBER=07
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted BUILD_NUMBER=07"; fi
+
+  state="$(new_state build-apk-bad-signature)"
+  new_app "$state"
+  build_apk "$state" "$state/out" FAKE_BAD_SIGNATURE=1
+  if [ "$status" -ne 0 ]; then ok; else bad "passed an APK whose signature doesn't verify"; fi
+
+  state="$(new_state build-apk-flutter-fails)"
+  new_app "$state"
+  build_apk "$state" "$state/out" FAKE_FAIL_FLUTTER=1
+  if [ "$status" -ne 0 ]; then ok; else bad "passed a failed flutter build"; fi
+}
+
+publish() { # responses... ; sets status
+  local responses="$WORK/publish-responses"
+  printf '%s\n' "$@" >"$responses"
+  rm -f "$responses.calls" "$responses.notes"
+  printf 'fake apk\n' >"$WORK/app-release.apk"
+  with_fakes "$WORK/publish-out" env FAKE_GH_RESPONSES="$responses" \
+    GITHUB_REPOSITORY=Mikigb77/PlayableAnime GITHUB_SHA=0123abc BUILD_NUMBER=42 VERSION_NAME=1.0.0 \
+    SIGNING="${PUBLISH_SIGNING:-release}" SIGNING_SHA1=AA:BB GITHUB_STEP_SUMMARY="$WORK/summary" \
+    "$INFRA/publish-apk.sh" "$WORK/app-release.apk"
+}
+
+test_publish_apk() {
+  local calls="$WORK/publish-responses.calls" notes="$WORK/publish-responses.notes"
+  start "publish-apk.sh makes the APK the latest release's lucid-saga.apk, once per run"
+  publish "!fail" "https://github.com/Mikigb77/PlayableAnime/releases/tag/build-42"
+  equals "$status" 0 "first publish exit status"
+  contains "$calls" "release view build-42 --repo Mikigb77/PlayableAnime"
+  contains "$calls" "release create build-42 "
+  contains "$calls" "/lucid-saga.apk --repo Mikigb77/PlayableAnime --target 0123abc --title Lucid Saga 1.0.0 (build 42)"
+  contains "$calls" "--latest"
+  contains "$notes" "Signed with the release key, SHA-1 AA:BB"
+  contains "$notes" "https://playable-anime-api-528988811295.europe-west3.run.app"
+  contains "$WORK/summary" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
+
+  publish "{}" "ok"
+  equals "$status" 0 "re-run publish exit status"
+  contains "$calls" "release upload build-42 "
+  contains "$calls" "--clobber"
+  contains "$calls" "release edit build-42 --repo Mikigb77/PlayableAnime"
+  lacks "$calls" "release create" "a re-run must not create a second release"
+
+  PUBLISH_SIGNING=debug publish "!fail" "ok"
+  equals "$status" 0 "debug publish exit status"
+  contains "$notes" "Signed with a throwaway debug key"
+
+  publish "!fail" "!fail"
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed release passed"; fi
+}
+
 test_workflow_matches_scripts() {
   local wf="$ROOT/.github/workflows/deploy.yml" cmd
   start "deploy.yml uses only commands deploy.sh has"
@@ -352,6 +572,10 @@ test_workflow_matches_scripts() {
     if "$INFRA/deploy.sh" --help | grep -qE "^  $cmd( |$)"; then ok; else bad "deploy.sh has no '$cmd'"; fi
   done <"$WORK/workflow-commands"
   contains "$wf" "infra/require-green-ci.sh"
+  contains "$wf" "infra/build-apk.sh"
+  contains "$wf" "infra/publish-apk.sh"
+  contains "$ROOT/.github/workflows/ci.yml" "infra/build-apk.sh"
+  contains "$ROOT/README.md" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
 }
 
 test_docs_list_every_command() {
@@ -371,11 +595,16 @@ test_bootstrap_dry_run
 test_bootstrap_first_and_second_run
 test_bootstrap_rejects_bad_input
 test_deploy_dry_run
+test_deploy_settings
 test_deploy_service
+test_access
+test_covers
 test_migration_failure
 test_smoke
 test_rollback
 test_ci_gate
+test_build_apk
+test_publish_apk
 test_workflow_matches_scripts
 test_docs_list_every_command
 

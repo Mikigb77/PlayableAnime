@@ -1,4 +1,4 @@
-package com.mikigb77.playable_anime
+package com.lucid.saga
 
 import io.flutter.embedding.android.FlutterActivity
 

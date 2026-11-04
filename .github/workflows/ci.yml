@@ -1,9 +1,11 @@
 name: CI
 
+# Every PR goes into dep, and merging dep into main deploys (docs/DEPLOY.md). CI runs on every PR
+# and on pushes to both; the deploy waits for this workflow's run on the main commit it deploys.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dep]
 
 jobs:
   backend:
@@ -72,7 +74,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t lucid-api .
+      # The old FastAPI app's tables may still be in Neon production. Migrations must leave them and
+      # their rows alone: dropping that data needs Miki (CLAUDE.md).
+      - name: Add the old app's tables
+        run: docker run --rm --network host -v "$PWD/tests/fixtures:/fixtures:ro" postgres:18 psql "$DB" -v ON_ERROR_STOP=1 -q -f /fixtures/legacy_fastapi.sql
       - run: docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL="$DB" lucid-api python manage.py migrate
+      - name: Check the old app's tables are untouched
+        run: |
+          rows=$(docker run --rm --network host postgres:18 psql "$DB" -tA -c \
+            "select (select count(*) from stories where id = 'legacy-1') || ',' || (select count(*) from schema_migrations)")
+          test "$rows" = "1,1" || { echo "::error::A migration changed the old app's tables (got $rows)."; exit 1; }
       - name: Serve and smoke-test
         run: |
           docker run -d --name api --network host -e PORT=8080 -e DJANGO_SECRET_KEY=ci -e DATABASE_URL="$DB" lucid-api
@@ -111,6 +122,40 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+
+  # The release APK, built as the deploy builds it but signed with the debug key, so a change that
+  # breaks the Android build fails its PR instead of the deploy (docs/DEPLOY.md).
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.5
+          cache: true
+      - run: infra/build-apk.sh "$RUNNER_TEMP/lucid-saga.apk"
+
+  # Only dep merges into main, because that merge deploys. Every other PR goes into dep.
+  into-main:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only dep merges into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [ "$HEAD_REF" != dep ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::PRs go into dep, and only dep merges into main, which deploys. Change this PR's base branch to dep."
+            exit 1
+          fi
 
   # The deploy scripts and workflows (docs/DEPLOY.md). No credentials: gcloud, gh and curl are
   # fakes in the tests, and the real gcloud runs offline and signed out to check every flag.

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# A stand-in for flutter in the infra tests. It logs its arguments and the keystore it was given,
+# and writes a fake APK where `flutter build apk --release` puts the real one.
+set -euo pipefail
+state="${FAKE_STATE:?FAKE_STATE is not set}"
+{
+  printf 'flutter %s\n' "$*"
+  printf 'ANDROID_KEYSTORE_PATH=%s\n' "${ANDROID_KEYSTORE_PATH:-}"
+} >>"$state/flutter.log"
+if [ -n "${ANDROID_KEYSTORE_PATH:-}" ]; then
+  cp "$ANDROID_KEYSTORE_PATH" "$state/keystore-seen"
+fi
+[ -z "${FAKE_FAIL_FLUTTER:-}" ] || exit 1
+mkdir -p build/app/outputs/flutter-apk
+printf 'fake apk\n' >build/app/outputs/flutter-apk/app-release.apk
