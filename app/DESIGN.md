@@ -102,12 +102,12 @@ All in `lib/design/components/`, exported from `design/design.dart`.
 
 | Component | What it is |
 | --- | --- |
-| `SceneCard` | One scene: the player's action (with a mic mark when spoken, V7), time chip, event badge, picture, narration, portraits and a footer for scene details |
+| `SceneCard` | One scene: the player's action (with a mic mark when spoken, V7), time chip, event badge, picture, narration, portraits and a footer for scene details and the scene menu. In the feed the picture comes after the narration (`pictureAfterNarration`), so a picture that lands late never pushes the words being read |
 | `NarrationText`, `StreamingNarration` | Finished narration, and narration as it streams in with a breathing caret and skeleton lines before the first words |
 | `StoryChoices` | Suggested choices as full-width tiles with their kind (thread, personal, side, wild), then **Wait** and **Observe** (S2) |
 | `Composer` | The action box: grows to five lines, mic slot, send button with a busy state, slash-command hints (S5) and a counter near the 2000-character limit |
 | `MicButton` | The mic in four states: idle, starting, listening (with a level halo) and denied |
-| `PictureSlot` | A picture's place: shimmer while pending, fade-in when ready, quiet collapse when skipped or broken (M3) |
+| `PictureSlot` | A picture's place: shimmer while pending, fade-in when ready, quiet collapse when skipped or broken (M3). With `onError`, a picture that fails to load is reported once, so the play screen can fetch a fresh URL by its image id, and the shimmer stays meanwhile |
 | `PortraitAvatar`, `PortraitStack` | A character's portrait, or initials until one exists; a stack shows three and counts the rest |
 | `TimeChip` | How long a scene took and when it ended (W10); the accent tint when the player's clock ran apart from the world's (W10a) |
 | `EventBadge` | An event, louder from personal to local to world (W16) |
@@ -145,6 +145,38 @@ together.
   strong accent, in the world's own era and look. No text, logos, panels or borders. Mild in every
   rating (M6).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
+
+## The play screen
+
+The story reads as one page of scenes, like a book that writes itself.
+
+![Opening at the newest scene, a turn streaming in, a fight with its picture, time stopped, a
+failed turn](docs/screenshots/play-screen.jpg)
+
+![How it played out (with a cause-and-effect chain, and a beat that made something true), story
+settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
+
+- **Where it opens:** at the top of the newest scene, so the player picks up where they left off. A
+  title page with the genre and title sits above the opening scene; older scenes load above as the
+  player scrolls back, and the page never moves under them. **Latest** appears when they are far
+  back.
+- **A turn:** the player's action appears at once, then the words stream in under it (S3). The page
+  follows the scene as it grows but stops at its top, so it is read from the first word at the
+  player's own pace. When it is saved, the time chip and event badge join it without moving the
+  words, and the choices rise in below.
+- **Pictures** take their place under the words they belong to, as a shimmer in the right shape,
+  and fade in when painted (M3). A picture that never comes leaves no trace.
+- **Why it went that way** (A8): each scene's "How it played out" sheet lists the steps with their
+  outcome class (certain, contested, long shot, ruled out), any roll with its odds and result, the
+  reasons in the serif, where a plan stopped (R6) and the chain of cause and effect.
+- **When a turn fails** (T7), a calm card takes the scene's place and says what happened in plain
+  words, with the way on: retry (counting down after a rate limit), say it another way, or open
+  Account. Nothing was saved, and the words the player wrote are never lost. Running out of
+  credits opens a sheet instead. A content limit shows the server's own words.
+- **The scene menu** illustrates a scene (M2) or reports it (F6). A blocked scene collapses to one
+  quiet line in its place.
+- **The app bar** keeps the title and the world's date and time in sight (W10), with `/status`,
+  Memory and the story's settings (S6) a tap away.
 
 ## Voice
 

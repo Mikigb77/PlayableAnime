@@ -197,6 +197,127 @@ void main() {
       expect((await stories.get(story.id)).version, story.version);
     });
 
+    test('the interpret step\'s errors arrive in the stream, and save nothing', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      Future<TurnFailed> fail(String action) async {
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            TurnInput.action(action, inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        expect(events.first, isA<TurnStarted>());
+        return events.last as TurnFailed;
+      }
+
+      expect((await fail('[fail:unreadable_action] Hm')).error.code, ApiErrorCode.unreadableAction);
+      expect((await fail('[fail:bad_key] Go')).error.code, ApiErrorCode.badKey);
+      final limit = (await fail('[fail:limit] Someone famous')).error;
+      expect(limit.code, ApiErrorCode.unreadableAction);
+      expect(limit.details['category'], 'real_person');
+      final race = (await fail('[fail:lost_race] Go')).error;
+      expect(race.code, ApiErrorCode.versionConflict);
+      expect(race.currentVersion, story.version);
+      expect((await stories.get(story.id)).version, story.version);
+    });
+
+    test('a dropped connection after saving ends the stream as a network error', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      final events = await collect(
+        await stories.takeTurn(
+          story.id,
+          const TurnInput.action('[fail:dropped] I look', inputMode: 'typed'),
+          expectedVersion: story.version,
+        ),
+      );
+      expect(events.whereType<SceneCompleted>(), isEmpty);
+      expect((events.last as TurnFailed).error.code, ApiErrorCode.network);
+      expect((await stories.get(story.id)).version, story.version + 1);
+    });
+
+    test('each turn kind takes only its own field, and the opening comes first, once', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      Future<void> refused(Map<String, Object?> body) => expectLater(
+        api.turn(story.id, {...body, 'expected_version': story.version}),
+        throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
+      );
+
+      await refused({'kind': 'opening'});
+      await refused({'kind': 'action', 'action': 'Go', 'choice_id': 'c1'});
+      await refused({'kind': 'action', 'action': 'Go', 'input_mode': 'choice'});
+      await refused({'kind': 'action', 'action': ''});
+      await refused({'kind': 'standing', 'standing': 'dance'});
+      await refused({'kind': 'teleport'});
+    });
+
+    test('settings change without moving the version, and the server checks them', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      final saved = await stories.update(
+        story.id,
+        title: '  The Tenth Peak ',
+        settings: story.settings
+            .copyWith(difficulty: 'brutal', tone: 'Wry and quiet')
+            .changesFrom(story.settings),
+      );
+      expect(saved.title, 'The Tenth Peak');
+      expect(saved.settings.difficulty, 'brutal');
+      expect(saved.settings.tone, 'Wry and quiet');
+      expect(saved.version, story.version);
+
+      final cleared = await stories.update(
+        story.id,
+        settings: saved.settings.copyWith(tone: '').changesFrom(saved.settings),
+      );
+      // Only the tone was sent, so the rest stays as it was.
+      expect(cleared.settings.difficulty, 'brutal');
+      expect(cleared.settings.tone, isNull);
+
+      for (final body in [
+        {'title': ''},
+        {'title': 'x' * 121},
+        {
+          'settings': {'difficulty': 'nightmare'},
+        },
+        {
+          'settings': {'tone': 'x' * 201},
+        },
+      ]) {
+        await expectLater(
+          api.patch('/v1/stories/${story.id}', body),
+          throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
+        );
+      }
+    });
+
+    test('a report with a block hides the scene from then on', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      await stories.report(story.id, 2, category: 'other', note: 'Not for me', block: false);
+      await stories.report(story.id, 3, category: 'hate', block: true);
+      final again = await stories.get(story.id);
+      expect(again.scenes.map((s) => s.blocked), [false, false, true]);
+      expect(backend.data.reports.map((r) => r['block']), [false, true]);
+
+      // Reporting again updates the one report, and the block stays.
+      await stories.report(story.id, 3, category: 'other', block: false);
+      expect(backend.data.reports, hasLength(2));
+      expect(backend.data.reports.last, containsPair('category', 'other'));
+      expect((await stories.get(story.id)).scenes.last.blocked, isTrue);
+      await expectLater(
+        stories.report(story.id, 3, category: 'boring', block: false),
+        throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
+      );
+    });
+
+    test('scrollback pages older scenes, oldest first', () async {
+      final story = await stories.get((await library.stories()).single.id, scenes: 1);
+      expect(story.scenes.single.turn, 3);
+      final older = await stories.olderScenes(story.id, before: 3, limit: 1);
+      expect(older.single.turn, 2);
+      final rest = await stories.olderScenes(story.id, before: 3);
+      expect(rest.map((s) => s.turn), [1, 2]);
+    });
+
     test('a reset clears the words and the scene still completes', () async {
       final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
@@ -289,20 +410,58 @@ void main() {
       expect(await balance(), closeTo(afterTurn - 3.4, 0.001));
     });
 
-    test('a scene without a planned picture is skipped', () async {
+    test('meeting Senior Sister Lan plans her portrait, once', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      Future<Scene> wait(int version) async {
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.standing('wait'),
+            expectedVersion: version,
+          ),
+        );
+        return Scene.fromJson((events.last as SceneCompleted).scene);
+      }
+
+      final met = await wait(story.version);
+      expect(met.turn, 4);
+      expect(met.portraits.map((p) => p.characterId), contains('lan'));
+      expect(met.image?.kind, 'portrait');
+      now = now.add(const Duration(seconds: 4));
+      await stories.picture(story.id, 4, kind: 'portrait');
+      now = now.add(const Duration(seconds: 4));
+      final portrait = await stories.picture(story.id, 4, kind: 'portrait');
+      expect(portrait.status, 'ready');
+      expect(portrait.kind, 'portrait');
+
+      // Turn 5: no fight, not a third turn and Lan already met, so no picture is planned.
+      final quiet = await wait(story.version + 1);
+      expect(quiet.image, isNull);
+      expect((await stories.picture(story.id, quiet.turn)).status, 'skipped');
+    });
+
+    test('illustrating plans a picture, also for a scene whose picture was skipped', () async {
       final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
         await stories.takeTurn(
           story.id,
-          const TurnInput.standing('wait'),
+          const TurnInput.action('[fail:picture] I look at the sky', inputMode: 'typed'),
           expectedVersion: story.version,
         ),
       );
-      // Turn 4 of the demo story: no fight and not a third turn, so no picture is planned.
-      final scene = Scene.fromJson((events.last as SceneCompleted).scene);
-      expect(scene.turn, 4);
-      expect(scene.image, isNull);
-      expect((await stories.picture(story.id, scene.turn)).status, 'skipped');
+      final turn = Scene.fromJson((events.last as SceneCompleted).scene).turn;
+      expect((await stories.picture(story.id, turn)).status, 'skipped');
+
+      expect((await stories.illustrate(story.id, turn)).status, 'planned');
+      now = now.add(const Duration(seconds: 4));
+      final ready = await stories.illustrate(story.id, turn);
+      expect(ready.status, 'ready');
+
+      // A fresh URL by the picture's id lasts a while, and never draws.
+      backend.data.pictures.ttl = const Duration(minutes: 10);
+      final fresh = await stories.refreshPicture(story.id, ready.imageId!);
+      expect(fresh.url, ready.url);
+      expect(fresh.expiresAt, now.add(const Duration(minutes: 10)));
     });
 
     test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
@@ -315,7 +474,7 @@ void main() {
         ),
       );
       final scene = Scene.fromJson((events.last as SceneCompleted).scene);
-      expect(scene.playerAction, 'I look at the sky');
+      expect(scene.playerAction, '[fail:picture] I look at the sky');
       expect(scene.image?.status, 'planned');
 
       final afterTurn = await balance();

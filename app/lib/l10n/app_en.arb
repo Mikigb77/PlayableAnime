@@ -541,6 +541,154 @@
   "slashRecap": "The story so far",
   "slashThoughts": "What a character lets show",
   "slashThoughtsArg": "<character>",
+  "storySettings": "Story settings",
+  "storyBegin": "Begin the story",
+  "storyClock": "In the story it is {time}",
+  "@storyClock": {
+    "description": "Screen-reader label for the world's date and time under the title.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "storyEarlierLoading": "Loading earlier scenes",
+  "storyEarlierFailed": "Earlier scenes didn't load. Try again",
+  "storyLatest": "Latest",
+  "@storyLatest": {
+    "description": "Jumps back to the newest scene after scrolling far up."
+  },
+  "storyUnknownCommand": "There's no /{name} command. Try /status.",
+  "@storyUnknownCommand": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "storyHidden": "You blocked this scene, so its text is hidden.",
+  "storyPortraits": "In this scene",
+  "storyPortraitsLabel": "In this scene: {names}",
+  "@storyPortraitsLabel": {
+    "description": "Screen-reader label for the portraits under a scene.",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "turnRephrase": "Say it another way",
+  "turnLimitTitle": "That can't happen in this story",
+  "@turnLimitTitle": {
+    "description": "Title of a refused action that crosses a content limit. The server's own explanation follows."
+  },
+  "turnRetryIn": "Try again in {seconds} s",
+  "@turnRetryIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "turnOpenAccount": "Open Account",
+  "turnDismiss": "Dismiss",
+  "sceneIllustrate": "Illustrate this scene",
+  "sceneIllustrateBody": "Paint a picture of this moment. It uses credits, or your own key.",
+  "sceneReport": "Report or block this scene",
+  "sceneReportBody": "Tell us if something here shouldn't be in the story.",
+  "reportTitle": "Report this scene",
+  "reportIntro": "What's wrong with it? Reports are private, and people review them.",
+  "reportSexual": "Sexual content",
+  "reportMinor": "A minor at risk",
+  "reportHate": "Hate or harassment",
+  "reportRealPerson": "About a real person",
+  "reportSelfHarm": "Self-harm or suicide",
+  "reportOther": "Something else",
+  "reportNote": "Anything to add? (optional)",
+  "reportHide": "Block this scene",
+  "reportHideBody": "Its text is hidden from now on. The story goes on.",
+  "reportSend": "Send report",
+  "reportSent": "Thanks. Your report was sent.",
+  "reportSentHidden": "Thanks. The scene is blocked and your report was sent.",
+  "detailsSteps": "Steps",
+  "detailsChain": "Cause and effect",
+  "detailsNoRoll": "No roll: the facts settled it",
+  "detailsOdds": "Odds {odds}",
+  "@detailsOdds": {
+    "description": "The odds of a roll in words, such as 'about even'.",
+    "placeholders": {
+      "odds": {
+        "type": "String"
+      }
+    }
+  },
+  "detailsSeed": "Roll {seed}",
+  "@detailsSeed": {
+    "description": "A roll's seed, so the same roll can be checked again.",
+    "placeholders": {
+      "seed": {
+        "type": "String"
+      }
+    }
+  },
+  "detailsBeatMadeCanon": "Now part of the world: {thing}",
+  "@detailsBeatMadeCanon": {
+    "description": "Under a beat of a step: the thing it relied on wasn't established yet, and now is (R2).",
+    "placeholders": {
+      "thing": {
+        "type": "String"
+      }
+    }
+  },
+  "detailsBeatEmpty": "Not there: {thing}",
+  "@detailsBeatEmpty": {
+    "description": "Under a beat of a step: the thing it relied on doesn't exist or isn't the character's, so the step stopped (R2).",
+    "placeholders": {
+      "thing": {
+        "type": "String"
+      }
+    }
+  },
+  "detailsStopped": "The plan stopped here. What came after it didn't happen.",
+  "detailsLegend": "Certain and ruled-out steps are settled by the facts. Only contested steps and long shots are rolled.",
+  "classCertain": "Certain",
+  "classContested": "Contested",
+  "classLongShot": "Long shot",
+  "classRuledOut": "Ruled out",
+  "resultSuccess": "Success",
+  "resultPartial": "Partly",
+  "resultFailure": "Failure",
+  "settingsTitle": "Story settings",
+  "settingsName": "Title",
+  "settingsNarration": "Narration length",
+  "settingsShort": "Short",
+  "settingsMedium": "Medium",
+  "settingsLong": "Long",
+  "settingsTone": "Tone (optional)",
+  "settingsToneHint": "Grim and quiet, or warm and funny",
+  "settingsDifficulty": "Difficulty",
+  "settingsStory": "Story",
+  "settingsBalanced": "Balanced",
+  "settingsBrutal": "Brutal",
+  "settingsStoryHelp": "Actions mostly work. For the story more than the struggle.",
+  "settingsBalancedHelp": "Fair odds and real risks.",
+  "settingsBrutalHelp": "The world fights back, and mistakes cost dearly.",
+  "settingsEvents": "Events",
+  "settingsCalm": "Calm",
+  "settingsNormal": "Normal",
+  "settingsDramatic": "Dramatic",
+  "settingsPictures": "Pictures",
+  "settingsOff": "Off",
+  "settingsKeyMoments": "Key moments",
+  "settingsMore": "More often",
+  "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
+  "settingsSuggestions": "Suggested choices",
+  "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
+  "settingsNextScene": "Changes apply from the next scene.",
+  "settingsSave": "Save",
+  "settingsSaved": "Saved. It applies from the next scene.",
+  "statusNow": "Now",
+  "statusEmpty": "Nothing to show yet. Play a scene first.",
   "micStart": "Dictate",
   "micStarting": "Starting the microphone",
   "micStop": "Stop dictating",

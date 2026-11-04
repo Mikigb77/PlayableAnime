@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
 import 'package:playable_anime/core/api/api_client.dart';
+import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/api/turn_events.dart';
 import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/design/design.dart';
@@ -44,7 +45,7 @@ class _Turns extends StoryRepository {
   Completer<Stream<TurnEvent>>? pending;
 
   @override
-  Future<Story> get(String id) async => story;
+  Future<Story> get(String id, {int scenes = 20}) async => story;
 
   @override
   Future<Stream<TurnEvent>> takeTurn(String id, TurnInput input, {required int expectedVersion}) {
@@ -132,6 +133,25 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
   });
 
+  testWidgets('a retry of a turn refused before it started empties the box', (tester) async {
+    await open(tester);
+    await send(tester, 'I climb');
+    turns.pending!.completeError(const ApiException(ApiErrorCode.llmUnavailable));
+    await settle(tester);
+    // Refused before it started: the words stay in the box.
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'I climb');
+
+    final l10n = await english();
+    await tester.ensureVisible(find.text(l10n.retry));
+    await settle(tester);
+    await tester.tap(find.text(l10n.retry));
+    await tester.pump();
+    turns.pending!.complete(_completes(2, 'The wind bites.'));
+    await settle(tester);
+    expect(turns.requests, hasLength(2));
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+  });
+
   testWidgets('leaving while a turn starts is safe', (tester) async {
     await open(tester);
     await send(tester, 'I climb');
@@ -153,7 +173,8 @@ void main() {
     final l10n = await english();
     expect(tester.widget<Composer>(find.byType(Composer)).busy, isFalse);
     expect(find.text(l10n.errorUnknown), findsOneWidget);
-    expect(find.text('I climb'), findsOneWidget);
+    // The words stay in the box, to send again.
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'I climb');
     expect(tester.takeException(), isFormatException);
   });
 }
