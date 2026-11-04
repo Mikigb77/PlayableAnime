@@ -2,9 +2,11 @@
 
 A rumor starts where something happened and moves along the map at the pace news really travels
 (W10): with people on foot or by car, faster where the world has phones (G6). Each hop loses some
-accuracy; a retelling that strays far enough becomes its own version, which may be wrong. Everyone
-at a place hears it when it arrives. Those who believe it react (W4), factions there learn of it
-(W3, W5), and the player hears it too if they are there, marked unconfirmed (C6).
+accuracy; a retelling that strays far enough becomes its own version, which may be wrong, and no
+longer names the doer. Everyone at a place hears it when it arrives, but beasts don't follow
+people's talk (G24). Those who believe it react (W4), factions there learn of it (W3, W5), and
+the player hears it too if they are there, marked unconfirmed (C6). Rumors are told in the
+world's words (G16).
 """
 
 from engine.state.records import Deed, EventStatus, PendingEvent, Rumor
@@ -16,7 +18,9 @@ from engine.world.knowledge import (
     in_faction,
     region_learns,
 )
+from engine.world.norms import is_beast
 from engine.world.scheduling import Kind, World, by_id, schedule
+from engine.world.telling import account
 from engine.world.tuning import (
     ACCURACY_LOSS,
     BELIEVED_FROM,
@@ -57,6 +61,8 @@ def start_rumor(
     )
     state.rumors[rumor.id] = rumor
     for character_id in dict.fromkeys(heard_by or []):
+        if is_beast(state, character_id):
+            continue
         news = not heard_before(state, character_id, rumor, deed)
         rumor.heard_at.setdefault(character_id, w.at_s)
         if believes(state, character_id, rumor, rumor.accuracy):
@@ -139,7 +145,8 @@ def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     """The version a retelling turns into once it strays far from what happened (W2): it no
     longer names the doer, so it is no longer true. One per rumor, reused as it spreads."""
     state = w.state
-    text = f"A garbled account goes round: {rumor.text}"
+    told = account(state, deed, doer="someone") if deed is not None else rumor.text
+    text = f"A garbled account goes round: {told}"
     about = [i for i in rumor.about_ids if deed is None or i != deed.actor_id]
     for other in by_id(state.rumors.values()):
         if other.deed_id == rumor.deed_id and other.text == text and other.id != rumor.id:
@@ -197,7 +204,7 @@ def on_rumor(w: World, event: PendingEvent) -> None:
     attributed = names_actor(rumor, deed)
 
     for character in characters_at(state, place_id):
-        if heard_before(state, character.id, rumor, deed):
+        if is_beast(state, character.id) or heard_before(state, character.id, rumor, deed):
             continue
         rumor.heard_at[character.id] = w.at_s
         if not believes(state, character.id, rumor, accuracy):

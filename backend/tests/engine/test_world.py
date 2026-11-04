@@ -929,7 +929,7 @@ def test_resolves_deeds_flow_into_the_world_whether_the_shot_kills_wounds_or_mis
         # Kill, wound or miss, it is a crime the bartender reports, and Carmine, if he lives,
         # saw who did it.
         carmine = after.characters["carmine"]
-        assert is_crime(deed)
+        assert is_crime(after, deed)
         assert deed.witness_ids == (["bartender", "carmine"] if carmine.alive else ["bartender"])
         assert "police" in {e.payload["faction_id"] for e in pending_of(after, Kind.REPORT)}
         if result is StepResult.SUCCESS:

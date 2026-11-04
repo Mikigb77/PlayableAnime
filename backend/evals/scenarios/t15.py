@@ -228,11 +228,6 @@ async def revisit(ev: Eval) -> None:
             "those who lived through it are cold or hostile",
             bool(labels) and all(label in ("Cold", "Hostile") for label in labels.values()),
             f"{seed}: {labels}",
-            gap=(
-                "a massacre moves its survivors and witnesses by only about thirty points of "
-                "affinity, so the farmers whose village was killed and the peddler who watched "
-                "it still come across as Neutral (W8, W4)"
-            ),
         )
         await ev.judge(
             "no warm welcome",

@@ -629,16 +629,23 @@ def might_with_powers(state: WorldState, character: Character) -> int:
         mode = known_hit_mode(power, settled) or default_hit_mode(power)
         if throw_mode(power, mode, settled) is not HitMode.RELATIVE_SPEED:
             continue
-        if power.secret and not _shown(state, character):
+        if power.secret and not stopped_time_deeds_known(state, character):
             continue
         joules = force_mod.relative_speed_joules(force_mod.PEBBLE_KG)
         might = max(might, int(force_mod.tier_for(joules, state.bible.force)))
     return might
 
 
-def _shown(state: WorldState, character: Character) -> bool:
-    """Whether a deed this character did in stopped time has been laid at their door."""
-    mine = [d for d in state.deeds.values() if d.actor_id == character.id and d.in_stopped_time]
+def stopped_time_deeds_known(
+    state: WorldState, character: Character, *, besides: str | None = None
+) -> bool:
+    """Whether a deed this character did in stopped time, other than `besides`, has been laid
+    at their door: a witness or a faction knows who did it, or a true rumor names them."""
+    mine = [
+        d
+        for d in state.deeds.values()
+        if d.actor_id == character.id and d.in_stopped_time and d.id != besides
+    ]
     if any(d.known_by_factions or any(k != character.id for k in d.known_by) for d in mine):
         return True
     ids = {d.id for d in mine}

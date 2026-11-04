@@ -465,7 +465,12 @@ stand-in for a real-world ethnic group (G12).
 - **Some can be talked to, tamed or bound:** a contracted beast, a familiar, a dragon who bargains.
   A tamed monster is a companion with its own sheet and loyalty (W14).
 - **Killing them has consequences too.** A monster's mate, its pack or the sect that kept it can
-  come for revenge (W4), and wiping out a forest's monsters changes the forest (W7).
+  come for revenge (W4), and wiping out a forest's monsters changes the forest (W7). Decided in
+  WS21: a beast isn't a person in the law's eyes, so a hunt is no crime and nobody but the beast's
+  own pack hears of it from the beast (W11). A hunt is as notable as its beast: a forest wolf is a
+  trifle nobody talks about, and an ancient dragon's death is news everywhere. Its pack or mate
+  keep a grudge, and an unwitnessed kill leaves its body for them to find (W13). A character is a
+  beast when their people names one of the bible's creatures.
 
 A player can be reborn as a monster (G21), with that body's strengths and limits, and the world's
 fear of it.
@@ -501,7 +506,7 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 | --- | --- | --- |
 | A1 | A player character sheet per story, holding everything in G13: attributes, skills, traits, powers where the world has them (with their limits and costs), disposition, resources and standing, and condition. It is drafted from the premise at story start, and the player can change it before playing (G2). | P0 |
 | A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time lands with overwhelming force, the troll dies, the wall behind it breaks and the blast is heard (W10a). The same reasoning holds in every genre and for every means, from a bazooka to a force field (A9). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. A plan that goes around the opponent's strength instead of meeting it is judged on its own facts, link by link (A9). **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
-| A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. | P1 |
+| A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. Decided in WS21: a threat rests on what the one making it can do. When their might, as the world can know it (a power it knows of, hidden strength as it shows), is above their standing, the threat is measured on that might against the target's own might or standing, whichever is higher, so a known light-speed thrower's threat lands on a king, and a target as strong as the threat isn't cowed (W5). | P1 |
 | A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. Decided in WS9b: effort counts in full for the first 12 hours of a stretch and a third after that; a master, a rival or someone to watch counts only as a living character beside the learner, and a copycat learns a move at once only from someone who knows it. A stretch cut short by an event (E7) keeps the effort put in until then, so training adds up across interruptions. The rough figures are in `engine/resolve/powers/growth.py`. | P1 |
 | A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. | P1 |
 | A6 | The player can't write other characters' reactions or outcomes. "I kill him and everyone cheers" plays as an attempt to kill him, and the narrator decides how people react. | P0 |
@@ -853,11 +858,17 @@ has police, courts and officials who can be bought, a crime family has its own c
 wasteland may not care at all. Even then, victims, families and witnesses react as people, unless
 the setting truly makes the act normal there. Every crime against a person records a victim who
 remembers. Through W2 and W5 it can lead to someone noticing, an investigation, a bounty or personal
-revenge, so serious crimes are noticed sooner or later.
+revenge, so serious crimes are noticed sooner or later. Decided in WS21: a faction shrugs
+off most of what its own people do, but not a serious attempt on one of its own (a wounding, or
+one member trying to murder another), which it answers as it would anyone's, and it never answers
+its own leader.
 
 **W12 Severity weighting (P0).** Severity follows the world's norms. A crime the world considers
 monstrous (killing children, sexual assault, massacres) raises fear and hostility faster, and spreads
-further, than a tavern brawl.
+further, than a tavern brawl. Decided in WS21: the step is steep. A brawl barely moves a bystander,
+a murder chills them, and a massacre leaves even a stranger who lived through it cold or hostile
+toward the one who did it, with a grudge, so survivors remember (W8). Each tie to the victims, as
+a comrade, a friend or family, adds more.
 
 **W13 Discovery without witnesses (P0).** A deed with no witnesses is secret, not forgotten. Each
 one records what it left behind: how connected the victims were (family, trade, a lord who will miss
@@ -869,7 +880,15 @@ town "fell to a plague", "a monster did it", "the rival clan did it" (which can 
 factions), or the truth, attached to the player. Each rumor records whether it is true and who
 believes it. The player can also cover their tracks or frame someone else, and either one is a deed
 too. A hermit with no ties, who leaves no trace, can vanish without anyone noticing, and that is a
-valid outcome.
+valid outcome. Decided in WS21: a body left where it fell is a trace when anyone is
+near enough to come across it, found within moments by anyone at the place; with nobody near, it
+lies unfound unless someone misses the victim. A deed done in stopped time shows nobody near it,
+unless the world knows the doer can stop time: then death or ruin with nobody near points at them,
+as a wound only their power makes would (W10a). Once it is known who did a death or a grave harm,
+word reaches the victims' factions and the factions those belong to (G10), so a kingdom learns
+who wiped out its army even when nobody lived to tell it. Rumors and the world's events tell what
+happened in the world's words (G16), never in the player's: "Lin Feng killed Zhao Kun at the
+outer-court well", and a retelling that lost the doer says "someone".
 
 **W14 Player-founded factions (P1).** The player can found a faction, such as a gang, a sect, a
 kingdom or a company, by recruiting members. It has a name, goals, territory, resources and a loyalty

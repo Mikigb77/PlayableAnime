@@ -128,9 +128,7 @@ def _look_closer(w: World, deed) -> None:
     """Investigators at the scene are another chance to name the doer (W13)."""
     if attributed(w.state, deed) or not deed.traces:
         return
-    if w.roll("investigation", deed.id).chance(
-        attribution_odds(deed.traces, 0, stopped=deed.in_stopped_time)
-    ):
+    if w.roll("investigation", deed.id).chance(attribution_odds(w.state, deed, 0)):
         name_the_doer(w, deed)
 
 

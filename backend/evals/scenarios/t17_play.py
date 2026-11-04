@@ -334,13 +334,7 @@ async def monster_hunt(ev: Eval) -> None:
         )
         arrests = story.fired(Kind.ANSWER, answer="arrest")
         ev.check(
-            "hunting a beast is no crime",
-            not arrests,
-            f"{seed}: {[e.title for e in arrests]}",
-            gap=(
-                "the law and its reports treat a beast like a person: the alpha reports the kill "
-                "to the sect, and the Law Enforcement Hall comes to arrest Lin (W11, G24)"
-            ),
+            "hunting a beast is no crime", not arrests, f"{seed}: {[e.title for e in arrests]}"
         )
         await ev.judge(
             "the hunt and the pack",

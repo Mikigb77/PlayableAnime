@@ -78,7 +78,9 @@ from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world
 from engine.resolve.durations import lived_estimate, step_timing
 from engine.resolve.effects import aim_effects, power_costs, proposed_deed
 from engine.resolve.power import (
+    Scale,
     Standing,
+    base_tier,
     claims_frozen_in_time,
     helpless_state,
     scale,
@@ -925,17 +927,25 @@ def _contested(
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
     shift = _shift(state, actor, step, drawn, opposition, axis)
     if axis is not None and opposition.responsive:
-        measure = scale(state, axis, actor, *opposition.responsive)
-        mine = standing(state, actor, axis, measure)
-        theirs = sorted(
-            (standing(state, c, axis, measure) for c in opposition.responsive),
-            key=lambda s: (-s.tier, s.character.id),
-        )
+        menace = axis is PowerAxis.INFLUENCE and _backed_by_force(state, actor, step)
+        if menace:
+            # W5, A8: a threat backed by what the actor can do, as the world knows it, meets
+            # the target's own force or standing, whichever stands up to it better.
+            measure = scale(state, PowerAxis.MIGHT, actor, *opposition.responsive)
+            mine, known_power = _menacing(state, actor, measure)
+            ranked = (_withstanding(state, c, measure) for c in opposition.responsive)
+        else:
+            measure = scale(state, axis, actor, *opposition.responsive)
+            mine, known_power = standing(state, actor, axis, measure), False
+            ranked = (standing(state, c, axis, measure) for c in opposition.responsive)
+        theirs = sorted(ranked, key=lambda s: (-s.tier, s.character.id))
         strongest = theirs[0]
         close = sum(1 for s in theirs[1:] if strongest.tier - s.tier < measure.step)
         numbers = min(MAX_NUMBERS, NUMBERS_STEP * close)
         gap = (strongest.tier - mine.tier) / measure.step + numbers
         lead = _compare(state, mine, strongest, gap, numbers > 0)
+        if known_power:
+            lead = f"{lead}, knowing what {name(state, actor.id)} can do"
         if gap >= odds_mod.RULED_OUT_AT:
             return Settled(
                 OutcomeClass.RULED_OUT, StepResult.FAILURE, f"{lead}: head-on, there is no contest."
@@ -1278,11 +1288,54 @@ def _shift(
 
     if axis is PowerAxis.INFLUENCE and opposition.responsive:
         attitude = opposition.responsive[0].attitude_toward(actor.id)
-        if any(mentions(step.verb, word) for word in INTIMIDATION):
+        if _intimidates(step):
             shift += ATTITUDE_SHIFT * attitude.fear / 100
         else:
             shift += ATTITUDE_SHIFT * (attitude.affinity + attitude.trust) / 200
     return shift
+
+
+def _intimidates(step: IntentStep) -> bool:
+    return any(mentions(step.verb, word) for word in INTIMIDATION)
+
+
+def _known_might(state: WorldState, character: Character) -> int:
+    """W5, A8: the might the world can measure them by, before their condition: the rung they
+    stand on (G18), hidden strength as what it shows (G20), and any power it knows of (a
+    light-speed time stop once known)."""
+    shown = sensing.apparent_tier(state, character, base_tier(state, character, PowerAxis.MIGHT))
+    return max(shown, stop.might_with_powers(state, character))
+
+
+def _backed_by_force(state: WorldState, actor: Character, step: IntentStep) -> bool:
+    """Whether a threat rests on what the actor can do rather than on who they are: an
+    intimidation from someone whose known might is above their standing (W5)."""
+    if not _intimidates(step):
+        return False
+    return _known_might(state, actor) > base_tier(state, actor, PowerAxis.INFLUENCE)
+
+
+def _menacing(state: WorldState, actor: Character, measure: Scale) -> tuple[Standing, bool]:
+    """A threat's weight: the actor's might as the world knows it, after their condition (A8),
+    and whether a power the world knows of lifts it above the rung they stand on. A threat
+    frightens by what others believe, so hidden strength counts as what it shows (G20). Where
+    the known might isn't the rung's, the rung isn't named."""
+    found = standing(state, actor, PowerAxis.MIGHT, measure)
+    penalty = max(0.0, base_tier(state, actor, PowerAxis.MIGHT) - found.tier)
+    known = max(0.0, _known_might(state, actor) - penalty)
+    if known == found.tier:
+        return found, False
+    return Standing(character=actor, tier=known, rung=None, notes=found.notes), known > found.tier
+
+
+def _withstanding(state: WorldState, target: Character, measure: Scale) -> Standing:
+    """What a target meets a threat of force with: their own might, or their standing and the
+    people behind it, whichever is higher (A8)."""
+    might = standing(state, target, PowerAxis.MIGHT, measure)
+    station = standing(
+        state, target, PowerAxis.INFLUENCE, scale(state, PowerAxis.INFLUENCE, target)
+    )
+    return might if might.tier >= station.tier else station
 
 
 def _names(state: WorldState, people: list[Character]) -> str:

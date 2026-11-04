@@ -158,7 +158,7 @@ these functions and saves the result.
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", and the scene's time bar (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
-| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
+| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
@@ -215,8 +215,9 @@ a new one.
 - **The living world runs on pending events** (W2, W5, W6, W10, W13, E2). Whatever the world
   does later is a `PendingEvent` with a due time and its own seed, of a kind in
   `engine.world.Kind`: `world.report` (a witness reaches a faction), `world.answer` (a faction's
-  answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of a death reaches
-  the victim's family and friends), `world.discovery` (a look at a secret deed's traces),
+  answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of who did a
+  death or a grave harm reaches the victim's family and friends, or one of the victims' factions
+  and the factions those sit in), `world.discovery` (a look at a secret deed's traces),
   `world.clock_step`, `clock_end`, `world.emergence`, `world.revival` and `world.tick`. Whether an
   event needs the player is decided when it applies, from the state at that moment, and stored on
   the applied event: guards who find the player where they came need them, and guards who find
@@ -233,11 +234,37 @@ a new one.
   into a version that no longer names the doer, or from a report. Each faction counts each deed
   once (`Deed.known_by_factions`); one deed moves esteem or fear by at most 15 points, less the
   further it already is from neutral (W9). A faction shrugs off what its own members do unless it
-  is severity 4 or worse, and never answers its own leader. NPCs' deeds run through the same code
-  (E5); the player character never reacts by itself (G15). Resolve proposes an attempt on someone
-  as a deed even when it fails: an attempt that harmed nobody is still harm when resolve weighed
-  it at 2 or more, so its target keeps a grudge and the law hears of it, and a killing nobody
-  died of counts as the wounding it was. Severity floors apply only when someone was harmed.
+  is severity 4 or worse, or a wounding or an attempted murder of one of its own (severity 3 and
+  up), and never answers its own leader. NPCs' deeds run through the same code (E5); the player
+  character never reacts by itself (G15). Resolve proposes an attempt on someone as a deed even
+  when it fails: an attempt that harmed nobody is still harm when resolve weighed it at 2 or more,
+  so its target keeps a grudge and the law hears of it, and a killing nobody died of counts as the
+  wounding it was. Severity floors apply only when someone was harmed. How far a bystander turns
+  against the doer follows severity steeply (`BYSTANDER_HOSTILITY`): a brawl barely moves them,
+  and a massacre leaves even a stranger who saw it cold or hostile, with a grudge (W8, W12).
+- **Beasts are not people** (G24). A character whose `people_id` names one of the bible's
+  creatures is a beast, and a faction whose every member is a beast (a wolf pack) is no person
+  either. Harm that falls only on beasts is a hunt (`Nature.HUNT`): no crime, no report to anyone
+  but the beast's own pack, no harm to a region's people, and a severity set by how notable the
+  beast was (one step per four tiers, one more for a key beast), so a forest wolf is a trifle and
+  an ancient dragon is news. The beast's kin (its pack, its mate) keep a grudge. Beasts don't
+  follow people's talk: they hear no rumors and get no word of a person's death.
+- **Secret deeds and their traces** (W13). A body left where it fell is a trace when anyone is
+  at the place (found within moments) or close by (`BODY_NEARBY_STRENGTH`); nobody near, no body
+  trace, so a hermit can vanish. In stopped time a body or a blast shows nobody near it, unless
+  the world knows the doer stops time (the power isn't secret, or another stopped-time deed was
+  laid at their door): then it points at them as a wound only their power makes would. Once the
+  doer of a death or grave harm is known, word goes to the victims' factions and the factions
+  those sit in, so a kingdom hears who wiped out its army even with no survivor to report it.
+- **The world's words** (G16). Rumors, grudges and event titles never repeat a deed's own text,
+  which is the player's step with resolve's outcome note. `engine/world/telling.py` tells a deed
+  from its kind, doer, victims and place ("Lin Feng killed Zhao Kun at the outer-court well";
+  "Someone tried to kill Zhao Kun"; "Old Pan, Widow Lu and four others were found dead").
+- **Threats backed by force** (W5, A3). An intimidation from someone whose might, as the world
+  can know it (their rung or sheet, hidden strength as shown, a light-speed time stop once known),
+  is above their standing is measured on might after their condition, against the target's own
+  might or standing, whichever is higher. A known light-speed thrower's threat lands on a king; a secret one's
+  doesn't, and a target as strong as the threat isn't cowed.
 - **Clocks** step with time (`interval_s`, from `next_step_s`) and with deeds. An `advances_on` or
   `reverses_on` entry names a deed kind (`kill`) or a kind and a victim, target or place
   (`kill:carmine`, `burn:mill`). A full clock gets a `clock_end` event; when it arrives where the
@@ -869,13 +896,7 @@ scenario's score is the share of its checks that passed.
 **Known gaps.** A check can name a gap: something the requirements ask for that the engine doesn't
 do yet. While it fails, the run reports it under "Known gaps still open" instead of failing. Once
 the engine gets it right the check fails until its marker comes off, so a fixed gap becomes a
-plain check. Open now:
-
-| Scenario | Gap |
-| --- | --- |
-| `t17.monster-hunt` | The law treats a beast like a person: the pack's alpha reports the kill to the sect and the Law Enforcement Hall comes to arrest the hunter (W11, G24). |
-| `t17.light-speed-throw` | A throw in stopped time leaves only weak traces, so within a month no rumor names the thrower and no kingdom answers them (W13, G22, W5). |
-| `t15.revisit` | A massacre moves its survivors' and witnesses' affinity by about thirty points, so they still come across as Neutral (W8, W4). |
+plain check. None are open now.
 
 **Results over time.** `run --out <dir>` writes `run.json` (every scenario's status, score,
 checks, judged rubrics, metrics, cost and open gaps), `summary.md`, and in live mode `transcripts/`
