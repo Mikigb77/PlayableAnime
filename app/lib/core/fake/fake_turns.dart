@@ -276,7 +276,8 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
     'kind': kind,
     if (kind == 'action') 'player_action': sent,
     if (kind == 'choice') 'player_action': choiceLabel,
-    if (kind == 'standing') 'player_action': standing == 'wait' ? 'Wait' : 'Observe',
+    // As the server does: the standing action's wire name, which the app shows in its own words.
+    if (kind == 'standing') 'player_action': standing,
     'input_mode': switch (kind) {
       'opening' => null,
       'action' => body['input_mode'] ?? 'typed',

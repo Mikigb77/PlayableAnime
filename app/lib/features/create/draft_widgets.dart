@@ -22,19 +22,14 @@ final maxRatingProvider = Provider<Rating>((ref) {
 });
 
 /// Offers the out-of-credits sheet (K2) when [error] is `402 out_of_credits`, and says whether the
-/// player added their own key there, so the caller tries again on it (K6). The caller tries
-/// again itself, so the note says so ([retrying]).
+/// player added their own key there, so the caller tries again on it (K6). When the caller tries
+/// again itself ([retrying]), the sheet's note says so.
 Future<bool> offerOwnKey(BuildContext context, Object? error, {bool retrying = true}) async {
   if (error is! ApiException || error.code != ApiErrorCode.outOfCredits || !context.mounted) {
     return false;
   }
-  final added = await showOutOfCreditsSheet(context, error) == OutOfCreditsOutcome.keyAdded;
-  if (added && retrying && context.mounted) {
-    ScaffoldMessenger.maybeOf(context)
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(context.l10n.oocKeySavedRetrying)));
-  }
-  return added;
+  final outcome = await showOutOfCreditsSheet(context, error: error, retriesItself: retrying);
+  return outcome == OutOfCreditsOutcome.keyAdded;
 }
 
 extension DraftChoiceLabels on AppLocalizations {

@@ -315,7 +315,7 @@ void main() {
   group('out of credits', () {
     Future<void> openSheet(WidgetTester tester, ApiException error) async {
       await openAccount(tester);
-      unawaited(showOutOfCreditsSheet(tester.element(find.byType(AccountScreen)), error));
+      unawaited(showOutOfCreditsSheet(tester.element(find.byType(AccountScreen)), error: error));
       await settle(tester);
       expect(find.text(l10n.oocTitle), findsOneWidget);
     }
@@ -336,7 +336,7 @@ void main() {
     testWidgets('adding your own key ends it so the caller can try again', (tester) async {
       await openAccount(tester);
       final context = tester.element(find.byType(AccountScreen));
-      final outcome = showOutOfCreditsSheet(context, error);
+      final outcome = showOutOfCreditsSheet(context, error: error);
       await settle(tester);
       await tapVisible(tester, find.byKey(const Key('ooc.useKey')));
       final field = find.descendant(
@@ -356,6 +356,33 @@ void main() {
       expect(find.text(l10n.oocKeySaved), findsOneWidget);
       final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
       expect(await container.read(byokStoreProvider).readGeminiKey(), 'AIza-from-the-sheet');
+    });
+
+    testWidgets('a caller that tries again by itself gets the one note that says so', (
+      tester,
+    ) async {
+      await openAccount(tester);
+      final context = tester.element(find.byType(AccountScreen));
+      final outcome = showOutOfCreditsSheet(context, error: error, retriesItself: true);
+      await settle(tester);
+      await tapVisible(tester, find.byKey(const Key('ooc.useKey')));
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(OutOfCreditsSheet),
+          matching: find.byKey(const Key('account.ownKey')),
+        ),
+        'AIza-from-the-sheet',
+      );
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byType(OutOfCreditsSheet),
+          matching: find.byKey(const Key('account.ownKey.save')),
+        ),
+      );
+      expect(await outcome, OutOfCreditsOutcome.keyAdded);
+      expect(find.text(l10n.oocKeySavedRetrying), findsOneWidget);
+      expect(find.text(l10n.oocKeySaved), findsNothing);
     });
 
     testWidgets('opens the credit history', (tester) async {

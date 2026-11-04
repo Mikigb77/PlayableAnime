@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n.dart';
 import '../../design/design.dart';
+import 'scene_view.dart';
 import 'story_models.dart';
 
 /// "How it played out" (A8): each step of the action as the engine settled it, whether the facts
@@ -27,7 +28,7 @@ class SceneDetailsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (scene.playerAction case final action?)
+        if (scene.actionText(context.l10n) case final action?)
           Text(action, style: context.lucidText.playerAction),
         if (scene.hasTime) ...[
           const SizedBox(height: Space.md),

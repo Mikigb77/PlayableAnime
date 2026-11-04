@@ -524,6 +524,36 @@ def test_starting_twice_returns_the_same_story(player_client, model):
     assert Story.objects.count() == 1
 
 
+def test_starting_from_a_stale_copy_is_refused_and_starts_nothing(player_client, model):
+    draft = _draft(player_client)
+    _patch(player_client, draft["id"], {"advanced": {"difficulty": "brutal"}})  # now version 2
+
+    stale = _start(player_client, draft["id"], {"expected_version": draft["version"]})
+
+    assert stale.status_code == 409
+    assert _error(stale)["code"] == "version_conflict"
+    assert _error(stale)["details"] == {"current_version": draft["version"] + 1}
+    assert not Story.objects.exists()
+    assert Draft.objects.get(pk=draft["id"]).story_id is None
+
+    current = _start(player_client, draft["id"], {"expected_version": draft["version"] + 1})
+    assert current.status_code == 200, current.content
+
+
+def test_a_retried_start_returns_the_story_whatever_version_it_sends(player_client, model):
+    """Starting bumps the draft's version, so a retry after a lost answer carries a version that
+    is stale by then: it still gets the same story instead of a conflict."""
+    draft = _draft(player_client)
+    body = {"expected_version": draft["version"]}
+
+    first = _start(player_client, draft["id"], body)
+    again = _start(player_client, draft["id"], body)
+
+    assert first.status_code == again.status_code == 200
+    assert first.json() == again.json()
+    assert player_client.get(f"/v1/drafts/{draft['id']}").json()["version"] == draft["version"] + 1
+
+
 def test_a_started_draft_cant_change(player_client, model):
     draft_id = _draft(player_client)["id"]
     story_id = _start(player_client, draft_id).json()["story_id"]

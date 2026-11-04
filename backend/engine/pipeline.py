@@ -75,15 +75,18 @@ class PlayOut:
     capped: bool = False
 
 
-def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) -> TimePassage:
+def catch_up(
+    state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng, *, copy: bool = True
+) -> TimePassage:
     """Step 1, and every step of a plan. Move the world clock to `until_s` (the graph passes
     `state.world_s`), applying every pending event due on the way in time order and running the
     deterministic world tick (W6, W10, B12). The first event that needs the player stops the
     clock there. While a time stop is in effect nothing fires (W10a).
 
-    The living world's one loop, `engine.world.catch_up` (WS10).
+    The living world's one loop, `engine.world.catch_up` (WS10). `copy=False` works on the
+    caller's own copy instead of a new one, as `play_out` does with its working copy.
     """
-    return world.catch_up(state, until_s, ctx, rng)
+    return world.catch_up(state, until_s, ctx, rng, copy=copy)
 
 
 def resolve(state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng) -> Resolution:
@@ -179,7 +182,7 @@ def play_out(
             # that needs a decision stops the clock there (E7).
             stretch_rng = rng.child("director", "stretch", step.index)
             current = director.schedule_stretch(current, start_s, planned_end, ctx, stretch_rng)
-            passage = catch_up(current, planned_end, ctx, rng)
+            passage = catch_up(current, planned_end, ctx, rng, copy=False)
             current = passage.state
             fired.extend(passage.fired)
             interrupted_by = passage.interrupted_by

@@ -1,4 +1,6 @@
 import pickle
+import struct
+import zlib
 from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
@@ -18,7 +20,7 @@ from graph.llm import (
     fill_schema,
     parse_byok,
 )
-from graph.llm.fake import OFFLINE_TEXT, TINY_PNG
+from graph.llm.fake import OFFLINE_TEXT, TINY_PNG, offline_picture
 from tests.graph.conftest import Narration, run
 
 PROMPT = Prompt.build("system", "user")
@@ -76,7 +78,35 @@ def test_the_offline_model_answers_any_schema_text_and_pictures():
     scene, text, image = run(calls())
     assert scene.narration == OFFLINE_TEXT
     assert text == OFFLINE_TEXT
-    assert image.data == TINY_PNG
+    assert _png_size(image.data) == (72, 96)  # a real picture, in the asked shape (3:4)
+
+
+@pytest.mark.parametrize(("aspect", "size"), [("3:4", (72, 96)), ("16:9", (171, 96))])
+def test_the_offline_picture_is_a_whole_png_in_its_shape(aspect, size):
+    data = offline_picture(aspect)
+
+    assert _png_size(data) == size
+
+
+def test_the_tiny_picture_is_a_whole_png_too():
+    assert _png_size(TINY_PNG) == (1, 1)
+
+
+def _png_size(data: bytes) -> tuple[int, int]:
+    """Checks every chunk's CRC, inflates the pixels and returns the PNG's width and height."""
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    chunks, at = {}, 8
+    while at < len(data):
+        (length,) = struct.unpack(">I", data[at : at + 4])
+        kind, body = data[at + 4 : at + 8], data[at + 8 : at + 8 + length]
+        (crc,) = struct.unpack(">I", data[at + 8 + length : at + 12 + length])
+        assert zlib.crc32(kind + body) == crc
+        chunks[kind] = body
+        at += 12 + length
+    assert list(chunks) == [b"IHDR", b"IDAT", b"IEND"]
+    width, height = struct.unpack(">II", chunks[b"IHDR"][:8])
+    assert len(zlib.decompress(chunks[b"IDAT"])) == height * (1 + 3 * width)
+    return width, height
 
 
 def test_scripts_replay_in_order_per_node_and_run_out_loudly():

@@ -8,7 +8,8 @@ import 'fake_stories.dart';
 /// The first request for a planned picture answers `pending`; once [FakePace.picture] has passed,
 /// requests answer `ready` with a bundled image. Each picture is charged once (M3). A scene whose
 /// action contains `[fail:picture]` answers `skipped`, as a blocked picture would, until the
-/// player asks to illustrate it again.
+/// player asks to illustrate it again. Illustrate on credits that can't cover a picture answers
+/// `402 out_of_credits` and leaves the scene as it was (M2); a planned picture is never refused.
 class FakePictureState {
   final requestedAt = <String, DateTime>{};
   final charged = <String>{};
@@ -29,6 +30,14 @@ void registerPictureRoutes(FakeBackend b) {
     final key = '${story.id}-$turn';
     final image = scene['image'] as JsonMap?;
     final pictures = b.data.pictures;
+    final unpaid = !r.usesOwnKey && !pictures.charged.contains(key);
+    final balance = b.data.account.balanceOf(r.userId!);
+    if (illustrate && image?['status'] != 'ready' && unpaid && balance < _pictureCents) {
+      throw FakeError(402, 'out_of_credits', 'Not enough credits.', {
+        'balance_cents': balance,
+        'available_cents': balance,
+      });
+    }
     if (illustrate && (image == null || image['status'] == 'skipped')) {
       // Illustrating plans a scene picture, or plans a skipped one again.
       scene['image'] = {'planned': true, 'kind': image?['kind'] ?? 'scene', 'status': 'planned'};
@@ -56,11 +65,11 @@ void registerPictureRoutes(FakeBackend b) {
           : _pictureFor(story, turn!);
     if (!r.usesOwnKey && pictures.charged.add(key)) {
       // A picture never takes the balance below zero (M7).
-      if (b.data.account.balanceOf(r.userId!) >= 3.4) {
+      if (b.data.account.balanceOf(r.userId!) >= _pictureCents) {
         b.data.account.charge(
           r.userId!,
           kind: 'image',
-          cents: 3.4,
+          cents: _pictureCents,
           now: b.now(),
           storyId: story.id,
           turn: turn!,
@@ -82,6 +91,9 @@ void registerPictureRoutes(FakeBackend b) {
     return FakeResponse.json(image['status'] == 'ready' ? _ready(b, image) : {'status': 'pending'});
   });
 }
+
+/// What a picture costs on credits.
+const _pictureCents = 3.4;
 
 JsonMap _ready(FakeBackend b, JsonMap image) => {
   'status': 'ready',

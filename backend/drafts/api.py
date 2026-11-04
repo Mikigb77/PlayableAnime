@@ -127,6 +127,7 @@ class StartSettingsIn(Schema):
 
 class StartIn(Schema):
     settings: StartSettingsIn | None = None
+    expected_version: int | None = None
 
 
 class RuleOut(Schema):
@@ -338,9 +339,11 @@ async def revise_draft(request, draft_id: str, body: ReviseIn):
 @drafts_router.post("/{draft_id}/start", response=StartOut)
 async def start_draft(request, draft_id: str, body: StartIn | None = None):
     """Creates the story with its opening world state (engine `graph`, turn 0). The app then
-    asks for the opening scene (`kind: "opening"`). Starting again returns the same story."""
+    asks for the opening scene (`kind: "opening"`). Starting again returns the same story, and a
+    stale `expected_version` on a draft not yet started is refused (T10)."""
     row = await service.owned_draft(request, draft_id)
     settings = body.settings.model_dump(exclude_none=True) if body and body.settings else {}
-    story = await service.start_story(row.pk, settings)
+    expected = body.expected_version if body else None
+    story = await service.start_story(row.pk, settings, expected_version=expected)
     logs.bind(story_id=str(story.id))
     return {"story_id": str(story.id), "version": story.version}

@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn or a picture (K2, M7). `details.balance_cents` and `details.available_cents`. |
+  | 402 | `out_of_credits` | Not enough credits for a turn, a draft or an Illustrate (K2, M2). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -95,7 +95,8 @@ draft or revision, a picture) is checked before it starts, in this order:
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
    or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents` and
    `details.available_cents` (less than the balance while another request of the same player is
-   running). A picture that can't be paid for is `skipped` instead (M7).
+   running). A planned picture that can't be paid for is `skipped` instead (M7); Illustrate, which
+   the player asks for, answers the `402`.
 
 A request that is refused counts against nothing. The real cost is charged when the request
 completes, in the same transaction as what it saved, so a turn that fails or loses a version race
@@ -226,7 +227,9 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
   returns the same story. The app sends `expected_version` here as with every change; the server
-  doesn't check it on start yet.
+  refuses a stale one with `409 version_conflict` like any other change, so a story never starts
+  from a copy the player hasn't seen. Starting bumps the version, so a retried start that carries
+  the old version still returns the same story.
 - **Real people (G12).** A premise, a revision's `instruction`, an edited summary line or a rule
   that names a real living person is refused before any model call, at no cost, with `400
   validation_error`: `details.fields` has the field (`premise`, `instruction`, `world_lines.3`,
@@ -306,7 +309,8 @@ together only when the turn completes.
 
 ```text
 Scene {turn, kind: "opening"|"action"|"choice"|"standing",
-       player_action?: string, input_mode?: string,
+       player_action?: string,       # the words sent, a choice's label, or "wait" or "observe"
+       input_mode?: string,
        narration: string,
        choices: [{id, label, kind: "thread"|"personal"|"side"|"wild"}],   # 0 to 4 (S2)
        standing_actions: ["wait", "observe"],
@@ -360,6 +364,10 @@ Picture {status: "ready"|"pending"|"skipped",
   without one (M3, M7). A repeat answers `skipped` again without trying; `illustrate` tries it
   again. A portrait or place that failed or wasn't affordable is also planned again the next time
   the story shows that character or place.
+- `illustrate` is a picture the player asked and pays for (M2), so without credits it answers `402
+  out_of_credits` (with `details.balance_cents` and `details.available_cents`) instead of
+  `skipped`, and the scene keeps the picture state it had: offer the player's own key, then ask
+  again. `.../image` never answers `402`.
 - `illustrate` draws the scene's planned picture if it has one, or a picture of the scene itself,
   even with pictures off. On a scene whose picture is ready it returns that picture at no charge.
 - Pictures are reused: a character's portrait or a place's picture is drawn once and every scene
@@ -374,8 +382,9 @@ Picture {status: "ready"|"pending"|"skipped",
   falls back to credits; a server error on their key skips the picture instead (M7).
 - Errors: `401 unauthenticated` without a valid access token, `404 not_found` for an unknown
   story, scene or picture, `403 forbidden` for another player's story or one above the account's
-  rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, and `429
-  rate_limited` from the credit meter, after which the picture is still planned.
+  rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, `429
+  rate_limited` from the credit meter, after which the picture is still planned, and, for
+  `illustrate` only, `402 out_of_credits`.
 
 ### Memory and status (C6, G16)
 

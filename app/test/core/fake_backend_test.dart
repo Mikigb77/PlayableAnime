@@ -464,6 +464,28 @@ void main() {
       expect(fresh.expiresAt, now.add(const Duration(minutes: 10)));
     });
 
+    test('illustrating on credits that cannot pay for it is a 402 that changes nothing', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      final turn = story.scenes.last.turn;
+      final before = story.scenes.last.image?.status;
+      backend.data.account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'adjustment',
+        cents: await balance(),
+        now: now,
+      );
+
+      await expectLater(
+        stories.illustrate(story.id, turn),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', ApiErrorCode.outOfCredits)
+              .having((e) => e.balanceCents, 'balance', 0),
+        ),
+      );
+      expect((await stories.get(story.id)).scenes.last.image?.status, before);
+    });
+
     test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
       final story = await stories.get((await library.stories()).single.id);
       final events = await collect(

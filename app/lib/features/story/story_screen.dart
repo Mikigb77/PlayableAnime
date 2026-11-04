@@ -109,7 +109,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         // The saved scene takes the streaming one's place, with its time and event above the
         // words: keep the words where the player is reading them.
         final before = _topOf(_pendingNarrationKey);
-        final unseen = _following && (before == null || before > MediaQuery.sizeOf(context).height);
+        final following = _following;
+        final unseen = following && (before == null || before > MediaQuery.sizeOf(context).height);
         _following = false;
         ref.invalidate(storiesProvider);
         if (unseen) {
@@ -118,15 +119,21 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
           return;
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
+          // The opening is read from the title page above it, which stays in view.
+          if (!mounted || _opensPage(turn)) return;
           final after = _topOf(_narrationKeys[turn]);
-          if (before == null || after == null || !_scroll.hasClients) return;
-          final position = _scroll.position;
-          final delta = after - before;
-          if (delta.abs() < 0.5) return;
-          _scroll.jumpTo(
-            (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent),
-          );
+          if (before != null && after != null && _scroll.hasClients) {
+            final position = _scroll.position;
+            final delta = after - before;
+            if (delta.abs() >= 0.5) {
+              _scroll.jumpTo(
+                (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent),
+              );
+            }
+          }
+          // A short or quick scene can finish before the page has followed it up: carry on to
+          // its top, or to its choices when the whole of it fits, as following it would have.
+          if (following) _bringUp(turn);
         });
       case StoryMovedOn(:final action):
         _snack(l10n.errorVersionConflict);
@@ -145,7 +152,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   /// The out-of-credits sheet (K2). With the player's own key added (K6), what was refused goes
   /// again on that key.
   Future<void> _outOfCredits(ApiException error, {PendingTurn? turn, int? picture}) async {
-    final outcome = await showOutOfCreditsSheet(context, error);
+    final outcome = await showOutOfCreditsSheet(context, error: error, retriesItself: true);
     if (!mounted || outcome != OutOfCreditsOutcome.keyAdded) return;
     if (turn != null) {
       _following = true;
@@ -278,11 +285,12 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   // ---- Scrolling --------------------------------------------------------------------------
 
-  /// Opens the story where the player left it: at the top of the newest scene.
+  /// Opens the story where the player left it: at the top of the newest scene, or at the title
+  /// page when the newest scene is the opening.
   void _landOnLatest() {
     if (_landed || _landing) return;
     final turn = _play.story?.scenes.lastOrNull?.turn;
-    if (turn == null) {
+    if (turn == null || _opensPage(turn)) {
       _landed = true;
       return;
     }
@@ -332,11 +340,15 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     });
   }
 
+  /// Whether [turn] is the opening, right under the title page at the start of the feed.
+  bool _opensPage(int turn) => turn <= 1 && _play.anchorTurn <= 1;
+
   /// Brings the streaming scene into view as it grows, but never past its own top, so the player
   /// reads it from the start at their own pace (S3). A turn that fails stays in view too.
   void _follow([int attempt = 0]) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_following || !_scroll.hasClients) return;
+      if (_play.pending?.isOpening ?? false) return;
       if (!_scroll.position.hasContentDimensions) return;
       final card = _pendingKey.currentContext?.findRenderObject();
       final position = _scroll.position;
@@ -357,6 +369,22 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       if (target <= position.pixels + 1) return;
       _scroll.animateTo(target, duration: Motion.of(context, Motion.slow), curve: Motion.standard);
     });
+  }
+
+  /// Glides a saved scene up towards the top of the view, never past its own top and never back
+  /// down the page.
+  void _bringUp(int turn) {
+    if (_opensPage(turn)) return;
+    final card = _sceneKeys[turn]?.currentContext?.findRenderObject();
+    if (card == null || !card.attached || !_scroll.hasClients) return;
+    final position = _scroll.position;
+    final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
+    if (top == null) return;
+    final target = math.min(position.maxScrollExtent, top - Space.lg);
+    if (target <= position.pixels + 1) return;
+    unawaited(
+      _scroll.animateTo(target, duration: Motion.of(context, Motion.slow), curve: Motion.standard),
+    );
   }
 
   bool _onScroll(ScrollNotification notification) {

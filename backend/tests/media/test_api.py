@@ -204,6 +204,76 @@ def test_without_credits_the_picture_is_skipped_and_never_drawn(client, painters
     assert meter.charged == []
 
 
+def test_illustrate_without_credits_is_a_402_and_leaves_the_scene_as_it_was(
+    client, painters, meter, log_lines
+):
+    story = make_story()
+    make_scene(story, 4, narration="The rain stops.")
+    out = ApiError(
+        ErrorCode.OUT_OF_CREDITS,
+        "You're out of credits.",
+        {"balance_cents": 1.5, "available_cents": 1.5},
+    )
+    meter.refuse = billing.NoCredits(out)
+
+    refused = _illustrate(client, story, 4)
+
+    # The player asked and pays (M2), so they hear why and can add their own key.
+    assert refused.status_code == 402
+    assert refused.json()["error"] == {
+        "code": "out_of_credits",
+        "message": "You're out of credits.",
+        "details": {"balance_cents": 1.5, "available_cents": 1.5},
+    }
+    assert painters.drawings == 0
+    assert meter.charged == []
+    image = Image.objects.get(story=story)
+    assert (image.status, image.skip_reason, image.claim) == (
+        ImageStatus.SKIPPED,
+        SkipReason.NO_CREDITS,
+        None,
+    )
+    assert _image(client, story, 4).json()["status"] == "skipped"  # never drawn on its own
+    [line] = [line for line in log_lines() if line.get("picture")]
+    assert line["picture"]["status"] == "refused"
+
+    # With credits again, Illustrate draws it.
+    meter.refuse = None
+    assert _illustrate(client, story, 4).json()["status"] == "ready"
+
+
+def test_illustrate_without_credits_keeps_a_blocked_picture_blocked(client, painters, meter):
+    story = make_story()
+    _planned_scene(story)
+    painters.ours.script(DrawBlocked(("sexual",)))
+    assert _image(client, story, 2).json()["status"] == "skipped"
+    meter.refuse = billing.NoCredits()
+
+    assert _illustrate(client, story, 2).status_code == 402
+
+    image = Image.objects.get(story=story)
+    # Still blocked, so only Illustrate tries it again, never a later plan (M3).
+    assert (image.status, image.skip_reason, image.trigger, image.attempts) == (
+        ImageStatus.SKIPPED,
+        SkipReason.BLOCKED,
+        "fight_start",
+        1,
+    )
+
+
+def test_illustrate_without_credits_on_a_planned_picture_leaves_it_planned(client, painters, meter):
+    story = make_story()
+    _planned_scene(story)
+    meter.refuse = billing.NoCredits()
+
+    assert _illustrate(client, story, 2).status_code == 402
+    image = Image.objects.get(story=story)
+    assert (image.status, image.attempts, image.claim) == (ImageStatus.PLANNED, 0, None)
+
+    meter.refuse = None
+    assert _image(client, story, 2).json()["status"] == "ready"
+
+
 def test_a_rate_limit_is_passed_on_and_the_picture_stays_planned(client, painters, meter):
     story = make_story()
     _planned_scene(story)

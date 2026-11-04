@@ -308,7 +308,7 @@ void main() {
       expect(await play.act('I run', inputMode: 'typed'), isFalse);
       await until(play, () => play.story!.version == 4);
       expect(notices.whereType<StoryMovedOn>(), hasLength(1));
-      expect(play.story!.scenes.last.playerAction, 'Observe');
+      expect(play.story!.scenes.last.playerAction, 'observe');
       expect(play.pending, isNull);
     });
 
@@ -341,7 +341,7 @@ void main() {
       );
       await play.act('I search the shelves', inputMode: 'typed');
       await until(play, () => play.pending == null);
-      expect(play.story!.scenes.last.playerAction, 'Observe');
+      expect(play.story!.scenes.last.playerAction, 'observe');
       expect(notices.whereType<SceneSaved>(), isEmpty);
       expect(notices.whereType<StoryMovedOn>().single.action, 'I search the shelves');
     });

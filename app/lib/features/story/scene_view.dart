@@ -47,7 +47,7 @@ class SceneView extends StatelessWidget {
     }
     final image = this.image;
     return SceneCard(
-      playerAction: scene.playerAction,
+      playerAction: scene.actionText(context.l10n),
       spokenAction: scene.spoken,
       ornament: ornament,
       pictureAfterNarration: true,
@@ -195,5 +195,18 @@ class _HiddenScene extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// What the player did, as the scene shows it.
+extension SceneActionText on Scene {
+  /// The player's own words, or a standing action (S2) in the app's words: the server sends its
+  /// wire name (`wait`, `observe`).
+  String? actionText(AppLocalizations l10n) {
+    if (kind == 'standing') {
+      final standing = StandingAction.values.where((a) => a.wire == playerAction).firstOrNull;
+      if (standing != null) return standing.label(l10n);
+    }
+    return playerAction;
   }
 }

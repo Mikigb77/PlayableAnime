@@ -279,13 +279,18 @@ def save_row(
 
 
 @sync_to_async
-def start_story(row_id: uuid.UUID, settings: dict[str, Any]) -> Story:
+def start_story(
+    row_id: uuid.UUID, settings: dict[str, Any], *, expected_version: int | None = None
+) -> Story:
     """Creates the story with its opening state and marks the draft started, together. Starting
-    again returns the same story, so a retry over a flaky network never makes two."""
+    again returns the same story, so a retry over a flaky network never makes two, whatever
+    version it carries (starting bumps the version). A draft not yet started must still be at
+    `expected_version`, so a story never starts from a copy the player hasn't seen (T10)."""
     with transaction.atomic():
         row = Draft.objects.select_for_update().get(pk=row_id)
         if row.story_id is not None:
             return Story.objects.get(pk=row.story_id)
+        check_version(row, expected_version)
         draft = to_chain(row)
         state = draft.state()
         story = Story.objects.create(

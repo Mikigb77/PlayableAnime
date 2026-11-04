@@ -678,6 +678,16 @@ URLs from `media.lookups`).
 meter and picture planner: every event, each error before and after the stream starts, a lost
 version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
 
+**How a turn's own time grows (measured in WS18).** With the offline model, so only our code
+counts, a turn on a new story takes about 35 ms before its first words and 50 ms in all, locally.
+The engine takes the state read-only and works on copies, and copying the whole state is most of
+that time, so it grows with the records a story keeps: on a story padded with 6,000 deeds (a 2 MB
+state, more than a long and busy story would hold) the first words come after about 0.5 s and the
+turn ends at 0.75 s. `read_turn` stays under 1 ms at that size. The world's catch-up works on the
+copy its caller already owns (`copy=False` from `play_out` and inside `catch_up`), which took a
+third off that worst case. If stories grow that large, the next step is sharing unchanged records
+between copies, or folding old deeds into summaries.
+
 ## Drafting a world and a character
 
 Requirements: G1, G2, S1, A1, G6, G7, G8, G12, G18, G22, N7, C6, E2, W15. The chain is
@@ -986,7 +996,8 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   for long. `charge` runs in the caller's transaction, so a turn and its charge are saved together
   or not at all. It is idempotent per ticket and never takes a balance below zero: a charge above
   the balance takes it to zero and records the shortfall (`detail.uncovered_cents`). Pictures use
-  `charge_image`, and `out_of_credits` from `start` means the picture is skipped (M7).
+  `charge_image`, and `out_of_credits` from `start` means a planned picture is skipped (M7),
+  while Illustrate answers that `402` (M2).
 - **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits and gets
   an entry at zero charge that keeps what it would have cost (`detail.list_cents`). A request on
   the player's own key holds nothing, charges nothing, writes no entry and doesn't count toward
@@ -1108,14 +1119,15 @@ app                   shows the narration, then asks for the picture in its own 
   mid-drawing, Django cancels the request: its hold is released and the picture is planned again
   for the next request, since nothing may run after a response ends (B8). A failure, a block or no
   credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
-  Illustrate tries a skipped scene picture again. The scenes showing a picture keep
-  `Scene.image_status` in step with it.
+  Illustrate tries a skipped scene picture again. Illustrate without credits answers `402
+  out_of_credits` and puts the picture back as it found it, a blocked one still blocked. The
+  scenes showing a picture keep `Scene.image_status` in step with it.
 - **Paying (M7, K7).** `media/billing.py` calls the credit meter (`billing.meter`): `start` holds
-  the estimated price before drawing on our account (no credits: skipped; a rate limit: the API's
-  `rate_limited`, with the picture planned again), `charge` takes the real cost plus margin in the
-  transaction that marks the picture ready (`charge_image`), and `release` lets a hold go when the
-  picture isn't drawn. The owner's pictures are recorded at no charge, and a story from before
-  sign-in, with no owner, draws free.
+  the estimated price before drawing on our account (no credits: skipped, or Illustrate's `402`;
+  a rate limit: the API's `rate_limited`, with the picture planned again), `charge` takes the real
+  cost plus margin in the transaction that marks the picture ready (`charge_image`), and `release`
+  lets a hold go when the picture isn't drawn. The owner's pictures are recorded at no charge, and
+  a story from before sign-in, with no owner, draws free.
 - **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
   `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
   `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last

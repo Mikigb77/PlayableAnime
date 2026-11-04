@@ -8,8 +8,10 @@ a request that died, can be taken over, at most `MAX_ATTEMPTS` times in all.
 
 Paying (`media.billing`): a picture drawn with the player's own key costs no credits (K6, M7).
 Otherwise the credit meter holds its price before drawing, and the request that marks it ready
-charges it in the same transaction. Without credits it is skipped (M7). A failed or blocked
-picture is skipped too, its hold released, and the scene is complete without it (M3).
+charges it in the same transaction. Without credits a planned picture is skipped (M7), while
+Illustrate, which the player asked and pays for, answers `402 out_of_credits` and leaves the scene
+as it was (M2). A failed or blocked picture is skipped too, its hold released, and the scene is
+complete without it (M3).
 
 Each picture drawn or skipped writes one T5 log line with its model, cost and outcome, and never
 its prompt (T6).
@@ -71,6 +73,24 @@ class _Attempt:
     saved_key: str | None = None
 
 
+@dataclass(frozen=True)
+class _Before:
+    """A skipped picture as it was before Illustrate planned it again, to put back as it was
+    when the player can't pay for it (M2)."""
+
+    status: str
+    skip_reason: str
+    trigger: str
+    attempts: int
+
+
+@dataclass(frozen=True)
+class _Link:
+    picture: ScenePicture
+    # Illustrate only: None for a picture it planned just now; otherwise how it found it.
+    before: _Before | None
+
+
 def pictures_off(story: Story) -> bool:
     """The player turned automatic pictures off for this story (S6, M2)."""
     settings_ = story.settings if isinstance(story.settings, dict) else {}
@@ -91,11 +111,13 @@ async def scene_picture(
     Without `illustrate`, only a picture code planned (M1) is drawn, and not while the story's
     pictures are off. With `illustrate`, the player asked for one (M2): a scene with no picture
     gets one of its own, and a skipped one is tried again. `user` pays (None for a story from
-    before sign-in). May raise the API's `rate_limited` from the credit meter.
+    before sign-in). May raise the API's `rate_limited` from the credit meter, and with
+    `illustrate` its `out_of_credits`, leaving the scene's picture as it was.
     """
-    link = await _link(story, scene, illustrate)
-    if link is None:
+    found = await _link(story, scene, illustrate)
+    if found is None:
         return PictureResult("skipped")
+    link = found.picture
     image = link.image
     if not illustrate and image.status != ImageStatus.READY and pictures_off(story):
         return PictureResult("skipped", image)
@@ -112,6 +134,7 @@ async def scene_picture(
         trigger=trigger,
         byok_provider=byok_provider,
         byok_key=byok_key,
+        refuse_unpaid=found if illustrate else None,
     )
 
 
@@ -126,8 +149,9 @@ async def result_for(image: Image) -> PictureResult:
 
 
 @sync_to_async
-def _link(story: Story, scene: Scene, illustrate: bool) -> ScenePicture | None:
+def _link(story: Story, scene: Scene, illustrate: bool) -> _Link | None:
     link = ScenePicture.objects.select_related("image").filter(scene=scene).first()
+    before = None if link is None else _before(link.image)
     if link is None:
         if scene.image_planned:
             # Marked planned without a plan: draw the scene itself, or the cover.
@@ -147,7 +171,11 @@ def _link(story: Story, scene: Scene, illustrate: bool) -> ScenePicture | None:
             return None
     if illustrate and link.image.status == ImageStatus.SKIPPED:
         link.image = replan(link.image, trigger=ILLUSTRATE)
-    return link
+    return _Link(link, before)
+
+
+def _before(image: Image) -> _Before:
+    return _Before(image.status, image.skip_reason, image.trigger, image.attempts)
 
 
 @sync_to_async
@@ -190,11 +218,21 @@ async def _draw(
     trigger: str,
     byok_provider: str | None,
     byok_key: str | None,
+    refuse_unpaid: _Link | None = None,
 ) -> PictureResult:
     attempt = _Attempt()
     try:
         return await _draw_claimed(
-            story, scene, image, token, attempt, user, trigger, byok_provider, byok_key
+            story,
+            scene,
+            image,
+            token,
+            attempt,
+            user,
+            trigger,
+            byok_provider,
+            byok_key,
+            refuse_unpaid,
         )
     except asyncio.CancelledError:
         # The player left and Django cancelled the request. Nothing may run after it ends (B8),
@@ -213,6 +251,7 @@ async def _draw_claimed(
     trigger: str,
     byok_provider: str | None,
     byok_key: str | None,
+    refuse_unpaid: _Link | None,
 ) -> PictureResult:
     try:
         request = await _draw_request(story, image)
@@ -226,8 +265,14 @@ async def _draw_claimed(
         if drawn is None:
             try:
                 attempt.ticket = await billing.start(user, story_id=story.id, image_id=image.id)
-            except billing.NoCredits:
-                return await _skip(image, token, SkipReason.NO_CREDITS, attempt, trigger)
+            except billing.NoCredits as exc:
+                if refuse_unpaid is None:
+                    return await _skip(image, token, SkipReason.NO_CREDITS, attempt, trigger)
+                # Illustrate: the player asked and can't pay, so they hear why (M2), and the
+                # picture goes back to how it was before they asked.
+                await _put_back(image.pk, token, refuse_unpaid.before)
+                _log(image, "refused", SkipReason.NO_CREDITS, attempt, trigger)
+                raise exc.error from None
             attempt.payer = attempt.ticket.payer
             drawn = await _draw_once(story, request, attempt, None, None)
             if drawn is None:
@@ -236,6 +281,7 @@ async def _draw_claimed(
             attempt.payer = Payer.BYOK
     except ApiError:
         # The meter's rate limit: put the picture back, and let the app ask again later.
+        # Illustrate's out_of_credits has put it back already, so this finds no claim.
         await _unclaim(image.pk, token)
         raise
     except DrawBlocked as exc:
@@ -443,6 +489,31 @@ def _unclaim(image_id: uuid.UUID, token: uuid.UUID) -> None:
             image.claimed_at = None
             image.attempts = max(0, image.attempts - 1)
             image.save()
+
+
+@sync_to_async
+def _put_back(image_id: uuid.UUID, token: uuid.UUID, before: _Before | None) -> None:
+    """Undoes Illustrate's claim on a picture the player couldn't pay for: a skipped one is
+    skipped again for its old reason, so a blocked picture still comes back only through
+    Illustrate (M3); a planned one is planned again; one Illustrate planned just now is skipped,
+    which leaves the scene without a picture until the player asks again."""
+    with transaction.atomic():
+        image = Image.objects.select_for_update().filter(pk=image_id).first()
+        if image is None or image.claim != token:
+            return
+        if before is None:
+            _mark_skipped(image, SkipReason.NO_CREDITS)
+        elif before.status == ImageStatus.SKIPPED:
+            _mark_skipped(image, before.skip_reason)
+            image.trigger = before.trigger
+            image.attempts = before.attempts
+        else:
+            image.status = ImageStatus.PLANNED
+            image.claim = None
+            image.attempts = max(0, image.attempts - 1)
+        image.claimed_at = None
+        image.save()
+        image.sync_scenes()
 
 
 def _delete_quietly(key: str) -> None:
