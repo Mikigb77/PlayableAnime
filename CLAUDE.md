@@ -43,7 +43,10 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
    `flutter test` in `app/`. Add tests with each change.
 4. Schema changes go in a new migration. Never edit an applied one.
 5. Logging follows T4–T6: structured JSON to stdout. Never log API keys, auth tokens or full prompts.
-6. No service-account keys anywhere (B11). Vertex AI uses Application Default Credentials.
+6. The published app always runs on Gemini through Vertex AI (B6): on Cloud Run the API refuses to
+   start with any other `LLM_PROVIDER`. Local runs and tests may use the offline model
+   (`LLM_PROVIDER=fake`). No service-account keys anywhere (B11). Vertex AI uses Application
+   Default Credentials.
 7. Content follows the ratings table in the requirements (Teen and Mature 17+, no explicit sex, Gemini
    only).
 8. A change that alters behavior updates `docs/REQUIREMENTS.md` and the other docs in the same PR.

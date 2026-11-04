@@ -64,7 +64,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `CORS_ORIGINS` | `*` | Comma-separated origins for the Flutter web build. |
 | `CSRF_TRUSTED_ORIGINS` | none | Comma-separated, for the admin behind a custom domain. |
 | `LOG_LEVEL` | `INFO` | `DEBUG` logs story text and SQL, so never in production (T6). |
-| `LLM_PROVIDER` | `fake` | `vertex` or `fake`. |
+| `LLM_PROVIDER` | `fake` | `vertex` or `fake`. Must be `vertex` on Cloud Run, or the API refuses to start (B6). |
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
 | `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
 | `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |

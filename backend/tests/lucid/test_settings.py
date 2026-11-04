@@ -50,6 +50,25 @@ def test_a_database_url_is_required_outside_debug():
     assert "DATABASE_URL is required" in result.stderr
 
 
+@pytest.mark.parametrize("cloud_run", [{"K_SERVICE": "api"}, {"CLOUD_RUN_JOB": "migrate"}])
+def test_the_published_app_runs_only_on_vertex_ai(cloud_run):
+    """B6: on Cloud Run the offline model never answers a player. A deploy that lost
+    LLM_PROVIDER fails to start, while the image itself still runs anywhere else (CI's smoke
+    test runs it with the offline model)."""
+    env = {"DJANGO_SECRET_KEY": "k", "DATABASE_URL": "postgresql://x/y", "DEBUG": "0"}
+
+    offline = _python("import lucid.settings", LLM_PROVIDER="fake", **env, **cloud_run)
+    assert offline.returncode != 0
+    assert "LLM_PROVIDER must be vertex on Cloud Run" in offline.stderr
+
+    vertex = _python(
+        "import lucid.settings", LLM_PROVIDER="vertex", MEDIA_BUCKET="b", **env, **cloud_run
+    )
+    assert vertex.returncode == 0, vertex.stderr
+    elsewhere = _python("import lucid.settings", LLM_PROVIDER="fake", **env)
+    assert elsewhere.returncode == 0, elsewhere.stderr
+
+
 def test_the_asgi_app_loads_without_the_model_sdk():
     """B10: heavy imports stay out of module load, so cold starts stay fast (T3). The URLconf
     is imported too, as the first request would, so every view module is checked."""

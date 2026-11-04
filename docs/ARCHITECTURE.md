@@ -576,7 +576,9 @@ with `vertexai=True` and Application Default Credentials (B11). `langchain-googl
 `ChatVertexAI` was deprecated in 3.2.0 in favour of this class, so we use it directly. Every node
 shares one google-genai client (and its connections) per event loop, or per request for a player's
 key. `LLM_PROVIDER=fake` (the default) is the offline model,
-which answers any schema with placeholder values. Don't set `GOOGLE_API_KEY` or `LANGSMITH_TRACING`
+which answers any schema with placeholder values. It is for local runs and tests only: on Cloud
+Run, where `K_SERVICE` or `CLOUD_RUN_JOB` is set, the settings refuse to start with any provider
+but `vertex`, so the published app always runs on Gemini through Vertex AI (B6). Don't set `GOOGLE_API_KEY` or `LANGSMITH_TRACING`
 on the service: the first changes which credentials LangChain picks, the second would send prompts
 to LangSmith.
 

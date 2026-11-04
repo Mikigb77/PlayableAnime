@@ -299,8 +299,11 @@ directory.
 Each deploy replaces every plain variable with the file's contents, so a variable removed from
 `env.yaml` disappears from the service. Changing a setting is a PR to `env.yaml` and a deploy.
 Variables the backend doesn't read yet, such as `OWNER_EMAILS`, are ignored until the code that
-needs them lands. `MEDIA_BUCKET` is required: with `LLM_PROVIDER=vertex` the service refuses to start
-without it, because pictures on one instance's disk would be lost (M4). Cloud Run terminates TLS, and `lucid/settings.py` trusts its
+needs them lands. `LLM_PROVIDER` must be `vertex`: on Cloud Run (where `K_SERVICE` or
+`CLOUD_RUN_JOB` is set) the service and its jobs refuse to start with any other value, so the
+published app never answers with the offline model (B6). `MEDIA_BUCKET` is required: with
+`LLM_PROVIDER=vertex` the service refuses to start without it, because pictures on one instance's
+disk would be lost (M4). Cloud Run terminates TLS, and `lucid/settings.py` trusts its
 `X-Forwarded-Proto` header.
 
 The service has two URLs, `https://playable-anime-api-528988811295.europe-west3.run.app` (known
