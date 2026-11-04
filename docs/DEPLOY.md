@@ -44,12 +44,13 @@ The names live in [`infra/config.sh`](../infra/config.sh). Plain settings for th
 
 These steps need Miki: they sign in as the project's owner, read the production database URLs,
 create things that are billed and hold the app's signing key. Do them in this order; each one is
-safe to repeat. The commands work in a bash shell (Git Bash or WSL on Windows) with the
+safe to repeat. The commands work in a bash shell (WSL on Windows, Linux or macOS) with the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install), the [GitHub CLI](https://cli.github.com),
 the [Neon CLI](https://neon.com/docs/reference/neon-cli) (`npm i -g neonctl`) and a JDK's
-`keytool` (Android Studio ships one under `jbr/bin`). **Each step needs only a login in the
-browser:** the scripts read everything that follows from it themselves, so nothing is copied from
-a console or pasted from a terminal.
+`keytool` (Android Studio ships one under `jbr/bin`). The bootstrap installs gcloud itself when
+it is missing and signs it in through the browser, so on [a new laptop](#on-a-new-laptop) it needs
+only the repo. **Each step needs only a login in the browser:** the scripts read everything that
+follows from it themselves, so nothing is copied from a console or pasted from a terminal.
 
 1. [Sign in](#1-sign-in) to gcloud, GitHub and Neon, each in the browser.
 2. [Nothing to copy from Neon](#2-the-production-urls-from-neon): the bootstrap reads the URLs.
@@ -83,6 +84,8 @@ neonctl auth
 WSL 2 forwards `localhost` between Windows and Linux, which is what lets the Windows browser reach
 the CLI's callback. The scripts use the `playable-anime` gcloud configuration when it exists,
 without making it the active one, and pass `--project=playable-anime` on every command anyway.
+The bootstrap does its own gcloud sign-in when it is needed, so for the bootstrap alone this step
+can be skipped.
 Cloud Shell works too: it is already signed in to gcloud.
 
 ### 2. The production URLs from Neon
@@ -102,6 +105,29 @@ git fetch origin && git checkout dev && git pull   # this setup is on dev until 
 infra/bootstrap.sh --dry-run       # prints every command, changes nothing, needs no sign-in
 BUDGET_AMOUNT=25 infra/bootstrap.sh
 ```
+
+On a computer without gcloud, the bootstrap installs it first: through Google's apt repository in
+WSL, Debian or Ubuntu, or through Homebrew on macOS ([`infra/tools.sh`](../infra/tools.sh)). sudo
+asks for the computer's password. In WSL it also installs `wslu`, so the sign-in opens the Windows
+browser. When gcloud isn't signed in to an account that can see the project, the bootstrap opens
+the browser to sign in, in the `playable-anime` gcloud configuration, and goes on once you have.
+The Neon CLI is needed only while the database secrets have no value, which is no longer the case.
+
+#### On a new laptop
+
+The repo is private, so the GitHub CLI fetches it before anything else can. On Windows, WSL comes
+first: `wsl --install` in PowerShell, then restart and pick a Linux user name and password. Then,
+in the Ubuntu terminal:
+
+```bash
+sudo apt-get update && sudo apt-get install -y gh git wslu
+gh auth login --web --git-protocol https           # GitHub shows a one-time code to enter on its page
+gh repo clone Mikigb77/PlayableAnime ~/PlayableAnime -- --branch dev
+~/PlayableAnime/infra/bootstrap.sh                 # installs gcloud, opens the browser to sign in
+```
+
+The one-time code is the only thing typed by hand: the GitHub CLI from Ubuntu's own packages is
+older than its `--clipboard` flag.
 
 **If the bootstrap already ran from an older `main`, run it again from `dev`.** The older one let
 GitHub sign in only for deploys started by hand, so the push to `main` would be refused, and it
@@ -505,6 +531,8 @@ Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 | "Check the models" fails | The run prints each model's answer and Vertex AI's reason. `NotFound` means the model name in `backend/graph/llm/config.py` (or a `<NODE>_MODEL` setting) doesn't exist in Vertex AI at `VERTEX_LOCATION`; `PermissionDenied` means the runtime account lacks `aiplatform.user`; `transient_429` means no quota for that model. |
 | A failed job prints `They couldn't be read here` | The deployer lacks `logging.viewer`: re-run the bootstrap. |
 | The Ops workflow fails at the sign-in | The bootstrap hasn't run since the Ops workflow was added, or the run isn't on `main`. |
+| The bootstrap says it can't install gcloud by itself | The computer has neither apt nor Homebrew. Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install), or on a Mac [Homebrew](https://brew.sh), and run it again. |
+| The bootstrap's sign-in prints a command to run on another machine instead of opening a browser | gcloud found no browser. In WSL, `sudo apt-get install -y wslu` and run it again; elsewhere, run it from a terminal on the desktop. |
 
 ## Changing or removing the setup
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # One-time setup of Google Cloud for Lucid Saga, safe to run again. See docs/DEPLOY.md.
 #
-# Miki runs this once, signed in to gcloud as an owner of the playable-anime project and as an
-# administrator of its billing account. It deploys nothing. It sets up, or brings back in line:
+# Miki runs this once, as an owner of the playable-anime project and an administrator of its
+# billing account. It needs only a login: on a computer without gcloud it installs it first (apt in
+# WSL, Debian or Ubuntu; Homebrew on macOS), and when gcloud isn't signed in to an account that can
+# see the project, it opens the browser to sign in. It deploys nothing. It sets up, or brings back
+# in line:
 #
 #   1. the APIs the deploy needs
 #   2. the runtime service account's roles (T1, B11)
@@ -23,6 +26,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/lib.sh"
 # shellcheck source=infra/config.sh
 . "$HERE/config.sh"
+# shellcheck source=infra/tools.sh
+. "$HERE/tools.sh"
 
 usage() {
   cat <<'EOF'
@@ -30,6 +35,9 @@ Usage: infra/bootstrap.sh [--dry-run] [--yes]
 
   --dry-run   Print every command that would change something, and run none. Needs no credentials.
   --yes       Don't ask for confirmation before making changes.
+
+Installs the gcloud CLI when it is missing, and signs in through the browser when gcloud isn't
+signed in to an account that can see the project.
 
 Environment, all optional:
   BUDGET_AMOUNT                        Monthly budget in the billing account's currency (default 25).
@@ -214,6 +222,9 @@ confirm() {
 
 # --- steps -------------------------------------------------------------------------------------
 
+gcloud_account() { gcloud config get-value account 2>/dev/null || true; }
+project_number() { gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)'; }
+
 check_access() {
   local account number
   step "Checking access"
@@ -221,12 +232,19 @@ check_access() {
     say "Dry run: nothing is changed and nothing is read from Google Cloud."
     return 0
   fi
-  command -v gcloud >/dev/null 2>&1 || die "gcloud is not installed (https://cloud.google.com/sdk)"
+  ensure_gcloud
   use_gcloud_configuration
-  account="$(gcloud config get-value account 2>/dev/null || true)"
-  [ -n "$account" ] || die "gcloud is not signed in; run: gcloud auth login"
-  number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')" ||
-    die "$account can't read project $PROJECT_ID"
+  account="$(gcloud_account)"
+  # Signed out, or signed in as an account that can't see the project: sign in in the browser.
+  if [ -z "$account" ] || ! number="$(project_number 2>/dev/null)"; then
+    if [ -n "$account" ]; then
+      say "$account can't read project $PROJECT_ID."
+    fi
+    sign_in_gcloud
+    account="$(gcloud_account)"
+    [ -n "$account" ] || die "gcloud is not signed in; run: gcloud auth login"
+    number="$(project_number)" || die "$account can't read project $PROJECT_ID"
+  fi
   [ "$number" = "$PROJECT_NUMBER" ] ||
     die "project $PROJECT_ID has number $number, but infra/config.sh expects $PROJECT_NUMBER"
   say "Signed in as $account, project $PROJECT_ID ($PROJECT_NUMBER)."

@@ -4,7 +4,8 @@
 # dry runs and from the calls the scripts make against the fake gcloud on first runs, re-runs and
 # recoveries, which a dry run can't show (update-oidc, undelete, a role or budget update, the
 # first deploy's second revision, making the API private, every read, a failed job's logs, the
-# Ops workflow's default command). Each must fail on the network, never on its arguments.
+# Ops workflow's default command, the sign-in's own gcloud configuration). Each must fail on the
+# network, never on its arguments.
 # Nothing reaches Google Cloud: gcloud gets an empty configuration and a proxy that refuses every
 # connection.
 #
@@ -67,7 +68,9 @@ fake env OPS_COMMAND="" "$INFRA/ops.sh" run
 fake env OPS_COMMAND="run jobs executions list --job=playable-anime-migrate --region=europe-west3" \
   "$INFRA/ops.sh" run
 fake "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
-cat "$WORK/dry-run-commands" "$state/calls.log" | sort -u >"$WORK/commands"
+fake env FAKE_SIGNED_OUT=1 BROWSER=fake-browser "$INFRA/bootstrap.sh" --yes
+# `gcloud auth login` takes no flags here and would wait for a browser, so it isn't run.
+cat "$WORK/dry-run-commands" "$state/calls.log" | grep -vx 'gcloud auth login' | sort -u >"$WORK/commands"
 
 # The env vars file of a dry run is deleted when it ends; the committed one has the same shape.
 sed -i.bak "s#--env-vars-file=[^ ]*#--env-vars-file=$INFRA/cloudrun/env.yaml#" "$WORK/commands"

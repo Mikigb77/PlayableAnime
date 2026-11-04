@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# A stand-in for apt-get in the infra tests: it logs the call and installs nothing.
+set -euo pipefail
+printf 'apt-get %s\n' "$*" >>"${FAKE_STATE:?FAKE_STATE is not set}/apt.log"

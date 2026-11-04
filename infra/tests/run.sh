@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Tests for the infra scripts, run in CI (the infra job) and locally: infra/tests/run.sh
 #
-# Fake gcloud, gh and curl (infra/tests/fakes) log every call, so these tests show what the scripts
-# would run, that a dry run touches nothing, that bootstrap.sh is safe to re-run, and that no secret
-# value ever reaches arguments or output. Nothing here talks to Google Cloud or GitHub.
+# Fake gcloud, gh, curl, sudo, apt-get and brew (infra/tests/fakes) log every call and install or
+# change nothing, so these tests show what the scripts would run, that a dry run touches nothing,
+# that bootstrap.sh is safe to re-run, and that no secret value ever reaches arguments or output.
+# Nothing here talks to Google Cloud or GitHub.
 
 set -euo pipefail
 
@@ -221,6 +222,118 @@ test_bootstrap_reads_neon_urls() {
     "$INFRA/bootstrap.sh" --yes
   if [ "$status" -ne 0 ]; then ok; else bad "accepted a direct URL from neonctl as the pooled one"; fi
   lacks "$state/calls.log" " create " "changed something before validating neonctl's URLs"
+}
+
+test_bootstrap_signs_in() {
+  local state out
+  start "bootstrap.sh signs in through the browser when gcloud is signed out or can't see the project"
+  state="$(new_state bootstrap-signed-out)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_SIGNED_OUT=1 BROWSER=fake-browser \
+    NEON_PRODUCTION_DATABASE_URL="$POOLED" NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" \
+    "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  contains "$state/calls.log" "gcloud config configurations create playable-anime --no-activate --format=none"
+  contains "$state/calls.log" "gcloud auth login"
+  lacks "$state/calls.log" "--no-launch-browser" "the sign-in must open the browser"
+  contains "$out" "Signed in as miki@example.com, project playable-anime (528988811295)."
+  contains "$state/calls.log" "gcloud services enable"
+
+  # Signed in elsewhere as an account that can't see the project: sign in again, in the project's
+  # own configuration when it exists.
+  state="$(new_state bootstrap-wrong-account)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_WRONG_ACCOUNT=1 FAKE_HAS_CONFIGURATION=1 \
+    BROWSER=fake-browser NEON_PRODUCTION_DATABASE_URL="$POOLED" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  contains "$out" "miki@example.com can't read project playable-anime."
+  contains "$state/calls.log" "gcloud auth login"
+  lacks "$state/calls.log" "configurations create" "the project's configuration exists already"
+
+  # Already signed in: no sign-in.
+  state="$(new_state bootstrap-signed-in)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" NEON_PRODUCTION_DATABASE_URL="$POOLED" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  lacks "$state/calls.log" "auth login" "signed in already"
+}
+
+# Runs a function of tools.sh with only $FAKE_BIN on PATH: the fakes of sudo, curl and $3 (apt-get
+# or brew) and the few commands the scripts use, and no gcloud. Output goes to $out.
+with_tools() {
+  local state="$1" fn="$2" manager="$3" bin="$1/bin" tool
+  shift 3
+  mkdir -p "$bin"
+  for tool in bash cat cp dirname basename grep head ln mkdir mktemp readlink rm tr; do
+    ln -sf "$(command -v "$tool")" "$bin/$tool"
+  done
+  ln -sf "$FAKES/sudo" "$bin/sudo"
+  ln -sf "$FAKES/curl" "$bin/curl"
+  if [ -n "$manager" ]; then ln -sf "$FAKES/$manager" "$bin/$manager"; fi
+  # Not root, so installs go through sudo.
+  printf '#!/bin/sh\necho 1000\n' >"$bin/id"
+  chmod +x "$bin/id"
+  set +e
+  # shellcheck disable=SC2016 # The inner bash expands these.
+  /usr/bin/env -i PATH="$bin" HOME="$state" TMPDIR="$state" FAKE_STATE="$state" FAKE_BIN="$bin" \
+    "$@" bash -c '. "$1/lib.sh"; . "$1/config.sh"; . "$1/tools.sh"; '"$fn"'; echo "BROWSER=${BROWSER:-}"' \
+    _ "$INFRA" >"$state/out" 2>&1
+  status=$?
+  set -e
+}
+
+test_tools_install() {
+  local state
+  start "tools.sh installs gcloud through apt or Homebrew when it is missing, and nothing else"
+  state="$(new_state tools-apt)"
+  with_tools "$state" ensure_gcloud apt-get
+  equals "$status" 0 "exit status"
+  contains "$state/sudo.log" "sudo apt-get update -q"
+  contains "$state/sudo.log" "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q ca-certificates curl gnupg"
+  contains "$state/curl.log" "-fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg --output"
+  contains "$state/sudo.log" "sudo gpg --dearmor --yes -o /usr/share/keyrings/cloud.google.gpg"
+  contains "$state/sudo.log" "/etc/apt/sources.list.d/google-cloud-sdk.list"
+  contains "$state/installed-google-cloud-sdk.list" "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main"
+  contains "$state/sudo.log" "apt-get install -y -q google-cloud-cli"
+  # The package list is read again once Google's repository is added, before installing from it.
+  equals "$(grep -c 'apt-get update' "$state/sudo.log")" 2 "apt-get update runs before each install round"
+  equals "$(tail -n 1 "$state/sudo.log")" "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q google-cloud-cli" "gcloud is installed last"
+
+  state="$(new_state tools-brew)"
+  with_tools "$state" ensure_gcloud brew
+  equals "$status" 0 "exit status"
+  contains "$state/brew.log" "brew install --cask google-cloud-sdk"
+  if [ -e "$state/sudo.log" ]; then bad "Homebrew needs no sudo"; else ok; fi
+
+  state="$(new_state tools-none)"
+  with_tools "$state" ensure_gcloud ""
+  if [ "$status" -ne 0 ]; then ok; else bad "claimed to install gcloud without apt or Homebrew"; fi
+  contains "$state/out" "https://cloud.google.com/sdk/docs/install"
+
+  # Present already: nothing is installed.
+  state="$(new_state tools-present)"
+  mkdir -p "$state/bin"
+  ln -sf "$FAKES/gcloud" "$state/bin/gcloud"
+  with_tools "$state" ensure_gcloud apt-get
+  equals "$status" 0 "exit status"
+  if [ -e "$state/sudo.log" ]; then bad "installed something although gcloud is there"; else ok; fi
+
+  # In WSL, sign-ins open the Windows browser through wslview, installed when missing.
+  state="$(new_state tools-wsl)"
+  with_tools "$state" use_windows_browser apt-get WSL_DISTRO_NAME=Ubuntu
+  equals "$status" 0 "exit status"
+  contains "$state/sudo.log" "apt-get install -y -q wslu"
+  contains "$state/out" "BROWSER=wslview"
+
+  # Outside WSL, BROWSER is left alone (checked only where these tests don't run in WSL).
+  if ! grep -qi microsoft /proc/version 2>/dev/null; then
+    state="$(new_state tools-not-wsl)"
+    with_tools "$state" use_windows_browser apt-get
+    equals "$status" 0 "exit status"
+    if [ -e "$state/sudo.log" ]; then bad "installed wslu outside WSL"; else ok; fi
+  fi
 }
 
 test_bootstrap_rejects_bad_input() {
@@ -768,6 +881,8 @@ test_bootstrap_dry_run
 test_bootstrap_first_and_second_run
 test_bootstrap_reads_neon_urls
 test_bootstrap_rejects_bad_input
+test_bootstrap_signs_in
+test_tools_install
 test_deploy_dry_run
 test_deploy_settings
 test_deploy_service
