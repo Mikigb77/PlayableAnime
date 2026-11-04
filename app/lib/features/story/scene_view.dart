@@ -202,15 +202,14 @@ class _HiddenScene extends StatelessWidget {
 extension SceneActionText on Scene {
   /// The player's own words, or a standing action (S2) in the app's words: the server sends its
   /// wire name (`wait`, `observe`).
-  String? actionText(AppLocalizations l10n) {
-    if (kind == 'standing') {
-      final standing = StandingAction.values.where((a) => a.wire == playerAction).firstOrNull;
-      if (standing != null) return standing.label(l10n);
-    }
-    return playerAction;
-  }
+  String? actionText(AppLocalizations l10n) => _standingLabel(playerAction, l10n) ?? playerAction;
 
-  /// A step's words. The one step of a standing action is the action itself, in the app's words.
+  /// A step's words. A standing action's one step is the action's wire name too (the engine's
+  /// `_standing_step`), so it reads in the app's words like the action.
   String stepText(SceneStep step, AppLocalizations l10n) =>
-      kind == 'standing' && step.text == playerAction ? actionText(l10n) ?? step.text : step.text;
+      _standingLabel(step.text, l10n) ?? step.text;
+
+  String? _standingLabel(String? wire, AppLocalizations l10n) => kind == 'standing'
+      ? StandingAction.values.where((a) => a.wire == wire).firstOrNull?.label(l10n)
+      : null;
 }

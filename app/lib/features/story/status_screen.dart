@@ -68,7 +68,7 @@ class _StatusView extends StatelessWidget {
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text(status.name, style: theme.textTheme.headlineMedium),
+                      child: Text(status.name.asHeading, style: theme.textTheme.headlineMedium),
                     ),
                   ),
                 ],

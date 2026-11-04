@@ -321,12 +321,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       final target = _sceneKeys[turn]?.currentContext;
       if (target != null || attempt >= 16) {
         done?.call();
-        final card = target?.findRenderObject();
-        if (card == null || !card.attached) return;
-        final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
-        if (top == null) return;
-        // A little room under the bar, as a scene that is followed up stops (S3).
-        final to = (top - Space.lg).clamp(position.minScrollExtent, position.maxScrollExtent);
+        final to = _restingOffset(target?.findRenderObject());
+        if (to == null) return;
         if (animate) {
           unawaited(
             _scroll.animateTo(
@@ -352,6 +348,17 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     });
   }
 
+  /// Where the page rests to read a scene from its top: a little room under the bar, the same for
+  /// landing, following and bringing a scene up (S3), and never past the end. Null when [card]
+  /// isn't laid out.
+  double? _restingOffset(RenderObject? card) {
+    if (card == null || !card.attached || !_scroll.hasClients) return null;
+    final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
+    if (top == null) return null;
+    final position = _scroll.position;
+    return (top - Space.lg).clamp(position.minScrollExtent, position.maxScrollExtent);
+  }
+
   /// Whether [turn] is the opening, right under the title page at the start of the feed.
   bool _opensPage(int turn) => turn <= 1 && _play.anchorTurn <= 1;
 
@@ -373,11 +380,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         }
         return;
       }
-      final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
-      final target = math.min(
-        position.maxScrollExtent,
-        (top ?? position.maxScrollExtent) - Space.lg,
-      );
+      final target = _restingOffset(card) ?? position.maxScrollExtent;
       if (target <= position.pixels + 1) return;
       _scroll.animateTo(target, duration: Motion.of(context, Motion.slow), curve: Motion.standard);
     });
@@ -387,13 +390,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   /// down the page.
   void _bringUp(int turn) {
     if (_opensPage(turn)) return;
-    final card = _sceneKeys[turn]?.currentContext?.findRenderObject();
-    if (card == null || !card.attached || !_scroll.hasClients) return;
-    final position = _scroll.position;
-    final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
-    if (top == null) return;
-    final target = math.min(position.maxScrollExtent, top - Space.lg);
-    if (target <= position.pixels + 1) return;
+    if (!_scroll.hasClients) return;
+    final target = _restingOffset(_sceneKeys[turn]?.currentContext?.findRenderObject());
+    if (target == null || target <= _scroll.position.pixels + 1) return;
     unawaited(
       _scroll.animateTo(target, duration: Motion.of(context, Motion.slow), curve: Motion.standard),
     );

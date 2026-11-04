@@ -157,10 +157,11 @@ failed turn](docs/screenshots/play-screen.jpg)
 settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 
 - **Where it opens:** at the top of the newest scene, a little below the bar, so the player picks
-  up where they left off and its first line never sits under the bar. A title page with the genre and title sits above the opening scene, and a story whose newest scene
-  is its opening opens on that title page, which stays whole while the opening streams in. Older
-  scenes load above as the player scrolls back, and the page never moves under them. **Latest**
-  appears when they are far back.
+  up where they left off and its first line never sits under the bar. A title page with the genre
+  and title sits above the opening scene, and a story whose newest scene is its opening opens on
+  that title page, which stays whole while the opening streams in. Older scenes load above as the
+  player scrolls back, and the page never moves under them. **Latest** appears when they are far
+  back.
 - **A turn:** the player's action appears at once, then the words stream in under it (S3). The page
   follows the scene as it grows but stops at its top, so it is read from the first word at the
   player's own pace. When it is saved, the time chip and event badge join it without moving the

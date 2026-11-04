@@ -183,7 +183,10 @@ class _CharacterCard extends StatelessWidget {
                         const SizedBox(height: Space.xxs),
                         Semantics(
                           header: true,
-                          child: Text(character.name, style: theme.textTheme.headlineSmall),
+                          child: Text(
+                            character.name.asHeading,
+                            style: theme.textTheme.headlineSmall,
+                          ),
                         ),
                       ],
                     ),
@@ -285,7 +288,7 @@ class _Entry extends StatelessWidget {
                     runSpacing: Space.xxs,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Text(title.asHeading, style: titleStyle ?? theme.textTheme.titleMedium),
+                      Text(title, style: titleStyle ?? theme.textTheme.titleMedium),
                       if (tag case final tag?) _Tag(tag),
                     ],
                   ),
@@ -370,7 +373,7 @@ class _PersonEntry extends StatelessWidget {
         opacity: gone ? 0.55 : 1,
         child: PortraitAvatar(name: person.name, url: person.portraitUrl, size: 44),
       ),
-      title: person.name,
+      title: person.name.asHeading,
       titleStyle: theme.textTheme.titleMedium!.copyWith(
         color: gone ? colors.textMuted : null,
         decoration: fate == Fate.dead ? TextDecoration.lineThrough : null,
@@ -408,7 +411,7 @@ class _PlaceEntry extends StatelessWidget {
                 ),
               ),
             ),
-      title: place.name,
+      title: place.name.asHeading,
       lines: place.lines,
     );
   }
@@ -422,7 +425,7 @@ class _FactionEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _Entry(
     leading: const _Mark(Icons.shield_outlined),
-    title: faction.name,
+    title: faction.name.asHeading,
     trailing: faction.standingLabel.isEmpty ? null : faction.standingLabel,
     lines: faction.lines,
   );

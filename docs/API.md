@@ -384,7 +384,10 @@ Picture {status: "ready"|"pending"|"skipped",
   story, scene or picture, `403 forbidden` for another player's story or one above the account's
   rating limit (F8), `400 validation_error` for an unsupported `X-LLM-Provider`, `429
   rate_limited` from the credit meter, and, for `illustrate` only, `402 out_of_credits`. After
-  either, the picture is as it was: a planned one still planned, a skipped one still skipped.
+  either, a picture the scene already had is as it was: a planned one still planned, a skipped
+  one still skipped. On a scene that had none, the picture Illustrate planned stays: `skipped`
+  after a `402`, so nothing draws it until the player asks again, and planned after a `429`, for
+  the app to ask again.
 
 ### Memory and status (C6, G16)
 
