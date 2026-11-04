@@ -148,6 +148,9 @@ if not DEBUG and LLM_PROVIDER == "vertex" and not MEDIA_BUCKET:
 BILLING = {
     "STARTER_CENTS": ENV.starter_credit_cents,
     "STARTER_POLICY": ENV.starter_credit_policy,
+    # K1, M7: what the house pays, at most, for the once-only pictures of an account's first
+    # story, as the player would have been charged. The picture that crosses it is still free.
+    "HOUSE_PICTURES_CENTS": ENV.house_pictures_cents,
     "MARGIN": ENV.billing_margin,
     # Held before a model call starts, so concurrent calls can't spend the same credits: about
     # 1.5 times a typical charge (a turn is about 2 cents of model cost, a picture 3.4 cents).

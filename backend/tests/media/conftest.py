@@ -101,7 +101,7 @@ class Meter:
 def meter(monkeypatch) -> Meter:
     meter = Meter()
 
-    async def start(user, *, story_id, image_id):
+    async def start(user, *, story_id, image_id, first_picture=False):
         meter.started.append(image_id)
         if meter.refuse is not None:
             raise meter.refuse

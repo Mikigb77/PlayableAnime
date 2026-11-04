@@ -34,6 +34,11 @@ class CreditAccount(models.Model):
     balance_cents = models.DecimalField(default=0, **_CENTS)
     # K1's starter credit is granted once, when the account first qualifies.
     starter_granted = models.BooleanField(default=False)
+    # What the house has paid for this account's first pictures (K1, M7), at the price the player
+    # would have been charged. It stops paying once this reaches `HOUSE_PICTURES_CENTS`. Kept
+    # here, not on a story, so deleting the first story never starts the allowance again.
+    # A database default too, so the code before it keeps working on the new schema (DEPLOY.md).
+    house_pictures_cents = models.DecimalField(default=0, db_default=0, **_CENTS)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,8 +67,9 @@ class LedgerEntry(models.Model):
     """One change to a balance, never edited or removed (K2).
 
     `amount_cents` is positive when credits are added and negative when they are spent. An owner's
-    entry (K7) spends nothing but still records our model cost, so T5's numbers stay honest. A
-    call on the player's own key costs us nothing and writes no entry (K6).
+    entry (K7), or one for a picture the house paid for (K1, M7), spends nothing but still records
+    our model cost, so T5's numbers stay honest. A call on the player's own key costs us nothing
+    and writes no entry (K6).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -77,6 +83,9 @@ class LedgerEntry(models.Model):
     cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=0)
     # The owner's unlimited credits paid for this (K7): nothing was taken from the balance.
     unlimited = models.BooleanField(default=False)
+    # The house paid for this: a once-only picture in a new player's first story (K1, M7).
+    # Nothing was taken from the balance, and `detail.list_cents` keeps what it would have cost.
+    house = models.BooleanField(default=False, db_default=False)
     # Not foreign keys: an entry outlives the story or picture it paid for.
     story_id = models.UUIDField(null=True, blank=True)
     turn = models.PositiveIntegerField(null=True, blank=True)
@@ -127,6 +136,9 @@ class CreditHold(models.Model):
     )
     use = models.CharField(max_length=16, choices=[(u.value, u.name.title()) for u in Use])
     amount_cents = models.DecimalField(**_CENTS)
+    # Held against the house's allowance for a new player's first pictures (K1, M7), not against
+    # the player's balance.
+    house = models.BooleanField(default=False, db_default=False)
     created_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField()
 
