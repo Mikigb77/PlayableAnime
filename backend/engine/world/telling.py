@@ -7,13 +7,14 @@ where, as in "Lin Feng killed Han Jie at the outer-court well". Rumors, grudges 
 the world's events are written here. Nothing here assumes a genre (G5).
 
 Whoever tells a deed tells it by what they know (C6): a `Teller` gives the name they know each
-person, place or faction by, and whether they believe a victim dead. The world tells by the
-truth; the player's Memory screen tells by what the player character knows, as "you".
+person, place or faction by, and whether they believe a victim died of the deed. The world tells
+by the truth; the player's Memory screen tells by what the player character knows, as "you".
 """
 
 import re
 from typing import Protocol
 
+from engine.state.cast import Character, Faction, Place
 from engine.state.records import Deed
 from engine.state.world import WorldState
 from engine.world.norms import Nature, canonical, creature_of, deed_nature, killed
@@ -23,28 +24,25 @@ from engine.world.tuning import REGION_KINDS
 class Teller(Protocol):
     """What whoever tells a deed knows of it (C6)."""
 
-    def name_of(self, record_id: str) -> str | None:
+    def name(self, record: Character | Place | Faction) -> str | None:
         """The name they know a character, place or faction by, or None if they don't."""
         ...
 
-    def believes_dead(self, victim_id: str) -> bool:
-        """Whether they believe the victim died."""
+    def believes_dead(self, victim_id: str, deed: Deed) -> bool:
+        """Whether they believe the victim died of the deed."""
         ...
 
 
 class Truth:
-    """The world telling its own deeds: every name, and who really died."""
+    """The world telling its own deeds, as they happen: every name, and who really died."""
 
     def __init__(self, state: WorldState) -> None:
         self.state = state
 
-    def name_of(self, record_id: str) -> str | None:
-        for records in (self.state.characters, self.state.places, self.state.factions):
-            if record_id in records:
-                return records[record_id].name
-        return None
+    def name(self, record: Character | Place | Faction) -> str | None:
+        return record.name
 
-    def believes_dead(self, victim_id: str) -> bool:
+    def believes_dead(self, victim_id: str, deed: Deed) -> bool:
         return bool(killed(self.state, [victim_id]))
 
 
@@ -148,7 +146,7 @@ def where(state: WorldState, place_id: str | None, teller: Teller | None = None)
     """ " in Willow Ford" for a region of its own, " at the outer-court well" for a spot, or
     nothing where the place isn't known."""
     place = state.places.get(place_id) if place_id else None
-    named = (teller or Truth(state)).name_of(place.id) if place is not None else None
+    named = (teller or Truth(state)).name(place) if place is not None else None
     if not named:
         return ""
     word = "in" if place.kind.strip().casefold() in REGION_KINDS else "at"
@@ -166,22 +164,43 @@ def struck_names(state: WorldState, ids: list[str]) -> list[str]:
     return _struck(state, ids, Truth(state))[0]
 
 
-def _struck(state: WorldState, ids: list[str], teller: Teller) -> tuple[list[str], int]:
-    """Who a deed fell on, as the teller knows them, and how many people they can't name. A
-    beast they don't know is "an ash wolf"; places and nameless victims are left out."""
-    hosts = [i for i in ids if i in state.factions and teller.name_of(i)]
-    names = [teller.name_of(h) or "" for h in hosts]
+def _struck(
+    state: WorldState,
+    ids: list[str],
+    teller: Teller,
+    *,
+    doer_id: str | None = None,
+    self_word: str = "themselves",
+) -> tuple[list[str], int]:
+    """Who a deed fell on, as the teller knows them, and how many more they can't name: a host
+    such as an army stands for its members who fell with it, a beast they don't know is "an ash
+    wolf", the doer is `self_word`, and nameless victims (the villagers of a massacre) are
+    counted. Places are left out. A name already given counts as one more."""
+    names: list[str] = []
     unnamed = 0
-    for being_id in ids:
-        character = state.characters.get(being_id)
-        if character is None or any(character.member_of(h) for h in hosts):
-            continue
-        named = teller.name_of(being_id)
-        creature = creature_of(state, being_id) if not named else None
+    hosts = []
+    for faction_id in dict.fromkeys(i for i in ids if i in state.factions):
+        named = teller.name(state.factions[faction_id])
         if named:
+            hosts.append(faction_id)
             names.append(named)
-        elif creature is not None:
-            names.append(f"{_article(creature.name)} {creature.name}")
+    for being_id in dict.fromkeys(ids):
+        if being_id in state.places or being_id in state.factions:
+            continue
+        character = state.characters.get(being_id)
+        if character is None:
+            unnamed += 1
+            continue
+        if any(character.member_of(h) for h in hosts):
+            continue
+        creature = creature_of(state, being_id)
+        named = teller.name(character)
+        if being_id == doer_id:
+            named = self_word
+        elif not named and creature is not None:
+            named = f"{_article(creature.name)} {creature.name}"
+        if named and named not in names:
+            names.append(named)
         else:
             unnamed += 1
     return names, unnamed
@@ -215,23 +234,41 @@ def tell(
     what = deed_nature(state, deed)
     if word in ("breakthrough", "reveal", "display"):
         return f"{cap(_display(subject, word, deed))}{place}."
+    themselves = "yourself" if subject.casefold() == "you" else "themselves"
+
+    def whom(ids: list[str]) -> tuple[list[str], int]:
+        return _struck(state, ids, teller, doer_id=deed.actor_id, self_word=themselves)
+
     harmful = what in (Nature.HARM, Nature.HUNT)
     hosts = [t for t in deed.target_ids if t in state.factions]
-    struck = [*deed.victim_ids, *hosts] if harmful else deed.target_ids
-    on, unnamed = _struck(state, struck, teller)
+    on, unnamed = whom([*deed.victim_ids, *hosts] if harmful else deed.target_ids)
     if harmful and not on and not unnamed and word not in _ON_PLACES:
         # Nobody was harmed: it was an attempt on its targets.
-        tried, untold = _struck(state, deed.target_ids, teller)
+        tried, untold = whom(deed.target_ids)
         if tried or untold:
             verb = _TRIED.get(word) or _DONE.get(word) or "went after"
             return f"{cap(subject)} {verb} {listing(tried, more=untold)}{place}."
-    if word in _ON_PLACES and not on and not unnamed:
-        on = [n for t in deed.target_ids if t in state.places and (n := teller.name_of(t))]
+    if word in _ON_PLACES and not on:
+        # Razed or burned: told by the places, unless it fell on people they can name.
+        places = [
+            n for t in deed.target_ids if t in state.places and (n := teller.name(state.places[t]))
+        ]
+        if places:
+            on, unnamed = places, 0
     verb = _DONE.get(word)
-    died = any(teller.believes_dead(v) for v in deed.victim_ids)
-    if harmful and (verb is None or word in _DEADLY) and died:
+    dead = [v for v in deed.victim_ids if teller.believes_dead(v, deed)]
+    if harmful and (verb is None or word in _DEADLY or word == "kill") and dead:
+        survivors = [v for v in deed.victim_ids if v not in dead]
+        if survivors and not hosts:
+            # Some died of it and some lived: "killed Han Jie and wounded you".
+            fell, more_fell = whom(dead)
+            lived, more_lived = whom(survivors)
+            return (
+                f"{cap(subject)} killed {listing(fell, more=more_fell)} and wounded "
+                f"{listing(lived, more=more_lived)}{place}."
+            )
         verb = "killed"
-    elif harmful and word in _KILLING and not died:
+    elif harmful and word in _KILLING and not dead:
         verb = "wounded" if word == "kill" else "attacked"  # nobody died of it
     elif harmful and verb is None:
         verb = "hurt"
@@ -243,9 +280,8 @@ def tell(
 def _subject(state: WorldState, deed: Deed, doer: str | None, teller: Teller) -> str:
     if doer is not None:
         return doer
-    if deed.actor_id in state.characters:
-        return teller.name_of(deed.actor_id) or "someone"
-    return "someone"
+    actor = state.characters.get(deed.actor_id)
+    return (teller.name(actor) if actor is not None else None) or "someone"
 
 
 def _article(word: str) -> str:

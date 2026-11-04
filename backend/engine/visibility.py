@@ -213,26 +213,34 @@ def believed_status(
 
 
 class _PlayerTeller:
-    """The player character telling a deed (C6): "you" for themselves, the names they know,
-    and a death only where they know of it."""
+    """The player character telling a deed (C6): "you" for themselves, only the names they
+    know, and a death only where they know the deed caused it."""
 
     def __init__(self, knowledge: "_Knowledge") -> None:
         self.k = knowledge
 
-    def name_of(self, record_id: str) -> str | None:
-        return "you" if record_id == self.k.player_id else self.k.name_of(record_id)
+    def name(self, record: Character | Place | Faction) -> str | None:
+        if record.id == self.k.player_id:
+            return "you"
+        return record.name if self.k.knows(record) else None
 
-    def believes_dead(self, victim_id: str) -> bool:
+    def believes_dead(self, victim_id: str, deed: Deed) -> bool:
+        """A death they know of on this timeline, recorded by the deed's turn: one they learned
+        of later, from some other cause, isn't laid at this deed's door."""
         victim = self.k.state.characters.get(victim_id)
         if victim is None:
             return True  # a nameless victim, such as a villager of a massacre, is a death
-        status, _ = believed_status(
-            victim.status_history,
-            victim.status.value,
-            self.k.player_id,
-            initial=CharacterStatus.ALIVE.value,
-        )
-        return status == CharacterStatus.DEAD.value
+        dead = CharacterStatus.DEAD.value
+        known = [
+            h
+            for h in victim.status_history
+            if self.k.player_id in h.known_by and h.timeline_id == self.k.timeline
+        ]
+        if known:
+            return known[-1].status == dead and known[-1].turn <= deed.turn
+        if victim.status_history:
+            return False  # changed only in ways they never learned of
+        return victim.status.value == dead
 
 
 # --- the projection ------------------------------------------------------------------------

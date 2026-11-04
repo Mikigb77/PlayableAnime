@@ -139,6 +139,18 @@ def test_the_player_remembers_a_beast_they_never_named_by_its_kind():
     assert deed.text == "You killed an ash wolf."
 
 
+def test_two_wolves_never_named_are_two_wolves():
+    from engine.visibility import memory_view
+
+    cull = ProposedDeed(
+        kind="kill", text="kill both wolves (it worked)", victim_ids=["stray", "alpha"], severity=2
+    )
+    after = play(ashwood(), deed_step(cull, dead=("stray", "alpha"))).state
+
+    (deed,) = memory_view(after).deeds
+    assert deed.text == "You killed an ash wolf and one other."
+
+
 def test_a_beast_tells_nobody_but_its_own_pack():
     state = ashwood()
     after = play(state, deed_step(hunt(), dead=("stray",))).state
@@ -402,6 +414,33 @@ def test_rumors_and_grudges_tell_a_deed_in_the_world_s_words():
     assert not [t for t in events if "it worked" in t or "cut Zhao" in t]
     (grudge,) = after.characters["wei"].attitude_toward("lin").grudges
     assert grudge.reason == rumor.text
+
+
+def test_nameless_victims_are_counted_and_a_burned_place_is_named():
+    state = cultivation_world()
+    massacre = Deed(
+        id="m1",
+        actor_id="lin",
+        kind="massacre",
+        text="cut down every villager (it worked)",
+        victim_ids=["villager-1", "villager-2", "villager-3"],
+        place_id="well",
+        severity=5,
+        turn=1,
+        world_s=0,
+    )
+    state.places["granary"] = Place(id="granary", name="the granary", kind="granary")
+    fire = massacre.model_copy(
+        update={
+            "kind": "burn",
+            "target_ids": ["granary"],
+            "victim_ids": ["villager-1"],
+            "place_id": None,
+        }
+    )
+
+    assert account(state, massacre) == "Lin Feng massacred three people at the outer-court well."
+    assert account(state, fire) == "Lin Feng burned the granary."
 
 
 def test_an_attempt_a_hunt_and_a_find_are_told_plainly():
