@@ -182,16 +182,23 @@ def strike(n: int) -> Intent:
 async def long_fight(ev: Eval) -> None:
     for seed in ev.seeds(4, live=1):
         story = ev.story(worlds.mage_fight(), seed=f"{seed}/first-blow", under_way=True)
-        first = await story.act("I attack the grey mage", plan(attack("mage", "sword")))
+        first = await story.act("I attack the grey mage", plan(attack("mage")))
+        fight = first.state.scene.encounter
         ev.check(
             "attacking a key NPC starts a fight",
-            first.state.scene.encounter is not None,
-            seed,
+            fight is not None and fight.kind.value == "fight" and fight.opponent_ids == ["mage"],
+            f"{seed}: {fight}",
             live=False,
-            gap=(
-                "nothing in the turn sets scene.encounter, so a fight's protections (W10, W16) "
-                "and its pictures (M1) never start in play; this eval starts the fight itself"
-            ),
+        )
+        # One picture a scene: the fight's start, or its decisive blow when the first blow is it.
+        ev.check(
+            "the fight's first blow is pictured",
+            first.plan.picture is not None
+            and first.plan.picture.trigger
+            in (PictureTrigger.FIGHT_START, PictureTrigger.DECISIVE_BLOW)
+            and first.plan.picture.subject_id == "mage",
+            f"{seed}: {first.plan.picture} after {first.step(0).reason}",
+            live=False,
         )
 
         story = ev.story(worlds.mage_fight(), seed=seed)

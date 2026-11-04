@@ -45,6 +45,9 @@ PARTIAL_SHARE = 0.25
 
 ALL_RESULTS = [StepResult.SUCCESS, StepResult.PARTIAL, StepResult.FAILURE]
 HARM_DONE = [StepResult.SUCCESS, StepResult.PARTIAL]  # A2: never bounces off harmlessly
+# G15: what only the actor's own nature stands in the way of is done, cleanly or with the strain
+# showing; the roll never takes the choice from the player.
+OWN_CHOICE = [StepResult.SUCCESS, StepResult.PARTIAL]
 YES_OR_NO = [StepResult.SUCCESS, StepResult.FAILURE]
 
 

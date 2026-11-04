@@ -144,6 +144,12 @@ def helpless_state(character: Character) -> str | None:
     return None
 
 
+def helpless_name(state_name: str) -> bool:
+    """Whether a passing state of this name leaves its bearer unable to respond, such as
+    "subdued", "knocked out" or "asleep"."""
+    return _helpless(state_name)
+
+
 def _helpless(state_name: str) -> bool:
     words = re.findall(r"[a-z]+", state_name.casefold())
     if not words or NOT_HELPLESS.intersection(words):

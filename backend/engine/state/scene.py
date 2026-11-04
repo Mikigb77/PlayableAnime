@@ -19,12 +19,20 @@ class EncounterKind(StrEnum):
 
 
 class Encounter(EngineModel):
+    """W10. Code starts and ends it (`engine.encounters`); the interpret step may propose a kind.
+    `opponent_ids` is everyone it has been with, including those already out of it."""
+
     kind: EncounterKind
     opponent_ids: list[str] = Field(default_factory=list)
     started_turn: int = Field(ge=0)
     started_s: WorldSeconds
     key: bool = Field(
         default=False, description="With a key NPC or a strong monster (M1 picture triggers)."
+    )
+    last_s: WorldSeconds | None = Field(
+        default=None,
+        description="When its last exchange ended; None means when it started. It ends once "
+        "`engine.encounters.LAPSE_S` of in-world time pass with none.",
     )
 
 

@@ -46,7 +46,13 @@ still: set proposed_personal_s to the actor's own lived seconds.
 - facts: who or what stands in the way, whether they can respond at all and why not (frozen, \
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
 clearly not, whether the world's rules allow it, edges and hindrances, and the class you propose: \
-certain, contested, long_shot or ruled_out. Code checks these against the state and decides.
+certain, contested, long_shot or ruled_out. Code checks these against the state and decides. \
+When only the character's own temperament, fear or pride stands in the way (keeping calm under an \
+insult, holding steady while afraid), set inner: it can make the step harder, never take the \
+choice from the player (G15).
+- encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
+negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
+always a fight. Code decides when an encounter starts and ends.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
 filler (R7). gist: what to say when the player gives only the gist ("I threaten him").
 - A link that burns down or wrecks a place: its place_id and place_harm (damaged or ruined).

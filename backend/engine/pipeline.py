@@ -29,7 +29,7 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
-from engine import director, world
+from engine import director, encounters, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.context import TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
@@ -156,6 +156,10 @@ def play_out(
     Rulings are recorded on the actor's sheet once, never flipped (A9), and then the plan's own
     `effects` apply (settled details of powers, accepted backstory). Time effects that ran out
     on their user's clock are cleared at the end.
+
+    Code starts and ends the scene's encounter as the steps play (W10, `engine.encounters`): a
+    long stretch that isn't part of it ends it before the stretch's events are rolled, each step
+    that played starts, joins or carries it on, and it ends once nothing keeps it going.
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
@@ -166,6 +170,9 @@ def play_out(
     interrupted_by: PendingEvent | None = None
     capped = False
     for step in resolution.steps:
+        # W10. A long stretch that isn't part of the encounter, such as a night's sleep, ends it
+        # first, so the stretch rolls its events (E7).
+        encounters.before_step(current, step, actor_id)
         start_s = current.world_s
         planned_end = start_s + step.duration_s
         lived_total = step.duration_s if step.personal_s is None else step.personal_s
@@ -220,6 +227,9 @@ def play_out(
                 rejected.extend(applied.rejected)
             step_rng = rng.child("play_out", "step", step.index)
             current = record_consequences(current, resolution, timed, ctx, step_rng)
+        # W10. Code starts and ends encounters from what the step did (`engine.encounters`).
+        encounters.follow(current, timed, actor_id, ctx)
+        encounters.settle(current)
         if interrupted_by is not None:
             break
 
@@ -230,6 +240,7 @@ def play_out(
         applied = apply_in_place(current, resolution.effects, ctx, source=DeltaSource.ENGINE)
         rejected.extend(applied.rejected)
     prune_time_effects(current)
+    encounters.settle(current)
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]

@@ -159,7 +159,13 @@ def test_long_fight_takes_minutes_brings_nothing_unrelated_and_pictures_its_star
                 )
                 steps = [resolution.steps[0].model_copy(update={"effects": killing})]
                 resolution = resolution.model_copy(update={"steps": steps})
-            played = play_turn(state, turn, intent, story=story, resolution=resolution)
+            # The scripted strikes name no one, so the fight's own encounter is what keeps those
+            # turns from counting as quiet. The engine ends it once the mage is dead, before the
+            # director looks, so turn 31 says what a real killing blow aimed at the mage would
+            # carry: stakes (W16).
+            played = play_turn(
+                state, turn, intent, story=story, resolution=resolution, stakes=turn == 31
+            )
             state = played.state
             if played.plan.event is not None:
                 events.append(played.plan.event)
@@ -167,8 +173,8 @@ def test_long_fight_takes_minutes_brings_nothing_unrelated_and_pictures_its_star
                 pictures.append(played.plan.picture)
             assert played.plan.stall_pressure == 0
             assert state.director.turns_without_stakes == 0
-            if turn == 31:
-                state.scene.encounter = None  # the fight is over
+            # The engine ends the fight once its only opponent is dead (W10).
+            assert (state.scene.encounter is None) == (turn == 31)
 
         # Thirty exchanges are a few in-world minutes, and the world barely moves (W10).
         assert state.world_s - start_s <= 10 * MINUTE

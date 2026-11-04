@@ -45,6 +45,7 @@ from engine.contracts.intent import GrowthKind
 from engine.director import rules
 from engine.director.sources import here
 from engine.director.turn import TurnFacts
+from engine.encounters import strong_foe
 from engine.looks import LASTING_PLACE_STATUSES, place_version
 from engine.state.cast import Character, CharacterStatus, Place, Prominence
 from engine.state.records import Visibility
@@ -73,21 +74,6 @@ def portrait_keys(character: Character) -> tuple[str, str]:
 def place_keys(place: Place, version: int) -> tuple[str, str]:
     """What a place's picture marks pictured: the place, and its look `version` (M1, M4)."""
     return (f"place:{place.id}", f"place:{place.id}:v{version}")
-
-
-def _might(state: WorldState, character_id: str) -> int:
-    sheet = state.characters[character_id].sheet
-    return sheet.axes.might - sheet.condition.weakened_tiers
-
-
-def strong_foe(state: WorldState, character_id: str) -> bool:
-    """A key NPC, or a foe well above the player character on the might axis (A8)."""
-    foe = state.characters.get(character_id)
-    if foe is None:
-        return False
-    if foe.prominence is Prominence.KEY:
-        return True
-    return _might(state, character_id) >= _might(state, state.player_id) + rules.STRONG_FOE_TIERS
 
 
 def _knows_death(state: WorldState, character_id: str, facts: TurnFacts) -> bool:
@@ -123,20 +109,23 @@ def _follow_fight(
             started = True
         else:
             fight.opponent_ids = list(dict.fromkeys([*fight.opponent_ids, *encounter.opponent_ids]))
+    elif fight is None and any(strong_foe(state, i) for i in facts.fought):
+        # A key fight begun and over within this turn's steps, such as one blow that fells a
+        # strong foe: it can still have its decisive blow, but never a start, since it's over.
+        fight = KeyFight(
+            opponent_ids=sorted(facts.fought, key=natural_key), started_turn=facts.turn
+        )
     struck: str | None = None
     if fight is not None and not fight.blow_pictured:
-        opponents = set(fight.opponent_ids)
-        fallen = (facts.died | facts.gravely_hurt) & (opponents | {state.player_id})
-        hit = {
-            subject
-            for deed in facts.deeds
-            if deed.severity >= 3
-            for subject in deed.subject_ids
-            if subject in opponents
+        # The blow that decides it: an opponent, or the player character, killed, left badly
+        # wounded or dying, or subdued. A swing that fails or only wounds decides nothing.
+        down = (facts.died | facts.gravely_hurt | facts.subdued) & {
+            *fight.opponent_ids,
+            state.player_id,
         }
-        down = sorted(fallen | hit, key=natural_key)
         if down:
-            struck = next((i for i in down if i != state.player_id), down[0])
+            ordered = sorted(down, key=natural_key)
+            struck = next((i for i in ordered if i != state.player_id), ordered[0])
     return fight, started, struck, on
 
 

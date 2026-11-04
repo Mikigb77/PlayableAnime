@@ -337,6 +337,14 @@ how others see them and can make some actions harder or easier (keeping calm und
 harder for a hot-headed character), but it never makes a choice for the player (principle 1).
 Temperament changes slowly through what the character does and lives through, always with a cause
 (C9): a soft-hearted character who keeps choosing cruelty hardens.
+Decided in WS20: a step that only the character's own temperament, fear or pride stands in the way
+of (keeping calm under an insult, holding steady while afraid) is the player's choice, so it
+happens. A flaw such as a hot temper lowers the odds, and the roll decides only how hard it was:
+done cleanly, or done with the strain showing. It never fails and is never ruled out, and a plan
+carries on past it (R6), so the temper never takes the rest of the plan either. Code decides what
+counts: anyone or any faction in the way, harm aimed at someone, means clearly short of the task,
+or words that name anything besides an inner state (the storm and his own fear) make it an
+ordinary step that can fail, whatever the interpret step proposed.
 
 **G16 The sheet speaks the world's language (P0, P1 for system worlds).** The player sees their own
 character through `/status` and the Memory screen in words that fit the world (a fair shot, an
@@ -700,6 +708,18 @@ in a trap. Nothing in the world is timed in turns.
   turns as quiet, because the encounter is the stakes, and the director doesn't interrupt it with
   unrelated events. Something new enters only from the encounter itself (the mage's ally arrives, the
   bridge gives way) or from a pending event that falls due within those minutes.
+  Decided in WS20: code starts and ends encounters, and the interpret step may only propose one. A
+  step that aims harm at a living character starts a fight with them and whoever pushes back, even
+  when the power gap rules it out (the god notices the swing), and a step proposed as a chase, a
+  duel of words or a negotiation starts one with whoever faces it and can respond. A step settled
+  before it was tried, such as reaching for a sword the character doesn't carry, starts nothing.
+  An encounter ends when none of its opponents is still in it (dead, missing, helpless, or
+  somewhere the player character isn't), when the player character is dead or helpless, or after
+  ten in-world minutes with no exchange (a truce, a surrender, walking away). A time skip, or a
+  step that long which doesn't itself fight or carry on the encounter, such as a night's sleep or
+  a week on the road beside a foe, ends it before the step plays, so the stretch still rolls its
+  events (E7); a time skip never starts one. A fight stays a fight whatever else is proposed, and
+  anything else becomes a fight when a step fights.
 - **Turns count only two things:** the player's attention, for W16, and model calls, for cost (K2,
   K8).
 - **Time is visible and testable.** Each scene stores the clock before and after the turn and its
@@ -1087,7 +1107,7 @@ top model, would cost about $2.70, more than the text.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined, occupied, rebuilt or freed (W7), the next time the player is there; a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1), and in a fight with a key NPC or a strong monster, its start and its decisive blow (Miki, 2026-11-03); and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
+| M1 | **When a picture appears.** Code decides, never the narrator, from things the engine already records: a portrait of the player character when the story starts (G2); a portrait of each key NPC the first time the player meets them (W15); a place on the first visit, and again when it changes for good, such as ruined, occupied, rebuilt or freed (W7), the next time the player is there; a key scene for a big moment, such as a deed of severity 4 or 5 (W1), a local or world event arriving (W16), a breakthrough (G19), hidden strength revealed (G20), a key character's death or an arc ending (N1), and in a fight with a key NPC or a strong monster, its start and its decisive blow (Miki, 2026-11-03): the blow that kills an opponent or the player character, leaves them badly wounded or dying, or subdues them, never a swing that fails or only wounds, even when that blow ends the fight within the same turn it began; and a cover for the Library. The narrator writes an image prompt only for a scene that gets a picture. | P1 |
 | M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits, even with automatic pictures off. A per-story setting (S6) picks off, key moments only (the default), or more often. A fight with a key NPC or a strong monster always gets both its pictures, borrowing against the coming turns, so the average still holds. Drawing a changed place or face again (M1, M5) spends the same budget, and waits for it while the place or the person is still in the scene. | P1 |
 | M3 | **Pictures never slow the story.** The narration streams first (S3), and the picture fills its place in the scene when it is ready, usually a few seconds later. The app asks for it in its own request when the scene says one is planned, because nothing may run after a response ends on Cloud Run (B8). The request is safe to repeat, so the app asks again if a picture never arrived, and it is never paid for twice. A picture that fails or is blocked is skipped quietly, never shown as an error, and the scene is complete without it. Asking again doesn't retry a skipped picture, so a failure never costs twice. Illustrate (M2) tries it again, and a portrait or place that failed or wasn't affordable is also tried again the next time it comes up; a blocked one only through Illustrate. | P1 |
 | M4 | **Made once, reused.** Pictures are stored in Cloud Storage in Frankfurt, keyed by character, place or scene. A portrait is reused wherever that character appears, and a place's picture whenever the player returns. Each is keyed by its look version too, so when a place or a face changes for good it is drawn once more and that picture is reused from then on. Earlier pictures stay with the scenes that showed them. Pictures are exported with the stories, every version included, and deleted with the account (T12). | P1 |

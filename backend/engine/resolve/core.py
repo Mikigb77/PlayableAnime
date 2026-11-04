@@ -92,6 +92,7 @@ from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, PlaceStatus
 from engine.state.records import RollRecord, StepResult, Trace, TraceKind
+from engine.state.scene import EncounterKind
 from engine.state.sheet import (
     HitMode,
     Power,
@@ -203,13 +204,15 @@ def resolve_intent(
     unplayed: list[str] = []
     stakes = False
     for i, step in enumerate(intent.steps):
-        settled, step_stakes = _settle_step(
+        settled, step_stakes, own_choice = _settle_step(
             state, actor, step, i, ctx, rng.child("resolve", "step", i), frame
         )
         steps.append(settled)
         stakes = stakes or step_stakes
         later = intent.steps[i + 1 :]
-        if not settled.clean_success and later:
+        # G15. A step only the actor's own nature stood in the way of was done, however hard it
+        # was, so the plan carries on: the temper never takes the rest of it from the player.
+        if not (settled.clean_success or own_choice) and later:
             stopped_at, unplayed = i, [s.text for s in later]
             if settled.outcome_class is OutcomeClass.RULED_OUT:
                 stop_reason = StopReason.RULED_OUT
@@ -297,7 +300,9 @@ def _settle_step(
     ctx: TurnContext,
     rng: SeededRng,
     frame: _Frame,
-) -> tuple[StepResolution, bool]:
+) -> tuple[StepResolution, bool, bool]:
+    """The step settled, whether it held real stakes (W16), and whether only the actor's own
+    nature stood in its way, so it was done whatever the roll said (G15)."""
     drawn = Drawn()
     beats: list[BeatResolution] = []
     chain: list[LinkResolution] = []
@@ -366,12 +371,16 @@ def _settle_step(
                 settled = Settled(
                     OutcomeClass.RULED_OUT, StepResult.FAILURE, _sentence(hit.blocked)
                 )
+    own_choice = False
     if settled is None:
         assert opposition is not None
         if step.chain:
             settled, outcome = _with_chain(state, actor, step, opposition, drawn, ctx, rng)
             if outcome is not None:
                 chain, stopped_at_link, chain_s = outcome.links, outcome.stopped_at, outcome.takes_s
+        elif _inner(state, actor, step, opposition):
+            own_choice = True
+            settled = _own_choice(state, actor, step, opposition, drawn, ctx, rng)
         elif opposition.can_push_back:
             settled = _contested(state, actor, step, opposition, drawn, ctx, rng, hit)
         else:
@@ -504,6 +513,7 @@ def _settle_step(
         or (hit is not None and hit.blast is not None)
     )
     used = [p for p in drawn.powers if p is new_stop or p is new_tempo or not _time_power(p)]
+    encounter, opponent_ids = _engagement(step, opposition)
     resolution = StepResolution(
         index=index,
         text=step.text,
@@ -520,8 +530,32 @@ def _settle_step(
         effects=effects,
         deeds=deeds,
         training=frame.training,
+        kind=step.kind,
+        encounter=encounter,
+        opponent_ids=opponent_ids,
     )
-    return resolution, stakes
+    return resolution, stakes, own_choice
+
+
+def _engagement(
+    step: IntentStep, opposition: _Opposition | None
+) -> tuple[EncounterKind | None, list[str]]:
+    """W10. The encounter a step starts or carries on, and with whom; `engine.encounters`
+    decides what comes of it. A step settled before it was tried, such as reaching for a sword
+    that isn't there, met no one. Harm aimed at a living character is a fight with them and with
+    whoever pushes back; otherwise the interpret step's proposal stands only when someone who can
+    respond faces the step, and only they are in it: nobody chases or bargains with a sleeper.
+    Everyone the step faced is still named, so it can carry on an encounter it doesn't start."""
+    if opposition is None:
+        return None, []
+    faced = [c.id for c in (*opposition.targets, *opposition.characters)]
+    faced = list(dict.fromkeys(faced))
+    if step.aim.harmful and opposition.targets:
+        return EncounterKind.FIGHT, faced
+    if step.encounter is not None and opposition.responsive:
+        responsive = {c.id for c in opposition.responsive}
+        return step.encounter, [i for i in faced if i in responsive]
+    return None, faced
 
 
 _NOT_RECOVERED = "hasn't recovered yet."
@@ -1030,6 +1064,87 @@ def _unopposed(
         close = f"a close call, {roll.odds_label}"
     reason = f"{lead}, but it's {close}." if lead else f"{cap(close)}."
     return Settled(outcome_class, roll.result, reason, roll)
+
+
+# G15: words that name an inner state, so an opposition said as "his temper", "Lin's own pride" or
+# "fear and doubt" is only the actor's own nature. Anything else in the words, such as a storm or
+# someone else's men, means something more pushes back.
+_INNER_WORDS = stems(
+    """temper temperament nature pride fear fears anger rage fury nerve nerves doubt doubts
+    shame guilt conscience instinct instincts impulse impulses urge urges craving cravings desire
+    desires greed cowardice hatred grief panic reluctance hesitation emotion emotions feeling
+    feelings heart vanity jealousy envy lust despair dread terror"""
+)
+_INNER_FILLER = stems("only")
+
+
+def _inner(state: WorldState, actor: Character, step: IntentStep, opposition: _Opposition) -> bool:
+    """G15. Whether only the actor's own temperament, fear or pride stands in the way: no harm
+    aimed at anyone, nobody else and no faction pushing back, means that aren't clearly short of
+    it, and the interpret step said so, named the actor as the opposition, or described it in
+    words that name only an inner state besides the actor's own name. Words that name anything
+    else, such as a storm, outweigh the flag: the interpret step proposes, code decides."""
+    if step.aim.harmful or opposition.characters:
+        return False
+    facts = step.facts
+    if facts.means is MeansVerdict.CLEARLY_NOT:
+        return False
+    if any(i in state.factions for i in facts.opposition_ids):
+        return False
+    names = stems(" ".join([actor.name, *actor.aliases]))
+    words = stems(facts.opposition) - names - _INNER_FILLER
+    if words and not words <= _INNER_WORDS:
+        return False
+    return bool(words) or facts.inner or actor.id in facts.opposition_ids
+
+
+def _own_choice(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    opposition: _Opposition,
+    drawn: Drawn,
+    ctx: TurnContext,
+    rng: SeededRng,
+) -> Settled:
+    """G15. Only the actor's own nature stands in the way, so the step happens: the player chose
+    it, and temperament never takes the choice away. A step the interpret step judged easy is
+    certain. Otherwise it is rolled, with a flaw such as a hot temper making it harder, and the
+    roll only decides how hard it was: done cleanly, or done with the strain showing. It never
+    fails, and the hardest it gets is a long shot, never ruled out."""
+    facts = step.facts
+    player = actor.id == state.player_id
+    what = facts.opposition.strip() or f"{possessive(state, actor.id)} own nature"
+    yours = "yours" if player else possessive(state, actor.id)
+    who, does = name(state, actor.id), "do" if player else "does"
+    lead = f"{cap(what)} pushes back, but the choice is {yours}"
+    proposed = facts.proposed_class
+    easy = proposed is OutcomeClass.CERTAIN or (
+        proposed is None and facts.means is MeansVerdict.CLEARLY_ENOUGH
+    )
+    if easy:
+        return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, f"{lead}: {who} {does} it.")
+    hard = proposed in (OutcomeClass.LONG_SHOT, OutcomeClass.RULED_OUT)
+    outcome_class = OutcomeClass.LONG_SHOT if hard else OutcomeClass.CONTESTED
+    difficulty = ctx.settings.difficulty
+    odds = odds_mod.settle(
+        odds_mod.logit(odds_mod.UNMEASURED_ODDS[outcome_class]),
+        _shift(state, actor, step, drawn, opposition, None),
+        odds_mod.BANDS[outcome_class],
+        difficulty,
+    )
+    roll = odds_mod.roll(
+        rng.child("outcome"),
+        odds,
+        label=step.text,
+        allowed=odds_mod.OWN_CHOICE,
+        difficulty=difficulty,
+    )
+    words = f"very hard, {roll.odds_label}" if hard else roll.odds_label
+    done = f"{who} {does} it"
+    if roll.result is not StepResult.SUCCESS:
+        done = f"{done}, but the strain shows"
+    return Settled(outcome_class, roll.result, f"{lead} ({words}): {done}.", roll)
 
 
 def _with_chain(
