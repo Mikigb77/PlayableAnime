@@ -208,6 +208,9 @@ const inner = source
     const type = extension === 'png' ? 'png' : 'jpeg';
     return `href="data:image/${type};base64,${data}"`;
   });
+// A picture drawn from an SVG can't load files, so any other link would leave a silent hole.
+const unloaded = inner.match(/<image\b[^>]*?\bhref="(?!data:)([^"]*)"/);
+if (unloaded) throw new Error(`icon.svg links to ${unloaded[1]}, which is not a PNG or JPEG next to it`);
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
