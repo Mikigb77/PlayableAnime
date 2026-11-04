@@ -150,6 +150,25 @@ together.
   rating (M6).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
+## App icon
+
+![The icon on iPhone, as an Android round icon and as an Android 13 themed icon](docs/screenshots/app-icon.jpg)
+
+A caped swordsman on a peak, his scarf and hair in the wind, before a huge moon (Miki's pick,
+2026-11-04). It is the app's night, its lucid gold and the anime look of its pictures, and at home
+screen size it still reads as a bright disc with a dark figure, on dark and light wallpapers.
+
+- **One source:** `tool/app_icon/icon.svg`, drawn on Android's 108-unit adaptive-icon grid in three
+  layers: `#bg`, the sky, moon and clouds, opaque; `#fg`, the peak and the hero on transparency,
+  inside the 66-unit safe circle; and `#mono`, a one-colour silhouette for Android 13 themed icons.
+- **Every size from it:** `tool/app_icon/render.mjs` draws Android's adaptive layers and its
+  Android 7 icon, each size in the iOS asset catalog (opaque, as the App Store requires) and the
+  web's favicon, manifest icons (maskable ones full bleed) and home-screen icon. To change the
+  icon, edit the SVG, run the script (how is at its top) and commit the PNGs it writes.
+  `test/app_icon_test.dart` checks that no size is missing.
+- **Store-safe:** like the screenshots, the icon stays 4+ in the stores (REQUIREMENTS.md, Apple
+  2.3.8): a lowered sword, no blood, no threat.
+
 ## The play screen
 
 The story reads as one page of scenes, like a book that writes itself.
