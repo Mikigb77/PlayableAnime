@@ -1,4 +1,5 @@
-"""Picture URLs for the endpoints that show scenes, portraits, places, covers and the export.
+"""Picture URLs for the endpoints that show scenes, portraits, places, covers and the export, and
+the starter premises' covers on Discover.
 
 The story, library, memory, status and export endpoints (WS3, WS6, WS15) and the views that leave
 picture URLs empty for the API to fill (`engine.visibility`, `Scene.portraits`) call these instead
@@ -16,7 +17,8 @@ from typing import Any
 from django.http import HttpRequest
 
 from media.api import absolute_url
-from media.models import Image, ImageStatus, ScenePicture
+from media.models import Image, ImageStatus, PremiseCover, ScenePicture
+from media.premise_covers import cover_url_ttl_s
 from media.storage import SignedUrl, signed_urls
 from stories.models import ImageKind, Scene, Story
 
@@ -91,6 +93,23 @@ def cover_urls(
         latest.setdefault(str(cover.story_id), cover)
     urls = _urls(latest.values(), request)
     return {story_id: urls[image.pk] for story_id, image in latest.items() if image.pk in urls}
+
+
+def premise_cover_urls(
+    premise_ids: Iterable[str], *, request: HttpRequest | None = None
+) -> dict[str, SignedUrl]:
+    """Each starter premise's cover, when the house has drawn one (S1), by premise id. They are
+    signed for `cover_url_ttl_s()`, longer than a story's pictures, because the app fetches the
+    premises once per session and a cover is the same for every player."""
+    covers = list(PremiseCover.objects.filter(premise_id__in=list(premise_ids)))
+    signed = signed_urls((cover.storage_key for cover in covers), cover_url_ttl_s())
+    return {
+        cover.premise_id: SignedUrl(
+            absolute_url(request, signed[cover.storage_key].url),
+            signed[cover.storage_key].expires_at,
+        )
+        for cover in covers
+    }
 
 
 def export_pictures(user, *, request: HttpRequest | None = None) -> list[dict[str, Any]]:

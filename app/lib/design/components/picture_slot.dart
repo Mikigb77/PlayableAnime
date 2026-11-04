@@ -38,6 +38,7 @@ class PictureSlot extends StatefulWidget {
     required this.status,
     this.url,
     this.aspectRatio = 16 / 9,
+    this.alignment = Alignment.center,
     this.borderRadius = Radii.picture,
     this.semanticLabel,
     this.vignette = true,
@@ -48,6 +49,9 @@ class PictureSlot extends StatefulWidget {
   final PictureStatus status;
   final String? url;
   final double aspectRatio;
+
+  /// Which part of a picture of another shape the slot keeps, such as [coverFocus] for a cover.
+  final Alignment alignment;
   final BorderRadius borderRadius;
 
   /// What the picture shows, for screen readers.
@@ -124,6 +128,7 @@ class _PictureSlotState extends State<PictureSlot> {
                     Image(
                       image: appImage(url, cacheWidth: cacheWidth),
                       fit: BoxFit.cover,
+                      alignment: widget.alignment,
                       excludeFromSemantics: true,
                       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                         final fade = Motion.of(context, Motion.slow);

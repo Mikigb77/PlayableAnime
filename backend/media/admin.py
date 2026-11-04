@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from media.models import Image, ScenePicture
+from media.models import Image, PremiseCover, ScenePicture
 from moderation.access import StoryTextAdmin
 
 
@@ -29,6 +29,22 @@ class ScenePictureAdmin(admin.ModelAdmin):
     list_display = ("scene", "image", "planned", "trigger", "created_at")
     raw_id_fields = ("scene", "image")
     readonly_fields = ("scene", "image", "planned", "trigger", "created_at")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(PremiseCover)
+class PremiseCoverAdmin(admin.ModelAdmin):
+    """Read-only: `manage.py draw_premise_covers` draws them. Deleting one removes its file, and
+    the command draws it again."""
+
+    list_display = ("premise_id", "model", "cost_usd", "offline", "drawn_at")
+    list_filter = ("offline", "model")
+    readonly_fields = [f.name for f in PremiseCover._meta.fields]
 
     def has_add_permission(self, request) -> bool:
         return False

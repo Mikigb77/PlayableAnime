@@ -179,11 +179,10 @@ class _CompactCover extends StatelessWidget {
                   fallback
                 else
                   LayoutBuilder(
-                    builder: (context, constraints) => Image(
-                      image: appImage(url, cacheWidth: (constraints.maxWidth * dpr).round()),
-                      fit: BoxFit.cover,
-                      excludeFromSemantics: true,
-                      errorBuilder: (_, _, _) => fallback,
+                    builder: (context, constraints) => CoverImage(
+                      url: url,
+                      cacheWidth: (constraints.maxWidth * dpr).round(),
+                      fallback: fallback,
                     ),
                   ),
                 DecoratedBox(

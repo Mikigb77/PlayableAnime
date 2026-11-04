@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/core/fake/fake_premises.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
 import 'package:playable_anime/features/discover/premises.dart';
@@ -58,6 +59,34 @@ void main() {
     expect(app.location(tester), '/create');
     expect(find.text(l10n.createNewTitle), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, isEmpty);
+  });
+
+  testWidgets('worlds whose covers aren\'t drawn yet show a glow instead', (tester) async {
+    final app = AppHarness();
+    await app.launch(
+      tester,
+      overrides: [
+        premisesProvider.overrideWith(
+          (ref) async => flagshipFirst([
+            for (final premise in fakePremises) Premise.fromJson({...premise, 'cover_url': null}),
+          ]),
+        ),
+      ],
+    );
+    final l10n = await english();
+
+    final cards = tester.widgetList<CoverCard>(find.byType(CoverCard)).toList();
+    expect(cards, isNotEmpty);
+    expect(cards.every((c) => c.imageUrl == null), isTrue);
+    await tester.scrollUntilVisible(
+      find.text('The Esposito Succession'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text(l10n.discoverMore.toUpperCase()), findsOneWidget);
+    // No picture is asked for: every card, large or on the shelf, draws its own glow.
+    expect(find.byType(Image), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('with no worlds to show, your own idea is still there', (tester) async {

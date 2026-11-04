@@ -1195,6 +1195,21 @@ app                   shows the narration, then asks for the picture in its own 
   with a fresh URL.
 - **Showing pictures elsewhere.** `media.lookups` gives the story, library, memory and status
   endpoints `Scene.image`, portrait, place and cover URLs in one query each, and the export list.
+- **The starter premises' covers (S1).** They belong to no story, so they are `media.PremiseCover`
+  rows, one per premise id, drawn by `manage.py draw_premise_covers` (`media/premise_covers.py`),
+  never by a request. It draws each premise without a cover once, on our account under the Teen
+  rating, from the premise's public text (its genre, tagline and premise, never its title, which
+  the app sets over the picture), with the cover framing that keeps the lower third calm (S7, M6).
+  Files are `premises/<premise id>/<random>.png`, a new name for every drawing, so a cached URL
+  never shows an older cover; `--force` draws again and removes the old file once the new one is
+  committed. The house pays: each drawing writes the usual `media.pictures` line with
+  `payer: "house"`, model and cost, and no credit meter or ledger is touched. The offline model
+  draws placeholders, marked `offline`, which a real model replaces without `--force`, and the
+  command refuses to write placeholders to a bucket. A failed or blocked cover is left out and
+  named, and the next run draws only those. `GET /v1/premises` signs the covers in one query and
+  one round of signing, for 12 hours (never less than `PICTURE_URL_TTL_S`), since the app loads the
+  premises once per session; if the lookup or signing fails, Discover gets the premises without
+  covers and the error is logged for Error Reporting.
 - **Logs (T5, T6).** Each picture drawn or skipped writes one `media.pictures` line with a
   `picture` object: image id, kind, version, status, skip reason, trigger, model, cost, payer, BYOK
   and fallback, references, block categories, latency and size. The prompt and the key never
@@ -1219,6 +1234,15 @@ app                   shows the narration, then asks for the picture in its own 
 | Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
+
+**Drawing the starter covers.** After a deploy that has the command, once Vertex AI answers for
+the runtime account, one command draws Discover's covers, about $0.37 for all eleven, paid by the
+house ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)):
+
+```bash
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
+  --args=manage.py,draw_premise_covers --task-timeout=30m --wait
+```
 **Don't deploy publicly before rate limits and quotas (T9) exist alongside sign-in (T8):** an open
 endpoint lets anyone spend our Vertex budget.
 
@@ -1247,6 +1271,7 @@ endpoint lets anyone spend our Vertex budget.
 | `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |
 | `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |
+| `media_premisecover` | A starter premise's cover on Discover (S1), keyed by premise id: storage key, type and size, model and cost (T5), whether the offline model drew it, the brief it was drawn from and when. |
 
 The FastAPI version's `stories` and `schema_migrations` tables are left on Neon untouched. Dropping
 them deletes production data, so it waits for Miki.

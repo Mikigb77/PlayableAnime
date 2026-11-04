@@ -8,10 +8,12 @@ forgotten past, or anyone the character doesn't know (N7, C6).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
+from asgiref.sync import sync_to_async
 from ninja import Field, Router, Schema, Status
 from pydantic import model_validator
 
@@ -32,6 +34,9 @@ from graph.drafting.view import (
 )
 from lucid import logs
 from lucid.errors import field_error
+from media.lookups import premise_cover_urls
+
+logger = logging.getLogger("drafts")
 
 premises_router = Router(tags=["premises"])
 drafts_router = Router(tags=["drafts"])
@@ -56,8 +61,24 @@ class PremiseOut(Schema):
 
 @premises_router.get("", response=list[PremiseOut])
 async def list_premises(request) -> list[dict]:
-    """Flagship genres first, then the rest (S1)."""
-    return [premise.public() for premise in STARTER_PREMISES]
+    """Flagship genres first, then the rest (S1), each with a fresh signed URL for its cover
+    once the house has drawn one (`manage.py draw_premise_covers`)."""
+    covers = await _cover_urls(request)
+    return [premise.public(covers.get(premise.id)) for premise in STARTER_PREMISES]
+
+
+async def _cover_urls(request) -> dict[str, str]:
+    """The covers' signed URLs, by premise id. Signing can call IAM, so it runs off the event
+    loop. A cover is decoration: if the lookup or the signing fails, Discover shows the premises
+    without covers, and the error is logged with its traceback for Error Reporting."""
+    try:
+        urls = await sync_to_async(premise_cover_urls)(
+            [premise.id for premise in STARTER_PREMISES], request=request
+        )
+    except Exception:
+        logger.exception("The premises' covers couldn't be looked up or signed")
+        return {}
+    return {premise_id: url.url for premise_id, url in urls.items()}
 
 
 # Drafts.

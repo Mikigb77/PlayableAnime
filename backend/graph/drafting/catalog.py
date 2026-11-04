@@ -61,10 +61,10 @@ class StarterPremise:
     premise: str
     flagship: bool
     template: PremiseTemplate = field(default_factory=PremiseTemplate)
-    cover_url: str | None = None
 
-    def public(self) -> dict[str, Any]:
-        """The `Premise` shape from docs/API.md."""
+    def public(self, cover_url: str | None = None) -> dict[str, Any]:
+        """The `Premise` shape from docs/API.md. `cover_url` is the cover's signed URL, when the
+        house has drawn one (`media.premise_covers`)."""
         return {
             "id": self.id,
             "title": self.title,
@@ -72,7 +72,7 @@ class StarterPremise:
             "tagline": self.tagline,
             "premise": self.premise,
             "flagship": self.flagship,
-            "cover_url": self.cover_url,
+            "cover_url": cover_url,
         }
 
 

@@ -216,6 +216,43 @@ void main() {
     });
   });
 
+  group('CoverImage', () {
+    const glow = ColoredBox(key: Key('glow'), color: Colors.purple);
+
+    testWidgets('keeps a tall cover\'s upper part in a wide slot', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const SizedBox(
+            width: 320,
+            height: 180,
+            child: CoverImage(url: 'asset:assets/fake/portrait-1.jpg', fallback: glow),
+          ),
+        ),
+      );
+      final image = tester.widget<Image>(find.byType(Image));
+      expect((image.fit, image.alignment), (BoxFit.cover, coverFocus));
+    });
+
+    testWidgets('a cover that fails to load leaves the glow', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const SizedBox(
+            width: 320,
+            height: 180,
+            child: CoverImage(url: 'asset:assets/fake/no-such-cover.jpg', fallback: glow),
+          ),
+        ),
+      );
+      // Let the missing asset fail, then the error frame build.
+      for (var i = 0; i < 5; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+        await tester.pump();
+      }
+      expect(find.byKey(const Key('glow')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('portraits', () {
     test('initials skip "the" and use the first and last words', () {
       expect(PortraitAvatar.initials('Elder Wen'), 'EW');

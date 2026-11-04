@@ -37,7 +37,7 @@ from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest, KeyCannotD
 from media.models import Image, ImageStatus, Payer, ScenePicture, SkipReason
 from media.plans import ILLUSTRATE, SCENE_FLAG, brief_for_scene, plan_again, plan_picture
 from media.prompts import MAX_REFERENCES, Brief, build_prompt
-from media.storage import SignedUrl, get_storage, signed_url, storage_key
+from media.storage import SignedUrl, delete_quietly, get_storage, signed_url, storage_key
 from stories.models import ImageKind, Scene, Story
 
 logger = logging.getLogger("media.pictures")
@@ -302,13 +302,13 @@ async def _draw_claimed(
         finished, won = await _finish(image.pk, key, drawn, attempt.ticket, scene.turn, attempt)
     except Exception:
         logger.exception("Storing a picture failed", extra={"image_id": str(image.id)})
-        await asyncio.to_thread(_delete_quietly, key)
+        await asyncio.to_thread(delete_quietly, key)
         attempt.saved_key = None
         return await _skip(image, token, SkipReason.FAILED, attempt, trigger)
     if not won:
         # Another request finished it first (after our claim ran out), or the story is gone.
         await _release(attempt)
-        await asyncio.to_thread(_delete_quietly, key)
+        await asyncio.to_thread(delete_quietly, key)
         attempt.saved_key = None
         if finished is None:
             return PictureResult("skipped")
@@ -331,7 +331,7 @@ async def _abandon(
     try:
         await _release(attempt)
         if attempt.saved_key is not None:
-            await asyncio.to_thread(_delete_quietly, attempt.saved_key)
+            await asyncio.to_thread(delete_quietly, attempt.saved_key)
         await _put_back(image_id, token, put_back)
     except Exception:
         logger.exception(
@@ -508,13 +508,6 @@ def _put_back(
         image.claimed_at = None
         image.save()
         image.sync_scenes()
-
-
-def _delete_quietly(key: str) -> None:
-    try:
-        get_storage().delete(key)
-    except Exception:
-        logger.warning("A picture file couldn't be deleted", exc_info=True)
 
 
 def _fields(image: Image, status: str, reason: str) -> dict:

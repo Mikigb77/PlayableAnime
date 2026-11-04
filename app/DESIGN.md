@@ -139,7 +139,11 @@ together.
   shown at most 280 px wide.
 - **Covers** leave calm, darker space in the lower third, where `CoverCard` sets the genre and title
   over a scrim. In the Library they are a small 4:5 thumbnail; on Discover's shelf of more worlds
-  they show whole, in their own 3:4 shape.
+  they show whole, in their own 3:4 shape. A wider slot (Discover's signature cards, the create
+  flow's banner) keeps the cover's upper part (`coverFocus`), where its focal point is. A cover
+  not drawn yet, or still loading, shows a glow in the genre's accent, and the cover fades in over
+  it (`CoverImage`). The starter premises' covers are drawn once for everyone by the backend's
+  `draw_premise_covers` command, with the same framing.
 - **The house style (S7, M5)** suits the dark page: stylised and cinematic with an anime influence,
   painterly low-key light, deep ink shadows, atmospheric depth and a restrained palette with one
   strong accent, in the world's own era and look. No text, logos, panels or borders. Mild in every
