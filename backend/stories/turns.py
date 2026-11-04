@@ -448,5 +448,11 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
         "narration_mode": result.narration_mode if result else None,
         "issues": [issue.code for issue in result.issues] if result else [],
         "node_ms": dict(result.timings_ms) if result else {},
+        # W10: how far the clock moved, and each step's kind and seconds, to tell a clock that
+        # drifts from a model's short estimate.
+        "world_s": result.scene.world_end_s - result.scene.world_start_s if result else None,
+        "steps": [[s.kind.value if s.kind else None, s.duration_s] for s in result.resolution.steps]
+        if result
+        else [],
     } | telemetry.summary()
     logger.info("Turn %s", run.outcome, extra={"turn": fields})
