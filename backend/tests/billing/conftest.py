@@ -11,6 +11,7 @@ from tests.conftest import auth_headers
 BILLING = {
     "STARTER_CENTS": Decimal(50),
     "STARTER_POLICY": "verified",
+    "HOUSE_PICTURES_CENTS": Decimal(30),
     "MARGIN": Decimal("0.5"),
     "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6},
     "HOLD_TTL_S": 600,

@@ -30,7 +30,13 @@ class _ReadOnly(admin.ModelAdmin):
 
 @admin.register(CreditAccount)
 class CreditAccountAdmin(_ReadOnly):
-    list_display = ("user", "balance_cents", "starter_granted", "updated_at")
+    list_display = (
+        "user",
+        "balance_cents",
+        "starter_granted",
+        "house_pictures_cents",
+        "updated_at",
+    )
     search_fields = ("user__email",)
     list_select_related = ("user",)
 
@@ -45,10 +51,11 @@ class LedgerEntryAdmin(_ReadOnly):
         "balance_after_cents",
         "cost_usd",
         "unlimited",
+        "house",
         "story_id",
         "turn",
     )
-    list_filter = ("kind", "unlimited")
+    list_filter = ("kind", "unlimited", "house")
     search_fields = ("user__email", "story_id", "request_id")
     list_select_related = ("user",)
     date_hierarchy = "created_at"

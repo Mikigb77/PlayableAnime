@@ -82,7 +82,9 @@ def append(
     if account.balance_cents + amount < 0:
         raise ValueError("A ledger entry can't take a balance below zero.")
     account.balance_cents += amount
-    account.save(update_fields=["balance_cents", "starter_granted", "updated_at"])
+    account.save(
+        update_fields=["balance_cents", "starter_granted", "house_pictures_cents", "updated_at"]
+    )
     entry = LedgerEntry.objects.create(
         user_id=account.user_id,
         kind=kind,
@@ -102,6 +104,7 @@ def append(
                 "balance_after_cents": float(account.balance_cents),
                 "cost_usd": float(entry.cost_usd),
                 "unlimited": entry.unlimited,
+                "house": entry.house,
                 "turn": entry.turn,
             }
         },
@@ -117,9 +120,10 @@ def credit(
         return append(locked_account(user.pk, user=user), kind, Decimal(amount_cents), **fields)
 
 
-def held_cents(user_id, now: datetime) -> Decimal:
-    """Credits set aside by holds that haven't expired."""
-    total = CreditHold.objects.filter(user_id=user_id, expires_at__gt=now).aggregate(
+def held_cents(user_id, now: datetime, *, house: bool = False) -> Decimal:
+    """Credits set aside by holds that haven't expired: the player's own, or with `house` those
+    held against the house's allowance for their first pictures (K1, M7)."""
+    total = CreditHold.objects.filter(user_id=user_id, expires_at__gt=now, house=house).aggregate(
         total=Sum("amount_cents")
     )["total"]
     return total or Decimal(0)

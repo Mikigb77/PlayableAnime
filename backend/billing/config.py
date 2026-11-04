@@ -28,6 +28,8 @@ class StarterPolicy(StrEnum):
 class BillingConfig:
     starter_cents: Decimal
     starter_policy: StarterPolicy
+    # K1, M7: the most the house pays for an account's first pictures, in credits.
+    house_pictures_cents: Decimal
     margin: Decimal
     reserve_cents: dict[Use, Decimal]
     hold_ttl_s: int
@@ -40,6 +42,7 @@ def get_config() -> BillingConfig:
     config = BillingConfig(
         starter_cents=Decimal(raw["STARTER_CENTS"]),
         starter_policy=StarterPolicy(raw["STARTER_POLICY"]),
+        house_pictures_cents=Decimal(raw["HOUSE_PICTURES_CENTS"]),
         margin=Decimal(raw["MARGIN"]),
         reserve_cents={Use(k): Decimal(v) for k, v in raw["RESERVE_CENTS"].items()},
         hold_ttl_s=int(raw["HOLD_TTL_S"]),
@@ -49,4 +52,6 @@ def get_config() -> BillingConfig:
     if any(cents <= 0 for cents in config.reserve_cents.values()):
         # A zero hold would let a request start with no credits at all.
         raise ImproperlyConfigured("Every BILLING['RESERVE_CENTS'] must be more than zero.")
+    if config.house_pictures_cents < 0:
+        raise ImproperlyConfigured("BILLING['HOUSE_PICTURES_CENTS'] can't be negative.")
     return config

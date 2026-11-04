@@ -1016,6 +1016,22 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   transaction that creates the user. A verified account (one with a Google sign-in at once, an
   email account once `email_verified` is set) gets $0.50, once; any later save that verifies the
   account grants it then. An account that is missing is opened on first use.
+- **A new player's first pictures (K1, M7).** In an account's first story (its oldest), a
+  subject's first picture (`engine.contracts.FIRST_PICTURES`: the player character's portrait,
+  the cover, a key NPC's first-meeting portrait, a place's first visit) is on the house.
+  `media.billing.start` asks the meter with `house=True` for a picture whose `Image.trigger` is
+  one of those, as code planned it; a picture Illustrate adds, or plans again after a skip, has
+  Illustrate's trigger and is the player's. The meter decides under the account's row lock. The house pays for the
+  accounts that get the starter credit while `CreditAccount.house_pictures_cents` (what it has
+  paid, at the price the player would have paid) plus its live holds stays under
+  `BILLING["HOUSE_PICTURES_CENTS"]` (env `HOUSE_PICTURES_CENTS`, 30 by default, 0 turns it off),
+  so the picture that crosses the allowance is still free and pictures started at once can't
+  overrun it by more than one. Such a picture's hold is a `CreditHold` with `house` set, which
+  doesn't count against the player's balance, and its charge is an `image` entry with `house`
+  set, at zero, keeping `detail.list_cents`, which is added to the account's
+  `house_pictures_cents` in the same transaction. `check_ledger` checks that too. The allowance
+  lives on the account, so deleting the first story leaves only what is left of it to the next
+  oldest. Otherwise the picture is held and charged like any other.
 - **Staff.** The admin shows balances and the ledger read-only. Deleting a user there still
   takes their billing rows with it (T12); deleting billing rows on their own is refused.
 - **Prices.** The per-model prices are the model layer's (`graph/llm/pricing.py`): each call's
@@ -1046,15 +1062,16 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
   the balance takes it to zero and records the shortfall (`detail.uncovered_cents`). Pictures use
   `charge_image`, and `out_of_credits` from `start` means a planned picture is skipped (M7),
   while Illustrate answers that `402` (M2).
-- **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits and gets
-  an entry at zero charge that keeps what it would have cost (`detail.list_cents`). A request on
-  the player's own key holds nothing, charges nothing, writes no entry and doesn't count toward
-  the daily quota, but is rate-limited (K6).
+- **Owner and BYOK.** The owner (`User.is_owner`, K7) is never held or refused for credits, has no
+  daily quota (Miki, 2026-11-04) and gets an entry at zero charge that keeps what it would have
+  cost (`detail.list_cents`). A request on the player's own key holds nothing, charges nothing,
+  writes no entry and doesn't count toward the daily quota (K6). Both are rate-limited per minute.
 - **Rate limits and quotas (T9).** `billing.limits.hit()` is a fixed-window counter in Postgres,
   one row per user and bucket (`turn:minute`, `turn:day`, `image:minute`...) that rolls over in
   place, incremented by a single `INSERT ... ON CONFLICT DO UPDATE`, so it counts exactly across
-  Cloud Run instances. Day windows end at midnight UTC. The owner has the daily quota too, as a
-  guard on a leaked token. The limits are in `BILLING` in `lucid/settings.py`, with the turn ones
+  Cloud Run instances. Day windows end at midnight UTC. The owner has no daily quota (K7); the
+  per-minute limit is the guard on a runaway client or a leaked owner token, with the GCP budget
+  alert behind it. The limits are in `BILLING` in `lucid/settings.py`, with the turn ones
   from env (`TURN_RATE_PER_MINUTE`, `DAILY_TURN_QUOTA`).
 - **K8 cost tests.** `billing.pricing.cost_spread()` and `K8_MAX_COST_MULTIPLE` (3 for now)
   compare what a quiet, a montage and an event turn charge a normal account.
@@ -1176,7 +1193,10 @@ app                   shows the narration, then asks for the picture in its own 
   a rate limit: the API's `rate_limited`, with the picture put back), `charge` takes the real
   cost plus margin in the transaction that marks the picture ready (`charge_image`), and `release`
   lets a hold go when the picture isn't drawn. The owner's pictures are recorded at no charge, and
-  a story from before sign-in, with no owner, draws free.
+  a story from before sign-in, with no owner, draws free. In an account's first story, a
+  subject's first picture is on the house while its allowance lasts (K1,
+  [above](#credits-quotas-and-rate-limits)): its `payer` is `house`, and it draws even with no
+  credits left. A player's own key still draws first, and the house covers only its fallback.
 - **Storage (M4, B11).** `MEDIA_BUCKET` names the private Cloud Storage bucket,
   `gs://playable-anime-pictures` in `europe-west3`, made by WS5's bootstrap; files are
   `stories/<story id>/<image id>.png`. The app gets V4 signed URLs that last

@@ -43,6 +43,9 @@ class Payer(models.TextChoices):
     CREDITS = "credits", "The player's credits"
     OWNER = "owner", "The owner account, at no charge"
     BYOK = "byok", "The player's own API key"
+    # A new player's first pictures, in their first story (K1, M7), and the starter premises'
+    # covers, which belong to no player.
+    HOUSE = "house", "The house, at no charge to the player"
     # No ledger to charge: a story from before sign-in, or before billing landed.
     FREE = "free", "Not charged"
 

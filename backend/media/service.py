@@ -8,10 +8,11 @@ a request that died, can be taken over, at most `MAX_ATTEMPTS` times in all.
 
 Paying (`media.billing`): a picture drawn with the player's own key costs no credits (K6, M7).
 Otherwise the credit meter holds its price before drawing, and the request that marks it ready
-charges it in the same transaction. Without credits a planned picture is skipped (M7), while
-Illustrate, which the player asked and pays for, answers `402 out_of_credits` and leaves the scene
-as it was (M2). A failed or blocked picture is skipped too, its hold released, and the scene is
-complete without it (M3).
+charges it in the same transaction. In an account's first story, a subject's first picture is on
+the house while its allowance lasts (K1, M7). Without credits a planned picture is skipped (M7),
+while Illustrate, which the player asked and pays for, answers `402 out_of_credits` and leaves the
+scene as it was (M2). A failed or blocked picture is skipped too, its hold released, and the
+scene is complete without it (M3).
 
 Each picture drawn or skipped writes one T5 log line with its model, cost and outcome, and never
 its prompt (T6).
@@ -31,6 +32,7 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.utils import timezone
 
+from engine.contracts import FIRST_PICTURES
 from lucid.errors import ApiError
 from media import billing, drawing
 from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest, KeyCannotDraw, Reference
@@ -266,7 +268,14 @@ async def _draw_claimed(
             if drawn is None:
                 attempt.byok_fell_back = True
         if drawn is None:
-            attempt.ticket = await billing.start(user, story_id=story.id, image_id=image.id)
+            attempt.ticket = await billing.start(
+                user,
+                story_id=story.id,
+                image_id=image.id,
+                # K1, M7: a subject's first picture, as code planned it. A picture Illustrate
+                # adds, or plans again after it was skipped, is planned as Illustrate's.
+                first_picture=image.trigger in FIRST_PICTURES,
+            )
             attempt.payer = attempt.ticket.payer
             drawn = await _draw_once(story, request, attempt, None, None)
             if drawn is None:

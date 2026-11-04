@@ -133,6 +133,16 @@ def bill(calls: Iterable[BillableCall], margin: Decimal) -> Bill:
     )
 
 
+def house_has_room(paid_cents: Decimal, held_cents: Decimal, allowance_cents: Decimal) -> bool:
+    """Whether the house pays for one more of a new player's first pictures (K1, M7).
+
+    It pays while what it has paid and what it holds for pictures being drawn stay under the
+    allowance, so the picture that crosses the allowance is still the house's, and the house
+    never pays more than one picture past it.
+    """
+    return Decimal(paid_cents) + Decimal(held_cents) < Decimal(allowance_cents)
+
+
 def cost_spread(charges: Mapping[str, Decimal]) -> Decimal:
     """How many times the dearest of these turns costs the cheapest (K8).
 
