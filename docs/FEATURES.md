@@ -42,39 +42,41 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 
 ### P0: MVP
 
-- [x] Discover feed of starter premises *(scaffold)*
-- [x] Create a story from your own premise *(scaffold)*
-- [x] Play screen: narration, 3 suggested choices, free-text action *(scaffold)*
-- [x] Memory engine: characters (alive/dead/missing, affinity), factions (stance), facts with
-      importance, goals, rolling summary, enforced invariants *(scaffold)*
-- [x] Memory screen, read-only *(scaffold)*
-- [x] Library of your stories *(scaffold, in-memory only)*
-- [x] Bring your own Gemini key, stored on the device *(scaffold)*
-- [x] Persistence on Neon Postgres *(stories as JSONB; normalised schema later)*
-- [ ] Accounts and sign-in (needed before any public deploy)
-- [ ] Premise → world bible expansion (setting, rules, factions, key NPCs, tone)
-- [ ] Streaming narration (SSE) so text appears as it's written
-- [ ] Narration that plays out the player's action step by step, from where the last scene ended,
+The first version's state, checked against the code in WS18.
+
+- [x] Discover feed of starter premises, the signature worlds first (S1)
+- [x] Create a story from your own premise: a drafted world and character to review and change (G1, G2)
+- [x] Play screen: streamed narration, suggested choices, Wait and Observe, free-text action (S2, S3)
+- [x] Memory engine: characters (alive, dead, missing, attitudes), factions, places, goals, leads,
+      rumors and deeds, with the invariants enforced in code (C1, W1 to W16)
+- [x] Memory screen, read-only, showing only what the character knows (C6)
+- [x] Library of your stories, saved on the server
+- [x] Bring your own Gemini key, stored on the device (K6, S9)
+- [x] Persistence on Neon Postgres *(stories as JSONB)*
+- [x] Accounts and sign-in: Google and email (T8)
+- [x] Premise → world bible expansion: setting, rules, factions, key characters, tone (G1)
+- [x] Streaming narration (SSE) so text appears as it's written (S3)
+- [x] Narration that plays out the player's action step by step, from where the last scene ended,
       before its outcome (R1 to R7)
-- [ ] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
+- [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
       workarounds reasoned through by cause and effect (A2, A9)
-- [ ] Voice dictation of actions, premises and `/ooc`, with a live transcript the player edits before
-      sending (V1 to V7)
-- [ ] Basic safety: content rating per story, model safety settings, report button
-- [ ] Deploy the API to Cloud Run
+- [x] Voice dictation of actions and premises, with a live transcript the player edits before
+      sending, on the phone's own recognizer (V1 to V7)
+- [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)
+- [ ] Deploy the API to Cloud Run *(the pipeline is ready; the first deploy waits on Miki)*
 
 ### P1
 
-- [ ] Character portraits and scene images at key moments: one per character, cached and reused
-      (M1 to M8)
+- [x] Character portraits and scene pictures at key moments: one per character, cached and reused,
+      drawn again when a face or place changes for good (M1 to M8)
 - [ ] Speech recognition with Gemini 3.5 Transcribe that knows the story's names (V6)
 - [ ] Edit, pin or forget memories; undo the last turn; branch a save
 - [ ] Optional RPG layer per story: HP, inventory, skills, dice checks
 - [ ] Relationship meters, endings and achievements
-- [ ] Slash commands: `/thoughts <character>`, `/recap`, `/ooc` (talk to the narrator directly)
-- [ ] Settings for narration length and tone
+- [ ] Slash commands: `/status` works; `/thoughts <character>`, `/recap` and `/ooc` are still to come
+- [x] Settings for narration length and tone (S6)
 - [ ] More BYOK providers (OpenAI, Anthropic, OpenRouter)
-- [ ] Spanish and English localisation
+- [ ] Spanish and English localisation *(every string is in `app_en.arb`; English only so far)*
 
 ### P2: later
 
@@ -82,7 +84,8 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 - [ ] Creator tools: world-bible editor, NPC sheets, lorebook
 - [ ] Voice narration (TTS)
 - [ ] Hands-free voice mode that sends after a pause (V2)
-- [ ] Monetisation for players without their own key (credits or subscription)
+- [ ] Monetisation for players without their own key *(credits, quotas and the starter credit
+      are built (K1 to K8); top-ups are not)*
 - [ ] Shared multiplayer worlds
 
 ## Open questions

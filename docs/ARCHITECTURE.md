@@ -56,8 +56,12 @@ variables (`backend/lucid/env.py`), so Cloud Run, local runs and tests differ on
 - **Cold starts (B10, T3).** `/health` never touches the database, and the service refuses to start
   without `DATABASE_URL` and `DJANGO_SECRET_KEY` outside DEBUG. Model SDKs and LangChain are
   imported inside the code that uses them, off the event loop, and a test checks that loading the
-  ASGI app and its URLs doesn't import them. The image answers its first `/health` about a second after the container
-  starts.
+  ASGI app and its URLs doesn't import them. The image answers its first `/health` about a second
+  after the container starts. Measured locally in WS18 with the offline model, so only our code
+  counts: `/health` answers 0.7 to 0.85 s after the process starts; the first turn after that
+  sends its first words in about 0.5 s, since it imports the model layer and builds the turn
+  graph, and later turns in about 30 ms (S3 allows 2 s, before the model's own time). Cloud Run's
+  own start and a Neon wake come on top in production and are not in these numbers.
 
 ## Accounts and sign-in
 

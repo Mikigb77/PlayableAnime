@@ -30,13 +30,13 @@ DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 - http://localhost:8080/health is the liveness check. It never touches the database (T3).
 
 `seed_story` makes a story for an existing account from one of the example worlds (`grounded` or
-`cultivation`), ready for its opening turn, until starting a draft (WS12) makes stories. It prints
-the story id.
+`cultivation`), ready for its opening turn, without drafting one first. It prints the story id.
 
-By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, so everything
-works offline. For real stories, either:
+By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, and every
+picture with a quiet gradient in the picture's shape, so everything works offline. For real
+stories, either:
 
-- send your own Gemini key in the `X-LLM-Api-Key` header (the app's Settings screen does this), or
+- send your own Gemini key in the `X-LLM-Api-Key` header (the app's Account screen does this), or
 - set `LLM_PROVIDER=vertex` and give Application Default Credentials access to the
   `playable-anime` project: `gcloud auth application-default login`, signing in as
   tech.garbar@gmail.com. Note that ADC is machine-wide, so this replaces whatever ADC you use for
