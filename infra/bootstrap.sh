@@ -308,8 +308,10 @@ setup_bucket() {
     roles/iam.serviceAccountTokenCreator
 }
 
-# The custom role that lets the deploy add or remove allUsers as the API's invoker, and nothing
-# else. A role deleted in the last 7 days can't be created again, only undeleted.
+# The custom role the deploy uses to add or remove allUsers as the API's invoker: only the
+# permissions to read and set Cloud Run services' IAM policies. Granted on the project, because the
+# service may not exist yet. A role deleted in the last 7 days can't be created again, only
+# undeleted.
 setup_api_access_role() {
   local name deleted
   name="$(read_value gcloud iam roles describe "$API_ACCESS_ROLE_ID" --project="$PROJECT_ID" \
@@ -334,8 +336,7 @@ setup_api_access_role() {
 setup_deployer() {
   step "6a. Deployer service account $DEPLOYER_SA"
   ensure_service_account "$DEPLOYER_SA_NAME" "GitHub Actions deploy"
-  # Deploys services and jobs. The IAM rights it has over them come only from the custom role
-  # below, so the one thing it can change about access is whether anyone may call the API.
+  # Deploys services and jobs. Its only IAM rights over them come from the custom role below.
   grant_project_role "serviceAccount:$DEPLOYER_SA" roles/run.developer
   setup_api_access_role
   grant_project_role "serviceAccount:$DEPLOYER_SA" "$API_ACCESS_ROLE"

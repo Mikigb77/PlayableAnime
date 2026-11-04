@@ -42,8 +42,8 @@ MEDIA_BUCKET="playable-anime-pictures"
 # GitHub Actions signs in through Workload Identity Federation as this account. No JSON key (B11).
 DEPLOYER_SA_NAME="github-deployer"
 DEPLOYER_SA="${DEPLOYER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
-# A custom role that lets the deployer decide who may call the API and nothing else: add or remove
-# allUsers as an invoker (docs/DEPLOY.md#who-may-call-the-api).
+# A custom role with only the permissions to read and set Cloud Run services' IAM policies, which
+# the deploy uses to add or remove allUsers as the API's invoker (docs/DEPLOY.md#who-may-call-the-api).
 API_ACCESS_ROLE_ID="lucidSagaApiAccess"
 API_ACCESS_ROLE="projects/${PROJECT_ID}/roles/${API_ACCESS_ROLE_ID}"
 API_ACCESS_PERMISSIONS="run.services.getIamPolicy,run.services.setIamPolicy"

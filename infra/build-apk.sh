@@ -48,9 +48,7 @@ case "$api_url" in
 esac
 # The web OAuth client from infra/config.sh is the app's server client id on Android (T8).
 web_client_id="$GOOGLE_WEB_CLIENT_ID"
-case "$web_client_id" in
-  *[!A-Za-z0-9._-]*) die "infra/config.sh has a Google web client id with odd characters" ;;
-esac
+check_client_id "$web_client_id"
 build_number="${BUILD_NUMBER:-}"
 case "$build_number" in
   *[!0-9]* | 0*) die "BUILD_NUMBER must be a whole number above 0" ;;

@@ -193,7 +193,8 @@ the image, but not the APK.
 
 Merging `dep` into `main` deploys. To deploy `main` again without a merge, run the workflow by
 hand: **Actions > Deploy > Run workflow** on `main`, or `gh workflow run deploy.yml --ref main`. It
-only ever deploys `main`, and two deploys never run at once.
+only ever deploys `main`. Two deploys never run at once, and a dry run never replaces a deploy
+waiting its turn.
 
 1. **CI passed on this commit** ([`require-green-ci.sh`](../infra/require-green-ci.sh)): the CI
    workflow's run for this exact commit of `main` must have succeeded. CI starts on the same push,
@@ -219,8 +220,8 @@ only ever deploys `main`, and two deploys never run at once.
 7. **Decide who may call the API** (`infra/deploy.sh access`): anyone, by default, so the app can
    reach it ([below](#who-may-call-the-api)). A failure here fails the run but keeps the new
    revision, which passed its health check.
-8. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing
-   ([below](#drawing-the-starter-covers)). A failure here doesn't fail the deploy.
+8. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, in a job of its own
+   ([below](#drawing-the-starter-covers)). A failure there doesn't fail the deploy.
 9. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 8,
    and published only once they pass.
 
@@ -234,7 +235,7 @@ check. The job already has the runtime account, the Vertex AI settings, `MEDIA_B
 direct database URL. It skips every cover that exists, so the first deploy draws all eleven with
 `PICTURE_MODEL`, about $0.034 each and $0.37 in all, paid by the house (the logs show each cover's
 model and cost, `Premise cover ready`, and no player's ledger changes), and later deploys draw
-nothing. A cover that fails or is blocked is left out and the step is marked failed, without
+nothing. A cover that fails or is blocked is left out and the covers job is marked failed, without
 failing the deploy; the next deploy tries it again. Until then, and for a premise without a cover,
 Discover shows a glow in the genre's colour. The app shows a new cover the next time it loads the
 premises.
@@ -311,8 +312,11 @@ T8 (sign-in) and T9 (rate limits, quotas and the budget alert) are merged, and o
 asked for the app to work from the APK, so each deploy lets anyone call the API: it makes sure
 `allUsers` has `roles/run.invoker` on the service. Cloud Run then passes every request on, and the
 API itself refuses everything but `/health` and sign-in without a signed-in player (T8), and holds
-each player to the rate limits and quotas (T9). The deployer can do this through the custom role
-`lucidSagaApiAccess`, and nothing more with IAM.
+each player to the rate limits and quotas (T9). The deployer does this through the custom role
+`lucidSagaApiAccess`, its only IAM permissions. They cover the IAM policy of every Cloud Run
+service in the project (a role can't be granted on a service before it exists), which adds little
+to `run.developer`, since deploying code as the runtime account is already more power; the deploy
+uses them only to add or remove `allUsers` as an invoker.
 
 To make it private again, in an emergency or otherwise, do both:
 
@@ -347,8 +351,9 @@ A release asset isn't in git and doesn't count against the repository's size.
   run number, so every release installs over the one before.
 - **Installing:** open the link on the phone (or drag the file onto an emulator) and allow installs
   from the browser or the Files app when Android asks.
-- **Checked in CI:** every CI run builds the same release APK with the debug key, so a change that
-  breaks the build fails its PR, not the deploy.
+- **Checked in CI:** CI builds the same release APK with the debug key on every PR and every push
+  to `dep`, so a change that breaks the build fails its PR, not the deploy. Pushes to `main` skip
+  it, because the deploy builds that commit's APK itself.
 
 To build a release-signed APK by hand, export `ANDROID_KEYSTORE_BASE64` (or point
 `ANDROID_KEYSTORE_PATH` at the keystore for a plain `flutter build apk`) and the three others, then
@@ -388,7 +393,7 @@ free tiers or a few cents a month.
 | Cloud Storage, pictures | About $0.02 per GB-month, $0.005 per 1,000 writes, $0.0004 per 1,000 reads, $0.12 per GB served to the internet. | Cents until there are many players. |
 | Workload Identity Federation, service accounts, IAM, budgets, enabling APIs | Free | Free |
 | Cloud Logging and Error Reporting | First 50 GiB of logs a month free | Free |
-| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
+| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dep` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
 | Neon | A deploy wakes the production compute for the migration. | Seconds of compute. |
 | Vertex AI (Gemini) | Per token and per picture ([ARCHITECTURE.md](ARCHITECTURE.md#images)) | The real cost, guarded by T9 and the budget alert. |
 

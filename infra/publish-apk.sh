@@ -12,7 +12,8 @@
 #   SIGNING                        release or debug, from infra/build-apk.sh.
 #   SIGNING_SHA1                   The signing certificate's SHA-1, from infra/build-apk.sh.
 #
-# Re-running the same workflow run replaces the asset of the release it made.
+# Re-running the same workflow run replaces the asset of the release it made. Only the newest build
+# is marked as the latest release.
 
 set -euo pipefail
 
@@ -63,14 +64,28 @@ install over it: uninstall it first. Email sign-in works.
 EOF
 fi
 
+# Only the newest build becomes the latest release. Re-running an older run must not point the
+# README's link back at an APK that won't install over the newer one.
+latest_tag="$(gh release view --repo "$repo" --json tagName --jq .tagName 2>/dev/null || true)"
+latest_number="${latest_tag#build-}"
+case "$latest_number" in
+  '' | *[!0-9]*) latest_number=0 ;;
+esac
+if [ "$build_number" -ge "$latest_number" ]; then
+  latest=--latest
+else
+  latest=--latest=false
+  warn "$latest_tag is newer than $tag, so $latest_tag stays the latest release."
+fi
+
 if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   say "Release $tag exists (a re-run); replacing its APK."
   gh release upload "$tag" "$asset" --repo "$repo" --clobber
   gh release edit "$tag" --repo "$repo" --title "$title" --notes-file "$notes" --draft=false \
-    --prerelease=false --latest
+    --prerelease=false "$latest"
 else
   gh release create "$tag" "$asset" --repo "$repo" --target "$sha" --title "$title" \
-    --notes-file "$notes" --latest
+    --notes-file "$notes" "$latest"
 fi
 
 url="https://github.com/$repo/releases/latest/download/$APK_ASSET"

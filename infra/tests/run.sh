@@ -321,6 +321,19 @@ test_access() {
   out="$state/out-5"
   with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_ACCESS=1 "$INFRA/deploy.sh" access
   if [ "$status" -ne 0 ]; then ok; else bad "a refused binding passed"; fi
+
+  # The policy can't be read (here: no service): private must fail, never assume it is closed.
+  state="$(new_state access-unreadable)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" API_ACCESS=private "$INFRA/deploy.sh" access
+  if [ "$status" -ne 0 ]; then ok; else bad "passed without reading who may call the API"; fi
+  contains "$out" "can't read who may call playable-anime-api"
+  lacks "$out" "already private" "claimed the API is private without knowing"
+
+  out="$state/out-dry"
+  with_fakes "$out" env FAKE_STATE="$state" API_ACCESS=private DRY_RUN=1 "$INFRA/deploy.sh" access
+  equals "$status" 0 "private dry run exit status"
+  contains "$out" "[dry-run] gcloud run services remove-iam-policy-binding playable-anime-api"
 }
 
 test_covers() {
@@ -460,7 +473,9 @@ new_app() { # state
 build_apk() { # state out [env...]
   local state="$1" out="$2"
   shift 2
+  mkdir -p "$state/tmp"
   with_fakes "$out" env FAKE_STATE="$state" APP_DIR="$state/app" ANDROID_HOME="$state/sdk" \
+    TMPDIR="$state/tmp" \
     GITHUB_OUTPUT="$state/outputs" ANDROID_KEYSTORE_BASE64='' ANDROID_KEYSTORE_PASSWORD='' \
     ANDROID_KEY_ALIAS='' ANDROID_KEY_PASSWORD='' ANDROID_KEYSTORE_PATH='' "$@" \
     "$INFRA/build-apk.sh" "$state/dist/lucid-saga.apk"
@@ -498,7 +513,11 @@ test_build_apk() {
   lacks "$state/flutter.log" "--build-number" "no BUILD_NUMBER, so pubspec.yaml's"
   lacks "$out" "SENTINEL" "a signing password was printed"
   lacks "$state/flutter.log" "SENTINEL" "a signing password reached flutter's arguments"
-  if find "$WORK" -name 'lucid-apk.*' | grep -q .; then bad "the decoded keystore was left behind"; else ok; fi
+  if [ -e "$state/keystore-seen" ] && [ -z "$(ls -A "$state/tmp")" ]; then
+    ok
+  else
+    bad "the decoded keystore was left behind in TMPDIR, or never made"
+  fi
 
   state="$(new_state build-apk-partial)"
   new_app "$state"
@@ -537,29 +556,42 @@ publish() { # responses... ; sets status
 
 test_publish_apk() {
   local calls="$WORK/publish-responses.calls" notes="$WORK/publish-responses.notes"
-  start "publish-apk.sh makes the APK the latest release's lucid-saga.apk, once per run"
-  publish "!fail" "https://github.com/Mikigb77/PlayableAnime/releases/tag/build-42"
+  start "publish-apk.sh makes the newest APK the latest release's lucid-saga.apk, once per run"
+  # gh answers: the latest release's tag, then whether build-42 exists, then each change.
+  publish "build-41" "!fail" "https://github.com/Mikigb77/PlayableAnime/releases/tag/build-42"
   equals "$status" 0 "first publish exit status"
+  contains "$calls" "release view --repo Mikigb77/PlayableAnime --json tagName --jq .tagName"
   contains "$calls" "release view build-42 --repo Mikigb77/PlayableAnime"
   contains "$calls" "release create build-42 "
   contains "$calls" "/lucid-saga.apk --repo Mikigb77/PlayableAnime --target 0123abc --title Lucid Saga 1.0.0 (build 42)"
-  contains "$calls" "--latest"
+  contains "$calls" "--notes-file"
+  if grep -q -- "--latest$" "$calls"; then ok; else bad "the newest build must be the latest release"; fi
   contains "$notes" "Signed with the release key, SHA-1 AA:BB"
   contains "$notes" "https://playable-anime-api-528988811295.europe-west3.run.app"
   contains "$WORK/summary" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
 
-  publish "{}" "ok"
+  publish "!fail" "!fail" "ok"
+  equals "$status" 0 "first release ever exit status"
+  if grep -q -- "--latest$" "$calls"; then ok; else bad "the first release must be the latest"; fi
+
+  publish "build-42" "{}" "ok" "ok"
   equals "$status" 0 "re-run publish exit status"
   contains "$calls" "release upload build-42 "
   contains "$calls" "--clobber"
   contains "$calls" "release edit build-42 --repo Mikigb77/PlayableAnime"
+  if grep -q -- "--prerelease=false --latest$" "$calls"; then ok; else bad "a re-run of the newest must stay latest"; fi
   lacks "$calls" "release create" "a re-run must not create a second release"
 
-  PUBLISH_SIGNING=debug publish "!fail" "ok"
+  publish "build-43" "!fail" "ok"
+  equals "$status" 0 "older run publish exit status"
+  contains "$calls" "--latest=false"
+  contains "$WORK/publish-out" "build-43 is newer than build-42"
+
+  PUBLISH_SIGNING=debug publish "build-41" "!fail" "ok"
   equals "$status" 0 "debug publish exit status"
   contains "$notes" "Signed with a throwaway debug key"
 
-  publish "!fail" "!fail"
+  publish "build-41" "!fail" "!fail"
   if [ "$status" -ne 0 ]; then ok; else bad "a failed release passed"; fi
 }
 

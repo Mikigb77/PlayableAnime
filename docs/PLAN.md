@@ -670,7 +670,8 @@ memory page in `app/lib/features/story/`.
   merged), draws the starter covers that are missing, and publishes the Android APK as the latest
   GitHub release's `lucid-saga.apk`, which the README links at the top.
 - The bootstrap admits `push` and `workflow_dispatch` runs of `deploy.yml` on `main`, and gives the
-  deployer a custom role that can only change who may call the API. The APK is signed with the
+  deployer a custom role with only the permissions to read and set Cloud Run IAM policies, which
+  the deploy uses to let anyone call the API. The APK is signed with the
   release keystore from four `ANDROID_*` secrets, or the debug key without them. The Google Web
   client id is plain config in `infra/config.sh`. Package and bundle id: `com.lucid.saga`.
 - CI checks that the migrations leave the old FastAPI app's `stories` and `schema_migrations`

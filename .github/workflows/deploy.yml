@@ -10,7 +10,8 @@
 # 5. Deploy the service to europe-west3 and move all traffic to it (T1, B10).
 # 6. Check /health. If it or any step since the deploy began fails, roll traffic back.
 # 7. Let anyone call the API, which checks sign-in itself (T8), unless API_ACCESS is private.
-# 8. Draw the starter covers that are missing. A failure here doesn't fail the deploy.
+# 8. Draw the starter covers that are missing, in a job of its own whose failure doesn't fail the
+#    deploy.
 # Meanwhile the Android app is built, and once the API is up it is published as the latest
 # GitHub release's lucid-saga.apk, which the README links.
 #
@@ -30,8 +31,9 @@ on:
 
 permissions: {}
 
+# One deploy at a time, and a queued one is never replaced by a dry run, which has its own queue.
 concurrency:
-  group: deploy-production
+  group: deploy-production${{ inputs.dry_run && '-dry-run' || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -54,7 +56,7 @@ jobs:
     name: ${{ inputs.dry_run && 'Dry run' || 'Deploy' }}
     needs: ci-green
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     permissions:
       contents: read
       id-token: write
@@ -156,12 +158,6 @@ jobs:
         env:
           API_ACCESS: ${{ vars.API_ACCESS }}
 
-      # Skips the covers that exist, so only the first deploy draws (about $0.37 in all).
-      - name: Draw the starter covers
-        continue-on-error: true
-        timeout-minutes: 35
-        run: infra/deploy.sh covers
-
       # Any failure once the deploy step has started, including the smoke test, but not a failure to
       # change who may call the API: the new revision is healthy then, and rolling back won't help.
       - name: Roll back to the previous revision
@@ -169,6 +165,37 @@ jobs:
         run: infra/deploy.sh rollback "$PREVIOUS_REVISION"
         env:
           PREVIOUS_REVISION: ${{ steps.service.outputs.previous_revision }}
+
+  # Skips the covers that exist, so only the first deploy draws (about $0.37 in all). Its own job,
+  # so the APK doesn't wait for it, and a failure here doesn't fail the deploy.
+  covers:
+    name: Draw the starter covers
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: infra/deploy.sh covers
 
   # Runs alongside CI and the deploy. Nothing is published unless both pass.
   apk:

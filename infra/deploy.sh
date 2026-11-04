@@ -104,11 +104,10 @@ EOF
 google_client_ids() {
   local id ids=''
   for id in "$GOOGLE_WEB_CLIENT_ID" "$GOOGLE_ANDROID_CLIENT_ID" "$GOOGLE_IOS_CLIENT_ID"; do
-    case "$id" in
-      '') continue ;;
-      *[!A-Za-z0-9._-]*) die "infra/config.sh has a Google client id with odd characters: $id" ;;
-    esac
-    ids="${ids:+$ids,}$id"
+    check_client_id "$id"
+    if [ -n "$id" ]; then
+      ids="${ids:+$ids,}$id"
+    fi
   done
   printf '%s' "$ids"
 }
@@ -269,20 +268,23 @@ cmd_smoke() {
   done
 }
 
-# Whether allUsers may call the service now, from its IAM policy.
+# Whether allUsers may call the service now, from its IAM policy. Stops when the policy can't be
+# read: taking that as "private" would leave a public API open while saying it is closed.
 public_now() {
   local policy="$TMP_DIR/policy.json"
-  read_value gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT_ID" \
-    --region="$REGION" --format=json >"$policy"
+  if is_dry_run; then
+    say "[dry-run] $(quote_cmd gcloud run services get-iam-policy "$SERVICE" \
+      --project="$PROJECT_ID" --region="$REGION" --format=json)"
+    return 0
+  fi
+  gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
+    --format=json >"$policy" || die "can't read who may call $SERVICE, so it may still be public"
   python3 -I - "$policy" <<'EOF'
 import json
 import sys
 
-try:
-    with open(sys.argv[1]) as file:
-        policy = json.load(file)
-except ValueError:
-    policy = {}
+with open(sys.argv[1]) as file:
+    policy = json.load(file)
 bindings = policy.get("bindings") or []
 public = any(
     b.get("role") == "roles/run.invoker" and "allUsers" in (b.get("members") or []) for b in bindings

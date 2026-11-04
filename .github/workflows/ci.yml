@@ -124,8 +124,10 @@ jobs:
       - run: flutter test
 
   # The release APK, built as the deploy builds it but signed with the debug key, so a change that
-  # breaks the Android build fails its PR instead of the deploy (docs/DEPLOY.md).
+  # breaks the Android build fails its PR instead of the deploy (docs/DEPLOY.md). Not on pushes to
+  # main: the deploy builds that commit's APK itself, and its CI gate shouldn't wait for a second.
   android:
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
