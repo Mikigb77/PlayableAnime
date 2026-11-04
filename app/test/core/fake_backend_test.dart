@@ -486,6 +486,32 @@ void main() {
       expect((await stories.get(story.id)).scenes.last.image?.status, before);
     });
 
+    test(
+      'illustrating a picture still being drawn answers pending, whatever the credits',
+      () async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.action('[fail:picture] I look at the sky', inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        final turn = Scene.fromJson((events.last as SceneCompleted).scene).turn;
+        expect((await stories.picture(story.id, turn)).status, 'skipped');
+        expect((await stories.illustrate(story.id, turn)).isPending, isTrue);
+        backend.data.account.charge(
+          FakeAuthState.demoUserId,
+          kind: 'adjustment',
+          cents: await balance(),
+          now: now,
+        );
+
+        // As on the server: a claimed picture is being drawn and its hold already placed.
+        expect((await stories.illustrate(story.id, turn)).isPending, isTrue);
+      },
+    );
+
     test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
       final story = await stories.get((await library.stories()).single.id);
       final events = await collect(

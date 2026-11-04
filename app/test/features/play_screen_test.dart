@@ -283,6 +283,44 @@ void main() {
     expect(again.position.pixels, 0);
   });
 
+  testWidgets('an opening played again on the player\'s own key reads from the title page', (
+    tester,
+  ) async {
+    await serve(tester);
+    late String id;
+    await tester.runAsync(() async {
+      final draft =
+          await api.post('/v1/drafts', {
+                'premise': 'A lighthouse keeper finds a door in the sea.',
+                'rating': 'teen',
+              })
+              as JsonMap;
+      final started = await api.post('/v1/drafts/${draft['id']}/start', {}) as JsonMap;
+      id = started['story_id'] as String;
+    });
+    final account = backend.data.account;
+    account.charge(
+      FakeAuthState.demoUserId,
+      kind: 'adjustment',
+      cents: account.balanceOf(FakeAuthState.demoUserId),
+      now: DateTime.now(),
+    );
+    await open(tester, id: id);
+    await settle(tester);
+    // Refused for credits, then sent again on the key the player adds on the sheet.
+    await tester.tap(find.byKey(const Key('ooc.useKey')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('account.ownKey')), 'AIza-from-the-sheet');
+    await tester.tap(find.byKey(const Key('account.ownKey.save')));
+    await settle(tester);
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester, frames: 12);
+
+    expect(words('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
+    final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    expect(scroll.position.pixels, 0);
+  });
+
   testWidgets('a standing action reads in the app\'s words, not the server\'s wire name', (
     tester,
   ) async {

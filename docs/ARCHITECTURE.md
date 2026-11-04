@@ -685,8 +685,10 @@ that time, so it grows with the records a story keeps: on a story padded with 6,
 state, more than a long and busy story would hold) the first words come after about 0.5 s and the
 turn ends at 0.75 s. `read_turn` stays under 1 ms at that size. The world's catch-up works on the
 copy its caller already owns (`copy=False` from `play_out` and inside `catch_up`), which took a
-third off that worst case. If stories grow that large, the next step is sharing unchanged records
-between copies, or folding old deeds into summaries.
+third off that worst case. A step that records deeds still copies the state once in
+`record_consequences`, as a montage does in `schedule_stretch`. If stories grow that large, the
+next step is letting those work on `play_out`'s copy too, then sharing unchanged records between
+copies, or folding old deeds into summaries.
 
 ## Drafting a world and a character
 
@@ -1116,15 +1118,16 @@ app                   shows the narration, then asks for the picture in its own 
   lease of 300 seconds, longer than a Cloud Run request can live, so a claim left by a request that
   died is taken over, at most three attempts in all. The first request to finish wins: a late one
   keeps the winner's picture, charges nothing and deletes its own file. When the player leaves
-  mid-drawing, Django cancels the request: its hold is released and the picture is planned again
-  for the next request, since nothing may run after a response ends (B8). A failure, a block or no
+  mid-drawing, Django cancels the request: its hold is released and the picture is put back for
+  the next request, since nothing may run after a response ends (B8). A failure, a block or no
   credits marks the picture `skipped`, and a repeat answers `skipped` without drawing again; only
-  Illustrate tries a skipped scene picture again. Illustrate without credits answers `402
-  out_of_credits` and puts the picture back as it found it, a blocked one still blocked. The
-  scenes showing a picture keep `Scene.image_status` in step with it.
+  Illustrate tries a skipped scene picture again, planning it again inside its claim, under the
+  same lock. Illustrate without credits answers `402 out_of_credits`, and an Illustrate that is
+  rate limited or left mid-drawing puts the picture back as it found it too, so a blocked one
+  stays blocked. The scenes showing a picture keep `Scene.image_status` in step with it.
 - **Paying (M7, K7).** `media/billing.py` calls the credit meter (`billing.meter`): `start` holds
   the estimated price before drawing on our account (no credits: skipped, or Illustrate's `402`;
-  a rate limit: the API's `rate_limited`, with the picture planned again), `charge` takes the real
+  a rate limit: the API's `rate_limited`, with the picture put back), `charge` takes the real
   cost plus margin in the transaction that marks the picture ready (`charge_image`), and `release`
   lets a hold go when the picture isn't drawn. The owner's pictures are recorded at no charge, and
   a story from before sign-in, with no owner, draws free.

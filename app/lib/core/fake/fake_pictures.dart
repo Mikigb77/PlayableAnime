@@ -32,7 +32,13 @@ void registerPictureRoutes(FakeBackend b) {
     final pictures = b.data.pictures;
     final unpaid = !r.usesOwnKey && !pictures.charged.contains(key);
     final balance = b.data.account.balanceOf(r.userId!);
-    if (illustrate && image?['status'] != 'ready' && unpaid && balance < _pictureCents) {
+    // A picture being drawn answers pending, as the server does, without asking the meter.
+    final drawing = image?['status'] == 'planned' && pictures.requestedAt.containsKey(key);
+    if (illustrate &&
+        image?['status'] != 'ready' &&
+        !drawing &&
+        unpaid &&
+        balance < _pictureCents) {
       throw FakeError(402, 'out_of_credits', 'Not enough credits.', {
         'balance_cents': balance,
         'available_cents': balance,

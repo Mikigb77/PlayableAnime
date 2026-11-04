@@ -51,9 +51,9 @@ class DraftRepository {
         as JsonMap,
   );
 
-  /// Creates the story at turn 0, with no scenes; the play screen asks for the opening. Starting
-  /// again returns the same story. The version goes along like every other change's, ready for
-  /// the day the server checks it on start too (docs/API.md); today it is ignored.
+  /// Creates the story at turn 0, with no scenes; the play screen asks for the opening. A stale
+  /// copy is refused with `409 version_conflict` (T10), and starting again returns the same
+  /// story.
   Future<String> start(Draft draft) async {
     final json =
         await _api.post('/v1/drafts/${Uri.encodeComponent(draft.id)}/start', {

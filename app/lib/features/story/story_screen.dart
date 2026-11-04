@@ -110,7 +110,11 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         // words: keep the words where the player is reading them.
         final before = _topOf(_pendingNarrationKey);
         final following = _following;
-        final unseen = following && (before == null || before > MediaQuery.sizeOf(context).height);
+        // The opening is read from the title page above it, which stays in view.
+        final unseen =
+            following &&
+            !_opensPage(turn) &&
+            (before == null || before > MediaQuery.sizeOf(context).height);
         _following = false;
         ref.invalidate(storiesProvider);
         if (unseen) {
@@ -119,7 +123,6 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
           return;
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          // The opening is read from the title page above it, which stays in view.
           if (!mounted || _opensPage(turn)) return;
           final after = _topOf(_narrationKeys[turn]);
           if (before != null && after != null && _scroll.hasClients) {

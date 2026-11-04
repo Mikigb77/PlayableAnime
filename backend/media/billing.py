@@ -36,7 +36,9 @@ class NoCredits(Exception):
     def __init__(self, error: ApiError | None = None):
         super().__init__("out of credits")
         self.error = error or ApiError(
-            ErrorCode.OUT_OF_CREDITS, "You're out of credits.", {"balance_cents": 0}
+            ErrorCode.OUT_OF_CREDITS,
+            "You're out of credits.",
+            {"balance_cents": 0, "available_cents": 0},
         )
 
 

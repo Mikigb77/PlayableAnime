@@ -433,7 +433,7 @@ def test_play_out_goes_through_catch_up_with_the_turns_own_rng(monkeypatch):
 
     pipeline.play_out(grounded_world(), resolution, ctx(), rng())
 
-    # On play_out's own working copy, so a long story's state isn't copied once more a step.
+    # On play_out's own working copy, so catching up doesn't copy a long story's state again.
     assert calls == [(0, 60, rng().seed, {"copy": False}), (60, 90, rng().seed, {"copy": False})]
 
 

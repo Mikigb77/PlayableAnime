@@ -274,6 +274,44 @@ def test_illustrate_without_credits_on_a_planned_picture_leaves_it_planned(clien
     assert _image(client, story, 2).json()["status"] == "ready"
 
 
+def test_illustrate_without_credits_on_a_scene_code_marked_leaves_it_planned(
+    client, painters, meter
+):
+    """A scene marked planned before it had a plan gets its plan from the request that asks.
+    That plan is code's (M1), so Illustrate refused leaves it planned, to draw on its own."""
+    story = make_story()
+    make_scene(story, 3, image_planned=True, image_kind="scene", image_prompt="A duel at dawn.")
+    meter.refuse = billing.NoCredits()
+
+    assert _illustrate(client, story, 3).status_code == 402
+    image = Image.objects.get(story=story)
+    assert (image.status, image.attempts, image.claim) == (ImageStatus.PLANNED, 0, None)
+
+    meter.refuse = None
+    assert _image(client, story, 3).json()["status"] == "ready"
+
+
+def test_illustrate_rate_limited_keeps_a_blocked_picture_blocked(client, painters, meter):
+    story = make_story()
+    _planned_scene(story)
+    painters.ours.script(DrawBlocked(("sexual",)))
+    assert _image(client, story, 2).json()["status"] == "skipped"
+    meter.refuse = ApiError(ErrorCode.RATE_LIMITED, details={"retry_after_s": 5})
+
+    assert _illustrate(client, story, 2).status_code == 429
+
+    image = Image.objects.get(story=story)
+    assert (image.status, image.skip_reason, image.attempts) == (
+        ImageStatus.SKIPPED,
+        SkipReason.BLOCKED,
+        1,
+    )
+    # A plain request for it, as the app makes when it reopens the story, still never draws it.
+    meter.refuse = None
+    assert _image(client, story, 2).json()["status"] == "skipped"
+    assert painters.drawings == 1
+
+
 def test_a_rate_limit_is_passed_on_and_the_picture_stays_planned(client, painters, meter):
     story = make_story()
     _planned_scene(story)
@@ -562,6 +600,44 @@ def test_a_player_who_leaves_mid_drawing_leaves_the_picture_for_the_next_request
     assert meter.released == [1]
     assert meter.charged == []
     assert not any(get_storage().root.rglob("*.png"))
+
+
+def test_a_player_who_leaves_an_illustrate_leaves_a_blocked_picture_blocked(painters, meter):
+    import asyncio
+    import threading
+
+    from asgiref.sync import async_to_sync
+
+    from media.service import scene_picture
+    from stories.models import Scene
+
+    story = make_story()
+    _planned_scene(story)
+    scene = Scene.objects.get(story=story, turn=2)
+    painters.ours.script(DrawBlocked(("sexual",)))
+    assert async_to_sync(scene_picture)(story, scene, user=None).status == "skipped"
+    painters.ours.started.clear()
+    painters.ours.gate = threading.Event()
+
+    async def leave_mid_drawing():
+        task = asyncio.create_task(scene_picture(story, scene, user=None, illustrate=True))
+        await asyncio.to_thread(painters.ours.started.wait, 10)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            return "cancelled"
+        finally:
+            painters.ours.gate.set()
+
+    assert async_to_sync(leave_mid_drawing)() == "cancelled"
+
+    image = Image.objects.get()
+    assert (image.status, image.skip_reason, image.claim) == (
+        ImageStatus.SKIPPED,
+        SkipReason.BLOCKED,
+        None,
+    )
 
 
 def test_a_picture_is_fetched_again_with_a_fresh_url(client, painters, meter):
