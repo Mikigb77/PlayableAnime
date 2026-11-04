@@ -126,7 +126,7 @@ lib/
     library/                Your stories, with the turn and in-world time, and delete
     account/                Profile, credits and history, own key, content preferences (F7),
                             privacy policy, export, delete, the out-of-credits sheet, sign out
-    voice/                  Dictation: speech engine, controller, button, input mode (V1–V7)
+    voice/                  Dictation: online and phone engines, controller, button, input mode (V1–V7)
   l10n/app_en.arb           Every string the player sees (S10)
 assets/
   fonts/                    Literata and Inter, SIL Open Font License
@@ -154,8 +154,12 @@ assets/
   `creditsHistoryProvider`; `formatCredits` writes an amount the way the app shows it (50¢, $1.20).
 - **The privacy policy** is `app/assets/legal/privacy_en.md`, everything in `docs/PRIVACY.md` from
   "Who we are" on. A test fails when the two differ, so a change to the policy copies it over.
-- **Voice:** put `DictationButton(tracker: InputModeTracker(controller))` next to any text box and
-  send `tracker.mode.wire` as the turn's `input_mode` (V7).
+- **Voice:** put `DictationButton(tracker: InputModeTracker(controller), storyId: …)` (or
+  `draftId:`) next to any text box and send `tracker.mode.wire` as the turn's `input_mode` (V7).
+  The id lets online dictation listen for that story's names (V6). `speechEngineProvider` is the
+  recognizer the player chose in Account (`dictationModeProvider`); tests override it with
+  `FakeSpeechEngine` (`onPhone: false` for online), and `FakeBackend` answers
+  `POST /v1/transcriptions` with the same line every time.
 - **Your own key** (S9) is `byokStoreProvider`, which holds the signed-in account's key only.
 - **Tests** can run any flow on `FakeBackend.standard(pace: FakePace.instant)`; see
   `test/app_test.dart` and `test/helpers.dart`. `AppHarness` in `test/features/harness.dart` signs

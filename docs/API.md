@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn, a draft or an Illustrate (K2, M2). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
+  | 402 | `out_of_credits` | Not enough credits for a turn, a draft, an Illustrate or a dictation (K2, M2, V6). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -72,15 +72,15 @@ Session      {access_token, refresh_token, expires_in, user: User}
 User         {id, email, display_name, role: "player"|"owner", max_rating: "teen"|"mature",
               content_prefs: {gore: "low"|"medium"|"high", romance: bool, dark_themes: bool},
               credits: {balance_cents, unlimited}}
-LedgerEntry  {id, kind: "starter"|"turn"|"draft"|"image"|"topup"|"adjustment", amount_cents,
+LedgerEntry  {id, kind: "starter"|"turn"|"draft"|"image"|"speech"|"topup"|"adjustment", amount_cents,
               balance_after_cents, story_id?, turn?, created_at}
 ExportedPicture {id, story_id, kind, subject, version, turns: [int], url, expires_at, created_at}
 ExportedReport  {story_id, turn, category, note, block, status: "open"|"actioned"|"dismissed",
                  created_at}                                # the player's own reports, oldest first
 ```
 
-`amount_cents` may be fractional (a turn costs about 2 cents), so it is a decimal number, not an
-integer. It is positive when credits are added and negative when they are spent, and a balance
+`amount_cents` may be fractional (a turn costs about 2 cents, a dictation a fraction of one), so
+it is a decimal number, not an integer. It is positive when credits are added and negative when they are spent, and a balance
 never goes below zero. The owner account (K7) has `unlimited: true`; its ledger still records costs
 at zero charge so T5's numbers stay honest. A new player's first pictures in their first story
 (the player character's portrait, the cover, first meetings and first visits) are on the house
@@ -89,14 +89,14 @@ shows as free. A turn, draft or picture on the player's own key (K6) uses no cre
 entry.
 
 **Credits, rate limits and quotas (K2, K6, T9).** Every request that calls a model (a turn, a
-draft or revision, a picture) is checked before it starts, in this order:
+draft or revision, a picture, a dictation) is checked before it starts, in this order:
 
 1. A per-user rate limit per minute, on any key, BYOK and the owner included: `429 rate_limited`
-   with `details.retry_after_s`. Turns, drafts and pictures each have their own limit.
+   with `details.retry_after_s`. Turns, drafts, pictures and dictations each have their own limit.
 2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
    (ISO 8601, the next midnight UTC). BYOK requests don't count, and the owner (K7) has none.
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
-   or a draft, 6 for a picture), or it gets `402 out_of_credits` with `details.balance_cents` and
+   or a draft, 6 for a picture, 1 for a dictation), or it gets `402 out_of_credits` with `details.balance_cents` and
    `details.available_cents` (less than the balance while another request of the same player is
    running). A planned picture that can't be paid for is `skipped` instead (M7); Illustrate, which
    the player asks for, answers the `402`. A first picture the house pays for (K1) needs no
@@ -157,6 +157,40 @@ ExportScene  {turn, kind, player_action?, input_mode?, narration, choices, detai
               time: {world_start_s, world_end_s, label, duration_label, personal_label?},
               image?: {kind, status, url?}, created_at}
 ```
+
+## Dictation (V1, V2, V5, V6)
+
+| Method | Path | Query | Body | Response |
+| --- | --- | --- | --- | --- |
+| POST | `/v1/transcriptions` | `story_id?`, `draft_id?`, `language?` | The recording, with its audio type as `Content-Type` | `{text}` |
+
+Online dictation: the app records while the mic is on and sends the clip; Gemini 3.5 Transcribe on
+Vertex AI writes it down, and the app puts `text` in the box for the player to check (V2). Nothing is
+sent as an action from here.
+
+- **The body** is the raw audio, at most 2 MiB (the app sends at most a minute of 16 kHz 16-bit mono
+  WAV, 1.92 MB). `Content-Type` is one of `audio/wav` (or `audio/x-wav`, `audio/wave`),
+  `audio/mpeg` (`audio/mp3`), `audio/aac`, `audio/m4a` (`audio/mp4`), `audio/ogg`, `audio/opus`,
+  `audio/webm`, `audio/flac` or `audio/aiff`. Anything else, an empty body or a longer one is
+  `400 validation_error` with the field `Content-Type` (`unsupported_audio`) or `body` (`missing`,
+  `too_long`).
+- **`story_id` or `draft_id`** (at most one: both is `validation_error`, `conflict`) says where the
+  words go, so the model listens for the names the player character knows there, up to 100 (C6:
+  never a hidden one). Someone else's story or draft answers `403`, an unknown one `404`, and a
+  story or draft above the account's rating limit `403` (F8). With neither, no names are sent.
+- **`language`** is a BCP-47 tag such as `en-US` (V4). Left out, the model detects the language.
+- **`text`** is empty when the recording held no speech. It has no trailing spaces.
+- **Billing (K2, T9).** Always on our key, even with `X-LLM-Api-Key` (the Gemini API offers this
+  model only through its Interactions API), so a BYOK player pays for dictation in credits. The
+  checks above apply, with their own rate limit and daily quota, and a dictation needs 1 cent
+  available. The real cost, a fraction of a cent, is charged as a `speech` ledger entry, with
+  `story_id` when one was sent. A failed dictation costs nothing.
+- **Errors:** `422 unreadable_action` when the model refuses to write the clip down (rare: the
+  player's words are never filtered), and `503 llm_unavailable` after one retry. The app says it
+  couldn't reach the server, and typing always works.
+- **Privacy (V5).** The audio is held in memory for the request only: never written to disk or
+  stored, and never logged. The log line has the audio's size and type, the number of names sent,
+  the outcome, the transcript's length, tokens and cost, never the words (T6).
 
 ## Starter premises (S1)
 

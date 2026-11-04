@@ -1,0 +1,384 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:record/record.dart';
+
+import '../../core/api/api_client.dart';
+import '../../core/api/api_error.dart';
+import 'pcm.dart';
+import 'speech_engine.dart';
+
+/// The microphone as raw 16-bit PCM, for online dictation. [RecordSpeechRecorder] is the real
+/// one; tests use a fake.
+abstract interface class SpeechRecorder {
+  /// Whether this platform can record. Never asks for permission.
+  Future<bool> isSupported();
+
+  /// Whether the mic is allowed, asking the first time when [request] is true (V5).
+  Future<bool> hasPermission({bool request = true});
+
+  /// Starts recording [wanted]. A platform that can't record it calls [onFormat] with what it
+  /// records instead, before the first chunk.
+  Future<Stream<Uint8List>> start(PcmFormat wanted, void Function(PcmFormat actual) onFormat);
+
+  /// Stops recording; the stream sends what is left, then closes.
+  Future<void> stop();
+
+  /// Stops recording and drops what is left.
+  Future<void> cancel();
+}
+
+/// [SpeechRecorder] on the `record` plugin (Android, iOS and the web).
+class RecordSpeechRecorder implements SpeechRecorder {
+  AudioRecorder? _recorder;
+
+  // Made on first use, so on a phone a screen with a mic never touches the plugin until it's tapped.
+  AudioRecorder get _mic => _recorder ??= AudioRecorder();
+
+  @override
+  Future<bool> isSupported() async {
+    if (kIsWeb) {
+      try {
+        return await _mic.isEncoderSupported(AudioEncoder.pcm16bits);
+      } on Object {
+        return false;
+      }
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.macOS => true,
+      _ => false,
+    };
+  }
+
+  @override
+  Future<bool> hasPermission({bool request = true}) async {
+    try {
+      return await _mic.hasPermission(request: request);
+    } on Object catch (e) {
+      debugPrint('Mic permission check failed: ${e.runtimeType}');
+      return false;
+    }
+  }
+
+  @override
+  Future<Stream<Uint8List>> start(
+    PcmFormat wanted,
+    void Function(PcmFormat actual) onFormat,
+  ) async {
+    await _mic.setOnConfigChanged(
+      (config) => onFormat(PcmFormat(sampleRate: config.sampleRate, channels: config.numChannels)),
+    );
+    return _mic.startStream(
+      RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: wanted.sampleRate,
+        numChannels: wanted.channels,
+        // Steady levels and less background, so a pause is heard as one and the words carry.
+        autoGain: true,
+        noiseSuppress: true,
+        // A call or another app taking the mic ends the dictation; what was said is kept.
+        audioInterruption: AudioInterruptionMode.none,
+      ),
+    );
+  }
+
+  @override
+  Future<void> stop() async {
+    await _recorder?.stop();
+  }
+
+  @override
+  Future<void> cancel() async {
+    await _recorder?.cancel();
+  }
+
+  Future<void> dispose() async {
+    await _recorder?.dispose();
+    _recorder = null;
+  }
+}
+
+/// Writes a recording down (V6): `POST /v1/transcriptions`.
+abstract interface class Transcriber {
+  Future<String> transcribe(Uint8List wav, {String? language, SpeechContext context});
+}
+
+class ApiTranscriber implements Transcriber {
+  ApiTranscriber(this.api);
+
+  final ApiClient api;
+
+  @override
+  Future<String> transcribe(
+    Uint8List wav, {
+    String? language,
+    SpeechContext context = const SpeechContext(),
+  }) async {
+    final json = await api.postBytes(
+      '/v1/transcriptions',
+      wav,
+      contentType: 'audio/wav',
+      query: {'language': ?language, 'story_id': ?context.storyId, 'draft_id': ?context.draftId},
+    );
+    return switch (json) {
+      {'text': final String text} => text,
+      _ => throw const ApiException(ApiErrorCode.server),
+    };
+  }
+}
+
+/// When online dictation stops listening by itself.
+class ListenLimits {
+  const ListenLimits({
+    this.pause = const Duration(milliseconds: 2500),
+    this.noSpeech = const Duration(seconds: 8),
+    this.longest = const Duration(seconds: 60),
+  });
+
+  /// Quiet for this long after speaking ends the dictation, as the phone's recognizer does.
+  final Duration pause;
+
+  /// Nothing said for this long ends it with nothing sent, so a forgotten mic costs nothing.
+  final Duration noSpeech;
+
+  /// The longest dictation, which the API's size limit allows with room to spare.
+  final Duration longest;
+}
+
+/// Online dictation (V6): records while the mic is on, then sends the recording to our API,
+/// where Gemini 3.5 Transcribe writes it down in the story's language with the names the
+/// character knows. The words appear once the player stops (or pauses), never on their own sent
+/// (V2). Audio leaves the phone only for that request, and we never keep it (V5).
+class CloudSpeechEngine implements SpeechEngine {
+  CloudSpeechEngine({
+    required this.recorder,
+    required this.transcriber,
+    this.limits = const ListenLimits(),
+  });
+
+  final SpeechRecorder recorder;
+  final Transcriber transcriber;
+  final ListenLimits limits;
+
+  _Dictation? _current;
+
+  @override
+  bool get onPhone => false;
+
+  @override
+  Future<bool> isSupported() => recorder.isSupported();
+
+  @override
+  Future<bool> initialize() => recorder.hasPermission();
+
+  @override
+  Future<bool> hasPermission() => recorder.hasPermission(request: false);
+
+  @override
+  Future<void> listen({
+    required void Function(String words, bool isFinal) onResult,
+    required VoidCallback onStopped,
+    required void Function(SpeechFailure failure) onError,
+    void Function(double level)? onLevel,
+    VoidCallback? onTranscribing,
+    String? localeId,
+    SpeechContext context = const SpeechContext(),
+    bool onDevice = true,
+  }) async {
+    // One mic: a box that is still recording stops for this one, keeping nothing. One already
+    // being written down finishes on its own.
+    final previous = _current;
+    if (previous != null && !previous.finishing) await previous.cancel(notify: true);
+    final dictation = _Dictation(
+      engine: this,
+      onResult: onResult,
+      onStopped: onStopped,
+      onError: onError,
+      onLevel: onLevel,
+      onTranscribing: onTranscribing,
+      language: localeId,
+      context: context,
+    );
+    _current = dictation;
+    await dictation.start();
+  }
+
+  /// Ends the dictation that is recording, keeping what was said.
+  @override
+  Future<void> stop() async => _current?.finish();
+
+  @override
+  Future<void> cancel() async => _current?.cancel();
+}
+
+/// One dictation, from the tap to the words.
+class _Dictation {
+  _Dictation({
+    required this.engine,
+    required this.onResult,
+    required this.onStopped,
+    required this.onError,
+    required this.onLevel,
+    required this.onTranscribing,
+    required this.language,
+    required this.context,
+  });
+
+  // Speech is louder than this, and louder than the room by [_aboveRoomDb]. Below it is a pause.
+  static const _speechDb = -48.0;
+  static const _aboveRoomDb = 12.0;
+
+  // How fast the room's level may rise, in dB a second, in case the room gets louder.
+  static const _roomRiseDb = 6.0;
+
+  final CloudSpeechEngine engine;
+  final void Function(String words, bool isFinal) onResult;
+  final VoidCallback onStopped;
+  final void Function(SpeechFailure failure) onError;
+  final void Function(double level)? onLevel;
+  final VoidCallback? onTranscribing;
+  final String? language;
+  final SpeechContext context;
+
+  final _audio = BytesBuilder(copy: false);
+  final _closed = Completer<void>();
+  StreamSubscription<Uint8List>? _subscription;
+  PcmFormat _format = PcmFormat.speech;
+  int _bytes = 0;
+  int _quietBytes = 0;
+  double? _roomDb;
+  double _loudestDb = -100;
+  bool _heard = false;
+  bool _finishing = false;
+  bool _cancelled = false;
+
+  /// Recording has stopped, and what was said is being (or was) written down.
+  bool get finishing => _finishing;
+
+  Duration _length(int bytes) =>
+      Duration(microseconds: bytes * Duration.microsecondsPerSecond ~/ _format.bytesPerSecond);
+
+  Future<void> start() async {
+    final Stream<Uint8List> stream;
+    try {
+      stream = await engine.recorder.start(PcmFormat.speech, (actual) => _format = actual);
+    } on Object catch (e) {
+      debugPrint('Recording failed to start: ${e.runtimeType}');
+      if (!_cancelled) onError(const SpeechFailure('error_audio'));
+      return;
+    }
+    if (_cancelled || _finishing) {
+      // Stopped while the mic was starting: nothing was said.
+      await engine.recorder.cancel();
+      return;
+    }
+    _subscription = stream.listen(
+      _add,
+      onError: (Object e) {
+        debugPrint('Recording failed: ${e.runtimeType}');
+        _finishClosed();
+        finish();
+      },
+      onDone: () {
+        _finishClosed();
+        finish(); // the platform stopped it, such as a phone call
+      },
+    );
+  }
+
+  void _finishClosed() {
+    if (!_closed.isCompleted) _closed.complete();
+  }
+
+  void _add(Uint8List chunk) {
+    if (_cancelled) return;
+    _audio.add(chunk);
+    _bytes += chunk.length;
+    if (_finishing) return; // the end of the recording, after the tap
+    final db = pcmLevelDb(chunk);
+    onLevel?.call(((db + 60) / 50).clamp(0.0, 1.0));
+    // The room's level: the quietest so far, drifting up slowly in case it gets louder.
+    final rise = _roomRiseDb * chunk.length / _format.bytesPerSecond;
+    final room = _roomDb = _roomDb == null ? db : math.min(db, _roomDb! + rise);
+    final speechDb = math.max(_speechDb, room + _aboveRoomDb);
+    if (db > speechDb) {
+      _heard = true;
+      _quietBytes = 0;
+    } else {
+      _quietBytes += chunk.length;
+    }
+    // A word said at the tap, before the room was heard, counts once it is.
+    _loudestDb = math.max(_loudestDb, db);
+    if (_loudestDb > speechDb) _heard = true;
+    final limits = engine.limits;
+    if ((_heard && _length(_quietBytes) >= limits.pause) ||
+        (!_heard && _length(_bytes) >= limits.noSpeech) ||
+        _length(_bytes) >= limits.longest) {
+      finish();
+    }
+  }
+
+  /// Stops recording and writes down what was said: on the player's tap, after a pause, or at
+  /// the longest a dictation may be.
+  Future<void> finish() async {
+    if (_finishing || _cancelled) return;
+    _finishing = true;
+    try {
+      await engine.recorder.stop();
+      // The last moment of speech is still on its way: wait for the stream to close.
+      await _closed.future.timeout(const Duration(seconds: 1), onTimeout: () {});
+    } on Object catch (e) {
+      debugPrint('Recording failed to stop: ${e.runtimeType}');
+    }
+    await _subscription?.cancel();
+    if (_cancelled) return;
+    if (!_heard) {
+      onError(const SpeechFailure('error_speech_timeout')); // silence: nothing sent, no message
+      return;
+    }
+    onTranscribing?.call();
+    final wav = speechWav(toSpeechPcm(_audio.takeBytes(), _format));
+    final String words;
+    try {
+      words = await engine.transcriber.transcribe(wav, language: language, context: context);
+    } on ApiException catch (e) {
+      if (!_cancelled) onError(SpeechFailure(_failureCode(e.code)));
+      return;
+    } on Object catch (e) {
+      debugPrint('Transcription failed: ${e.runtimeType}');
+      if (!_cancelled) onError(const SpeechFailure(SpeechFailure.offline));
+      return;
+    }
+    if (_cancelled) return;
+    if (words.trim().isEmpty) {
+      onError(const SpeechFailure('error_no_match'));
+      return;
+    }
+    onResult(words.trim(), true);
+    onStopped();
+  }
+
+  /// Drops the dictation with no more callbacks, unless [notify]: then the box hears that it
+  /// stopped, as when another box takes the mic.
+  Future<void> cancel({bool notify = false}) async {
+    if (_cancelled) return;
+    _cancelled = true;
+    await _subscription?.cancel();
+    if (!_finishing) await engine.recorder.cancel();
+    if (notify) onStopped();
+  }
+
+  static String _failureCode(ApiErrorCode code) => switch (code) {
+    ApiErrorCode.outOfCredits => SpeechFailure.outOfCredits,
+    ApiErrorCode.rateLimited || ApiErrorCode.quotaExceeded => SpeechFailure.limited,
+    ApiErrorCode.unreadableAction => 'error_no_match',
+    ApiErrorCode.network ||
+    ApiErrorCode.timeout ||
+    ApiErrorCode.server ||
+    ApiErrorCode.internalError ||
+    ApiErrorCode.llmUnavailable => SpeechFailure.offline,
+    _ => 'error_${code.wire}',
+  };
+}

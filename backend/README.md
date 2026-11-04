@@ -172,6 +172,7 @@ answer with the docs page's Authorize button. Make a story by drafting and start
 | POST | `/v1/stories/{id}/scenes/{turn}/illustrate` | A picture of any scene, which the player pays for (M2) |
 | GET | `/v1/stories/{id}/images/{image_id}` | A picture with a fresh signed URL |
 | GET | `/v1/me/credits` | Balance and ledger, for the signed-in user (K1, K2) |
+| POST | `/v1/transcriptions` | Online dictation: a recording as the body (`Content-Type: audio/wav`), `?story_id=` or `?draft_id=` and `?language=` → `{text}` (V6) |
 
 To watch a turn stream: `curl -N -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"
 -d '{"kind": "opening", "expected_version": 1}' localhost:8080/v1/stories/$STORY/turns`.
@@ -243,6 +244,7 @@ moderation/       Reports and blocks on scenes, the review queue (F6, T16): see 
   service.py      Filing a report, blocked_turns() for the scene list, reports in the export
   access.py       Who reads story text in the admin, and the mixin that hides it from others
   evals/          T15's content-line cases as data, for the eval runner (WS17)
+speech/           Online dictation (V6): POST /v1/transcriptions, on Gemini 3.5 Transcribe
 billing/          Credits, quotas and rate limits (K1, K2, T9): see ARCHITECTURE.md
   meter.py        start, charge, charge_image, release: the guard and charge around model calls
   credits.py      Accounts, the starter credit, the append-only ledger, summary(user)

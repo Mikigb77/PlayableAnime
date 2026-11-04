@@ -45,6 +45,7 @@ backend/
   billing/      credit ledger, prices, quotas and rate limits (WS7)
   media/        pictures: storage, generation, the picture API (WS8)
   moderation/   reports and blocks (WS16)
+  speech/       online dictation, POST /v1/transcriptions (V6)
   engine/       pure rules: state, invariants, time, resolve, world, director (WS2, WS9, WS10, WS11)
   graph/        model layer, LangGraph turn graph, drafting chain, prompts (WS3, WS12)
   evals/        scripted scenario harness (WS17)

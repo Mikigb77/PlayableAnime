@@ -60,8 +60,8 @@ The first version's state, checked against the code in WS18.
       before its outcome (R1 to R7)
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
       workarounds reasoned through by cause and effect (A2, A9)
-- [x] Voice dictation of actions and premises, with a live transcript the player edits before
-      sending, on the phone's own recognizer (V1 to V7)
+- [x] Voice dictation of actions and premises, with a transcript the player edits before sending
+      (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)
 - [ ] Deploy the API to Cloud Run *(the pipeline is ready; the first deploy waits on Miki)*
 
@@ -69,7 +69,8 @@ The first version's state, checked against the code in WS18.
 
 - [x] Character portraits and scene pictures at key moments: one per character, cached and reused,
       drawn again when a face or place changes for good (M1 to M8)
-- [ ] Speech recognition with Gemini 3.5 Transcribe that knows the story's names (V6)
+- [x] Online dictation with Gemini 3.5 Transcribe that knows the story's names, the default, with
+      the phone's own recognizer as an option in Account (V6)
 - [ ] Edit, pin or forget memories; undo the last turn; branch a save
 - [ ] Optional RPG layer per story: HP, inventory, skills, dice checks
 - [ ] Relationship meters, endings and achievements

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/voice/dictation_button.dart';
 import 'package:playable_anime/features/voice/dictation_controller.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 import 'package:playable_anime/features/voice/input_mode.dart';
 import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers.dart';
 
@@ -69,7 +72,8 @@ void main() {
     test('writes words live into the box and stops on the final result', () async {
       await dictation.start();
       expect(dictation.phase, DictationPhase.listening);
-      expect(engine.listens.single, (localeId: 'en_US', onDevice: true));
+      expect(engine.listens.single.localeId, 'en_US');
+      expect(engine.listens.single.onDevice, isTrue);
       engine.hear('I draw');
       expect(text.text, 'I draw');
       engine.hear('I draw my blade', isFinal: true);
@@ -161,6 +165,107 @@ void main() {
     });
   });
 
+  group('online DictationController (V6)', () {
+    late TextEditingController text;
+    late InputModeTracker tracker;
+    late FakeSpeechEngine engine;
+    late DictationController dictation;
+
+    setUp(() {
+      text = TextEditingController();
+      tracker = InputModeTracker(text);
+      engine = FakeSpeechEngine(onPhone: false);
+      dictation = DictationController(
+        engine: engine,
+        tracker: tracker,
+        context: const SpeechContext(storyId: 'story_1'),
+      );
+    });
+    tearDown(() {
+      dictation.dispose();
+      tracker.dispose();
+      text.dispose();
+    });
+
+    test('listens in the story language, for the story', () async {
+      await dictation.start();
+      final listen = engine.listens.single;
+      expect(listen.localeId, storyLanguage);
+      expect(listen.context, const SpeechContext(storyId: 'story_1'));
+    });
+
+    test('the tap ends the recording and waits for the words', () async {
+      await dictation.start();
+      await dictation.toggle();
+      expect(engine.stops, 1);
+      expect(dictation.phase, DictationPhase.transcribing);
+      await dictation.toggle(); // the mic can't be tapped while the words are on their way
+      expect(engine.listens, hasLength(1));
+
+      engine
+        ..hear('I bow.', isFinal: true)
+        ..stopped();
+      expect(text.text, 'I bow.');
+      expect(dictation.phase, DictationPhase.idle);
+    });
+
+    test('a pause ends it too, and words typed meanwhile are kept', () async {
+      text.text = 'Quietly,';
+      await dictation.start();
+      engine.transcribing();
+      expect(dictation.phase, DictationPhase.transcribing);
+      text.text = 'Quietly, then';
+
+      engine.hear('I bow.', isFinal: true);
+
+      expect(text.text, 'Quietly, then I bow.');
+      expect(tracker.mode, InputMode.voiceEdited);
+    });
+
+    test('a failure is told once, with no on-device fallback', () async {
+      await dictation.start();
+      engine
+        ..transcribing()
+        ..fail(SpeechFailure.outOfCredits);
+      expect(dictation.phase, DictationPhase.idle);
+      expect(dictation.failure?.code, SpeechFailure.outOfCredits);
+      expect(engine.listens, hasLength(1));
+    });
+
+    test('a stop while the mic is starting writes nothing down', () async {
+      await dictation.start();
+      await dictation.stop();
+      await dictation.start();
+      await dictation.stop();
+      expect(dictation.phase, isNot(DictationPhase.listening));
+    });
+  });
+
+  group('DictationModeController', () {
+    test('is online until the player picks this device, which is remembered', () async {
+      SharedPreferences.setMockInitialValues({});
+      final first = ProviderContainer();
+      addTearDown(first.dispose);
+      expect(first.read(dictationModeProvider), DictationMode.online);
+      await first.read(dictationModeProvider.notifier).set(DictationMode.device);
+
+      final next = ProviderContainer();
+      addTearDown(next.dispose);
+      next.read(dictationModeProvider);
+      await pumpEventQueue();
+      expect(next.read(dictationModeProvider), DictationMode.device);
+    });
+
+    test('a stored value it does not know is online', () async {
+      SharedPreferences.setMockInitialValues({'dictation.mode': 'telepathy'});
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(dictationModeProvider);
+      await pumpEventQueue();
+      expect(container.read(dictationModeProvider), DictationMode.online);
+    });
+  });
+
   group('DictationButton', () {
     late FakeSpeechEngine engine;
     late TextEditingController text;
@@ -176,14 +281,14 @@ void main() {
       text.dispose();
     });
 
-    Widget app() => ProviderScope(
-      overrides: [speechEngineProvider.overrideWithValue(engine)],
+    Widget app({FakeSpeechEngine? using, String? storyId}) => ProviderScope(
+      overrides: [speechEngineProvider.overrideWithValue(using ?? engine)],
       child: wrap(
         Center(
           child: Row(
             children: [
               Expanded(child: TextField(controller: text)),
-              DictationButton(tracker: tracker),
+              DictationButton(tracker: tracker, storyId: storyId),
             ],
           ),
         ),
@@ -226,6 +331,82 @@ void main() {
       await tester.pumpAndSettle();
       final l10n = await english();
       expect(find.text(l10n.micDeniedTitle), findsOneWidget);
+    });
+
+    testWidgets('online, it spins while the words are written down', (tester) async {
+      final online = FakeSpeechEngine(onPhone: false);
+      await tester.pumpWidget(app(using: online, storyId: 'story_1'));
+      await tester.pump();
+      final l10n = await english();
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      expect(online.listens.single.context, const SpeechContext(storyId: 'story_1'));
+
+      await tester.tap(find.byTooltip(l10n.micStop));
+      await tester.pump();
+      final mic = tester.widget<MicButton>(find.byType(MicButton));
+      expect(mic.visual, MicVisual.transcribing);
+      expect(find.byTooltip(l10n.micTranscribing), findsOneWidget);
+
+      online
+        ..hear('Open the door', isFinal: true)
+        ..stopped();
+      await tester.pump();
+      expect(find.text('Open the door'), findsOneWidget);
+      expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.idle);
+    });
+
+    for (final (code, message) in [
+      (SpeechFailure.outOfCredits, (AppLocalizations l) => l.micOutOfCredits),
+      (SpeechFailure.limited, (AppLocalizations l) => l.micLimited),
+      (SpeechFailure.offline, (AppLocalizations l) => l.micOffline),
+    ]) {
+      testWidgets('online, $code says what to do', (tester) async {
+        final online = FakeSpeechEngine(onPhone: false);
+        await tester.pumpWidget(app(using: online));
+        await tester.pump();
+        await tester.tap(find.byType(MicButton));
+        await tester.pump();
+        online
+          ..transcribing()
+          ..fail(code);
+        await tester.pump();
+        expect(find.text(message(await english())), findsOneWidget);
+      });
+    }
+
+    testWidgets('switching dictation in Account switches the mic at once', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final online = FakeSpeechEngine(onPhone: false);
+      final phone = FakeSpeechEngine();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            speechEngineProvider.overrideWith(
+              (ref) => switch (ref.watch(dictationModeProvider)) {
+                DictationMode.online => online,
+                DictationMode.device => phone,
+              },
+            ),
+          ],
+          child: wrap(DictationButton(tracker: tracker)),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      expect((online.listens.length, phone.listens.length), (1, 0));
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(DictationButton)));
+      await container.read(dictationModeProvider.notifier).set(DictationMode.device);
+      await tester.pump();
+      await tester.pump();
+      expect(online.cancels, 1, reason: 'the old recognizer stops listening');
+      expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.idle);
+
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      expect((online.listens.length, phone.listens.length), (1, 1));
     });
 
     testWidgets('a failure is a short message, and typing still works', (tester) async {

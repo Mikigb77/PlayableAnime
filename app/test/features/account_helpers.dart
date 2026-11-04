@@ -23,7 +23,7 @@ import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
 import 'package:playable_anime/features/account/export_saver.dart';
 import 'package:playable_anime/features/auth/google_auth.dart';
-import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 
 import '../helpers.dart';
 

@@ -18,7 +18,7 @@
 
 | Path | What |
 | --- | --- |
-| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage, speech_to_text. See [app/README.md](../app/README.md) and [app/DESIGN.md](../app/DESIGN.md) |
+| `app/` | Flutter client: Riverpod, go_router, http, flutter_secure_storage, record, speech_to_text. See [app/README.md](../app/README.md) and [app/DESIGN.md](../app/DESIGN.md) |
 | `backend/` | Python 3.13, Django and Django Ninja over ASGI (uvicorn), managed with uv, deployed to Cloud Run. Layout in [backend/README.md](../backend/README.md#layout) and [PLAN.md](PLAN.md#target-layout) |
 | `neon.ts`, `package.json` | Neon config as code (`@neon/config`). Node is used only for the Neon CLI and this config. |
 | `docs/` | Product and architecture notes |
@@ -1105,30 +1105,63 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
 
 Requirements: V1 to V7 in [REQUIREMENTS.md](REQUIREMENTS.md#voice-input).
 
-**P0: the phone's own recognizer.** The app uses a Flutter plugin over the platform recognizers,
-such as [`speech_to_text`](https://pub.dev/packages/speech_to_text) (7.5.0, September 2026, for
-Android, iOS, macOS and web). Audio never reaches our backend: the app puts the transcript in the
-action box, and the player sends it as text.
+The app reaches two recognizers through one interface, `SpeechEngine` in
+`app/lib/features/voice/`: online dictation (`CloudSpeechEngine`, the default) and the device's own
+(`PlatformSpeechEngine`). The player picks one in Account; the choice is kept on the device
+(`dictationModeProvider`), and every mic switches at once.
 
-- **iOS:** add `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` to
+**Online: Gemini 3.5 Transcribe on Vertex AI (the default).** Miki chose it on 2026-11-04, because
+the phone's recognizer heard English badly. The app records 16 kHz mono 16-bit PCM with the
+[`record`](https://pub.dev/packages/record) plugin (7.1, on Android, iOS, macOS and the web), with
+the platform's gain control and noise suppression on. A browser that can't record at 16 kHz sends
+its own rate, and `pcm.dart` averages it down. The clip ends on the player's tap, after 2.5 seconds
+of quiet once they have spoken (a level 12 dB above the room's and above -48 dBFS counts as
+speech), after 8 seconds with nothing said (nothing is sent), or at a minute. The app then posts it
+as a WAV to [`POST /v1/transcriptions`](API.md#dictation-v1-v2-v5-v6), with the story or draft and
+the story's language, and the mic spins until the words land in the box (V2).
+
+The backend's `speech/api.py` reads the names the player character knows in that story or draft
+(`engine.visibility.speech_vocabulary`: C6's known names, most relevant first, at most 100, never a
+hidden one), then calls the model layer's `ModelClient.transcribe` on the `speech` node. It sends
+the clip inline to `generate_content` with an `AudioTranscriptionConfig`: the language, the names
+as custom vocabulary, and smart mode, which removes filler, repetitions and false starts, applies
+inline self-corrections ("Jo, no wait, Zhao") and tidies grammar lightly. The player sees the
+result before sending it (V2), and the interpret step reads what is left as it reads typed text
+(V3). Safety settings are left off: these are the player's own words, and the turn's interpret
+step filters them like typed text (F2). The model has a 20-second deadline and one retry (T7), is
+`SPEECH_MODEL` in config (B6), and runs only on the `global` endpoint, on our account with
+Application Default Credentials (B11). The Gemini API offers it only through its Interactions API,
+which the model layer doesn't speak, so a BYOK player's dictation runs on our key too. The audio
+stays in memory for the request: never written to disk, never stored in a Files API, never logged
+(V5).
+
+Billing goes through the meter like any model call (K2, T9): `meter.SPEECH`, holding 1 cent, with
+20 dictations a minute and 600 a day on our key. The file version of the model costs $2.00 per
+million audio tokens in (32 a second) and $12 per million text tokens out (Vertex AI pricing page,
+2026-11-03), about $0.005 a minute of speech; a short action is about a tenth of a cent before the
+margin. Each dictation is a `speech` ledger entry, and its T5 line (logger `speech`) has sizes,
+counts, tokens and cost, never the words (T6). The deploy's `check_models` calls the speech model
+with a second of silence, so a model Vertex AI doesn't serve fails the deploy, not a player.
+
+The streaming version (Gemini 3.5 Transcribe Live, about $0.009 a minute) would show words as the
+player speaks, over a WebSocket relayed by our API. It is left for later: Django would need
+Channels or a small ASGI WebSocket route, and a single action rarely runs long enough to need it.
+
+**This device: the phone's own recognizer.** The app uses
+[`speech_to_text`](https://pub.dev/packages/speech_to_text) (7.5.0, September 2026, for Android,
+iOS, macOS and web) over the platform recognizers. Audio never reaches our backend: the app puts
+the transcript in the box as the player speaks. It listens for the story's language (`en-US`, V4),
+not the phone's, so English spoken to a phone set to Spanish is heard as English.
+
+- **iOS:** `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are in
   `Info.plist`. Apple stops a recognition task after about a minute.
-- **Android:** add the `RECORD_AUDIO` permission and, when targeting SDK 30 or later, a `<queries>`
-  entry for the `android.speech.RecognitionService` intent. Recognition stops after a pause of a few
-  seconds, and that can't be changed.
-- Use on-device recognition where the phone has it for the story's language, so audio stays on the
-  phone (V5).
+- **Android:** the `RECORD_AUDIO` permission and, when targeting SDK 30 or later, a `<queries>`
+  entry for the `android.speech.RecognitionService` intent. Recognition stops after a pause of a
+  few seconds, and that can't be changed.
+- On-device recognition is used where the phone has it for the story's language, so audio stays on
+  the phone (V5), with one fallback to the platform's service when it doesn't.
 - The plugin is built for short phrases, not long dictation. That fits a single action, and V2 lets
   the player add to the box with another tap.
-
-**P1: Gemini 3.5 Transcribe on Vertex AI.** The streaming version costs about $0.009 per minute of
-speech ($3.50 per million audio tokens in, $21 per million text tokens out), and the file version
-about $0.005 per minute (Vertex AI pricing page, 2026-11-03). It accepts a custom vocabulary, so we
-pass the names the character knows from the scene and the story (C6), most relevant first. The app
-streams microphone audio over a WebSocket to our API, which relays it to Vertex AI with Application
-Default Credentials (B11) and streams the words back. Audio is never written to disk or logged.
-Cloud Run supports WebSockets within its request timeout (T1). Django needs Channels or a small ASGI
-WebSocket route for this, to be chosen when the work starts. The Gemini API's free tier covers this
-model, which suits BYOK.
 
 **Turn API.** The turn request gains an `input_mode` field, one of `typed`, `voice`, `voice_edited`
 or `choice` (V7).

@@ -111,6 +111,9 @@ enum LedgerKind {
   turn,
   draft,
   image,
+
+  /// A dictation written down online (V6).
+  speech,
   topup,
   adjustment;
 

@@ -32,6 +32,7 @@ class Node(StrEnum):
     SUMMARIZER = "summarizer"
     DRAFTER = "drafter"
     PICTURE = "picture"
+    SPEECH = "speech"  # turns a player's dictation into text (V6)
     JUDGE = "judge"  # the evals' model judge (T15, T17, T18); never on a player's turn
 
 
@@ -53,6 +54,38 @@ class ImagePart:
 
     def __repr__(self) -> str:
         return f"ImagePart(mime_type={self.mime_type!r}, bytes={len(self.data)})"
+
+
+@dataclass(frozen=True, repr=False)
+class AudioPart:
+    """A recording sent to the speech model (V6). Held in memory only, never stored (V5)."""
+
+    data: bytes
+    mime_type: str = "audio/wav"
+
+    def __repr__(self) -> str:
+        return f"AudioPart(mime_type={self.mime_type!r}, bytes={len(self.data)})"
+
+
+@dataclass(frozen=True, repr=False)
+class Transcription:
+    """Asks the speech model for the words in `AudioPart` instead of an answer (V6).
+
+    `language_codes` are BCP-47 hints, such as `en-US` (V4); none means the model detects the
+    language. `vocabulary` biases recognition toward the story's names, most relevant first
+    (C6). `smart` drops filler and false starts and applies inline self-corrections, as a
+    dictation box should (V3). Its repr shows only sizes, since names are story text (T6).
+    """
+
+    language_codes: tuple[str, ...] = ()
+    vocabulary: tuple[str, ...] = ()
+    smart: bool = True
+
+    def __repr__(self) -> str:
+        return (
+            f"Transcription(languages={list(self.language_codes)!r}, "
+            f"vocabulary={len(self.vocabulary)}, smart={self.smart})"
+        )
 
 
 @dataclass(frozen=True, repr=False)
@@ -127,6 +160,9 @@ class Request:
     safety: Mapping[str, str]
     json_schema: Mapping[str, Any] | None = None
     image: ImageSpec | None = None
+    # A speech request (V6): the recording, and how to write it down. Its prompt is empty.
+    audio: AudioPart | None = None
+    transcription: Transcription | None = None
 
     def __repr__(self) -> str:
         return f"Request(node={self.node.value!r}, model={self.model!r}, prompt={self.prompt!r})"

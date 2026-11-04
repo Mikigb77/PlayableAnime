@@ -18,6 +18,7 @@ import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/account/policy_view.dart';
 import 'package:playable_anime/features/account/privacy_screen.dart';
 import 'package:playable_anime/features/auth/welcome_screen.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers.dart';
@@ -201,6 +202,21 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('dictation is online by default and can stay on this device', (tester) async {
+      await openAccount(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
+      expect(container.read(dictationModeProvider), DictationMode.online);
+      await tester.ensureVisible(find.text(l10n.dictationOnlineBody));
+      expect(find.text(l10n.dictationOnlineBody), findsOneWidget);
+
+      await tapVisible(tester, find.text(l10n.dictationDevice));
+
+      expect(container.read(dictationModeProvider), DictationMode.device);
+      expect(find.text(l10n.dictationDeviceBody), findsOneWidget);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('dictation.mode'), 'device');
+    });
+
     testWidgets('exports everything as a JSON file', (tester) async {
       final saver = RecordingExportSaver();
       await openAccount(tester, saver: saver);
@@ -296,17 +312,26 @@ void main() {
         storyId: 'story_ninth_peak',
         turn: 4,
       );
+      backend.data.account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'speech',
+        cents: 0.2,
+        now: DateTime.now(),
+        storyId: 'story_ninth_peak',
+      );
       await openAccount(tester);
       await tapVisible(tester, find.text(l10n.accountCreditHistory));
       expect(find.byType(CreditsScreen), findsOneWidget);
       expect(find.byKey(const Key('credits.balance')), findsOneWidget);
-      expect(find.text('44.4¢'), findsOneWidget);
+      expect(find.text('44.2¢'), findsOneWidget);
 
       final tiles = find.byType(LedgerTile);
-      expect(tiles, findsNWidgets(3));
+      expect(tiles, findsNWidgets(4));
       final kinds = [for (final tile in tester.widgetList<LedgerTile>(tiles)) tile.entry.kind.name];
-      expect(kinds, ['image', 'turn', 'starter']);
+      expect(kinds, ['speech', 'image', 'turn', 'starter']);
       expect(find.text('−3.4¢'), findsOneWidget);
+      expect(find.text('−0.2¢'), findsOneWidget);
+      expect(find.textContaining(l10n.creditsKindSpeech), findsOneWidget);
       expect(find.text('+50¢'), findsOneWidget);
       expect(find.textContaining(l10n.creditsStoryTurn('The Ninth Peak', 4)), findsNWidgets(2));
     });

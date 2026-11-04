@@ -10,6 +10,7 @@ import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../../router.dart';
 import '../auth/auth_repository.dart';
+import '../voice/dictation_mode.dart';
 import 'account_models.dart';
 import 'account_repository.dart';
 import 'credits_screen.dart';
@@ -18,7 +19,7 @@ import 'export_saver.dart';
 import 'own_key_editor.dart';
 
 /// Account: who you are and your rating limit (F8), credits (K1, K2), your own key (S9), story
-/// content (F7), appearance, privacy, export and delete (T12), and sign out.
+/// content (F7), appearance, dictation (V6), privacy, export and delete (T12), and sign out.
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -180,6 +181,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             ref.read(themeModeProvider.notifier).set(s.single),
                       ),
                     ),
+                    SectionLabel(l10n.accountDictation),
+                    const _DictationSection(),
                     SectionLabel(l10n.accountPrivacy),
                     ListTile(
                       leading: const Icon(Icons.policy_outlined),
@@ -496,6 +499,52 @@ class _NameEditorState extends ConsumerState<_NameEditor> {
           child: Text(l10n.cancel),
         ),
       ],
+    );
+  }
+}
+
+/// Online dictation or the device's own recognizer (V6), kept on this device.
+class _DictationSection extends ConsumerWidget {
+  const _DictationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final mode = ref.watch(dictationModeProvider);
+    final secondary = Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.accountDictationBody, style: secondary),
+          const SizedBox(height: Space.lg),
+          SegmentedButton<DictationMode>(
+            segments: [
+              ButtonSegment(
+                value: DictationMode.online,
+                label: Text(l10n.dictationOnline),
+                icon: const Icon(Icons.cloud_outlined),
+              ),
+              ButtonSegment(
+                value: DictationMode.device,
+                label: Text(l10n.dictationDevice),
+                icon: const Icon(Icons.smartphone_outlined),
+              ),
+            ],
+            selected: {mode},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => ref.read(dictationModeProvider.notifier).set(s.single),
+          ),
+          const SizedBox(height: Space.sm),
+          Text(switch (mode) {
+            DictationMode.online => l10n.dictationOnlineBody,
+            DictationMode.device => l10n.dictationDeviceBody,
+          }, style: secondary),
+        ],
+      ),
     );
   }
 }
