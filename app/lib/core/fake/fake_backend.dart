@@ -12,6 +12,7 @@ import 'fake_drafts.dart';
 import 'fake_pictures.dart';
 import 'fake_premises.dart';
 import 'fake_reports.dart';
+import 'fake_speech.dart';
 import 'fake_stories.dart';
 import 'fake_turns.dart';
 
@@ -150,6 +151,7 @@ class FakeBackend extends http.BaseClient {
     registerTurnRoutes(backend);
     registerPictureRoutes(backend);
     registerReportRoutes(backend);
+    registerSpeechRoutes(backend);
     return backend;
   }
 
@@ -171,15 +173,27 @@ class FakeBackend extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final body = request is http.Request && request.body.isNotEmpty
-        ? jsonDecode(request.body)
-        : null;
+    // JSON bodies arrive decoded; anything else, such as a dictated recording, as bytes.
+    final body = switch (request) {
+      http.Request(bodyBytes: final bytes) when bytes.isEmpty => null,
+      http.Request(headers: final headers) when _isJson(headers) => jsonDecode(request.body),
+      http.Request(:final bodyBytes) => bodyBytes,
+      _ => null,
+    };
     final path = request.url.path;
     final response = await _dispatch(request, path, body);
     if (pace.latency > Duration.zero && response.events == null) {
       await Future<void>.delayed(pace.latency);
     }
     return _encode(request, response);
+  }
+
+  static bool _isJson(Map<String, String> headers) {
+    final type = headers.entries
+        .where((e) => e.key.toLowerCase() == 'content-type')
+        .map((e) => e.value)
+        .firstOrNull;
+    return type == null || type.startsWith('application/json');
   }
 
   Future<FakeResponse> _dispatch(http.BaseRequest request, String path, Object? body) async {

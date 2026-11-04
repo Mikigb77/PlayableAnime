@@ -58,6 +58,10 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
         "gemini-3.5-flash", CallOptions(max_output_tokens=16384, timeout_s=120)
     ),
     Node.PICTURE: NodeSettings("gemini-3.1-flash-lite-image", CallOptions(timeout_s=60)),
+    # Dictation (V6): Gemini 3.5 Transcribe, the file version, which Vertex AI serves only on the
+    # `global` endpoint and only by this preview name (checked 2026-11-04). The player waits on it
+    # with the mic button spinning, so its deadline is short: a minute of speech takes seconds.
+    Node.SPEECH: NodeSettings("gemini-3.5-transcribe-preview", CallOptions(timeout_s=20)),
     # The evals' judge (WS17) runs nightly, never for a player, so it uses the strongest model we
     # price and thinks hard: a judge that misreads a scene makes the numbers worthless.
     Node.JUDGE: NodeSettings(

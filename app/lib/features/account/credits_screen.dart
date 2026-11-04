@@ -165,6 +165,7 @@ class LedgerTile extends StatelessWidget {
     LedgerKind.turn => Icons.auto_stories_outlined,
     LedgerKind.draft => Icons.edit_note_rounded,
     LedgerKind.image => Icons.image_outlined,
+    LedgerKind.speech => Icons.mic_none_rounded,
     LedgerKind.topup => Icons.add_card_outlined,
     LedgerKind.adjustment => Icons.tune_rounded,
   };
@@ -180,6 +181,7 @@ class LedgerTile extends StatelessWidget {
       LedgerKind.turn => l10n.creditsKindTurn,
       LedgerKind.draft => l10n.creditsKindDraft,
       LedgerKind.image => l10n.creditsKindImage,
+      LedgerKind.speech => l10n.creditsKindSpeech,
       LedgerKind.topup => l10n.creditsKindTopup,
       LedgerKind.adjustment => l10n.creditsKindAdjustment,
     };

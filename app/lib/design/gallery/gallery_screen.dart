@@ -175,6 +175,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                           MicButton(visual: MicVisual.starting, onPressed: _noop),
                           MicButton(visual: MicVisual.listening, onPressed: _noop, level: 0.7),
                           MicButton(visual: MicVisual.denied, onPressed: _noop),
+                          MicButton(visual: MicVisual.transcribing, onPressed: _noop),
                         ],
                       ),
                       const SizedBox(height: Space.lg),

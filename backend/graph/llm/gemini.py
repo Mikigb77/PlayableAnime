@@ -27,6 +27,7 @@ from typing import Any
 import httpx
 from google.auth import exceptions as auth_errors
 from google.genai import errors as genai_errors
+from google.genai import types as genai_types
 from google.genai.types import HarmBlockThreshold, HarmCategory
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI, Modality
@@ -138,6 +139,11 @@ class GeminiBackend:
     async def stream(self, request: Request) -> AsyncIterator[Chunk]:
         """Streams one attempt. A response schema Gemini refuses is sent again in the prompt,
         once, before anything is streamed; the next calls with it go straight to the prompt."""
+        if request.transcription is not None:
+            async with aclosing(self._transcribe(request)) as chunks:
+                async for chunk in chunks:
+                    yield chunk
+            return
         key = _schema_key(request)
         in_prompt = key is not None and key in _REFUSED_SCHEMAS
         streamed = False
@@ -186,6 +192,26 @@ class GeminiBackend:
             raise ProviderError(
                 failure.kind, failure.detail.replace(self._secret, "***"), status=failure.status
             )
+
+    async def _transcribe(self, request: Request) -> AsyncIterator[Chunk]:
+        """One speech-to-text attempt (V6), straight through google-genai: LangChain has no way
+        to send `audio_transcription_config`. It shares the models' client and connections. The
+        recording goes inline, never through the Files API, which would keep it for two days.
+
+        Only on our Vertex account: the Gemini API serves the speech model only through its
+        Interactions API, so no player key ever reaches this, and no error text can echo one."""
+        if self._secret is not None:
+            raise ProviderError("invalid", "Dictation runs only on our Vertex AI account.")
+        try:
+            aio = self._model(request.model).async_client
+            response = await aio.models.generate_content(
+                model=request.model,
+                contents=to_audio_contents(request),
+                config=transcription_config(request),
+            )
+        except Exception as error:
+            raise classify(error, byok=False) from error
+        yield transcription_chunk(response)
 
     async def aclose(self) -> None:
         """Closes the client this loop uses. Clients of other loops are only dropped."""
@@ -237,6 +263,75 @@ def to_messages(prompt: Prompt) -> list[BaseMessage]:
         else:
             messages.append(HumanMessage(message.text))
     return messages
+
+
+def to_audio_contents(request: Request) -> list[genai_types.Part]:
+    if request.audio is None:
+        raise ValueError("A speech request needs its recording")
+    return [genai_types.Part.from_bytes(data=request.audio.data, mime_type=request.audio.mime_type)]
+
+
+def transcription_config(request: Request) -> genai_types.GenerateContentConfig:
+    """Gemini 3.5 Transcribe's settings (V6): the language hints (V4), the names as custom
+    vocabulary (C6), and smart mode, which drops filler and applies self-corrections (V3).
+    No safety settings: see `ModelClient.transcribe`."""
+    spec = request.transcription
+    if spec is None:
+        raise ValueError("Not a speech request")
+    audio = genai_types.AudioTranscriptionConfig(
+        language_codes=list(spec.language_codes) or None,
+        custom_vocabulary=list(spec.vocabulary) or None,
+        mode=genai_types.AudioTranscriptionConfigMode.SMART if spec.smart else None,
+    )
+    config = genai_types.GenerateContentConfig(audio_transcription_config=audio)
+    if request.options.max_output_tokens is not None:
+        config.max_output_tokens = request.options.max_output_tokens
+    return config
+
+
+def transcription_chunk(response: Any) -> Chunk:
+    """The transcript, usage and finish of a speech response. A part carries its words as text,
+    or in `audio_transcription` (Vertex AI's samples read both); thoughts are skipped."""
+    candidates = getattr(response, "candidates", None) or []
+    candidate = candidates[0] if candidates else None
+    pieces = []
+    content = getattr(candidate, "content", None)
+    for part in getattr(content, "parts", None) or []:
+        if getattr(part, "thought", False):
+            continue
+        words = getattr(part, "text", None)
+        if not words:
+            words = getattr(getattr(part, "audio_transcription", None), "text", None)
+        if words and words.strip():
+            pieces.append(words.strip())
+    usage = getattr(response, "usage_metadata", None)
+    thinking = _count(usage, "thoughts_token_count")
+    feedback = getattr(response, "prompt_feedback", None)
+    metadata = {
+        "prompt_feedback": {
+            "block_reason": getattr(feedback, "block_reason", None),
+            "safety_ratings": _dumped(getattr(feedback, "safety_ratings", None)),
+        },
+        "finish_reason": getattr(candidate, "finish_reason", None),
+        "safety_ratings": _dumped(getattr(candidate, "safety_ratings", None)),
+    }
+    return Chunk(
+        text=" ".join(pieces),
+        usage=Usage(
+            _count(usage, "prompt_token_count"),
+            _count(usage, "candidates_token_count") + thinking,
+            thinking,
+        ),
+        finish=_finish(metadata) or Finish("stop"),
+    )
+
+
+def _count(usage: Any, name: str) -> int:
+    return int(getattr(usage, name, None) or 0)
+
+
+def _dumped(ratings: Any) -> list[Any]:
+    return [r.model_dump() if hasattr(r, "model_dump") else r for r in ratings or []]
 
 
 def gemini_schema(schema: Any) -> Any:

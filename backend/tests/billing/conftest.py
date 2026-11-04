@@ -13,10 +13,10 @@ BILLING = {
     "STARTER_POLICY": "verified",
     "HOUSE_PICTURES_CENTS": Decimal(30),
     "MARGIN": Decimal("0.5"),
-    "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6},
+    "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6, "speech": 1},
     "HOLD_TTL_S": 600,
-    "PER_MINUTE": {"turn": 1000, "draft": 1000, "image": 1000},
-    "PER_DAY": {"turn": 1000, "draft": 1000, "image": 1000},
+    "PER_MINUTE": {"turn": 1000, "draft": 1000, "image": 1000, "speech": 1000},
+    "PER_DAY": {"turn": 1000, "draft": 1000, "image": 1000, "speech": 1000},
 }
 
 

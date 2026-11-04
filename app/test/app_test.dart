@@ -15,7 +15,7 @@ import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/design/gallery/gallery_screen.dart';
 import 'package:playable_anime/features/auth/welcome_screen.dart';
 import 'package:playable_anime/features/story/story_screen.dart';
-import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers.dart';

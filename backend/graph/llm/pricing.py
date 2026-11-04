@@ -41,6 +41,9 @@ PRICES: dict[str, Price] = {
     "gemini-3.1-pro-preview": _price("2.00", "12.00"),  # prompts up to 200K tokens
     # A 1K picture is 1,120 output tokens at $30 per million: $0.034 (M8). Bigger sizes bill more.
     "gemini-3.1-flash-lite-image": _price("0.25", "1.50", "30.00"),
+    # Speech to text (V6), the file version: audio in at $2.00 and text out at $12 per million
+    # tokens, about $0.005 a minute of speech. Its preview name, `-preview`, matches this entry.
+    "gemini-3.5-transcribe": _price("2.00", "12.00"),
 }
 
 # An unknown model is priced like the dearest models we know of, so estimates never undercount:

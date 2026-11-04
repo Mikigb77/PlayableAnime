@@ -17,6 +17,9 @@ enum MicVisual {
   /// The mic is on. It is on only while the button shows this (V5).
   listening,
 
+  /// The mic is off and what was said is being written down online (V6).
+  transcribing,
+
   /// Permission was refused: tapping explains how to turn it on.
   denied,
 }
@@ -39,10 +42,11 @@ class MicButton extends StatelessWidget {
       MicVisual.idle => l10n.micStart,
       MicVisual.starting => l10n.micStarting,
       MicVisual.listening => l10n.micStop,
+      MicVisual.transcribing => l10n.micTranscribing,
       MicVisual.denied => l10n.micDeniedTitle,
     };
     final icon = switch (visual) {
-      MicVisual.idle || MicVisual.starting => Icons.mic_none_rounded,
+      MicVisual.idle || MicVisual.starting || MicVisual.transcribing => Icons.mic_none_rounded,
       MicVisual.listening => Icons.mic_rounded,
       MicVisual.denied => Icons.mic_off_outlined,
     };
@@ -86,7 +90,7 @@ class MicButton extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: onPressed,
-                    child: visual == MicVisual.starting
+                    child: visual == MicVisual.starting || visual == MicVisual.transcribing
                         ? Padding(
                             padding: const EdgeInsets.all(11),
                             child: CircularProgressIndicator(strokeWidth: 2, color: colors.accent),

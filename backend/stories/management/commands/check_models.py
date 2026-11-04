@@ -6,12 +6,13 @@ permission or no quota, then fails the deploy run with Vertex AI's own reason, i
 finding out from "The storyteller is unavailable".
 
     uv run python manage.py check_models               # each model in use, pictures included
-    uv run python manage.py check_models --no-picture  # the text models only
+    uv run python manage.py check_models --no-picture  # every model but the picture model
 
 Only the models the app uses are called, each once, whichever nodes share it: today three text
-models and the picture model, for about 4 cents in all, most of it the picture. The evals' judge
-is left out, since it never serves a player. With the offline model (`LLM_PROVIDER=fake`) it
-checks nothing and says so.
+models, the picture model and the speech model, for about 4 cents in all, most of it the picture.
+The speech model is sent a second of silence with the settings dictation uses (V6), so a name or
+setting Vertex AI refuses shows here. The evals' judge is left out, since it never serves a
+player. With the offline model (`LLM_PROVIDER=fake`) it checks nothing and says so.
 
 Then each response format a node asks for (its JSON schema) is sent once as that node sends it,
 with room for only a few words: Gemini refuses a schema outside what it takes with a bare 400
@@ -23,8 +24,10 @@ check still passes; only a format that fails both ways fails it.
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import time
+import wave
 from contextlib import aclosing
 from dataclasses import dataclass, replace
 from typing import Any
@@ -34,6 +37,7 @@ from django.core.management.base import BaseCommand, CommandError
 from pydantic import BaseModel
 
 from graph.llm import (
+    AudioPart,
     CallOptions,
     ImageSpec,
     LLMError,
@@ -41,6 +45,7 @@ from graph.llm import (
     ModelConfig,
     Node,
     Prompt,
+    Transcription,
     TurnTelemetry,
     build_client,
     get_model_config,
@@ -61,6 +66,8 @@ SYSTEM = "You answer a health check. Reply with exactly one word."
 PROMPT = "Reply with the word ok."
 PICTURE_SYSTEM = "You draw one simple picture."
 PICTURE_PROMPT = "A single red apple on a plain wooden table, in soft daylight."
+# Dictation's settings (V6): the story's language, a name to listen for, and smart mode.
+SPEECH_SPEC = Transcription(language_codes=("en-US",), vocabulary=("Lucid Saga",))
 # Room for the thinking a node keeps on, so a one-word answer is never cut off.
 TEXT_OPTIONS = CallOptions(max_output_tokens=1024)
 # Vertex AI's reasons can be long; the start says what went wrong.
@@ -108,9 +115,22 @@ class Check:
     in_prompt: bool = False
 
 
+def silence(seconds: float = 1.0, rate: int = 16_000) -> bytes:
+    """A WAV of silence, as the app records it: 16 kHz, 16-bit, mono."""
+    out = io.BytesIO()
+    with wave.open(out, "wb") as clip:
+        clip.setnchannels(1)
+        clip.setsampwidth(2)
+        clip.setframerate(rate)
+        clip.writeframes(b"\x00\x00" * round(seconds * rate))
+    return out.getvalue()
+
+
 def models_in_use(config: ModelConfig, *, picture: bool) -> list[tuple[str, tuple[Node, ...]]]:
     """Each model the app uses, once, with the nodes that use it, in the nodes' order."""
-    nodes = [*TEXT_NODES, Node.PICTURE] if picture else list(TEXT_NODES)
+    nodes = [*TEXT_NODES, Node.SPEECH]
+    if picture:
+        nodes.append(Node.PICTURE)
     models: dict[str, list[Node]] = {}
     for node in nodes:
         models.setdefault(config.node(node).model, []).append(node)
@@ -131,8 +151,9 @@ class _LastFailure(logging.Handler):
 
 
 async def run_checks(config: ModelConfig, *, picture: bool) -> list[Check]:
-    """Calls each model in use once. A picture model is asked for a picture, the others for a
-    word, through the first node that uses it, with that node's settings. Then sends each
+    """Calls each model in use once. A picture model is asked for a picture, the speech model to
+    write down a recording, the others for a word, through the first node that uses it, with that
+    node's settings. Then sends each
     response format once, as its node does."""
     client = build_client(rating="teen", recorder=TurnTelemetry(), config=config)
     failures = _LastFailure()
@@ -157,7 +178,9 @@ async def _check(
     failures.fields = {}
     started = time.monotonic()
     try:
-        if nodes[0] is Node.PICTURE:
+        if nodes[0] is Node.SPEECH:
+            await client.transcribe(Node.SPEECH, AudioPart(silence(), "audio/wav"), SPEECH_SPEC)
+        elif nodes[0] is Node.PICTURE:
             await client.image(
                 Node.PICTURE,
                 Prompt.build(PICTURE_SYSTEM, PICTURE_PROMPT),
@@ -243,7 +266,9 @@ class Command(BaseCommand):
     help = "Calls each model the app uses once, and says which ones answer."
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("--no-picture", action="store_true", help="Check the text models only.")
+        parser.add_argument(
+            "--no-picture", action="store_true", help="Leave out the picture model."
+        )
 
     def handle(self, *args, no_picture: bool, **options) -> None:
         config = get_model_config()

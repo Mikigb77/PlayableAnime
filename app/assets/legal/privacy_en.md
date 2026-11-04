@@ -11,7 +11,7 @@ write to [privacy contact email]. We answer within one month.
 | **Story settings and content preferences:** gore level, romance and dark themes on or off | To shape the stories you get | Contract |
 | **Your stories:** the premise, the actions you type or dictate, the choices you pick, and what the narrator writes back | This is the game: each turn sends the story so far to the AI model to write what happens next | Contract |
 | **Pictures** made for your stories | Shown in your stories, made at key moments | Contract |
-| **Credits:** your balance and what each turn or picture cost | To charge fairly and show you your spending | Contract |
+| **Credits:** your balance and what each turn, picture or dictation cost | To charge fairly and show you your spending | Contract |
 | **Signed-in devices:** when each one signed in and was last used | To keep you signed in and let you sign a device out | Contract |
 | **Technical logs:** request ids, your account id, the story id, errors, timings, costs per turn, and when a scene was blocked by our safety rules and under which category (never the story's text) | To keep the service running, fix bugs and control costs | Legitimate interest |
 | **Reports:** the scene you reported, the reason you picked, any note you wrote, whether you blocked the scene, and what our staff decided | To review scenes that may break our content rules, fix the narrator, and keep a scene you blocked hidden | Legitimate interest |
@@ -21,23 +21,30 @@ We never sell your data, show you ads, or use your stories to train AI models.
 
 ## Speech
 
-When you tap the microphone, your phone's own speech recognizer turns your words into text in the
-action box (V5). The audio never reaches our servers, and we never store or log audio.
+When you tap the microphone, what you say becomes text in the box, for you to check before you
+send it (V5). In Account, under Dictation, you choose what writes it down:
 
-- **Android** uses Google's speech recognition service on your phone; recent phones recognize
-  speech on the device itself.
-- **iOS** uses Apple's speech recognition. Where your iPhone supports on-device recognition for
-  your language, the audio stays on the phone; otherwise Apple processes it on its servers.
+- **Online (the default).** The app records while the mic is on and sends the recording to our
+  server, which has Gemini on Google Cloud's Vertex AI write it down, listening for the names your
+  character knows in that story. The recording is used for that request only: we never store it or
+  log it, and Google doesn't use it to train its models. We keep only its length and its cost, as
+  an entry in your credit history.
+- **This device.** Your phone's own speech recognizer writes it down, and the audio never reaches
+  our servers. Android uses Google's speech recognition service on your phone; recent phones
+  recognize speech on the device itself. iOS uses Apple's speech recognition: where your iPhone
+  supports on-device recognition for your language, the audio stays on the phone; otherwise Apple
+  processes it on its servers.
 
 The text is part of your story like anything you type. The app asks for microphone permission the
-first time you tap the mic, and typing always works.
+first time you tap the mic, the mic is on only while it shows it is listening, and typing always
+works.
 
 ## Who processes your data for us
 
 | Service | What it does | Where |
 | --- | --- | --- |
 | Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures and logs | EU: Frankfurt |
-| Google Cloud: Vertex AI (Gemini) | Writes the story and draws the pictures. Google doesn't use this data to train its models | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
+| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures and writes down online dictation. Google doesn't use this data to train its models | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
 | Neon | Hosts the database | Frankfurt (AWS eu-central-1) |
 | Google Sign-In | Confirms who you are when you sign in with Google | Google |
 
@@ -45,7 +52,7 @@ Where data leaves the EU, it does so under the European Commission's standard co
 or the EU-US Data Privacy Framework.
 
 **Your own API key.** If you add your own Gemini API key, your turns go to Google's Gemini API
-under your own account and Google's terms for it. On Gemini's free tier, Google may use what you
+under your own account and Google's terms for it. Online dictation still runs on our account. On Gemini's free tier, Google may use what you
 send to improve its products. The app keeps the key on your device and sends it with each request;
 our server uses it for that request only and never stores or logs it.
 

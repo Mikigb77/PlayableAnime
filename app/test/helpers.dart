@@ -80,9 +80,18 @@ class TestTokens implements TokenSource {
 
 /// A recognizer the test drives by hand.
 class FakeSpeechEngine implements SpeechEngine {
-  FakeSpeechEngine({this.supported = true, this.grants = true, this.permission = true});
+  FakeSpeechEngine({
+    this.supported = true,
+    this.grants = true,
+    this.permission = true,
+    this.onPhone = true,
+  });
 
   bool supported;
+
+  /// The phone's recognizer (words as you speak) unless false: online dictation (V6).
+  @override
+  final bool onPhone;
 
   /// Whether [initialize] succeeds (the player allowed the mic).
   bool grants;
@@ -93,12 +102,13 @@ class FakeSpeechEngine implements SpeechEngine {
   int initializations = 0;
   int stops = 0;
   int cancels = 0;
-  final listens = <({String? localeId, bool onDevice})>[];
+  final listens = <({String? localeId, bool onDevice, SpeechContext context})>[];
 
   void Function(String words, bool isFinal)? _onResult;
   VoidCallback? _onStopped;
   void Function(SpeechFailure failure)? _onError;
   void Function(double level)? _onLevel;
+  VoidCallback? _onTranscribing;
 
   bool get listening => _onResult != null;
 
@@ -106,6 +116,7 @@ class FakeSpeechEngine implements SpeechEngine {
   void level(double value) => _onLevel?.call(value);
   void fail(String code) => _onError!(SpeechFailure(code));
   void stopped() => _onStopped!();
+  void transcribing() => _onTranscribing?.call();
 
   @override
   Future<bool> isSupported() async => supported;
@@ -125,10 +136,13 @@ class FakeSpeechEngine implements SpeechEngine {
     required VoidCallback onStopped,
     required void Function(SpeechFailure failure) onError,
     void Function(double level)? onLevel,
+    VoidCallback? onTranscribing,
     String? localeId,
+    SpeechContext context = const SpeechContext(),
     bool onDevice = true,
   }) async {
-    listens.add((localeId: localeId, onDevice: onDevice));
+    listens.add((localeId: localeId, onDevice: onDevice, context: context));
+    _onTranscribing = onTranscribing;
     _onResult = onResult;
     _onStopped = onStopped;
     _onError = onError;
