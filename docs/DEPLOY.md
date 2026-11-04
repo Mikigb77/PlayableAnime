@@ -368,8 +368,9 @@ or stored picture. The script also refuses `auth` and `config` commands, `--acco
 `--impersonate-service-account`, token printing, service-account keys and secret values, and the
 output can't issue GitHub workflow commands.
 
-Start it on `main` with a gcloud command without `gcloud`, or with none for the last 3 hours of
-the API's and its jobs' warnings and errors:
+Start it on `main` with a gcloud command without `gcloud`, starting with its command group and
+with flags after it, or with none for the last 3 hours of the API's and its jobs' warnings and
+errors:
 
 - In GitHub: **Actions > Ops > Run workflow**, then read the run's log.
 - From a thread: dispatch `ops.yml` on `main` with the input `command`, then read the newest run's

@@ -715,7 +715,8 @@ test_ops() {
     "run services describe x --impersonate-service-account=a@b" "projects list --account=x" \
     "secrets versions access latest --secret=django-secret-key" \
     "iam service-accounts keys create k.json --iam-account=x" "logging read 'unbalanced" \
-    "projects list --log-http" "projects list --verbosity=debug" "beta auth print-identity-token"; do
+    "projects list --log-http" "projects list --verbosity=debug" "beta auth print-identity-token" \
+    "--quiet auth list" "beta --project=x config list"; do
     out="$state/out-refused"
     with_fakes "$out" env FAKE_STATE="$state" OPS_COMMAND="$refused" "$INFRA/ops.sh" run
     if [ "$status" -ne 0 ]; then ok; else bad "ops.sh ran: $refused"; fi

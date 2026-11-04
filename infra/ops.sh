@@ -63,6 +63,10 @@ check_allowed() {
   case "$group" in
     alpha | beta) group="${2:-}" ;;
   esac
+  # A flag first would hide the command group from the check below.
+  case "$group" in
+    -*) die "start with the command group, such as 'logging read', and put flags after it" ;;
+  esac
   case "$group" in
     auth | config | init | components)
       die "'gcloud $group' isn't allowed here: it could print or change credentials"
