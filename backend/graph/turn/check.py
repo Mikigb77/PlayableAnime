@@ -5,7 +5,7 @@ the narrator starts. Each check returns a repaired copy and the issues it found;
 raises for a bad proposal, and nothing here calls a model. Model nodes propose; code decides
 (CLAUDE.md rule 2).
 
-- `check_intent`: the interpret step's proposal against the state (V3, B5).
+- `check_intent`: the interpret step's proposal against the state (V3, B5, W10).
 - `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
@@ -32,6 +32,7 @@ from engine.director.themes import allowed_themes, fits
 from engine.state.cast import CharacterStatus
 from engine.state.records import LeadStatus, RollRecord, StepResult
 from engine.state.world import WorldState
+from engine.timekeeping import parse_clock
 from graph.turn.types import Issue
 
 # R6: a chained plan this long is already more than one scene can play. The steps past it are
@@ -75,6 +76,11 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_target", "kept as words", ", ".join(unknown)))
             step.target_ids = [ref for ref in step.target_ids if ref in known]
             step.targets = list(dict.fromkeys([*step.targets, *unknown]))
+        if step.until is not None and parse_clock(step.until) is None:
+            # W10: a time that isn't a time of day leaves the proposed seconds to stand.
+            if step.until.strip():
+                issues.append(Issue("bad_until", "not a time of day, so the seconds stand"))
+            step.until = None
         facts = step.facts
         unknown = [ref for ref in facts.opposition_ids if ref not in known]
         if unknown:

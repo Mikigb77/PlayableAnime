@@ -112,6 +112,18 @@ def test_unknown_opposition_is_kept_as_words():
     assert [i.code for i in checked.issues] == ["unknown_opposition"]
 
 
+def test_a_time_of_day_that_cant_be_read_leaves_the_proposed_seconds():
+    # W10: code counts "until" only from a time on the 24-hour clock.
+    steps = [
+        step(until="19:00"),
+        step(until="when the bell rings"),
+        step(until="  "),
+    ]
+    checked = check_intent(Intent(steps=steps), cultivation_world(), "x")
+    assert [s.until for s in checked.intent.steps] == ["19:00", None, None]
+    assert [i.code for i in checked.issues] == ["bad_until"]
+
+
 def test_an_action_that_fits_nothing_still_becomes_a_step():
     checked = check_intent(Intent(), cultivation_world(), "  I sing to the moon ")
     assert [s.text for s in checked.intent.steps] == ["I sing to the moon"]

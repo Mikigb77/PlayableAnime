@@ -4,7 +4,8 @@ The interpret step proposes a duration and code bounds it by the kind of action.
 takes is itself uncertain (breaking out of a trap, picking a lock, finding someone in a city), a
 seeded roll picks it, spread evenly across orders of magnitude around the proposal and still
 within the kind's bounds, so the same trap holds someone minutes or days. Inside a time stop the
-world clock stands still and only the actor's own clock runs.
+world clock stands still and only the actor's own clock runs. A step that lasts until a time of
+day takes the seconds to it on the world's clock, counted here rather than by the model.
 """
 
 import math
@@ -13,7 +14,8 @@ from dataclasses import dataclass
 from engine.base import DAY
 from engine.contracts.intent import IntentStep
 from engine.rng import SeededRng
-from engine.timekeeping import DURATION_BOUNDS, bound_duration
+from engine.state.bible import Calendar
+from engine.timekeeping import DURATION_BOUNDS, bound_duration, parse_clock, seconds_until
 
 # An uncertain duration lands between the proposal divided and multiplied by this.
 DURATION_SPREAD = 30
@@ -39,6 +41,23 @@ def _spread(step: IntentStep, proposed_s: int, rng: SeededRng) -> tuple[int, flo
     value = rng.random()
     seconds = math.exp(math.log(lowest) + value * (math.log(highest) - math.log(lowest)))
     return bound_duration(step.kind, round(seconds)), value
+
+
+def until_time(step: IntentStep, calendar: Calendar, start_s: int) -> IntentStep:
+    """W10. A step that lasts until a time of day ("until nightfall", "sleep till dawn") takes
+    the seconds from `start_s` to the next time the world's clock shows it, in place of the
+    proposed seconds, and that time isn't rolled. The kind's bounds still hold. A step without
+    one, or with one that isn't a time of day, is returned as it was."""
+    time_of_day = parse_clock(step.until)
+    if time_of_day is None:
+        return step
+    return step.model_copy(
+        update={
+            "proposed_duration_s": seconds_until(calendar, start_s, time_of_day),
+            "proposed_personal_s": None,
+            "duration_uncertain": False,
+        }
+    )
 
 
 def lived_estimate(step: IntentStep) -> int:

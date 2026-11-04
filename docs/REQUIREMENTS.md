@@ -687,7 +687,18 @@ in a trap. Nothing in the world is timed in turns.
   code bounds it by the kind of action: a sword exchange or a spell takes seconds, a conversation
   minutes, brewing a potion or a search about an hour, sleep or a day's work hours, travel hours to
   days, and a time skip whatever the player asks for (E7). The clock advances by that duration, never
-  by a fixed amount per turn.
+  by a fixed amount per turn. Every action is at least one step, so it always takes its own time:
+  the interpret model must answer with its steps (on 2026-11-04 it left them out of most turns, and
+  each action played as a five-second nothing).
+- **The models read the clock.** The interpret step sees what time it is now, on the 24-hour clock
+  whatever the calendar shows, with how people travel in the world and the routes from where the
+  character is, so a walk across town takes its 10 to 30 minutes and a meal its half hour or more.
+  A step the player times by the clock ("until nightfall", "sleep till dawn") names that time of
+  day, and code counts the seconds to it from where the plan has got to, within the kind's bounds
+  and never rolled. The narrator sees when the scene began, how much time passed and what time it
+  is now, and the opening sees the hour the story opens: the light, meals and time of day in the
+  telling match the clock, night never falls before the clock reaches it, and the telling never
+  skips ahead of it (R3).
 - **Some durations are outcomes.** When how long something takes is uncertain (breaking out of a
   magical trap, picking a lock, finding someone in a city, recovering from a wound), the A3 roll
   decides the time as well as the result. The same trap can hold the character for five minutes or
@@ -1148,7 +1159,7 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T2 | **Neon:** the `production` branch for live data, one branch per feature that expires after 7 days, the pooled URL for the app and the direct URL for migrations, and compute that scales to zero. Migrations run before each deploy. | P0 |
 | T3 | **Cold start:** the first request after idle answers in under 5 s (Cloud Run start plus Neon wake). Health checks never touch the database. | P0 |
 | T4 | **Logging:** structured JSON logs to stdout, which Cloud Run sends to Cloud Logging. Every line has severity, request id, trace id (from `X-Cloud-Trace-Context`), user id and story id. | P0 |
-| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens, latency, estimated cost, safety blocks, retries and how the action was entered (V7). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
+| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens, latency, estimated cost, safety blocks, retries, how the action was entered (V7), and how far the clock moved with each step's kind and seconds (W10). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
 | T6 | **Never logged:** API keys (BYOK or ours), auth tokens and full prompts. Story text is logged only at DEBUG, and DEBUG is off in production. | P0 |
 | T7 | **Errors:** uncaught exceptions reach Error Reporting. LLM failures are retried once (a 429 on our shared Vertex AI quota twice, after waits of 2 s and 6 s, since it comes in bursts that pass within seconds) and then return a typed error the app can show (`llm_unavailable`, `blocked`, `bad_key`, `out_of_credits`), never a bare 500. | P0 |
 | T8 | **Auth:** no Firebase. Sign in with Google, through an OAuth client in the `playable-anime` GCP project, plus our own email login in Django. On iOS, Apple requires an equivalent login option when Google sign-in is offered (guideline 4.8), so plan for Sign in with Apple there. The backend verifies Google's ID token once at sign-in, then issues its own short-lived access token and a refresh token. These are checked on every request except `/health` and sign-in itself. Refresh tokens rotate on every use and are stored only as hashes, a reused one signs its device out, and repeated wrong passwords are throttled. | P0 |
@@ -1174,6 +1185,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Long fight | A 30-turn fight with a mage | Only a few in-world minutes pass, no unrelated W16 event interrupts, and the world off-screen barely moves (W10) |
 | Fleeing witness | Kill someone, let a witness flee, then spend 10 short turns (about 3 in-world minutes) brewing a potion | No guards arrive until the report could really have been made and they could have travelled (W10) |
 | Interrupted sleep | After the fleeing-witness run, the player sleeps for 8 hours | The engine plays the night in time order, and the guards wake the player at the moment they arrive |
+| A day in town | From the farm at dawn, the player walks into the village, eats at the inn, then stays there until nightfall | Each action moves the clock by what it really takes, the wait ends at nightfall on the clock, and every scene's light and time of day match the clock (W10) |
 | Trapped | The player is caught in a magical trap, over many seeds | Escape times vary with the roll, from minutes to days, and the world moves on by that time |
 | Time stop | The player stops time and kills a guard in a crowded square, over many seeds | The kill happens on every seed with no roll (A2), no pending event fires during the stop, nobody saw it, and the body still starts rumors (W10a, W13) |
 | Time loop | A world rewind, then the player repeats the same actions, then changes one | The same events replay on schedule, then the timeline diverges after the change (W10a) |

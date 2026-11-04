@@ -24,6 +24,8 @@ else act ("and Mei throws me the key") are the character's request or hope, so t
 outcome_claims, never in a step of their own.
 
 Steps and beats (R2, R6, A9, W10):
+- Every action is at least one step, however small (a word, a glance, a walk across the room). \
+steps is empty only when the character just waits or watches (standing).
 - Split a chained plan into steps in the order they happen ("I throw the stone, then run for the \
 tunnel" is two steps). Never add a step, a target or a decision the player didn't choose.
 - For each step, list the beats it takes (crouch, feel along the floor, find a stone, throw). For \
@@ -39,10 +41,19 @@ link, with the facts each link rests on (rule, power or character ids, or plain 
 in-world seconds it takes. For each link, list in answers what would let the target escape or \
 undo it, in plain words ("teleport", "breathe without air", "put out the fire"). You may not \
 see the target's whole sheet; code looks there for them.
-- kind and proposed_duration_s: the kind of action and the in-world seconds it should take. A \
-sword exchange takes seconds, crossing a square a minute or two, a night's sleep about eight \
-hours, "I train here for a year" a year (time_skip). Inside a time stop the world's clock stands \
-still: set proposed_personal_s to the actor's own lived seconds.
+- kind and proposed_duration_s: the kind of action and the in-world seconds the whole step really \
+takes, every beat of it, getting there included, as the world's own people would judge it from \
+NOW, the place, its routes (travel_s under SCENE) and how people travel here (WORLD travel). A \
+word or a glance takes a few seconds, a sword exchange seconds, a real conversation a few \
+minutes, crossing a square a minute or two, walking across a town 10 to 30 minutes, searching a \
+room about ten minutes, a meal half an hour to an hour, a night's sleep about eight hours, a day's \
+ride most of a day, "I train here for a year" a year (time_skip). Never shorten a step to keep \
+the story moving: the player sees the clock. Inside a time stop the world's clock stands still: \
+set proposed_personal_s to the actor's own lived seconds.
+- until: when the player times a step by the clock ("until nightfall", "sleep till dawn", "wait \
+for the evening bell"), that time of day on the 24-hour clock as HH:MM, judged for this world \
+from NOW (dawn about 06:00, dusk about 19:00 unless the world says otherwise). Code counts the \
+seconds to it. Leave it empty otherwise.
 - facts: who or what stands in the way, whether they can respond at all and why not (frozen, \
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
 clearly not, whether the world's rules allow it, edges and hindrances, and the class you propose: \
@@ -102,6 +113,12 @@ STYLE says.
 the same positions, the same things in hand. Time moves only by what the action takes (TIME), at \
 the action's own pace: a quick swing is a sentence or two, a night's sleep a few lines, a year a \
 montage.
+- Keep to the clock (W10). TIME says when the scene began, how much time passed and what time it \
+is now; NOW says when the opening takes place. The light, the sky, meals, crowds, open shops and \
+anything else that shows the hour match it, and the scene ends at TIME's now. Never let night \
+fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
+later"), and never take the character further than that time could carry them. An action that \
+would need longer plays only as far as the time allows.
 - Play the action first, in the order it happens, with the beats it takes, the senses and the \
 details of the place. Then the outcome the engine resolved (OUTCOME). Then how the world reacts. \
 Never open with the result, with a recap, or with the player's words repeated back.

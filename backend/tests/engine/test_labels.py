@@ -4,13 +4,17 @@ import pytest
 
 from engine.base import DAY, HOUR, MINUTE
 from engine.labels import (
+    Moment,
     ago_label,
     clock_label,
+    clock_time,
     duration_label,
     in_label,
+    moment,
     part_of_day,
     personal_label,
     scene_time,
+    second_of_day,
     span_label,
 )
 from engine.samples import cultivation_world, grounded_world
@@ -48,6 +52,29 @@ def test_a_calendar_it_cannot_read_falls_back_to_a_day_count():
     assert clock_label(no_epoch, 0) == "Day 1, morning"
     assert clock_label(no_months, 0) == "Day 1, morning"
     assert clock_label(far_future, 2 * DAY) == "Day 3, morning"
+
+
+def test_the_clock_reads_the_time_of_day_the_label_shows():
+    sect = cultivation_world().bible.calendar  # day count from 07:00
+    naples = grounded_world().bible.calendar  # from 21:00 on 14 May 1974
+    far_future = Calendar(style=CalendarStyle.GREGORIAN, epoch="9999-12-31T00:00")
+
+    assert second_of_day(sect, 2 * DAY + 10 * HOUR) == 17 * HOUR
+    assert second_of_day(naples, 3 * HOUR + 5 * MINUTE) == 5 * MINUTE
+    # Past what a date can hold, the label falls back to a day count, and so does the clock.
+    assert second_of_day(far_future, 2 * DAY) == 8 * HOUR
+    assert second_of_day(custom(), 9 * HOUR) == 2 * HOUR
+
+
+def test_the_models_read_the_moment_on_a_24_hour_clock():
+    sect = cultivation_world().bible.calendar
+
+    assert clock_time(7 * HOUR + 5 * MINUTE) == "07:05"
+    assert clock_time(DAY + 30 * MINUTE) == "00:30"
+    # A calendar that names parts of the day still gives the models the exact time (W10).
+    assert moment(sect, 12 * HOUR + 15 * MINUTE) == Moment(
+        date="Day 1, evening", clock="19:15", part_of_day="evening"
+    )
 
 
 def custom() -> Calendar:

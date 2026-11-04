@@ -26,6 +26,7 @@ from engine.contracts import (
 from engine.director import rules
 from engine.director.deck import CARDS
 from engine.director.montage import montage_steps
+from engine.labels import second_of_day
 from engine.state import (
     CharacterStatus,
     ClockStatus,
@@ -55,6 +56,7 @@ from evals.scenarios.common import (
     step,
     stop_time,
 )
+from graph.llm import Node
 
 scenario = REGISTRY.scenario
 
@@ -644,6 +646,103 @@ async def interrupted_sleep(ev: Eval) -> None:
                 must_not=("The night passes in full before anything happens",),
             ),
             played,
+        )
+
+
+# --- A day in town (W10) -----------------------------------------------------------------------
+
+
+@scenario(
+    "t17.day-in-town",
+    suite="T17",
+    title="A day in town",
+    requirements=("W10", "R3", "T17"),
+    passes_when=(
+        "Each action moves the clock by what it really takes, the wait ends at nightfall on the "
+        "clock, and every scene's light and time of day match the clock (W10)"
+    ),
+)
+async def day_in_town(ev: Eval) -> None:
+    for seed in ev.seeds(4, live=1):
+        story = ev.story(worlds.farm(), seed=seed)  # the farm, at 06:00 on day 1
+        await story.open()
+        ev.check(
+            "the opening is told at the hour the story opens",
+            '"clock":"06:00"' in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        walk = await story.act(
+            "I walk down the road into Millbrook to see the market",
+            plan(
+                step(
+                    "walk into Millbrook",
+                    ActionKind.TRAVEL,
+                    40 * MINUTE,
+                    verb="walk",
+                    target_ids=["village"],
+                )
+            ),
+        )
+        ev.check(
+            "every action is read as a step",
+            "no_step" not in walk.issues,
+            f"{seed}: {walk.issues}",
+        )
+        ev.check(
+            "the walk into town takes minutes, not seconds",
+            walk.world_seconds >= 10 * MINUTE,
+            f"{seed}: {walk.world_seconds}s",
+        )
+        meal = await story.act(
+            "I sit down at the inn and eat a bowl of stew",
+            act("eat a bowl of stew", "eat", ActionKind.TASK, 40 * MINUTE),
+        )
+        ev.check(
+            "a meal takes a while",
+            "no_step" not in meal.issues and meal.world_seconds >= 10 * MINUTE,
+            f"{seed}: {meal.issues}, {meal.world_seconds}s",
+        )
+        wait = await story.act(
+            "I stay at the inn until nightfall",
+            plan(step("wait until nightfall", ActionKind.WAIT, 60, verb="wait", until="19:00")),
+        )
+        if wait.completed and wait.steps and wait.step(-1).interrupted:
+            continue  # something that needed the player came first (W10)
+        calendar = wait.state.bible.calendar
+        ended = second_of_day(calendar, wait.state.world_s)
+        ev.check(
+            "the wait ends at nightfall on the clock",
+            18 * HOUR <= ended <= 21 * HOUR,
+            f"{seed}: ended at {ended // HOUR}:{ended % HOUR // MINUTE:02d}",
+        )
+        ev.check(
+            "the wait ends exactly when the clock shows the time asked for",
+            ended == 19 * HOUR,
+            f"{seed}: ended at {ended}s",
+            live=False,
+        )
+        ev.check(
+            "the narrator is told what time it is now",
+            '"now":{"date":"Day 1, evening","clock":"19:00"' in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        await ev.judge(
+            "the telling keeps to the clock",
+            Rubric(
+                must=(
+                    "Each scene's light, meals and time of day fit the clock it ends at "
+                    "(morning light in the morning, dusk or lamplight in the evening)",
+                    "The last scene ends at nightfall or in the evening",
+                ),
+                must_not=(
+                    "A scene lets night fall, a day end or a meal of another hour come round "
+                    "before its clock reaches that time",
+                    "A scene skips ahead in time beyond what its clock shows",
+                ),
+            ),
+            story.turns[-4:],
         )
 
 

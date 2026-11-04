@@ -1,5 +1,6 @@
 """What the model nodes read: the interpret prompt and the narrator's brief (B5 step 4)."""
 
+from engine.base import HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
     GoreLevel,
@@ -109,6 +110,20 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     assert '"tournament"' in text  # open threads, for what the action takes up
 
 
+def test_the_interpret_prompt_reads_the_clock_and_how_people_travel():
+    # W10: what time it is now, on the 24-hour clock, to judge how long the action takes and
+    # to count "until nightfall" from.
+    state = cultivation_world()  # day count from 07:00
+    state.world_s = 12 * HOUR + 15 * MINUTE
+    text = interpret_prompt(state, "I wait until nightfall").messages[-1].text
+    assert '## NOW\n{"date":"Day 1, evening","clock":"19:15","part_of_day":"evening"}' in text
+    assert '"travel":{"description":"On foot, by flying sword for the strong' in text
+    system = prompts.INTERPRET_SYSTEM
+    assert "walking across a town 10 to 30 minutes" in system
+    assert "- until: when the player times a step by the clock" in system
+    assert "steps is empty only when the character just waits or watches" in system
+
+
 def test_the_interpret_step_is_asked_for_the_aim_the_answers_and_no_other_actor():
     """F4, A9, A6: what code relies on is asked for by name, since the interpret step fills it."""
     system = prompts.INTERPRET_SYSTEM
@@ -135,6 +150,8 @@ def test_the_opening_brief_asks_for_an_opening():
     assert "## TASK\n" + prompts.OPENING_TASK in opening.user
     assert "## PREMISE\nA weak disciple remembers a past life." in opening.user
     assert "## OUTCOME" not in opening.user
+    # W10: the opening is told at the hour the story opens.
+    assert '## NOW\n{"date":"Day 1, morning","clock":"07:00"' in opening.user
 
 
 def test_an_action_brief_carries_the_outcome_and_where_the_plan_stopped():
@@ -149,6 +166,22 @@ def test_an_action_brief_carries_the_outcome_and_where_the_plan_stopped():
     assert '"why":"The troll\'s hide is thick."' in action.user
     assert '"world_seconds_passed":2' in action.user
     assert "## TASK" not in action.user
+
+
+def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():
+    # W10: the light, meals and the hour in the telling keep to the clock.
+    state = cultivation_world()  # day count from 07:00
+    after = state.model_copy(deep=True)
+    after.world_s += 11 * HOUR + 30 * MINUTE
+    action = brief(state, after=after, intent=Intent(summary="walk to the inn and eat"))
+    time = action.user.split("## TIME\n", 1)[1].split("\n", 1)[0]
+    assert time == (
+        '{"began":{"date":"Day 1, morning","clock":"07:00","part_of_day":"morning"},'
+        '"now":{"date":"Day 1, dusk","clock":"18:30","part_of_day":"dusk"},'
+        '"passed":"11 h 30 min","world_seconds_passed":41400}'
+    )
+    assert "- Keep to the clock (W10)." in prompts.NARRATOR_SYSTEM
+    assert "never skip ahead" in prompts.NARRATOR_SYSTEM
 
 
 def test_the_brief_follows_the_rating_and_the_players_preferences():

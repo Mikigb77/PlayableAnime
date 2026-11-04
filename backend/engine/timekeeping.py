@@ -2,17 +2,21 @@
 
 The interpret step proposes a duration; code bounds it by the kind of action, so a sword exchange
 takes seconds and a night's sleep hours, never a fixed amount per turn. A time skip takes whatever
-the player asks for, within a generous cap (E7).
+the player asks for, within a generous cap (E7). A step that lasts until a time of day ("until
+nightfall") names that time, and code counts the seconds to it on the world's clock.
 
 When time passes, `advance_clock` applies every pending event due on the way in time order, and
 the first that needs the player stops the clock at its due time, so the scene starts there.
 """
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.contracts.intent import ActionKind, IntentStep, SheetPart
+from engine.labels import second_of_day
+from engine.state.bible import Calendar
 from engine.state.records import EventStatus, PendingEvent
 from engine.state.sheet import Power, TimeEffect
 from engine.state.world import ActiveTimeEffect, WorldState
@@ -47,6 +51,28 @@ def bound_duration(kind: ActionKind, proposed_s: int, *, world_frozen: bool = Fa
         return 0
     low, high = DURATION_BOUNDS[kind]
     return max(low, min(high, int(proposed_s)))
+
+
+_CLOCK = re.compile(r"(\d{1,2})(?:[:.h](\d{2}))?")
+
+
+def parse_clock(text: str | None) -> int | None:
+    """W10. A time of day on the 24-hour clock ("19:00", "7:30", "6") as seconds after
+    midnight, or None when the text isn't one."""
+    found = _CLOCK.fullmatch((text or "").strip())
+    if found is None:
+        return None
+    hour, minute = int(found[1]), int(found[2] or 0)
+    if hour > 24 or minute >= 60 or (hour == 24 and minute):
+        return None
+    return (hour * HOUR + minute * MINUTE) % DAY
+
+
+def seconds_until(calendar: Calendar, world_s: int, time_of_day_s: int) -> int:
+    """W10. Seconds from `world_s` to the next time the world's clock shows `time_of_day_s`
+    (seconds after midnight): later today, or tomorrow once today's has passed. 0 when the clock
+    shows it now."""
+    return (time_of_day_s - second_of_day(calendar, world_s)) % DAY
 
 
 def in_time_stop(state: WorldState, actor_id: str) -> bool:
