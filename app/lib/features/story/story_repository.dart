@@ -25,18 +25,29 @@ class TurnInput {
       choiceId = null,
       inputMode = 'choice';
 
+  /// The opening scene of a story that has none yet, right after a draft starts.
+  /// The opening has no input mode: nobody entered anything (V7).
+  const TurnInput.opening()
+    : kind = 'opening',
+      action = null,
+      choiceId = null,
+      standing = null,
+      inputMode = null;
+
   final String kind;
   final String? action;
   final String? choiceId;
   final String? standing;
-  final String inputMode;
+
+  /// typed, voice, voice_edited or choice (V7).
+  final String? inputMode;
 
   Json toJson(int expectedVersion) => {
     'kind': kind,
     'action': ?action,
     'choice_id': ?choiceId,
     'standing': ?standing,
-    'input_mode': inputMode,
+    'input_mode': ?inputMode,
     'expected_version': expectedVersion,
   };
 }
@@ -46,17 +57,33 @@ class StoryRepository {
 
   final ApiClient _api;
 
-  Future<Story> get(String id) async => Story.fromJson(await _api.get('/v1/stories/$id') as Json);
+  /// A story with its latest [scenes] scenes.
+  Future<Story> get(String id, {int scenes = 20}) async =>
+      Story.fromJson(await _api.get('/v1/stories/$id', query: {'scenes': '$scenes'}) as Json);
+
+  /// Scenes before [before], oldest first, for scrollback.
+  Future<List<Scene>> olderScenes(String id, {required int before, int limit = 20}) async => [
+    for (final json
+        in await _api.get('/v1/stories/$id/scenes', query: {'before': '$before', 'limit': '$limit'})
+            as List)
+      Scene.fromJson(json as Json),
+  ]..sort((a, b) => a.turn.compareTo(b.turn));
+
+  /// Renames the story or changes some of its settings (S6). [settings] holds only the fields
+  /// that change (see [StorySettings.changesFrom]); the server keeps the rest.
+  Future<Story> update(String id, {String? title, Json? settings}) async => Story.fromJson(
+    await _api.patch('/v1/stories/$id', {
+          'title': ?title,
+          if (settings != null && settings.isNotEmpty) 'settings': settings,
+        })
+        as Json,
+  );
 
   Future<StatusData> status(String id) async =>
       StatusData.fromJson(await _api.get('/v1/stories/$id/status') as Json);
 
-  /// Takes a turn and streams it. Errors before the stream starts throw `ApiException`; the
-  /// stream ends with [SceneCompleted] or [TurnFailed].
-  ///
-  /// Until the turn graph lands (WS3), the backend answers with one JSON object,
-  /// `{scene, state, version}`, instead of a stream; that reply is replayed as the same events, so
-  /// the play screen has one code path.
+  /// Takes a turn and streams it (docs/API.md, Turns). Errors before the stream starts throw
+  /// [ApiException]; the stream ends with [SceneCompleted] or [TurnFailed].
   Future<Stream<TurnEvent>> takeTurn(
     String id,
     TurnInput input, {
@@ -64,41 +91,65 @@ class StoryRepository {
   }) async {
     final response = await _api.openStream('/v1/stories/$id/turns', input.toJson(expectedVersion));
     if (response.isEventStream) return response.turnEvents();
-    final json = await response.json();
-    if (json
-        case {
-              'scene':
-                  {'turn': final num turn, 'narration': final String narration} && final Json scene,
-            } &&
-            final Json reply) {
-      return Stream.fromIterable([
-        TurnStarted(turn.toInt()),
-        NarrationDelta(narration),
-        SceneCompleted(
-          scene: scene,
-          version: (reply['version'] as num?)?.toInt() ?? expectedVersion + 1,
-          clock: const {},
-        ),
-      ]);
+    // Not a stream: a proxy's page or an old server. Read it so the connection is freed.
+    try {
+      await response.json();
+    } on ApiException {
+      // The body doesn't matter.
     }
     throw ApiException(ApiErrorCode.server, status: response.statusCode);
   }
 
   /// Asks for a scene's planned picture (M3). Safe to repeat: the server makes and charges it once.
   /// [kind] is the scene's, kept when the answer leaves it out.
-  Future<SceneImage> picture(String id, int turn, {String kind = 'scene'}) async {
-    final json = await _api.post('/v1/stories/$id/scenes/$turn/image', null) as Json;
-    return SceneImage(
-      status: switch (json['status']) {
-        'ready' => 'ready',
-        'pending' => 'planned',
-        _ => 'skipped',
-      },
-      url: json['url'] as String?,
-      kind: json['kind'] as String? ?? kind,
-      imageId: json['image_id'] as String?,
-    );
+  Future<SceneImage> picture(String id, int turn, {String kind = 'scene'}) async =>
+      _picture(await _api.post('/v1/stories/$id/scenes/$turn/image', null) as Json, kind);
+
+  /// Asks for a picture of any scene, which the player pays for (M2). Also safe to repeat: a
+  /// picture already drawn comes back at no charge.
+  Future<SceneImage> illustrate(String id, int turn, {String kind = 'scene'}) async => _picture(
+    await _api.post('/v1/stories/$id/scenes/$turn/illustrate', null) as Json,
+    kind,
+    planned: false,
+  );
+
+  /// A fresh signed URL for a picture whose URL expired. Never draws.
+  Future<SceneImage> refreshPicture(String id, String imageId, {String kind = 'scene'}) async =>
+      _picture(
+        await _api.get('/v1/stories/$id/images/${Uri.encodeComponent(imageId)}') as Json,
+        kind,
+      );
+
+  /// Reports a scene (F6). With [block], the app also hides it.
+  Future<void> report(
+    String id,
+    int turn, {
+    required String category,
+    String? note,
+    required bool block,
+  }) async {
+    await _api.post('/v1/stories/$id/scenes/$turn/report', {
+      'category': category,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      'block': block,
+    });
   }
+
+  static SceneImage _picture(Json json, String kind, {bool planned = true}) => SceneImage(
+    status: switch (json['status']) {
+      'ready' => 'ready',
+      'pending' => 'planned',
+      _ => 'skipped',
+    },
+    url: json['url'] as String?,
+    kind: json['kind'] as String? ?? kind,
+    imageId: json['image_id'] as String?,
+    expiresAt: switch (json['expires_at']) {
+      final String at => DateTime.tryParse(at),
+      _ => null,
+    },
+    planned: planned,
+  );
 }
 
 final storyRepositoryProvider = Provider((ref) => StoryRepository(ref.watch(apiClientProvider)));

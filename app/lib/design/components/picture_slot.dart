@@ -42,6 +42,7 @@ class PictureSlot extends StatefulWidget {
     this.semanticLabel,
     this.vignette = true,
     this.onTap,
+    this.onError,
   });
 
   final PictureStatus status;
@@ -54,6 +55,11 @@ class PictureSlot extends StatefulWidget {
   final bool vignette;
   final VoidCallback? onTap;
 
+  /// Called once when a ready picture fails to load, such as a signed URL that expired. When set,
+  /// the slot keeps its shimmer and waits for the owner to pass a fresh [url] or a skipped
+  /// [status]; when null, the slot collapses quietly (M3).
+  final VoidCallback? onError;
+
   @override
   State<PictureSlot> createState() => _PictureSlotState();
 }
@@ -61,13 +67,19 @@ class PictureSlot extends StatefulWidget {
 class _PictureSlotState extends State<PictureSlot> {
   bool _failed = false;
 
+  /// The URL whose failure was reported to [PictureSlot.onError].
+  String? _reported;
+
   /// The picture has faded in, so the shimmer under it can stop.
   bool _shown = false;
 
   @override
   void didUpdateWidget(PictureSlot old) {
     super.didUpdateWidget(old);
-    if (old.url != widget.url) _failed = _shown = false;
+    if (old.url != widget.url) {
+      _failed = _shown = false;
+      _reported = null;
+    }
   }
 
   void _markShown() {
@@ -129,7 +141,14 @@ class _PictureSlotState extends State<PictureSlot> {
                       },
                       errorBuilder: (context, error, stack) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted && !_failed) setState(() => _failed = true);
+                          if (!mounted) return;
+                          if (widget.onError case final onError?) {
+                            if (_reported == widget.url) return;
+                            _reported = widget.url;
+                            onError();
+                          } else if (!_failed) {
+                            setState(() => _failed = true);
+                          }
                         });
                         return const SizedBox.shrink();
                       },

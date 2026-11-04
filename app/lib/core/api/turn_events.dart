@@ -20,11 +20,12 @@ class NarrationDelta extends TurnEvent {
   final String text;
 }
 
-/// The narration was blocked and is being rewritten (F4): clear the partial text.
+/// The narration is being rewritten, so the partial text is cleared: it was blocked (F4), or the
+/// model failed partway and is being retried once (T7).
 class NarrationReset extends TurnEvent {
   const NarrationReset(this.reason);
 
-  /// `cutaway` or `template`.
+  /// `cutaway`, `template` or `retry`.
   final String reason;
 }
 
@@ -42,9 +43,10 @@ class SceneCompleted extends TurnEvent {
   final JsonMap clock;
 }
 
-/// The turn failed after streaming began. Nothing was saved and nothing was charged, so the app
-/// discards the partial scene and offers a retry. A stream that ends without [SceneCompleted]
-/// also ends with this, as a [ApiErrorCode.network] error.
+/// The turn failed after streaming began: `unreadable_action`, `llm_unavailable`, `bad_key`,
+/// `version_conflict` or `internal_error`. Nothing was saved and nothing was charged, so the app
+/// discards the partial scene and offers a retry or a rephrase. A stream that ends without
+/// [SceneCompleted] also ends with this, as a [ApiErrorCode.network] error.
 class TurnFailed extends TurnEvent {
   const TurnFailed(this.error);
   final ApiException error;
@@ -104,6 +106,7 @@ TurnEvent? _map(SseEvent event) {
         ApiException(
           ApiErrorCode.fromWire(d['code'] as String?),
           message: d['message'] as String? ?? '',
+          details: d['details'] as JsonMap? ?? const {},
         ),
       );
     default:

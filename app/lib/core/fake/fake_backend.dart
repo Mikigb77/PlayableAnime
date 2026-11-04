@@ -258,10 +258,17 @@ class FakeError implements Exception {
   final JsonMap details;
 }
 
-/// Paces a list of events: `await` the delay before each one.
+/// An event name that makes [pacedEvents] drop the connection instead of sending an event.
+const fakeDroppedConnection = '__dropped__';
+
+/// Paces a list of events: `await` the delay before each one. [fakeDroppedConnection] ends the
+/// stream with a network error, as a dropped connection would.
 Stream<String> pacedEvents(Iterable<(Duration, String event, Object? data)> events) async* {
   for (final (delay, event, data) in events) {
     if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (event == fakeDroppedConnection) {
+      throw http.ClientException('Connection closed while receiving data');
+    }
     yield encodeSseEvent(event, data);
   }
 }

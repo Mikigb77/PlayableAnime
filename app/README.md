@@ -16,14 +16,26 @@ flutter run --dart-define=API_MODE=fake
 **`API_MODE=fake`** runs the whole app on an in-app fake of the API (docs/API.md), with no backend:
 a demo account, the starter worlds, a story in progress, streamed turns, pictures that arrive a few
 seconds after the text, and typed errors. Put a trigger in an action to try the error states:
-`[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:llm_unavailable]` (fails mid-stream),
-`[fail:version_conflict]`, `[fail:picture]` (a planned picture that is then skipped) or `[reset]`.
-The same triggers work in a premise or in a change asked of a draft, as do `[fail:quota_exceeded]`,
-`[fail:unreadable_action]`, `[fail:bad_key]` and `[fail:real_person]` (refused under the field
-that names one, G12). Drafting takes about three seconds and is charged
-like the real thing (3 cents a model call, free on your own key), so the costs the review shows can
-be checked against the balance. The fake lives in `lib/core/fake/`, one file per area of the API,
-so each feature thread extends its own.
+
+- before the stream: `[fail:out_of_credits]` (an empty balance, so your own key gets past it),
+  `[fail:rate_limited]`, `[fail:quota_exceeded]`, `[fail:version_conflict]`;
+- in the stream, as the real interpret and narrate steps send them: `[fail:unreadable_action]`,
+  `[fail:limit]` (a hard limit with `details.category`), `[fail:bad_key]`, `[fail:lost_race]`
+  (another turn was saved first) and `[fail:llm_unavailable]` (after a few words);
+- `[fail:dropped]` (saved, then the connection drops before `scene.completed`), `[reset]` (a
+  cut-away, F4) and `[fail:picture]` (a planned picture that is then skipped).
+
+The words of an action shape the scene: "attack" or "duel" is a fight with a roll and a picture,
+"then" chains steps that stop where one fails, "stop time" runs the two clocks apart, "leap" is a
+long shot and "fly" is ruled out.
+
+A premise or a change asked of a draft takes `[fail:out_of_credits]`, `[fail:rate_limited]`,
+`[fail:quota_exceeded]`, `[fail:version_conflict]`, `[fail:llm_unavailable]`,
+`[fail:unreadable_action]`, `[fail:bad_key]`, `[fail:picture]` and `[reset]` too, and
+`[fail:real_person]` (refused under the field that names one, G12). Drafting takes about three
+seconds and is charged like the real thing (3 cents a model call, free on your own key), so the
+costs the review shows can be checked against the balance. The fake lives in `lib/core/fake/`, one
+file per area of the API, so each feature thread extends its own.
 
 Sign-in works offline too. **Try the demo account** on the welcome screen, or sign in with
 `demo@lucid.test` and the password `lucid-demo`. **Continue with Google** opens a picker that stands
@@ -103,8 +115,9 @@ lib/
     discover/               Starter worlds: the signature ones first, then a shelf of covers
     create/                 A new story: premise, drafting, the world and character review with
                             what each change costs (draft.dart redraftFor), rating, start
-    story/                  Models, repository, play screen, status, and the memory page
-                            (memory.dart, memory_screen.dart: only what the character knows)
+    story/                  Models, repository, the play screen and its controller, scene
+                            details, report and block, story settings, status, and the memory
+                            page (memory.dart, memory_screen.dart: only what the character knows)
     library/                Your stories, with the turn and in-world time, and delete
     account/                Profile, credits and history, own key, content preferences (F7),
                             privacy policy, export, delete, the out-of-credits sheet, sign out
@@ -141,4 +154,12 @@ assets/
   `test/app_test.dart` and `test/helpers.dart`. `AppHarness` in `test/features/harness.dart` signs
   in and opens the whole app at any location, with the requests it sent to check. A test that answers requests by hand makes its
   `Completer`s inside the test body, not in `setUp`, or they never complete under the test clock
-  (see `test/features/story_screen_test.dart`).
+  (see `test/features/story_screen_test.dart`). `test/features/play_screen_test.dart` plays a
+  story through the fake with a paced stream; give the fake `clock: tester.binding.clock.now` so
+  pictures arrive on the test's clock.
+- **The play screen** draws what `PlayController` holds (the story, the turn in flight, pictures
+  and notices) and keeps its own scroll: it opens at the top of the newest scene, follows a turn as
+  it streams but never past its top, and loads older scenes above without moving the page. A
+  turn or an Illustrate refused for credits opens `showOutOfCreditsSheet` and goes again once the
+  player adds their own key; a saved scene or a drawn picture refreshes `meProvider` if a screen
+  has loaded it.

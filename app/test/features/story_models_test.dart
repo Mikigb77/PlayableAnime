@@ -114,6 +114,107 @@ void main() {
         'expected_version': 1,
       });
       expect(const TurnInput.standing('wait').toJson(2)['standing'], 'wait');
+      // The opening takes no field and no input mode.
+      expect(const TurnInput.opening().toJson(1), {'kind': 'opening', 'expected_version': 1});
+    });
+
+    test('scene details read steps, rolls, beats, the chain and where a plan stopped', () {
+      final details = Scene.fromJson(const {
+        'turn': 5,
+        'kind': 'action',
+        'narration': 'You swing across.',
+        'time': {
+          'world_start_s': 0,
+          'world_end_s': 40,
+          'label': 'Day 1, dusk',
+          'duration_label': '',
+        },
+        'details': {
+          'steps': [
+            {
+              'text': 'Swing across on a rope',
+              'class': 'long_shot',
+              'reason': 'Wet stone.',
+              'roll': {'odds_label': 'a long shot', 'result': 'partial', 'seed': 's1'},
+              'beats': [
+                {
+                  'beat': 'Find a rope',
+                  'thing': 'a rope by the bell',
+                  'verdict': 'made_canon',
+                  'reason': 'Bells have ropes.',
+                },
+                {'beat': 'Fly', 'thing': 'wings', 'verdict': 'empty', 'reason': 'You have none.'},
+              ],
+            },
+            {'text': 'Land', 'class': 'ruled_out', 'reason': 'Too far.'},
+          ],
+          'chain': null,
+          'stopped_at_step': 1,
+        },
+        'blocked': true,
+        'created_at': '2026-11-03T18:40:00Z',
+      }).details;
+      final step = details.steps.first;
+      expect(step.outcomeClass, OutcomeClass.longShot);
+      expect(step.roll!.result, RollResult.partial);
+      expect(step.beats.map((b) => b.madeCanon), [true, false]);
+      expect(step.beats.first.thing, 'a rope by the bell');
+      expect(details.steps.last.outcomeClass, OutcomeClass.ruledOut);
+      expect(details.steps.last.beats, isEmpty);
+      expect(details.chain, isEmpty);
+      expect(details.stoppedAtStep, 1);
+    });
+
+    test('an empty duration reads as none, and a blocked scene says so', () {
+      final scene = Scene.fromJson(const {
+        'turn': 1,
+        'kind': 'opening',
+        'narration': 'It begins.',
+        'time': {
+          'world_start_s': 0,
+          'world_end_s': 0,
+          'label': 'Day 1, dawn',
+          'duration_label': '',
+        },
+        'blocked': true,
+        'created_at': '2026-11-03T18:40:00Z',
+      });
+      expect(scene.durationLabel, isNull);
+      expect(scene.timeLabel, 'Day 1, dawn');
+      expect(scene.blocked, isTrue);
+      expect(scene.details.isEmpty, isTrue);
+    });
+
+    test('settings send every field, and an empty tone clears it', () {
+      const settings = StorySettings(tone: 'Wry');
+      expect(settings.toJson(), {
+        'narration_length': 'medium',
+        'tone': 'Wry',
+        'difficulty': 'balanced',
+        'event_frequency': 'normal',
+        'images': 'key_moments',
+        'suggestions': true,
+      });
+      final cleared = settings.copyWith(tone: '  ');
+      expect(cleared.tone, isNull);
+      expect(cleared.toJson()['tone'], isNull);
+      expect(cleared, isNot(settings));
+      expect(settings.copyWith(difficulty: 'brutal').difficulty, 'brutal');
+    });
+
+    test('a scene saved twice is kept once', () {
+      final story = Story.fromJson(const {
+        'id': 's',
+        'title': 'T',
+        'version': 1,
+        'scenes': [
+          {'turn': 1, 'narration': 'One.'},
+        ],
+      });
+      final next = story
+          .withScene(Scene.fromJson(const {'turn': 2, 'narration': 'Two.'}), version: 2)
+          .withScene(Scene.fromJson(const {'turn': 2, 'narration': 'Two, again.'}), version: 2);
+      expect(next.scenes.map((s) => s.narration), ['One.', 'Two, again.']);
     });
   });
 }

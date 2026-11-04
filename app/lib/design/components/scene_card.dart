@@ -24,6 +24,7 @@ class SceneCard extends StatelessWidget {
     this.onMore,
     this.ornament = true,
     this.gutter = Space.gutter,
+    this.pictureAfterNarration = false,
   });
 
   final Widget narration;
@@ -49,6 +50,11 @@ class SceneCard extends StatelessWidget {
 
   /// Side padding for the text. The picture ignores it and spans the column.
   final double gutter;
+
+  /// Puts the picture under the narration instead of above it. The play screen does this, so a
+  /// picture that arrives after the text (M3) lands where the reader's eyes are, and never pushes
+  /// the words they are reading down the page.
+  final bool pictureAfterNarration;
 
   @override
   Widget build(BuildContext context) {
@@ -76,12 +82,17 @@ class SceneCard extends StatelessWidget {
               children: [?time, ?event],
             ),
           ),
-        if (picture case final picture?)
+        if (picture case final picture? when !pictureAfterNarration)
           Padding(
             padding: const EdgeInsets.only(bottom: Space.lg),
             child: picture,
           ),
         Padding(padding: pad, child: narration),
+        if (picture case final picture? when pictureAfterNarration)
+          Padding(
+            padding: const EdgeInsets.only(top: Space.xl),
+            child: picture,
+          ),
         if (hasFooter)
           Padding(
             padding: pad.copyWith(top: Space.md),

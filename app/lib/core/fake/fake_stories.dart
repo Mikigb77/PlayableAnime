@@ -38,6 +38,9 @@ class FakeStory {
   };
   final scenes = <JsonMap>[];
 
+  /// Whether the player has met Senior Sister Lan, whose first scene plans her portrait.
+  bool metLan = false;
+
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
 
   JsonMap get clock => {'world_s': worldS, 'label': fakeWorldLabel(worldS), 'timeline_id': 'main'};
@@ -114,23 +117,37 @@ void registerStoryRoutes(FakeBackend b) {
   });
 
   b.route('GET', '/v1/stories/:id', (r) {
-    final last = int.tryParse(r.query('scenes') ?? '') ?? 20;
+    final last = _count(r.query('scenes'), fallback: 20, min: 0);
     return FakeResponse.json(stories.get(r.param('id'), r.userId!).toJson(last: last));
   });
 
+  // Older scenes for scrollback, oldest first.
   b.route('GET', '/v1/stories/:id/scenes', (r) {
     final story = stories.get(r.param('id'), r.userId!);
     final before = int.tryParse(r.query('before') ?? '') ?? story.turn + 1;
-    final limit = int.tryParse(r.query('limit') ?? '') ?? 20;
+    final limit = _count(r.query('limit'), fallback: 20, min: 1);
     final older = story.scenes.where((s) => (s['turn'] as int) < before).toList();
     return FakeResponse.json(older.sublist(older.length > limit ? older.length - limit : 0));
   });
 
+  // A settings change applies from the next scene and doesn't move the version (S6, T10).
   b.route('PATCH', '/v1/stories/:id', (r) {
     final story = stories.get(r.param('id'), r.userId!);
-    if (r.json['title'] case final String title) story.title = title;
-    if (r.json['settings'] case final JsonMap settings) {
-      story.settings = {...story.settings, ...settings};
+    final title = r.json['title'];
+    if (title != null) {
+      final text = title is String ? title.trim() : '';
+      if (text.isEmpty || text.length > 120) {
+        throw const FakeError.validation('A title is 1 to 120 characters.');
+      }
+    }
+    final settings = r.json['settings'];
+    if (settings != null) {
+      if (settings is! JsonMap) throw const FakeError.validation('Settings are an object.');
+      _checkSettings(settings);
+    }
+    if (title case final String title) story.title = title.trim();
+    if (settings case final JsonMap settings) {
+      story.settings = {...story.settings, ...settings}..removeWhere((_, v) => v == null);
     }
     return FakeResponse.json(story.toJson());
   });
@@ -168,6 +185,27 @@ void registerStoryRoutes(FakeBackend b) {
       ],
     });
   });
+}
+
+int _count(String? text, {required int fallback, required int min}) =>
+    (int.tryParse(text ?? '') ?? fallback).clamp(min, 50);
+
+/// The checks of the real endpoint: each setting takes one of its values, and a null tone clears it.
+void _checkSettings(JsonMap settings) {
+  const choices = {
+    'narration_length': {'short', 'medium', 'long'},
+    'difficulty': {'story', 'balanced', 'brutal'},
+    'event_frequency': {'calm', 'normal', 'dramatic'},
+    'images': {'off', 'key_moments', 'more'},
+  };
+  for (final MapEntry(:key, :value) in settings.entries) {
+    final ok = switch (key) {
+      'tone' => value == null || (value is String && value.length <= 200),
+      'suggestions' => value is bool,
+      _ => choices[key]?.contains(value) ?? false,
+    };
+    if (!ok) throw FakeError.validation('Unsupported $key.');
+  }
 }
 
 /// "Day 1, dawn" style labels in the fake world's calendar. Stories open at 06:00 on day 1.
@@ -230,6 +268,7 @@ List<JsonMap> _seedScenes() => <JsonMap>[
       'url': FakeAssets.peaks,
     },
     'portraits': <Object>[],
+    'blocked': false,
     'created_at': '2026-11-03T18:31:00Z',
   },
   {
@@ -265,6 +304,7 @@ List<JsonMap> _seedScenes() => <JsonMap>[
     'portraits': [
       {'character_id': 'voice', 'name': 'The voice in the scroll', 'url': FakeAssets.portrait(1)},
     ],
+    'blocked': false,
     'created_at': '2026-11-03T18:35:00Z',
   },
   {
@@ -312,6 +352,7 @@ List<JsonMap> _seedScenes() => <JsonMap>[
       {'character_id': 'voice', 'name': 'The voice in the scroll', 'url': FakeAssets.portrait(1)},
       {'character_id': 'gu', 'name': 'Old Gu', 'url': FakeAssets.portrait(2)},
     ],
+    'blocked': false,
     'created_at': '2026-11-03T18:40:00Z',
   },
 ];
