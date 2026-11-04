@@ -12,17 +12,26 @@ Only the models the app uses are called, each once, whichever nodes share it: to
 models and the picture model, for about 4 cents in all, most of it the picture. The evals' judge
 is left out, since it never serves a player. With the offline model (`LLM_PROVIDER=fake`) it
 checks nothing and says so.
+
+Then each response format a node asks for (its JSON schema) is sent once as that node sends it,
+with room for only a few words: Gemini refuses a schema outside what it takes with a bare 400
+before writing anything, which is how every draft failed on 2026-11-04 while plain calls worked.
+A refused schema goes in the prompt instead (`graph.llm.gemini`), so the line says so and the
+check still passes; only a format that fails both ways fails it.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
-from dataclasses import dataclass
+from contextlib import aclosing
+from dataclasses import dataclass, replace
 from typing import Any
 
 from asgiref.sync import async_to_sync
 from django.core.management.base import BaseCommand, CommandError
+from pydantic import BaseModel
 
 from graph.llm import (
     CallOptions,
@@ -35,7 +44,9 @@ from graph.llm import (
     TurnTelemetry,
     build_client,
     get_model_config,
+    safety_settings,
 )
+from graph.llm.types import ProviderError, Request
 
 # The nodes a player's turn, draft or picture calls, in the order they are checked.
 TEXT_NODES = (
@@ -54,6 +65,29 @@ PICTURE_PROMPT = "A single red apple on a plain wooden table, in soft daylight."
 TEXT_OPTIONS = CallOptions(max_output_tokens=1024)
 # Vertex AI's reasons can be long; the start says what went wrong.
 DETAIL_CHARS = 600
+SCHEMA_SYSTEM = "You answer a health check."
+SCHEMA_PROMPT = "Start an answer in the required format. It may stop after a few words."
+# Gemini checks a schema before it writes, so a few words show it took it, at almost no cost.
+SCHEMA_OPTIONS = CallOptions(max_output_tokens=64)
+# A format is sent straight to the backend, past the client's retry, so it gets its own: a
+# passing 429 or 503 is no reason to fail a deploy.
+SCHEMA_ATTEMPTS = 2
+SCHEMA_RETRY_DELAY_S = 2.0
+
+
+def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
+    """Each node's structured output, as it asks for it. The judge's is left out with it."""
+    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldProposal
+    from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
+
+    return (
+        (Node.INTERPRET, Intent),
+        (Node.NARRATOR, NarratorOutput),
+        (Node.SUMMARIZER, ChapterOutput),
+        (Node.DRAFTER, DraftProposal),
+        (Node.DRAFTER, WorldProposal),
+        (Node.DRAFTER, CharacterProposal),
+    )
 
 
 @dataclass(frozen=True)
@@ -66,6 +100,9 @@ class Check:
     seconds: float
     reason: str = ""
     detail: str = ""
+    # For a response format: the schema's name, and whether Gemini took it as a schema.
+    schema: str = ""
+    in_prompt: bool = False
 
 
 def models_in_use(config: ModelConfig, *, picture: bool) -> list[tuple[str, tuple[Node, ...]]]:
@@ -92,7 +129,8 @@ class _LastFailure(logging.Handler):
 
 async def run_checks(config: ModelConfig, *, picture: bool) -> list[Check]:
     """Calls each model in use once. A picture model is asked for a picture, the others for a
-    word, through the first node that uses it, with that node's settings."""
+    word, through the first node that uses it, with that node's settings. Then sends each
+    response format once, as its node does."""
     client = build_client(rating="teen", recorder=TurnTelemetry(), config=config)
     failures = _LastFailure()
     llm_logger = logging.getLogger("graph.llm")
@@ -101,6 +139,8 @@ async def run_checks(config: ModelConfig, *, picture: bool) -> list[Check]:
     try:
         for model, nodes in models_in_use(config, picture=picture):
             checks.append(await _check(client, failures, model, nodes))
+        for node, schema in response_formats():
+            checks.append(await _check_format(client, failures, config, node, schema))
     finally:
         llm_logger.removeHandler(failures)
         await client.aclose()
@@ -135,10 +175,63 @@ async def _check(
     return Check(model, names, ok=True, seconds=time.monotonic() - started)
 
 
+async def _check_format(
+    client: ModelClient,
+    failures: _LastFailure,
+    config: ModelConfig,
+    node: Node,
+    schema: type[BaseModel],
+) -> Check:
+    """Sends `schema` as `node` asks for it, straight to the backend: the answer is cut off on
+    purpose, so only whether Gemini takes the request counts, not the JSON."""
+    settings = config.node(node)
+    request = Request(
+        node=node,
+        model=settings.model,
+        prompt=Prompt.build(SCHEMA_SYSTEM, SCHEMA_PROMPT),
+        options=replace(settings.options.merged(SCHEMA_OPTIONS), timeout_s=60),
+        safety=safety_settings("teen", node=node),
+        json_schema=schema.model_json_schema(),
+    )
+    failures.fields = {}
+    started = time.monotonic()
+    for attempt in range(1, SCHEMA_ATTEMPTS + 1):
+        try:
+            async with aclosing(client.backend.stream(request)) as chunks:
+                async for _chunk in chunks:
+                    pass
+            break
+        except ProviderError as error:
+            if error.kind == "transient" and attempt < SCHEMA_ATTEMPTS:
+                await asyncio.sleep(SCHEMA_RETRY_DELAY_S)
+                continue
+            return Check(
+                settings.model,
+                (node.value,),
+                ok=False,
+                seconds=time.monotonic() - started,
+                reason=f"{error.kind}_{error.status}" if error.status else error.kind,
+                detail=error.detail[:DETAIL_CHARS],
+                schema=schema.__name__,
+            )
+    return Check(
+        settings.model,
+        (node.value,),
+        ok=True,
+        seconds=time.monotonic() - started,
+        schema=schema.__name__,
+        in_prompt=failures.fields.get("reason") == "schema_refused",
+    )
+
+
 def describe(check: Check) -> str:
-    line = f"{check.model} ({', '.join(check.nodes)}): "
+    line = f"{check.model} ({', '.join(check.nodes)})"
+    line = f"{line} {check.schema} format: " if check.schema else f"{line}: "
     if check.ok:
-        return f"{line}ok in {check.seconds:.1f} s"
+        line = f"{line}ok in {check.seconds:.1f} s"
+        if check.in_prompt:
+            line = f"{line}, though Gemini refused it as a schema, so it goes in the prompt"
+        return line
     line = f"{line}FAILED ({check.reason})"
     return f"{line}: {check.detail}" if check.detail else line
 
@@ -162,11 +255,22 @@ class Command(BaseCommand):
         checks = async_to_sync(run_checks)(config, picture=not no_picture)
         for check in checks:
             self.stdout.write(describe(check))
-        failed = [check for check in checks if not check.ok]
-        if failed:
-            models = ", ".join(check.model for check in failed)
-            raise CommandError(
-                f"{len(failed)} of {len(checks)} models didn't answer ({models}). Players can't "
-                "use what they serve until this is fixed."
+        models = [check for check in checks if not check.schema]
+        formats = [check for check in checks if check.schema]
+        problems = []
+        if failed := [check for check in models if not check.ok]:
+            names = ", ".join(check.model for check in failed)
+            problems.append(f"{len(failed)} of {len(models)} models didn't answer ({names})")
+        if failed := [check for check in formats if not check.ok]:
+            names = ", ".join(f"{check.nodes[0]} {check.schema}" for check in failed)
+            problems.append(
+                f"{len(failed)} of {len(formats)} response formats were refused ({names})"
             )
-        self.stdout.write(f"All {len(checks)} models answered.")
+        if problems:
+            raise CommandError(
+                f"{'; '.join(problems)}. Players can't use what they serve until this is fixed."
+            )
+        self.stdout.write(
+            f"All {len(models)} models answered, and Gemini took all {len(formats)} response "
+            "formats."
+        )

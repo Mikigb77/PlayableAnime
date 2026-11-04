@@ -27,7 +27,7 @@ from django.utils import timezone
 
 from graph.drafting.catalog import StarterPremise
 from media import drawing
-from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest
+from media.drawing import DrawBlocked, DrawError, Drawn, DrawRateLimited, DrawRequest
 from media.models import PremiseCover
 from media.prompts import Brief, WorldLook, build_prompt
 from media.storage import check_key, delete_quietly, extension_for, get_storage
@@ -43,6 +43,12 @@ TRIGGER = "draw_premise_covers"
 # fetches the premises once per session, so a URL must outlive one; reused while half its life
 # remains, each answer lasts six hours at least.
 COVER_URL_TTL_S = 12 * 3600
+# Our picture quota answered 429 after three quick drawings on 2026-11-04, and refills within a
+# minute. So a real model draws the covers a little apart, and draws one that ran out of quota
+# again after a wait, a few times, before giving it up until the next run.
+COVER_PAUSE_S = 10.0
+RATE_LIMIT_WAIT_S = 60.0
+RATE_LIMIT_RETRIES = 2
 
 
 def cover_url_ttl_s() -> int:
@@ -63,6 +69,8 @@ class Outcome:
     # A kept cover drawn from older premise text, or by the offline model.
     stale: bool = False
     offline: bool = False
+    # A failed cover whose drawing ran out of quota (429), which a wait may fix.
+    rate_limited: bool = False
 
 
 def offline_model() -> bool:
@@ -142,13 +150,33 @@ async def draw_covers(
     report: Callable[[Outcome], None] = lambda outcome: None,
 ) -> list[Outcome]:
     """Draws each premise's cover in turn, storing each as soon as it is drawn, and calls
-    `report` with each outcome. A cover that fails or is blocked is left as it was."""
+    `report` with each outcome. A cover that fails or is blocked is left as it was.
+
+    A real model draws them `COVER_PAUSE_S` apart, and draws a cover that ran out of quota again
+    after `RATE_LIMIT_WAIT_S`, up to `RATE_LIMIT_RETRIES` times.
+    """
     outcomes = []
-    for premise in premises:
+    for index, premise in enumerate(premises):
+        if index and not offline:
+            await _wait(COVER_PAUSE_S)
         outcome = await draw_cover(premise, force=force, offline=offline)
+        for attempt in range(1, RATE_LIMIT_RETRIES + 1):
+            if not outcome.rate_limited:
+                break
+            logger.info(
+                "Premise cover ran out of picture quota; drawing it again after %.0f s",
+                RATE_LIMIT_WAIT_S,
+                extra={"premise_id": premise.id, "retry": attempt, "of": RATE_LIMIT_RETRIES},
+            )
+            await _wait(RATE_LIMIT_WAIT_S)
+            outcome = await draw_cover(premise, force=force, offline=offline)
         report(outcome)
         outcomes.append(outcome)
     return outcomes
+
+
+async def _wait(seconds: float) -> None:
+    await asyncio.sleep(seconds)
 
 
 async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> Outcome:
@@ -163,6 +191,12 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
         cost = _spent(model)
         _log(premise.id, "skipped", "blocked", name, cost, offline, started, exc.categories)
         return Outcome(premise.id, "blocked", model=name, cost_usd=cost, offline=offline)
+    except DrawRateLimited:
+        cost = _spent(model)
+        _log(premise.id, "skipped", "rate_limited", name, cost, offline, started)
+        return Outcome(
+            premise.id, "failed", model=name, cost_usd=cost, offline=offline, rate_limited=True
+        )
     except DrawError:
         cost = _spent(model)
         _log(premise.id, "skipped", "failed", name, cost, offline, started)

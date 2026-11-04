@@ -10,6 +10,7 @@ from graph.llm import Block, Fail, FakeBackend, ModelClient, ModelConfig, Node, 
 from media.drawing import (
     DrawBlocked,
     DrawFailed,
+    DrawRateLimited,
     DrawRequest,
     GraphPictureModel,
     KeyCannotDraw,
@@ -78,6 +79,26 @@ def test_a_picture_that_fails_twice_fails():
 
     with pytest.raises(DrawFailed):
         asyncio.run(_model(fake).draw(REQUEST))
+
+
+def test_our_picture_quota_running_out_says_so():
+    """A 429 on our account may pass with a wait, which the starter covers take."""
+    fake = FakeBackend().script(Node.PICTURE, Fail(status=429), Fail(status=429))
+
+    with pytest.raises(DrawRateLimited):
+        asyncio.run(_model(fake).draw(REQUEST))
+
+
+@pytest.mark.parametrize(
+    "steps", [(Fail(status=503), Fail(status=503)), (Fail(status=429), Fail(status=500))]
+)
+def test_other_failures_are_not_a_quota_that_ran_out(steps):
+    fake = FakeBackend().script(Node.PICTURE, *steps)
+
+    with pytest.raises(DrawFailed) as failed:
+        asyncio.run(_model(fake).draw(REQUEST))
+
+    assert not isinstance(failed.value, DrawRateLimited)
 
 
 @pytest.mark.parametrize(

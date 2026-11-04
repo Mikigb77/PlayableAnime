@@ -16,7 +16,7 @@ from django.utils import timezone
 from billing.models import LedgerEntry
 from graph.drafting.catalog import STARTER_PREMISES, starter
 from media import lookups, premise_covers
-from media.drawing import DrawBlocked, DrawFailed
+from media.drawing import DrawBlocked, DrawFailed, DrawRateLimited
 from media.models import PremiseCover
 from media.prompts import FRAMING, HOUSE_STYLE, MILD_RULES
 from media.storage import get_storage
@@ -31,6 +31,18 @@ IDS = [premise.id for premise in STARTER_PREMISES]
 def real_model(monkeypatch):
     """The configured model is a real one unless a test says otherwise; `painters` stands in."""
     monkeypatch.setattr(premise_covers, "offline_model", lambda: False)
+
+
+@pytest.fixture(autouse=True)
+def waits(monkeypatch) -> list[float]:
+    """The pauses the drawing takes, in seconds, recorded instead of slept."""
+    waited: list[float] = []
+
+    async def wait(seconds: float) -> None:
+        waited.append(seconds)
+
+    monkeypatch.setattr(premise_covers, "_wait", wait)
+    return waited
 
 
 def draw(*args) -> str:
@@ -143,6 +155,65 @@ def test_a_failed_or_blocked_cover_is_left_out_and_tried_on_the_next_run(painter
 
     assert PremiseCover.objects.count() == len(IDS)
     assert len(painters.ours.requests) == len(IDS) + 2
+
+
+def test_a_real_model_draws_the_covers_a_little_apart(painters, waits):
+    """Our picture quota answers 429 after a few quick drawings, so they are spaced out."""
+    draw()
+
+    assert waits == [premise_covers.COVER_PAUSE_S] * (len(IDS) - 1)
+    assert premise_covers.COVER_PAUSE_S > 0
+
+
+def test_the_offline_model_draws_without_pausing(painters, waits, monkeypatch):
+    monkeypatch.setattr(premise_covers, "offline_model", lambda: True)
+
+    draw()
+
+    assert PremiseCover.objects.count() == len(IDS)
+    assert waits == []
+
+
+def test_a_cover_out_of_quota_is_drawn_again_after_a_wait(painters, waits, log_lines):
+    painters.ours.script(DrawRateLimited("llm_unavailable"))
+
+    out = draw()
+
+    assert PremiseCover.objects.count() == len(IDS)
+    assert len(painters.ours.requests) == len(IDS) + 1
+    assert [request.prompt for request in painters.ours.requests[:2]] == [
+        premise_covers.cover_request(starter(IDS[0])).prompt
+    ] * 2
+    assert waits[0] == premise_covers.RATE_LIMIT_WAIT_S >= 60
+    assert waits[1:] == [premise_covers.COVER_PAUSE_S] * (len(IDS) - 1)
+    assert f"{IDS[0]}: drawn with" in out
+    skipped = [
+        line["picture"] for line in log_lines() if line["message"] == "Premise cover skipped"
+    ]
+    assert [(p["premise_id"], p["skip_reason"]) for p in skipped] == [(IDS[0], "rate_limited")]
+
+
+def test_a_cover_still_out_of_quota_after_the_waits_is_left_for_the_next_run(painters, waits):
+    retries = premise_covers.RATE_LIMIT_RETRIES
+    painters.ours.script(*(DrawRateLimited("llm_unavailable") for _ in range(retries + 1)))
+
+    with pytest.raises(CommandError, match=f"1 cover wasn't drawn \\({IDS[0]}\\)"):
+        draw()
+
+    assert not PremiseCover.objects.filter(pk=IDS[0]).exists()
+    assert PremiseCover.objects.count() == len(IDS) - 1
+    assert len(painters.ours.requests) == len(IDS) + retries
+    assert waits[:retries] == [premise_covers.RATE_LIMIT_WAIT_S] * retries
+
+
+def test_a_cover_that_fails_otherwise_is_not_drawn_again_in_the_same_run(painters, waits):
+    painters.ours.script(DrawFailed("timeout"))
+
+    with pytest.raises(CommandError, match=f"1 cover wasn't drawn \\({IDS[0]}\\)"):
+        draw()
+
+    assert len(painters.ours.requests) == len(IDS)
+    assert premise_covers.RATE_LIMIT_WAIT_S not in waits
 
 
 def test_the_house_pays_once_with_no_ledger_entry(painters, meter, log_lines):
