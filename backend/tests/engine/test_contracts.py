@@ -28,6 +28,7 @@ from engine.contracts import (
     SceneEnd,
     SheetPart,
     SheetUse,
+    StandingAction,
     StateDelta,
     StepFacts,
     StepResolution,
@@ -281,3 +282,10 @@ def test_model_output_schemas_avoid_free_form_maps_and_unions(model):
         assert node.get("additionalProperties") in (None, False), f"free-form map at {path}"
         branches = [b for b in node.get("anyOf", []) if b.get("type") != "null"]
         assert len(branches) <= 1, f"union at {path}"
+
+
+def test_the_interpret_model_must_always_answer_with_steps():
+    # B5, W10: Gemini leaves out what a schema doesn't require, and an intent with no steps
+    # played every action as a five-second nothing. Code may still leave them out.
+    assert {"summary", "steps"} <= set(Intent.model_json_schema()["required"])
+    assert Intent(standing=StandingAction.WAIT).steps == []

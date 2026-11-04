@@ -10,8 +10,9 @@ handles poorly.
 """
 
 from enum import StrEnum
+from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from engine.base import EngineModel
 from engine.state.scene import EncounterKind
@@ -287,6 +288,14 @@ class IntentStep(EngineModel):
     gist: str = Field(default="", description="R7: what to say, when the player gave only gist.")
     kind: ActionKind
     proposed_duration_s: int = Field(ge=0, description="World seconds it should take (W10).")
+    until: str | None = Field(
+        default=None,
+        description=(
+            "W10: when the step lasts until a time of day ('until nightfall', 'sleep till"
+            " dawn'), that time on the world's 24-hour clock, as HH:MM. Code counts the seconds"
+            " to it in place of proposed_duration_s."
+        ),
+    )
     duration_uncertain: bool = Field(
         default=False, description="W10: how long it takes is itself an outcome to roll."
     )
@@ -399,8 +408,18 @@ class PastClaim(EngineModel):
     )
 
 
+def _model_must_answer(schema: dict[str, Any]) -> None:
+    """B5. The fields the interpret model must always give, though code may leave them out.
+    Gemini answers only what a schema requires as often as not, and an intent with no `steps`
+    played every action as a five-second nothing (W10): on 2026-11-04 most turns came back that
+    way. An empty list still says the action is only a standing one."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "summary", "steps"]))
+
+
 class Intent(EngineModel):
     """B5 step 2. What the character tries, read from the player's words."""
+
+    model_config = ConfigDict(json_schema_extra=_model_must_answer)
 
     actor_id: str | None = Field(default=None, description="None means the player character.")
     summary: str = Field(default="", description="The action in one sentence.")

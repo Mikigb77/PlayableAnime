@@ -52,8 +52,7 @@ def part_of_day(second_of_day: int) -> str:
 
 def _time_of_day(calendar: Calendar, second_of_day: int) -> str:
     if calendar.time_of_day is TimeOfDayStyle.CLOCK:
-        second_of_day %= DAY
-        return f"{second_of_day // HOUR:02d}:{second_of_day % HOUR // MINUTE:02d}"
+        return clock_time(second_of_day)
     return part_of_day(second_of_day)
 
 
@@ -97,6 +96,44 @@ def _custom(calendar: Calendar, world_s: int) -> str | None:
     era = f" {calendar.era}" if calendar.era else ""
     when = _time_of_day(calendar, since_midnight)
     return f"{_ordinal(day_of_year + 1)} day of {month.name}, year {year}{era}, {when}"
+
+
+def second_of_day(calendar: Calendar, world_s: int) -> int:
+    """W10. Seconds since midnight on the world's clock at `world_s`, as `clock_label` shows
+    it: from a Gregorian epoch's own time of day, or from the opening hour otherwise."""
+    if calendar.style is CalendarStyle.GREGORIAN:
+        try:
+            at = datetime.fromisoformat(calendar.epoch or "") + timedelta(seconds=world_s)
+        except (ValueError, OverflowError):
+            pass
+        else:
+            return at.hour * HOUR + at.minute * MINUTE + at.second
+    return (calendar.start_second_of_day + world_s) % DAY
+
+
+def clock_time(seconds_of_day: int) -> str:
+    """A time of day on the 24-hour clock: "07:05"."""
+    seconds_of_day %= DAY
+    return f"{seconds_of_day // HOUR:02d}:{seconds_of_day % HOUR // MINUTE:02d}"
+
+
+class Moment(EngineModel):
+    """A moment on the world's clock, as the turn's models read it (W10): the date as the player
+    sees it, the 24-hour time whatever the calendar shows, and the part of the day."""
+
+    date: str
+    clock: str
+    part_of_day: str
+
+
+def moment(calendar: Calendar, world_s: int) -> Moment:
+    """Where the world's clock stands at `world_s`."""
+    of_day = second_of_day(calendar, world_s)
+    return Moment(
+        date=clock_label(calendar, world_s),
+        clock=clock_time(of_day),
+        part_of_day=part_of_day(of_day),
+    )
 
 
 def clock_label(calendar: Calendar, world_s: int) -> str:

@@ -21,6 +21,7 @@ from engine.contracts import (
     Intent,
     Resolution,
 )
+from engine.labels import moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
@@ -31,7 +32,8 @@ from graph.turn.types import RECENT_SCENES, PastScene
 # Facts this important, which the player character knows, always reach the narrator.
 KEY_FACT_IMPORTANCE = 4
 
-# What the interpret step needs of the world to judge what it allows (G6, G8).
+# What the interpret step needs of the world to judge what it allows (G6, G8), and how people
+# get around in it, to judge how long a trip takes (W10).
 _INTERPRET_WORLD = {
     "genre",
     "era",
@@ -41,6 +43,7 @@ _INTERPRET_WORLD = {
     "peoples",
     "creatures",
     "medicine",
+    "travel",
 }
 _RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin", "look_version"}
 _NPC_HIDDEN = {
@@ -234,6 +237,7 @@ def interpret_prompt(state: WorldState, action: str) -> Prompt:
             ("PLAYER CHARACTER", _player_view(state)),
             ("SCENE", _scene_view(state)),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
+            ("NOW", _now_view(state)),
             ("KNOWN", _known_view(state)),
             ("GOALS AND THREADS", _goals_and_threads(state)),
             ("ACTION", action.strip()),
@@ -309,6 +313,7 @@ def narration_brief(
         sections.insert(2, ("PREMISE", premise))
 
     if intent is None and not resolution.steps:
+        sections.append(("NOW", _now_view(after)))
         sections.append(("TASK", prompts.OPENING_TASK))
     else:
         if intent is not None:
@@ -422,10 +427,23 @@ def _beat_view(beat: BeatResolution) -> dict[str, Any]:
     return view
 
 
+def _now_view(state: WorldState) -> dict[str, Any]:
+    """W10. Where the world's clock stands, so the models judge times and tell the hour as the
+    clock shows it."""
+    return moment(state.bible.calendar, state.world_s).model_dump()
+
+
 def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
+    """W10. When the scene began and what time it is now, with the time the action took: the
+    telling keeps to the clock."""
     elapsed = after.world_s - before.world_s
     lived = after.player.personal_s(after.world_s) - before.player.personal_s(before.world_s)
-    view: dict[str, Any] = {"world_seconds_passed": elapsed}
+    view: dict[str, Any] = {
+        "began": _now_view(before),
+        "now": _now_view(after),
+        "passed": span_label(elapsed),
+        "world_seconds_passed": elapsed,
+    }
     if lived != elapsed:
         view["your_seconds_lived"] = lived
     return view

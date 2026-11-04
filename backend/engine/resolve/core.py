@@ -75,7 +75,7 @@ from engine.contracts.resolution import (
 from engine.resolve import odds as odds_mod
 from engine.resolve.chain import settle_chain
 from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world_check
-from engine.resolve.durations import lived_estimate, step_timing
+from engine.resolve.durations import lived_estimate, step_timing, until_time
 from engine.resolve.effects import aim_effects, power_costs, proposed_deed
 from engine.resolve.power import (
     Scale,
@@ -149,6 +149,7 @@ class _Frame:
     stop_left_s: int | None
     canon: list[str] = field(default_factory=list)
     personal_s: int = 0
+    world_s: int = 0  # the world clock as this step starts, had the steps before it run in full
     stop_power: Power | None = None  # the actor's stop holding the world, if one does
     tempo: _Tempo | None = None
     ready_at: dict[str, int] = field(default_factory=dict)  # cooldowns on the actor's clock
@@ -260,6 +261,7 @@ def _frame(state: WorldState, actor: Character) -> _Frame:
         frozen=in_time_stop(state, actor.id),
         stop_left_s=_stop_left(state, actor),
         personal_s=lived,
+        world_s=state.world_s,
     )
     # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
     # turn can't be started afresh once it runs out partway through this plan.
@@ -399,16 +401,22 @@ def _settle_step(
     if growing and step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
         timed_step = step.model_copy(update={"duration_uncertain": True})  # G19
     tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
-    timing = step_timing(
-        timed_step,
-        frozen=frozen,
-        rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
-        rng=duration_rng,
-        stop_left_s=stop_left,
-        outlasts=outlasts if frozen else None,
-        rate=tempo,
-        rate_left_s=tempo_left,
-    )
+    timing = None
+    if not frozen and tempo is None and settled.outcome_class is not OutcomeClass.RULED_OUT:
+        # W10. "Until nightfall" is counted on the world's clock from where this step starts.
+        # In a stop or a haste, and for a step that never got going, the proposal stands.
+        timing = until_time(step, state.bible.calendar, frame.world_s)
+    if timing is None:
+        timing = step_timing(
+            timed_step,
+            frozen=frozen,
+            rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
+            rng=duration_rng,
+            stop_left_s=stop_left,
+            outlasts=outlasts if frozen else None,
+            rate=tempo,
+            rate_left_s=tempo_left,
+        )
     duration = timing.duration_s
     personal = timing.personal_s
     if not frozen:
@@ -453,6 +461,7 @@ def _settle_step(
         if frame.tempo.left_s <= 0:
             frame.tempo = None
     frame.personal_s += lived
+    frame.world_s += duration
 
     targets = opposition.targets if opposition is not None else []
     effects = StateDelta()

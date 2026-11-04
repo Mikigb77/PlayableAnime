@@ -514,6 +514,9 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     assert fields["cost_usd"] > 0
     assert fields["first_text_ms"] is not None
     assert set(fields["node_ms"]) >= {"interpret", "narrate"}
+    # W10: how far the clock moved and what each step took, to tell a clock that drifts.
+    assert fields["world_s"] == 3
+    assert fields["steps"] == [["move", 3]]
     assert line["story_id"] == str(story.pk)
     logged = str(log_lines())
     assert "I step around Zhao." not in logged

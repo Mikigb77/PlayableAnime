@@ -4,7 +4,8 @@ The interpret step proposes a duration and code bounds it by the kind of action.
 takes is itself uncertain (breaking out of a trap, picking a lock, finding someone in a city), a
 seeded roll picks it, spread evenly across orders of magnitude around the proposal and still
 within the kind's bounds, so the same trap holds someone minutes or days. Inside a time stop the
-world clock stands still and only the actor's own clock runs.
+world clock stands still and only the actor's own clock runs. A step that lasts until a time of
+day takes the seconds to it on the world's clock, counted here rather than by the model.
 """
 
 import math
@@ -13,7 +14,8 @@ from dataclasses import dataclass
 from engine.base import DAY
 from engine.contracts.intent import IntentStep
 from engine.rng import SeededRng
-from engine.timekeeping import DURATION_BOUNDS, bound_duration
+from engine.state.bible import Calendar
+from engine.timekeeping import DURATION_BOUNDS, bound_duration, parse_clock, seconds_until
 
 # An uncertain duration lands between the proposal divided and multiplied by this.
 DURATION_SPREAD = 30
@@ -39,6 +41,21 @@ def _spread(step: IntentStep, proposed_s: int, rng: SeededRng) -> tuple[int, flo
     value = rng.random()
     seconds = math.exp(math.log(lowest) + value * (math.log(highest) - math.log(lowest)))
     return bound_duration(step.kind, round(seconds)), value
+
+
+def until_time(step: IntentStep, calendar: Calendar, start_s: int) -> Timing | None:
+    """W10. A step that lasts until a time of day ("until nightfall", "sleep till dawn") takes
+    the seconds from `start_s` to the next time the world's clock shows it, never rolled. The
+    player named the time, so it holds whatever the kind's longest (a watch until dusk can
+    outlast an hour), and it is under a day; the kind's shortest still holds. None for a step
+    without one, or with one that isn't a time of day."""
+    time_of_day = parse_clock(step.until)
+    if time_of_day is None:
+        return None
+    shortest, _ = DURATION_BOUNDS[step.kind]
+    return Timing(
+        duration_s=max(shortest, seconds_until(calendar, start_s, time_of_day)), personal_s=None
+    )
 
 
 def lived_estimate(step: IntentStep) -> int:

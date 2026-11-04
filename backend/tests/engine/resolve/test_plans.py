@@ -29,7 +29,16 @@ from engine.state import (
 )
 from engine.timekeeping import DURATION_BOUNDS
 
-from .worlds import SEEDS, facts, naples_with_sleeping_guard, resolve, sect, step, strike
+from .worlds import (
+    SEEDS,
+    facts,
+    naples_with_sleeping_guard,
+    resolve,
+    sect,
+    step,
+    stop_time,
+    strike,
+)
 
 
 def test_a_chained_plan_stops_at_the_first_step_that_doesnt_cleanly_succeed():
@@ -194,6 +203,94 @@ def test_durations_are_bounded_by_the_kind_of_action():
 
     assert [s.duration_s for s in resolution.steps] == [2 * MINUTE, 2 * DAY]
     assert all(s.roll is None for s in resolution.steps)
+
+
+def test_a_step_until_a_time_of_day_lasts_until_the_clock_shows_it():
+    # "I wait at the inn until nightfall." The sect's day opens at 07:00 (W10).
+    state = cultivation_world()
+    wait = step("wait until nightfall", ActionKind.WAIT, 5, until="19:00")
+
+    (settled,) = resolve(state, Intent(steps=[wait])).steps
+
+    assert settled.duration_s == 12 * HOUR
+    assert settled.roll is None
+
+
+def test_until_counts_from_where_the_plan_has_got_to():
+    # Half an hour's walk, then sleep till dawn: dawn tomorrow, counted from 07:30.
+    state = cultivation_world()
+    intent = Intent(
+        steps=[
+            step("walk to the inn", ActionKind.MOVE, 30 * MINUTE),
+            step("sleep till dawn", ActionKind.REST, 60, until="6:00"),
+        ]
+    )
+
+    walk, sleep = resolve(state, intent).steps
+
+    assert walk.duration_s == 30 * MINUTE
+    assert sleep.duration_s == 22 * HOUR + 30 * MINUTE
+
+
+def test_until_takes_the_clock_from_a_gregorian_epoch():
+    # Naples opens at 21:00 on 14 May 1974, so midnight is three hours away.
+    state = grounded_world()
+    wait = step("wait for midnight", ActionKind.WAIT, 5, until="24:00")
+
+    assert resolve(state, Intent(steps=[wait])).steps[0].duration_s == 3 * HOUR
+
+
+def test_until_holds_past_the_kinds_longest_and_is_never_rolled():
+    # "I watch the road until dusk": the player named the time, so an hour's cap on watching
+    # doesn't cut it short (W10).
+    state = cultivation_world()  # day count from 07:00
+    watch = step(
+        "watch the road until dusk",
+        ActionKind.OBSERVE,
+        10 * MINUTE,
+        until="17:00",
+        duration_uncertain=True,
+    )
+
+    (settled,) = resolve(state, Intent(steps=[watch])).steps
+
+    assert settled.duration_s == 10 * HOUR > DURATION_BOUNDS[ActionKind.OBSERVE][1]
+    assert settled.roll is None
+
+
+def test_until_keeps_the_kinds_shortest():
+    state = cultivation_world()
+    nap = step("nap till five past seven", ActionKind.REST, HOUR, until="07:05")
+
+    (settled,) = resolve(state, Intent(steps=[nap])).steps
+
+    assert settled.duration_s == DURATION_BOUNDS[ActionKind.REST][0]
+
+
+def test_a_step_that_never_got_going_takes_only_its_proposed_time():
+    state = cultivation_world()
+    wait = step(
+        "wait until dusk on a flying cloud",
+        ActionKind.WAIT,
+        5,
+        until="19:00",
+        facts=facts(world_allows=False),
+    )
+
+    (settled,) = resolve(state, Intent(steps=[wait])).steps
+
+    assert settled.outcome_class is OutcomeClass.RULED_OUT
+    assert settled.duration_s == 5
+
+
+def test_until_leaves_a_time_stop_alone():
+    # The world's clock stands still in a stop, so no time of day comes round (W10a).
+    state = sect()
+    intent = Intent(steps=[stop_time(), step("wait until dusk", ActionKind.WAIT, 1, until="19:00")])
+
+    stop, wait = resolve(state, intent).steps
+
+    assert (stop.duration_s, wait.duration_s) == (0, 0)
 
 
 def test_an_uncertain_duration_is_rolled_from_minutes_to_days():
