@@ -32,8 +32,12 @@ Usage: infra/bootstrap.sh [--dry-run] [--yes]
 
 Environment, all optional:
   BUDGET_AMOUNT                        Monthly budget in the billing account's currency (default 25).
-  NEON_PRODUCTION_DATABASE_URL         Pooled URL of Neon's production branch. Asked for if needed.
-  NEON_PRODUCTION_DATABASE_URL_DIRECT  Direct URL of Neon's production branch. Asked for if needed.
+  NEON_PRODUCTION_DATABASE_URL         Pooled URL of Neon's production branch.
+  NEON_PRODUCTION_DATABASE_URL_DIRECT  Direct URL of Neon's production branch.
+
+The Neon URLs are needed only while their secrets have no value. Without these variables the script
+reads them with the Neon CLI (`neonctl`) when it is installed and signed in (`neonctl auth`), and
+asks for them otherwise.
 
 Secrets that already have a value are left alone. docs/DEPLOY.md says how to rotate them.
 EOF
@@ -133,6 +137,36 @@ read_secret_input() {
   printf '%s' "$value"
 }
 
+# Prints a production URL of the given kind (pooled or direct) read with the Neon CLI, or fails
+# when neonctl isn't installed or signed in. Nothing is printed but the URL.
+neonctl_url() {
+  local kind="$1" url args
+  command -v neonctl >/dev/null 2>&1 || return 1
+  args=(connection-string "$NEON_PRODUCTION_BRANCH" --project-id "$NEON_PROJECT_ID")
+  if [ "$kind" = pooled ]; then
+    args+=(--pooled)
+  fi
+  url="$(neonctl "${args[@]}" 2>/dev/null | tail -n 1)" || return 1
+  case "$url" in
+    postgres://* | postgresql://*) printf '%s' "$url" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Prints a production URL: from the environment variable $2, else from neonctl, else asked for.
+neon_production_url() {
+  local kind="$1" var="$2" prompt="$3" value
+  value="${!var:-}"
+  if [ -z "$value" ] && value="$(neonctl_url "$kind")"; then
+    say "Read the $kind URL of Neon's $NEON_PRODUCTION_BRANCH branch with neonctl."
+  fi
+  if [ -z "$value" ]; then
+    # Command substitutions don't inherit set -e, so stop by hand if there is nothing to ask on.
+    value="$(read_secret_input "$var" "$prompt")" || exit 1
+  fi
+  printf '%s' "$value"
+}
+
 # Checks the shape of a Neon URL without printing it. Neon's pooled hosts contain "-pooler".
 check_neon_url() {
   local value="$1" kind="$2" label="$3" rest host
@@ -208,14 +242,14 @@ collect_inputs() {
     return 0
   fi
   if ! secret_has_version "$SECRET_DATABASE_URL"; then
-    DATABASE_URL_VALUE="$(read_secret_input NEON_PRODUCTION_DATABASE_URL \
+    DATABASE_URL_VALUE="$(neon_production_url pooled NEON_PRODUCTION_DATABASE_URL \
       'Neon production pooled URL (host has -pooler)')"
     check_neon_url "$DATABASE_URL_VALUE" pooled "The pooled URL"
   else
     say "$SECRET_DATABASE_URL already has a value; leaving it."
   fi
   if ! secret_has_version "$SECRET_DATABASE_URL_DIRECT"; then
-    DATABASE_URL_DIRECT_VALUE="$(read_secret_input NEON_PRODUCTION_DATABASE_URL_DIRECT \
+    DATABASE_URL_DIRECT_VALUE="$(neon_production_url direct NEON_PRODUCTION_DATABASE_URL_DIRECT \
       'Neon production direct URL (host has no -pooler)')"
     check_neon_url "$DATABASE_URL_DIRECT_VALUE" direct "The direct URL"
   else

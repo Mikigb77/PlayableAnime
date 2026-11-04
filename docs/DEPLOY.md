@@ -45,11 +45,14 @@ The names live in [`infra/config.sh`](../infra/config.sh). Plain settings for th
 These steps need Miki: they sign in as the project's owner, read the production database URLs,
 create things that are billed and hold the app's signing key. Do them in this order; each one is
 safe to repeat. The commands work in a bash shell (Git Bash or WSL on Windows) with the
-[gcloud CLI](https://cloud.google.com/sdk/docs/install), the [GitHub CLI](https://cli.github.com)
-(`gh auth login`) and a JDK's `keytool` (Android Studio ships one under `jbr/bin`).
+[gcloud CLI](https://cloud.google.com/sdk/docs/install), the [GitHub CLI](https://cli.github.com),
+the [Neon CLI](https://neon.com/docs/reference/neon-cli) (`npm i -g neonctl`) and a JDK's
+`keytool` (Android Studio ships one under `jbr/bin`). **Each step needs only a login in the
+browser:** the scripts read everything that follows from it themselves, so nothing is copied from
+a console or pasted from a terminal.
 
-1. [Sign in to gcloud](#1-sign-in).
-2. [Get the two production URLs from Neon](#2-get-the-two-production-urls-from-neon).
+1. [Sign in](#1-sign-in) to gcloud, GitHub and Neon, each in the browser.
+2. [Nothing to copy from Neon](#2-the-production-urls-from-neon): the bootstrap reads the URLs.
 3. [Run the bootstrap from `dep`](#3-run-the-bootstrap-from-dep), or run it again if it ran before.
 4. [Make the app's signing key and give it to GitHub](#4-make-the-apps-signing-key).
 5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web and Android
@@ -61,28 +64,36 @@ safe to repeat. The commands work in a bash shell (Git Bash or WSL on Windows) w
 
 ### 1. Sign in
 
-On a machine with this repo, sign in with the Google account that owns the `playable-anime`
-project and administers its billing account:
+On a machine with this repo, sign in to the three CLIs. Each opens the browser. gcloud and neonctl
+get the result back on a `localhost` callback, so there is nothing to copy; GitHub's CLI has no
+such callback, and `--clipboard` puts its one-time code on the clipboard, to paste once on the
+page it opens. Use the Google account that owns the `playable-anime` project and administers its
+billing account:
 
 ```bash
-gcloud --configuration=playable-anime auth login
+# In WSL only: open links in the Windows browser (wslview comes with `sudo apt install wslu`).
+export BROWSER=wslview            # or: export BROWSER=explorer.exe
+
+gcloud config configurations create playable-anime --no-activate 2>/dev/null || true
+gcloud --configuration=playable-anime auth login      # not --no-launch-browser
+gh auth login --web --clipboard --git-protocol https
+neonctl auth
 ```
 
-The scripts use the `playable-anime` gcloud configuration when it exists, without making it the
-active one, and pass `--project=playable-anime` on every command anyway. Cloud Shell works too:
-it is already signed in, so skip this step there.
+WSL 2 forwards `localhost` between Windows and Linux, which is what lets the Windows browser reach
+the CLI's callback. The scripts use the `playable-anime` gcloud configuration when it exists,
+without making it the active one, and pass `--project=playable-anime` on every command anyway.
+Cloud Shell works too: it is already signed in to gcloud.
 
-### 2. Get the two production URLs from Neon
+### 2. The production URLs from Neon
 
-In the [Neon console](https://console.neon.tech), open the project, press **Connect**, pick the
-`production` branch, and copy the connection string twice:
-
-- with **Connection pooling** on: the **pooled** URL, whose host contains `-pooler`;
-- with it off: the **direct** URL.
-
-Don't paste them anywhere else. The script asks for them without echoing them, or reads them from
-`NEON_PRODUCTION_DATABASE_URL` and `NEON_PRODUCTION_DATABASE_URL_DIRECT`, and refuses a URL of the
-wrong kind before changing anything.
+The bootstrap reads the `production` branch's pooled and direct URLs with `neonctl` (project
+`divine-rice-51324513`, in `infra/config.sh`), so nothing is copied from the Neon console. It
+needs them only while the `database-url` and `database-url-direct` secrets have no value; a re-run
+leaves them alone. They are never printed. Without a signed-in `neonctl` it asks for them without
+echoing them, or reads `NEON_PRODUCTION_DATABASE_URL` and `NEON_PRODUCTION_DATABASE_URL_DIRECT`.
+Either way it refuses a URL of the wrong kind (the pooled one's host contains `-pooler`) before
+changing anything.
 
 ### 3. Run the bootstrap, from `dep`
 
@@ -97,7 +108,7 @@ GitHub sign in only for deploys started by hand, so the push to `main` would be 
 lacked the role that makes the API reachable. A re-run fixes both and changes nothing else.
 
 `BUDGET_AMOUNT` is the monthly alert threshold in the billing account's currency (25 by default).
-The script shows the account and project, asks for the two URLs, asks for confirmation, then runs
+The script shows the account and project, reads the two URLs, asks for confirmation, then runs
 the steps below. Running it again brings everything back in line and changes nothing that is
 already right: secrets that have a value keep it, and the budget's amount is updated.
 
@@ -124,11 +135,17 @@ app to get the next one.
 # A random password; keytool asks for it twice, then for a name (anything will do).
 openssl rand -base64 24 | tr -d '/+='
 keytool -genkeypair -v -keystore lucid-saga-upload.jks -storetype PKCS12 -keyalg RSA \
-  -keysize 4096 -validity 10000 -alias upload
+  -keysize 4096 -validity 10000 -alias lucid
 
 # The SHA-1 and SHA-256 fingerprints, for step 5.
-keytool -list -v -keystore lucid-saga-upload.jks -alias upload | grep -E 'SHA(1|256):'
+keytool -list -v -keystore lucid-saga-upload.jks -alias lucid | grep -E 'SHA(1|256):'
 ```
+
+Done on 2026-11-04: the release key has the alias `lucid` and the SHA-1
+`BD:56:41:D0:51:B3:32:78:36:01:93:C7:B6:10:77:3A:F9:A8:FD:88` (SHA-256
+`69:24:A9:DB:58:F2:9E:A3:CE:2A:4F:C4:C3:AF:DB:11:EE:E7:03:04:1A:7C:59:CD:F8:5B:DE:33:CD:14:94:3B`).
+Fingerprints aren't secret; a release APK's notes show the SHA-1 it was signed with, which must
+match this one.
 
 Then the four repository secrets the deploy reads. A PKCS12 keystore has one password, so the key
 password is the keystore password. `gh secret set` asks for a value when none is piped in:
@@ -137,7 +154,7 @@ password is the keystore password. `gh secret set` asks for a value when none is
 base64 -w0 lucid-saga-upload.jks | gh secret set ANDROID_KEYSTORE_BASE64   # macOS: base64 -i lucid-saga-upload.jks
 gh secret set ANDROID_KEYSTORE_PASSWORD
 gh secret set ANDROID_KEY_PASSWORD        # the same password
-gh secret set ANDROID_KEY_ALIAS --body upload
+gh secret set ANDROID_KEY_ALIAS --body lucid
 ```
 
 In PowerShell, the first line is
@@ -158,7 +175,8 @@ under **Google Auth Platform**:
    [`infra/config.sh`](../infra/config.sh); the deploy gives it to the API and to the APK. Client
    ids aren't secrets. Its client secret is never needed, because the app sends Google's ID token,
    so don't store it anywhere.
-3. **Clients > Android**: done, with package name `com.lucid.saga` and the **SHA-1** from step 4.
+3. **Clients > Android**: done, with package name `com.lucid.saga` and the release key's **SHA-1**
+   from step 4.
    Its id is `GOOGLE_ANDROID_CLIENT_ID` in `infra/config.sh`, and the API accepts it too. On
    Android the app asks Google for an ID token for the Web client, and Google checks the package
    name and signing key against this client, so a new signing key needs its SHA-1 added here.

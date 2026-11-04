@@ -167,6 +167,32 @@ test_bootstrap_first_and_second_run() {
   lacks "$state/calls-4.log" "iam roles create" "a deleted role can only be undeleted"
 }
 
+test_bootstrap_reads_neon_urls() {
+  local state out
+  start "bootstrap.sh reads the Neon URLs with neonctl after a login, and keeps them out of output"
+  state="$(new_state bootstrap-neonctl)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_NEON_POOLED="$POOLED" FAKE_NEON_DIRECT="$DIRECT" \
+    "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  equals "$(cat "$state/secret-database-url" 2>/dev/null)" "$POOLED" "pooled URL read with neonctl"
+  equals "$(cat "$state/secret-database-url-direct" 2>/dev/null)" "$DIRECT" "direct URL read with neonctl"
+  contains "$state/neonctl.log" "neonctl connection-string production --project-id divine-rice-51324513 --pooled"
+  contains "$out" "Read the pooled URL of Neon's production branch with neonctl."
+  for log in "$out" "$state/calls.log"; do
+    lacks "$log" "SENTINEL-POOLED-PASSWORD" "the pooled URL leaked into $(basename "$log")"
+    lacks "$log" "SENTINEL-DIRECT-PASSWORD" "the direct URL leaked into $(basename "$log")"
+  done
+
+  # neonctl answering with the wrong kind of URL is still refused before anything changes.
+  state="$(new_state bootstrap-neonctl-swapped)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_NEON_POOLED="$DIRECT" FAKE_NEON_DIRECT="$DIRECT" \
+    "$INFRA/bootstrap.sh" --yes
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted a direct URL from neonctl as the pooled one"; fi
+  lacks "$state/calls.log" " create " "changed something before validating neonctl's URLs"
+}
+
 test_bootstrap_rejects_bad_input() {
   local state out
   start "bootstrap.sh rejects swapped URLs and a bad budget before changing anything"
@@ -625,6 +651,7 @@ test_docs_list_every_command() {
 
 test_bootstrap_dry_run
 test_bootstrap_first_and_second_run
+test_bootstrap_reads_neon_urls
 test_bootstrap_rejects_bad_input
 test_deploy_dry_run
 test_deploy_settings

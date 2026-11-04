@@ -31,6 +31,11 @@ AR_REPO="playable-anime"
 REGISTRY_HOST="${REGION}-docker.pkg.dev"
 IMAGE="${REGISTRY_HOST}/${PROJECT_ID}/${AR_REPO}/api"
 
+# The Neon project and its production branch (docs/ARCHITECTURE.md#neon-postgres). The bootstrap
+# reads the branch's URLs with the Neon CLI when it is signed in.
+NEON_PROJECT_ID="divine-rice-51324513"
+NEON_PRODUCTION_BRANCH="production"
+
 # Secret Manager (T11). The service gets the pooled URL, migrations get the direct one (T2, B2).
 SECRET_DATABASE_URL="database-url"
 SECRET_DATABASE_URL_DIRECT="database-url-direct"

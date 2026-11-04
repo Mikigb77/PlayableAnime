@@ -24,7 +24,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/config.sh"
 
 apk="${1:-}"
-[ -n "$apk" ] && [ -f "$apk" ] || die "usage: infra/publish-apk.sh APK (an existing file)"
+if [ -z "$apk" ] || [ ! -f "$apk" ]; then
+  die "usage: infra/publish-apk.sh APK (an existing file)"
+fi
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set}"
 sha="${GITHUB_SHA:?GITHUB_SHA is not set}"
 build_number="${BUILD_NUMBER:?BUILD_NUMBER is not set}"
