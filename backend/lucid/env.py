@@ -45,6 +45,10 @@ class Env(BaseSettings):
     # location and the per-node models are read by `graph.llm.config` from the same files.
     llm_provider: Literal["vertex", "fake"] = "fake"
     gcp_project: str = "playable-anime"
+    # Set by Cloud Run itself: K_SERVICE on a service's instances, CLOUD_RUN_JOB on a job's tasks.
+    # The published app runs there, and only on Vertex AI (B6).
+    k_service: str = ""
+    cloud_run_job: str = ""
 
     # Sign-in (T8, K7, F8). Comma-separated OAuth client ids (web, Android, iOS) from the
     # `playable-anime` project: a Google ID token must name one of them as its audience. Empty
