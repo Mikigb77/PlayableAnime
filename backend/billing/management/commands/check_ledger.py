@@ -13,7 +13,10 @@ from billing.models import CreditAccount, LedgerEntry
 
 
 class Command(BaseCommand):
-    help = "Checks that every credit balance equals the sum of its ledger entries."
+    help = (
+        "Checks that every credit balance equals the sum of its ledger entries, and what the "
+        "house paid for each account's first pictures its house entries."
+    )
 
     def handle(self, *args, **options) -> None:
         totals = (
@@ -43,8 +46,10 @@ class Command(BaseCommand):
                     f"ledger {paid}"
                 )
         if wrong:
-            raise CommandError(f"{len(wrong)} of {checked} balances don't match their ledger.")
-        self.stdout.write(f"All {checked} balances match their ledger.")
+            raise CommandError(f"{len(wrong)} of {checked} accounts don't match their ledger.")
+        self.stdout.write(
+            f"All {checked} balances match their ledger, and so does what the house paid."
+        )
 
     @staticmethod
     def _house_paid() -> dict:

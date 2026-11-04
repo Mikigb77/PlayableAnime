@@ -66,6 +66,11 @@ class Image(models.Model):
     skip_reason = models.CharField(max_length=16, choices=SkipReason.choices, blank=True)
     # The M1 trigger that first planned it, such as `fight_start`, or `illustrate` (M2).
     trigger = models.CharField(max_length=32, blank=True)
+    # The subject's first picture (`engine.contracts.FIRST_PICTURES`): the player character's
+    # portrait, a key NPC's at the first meeting, a place on the first visit, or the cover. Set
+    # once when it is planned, whatever plans it again later, since in an account's first story
+    # the house pays for it (K1, M7).
+    first_picture = models.BooleanField(default=False, db_default=False)
     # What to draw (`media.prompts.Brief`): the description, the world's look and the people in
     # it with their appearance. Mild in every rating (M6); the prompt sent to the model is
     # built from it each time and never logged (T6).

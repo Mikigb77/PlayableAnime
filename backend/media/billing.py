@@ -18,8 +18,8 @@ A new player's first pictures are on the house (K1, M7): in an account's first s
 once-only pictures (`engine.contracts.FIRST_PICTURES`: the player character's portrait, the
 cover, a key NPC's first-meeting portrait and a place's first visit) are held against the house's
 allowance instead of the player's credits, for the accounts that get the starter credit, until
-the allowance (`HOUSE_PICTURES_CENTS`) is spent. Key scenes, fights, redraws (M5) and what
-Illustrate adds or tries again are always the player's.
+the allowance (`HOUSE_PICTURES_CENTS`) is spent, however they are asked for. Key scenes, fights,
+redraws (M5) and the scenes Illustrate adds are always the player's.
 """
 
 from __future__ import annotations
@@ -65,8 +65,8 @@ async def start(
     """Holds one picture's estimated cost for `user`, before drawing on our account.
 
     `user` is the signed-in player, or None for a story from before sign-in, which has no ledger
-    to charge. `first_picture`: the picture is a subject's first, which code planned (M1), so
-    the house pays for it if this is the account's first story and its allowance has room.
+    to charge. `first_picture`: the picture is a subject's first (`Image.first_picture`, M1),
+    so the house pays for it if this is the account's first story and its allowance has room.
     """
     if user is None:
         return Ticket(Payer.FREE)

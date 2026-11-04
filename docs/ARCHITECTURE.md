@@ -1019,9 +1019,10 @@ Requirements: K1, K2, K6, K7, K8, M7 and T9. The code is `backend/billing/`; the
 - **A new player's first pictures (K1, M7).** In an account's first story (its oldest), a
   subject's first picture (`engine.contracts.FIRST_PICTURES`: the player character's portrait,
   the cover, a key NPC's first-meeting portrait, a place's first visit) is on the house.
-  `media.billing.start` asks the meter with `house=True` for a picture whose `Image.trigger` is
-  one of those, as code planned it; a picture Illustrate adds, or plans again after a skip, has
-  Illustrate's trigger and is the player's. The meter decides under the account's row lock. The house pays for the
+  `media.plans` marks such a picture `Image.first_picture` when it plans it, once, so planning it
+  again later (Illustrate after a failure or a block) never changes that; a scene Illustrate adds
+  is never one. `media.billing.start` asks the meter with `house=True` for a first picture in the
+  account's first story, and the meter decides under the account's row lock. The house pays for the
   accounts that get the starter credit while `CreditAccount.house_pictures_cents` (what it has
   paid, at the price the player would have paid) plus its live holds stays under
   `BILLING["HOUSE_PICTURES_CENTS"]` (env `HOUSE_PICTURES_CENTS`, 30 by default, 0 turns it off),
@@ -1288,7 +1289,7 @@ endpoint lets anyone spend our Vertex budget.
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
 | `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". A row's id is derived from the story and the engine's event id, and its payload holds the engine's `PendingEvent` (see [Turn endpoint](#turn-endpoint)). |
-| `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger, the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
+| `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger and whether it is the subject's first picture (K1), the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |
 | `media_scenepicture` | Which picture a scene shows, and whether code planned it (M1) or the player asked for it (M2). One per scene; many scenes can show one portrait or place. |
 | `media_premisecover` | A starter premise's cover on Discover (S1), keyed by premise id: storage key, type and size, model and cost (T5), whether the offline model drew it, the brief it was drawn from and when. |

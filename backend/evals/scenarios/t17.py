@@ -1772,18 +1772,17 @@ async def first_session(ev: Eval) -> None:
         played = await story.open()
         while True:
             spent += bill(played.calls, margin).charge_cents
-            drawn = played.plan.picture if played.completed else None
-            if drawn is not None and drawn.trigger in FIRST_PICTURES:
-                if house_has_room(house, Decimal(0), allowance):
-                    house += picture
-                    free += 1
-                else:
-                    spent += picture
-            elif drawn is not None:
-                spent += picture
             if spent > starter:
                 break
             turns += 1
+            drawn = played.plan.picture if played.completed else None
+            if drawn is not None:
+                if drawn.trigger in FIRST_PICTURES and house_has_room(house, 0, allowance):
+                    house += picture
+                    free += 1
+                elif spent + picture <= starter:
+                    spent += picture
+                # Otherwise the picture is skipped and the story goes on (M7).
             if played.event is not None and played.event.source is not EventSource.DUE:
                 arrived = arrived or played.turn
             if turns >= 60:

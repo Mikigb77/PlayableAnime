@@ -78,7 +78,7 @@ def test_the_first_storys_first_pictures_are_on_the_house(client, painters, log_
     assert [(line["payer"], line["cost_usd"]) for line in lines] == [("house", 0.034)] * 4
 
 
-def test_key_scenes_fights_redraws_and_illustrate_stay_the_players(client, painters):
+def test_key_scenes_fights_redraws_and_what_illustrate_adds_stay_the_players(client, painters):
     story = make_story()
     _plan(story, 2, "scene", "event")
     _plan(story, 3, "scene", "fight_start")
@@ -114,19 +114,49 @@ def test_illustrate_on_a_first_picture_not_drawn_yet_draws_it_on_the_house(clien
     assert Image.objects.get(story=story).payer == Payer.HOUSE
 
 
-def test_illustrate_on_a_skipped_first_picture_is_the_players(client, painters):
-    """The player asked to try it again, so it is theirs, even a portrait the house would have
-    drawn (M2, M3)."""
+def test_a_first_picture_that_failed_is_still_the_houses_when_illustrate_tries_it_again(
+    client, painters
+):
+    """Its first drawing failed, which was never the player's doing (M3): trying it again with
+    Illustrate is still the subject's first picture."""
     story = make_story()
     _plan(story, 3, "portrait", "first_meeting", "zhao")
     Image.objects.filter(story=story).update(
-        status=ImageStatus.SKIPPED, skip_reason=SkipReason.BLOCKED
+        status=ImageStatus.SKIPPED, skip_reason=SkipReason.FAILED, attempts=3
     )
 
     assert _illustrate(client, story, 3).json()["status"] == "ready"
 
-    assert Image.objects.get(story=story).payer == Payer.CREDITS
-    assert _account().house_pictures_cents == 0
+    image = Image.objects.get(story=story)
+    assert (image.trigger, image.first_picture, image.payer) == ("illustrate", True, Payer.HOUSE)
+    assert _account().balance_cents == 50
+
+
+def test_only_pictures_planned_as_a_subjects_first_are_first_pictures(db):
+    story = make_story()
+    plans = {
+        trigger: _plan(story, turn, kind, trigger, subject).picture.image
+        for turn, (kind, trigger, subject) in enumerate(
+            [
+                ("portrait", "story_start", "lin"),
+                ("cover", "cover", None),
+                ("portrait", "first_meeting", "zhao"),
+                ("place", "first_visit", "well"),
+                ("scene", "event", None),
+                ("scene", "decisive_blow", None),
+                ("place", "place_changed", "gate"),
+                ("scene", "illustrate", None),
+            ],
+            start=1,
+        )
+    }
+
+    assert {t for t, image in plans.items() if image.first_picture} == {
+        "story_start",
+        "cover",
+        "first_meeting",
+        "first_visit",
+    }
 
 
 def test_only_the_accounts_first_story_has_its_first_pictures_on_the_house(client, painters):

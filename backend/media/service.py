@@ -32,7 +32,6 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.utils import timezone
 
-from engine.contracts import FIRST_PICTURES
 from lucid.errors import ApiError
 from media import billing, drawing
 from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest, KeyCannotDraw, Reference
@@ -272,9 +271,9 @@ async def _draw_claimed(
                 user,
                 story_id=story.id,
                 image_id=image.id,
-                # K1, M7: a subject's first picture, as code planned it. A picture Illustrate
-                # adds, or plans again after it was skipped, is planned as Illustrate's.
-                first_picture=image.trigger in FIRST_PICTURES,
+                # K1, M7: a subject's first picture, however it is asked for now. A picture
+                # Illustrate adds is a scene of its own, never one.
+                first_picture=image.first_picture,
             )
             attempt.payer = attempt.ticket.payer
             drawn = await _draw_once(story, request, attempt, None, None)
