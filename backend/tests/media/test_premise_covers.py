@@ -287,3 +287,107 @@ def test_premises_answer_without_covers_when_signing_fails(player_client, painte
 
     assert response.status_code == 200
     assert [p["cover_url"] for p in response.json()] == [None] * len(IDS)
+
+
+# Edges found in review.
+
+
+def test_a_model_that_cannot_be_built_fails_that_cover_not_the_run(painters, monkeypatch):
+    from media import drawing
+
+    real_build = drawing.build_picture_model
+    calls = []
+
+    def build(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise RuntimeError("no credentials")
+        return real_build(**kwargs)
+
+    monkeypatch.setattr(drawing, "build_picture_model", build)
+
+    with pytest.raises(CommandError, match=f"1 cover wasn't drawn \\({IDS[0]}\\)"):
+        draw()
+
+    assert PremiseCover.objects.count() == len(IDS) - 1
+
+
+def test_a_real_drawing_beats_a_placeholder_another_run_inserted_meanwhile(
+    painters, monkeypatch, django_capture_on_commit_callbacks
+):
+    """Both runs found no cover. The offline run inserted first, so this run's lookup saw no row
+    but its insert collides: it must then replace the placeholder, not drop its real drawing."""
+    from django.db.models import QuerySet
+
+    PremiseCover.objects.create(
+        premise_id="kestrel-debt",
+        storage_key="premises/kestrel-debt/placeholder.png",
+        mime_type="image/png",
+        size_bytes=10,
+        offline=True,
+        drawn_at=timezone.now(),
+    )
+    real_first = QuerySet.first
+    lookups = []
+
+    def first(self):
+        lookups.append(self.model)
+        if len(lookups) == 1:
+            return None  # the row wasn't committed yet when this run looked
+        return real_first(self)
+
+    monkeypatch.setattr(QuerySet, "first", first)
+    with django_capture_on_commit_callbacks(execute=True):
+        outcome = async_to_sync(premise_covers.draw_cover)(
+            starter("kestrel-debt"), force=False, offline=False
+        )
+
+    cover = PremiseCover.objects.get(pk="kestrel-debt")
+    assert lookups[:2] == [PremiseCover, PremiseCover]
+    assert outcome.status == "drawn"
+    assert cover.offline is False
+    assert cover.storage_key != "premises/kestrel-debt/placeholder.png"
+    assert get_storage().exists(cover.storage_key)
+
+
+def test_a_dry_run_with_the_offline_model_promises_placeholders_not_a_price(
+    painters, monkeypatch, settings
+):
+    monkeypatch.setattr(premise_covers, "offline_model", lambda: True)
+
+    out = draw("--dry-run")
+
+    assert f"Would draw {len(IDS)} placeholder covers." in out
+    assert "$" not in out
+    settings.MEDIA_BUCKET = "playable-anime-pictures"
+    with pytest.raises(CommandError, match="LLM_PROVIDER=vertex"):
+        draw("--dry-run")
+    assert painters.drawings == 0
+
+
+def test_covers_never_expire_sooner_than_story_pictures(player_client, painters, settings):
+    draw("outer-disciple")
+    settings.PICTURE_URL_TTL_S = 48 * 3600
+
+    url = player_client.get("/v1/premises").json()[0]["cover_url"]
+
+    expires = int(parse_qs(urlparse(url).query)["expires"][0])
+    assert expires - time.time() > timedelta(hours=47).total_seconds()
+
+
+def test_a_failed_cover_lookup_is_logged_as_an_error(
+    player_client, painters, monkeypatch, log_lines
+):
+    def broken(*args, **kwargs):
+        raise RuntimeError("relation media_premisecover does not exist")
+
+    monkeypatch.setattr("drafts.api.premise_cover_urls", broken)
+    response = player_client.get("/v1/premises")
+
+    assert response.status_code == 200
+    assert [p["cover_url"] for p in response.json()] == [None] * len(IDS)
+    # Discover still works, and nothing hides the failure from Error Reporting.
+    errors = [line for line in log_lines() if line["severity"] == "ERROR"]
+    assert [line["message"] for line in errors] == [
+        "The premises' covers couldn't be looked up or signed"
+    ]

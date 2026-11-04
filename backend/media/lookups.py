@@ -18,7 +18,7 @@ from django.http import HttpRequest
 
 from media.api import absolute_url
 from media.models import Image, ImageStatus, PremiseCover, ScenePicture
-from media.premise_covers import COVER_URL_TTL_S
+from media.premise_covers import cover_url_ttl_s
 from media.storage import SignedUrl, signed_urls
 from stories.models import ImageKind, Scene, Story
 
@@ -99,10 +99,10 @@ def premise_cover_urls(
     premise_ids: Iterable[str], *, request: HttpRequest | None = None
 ) -> dict[str, SignedUrl]:
     """Each starter premise's cover, when the house has drawn one (S1), by premise id. They are
-    signed for `COVER_URL_TTL_S`, longer than a story's pictures, because the app fetches the
+    signed for `cover_url_ttl_s()`, longer than a story's pictures, because the app fetches the
     premises once per session and a cover is the same for every player."""
     covers = list(PremiseCover.objects.filter(premise_id__in=list(premise_ids)))
-    signed = signed_urls((cover.storage_key for cover in covers), COVER_URL_TTL_S)
+    signed = signed_urls((cover.storage_key for cover in covers), cover_url_ttl_s())
     return {
         cover.premise_id: SignedUrl(
             absolute_url(request, signed[cover.storage_key].url),

@@ -13,6 +13,7 @@ The Cloud Storage client loads on first use, never at import (B10).
 
 from __future__ import annotations
 
+import logging
 import re
 import threading
 import time
@@ -27,6 +28,8 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
+
+logger = logging.getLogger("media.pictures")
 
 _CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform"
 _SAFE_KEY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/_.-]{0,511}$")
@@ -204,7 +207,9 @@ def signed_url(key: str, ttl_s: int | None = None) -> SignedUrl:
     the network: call it off the event loop.
     """
     storage = get_storage()
-    ttl = ttl_s or settings.PICTURE_URL_TTL_S
+    ttl = settings.PICTURE_URL_TTL_S if ttl_s is None else ttl_s
+    # One key is always signed for the same life (covers longer than story pictures), and a
+    # cached URL is checked against the life asked for, so the TTL needn't be in the cache key.
     cache_key = (storage, key)
     with _url_lock:
         cached = _url_cache.get(cache_key)
@@ -234,7 +239,20 @@ _SIGNING_THREADS = 8
 
 def storage_key(story_id: object, image_id: object, mime_type: str) -> str:
     """Files are grouped by story, so a story's pictures can be found and deleted together."""
-    return f"stories/{story_id}/{image_id}{_EXTENSIONS.get(mime_type, '.bin')}"
+    return f"stories/{story_id}/{image_id}{extension_for(mime_type)}"
+
+
+def extension_for(mime_type: str) -> str:
+    return _EXTENSIONS.get(mime_type, ".bin")
 
 
 _EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+
+
+def delete_quietly(key: str) -> None:
+    """Removes a file that is no longer any picture's, logging instead of raising: left behind,
+    it is still private and unreachable without a signed URL."""
+    try:
+        get_storage().delete(key)
+    except Exception:
+        logger.warning("A picture file couldn't be deleted", exc_info=True)

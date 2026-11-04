@@ -69,14 +69,14 @@ async def list_premises(request) -> list[dict]:
 
 async def _cover_urls(request) -> dict[str, str]:
     """The covers' signed URLs, by premise id. Signing can call IAM, so it runs off the event
-    loop. A cover is decoration: if the lookup fails, Discover shows the premises without
-    covers rather than an error."""
+    loop. A cover is decoration: if the lookup or the signing fails, Discover shows the premises
+    without covers, and the error is logged with its traceback for Error Reporting."""
     try:
         urls = await sync_to_async(premise_cover_urls)(
             [premise.id for premise in STARTER_PREMISES], request=request
         )
     except Exception:
-        logger.warning("The premises' covers couldn't be signed", exc_info=True)
+        logger.exception("The premises' covers couldn't be looked up or signed")
         return {}
     return {premise_id: url.url for premise_id, url in urls.items()}
 

@@ -88,6 +88,7 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                 status: PictureStatus.ready,
                 url: cover,
                 aspectRatio: 16 / 9,
+                alignment: coverFocus,
                 semanticLabel: starter!.title,
               ),
             ),

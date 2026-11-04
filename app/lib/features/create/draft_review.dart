@@ -41,6 +41,7 @@ class DraftReview extends StatelessWidget {
                     status: PictureStatus.ready,
                     url: cover,
                     aspectRatio: 21 / 9,
+                    alignment: coverFocus,
                     semanticLabel: draft.title,
                   ),
                 ),

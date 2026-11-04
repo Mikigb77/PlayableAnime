@@ -1198,9 +1198,11 @@ app                   shows the narration, then asks for the picture in its own 
   committed. The house pays: each drawing writes the usual `media.pictures` line with
   `payer: "house"`, model and cost, and no credit meter or ledger is touched. The offline model
   draws placeholders, marked `offline`, which a real model replaces without `--force`, and the
-  command refuses to write placeholders to a bucket. `GET /v1/premises` signs the covers in one
-  query and one round of signing, for 12 hours rather than one, since the app loads the premises
-  once per session; a cover that can't be signed is left out instead of failing Discover.
+  command refuses to write placeholders to a bucket. A failed or blocked cover is left out and
+  named, and the next run draws only those. `GET /v1/premises` signs the covers in one query and
+  one round of signing, for 12 hours (never less than `PICTURE_URL_TTL_S`), since the app loads the
+  premises once per session; if the lookup or signing fails, Discover gets the premises without
+  covers and the error is logged for Error Reporting.
 - **Logs (T5, T6).** Each picture drawn or skipped writes one `media.pictures` line with a
   `picture` object: image id, kind, version, status, skip reason, trigger, model, cost, payer, BYOK
   and fallback, references, block categories, latency and size. The prompt and the key never

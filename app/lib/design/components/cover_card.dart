@@ -57,31 +57,13 @@ class CoverCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (url != null)
-                    Image(
-                      image: appImage(
-                        url,
-                        cacheWidth:
-                            (MediaQuery.sizeOf(context).width *
-                                    MediaQuery.devicePixelRatioOf(context))
-                                .round(),
-                      ),
-                      fit: BoxFit.cover,
-                      excludeFromSemantics: true,
-                      // The accent glow holds the place until the cover fades in over it.
-                      frameBuilder: (context, child, frame, sync) => sync
-                          ? child
-                          : Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                _Fallback(accent: accent),
-                                AnimatedOpacity(
-                                  opacity: frame == null ? 0 : 1,
-                                  duration: Motion.of(context, Motion.slow),
-                                  child: child,
-                                ),
-                              ],
-                            ),
-                      errorBuilder: (_, _, _) => _Fallback(accent: accent),
+                    CoverImage(
+                      url: url,
+                      cacheWidth:
+                          (MediaQuery.sizeOf(context).width *
+                                  MediaQuery.devicePixelRatioOf(context))
+                              .round(),
+                      fallback: _Fallback(accent: accent),
                     )
                   else
                     _Fallback(accent: accent),
@@ -159,6 +141,42 @@ class CoverCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where a tall 3:4 cover sits in a wider slot: its upper part, where the picture keeps its focal
+/// point, since the lower third is calm space for the title (DESIGN.md, Pictures).
+const coverFocus = Alignment(0, -0.5);
+
+/// A cover filling its slot: [fallback] holds the place until the picture fades in over it, and
+/// stays when the picture fails, such as a signed URL that has expired.
+class CoverImage extends StatelessWidget {
+  const CoverImage({super.key, required this.url, required this.fallback, this.cacheWidth});
+
+  final String url;
+  final Widget fallback;
+  final int? cacheWidth;
+
+  @override
+  Widget build(BuildContext context) => Image(
+    image: appImage(url, cacheWidth: cacheWidth),
+    fit: BoxFit.cover,
+    alignment: coverFocus,
+    excludeFromSemantics: true,
+    frameBuilder: (context, child, frame, sync) => sync
+        ? child
+        : Stack(
+            fit: StackFit.expand,
+            children: [
+              fallback,
+              AnimatedOpacity(
+                opacity: frame == null ? 0 : 1,
+                duration: Motion.of(context, Motion.slow),
+                child: child,
+              ),
+            ],
+          ),
+    errorBuilder: (_, _, _) => fallback,
+  );
 }
 
 class _Fallback extends StatelessWidget {

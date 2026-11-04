@@ -13,6 +13,7 @@ again with `--force`, except a placeholder from the offline model, which a real 
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import time
 import uuid
@@ -29,7 +30,7 @@ from media import drawing
 from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest
 from media.models import PremiseCover
 from media.prompts import Brief, WorldLook, build_prompt
-from media.storage import check_key, get_storage
+from media.storage import check_key, delete_quietly, extension_for, get_storage
 from stories.models import ImageKind
 
 logger = logging.getLogger("media.pictures")
@@ -38,9 +39,16 @@ logger = logging.getLogger("media.pictures")
 # every rating anyway (M6), with the same safety settings.
 COVER_RATING = "teen"
 TRIGGER = "draw_premise_covers"
-# How long a cover's signed URL lasts. The app fetches the premises once per session, so a URL
-# must outlive one; reused while half its life remains, each answer lasts six hours at least.
+# How long a cover's signed URL lasts at least (never less than a story picture's). The app
+# fetches the premises once per session, so a URL must outlive one; reused while half its life
+# remains, each answer lasts six hours at least.
 COVER_URL_TTL_S = 12 * 3600
+
+
+def cover_url_ttl_s() -> int:
+    from django.conf import settings
+
+    return max(COVER_URL_TTL_S, settings.PICTURE_URL_TTL_S)
 
 
 @dataclass(frozen=True)
@@ -92,8 +100,7 @@ def cover_request(premise: StarterPremise) -> DrawRequest:
 
 def cover_key(premise_id: str, mime_type: str) -> str:
     """A new file for every drawing, so a cached signed URL never shows an older cover."""
-    extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
-    name = f"{uuid.uuid4().hex}{extension.get(mime_type, '.bin')}"
+    name = f"{uuid.uuid4().hex}{extension_for(mime_type)}"
     return check_key(f"premises/{premise_id}/{name}")
 
 
@@ -146,9 +153,11 @@ async def draw_covers(
 
 async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> Outcome:
     started = time.monotonic()
-    model = drawing.build_picture_model(rating=COVER_RATING, byok_provider=None, byok_key=None)
-    name = model.model
+    model = None
+    name = picture_model_name()
     try:
+        model = drawing.build_picture_model(rating=COVER_RATING, byok_provider=None, byok_key=None)
+        name = model.model
         drawn = await model.draw(cover_request(premise))
     except DrawBlocked as exc:
         cost = _spent(model)
@@ -164,7 +173,8 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
         _log(premise.id, "skipped", "failed", name, cost, offline, started)
         return Outcome(premise.id, "failed", model=name, cost_usd=cost, offline=offline)
     finally:
-        await model.aclose()
+        if model is not None:
+            await model.aclose()
 
     key = cover_key(premise.id, drawn.mime_type)
     try:
@@ -172,7 +182,7 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
         stored = await _store(premise, key, drawn, force=force, offline=offline)
     except Exception:
         logger.exception("Storing a premise cover failed", extra={"premise_id": premise.id})
-        await asyncio.to_thread(_delete_quietly, key)
+        await asyncio.to_thread(delete_quietly, key)
         _log(premise.id, "skipped", "failed", drawn.model, drawn.cost_usd, offline, started)
         return Outcome(
             premise.id, "failed", model=drawn.model, cost_usd=drawn.cost_usd, offline=offline
@@ -188,7 +198,8 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
 @sync_to_async
 def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offline: bool) -> bool:
     """Makes the new file the premise's cover and removes the one it replaces once that commits.
-    False when another run stored a cover meanwhile and this one isn't forced: the new file goes."""
+    False when another run stored a cover meanwhile that this one doesn't replace (it isn't
+    forced, and that cover is no placeholder this real drawing beats): the new file goes."""
     fields = {
         "storage_key": key,
         "mime_type": drawn.mime_type,
@@ -199,26 +210,29 @@ def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offl
         "brief": cover_brief(premise).to_json(),
         "drawn_at": timezone.now(),
     }
-    try:
-        with transaction.atomic():
-            cover = PremiseCover.objects.select_for_update().filter(pk=premise.id).first()
-            if cover is None:
-                PremiseCover.objects.create(premise_id=premise.id, **fields)
+    for _ in range(2):
+        try:
+            with transaction.atomic():
+                cover = PremiseCover.objects.select_for_update().filter(pk=premise.id).first()
+                if cover is None:
+                    PremiseCover.objects.create(premise_id=premise.id, **fields)
+                    return True
+                if not force and not (cover.offline and not offline):
+                    transaction.on_commit(functools.partial(delete_quietly, key))
+                    return False
+                old = cover.storage_key
+                for name, value in fields.items():
+                    setattr(cover, name, value)
+                cover.save()
+                if old != key:
+                    transaction.on_commit(functools.partial(delete_quietly, old))
                 return True
-            if not force and not (cover.offline and not offline):
-                transaction.on_commit(lambda: _delete_quietly(key))
-                return False
-            old = cover.storage_key
-            for name, value in fields.items():
-                setattr(cover, name, value)
-            cover.save()
-            if old != key:
-                transaction.on_commit(lambda: _delete_quietly(old))
-            return True
-    except IntegrityError:
-        # Another run created the same premise's cover at the same moment: keep that one.
-        _delete_quietly(key)
-        return False
+        except IntegrityError:
+            # Another run created this premise's cover at the same moment. Its row exists now,
+            # so the next pass locks it and decides as above.
+            continue
+    delete_quietly(key)
+    return False
 
 
 def _spent(model) -> Decimal | None:
@@ -229,13 +243,6 @@ def _spent(model) -> Decimal | None:
     if not calls:
         return None
     return sum((call.cost_usd for call in calls), Decimal(0))
-
-
-def _delete_quietly(key: str) -> None:
-    try:
-        get_storage().delete(key)
-    except Exception:
-        logger.warning("A premise cover's file couldn't be deleted", exc_info=True)
 
 
 def _log(

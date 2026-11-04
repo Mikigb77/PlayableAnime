@@ -40,7 +40,7 @@ class Command(BaseCommand):
     def handle(self, *args, premise_ids: list[str], force: bool, dry_run: bool, **options):
         premises = _premises(premise_ids)
         offline = premise_covers.offline_model()
-        if offline and settings.MEDIA_BUCKET and not dry_run:
+        if offline and settings.MEDIA_BUCKET:
             raise CommandError(
                 "The offline model would put placeholder covers in the Cloud Storage bucket. "
                 "Set LLM_PROVIDER=vertex to draw real ones."
@@ -59,6 +59,9 @@ class Command(BaseCommand):
         if dry_run:
             for premise in todo:
                 self.stdout.write(f"{premise.id}: would draw")
+            if offline:
+                self.stdout.write(f"Would draw {len(todo)} placeholder {_covers(len(todo))}.")
+                return
             estimate = sum((_estimate(model, premise) for premise in todo), Decimal(0))
             self.stdout.write(
                 f"Would draw {len(todo)} {_covers(len(todo))} with {model}, about ${estimate:.2f}."
@@ -84,8 +87,9 @@ class Command(BaseCommand):
             )
         if missed:
             ids = ", ".join(o.premise_id for o in missed)
+            verb = "wasn't" if len(missed) == 1 else "weren't"
             raise CommandError(
-                f"{len(missed)} {_covers(len(missed))} weren't drawn ({ids}). Run the command "
+                f"{len(missed)} {_covers(len(missed))} {verb} drawn ({ids}). Run the command "
                 "again to try them once more."
             )
 
