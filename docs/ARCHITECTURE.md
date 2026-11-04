@@ -239,10 +239,12 @@ a new one.
   against the doer follows severity steeply (`BYSTANDER_HOSTILITY`): a brawl barely moves them,
   and a massacre leaves even a stranger who saw it cold or hostile, with a grudge (W8, W12).
 - **Beasts are not people** (G24). A character whose `people_id` names one of the bible's
-  creatures is a beast. Harm that falls only on beasts is a hunt (`Nature.HUNT`): no crime, no
-  report to anyone but the beast's own pack, no harm to a region's people, and a severity set by
-  how notable the beast was (one step per four tiers, one more for a key beast), so a forest wolf
-  is a trifle and an ancient dragon is news. The beast's kin (its pack, its mate) keep a grudge.
+  creatures is a beast, and a faction whose every member is a beast (a wolf pack) is no person
+  either. Harm that falls only on beasts is a hunt (`Nature.HUNT`): no crime, no report to anyone
+  but the beast's own pack, no harm to a region's people, and a severity set by how notable the
+  beast was (one step per four tiers, one more for a key beast), so a forest wolf is a trifle and
+  an ancient dragon is news. The beast's kin (its pack, its mate) keep a grudge. Beasts don't
+  follow people's talk: they hear no rumors and get no word of a person's death.
 - **Secret deeds and their traces** (W13). A body left where it fell is a trace when anyone is
   at the place (found within moments) or close by (`BODY_NEARBY_STRENGTH`); nobody near, no body
   trace, so a hermit can vanish. In stopped time a body or a blast shows nobody near it, unless
@@ -255,9 +257,9 @@ a new one.
   from its kind, doer, victims and place ("Lin Feng killed Zhao Kun at the outer-court well";
   "Someone tried to kill Zhao Kun"; "Old Pan, Widow Lu and four others were found dead").
 - **Threats backed by force** (W5, A3). An intimidation from someone whose might, as the world
-  can know it (`might_with_powers`: a light-speed time stop once known, hidden strength as shown),
-  is above their standing is measured on might, against the target's own might or standing,
-  whichever is higher. A known light-speed thrower's threat lands on a king; a secret one's
+  can know it (their rung or sheet, hidden strength as shown, a light-speed time stop once known),
+  is above their standing is measured on might after their condition, against the target's own
+  might or standing, whichever is higher. A known light-speed thrower's threat lands on a king; a secret one's
   doesn't, and a target as strong as the threat isn't cowed.
 - **Clocks** step with time (`interval_s`, from `next_step_s`) and with deeds. An `advances_on` or
   `reverses_on` entry names a deed kind (`kill`) or a kind and a victim, target or place

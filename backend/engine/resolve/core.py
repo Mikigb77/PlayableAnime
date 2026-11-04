@@ -1300,10 +1300,11 @@ def _intimidates(step: IntentStep) -> bool:
 
 
 def _known_might(state: WorldState, character: Character) -> int:
-    """W5, A8: the might the world can measure them by, with any power it knows of (a
-    light-speed time stop once known), hidden strength as what it shows (G20), less weakening."""
-    weakened = character.sheet.condition.weakened_tiers
-    return max(0, stop.might_with_powers(state, character) - weakened)
+    """W5, A8: the might the world can measure them by, before their condition: the rung they
+    stand on (G18), hidden strength as what it shows (G20), and any power it knows of (a
+    light-speed time stop once known)."""
+    shown = sensing.apparent_tier(state, character, base_tier(state, character, PowerAxis.MIGHT))
+    return max(shown, stop.might_with_powers(state, character))
 
 
 def _backed_by_force(state: WorldState, actor: Character, step: IntentStep) -> bool:
@@ -1331,7 +1332,9 @@ def _withstanding(state: WorldState, target: Character, measure: Scale) -> Stand
     """What a target meets a threat of force with: their own might, or their standing and the
     people behind it, whichever is higher (A8)."""
     might = standing(state, target, PowerAxis.MIGHT, measure)
-    station = standing(state, target, PowerAxis.INFLUENCE, measure)
+    station = standing(
+        state, target, PowerAxis.INFLUENCE, scale(state, PowerAxis.INFLUENCE, target)
+    )
     return might if might.tier >= station.tier else station
 
 

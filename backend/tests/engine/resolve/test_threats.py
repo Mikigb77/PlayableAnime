@@ -86,6 +86,37 @@ def test_a_brute_s_threat_rests_on_force_and_a_favourite_s_on_standing():
     assert "Foundation Establishment" not in asked.reason
 
 
+def test_a_weakened_brute_threatens_with_what_he_has_left():
+    """Weakening counts once (A8): a fighter of ten, weakened by two, threatens as an eight,
+    which still towers over a merchant of four."""
+    state = sect()
+    lin = state.characters["lin"]
+    lin.sheet.axes.might = 10
+    lin.sheet.condition.weakened_tiers = 2
+    zhao = state.characters["zhao"]
+    zhao.sheet.axes.might, zhao.sheet.axes.influence = 1, 4
+
+    (threat,) = resolve(state, Intent(steps=[threaten()])).steps
+
+    assert threat.outcome_class is OutcomeClass.CERTAIN
+
+
+def test_a_threat_rests_on_the_rung_the_actor_stands_on():
+    """G18: a cultivator at Soul Transformation threatens as one, whatever the sheet's own
+    might says."""
+    state = sect()
+    lin = state.characters["lin"]
+    lin.sheet.ladders[0].rung = 4
+    lin.sheet.axes.might = 2
+    zhao = state.characters["zhao"]
+    zhao.sheet.axes.might, zhao.sheet.axes.influence = 1, 4
+
+    (threat,) = resolve(state, Intent(steps=[threaten()])).steps
+
+    assert threat.outcome_class is OutcomeClass.CERTAIN
+    assert "Soul Transformation" in threat.reason
+
+
 def test_hidden_strength_threatens_only_as_much_as_it_shows():
     """A threat frightens by what others believe (G20): Lin at Soul Transformation, showing Qi
     Condensation, threatens like the outer disciple he seems."""

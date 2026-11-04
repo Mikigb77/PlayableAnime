@@ -15,7 +15,7 @@ from engine.state.world import WorldState
 from engine.world.cast import maybe_avenger
 from engine.world.geography import faction_seat, travel_s
 from engine.world.knowledge import COMRADE, FRIEND, character_learns, faction_learns, ties_of
-from engine.world.norms import Nature, deed_nature
+from engine.world.norms import Nature, deed_nature, is_beast
 from engine.world.rumors import knows_doer
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.telling import listing, struck_names
@@ -62,10 +62,12 @@ def on_attributed(w: World, deed: Deed) -> None:
         if victim is None:
             continue
         least = COMRADE if hunt else FRIEND  # a beast's pack is its kin
+        # Word of a person's death is talk, which beasts don't follow (G24); a pack learns of
+        # its own.
         close = [
             (cid, tie)
             for cid, tie in ties_of(state, victim_id, least=least)
-            if cid != deed.actor_id
+            if cid != deed.actor_id and (hunt or not is_beast(state, cid))
         ]
         for character_id, _ in close:
             if knows_doer(state, character_id, deed) or character_id == state.player_id:

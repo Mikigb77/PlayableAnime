@@ -109,6 +109,15 @@ def is_beast(state: WorldState, being_id: str) -> bool:
     return creature_of(state, being_id) is not None
 
 
+def beastly(state: WorldState, being_id: str) -> bool:
+    """G24. Whether what a deed struck is no person: a beast, or a host of them such as a wolf
+    pack, whose every member is a beast."""
+    if being_id not in state.factions:
+        return is_beast(state, being_id)
+    members = [c.id for c in state.characters.values() if c.member_of(being_id)]
+    return bool(members) and all(is_beast(state, m) for m in members)
+
+
 def struck_beings(state: WorldState, victim_ids: list[str], target_ids: list[str] = ()) -> list:
     """Who a harmful deed fell on: its victims and targets, leaving out places (a burned
     granary is struck, but it is nobody)."""
@@ -143,7 +152,7 @@ def nature(
     if not harmful:
         return Nature.OTHER
     struck = struck_beings(state, victim_ids, target_ids)
-    if struck and all(is_beast(state, b) for b in struck):
+    if struck and all(beastly(state, b) for b in struck):
         return Nature.HUNT
     return Nature.HARM
 

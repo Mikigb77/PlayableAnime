@@ -15,7 +15,7 @@ them as a wound only their power makes would.
 
 import math
 
-from engine.resolve.powers.time_stop import stops_time
+from engine.resolve.powers.time_stop import stopped_time_deeds_known, stops_time
 from engine.state.records import Deed, PendingEvent, Trace, TraceKind, Visibility
 from engine.state.world import WorldState
 from engine.world.aftermath import on_attributed
@@ -125,16 +125,11 @@ def known_time_stopper(state: WorldState, deed: Deed) -> bool:
     """Whether the world could know the doer stops time: the power isn't secret, or another deed
     they did in stopped time has already been laid at their door (W10a, G20)."""
     actor = state.characters.get(deed.actor_id)
-    if actor is None or not any(stops_time(p) for p in actor.sheet.powers):
+    stoppers = [p for p in actor.sheet.powers if stops_time(p)] if actor else []
+    if not stoppers:
         return False
-    if any(stops_time(p) and not p.secret for p in actor.sheet.powers):
-        return True
-    return any(
-        other.id != deed.id
-        and other.actor_id == deed.actor_id
-        and other.in_stopped_time
-        and attributed(state, other)
-        for other in state.deeds.values()
+    return any(not p.secret for p in stoppers) or stopped_time_deeds_known(
+        state, actor, besides=deed.id
     )
 
 

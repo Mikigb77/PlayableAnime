@@ -110,6 +110,24 @@ def test_killing_a_beast_is_a_hunt_no_crime_and_its_pack_remembers():
     assert not [e for e in fired if e.payload.get("answer") == Answer.ARREST.value]
 
 
+def test_putting_down_a_whole_pack_is_still_a_hunt():
+    """A deed aimed at the pack itself, as a host, harms no person either (G24)."""
+    state = ashwood()
+    wolves = ["stray", "alpha", "wolf-2", "wolf-3"]
+    cull = ProposedDeed(
+        kind="massacre",
+        text="wipe out the Ashwood pack (it worked)",
+        target_ids=["ash-pack"],
+        victim_ids=wolves,
+        severity=5,
+    )
+    after = play(state, deed_step(cull, dead=tuple(wolves))).state
+    deed = the_deed(after)
+
+    assert deed_nature(after, deed) is Nature.HUNT
+    assert not is_crime(after, deed) and deed.severity < 5
+
+
 def test_a_beast_tells_nobody_but_its_own_pack():
     state = ashwood()
     after = play(state, deed_step(hunt(), dead=("stray",))).state
@@ -118,6 +136,21 @@ def test_a_beast_tells_nobody_but_its_own_pack():
 
     assert not would_report(after, alpha, "azure-cloud", deed)
     assert would_report(after, alpha, "ash-pack", deed)
+
+
+def test_word_of_a_person_s_death_reaches_their_friends_but_not_their_beasts():
+    """Tidings are talk, which beasts don't follow (G24)."""
+    state = ashwood()
+    state.characters["wolf-2"].sheet.disposition.attitudes["herbalist"] = Attitude(affinity=60)
+    state.characters["mei"] = Character(id="mei", name="Mei", location_id="well")
+    state.characters["mei"].sheet.disposition.attitudes["herbalist"] = Attitude(affinity=60)
+    murder = ProposedDeed(
+        kind="kill", text="kill Wei (it worked)", victim_ids=["herbalist"], severity=4
+    )
+    after = play(state, deed_step(murder, dead=("herbalist",))).state
+
+    told = {e.payload.get("character_id") for e in pending_of(after, Kind.TIDINGS)}
+    assert "mei" in told and "wolf-2" not in told
 
 
 def test_slaying_a_notable_beast_is_news_but_still_no_crime():
