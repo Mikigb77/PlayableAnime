@@ -150,6 +150,37 @@ together.
   rating (M6).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
+## App icon
+
+![The icon on iPhone, as an Android round icon and as an Android 13 themed
+icon](docs/screenshots/app-icon.jpg)
+
+**The forest gate** (Miki's pick, 2026-11-04): a cloaked traveller walks through a glowing golden
+doorway in a dark forest, the moment a story begins. It is the app's night and lucid gold in the
+painterly anime look of its pictures, and at home-screen size it reads as a bright arch with a
+dark figure.
+
+- **The painting:** `tool/app_icon/forest-gate.jpg`, painted by Gemini on Vertex AI
+  (`gemini-3.1-flash-lite-image`, 1:1, 1K) from this prompt: "A glowing doorway of golden light
+  standing alone in a dark misty forest, a small cloaked traveller about to step through. Square
+  mobile app icon artwork for an anime interactive story game. One bold, centered subject that
+  stays readable at 48 pixels, kept inside the middle 60% of the frame, on a full-bleed background
+  that fills the whole square edge to edge. Painterly anime key-art style, cinematic low-key
+  lighting, deep ink-blue night tones with one strong warm gold accent. No text, no letters, no
+  logos, no watermark, no border, no frame, no rounded corners, no user interface." Its file keeps
+  the IPTC mark for AI-made media. It is 1024 px with the scene on an inner panel, so the App
+  Store's 1024 px icon is that panel scaled up; repaint at 2K before an iOS release.
+- **One source:** `tool/app_icon/icon.svg`, on Android's 108-unit adaptive-icon grid in three
+  layers: `#bg`, the painting, opaque; `#fg`, empty, since the painting is one layer; and `#mono`,
+  the doorway with the traveller cut out, for Android 13 themed icons.
+- **Every size from it:** `tool/app_icon/render.mjs` draws Android's adaptive layers and the icon
+  for Android before 8, each size in the iOS asset catalog (opaque, as the App Store requires) and
+  the web's favicon, manifest icons (maskable ones full bleed) and home-screen icon. To change the
+  icon, edit the SVG, run the script (how is at its top) and commit the PNGs it writes.
+  `test/app_icon_test.dart` checks that no size is missing.
+- **Store-safe:** like the screenshots, the icon stays 4+ in the stores (REQUIREMENTS.md, Apple
+  2.3.8).
+
 ## The play screen
 
 The story reads as one page of scenes, like a book that writes itself.
@@ -196,7 +227,8 @@ settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 The mic sits wherever the player types (V1): in the composer's mic slot and as a field's suffix.
 Use `DictationButton(tracker: InputModeTracker(controller))`, with the box's `storyId` or `draftId`.
 Words are never sent on their own (V2). Online dictation (the default, V6) records until the player
-taps again or pauses, then the mic spins (`MicVisual.transcribing`, "Writing down what you said")
+taps again (a pause to think never ends it; a long dictation lands in parts meanwhile, and leaving
+the app turns the mic off), then the mic spins (`MicVisual.transcribing`, "Writing down what you said")
 until the words land in the box; with the phone's recognizer they appear live. A failure is a short
 snackbar that says what to do: out of credits, too many dictations, or the server out of reach. The first tap asks for permission with a reason (V5); if the player
 refuses, the mic shows a struck-through icon and explains how to allow it, and typing still works.

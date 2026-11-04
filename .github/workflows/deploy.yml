@@ -42,7 +42,7 @@ concurrency:
 jobs:
   ci-green:
     name: CI passed on this commit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
       actions: read
@@ -58,7 +58,7 @@ jobs:
   deploy:
     name: ${{ inputs.dry_run && 'Dry run' || 'Deploy' }}
     needs: ci-green
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -174,7 +174,7 @@ jobs:
   models:
     name: Check the models
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -205,7 +205,7 @@ jobs:
   covers:
     name: Draw the starter covers
     needs: models
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     continue-on-error: true
     permissions:
@@ -234,7 +234,7 @@ jobs:
   # Runs alongside CI and the deploy. Nothing is published unless both pass.
   apk:
     name: Build the Android app
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -283,7 +283,7 @@ jobs:
     name: Publish the Android app
     needs: [deploy, apk]
     if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write

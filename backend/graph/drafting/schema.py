@@ -10,7 +10,7 @@ number out of range would otherwise fail validation and cost a retry, so code tr
 instead, and the descriptions tell the model the limits.
 """
 
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -436,6 +436,86 @@ class WorldProposal(Proposal):
     )
     opening: OpeningP = Field(default_factory=OpeningP)
     summary: str = Field(default="", description="Two or three sentences: the situation.")
+
+
+# A change to the world (G1): only what it touches.
+
+# The world's lists whose records have ids, which a change adds to, changes or removes from.
+WorldSection = Literal[
+    "extraordinary",
+    "rules",
+    "peoples",
+    "creatures",
+    "ladders",
+    "laws",
+    "places",
+    "factions",
+    "npcs",
+    "clocks",
+    "threads",
+    "mysteries",
+]
+WORLD_SECTIONS: tuple[WorldSection, ...] = get_args(WorldSection)
+
+
+class RemovalP(Proposal):
+    # The schema lists the lists, and Gemini keeps to them when it takes the schema. Validation
+    # takes any text all the same: a schema sent in the prompt isn't enforced, and a list named a
+    # little off ("place") shouldn't fail the whole change. Code reads it (`chain.apply_change`).
+    section: str = Field(
+        description="The list the record is in.", json_schema_extra={"enum": list(WORLD_SECTIONS)}
+    )
+    id: str
+
+
+# Code merges a change into the world (`graph.drafting.chain.apply_change`), so the model never
+# copies the whole world back: on 2026-11-04 that ran past the drafter's output limit on a real
+# draft, twice per request, and every change failed.
+class WorldChange(Proposal):
+    """A change to the world: only what it touches. Everything left out stays exactly as it is."""
+
+    title: str = Field(default="", description="Only if the change renames the story.")
+    genre: str = Field(default="", description="Only if the change alters the genre.")
+    tone: str = Field(default="", description="Only if the change alters the tone.")
+    era: str = Field(default="", description="Only if the change alters the era.")
+    summary: str = Field(default="", description="Only if the change alters the situation.")
+    extraordinary: list[ExtraordinaryP] = Field(
+        default_factory=list,
+        description="Each record in these lists is one the change adds or changes, written in "
+        "full. A record with an id already in the world replaces it; a new id adds one.",
+    )
+    rules: list[RuleP] = Field(default_factory=list)
+    peoples: list[PeopleP] = Field(default_factory=list)
+    creatures: list[CreatureP] = Field(default_factory=list)
+    ladders: list[LadderP] = Field(default_factory=list)
+    laws: list[LawP] = Field(default_factory=list)
+    places: list[PlaceP] = Field(default_factory=list)
+    factions: list[FactionP] = Field(default_factory=list)
+    npcs: list[NpcP] = Field(default_factory=list)
+    clocks: list[ClockP] = Field(default_factory=list)
+    threads: list[ThreadP] = Field(default_factory=list)
+    mysteries: list[MysteryP] = Field(default_factory=list)
+    removed: list[RemovalP] = Field(
+        default_factory=list,
+        description="Each record the change removes, including anything it makes untrue.",
+    )
+    dropped_rule_ids: list[str] = Field(
+        default_factory=list,
+        description="Ids of fixed rules the player asked to remove or change.",
+    )
+    nature: list[str] = Field(
+        default_factory=list, description="Only if the change alters it: the whole new list."
+    )
+    norms: list[str] = Field(
+        default_factory=list, description="Only if the change alters it: the whole new list."
+    )
+    known_facts: list[str] = Field(
+        default_factory=list, description="Only if the change alters it: the whole new list."
+    )
+    calendar: CalendarP | None = Field(default=None, description="Only if the change alters it.")
+    travel: TravelP | None = Field(default=None, description="Only if the change alters it.")
+    medicine: MedicineP | None = Field(default=None, description="Only if the change alters it.")
+    opening: OpeningP | None = Field(default=None, description="Only if the change alters it.")
 
 
 # The player character (G2, G13, A1, G21, G22).

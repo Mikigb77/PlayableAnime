@@ -22,6 +22,13 @@ CI runs on every PR and on every push to `dev` and `main`. A PR into `main` from
 `dev` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
 and the Workload Identity condition all work from it.
 
+The CI jobs are separate checks of the same commit (backend tests, evals, the image, the app, the
+Android build, the deploy scripts), so they run side by side. The deploy's jobs are a chain
+instead: the CI gate, then the deploy, then the model checks and the covers, while the APK builds
+alongside and is published after the deploy. Every job runs on `ubuntu-24.04` rather than
+`ubuntu-latest`, so a new runner image never arrives in the middle of a deploy; moving to a newer
+Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
+
 ## What runs where
 
 | Piece | Name | Notes |
