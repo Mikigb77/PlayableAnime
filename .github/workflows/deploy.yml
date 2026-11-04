@@ -83,8 +83,11 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
+      # The owner's emails (K7) come from a secret only to keep them out of the public repo.
       - name: Check the bootstrap
         run: infra/deploy.sh preflight
+        env:
+          OWNER_EMAILS: ${{ secrets.OWNER_EMAILS }}
 
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         if: ${{ !inputs.dry_run }}
@@ -127,12 +130,14 @@ jobs:
         run: infra/deploy.sh migrate "$IMAGE_REF"
         env:
           IMAGE_REF: ${{ steps.image.outputs.ref }}
+          OWNER_EMAILS: ${{ secrets.OWNER_EMAILS }}
 
       - id: service
         name: Deploy the service
         run: infra/deploy.sh service "$IMAGE_REF"
         env:
           IMAGE_REF: ${{ steps.image.outputs.ref }}
+          OWNER_EMAILS: ${{ secrets.OWNER_EMAILS }}
 
       # Minted here, not earlier: a federated ID token lasts only 10 minutes.
       - id: id_token

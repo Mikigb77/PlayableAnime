@@ -30,6 +30,8 @@ export CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK=1
 export CLOUDSDK_PROXY_TYPE=http
 export CLOUDSDK_PROXY_ADDRESS=127.0.0.1
 export CLOUDSDK_PROXY_PORT=9
+# The deploy workflow passes the OWNER_EMAILS secret; any address does here.
+export OWNER_EMAILS=owner@example.com
 mkdir -p "$CLOUDSDK_CONFIG"
 
 image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000"

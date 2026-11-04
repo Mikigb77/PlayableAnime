@@ -113,15 +113,36 @@ google_client_ids() {
   printf '%s' "$ids"
 }
 
+# Prints the owner's emails (K7) from the OWNER_EMAILS environment variable, which the deploy
+# workflow fills from the repository secret of that name, and stops when it is empty or isn't a
+# comma-separated list of plain addresses. They come from a secret only to keep them out of the
+# public repo: they aren't credentials, since the owner role also needs that Google account.
+owner_emails() {
+  local list="${OWNER_EMAILS:-}" email
+  local -a emails
+  list="${list//[[:space:]]/}"
+  if [ -z "$list" ]; then
+    die "OWNER_EMAILS is empty: add the OWNER_EMAILS repository secret (docs/DEPLOY.md#7-the-owner-email), or export it for a deploy from a laptop"
+  fi
+  IFS=, read -r -a emails <<<"$list"
+  for email in "${emails[@]}"; do
+    if ! [[ "$email" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+      die "OWNER_EMAILS holds something that isn't an email address"
+    fi
+  done
+  printf '%s' "$list"
+}
+
 # Writes the env vars file for a deploy: infra/cloudrun/env.yaml plus the values this script owns.
 render_env() {
-  local hosts="$1" out="$TMP_DIR/env-$RANDOM.yaml" origins client_ids
-  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|GOOGLE_OAUTH_CLIENT_IDS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
+  local hosts="$1" out="$TMP_DIR/env-$RANDOM.yaml" origins client_ids owners
+  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|GOOGLE_OAUTH_CLIENT_IDS|OWNER_EMAILS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
     die "$ENV_FILE sets a variable that deploy.sh owns; remove it from the file"
   fi
   origins="$(printf '%s' "$hosts" | sed 's#\([^,][^,]*\)#https://\1#g')"
   # Command substitutions don't inherit set -e, so a bad id must stop this one by hand.
   client_ids="$(google_client_ids)" || exit 1
+  owners="$(owner_emails)" || exit 1
   {
     cat "$ENV_FILE"
     printf '\n# Added by infra/deploy.sh\n'
@@ -132,10 +153,13 @@ render_env() {
     if [ -n "$client_ids" ]; then
       printf 'GOOGLE_OAUTH_CLIENT_IDS: "%s"\n' "$client_ids"
     fi
+    printf 'OWNER_EMAILS: "%s"\n' "$owners"
   } >"$out"
   if is_dry_run; then
+    # The owner's emails stay out of the output, which is public in the Actions log.
     say "[dry-run] env vars file $out:"
-    grep -Ev '^[[:space:]]*(#|$)' "$out" | sed 's/^/[dry-run]   /' >&2
+    grep -Ev '^[[:space:]]*(#|$)' "$out" |
+      sed -e 's/^OWNER_EMAILS: .*/OWNER_EMAILS: "<the OWNER_EMAILS secret>"/' -e 's/^/[dry-run]   /' >&2
   fi
   printf '%s' "$out"
 }
@@ -170,7 +194,8 @@ cmd_preflight() {
   gcloud iam service-accounts describe "$RUNTIME_SA" --project="$PROJECT_ID" \
     --format='value(email)' >/dev/null ||
     die "can't see the runtime service account $RUNTIME_SA; has infra/bootstrap.sh run?"
-  say "Preflight passed: the image repository and the runtime service account are in place."
+  owner_emails >/dev/null
+  say "Preflight passed: the image repository, the runtime service account and OWNER_EMAILS are in place."
 }
 
 # The migration job's log lines since $1 (an RFC 3339 time), oldest first, for a run that failed.

@@ -5,6 +5,7 @@ from datetime import date
 import pytest
 
 from accounts import rules
+from lucid.env import Env
 from lucid.errors import ApiError
 
 
@@ -74,10 +75,15 @@ def test_content_preferences_fill_in_defaults_and_drop_junk():
     assert rules.content_prefs({"gore": "extreme"})["gore"] == "medium"
 
 
-def test_owner_emails_come_from_the_setting(settings):
-    settings.OWNER_EMAILS = ["mikigb77@gmail.com"]
+def test_no_owner_email_is_built_in():
+    """K7: the owner's address comes only from OWNER_EMAILS, so none is in the public repo."""
+    assert Env.model_fields["owner_emails"].default == ""
 
-    assert rules.is_owner_email(" MikiGB77@gmail.com ")
+
+def test_owner_emails_come_from_the_setting(settings):
+    settings.OWNER_EMAILS = ["owner@example.com"]
+
+    assert rules.is_owner_email(" Owner@Example.com ")
     assert not rules.is_owner_email("someone@gmail.com")
     settings.OWNER_EMAILS = []
-    assert not rules.is_owner_email("mikigb77@gmail.com")
+    assert not rules.is_owner_email("owner@example.com")

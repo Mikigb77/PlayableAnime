@@ -52,10 +52,13 @@ with_fakes() {
   shift
   set +e
   env PATH="$FAKES:$PATH" RETRY_SLEEP_SECONDS=0 SMOKE_SLEEP_SECONDS=0 LOGS_WAIT_SECONDS=0 \
-    "$@" >"$out" 2>&1
+    OWNER_EMAILS="$TEST_OWNER" "$@" >"$out" 2>&1
   status=$?
   set -e
 }
+
+# The deploy workflow passes the OWNER_EMAILS secret; tests use this address unless they set it.
+TEST_OWNER="owner@example.com"
 
 POOLED="postgresql://app:SENTINEL-POOLED-PASSWORD@ep-quiet-cat-123456-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 DIRECT="postgresql://app:SENTINEL-DIRECT-PASSWORD@ep-quiet-cat-123456.eu-central-1.aws.neon.tech/neondb?sslmode=require"
@@ -406,6 +409,9 @@ test_deploy_dry_run() {
   lacks "$out" "allow-unauthenticated" "the service deploy leaves access to the access step"
   lacks "$out" "invoker-iam-check" "the service deploy leaves access to the access step"
   contains "$out" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"'
+  # The dry run's output is public in the Actions log, so it names the secret, not the emails.
+  contains "$out" 'OWNER_EMAILS: "<the OWNER_EMAILS secret>"'
+  lacks "$out" "owner@example.com" "a dry run printed the owner's email"
 
   out="$state/out-access"
   with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" access
@@ -429,6 +435,32 @@ test_deploy_settings() {
   equals "$status" 0 "migrate exit status"
   contains "$state/last-env.yaml" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"'
   lacks "$INFRA/config.sh" "GOCSPX" "an OAuth client secret must never be committed"
+  # The owner's emails (K7) come from the OWNER_EMAILS secret, never from the public repo.
+  contains "$state/last-env.yaml" 'OWNER_EMAILS: "owner@example.com"'
+  if grep -q '^OWNER_EMAILS:' "$INFRA/cloudrun/env.yaml"; then
+    bad "env.yaml sets OWNER_EMAILS; the owner's emails belong in the OWNER_EMAILS secret"
+  else ok; fi
+  lacks "$INFRA/cloudrun/env.yaml" "@" "no email address belongs in env.yaml"
+
+  # Without the secret, or with something that isn't a list of addresses, nothing is deployed.
+  : >"$state/calls.log"
+  out="$state/out-no-owner"
+  with_fakes "$out" env FAKE_STATE="$state" OWNER_EMAILS= "$INFRA/deploy.sh" migrate \
+    europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  if [ "$status" -ne 0 ]; then ok; else bad "deployed without OWNER_EMAILS"; fi
+  contains "$out" "OWNER_EMAILS is empty"
+  lacks "$state/calls.log" "run jobs deploy" "the job was deployed without OWNER_EMAILS"
+  out="$state/out-bad-owner"
+  with_fakes "$out" env FAKE_STATE="$state" OWNER_EMAILS='owner@example.com: x' \
+    "$INFRA/deploy.sh" service europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted an OWNER_EMAILS that could break out of the env vars file"; fi
+  contains "$out" "isn't an email address"
+  lacks "$state/calls.log" "run deploy" "the service was deployed with a bad OWNER_EMAILS"
+  out="$state/out-two-owners"
+  with_fakes "$out" env FAKE_STATE="$state" OWNER_EMAILS=' a@example.com, b.c+d@example.org ' \
+    "$INFRA/deploy.sh" migrate europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
+  equals "$status" 0 "migrate with two owners"
+  contains "$state/last-env.yaml" 'OWNER_EMAILS: "a@example.com,b.c+d@example.org"'
 
   # A copy of infra/ whose env.yaml sets a variable deploy.sh owns.
   cp -R "$INFRA" "$state/infra"
@@ -841,6 +873,22 @@ test_ops() {
   if [ "$status" -ne 0 ]; then ok; else bad "a failed gcloud command passed"; fi
 }
 
+test_preflight() {
+  local state out
+  start "deploy.sh preflight checks the bootstrap and that OWNER_EMAILS is set"
+  state="$(new_state preflight)"
+  touch "$state/res/artifacts_repositories_playable-anime"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" preflight
+  equals "$status" 0 "preflight exit status"
+  contains "$out" "Preflight passed"
+  lacks "$out" "owner@example.com" "preflight printed the owner's email"
+  out="$state/out-no-owner"
+  with_fakes "$out" env FAKE_STATE="$state" OWNER_EMAILS= "$INFRA/deploy.sh" preflight
+  if [ "$status" -ne 0 ]; then ok; else bad "preflight passed without OWNER_EMAILS"; fi
+  contains "$out" "add the OWNER_EMAILS repository secret"
+}
+
 test_workflow_matches_scripts() {
   local wf="$ROOT/.github/workflows/deploy.yml" cmd
   start "deploy.yml uses only commands deploy.sh has"
@@ -858,6 +906,9 @@ test_workflow_matches_scripts() {
   contains "$wf" "OPS_COMMAND: \${{ inputs.command }}" "the command reaches ops.sh only through the environment"
   wf="$ROOT/.github/workflows/deploy.yml"
   contains "$wf" "infra/require-green-ci.sh"
+  if [ "$(grep -cF "OWNER_EMAILS: \${{ secrets.OWNER_EMAILS }}" "$wf")" -eq 3 ]; then ok; else
+    bad "deploy.yml must pass the OWNER_EMAILS secret to preflight, migrate and service"
+  fi
   contains "$wf" "infra/build-apk.sh"
   contains "$wf" "infra/publish-apk.sh"
   contains "$ROOT/.github/workflows/ci.yml" "infra/build-apk.sh"
@@ -885,6 +936,7 @@ test_bootstrap_signs_in
 test_tools_install
 test_deploy_dry_run
 test_deploy_settings
+test_preflight
 test_deploy_service
 test_access
 test_covers
