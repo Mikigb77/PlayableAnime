@@ -22,3 +22,5 @@ node_modules/
 backend/staticfiles/
 # Pictures in local development (M4)
 backend/media-local/
+# Story eval results (WS17); the nightly run keeps its history elsewhere
+backend/evals-out/

@@ -5,7 +5,8 @@ The triggers come from what the engine already records, at most one picture a sc
 1. The player character's portrait when the story starts (G2).
 2. A key character's death the player knows of (N1).
 3. The decisive blow of a fight with a key NPC or a strong monster (Miki, 2026-11-03).
-4. A breakthrough on a power ladder (G19): a gain whose `what` is a ladder's id or name.
+4. A breakthrough on a power ladder (G19): a gain from a breakthrough, or named for a ladder or
+   one of its rungs.
 5. Hidden strength revealed (G20): a deed whose kind is a reveal.
 6. A deed of severity 4 or 5 by the player (W1).
 7. An arc ending: a premise thread, a clocked thread or one the player took up, closing (N1).
@@ -189,11 +190,17 @@ def candidates(
                 FIGHT,
             )
         )
+    # Growth records a breakthrough as a gain named for the rung reached (G19); a ladder's own id
+    # or name counts too.
     ladders = {
-        name.casefold() for ladder in state.bible.ladders for name in (ladder.id, ladder.name)
+        name.casefold()
+        for ladder in state.bible.ladders
+        for name in (ladder.id, ladder.name, *(rung.name for rung in ladder.rungs))
     }
     for character_id, gain in facts.gains:
-        if character_id == player and gain.what.casefold() in ladders:
+        if character_id == player and (
+            gain.source == "breakthrough" or gain.what.casefold() in ladders
+        ):
             found.append(
                 Candidate(
                     PictureTrigger.BREAKTHROUGH,

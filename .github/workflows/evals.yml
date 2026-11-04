@@ -1,0 +1,106 @@
+# The live story evals (WS17; T15, T17, T18): the real models on Vertex AI play every scenario and
+# a model judge scores the scenes against written rubrics. Nightly, and by hand from main.
+#
+# Switched off until Miki sets up access: the job runs only when the repository variable
+# EVALS_ENABLED is "true". The one-time setup is in docs/ARCHITECTURE.md, "Story evals". It signs
+# in through Workload Identity Federation with no key (B11), as a service account that can call
+# Vertex AI and nothing else.
+#
+# Each run uploads its results (run.json, summary.md, transcripts, pictures) and appends a line to
+# history.jsonl, which is carried from run to run in the Actions cache and shown as a trend.
+
+name: Evals
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: Scenario ids or id prefixes, separated by spaces (blank runs them all)
+        type: string
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: evals-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Live evals
+    if: ${{ vars.EVALS_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      LLM_PROVIDER: vertex
+      GCP_PROJECT: ${{ vars.EVALS_GCP_PROJECT || 'playable-anime' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ vars.EVALS_GCP_PROJECT || 'playable-anime' }}
+          workload_identity_provider: ${{ vars.EVALS_WIF_PROVIDER || 'projects/528988811295/locations/global/workloadIdentityPools/github-evals/providers/playable-anime-evals' }}
+          service_account: ${{ vars.EVALS_SERVICE_ACCOUNT || 'github-evals@playable-anime.iam.gserviceaccount.com' }}
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - run: uv sync --locked
+
+      - name: Restore the history
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: backend/evals-history
+          key: evals-history-${{ github.run_id }}
+          restore-keys: evals-history-
+
+      - name: Run the evals
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          args=()
+          for scenario in $ONLY; do args+=(--only "$scenario"); done
+          uv run python -m evals run --mode live --out evals-out \
+            --history evals-history/history.jsonl "${args[@]}"
+
+      - name: Summary and trend
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f evals-out/summary.md ]; then cat evals-out/summary.md >>"$GITHUB_STEP_SUMMARY"; fi
+          if [ -f evals-history/history.jsonl ]; then
+            cp evals-history/history.jsonl evals-out/
+            {
+              echo
+              echo '### Trend (live runs)'
+              echo
+              echo '```'
+              uv run python -m evals report --mode live --history evals-history/history.jsonl
+              echo '```'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the history
+        if: ${{ !cancelled() && hashFiles('backend/evals-history/history.jsonl') != '' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: backend/evals-history
+          key: evals-history-${{ github.run_id }}
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evals-live-${{ github.run_id }}
+          path: backend/evals-out
+          if-no-files-found: ignore
+          retention-days: 90

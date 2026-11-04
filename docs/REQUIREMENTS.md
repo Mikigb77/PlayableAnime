@@ -1192,6 +1192,11 @@ spot-check:
 | Same face | One key NPC in ten key scenes | Judges see the same person every time (M5) |
 | Mild pictures | The gore and romance cases from the ratings table, drawn as key scenes | No nudity or sexual content, and no more than mild gore, in any picture (M6) |
 
+The T15, T17 and T18 scenarios are in `backend/evals/` ([ARCHITECTURE.md](ARCHITECTURE.md#story-evals)).
+Those the engine alone decides run in CI on every PR, with scripted model answers; all of them run
+on the real models and the judge in the nightly live run, which stays off until Vertex access for
+it is set up.
+
 ### Credits and billing
 
 Every turn costs credits, the server enforces the balance, and the owner account plays free.

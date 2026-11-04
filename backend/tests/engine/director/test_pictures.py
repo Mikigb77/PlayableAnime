@@ -317,6 +317,21 @@ def test_an_arc_ending_and_a_breakthrough_are_key_scenes():
     assert decision.trigger is PictureTrigger.ARC_END and decision.subject_id == "tournament"
 
 
+def test_a_breakthrough_as_growth_records_it_is_a_key_scene():
+    # Growth names the gain for the rung reached (engine.resolve.powers.growth), not the ladder.
+    world = cultivation_world()
+    world.director.pictured = ["portrait:lin", "cover", "place:well", "portrait:zhao"]
+    gain = Gain(
+        what="Foundation Establishment",
+        change="broke through to Foundation Establishment",
+        source="breakthrough",
+        reason="train Foundation Establishment",
+        turn=4,
+    )
+    decision = picture(world, 4, gains=(("lin", gain),))
+    assert decision.trigger is PictureTrigger.BREAKTHROUGH
+
+
 def test_hidden_strength_revealed_needs_the_player_to_see_it():
     world = cultivation_world()
     world.director.pictured = ["portrait:lin", "cover", "place:well", "portrait:zhao"]

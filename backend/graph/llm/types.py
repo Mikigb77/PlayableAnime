@@ -32,6 +32,7 @@ class Node(StrEnum):
     SUMMARIZER = "summarizer"
     DRAFTER = "drafter"
     PICTURE = "picture"
+    JUDGE = "judge"  # the evals' model judge (T15, T17, T18); never on a player's turn
 
 
 @dataclass(frozen=True, repr=False)
