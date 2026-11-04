@@ -510,3 +510,10 @@ def test_speech_vocabulary_keeps_each_name_once_within_the_limit():
     names = speech_vocabulary(state, limit=4)
 
     assert names == ["Lin Feng", "Azure Peak", "outer-court well", "inner court"]
+
+
+def test_speech_vocabulary_keeps_a_name_that_starts_like_an_article():
+    state = cultivation_world()
+    state.characters["zhao"].name = "An Lushan"
+
+    assert "An Lushan" in speech_vocabulary(state)

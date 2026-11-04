@@ -328,6 +328,19 @@ def test_a_refused_dictation_is_logged_with_its_reason(broke, model, log_lines):
     assert line["severity"] == "WARNING"
 
 
+def test_a_dictation_refused_before_the_model_is_logged_too(client, model, log_lines):
+    transcribe(client, content_type="text/plain")
+    transcribe(client, story_id="00000000-0000-0000-0000-000000000000")
+
+    lines = [line["speech"] for line in log_lines() if line.get("speech")]
+    assert [(line["outcome"], line["context"]) for line in lines] == [
+        ("validation_error", "none"),
+        ("not_found", "story"),
+    ]
+    assert lines[1]["audio_bytes"] == len(AUDIO) and lines[1]["calls"] == 0
+    assert model.calls(Node.SPEECH) == []
+
+
 def test_the_offline_model_answers_when_no_model_is_configured(client):
     response = transcribe(client)
 

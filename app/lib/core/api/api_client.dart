@@ -70,7 +70,7 @@ class ApiClient {
     this.tokens,
     this.timeout = const Duration(seconds: 30),
     this.modelTimeout = const Duration(minutes: 3),
-    this.speechTimeout = const Duration(seconds: 75),
+    this.speechTimeout = const Duration(seconds: 90),
     this.streamIdleTimeout = const Duration(seconds: 150),
   }) : _http = httpClient;
 
@@ -88,7 +88,8 @@ class ApiClient {
   final Duration modelTimeout;
 
   /// The same for a dictation being written down (V6), which the player waits on with the mic
-  /// spinning: the speech model's 20 s deadline, its retries and an upload on a slow network.
+  /// spinning: longer than the server's worst case (three tries at the speech model's 20 s
+  /// deadline after 429s, with 8 s of waits), plus an upload on a slow network.
   final Duration speechTimeout;
 
   /// How long a stream may stay silent before it counts as dropped: longer than the narrator's

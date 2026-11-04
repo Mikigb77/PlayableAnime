@@ -7,7 +7,13 @@ from django.http import HttpRequest
 
 from accounts import rules
 from lucid.errors import ApiError, ErrorCode
-from stories.models import Story
+from stories.models import Engine, Story
+
+
+def graph_stories() -> QuerySet[Story]:
+    """Stories the turn graph plays: not one from the old narrator, whose world state it would
+    misread, nor one whose world state was never filled in."""
+    return Story.objects.filter(engine=Engine.GRAPH, state__has_key="player_id")
 
 
 async def owned_story(

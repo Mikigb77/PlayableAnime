@@ -188,8 +188,8 @@ sent as an action from here.
 - **Errors:** `422 unreadable_action` when the model refuses to write the clip down (rare: the
   player's words are never filtered), and `503 llm_unavailable` after one retry. The app says it
   couldn't reach the server, and typing always works.
-- **Privacy (V5).** The audio is held in memory for the request only: never written to disk or
-  stored, and never logged. The log line has the audio's size and type, the number of names sent,
+- **Privacy (V5).** The audio is held in memory for the request only (a body within the limit
+  never touches the disk), never stored, and never logged. The log line has the audio's size and type, the number of names sent,
   the outcome, the transcript's length, tokens and cost, never the words (T6).
 
 ## Starter premises (S1)

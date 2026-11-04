@@ -532,11 +532,10 @@ def speech_vocabulary(state: WorldState, *, limit: int = SPEECH_VOCABULARY_LIMIT
 
 
 def _without_article(name: str) -> str:
-    """ "the Azure Cloud Sect" is heard as "Azure Cloud Sect": the article is a common word."""
-    folded = name.casefold()
-    for article in ("the ", "a ", "an "):
-        if folded.startswith(article) and len(name) > len(article):
-            return name[len(article) :]
+    """ "the Azure Cloud Sect" is heard as "Azure Cloud Sect": "the" is a common word. Only
+    "the": "A" and "An" start names such as A Qing and An Lushan."""
+    if name.casefold().startswith("the ") and len(name) > len("the "):
+        return name[len("the ") :]
     return name
 
 

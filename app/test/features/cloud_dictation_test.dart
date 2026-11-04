@@ -255,7 +255,7 @@ void main() {
       const ApiException(ApiErrorCode.network): SpeechFailure.offline,
       const ApiException(ApiErrorCode.timeout): SpeechFailure.offline,
       const ApiException(ApiErrorCode.llmUnavailable): SpeechFailure.offline,
-      const ApiException(ApiErrorCode.unreadableAction): 'error_no_match',
+      const ApiException(ApiErrorCode.unreadableAction): SpeechFailure.unclear,
       StateError('boom'): SpeechFailure.offline,
     };
     for (final MapEntry(key: failure, value: code) in cases.entries) {
@@ -269,13 +269,14 @@ void main() {
     }
   });
 
-  test('an empty transcript is a no-match', () async {
+  test('words heard but not written down are worth a message', () async {
     transcriber.words = '  ';
     final box = Box();
     await box.listen(engine);
     await talk();
     await engine.stop();
-    expect(box.failures, ['error_no_match']);
+    expect(box.failures, [SpeechFailure.unclear]);
+    expect(const SpeechFailure(SpeechFailure.unclear).isSilence, isFalse);
   });
 
   test('cancelling drops the recording with no callbacks', () async {
@@ -324,6 +325,47 @@ void main() {
     expect(recorder.recording, isFalse);
     expect(transcriber.calls, isEmpty);
     expect(box.failures, ['error_speech_timeout']);
+  });
+
+  test('a box that takes the mic while the last one is still starting keeps it', () async {
+    recorder.starting = Completer();
+    final first = Box();
+    final second = Box();
+    final firstListening = first.listen(engine);
+    await pumpEventQueue();
+    final secondListening = second.listen(engine);
+    await pumpEventQueue();
+
+    recorder.starting!.complete();
+    await firstListening;
+    await secondListening;
+
+    expect(first.stopped, 1);
+    expect(recorder.starts, 2, reason: 'the second starts after the first let go');
+    expect(recorder.cancels, 1);
+    expect(recorder.recording, isTrue);
+    await talk();
+    await engine.stop();
+    expect(second.results, hasLength(1));
+    expect(first.results, isEmpty);
+  });
+
+  test('a stop and a quick new tap never cut off the new recording', () async {
+    final first = Box();
+    final second = Box();
+    await first.listen(engine);
+    await talk();
+
+    final stopping = engine.stop();
+    await second.listen(engine);
+    await stopping;
+    await pumpEventQueue();
+
+    expect(first.results, hasLength(1));
+    expect(recorder.recording, isTrue);
+    await talk();
+    await engine.stop();
+    expect(second.results, hasLength(1));
   });
 
   test('a mic that fails to start is an audio error', () async {

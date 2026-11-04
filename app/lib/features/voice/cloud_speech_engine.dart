@@ -188,9 +188,9 @@ class CloudSpeechEngine implements SpeechEngine {
     bool onDevice = true,
   }) async {
     // One mic: a box that is still recording stops for this one, keeping nothing. One already
-    // being written down finishes on its own.
+    // being written down finishes on its own. This one starts once the last has let go of the
+    // mic, so a late start or stop of that one never lands on this one's recording.
     final previous = _current;
-    if (previous != null && !previous.finishing) await previous.cancel(notify: true);
     final dictation = _Dictation(
       engine: this,
       onResult: onResult,
@@ -202,7 +202,8 @@ class CloudSpeechEngine implements SpeechEngine {
       context: context,
     );
     _current = dictation;
-    await dictation.start();
+    if (previous != null && !previous.finishing) await previous.cancel(notify: true);
+    await dictation.start(previous?.released ?? Future<void>.value());
   }
 
   /// Ends the dictation that is recording, keeping what was said.
@@ -244,6 +245,8 @@ class _Dictation {
 
   final _audio = BytesBuilder(copy: false);
   final _closed = Completer<void>();
+  final _started = Completer<void>(); // the mic has started for this dictation, or never will
+  final _released = Completer<void>();
   StreamSubscription<Uint8List>? _subscription;
   PcmFormat _format = PcmFormat.speech;
   int _bytes = 0;
@@ -257,35 +260,49 @@ class _Dictation {
   /// Recording has stopped, and what was said is being (or was) written down.
   bool get finishing => _finishing;
 
+  /// Done once this dictation no longer uses the mic: it never started, or it has stopped.
+  Future<void> get released => _released.future;
+
+  void _release() {
+    if (!_released.isCompleted) _released.complete();
+  }
+
   Duration _length(int bytes) =>
       Duration(microseconds: bytes * Duration.microsecondsPerSecond ~/ _format.bytesPerSecond);
 
-  Future<void> start() async {
-    final Stream<Uint8List> stream;
+  /// Starts recording once [micFree]: the last dictation has let go of the mic.
+  Future<void> start(Future<void> micFree) async {
     try {
-      stream = await engine.recorder.start(PcmFormat.speech, (actual) => _format = actual);
-    } on Object catch (e) {
-      debugPrint('Recording failed to start: ${e.runtimeType}');
-      if (!_cancelled) onError(const SpeechFailure('error_audio'));
-      return;
+      await micFree;
+      if (_cancelled || _finishing) return; // stopped before the mic was free: nothing was said
+      final Stream<Uint8List> stream;
+      try {
+        stream = await engine.recorder.start(PcmFormat.speech, (actual) => _format = actual);
+      } on Object catch (e) {
+        debugPrint('Recording failed to start: ${e.runtimeType}');
+        if (!_cancelled && !_finishing) onError(const SpeechFailure('error_audio'));
+        return;
+      }
+      if (_cancelled || _finishing) {
+        await engine.recorder.cancel(); // stopped while the mic was starting: nothing was said
+        return;
+      }
+      _subscription = stream.listen(
+        _add,
+        onError: (Object e) {
+          debugPrint('Recording failed: ${e.runtimeType}');
+          _finishClosed();
+          finish();
+        },
+        onDone: () {
+          _finishClosed();
+          finish(); // the platform stopped it, such as a phone call
+        },
+      );
+    } finally {
+      _started.complete();
+      if (_subscription == null) _release();
     }
-    if (_cancelled || _finishing) {
-      // Stopped while the mic was starting: nothing was said.
-      await engine.recorder.cancel();
-      return;
-    }
-    _subscription = stream.listen(
-      _add,
-      onError: (Object e) {
-        debugPrint('Recording failed: ${e.runtimeType}');
-        _finishClosed();
-        finish();
-      },
-      onDone: () {
-        _finishClosed();
-        finish(); // the platform stopped it, such as a phone call
-      },
-    );
   }
 
   void _finishClosed() {
@@ -325,14 +342,18 @@ class _Dictation {
   Future<void> finish() async {
     if (_finishing || _cancelled) return;
     _finishing = true;
-    try {
-      await engine.recorder.stop();
-      // The last moment of speech is still on its way: wait for the stream to close.
-      await _closed.future.timeout(const Duration(seconds: 1), onTimeout: () {});
-    } on Object catch (e) {
-      debugPrint('Recording failed to stop: ${e.runtimeType}');
+    await _started.future; // a mic still starting then cancels itself: nothing was said
+    if (_subscription case final subscription?) {
+      try {
+        await engine.recorder.stop();
+        // The last moment of speech is still on its way: wait for the stream to close.
+        await _closed.future.timeout(const Duration(seconds: 1), onTimeout: () {});
+      } on Object catch (e) {
+        debugPrint('Recording failed to stop: ${e.runtimeType}');
+      }
+      await subscription.cancel();
+      _release();
     }
-    await _subscription?.cancel();
     if (_cancelled) return;
     if (!_heard) {
       onError(const SpeechFailure('error_speech_timeout')); // silence: nothing sent, no message
@@ -353,7 +374,8 @@ class _Dictation {
     }
     if (_cancelled) return;
     if (words.trim().isEmpty) {
-      onError(const SpeechFailure('error_no_match'));
+      // The mic heard something, but no words: worth saying, unlike a dictation of silence.
+      onError(const SpeechFailure(SpeechFailure.unclear));
       return;
     }
     onResult(words.trim(), true);
@@ -365,15 +387,19 @@ class _Dictation {
   Future<void> cancel({bool notify = false}) async {
     if (_cancelled) return;
     _cancelled = true;
-    await _subscription?.cancel();
-    if (!_finishing) await engine.recorder.cancel();
+    await _started.future; // a mic still starting then cancels itself
+    if (_subscription case final subscription?) {
+      await subscription.cancel();
+      if (!_finishing) await engine.recorder.cancel();
+      _release();
+    }
     if (notify) onStopped();
   }
 
   static String _failureCode(ApiErrorCode code) => switch (code) {
     ApiErrorCode.outOfCredits => SpeechFailure.outOfCredits,
     ApiErrorCode.rateLimited || ApiErrorCode.quotaExceeded => SpeechFailure.limited,
-    ApiErrorCode.unreadableAction => 'error_no_match',
+    ApiErrorCode.unreadableAction => SpeechFailure.unclear,
     ApiErrorCode.network ||
     ApiErrorCode.timeout ||
     ApiErrorCode.server ||

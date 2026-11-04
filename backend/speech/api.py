@@ -41,15 +41,14 @@ from graph.llm import (
 )
 from lucid import logs
 from lucid.errors import ApiError, ErrorCode, field_error
-from stories.access import owned_story
-from stories.models import Engine, Story
+from stories.access import graph_stories, owned_story
 
 logger = logging.getLogger("speech")
 
 transcriptions_router = Router(tags=["speech"])
 
-# The app sends at most a minute of 16 kHz 16-bit mono WAV, 1.92 MB. Under Django's 2.5 MB
-# limit on a request body, so a recording never spills to a temporary file.
+# The app sends at most a minute of 16 kHz 16-bit mono WAV, 1.92 MB: under the 2.5 MB that Django
+# holds in memory, so the app's recordings never touch the disk.
 MAX_AUDIO_BYTES = 2 * 1024 * 1024
 
 # The audio types Gemini 3.5 Transcribe takes, by the names clients send them under.
@@ -97,10 +96,10 @@ class TranscriptionOut(Schema):
 class _Request:
     """What one transcription did, for its T5 line: numbers and names only (T6)."""
 
-    mime_type: str
-    audio_bytes: int
     language: str | None
     context: str
+    mime_type: str = ""
+    audio_bytes: int = 0
     vocabulary: int = 0
     outcome: str = "ok"
     chars: int = 0
@@ -121,22 +120,21 @@ _BODY = {
 @transcriptions_router.post("", response=TranscriptionOut, openapi_extra=_BODY)
 async def transcribe(request: HttpRequest, query: Query[TranscriptionQuery]) -> dict[str, str]:
     """The words in the recording in the body (V6). See docs/API.md, Dictation."""
-    mime_type = _audio_type(request)
-    audio = _audio(request)
-    if query.story_id and query.draft_id:
-        raise field_error(
-            "draft_id", "Send a story or a draft, not both.", source="query", type="conflict"
-        )
-    rating, names = await _context(request, query)
     record = _Request(
-        mime_type=mime_type,
-        audio_bytes=len(audio),
         language=query.language,
         context="story" if query.story_id else "draft" if query.draft_id else "none",
-        vocabulary=len(names),
     )
     telemetry = TurnTelemetry()
     try:
+        mime_type = record.mime_type = _audio_type(request)
+        audio = _audio(request)
+        record.audio_bytes = len(audio)
+        if query.story_id and query.draft_id:
+            raise field_error(
+                "draft_id", "Send a story or a draft, not both.", source="query", type="conflict"
+            )
+        rating, names = await _context(request, query)
+        record.vocabulary = len(names)
         spec = Transcription(
             language_codes=(query.language,) if query.language else (), vocabulary=tuple(names)
         )
@@ -145,7 +143,7 @@ async def transcribe(request: HttpRequest, query: Query[TranscriptionQuery]) -> 
         )
     except ApiError as exc:
         if record.outcome == "ok":
-            record.outcome = str(exc.code)  # refused by the meter: credits, rate or quota
+            record.outcome = str(exc.code)  # refused: the request, the story, credits or limits
         raise
     except BaseException:
         record.outcome = "failed"
@@ -169,7 +167,9 @@ def _audio_type(request: HttpRequest) -> str:
 
 
 def _audio(request: HttpRequest) -> bytes:
-    """The recording, refused before it is read when the client says it is too long."""
+    """The recording, refused when it is too long. Under ASGI, Django has already read the body
+    before the view runs, in memory up to FILE_UPLOAD_MAX_MEMORY_SIZE (2.5 MB, more than a minute
+    of the app's audio) and in a temporary file above it; Cloud Run caps a request at 32 MB."""
     declared = request.headers.get("Content-Length") or "0"
     if not declared.isdigit() or int(declared) > MAX_AUDIO_BYTES:
         raise _too_long()
@@ -189,8 +189,7 @@ async def _context(request: HttpRequest, query: TranscriptionQuery) -> tuple[str
     """The rating and the names the player character knows in the story or draft (C6). Only
     the player's own, within their rating limit (S8, F8)."""
     if query.story_id:
-        stories = Story.objects.filter(engine=Engine.GRAPH, state__has_key="player_id")
-        story = await owned_story(request, query.story_id, stories)
+        story = await owned_story(request, query.story_id, graph_stories())
         logs.bind(story_id=str(story.id))
         names = await sync_to_async(_story_names)(story.state)
         return story.rating, names

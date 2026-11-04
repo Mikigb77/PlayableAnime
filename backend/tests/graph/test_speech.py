@@ -131,6 +131,16 @@ def test_a_transcript_in_audio_transcription_parts_is_read_too():
     assert chunk.finish is not None and chunk.finish.reason == "stop"
 
 
+def test_a_players_key_never_transcribes():
+    backend = GeminiBackend.with_api_key("AIza-player-key")
+    client = ModelClient(backend, ModelConfig(), rating="teen", byok=True, retry_delay_s=0)
+
+    with pytest.raises(LLMUnavailable) as failed:
+        run(client.transcribe(Node.SPEECH, AUDIO, SPEC))
+
+    assert "AIza" not in repr(failed.value)
+
+
 def test_silence_is_an_empty_transcript_not_a_failure():
     calls = Calls(_response())
 

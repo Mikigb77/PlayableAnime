@@ -196,9 +196,12 @@ class GeminiBackend:
     async def _transcribe(self, request: Request) -> AsyncIterator[Chunk]:
         """One speech-to-text attempt (V6), straight through google-genai: LangChain has no way
         to send `audio_transcription_config`. It shares the models' client and connections. The
-        recording goes inline, never through the Files API, which would keep it for two days."""
-        failure: ProviderError | None = None
-        chunk: Chunk | None = None
+        recording goes inline, never through the Files API, which would keep it for two days.
+
+        Only on our Vertex account: the Gemini API serves the speech model only through its
+        Interactions API, so no player key ever reaches this, and no error text can echo one."""
+        if self._secret is not None:
+            raise ProviderError("invalid", "Dictation runs only on our Vertex AI account.")
         try:
             aio = self._model(request.model).async_client
             response = await aio.models.generate_content(
@@ -206,17 +209,9 @@ class GeminiBackend:
                 contents=to_audio_contents(request),
                 config=transcription_config(request),
             )
-            chunk = transcription_chunk(response)
         except Exception as error:
-            failure = classify(error, byok=self._secret is not None)
-            if self._secret is None:
-                raise failure from error
-        if failure is not None and self._secret is not None:
-            raise ProviderError(  # outside the handler, as in `_stream` (T6)
-                failure.kind, failure.detail.replace(self._secret, "***"), status=failure.status
-            )
-        if chunk is not None:
-            yield chunk
+            raise classify(error, byok=False) from error
+        yield transcription_chunk(response)
 
     async def aclose(self) -> None:
         """Closes the client this loop uses. Clients of other loops are only dropped."""

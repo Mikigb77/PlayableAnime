@@ -9,7 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 const storyLanguage = 'en-US';
 
 /// A recognizer failure, such as `error_no_match` or `error_permission`. Online dictation adds
-/// [offline], [outOfCredits] and [limited].
+/// [offline], [outOfCredits], [limited] and [unclear].
 @immutable
 class SpeechFailure {
   const SpeechFailure(this.code, {this.permanent = false});
@@ -22,6 +22,9 @@ class SpeechFailure {
 
   /// Too many dictations for now: the rate limit or the daily quota (T9).
   static const limited = 'rate_limited';
+
+  /// Something was said, but it couldn't be written down. Unlike silence, worth a message.
+  static const unclear = 'unclear';
 
   final String code;
   final bool permanent;
