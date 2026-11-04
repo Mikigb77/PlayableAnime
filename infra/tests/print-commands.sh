@@ -14,7 +14,7 @@ commands() {
     sed -e 's#--env-vars-file=[^ ]*#--env-vars-file=ENV_FILE#' -e "s#$ROOT/##g"
 }
 
-export DRY_RUN=1 GITHUB_ACTIONS=true GITHUB_SHA=COMMIT_SHA
+export DRY_RUN=1 GITHUB_ACTIONS=true GITHUB_SHA=COMMIT_SHA OWNER_EMAILS=owner@example.com
 echo "# infra/bootstrap.sh"
 "$INFRA/bootstrap.sh" --dry-run 2>&1 | commands
 echo

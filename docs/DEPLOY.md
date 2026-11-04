@@ -66,8 +66,9 @@ follows from it themselves, so nothing is copied from a console or pasted from a
 5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web and Android
    clients (both done).
 6. [Allow merge commits](#6-allow-merge-commits) in the repository's settings.
-7. [Dry-run the deploy](#7-dry-run-the-deploy) from `main`.
-8. Merge `dev` into `main` ([How changes reach production](#how-changes-reach-production)). That is
+7. [Give GitHub the owner email](#7-the-owner-email) as a repository secret.
+8. [Dry-run the deploy](#8-dry-run-the-deploy) from `main`.
+9. Merge `dev` into `main` ([How changes reach production](#how-changes-reach-production)). That is
    the first deploy.
 
 ### 1. Sign in
@@ -231,7 +232,23 @@ In the repository's **Settings > General > Pull Requests**, keep **Allow merge c
 `dev` to `main` PR is merged with a merge commit so the two branches never drift apart; other PRs
 can keep squash merging.
 
-### 7. Dry-run the deploy
+### 7. The owner email
+
+The owner role (K7) goes to the Google account whose email is in `OWNER_EMAILS`. The address
+isn't a credential, since the role also needs a verified Google sign-in for it, but it stays out of
+this public repo: the deploy reads it from a repository secret and hands it to Cloud Run. Several
+owners are comma-separated. Set it once, in **Settings > Secrets and variables > Actions > New
+repository secret** (it works from a phone), or with:
+
+```bash
+gh secret set OWNER_EMAILS --body "the-owner@gmail.com"
+```
+
+Without it the deploy stops at its preflight check, before it builds or changes anything. A deploy from a laptop
+needs `OWNER_EMAILS` exported in the shell instead. A dry run prints the secret's name in place of
+the address, because Actions logs are public while the repository is.
+
+### 8. Dry-run the deploy
 
 ```bash
 gh workflow run deploy.yml --ref main -f dry_run=true
@@ -369,16 +386,17 @@ directory.
 | --- | --- |
 | `DATABASE_URL` | Secret `database-url` (pooled) for the service, `database-url-direct` for the migrate job |
 | `DJANGO_SECRET_KEY` | Secret `django-secret-key` |
-| `LLM_PROVIDER`, `VERTEX_LOCATION`, `LOG_LEVEL`, `OWNER_EMAILS`, and later `CORS_ORIGINS` and per-node model names | [`infra/cloudrun/env.yaml`](../infra/cloudrun/env.yaml) |
+| `LLM_PROVIDER`, `VERTEX_LOCATION`, `LOG_LEVEL`, and later `CORS_ORIGINS` and per-node model names | [`infra/cloudrun/env.yaml`](../infra/cloudrun/env.yaml) |
 | `GCP_PROJECT`, `MEDIA_BUCKET`, `GOOGLE_OAUTH_CLIENT_IDS` | `infra/config.sh`, added by `deploy.sh`. The client ids are the Web and Android clients' and, later, the iOS client's (T8). |
+| `OWNER_EMAILS` | The repository secret of that name ([setup step 7](#7-the-owner-email)), added by `deploy.sh` |
 | `ALLOWED_HOSTS` | The service's hostnames, comma-separated, without a scheme, added by `deploy.sh` |
 | `CSRF_TRUSTED_ORIGINS` | The same hostnames as `https://` origins, for the Django admin |
 | `PORT`, `K_SERVICE`, `K_REVISION` | Cloud Run itself |
 
 Each deploy replaces every plain variable with the file's contents, so a variable removed from
 `env.yaml` disappears from the service. Changing a setting is a PR to `env.yaml` and a deploy.
-Variables the backend doesn't read yet, such as `OWNER_EMAILS`, are ignored until the code that
-needs them lands. `LLM_PROVIDER` must be `vertex`: on Cloud Run (where `K_SERVICE` or
+Variables the backend doesn't read yet are ignored until the code that needs them lands.
+`LLM_PROVIDER` must be `vertex`: on Cloud Run (where `K_SERVICE` or
 `CLOUD_RUN_JOB` is set) the service and its jobs refuse to start with any other value, so the
 published app never answers with the offline model (B6). `MEDIA_BUCKET` is required: with
 `LLM_PROVIDER=vertex` the service refuses to start without it, because pictures on one instance's
@@ -652,11 +670,11 @@ gcloud run services update-traffic playable-anime-api --project=playable-anime -
 LLM_PROVIDER: "vertex"
 VERTEX_LOCATION: "global"
 LOG_LEVEL: "INFO"
-OWNER_EMAILS: "mikigb77@gmail.com"
 GCP_PROJECT: "playable-anime"
 MEDIA_BUCKET: "playable-anime-pictures"
 ALLOWED_HOSTS: "playable-anime-api-528988811295.europe-west3.run.app"
 CSRF_TRUSTED_ORIGINS: "https://playable-anime-api-528988811295.europe-west3.run.app"
 GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"
+OWNER_EMAILS: "<the OWNER_EMAILS secret>"
 ```
 <!-- every-command:end -->

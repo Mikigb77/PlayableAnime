@@ -93,7 +93,9 @@ The code is in `backend/accounts/`.
   `role = owner` with `is_staff` and `is_superuser`, and loses them at the next Google sign-in if
   it leaves the list. A password never grants it, and the role is read-only in the admin. The
   owner signs in with Google, so to use `/admin/` with a password, set one once with
-  `python manage.py changepassword mikigb77@gmail.com` against the target database.
+  `python manage.py changepassword OWNER_EMAIL` against the target database. In production the
+  list comes from the `OWNER_EMAILS` GitHub secret ([DEPLOY.md](DEPLOY.md#7-the-owner-email)),
+  so no address is in the repo.
 - **Taking over an email.** Email accounts are unverified until an email provider exists. When a
   verified Google sign-in matches an email account, it takes that account over and drops its
   password, because someone may have signed up first with an address they don't own.
@@ -1322,7 +1324,7 @@ app                   shows the narration, then asks for the picture in its own 
 
 | Item | Value |
 | --- | --- |
-| Project | `playable-anime` (number 528988811295), owned by tech.garbar@gmail.com, billing on |
+| Project | `playable-anime` (number 528988811295), owned by Miki's Google account, billing on |
 | gcloud configuration | `playable-anime` (not the active one; use `--configuration=playable-anime`) |
 | Region | `europe-west3` (Frankfurt), next to Neon, for Cloud Run, Artifact Registry, Secret Manager and the pictures bucket (T1); Vertex AI on the `global` endpoint |
 | APIs enabled | Cloud Run, Artifact Registry, Cloud Build, Secret Manager, Vertex AI, IAM; `infra/bootstrap.sh` enables the rest the deploy needs |
