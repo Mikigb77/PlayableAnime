@@ -41,7 +41,7 @@ from engine.contracts import (
     StepResolution,
 )
 from engine.invariants import check_state
-from engine.labels import clock_label
+from engine.labels import moment
 from engine.state.records import PendingEvent
 from engine.state.world import WorldState
 from evals.judge import (
@@ -248,12 +248,12 @@ class Played:
             outcome["unplayed"] = resolution.unplayed
         if self.result.plan.event is not None:
             outcome["event"] = self.result.plan.event.title
-        # W10: when the scene began and ended on the world's clock, so the telling can be
-        # scored against it.
+        # W10: when the scene began and ended on the world's clock, to the minute whatever the
+        # calendar shows, so the telling can be scored against it.
         calendar = self.result.state.bible.calendar
         outcome["clock"] = {
-            "from": clock_label(calendar, self.before.world_s),
-            "to": clock_label(calendar, self.result.state.world_s),
+            "from": moment(calendar, self.before.world_s).model_dump(),
+            "to": moment(calendar, self.result.state.world_s).model_dump(),
         }
         return outcome
 

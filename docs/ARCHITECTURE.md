@@ -447,7 +447,8 @@ it (W10a), a helpless state on the sheet
    partial success where the facts allow one.
 7. **Time** (`durations.py`; W10). Durations are bounded by the kind of action. A step timed by the
    clock ("until nightfall") names a time of day, and `until_time` counts the seconds to it from
-   where the plan has got to, on the world's calendar, never rolled. An uncertain one is
+   where the plan has got to, on the world's calendar, never rolled and held past the kind's
+   longest, since the player named it (not in a stop or a haste, where the proposal stands). An uncertain one is
    rolled across orders of magnitude around the proposal (a thirtieth to thirty times), still
    within the kind's bounds, and recorded on the step's roll. On a rolled step the time is the
    second draw of that roll's own seed, so the one recorded seed replays both. Inside a time stop

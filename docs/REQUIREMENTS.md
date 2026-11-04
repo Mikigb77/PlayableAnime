@@ -694,8 +694,10 @@ in a trap. Nothing in the world is timed in turns.
   whatever the calendar shows, with how people travel in the world and the routes from where the
   character is, so a walk across town takes its 10 to 30 minutes and a meal its half hour or more.
   A step the player times by the clock ("until nightfall", "sleep till dawn") names that time of
-  day, and code counts the seconds to it from where the plan has got to, within the kind's bounds
-  and never rolled. The narrator sees when the scene began, how much time passed and what time it
+  day, and code counts the seconds to it from where the plan has got to, never rolled: the time
+  the player named holds even past the kind's longest (a watch until dusk can outlast an hour), and
+  it is always under a day. A time that came less than half an hour ago has come, so "until
+  nightfall" just after it takes no waiting rather than a day. The narrator sees when the scene began, how much time passed and what time it
   is now, and the opening sees the hour the story opens: the light, meals and time of day in the
   telling match the clock, night never falls before the clock reaches it, and the telling never
   skips ahead of it (R3).

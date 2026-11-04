@@ -43,20 +43,18 @@ def _spread(step: IntentStep, proposed_s: int, rng: SeededRng) -> tuple[int, flo
     return bound_duration(step.kind, round(seconds)), value
 
 
-def until_time(step: IntentStep, calendar: Calendar, start_s: int) -> IntentStep:
+def until_time(step: IntentStep, calendar: Calendar, start_s: int) -> Timing | None:
     """W10. A step that lasts until a time of day ("until nightfall", "sleep till dawn") takes
-    the seconds from `start_s` to the next time the world's clock shows it, in place of the
-    proposed seconds, and that time isn't rolled. The kind's bounds still hold. A step without
-    one, or with one that isn't a time of day, is returned as it was."""
+    the seconds from `start_s` to the next time the world's clock shows it, never rolled. The
+    player named the time, so it holds whatever the kind's longest (a watch until dusk can
+    outlast an hour), and it is under a day; the kind's shortest still holds. None for a step
+    without one, or with one that isn't a time of day."""
     time_of_day = parse_clock(step.until)
     if time_of_day is None:
-        return step
-    return step.model_copy(
-        update={
-            "proposed_duration_s": seconds_until(calendar, start_s, time_of_day),
-            "proposed_personal_s": None,
-            "duration_uncertain": False,
-        }
+        return None
+    shortest, _ = DURATION_BOUNDS[step.kind]
+    return Timing(
+        duration_s=max(shortest, seconds_until(calendar, start_s, time_of_day)), personal_s=None
     )
 
 

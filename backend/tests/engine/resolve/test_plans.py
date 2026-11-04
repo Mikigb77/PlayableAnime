@@ -240,24 +240,31 @@ def test_until_takes_the_clock_from_a_gregorian_epoch():
     assert resolve(state, Intent(steps=[wait])).steps[0].duration_s == 3 * HOUR
 
 
-def test_until_stays_within_the_kind_and_is_never_rolled():
-    state = cultivation_world()
-    intent = Intent(
-        steps=[
-            step(
-                "walk until dusk",
-                ActionKind.MOVE,
-                10 * MINUTE,
-                until="19:00",
-                duration_uncertain=True,
-            )
-        ]
+def test_until_holds_past_the_kinds_longest_and_is_never_rolled():
+    # "I watch the road until dusk": the player named the time, so an hour's cap on watching
+    # doesn't cut it short (W10).
+    state = cultivation_world()  # day count from 07:00
+    watch = step(
+        "watch the road until dusk",
+        ActionKind.OBSERVE,
+        10 * MINUTE,
+        until="17:00",
+        duration_uncertain=True,
     )
 
-    (walk,) = resolve(state, intent).steps
+    (settled,) = resolve(state, Intent(steps=[watch])).steps
 
-    assert walk.duration_s == DURATION_BOUNDS[ActionKind.MOVE][1]
-    assert walk.roll is None
+    assert settled.duration_s == 10 * HOUR > DURATION_BOUNDS[ActionKind.OBSERVE][1]
+    assert settled.roll is None
+
+
+def test_until_keeps_the_kinds_shortest():
+    state = cultivation_world()
+    nap = step("nap till five past seven", ActionKind.REST, HOUR, until="07:05")
+
+    (settled,) = resolve(state, Intent(steps=[nap])).steps
+
+    assert settled.duration_s == DURATION_BOUNDS[ActionKind.REST][0]
 
 
 def test_a_step_that_never_got_going_takes_only_its_proposed_time():

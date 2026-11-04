@@ -26,7 +26,7 @@ from engine.contracts import (
 from engine.director import rules
 from engine.director.deck import CARDS
 from engine.director.montage import montage_steps
-from engine.labels import second_of_day
+from engine.labels import clock_time, second_of_day
 from engine.state import (
     CharacterStatus,
     ClockStatus,
@@ -707,14 +707,15 @@ async def day_in_town(ev: Eval) -> None:
             "I stay at the inn until nightfall",
             plan(step("wait until nightfall", ActionKind.WAIT, 60, verb="wait", until="19:00")),
         )
-        if wait.completed and wait.steps and wait.step(-1).interrupted:
+        if not ev.check("the wait is played", wait.completed, f"{seed}: {wait.refused!r}"):
+            continue
+        if wait.steps and wait.step(-1).interrupted:
             continue  # something that needed the player came first (W10)
-        calendar = wait.state.bible.calendar
-        ended = second_of_day(calendar, wait.state.world_s)
+        ended = second_of_day(wait.state.bible.calendar, wait.state.world_s)
         ev.check(
             "the wait ends at nightfall on the clock",
             18 * HOUR <= ended <= 21 * HOUR,
-            f"{seed}: ended at {ended // HOUR}:{ended % HOUR // MINUTE:02d}",
+            f"{seed}: ended at {clock_time(ended)}",
         )
         ev.check(
             "the wait ends exactly when the clock shows the time asked for",

@@ -53,16 +53,26 @@ def bound_duration(kind: ActionKind, proposed_s: int, *, world_frozen: bool = Fa
     return max(low, min(high, int(proposed_s)))
 
 
-_CLOCK = re.compile(r"(\d{1,2})(?:[:.h](\d{2}))?")
+# A time of day as a model writes it: "19:00", "7:30", "6", "18.45", "19:00:00", "7 pm".
+_CLOCK = re.compile(
+    r"(\d{1,2})(?:[:.h](\d{2})(?::[0-5]\d)?)?\s*(?:([ap])\.?\s*m\.?)?", re.IGNORECASE
+)
+# A time of day that came less than this long ago has come: "until nightfall" a few minutes after
+# it is now, not tomorrow. The clock the models read shows no seconds.
+JUST_PASSED_S = 30 * MINUTE
 
 
 def parse_clock(text: str | None) -> int | None:
-    """W10. A time of day on the 24-hour clock ("19:00", "7:30", "6") as seconds after
-    midnight, or None when the text isn't one."""
+    """W10. A time of day ("19:00", "7:30", "6", "7 pm") as seconds after midnight, or None
+    when the text isn't one."""
     found = _CLOCK.fullmatch((text or "").strip())
     if found is None:
         return None
-    hour, minute = int(found[1]), int(found[2] or 0)
+    hour, minute, half = int(found[1]), int(found[2] or 0), found[3]
+    if half is not None:
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if half.lower() == "p" else 0)
     if hour > 24 or minute >= 60 or (hour == 24 and minute):
         return None
     return (hour * HOUR + minute * MINUTE) % DAY
@@ -71,8 +81,9 @@ def parse_clock(text: str | None) -> int | None:
 def seconds_until(calendar: Calendar, world_s: int, time_of_day_s: int) -> int:
     """W10. Seconds from `world_s` to the next time the world's clock shows `time_of_day_s`
     (seconds after midnight): later today, or tomorrow once today's has passed. 0 when the clock
-    shows it now."""
-    return (time_of_day_s - second_of_day(calendar, world_s)) % DAY
+    shows it now or it came less than `JUST_PASSED_S` ago."""
+    ahead = (time_of_day_s - second_of_day(calendar, world_s)) % DAY
+    return 0 if ahead > DAY - JUST_PASSED_S else ahead
 
 
 def in_time_stop(state: WorldState, actor_id: str) -> bool:

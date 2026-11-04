@@ -25,6 +25,7 @@ from engine.contracts import (
     StopReason,
     SuggestionPlan,
 )
+from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
 from engine.state.records import PendingEvent, StepResult
@@ -122,6 +123,11 @@ def test_the_interpret_prompt_reads_the_clock_and_how_people_travel():
     assert "walking across a town 10 to 30 minutes" in system
     assert "- until: when the player times a step by the clock" in system
     assert "steps is empty only when the character just waits or watches" in system
+    assert "Waiting or watching for a set time or until a time of day is a step" in system
+    # "Until dusk" lands where the clock the player sees says dusk starts.
+    parts = ", ".join(f"{part} {hour:02d}:00" for hour, part in DAY_PARTS[1:])
+    assert f"parts of the day start at {parts}, unless" in system
+    assert "dusk 17:00, evening 19:00" in parts
 
 
 def test_the_interpret_step_is_asked_for_the_aim_the_answers_and_no_other_actor():

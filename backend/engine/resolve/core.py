@@ -397,24 +397,26 @@ def _settle_step(
     if roll is not None:
         duration_rng = SeededRng(roll.seed)
         duration_rng.random()  # the outcome's draw
-    tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
     timed_step = step
-    if not frozen and tempo is None and settled.outcome_class is not OutcomeClass.RULED_OUT:
-        # W10. "Until nightfall" is counted on the world's clock from where this step starts;
-        # a step that never got going takes only its proposed time.
-        timed_step = until_time(step, state.bible.calendar, frame.world_s)
     if growing and step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
-        timed_step = timed_step.model_copy(update={"duration_uncertain": True})  # G19
-    timing = step_timing(
-        timed_step,
-        frozen=frozen,
-        rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
-        rng=duration_rng,
-        stop_left_s=stop_left,
-        outlasts=outlasts if frozen else None,
-        rate=tempo,
-        rate_left_s=tempo_left,
-    )
+        timed_step = step.model_copy(update={"duration_uncertain": True})  # G19
+    tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
+    timing = None
+    if not frozen and tempo is None and settled.outcome_class is not OutcomeClass.RULED_OUT:
+        # W10. "Until nightfall" is counted on the world's clock from where this step starts.
+        # In a stop or a haste, and for a step that never got going, the proposal stands.
+        timing = until_time(step, state.bible.calendar, frame.world_s)
+    if timing is None:
+        timing = step_timing(
+            timed_step,
+            frozen=frozen,
+            rolls=settled.outcome_class is not OutcomeClass.RULED_OUT,
+            rng=duration_rng,
+            stop_left_s=stop_left,
+            outlasts=outlasts if frozen else None,
+            rate=tempo,
+            rate_left_s=tempo_left,
+        )
     duration = timing.duration_s
     personal = timing.personal_s
     if not frozen:
