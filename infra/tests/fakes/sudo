@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# A stand-in for sudo in the infra tests: it logs the command to $FAKE_STATE/sudo.log and runs
+# nothing, so no test ever installs a package. `install SRC DEST` keeps a copy of SRC, and with
+# $FAKE_BIN set, installing gcloud's or wslu's package puts a fake of its command there.
+set -euo pipefail
+state="${FAKE_STATE:?FAKE_STATE is not set}"
+fakes="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+printf 'sudo %s\n' "$*" >>"$state/sudo.log"
+if [ "${1:-}" = install ] && [ $# -ge 3 ]; then
+  args=("$@")
+  cp "${args[$# - 2]}" "$state/installed-$(basename "${args[$# - 1]}")"
+fi
+if [ -n "${FAKE_BIN:-}" ]; then
+  case " $* " in
+    *" apt-get install "*" google-cloud-cli "*) ln -sf "$fakes/gcloud" "$FAKE_BIN/gcloud" ;;
+    *" apt-get install "*" wslu "*) ln -sf "$fakes/apt-get" "$FAKE_BIN/wslview" ;;
+  esac
+fi
