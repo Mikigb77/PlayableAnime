@@ -9,7 +9,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -25,8 +25,8 @@ jobs:
       # pytest-django creates and drops its own test database in this throwaway container.
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -35,20 +35,20 @@ jobs:
   # The story evals in deterministic mode (T15, T17, T18): every scenario the engine alone decides,
   # played through the real turn graph with scripted model answers. No model, no database, no key.
   evals:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --locked
       - run: uv run python -m evals run --out evals-out
       - if: always()
         run: test -f evals-out/summary.md && cat evals-out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: evals-deterministic
           path: backend/evals-out
@@ -57,7 +57,7 @@ jobs:
 
   backend-image:
     # Builds the Cloud Run image and runs it as Cloud Run would: migrate, then serve on $PORT.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -72,7 +72,7 @@ jobs:
     env:
       DB: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t lucid-api .
       # The old FastAPI app's tables may still be in Neon production. Migrations must leave them and
       # their rows alone: dropping that data needs Miki (CLAUDE.md).
@@ -107,13 +107,13 @@ jobs:
         run: docker logs api || true
 
   app:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
           flutter-version: 3.44.5
@@ -128,10 +128,10 @@ jobs:
   # main: the deploy builds that commit's APK itself, and its CI gate shouldn't wait for a second.
   android:
     if: github.ref != 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -147,7 +147,7 @@ jobs:
   # Only dev merges into main, because that merge deploys. Every other PR goes into dev.
   into-main:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Only dev merges into main
         env:
@@ -162,10 +162,10 @@ jobs:
   # The deploy scripts and workflows (docs/DEPLOY.md). No credentials: gcloud, gh and curl are
   # fakes in the tests, and the real gcloud runs offline and signed out to check every flag.
   infra:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: shellcheck -x infra/*.sh infra/tests/*.sh infra/tests/fakes/*
       # Every workflow, with shellcheck on their scripts.
       - run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color
