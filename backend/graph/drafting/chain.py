@@ -2,9 +2,11 @@
 directly (G1, G2, S1). Plain Python on the model layer, with no Django (B4).
 
 A `Draft` holds only inputs: the model's latest proposal and what the player set up. Its world
-state is a pure function of them (`Draft.state()`), so a revision replaces one part of the
-proposal and code re-decides everything else, the same way every time. Every proposal is cleaned
-of real people and organisations as soon as the model returns it (G12, `real_names`).
+state is a pure function of them (`Draft.state()`), so a revision changes one part of the
+proposal and code re-decides everything else, the same way every time. A change to the world
+comes back as only what it touches (`WorldChange`), which code merges in (`apply_change`); a
+change to the character comes back as the whole character, which is small. Every proposal is
+cleaned of real people and organisations before it is kept (G12, `real_names`).
 """
 
 from __future__ import annotations
@@ -26,7 +28,14 @@ from graph.drafting.prompts import (
     system_prompt,
 )
 from graph.drafting.real_names import without_real_names
-from graph.drafting.schema import CharacterProposal, DraftProposal, RuleP, WorldProposal
+from graph.drafting.schema import (
+    WORLD_SECTIONS,
+    CharacterProposal,
+    DraftProposal,
+    RuleP,
+    WorldChange,
+    WorldProposal,
+)
 from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
 from graph.llm import ModelClient, Node, Prompt
 
@@ -250,18 +259,16 @@ async def edit(llm: ModelClient, draft: Draft, edits: Edits) -> Draft:
 
 async def _revise_world(llm: ModelClient, draft: Draft, instruction: str) -> Draft:
     state = draft.state()
-    world = await llm.structured(
-        Node.DRAFTER, _revise_prompt(draft, state, "world", instruction), WorldProposal
+    change = await llm.structured(
+        Node.DRAFTER, _revise_prompt(draft, state, "world", instruction), WorldChange
     )
+    world, let_go = apply_change(draft.proposal.world, current_rules(state), change)
     world = without_real_names(world)
-    world = keep_fixed_rules(current_rules(state), world)
-    dropped = frozenset(world.dropped_rule_ids)
     template_ids = draft.template.rule_ids if draft.template else frozenset()
-    world = world.model_copy(update={"dropped_rule_ids": []})
     return replace(
         draft,
         proposal=DraftProposal(world=world, character=draft.proposal.character),
-        released_rules=draft.released_rules | (dropped & template_ids),
+        released_rules=draft.released_rules | (let_go & template_ids),
     )
 
 
@@ -290,15 +297,92 @@ def _revise_prompt(draft: Draft, state: WorldState, target: Target, instruction:
     )
 
 
-def keep_fixed_rules(previous: list[RuleP], world: WorldProposal) -> WorldProposal:
-    """G7: a revision keeps every fixed rule it doesn't explicitly drop, however forgetful the
-    model is."""
-    ids = {r.id for r in world.rules}
-    dropped = set(world.dropped_rule_ids)
-    kept = [r for r in previous if r.fixed and r.id not in ids and r.id not in dropped]
-    if not kept:
-        return world
-    return world.model_copy(update={"rules": [*world.rules, *kept]})
+def apply_change(
+    world: WorldProposal, rules: list[RuleP], change: WorldChange
+) -> tuple[WorldProposal, frozenset[str]]:
+    """Merges a change into the world (G1): each record it gives replaces the one with its id, or
+    with its name under another id, or is added; each record it removes goes; and everything it
+    leaves out stays exactly as it was, so no rule, secret or clue is lost to a model that copies
+    the world back badly (G7, N7). `rules` are the rules as they hold now (`current_rules`), as
+    the model saw them. A rule about kinds the change removes goes with them, unless the change
+    gives it again.
+
+    Returns the merged world and the ids of the rules the change let go of: the ones it removed,
+    the ones about kinds it removed and the fixed ones it dropped, so a starter's rule among them
+    is released (G7)."""
+    removed: dict[str, set[str]] = {}
+    for removal in change.removed:
+        if key := slug(removal.id):
+            for section in _sections(removal.section):
+                removed.setdefault(section, set()).add(key)
+    dropped = {key for rule_id in change.dropped_rule_ids if (key := slug(rule_id))}
+    removed["rules"] = removed.get("rules", set()) | dropped
+    gone_kinds = removed.get("extraordinary", set())
+    given_rules = {slug(rule.id) for rule in change.rules}
+    removed["rules"] |= {
+        slug(rule.id)
+        for rule in rules
+        if rule.about
+        and {slug(kind) for kind in rule.about} <= gone_kinds
+        and slug(rule.id) not in given_rules
+    }
+
+    merged: dict[str, object] = {}
+    for section in WORLD_SECTIONS:
+        current = rules if section == "rules" else getattr(world, section)
+        merged[section] = _merged(current, getattr(change, section), removed.get(section, set()))
+    for name in ("title", "genre", "tone", "era", "summary"):
+        if text := getattr(change, name).strip():
+            merged[name] = text
+    for name in ("nature", "norms", "known_facts"):
+        if lines := [line for line in getattr(change, name) if line.strip()]:
+            merged[name] = lines
+    for name in ("calendar", "travel", "medicine", "opening"):
+        if (part := getattr(change, name)) is not None:
+            merged[name] = part
+    merged["dropped_rule_ids"] = []
+
+    let_go = {rule.id for rule in rules if slug(rule.id) in removed["rules"]}
+    let_go |= {rule_id for rule_id in change.dropped_rule_ids if slug(rule_id)}
+    return world.model_copy(update=merged), frozenset(let_go)
+
+
+def _sections(named: str) -> tuple[str, ...]:
+    """The list a removal names, also in the singular ("people", "npc"). A list that isn't one
+    removes the id wherever it is."""
+    named = slug(named)
+    for section in (named, f"{named}s"):
+        if section in WORLD_SECTIONS:
+            return (section,)
+    return WORLD_SECTIONS
+
+
+def _merged(current: list, given: list, gone: set[str]) -> list:
+    """One list of records with the change's records merged in, by id, then by name, keeping
+    the order. A record matched by its name keeps its old id, so references to it still hold.
+    A record both removed and given again is changed in place, as a rewritten fixed rule is."""
+    gone = gone - {slug(record.id) for record in given}
+    records = [record for record in current if slug(record.id) not in gone]
+    for record in given:
+        at = _find(records, slug(record.id), "id")
+        if at is None:
+            at = _find(records, slug(getattr(record, "name", "")), "name")
+            if at is not None:
+                record = record.model_copy(update={"id": records[at].id})
+        if at is None:
+            records.append(record)
+        else:
+            records[at] = record
+    return records
+
+
+def _find(records: list, key: str, field: str) -> int | None:
+    if not key:
+        return None
+    for at, record in enumerate(records):
+        if slug(getattr(record, field, "")) == key:
+            return at
+    return None
 
 
 def _player_rules(edits: list[RuleEdit], current: list[RuleP]) -> list[RuleP]:

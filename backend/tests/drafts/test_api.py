@@ -18,6 +18,7 @@ from drafts.models import Draft
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, WorldChange
 from graph.drafting.view import hidden_texts
 from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
 from stories.models import Engine, Story
@@ -183,7 +184,7 @@ def test_lowering_the_rating_redrafts_within_teen(player_client, model):
     assert response.status_code == 200, response.content
     assert response.json()["rating"] == "teen"
     redrafts = model.requests[calls:]
-    assert [r.json_schema["title"] for r in redrafts] == ["WorldProposal", "CharacterProposal"]
+    assert [r.json_schema["title"] for r in redrafts] == ["WorldChange", "CharacterProposal"]
     assert all("Rating: Teen" in r.prompt.system for r in redrafts)
 
     raised = _patch(player_client, draft_id, {"rating": "mature"})
@@ -305,9 +306,7 @@ def test_a_teen_account_drafts_teen_stories_only(teen_client, model):
 
 def test_a_world_revision_redrafts_the_world(player_client, model):
     draft = _draft(player_client)
-    world = samples.naples_world()
-    world.title = "Blood on the Bay"
-    model.script(Node.DRAFTER, Reply(json=world))
+    model.script(Node.DRAFTER, Reply(json=WorldChange(title="Blood on the Bay")))
 
     response = _revise(
         player_client,
@@ -320,6 +319,61 @@ def test_a_world_revision_redrafts_the_world(player_client, model):
     assert (revised["title"], revised["version"]) == ("Blood on the Bay", 1)
     assert revised["character_lines"] == draft["character_lines"]
     assert "Call it Blood on the Bay." in model.requests[-1].prompt.messages[0].text
+
+
+def test_races_asked_for_in_plain_words_join_the_world_and_nothing_else_changes(
+    player_client, model, player
+):
+    """On 2026-11-04 every world revision failed with `llm_unavailable`: the model had to write
+    the whole world back, and ran past its output limit twice. Now it sends only the change."""
+    draft = _draft(player_client)
+    before = _state(draft["id"])
+    character = Draft.objects.get(pk=draft["id"]).proposal["character"]
+    model.script(
+        Node.DRAFTER,
+        Reply(
+            json=WorldChange(
+                extraordinary=[
+                    ExtraordinaryP(id="vampires", kind="vampires", prevalence="hidden"),
+                    ExtraordinaryP(id="demons", kind="demons", prevalence="rare"),
+                ],
+                peoples=[
+                    PeopleP(id="vampires", name="Vampires"),
+                    PeopleP(id="orcs", name="Orcs"),
+                    PeopleP(id="demons", name="Demons"),
+                ],
+                removed=[RemovalP(section="extraordinary", id="supernatural")],
+                dropped_rule_ids=["human-limits"],
+            )
+        ),
+    )
+
+    response = _revise(
+        player_client,
+        draft["id"],
+        {
+            "target": "world",
+            "instruction": "Add more races to the world, like vampires, orcs and demons.",
+            "expected_version": 0,
+        },
+    )
+
+    assert response.status_code == 200, response.content
+    revised = response.json()
+    assert "Peoples: Vampires, Orcs and Demons." in revised["world_lines"]
+    assert not any(line.startswith("Grounded") for line in revised["world_lines"])
+    # The character stays as drafted; only "no powers, since this world has none" goes.
+    assert Draft.objects.get(pk=draft["id"]).proposal["character"] == character
+    assert "No powers, since this world has none." not in revised["character_lines"]
+    after = _state(draft["id"])
+    assert not after.bible.grounded
+    assert {r.id for r in after.bible.rules} >= {"omerta"}
+    assert (after.places, after.factions, after.clocks) == (
+        before.places,
+        before.factions,
+        before.clocks,
+    )
+    assert LedgerEntry.objects.filter(user=player, kind=EntryKind.DRAFT).count() == 2
 
 
 def test_a_character_revision_redrafts_the_character(player_client, model):
@@ -388,9 +442,7 @@ def test_edits_code_can_make_alone_call_no_model(player_client, model):
 
 def test_rewritten_summary_lines_redraft_the_world_to_match(player_client, model):
     draft = _draft(player_client)
-    world = samples.naples_world()
-    world.era = "Naples, 1975: the heat of summer"
-    model.script(Node.DRAFTER, Reply(json=world))
+    model.script(Node.DRAFTER, Reply(json=WorldChange(era="Naples, 1975: the heat of summer")))
     lines = list(draft["world_lines"])
     lines[1] = "Naples, 1975: the heat of summer."
 
@@ -679,6 +731,7 @@ def test_each_drafting_request_logs_its_cost_but_never_its_words(player_client, 
     fields = line["draft"]
     assert (fields["action"], fields["outcome"], fields["calls"]) == ("create", "ok", 1)
     assert fields["input_tokens"] > 0 and fields["output_tokens"] > 0
+    assert "thinking_tokens" in fields
     everything = json.dumps(lines)
     assert "bakery" not in everything
     assert "Luca" not in everything

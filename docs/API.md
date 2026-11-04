@@ -225,7 +225,7 @@ BYOK request is free (K6).
 | POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
 | PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
-| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires") |
+| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires"; the rest stays as it was) |
 | POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings, expected_version?}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text

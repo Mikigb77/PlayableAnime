@@ -87,7 +87,7 @@ SCHEMA_RETRY_DELAYS_S = (2.0, 6.0)
 
 def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
     """Each node's structured output, as it asks for it. The judge's is left out with it."""
-    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldProposal
+    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldChange
     from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
 
     return (
@@ -95,7 +95,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
         (Node.NARRATOR, NarratorOutput),
         (Node.SUMMARIZER, ChapterOutput),
         (Node.DRAFTER, DraftProposal),
-        (Node.DRAFTER, WorldProposal),
+        (Node.DRAFTER, WorldChange),
         (Node.DRAFTER, CharacterProposal),
     )
 

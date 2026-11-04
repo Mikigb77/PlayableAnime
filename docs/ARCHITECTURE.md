@@ -782,7 +782,7 @@ flowchart LR
 - **A draft stores inputs, never state.** The `Draft` row holds the model's latest proposal
   (`schema.DraftProposal`), the premise and starter id, and what the player set up (physics, gift
   strength, the starter rules they let go of, difficulty, event frequency). The world state is
-  `assemble()` of those inputs, the same every time, so a revision replaces one half of the
+  `assemble()` of those inputs, the same every time, so a revision changes one half of the
   proposal (the world or the character) and code re-decides everything else. The state is copied
   into the story only on start.
 - **Fictional people (G12, `real_names`).** The player's words (the premise, a revision, an edited
@@ -810,8 +810,15 @@ flowchart LR
   lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
   more words of hidden text, or names someone the character doesn't know, is dropped.
 - **Revisions and edits.** `revise(target, instruction)` sends the whole draft, hidden parts
-  included, so the change fits the world, and keeps every fixed rule the model doesn't explicitly
-  list in `dropped_rule_ids`; a dropped starter rule is released for this story. Direct edits
+  included and fields left at their defaults left out, so the change fits the world. A change to
+  the world comes back as only what it touches (`schema.WorldChange`): the records it adds or
+  changes, in full, the records it removes, and any text or part it alters. `chain.apply_change`
+  merges it in by id (then by name, keeping the old id so references hold), so everything else
+  stays word for word, fixed rules, secrets and clues included. Until 2026-11-04 the model wrote
+  the whole world back, which ran past the drafter's 16,384 output tokens on a real draft and
+  failed every change twice. A rule about a kind the change removes goes with it, and a starter
+  rule the change removes or lists in `dropped_rule_ids` is released for this story. A change to
+  the character still comes back as the whole character, which is small. Direct edits
   (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
   rewritten summary lines, rewritten rules, a new gift strength or a rating lowered to Teen, one
   call for the world and one for the character. Rules the player wrote stay word for word, their
@@ -820,9 +827,11 @@ flowchart LR
 - **Around each model call** (`drafts/service.model_call`): the BYOK headers (S9), the credit meter
   with `meter.DRAFT` (the charge lands in the transaction that saves the draft), the client for the
   draft's rating (F5), the model errors as API errors (T7), and one T5 log line on the `drafts`
-  logger with tokens, cost and outcome, never the premise or the prompt (T6).
+  logger with tokens (thinking tokens too, which count against the output limit), cost and
+  outcome, never the premise or the prompt (T6).
 - **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
-  the Naples vendetta for a grounded starter, the cultivation sample otherwise.
+  the Naples vendetta for a grounded starter, the cultivation sample otherwise. A change to the
+  world comes back empty, so the world stays as it is.
 
 ## Safety, ratings and reports
 

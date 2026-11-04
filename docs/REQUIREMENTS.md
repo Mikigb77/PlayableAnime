@@ -151,8 +151,10 @@ to any major mystery (N7). The player sees a short summary in plain words ("Grou
 nothing supernatural, and that won't change. Naples, 1974. The Esposito family has three crews, and
 its council picks the next boss in ten days." Or: "Cultivation world, realms from Qi Condensation to
 Nascent Soul and beyond. The Azure Cloud Sect, its outer and inner courts, and a ranking tournament
-in two days.") and can change any line, ask for something different, or just start. Whatever the
-character doesn't know stays hidden, such as who ordered the killing (C6). A player who wants to set
+in two days.") and can change any line, ask for something different, or just start. A change in
+plain words ("add vampires, orcs and demons as races") changes only what it touches, and the rest
+of the world stays exactly as it was. Whatever the character doesn't know stays hidden, such as who
+ordered the killing (C6). A player who wants to set
 everything by hand can open the advanced fields. One of them is how strict physics is: fun first by
 default, or strict for players who want things rougher and more physically coherent (A9).
 
