@@ -129,28 +129,32 @@ class ApiTranscriber implements Transcriber {
   }
 }
 
-/// When online dictation stops listening by itself.
+/// How online dictation treats pauses, and the only times it stops by itself. A pause never ends
+/// it: the player takes the time they need to think, and taps the mic when done (Miki,
+/// 2026-11-04).
 class ListenLimits {
   const ListenLimits({
-    this.pause = const Duration(milliseconds: 2500),
-    this.noSpeech = const Duration(seconds: 8),
+    this.keptPause = const Duration(seconds: 1),
     this.longest = const Duration(seconds: 60),
+    this.forgotten = const Duration(minutes: 5),
   });
 
-  /// Quiet for this long after speaking ends the dictation, as the phone's recognizer does.
-  final Duration pause;
+  /// A pause longer than this is cut to this length in what is sent, so thinking costs nothing
+  /// and a long dictation fits. Only the room's own quiet is cut, never a sound above it.
+  final Duration keptPause;
 
-  /// Nothing said for this long ends it with nothing sent, so a forgotten mic costs nothing.
-  final Duration noSpeech;
-
-  /// The longest dictation, which the API's size limit allows with room to spare.
+  /// The most audio a dictation sends, which the API's size limit allows with room to spare.
+  /// Reaching it writes down what was said.
   final Duration longest;
+
+  /// The mic turns itself off after this long, so a forgotten mic doesn't stay on.
+  final Duration forgotten;
 }
 
 /// Online dictation (V6): records while the mic is on, then sends the recording to our API,
 /// where Gemini 3.5 Transcribe writes it down in the story's language with the names the
-/// character knows. The words appear once the player stops (or pauses), never on their own sent
-/// (V2). Audio leaves the phone only for that request, and we never keep it (V5).
+/// character knows. The words appear once the player taps the mic again, and are never sent on
+/// their own (V2). Audio leaves the phone only for that request, and we never keep it (V5).
 class CloudSpeechEngine implements SpeechEngine {
   CloudSpeechEngine({
     required this.recorder,
@@ -227,9 +231,14 @@ class _Dictation {
     required this.context,
   });
 
-  // Speech is louder than this, and louder than the room by [_aboveRoomDb]. Below it is a pause.
+  // Speech is louder than this, and louder than the room by [_aboveRoomDb].
   static const _speechDb = -48.0;
   static const _aboveRoomDb = 12.0;
+
+  // Within this of the room's level, and below [_stillMaxDb], is the room's own quiet, which a
+  // long pause may lose. Nothing louder is ever cut, so a voice never is.
+  static const _stillDb = 6.0;
+  static const _stillMaxDb = -40.0;
 
   // How fast the room's level may rise, in dB a second, in case the room gets louder.
   static const _roomRiseDb = 6.0;
@@ -249,8 +258,9 @@ class _Dictation {
   final _released = Completer<void>();
   StreamSubscription<Uint8List>? _subscription;
   PcmFormat _format = PcmFormat.speech;
-  int _bytes = 0;
-  int _quietBytes = 0;
+  int _bytes = 0; // recorded
+  int _keptBytes = 0; // to be sent
+  int _stillBytes = 0; // of the room's quiet, in a row
   double? _roomDb;
   double _loudestDb = -100;
   bool _heard = false;
@@ -311,34 +321,32 @@ class _Dictation {
 
   void _add(Uint8List chunk) {
     if (_cancelled) return;
-    _audio.add(chunk);
     _bytes += chunk.length;
-    if (_finishing) return; // the end of the recording, after the tap
+    if (_finishing) return _keep(chunk); // the end of the recording, after the tap
     final db = pcmLevelDb(chunk);
     onLevel?.call(((db + 60) / 50).clamp(0.0, 1.0));
     // The room's level: the quietest so far, drifting up slowly in case it gets louder.
     final rise = _roomRiseDb * chunk.length / _format.bytesPerSecond;
     final room = _roomDb = _roomDb == null ? db : math.min(db, _roomDb! + rise);
+    // Speech decides whether anything is sent at all; the tap alone ends the dictation.
     final speechDb = math.max(_speechDb, room + _aboveRoomDb);
-    if (db > speechDb) {
-      _heard = true;
-      _quietBytes = 0;
-    } else {
-      _quietBytes += chunk.length;
-    }
-    // A word said at the tap, before the room was heard, counts once it is.
     _loudestDb = math.max(_loudestDb, db);
-    if (_loudestDb > speechDb) _heard = true;
+    if (_loudestDb > speechDb) _heard = true; // a word at the tap counts once the room is heard
+    // A pause to think is kept up to [ListenLimits.keptPause]; the rest of it isn't sent.
     final limits = engine.limits;
-    if ((_heard && _length(_quietBytes) >= limits.pause) ||
-        (!_heard && _length(_bytes) >= limits.noSpeech) ||
-        _length(_bytes) >= limits.longest) {
-      finish();
-    }
+    final still = db <= room + _stillDb && db < _stillMaxDb;
+    _stillBytes = still ? _stillBytes + chunk.length : 0;
+    if (_length(_stillBytes) <= limits.keptPause) _keep(chunk);
+    if (_length(_keptBytes) >= limits.longest || _length(_bytes) >= limits.forgotten) finish();
   }
 
-  /// Stops recording and writes down what was said: on the player's tap, after a pause, or at
-  /// the longest a dictation may be.
+  void _keep(Uint8List chunk) {
+    _audio.add(chunk);
+    _keptBytes += chunk.length;
+  }
+
+  /// Stops recording and writes down what was said: on the player's tap, or at the longest a
+  /// dictation may be.
   Future<void> finish() async {
     if (_finishing || _cancelled) return;
     _finishing = true;

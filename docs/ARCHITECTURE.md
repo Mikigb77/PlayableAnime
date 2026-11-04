@@ -1114,10 +1114,12 @@ The app reaches two recognizers through one interface, `SpeechEngine` in
 the phone's recognizer heard English badly. The app records 16 kHz mono 16-bit PCM with the
 [`record`](https://pub.dev/packages/record) plugin (7.1, on Android, iOS, macOS and the web), with
 the platform's gain control and noise suppression on. A browser that can't record at 16 kHz sends
-its own rate, and `pcm.dart` averages it down. The clip ends on the player's tap, after 2.5 seconds
-of quiet once they have spoken (a level 12 dB above the room's and above -48 dBFS counts as
-speech), after 8 seconds with nothing said (nothing is sent), or at a minute. The app then posts it
-as a WAV to [`POST /v1/transcriptions`](API.md#dictation-v1-v2-v5-v6), with the story or draft and
+its own rate, and `pcm.dart` averages it down. A pause never ends the clip: the player's tap does
+(Miki, 2026-11-04). The app tracks the room's level (the quietest so far, rising at most 6 dB a
+second) and cuts each pause to its first second in what it sends, dropping only audio within 6 dB
+of the room and below -40 dBFS, so a voice is never cut. If nothing louder than -48 dBFS and 12 dB
+above the room was heard, nothing is sent. The clip also ends at a minute of audio to send (the
+API's size limit) or after five minutes with the mic on. The app then posts it as a WAV to [`POST /v1/transcriptions`](API.md#dictation-v1-v2-v5-v6), with the story or draft and
 the story's language, and the mic spins until the words land in the box (V2).
 
 The backend's `speech/api.py` reads the names the player character knows in that story or draft
@@ -1154,7 +1156,8 @@ the transcript in the box as the player speaks. It listens for the story's langu
 not the phone's, so English spoken to a phone set to Spanish is heard as English.
 
 - **iOS:** `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are in
-  `Info.plist`. Apple stops a recognition task after about a minute.
+  `Info.plist`. The app asks it to listen through pauses of up to 30 seconds (`pauseFor`), and
+  Apple stops a recognition task after about a minute.
 - **Android:** the `RECORD_AUDIO` permission and, when targeting SDK 30 or later, a `<queries>`
   entry for the `android.speech.RecognitionService` intent. Recognition stops after a pause of a
   few seconds, and that can't be changed.

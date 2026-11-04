@@ -167,37 +167,49 @@ void main() {
   });
 
   // Time is measured in the audio itself, so these need no clock.
-  test('a pause after speaking ends the dictation by itself', () async {
+  test('a pause to think never ends it, and only a second of it is sent', () async {
     final box = Box();
     await box.listen(engine);
-    await talk();
-    for (var i = 0; i < 24; i++) {
-      recorder.say(quiet);
+    await talk(); // a moment of the room, then a word
+    for (var i = 0; i < 100; i++) {
+      recorder.say(quiet); // ten seconds to think
     }
     await pumpEventQueue();
-    expect(recorder.stops, 0, reason: '2.4 s of quiet is still a pause in the sentence');
+    expect(recorder.stops, 0);
+    expect(box.transcribing, 0);
 
-    recorder.say(quiet);
-    await pumpEventQueue();
+    await talk();
+    await engine.stop();
 
-    expect(recorder.stops, 1);
-    expect(box.transcribing, 1);
-    expect(box.results.single.$2, isTrue);
+    // The first word and the second, with only the first second of the pause between them.
+    expect(transcriber.calls.single.wav.length, 44 + (2 + 10 + 1) * speech.length);
+    expect(box.results, [('I bow to Senior Brother Zhao.', true)]);
+  });
+
+  test('a sound above the room is never cut, however long', () async {
+    final hum = tone(600); // about -35 dBFS: too loud to be the room's quiet
+    final box = Box();
+    await box.listen(engine);
+    for (var i = 0; i < 20; i++) {
+      recorder.say(hum);
+    }
+    await talk();
+    await engine.stop();
+
+    expect(transcriber.calls.single.wav.length, 44 + 22 * speech.length);
   });
 
   test('saying nothing sends nothing and is silence, not a failure', () async {
     final box = Box();
     await box.listen(engine);
-    for (var i = 0; i < 79; i++) {
+    for (var i = 0; i < 80; i++) {
       recorder.say(quiet);
     }
     await pumpEventQueue();
-    expect(recorder.stops, 0);
+    expect(recorder.stops, 0, reason: 'the player may still be thinking');
 
-    recorder.say(quiet);
-    await pumpEventQueue();
+    await engine.stop();
 
-    expect(recorder.stops, 1);
     expect(transcriber.calls, isEmpty);
     expect(box.failures, ['error_speech_timeout']);
     expect(const SpeechFailure('error_speech_timeout').isSilence, isTrue);
@@ -217,7 +229,7 @@ void main() {
     expect(box.results, hasLength(1));
   });
 
-  test('a minute is the longest dictation', () async {
+  test('a minute of what is sent ends it, and writes it down', () async {
     final box = Box();
     await box.listen(engine);
     for (var i = 0; i < 600; i++) {
@@ -229,6 +241,24 @@ void main() {
     expect(transcriber.calls.single.wav.length, 44 + 600 * speech.length);
     expect(transcriber.calls.single.wav.length, lessThan(maxAudioBytes));
     expect(box.results, hasLength(1));
+  });
+
+  test('a forgotten mic turns itself off', () async {
+    final forgetful = CloudSpeechEngine(
+      recorder: recorder,
+      transcriber: transcriber,
+      limits: const ListenLimits(forgotten: Duration(seconds: 3)),
+    );
+    final box = Box();
+    await box.listen(forgetful);
+    for (var i = 0; i < 30; i++) {
+      recorder.say(quiet);
+    }
+    await pumpEventQueue();
+
+    expect(recorder.stops, 1);
+    expect(transcriber.calls, isEmpty);
+    expect(box.failures, ['error_speech_timeout']);
   });
 
   test('a browser that records 48 kHz stereo still sends 16 kHz mono', () async {

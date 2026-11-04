@@ -174,7 +174,9 @@ class PlatformSpeechEngine implements SpeechEngine {
         cancelOnError: true,
         // The plugin names locales with an underscore: en_US.
         localeId: localeId?.replaceAll('-', '_'),
-        pauseFor: const Duration(seconds: 4),
+        // A pause to think doesn't end it where the phone lets us choose (iOS and the web);
+        // Android's recognizer ends after a few seconds of quiet whatever we ask.
+        pauseFor: const Duration(seconds: 30),
         listenFor: const Duration(minutes: 1),
       ),
     );
