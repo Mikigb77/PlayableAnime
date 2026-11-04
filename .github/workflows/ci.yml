@@ -30,6 +30,29 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
+  # The story evals in deterministic mode (T15, T17, T18): every scenario the engine alone decides,
+  # played through the real turn graph with scripted model answers. No model, no database, no key.
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run python -m evals run --out evals-out
+      - if: always()
+        run: test -f evals-out/summary.md && cat evals-out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-deterministic
+          path: backend/evals-out
+          if-no-files-found: ignore
+          retention-days: 14
+
   backend-image:
     # Builds the Cloud Run image and runs it as Cloud Run would: migrate, then serve on $PORT.
     runs-on: ubuntu-latest

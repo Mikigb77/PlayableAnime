@@ -58,6 +58,12 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
         "gemini-3.5-flash", CallOptions(max_output_tokens=16384, timeout_s=120)
     ),
     Node.PICTURE: NodeSettings("gemini-3.1-flash-lite-image", CallOptions(timeout_s=60)),
+    # The evals' judge (WS17) runs nightly, never for a player, so it uses the strongest model we
+    # price and thinks hard: a judge that misreads a scene makes the numbers worthless.
+    Node.JUDGE: NodeSettings(
+        "gemini-3.1-pro-preview",
+        CallOptions(thinking="high", max_output_tokens=8192, timeout_s=120),
+    ),
 }
 
 ProviderSetting = Literal["vertex", "fake"]

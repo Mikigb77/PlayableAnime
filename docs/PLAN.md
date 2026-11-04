@@ -643,6 +643,10 @@ memory page in `app/lib/features/story/`.
   nightly workflow is ready but switched on only after Miki sets up access.
 - **Done when** every T17 scenario that the engine alone decides runs in CI, and the live T15 and T18
   cases are written and runnable.
+- **Built.** Every T15, T17 and T18 scenario runs, except two that wait for other work: the time
+  loop (local reversal and world rewinds, W10a) and name accuracy (recorded clips, V6). The engine
+  gaps the evals found are listed in ARCHITECTURE.md, "Story evals", as known gaps; whoever fixes
+  one removes its marker in the same PR.
 
 ### WS18 Integration, end to end and polish (wave 3, last)
 

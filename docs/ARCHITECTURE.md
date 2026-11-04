@@ -296,7 +296,8 @@ themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": ".
 
 **Pictures** (M1, M2). At most one a scene, highest first: the player's portrait at the start; a
 key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
-power ladder; hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
+power ladder (a gain growth records with source `breakthrough`, or one named for a ladder);
+hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
 fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
 local or world event; the cover from the second scene; the player's place when it changed for
 good since its picture (or a first visit to one already ruined or occupied); a key NPC's first
@@ -509,6 +510,7 @@ environment, `backend/.env` and the repo-root `.env.local`:
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
 | `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
 | `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+| `judge` | `gemini-3.1-pro-preview`, thinking `high` | $2.00 / $12.00 | The story evals' judge ([Story evals](#story-evals)), never in a turn. A judge that misreads a scene makes the scores worthless, so it gets a stronger model than the nodes it judges. |
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
 `graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
@@ -789,8 +791,111 @@ Add a moderator by making them staff and putting them in the group.
 
 **Content-line evals (T15).** `moderation/evals/content_lines.json` holds the cases from the
 ratings table, both ratings, a grounded story and the hard limits, with a judge rubric, and
-`moderation.evals` loads them and builds each case's world. Deterministic cases run in CI today
-(`tests/graph/test_turn_limits.py`); live cases wait for Vertex access and WS17's runner.
+`moderation.evals` loads them and builds each case's world. Each case is also a `t15.content.*`
+scenario in the story evals ([below](#story-evals)): the deterministic ones run in CI on every PR
+(and in `tests/graph/test_turn_limits.py`), the rest in the live run.
+
+## Story evals
+
+T15, T17 and T18's scripted runs (WS17) are in `backend/evals/`. Each row of their tables, each
+of T15's examples and each content-line case is a **scenario**: an async script registered with an
+id (`t17.time-stop`), its suite, the requirement ids it checks and the table's "passes when". A
+script builds a world (`evals/worlds.py`), plays turns through `graph.turn.run_turn` exactly as the
+turn endpoint does, changes the world between turns where the script needs it (checked against
+C1 like any update), and makes checks. A test fails when a row of the T17 or T18 table, a T15
+example or a content-line case has no scenario. Run them with `uv run python -m evals` (commands in
+[backend/README.md](../backend/README.md#story-evals)).
+
+**Two modes.**
+
+- **Deterministic** (CI, every PR). A scripted model answers each model call through the real
+  client: the interpreter gets the intent the script gives for that line (a line without one is an
+  error, never a guess), the narrator a stock scene or the script's own answer (the dead-stays-dead
+  script has the narrator try to bring the dead back), the summarizer a stock chapter. Everything
+  the engine decides is real: rulings, rolls, the clock, the world tick, the director, rumors and
+  the world's answers. The story id seeds every roll (A3), so a scenario plays many seeds, up to 200,
+  to check odds and spreads. A full run takes about two minutes with no model, database or key.
+  Answers have fixed sizes and the real prompts are priced as if sent, so prompt growth shows in
+  each run's cost line (K8), labelled as money not spent.
+- **Live** (nightly, once switched on). The same scripts on the real models (`LLM_PROVIDER=vertex`),
+  one to four seeds each; checks that only make sense over many seeds are left out. The interpreter
+  reads the player's words itself, and an intent that doesn't take the shape a script reads is a
+  failed check, not a crash. Scenes are scored by a **judge** (`Node.JUDGE`, Gemini 3.1 Pro with
+  high thinking and Mature safety settings) against a written rubric of musts and must-nots: it gets
+  each scene's action, narration and scene details, and answers pass or fail with a quote and a
+  reason for every criterion. A criterion it skips fails, and a judge that errors never passes.
+  Picture evals (same face with a mid-story maiming, mild pictures) draw with the product's own
+  briefs, prompts, reference portraits and picture model (`evals/pictures.py`) and send the
+  pictures to the judge as images. Transcripts and pictures are kept for staff to spot-check.
+
+**Statuses.** `passed`; `failed` when a check failed; `error` when the script crashed or checked
+nothing; `pending` when the scenario waits for unbuilt work (the time loop waits for local
+reversal and world rewinds, W10a, and name accuracy for recorded clips and a second recognizer,
+V6); `skipped` for a live-only scenario in a deterministic run. A check counts every seed, and a
+scenario's score is the share of its checks that passed.
+
+**Known gaps.** A check can name a gap: something the requirements ask for that the engine doesn't
+do yet. While it fails, the run reports it under "Known gaps still open" instead of failing. Once
+the engine gets it right the check fails until its marker comes off, so a fixed gap becomes a
+plain check. Open now:
+
+| Scenario | Gap |
+| --- | --- |
+| `t17.long-fight` | Nothing in a turn sets `scene.encounter`, so a fight's protections (W10, W16) and its pictures (M1) never start in play; the eval starts the fight itself. |
+| `t17.temper-not-control` | Keeping one's temper is a contested roll that can fail outright, which tells the narrator the character lost it; G15 says the roll only makes it harder. |
+| `t17.monster-hunt` | The law treats a beast like a person: the pack's alpha reports the kill to the sect and the Law Enforcement Hall comes to arrest the hunter (W11, G24). |
+| `t17.light-speed-throw` | A throw in stopped time leaves only weak traces, so within a month no rumor names the thrower and no kingdom answers them (W13, G22, W5). |
+| `t15.revisit` | A massacre moves its survivors' and witnesses' affinity by about thirty points, so they still come across as Neutral (W8, W4). |
+
+**Results over time.** `run --out <dir>` writes `run.json` (every scenario's status, score,
+checks, judged rubrics, metrics, cost and open gaps), `summary.md`, and in live mode `transcripts/`
+and `pictures/`. `--history <file>` appends one line per run, and `report --history <file>` shows
+each scenario's status and score run after run, with each run's average score and cost on top.
+Nothing written holds a prompt, a key or a token (T6).
+
+**In CI.** The `backend` job's pytest runs `tests/evals`: the runner's own tests, a sample of
+deterministic scenarios, and every live scenario on the offline model with a judge that passes
+everything, so a script that crashes on a model's answers fails its PR rather than a night's
+run. (A live turn whose intent doesn't take the shape a script reads is a failed check, not a
+crash, so on the offline model's minimal answers many checks fail; the test asks only that the
+script runs to the end.) The `evals` job runs every deterministic scenario and puts the summary on the run's page.
+
+### Switching on the nightly live run
+
+`.github/workflows/evals.yml` runs every night at 03:17 UTC and by hand (Actions, Evals, Run
+workflow, optionally with scenario ids or prefixes) from `main`, only when the repository variable
+`EVALS_ENABLED` is `true`. It signs in through Workload Identity Federation, with no key (B11), as
+a service account that can call Vertex AI and nothing else, in its own identity pool so it can
+never act as the deployer. The run's files are uploaded as an artifact for 90 days, and the history
+travels from run to run in the Actions cache, with a copy in each artifact.
+
+A full live run plays about 700 turns, a hundred-odd judge calls and about twenty pictures:
+roughly $10 to $20 at today's defaults, so $300 to $600 a month if it runs every night. Running it
+by hand before a model or prompt change (T15), or nightly for a few weeks after launch, costs less.
+
+Once, as the project's owner (each command is safe to repeat; an "already exists" error is fine):
+
+```bash
+P=playable-anime; N=528988811295; REPO_ID=1444213567; OWNER_ID=112938189
+gcloud iam service-accounts create github-evals --project=$P --display-name='GitHub nightly evals'
+gcloud projects add-iam-policy-binding $P --condition=None --format=none \
+  --member=serviceAccount:github-evals@$P.iam.gserviceaccount.com --role=roles/aiplatform.user
+gcloud iam workload-identity-pools create github-evals --project=$P --location=global \
+  --display-name='GitHub evals'
+gcloud iam workload-identity-pools providers create-oidc playable-anime-evals --project=$P \
+  --location=global --workload-identity-pool=github-evals --display-name='PlayableAnime evals' \
+  --issuer-uri=https://token.actions.githubusercontent.com \
+  --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.workflow_ref=assertion.workflow_ref \
+  --attribute-condition="assertion.repository_id == '$REPO_ID' && assertion.repository_owner_id == '$OWNER_ID' && assertion.workflow_ref == 'Mikigb77/PlayableAnime/.github/workflows/evals.yml@refs/heads/main'"
+gcloud iam service-accounts add-iam-policy-binding github-evals@$P.iam.gserviceaccount.com \
+  --project=$P --role=roles/iam.workloadIdentityUser --format=none \
+  --member=principalSet://iam.googleapis.com/projects/$N/locations/global/workloadIdentityPools/github-evals/attribute.repository_id/$REPO_ID
+gh variable set EVALS_ENABLED --body true --repo Mikigb77/PlayableAnime
+```
+
+The workflow uses these names by default; the repository variables `EVALS_WIF_PROVIDER`,
+`EVALS_SERVICE_ACCOUNT` and `EVALS_GCP_PROJECT` override them. Setting `EVALS_ENABLED` to anything
+else switches the run off again.
 
 ## App
 
@@ -1050,6 +1155,7 @@ app                   shows the narration, then asks for the picture in its own 
 | Pictures | `gs://playable-anime-pictures`, private (M4) |
 | Deploys | `.github/workflows/deploy.yml`, started by hand on `main`, signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11) |
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
+| Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 **Don't deploy publicly before rate limits and quotas (T9) exist alongside sign-in (T8):** an open

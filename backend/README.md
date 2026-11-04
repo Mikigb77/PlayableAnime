@@ -108,6 +108,24 @@ Tests run on Postgres. They use `TEST_DATABASE_URL` (default
 its own `test_*` database there. CI runs the same against a Postgres 18 service container, then
 builds the image and smoke-tests it.
 
+## Story evals
+
+The story evals (T15, T17, T18) play scripted scenarios through the real turn graph. They need no
+database. Deterministic mode feeds scripted model answers and runs in CI on every PR; live mode
+plays the same scripts on the real models and has a model judge score the scenes.
+
+```bash
+uv run python -m evals list                      # every scenario, its suite and its modes
+uv run python -m evals run --out evals-out       # deterministic, as CI runs it (about 2 minutes)
+uv run python -m evals run --only t17.time-stop  # one scenario, or every id with that prefix
+LLM_PROVIDER=vertex GCP_PROJECT=playable-anime \
+  uv run python -m evals run --mode live --out evals-out --history evals-out/history.jsonl
+uv run python -m evals report --history evals-out/history.jsonl
+```
+
+How it works, the known gaps and how to switch on the nightly live run are in
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#story-evals).
+
 ## API
 
 The target contract is [docs/API.md](../docs/API.md). Every endpoint except `/health` and
@@ -201,6 +219,15 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
   turn/           The LangGraph turn graph (B5): nodes, prompts, checks before narration (C5)
+evals/            The story evals (T15, T17, T18): scripted scenarios through the turn graph
+  scenario.py     Scenario, the registry, the two modes
+  runner.py       run_scenario, Story and Eval: turns, checks, known gaps, the judge's calls
+  scripted.py     The scripted model: interpretations and narrations a scenario gives
+  judge.py        The model judge and its rubrics (scenes and pictures)
+  pictures.py     Live mode's pictures, drawn as the picture endpoint draws them (M5, M6)
+  worlds.py       The worlds the scenarios play in
+  scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t18
+  results.py      run.json, summary.md, the history file and the trend
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
 moderation/       Reports and blocks on scenes, the review queue (F6, T16): see ARCHITECTURE.md
   api.py          POST /v1/stories/{id}/scenes/{turn}/report
