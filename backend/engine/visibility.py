@@ -36,6 +36,7 @@ from engine.state.records import (
 )
 from engine.state.sheet import Health
 from engine.state.world import WorldState, natural_key
+from engine.world.telling import cap, tell
 
 SINCE_LIMIT = 6
 
@@ -211,6 +212,37 @@ def believed_status(
     return current, False
 
 
+class _PlayerTeller:
+    """The player character telling a deed (C6): "you" for themselves, only the names they
+    know, and a death only where they know the deed caused it."""
+
+    def __init__(self, knowledge: "_Knowledge") -> None:
+        self.k = knowledge
+
+    def name(self, record: Character | Place | Faction) -> str | None:
+        if record.id == self.k.player_id:
+            return "you"
+        return record.name if self.k.knows(record) else None
+
+    def believes_dead(self, victim_id: str, deed: Deed) -> bool:
+        """A death they know of on this timeline, recorded by the deed's turn: one they learned
+        of later, from some other cause, isn't laid at this deed's door."""
+        victim = self.k.state.characters.get(victim_id)
+        if victim is None:
+            return True  # a nameless victim, such as a villager of a massacre, is a death
+        dead = CharacterStatus.DEAD.value
+        known = [
+            h
+            for h in victim.status_history
+            if self.k.player_id in h.known_by and h.timeline_id == self.k.timeline
+        ]
+        if known:
+            return known[-1].status == dead and known[-1].turn <= deed.turn
+        if victim.status_history:
+            return False  # changed only in ways they never learned of
+        return victim.status.value == dead
+
+
 # --- the projection ------------------------------------------------------------------------
 
 
@@ -248,6 +280,12 @@ class _Knowledge:
 
     def facts_about(self, subject_id: str) -> list[str]:
         return list(self.facts_by_subject.get(subject_id, []))
+
+    def deed_text(self, deed: Deed) -> str:
+        """A deed in the world's words (G16), naming only whom the player character knows and
+        telling a death only where they know of it (C6): "You killed Zhao Kun at the well." A
+        deed the world has no words for keeps its own."""
+        return tell(self.state, deed, teller=_PlayerTeller(self)) or cap(deed.text)
 
     def deeds(self) -> list[Deed]:
         deeds = [
@@ -439,7 +477,7 @@ def memory_view(state: WorldState) -> MemoryView:
     deeds = [
         DeedEntry(
             id=d.id,
-            text=d.text,
+            text=k.deed_text(d),
             when_label=clock_label(calendar, d.world_s),
             known_label=k.known_label(d),
         )
@@ -488,7 +526,9 @@ def status_view(state: WorldState) -> StatusView:
         if k.knows(f)
     ]
     moments: list[tuple[int, str, str]] = [
-        (d.world_s, d.id, d.text) for d in k.deeds() if d.actor_id == k.player_id or d.severity >= 3
+        (d.world_s, d.id, k.deed_text(d))
+        for d in k.deeds()
+        if d.actor_id == k.player_id or d.severity >= 3
     ]
     moments += [
         (f.world_s, f.id, f.text)

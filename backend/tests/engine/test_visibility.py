@@ -20,6 +20,7 @@ from engine.state import (
     PlaceStatus,
     Reputation,
     Rumor,
+    StatusChange,
     Visibility,
     WorldState,
 )
@@ -336,3 +337,128 @@ def test_a_change_recorded_without_its_old_status_falls_back_to_the_kinds_start(
 
     assert {p.id: p.lines for p in view.places}["bar"] == ["Building"]
     assert {f.id: f.lines for f in view.factions}["police"] == ["Police"]
+
+
+# --- Deeds in the world's words (G16, C6) ---------------------------------------------------
+
+
+def deed_texts(state: WorldState) -> dict[str, str]:
+    return {d.id: d.text for d in memory_view(state).deeds}
+
+
+def test_the_player_s_deeds_read_in_the_world_s_words():
+    state = cultivation_world()
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    state.characters["zhao"].status_history = [
+        StatusChange(status="dead", from_status="alive", known_by=["lin"], turn=3, world_s=0)
+    ]
+    own_deed(
+        state,
+        "kill",
+        kind="kill",
+        text="cut Zhao down by the well (it worked)",
+        victim_ids=["zhao"],
+        place_id="well",
+        severity=4,
+    )
+    own_deed(
+        state,
+        "hit",
+        actor_id="zhao",
+        kind="assault",
+        text="punch Lin (it worked)",
+        victim_ids=["lin"],
+        place_id="well",
+        known_by=["lin"],
+        severity=2,
+    )
+    own_deed(state, "bow", text="Bowed to the elder")
+
+    assert deed_texts(state) == {
+        "kill": "You killed Zhao Kun at the outer-court well.",
+        "hit": "Zhao Kun attacked you at the outer-court well.",
+        "bow": "Bowed to the elder",  # no words for it in the world: its own text
+    }
+    (since, *_) = status_view(state).since
+    assert since.text == "You killed Zhao Kun at the outer-court well."
+
+
+def test_a_deed_names_only_whom_the_player_knows_and_deaths_they_know_of():
+    """C6: Elder Mo is a stranger to Lin, so he is "someone"; and Lin doesn't know the strike
+    killed him, so it reads as the wounding Lin saw."""
+    state = cultivation_world()
+    mo = state.characters["elder-mo"]
+    mo.status = CharacterStatus.DEAD
+    mo.status_history = [StatusChange(status="dead", from_status="alive", turn=3, world_s=0)]
+    own_deed(
+        state,
+        "strike",
+        kind="kill",
+        text="strike the old man (it worked)",
+        victim_ids=["elder-mo"],
+        place_id="well",
+        severity=4,
+    )
+
+    text = deed_texts(state)["strike"]
+
+    assert text == "You wounded someone at the outer-court well."
+    assert "Elder Mo" not in dumped(memory_view(state))
+
+
+def test_a_death_is_laid_only_at_the_deed_that_caused_it():
+    """A wound Lin dealt on turn 3 isn't a killing because Zhao died of something else on turn
+    5, nor because he died on a timeline that was rewound."""
+
+    def remembered(death: StatusChange) -> str:
+        state = cultivation_world()
+        zhao = state.characters["zhao"]
+        zhao.status = CharacterStatus.DEAD
+        zhao.status_history = [death]
+        own_deed(
+            state,
+            "hit",
+            kind="kill",
+            text="stab Zhao (it partly worked)",
+            victim_ids=["zhao"],
+            place_id="well",
+            severity=4,
+        )
+        return deed_texts(state)["hit"]
+
+    def died(**fields) -> StatusChange:
+        return StatusChange(
+            status="dead", from_status="alive", known_by=["lin"], world_s=0, **fields
+        )
+
+    assert remembered(died(turn=3)) == "You killed Zhao Kun at the outer-court well."
+    assert remembered(died(turn=5)) == "You wounded Zhao Kun at the outer-court well."
+    rewound = died(turn=3, timeline_id="t0")
+    assert remembered(rewound) == "You wounded Zhao Kun at the outer-court well."
+
+
+def test_some_died_and_some_lived():
+    state = cultivation_world()
+    state.characters["elder-mo"].known_by.append("lin")
+    mo = state.characters["elder-mo"]
+    mo.status = CharacterStatus.DEAD
+    mo.status_history = [
+        StatusChange(status="dead", from_status="alive", known_by=["lin"], turn=3, world_s=0)
+    ]
+    own_deed(
+        state,
+        "blast",
+        actor_id="zhao",
+        kind="kill",
+        text="blast them both (it worked)",
+        victim_ids=["elder-mo", "lin"],
+        place_id="well",
+        known_by=["lin"],
+        severity=4,
+    )
+    own_deed(state, "cut", kind="wound", text="cut myself", victim_ids=["lin"], severity=3)
+
+    texts = deed_texts(state)
+
+    assert texts["blast"] == "Zhao Kun killed Elder Mo and wounded you at the outer-court well."
+    assert texts["cut"] == "You wounded yourself."
