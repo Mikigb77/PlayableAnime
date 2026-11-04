@@ -66,7 +66,7 @@ cloudresourcemanager.googleapis.com cloudbilling.googleapis.com billingbudgets.g
 aiplatform.googleapis.com logging.googleapis.com clouderrorreporting.googleapis.com"
 
 # Only the deploy workflow on main of this repository gets in (B11): run by a push to main (a merge
-# of dep, docs/DEPLOY.md) or started by hand there.
+# of dev, docs/DEPLOY.md) or started by hand there.
 WIF_ISSUER="https://token.actions.githubusercontent.com"
 WIF_ATTRIBUTE_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref"
 WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && (assertion.event_name == 'push' || assertion.event_name == 'workflow_dispatch') && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
@@ -472,7 +472,7 @@ Google Cloud is ready for the deploy workflow:
   Pictures bucket             gs://$MEDIA_BUCKET
 
 Next: in GitHub, run Actions > Deploy on main with "dry run" ticked. It signs in, checks this setup
-and builds the image without deploying anything. After that, merging dep into main deploys
+and builds the image without deploying anything. After that, merging dev into main deploys
 (docs/DEPLOY.md).
 EOF
 }

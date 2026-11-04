@@ -74,18 +74,18 @@ Runtime contract that WS1 provides and WS5 deploys:
 
 ## How every thread works
 
-1. **Own your PR end to end** (CLAUDE.md rule 9): branch from `dep`, open the PR against `dep`,
-   self-review with the code-review skill, fix, green CI, squash-merge into `dep`. A workstream can
+1. **Own your PR end to end** (CLAUDE.md rule 9): branch from `dev`, open the PR against `dev`,
+   self-review with the code-review skill, fix, green CI, squash-merge into `dev`. A workstream can
    land several PRs; land a first useful one early when others wait on it. Never open a PR into
-   `main`: merging `dep` into `main` deploys, needs Miki's go-ahead (given for the first one on
+   `main`: merging `dev` into `main` deploys, needs Miki's go-ahead (given for the first one on
    2026-11-04) and uses a merge commit ([DEPLOY.md](DEPLOY.md#how-changes-reach-production)). CI
-   runs on every PR and on pushes to `dep` and `main`.
+   runs on every PR and on pushes to `dev` and `main`.
 2. **Stay inside the paths your workstream owns.** Shared files (`pyproject.toml`, `uv.lock`,
    `lucid/settings.py`, the Ninja router registration, `ci.yml`, `pubspec.yaml`, `router.dart`) get
    small additive edits only. After rebasing, settle a `uv.lock` conflict with `uv lock` and a
    `pubspec.lock` conflict with `flutter pub get`, never by hand. Treat migrations on `main` as
    applied: if your unmerged migration collides with one that landed first, regenerate yours on top
-   of `dep` instead of adding a merge migration.
+   of `dev` instead of adding a merge migration.
 3. **Build to [API.md](API.md).** If you must change the contract, change API.md in the same PR and
    tell the orchestrator thread, which tells the threads on the other side.
 4. **Engine rules live in code with unit tests** (CLAUDE.md rule 2). Model nodes propose, code nodes
@@ -664,7 +664,7 @@ memory page in `app/lib/features/story/`.
 
 **Requirements:** T13, T8, T9, B11, S1, M4.
 
-- Every PR goes into `dep`; merging `dep` into `main` is the deploy. The push to `main` runs
+- Every PR goes into `dev`; merging `dev` into `main` is the deploy. The push to `main` runs
   `deploy.yml`, which waits for CI on that commit, then deploys the whole backend (image,
   migrations, service, `/health` with rollback), makes the API reachable by the app (T8 and T9 are
   merged), draws the starter covers that are missing, and publishes the Android APK as the latest
@@ -675,9 +675,9 @@ memory page in `app/lib/features/story/`.
   release keystore from four `ANDROID_*` secrets, or the debug key without them. The Google Web
   client id is plain config in `infra/config.sh`. Package and bundle id: `com.lucid.saga`.
 - CI checks that the migrations leave the old FastAPI app's `stories` and `schema_migrations`
-  tables alone, builds the release APK, and refuses a PR into `main` from any branch but `dep`.
-- **Done when** that is merged into `dep`. Miki's one-time setup (DEPLOY.md) comes before the first
-  `dep` to `main` merge, which the orchestrator starts.
+  tables alone, builds the release APK, and refuses a PR into `main` from any branch but `dev`.
+- **Done when** that is merged into `dev`. Miki's one-time setup (DEPLOY.md) comes before the first
+  `dev` to `main` merge, which the orchestrator starts.
 
 ## What only Miki can do
 
@@ -687,7 +687,7 @@ These don't block the code. They block real sign-in, live model checks and the d
    and an iOS client). The client ids go into config; they aren't secrets.
 2. **The one-time setup in [DEPLOY.md](DEPLOY.md#one-time-setup-miki)**: the bootstrap (bucket,
    secrets, Workload Identity Federation, budget alert), the app's signing key and its four GitHub
-   secrets, the Android OAuth client. Then approve each deploy, which is a `dep` to `main` merge.
+   secrets, the Android OAuth client. Then approve each deploy, which is a `dev` to `main` merge.
 3. **Optional, for live testing before deploy:** a Gemini API key in the cloud environment's
    secrets, used only as a BYOK key in tests, and a Neon API key so threads can use one Neon branch
    per feature instead of a local Postgres.

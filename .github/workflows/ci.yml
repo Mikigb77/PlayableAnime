@@ -1,11 +1,11 @@
 name: CI
 
-# Every PR goes into dep, and merging dep into main deploys (docs/DEPLOY.md). CI runs on every PR
+# Every PR goes into dev, and merging dev into main deploys (docs/DEPLOY.md). CI runs on every PR
 # and on pushes to both; the deploy waits for this workflow's run on the main commit it deploys.
 on:
   pull_request:
   push:
-    branches: [main, dep]
+    branches: [main, dev]
 
 jobs:
   backend:
@@ -144,18 +144,18 @@ jobs:
           cache: true
       - run: infra/build-apk.sh "$RUNNER_TEMP/lucid-saga.apk"
 
-  # Only dep merges into main, because that merge deploys. Every other PR goes into dep.
+  # Only dev merges into main, because that merge deploys. Every other PR goes into dev.
   into-main:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Only dep merges into main
+      - name: Only dev merges into main
         env:
           HEAD_REF: ${{ github.head_ref }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          if [ "$HEAD_REF" != dep ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
-            echo "::error::PRs go into dep, and only dep merges into main, which deploys. Change this PR's base branch to dep."
+          if [ "$HEAD_REF" != dev ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::PRs go into dev, and only dev merges into main, which deploys. Change this PR's base branch to dev."
             exit 1
           fi
 
