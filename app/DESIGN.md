@@ -196,7 +196,8 @@ settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 The mic sits wherever the player types (V1): in the composer's mic slot and as a field's suffix.
 Use `DictationButton(tracker: InputModeTracker(controller))`, with the box's `storyId` or `draftId`.
 Words are never sent on their own (V2). Online dictation (the default, V6) records until the player
-taps again (a pause to think never ends it), then the mic spins (`MicVisual.transcribing`, "Writing down what you said")
+taps again (a pause to think never ends it; a long dictation lands in parts meanwhile, and leaving
+the app turns the mic off), then the mic spins (`MicVisual.transcribing`, "Writing down what you said")
 until the words land in the box; with the phone's recognizer they appear live. A failure is a short
 snackbar that says what to do: out of credits, too many dictations, or the server out of reach. The first tap asks for permission with a reason (V5); if the player
 refuses, the mic shows a struck-through icon and explains how to allow it, and typing still works.

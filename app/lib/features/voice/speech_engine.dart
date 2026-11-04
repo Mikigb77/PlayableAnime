@@ -72,9 +72,11 @@ abstract interface class SpeechEngine {
   Future<bool> hasPermission();
 
   /// Starts listening. [onResult] gets everything heard so far in this session. [localeId] is a
-  /// BCP-47 tag such as [storyLanguage]; null leaves it to the recognizer. An online engine calls
-  /// [onTranscribing] when the recording ends and the words are being written down, then
-  /// [onResult] once, final, then [onStopped].
+  /// BCP-47 tag such as [storyLanguage]; null leaves it to the recognizer. An online engine
+  /// instead calls [onResult] with each new part as it is written down (never final): one for a
+  /// short dictation, several for a long one, the first while the player is still speaking. It
+  /// calls [onTranscribing] when the recording ends and the rest is being written down, then
+  /// [onStopped].
   Future<void> listen({
     required void Function(String words, bool isFinal) onResult,
     required VoidCallback onStopped,
