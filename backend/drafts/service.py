@@ -224,6 +224,7 @@ def _log(call: ModelCall) -> None:
         "output_tokens": summary["output_tokens"],
         # Gemini counts thinking against the output limit, so this shows how much of it went there.
         "thinking_tokens": summary["thinking_tokens"],
+        "cached_tokens": summary["cached_tokens"],
         "latency_ms": summary["latency_ms"],
         "cost_usd": summary["cost_usd"],
         "billable_cost_usd": summary["billable_cost_usd"],

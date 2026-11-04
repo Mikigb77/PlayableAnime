@@ -733,6 +733,7 @@ def test_each_drafting_request_logs_its_cost_but_never_its_words(player_client, 
     assert (fields["action"], fields["outcome"], fields["calls"]) == ("create", "ok", 1)
     assert fields["input_tokens"] > 0 and fields["output_tokens"] > 0
     assert "thinking_tokens" in fields
+    assert "cached_tokens" in fields
     everything = json.dumps(lines)
     assert "bakery" not in everything
     assert "Luca" not in everything
