@@ -169,7 +169,7 @@ Vertex AI writes it down, and the app puts `text` in the box for the player to c
 sent as an action from here.
 
 - **The body** is the raw audio, at most 2 MiB (the app sends at most a minute of 16 kHz 16-bit mono
-  WAV, 1.92 MB). `Content-Type` is one of `audio/wav` (or `audio/x-wav`, `audio/wave`),
+  WAV, 1.92 MB, and a longer dictation in parts). `Content-Type` is one of `audio/wav` (or `audio/x-wav`, `audio/wave`),
   `audio/mpeg` (`audio/mp3`), `audio/aac`, `audio/m4a` (`audio/mp4`), `audio/ogg`, `audio/opus`,
   `audio/webm`, `audio/flac` or `audio/aiff`. Anything else, an empty body or a longer one is
   `400 validation_error` with the field `Content-Type` (`unsupported_audio`) or `body` (`missing`,
@@ -225,7 +225,7 @@ BYOK request is free (K6).
 | POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
 | PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
-| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires") |
+| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires"; the rest stays as it was) |
 | POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings, expected_version?}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text

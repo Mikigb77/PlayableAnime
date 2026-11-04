@@ -34,6 +34,7 @@ class DictationButton extends ConsumerStatefulWidget {
 class _DictationButtonState extends ConsumerState<DictationButton> {
   late SpeechEngine _engine;
   late DictationController _dictation;
+  late final AppLifecycleListener _lifecycle;
   bool _supported = false;
   SpeechFailure? _shownFailure;
 
@@ -41,6 +42,9 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
   void initState() {
     super.initState();
     _use(ref.read(speechEngineProvider));
+    // Leaving the app turns the mic off, keeping what was said: the mic is on only while the
+    // button shows it (V5).
+    _lifecycle = AppLifecycleListener(onHide: _hidden);
     // The player can switch between online and on-device dictation in Account.
     ref.listenManual(speechEngineProvider, (_, engine) {
       if (!identical(engine, _engine)) setState(() => _swap(engine));
@@ -68,8 +72,14 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
     _use(engine);
   }
 
+  void _hidden() {
+    final phase = _dictation.phase;
+    if (phase == DictationPhase.listening || phase == DictationPhase.starting) _dictation.stop();
+  }
+
   @override
   void dispose() {
+    _lifecycle.dispose();
     _dictation
       ..removeListener(_changed)
       ..dispose();

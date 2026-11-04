@@ -31,7 +31,7 @@ jobs:
   live:
     name: Live evals
     if: ${{ vars.EVALS_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 240
     permissions:
       contents: read

@@ -30,7 +30,7 @@ permissions: {}
 jobs:
   read:
     name: Read Google Cloud
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read

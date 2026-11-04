@@ -423,12 +423,12 @@ def test_call_kwargs_map_our_settings_to_gemini():
 
 def _app_schemas():
     from evals.judge import JudgeOutput
-    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldProposal
+    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldChange
     from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
 
     return [
         DraftProposal,
-        WorldProposal,
+        WorldChange,
         CharacterProposal,
         Intent,
         NarratorOutput,
