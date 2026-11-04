@@ -21,15 +21,15 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
   Postgres by default), never on Neon.
 - Sign-in (T8), credits, quotas and rate limits (K1 to K8, T9), pictures (M1 to M8), ratings and
   reports (F6 to F8) and the deploy pipeline (`infra/`, [docs/DEPLOY.md](docs/DEPLOY.md)) are built.
-  Merging `dep` into `main` deploys the whole backend and publishes the Android APK that the
+  Merging `dev` into `main` deploys the whole backend and publishes the Android APK that the
   README links. Miki's one-time setup is in DEPLOY.md.
 
 ## Rules
 
 1. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against the `production` branch. **Every PR
-   targets `dep`, never `main`**: merging `dep` into `main` is the deploy (docs/DEPLOY.md), and CI
-   fails any PR into `main` that doesn't come from `dep`.
+   targets `dev`, never `main`**: merging `dev` into `main` is the deploy (docs/DEPLOY.md), and CI
+   fails any PR into `main` that doesn't come from `dev`.
 2. Engine rules (A2–A9, C1, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are
    enforced in code with unit tests, not only in the prompt. Model nodes propose; code nodes decide.
    Logic comes first: a roll is used only where the facts leave the outcome open (A2). Outcomes
@@ -47,10 +47,10 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
 7. Content follows the ratings table in the requirements (Teen and Mature 17+, no explicit sex, Gemini
    only).
 8. A change that alters behavior updates `docs/REQUIREMENTS.md` and the other docs in the same PR.
-9. **Each thread owns its PR from start to merge into `dep`, with no review from Miki needed.** Open
-   the PR against `dep`, review your own diff as a demanding outsider would (or run the code-review
-   skill), fix what you find, wait for green CI, then squash-merge it into `dep` yourself. Never
-   merge with red CI or unresolved review comments. A `dep` to `main` PR is the deploy: it needs
+9. **Each thread owns its PR from start to merge into `dev`, with no review from Miki needed.** Open
+   the PR against `dev`, review your own diff as a demanding outsider would (or run the code-review
+   skill), fix what you find, wait for green CI, then squash-merge it into `dev` yourself. Never
+   merge with red CI or unresolved review comments. A `dev` to `main` PR is the deploy: it needs
    Miki's go-ahead (given for the first one on 2026-11-04) and is merged with a merge commit, never
    squashed. Ask Miki only for decisions that change the product's goals, or for irreversible
    production actions (a deploy, a production migration that drops data, deleting data).

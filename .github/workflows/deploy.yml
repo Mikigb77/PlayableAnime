@@ -1,6 +1,6 @@
 # Deploys everything from main (T13). See docs/DEPLOY.md.
 #
-# Every PR goes into dep, and merging dep into main is the deploy: the push to main starts this.
+# Every PR goes into dev, and merging dev into main is the deploy: the push to main starts this.
 # It can also be started by hand on main, for a dry run or to deploy main again.
 #
 # 1. CI must have passed on this exact commit; this waits for it.

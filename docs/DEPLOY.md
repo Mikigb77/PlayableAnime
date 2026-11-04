@@ -8,18 +8,18 @@ T9, T11, T13, B10, B11 and M4 in [REQUIREMENTS.md](REQUIREMENTS.md). The scripts
 
 ## How changes reach production
 
-Every PR goes into the `dep` branch. Threads open their PRs against `dep`, review them, wait for
-green CI and merge them themselves (CLAUDE.md). **Merging `dep` into `main` is the deploy:** the
+Every PR goes into the `dev` branch. Threads open their PRs against `dev`, review them, wait for
+green CI and merge them themselves (CLAUDE.md). **Merging `dev` into `main` is the deploy:** the
 push to `main` starts the deploy workflow, which deploys the whole backend and publishes the APK.
-A `dep` to `main` PR needs Miki's go-ahead (given for the first one on 2026-11-04), and is merged
-with **Create a merge commit**, never squashed, so `dep` and `main` keep one history.
+A `dev` to `main` PR needs Miki's go-ahead (given for the first one on 2026-11-04), and is merged
+with **Create a merge commit**, never squashed, so `dev` and `main` keep one history.
 
 ```text
-feature branch --PR, self-reviewed, green CI--> dep --PR, Miki's go-ahead, merge commit--> main --> deploy
+feature branch --PR, self-reviewed, green CI--> dev --PR, Miki's go-ahead, merge commit--> main --> deploy
 ```
 
-CI runs on every PR and on every push to `dep` and `main`. A PR into `main` from any branch but
-`dep` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
+CI runs on every PR and on every push to `dev` and `main`. A PR into `main` from any branch but
+`dev` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
 and the Workload Identity condition all work from it.
 
 ## What runs where
@@ -53,13 +53,13 @@ a console or pasted from a terminal.
 
 1. [Sign in](#1-sign-in) to gcloud, GitHub and Neon, each in the browser.
 2. [Nothing to copy from Neon](#2-the-production-urls-from-neon): the bootstrap reads the URLs.
-3. [Run the bootstrap from `dep`](#3-run-the-bootstrap-from-dep), or run it again if it ran before.
+3. [Run the bootstrap from `dev`](#3-run-the-bootstrap-from-dev), or run it again if it ran before.
 4. [Make the app's signing key and give it to GitHub](#4-make-the-apps-signing-key).
 5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web and Android
    clients (both done).
 6. [Allow merge commits](#6-allow-merge-commits) in the repository's settings.
 7. [Dry-run the deploy](#7-dry-run-the-deploy) from `main`.
-8. Merge `dep` into `main` ([How changes reach production](#how-changes-reach-production)). That is
+8. Merge `dev` into `main` ([How changes reach production](#how-changes-reach-production)). That is
    the first deploy.
 
 ### 1. Sign in
@@ -95,15 +95,15 @@ echoing them, or reads `NEON_PRODUCTION_DATABASE_URL` and `NEON_PRODUCTION_DATAB
 Either way it refuses a URL of the wrong kind (the pooled one's host contains `-pooler`) before
 changing anything.
 
-### 3. Run the bootstrap, from `dep`
+### 3. Run the bootstrap, from `dev`
 
 ```bash
-git fetch origin && git checkout dep && git pull   # this setup is on dep until the first deploy
+git fetch origin && git checkout dev && git pull   # this setup is on dev until the first deploy
 infra/bootstrap.sh --dry-run       # prints every command, changes nothing, needs no sign-in
 BUDGET_AMOUNT=25 infra/bootstrap.sh
 ```
 
-**If the bootstrap already ran from an older `main`, run it again from `dep`.** The older one let
+**If the bootstrap already ran from an older `main`, run it again from `dev`.** The older one let
 GitHub sign in only for deploys started by hand, so the push to `main` would be refused, and it
 lacked the role that makes the API reachable. A re-run fixes both and changes nothing else.
 
@@ -189,7 +189,7 @@ under **Google Auth Platform**:
 ### 6. Allow merge commits
 
 In the repository's **Settings > General > Pull Requests**, keep **Allow merge commits** on. A
-`dep` to `main` PR is merged with a merge commit so the two branches never drift apart; other PRs
+`dev` to `main` PR is merged with a merge commit so the two branches never drift apart; other PRs
 can keep squash merging.
 
 ### 7. Dry-run the deploy
@@ -209,7 +209,7 @@ the image, but not the APK.
 
 ## Deploying
 
-Merging `dep` into `main` deploys. To deploy `main` again without a merge, run the workflow by
+Merging `dev` into `main` deploys. To deploy `main` again without a merge, run the workflow by
 hand: **Actions > Deploy > Run workflow** on `main`, or `gh workflow run deploy.yml --ref main`. It
 only ever deploys `main`. Two deploys never run at once, and a dry run never replaces a deploy
 waiting its turn.
@@ -370,7 +370,7 @@ A release asset isn't in git and doesn't count against the repository's size.
 - **Installing:** open the link on the phone (or drag the file onto an emulator) and allow installs
   from the browser or the Files app when Android asks.
 - **Checked in CI:** CI builds the same release APK with the debug key on every PR and every push
-  to `dep`, so a change that breaks the build fails its PR, not the deploy. Pushes to `main` skip
+  to `dev`, so a change that breaks the build fails its PR, not the deploy. Pushes to `main` skip
   it, because the deploy builds that commit's APK itself.
 
 To build a release-signed APK by hand, export `ANDROID_KEYSTORE_BASE64` (or point
@@ -411,7 +411,7 @@ free tiers or a few cents a month.
 | Cloud Storage, pictures | About $0.02 per GB-month, $0.005 per 1,000 writes, $0.0004 per 1,000 reads, $0.12 per GB served to the internet. | Cents until there are many players. |
 | Workload Identity Federation, service accounts, IAM, budgets, enabling APIs | Free | Free |
 | Cloud Logging and Error Reporting | First 50 GiB of logs a month free | Free |
-| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dep` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
+| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dev` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
 | Neon | A deploy wakes the production compute for the migration. | Seconds of compute. |
 | Vertex AI (Gemini) | Per token and per picture ([ARCHITECTURE.md](ARCHITECTURE.md#images)) | The real cost, guarded by T9 and the budget alert. |
 
@@ -424,12 +424,12 @@ Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 
 | Symptom | Likely cause |
 | --- | --- |
-| `google-github-actions/auth` fails with `unauthorized_client` or `The given credential is rejected by the attribute condition` | The run isn't `deploy.yml` on `main`, or the bootstrap hasn't run, or ran from a version older than this one (it admitted only runs started by hand): run it again from `dep` or `main`. The provider admits only `push` and `workflow_dispatch` runs of `deploy.yml` on `main`. |
+| `google-github-actions/auth` fails with `unauthorized_client` or `The given credential is rejected by the attribute condition` | The run isn't `deploy.yml` on `main`, or the bootstrap hasn't run, or ran from a version older than this one (it admitted only runs started by hand): run it again from `dev` or `main`. The provider admits only `push` and `workflow_dispatch` runs of `deploy.yml` on `main`. |
 | The access step fails with `Permission 'run.services.setIamPolicy' denied` | The deployer lacks the `lucidSagaApiAccess` role; run the bootstrap again. |
 | The access step fails with a message about `allUsers` and an organization policy | The project is under an organization whose policy blocks public members (domain-restricted sharing); an organization admin has to allow it for this project. |
 | The APK step fails with `only some of the signing secrets are set` | One of the four `ANDROID_*` secrets is missing or misspelt. |
 | Google sign-in fails in the app on Android | The APK is debug-signed, or the Android client's SHA-1 isn't the release key's, or your account isn't a test user of the consent screen. |
-| A PR fails CI's `into-main` check | It targets `main`. Change its base branch to `dep`. |
+| A PR fails CI's `into-main` check | It targets `main`. Change its base branch to `dev`. |
 | `Permission 'iam.serviceAccounts.getAccessToken' denied` | The `workloadIdentityUser` binding on `github-deployer` is missing; re-run the bootstrap. |
 | Preflight can't see the repository or the runtime account | The bootstrap hasn't run, or ran on another project. |
 | The deploy fails with `does not have permission to access secret` | The runtime account lost `secretAccessor` on a secret; re-run the bootstrap. |
