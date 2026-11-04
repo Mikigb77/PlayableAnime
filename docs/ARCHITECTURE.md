@@ -571,7 +571,11 @@ environment, `backend/.env` and the repo-root `.env.local`:
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
 `graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
-the estimate never undercounts. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+the estimate never undercounts. Gemini caches prompts implicitly: when a prompt starts the way one
+it saw moments ago did (at least 4,096 tokens on the newer Flash models), it bills that start at
+its cached rate, a tenth of the input price for every model above (checked 2026-11-04). Each call
+records those tokens as `cached_tokens` and prices them at that rate, so the estimate follows the
+bill. A prompt gets the most from this when its unchanging parts come first. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
 2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
 
 **Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
@@ -627,7 +631,7 @@ so they stay unset until T18's live picture evals, and `BLOCK_NONE` stays unused
 restricts it. T15's content-line evals tune the rest.
 
 **Telemetry (T5).** Each call leaves one `CallRecord` (node, model, provider, BYOK or not, outcome,
-tokens in, out and thinking, pictures, latency, time to first text, attempts, retry reasons,
+tokens in, out, thinking and cached, pictures, latency, time to first text, attempts, retry reasons,
 blocks with categories, estimated cost) with the request's `TurnTelemetry`. The turn endpoint logs
 `summary()` as the turn's T5 line. `cost_usd` is always the raw cost, and billing charges the
 calls made on our own account (`billable_cost_usd`; BYOK calls are free, K6) plus its margin (K2). Records hold
@@ -834,7 +838,7 @@ flowchart LR
 - **Around each model call** (`drafts/service.model_call`): the BYOK headers (S9), the credit meter
   with `meter.DRAFT` (the charge lands in the transaction that saves the draft), the client for the
   draft's rating (F5), the model errors as API errors (T7), and one T5 log line on the `drafts`
-  logger with tokens (thinking tokens too, which count against the output limit), cost and
+  logger with tokens (thinking tokens too, which count against the output limit, and cached ones), cost and
   outcome, never the premise or the prompt (T6).
 - **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
   the Naples vendetta for a grounded starter, the cultivation sample otherwise. A change to the

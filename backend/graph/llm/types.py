@@ -170,17 +170,21 @@ class Request:
 
 @dataclass(frozen=True)
 class Usage:
-    """Token counts. `output_tokens` includes `thinking_tokens`, which Gemini bills as output."""
+    """Token counts. `output_tokens` includes `thinking_tokens`, which Gemini bills as output, and
+    `input_tokens` includes `cached_tokens`: the start of the prompt that Gemini had just seen,
+    which it bills at its cheaper cached rate (implicit caching)."""
 
     input_tokens: int = 0
     output_tokens: int = 0
     thinking_tokens: int = 0
+    cached_tokens: int = 0
 
     def __add__(self, other: Usage) -> Usage:
         return Usage(
             self.input_tokens + other.input_tokens,
             self.output_tokens + other.output_tokens,
             self.thinking_tokens + other.thinking_tokens,
+            self.cached_tokens + other.cached_tokens,
         )
 
 

@@ -37,8 +37,9 @@ from graph.llm.gemini import (
     to_messages,
     to_safety_settings,
 )
+from graph.llm.pricing import estimate_cost
 from graph.llm.safety import safety_settings
-from graph.llm.types import Request
+from graph.llm.types import Request, Usage
 from tests.graph.conftest import Narration, collect, run
 
 KEY = "AIzaSyFAKE-player-key"
@@ -89,7 +90,8 @@ def _response(text=None, *, finish=None, usage=None, ratings=None, block=None, i
             prompt_token_count=usage[0],
             candidates_token_count=usage[1],
             thoughts_token_count=usage[2],
-            total_token_count=sum(usage),
+            cached_content_token_count=usage[3] if len(usage) > 3 else None,
+            total_token_count=sum(usage[:3]),
         )
         if usage
         else None,
@@ -145,6 +147,31 @@ def _client(script: Script, *, byok: bool = True, telemetry=None) -> ModelClient
 
 
 SCENE_JSON = '{"title": "Cave", "narration": "You crouch. You throw.", "choices": ["Run"]}'
+
+
+def test_cached_prompt_tokens_are_recorded_and_billed_at_the_cached_rate():
+    # Implicit caching: Gemini reports how much of the prompt it had just seen.
+    telemetry = TurnTelemetry()
+    script = Script(
+        [
+            _response(SCENE_JSON[:30], usage=(14000, 10, 0, 9000)),
+            _response(SCENE_JSON[30:], finish=gt.FinishReason.STOP, usage=(14000, 40, 0, 9000)),
+        ]
+    )
+
+    run(
+        collect(
+            _client(script, telemetry=telemetry).stream_structured(
+                Node.NARRATOR, PROMPT, Narration, field="narration"
+            )
+        )
+    )
+
+    [record] = telemetry.calls
+    assert (record.input_tokens, record.cached_tokens) == (14000, 9000)
+    assert telemetry.summary()["cached_tokens"] == 9000
+    full, _ = estimate_cost(record.model, Usage(14000, 40))
+    assert record.cost_usd < full
 
 
 def test_a_streamed_structured_call_end_to_end():

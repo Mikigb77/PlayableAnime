@@ -87,6 +87,27 @@ def test_thinking_tokens_bill_as_output():
     assert with_thinking == without
 
 
+def test_cached_prompt_tokens_bill_at_a_tenth_of_the_input_price():
+    # A narrator prompt of 14,000 tokens whose first 9,000 Gemini had just seen.
+    cached, _ = estimate_cost("gemini-3.5-flash", Usage(14000, 0, cached_tokens=9000))
+
+    assert cached == Decimal("0.00885")  # 5,000 at $1.50 and 9,000 at $0.15 per million
+
+
+def test_a_model_without_a_cached_rate_bills_cached_tokens_as_input():
+    cached, _ = estimate_cost("gemini-3.5-transcribe", Usage(1000, 0, cached_tokens=1000))
+    plain, _ = estimate_cost("gemini-3.5-transcribe", Usage(1000, 0))
+
+    assert cached == plain
+
+
+def test_cached_tokens_never_count_for_more_than_the_prompt():
+    odd, _ = estimate_cost("gemini-3.5-flash", Usage(1000, 0, cached_tokens=5000))
+    all_cached, _ = estimate_cost("gemini-3.5-flash", Usage(1000, 0, cached_tokens=1000))
+
+    assert odd == all_cached
+
+
 def test_a_1k_picture_costs_about_three_cents_and_bigger_ones_more():
     one_k, known = estimate_cost("gemini-3.1-flash-lite-image", Usage(1120, 1120), images=1)
     four_k, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(1120, 2520), images=1)
