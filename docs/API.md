@@ -169,7 +169,7 @@ Vertex AI writes it down, and the app puts `text` in the box for the player to c
 sent as an action from here.
 
 - **The body** is the raw audio, at most 2 MiB (the app sends at most a minute of 16 kHz 16-bit mono
-  WAV, 1.92 MB). `Content-Type` is one of `audio/wav` (or `audio/x-wav`, `audio/wave`),
+  WAV, 1.92 MB, and a longer dictation in parts). `Content-Type` is one of `audio/wav` (or `audio/x-wav`, `audio/wave`),
   `audio/mpeg` (`audio/mp3`), `audio/aac`, `audio/m4a` (`audio/mp4`), `audio/ogg`, `audio/opus`,
   `audio/webm`, `audio/flac` or `audio/aiff`. Anything else, an empty body or a longer one is
   `400 validation_error` with the field `Content-Type` (`unsupported_audio`) or `body` (`missing`,

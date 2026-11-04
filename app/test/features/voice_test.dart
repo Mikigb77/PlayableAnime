@@ -209,16 +209,23 @@ void main() {
       expect(dictation.phase, DictationPhase.idle);
     });
 
-    test('a pause ends it too, and words typed meanwhile are kept', () async {
+    test('a long dictation lands in parts, after anything typed meanwhile', () async {
       text.text = 'Quietly,';
       await dictation.start();
-      engine.transcribing();
+
+      engine.hear('I bow.'); // the first part, while the player goes on
+      expect(text.text, 'Quietly, I bow.');
+      expect(dictation.phase, DictationPhase.listening);
+      text.text = 'Quietly, I bow. Then';
+
+      await dictation.stop();
       expect(dictation.phase, DictationPhase.transcribing);
-      text.text = 'Quietly, then';
+      engine
+        ..hear('I wait.')
+        ..stopped();
 
-      engine.hear('I bow.', isFinal: true);
-
-      expect(text.text, 'Quietly, then I bow.');
+      expect(text.text, 'Quietly, I bow. Then I wait.');
+      expect(dictation.phase, DictationPhase.idle);
       expect(tracker.mode, InputMode.voiceEdited);
     });
 
@@ -354,6 +361,27 @@ void main() {
       await tester.pump();
       expect(find.text('Open the door'), findsOneWidget);
       expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.idle);
+    });
+
+    testWidgets('leaving the app turns the mic off', (tester) async {
+      final online = FakeSpeechEngine(onPhone: false);
+      await tester.pumpWidget(app(using: online));
+      await tester.pump();
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+
+      tester.binding
+        ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+        ..handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump();
+      expect(online.stops, 1);
+      expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.transcribing);
+
+      tester.binding
+        ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+        ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(online.stops, 1, reason: 'coming back starts nothing');
     });
 
     for (final (code, message) in [

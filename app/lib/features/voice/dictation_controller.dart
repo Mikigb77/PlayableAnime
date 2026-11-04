@@ -26,7 +26,7 @@ enum DictationPhase {
 /// Dictation into a text box (V1, V2). The words land in the box and stay there to edit, extend or
 /// send; nothing is ever sent from here. Tapping the mic again adds to what is there.
 ///
-/// Online (V6), the words come once the player stops or pauses, written down with the story's
+/// Online (V6), the words come once the player taps the mic again, written down with the story's
 /// names. With the phone's own recognizer they appear as the player speaks, recognized on the
 /// device where the phone supports it, falling back to the platform's own service when it doesn't.
 class DictationController extends ChangeNotifier {
