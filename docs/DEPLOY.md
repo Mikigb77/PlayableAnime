@@ -121,6 +121,27 @@ Two deploys never run at once.
 
 The run's summary shows the image, the new and previous revisions and the URL.
 
+### Drawing the starter covers
+
+Discover's eleven starter premises show a cover once the house has drawn it (S1, M4). Nothing
+draws them during a deploy: after the first deploy that has `draw_premise_covers`, and once Vertex
+AI answers for the runtime account, Miki runs it once as the migration job with other arguments.
+The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and the direct
+database URL, so nothing else is needed:
+
+```bash
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
+  --args=manage.py,draw_premise_covers --task-timeout=30m --wait
+```
+
+It draws each cover once with `PICTURE_MODEL`, about $0.034 each and $0.37 for all eleven, paid by
+the house: the logs show each cover's model and cost (`Premise cover ready`), and no player's ledger
+changes. A cover that fails or is blocked is left out, and the job ends failed and names it; running
+the same command again draws only the missing ones. To draw one again, pass its id and `--force`:
+`--args=manage.py,draw_premise_covers,naples-vendetta,--force`. `--dry-run` lists what would be
+drawn and its cost without drawing. The app shows a cover the next time it loads the premises;
+until then, and for a premise without one, Discover shows a glow in the genre's colour.
+
 ### Service settings
 
 | Setting | Value | Why |

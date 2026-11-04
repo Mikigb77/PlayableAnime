@@ -183,6 +183,20 @@ class _CompactCover extends StatelessWidget {
                       image: appImage(url, cacheWidth: (constraints.maxWidth * dpr).round()),
                       fit: BoxFit.cover,
                       excludeFromSemantics: true,
+                      // Fades in over the glow as it arrives, like the signature cards' covers.
+                      frameBuilder: (context, child, frame, sync) => sync
+                          ? child
+                          : Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                fallback,
+                                AnimatedOpacity(
+                                  opacity: frame == null ? 0 : 1,
+                                  duration: Motion.of(context, Motion.slow),
+                                  child: child,
+                                ),
+                              ],
+                            ),
                       errorBuilder: (_, _, _) => fallback,
                     ),
                   ),

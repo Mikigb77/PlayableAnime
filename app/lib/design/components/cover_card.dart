@@ -67,12 +67,19 @@ class CoverCard extends StatelessWidget {
                       ),
                       fit: BoxFit.cover,
                       excludeFromSemantics: true,
+                      // The accent glow holds the place until the cover fades in over it.
                       frameBuilder: (context, child, frame, sync) => sync
                           ? child
-                          : AnimatedOpacity(
-                              opacity: frame == null ? 0 : 1,
-                              duration: Motion.of(context, Motion.slow),
-                              child: child,
+                          : Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _Fallback(accent: accent),
+                                AnimatedOpacity(
+                                  opacity: frame == null ? 0 : 1,
+                                  duration: Motion.of(context, Motion.slow),
+                                  child: child,
+                                ),
+                              ],
                             ),
                       errorBuilder: (_, _, _) => _Fallback(accent: accent),
                     )

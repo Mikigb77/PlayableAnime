@@ -196,15 +196,15 @@ _url_lock = threading.Lock()
 _URL_CACHE_SIZE = 4096
 
 
-def signed_url(key: str) -> SignedUrl:
-    """A signed URL for a stored picture, valid for `PICTURE_URL_TTL_S`.
+def signed_url(key: str, ttl_s: int | None = None) -> SignedUrl:
+    """A signed URL for a stored picture, valid for `ttl_s`, by default `PICTURE_URL_TTL_S`.
 
     A URL is reused while more than half its life remains, so a list of scenes doesn't sign the
     same picture again on every load (signing in Cloud Storage is a call to IAM). Can block on
     the network: call it off the event loop.
     """
     storage = get_storage()
-    ttl = settings.PICTURE_URL_TTL_S
+    ttl = ttl_s or settings.PICTURE_URL_TTL_S
     cache_key = (storage, key)
     with _url_lock:
         cached = _url_cache.get(cache_key)
@@ -218,14 +218,15 @@ def signed_url(key: str) -> SignedUrl:
     return url
 
 
-def signed_urls(keys: Iterable[str]) -> dict[str, SignedUrl]:
+def signed_urls(keys: Iterable[str], ttl_s: int | None = None) -> dict[str, SignedUrl]:
     """Signed URLs for many pictures, signing the ones not cached at the same time, so a story
     with many pictures costs one round of IAM calls, not one after another."""
     keys = list(dict.fromkeys(keys))
     if len(keys) <= 1:
-        return {key: signed_url(key) for key in keys}
+        return {key: signed_url(key, ttl_s) for key in keys}
     with ThreadPoolExecutor(max_workers=min(_SIGNING_THREADS, len(keys))) as pool:
-        return dict(zip(keys, pool.map(signed_url, keys), strict=True))
+        urls = pool.map(lambda key: signed_url(key, ttl_s), keys)
+        return dict(zip(keys, urls, strict=True))
 
 
 _SIGNING_THREADS = 8

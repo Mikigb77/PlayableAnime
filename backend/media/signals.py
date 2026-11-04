@@ -3,7 +3,8 @@
 Deleting a story or an account cascades to its `Image` rows, and each deleted row's file is
 removed from storage once the transaction commits, so a delete that rolls back never loses a
 picture. That covers `accounts.services.delete_account` too, which deletes the user inside a
-transaction, so pictures need no `account_deleting` receiver.
+transaction, so pictures need no `account_deleting` receiver. A starter premise's
+`PremiseCover`, deleted in the admin, takes its file along the same way.
 """
 
 import logging
@@ -11,13 +12,13 @@ import logging
 from django.db import transaction
 from django.db.models.signals import post_delete
 
-from media.models import Image
+from media.models import Image, PremiseCover
 from media.storage import get_storage
 
 logger = logging.getLogger("media.pictures")
 
 
-def delete_file(sender, instance: Image, **kwargs) -> None:
+def delete_file(sender, instance: Image | PremiseCover, **kwargs) -> None:
     key = instance.storage_key
     if not key:
         return
@@ -47,4 +48,8 @@ def connect() -> None:
     from accounts.signals import account_exporting
 
     post_delete.connect(delete_file, sender=Image, dispatch_uid="media.delete_file")
+    # A starter's cover deleted in the admin takes its file along; the command draws it again.
+    post_delete.connect(
+        delete_file, sender=PremiseCover, dispatch_uid="media.delete_premise_cover_file"
+    )
     account_exporting.connect(export_for, dispatch_uid="media.export_for")

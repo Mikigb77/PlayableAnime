@@ -32,6 +32,13 @@ DEBUG=1 uv run uvicorn lucid.asgi:application --reload --port 8080
 `seed_story` makes a story for an existing account from one of the example worlds (`grounded` or
 `cultivation`), ready for its opening turn, without drafting one first. It prints the story id.
 
+`draw_premise_covers` draws each starter premise's cover for Discover once, and skips the ones
+already drawn unless `--force` (name premises to draw only those, and `--dry-run` shows what it
+would draw and cost). With the offline model the covers are plain placeholders, which a real model
+replaces on its first run; it refuses to put placeholders in a Cloud Storage bucket. Without
+covers, Discover shows a glow in each genre's colour. The real run is one command on Cloud Run
+([docs/DEPLOY.md](../docs/DEPLOY.md#drawing-the-starter-covers)).
+
 By default `LLM_PROVIDER=fake` answers every model call with a minimal valid reply, and every
 picture with a quiet gradient in the picture's shape, so everything works offline. For real
 stories, either:
@@ -149,7 +156,7 @@ answer with the docs page's Authorize button. Make a story by drafting and start
 | Method | Path | |
 | --- | --- | --- |
 | GET | `/health` | Liveness, `{"status": "ok"}` |
-| GET | `/v1/premises` | Starter premises, flagship genres first, each with its genre's fixed rules (S1, G7) |
+| GET | `/v1/premises` | Starter premises, flagship genres first, each with its genre's fixed rules (S1, G7) and its cover's signed URL once drawn |
 | POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?}` → a drafted world and character (G1, G2) |
 | GET, PATCH | `/v1/drafts/{id}` | A draft, and direct edits of its summary lines and advanced fields |
 | POST | `/v1/drafts/{id}/revise` | `{target, instruction}`: a change in plain words |
@@ -212,7 +219,6 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   pending.py      Pending events between the world state and their table (B12)
   responses.py    Scenes, stories, the Library, Memory and status as the endpoints answer them
   schemas.py      The request and response shapes
-  premises.py     Starter premises for Discover, until the drafting catalog replaces them
   access.py       owned_story(): the caller's story, within their rating limit (S8, F8)
   export.py       Stories as plain data for the account export
   management/     seed_story: a story from an example world, for development
@@ -229,6 +235,8 @@ evals/            The story evals (T15, T17, T18): scripted scenarios through th
   scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t18
   results.py      run.json, summary.md, the history file and the trend
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
+  premise_covers.py  The starter premises' covers on Discover, drawn once by the house (S1)
+  management/     draw_premise_covers: draws them, skipping the ones already drawn
 moderation/       Reports and blocks on scenes, the review queue (F6, T16): see ARCHITECTURE.md
   api.py          POST /v1/stories/{id}/scenes/{turn}/report
   service.py      Filing a report, blocked_turns() for the scene list, reports in the export

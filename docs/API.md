@@ -169,6 +169,11 @@ then a grounded modern story (the Naples vendetta), science fiction, a modern wo
 supernatural side and a few more. Each starter's genre fixes some rules (G7), which every draft
 from it keeps until the player changes them.
 
+`cover_url` is the starter's 3:4 cover, drawn once for everyone (S1, M4), as a signed URL that
+works for at least 6 hours; it is null until the cover is drawn. Load the premises again for fresh
+URLs. The cover keeps its lower third calm for the genre and title set over it, and a premise
+without one shows the app's own fallback.
+
 ## Drafting a world and a character (G1, G2, S1, A1)
 
 A draft holds the AI's proposal until the player starts the story. Drafting calls a model, so it

@@ -9,6 +9,9 @@ M5). Earlier versions stay, for the scenes that showed them and the export (T12)
 
 A `ScenePicture` says which picture a scene shows, and whether code planned it (M1) or the player
 asked for it with Illustrate (M2). The file itself lives in storage under `storage_key`.
+
+A `PremiseCover` is a starter premise's cover on Discover (S1): drawn once by the house with
+`manage.py draw_premise_covers` and shown to every player, so it belongs to no story.
 """
 
 import uuid
@@ -122,3 +125,29 @@ class ScenePicture(models.Model):
 
     def __str__(self) -> str:
         return f"{self.scene} shows {self.image}"
+
+
+class PremiseCover(models.Model):
+    """A starter premise's cover (S1, M4), keyed by the premise's id in `graph.drafting.catalog`.
+
+    The house draws it once (`media.premise_covers`) and pays for it: its cost is logged (T5),
+    and no player's ledger is charged. Drawn again only when asked (`--force`), or when the one
+    kept is the offline model's placeholder and a real model is configured.
+    """
+
+    premise_id = models.CharField(max_length=64, primary_key=True)
+    storage_key = models.CharField(max_length=512)
+    mime_type = models.CharField(max_length=40)
+    size_bytes = models.PositiveIntegerField()
+    model = models.CharField(max_length=80, blank=True)
+    cost_usd = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
+    # Drawn by the offline model (`LLM_PROVIDER=fake`): a placeholder for development.
+    offline = models.BooleanField(default=False)
+    # What was drawn (`media.prompts.Brief`), from the premise's public text. A premise whose text
+    # has changed since is reported by the command, and redrawn with `--force`.
+    brief = models.JSONField(default=dict, blank=True)
+    drawn_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"cover of {self.premise_id}"
