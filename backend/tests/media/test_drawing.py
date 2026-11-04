@@ -83,7 +83,7 @@ def test_a_picture_that_fails_twice_fails():
 
 def test_our_picture_quota_running_out_says_so():
     """A 429 on our account may pass with a wait, which the starter covers take."""
-    fake = FakeBackend().script(Node.PICTURE, Fail(status=429), Fail(status=429))
+    fake = FakeBackend().script(Node.PICTURE, *(Fail(status=429) for _ in range(3)))
 
     with pytest.raises(DrawRateLimited):
         asyncio.run(_model(fake).draw(REQUEST))

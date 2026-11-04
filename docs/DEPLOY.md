@@ -300,8 +300,9 @@ gemini-3.1-flash-lite-image (picture): FAILED (invalid): GoogleModelNotFoundErro
 
 A model that answers can still refuse a node's response format, its JSON schema, with a bare
 `400 INVALID_ARGUMENT`: on 2026-11-04 every draft failed that way while plain calls worked. So the
-check then sends each format once, as its node does, with room for only a few words, which adds
-well under a cent. A schema Gemini refuses goes in the prompt instead
+check then sends each format once, as its node does but thinking at `low` and with room for only a
+few words, which adds well under a cent. A format that meets a 429, a 5xx or a timeout is sent again
+after 2 s and then 6 s. A schema Gemini refuses goes in the prompt instead
 ([ARCHITECTURE.md](ARCHITECTURE.md#model-layer), "Response formats"), so its line says so and the check
 passes; only a format refused both ways fails it:
 

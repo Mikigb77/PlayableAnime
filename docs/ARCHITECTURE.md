@@ -590,6 +590,9 @@ cut-off or unparseable answer) once, and otherwise raises a typed error with the
 response was blocked) or `BadKey` (`bad_key`, only for a player's key). A safety block is never
 retried blindly: the graph retells a blocked narration as a cut-away, then a template line (F4),
 and turns a blocked interpret step into `unreadable_action`.
+A 429 on our account gets one more try, after waits of 2 s and then 6 s: Vertex AI's quota is
+shared and answers 429 in bursts that pass within seconds (three in 11 s from the deploy's model
+check on 2026-11-04). A player's key isn't shared, so its 429 is retried once like the rest.
 
 **Response formats (B6).** A node that wants JSON sends its Pydantic model's schema as
 `response_json_schema`, cut down by `gemini_schema` to the keywords Gemini takes (`$defs`, `$ref`,
