@@ -24,7 +24,13 @@ from engine.state import (
     Visibility,
     WorldState,
 )
-from engine.visibility import attitude_label, memory_view, standing_label, status_view
+from engine.visibility import (
+    attitude_label,
+    memory_view,
+    speech_vocabulary,
+    standing_label,
+    status_view,
+)
 
 
 def dumped(view) -> str:
@@ -462,3 +468,52 @@ def test_some_died_and_some_lived():
 
     assert texts["blast"] == "Zhao Kun killed Elder Mo and wounded you at the outer-court well."
     assert texts["cut"] == "You wounded yourself."
+
+
+# V6: the speech model's custom vocabulary is the names the player character knows (C6).
+
+
+def test_speech_vocabulary_is_the_names_the_character_knows_most_relevant_first():
+    assert speech_vocabulary(cultivation_world()) == [
+        "Lin Feng",  # the character's own name
+        "Zhao Kun",  # in the scene
+        "outer-court well",  # where the scene is
+        "Azure Peak",
+        "inner court",
+        "Azure Cloud Sect",
+        "outer court",
+    ]
+
+
+def test_speech_vocabulary_never_has_a_name_the_character_doesnt_know():
+    state = grounded_world()
+    assert "bartender" in state.scene.present_ids  # Gennaro is in the scene, but unnamed to Luca
+
+    names = speech_vocabulary(state)
+
+    assert "Gennaro" not in names
+    assert names[:3] == ["Luca Esposito", "Carmine Russo", "Carmine's bar"]
+    assert "Elder Mo" not in speech_vocabulary(cultivation_world())
+
+
+def test_speech_vocabulary_learns_a_name_once_it_is_known():
+    state = cultivation_world()
+    state.characters["elder-mo"].known_by.append(state.player_id)
+
+    assert "Elder Mo" in speech_vocabulary(state)
+
+
+def test_speech_vocabulary_keeps_each_name_once_within_the_limit():
+    state = cultivation_world()
+    state.characters["zhao"].name = "  the  Azure   Peak "  # the same words as a place
+
+    names = speech_vocabulary(state, limit=4)
+
+    assert names == ["Lin Feng", "Azure Peak", "outer-court well", "inner court"]
+
+
+def test_speech_vocabulary_keeps_a_name_that_starts_like_an_article():
+    state = cultivation_world()
+    state.characters["zhao"].name = "An Lushan"
+
+    assert "An Lushan" in speech_vocabulary(state)

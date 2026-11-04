@@ -1,6 +1,7 @@
 """The model client that graph nodes call: retries, typed errors, telemetry (B6, T5, T7).
 
-A node asks for a structured result, plain text, a streamed structured result or a picture. The
+A node asks for a structured result, plain text, a streamed structured result, a picture or the
+words in a recording (V6). The
 client resolves the node's model and settings from config, applies the rating's safety settings
 (F5), runs the call on its backend with a deadline, retries a transient failure once (a 429 on our
 shared quota twice, after longer waits), and turns anything else into `LLMUnavailable`,
@@ -28,6 +29,7 @@ from graph.llm.pricing import estimate_cost
 from graph.llm.safety import safety_settings
 from graph.llm.telemetry import CallRecord, CallRecorder, Outcome
 from graph.llm.types import (
+    AudioPart,
     Backend,
     CallOptions,
     Chunk,
@@ -39,6 +41,7 @@ from graph.llm.types import (
     ProviderError,
     Rating,
     Request,
+    Transcription,
     Usage,
 )
 
@@ -157,6 +160,28 @@ class ModelClient:
             await self._complete(node, prompt, image=spec or ImageSpec(), options=options),
         )
 
+    async def transcribe(
+        self,
+        node: Node,
+        audio: AudioPart,
+        spec: Transcription | None = None,
+        *,
+        options: CallOptions | None = None,
+    ) -> str:
+        """The words in a recording (V6), or an empty string when it holds no speech.
+
+        The rating's safety settings aren't sent: the transcript is the player's own words, which
+        the turn that takes them reads under its rating (F5), and a filter here would only stop
+        the player from seeing what they said.
+        """
+        prompt = Prompt.build("", "")
+        return cast(
+            str,
+            await self._complete(
+                node, prompt, audio=audio, transcription=spec or Transcription(), options=options
+            ),
+        )
+
     def stream_structured[T: BaseModel](
         self,
         node: Node,
@@ -192,6 +217,8 @@ class ModelClient:
         schema: type[BaseModel] | None = None,
         stream_field: str | None = None,
         image: ImageSpec | None = None,
+        audio: AudioPart | None = None,
+        transcription: Transcription | None = None,
         options: CallOptions | None = None,
     ) -> AsyncIterator[StreamEvent[Any]]:
         settings = self._config.node(node)
@@ -201,9 +228,13 @@ class ModelClient:
             model=settings.model,
             prompt=prompt,
             options=opts,
-            safety=safety_settings(self._rating, picture=image is not None, node=node),
+            safety={}
+            if transcription is not None
+            else safety_settings(self._rating, picture=image is not None, node=node),
             json_schema=_json_schema(schema) if schema is not None else None,
             image=image,
+            audio=audio,
+            transcription=transcription,
         )
         trace = _Trace(request, self._backend.provider, self._byok, self._config.location)
         try:
@@ -324,6 +355,8 @@ class ModelClient:
             if not images:
                 raise _BadOutput("no_image")
             return GeneratedImage(images[0].data, images[0].mime_type)
+        if request.transcription is not None:
+            return text.strip()  # silence is an empty transcript, not a failure
         if not text.strip():
             raise _BadOutput("empty")
         if schema is None:

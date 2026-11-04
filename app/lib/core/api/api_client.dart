@@ -70,6 +70,7 @@ class ApiClient {
     this.tokens,
     this.timeout = const Duration(seconds: 30),
     this.modelTimeout = const Duration(minutes: 3),
+    this.speechTimeout = const Duration(seconds: 90),
     this.streamIdleTimeout = const Duration(seconds: 150),
   }) : _http = httpClient;
 
@@ -86,6 +87,11 @@ class ApiClient {
   /// giving up sooner would not stop the server, which would still save the result.
   final Duration modelTimeout;
 
+  /// The same for a dictation being written down (V6), which the player waits on with the mic
+  /// spinning: longer than the server's worst case (three tries at the speech model's 20 s
+  /// deadline after 429s, with 8 s of waits), plus an upload on a slow network.
+  final Duration speechTimeout;
+
   /// How long a stream may stay silent before it counts as dropped: longer than the narrator's
   /// whole budget, because a turn can think for a while before its first words.
   final Duration streamIdleTimeout;
@@ -100,6 +106,15 @@ class ApiClient {
   Future<Object?> patch(String path, Object? body) => _json('PATCH', path, body: body);
 
   Future<Object?> delete(String path) => _json('DELETE', path);
+
+  /// Sends [bytes] as the body, such as a recording, with its own [contentType]. The reply is
+  /// JSON, and failures throw [ApiException] like any other call.
+  Future<Object?> postBytes(
+    String path,
+    List<int> bytes, {
+    required String contentType,
+    Map<String, String>? query,
+  }) => _json('POST', path, bytes: (bytes, contentType), query: query);
 
   /// Sends a request whose reply may be a stream. Errors before the stream starts (auth, version,
   /// credits, rate limits) throw [ApiException] like any other call.
@@ -126,6 +141,7 @@ class ApiClient {
     String method,
     String path, {
     Object? body,
+    (List<int>, String)? bytes,
     Map<String, String>? query,
     bool authenticated = true,
   }) async {
@@ -133,12 +149,13 @@ class ApiClient {
       method,
       path,
       body: body,
+      bytes: bytes,
       query: query,
       authenticated: authenticated,
     );
-    final bytes = await _guard(response.stream.toBytes(), _timeoutFor(method, path));
+    final reply = await _guard(response.stream.toBytes(), _timeoutFor(method, path));
     try {
-      return _decode(bytes);
+      return _decode(reply);
     } on FormatException {
       throw ApiException(ApiErrorCode.server, status: response.statusCode);
     }
@@ -148,6 +165,7 @@ class ApiClient {
     String method,
     String path, {
     Object? body,
+    (List<int>, String)? bytes,
     Map<String, String>? query,
     bool authenticated = true,
     String accept = 'application/json',
@@ -157,7 +175,9 @@ class ApiClient {
     final wait = _timeoutFor(method, path);
 
     Future<http.StreamedResponse> attempt() async {
-      final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
+      final uri = Uri.parse(
+        '$baseUrl$path',
+      ).replace(queryParameters: query == null || query.isEmpty ? null : query);
       final request = http.Request(method, uri)..headers['Accept'] = accept;
       final token = tokens?.accessToken;
       if (token != null) request.headers['Authorization'] = 'Bearer $token';
@@ -165,7 +185,10 @@ class ApiClient {
         request.headers['X-LLM-Provider'] = 'gemini';
         request.headers['X-LLM-Api-Key'] = byokKey;
       }
-      if (body != null) {
+      if (bytes case (final data, final contentType)) {
+        request.headers['Content-Type'] = contentType;
+        request.bodyBytes = data;
+      } else if (body != null) {
         request.headers['Content-Type'] = 'application/json; charset=utf-8';
         request.body = jsonEncode(body);
       }
@@ -194,7 +217,8 @@ class ApiClient {
   /// Model-calling requests are the POSTs under drafts and stories (creating, revising, starting,
   /// turns, pictures) and a draft's direct edits, which redraft the world or the character when
   /// lines, rules, the gift or the rating change. Nothing else gets the player's key, or the longer
-  /// timeout.
+  /// timeout. Dictation calls a model too, but always on our account (V6), so it never gets the
+  /// key, and it has a timeout of its own.
   static bool _callsModel(String method, String path) => switch (method) {
     'POST' =>
       (path.startsWith('/v1/drafts') || path.startsWith('/v1/stories')) &&
@@ -203,8 +227,11 @@ class ApiClient {
     _ => false,
   };
 
-  Duration _timeoutFor(String method, String path) =>
-      _callsModel(method, path) ? modelTimeout : timeout;
+  Duration _timeoutFor(String method, String path) => _callsModel(method, path)
+      ? modelTimeout
+      : path.startsWith('/v1/transcriptions')
+      ? speechTimeout
+      : timeout;
 
   Future<T> _guard<T>(Future<T> future, Duration wait) async {
     try {

@@ -154,6 +154,7 @@ String? _redraftingText(AppLocalizations l10n, Redraft redrafting) => switch (re
 class _ReviewField extends StatelessWidget {
   const _ReviewField({
     required this.tracker,
+    required this.draftId,
     required this.maxLength,
     this.label,
     this.hint,
@@ -163,6 +164,9 @@ class _ReviewField extends StatelessWidget {
   });
 
   final InputModeTracker tracker;
+
+  /// The draft the words are for, so dictation hears its names (V6, C6).
+  final String draftId;
   final int maxLength;
   final String? label;
   final String? hint;
@@ -193,7 +197,7 @@ class _ReviewField extends StatelessWidget {
         alignment: Alignment.topRight,
         widthFactor: 1,
         heightFactor: 1,
-        child: DictationButton(tracker: tracker),
+        child: DictationButton(tracker: tracker, draftId: draftId),
       ),
     ),
   );
@@ -284,6 +288,7 @@ class _LineSheetState extends State<_LineSheet> {
           children: [
             _ReviewField(
               tracker: _tracker,
+              draftId: _draft.id,
               maxLength: DraftLimits.line,
               autofocus: true,
               errorText: _text.text == _sent ? fieldMessage(_error, _field) : null,
@@ -386,6 +391,7 @@ class _ReviseSheetState extends State<_ReviseSheet> {
         children: [
           _ReviewField(
             tracker: _tracker,
+            draftId: widget.flow.draft!.id,
             maxLength: DraftLimits.instruction,
             label: l10n.reviseLabel,
             hint: switch (widget.part) {
@@ -641,6 +647,7 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
               padding: const EdgeInsets.only(top: Space.md),
               child: _RuleEditor(
                 rule: rule,
+                draftId: widget.flow.draft!.id,
                 errorText: _refusalOf(rule),
                 onFixed: (fixed) => setState(() => rule.fixed = fixed),
                 onRemove: () => _removeRule(rule),
@@ -674,12 +681,14 @@ class _AdvancedSheetState extends State<_AdvancedSheet> {
 class _RuleEditor extends StatelessWidget {
   const _RuleEditor({
     required this.rule,
+    required this.draftId,
     required this.onFixed,
     required this.onRemove,
     this.errorText,
   });
 
   final _RuleField rule;
+  final String draftId;
   final String? errorText;
   final ValueChanged<bool> onFixed;
   final VoidCallback onRemove;
@@ -716,7 +725,7 @@ class _RuleEditor extends StatelessWidget {
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               isDense: true,
-              suffixIcon: DictationButton(tracker: rule.tracker),
+              suffixIcon: DictationButton(tracker: rule.tracker, draftId: draftId),
             ),
           ),
           Row(

@@ -25,6 +25,7 @@ from graph.llm.pricing import estimate_cost
 from graph.llm.safety import safety_settings
 from graph.llm.telemetry import CallRecord, CallRecorder, TurnTelemetry
 from graph.llm.types import (
+    AudioPart,
     CallOptions,
     ImagePart,
     ImageSpec,
@@ -33,10 +34,12 @@ from graph.llm.types import (
     Prompt,
     Rating,
     Thinking,
+    Transcription,
 )
 
 __all__ = [
     "BYOK_PROVIDERS",
+    "AudioPart",
     "DEFAULT_NODES",
     "BadKey",
     "Block",
@@ -66,6 +69,7 @@ __all__ = [
     "StreamRestart",
     "TextDelta",
     "Thinking",
+    "Transcription",
     "TurnTelemetry",
     "UnsupportedProvider",
     "build_client",

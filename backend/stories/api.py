@@ -18,8 +18,8 @@ from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView
 from lucid.errors import field_error, version_conflict
 from stories import responses, turns
-from stories.access import owned_story
-from stories.models import Engine, Scene, Story
+from stories.access import graph_stories, owned_story
+from stories.models import Scene, Story
 from stories.schemas import SceneOut, StoryOut, StoryPatch, StorySummaryOut, TurnIn
 
 stories_router = Router(tags=["stories"])
@@ -130,9 +130,7 @@ async def get_status(request: HttpRequest, story_id: str) -> StatusView:
 
 
 def _stories():
-    """Stories the turn graph plays: not one from the old narrator, whose world state it would
-    misread, nor one whose world state was never filled in."""
-    return Story.objects.filter(engine=Engine.GRAPH, state__has_key="player_id")
+    return graph_stories()
 
 
 async def _load(request: HttpRequest, story_id: str) -> Story:

@@ -1,6 +1,6 @@
 """Guards and billing around every model call: rate limits, quotas and credits (K2, K6, K7, M7, T9).
 
-The turn endpoint, drafting and pictures all follow the same three steps:
+The turn endpoint, drafting, pictures and dictation all follow the same three steps:
 
     from billing import meter
 
@@ -52,13 +52,20 @@ logger = logging.getLogger("billing")
 TURN = Use.TURN
 DRAFT = Use.DRAFT
 IMAGE = Use.IMAGE
+SPEECH = Use.SPEECH
 
-_ENTRY_KIND = {Use.TURN: EntryKind.TURN, Use.DRAFT: EntryKind.DRAFT, Use.IMAGE: EntryKind.IMAGE}
+_ENTRY_KIND = {
+    Use.TURN: EntryKind.TURN,
+    Use.DRAFT: EntryKind.DRAFT,
+    Use.IMAGE: EntryKind.IMAGE,
+    Use.SPEECH: EntryKind.SPEECH,
+}
 
 _QUOTA_MESSAGES = {
     Use.TURN: "Today's turns are used up.",
     Use.DRAFT: "Today's drafts are used up.",
     Use.IMAGE: "Today's pictures are used up.",
+    Use.SPEECH: "Today's dictation is used up. Typing always works.",
 }
 
 

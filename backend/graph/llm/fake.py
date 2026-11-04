@@ -151,6 +151,8 @@ class FakeBackend:
         input_tokens = _tokens(request.prompt.system) + sum(
             _tokens(m.text) for m in request.prompt.messages
         )
+        if request.audio is not None:
+            input_tokens += audio_tokens(request.audio.data)
         if isinstance(step, Hang):
             await asyncio.Event().wait()
         if isinstance(step, Fail | Block) and step.after_text:
@@ -204,11 +206,22 @@ def _tokens(text: str) -> int:
     return (len(text) + 3) // 4
 
 
+def audio_tokens(data: bytes) -> int:
+    """About what Gemini counts for a recording: 32 tokens a second, taking the bytes as the
+    app's 16 kHz 16-bit mono WAV (32,000 bytes a second)."""
+    return len(data) // 1000
+
+
 OFFLINE_TEXT = "(Offline model: set LLM_PROVIDER=vertex or add your own API key for real stories.)"
+# What the offline model "hears" in any recording, so dictation works end to end locally (V6).
+OFFLINE_TRANSCRIPT = "I look around slowly and listen."
 
 
 def offline_reply(request: Request) -> Reply:
-    """The offline model: a minimal valid answer for any schema, a note, or a plain picture."""
+    """The offline model: a minimal valid answer for any schema, a note, a plain picture, or a
+    fixed transcript for any recording."""
+    if request.transcription is not None:
+        return Reply(text=OFFLINE_TRANSCRIPT)
     if request.image is not None:
         return Reply(images=(offline_picture(request.image.aspect_ratio),))
     if request.json_schema is not None:

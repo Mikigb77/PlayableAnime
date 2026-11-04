@@ -59,6 +59,7 @@ class EntryKind(models.TextChoices):
     TURN = "turn", "Turn"
     DRAFT = "draft", "Draft"
     IMAGE = "image", "Picture"
+    SPEECH = "speech", "Speech"
     TOPUP = "topup", "Top-up"
     ADJUSTMENT = "adjustment", "Adjustment"
 

@@ -22,7 +22,7 @@ import 'package:playable_anime/features/story/status_screen.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
 import 'package:playable_anime/features/story/story_screen.dart';
 import 'package:playable_anime/features/story/turn_error_card.dart';
-import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 
 import '../helpers.dart';
 

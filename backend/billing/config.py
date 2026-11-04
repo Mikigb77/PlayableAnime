@@ -17,6 +17,8 @@ class Use(StrEnum):
     # Drafting and revising a world and a character call a model like a turn does (API.md).
     DRAFT = "draft"
     IMAGE = "image"
+    # Turning a dictation into text on our account (V6). Always our key: see `speech.api`.
+    SPEECH = "speech"
 
 
 class StarterPolicy(StrEnum):

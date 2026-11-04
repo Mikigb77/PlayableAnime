@@ -1,13 +1,30 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
-/// A recognizer failure, such as `error_no_match` or `error_permission`.
+/// The language every story is told in until S10 adds Spanish (V4), as a BCP-47 tag. Recognition
+/// listens for it rather than the phone's own language, so English spoken to a phone set to
+/// Spanish is heard as English.
+const storyLanguage = 'en-US';
+
+/// A recognizer failure, such as `error_no_match` or `error_permission`. Online dictation adds
+/// [offline], [outOfCredits], [limited] and [unclear].
 @immutable
 class SpeechFailure {
   const SpeechFailure(this.code, {this.permanent = false});
+
+  /// The server couldn't be reached, or couldn't write the words down right now.
+  static const offline = 'server_unreachable';
+
+  /// The player has no credits left for online dictation (K2).
+  static const outOfCredits = 'out_of_credits';
+
+  /// Too many dictations for now: the rate limit or the daily quota (T9).
+  static const limited = 'rate_limited';
+
+  /// Something was said, but it couldn't be written down. Unlike silence, worth a message.
+  static const unclear = 'unclear';
 
   final String code;
   final bool permanent;
@@ -19,9 +36,32 @@ class SpeechFailure {
       code == 'error_no_match' || code == 'error_speech_timeout' || code == 'error_busy';
 }
 
-/// The speech recognizer behind the dictation button. P0 is the phone's own recognizer (V6); a
-/// Gemini transcriber can implement the same interface later, so the app reaches both through it.
+/// Where the words go, so online dictation can listen for the names the character knows there
+/// (V6, C6). Both null for a box with no story yet, such as the premise.
+@immutable
+class SpeechContext {
+  const SpeechContext({this.storyId, this.draftId});
+
+  final String? storyId;
+  final String? draftId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SpeechContext && other.storyId == storyId && other.draftId == draftId;
+
+  @override
+  int get hashCode => Object.hash(storyId, draftId);
+}
+
+/// The speech recognizer behind the dictation button (V6): the phone's own
+/// ([PlatformSpeechEngine]) or Gemini through our API ([CloudSpeechEngine]), which the player picks
+/// in Account. The app reaches both through this interface.
 abstract interface class SpeechEngine {
+  /// Whether this is the phone's own recognizer: the words show as they are spoken (V2), and it
+  /// may run on the device itself (V5). An online engine writes the words down once the player
+  /// stops, saying so with `onTranscribing`.
+  bool get onPhone;
+
   /// Whether this platform can recognize speech at all. Never asks for permission.
   Future<bool> isSupported();
 
@@ -31,18 +71,25 @@ abstract interface class SpeechEngine {
 
   Future<bool> hasPermission();
 
-  /// Starts listening. [onResult] gets everything heard so far in this session.
+  /// Starts listening. [onResult] gets everything heard so far in this session. [localeId] is a
+  /// BCP-47 tag such as [storyLanguage]; null leaves it to the recognizer. An online engine calls
+  /// [onTranscribing] when the recording ends and the words are being written down, then
+  /// [onResult] once, final, then [onStopped].
   Future<void> listen({
     required void Function(String words, bool isFinal) onResult,
     required VoidCallback onStopped,
     required void Function(SpeechFailure failure) onError,
     void Function(double level)? onLevel,
+    VoidCallback? onTranscribing,
     String? localeId,
+    SpeechContext context = const SpeechContext(),
     bool onDevice = true,
   });
 
+  /// Stops listening, keeping what was heard (an online engine then writes it down).
   Future<void> stop();
 
+  /// Stops listening and throws away what was heard, with no more callbacks.
   Future<void> cancel();
 }
 
@@ -58,6 +105,9 @@ class PlatformSpeechEngine implements SpeechEngine {
   // them and forwards to whichever dictation is listening now.
   VoidCallback? _onStopped;
   void Function(SpeechFailure)? _onError;
+
+  @override
+  bool get onPhone => true;
 
   @override
   Future<bool> isSupported() async {
@@ -103,7 +153,9 @@ class PlatformSpeechEngine implements SpeechEngine {
     required VoidCallback onStopped,
     required void Function(SpeechFailure failure) onError,
     void Function(double level)? onLevel,
+    VoidCallback? onTranscribing,
     String? localeId,
+    SpeechContext context = const SpeechContext(),
     bool onDevice = true,
   }) async {
     _onStopped = onStopped;
@@ -120,7 +172,8 @@ class PlatformSpeechEngine implements SpeechEngine {
         onDevice: onDevice,
         listenMode: ListenMode.dictation,
         cancelOnError: true,
-        localeId: localeId,
+        // The plugin names locales with an underscore: en_US.
+        localeId: localeId?.replaceAll('-', '_'),
         pauseFor: const Duration(seconds: 4),
         listenFor: const Duration(minutes: 1),
       ),
@@ -133,5 +186,3 @@ class PlatformSpeechEngine implements SpeechEngine {
   @override
   Future<void> cancel() => _speech.cancel();
 }
-
-final speechEngineProvider = Provider<SpeechEngine>((ref) => PlatformSpeechEngine());

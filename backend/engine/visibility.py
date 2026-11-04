@@ -501,6 +501,44 @@ def memory_view(state: WorldState) -> MemoryView:
     )
 
 
+# Gemini 3.5 Transcribe takes up to 1,000 terms but works best with about 100 (V6).
+SPEECH_VOCABULARY_LIMIT = 100
+
+
+def speech_vocabulary(state: WorldState, *, limit: int = SPEECH_VOCABULARY_LIMIT) -> list[str]:
+    """The names the player character knows, as the speech model's custom vocabulary (V6, C6),
+    so a dictated "Senior Brother Jo" comes back as Zhao.
+
+    Most relevant first: the character's own name, the people in the scene, the place it is in,
+    then everyone, everywhere and every faction the character knows, without a leading article.
+    Never a name the character doesn't know (C6), and each name once.
+    """
+    k = _Knowledge(state)
+    present = [state.characters.get(i) for i in state.scene.present_ids]
+    here = state.places.get(state.scene.place_id or state.player.location_id or "")
+    known = [
+        *(c for c in present if c is not None and c.id != state.player_id and k.knows(c)),
+        *([here] if here is not None and k.knows(here) else []),
+        *(c for c in _by_name(state.npcs()) if k.knows(c)),
+        *(p for p in _by_name(state.places.values()) if k.knows(p)),
+        *(f for f in _by_name(state.factions.values()) if k.knows(f)),
+    ]
+    names: dict[str, str] = {}
+    for name in (state.player.name, *(record.name for record in known)):
+        name = _without_article(" ".join(name.split()))
+        if name and name.casefold() not in names:
+            names[name.casefold()] = name
+    return list(names.values())[:limit]
+
+
+def _without_article(name: str) -> str:
+    """ "the Azure Cloud Sect" is heard as "Azure Cloud Sect": "the" is a common word. Only
+    "the": "A" and "An" start names such as A Qing and An Lushan."""
+    if name.casefold().startswith("the ") and len(name) > len("the "):
+        return name[len("the ") :]
+    return name
+
+
 def clock_view(state: WorldState) -> ClockView:
     return ClockView(
         world_s=state.world_s,

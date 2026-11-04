@@ -506,7 +506,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                 enabled: story.scenes.isNotEmpty,
                 busy: _play.busy,
                 onSubmit: _send,
-                mic: DictationButton(tracker: _mode),
+                mic: DictationButton(tracker: _mode, storyId: widget.storyId),
                 commands: [SlashCommand('status', l10n.slashStatus)],
               ),
             ],

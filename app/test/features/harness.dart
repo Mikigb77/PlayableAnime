@@ -12,7 +12,7 @@ import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/json.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
-import 'package:playable_anime/features/voice/speech_engine.dart';
+import 'package:playable_anime/features/voice/dictation_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers.dart';
