@@ -68,11 +68,14 @@ DETAIL_CHARS = 600
 SCHEMA_SYSTEM = "You answer a health check."
 SCHEMA_PROMPT = "Start an answer in the required format. It may stop after a few words."
 # Gemini checks a schema before it writes, so a few words show it took it, at almost no cost.
-SCHEMA_OPTIONS = CallOptions(max_output_tokens=64)
-# A format is sent straight to the backend, past the client's retry, so it gets its own: a
-# passing 429 or 503 is no reason to fail a deploy.
-SCHEMA_ATTEMPTS = 2
-SCHEMA_RETRY_DELAY_S = 2.0
+# Thinking stays low: the drafter's own thinking spent up to a minute on these few words on
+# 2026-11-04, once past the probe's deadline, and how hard a model thinks never changes whether
+# Gemini takes a schema.
+SCHEMA_OPTIONS = CallOptions(max_output_tokens=64, thinking="low")
+# A format is sent straight to the backend, past the client's retries, so it gets its own, like
+# a 429 in the client: a passing 429 or 503 is no reason to fail a deploy (on 2026-11-04 the
+# narrator's format met two 429s 7 s apart, and the next call a few seconds later went through).
+SCHEMA_RETRY_DELAYS_S = (2.0, 6.0)
 
 
 def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
@@ -195,15 +198,15 @@ async def _check_format(
     )
     failures.fields = {}
     started = time.monotonic()
-    for attempt in range(1, SCHEMA_ATTEMPTS + 1):
+    for delay in (*SCHEMA_RETRY_DELAYS_S, None):
         try:
             async with aclosing(client.backend.stream(request)) as chunks:
                 async for _chunk in chunks:
                     pass
             break
         except ProviderError as error:
-            if error.kind == "transient" and attempt < SCHEMA_ATTEMPTS:
-                await asyncio.sleep(SCHEMA_RETRY_DELAY_S)
+            if error.kind == "transient" and delay is not None:
+                await asyncio.sleep(delay)
                 continue
             return Check(
                 settings.model,

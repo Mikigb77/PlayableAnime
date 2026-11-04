@@ -99,6 +99,7 @@ def test_each_response_format_is_sent_as_its_node_asks_for_it(backend, capsys):
         if request.json_schema is not None:
             assert request.model == DEFAULT_NODES[request.node].model
             assert request.options.max_output_tokens == 64  # cut off on purpose: cheap
+            assert request.options.thinking == "low"  # and quick, whatever the node thinks
     drafter = DEFAULT_NODES[Node.DRAFTER].model
     assert f"{drafter} (drafter) DraftProposal format: ok in" in capsys.readouterr().out
 
@@ -120,14 +121,26 @@ def test_a_format_refused_even_in_the_prompt_fails_the_check(backend, capsys):
 
 
 def test_a_format_that_fails_for_a_moment_is_sent_again(backend, monkeypatch, capsys):
-    monkeypatch.setattr(check_models, "SCHEMA_RETRY_DELAY_S", 0)
+    monkeypatch.setattr(check_models, "SCHEMA_RETRY_DELAYS_S", (0, 0))
     script_models(backend)
-    backend.script(Node.DRAFTER, Fail(status=429))
+    backend.script(Node.DRAFTER, Fail(status=429), Fail(status=429))
 
     call_command("check_models")
 
-    assert formats_sent(backend).count((Node.DRAFTER, "DraftProposal")) == 2
+    assert formats_sent(backend).count((Node.DRAFTER, "DraftProposal")) == 3
     assert "DraftProposal format: ok in" in capsys.readouterr().out
+
+
+def test_a_format_still_failing_after_the_waits_fails_the_check(backend, monkeypatch, capsys):
+    monkeypatch.setattr(check_models, "SCHEMA_RETRY_DELAYS_S", (0, 0))
+    script_models(backend)
+    backend.script(Node.NARRATOR, *(Fail(status=429) for _ in range(3)))
+
+    with pytest.raises(CommandError, match="narrator NarratorOutput"):
+        call_command("check_models")
+
+    assert formats_sent(backend).count((Node.NARRATOR, "NarratorOutput")) == 3
+    assert "NarratorOutput format: FAILED (transient_429)" in capsys.readouterr().out
 
 
 def test_a_format_gemini_takes_only_in_the_prompt_passes_and_says_so(monkeypatch, capsys):
