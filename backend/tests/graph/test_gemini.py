@@ -24,12 +24,16 @@ from graph.llm import (
     Prompt,
     TextDelta,
     TurnTelemetry,
+    gemini,
 )
 from graph.llm.gemini import (
     GEMINI_API_BASE_URL,
+    GEMINI_SCHEMA_KEYWORDS,
+    SCHEMA_IN_PROMPT,
     GeminiBackend,
     call_kwargs,
     classify,
+    gemini_schema,
     to_messages,
     to_safety_settings,
 )
@@ -38,6 +42,26 @@ from graph.llm.types import Request
 from tests.graph.conftest import Narration, collect, run
 
 KEY = "AIzaSyFAKE-player-key"
+# Vertex AI's answer to a response schema outside what Gemini takes (2026-11-04).
+SCHEMA_REFUSED = genai_errors.ClientError(
+    400,
+    {
+        "error": {
+            "code": 400,
+            "message": "Request contains an invalid argument.",
+            "status": "INVALID_ARGUMENT",
+        }
+    },
+)
+
+
+@pytest.fixture(autouse=True)
+def _forget_refused_schemas():
+    gemini._REFUSED_SCHEMAS.clear()
+    yield
+    gemini._REFUSED_SCHEMAS.clear()
+
+
 PROMPT = Prompt.build("You are the narrator.", "I throw the stone.")
 
 
@@ -381,7 +405,136 @@ def test_call_kwargs_map_our_settings_to_gemini():
     assert kwargs["safety_settings"] == to_safety_settings(safety_settings("teen"))
     assert kwargs["thinking_level"] == "low"
     assert kwargs["temperature"] == 1.0 and kwargs["seed"] == 3 and kwargs["timeout"] == 9
-    assert kwargs["response_json_schema"] == Narration.model_json_schema()
+    assert kwargs["response_mime_type"] == "application/json"
+    assert kwargs["response_json_schema"] == {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "narration": {"type": "string"},
+            "choices": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["narration"],
+    }
+    # In the prompt instead: JSON mode with no schema, which Gemini always takes.
+    kwargs = call_kwargs(request, schema_in_prompt=True)
+    assert kwargs["response_mime_type"] == "application/json"
+    assert "response_json_schema" not in kwargs
+
+
+def _app_schemas():
+    from evals.judge import JudgeOutput
+    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldProposal
+    from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
+
+    return [
+        DraftProposal,
+        WorldProposal,
+        CharacterProposal,
+        Intent,
+        NarratorOutput,
+        ChapterOutput,
+        JudgeOutput,
+    ]
+
+
+def _keywords(schema, found):
+    """Every keyword in `schema`, not counting the names under `properties` and `$defs`."""
+    if isinstance(schema, list):
+        for item in schema:
+            _keywords(item, found)
+    elif isinstance(schema, dict):
+        for key, value in schema.items():
+            found.add(key)
+            if key in ("properties", "$defs"):
+                for sub in value.values():
+                    _keywords(sub, found)
+            else:
+                _keywords(value, found)
+    return found
+
+
+def _property_names(schema, found):
+    if isinstance(schema, list):
+        for item in schema:
+            _property_names(item, found)
+    elif isinstance(schema, dict):
+        for key, value in schema.items():
+            if key in ("properties", "$defs"):
+                found.update(f"{key}.{name}" for name in value)
+            _property_names(value, found)
+    return found
+
+
+@pytest.mark.parametrize("schema", _app_schemas(), ids=lambda schema: schema.__name__)
+def test_every_schema_the_app_sends_keeps_to_what_gemini_takes(schema):
+    """A keyword Gemini doesn't take makes it refuse the whole request with a bare 400, so a
+    keyword never sent before must fail here, not in production."""
+    full = schema.model_json_schema()
+    sent = gemini_schema(full)
+
+    assert _keywords(sent, set()) <= GEMINI_SCHEMA_KEYWORDS
+    assert _property_names(sent, set()) == _property_names(full, set())
+
+
+def test_a_const_becomes_a_one_value_enum():
+    assert gemini_schema({"const": "scene", "type": "string", "title": "Kind"}) == {
+        "enum": ["scene"],
+        "type": "string",
+    }
+
+
+def test_a_refused_schema_is_sent_again_in_the_prompt_and_remembered(caplog):
+    caplog.set_level(logging.WARNING, logger="graph.llm")
+    script = Script(
+        SCHEMA_REFUSED,
+        [_response(SCENE_JSON, finish=gt.FinishReason.STOP)],
+        [_response(SCENE_JSON, finish=gt.FinishReason.STOP)],
+    )
+    client = _client(script, byok=False)
+
+    async def two_calls():
+        first = await client.structured(Node.DRAFTER, PROMPT, Narration)
+        second = await client.structured(Node.DRAFTER, PROMPT, Narration)
+        return first, second
+
+    first, second = run(two_calls())
+
+    assert first.narration == second.narration == "You crouch. You throw."
+    refused, again, later = (request["config"] for request in script.requests)
+    assert refused.response_json_schema is not None
+    for config in (again, later):
+        assert config.response_json_schema is None
+        assert config.response_mime_type == "application/json"
+        system = str(config.system_instruction)
+        assert SCHEMA_IN_PROMPT.strip() in system and '"narration"' in system
+        assert "You are the narrator." in system
+    warnings = [
+        record
+        for record in caplog.records
+        if getattr(record, "llm", {}).get("reason") == "schema_refused"
+    ]
+    assert len(warnings) == 1
+    assert warnings[0].llm["node"] == "drafter" and warnings[0].llm["schema"] == "Narration"
+    for record in caplog.records:
+        assert "I throw the stone." not in repr(record.__dict__)  # never the prompt (T6)
+
+
+def test_a_refused_schema_still_refused_in_the_prompt_is_unavailable():
+    script = Script(SCHEMA_REFUSED, SCHEMA_REFUSED)
+
+    with pytest.raises(LLMUnavailable):
+        run(_client(script, byok=False).structured(Node.DRAFTER, PROMPT, Narration))
+
+    assert len(script.requests) == 2  # the schema, then the prompt; never a third
+
+
+def test_a_bare_400_without_a_schema_is_not_retried():
+    script = Script(SCHEMA_REFUSED)
+
+    with pytest.raises(LLMUnavailable):
+        run(_client(script, byok=False).text(Node.NARRATOR, PROMPT))
+
+    assert len(script.requests) == 1
 
 
 @pytest.mark.parametrize(

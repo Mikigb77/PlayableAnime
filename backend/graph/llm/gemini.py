@@ -15,6 +15,10 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import dataclasses
+import hashlib
+import json
+import logging
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import aclosing
 from functools import lru_cache
@@ -65,6 +69,26 @@ _BLOCKED = {
 }
 _RECITATION = {"RECITATION", "IMAGE_RECITATION"}
 
+logger = logging.getLogger(__name__)
+
+# The part of JSON Schema that Gemini takes in `response_json_schema`, less what only makes its
+# constraint bigger. Gemini refuses a schema whose constraint has too many states (long runs of
+# optional properties, numeric bounds, many `anyOf` branches) with a bare 400 "Request contains
+# an invalid argument." that names nothing (https://ai.google.dev/gemini-api/docs/structured-output):
+# on 2026-11-04 every draft failed that way on Vertex AI. Pydantic's `default`, `title` and bounds
+# are left out; the client still validates each answer against the full model, so an answer out
+# of bounds is retried like any unreadable one.
+GEMINI_SCHEMA_KEYWORDS = frozenset(
+    {"$defs", "$ref", "type", "properties", "required", "items", "enum", "anyOf", "description"}
+)
+# A schema Gemini refused all the same goes in the system prompt instead, as JSON mode with no
+# schema, which it always takes. Refused schemas are remembered per model for the process.
+SCHEMA_IN_PROMPT = (
+    "Reply with one JSON value and nothing else. It must match this JSON Schema, with every "
+    "property in the order given:\n"
+)
+_REFUSED_SCHEMAS: set[tuple[str, str]] = set()
+
 
 class GeminiBackend:
     """One provider target: our Vertex AI project, or one request's player key.
@@ -112,12 +136,44 @@ class GeminiBackend:
         return cls(provider="gemini_api", make_model=make_model, secret=api_key)
 
     async def stream(self, request: Request) -> AsyncIterator[Chunk]:
+        """Streams one attempt. A response schema Gemini refuses is sent again in the prompt,
+        once, before anything is streamed; the next calls with it go straight to the prompt."""
+        key = _schema_key(request)
+        in_prompt = key is not None and key in _REFUSED_SCHEMAS
+        streamed = False
+        try:
+            async with aclosing(self._stream(request, schema_in_prompt=in_prompt)) as chunks:
+                async for chunk in chunks:
+                    streamed = True
+                    yield chunk
+            return
+        except ProviderError as failure:
+            if key is None or in_prompt or streamed or not _refused_schema(failure):
+                raise
+            _REFUSED_SCHEMAS.add(key)
+            logger.warning(
+                "Gemini refused the response schema; sending it in the prompt instead",
+                extra={
+                    "llm": {
+                        "node": request.node.value,
+                        "model": request.model,
+                        "reason": "schema_refused",
+                        "schema": str((request.json_schema or {}).get("title", "")),
+                        "detail": failure.detail,
+                    }
+                },
+            )
+        async with aclosing(self._stream(request, schema_in_prompt=True)) as chunks:
+            async for chunk in chunks:
+                yield chunk
+
+    async def _stream(self, request: Request, *, schema_in_prompt: bool) -> AsyncIterator[Chunk]:
         failure: ProviderError | None = None
         try:
             model = self._model(request.model)
-            async with aclosing(
-                model.astream(to_messages(request.prompt), **call_kwargs(request))
-            ) as messages:
+            prompt = with_schema_in_prompt(request) if schema_in_prompt else request.prompt
+            kwargs = call_kwargs(request, schema_in_prompt=schema_in_prompt)
+            async with aclosing(model.astream(to_messages(prompt), **kwargs)) as messages:
                 async for message in messages:
                     yield to_chunk(message)
         except Exception as error:
@@ -183,7 +239,62 @@ def to_messages(prompt: Prompt) -> list[BaseMessage]:
     return messages
 
 
-def call_kwargs(request: Request) -> dict[str, Any]:
+def gemini_schema(schema: Any) -> Any:
+    """`schema` with only the keywords Gemini takes (`GEMINI_SCHEMA_KEYWORDS`), at every level.
+    A `const` becomes a one-value `enum`; the names under `properties` and `$defs` are kept."""
+    if isinstance(schema, list):
+        return [gemini_schema(item) for item in schema]
+    if not isinstance(schema, Mapping):
+        return schema
+    kept: dict[str, Any] = {}
+    for key, value in schema.items():
+        if key in ("properties", "$defs") and isinstance(value, Mapping):
+            kept[key] = {name: gemini_schema(sub) for name, sub in value.items()}
+        elif key == "const" and "enum" not in schema:
+            kept["enum"] = [value]
+        elif key in GEMINI_SCHEMA_KEYWORDS:
+            kept[key] = gemini_schema(value)
+    return kept
+
+
+def with_schema_in_prompt(request: Request) -> Prompt:
+    """The request's prompt with its response schema at the end of the system instruction."""
+    schema = json.dumps(_without_titles(request.json_schema), separators=(",", ":"))
+    system = f"{request.prompt.system}\n\n{SCHEMA_IN_PROMPT}{schema}".lstrip()
+    return dataclasses.replace(request.prompt, system=system)
+
+
+def _without_titles(schema: Any) -> Any:
+    if isinstance(schema, list):
+        return [_without_titles(item) for item in schema]
+    if not isinstance(schema, Mapping):
+        return schema
+    return {
+        key: {name: _without_titles(sub) for name, sub in value.items()}
+        if key in ("properties", "$defs") and isinstance(value, Mapping)
+        else _without_titles(value)
+        for key, value in schema.items()
+        if key != "title"
+    }
+
+
+def _schema_key(request: Request) -> tuple[str, str] | None:
+    if request.json_schema is None:
+        return None
+    text = json.dumps(request.json_schema, sort_keys=True, separators=(",", ":"))
+    return request.model, hashlib.sha256(text.encode()).hexdigest()
+
+
+def _refused_schema(failure: ProviderError) -> bool:
+    """A bare 400 for a request with a schema; a context overflow is no schema's fault."""
+    return (
+        failure.kind == "invalid"
+        and failure.status == 400
+        and not failure.detail.startswith("GoogleContextOverflowError")
+    )
+
+
+def call_kwargs(request: Request, *, schema_in_prompt: bool = False) -> dict[str, Any]:
     options = request.options
     kwargs: dict[str, Any] = {"safety_settings": to_safety_settings(request.safety)}
     if options.timeout_s:
@@ -198,7 +309,8 @@ def call_kwargs(request: Request) -> dict[str, Any]:
         kwargs["seed"] = options.seed
     if request.json_schema is not None:
         kwargs["response_mime_type"] = "application/json"
-        kwargs["response_json_schema"] = dict(request.json_schema)
+        if not schema_in_prompt:
+            kwargs["response_json_schema"] = gemini_schema(request.json_schema)
     if request.image is not None:
         kwargs["response_modalities"] = [Modality.IMAGE]
         kwargs["image_config"] = {
