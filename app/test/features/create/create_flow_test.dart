@@ -241,6 +241,25 @@ void main() {
     expect(memory.sections, isEmpty);
   });
 
+  test('a stale copy starts nothing, and the latest draft is loaded to start from (T10)', () async {
+    final draft = await drafted();
+    final stories = (await LibraryRepository(api).stories()).length;
+    await api.patch('/v1/drafts/${draft.id}', {
+      'advanced': {'difficulty': 'story'},
+      'expected_version': draft.version,
+    });
+
+    expect(await flow.start(), isNull);
+    expect(
+      flow.error,
+      isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.versionConflict),
+    );
+    expect(await LibraryRepository(api).stories(), hasLength(stories));
+    expect(flow.draft!.version, draft.version + 1);
+
+    expect(await flow.start(), isNotNull);
+  });
+
   test('nothing can change while the story starts', () async {
     await drafted();
     final starting = flow.start();

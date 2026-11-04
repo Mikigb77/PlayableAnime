@@ -8,8 +8,10 @@ a request that died, can be taken over, at most `MAX_ATTEMPTS` times in all.
 
 Paying (`media.billing`): a picture drawn with the player's own key costs no credits (K6, M7).
 Otherwise the credit meter holds its price before drawing, and the request that marks it ready
-charges it in the same transaction. Without credits it is skipped (M7). A failed or blocked
-picture is skipped too, its hold released, and the scene is complete without it (M3).
+charges it in the same transaction. Without credits a planned picture is skipped (M7), while
+Illustrate, which the player asked and pays for, answers `402 out_of_credits` and leaves the scene
+as it was (M2). A failed or blocked picture is skipped too, its hold released, and the scene is
+complete without it (M3).
 
 Each picture drawn or skipped writes one T5 log line with its model, cost and outcome, and never
 its prompt (T6).
@@ -33,7 +35,7 @@ from lucid.errors import ApiError
 from media import billing, drawing
 from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest, KeyCannotDraw, Reference
 from media.models import Image, ImageStatus, Payer, ScenePicture, SkipReason
-from media.plans import ILLUSTRATE, SCENE_FLAG, brief_for_scene, plan_picture, replan
+from media.plans import ILLUSTRATE, SCENE_FLAG, brief_for_scene, plan_again, plan_picture
 from media.prompts import MAX_REFERENCES, Brief, build_prompt
 from media.storage import SignedUrl, get_storage, signed_url, storage_key
 from stories.models import ImageKind, Scene, Story
@@ -71,6 +73,19 @@ class _Attempt:
     saved_key: str | None = None
 
 
+@dataclass(frozen=True)
+class _Before:
+    """How a picture stood when Illustrate claimed it, to put it back as it was when the player
+    can't pay for it or the request ends without drawing it (M2, M3)."""
+
+    status: str
+    skip_reason: str
+    trigger: str
+    attempts: int
+    # Illustrate gave the scene this picture just now, so unpaid the scene goes without one.
+    asked_now: bool
+
+
 def pictures_off(story: Story) -> bool:
     """The player turned automatic pictures off for this story (S6, M2)."""
     settings_ = story.settings if isinstance(story.settings, dict) else {}
@@ -91,15 +106,17 @@ async def scene_picture(
     Without `illustrate`, only a picture code planned (M1) is drawn, and not while the story's
     pictures are off. With `illustrate`, the player asked for one (M2): a scene with no picture
     gets one of its own, and a skipped one is tried again. `user` pays (None for a story from
-    before sign-in). May raise the API's `rate_limited` from the credit meter.
+    before sign-in). May raise the API's `rate_limited` from the credit meter, and with
+    `illustrate` its `out_of_credits`, leaving the scene's picture as it was.
     """
-    link = await _link(story, scene, illustrate)
-    if link is None:
+    found = await _link(story, scene, illustrate)
+    if found is None:
         return PictureResult("skipped")
+    link, asked_now = found
     image = link.image
     if not illustrate and image.status != ImageStatus.READY and pictures_off(story):
         return PictureResult("skipped", image)
-    image, token = await _claim(image.pk)
+    image, token, before = await _claim(image.pk, illustrate=illustrate, asked_now=asked_now)
     if token is None:
         return await result_for(image)
     trigger = ILLUSTRATE if illustrate else (link.trigger or image.trigger)
@@ -112,6 +129,7 @@ async def scene_picture(
         trigger=trigger,
         byok_provider=byok_provider,
         byok_key=byok_key,
+        put_back=before,
     )
 
 
@@ -126,42 +144,48 @@ async def result_for(image: Image) -> PictureResult:
 
 
 @sync_to_async
-def _link(story: Story, scene: Scene, illustrate: bool) -> ScenePicture | None:
+def _link(story: Story, scene: Scene, illustrate: bool) -> tuple[ScenePicture, bool] | None:
+    """The scene's picture, planned now when it has none yet, and whether Illustrate gave the
+    scene its picture just now. None when there is no picture and none was asked for."""
     link = ScenePicture.objects.select_related("image").filter(scene=scene).first()
-    if link is None:
-        if scene.image_planned:
-            # Marked planned without a plan: draw the scene itself, or the cover.
-            kind = scene.image_kind if scene.image_kind == ImageKind.COVER else ImageKind.SCENE
-            link = plan_picture(
-                scene, kind=kind, trigger=SCENE_FLAG, brief=brief_for_scene(story, scene)
-            )
-        elif illustrate:
-            link = plan_picture(
-                scene,
-                kind=ImageKind.SCENE,
-                trigger=ILLUSTRATE,
-                brief=brief_for_scene(story, scene),
-                planned=False,
-            )
-        else:
-            return None
-    if illustrate and link.image.status == ImageStatus.SKIPPED:
-        link.image = replan(link.image, trigger=ILLUSTRATE)
-    return link
+    if link is not None:
+        return link, False
+    brief = brief_for_scene(story, scene)
+    if scene.image_planned:
+        # Marked planned without a plan: draw the scene itself, or the cover.
+        kind = scene.image_kind if scene.image_kind == ImageKind.COVER else ImageKind.SCENE
+        return plan_picture(scene, kind=kind, trigger=SCENE_FLAG, brief=brief), False
+    if illustrate:
+        link = plan_picture(
+            scene, kind=ImageKind.SCENE, trigger=ILLUSTRATE, brief=brief, planned=False
+        )
+        return link, True
+    return None
 
 
 @sync_to_async
-def _claim(image_id: uuid.UUID) -> tuple[Image, uuid.UUID | None]:
-    """Claims the picture for drawing if it is planned, or its claim has run out. Returns the
-    picture and the claim token, or no token when it is ready, skipped or being drawn."""
+def _claim(
+    image_id: uuid.UUID, *, illustrate: bool = False, asked_now: bool = False
+) -> tuple[Image, uuid.UUID | None, _Before | None]:
+    """Claims the picture for drawing if it is planned, or its claim has run out; Illustrate
+    also plans a skipped one again and claims it (M2). Returns the picture and the claim token,
+    or no token when it is ready, skipped or being drawn. For Illustrate it also returns how the
+    picture stood before, read under the claim's lock, so a second request at the same moment
+    can never take a picture this one planned again for how it was."""
     with transaction.atomic():
         image = Image.objects.select_for_update().get(pk=image_id)
+        before = None
+        if illustrate:
+            before = _Before(
+                image.status, image.skip_reason, image.trigger, image.attempts, asked_now
+            )
+            plan_again(image, trigger=ILLUSTRATE)
         now = timezone.now()
         stale = image.status == ImageStatus.PENDING and (
             image.claimed_at is None or image.claimed_at < now - LEASE
         )
         if image.status != ImageStatus.PLANNED and not stale:
-            return image, None
+            return image, None, None
         if image.attempts >= MAX_ATTEMPTS:
             _mark_skipped(image, SkipReason.FAILED)
             image.save()
@@ -171,13 +195,17 @@ def _claim(image_id: uuid.UUID) -> tuple[Image, uuid.UUID | None]:
                 image.attempts,
                 extra={"picture": _fields(image, "skipped", SkipReason.FAILED)},
             )
-            return image, None
+            return image, None, None
         image.status = ImageStatus.PENDING
         image.claim = uuid.uuid4()
         image.claimed_at = now
         image.attempts += 1
-        image.save(update_fields=["status", "claim", "claimed_at", "attempts", "updated_at"])
-        return image, image.claim
+        if before is not None and before.status == ImageStatus.SKIPPED:
+            image.save()
+            image.sync_scenes()
+        else:
+            image.save(update_fields=["status", "claim", "claimed_at", "attempts", "updated_at"])
+        return image, image.claim, before
 
 
 async def _draw(
@@ -190,16 +218,26 @@ async def _draw(
     trigger: str,
     byok_provider: str | None,
     byok_key: str | None,
+    put_back: _Before | None = None,
 ) -> PictureResult:
     attempt = _Attempt()
     try:
         return await _draw_claimed(
-            story, scene, image, token, attempt, user, trigger, byok_provider, byok_key
+            story,
+            scene,
+            image,
+            token,
+            attempt,
+            user,
+            trigger,
+            byok_provider,
+            byok_key,
+            put_back,
         )
     except asyncio.CancelledError:
         # The player left and Django cancelled the request. Nothing may run after it ends (B8),
-        # so let the hold go and put the picture back for the next request to draw.
-        await asyncio.shield(_abandon(image.pk, token, attempt))
+        # so let the hold go and put the picture back as it was, for the next request.
+        await asyncio.shield(_abandon(image.pk, token, attempt, put_back))
         raise
 
 
@@ -213,7 +251,11 @@ async def _draw_claimed(
     trigger: str,
     byok_provider: str | None,
     byok_key: str | None,
+    put_back: _Before | None,
 ) -> PictureResult:
+    """Draws a claimed picture. `put_back` is Illustrate's: how the picture stood before, for
+    when the player can't pay for it (M2). Without it a picture the credits can't cover is
+    skipped, and the turn goes on (M7)."""
     try:
         request = await _draw_request(story, image)
         attempt.references = len(request.references)
@@ -224,19 +266,24 @@ async def _draw_claimed(
             if drawn is None:
                 attempt.byok_fell_back = True
         if drawn is None:
-            try:
-                attempt.ticket = await billing.start(user, story_id=story.id, image_id=image.id)
-            except billing.NoCredits:
-                return await _skip(image, token, SkipReason.NO_CREDITS, attempt, trigger)
+            attempt.ticket = await billing.start(user, story_id=story.id, image_id=image.id)
             attempt.payer = attempt.ticket.payer
             drawn = await _draw_once(story, request, attempt, None, None)
             if drawn is None:
                 raise drawing.DrawFailed("no picture")
         else:
             attempt.payer = Payer.BYOK
+    except billing.NoCredits as exc:
+        if put_back is None:
+            return await _skip(image, token, SkipReason.NO_CREDITS, attempt, trigger)
+        # Illustrate: the player asked and can't pay, so they hear why (M2), and the picture goes
+        # back to how it was before they asked.
+        await _put_back(image.pk, token, put_back, unpaid=True)
+        _log(image, "refused", SkipReason.NO_CREDITS, attempt, trigger)
+        raise exc.error from None
     except ApiError:
-        # The meter's rate limit: put the picture back, and let the app ask again later.
-        await _unclaim(image.pk, token)
+        # The meter's rate limit: put the picture back as it was, and let the app ask again.
+        await _put_back(image.pk, token, put_back)
         raise
     except DrawBlocked as exc:
         attempt.categories = exc.categories
@@ -278,12 +325,14 @@ async def _release(attempt: _Attempt) -> None:
         await billing.release(ticket)
 
 
-async def _abandon(image_id: uuid.UUID, token: uuid.UUID, attempt: _Attempt) -> None:
+async def _abandon(
+    image_id: uuid.UUID, token: uuid.UUID, attempt: _Attempt, put_back: _Before | None
+) -> None:
     try:
         await _release(attempt)
         if attempt.saved_key is not None:
             await asyncio.to_thread(_delete_quietly, attempt.saved_key)
-        await _unclaim(image_id, token)
+        await _put_back(image_id, token, put_back)
     except Exception:
         logger.exception(
             "Cleaning up a cancelled picture failed", extra={"image_id": str(image_id)}
@@ -434,15 +483,31 @@ def _mark_skipped(image: Image, reason: str) -> None:
 
 
 @sync_to_async
-def _unclaim(image_id: uuid.UUID, token: uuid.UUID) -> None:
+def _put_back(
+    image_id: uuid.UUID, token: uuid.UUID, before: _Before | None, *, unpaid: bool = False
+) -> None:
+    """Lets go of a claim that drew nothing. A picture code planned is planned again for the next
+    request; one Illustrate claimed goes back to how it stood (`before`), so a skipped one keeps
+    its old reason and a blocked picture still comes back only through Illustrate (M3).
+    `unpaid`: the player couldn't pay for a picture Illustrate gave the scene just now, so it is
+    skipped, and the scene goes without one until they ask again."""
     with transaction.atomic():
         image = Image.objects.select_for_update().filter(pk=image_id).first()
-        if image is not None and image.claim == token:
+        if image is None or image.claim != token:
+            return
+        if before is not None and before.status == ImageStatus.SKIPPED:
+            _mark_skipped(image, before.skip_reason)
+            image.trigger = before.trigger
+            image.attempts = before.attempts
+        elif unpaid and before is not None and before.asked_now:
+            _mark_skipped(image, SkipReason.NO_CREDITS)
+        else:
             image.status = ImageStatus.PLANNED
             image.claim = None
-            image.claimed_at = None
-            image.attempts = max(0, image.attempts - 1)
-            image.save()
+            image.attempts = before.attempts if before else max(0, image.attempts - 1)
+        image.claimed_at = None
+        image.save()
+        image.sync_scenes()
 
 
 def _delete_quietly(key: str) -> None:

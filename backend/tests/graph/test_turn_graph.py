@@ -595,7 +595,7 @@ def test_a_player_who_leaves_mid_scene_stops_everything(fake, make_client, telem
 def test_a_turn_that_breaks_c1_is_never_returned(fake, make_client, monkeypatch):
     """The C1 check on the turn's first and last states: an engine bug is caught, not saved."""
 
-    def rewinding_catch_up(state, until_s, ctx, rng):
+    def rewinding_catch_up(state, until_s, ctx, rng, **options):
         broken = state.model_copy(update={"world_s": state.world_s - 50})
         return TimePassage(state=broken, started_s=state.world_s, ended_s=broken.world_s)
 

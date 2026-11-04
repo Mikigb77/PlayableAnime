@@ -1,8 +1,9 @@
 """Where a picture is paid for (M7, K7), through WS7's credit meter (`billing.meter`).
 
 1. `start()` before drawing on our account: it holds the picture's estimated cost, or raises
-   `NoCredits` when the balance can't cover it, and the picture is skipped (M7). It may also raise
-   the API's `rate_limited`, which the endpoint passes on so the app asks again later.
+   `NoCredits` when the balance can't cover it. A picture code planned is then skipped (M7); one
+   the player asked for with Illustrate answers the meter's `402 out_of_credits` (M2). It may also
+   raise the API's `rate_limited`, which the endpoint passes on so the app asks again later.
 2. `charge()` inside the transaction that marks the picture ready, so the charge and the picture
    land together. Only the request that finishes a picture charges it, and the meter is
    idempotent per ticket, so a picture is paid for at most once however often the app asks (M3).
@@ -29,7 +30,16 @@ from media.models import Payer
 
 
 class NoCredits(Exception):
-    """The balance can't cover a picture (M7). The picture is skipped, never an error."""
+    """The balance can't cover a picture (M7). A planned picture is skipped, never an error;
+    Illustrate answers `error`, the meter's `402 out_of_credits` with the balance (M2)."""
+
+    def __init__(self, error: ApiError | None = None):
+        super().__init__("out of credits")
+        self.error = error or ApiError(
+            ErrorCode.OUT_OF_CREDITS,
+            "You're out of credits.",
+            {"balance_cents": 0, "available_cents": 0},
+        )
 
 
 @dataclass(frozen=True)
@@ -51,7 +61,7 @@ async def start(user, *, story_id: uuid.UUID, image_id: uuid.UUID) -> Ticket:
         hold = await meter.astart(user, meter.IMAGE, byok=False)
     except ApiError as exc:
         if exc.code == ErrorCode.OUT_OF_CREDITS:
-            raise NoCredits() from exc
+            raise NoCredits(exc) from exc
         raise
     return Ticket(Payer.OWNER if hold.unlimited else Payer.CREDITS, hold=hold)
 

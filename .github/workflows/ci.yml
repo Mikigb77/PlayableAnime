@@ -72,11 +72,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t lucid-api .
-      - run: docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api python manage.py migrate
+      - run: docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL="$DB" lucid-api python manage.py migrate
       - name: Serve and smoke-test
         run: |
-          docker run -d --name api --network host -e PORT=8080 -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api
-          for i in $(seq 1 30); do curl -sf localhost:8080/health && break; sleep 1; done
+          docker run -d --name api --network host -e PORT=8080 -e DJANGO_SECRET_KEY=ci -e DATABASE_URL="$DB" lucid-api
+          for _ in $(seq 1 30); do curl -sf localhost:8080/health && break; sleep 1; done
           curl -sf localhost:8080/health
           # Every endpoint but /health and /v1/auth/* needs a signed-in player (T8).
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/v1/stories)" = 401
@@ -85,7 +85,7 @@ jobs:
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
           AUTH="Authorization: Bearer $TOKEN"
           # Stories come from drafts; seed_story makes one without a model, ready for its opening.
-          STORY=$(docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL=$DB lucid-api \
+          STORY=$(docker run --rm --network host -e DJANGO_SECRET_KEY=ci -e DATABASE_URL="$DB" lucid-api \
             python manage.py seed_story ci@example.com)
           curl -sf localhost:8080/v1/stories -H "$AUTH" | grep -q "$STORY"
           curl -sf "localhost:8080/v1/stories/$STORY" -H "$AUTH" > /dev/null
@@ -120,8 +120,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: shellcheck -x infra/*.sh infra/tests/*.sh infra/tests/fakes/*
-      # Only the deploy workflow: the other workflows belong to other work and aren't held to it.
-      - run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/deploy.yml
+      # Every workflow, with shellcheck on their scripts.
+      - run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color
       - run: infra/tests/run.sh
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - run: infra/tests/check-gcloud-flags.sh

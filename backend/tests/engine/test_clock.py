@@ -204,6 +204,41 @@ def test_catch_up_applies_what_fell_due_through_apply_event():
     assert ids.index("council-meets") > ids.index(steps[2].id)
 
 
+def test_catch_up_copies_the_state_once_and_leaves_its_input_alone(monkeypatch):
+    state = grounded_world()
+    state.world_s = 11 * DAY
+    before = state.model_dump()
+    copies = 0
+    deep_copy = WorldState.model_copy
+
+    def counted(self, *args, **kwargs):
+        nonlocal copies
+        copies += kwargs.get("deep", False)
+        return deep_copy(self, *args, **kwargs)
+
+    monkeypatch.setattr(WorldState, "model_copy", counted)
+
+    passage = pipeline.catch_up(state, state.world_s, ctx(), rng())
+
+    assert passage.fired
+    assert state.model_dump() == before
+    # A long story's state is large, and copying it is most of a turn's own time (WS18).
+    assert copies == 1
+
+
+def test_advance_clock_can_work_on_a_copy_the_caller_already_owns():
+    state = with_events(event("e", 10))
+
+    def in_place(current: WorldState, e: PendingEvent) -> WorldState:
+        current.pending_events[e.id].status = EventStatus.APPLIED
+        return current
+
+    passage = advance_clock(state, 100, in_place, copy=False)
+
+    assert passage.state is state
+    assert state.world_s == 100
+
+
 def stopped(state: WorldState) -> WorldState:
     state.time_effects.append(
         ActiveTimeEffect(
@@ -389,16 +424,17 @@ def test_play_out_goes_through_catch_up_with_the_turns_own_rng(monkeypatch):
     calls = []
     original = pipeline.catch_up
 
-    def spy(state, until_s, context, stream):
-        calls.append((state.world_s, until_s, stream.seed))
-        return original(state, until_s, context, stream)
+    def spy(state, until_s, context, stream, **options):
+        calls.append((state.world_s, until_s, stream.seed, options))
+        return original(state, until_s, context, stream, **options)
 
     monkeypatch.setattr(pipeline, "catch_up", spy)
     resolution = Resolution(steps=[settled(0, 60), settled(1, 0), settled(2, 30)])
 
     pipeline.play_out(grounded_world(), resolution, ctx(), rng())
 
-    assert calls == [(0, 60, rng().seed), (60, 90, rng().seed)]
+    # On play_out's own working copy, so catching up doesn't copy a long story's state again.
+    assert calls == [(0, 60, rng().seed, {"copy": False}), (60, 90, rng().seed, {"copy": False})]
 
 
 def test_a_capped_stretch_still_takes_the_steps_time(monkeypatch):
@@ -408,7 +444,7 @@ def test_a_capped_stretch_still_takes_the_steps_time(monkeypatch):
         new.pending_events[f"e-{n}"] = event(f"e-{n}", new.world_s, created_s=n)
         return new
 
-    def capped_catch_up(state, until_s, context, stream):
+    def capped_catch_up(state, until_s, context, stream, **options):
         return advance_clock(state, until_s, runaway, max_events=5)
 
     monkeypatch.setattr(pipeline, "catch_up", capped_catch_up)

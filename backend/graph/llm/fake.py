@@ -17,6 +17,8 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import struct
+import zlib
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
@@ -37,11 +39,46 @@ from graph.llm.types import (
     Usage,
 )
 
-# The smallest valid PNG: one transparent pixel. The offline picture.
-TINY_PNG = bytes.fromhex(
-    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
-    "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082"
-)
+
+def png(width: int, height: int, rows: Callable[[int], bytes]) -> bytes:
+    """A truecolor PNG from `rows(y)`, the RGB bytes of row `y` (no Pillow needed)."""
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    raw = b"".join(b"\x00" + rows(y) for y in range(height))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(raw, 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+def offline_picture(aspect_ratio: str = "3:4") -> bytes:
+    """The offline model's picture: a quiet dusk gradient in the picture's own shape, so the
+    app's slot shows something real when it is drawn locally (M3)."""
+    across, _, down = aspect_ratio.partition(":")
+    try:
+        ratio = int(across) / int(down)
+    except (ValueError, ZeroDivisionError):
+        ratio = 3 / 4
+    height = 96
+    width = max(1, round(height * ratio))
+    top, bottom = (0x2E, 0x3A, 0x5C), (0x0B, 0x0D, 0x12)
+
+    def row(y: int) -> bytes:
+        t = y / (height - 1)
+        pixel = bytes(round(a + (b - a) * t) for a, b in zip(top, bottom, strict=True))
+        return pixel * width
+
+    return png(width, height, row)
+
+
+TINY_PNG = png(1, 1, lambda _: b"\x2e\x3a\x5c")
+"""A one-pixel picture, for tests and scripted runs that only need some image bytes."""
 
 
 @dataclass(frozen=True)
@@ -171,9 +208,9 @@ OFFLINE_TEXT = "(Offline model: set LLM_PROVIDER=vertex or add your own API key 
 
 
 def offline_reply(request: Request) -> Reply:
-    """The offline model: a minimal valid answer for any schema, a note, or a blank picture."""
+    """The offline model: a minimal valid answer for any schema, a note, or a plain picture."""
     if request.image is not None:
-        return Reply(images=(TINY_PNG,))
+        return Reply(images=(offline_picture(request.image.aspect_ratio),))
     if request.json_schema is not None:
         return Reply(json=fill_schema(request.json_schema))
     return Reply(text=OFFLINE_TEXT)

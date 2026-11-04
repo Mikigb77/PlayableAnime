@@ -26,27 +26,34 @@ enum OutOfCreditsOutcome {
 /// ```dart
 /// on ApiException catch (e) {
 ///   if (e.code == ApiErrorCode.outOfCredits) {
-///     final outcome = await showOutOfCreditsSheet(context, e);
+///     final outcome = await showOutOfCreditsSheet(context, error: e, retriesItself: true);
 ///     if (outcome == OutOfCreditsOutcome.keyAdded) retry();
 ///   }
 /// }
 /// ```
+///
+/// A saved key says so in a snackbar: "trying again on it" when the caller goes again by itself
+/// ([retriesItself]), otherwise "try again to carry on".
 Future<OutOfCreditsOutcome> showOutOfCreditsSheet(
-  BuildContext context, [
+  BuildContext context, {
   ApiException? error,
-]) async {
+  bool retriesItself = false,
+}) async {
   final outcome = await showAppSheet<OutOfCreditsOutcome>(
     context: context,
-    builder: (_) => OutOfCreditsSheet(error: error),
+    builder: (_) => OutOfCreditsSheet(error: error, retriesItself: retriesItself),
   );
   return outcome ?? OutOfCreditsOutcome.dismissed;
 }
 
 class OutOfCreditsSheet extends ConsumerStatefulWidget {
-  const OutOfCreditsSheet({super.key, this.error});
+  const OutOfCreditsSheet({super.key, this.error, this.retriesItself = false});
 
   /// The `out_of_credits` error, for `details.balance_cents` and `details.available_cents`.
   final ApiException? error;
+
+  /// The caller tries the refused request again once a key is saved, so the note says so.
+  final bool retriesItself;
 
   @override
   ConsumerState<OutOfCreditsSheet> createState() => _OutOfCreditsSheetState();
@@ -115,9 +122,12 @@ class _OutOfCreditsSheetState extends ConsumerState<OutOfCreditsSheet> {
                   child: OwnKeyEditor(
                     autofocus: true,
                     onSaved: () {
-                      ScaffoldMessenger.maybeOf(
-                        context,
-                      )?.showSnackBar(SnackBar(content: Text(l10n.oocKeySaved)));
+                      final saved = widget.retriesItself
+                          ? l10n.oocKeySavedRetrying
+                          : l10n.oocKeySaved;
+                      ScaffoldMessenger.maybeOf(context)
+                        ?..hideCurrentSnackBar()
+                        ..showSnackBar(SnackBar(content: Text(saved)));
                       Navigator.of(context).pop(OutOfCreditsOutcome.keyAdded);
                     },
                   ),

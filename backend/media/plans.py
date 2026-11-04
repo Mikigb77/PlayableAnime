@@ -76,15 +76,11 @@ def plan_picture(
         return link
 
 
-def replan(image: Image, *, trigger: str) -> Image:
-    """Plans a skipped picture again, as when the player asks for it with Illustrate (M2)."""
-    with transaction.atomic():
-        image = Image.objects.select_for_update().get(pk=image.pk)
-        if image.status == ImageStatus.SKIPPED:
-            _reset(image, trigger)
-            image.save()
-            image.sync_scenes()
-        return image
+def plan_again(image: Image, *, trigger: str) -> None:
+    """Plans a skipped picture again, as when the player asks for it with Illustrate (M2). The
+    caller holds the picture's row lock and saves it."""
+    if image.status == ImageStatus.SKIPPED:
+        _reset(image, trigger)
 
 
 def _image_for(

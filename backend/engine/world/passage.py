@@ -19,10 +19,14 @@ from engine.world.scheduling import World
 from engine.world.tick import plan_ticks
 
 
-def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) -> TimePassage:
+def catch_up(
+    state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng, *, copy: bool = True
+) -> TimePassage:
     """Move the world to `until_s` (never backwards), applying everything due on the way.
 
-    The input state is never changed. The tick and the clocks are keyed by their own in-world
+    The input state is never changed, unless a caller that owns it passes `copy=False` (such as
+    `play_out`, on its working copy): a long story's state is large, and copying it is most of a
+    turn's own time. The tick and the clocks are keyed by their own in-world
     times and every event rolls from its own seed, so splitting the same stretch into steps
     plays it the same way, except that a stretch longer than `MAX_TICKS_PER_PASSAGE` days spaces
     its ticks by its own length.
@@ -30,7 +34,7 @@ def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) 
     if world_stopped(state):
         return TimePassage(state=state, started_s=state.world_s, ended_s=state.world_s)
     until_s = max(until_s, state.world_s)
-    prepared = state.model_copy(deep=True)
+    prepared = state.model_copy(deep=True) if copy else state
     w = World(state=prepared, ctx=ctx, at_s=prepared.world_s, rng=rng.child("world"))
     ensure_clock_events(w)
     plan_ticks(w, until_s)
@@ -39,5 +43,6 @@ def catch_up(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng) 
         until_s,
         lambda current, event: apply_in_place(current, event, ctx, rng),
         needs_player=needs_player,
+        copy=False,  # `prepared` is this passage's own copy already
     )
     return passage

@@ -227,6 +227,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a scene that is written quickly is still followed up to its top', (tester) async {
+    // The whole scene arrives a moment after the action, before the page has followed it.
+    await serve(
+      tester,
+      pace: const FakePace(
+        latency: Duration.zero,
+        firstWords: Duration(milliseconds: 60),
+        perChunk: Duration.zero,
+        picture: Duration(seconds: 30),
+      ),
+    );
+    await open(tester);
+    await toEnd(tester);
+    await send(tester, 'I look around the courtyard');
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester, frames: 12);
+
+    final feed = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+    final scene = find.byWidgetPredicate((w) => w is SceneView && w.scene.turn == 4);
+    final top = tester.getTopLeft(scene).dy - feed;
+    final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    final atEnd = scroll.position.maxScrollExtent - scroll.position.pixels < 1;
+    expect(top <= Space.lg + 1 || atEnd, isTrue, reason: 'the new scene starts $top px down');
+    expect(top, greaterThanOrEqualTo(0));
+  });
+
   testWidgets('a story started from a draft plays its opening scene', (tester) async {
     await serve(tester);
     late String id;
@@ -242,9 +268,74 @@ void main() {
     });
     await open(tester, id: id);
     await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester);
     expect(words('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
     final turns = backend.requests.where((r) => r.uri.path.endsWith('/turns'));
     expect(turns.single.json['kind'], 'opening');
+    // The opening reads from the title page, which stays whole above it.
+    final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    expect(scroll.position.pixels, 0);
+
+    // Opened again later, it lands on the title page too.
+    await open(tester, id: id);
+    await settle(tester, frames: 12);
+    final again = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    expect(again.position.pixels, 0);
+  });
+
+  testWidgets('an opening played again on the player\'s own key reads from the title page', (
+    tester,
+  ) async {
+    await serve(tester);
+    late String id;
+    await tester.runAsync(() async {
+      final draft =
+          await api.post('/v1/drafts', {
+                'premise': 'A lighthouse keeper finds a door in the sea.',
+                'rating': 'teen',
+              })
+              as JsonMap;
+      final started = await api.post('/v1/drafts/${draft['id']}/start', {}) as JsonMap;
+      id = started['story_id'] as String;
+    });
+    final account = backend.data.account;
+    account.charge(
+      FakeAuthState.demoUserId,
+      kind: 'adjustment',
+      cents: account.balanceOf(FakeAuthState.demoUserId),
+      now: DateTime.now(),
+    );
+    await open(tester, id: id);
+    await settle(tester);
+    // Refused for credits, then sent again on the key the player adds on the sheet.
+    await tester.tap(find.byKey(const Key('ooc.useKey')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('account.ownKey')), 'AIza-from-the-sheet');
+    await tester.tap(find.byKey(const Key('account.ownKey.save')));
+    await settle(tester);
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester, frames: 12);
+
+    expect(words('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
+    final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    expect(scroll.position.pixels, 0);
+  });
+
+  testWidgets('a standing action reads in the app\'s words, not the server\'s wire name', (
+    tester,
+  ) async {
+    await serve(tester);
+    await open(tester);
+    await toEnd(tester);
+    await tester.tap(find.widgetWithText(ActionChip, l10n.standingWait).last);
+    await settle(tester);
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester);
+
+    final saved = tester.widgetList<SceneView>(find.byType(SceneView)).last.scene;
+    expect((saved.kind, saved.playerAction), ('standing', 'wait'));
+    final card = find.byWidgetPredicate((w) => w is SceneCard && w.playerAction != null).last;
+    expect(tester.widget<SceneCard>(card).playerAction, l10n.standingWait);
   });
 
   testWidgets('scene details show the steps, the roll and where the plan stopped', (tester) async {

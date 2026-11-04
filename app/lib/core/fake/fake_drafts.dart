@@ -162,6 +162,8 @@ void registerDraftRoutes(FakeBackend b) {
     if (draft['story_id'] case final String storyId) {
       return FakeResponse.json({'story_id': storyId, 'version': 1});
     }
+    // A stale copy starts nothing (T10).
+    state.editable(r);
     final story = b.data.stories.add(
       FakeStory(
         id: b.data.id('story'),

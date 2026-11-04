@@ -157,13 +157,16 @@ failed turn](docs/screenshots/play-screen.jpg)
 settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
 
 - **Where it opens:** at the top of the newest scene, so the player picks up where they left off. A
-  title page with the genre and title sits above the opening scene; older scenes load above as the
-  player scrolls back, and the page never moves under them. **Latest** appears when they are far
-  back.
+  title page with the genre and title sits above the opening scene, and a story whose newest scene
+  is its opening opens on that title page, which stays whole while the opening streams in. Older
+  scenes load above as the player scrolls back, and the page never moves under them. **Latest**
+  appears when they are far back.
 - **A turn:** the player's action appears at once, then the words stream in under it (S3). The page
   follows the scene as it grows but stops at its top, so it is read from the first word at the
   player's own pace. When it is saved, the time chip and event badge join it without moving the
-  words, and the choices rise in below.
+  words, and the choices rise in below; a scene written faster than the page could follow is
+  still brought up to its top, or to its choices when all of it fits. A standing action reads as
+  **Wait** or **Observe**, in the app's words.
 - **Pictures** take their place under the words they belong to, as a shimmer in the right shape,
   and fade in when painted (M3). A picture that never comes leaves no trace.
 - **Why it went that way** (A8): each scene's "How it played out" sheet lists the steps with their

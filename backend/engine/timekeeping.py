@@ -148,6 +148,7 @@ def advance_clock(
     *,
     needs_player: NeedsPlayer = _flagged,
     max_events: int = MAX_EVENTS_PER_PASSAGE,
+    copy: bool = True,
 ) -> TimePassage:
     """Move the world clock to `until_s`, applying each pending event due on the way (W10).
 
@@ -161,13 +162,14 @@ def advance_clock(
     move the clock or change the timeline. `needs_player(state, event)` decides, once the event
     has applied, whether it stops the clock; by default it reads `event.needs_player`, and the
     living world can decide from the state instead (guards arriving where the player no longer
-    is aren't an interruption). The input state is never changed.
+    is aren't an interruption). The input state is never changed, unless the caller passes its
+    own private copy with `copy=False`: copying a long story's state is most of a turn's own time.
     """
     if until_s < state.world_s:
         raise ValueError(f"time never runs backwards: {until_s} is before {state.world_s}")
     started = state.world_s
     timeline = state.timeline_id
-    current = state.model_copy(deep=True)
+    current = state.model_copy(deep=True) if copy else state
     fired: list[PendingEvent] = []
     while due := current.due_events(until_s):
         if len(fired) >= max_events:

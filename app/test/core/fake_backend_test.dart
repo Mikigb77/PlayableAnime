@@ -464,6 +464,54 @@ void main() {
       expect(fresh.expiresAt, now.add(const Duration(minutes: 10)));
     });
 
+    test('illustrating on credits that cannot pay for it is a 402 that changes nothing', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      final turn = story.scenes.last.turn;
+      final before = story.scenes.last.image?.status;
+      backend.data.account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'adjustment',
+        cents: await balance(),
+        now: now,
+      );
+
+      await expectLater(
+        stories.illustrate(story.id, turn),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', ApiErrorCode.outOfCredits)
+              .having((e) => e.balanceCents, 'balance', 0),
+        ),
+      );
+      expect((await stories.get(story.id)).scenes.last.image?.status, before);
+    });
+
+    test(
+      'illustrating a picture still being drawn answers pending, whatever the credits',
+      () async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.action('[fail:picture] I look at the sky', inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        final turn = Scene.fromJson((events.last as SceneCompleted).scene).turn;
+        expect((await stories.picture(story.id, turn)).status, 'skipped');
+        expect((await stories.illustrate(story.id, turn)).isPending, isTrue);
+        backend.data.account.charge(
+          FakeAuthState.demoUserId,
+          kind: 'adjustment',
+          cents: await balance(),
+          now: now,
+        );
+
+        // As on the server: a claimed picture is being drawn and its hold already placed.
+        expect((await stories.illustrate(story.id, turn)).isPending, isTrue);
+      },
+    );
+
     test('[fail:picture] plans a picture that is then skipped, free of charge', () async {
       final story = await stories.get((await library.stories()).single.id);
       final events = await collect(
