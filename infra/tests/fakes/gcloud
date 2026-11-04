@@ -24,7 +24,7 @@ for arg in "$@"; do
   esac
 done
 
-verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value "
+verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value read "
 group=''
 verb=''
 resource=''
@@ -77,9 +77,18 @@ case "$group/$verb" in
   "run jobs/execute")
     if [[ " $* " == *" --args=manage.py,draw_premise_covers "* ]]; then
       [[ -z "${FAKE_FAIL_COVERS:-}" ]]
+    elif [[ " $* " == *" --args=manage.py,check_models "* ]]; then
+      [[ -z "${FAKE_FAIL_MODELS:-}" ]]
     else
       [[ -z "${FAKE_FAIL_MIGRATION:-}" ]]
     fi
+    ;;
+  "logging/read")
+    [[ -z "${FAKE_FAIL_LOGS:-}" ]] || {
+      echo "ERROR: (fake) PERMISSION_DENIED: logging.logEntries.list" >&2
+      exit 1
+    }
+    printf '2026-11-04T07:35:00Z\tERROR\tfake-log-line Model call rejected\n'
     ;;
   # Who may call the service: $state/public exists while allUsers is an invoker.
   "run services/add-iam-policy-binding")

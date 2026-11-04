@@ -10,8 +10,11 @@
 # 5. Deploy the service to europe-west3 and move all traffic to it (T1, B10).
 # 6. Check /health. If it or any step since the deploy began fails, roll traffic back.
 # 7. Let anyone call the API, which checks sign-in itself (T8), unless API_ACCESS is private.
-# 8. Draw the starter covers that are missing, in a job of its own whose failure doesn't fail the
+# 8. Call each model the app uses once, as the service would (check_models). A model Vertex AI
+#    refuses fails the run with its reason, without rolling back: the code isn't at fault.
+# 9. Draw the starter covers that are missing, in a job of its own whose failure doesn't fail the
 #    deploy.
+# A failed job prints its own logs here, so the reason shows in GitHub.
 # Meanwhile the Android app is built, and once the API is up it is published as the latest
 # GitHub release's lucid-saga.apk, which the README links.
 #
@@ -166,11 +169,42 @@ jobs:
         env:
           PREVIOUS_REVISION: ${{ steps.service.outputs.previous_revision }}
 
+  # About 4 cents, most of it one small picture. A failure turns the run red so it is seen, and
+  # leaves the new revision serving, since rolling back wouldn't make a refused model answer.
+  models:
+    name: Check the models
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: infra/deploy.sh models
+
   # Skips the covers that exist, so only the first deploy draws (about $0.37 in all). Its own job,
-  # so the APK doesn't wait for it, and a failure here doesn't fail the deploy.
+  # so the APK doesn't wait for it, and a failure here doesn't fail the deploy. It runs after the
+  # model check, which it would fail the same way, so each job's logs are its own.
   covers:
     name: Draw the starter covers
-    needs: deploy
+    needs: models
     runs-on: ubuntu-latest
     timeout-minutes: 40
     continue-on-error: true

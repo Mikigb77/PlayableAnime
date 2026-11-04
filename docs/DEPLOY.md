@@ -107,6 +107,11 @@ BUDGET_AMOUNT=25 infra/bootstrap.sh
 GitHub sign in only for deploys started by hand, so the push to `main` would be refused, and it
 lacked the role that makes the API reachable. A re-run fixes both and changes nothing else.
 
+**Run it again once after 2026-11-04's first deploy.** That version adds the read-only account
+that lets threads [read Google Cloud](#reading-google-cloud) and lets the deploy print a failed
+job's logs. Until then the Ops workflow can't sign in, and a failed job only says where its logs
+are.
+
 `BUDGET_AMOUNT` is the monthly alert threshold in the billing account's currency (25 by default).
 The script shows the account and project, reads the two URLs, asks for confirmation, then runs
 the steps below. Running it again brings everything back in line and changes nothing that is
@@ -119,7 +124,8 @@ already right: secrets that have a value keep it, and the budget's amount is upd
 | 3. Artifact Registry | A Docker repository `playable-anime` in `europe-west3`, with a cleanup policy: keep the 10 newest images, delete the rest once 30 days old ([`artifact-cleanup.json`](../infra/artifact-cleanup.json)). | 0.5 GiB free, then about $0.10 per GiB-month. Expect a few cents a month. |
 | 4. Secrets | `database-url` (pooled), `database-url-direct` and `django-secret-key` (generated), each stored in `europe-west3` only, with read access for the runtime account. | 6 versions and 10,000 reads a month are free; these are 3 versions. Free. |
 | 5. Pictures bucket | `gs://playable-anime-pictures` in `europe-west3`: uniform access, public access prevention enforced, soft delete off so a deleted account's pictures are gone at once (T12), and CORS that lets the web build read signed URLs ([`storage-cors.json`](../infra/storage-cors.json)). The runtime account gets `storage.objectUser` on the bucket and `iam.serviceAccountTokenCreator` on itself, which is what [signed URLs without a key](#signed-urls-without-a-key) need. | About $0.02 per GB-month (no free tier in Europe), $0.005 per 1,000 uploads, $0.12 per GB downloaded. 1,000 pictures of about 1.5 MB cost about $0.03 a month to keep and $0.18 to view once. |
-| 6. Deployer and federation | A `github-deployer` account with `run.developer` (deploy services and jobs), a custom role `lucidSagaApiAccess` with only `run.services.getIamPolicy` and `run.services.setIamPolicy` (so the deploy can [decide who may call the API](#who-may-call-the-api)), `run.invoker` (for the post-deploy health check), `iam.serviceAccountUser` on the runtime account only, and `artifactregistry.writer` on the repository only. A Workload Identity pool `github` with a provider that admits only `.github/workflows/deploy.yml` on `main` of this repository (by its numeric id), run by a push to `main` or started by hand. | Free |
+| 6. Deployer and federation | A `github-deployer` account with `run.developer` (deploy services and jobs), a custom role `lucidSagaApiAccess` with only `run.services.getIamPolicy` and `run.services.setIamPolicy` (so the deploy can [decide who may call the API](#who-may-call-the-api)), `run.invoker` (for the post-deploy health check), `logging.viewer` (to print a failed job's logs in the run), `iam.serviceAccountUser` on the runtime account only, and `artifactregistry.writer` on the repository only. A Workload Identity pool `github` with a provider that admits only `.github/workflows/deploy.yml` on `main` of this repository (by its numeric id), run by a push to `main` or started by hand. | Free |
+| 6c. Read-only ops | A `github-ops` account with `viewer` and `logging.viewer`, which read every setting and log but change nothing and read no secret's value or stored picture, and a pool `github-ops` of its own whose provider admits only `.github/workflows/ops.yml` on `main`, started by hand or through the API. Being a separate pool, it can never sign in as the deployer, nor the deploy as it. See [Reading Google Cloud](#reading-google-cloud). | Free |
 | 7. Budget | A monthly budget on the project, measured before credits so free credits can't hide real usage. It alerts by email; it does not stop spending. | Free |
 
 Every command the bootstrap and the deploy run is listed under [Every command](#every-command).
@@ -238,12 +244,36 @@ waiting its turn.
 7. **Decide who may call the API** (`infra/deploy.sh access`): anyone, by default, so the app can
    reach it ([below](#who-may-call-the-api)). A failure here fails the run but keeps the new
    revision, which passed its health check.
-8. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, in a job of its own
+8. **Check the models** (`infra/deploy.sh models`): the migration job runs
+   `manage.py check_models`, which calls each model the app uses once, on the service's settings
+   and account ([below](#checking-the-models)). If Vertex AI refuses one, the run fails with its
+   reason, and the new revision keeps serving: rolling back wouldn't make the model answer.
+9. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, in a job of its own
    ([below](#drawing-the-starter-covers)). A failure there doesn't fail the deploy.
-9. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 8,
-   and published only once they pass.
+10. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 7,
+    and published only once they pass.
 
 The run's summary shows the image, the new and previous revisions, the URL and the APK's link.
+When the migration, the model check or the covers job fails, the run prints that job's own log
+lines, so the reason is in GitHub without opening the Cloud console.
+
+### Checking the models
+
+The first deploy put the API online with every call to Gemini failing, and only players found out:
+"The storyteller is unavailable", and no covers. Each deploy now calls each model the app uses
+once, before anyone else does. Only the models in use are called, each once whichever nodes share
+it: today the interpret, narrator and checker models and the picture model, about 4 cents in all,
+most of it one small picture. The evals' judge is never called here. Each line of the output says
+which model answered, or Vertex AI's reason it didn't, such as a model name that doesn't exist, a
+missing permission or no quota:
+
+```text
+gemini-3.5-flash (narrator, drafter): ok in 1.4 s
+gemini-3.1-flash-lite-image (picture): FAILED (invalid): GoogleModelNotFoundError: ...
+```
+
+To check by hand: `gcloud run jobs execute playable-anime-migrate --project=playable-anime
+--region=europe-west3 --args=manage.py,check_models --task-timeout=10m --wait`.
 
 ### Drawing the starter covers
 
@@ -326,6 +356,38 @@ url = blob.generate_signed_url(
     access_token=credentials.token,
 )
 ```
+
+## Reading Google Cloud
+
+Threads, and anyone with write access to this repo, read Google Cloud through the **Ops** workflow
+([`ops.yml`](../.github/workflows/ops.yml), [`infra/ops.sh`](../infra/ops.sh)), so nobody has to
+open the console or bring a laptop to see a log. It runs one gcloud command and prints its output
+in the run's log. It signs in as `github-ops` through its own Workload Identity pool, with no key
+(B11): that account reads every setting and log, and can change nothing and read no secret's value
+or stored picture. The script also refuses `auth` and `config` commands, `--account`,
+`--impersonate-service-account`, token printing, service-account keys and secret values, and the
+output can't issue GitHub workflow commands.
+
+Start it on `main` with a gcloud command without `gcloud`, or with none for the last 3 hours of
+the API's and its jobs' warnings and errors:
+
+- In GitHub: **Actions > Ops > Run workflow**, then read the run's log.
+- From a thread: dispatch `ops.yml` on `main` with the input `command`, then read the newest run's
+  job log (the GitHub tools' workflow run and job log calls, or `POST
+  /repos/Mikigb77/PlayableAnime/actions/workflows/ops.yml/dispatches` with
+  `{"ref": "main", "inputs": {"command": "..."}}`).
+
+```text
+(empty)                                                        recent warnings and errors
+logging read 'severity>=ERROR AND jsonPayload.message="Model call rejected"' --freshness=1d --limit=20
+run services describe playable-anime-api --region=europe-west3 --format=yaml
+run jobs executions list --job=playable-anime-migrate --region=europe-west3
+projects get-iam-policy playable-anime --format=yaml
+services list --enabled
+```
+
+It reads only. Changes still go through `infra/` in a PR and a re-run of the bootstrap, or through
+the deploy.
 
 ## Who may call the API
 
@@ -414,9 +476,9 @@ free tiers or a few cents a month.
 | Cloud Storage, pictures | About $0.02 per GB-month, $0.005 per 1,000 writes, $0.0004 per 1,000 reads, $0.12 per GB served to the internet. | Cents until there are many players. |
 | Workload Identity Federation, service accounts, IAM, budgets, enabling APIs | Free | Free |
 | Cloud Logging and Error Reporting | First 50 GiB of logs a month free | Free |
-| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dev` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
+| GitHub Actions | This private repo's free plan includes 2,000 minutes a month. An Ops run takes about a minute. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dev` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
 | Neon | A deploy wakes the production compute for the migration. | Seconds of compute. |
-| Vertex AI (Gemini) | Per token and per picture ([ARCHITECTURE.md](ARCHITECTURE.md#images)) | The real cost, guarded by T9 and the budget alert. |
+| Vertex AI (Gemini) | Per token and per picture ([ARCHITECTURE.md](ARCHITECTURE.md#images)) | The real cost, guarded by T9 and the budget alert. Each deploy's model check adds about $0.04. |
 
 Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 [Artifact Registry](https://cloud.google.com/artifact-registry/pricing),
@@ -438,7 +500,10 @@ Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 | The deploy fails with `does not have permission to access secret` | The runtime account lost `secretAccessor` on a secret; re-run the bootstrap. |
 | `/health` answers 400 | Django rejected the host: the backend must read `ALLOWED_HOSTS`. |
 | `/health` answers 401 or 403 | The smoke test's ID token was refused; check that `github-deployer` still has `run.invoker`. |
-| The migrate job fails at once | The image lacks `manage.py` in its working directory, or `DATABASE_URL` isn't the direct URL. See the job's logs. |
+| The migrate job fails at once | The image lacks `manage.py` in its working directory, or `DATABASE_URL` isn't the direct URL. See the job's logs, which the run prints. |
+| "Check the models" fails | The run prints each model's answer and Vertex AI's reason. `NotFound` means the model name in `backend/graph/llm/config.py` (or a `<NODE>_MODEL` setting) doesn't exist in Vertex AI at `VERTEX_LOCATION`; `PermissionDenied` means the runtime account lacks `aiplatform.user`; `transient_429` means no quota for that model. |
+| A failed job prints `They couldn't be read here` | The deployer lacks `logging.viewer`: re-run the bootstrap. |
+| The Ops workflow fails at the sign-in | The bootstrap hasn't run since the Ops workflow was added, or the run isn't on `main`. |
 
 ## Changing or removing the setup
 
@@ -450,8 +515,9 @@ Removing pieces is Miki's call and can't be undone; each command below deletes i
 `gcloud artifacts repositories delete playable-anime --location=europe-west3`,
 `gcloud storage rm --recursive gs://playable-anime-pictures`, `gcloud secrets delete <name>`,
 `gcloud iam workload-identity-pools delete github --location=global` (it can be undeleted for 30
-days, and the bootstrap does that if it finds it deleted) and
-`gcloud iam service-accounts delete github-deployer@playable-anime.iam.gserviceaccount.com` and
+days, and the bootstrap does that if it finds it deleted), the same for `github-ops`, and
+`gcloud iam service-accounts delete github-deployer@playable-anime.iam.gserviceaccount.com` (or
+`github-ops@…`) and
 `gcloud iam roles delete lucidSagaApiAccess` (it can be undeleted for 7 days, and the bootstrap
 does that), each with `--project=playable-anime`. Never delete the runtime account. Old releases
 can be deleted from the repository's **Releases** page; the latest one is what the README links.
@@ -495,10 +561,17 @@ gcloud iam roles create lucidSagaApiAccess --project=playable-anime '--title=Luc
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=projects/playable-anime/roles/lucidSagaApiAccess --condition=None --format=none
 gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/run.invoker --condition=None --format=none
 gcloud iam service-accounts add-iam-policy-binding playable-anime-api@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/iam.serviceAccountUser --format=none
+gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/logging.viewer --condition=None --format=none
 gcloud artifacts repositories add-iam-policy-binding playable-anime --project=playable-anime --location=europe-west3 --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/artifactregistry.writer --format=none
 gcloud iam workload-identity-pools create github --project=playable-anime --location=global '--display-name=GitHub Actions' '--description=Keyless sign-in for GitHub Actions'
 gcloud iam workload-identity-pools providers create-oidc playable-anime-deploy --project=playable-anime --location=global --workload-identity-pool=github '--display-name=PlayableAnime deploy workflow' --issuer-uri=https://token.actions.githubusercontent.com --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref '--attribute-condition=assertion.repository_id == '\''1444213567'\'' && assertion.repository_owner_id == '\''112938189'\'' && assertion.ref == '\''refs/heads/main'\'' && (assertion.event_name == '\''push'\'' || assertion.event_name == '\''workflow_dispatch'\'') && assertion.workflow_ref == '\''Mikigb77/PlayableAnime/.github/workflows/deploy.yml@refs/heads/main'\'''
 gcloud iam service-accounts add-iam-policy-binding github-deployer@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser --format=none
+gcloud iam service-accounts create github-ops --project=playable-anime '--display-name=GitHub Actions read-only ops'
+gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-ops@playable-anime.iam.gserviceaccount.com --role=roles/viewer --condition=None --format=none
+gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:github-ops@playable-anime.iam.gserviceaccount.com --role=roles/logging.viewer --condition=None --format=none
+gcloud iam workload-identity-pools create github-ops --project=playable-anime --location=global '--display-name=GitHub Actions ops' '--description=Keyless read-only sign-in for the Ops workflow'
+gcloud iam workload-identity-pools providers create-oidc playable-anime-ops --project=playable-anime --location=global --workload-identity-pool=github-ops '--display-name=PlayableAnime ops workflow' --issuer-uri=https://token.actions.githubusercontent.com --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref '--attribute-condition=assertion.repository_id == '\''1444213567'\'' && assertion.repository_owner_id == '\''112938189'\'' && assertion.ref == '\''refs/heads/main'\'' && assertion.event_name == '\''workflow_dispatch'\'' && assertion.workflow_ref == '\''Mikigb77/PlayableAnime/.github/workflows/ops.yml@refs/heads/main'\'''
+gcloud iam service-accounts add-iam-policy-binding github-ops@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github-ops/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser --format=none
 gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID --billing-project=playable-anime --display-name=playable-anime-monthly --budget-amount=25 --calendar-period=month --filter-projects=projects/playable-anime --credit-types-treatment=exclude-all-credits --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 --threshold-rule=percent=1.0,basis=forecasted-spend
 
 # infra/deploy.sh migrate IMAGE
@@ -511,6 +584,9 @@ gcloud run services update-traffic playable-anime-api --project=playable-anime -
 
 # infra/deploy.sh access (API_ACCESS=private removes the same binding instead)
 gcloud run services add-iam-policy-binding playable-anime-api --project=playable-anime --region=europe-west3 --member=allUsers --role=roles/run.invoker --format=none
+
+# infra/deploy.sh models
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,check_models --task-timeout=10m --wait
 
 # infra/deploy.sh covers
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait
