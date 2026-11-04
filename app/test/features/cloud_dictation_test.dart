@@ -160,44 +160,73 @@ void main() {
     expect(call.wav.length, 44 + speech.length * 2);
     expect(String.fromCharCodes(call.wav.sublist(0, 4)), 'RIFF');
     expect(box.transcribing, 1);
-    expect(box.results, [('I bow to Senior Brother Zhao.', true)]);
+    expect(box.results, [('I bow to Senior Brother Zhao.', false)]);
     expect(box.stopped, 1);
     expect(box.failures, isEmpty);
     expect(recorder.stops, 1);
   });
 
   // Time is measured in the audio itself, so these need no clock.
-  test('a pause after speaking ends the dictation by itself', () async {
+  test('a pause to think never ends it, and only a second of it is sent', () async {
     final box = Box();
     await box.listen(engine);
-    await talk();
-    for (var i = 0; i < 24; i++) {
-      recorder.say(quiet);
+    await talk(); // a moment of the room, then a word
+    for (var i = 0; i < 700; i++) {
+      recorder.say(quiet); // seventy seconds to think
     }
     await pumpEventQueue();
-    expect(recorder.stops, 0, reason: '2.4 s of quiet is still a pause in the sentence');
+    expect(recorder.stops, 0);
+    expect(box.transcribing, 0);
+    expect(transcriber.calls, isEmpty, reason: 'a pause is not something to send');
 
-    recorder.say(quiet);
-    await pumpEventQueue();
+    await talk();
+    await engine.stop();
 
-    expect(recorder.stops, 1);
-    expect(box.transcribing, 1);
-    expect(box.results.single.$2, isTrue);
+    // The first word and the second, with the first second of the pause between them, and its
+    // last 300 ms, in case the second word starts softly.
+    expect(transcriber.calls.single.wav.length, 44 + (2 + 10 + 3 + 1) * speech.length);
+    expect(box.results, [('I bow to Senior Brother Zhao.', false)]);
+  });
+
+  test('digital silence as the mic warms up is not the room', () async {
+    final box = Box();
+    await box.listen(engine);
+    recorder.say(Uint8List(speech.length)); // the recorder's first chunk can be all zeros
+    await talk();
+    for (var i = 0; i < 100; i++) {
+      recorder.say(quiet);
+    }
+    await talk();
+    await engine.stop();
+
+    // Had the zeros set the room's level, the room's quiet would have been heard as sound.
+    expect(transcriber.calls.single.wav.length, 44 + (1 + 2 + 10 + 3 + 1) * speech.length);
+  });
+
+  test('a sound above the room is never cut, however long', () async {
+    final hum = tone(600); // about -35 dBFS: too loud to be the room's quiet
+    final box = Box();
+    await box.listen(engine);
+    for (var i = 0; i < 20; i++) {
+      recorder.say(hum);
+    }
+    await talk();
+    await engine.stop();
+
+    expect(transcriber.calls.single.wav.length, 44 + 22 * speech.length);
   });
 
   test('saying nothing sends nothing and is silence, not a failure', () async {
     final box = Box();
     await box.listen(engine);
-    for (var i = 0; i < 79; i++) {
+    for (var i = 0; i < 80; i++) {
       recorder.say(quiet);
     }
     await pumpEventQueue();
-    expect(recorder.stops, 0);
+    expect(recorder.stops, 0, reason: 'the player may still be thinking');
 
-    recorder.say(quiet);
-    await pumpEventQueue();
+    await engine.stop();
 
-    expect(recorder.stops, 1);
     expect(transcriber.calls, isEmpty);
     expect(box.failures, ['error_speech_timeout']);
     expect(const SpeechFailure('error_speech_timeout').isSilence, isTrue);
@@ -217,7 +246,7 @@ void main() {
     expect(box.results, hasLength(1));
   });
 
-  test('a minute is the longest dictation', () async {
+  test('a long dictation is written down in parts at gaps, and the mic stays on', () async {
     final box = Box();
     await box.listen(engine);
     for (var i = 0; i < 600; i++) {
@@ -225,10 +254,105 @@ void main() {
     }
     await pumpEventQueue();
 
+    // The first gap past 45 seconds sends what was said so far.
+    expect(recorder.stops, 0);
+    expect(transcriber.calls.single.wav.length, 44 + 451 * speech.length);
+    expect(box.results, [('I bow to Senior Brother Zhao.', false)]);
+    expect(box.transcribing, 0, reason: 'the player is still talking');
+
+    await engine.stop();
+
+    expect(transcriber.calls.map((call) => call.wav.length), [
+      44 + 451 * speech.length,
+      44 + 149 * speech.length,
+    ]);
+    expect(box.results, hasLength(2));
+    expect(box.stopped, 1);
+    expect(box.failures, isEmpty);
+  });
+
+  test('a part with no gap in it is sent at the longest', () async {
+    expect(
+      44 + const ListenLimits().longest.inSeconds * PcmFormat.speech.bytesPerSecond,
+      lessThan(maxAudioBytes),
+    );
+    final short = CloudSpeechEngine(
+      recorder: recorder,
+      transcriber: transcriber,
+      limits: const ListenLimits(part: Duration(seconds: 2), longest: Duration(seconds: 3)),
+    );
+    final box = Box();
+    await box.listen(short);
+    await talk();
+    for (var i = 0; i < 40; i++) {
+      recorder.say(speech);
+    }
+    await pumpEventQueue();
+    await short.stop();
+
+    expect(transcriber.calls.map((call) => call.wav.length), [
+      44 + 30 * speech.length,
+      44 + 12 * speech.length,
+    ]);
+    expect(box.results, hasLength(2));
+  });
+
+  test('the words so far stay when a part cannot be written down, and the mic stops', () async {
+    transcriber.failure = const ApiException(ApiErrorCode.network);
+    final box = Box();
+    await box.listen(engine);
+    for (var i = 0; i < 451; i++) {
+      recorder.say(i.isEven ? quiet : speech);
+    }
+    await pumpEventQueue();
+
+    expect(box.failures, [SpeechFailure.offline]);
     expect(recorder.stops, 1);
-    expect(transcriber.calls.single.wav.length, 44 + 600 * speech.length);
-    expect(transcriber.calls.single.wav.length, lessThan(maxAudioBytes));
-    expect(box.results, hasLength(1));
+    expect(recorder.recording, isFalse);
+
+    await engine.stop();
+    expect((box.stopped, box.failures.length), (0, 1));
+  });
+
+  test('a forgotten mic turns itself off', () async {
+    final forgetful = CloudSpeechEngine(
+      recorder: recorder,
+      transcriber: transcriber,
+      limits: const ListenLimits(forgotten: Duration(seconds: 3)),
+    );
+    final box = Box();
+    await box.listen(forgetful);
+    for (var i = 0; i < 30; i++) {
+      recorder.say(quiet);
+    }
+    await pumpEventQueue();
+
+    expect(recorder.stops, 1);
+    expect(transcriber.calls, isEmpty);
+    expect(box.failures, ['error_speech_timeout']);
+  });
+
+  test('a mic forgotten after a word writes the word down', () async {
+    final forgetful = CloudSpeechEngine(
+      recorder: recorder,
+      transcriber: transcriber,
+      limits: const ListenLimits(forgotten: Duration(seconds: 3)),
+    );
+    final box = Box();
+    await box.listen(forgetful);
+    await talk();
+    for (var i = 0; i < 29; i++) {
+      recorder.say(quiet);
+    }
+    await pumpEventQueue();
+    expect(recorder.stops, 0, reason: 'measured from the last word');
+
+    recorder.say(quiet);
+    await pumpEventQueue();
+
+    expect(recorder.stops, 1);
+    expect(transcriber.calls.single.wav.length, 44 + (2 + 10) * speech.length);
+    expect((box.results.length, box.stopped), (1, 1));
   });
 
   test('a browser that records 48 kHz stereo still sends 16 kHz mono', () async {

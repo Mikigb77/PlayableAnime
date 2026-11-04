@@ -1114,11 +1114,22 @@ The app reaches two recognizers through one interface, `SpeechEngine` in
 the phone's recognizer heard English badly. The app records 16 kHz mono 16-bit PCM with the
 [`record`](https://pub.dev/packages/record) plugin (7.1, on Android, iOS, macOS and the web), with
 the platform's gain control and noise suppression on. A browser that can't record at 16 kHz sends
-its own rate, and `pcm.dart` averages it down. The clip ends on the player's tap, after 2.5 seconds
-of quiet once they have spoken (a level 12 dB above the room's and above -48 dBFS counts as
-speech), after 8 seconds with nothing said (nothing is sent), or at a minute. The app then posts it
-as a WAV to [`POST /v1/transcriptions`](API.md#dictation-v1-v2-v5-v6), with the story or draft and
-the story's language, and the mic spins until the words land in the box (V2).
+its own rate, and `pcm.dart` averages it down. A pause never ends the recording: the player's tap
+does (Miki, 2026-11-04). The app tracks the room's level (the quietest so far, rising at most 6 dB
+a second, ignoring digital silence such as a recorder warming up) and cuts each pause to its first
+second in what it sends, plus the pause's last 300 ms so the soft start of the next word is kept.
+It drops only audio within 6 dB of the room and below -40 dBFS, so a voice is never cut.
+
+The recording goes out in parts. At the first gap between words after 45 seconds of audio to send,
+or at 60 seconds with no gap (the API's 2 MiB limit is about 65 seconds), the part is posted as a
+WAV to [`POST /v1/transcriptions`](API.md#dictation-v1-v2-v5-v6), with the story or draft and the
+story's language, and the mic stays on. Parts are written down one after another, so their words
+land in order, each after anything typed meanwhile. A part in which nothing louder than -48 dBFS
+and 12 dB above the room was heard is not sent. On the tap the last part goes, and the mic spins
+until its words land in the box (V2). The mic also turns itself off after five minutes with
+nothing said (a forgotten mic) and when the app is hidden (`AppLifecycleListener.onHide` in
+`DictationButton`), writing down what was said as on a tap. If a part fails, the mic turns off
+with a message and the words so far stay.
 
 The backend's `speech/api.py` reads the names the player character knows in that story or draft
 (`engine.visibility.speech_vocabulary`: C6's known names, most relevant first, at most 100, never a
@@ -1139,7 +1150,7 @@ Billing goes through the meter like any model call (K2, T9): `meter.SPEECH`, hol
 20 dictations a minute and 600 a day on our key. The file version of the model costs $2.00 per
 million audio tokens in (32 a second) and $12 per million text tokens out (Vertex AI pricing page,
 2026-11-03), about $0.005 a minute of speech; a short action is about a tenth of a cent before the
-margin. Each dictation is a `speech` ledger entry, and its T5 line (logger `speech`) has sizes,
+margin. Each dictation, or each part of a long one, is a `speech` ledger entry, and its T5 line (logger `speech`) has sizes,
 counts, tokens and cost, never the words (T6). The deploy's `check_models` calls the speech model
 with a second of silence, so a model Vertex AI doesn't serve fails the deploy, not a player.
 
@@ -1154,7 +1165,8 @@ the transcript in the box as the player speaks. It listens for the story's langu
 not the phone's, so English spoken to a phone set to Spanish is heard as English.
 
 - **iOS:** `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are in
-  `Info.plist`. Apple stops a recognition task after about a minute.
+  `Info.plist`. The app asks it to listen through pauses of up to 30 seconds (`pauseFor`), and
+  Apple stops a recognition task after about a minute.
 - **Android:** the `RECORD_AUDIO` permission and, when targeting SDK 30 or later, a `<queries>`
   entry for the `android.speech.RecognitionService` intent. Recognition stops after a pause of a
   few seconds, and that can't be changed.
