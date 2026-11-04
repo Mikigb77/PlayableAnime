@@ -1,76 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!--
+    The forest gate. forest-gate.jpg was painted by Gemini on Vertex AI (2026-11-04; the model and
+    prompt are in DESIGN.md, "App icon"). It came as a 1024 px square with the scene
+    on an inner panel, so the panel's middle (pixels 225 to 809 across, 228 to 812 down) fills the
+    sharp square from 12 to 96 here. The margin around it, which only an Android launcher's motion
+    ever shows, is the same picture blurred, so the seam stays soft. render.mjs inlines the JPEG.
+  -->
   <defs>
-    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="108" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0E1024"/>
-      <stop offset="0.55" stop-color="#2A1E4C"/>
-      <stop offset="1" stop-color="#3D2346"/>
-    </linearGradient>
-    <radialGradient id="moonFill" cx="49" cy="41" r="26" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFF6DC"/>
-      <stop offset="0.55" stop-color="#F6D79A"/>
-      <stop offset="1" stop-color="#DDA052"/>
-    </radialGradient>
-    <radialGradient id="moonHalo" cx="54" cy="48" r="36" gradientUnits="userSpaceOnUse">
-      <stop offset="0.55" stop-color="#F3C77A" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#F3C77A" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="rock" x1="0" y1="72" x2="0" y2="108" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#151226"/>
-      <stop offset="1" stop-color="#0B0D12"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="0.5"/></filter>
-    <mask id="moonCut"><circle cx="54" cy="48" r="22" fill="#fff"/><use href="#hero" fill="#000" stroke="#000" stroke-width="2.4" stroke-linejoin="round" transform="translate(55.6 74)"/></mask>
-    <path id="star4" d="M0 -1 C0.12 -0.12 0.12 -0.12 1 0 C0.12 0.12 0.12 0.12 0 1 C-0.12 0.12 -0.12 0.12 -1 0 C-0.12 -0.12 -0.12 -0.12 0 -1 Z"/>
-    <g id="hero">
-      <ellipse cx="0.2" cy="-23.2" rx="2.5" ry="2.8"/>
-      <path d="M-2.6 -23.6 C-2.8 -26.4 -0.8 -27.6 1.2 -27.2 L4.6 -28.4 L3.2 -26.6 L7.4 -26.8 L4.4 -25 L8.2 -24.2 L4.4 -23.4 L6.6 -21.6 L3 -21.8 L2.2 -20.6 L-1.6 -21 Z"/>
-      <path d="M-0.9 -21.2 H1.1 V-19.4 H-0.9 Z"/>
-      <path d="M0.6 -20.4 C4 -21.8 8 -21.4 12.4 -23.6 C10.6 -21.2 7.6 -20 3 -19.4 Z"/>
-      <path d="M-3.6 -19.8 C-1.6 -20.4 2 -20.4 4 -19.8 L3.6 -17 L2.8 -10.6 L-2.4 -10.6 L-3.2 -17 Z"/>
-      <path d="M-2.6 -10.9 L3 -10.9 L3.4 -8.6 L-2.8 -8.6 Z"/>
-      <path d="M-2.8 -8.8 L0.2 -8.8 L-0.6 -4 L-1.4 0 L-3.4 0 L-2.8 -4.6 Z M0.4 -8.8 L3.4 -8.8 L3.4 -4.4 L4.4 0 L2.4 0 L1.2 -4.2 Z"/>
-      <path d="M-3.4 -19.4 L-5 -15 L-5.6 -11.2 L-4.2 -11 L-3.6 -14.6 L-2.4 -17.6 Z"/>
-      <path d="M-4.3 -11.7 L-5.3 -10.8 L-12.6 -0.2 L-12.1 -0.8 Z"/>
-      <path d="M-6.9 -12.3 L-3.3 -9.7 L-3.7 -9.2 L-7.3 -11.8 Z"/>
-      <path d="M-4.4 -11.6 L-3.3 -13.3 L-3.8 -13.6 L-4.9 -11.9 Z"/>
-      <path d="M2.4 -19.8 C6 -19.4 10 -18.6 15.6 -20.6 C14.2 -18.4 14.6 -16.8 17.6 -15.4 C14.2 -14.8 13.8 -13.4 15.4 -11 C11.8 -11.6 10 -10.4 8.6 -7.4 C7.6 -9.8 5.6 -10.6 3.2 -10.8 Z"/>
+    <filter id="soften" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="2.5"/>
+    </filter>
+    <clipPath id="sharp"><rect x="12" y="12" width="84" height="84"/></clipPath>
+    <path id="arch" d="M41 77 V41.5 C41 35.5 45.4 31 51 28.6 C56.6 31 61 35.5 61 41.5 V77 Z"/>
+    <g id="traveller">
+      <ellipse cx="52.3" cy="54.6" rx="2.1" ry="2.6"/>
+      <path d="M49.6 57.4 C51.4 56.2 53.4 56.2 55.2 57.6 C57.4 62 59.4 68.6 60.8 74.4 C57.6 75.4 49.6 75.4 46.6 74.4 C47.6 68.4 48.4 62 49.6 57.4 Z"/>
+      <path d="M50.6 74.6 H54.6 L54.4 80.4 H50.8 Z"/>
     </g>
   </defs>
 
   <g id="bg">
-    <rect width="108" height="108" fill="url(#dusk)"/>
-    <g fill="#F3E6C8">
-      <circle cx="22" cy="24" r="0.5" opacity="0.7"/>
-      <circle cx="86" cy="20" r="0.45" opacity="0.6"/>
-      <circle cx="16" cy="44" r="0.35" opacity="0.5"/>
-      <circle cx="92" cy="46" r="0.35" opacity="0.5"/>
-      <circle cx="72" cy="12" r="0.3" opacity="0.45"/>
-      <circle cx="36" cy="14" r="0.3" opacity="0.45"/>
-    </g>
-    <circle cx="54" cy="48" r="36" fill="url(#moonHalo)"/>
-    <circle cx="54" cy="48" r="22" fill="url(#moonFill)"/>
-    <g fill="#C98E45" opacity="0.22">
-      <circle cx="61" cy="40" r="3.4"/>
-      <circle cx="46" cy="55" r="2.6"/>
-      <circle cx="64" cy="53" r="1.8"/>
-      <circle cx="50" cy="36" r="1.5"/>
-    </g>
-    <g fill="#2A1E4C" filter="url(#soft)">
-      <path d="M14 61.5 C26 60.2 36 60.6 46 59.6 C56 58.6 64 57.4 74 58 C82 58.4 88 59.6 94 59.4 C88 61.6 80 62.6 72 62.2 C62 61.8 54 63 44 63.6 C34 64.2 24 63.4 14 61.5 Z" opacity="0.8"/>
-      <path d="M26 68.6 C36 67.6 44 67.8 52 67.2 C60 66.6 68 65.6 80 66.2 C72 68.4 64 69.2 54 69.8 C44 70.4 36 70 26 68.6 Z" opacity="0.65"/>
-    </g>
-    <use href="#star4" transform="translate(28 34) scale(2.2)" fill="#F3D9A4"/>
-    <use href="#star4" transform="translate(81 36) scale(1.5)" fill="#F3D9A4" opacity="0.85"/>
+    <rect width="108" height="108" fill="#0B0D12"/>
+    <image href="forest-gate.jpg" x="-20.363" y="-20.795" width="147.288" height="147.288"
+      preserveAspectRatio="none" filter="url(#soften)"/>
+    <image href="forest-gate.jpg" x="-20.363" y="-20.795" width="147.288" height="147.288"
+      preserveAspectRatio="none" clip-path="url(#sharp)"/>
   </g>
 
-  <g id="fg">
-    <path d="M0 108 L0 86 C10 84 20 82 30 80 L42 76.6 L50 74.4 L55.6 73.6 L60.4 74.6 L68 78 C78 80.5 92 82 108 84 L108 108 Z" fill="url(#rock)"/>
-    <use href="#hero" fill="#0D0B1A" transform="translate(55.6 74)"/>
-  </g>
+  <!-- The painting is one layer, so the adaptive foreground stays empty. -->
+  <g id="fg"></g>
 
   <g id="mono" fill="currentColor">
-    <circle cx="54" cy="48" r="22" mask="url(#moonCut)"/>
-    <use href="#hero" transform="translate(55.6 74)"/>
-    <path d="M30 80 L42 76.6 L50 74.4 L55.6 73.6 L60.4 74.6 L68 78 L78 80.4 L92 84 L92 96 L16 96 L16 84 Z"/>
+    <mask id="doorway">
+      <rect width="108" height="108" fill="#fff"/>
+      <use href="#traveller" fill="#000" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/>
+    </mask>
+    <g mask="url(#doorway)">
+      <use href="#arch"/>
+    </g>
   </g>
 </svg>

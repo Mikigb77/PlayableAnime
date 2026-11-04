@@ -2,13 +2,16 @@
 //
 //   NODE_PATH="$(npm root -g)" node tool/app_icon/render.mjs      (from app/)
 //
-// Needs Node 22.2 or later (for zlib.crc32) and Playwright with its Chromium (`npm install -g playwright`, then
-// `npx playwright install chromium`). It overwrites the PNGs below and nothing else.
+// Needs Node 22.2 or later (for zlib.crc32) and Playwright with its Chromium
+// (`npm install -g playwright`, then `npx playwright install chromium`). It overwrites the PNGs
+// below and nothing else.
 //
 // icon.svg is drawn on Android's 108 x 108 adaptive-icon grid and holds three layers:
 //   #bg    the full-bleed, opaque background
-//   #fg    the subject, on transparency; what matters stays inside the 66-unit safe circle
+//   #fg    a subject on transparency, for the launcher's parallax (it may be empty)
 //   #mono  a one-colour silhouette in currentColor, for Android 13 themed icons
+// What matters stays inside the 66-unit safe circle. Pictures that icon.svg links to by a plain
+// file name, such as forest-gate.jpg next to it, are inlined before drawing.
 // Each platform gets a square cut from the middle of the grid: Android's adaptive layers keep the
 // whole grid (the launcher masks the middle 72), iPhone and the web's own icons a side of 80, and
 // the web's maskable icons a side of 82.5, so the safe circle is exactly their 80% safe zone.
@@ -197,7 +200,14 @@ function chunk(type, data) {
 }
 
 const source = readFileSync(join(HERE, 'icon.svg'), 'utf8');
-const inner = source.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+const inner = source
+  .replace(/^[\s\S]*?<svg[^>]*>/, '')
+  .replace(/<\/svg>\s*$/, '')
+  .replace(/href="([\w.-]+)\.(png|jpe?g)"/g, (_, name, extension) => {
+    const data = readFileSync(join(HERE, `${name}.${extension}`)).toString('base64');
+    const type = extension === 'png' ? 'png' : 'jpeg';
+    return `href="data:image/${type};base64,${data}"`;
+  });
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();

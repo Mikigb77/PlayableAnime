@@ -155,21 +155,31 @@ together.
 ![The icon on iPhone, as an Android round icon and as an Android 13 themed
 icon](docs/screenshots/app-icon.jpg)
 
-A caped swordsman on a peak, his scarf and hair in the wind, before a huge moon (Miki's pick,
-2026-11-04). It is the app's night, its lucid gold and the anime look of its pictures, and at home
-screen size it still reads as a bright disc with a dark figure, on dark and light wallpapers.
+**The forest gate** (Miki's pick, 2026-11-04): a cloaked traveller walks through a glowing golden
+doorway in a dark forest, the moment a story begins. It is the app's night and lucid gold in the
+painterly anime look of its pictures, and at home-screen size it reads as a bright arch with a
+dark figure.
 
-- **One source:** `tool/app_icon/icon.svg`, drawn on Android's 108-unit adaptive-icon grid in three
-  layers: `#bg`, the sky, moon, clouds and stars, opaque; `#fg`, on transparency, the hero inside
-  the 66-unit safe circle and the peak he stands on, which runs out to the edges; and `#mono`, the
-  same scene in one colour for Android 13 themed icons, with a gap around the hero.
+- **The painting:** `tool/app_icon/forest-gate.jpg`, painted by Gemini on Vertex AI
+  (`gemini-3.1-flash-lite-image`, 1:1, 1K) from this prompt: "A glowing doorway of golden light
+  standing alone in a dark misty forest, a small cloaked traveller about to step through. Square
+  mobile app icon artwork for an anime interactive story game. One bold, centered subject that
+  stays readable at 48 pixels, kept inside the middle 60% of the frame, on a full-bleed background
+  that fills the whole square edge to edge. Painterly anime key-art style, cinematic low-key
+  lighting, deep ink-blue night tones with one strong warm gold accent. No text, no letters, no
+  logos, no watermark, no border, no frame, no rounded corners, no user interface." Its file keeps
+  the IPTC mark for AI-made media. It is 1024 px with the scene on an inner panel, so the App
+  Store's 1024 px icon is that panel scaled up; repaint at 2K before an iOS release.
+- **One source:** `tool/app_icon/icon.svg`, on Android's 108-unit adaptive-icon grid in three
+  layers: `#bg`, the painting, opaque; `#fg`, empty, since the painting is one layer; and `#mono`,
+  the doorway with the traveller cut out, for Android 13 themed icons.
 - **Every size from it:** `tool/app_icon/render.mjs` draws Android's adaptive layers and the icon
   for Android before 8, each size in the iOS asset catalog (opaque, as the App Store requires) and
   the web's favicon, manifest icons (maskable ones full bleed) and home-screen icon. To change the
   icon, edit the SVG, run the script (how is at its top) and commit the PNGs it writes.
   `test/app_icon_test.dart` checks that no size is missing.
 - **Store-safe:** like the screenshots, the icon stays 4+ in the stores (REQUIREMENTS.md, Apple
-  2.3.8): a lowered sword, no blood, no threat.
+  2.3.8).
 
 ## The play screen
 
