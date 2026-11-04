@@ -20,6 +20,7 @@ from engine.state import (
     PlaceStatus,
     Reputation,
     Rumor,
+    StatusChange,
     Visibility,
     WorldState,
 )
@@ -336,3 +337,70 @@ def test_a_change_recorded_without_its_old_status_falls_back_to_the_kinds_start(
 
     assert {p.id: p.lines for p in view.places}["bar"] == ["Building"]
     assert {f.id: f.lines for f in view.factions}["police"] == ["Police"]
+
+
+# --- Deeds in the world's words (G16, C6) ---------------------------------------------------
+
+
+def deed_texts(state: WorldState) -> dict[str, str]:
+    return {d.id: d.text for d in memory_view(state).deeds}
+
+
+def test_the_player_s_deeds_read_in_the_world_s_words():
+    state = cultivation_world()
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    state.characters["zhao"].status_history = [
+        StatusChange(status="dead", from_status="alive", known_by=["lin"], turn=3, world_s=0)
+    ]
+    own_deed(
+        state,
+        "kill",
+        kind="kill",
+        text="cut Zhao down by the well (it worked)",
+        victim_ids=["zhao"],
+        place_id="well",
+        severity=4,
+    )
+    own_deed(
+        state,
+        "hit",
+        actor_id="zhao",
+        kind="assault",
+        text="punch Lin (it worked)",
+        victim_ids=["lin"],
+        place_id="well",
+        known_by=["lin"],
+        severity=2,
+    )
+    own_deed(state, "bow", text="Bowed to the elder")
+
+    assert deed_texts(state) == {
+        "kill": "You killed Zhao Kun at the outer-court well.",
+        "hit": "Zhao Kun attacked you at the outer-court well.",
+        "bow": "Bowed to the elder",  # no words for it in the world: its own text
+    }
+    (since, *_) = status_view(state).since
+    assert since.text == "You killed Zhao Kun at the outer-court well."
+
+
+def test_a_deed_names_only_whom_the_player_knows_and_deaths_they_know_of():
+    """C6: Elder Mo is a stranger to Lin, so he is "someone"; and Lin doesn't know the strike
+    killed him, so it reads as the wounding Lin saw."""
+    state = cultivation_world()
+    mo = state.characters["elder-mo"]
+    mo.status = CharacterStatus.DEAD
+    mo.status_history = [StatusChange(status="dead", from_status="alive", turn=3, world_s=0)]
+    own_deed(
+        state,
+        "strike",
+        kind="kill",
+        text="strike the old man (it worked)",
+        victim_ids=["elder-mo"],
+        place_id="well",
+        severity=4,
+    )
+
+    text = deed_texts(state)["strike"]
+
+    assert text == "You wounded someone at the outer-court well."
+    assert "Elder Mo" not in dumped(memory_view(state))

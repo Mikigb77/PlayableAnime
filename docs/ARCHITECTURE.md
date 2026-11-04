@@ -259,7 +259,12 @@ a new one.
 - **The world's words** (G16). Rumors, grudges and event titles never repeat a deed's own text,
   which is the player's step with resolve's outcome note. `engine/world/telling.py` tells a deed
   from its kind, doer, victims and place ("Lin Feng killed Zhao Kun at the outer-court well";
-  "Someone tried to kill Zhao Kun"; "Old Pan, Widow Lu and four others were found dead").
+  "Someone tried to kill Zhao Kun"; "Old Pan, Widow Lu and four others were found dead"). A
+  deed's fallback picture prompt is told the same way. The Memory screen's deeds and the status
+  screen's recent moments are told by what the player character knows (C6), through a `Teller`:
+  "you" for themselves, only names they know ("You wounded someone at the well"), a beast they
+  never named by its kind ("You killed an ash wolf"), and a death only where they know of it. A
+  deed the world has no words for keeps its own text.
 - **Threats backed by force** (W5, A3). An intimidation from someone whose might, as the world
   can know it (their rung or sheet, hidden strength as shown, a light-speed time stop once known),
   is above their standing is measured on might after their condition, against the target's own

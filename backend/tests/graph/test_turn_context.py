@@ -38,7 +38,7 @@ from graph.turn.context import (
     present_characters,
 )
 from graph.turn.outputs import NarratorOutput, SuggestionOut
-from graph.turn.scene import choices
+from graph.turn.scene import choices, fallback_prompt
 from graph.turn.types import PastScene
 
 SECRET = "He ordered the killing of Luca's father."
@@ -341,3 +341,29 @@ def test_no_suggestions_when_none_were_asked_for():
     )
     assert choices(narration, 0) == []
     assert [c.label for c in choices(narration, 1)] == ["Run"]
+
+
+def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
+    """G16: with no prompt from the narrator, a big deed's picture is drawn from what happened,
+    not from the player's step and resolve's outcome note."""
+    from engine.contracts import PictureDecision, PictureKind, PictureTrigger
+    from engine.state import Deed
+
+    state = cultivation_world()
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    state.deeds["d1"] = Deed(
+        id="d1",
+        actor_id="lin",
+        kind="kill",
+        text="cut Zhao down by the well (it worked)",
+        victim_ids=["zhao"],
+        place_id="well",
+        severity=4,
+        turn=3,
+        world_s=0,
+    )
+    decision = PictureDecision(
+        kind=PictureKind.SCENE, trigger=PictureTrigger.BIG_DEED, subject_id="d1"
+    )
+
+    assert fallback_prompt(state, decision) == "Lin Feng killed Zhao Kun at the outer-court well."

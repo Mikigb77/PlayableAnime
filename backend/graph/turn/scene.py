@@ -17,6 +17,7 @@ from engine.contracts import (
 from engine.looks import place_looks
 from engine.state.records import RollRecord
 from engine.state.world import WorldState
+from engine.world.telling import account
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import (
     BeatDetail,
@@ -161,5 +162,5 @@ def fallback_prompt(state: WorldState, decision: PictureDecision) -> str:
         return f"{place.name}. {place_looks(place)}".strip()
     deed = state.deeds.get(subject_id) if subject_id else None
     if deed is not None:
-        return deed.text
+        return account(state, deed)  # in the world's words, not the player's step (G16)
     return state.scene.ended_on or state.bible.genre or "A scene from the story."
