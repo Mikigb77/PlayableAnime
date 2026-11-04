@@ -298,6 +298,18 @@ gemini-3.5-flash (narrator, drafter): ok in 1.4 s
 gemini-3.1-flash-lite-image (picture): FAILED (invalid): GoogleModelNotFoundError: ...
 ```
 
+A model that answers can still refuse a node's response format, its JSON schema, with a bare
+`400 INVALID_ARGUMENT`: on 2026-11-04 every draft failed that way while plain calls worked. So the
+check then sends each format once, as its node does, with room for only a few words, which adds
+well under a cent. A schema Gemini refuses goes in the prompt instead
+([ARCHITECTURE.md](ARCHITECTURE.md#model-layer), "Response formats"), so its line says so and the check
+passes; only a format refused both ways fails it:
+
+```text
+gemini-3.5-flash-lite (interpret) Intent format: ok in 0.9 s
+gemini-3.5-flash (drafter) DraftProposal format: ok in 1.1 s, though Gemini refused it as a schema, so it goes in the prompt
+```
+
 To check by hand: `gcloud run jobs execute playable-anime-migrate --project=playable-anime
 --region=europe-west3 --args=manage.py,check_models --task-timeout=10m --wait`.
 
@@ -309,8 +321,10 @@ check. The job already has the runtime account, the Vertex AI settings, `MEDIA_B
 direct database URL. It skips every cover that exists, so the first deploy draws all eleven with
 `PICTURE_MODEL`, about $0.034 each and $0.37 in all, paid by the house (the logs show each cover's
 model and cost, `Premise cover ready`, and no player's ledger changes), and later deploys draw
-nothing. A cover that fails or is blocked is left out and the covers job is marked failed, without
-failing the deploy; the next deploy tries it again. Until then, and for a premise without a cover,
+nothing. Our picture quota answered 429 after three quick drawings, so the covers are drawn 10 s
+apart, and one that runs out of quota is drawn again after a minute, twice at most. A cover that
+still fails, or is blocked, is left out and the covers job is marked failed, without failing the
+deploy; the next deploy tries it again. Until then, and for a premise without a cover,
 Discover shows a glow in the genre's colour. The app shows a new cover the next time it loads the
 premises.
 
@@ -529,6 +543,8 @@ Sources: [Cloud Run](https://cloud.google.com/run/pricing),
 | `/health` answers 401 or 403 | The smoke test's ID token was refused; check that `github-deployer` still has `run.invoker`. |
 | The migrate job fails at once | The image lacks `manage.py` in its working directory, or `DATABASE_URL` isn't the direct URL. See the job's logs, which the run prints. |
 | "Check the models" fails | The run prints each model's answer and Vertex AI's reason. `NotFound` means the model name in `backend/graph/llm/config.py` (or a `<NODE>_MODEL` setting) doesn't exist in Vertex AI at `VERTEX_LOCATION`; `PermissionDenied` means the runtime account lacks `aiplatform.user`; `transient_429` means no quota for that model. |
+| "Check the models" says a response format was refused | Gemini refused that node's JSON schema both as a schema and in the prompt, so the node can't answer players. The line carries Vertex AI's reason. Shrink the Pydantic model in `graph/` (fewer optional fields in a row, smaller enums, fewer `anyOf` branches) and check again. |
+| Covers fail with `rate_limited` in their `Premise cover skipped` lines | The picture quota stayed spent through both waits. Run the covers job again later, or raise `RATE_LIMIT_WAIT_S` in `backend/media/premise_covers.py`. |
 | A failed job prints `They couldn't be read here` | The deployer lacks `logging.viewer`: re-run the bootstrap. |
 | The Ops workflow fails at the sign-in | The bootstrap hasn't run since the Ops workflow was added, or the run isn't on `main`. |
 | The bootstrap says it can't install gcloud by itself | The computer has neither apt nor Homebrew. Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install), or on a Mac [Homebrew](https://brew.sh), and run it again. |

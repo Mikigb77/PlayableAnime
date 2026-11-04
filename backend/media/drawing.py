@@ -59,6 +59,11 @@ class DrawFailed(DrawError):
     """The model failed twice, timed out or answered without a picture."""
 
 
+class DrawRateLimited(DrawFailed):
+    """Our picture quota ran out for the moment (a 429, twice). Drawing again after a wait may
+    work, which the starter covers do (`media.premise_covers`)."""
+
+
 class DrawBlocked(DrawError):
     """A safety filter stopped the prompt or the picture (M6)."""
 
@@ -108,8 +113,11 @@ class GraphPictureModel:
         except LLMBlocked as exc:
             raise DrawBlocked(tuple(exc.categories)) from exc
         except LLMError as exc:
-            if self.byok and _key_cannot_draw(exc, self.telemetry.calls[before:]):
+            calls = self.telemetry.calls[before:]
+            if self.byok and _key_cannot_draw(exc, calls):
                 raise KeyCannotDraw(exc.code) from exc
+            if _rate_limited(calls):
+                raise DrawRateLimited(exc.code) from exc
             raise DrawFailed(exc.code) from exc
         calls = self.telemetry.calls[before:]
         cost = sum((call.cost_usd for call in calls), Decimal(0))
@@ -130,6 +138,12 @@ def _key_cannot_draw(error: Exception, calls) -> bool:
         return True
     reason = (calls[-1].error_kind or "") if calls else ""
     return reason in ("auth", "invalid") or reason.startswith("transient_429")
+
+
+def _rate_limited(calls) -> bool:
+    """Whether the last call ran out of quota (429), which a later try may not."""
+    reason = (calls[-1].error_kind or "") if calls else ""
+    return reason.startswith("transient_429")
 
 
 def build_picture_model(*, rating: str, byok_provider: str | None, byok_key: str | None):

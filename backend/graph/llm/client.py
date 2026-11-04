@@ -119,6 +119,11 @@ class ModelClient:
     def byok(self) -> bool:
         return self._byok
 
+    @property
+    def backend(self) -> Backend:
+        """The provider target, for a check that must see its raw answers (`check_models`)."""
+        return self._backend
+
     async def aclose(self) -> None:
         if self._owns_backend:
             await self._backend.aclose()

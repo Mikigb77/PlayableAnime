@@ -121,6 +121,8 @@ def _drawn_line(outcome: Outcome) -> str:
         return f"{outcome.premise_id}: drawn with {outcome.model}, {cost}"
     if outcome.status == "kept":
         return f"{outcome.premise_id}: kept the cover another run drew meanwhile ({cost} spent)"
+    if outcome.rate_limited:
+        return f"{outcome.premise_id}: failed, out of picture quota after waiting ({cost} spent)"
     return f"{outcome.premise_id}: {outcome.status}, not drawn ({cost} spent)"
 
 

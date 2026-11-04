@@ -591,6 +591,18 @@ response was blocked) or `BadKey` (`bad_key`, only for a player's key). A safety
 retried blindly: the graph retells a blocked narration as a cut-away, then a template line (F4),
 and turns a blocked interpret step into `unreadable_action`.
 
+**Response formats (B6).** A node that wants JSON sends its Pydantic model's schema as
+`response_json_schema`, cut down by `gemini_schema` to the keywords Gemini takes (`$defs`, `$ref`,
+`type`, `properties`, `required`, `items`, `enum`, `anyOf`, `description`): no `default`, `title`
+or bounds, which only make its constraint bigger. Gemini still refuses a schema whose constraint
+has too many states, such as long runs of optional properties, with a bare 400 that names nothing;
+every draft failed that way on 2026-11-04. The backend then sends the same call again with the
+full schema at the end of the system prompt and JSON mode on, before anything has streamed, logs
+`Gemini refused the response schema` once (`reason=schema_refused`), and sends that schema in the
+prompt for the rest of the process. The client validates each answer against the full model
+either way. The deploy's model check sends every format once, so it shows which ones go in the
+prompt ([DEPLOY.md](DEPLOY.md#checking-the-models)).
+
 **Streaming the narration (S3, B7).** The narrator returns one JSON object, and
 `stream_structured` streams the decoded text of its `narration` field as it is written, with
 `graph/llm/jsonstream.py`. The full JSON is still validated at the end. If an attempt fails after
