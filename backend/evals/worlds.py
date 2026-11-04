@@ -138,8 +138,8 @@ def mage_fight() -> WorldState:
 
 
 def start_fight(state: WorldState, *opponent_ids: str) -> None:
-    """Starts a key fight on the next turn. Nothing in the turn starts an encounter yet, so a
-    scenario that needs one sets it up as the scene's situation."""
+    """Puts the scene in the middle of a key fight that started on the next turn, for a scenario
+    about a fight already on. In play, the first blow starts it (`engine.encounters`)."""
     state.scene.encounter = Encounter(
         kind=EncounterKind.FIGHT,
         opponent_ids=list(opponent_ids),

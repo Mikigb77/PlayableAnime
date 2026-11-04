@@ -149,6 +149,7 @@ def apply_in_place(
     if delta.scene_end is not None:
         end = delta.scene_end
         new = applier.state
+        with_player = _with_player(new)
         new.scene = SceneFrame(
             place_id=end.place_id if end.place_id in new.places else new.scene.place_id,
             present_ids=[i for i in end.present_ids if i in new.characters],
@@ -157,9 +158,43 @@ def apply_in_place(
             ended_on=end.ended_on,
             encounter=new.scene.encounter,
         )
+        if end.place_id in new.places:
+            _gather(new, end.place_id, with_player)
     if delta.summary:
         applier.state.summary = delta.summary
     return Applied(applier.state, tuple(applier.rejected))
+
+
+def _with_player(state: WorldState) -> set[str]:
+    """Who was with the player character as the scene ended: in the scene, at or within the
+    player character's place, or placed nowhere."""
+    here = state.player.location_id or state.scene.place_id
+    near = set(state.scene.present_ids)
+    for character_id, character in state.characters.items():
+        where = character.location_id
+        if where is None or here is None:
+            near.add(character_id)
+        elif here in ancestry(state.places, where) or where in ancestry(state.places, here):
+            near.add(character_id)
+    return near
+
+
+def _gather(state: WorldState, place_id: str, with_player: set[str]) -> None:
+    """R3, C2. The scene ends at `place_id`, so the player character is there, and so is everyone
+    living in the scene who came with them: the world places witnesses and events where people
+    are (W2, W16). Someone already somewhere inside that place, such as at the well in the
+    courtyard the scene names, stays where they are. The narrator naming someone far off, or
+    missing, as present doesn't move them: only the engine's own record does."""
+    for character_id in dict.fromkeys([state.player_id, *state.scene.present_ids]):
+        character = state.characters.get(character_id)
+        if character is None or not character.alive:
+            continue
+        if character_id != state.player_id and (
+            character.status is not CharacterStatus.ALIVE or character_id not in with_player
+        ):
+            continue
+        if place_id not in ancestry(state.places, character.location_id):
+            character.location_id = place_id
 
 
 def _clamp(value: int, low: int, high: int) -> int:

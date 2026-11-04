@@ -74,7 +74,3 @@ PICTURE_FLOOR = -2.0
 
 # M1, E6: a deed this severe is a big moment (W1).
 BIG_DEED = 4
-
-# How far a strong monster or foe stands above the player on the might axis (A8), for M1's fight
-# pictures, when the encounter doesn't say.
-STRONG_FOE_TIERS = 2

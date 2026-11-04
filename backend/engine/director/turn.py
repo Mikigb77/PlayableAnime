@@ -10,8 +10,10 @@ from engine.context import TurnContext
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
 from engine.looks import LASTING_PLACE_STATUSES
+from engine.resolve.power import helpless_name
 from engine.state.cast import CharacterStatus, PlaceStatus
 from engine.state.records import Deed, LeadStatus
+from engine.state.scene import EncounterKind
 from engine.state.sheet import Gain, Health
 from engine.state.world import WorldState
 
@@ -30,6 +32,10 @@ class TurnFacts:
     - `responded_threads`, `responded_leads`: what the player's action took up, from the
       intent's `responds_to`, checked against the state (W16, N2).
     - `touched`: characters the player's deeds or the current encounter involve.
+    - `subdued`: characters this turn's steps left helpless, such as knocked out, stunned or bound
+      (M1's decisive blow).
+    - `fought`: characters the player character's steps fought this turn, played out in full
+      (W10), so a fight begun and ended within one turn still gets its decisive blow (M1).
     """
 
     turn: int
@@ -41,6 +47,8 @@ class TurnFacts:
     responded_threads: frozenset[str]
     responded_leads: frozenset[str]
     touched: frozenset[str]
+    subdued: frozenset[str] = frozenset()
+    fought: frozenset[str] = frozenset()
 
     @property
     def player_responded(self) -> bool:
@@ -75,6 +83,22 @@ def read_turn(
         for change in step.effects.characters
         if change.condition is not None and change.condition.health in GRAVE_HEALTH
     )
+    subdued = frozenset(
+        change.id
+        for step in resolution.steps
+        if not step.interrupted
+        for change in step.effects.characters
+        if change.condition is not None and any(map(helpless_name, change.condition.states))
+    )
+    player_id = state.player_id
+    mine = resolution.actor_id in (None, player_id)
+    fought = frozenset(
+        i
+        for step in resolution.steps
+        if mine and not step.interrupted and step.encounter is EncounterKind.FIGHT
+        for i in step.opponent_ids
+        if i != player_id and i in state.characters
+    )
     changed_places = tuple(
         (place.id, place.status)
         for place in sorted(state.places.values(), key=lambda p: p.id)
@@ -101,7 +125,6 @@ def read_turn(
         i for i in responded if i in state.threads and not state.threads[i].status.closed
     )
 
-    player_id = state.player_id
     touched: set[str] = set()
     for deed in deeds:
         if deed.actor_id == player_id:
@@ -121,6 +144,8 @@ def read_turn(
         responded_threads=responded_threads,
         responded_leads=responded_leads,
         touched=frozenset(touched),
+        subdued=subdued,
+        fought=fought,
     )
 
 

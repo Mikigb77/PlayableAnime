@@ -120,7 +120,7 @@ def _scene_view(state: WorldState) -> dict[str, Any]:
         "present": [_npc_view(c, state) for c in present_characters(state)],
         "positions": frame.positions,
         "props": frame.props,
-        "encounter": _dump(frame.encounter) if frame.encounter else None,
+        "encounter": _dump(frame.encounter, exclude={"last_s"}) if frame.encounter else None,
     }
 
 

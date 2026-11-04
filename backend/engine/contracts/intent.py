@@ -14,6 +14,7 @@ from enum import StrEnum
 from pydantic import Field, field_validator
 
 from engine.base import EngineModel
+from engine.state.scene import EncounterKind
 from engine.state.sheet import HitMode, PowerAxis
 
 
@@ -254,6 +255,14 @@ class StepFacts(EngineModel):
     )
     hindrances: list[str] = Field(default_factory=list)
     proposed_class: OutcomeClass | None = None
+    inner: bool = Field(
+        default=False,
+        description=(
+            "G15: only the character's own temperament, fear or pride stands in the way, as in"
+            " keeping calm under an insult. It can make the step harder, never take the choice"
+            " from the player."
+        ),
+    )
 
 
 class IntentStep(EngineModel):
@@ -287,6 +296,14 @@ class IntentStep(EngineModel):
         description="W10a: the actor's own lived seconds, when they differ, as in a time stop.",
     )
     stakes: str = ""
+    encounter: EncounterKind | None = Field(
+        default=None,
+        description=(
+            "W10: the encounter this step starts or carries on with someone it faces, if any: a"
+            " fight, a chase, a duel of words or a negotiation. Code decides; a harmful aim at"
+            " someone is always a fight."
+        ),
+    )
     contact: Contact = Field(
         default=Contact.NONE, description="W10a: strike, throw or lift, which a time stop follows."
     )

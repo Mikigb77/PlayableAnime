@@ -187,11 +187,6 @@ async def temper_not_control(ev: Eval) -> None:
                     calm.result is not StepResult.FAILURE,
                     f"{seed}: {calm.reason}",
                     live=False,
-                    gap=(
-                        "keeping one's temper is a contested roll that can fail outright, which "
-                        "tells the narrator the character didn't stay calm; G15 says the roll "
-                        "only makes it harder"
-                    ),
                 )
                 ev.check(
                     "whatever the roll, the temper does nothing the player didn't choose",

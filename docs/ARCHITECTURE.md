@@ -156,6 +156,7 @@ these functions and saves the result.
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties (`aftermath`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
+| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
@@ -166,7 +167,7 @@ a new one.
 | --- | --- | --- |
 | 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order, stopping at the first that needs the player. It first makes sure every running clock has its next step pending and that the world tick is spaced so the stretch holds at most 24 ticks (K8), then runs `engine.timekeeping.advance_clock` with the world's handler. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
-| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision. At each finished step's end its `effects` apply as the engine's, then its consequences are recorded. The graph must not apply `effects` again | WS2 |
+| 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision. At each finished step's end its `effects` apply as the engine's, then its consequences are recorded, then `engine.encounters` starts, carries on or ends the scene's encounter from what the step did (a time skip, or a step of ten minutes or more that doesn't itself fight or carry on the encounter, ends it before the stretch is rolled, and a time skip never starts one). The graph must not apply `effects` again | WS2 |
 | | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState` applies one pending event that fell due, rolling from the event's own seed, and records on the applied event whether it needed the player. Kinds it doesn't own, such as `director.*`, are only marked applied | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng, intent=None) -> DirectorPlan`, on the state `play_out` returned, with the turn's `Intent` (its `responds_to` and `goals`). It only decides and never changes the state | WS11 |
@@ -200,7 +201,10 @@ a new one.
   proposes them, because resolve records the outcome in code before narration (F4). Resolve puts
   its own changes for each step in `StepResolution.effects`. The narrator can still introduce
   people, places and factions with real names, nudge an attitude by up to 10 points per scene,
-  record facts, items and leads, and end the scene. A death, destruction or ruin is undone only by
+  record facts, items and leads, and end the scene. Ending the scene at a known place moves the
+  player character there, with everyone in the scene who was with them and isn't already somewhere
+  inside it, so the world and the director find people where the story left them (R3, C2). Naming
+  someone far off, missing or dead as present moves no one. A death, destruction or ruin is undone only by
   a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,
   no earlier than the change it undoes, by a mechanism the world bible allows (resurrection, a
   presumed death that was false, a revival with survivors, rebuilding).
@@ -295,7 +299,10 @@ themes in `payload["event"]` (`{"size": "local", "kind": "disaster", "brief": ".
 []}`), and the director defaults to a personal arrival without them.
 
 **Pictures** (M1, M2). At most one a scene, highest first: the player's portrait at the start; a
-key character's death the player knows of; the decisive blow of a key fight; a breakthrough on a
+key character's death the player knows of; the decisive blow of a key fight (the blow that kills
+an opponent or the player character, leaves them badly wounded or dying, or subdues them, never a
+swing that fails or only wounds, and still pictured when that blow ends a fight begun the same
+turn, from `TurnFacts.fought`); a breakthrough on a
 power ladder (a gain growth records with source `breakthrough`, or one named for a ladder);
 hidden strength revealed; a deed of severity 4 or 5; an arc ending; the start of a
 fight with a key NPC or a strong foe (a key character, or two tiers above the player in might); a
@@ -373,7 +380,14 @@ it (W10a), a helpless state on the sheet
    target it doesn't meet head-on, whatever axis the step names and whoever else stands awake
    beside them. Where nothing can be measured (a
    faction, a storm), the step is contested, or harder if the interpret step judged it so; a
-   proposed class can lower the outcome there but never raise it.
+   proposed class can lower the outcome there but never raise it. A step that only the actor's own
+   temperament, fear or pride stands in the way of (`StepFacts.inner`, the actor named as the
+   opposition, or words that name only an inner state, such as "his temper" or "Lin's own pride",
+   with no one else, no faction, no harm aimed and means not clearly short; words naming anything
+   else outweigh the flag) is the player's choice (G15): certain when the interpret step judged it easy, otherwise rolled with
+   only success or partial allowed (contested, or a long shot at the hardest, never ruled out), so
+   a hot temper makes it harder and the strain can show, but it is done, and the plan carries on
+   past it.
 5. **Chains** (`chain.py`; A9). A step with a chain of cause and effect goes around the strength
    instead of meeting it, so the gap doesn't apply. Anyone who can respond may see it coming, which
    is rolled first. Then each link holds, is rolled if the model judged it open, or breaks: when it
@@ -408,7 +422,9 @@ it (W10a), a helpless state on the sheet
    `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
 
 A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`
-(R6). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
+(R6), except past a step only the actor's own nature stood in the way of, which was done (G15).
+Each step also records its `kind`, the `opponent_ids` it fought or faced and the `encounter` it
+starts or carries on, which `engine.encounters` follows (W10). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
 Formation against you at Qi Condensation: head-on, there is no contest.").
 
 ### Powers, theories and growth
@@ -853,8 +869,6 @@ plain check. Open now:
 
 | Scenario | Gap |
 | --- | --- |
-| `t17.long-fight` | Nothing in a turn sets `scene.encounter`, so a fight's protections (W10, W16) and its pictures (M1) never start in play; the eval starts the fight itself. |
-| `t17.temper-not-control` | Keeping one's temper is a contested roll that can fail outright, which tells the narrator the character lost it; G15 says the roll only makes it harder. |
 | `t17.monster-hunt` | The law treats a beast like a person: the pack's alpha reports the kill to the sect and the Law Enforcement Hall comes to arrest the hunter (W11, G24). |
 | `t17.light-speed-throw` | A throw in stopped time leaves only weak traces, so within a month no rumor names the thrower and no kingdom answers them (W13, G22, W5). |
 | `t15.revisit` | A massacre moves its survivors' and witnesses' affinity by about thirty points, so they still come across as Neutral (W8, W4). |

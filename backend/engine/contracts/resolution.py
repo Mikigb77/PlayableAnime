@@ -11,8 +11,9 @@ from pydantic import Field
 
 from engine.base import EngineModel, Severity
 from engine.contracts.delta import StateDelta
-from engine.contracts.intent import OutcomeClass, UseSource
+from engine.contracts.intent import ActionKind, OutcomeClass, UseSource
 from engine.state.records import RollRecord, StepResult, Trace, Visibility
+from engine.state.scene import EncounterKind
 from engine.state.sheet import CostKind, Ruling
 
 
@@ -121,6 +122,18 @@ class StepResolution(EngineModel):
     )
     training: TrainingSoFar | None = Field(
         default=None, description="A4: a training step's effort so far, kept if it is cut short."
+    )
+    kind: ActionKind | None = Field(default=None, description="W10: the kind of action.")
+    encounter: EncounterKind | None = Field(
+        default=None,
+        description="W10: the encounter this step starts or carries on with `opponent_ids`, as "
+        "code reads it: a fight when it aims harm at someone, otherwise the kind the interpret "
+        "step proposed when someone who can respond faces it. `engine.encounters` decides.",
+    )
+    opponent_ids: list[str] = Field(
+        default_factory=list,
+        description="W10: the living characters besides the actor that the step fought or faced: "
+        "the aim's targets and whoever stood in the way.",
     )
 
     @property
