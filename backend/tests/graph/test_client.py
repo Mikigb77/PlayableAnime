@@ -15,6 +15,8 @@ from graph.llm import (
     ImagePart,
     LLMBlocked,
     LLMUnavailable,
+    ModelClient,
+    ModelConfig,
     Node,
     Prompt,
     Reply,
@@ -100,6 +102,47 @@ def test_a_second_failure_becomes_llm_unavailable(fake, make_client, telemetry):
     assert record.retries == 1 and record.attempts == 2
     assert record.error_kind == "transient_500"
     assert fake.pending() == 0
+
+
+def test_our_quota_running_out_is_retried_twice_after_longer_waits(
+    fake, make_client, telemetry, monkeypatch
+):
+    """Vertex AI's shared quota answers 429 in bursts that pass within seconds."""
+    waits: list[float] = []
+
+    async def sleep(seconds):
+        waits.append(seconds)
+
+    monkeypatch.setattr("graph.llm.client.asyncio.sleep", sleep)
+    fake.script(Node.NARRATOR, Fail(status=429), Fail(status=429), Reply(json=SCENE))
+    client = ModelClient(fake, ModelConfig(), rating="mature", recorder=telemetry)
+
+    assert run(client.structured(Node.NARRATOR, PROMPT, Narration)) == SCENE
+
+    [record] = telemetry.calls
+    assert record.outcome == "ok" and record.attempts == 3
+    assert record.retry_reasons == ("transient_429", "transient_429")
+    assert waits == [2.0, 6.0]
+
+
+def test_our_quota_still_out_after_the_waits_is_unavailable(fake, make_client, telemetry):
+    fake.script(Node.NARRATOR, *(Fail(status=429) for _ in range(3)), Reply(json=SCENE))
+
+    with pytest.raises(LLMUnavailable):
+        run(make_client().structured(Node.NARRATOR, PROMPT, Narration))
+
+    assert telemetry.calls[0].attempts == 3
+    assert fake.pending(Node.NARRATOR) == 1
+
+
+def test_a_players_key_out_of_quota_is_retried_only_once(fake, make_client, telemetry):
+    """A player's key isn't shared: its 429 is its own limit, often a free tier's zero."""
+    fake.script(Node.NARRATOR, Fail(status=429), Fail(status=429), Reply(json=SCENE))
+
+    with pytest.raises(LLMUnavailable):
+        run(make_client(byok=True).structured(Node.NARRATOR, PROMPT, Narration))
+
+    assert telemetry.calls[0].attempts == 2
 
 
 @pytest.mark.parametrize(

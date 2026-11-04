@@ -1,10 +1,10 @@
-"""The model client that graph nodes call: one retry, typed errors, telemetry (B6, T5, T7).
+"""The model client that graph nodes call: retries, typed errors, telemetry (B6, T5, T7).
 
 A node asks for a structured result, plain text, a streamed structured result or a picture. The
 client resolves the node's model and settings from config, applies the rating's safety settings
-(F5), runs the call on its backend with a deadline, retries a transient failure once, and turns
-anything else into `LLMUnavailable`, `LLMBlocked` or `BadKey`. Every call, failed or not, leaves
-one `CallRecord` with its recorder.
+(F5), runs the call on its backend with a deadline, retries a transient failure once (a 429 on our
+shared quota twice, after longer waits), and turns anything else into `LLMUnavailable`,
+`LLMBlocked` or `BadKey`. Every call, failed or not, leaves one `CallRecord` with its recorder.
 """
 
 from __future__ import annotations
@@ -45,6 +45,11 @@ from graph.llm.types import (
 logger = logging.getLogger("graph.llm")
 
 ATTEMPTS = 2  # one try and one retry (T7)
+# Our Vertex AI quota is shared, and answers 429 in bursts that pass within seconds: three in 11 s
+# from one caller on 2026-11-04. So a 429 on our account gets one more try than other failures,
+# after longer waits. A player's key isn't shared: its 429 is its own limit, retried once.
+RATE_LIMIT_ATTEMPTS = 3
+RATE_LIMIT_BACKOFF = (4, 12)  # times the retry delay before each retry: 2 s, then 6 s
 
 
 @dataclass(frozen=True)
@@ -202,7 +207,7 @@ class ModelClient:
         )
         trace = _Trace(request, self._backend.provider, self._byok, self._config.location)
         try:
-            for attempt in range(1, ATTEMPTS + 1):
+            for attempt in range(1, RATE_LIMIT_ATTEMPTS + 1):
                 trace.attempts = attempt
                 streamer = JsonFieldStreamer(stream_field) if stream_field else None
                 streamed = False
@@ -230,22 +235,24 @@ class ModelClient:
                     # The provider's own words, such as which quota ran out. A player's key is
                     # already masked out of them by the backend (T6).
                     detail = failure.detail if isinstance(failure, ProviderError) else ""
-                    if attempt == ATTEMPTS:
+                    rate_limited = reason == "transient_429" and not self._byok
+                    if attempt >= (RATE_LIMIT_ATTEMPTS if rate_limited else ATTEMPTS):
                         trace.finish("unavailable", reason)
                         logger.error(
-                            "Model call failed after a retry",
+                            "Model call failed after retrying",
                             extra={"llm": trace.log_fields(reason=reason, detail=detail)},
                         )
                         raise LLMUnavailable(node=node.value, model=request.model) from None
                     trace.retry_reasons.append(reason)
                     logger.warning(
-                        "Model call failed, retrying once",
+                        "Model call failed, retrying",
                         extra={"llm": trace.log_fields(reason=reason, detail=detail)},
                     )
                     if streamed:
                         trace.first_token_ms = None  # the player sees the retry's text first
                         yield StreamRestart()
-                    await asyncio.sleep(self._retry_delay_s)
+                    backoff = RATE_LIMIT_BACKOFF[attempt - 1] if rate_limited else 1
+                    await asyncio.sleep(self._retry_delay_s * backoff)
                     continue
                 if isinstance(value, GeneratedImage):
                     trace.images = 1
@@ -265,7 +272,7 @@ class ModelClient:
 
         The deadline counts only time spent waiting for the model, never the caller's time
         between chunks, so a slow reader can't time out a healthy stream. A call can wait at most
-        two deadlines, one per attempt, plus the retry delay.
+        one deadline per attempt, plus the retry delays.
         """
         budget = request.options.timeout_s or None
         loop = asyncio.get_running_loop()
