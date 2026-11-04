@@ -7,6 +7,7 @@ The model is scripted with the evals' answer sizes (`evals.scripted`: about 2,70
 would, about 2.1 cents with the margin. Pictures are drawn by the offline model at the picture
 model's price, about 5 cents each. T5's first live numbers will move both."""
 
+import uuid
 from decimal import Decimal
 
 import pytest
@@ -26,6 +27,9 @@ pytestmark = pytest.mark.django_db
 
 ACTION = "I practise my sword forms by the well"
 INTENT = act("practise sword forms", "practise", ActionKind.TASK, HOUR)
+# Rolls are seeded by the story's id (A3), and which scenes get a key-scene picture follows the
+# rolls, so a fixed id makes every run play the same story and spend the same.
+STORY_ID = uuid.UUID("00000000-0000-4000-8000-00000000f157")
 
 
 def first_session(make_story, model) -> tuple[int, User]:
@@ -38,7 +42,7 @@ def first_session(make_story, model) -> tuple[int, User]:
         birth_date=ADULT_BIRTH_DATE,
         display_name="New Player",
     )
-    story = make_story(player)
+    story = make_story(player, id=STORY_ID)
     scripted = ScriptedModel()
     model.backend = scripted.backend
     pictures = Client(headers=auth_headers(player))
