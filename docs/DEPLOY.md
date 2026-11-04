@@ -52,8 +52,8 @@ safe to repeat. The commands work in a bash shell (Git Bash or WSL on Windows) w
 2. [Get the two production URLs from Neon](#2-get-the-two-production-urls-from-neon).
 3. [Run the bootstrap from `dep`](#3-run-the-bootstrap-from-dep), or run it again if it ran before.
 4. [Make the app's signing key and give it to GitHub](#4-make-the-apps-signing-key).
-5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web client (done) and
-   the Android client with the key's SHA-1.
+5. [Set up Google sign-in](#5-set-up-google-sign-in): the consent screen, the Web and Android
+   clients (both done).
 6. [Allow merge commits](#6-allow-merge-commits) in the repository's settings.
 7. [Dry-run the deploy](#7-dry-run-the-deploy) from `main`.
 8. Merge `dep` into `main` ([How changes reach production](#how-changes-reach-production)). That is
@@ -158,9 +158,14 @@ under **Google Auth Platform**:
    [`infra/config.sh`](../infra/config.sh); the deploy gives it to the API and to the APK. Client
    ids aren't secrets. Its client secret is never needed, because the app sends Google's ID token,
    so don't store it anywhere.
-3. **Clients > Android**: package name `com.lucid.saga` and the **SHA-1** from step 4.
-   Nothing needs this client's id: on Android the app asks Google for an ID token for the Web
-   client, and Google checks the package name and signing key against this client.
+3. **Clients > Android**: done, with package name `com.lucid.saga` and the **SHA-1** from step 4.
+   Its id is `GOOGLE_ANDROID_CLIENT_ID` in `infra/config.sh`, and the API accepts it too. On
+   Android the app asks Google for an ID token for the Web client, and Google checks the package
+   name and signing key against this client, so a new signing key needs its SHA-1 added here.
+   Optional, for Google sign-in in your own `flutter run` debug builds: a second Android client for
+   `com.lucid.saga` with your debug key's SHA-1 (`./gradlew signingReport` in `app/android`; on
+   Miki's PC it is `2F:0F:8B:06:6C:7F:E0:ED:1E:F4:AA:4F:02:27:45:78:62:0B:82:BD`). Release APKs
+   don't need it, and the API doesn't need its id.
 4. iOS, later: an iOS client, its id in `GOOGLE_IOS_CLIENT_ID` in `infra/config.sh`.
 
 ### 6. Allow merge commits
@@ -267,7 +272,7 @@ directory.
 | `DATABASE_URL` | Secret `database-url` (pooled) for the service, `database-url-direct` for the migrate job |
 | `DJANGO_SECRET_KEY` | Secret `django-secret-key` |
 | `LLM_PROVIDER`, `VERTEX_LOCATION`, `LOG_LEVEL`, `OWNER_EMAILS`, and later `CORS_ORIGINS` and per-node model names | [`infra/cloudrun/env.yaml`](../infra/cloudrun/env.yaml) |
-| `GCP_PROJECT`, `MEDIA_BUCKET`, `GOOGLE_OAUTH_CLIENT_IDS` | `infra/config.sh`, added by `deploy.sh`. The client ids are the Web client's and, later, the iOS client's (T8). |
+| `GCP_PROJECT`, `MEDIA_BUCKET`, `GOOGLE_OAUTH_CLIENT_IDS` | `infra/config.sh`, added by `deploy.sh`. The client ids are the Web and Android clients' and, later, the iOS client's (T8). |
 | `ALLOWED_HOSTS` | The service's hostnames, comma-separated, without a scheme, added by `deploy.sh` |
 | `CSRF_TRUSTED_ORIGINS` | The same hostnames as `https://` origins, for the Django admin |
 | `PORT`, `K_SERVICE`, `K_REVISION` | Cloud Run itself |
@@ -496,6 +501,6 @@ GCP_PROJECT: "playable-anime"
 MEDIA_BUCKET: "playable-anime-pictures"
 ALLOWED_HOSTS: "playable-anime-api-528988811295.europe-west3.run.app"
 CSRF_TRUSTED_ORIGINS: "https://playable-anime-api-528988811295.europe-west3.run.app"
-GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"
+GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"
 ```
 <!-- every-command:end -->

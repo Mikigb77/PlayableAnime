@@ -103,7 +103,7 @@ EOF
 # comma-separated, and stops on anything that isn't a client id.
 google_client_ids() {
   local id ids=''
-  for id in "$GOOGLE_WEB_CLIENT_ID" "$GOOGLE_IOS_CLIENT_ID"; do
+  for id in "$GOOGLE_WEB_CLIENT_ID" "$GOOGLE_ANDROID_CLIENT_ID" "$GOOGLE_IOS_CLIENT_ID"; do
     case "$id" in
       '') continue ;;
       *[!A-Za-z0-9._-]*) die "infra/config.sh has a Google client id with odd characters: $id" ;;

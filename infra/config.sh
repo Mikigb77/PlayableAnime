@@ -61,11 +61,11 @@ API_URL="https://${SERVICE_DETERMINISTIC_HOST}"
 
 # Google sign-in (T8): the OAuth clients in this project. Client ids aren't secrets. The client
 # secret is never needed, because the app sends Google's ID token, so it is never stored anywhere.
-# The web client is also the app's server client id on Android, so Android ID tokens carry it as
-# their audience; the Android client only has to exist, for the package name and the signing
-# key's SHA-1 (docs/DEPLOY.md). deploy.sh gives the API these ids, and build-apk.sh the app the
-# web one.
+# deploy.sh gives the API every id here (GOOGLE_OAUTH_CLIENT_IDS), and build-apk.sh gives the app
+# the web one, which is also its server client id on Android.
 GOOGLE_WEB_CLIENT_ID="528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"
+# Registered for the package com.lucid.saga and the release key's SHA-1 (docs/DEPLOY.md).
+GOOGLE_ANDROID_CLIENT_ID="528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"
 # The iOS client, once there is one.
 GOOGLE_IOS_CLIENT_ID=""
 

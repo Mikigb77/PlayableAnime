@@ -236,7 +236,7 @@ test_deploy_dry_run() {
   contains "$out" "update-traffic playable-anime-api --project=playable-anime --region=europe-west3 --to-latest"
   lacks "$out" "allow-unauthenticated" "the service deploy leaves access to the access step"
   lacks "$out" "invoker-iam-check" "the service deploy leaves access to the access step"
-  contains "$out" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"'
+  contains "$out" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"'
 
   out="$state/out-access"
   with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" access
@@ -258,7 +258,7 @@ test_deploy_settings() {
   with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" migrate \
     europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
   equals "$status" 0 "migrate exit status"
-  contains "$state/last-env.yaml" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com"'
+  contains "$state/last-env.yaml" 'GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"'
   lacks "$INFRA/config.sh" "GOCSPX" "an OAuth client secret must never be committed"
 
   # A copy of infra/ whose env.yaml sets a variable deploy.sh owns.

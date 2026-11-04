@@ -62,8 +62,9 @@ flutter run --dart-define=API_BASE_URL=… \
   app's origins (`http://localhost:<port>` for `flutter run -d chrome --web-port <port>`).
 - **Android:** the web client id again, as the server client id. Google matches the app by its
   package name (`com.lucid.saga`) and signing SHA-1, so add an Android OAuth client with both in
-  the Google Cloud console (`./gradlew signingReport` prints the SHA-1 of your debug key). The
-  released APK is signed with the release key, whose Android client is registered once
+  the Google Cloud console (`./gradlew signingReport` prints the SHA-1 of your debug key). That
+  client is optional and only for your own debug builds. The released APK is signed with the
+  release key, whose Android client is already registered
   ([docs/DEPLOY.md](../docs/DEPLOY.md#5-set-up-google-sign-in)).
 - **iOS:** the iOS client id, and its reversed form (`com.googleusercontent.apps.…`) as a URL scheme
   under `CFBundleURLTypes` in `ios/Runner/Info.plist`.
