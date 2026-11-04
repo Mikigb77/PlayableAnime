@@ -24,7 +24,7 @@ for arg in "$@"; do
   esac
 done
 
-verbs=" create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value "
+verbs=" login create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value read "
 group=''
 verb=''
 resource=''
@@ -51,9 +51,20 @@ exists() { [[ -e "$state/res/$key" ]]; }
 service_url="https://playable-anime-api-abc123xyz-ey.a.run.app"
 
 case "$group/$verb" in
-  "config/get-value") echo "miki@example.com" ;;
+  # FAKE_SIGNED_OUT: no account until `auth login`. FAKE_WRONG_ACCOUNT: an account that can't see
+  # the project until `auth login`.
+  "config/get-value")
+    if [[ -z "${FAKE_SIGNED_OUT:-}" || -e "$state/signed-in" ]]; then echo "miki@example.com"; fi
+    ;;
+  "auth/login") touch "$state/signed-in" ;;
   "config configurations/describe") [[ -n "${FAKE_HAS_CONFIGURATION:-}" ]] ;;
-  "projects/describe") echo "528988811295" ;;
+  "projects/describe")
+    if [[ -n "${FAKE_WRONG_ACCOUNT:-}" && ! -e "$state/signed-in" ]]; then
+      echo "ERROR: (fake) PERMISSION_DENIED: projects.get" >&2
+      exit 1
+    fi
+    echo "528988811295"
+    ;;
   "billing projects/describe") echo "billingAccounts/000000-AAAAAA-BBBBBB" ;;
   "billing budgets/list")
     if compgen -G "$state/res/billing_budgets_*" >/dev/null; then
@@ -77,9 +88,18 @@ case "$group/$verb" in
   "run jobs/execute")
     if [[ " $* " == *" --args=manage.py,draw_premise_covers "* ]]; then
       [[ -z "${FAKE_FAIL_COVERS:-}" ]]
+    elif [[ " $* " == *" --args=manage.py,check_models "* ]]; then
+      [[ -z "${FAKE_FAIL_MODELS:-}" ]]
     else
       [[ -z "${FAKE_FAIL_MIGRATION:-}" ]]
     fi
+    ;;
+  "logging/read")
+    [[ -z "${FAKE_FAIL_LOGS:-}" ]] || {
+      echo "ERROR: (fake) PERMISSION_DENIED: logging.logEntries.list" >&2
+      exit 1
+    }
+    printf '2026-11-04T07:35:00Z\tERROR\tfake-log-line Model call rejected\n'
     ;;
   # Who may call the service: $state/public exists while allUsers is an invoker.
   "run services/add-iam-policy-binding")

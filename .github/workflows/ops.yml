@@ -1,0 +1,56 @@
+# Reads Google Cloud for threads and anyone with write access to this repo, without a laptop: it
+# runs one read-only gcloud command and prints its output in this run's log
+# (docs/DEPLOY.md#reading-google-cloud).
+#
+# It signs in through Workload Identity Federation with no key (B11), as a read-only account that
+# reads settings and logs but can't change anything or read a secret's value. Only this file on
+# main can sign in as it, and only when started by hand or through the API:
+#
+#   POST /repos/Mikigb77/PlayableAnime/actions/workflows/ops.yml/dispatches
+#   {"ref": "main", "inputs": {"command": "run services describe playable-anime-api --region=europe-west3"}}
+#
+# An empty command prints the API's and its jobs' warnings and errors of the last 3 hours.
+
+name: Ops
+run-name: "Ops: ${{ inputs.command || 'recent warnings and errors' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: >-
+          A read-only gcloud command, without "gcloud". Empty prints the last 3 hours of the API's
+          warnings and errors.
+        type: string
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  read:
+    name: Read Google Cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/ops.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.ops_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: infra/ops.sh run
+        env:
+          OPS_COMMAND: ${{ inputs.command }}

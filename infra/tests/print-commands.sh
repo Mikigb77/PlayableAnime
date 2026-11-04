@@ -27,6 +27,9 @@ echo
 echo "# infra/deploy.sh access (API_ACCESS=private removes the same binding instead)"
 "$INFRA/deploy.sh" access 2>&1 | commands
 echo
+echo "# infra/deploy.sh models"
+"$INFRA/deploy.sh" models 2>&1 | commands
+echo
 echo "# infra/deploy.sh covers"
 "$INFRA/deploy.sh" covers 2>&1 | commands
 echo

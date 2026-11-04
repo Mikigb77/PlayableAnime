@@ -126,6 +126,11 @@ CORS_EXPOSE_HEADERS = ["x-request-id"]
 
 # The API's own settings, read through `django.conf.settings`.
 LLM_PROVIDER = ENV.llm_provider
+if (ENV.k_service or ENV.cloud_run_job) and LLM_PROVIDER != "vertex":
+    # The published app always runs on Gemini through Vertex AI (B6). The offline model is for
+    # local runs and tests, so a deploy that lost LLM_PROVIDER fails to start instead of telling
+    # players placeholder stories.
+    raise ImproperlyConfigured("LLM_PROVIDER must be vertex on Cloud Run.")
 GCP_PROJECT = ENV.gcp_project
 # Vertex AI's location and each node's model are read by `graph.llm.config` (B6).
 

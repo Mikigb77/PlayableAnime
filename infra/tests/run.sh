@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Tests for the infra scripts, run in CI (the infra job) and locally: infra/tests/run.sh
 #
-# Fake gcloud, gh and curl (infra/tests/fakes) log every call, so these tests show what the scripts
-# would run, that a dry run touches nothing, that bootstrap.sh is safe to re-run, and that no secret
-# value ever reaches arguments or output. Nothing here talks to Google Cloud or GitHub.
+# Fake gcloud, gh, curl, sudo, apt-get and brew (infra/tests/fakes) log every call and install or
+# change nothing, so these tests show what the scripts would run, that a dry run touches nothing,
+# that bootstrap.sh is safe to re-run, and that no secret value ever reaches arguments or output.
+# Nothing here talks to Google Cloud or GitHub.
 
 set -euo pipefail
 
@@ -50,7 +51,8 @@ with_fakes() {
   local out="$1"
   shift
   set +e
-  env PATH="$FAKES:$PATH" RETRY_SLEEP_SECONDS=0 SMOKE_SLEEP_SECONDS=0 "$@" >"$out" 2>&1
+  env PATH="$FAKES:$PATH" RETRY_SLEEP_SECONDS=0 SMOKE_SLEEP_SECONDS=0 LOGS_WAIT_SECONDS=0 \
+    "$@" >"$out" 2>&1
   status=$?
   set -e
 }
@@ -90,6 +92,29 @@ test_bootstrap_dry_run() {
   contains "$out" "--permissions=run.services.getIamPolicy,run.services.setIamPolicy --stage=GA"
   contains "$out" "--member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=projects/playable-anime/roles/lucidSagaApiAccess"
   contains "$out" "--member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser"
+  contains "$out" "--member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/logging.viewer"
+  contains "$out" "[dry-run] gcloud iam service-accounts create github-ops"
+  contains "$out" "--member=serviceAccount:github-ops@playable-anime.iam.gserviceaccount.com --role=roles/viewer"
+  contains "$out" "--member=serviceAccount:github-ops@playable-anime.iam.gserviceaccount.com --role=roles/logging.viewer"
+  contains "$out" "[dry-run] gcloud iam workload-identity-pools create github-ops"
+  contains "$out" "providers create-oidc playable-anime-ops --project=playable-anime --location=global --workload-identity-pool=github-ops"
+  contains "$out" "assertion.event_name == '\\''workflow_dispatch'\\'' && assertion.workflow_ref == '\\''Mikigb77/PlayableAnime/.github/workflows/ops.yml@refs/heads/main'\\''"
+  contains "$out" "--member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github-ops/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser"
+  if grep -E -e "--member=serviceAccount:github-ops@.*--role=roles/(owner|editor|secretmanager|storage|run\.developer|iam\.)" "$out" >/dev/null; then
+    bad "the ops account must stay read-only"
+  else
+    ok
+  fi
+  if grep -E "workloadIdentityPools/github/.* github-ops@|iam service-accounts add-iam-policy-binding github-ops@.*workloadIdentityPools/github/" "$out" >/dev/null; then
+    bad "the deploy pool must never reach the ops account"
+  else
+    ok
+  fi
+  if grep -E "add-iam-policy-binding github-deployer@.*workloadIdentityPools/github-ops/" "$out" >/dev/null; then
+    bad "the ops pool must never reach the deployer"
+  else
+    ok
+  fi
   contains "$out" "[dry-run] gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID"
   contains "$out" "--budget-amount=25"
   lacks "$out" "allUsers" "bootstrap must never make anything public"
@@ -116,6 +141,9 @@ test_bootstrap_first_and_second_run() {
     "the existing runtime account must not be created again"
   contains "$state/calls.log" "gcloud iam workload-identity-pools create github"
   contains "$state/calls.log" "gcloud iam workload-identity-pools providers create-oidc playable-anime-deploy"
+  contains "$state/calls.log" "gcloud iam service-accounts create github-ops"
+  contains "$state/calls.log" "gcloud iam workload-identity-pools create github-ops"
+  contains "$state/calls.log" "gcloud iam workload-identity-pools providers create-oidc playable-anime-ops"
   contains "$state/calls.log" "gcloud iam roles create lucidSagaApiAccess"
   contains "$state/calls.log" "gcloud billing budgets create --billing-account=000000-AAAAAA-BBBBBB"
   contains "$state/calls.log" "--budget-amount=30"
@@ -139,6 +167,7 @@ test_bootstrap_first_and_second_run() {
   lacks "$state/calls-2.log" "create-oidc" "a re-run must not create the provider again"
   lacks "$state/calls-2.log" "secrets versions add" "a re-run must not overwrite a secret"
   contains "$state/calls-2.log" "providers update-oidc playable-anime-deploy"
+  contains "$state/calls-2.log" "providers update-oidc playable-anime-ops"
   # The fake logs arguments as printf %q does, which escapes commas.
   contains "$state/calls-2.log" "gcloud iam roles update lucidSagaApiAccess --project=playable-anime --permissions=run.services.getIamPolicy\\,run.services.setIamPolicy"
   lacks "$state/calls-2.log" "iam roles undelete" "a re-run must not undelete a role that is there"
@@ -163,6 +192,8 @@ test_bootstrap_first_and_second_run() {
   contains "$state/calls-4.log" "gcloud iam workload-identity-pools undelete github"
   contains "$state/calls-4.log" "gcloud iam workload-identity-pools providers undelete playable-anime-deploy"
   contains "$state/calls-4.log" "providers update-oidc playable-anime-deploy"
+  contains "$state/calls-4.log" "gcloud iam workload-identity-pools undelete github-ops"
+  contains "$state/calls-4.log" "gcloud iam workload-identity-pools providers undelete playable-anime-ops"
   contains "$state/calls-4.log" "gcloud iam roles undelete lucidSagaApiAccess --project=playable-anime"
   lacks "$state/calls-4.log" "iam roles create" "a deleted role can only be undeleted"
 }
@@ -191,6 +222,118 @@ test_bootstrap_reads_neon_urls() {
     "$INFRA/bootstrap.sh" --yes
   if [ "$status" -ne 0 ]; then ok; else bad "accepted a direct URL from neonctl as the pooled one"; fi
   lacks "$state/calls.log" " create " "changed something before validating neonctl's URLs"
+}
+
+test_bootstrap_signs_in() {
+  local state out
+  start "bootstrap.sh signs in through the browser when gcloud is signed out or can't see the project"
+  state="$(new_state bootstrap-signed-out)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_SIGNED_OUT=1 BROWSER=fake-browser \
+    NEON_PRODUCTION_DATABASE_URL="$POOLED" NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" \
+    "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  contains "$state/calls.log" "gcloud config configurations create playable-anime --no-activate --format=none"
+  contains "$state/calls.log" "gcloud auth login"
+  lacks "$state/calls.log" "--no-launch-browser" "the sign-in must open the browser"
+  contains "$out" "Signed in as miki@example.com, project playable-anime (528988811295)."
+  contains "$state/calls.log" "gcloud services enable"
+
+  # Signed in elsewhere as an account that can't see the project: sign in again, in the project's
+  # own configuration when it exists.
+  state="$(new_state bootstrap-wrong-account)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_WRONG_ACCOUNT=1 FAKE_HAS_CONFIGURATION=1 \
+    BROWSER=fake-browser NEON_PRODUCTION_DATABASE_URL="$POOLED" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  contains "$out" "miki@example.com can't read project playable-anime."
+  contains "$state/calls.log" "gcloud auth login"
+  lacks "$state/calls.log" "configurations create" "the project's configuration exists already"
+
+  # Already signed in: no sign-in.
+  state="$(new_state bootstrap-signed-in)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" NEON_PRODUCTION_DATABASE_URL="$POOLED" \
+    NEON_PRODUCTION_DATABASE_URL_DIRECT="$DIRECT" "$INFRA/bootstrap.sh" --yes
+  equals "$status" 0 "exit status"
+  lacks "$state/calls.log" "auth login" "signed in already"
+}
+
+# Runs a function of tools.sh with only $FAKE_BIN on PATH: the fakes of sudo, curl and $3 (apt-get
+# or brew) and the few commands the scripts use, and no gcloud. Output goes to $out.
+with_tools() {
+  local state="$1" fn="$2" manager="$3" bin="$1/bin" tool
+  shift 3
+  mkdir -p "$bin"
+  for tool in bash cat cp dirname basename grep head ln mkdir mktemp readlink rm tr; do
+    ln -sf "$(command -v "$tool")" "$bin/$tool"
+  done
+  ln -sf "$FAKES/sudo" "$bin/sudo"
+  ln -sf "$FAKES/curl" "$bin/curl"
+  if [ -n "$manager" ]; then ln -sf "$FAKES/$manager" "$bin/$manager"; fi
+  # Not root, so installs go through sudo.
+  printf '#!/bin/sh\necho 1000\n' >"$bin/id"
+  chmod +x "$bin/id"
+  set +e
+  # shellcheck disable=SC2016 # The inner bash expands these.
+  /usr/bin/env -i PATH="$bin" HOME="$state" TMPDIR="$state" FAKE_STATE="$state" FAKE_BIN="$bin" \
+    "$@" bash -c '. "$1/lib.sh"; . "$1/config.sh"; . "$1/tools.sh"; '"$fn"'; echo "BROWSER=${BROWSER:-}"' \
+    _ "$INFRA" >"$state/out" 2>&1
+  status=$?
+  set -e
+}
+
+test_tools_install() {
+  local state
+  start "tools.sh installs gcloud through apt or Homebrew when it is missing, and nothing else"
+  state="$(new_state tools-apt)"
+  with_tools "$state" ensure_gcloud apt-get
+  equals "$status" 0 "exit status"
+  contains "$state/sudo.log" "sudo apt-get update -q"
+  contains "$state/sudo.log" "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q ca-certificates curl gnupg"
+  contains "$state/curl.log" "-fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg --output"
+  contains "$state/sudo.log" "sudo gpg --dearmor --yes -o /usr/share/keyrings/cloud.google.gpg"
+  contains "$state/sudo.log" "/etc/apt/sources.list.d/google-cloud-sdk.list"
+  contains "$state/installed-google-cloud-sdk.list" "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main"
+  contains "$state/sudo.log" "apt-get install -y -q google-cloud-cli"
+  # The package list is read again once Google's repository is added, before installing from it.
+  equals "$(grep -c 'apt-get update' "$state/sudo.log")" 2 "apt-get update runs before each install round"
+  equals "$(tail -n 1 "$state/sudo.log")" "sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q google-cloud-cli" "gcloud is installed last"
+
+  state="$(new_state tools-brew)"
+  with_tools "$state" ensure_gcloud brew
+  equals "$status" 0 "exit status"
+  contains "$state/brew.log" "brew install --cask google-cloud-sdk"
+  if [ -e "$state/sudo.log" ]; then bad "Homebrew needs no sudo"; else ok; fi
+
+  state="$(new_state tools-none)"
+  with_tools "$state" ensure_gcloud ""
+  if [ "$status" -ne 0 ]; then ok; else bad "claimed to install gcloud without apt or Homebrew"; fi
+  contains "$state/out" "https://cloud.google.com/sdk/docs/install"
+
+  # Present already: nothing is installed.
+  state="$(new_state tools-present)"
+  mkdir -p "$state/bin"
+  ln -sf "$FAKES/gcloud" "$state/bin/gcloud"
+  with_tools "$state" ensure_gcloud apt-get
+  equals "$status" 0 "exit status"
+  if [ -e "$state/sudo.log" ]; then bad "installed something although gcloud is there"; else ok; fi
+
+  # In WSL, sign-ins open the Windows browser through wslview, installed when missing.
+  state="$(new_state tools-wsl)"
+  with_tools "$state" use_windows_browser apt-get WSL_DISTRO_NAME=Ubuntu
+  equals "$status" 0 "exit status"
+  contains "$state/sudo.log" "apt-get install -y -q wslu"
+  contains "$state/out" "BROWSER=wslview"
+
+  # Outside WSL, BROWSER is left alone (checked only where these tests don't run in WSL).
+  if ! grep -qi microsoft /proc/version 2>/dev/null; then
+    state="$(new_state tools-not-wsl)"
+    with_tools "$state" use_windows_browser apt-get
+    equals "$status" 0 "exit status"
+    if [ -e "$state/sudo.log" ]; then bad "installed wslu outside WSL"; else ok; fi
+  fi
 }
 
 test_bootstrap_rejects_bad_input() {
@@ -373,7 +516,39 @@ test_covers() {
   out="$state/out-fail"
   with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_COVERS=1 "$INFRA/deploy.sh" covers
   if [ "$status" -ne 0 ]; then ok; else bad "failed covers passed"; fi
-  contains "$out" "gcloud logging read"
+  contains "$state/calls.log" "gcloud logging read resource.type=\\\"cloud_run_job\\\"\\ AND\\ resource.labels.job_name=\\\"playable-anime-migrate\\\"\\ AND\\ timestamp\\>=\\\"20"
+  contains "$out" "fake-log-line Model call rejected" "a failed job prints its own logs"
+
+  # Without roles/logging.viewer, it says how to read them instead.
+  out="$state/out-no-logs"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_COVERS=1 FAKE_FAIL_LOGS=1 \
+    "$INFRA/deploy.sh" covers
+  if [ "$status" -ne 0 ]; then ok; else bad "failed covers passed"; fi
+  contains "$out" "the deployer needs roles/logging.viewer"
+  contains "$out" "Read them with: gcloud logging read"
+}
+
+test_models() {
+  local state out
+  start "deploy.sh models calls each model as the migration job and prints the job's logs on failure"
+  state="$(new_state models)"
+  out="$state/out-dry"
+  with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" models
+  equals "$status" 0 "dry-run models exit status"
+  contains "$out" "[dry-run] gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,check_models --task-timeout=10m --wait"
+  if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
+
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" models
+  equals "$status" 0 "models exit status"
+  contains "$state/calls.log" "gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py\\,check_models --task-timeout=10m --wait"
+  lacks "$state/calls.log" "gcloud logging read" "logs are read only after a failure"
+
+  out="$state/out-fail"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_MODELS=1 "$INFRA/deploy.sh" models
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed model check passed"; fi
+  contains "$out" "The storyteller is unavailable"
+  contains "$out" "fake-log-line Model call rejected" "a failed check prints the job's logs"
 }
 
 test_deploy_service() {
@@ -425,7 +600,8 @@ test_migration_failure() {
   with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_MIGRATION=1 "$INFRA/deploy.sh" migrate \
     europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:abc
   if [ "$status" -ne 0 ]; then ok; else bad "a failed migration passed"; fi
-  contains "$out" "gcloud logging read"
+  contains "$state/calls.log" "gcloud logging read"
+  contains "$out" "fake-log-line Model call rejected" "a failed migration prints the job's logs"
 }
 
 test_smoke() {
@@ -621,6 +797,50 @@ test_publish_apk() {
   if [ "$status" -ne 0 ]; then ok; else bad "a failed release passed"; fi
 }
 
+test_ops() {
+  local state out
+  start "ops.sh runs one gcloud command as written, refuses credentials, and keeps logs inert"
+  state="$(new_state ops)"
+  out="$state/out-outputs"
+  with_fakes "$out" env FAKE_STATE="$state" GITHUB_OUTPUT="$state/outputs" "$INFRA/ops.sh" github-outputs
+  equals "$status" 0 "github-outputs exit status"
+  contains "$state/outputs" "wif_provider=projects/528988811295/locations/global/workloadIdentityPools/github-ops/providers/playable-anime-ops"
+  contains "$state/outputs" "ops_sa=github-ops@playable-anime.iam.gserviceaccount.com"
+
+  out="$state/out-default"
+  with_fakes "$out" env FAKE_STATE="$state" OPS_COMMAND="" "$INFRA/ops.sh" run
+  equals "$status" 0 "default command exit status"
+  contains "$state/calls.log" "gcloud logging read severity\\>=WARNING\\ AND\\ \\(resource.type=\\\"cloud_run_revision\\\"\\ OR\\ resource.type=\\\"cloud_run_job\\\"\\) --freshness=3h --order=asc --limit=200"
+  contains "$out" "::stop-commands::ops-"
+  contains "$out" "fake-log-line Model call rejected"
+
+  : >"$state/calls.log"
+  out="$state/out-quoted"
+  with_fakes "$out" env FAKE_STATE="$state" \
+    OPS_COMMAND="gcloud logging read 'severity>=ERROR AND textPayload:\"a b\"' --limit=5; touch $state/pwned" \
+    "$INFRA/ops.sh" run
+  equals "$status" 0 "quoted command exit status"
+  contains "$state/calls.log" "gcloud logging read severity\\>=ERROR\\ AND\\ textPayload:\\\"a\\ b\\\" --limit=5\\; touch"
+  if [ -e "$state/pwned" ]; then bad "ops.sh ran shell syntax from the command"; else ok; fi
+
+  : >"$state/calls.log"
+  for refused in "auth print-access-token" "config set account x" \
+    "run services describe x --impersonate-service-account=a@b" "projects list --account=x" \
+    "secrets versions access latest --secret=django-secret-key" \
+    "iam service-accounts keys create k.json --iam-account=x" "logging read 'unbalanced" \
+    "projects list --log-http" "projects list --verbosity=debug" "beta auth print-identity-token" \
+    "--quiet auth list" "beta --project=x config list"; do
+    out="$state/out-refused"
+    with_fakes "$out" env FAKE_STATE="$state" OPS_COMMAND="$refused" "$INFRA/ops.sh" run
+    if [ "$status" -ne 0 ]; then ok; else bad "ops.sh ran: $refused"; fi
+  done
+  if [ -s "$state/calls.log" ]; then bad "a refused command reached gcloud"; else ok; fi
+
+  out="$state/out-fail"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_LOGS=1 OPS_COMMAND="" "$INFRA/ops.sh" run
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed gcloud command passed"; fi
+}
+
 test_workflow_matches_scripts() {
   local wf="$ROOT/.github/workflows/deploy.yml" cmd
   start "deploy.yml uses only commands deploy.sh has"
@@ -629,6 +849,14 @@ test_workflow_matches_scripts() {
   while read -r cmd; do
     if "$INFRA/deploy.sh" --help | grep -qE "^  $cmd( |$)"; then ok; else bad "deploy.sh has no '$cmd'"; fi
   done <"$WORK/workflow-commands"
+  wf="$ROOT/.github/workflows/ops.yml"
+  if [ -f "$wf" ]; then ok; else bad "missing $wf"; fi
+  grep -oE 'infra/ops\.sh [a-z-]+' "$wf" | awk '{print $2}' | sort -u >"$WORK/ops-commands"
+  while read -r cmd; do
+    if "$INFRA/ops.sh" --help | grep -qE "^  $cmd( |$)"; then ok; else bad "ops.sh has no '$cmd'"; fi
+  done <"$WORK/ops-commands"
+  contains "$wf" "OPS_COMMAND: \${{ inputs.command }}" "the command reaches ops.sh only through the environment"
+  wf="$ROOT/.github/workflows/deploy.yml"
   contains "$wf" "infra/require-green-ci.sh"
   contains "$wf" "infra/build-apk.sh"
   contains "$wf" "infra/publish-apk.sh"
@@ -653,11 +881,15 @@ test_bootstrap_dry_run
 test_bootstrap_first_and_second_run
 test_bootstrap_reads_neon_urls
 test_bootstrap_rejects_bad_input
+test_bootstrap_signs_in
+test_tools_install
 test_deploy_dry_run
 test_deploy_settings
 test_deploy_service
 test_access
 test_covers
+test_models
+test_ops
 test_migration_failure
 test_smoke
 test_rollback

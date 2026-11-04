@@ -43,7 +43,10 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
    `flutter test` in `app/`. Add tests with each change.
 4. Schema changes go in a new migration. Never edit an applied one.
 5. Logging follows T4–T6: structured JSON to stdout. Never log API keys, auth tokens or full prompts.
-6. No service-account keys anywhere (B11). Vertex AI uses Application Default Credentials.
+6. The published app always runs on Gemini through Vertex AI (B6): on Cloud Run the API refuses to
+   start with any other `LLM_PROVIDER`. Local runs and tests may use the offline model
+   (`LLM_PROVIDER=fake`). No service-account keys anywhere (B11). Vertex AI uses Application
+   Default Credentials.
 7. Content follows the ratings table in the requirements (Teen and Mature 17+, no explicit sex, Gemini
    only).
 8. A change that alters behavior updates `docs/REQUIREMENTS.md` and the other docs in the same PR.
@@ -54,7 +57,12 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
    Miki's go-ahead (given for the first one on 2026-11-04) and is merged with a merge commit, never
    squashed. Ask Miki only for decisions that change the product's goals, or for irreversible
    production actions (a deploy, a production migration that drops data, deleting data).
-10. **A script Miki runs needs only a login.** Sign-ins open the browser and come back on a
+10. **Read Google Cloud yourself; never ask Miki for logs or settings.** Dispatch the read-only
+    Ops workflow (`.github/workflows/ops.yml` on `main`) with a gcloud command, or none for the
+    last 3 hours of the API's warnings and errors, and read its run's log
+    ([DEPLOY.md](docs/DEPLOY.md#reading-google-cloud)). It changes nothing; changes go through
+    `infra/` and the deploy.
+11. **A script Miki runs needs only a login.** Sign-ins open the browser and come back on a
     `localhost` callback (`gcloud auth login`, `neonctl auth`; in WSL, `BROWSER=wslview`), never
     `--no-launch-browser` or a code to copy by hand (`gh auth login --web --clipboard` copies
     GitHub's). Everything that follows from the login, such as ids, URLs and keys the CLIs can

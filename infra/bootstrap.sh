@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # One-time setup of Google Cloud for Lucid Saga, safe to run again. See docs/DEPLOY.md.
 #
-# Miki runs this once, signed in to gcloud as an owner of the playable-anime project and as an
-# administrator of its billing account. It deploys nothing. It sets up, or brings back in line:
+# Miki runs this once, as an owner of the playable-anime project and an administrator of its
+# billing account. It needs only a login: on a computer without gcloud it installs it first (apt in
+# WSL, Debian or Ubuntu; Homebrew on macOS), and when gcloud isn't signed in to an account that can
+# see the project, it opens the browser to sign in. It deploys nothing. It sets up, or brings back
+# in line:
 #
 #   1. the APIs the deploy needs
 #   2. the runtime service account's roles (T1, B11)
@@ -11,6 +14,7 @@
 #   5. a private bucket in europe-west3 for pictures, with keyless signed URLs (M4, B11)
 #   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11),
 #      and a custom role that lets it decide who may call the API
+#   6c. a read-only account for the Ops workflow, which lets threads read logs and settings
 #   7. a monthly budget alert on the project (T9)
 #
 # Run it with --dry-run first to see every command without changing anything.
@@ -22,6 +26,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/lib.sh"
 # shellcheck source=infra/config.sh
 . "$HERE/config.sh"
+# shellcheck source=infra/tools.sh
+. "$HERE/tools.sh"
 
 usage() {
   cat <<'EOF'
@@ -29,6 +35,9 @@ Usage: infra/bootstrap.sh [--dry-run] [--yes]
 
   --dry-run   Print every command that would change something, and run none. Needs no credentials.
   --yes       Don't ask for confirmation before making changes.
+
+Installs the gcloud CLI when it is missing, and signs in through the browser when gcloud isn't
+signed in to an account that can see the project.
 
 Environment, all optional:
   BUDGET_AMOUNT                        Monthly budget in the billing account's currency (default 25).
@@ -71,6 +80,10 @@ WIF_ISSUER="https://token.actions.githubusercontent.com"
 WIF_ATTRIBUTE_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref"
 WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && (assertion.event_name == 'push' || assertion.event_name == 'workflow_dispatch') && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${DEPLOY_WORKFLOW}@refs/heads/main'"
 WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
+# Only the Ops workflow on main, started by hand or through the API by someone with write access,
+# gets the read-only account. Its pool is its own, so it can never act as the deployer.
+OPS_WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && assertion.event_name == 'workflow_dispatch' && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${OPS_WORKFLOW}@refs/heads/main'"
+OPS_WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${OPS_WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
 
 BUDGET_AMOUNT="${BUDGET_AMOUNT:-$BUDGET_DEFAULT_AMOUNT}"
 DATABASE_URL_VALUE=""
@@ -209,6 +222,9 @@ confirm() {
 
 # --- steps -------------------------------------------------------------------------------------
 
+gcloud_account() { gcloud config get-value account 2>/dev/null || true; }
+project_number() { gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)'; }
+
 check_access() {
   local account number
   step "Checking access"
@@ -216,12 +232,19 @@ check_access() {
     say "Dry run: nothing is changed and nothing is read from Google Cloud."
     return 0
   fi
-  command -v gcloud >/dev/null 2>&1 || die "gcloud is not installed (https://cloud.google.com/sdk)"
+  ensure_gcloud
   use_gcloud_configuration
-  account="$(gcloud config get-value account 2>/dev/null || true)"
-  [ -n "$account" ] || die "gcloud is not signed in; run: gcloud auth login"
-  number="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')" ||
-    die "$account can't read project $PROJECT_ID"
+  account="$(gcloud_account)"
+  # Signed out, or signed in as an account that can't see the project: sign in in the browser.
+  if [ -z "$account" ] || ! number="$(project_number 2>/dev/null)"; then
+    if [ -n "$account" ]; then
+      say "$account can't read project $PROJECT_ID."
+    fi
+    sign_in_gcloud
+    account="$(gcloud_account)"
+    [ -n "$account" ] || die "gcloud is not signed in; run: gcloud auth login"
+    number="$(project_number)" || die "$account can't read project $PROJECT_ID"
+  fi
   [ "$number" = "$PROJECT_NUMBER" ] ||
     die "project $PROJECT_ID has number $number, but infra/config.sh expects $PROJECT_NUMBER"
   say "Signed in as $account, project $PROJECT_ID ($PROJECT_NUMBER)."
@@ -379,49 +402,77 @@ setup_deployer() {
   # Runs the service and the migration job as the runtime account.
   grant_service_account_role "$RUNTIME_SA" "serviceAccount:$DEPLOYER_SA" \
     roles/iam.serviceAccountUser
+  # Prints a failed job's logs in the deploy run, so the reason shows in GitHub.
+  grant_project_role "serviceAccount:$DEPLOYER_SA" roles/logging.viewer
   run_retry gcloud artifacts repositories add-iam-policy-binding "$AR_REPO" \
     --project="$PROJECT_ID" --location="$REGION" --member="serviceAccount:$DEPLOYER_SA" \
     --role=roles/artifactregistry.writer --format=none
 }
 
-setup_workload_identity() {
-  local state
-  step "6b. Workload Identity Federation for $GITHUB_REPOSITORY_NAME"
-  state="$(read_value gcloud iam workload-identity-pools describe "$WIF_POOL" \
+# Creates the pool $1 (display name $2, description $3), or brings back a deleted one.
+ensure_wif_pool() {
+  local pool="$1" display="$2" description="$3" state
+  state="$(read_value gcloud iam workload-identity-pools describe "$pool" \
     --project="$PROJECT_ID" --location=global --format='value(state)')"
   case "$state" in
     '')
-      run gcloud iam workload-identity-pools create "$WIF_POOL" --project="$PROJECT_ID" \
-        --location=global --display-name="GitHub Actions" \
-        --description="Keyless sign-in for GitHub Actions"
+      run gcloud iam workload-identity-pools create "$pool" --project="$PROJECT_ID" \
+        --location=global --display-name="$display" --description="$description"
       ;;
     DELETED)
-      run gcloud iam workload-identity-pools undelete "$WIF_POOL" --project="$PROJECT_ID" \
+      run gcloud iam workload-identity-pools undelete "$pool" --project="$PROJECT_ID" \
         --location=global
       ;;
-    *) say "Pool $WIF_POOL exists." ;;
+    *) say "Pool $pool exists." ;;
   esac
+}
 
-  state="$(read_value gcloud iam workload-identity-pools providers describe "$WIF_PROVIDER" \
-    --project="$PROJECT_ID" --location=global --workload-identity-pool="$WIF_POOL" \
+# Creates GitHub's OIDC provider $2 in pool $1 (display name $3) that admits only tokens passing
+# the condition $4, or brings an existing one back to exactly that mapping and condition.
+ensure_wif_provider() {
+  local pool="$1" provider="$2" display="$3" condition="$4" state
+  state="$(read_value gcloud iam workload-identity-pools providers describe "$provider" \
+    --project="$PROJECT_ID" --location=global --workload-identity-pool="$pool" \
     --format='value(state)')"
   if [ -z "$state" ]; then
-    run_retry gcloud iam workload-identity-pools providers create-oidc "$WIF_PROVIDER" \
-      --project="$PROJECT_ID" --location=global --workload-identity-pool="$WIF_POOL" \
-      --display-name="PlayableAnime deploy workflow" --issuer-uri="$WIF_ISSUER" \
-      --attribute-mapping="$WIF_ATTRIBUTE_MAPPING" --attribute-condition="$WIF_CONDITION"
+    run_retry gcloud iam workload-identity-pools providers create-oidc "$provider" \
+      --project="$PROJECT_ID" --location=global --workload-identity-pool="$pool" \
+      --display-name="$display" --issuer-uri="$WIF_ISSUER" \
+      --attribute-mapping="$WIF_ATTRIBUTE_MAPPING" --attribute-condition="$condition"
   else
     if [ "$state" = DELETED ]; then
-      run gcloud iam workload-identity-pools providers undelete "$WIF_PROVIDER" \
-        --project="$PROJECT_ID" --location=global --workload-identity-pool="$WIF_POOL"
+      run gcloud iam workload-identity-pools providers undelete "$provider" \
+        --project="$PROJECT_ID" --location=global --workload-identity-pool="$pool"
     fi
-    # Brings an existing provider back to exactly this mapping and condition.
-    run gcloud iam workload-identity-pools providers update-oidc "$WIF_PROVIDER" \
-      --project="$PROJECT_ID" --location=global --workload-identity-pool="$WIF_POOL" \
+    run gcloud iam workload-identity-pools providers update-oidc "$provider" \
+      --project="$PROJECT_ID" --location=global --workload-identity-pool="$pool" \
       --issuer-uri="$WIF_ISSUER" --attribute-mapping="$WIF_ATTRIBUTE_MAPPING" \
-      --attribute-condition="$WIF_CONDITION"
+      --attribute-condition="$condition"
   fi
+}
+
+setup_workload_identity() {
+  step "6b. Workload Identity Federation for $GITHUB_REPOSITORY_NAME"
+  ensure_wif_pool "$WIF_POOL" "GitHub Actions" "Keyless sign-in for GitHub Actions"
+  ensure_wif_provider "$WIF_POOL" "$WIF_PROVIDER" "PlayableAnime deploy workflow" "$WIF_CONDITION"
   grant_service_account_role "$DEPLOYER_SA" "$WIF_MEMBER" roles/iam.workloadIdentityUser
+}
+
+# Lets threads read Google Cloud through the Ops workflow (docs/DEPLOY.md#reading-google-cloud).
+# Viewer reads every setting but no secret's value and no stored picture; logging.viewer reads the
+# logs. Neither can change anything.
+setup_ops() {
+  local role
+  step "6c. Read-only access for the Ops workflow: $OPS_SA"
+  ensure_service_account "$OPS_SA_NAME" "GitHub Actions read-only ops"
+  for role in $OPS_ROLES; do
+    grant_project_role "serviceAccount:$OPS_SA" "$role"
+  done
+  ensure_wif_pool "$OPS_WIF_POOL" "GitHub Actions ops" \
+    "Keyless read-only sign-in for the Ops workflow"
+  ensure_wif_provider "$OPS_WIF_POOL" "$OPS_WIF_PROVIDER" "PlayableAnime ops workflow" \
+    "$OPS_WIF_CONDITION"
+  grant_service_account_role "$OPS_SA" "$OPS_WIF_MEMBER" roles/iam.workloadIdentityUser
 }
 
 setup_budget() {
@@ -468,6 +519,7 @@ Google Cloud is ready for the deploy workflow:
 
   Workload identity provider  $WIF_PROVIDER_RESOURCE
   Deployer service account    $DEPLOYER_SA
+  Ops (read-only) account     $OPS_SA, through $OPS_WIF_PROVIDER_RESOURCE
   Image repository            $IMAGE
   Pictures bucket             gs://$MEDIA_BUCKET
 
@@ -489,6 +541,7 @@ main() {
   setup_bucket
   setup_deployer
   setup_workload_identity
+  setup_ops
   setup_budget
   summary
 }

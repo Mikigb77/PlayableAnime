@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# A stand-in for Homebrew in the infra tests: it logs the call, and with $FAKE_BIN set, installing
+# gcloud's cask puts the fake gcloud there.
+set -euo pipefail
+fakes="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+printf 'brew %s\n' "$*" >>"${FAKE_STATE:?FAKE_STATE is not set}/brew.log"
+if [ -n "${FAKE_BIN:-}" ] && [ "$*" = "install --cask google-cloud-sdk" ]; then
+  ln -sf "$fakes/gcloud" "$FAKE_BIN/gcloud"
+fi
