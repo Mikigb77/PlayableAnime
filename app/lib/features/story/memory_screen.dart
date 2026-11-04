@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n.dart';
+import '../../core/names.dart';
 import '../../design/design.dart';
 import 'memory.dart';
 
@@ -284,7 +285,7 @@ class _Entry extends StatelessWidget {
                     runSpacing: Space.xxs,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Text(title, style: titleStyle ?? theme.textTheme.titleMedium),
+                      Text(title.asHeading, style: titleStyle ?? theme.textTheme.titleMedium),
                       if (tag case final tag?) _Tag(tag),
                     ],
                   ),

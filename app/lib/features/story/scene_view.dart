@@ -209,4 +209,8 @@ extension SceneActionText on Scene {
     }
     return playerAction;
   }
+
+  /// A step's words. The one step of a standing action is the action itself, in the app's words.
+  String stepText(SceneStep step, AppLocalizations l10n) =>
+      kind == 'standing' && step.text == playerAction ? actionText(l10n) ?? step.text : step.text;
 }

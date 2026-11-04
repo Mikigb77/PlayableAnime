@@ -225,7 +225,12 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
             as String)
       : null;
   final standing = body['standing'] as String?;
-  final said = kind == 'choice' ? choiceLabel! : action;
+  final said = switch (kind) {
+    'choice' => choiceLabel!,
+    // As the server does: a standing action's one step is its wire name.
+    'standing' => standing!,
+    _ => action,
+  };
   final fight = _fightWords.hasMatch(said);
   final timeStop = _timeStop.hasMatch(said);
 

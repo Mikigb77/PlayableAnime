@@ -126,7 +126,7 @@ async def get_memory(request: HttpRequest, story_id: str) -> MemoryView:
 async def get_status(request: HttpRequest, story_id: str) -> StatusView:
     """`/status`: the sheet, reputation, the clock and how long ago things happened (A8, G16)."""
     story = await _load(request, story_id)
-    return await sync_to_async(responses.status_out)(story)
+    return await sync_to_async(responses.status_out)(story, request=request)
 
 
 def _stories():

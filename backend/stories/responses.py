@@ -179,5 +179,11 @@ def memory_out(story: Story, *, request: HttpRequest | None) -> MemoryView:
     return view
 
 
-def status_out(story: Story) -> StatusView:
-    return status_view(WorldState.model_validate(story.state))
+def status_out(story: Story, *, request: HttpRequest | None) -> StatusView:
+    """The `/status` screen (A8, G16) with the player character's portrait once it is drawn (M4)."""
+    state = WorldState.model_validate(story.state)
+    view = status_view(state)
+    portraits = portrait_urls(story, [state.player_id], request=request)
+    if state.player_id in portraits:
+        view.character.portrait_url = portraits[state.player_id].url
+    return view

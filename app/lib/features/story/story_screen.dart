@@ -321,14 +321,23 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       final target = _sceneKeys[turn]?.currentContext;
       if (target != null || attempt >= 16) {
         done?.call();
-        if (target == null) return;
-        unawaited(
-          Scrollable.ensureVisible(
-            target,
-            duration: animate ? Motion.of(context, Motion.slow) : Duration.zero,
-            curve: Motion.standard,
-          ),
-        );
+        final card = target?.findRenderObject();
+        if (card == null || !card.attached) return;
+        final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
+        if (top == null) return;
+        // A little room under the bar, as a scene that is followed up stops (S3).
+        final to = (top - Space.lg).clamp(position.minScrollExtent, position.maxScrollExtent);
+        if (animate) {
+          unawaited(
+            _scroll.animateTo(
+              to,
+              duration: Motion.of(context, Motion.slow),
+              curve: Motion.standard,
+            ),
+          );
+        } else {
+          _scroll.jumpTo(to);
+        }
         return;
       }
       // The end moves as the scenes on the way are laid out: go there until it holds still, then

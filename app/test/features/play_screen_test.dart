@@ -16,6 +16,7 @@ import 'package:playable_anime/core/session/session_controller.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/account_repository.dart';
 import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
+import 'package:playable_anime/features/story/scene_details_sheet.dart';
 import 'package:playable_anime/features/story/scene_view.dart';
 import 'package:playable_anime/features/story/status_screen.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
@@ -227,6 +228,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a story opens with its newest scene a little below the bar', (tester) async {
+    await serve(tester);
+    await open(tester);
+    await settle(tester, frames: 12);
+
+    final feed = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+    final newest = find.byWidgetPredicate((w) => w is SceneView && w.scene.turn == 3);
+    // The same room a followed scene stops at, so its first line never sits under the bar.
+    expect(tester.getTopLeft(newest).dy - feed, moreOrLessEquals(Space.lg, epsilon: 1));
+  });
+
   testWidgets('a scene that is written quickly is still followed up to its top', (tester) async {
     // The whole scene arrives a moment after the action, before the page has followed it.
     await serve(
@@ -336,6 +348,12 @@ void main() {
     expect((saved.kind, saved.playerAction), ('standing', 'wait'));
     final card = find.byWidgetPredicate((w) => w is SceneCard && w.playerAction != null).last;
     expect(tester.widget<SceneCard>(card).playerAction, l10n.standingWait);
+
+    // Its one step in "How it played out" reads the same way.
+    await openDetails(tester, saved.turn);
+    final sheet = find.byType(SceneDetailsView);
+    expect(find.descendant(of: sheet, matching: find.text(l10n.standingWait)), findsNWidgets(2));
+    expect(find.descendant(of: sheet, matching: find.text('wait')), findsNothing);
   });
 
   testWidgets('scene details show the steps, the roll and where the plan stopped', (tester) async {
@@ -541,6 +559,9 @@ void main() {
     expect(find.text('Shen Yu'), findsOneWidget);
     expect(find.text('Azure Cloud Sect'), findsOneWidget);
     expect(find.text('3 months ago'), findsOneWidget);
+    // The player character's portrait, as on the memory page (M4).
+    final avatar = tester.widget<PortraitAvatar>(find.byType(PortraitAvatar));
+    expect(avatar.url, 'asset:assets/fake/portrait-3.jpg');
   });
 
   testWidgets('scrolling back loads older scenes, and Latest returns to the newest', (
