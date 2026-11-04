@@ -124,7 +124,7 @@ def test_each_response_format_is_sent_as_its_node_asks_for_it(backend, capsys):
         (Node.NARRATOR, "NarratorOutput"),
         (Node.SUMMARIZER, "ChapterOutput"),
         (Node.DRAFTER, "DraftProposal"),
-        (Node.DRAFTER, "WorldProposal"),
+        (Node.DRAFTER, "WorldChange"),
         (Node.DRAFTER, "CharacterProposal"),
     ]
     for request in backend.requests:

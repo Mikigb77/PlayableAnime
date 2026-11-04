@@ -40,6 +40,7 @@ from graph.drafting.schema import (
     TimeP,
     TraitP,
     TravelP,
+    WorldChange,
     WorldProposal,
 )
 from graph.llm.fake import FakeBackend, Reply
@@ -478,8 +479,8 @@ def offline_backend(*, grounded: bool) -> FakeBackend:
 
     def reply(request: Request) -> Reply:
         title = (request.json_schema or {}).get("title")
-        if title == "WorldProposal":
-            return Reply(json=sample.world)
+        if title == "WorldChange":
+            return Reply(json=WorldChange())  # no model to make the change: the world stays
         if title == "CharacterProposal":
             return Reply(json=sample.character)
         return Reply(json=sample)

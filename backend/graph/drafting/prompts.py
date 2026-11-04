@@ -95,6 +95,20 @@ GIFTS = {
 }
 
 
+WORLD_CHANGE = """\
+Reply with only what the change touches, and leave everything else out: it stays exactly as it \
+is. Write each record the change adds or changes in full, in its list: one with an id already in \
+the world replaces that record, and one with a new id is added. Put each record the change \
+removes in removed, with its list as section and its id, and remove whatever the change makes \
+untrue: a world that gains vampires loses its "magic or anything supernatural" kind with \
+prevalence none and drops the rules that say nothing supernatural exists. A fixed rule goes only \
+when its id is in dropped_rule_ids, so list every fixed rule the request removes or changes \
+there. Write the title, genre, tone, era, summary, nature, norms, known facts, calendar, travel, \
+medicine or opening only if the change alters them, each in full. The character stays as it is, \
+so keep what they belong to and where they are unless the change removes it.\
+"""
+
+
 def system_prompt(rating: str) -> str:
     return f"{SYSTEM}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
 
@@ -156,9 +170,10 @@ def revise_prompt(
     """A change in plain words to the world or the character (G1, G2). The model sees the whole
     draft, hidden parts included, so the change fits the world."""
     world = current.world.model_copy(update={"rules": current_rules(state)})
+    # Without the fields left at their defaults: a full dump nearly doubles the prompt.
     draft = {
-        "world": world.model_dump(mode="json"),
-        "character": current.character.model_dump(mode="json"),
+        "world": world.model_dump(mode="json", exclude_defaults=True),
+        "character": current.character.model_dump(mode="json", exclude_defaults=True),
     }
     parts = [
         f"Premise, in the player's words:\n{premise.strip()}",
@@ -172,10 +187,7 @@ def revise_prompt(
         parts.append(
             "The player asks for this change to the world:\n"
             f"{instruction.strip()}\n\n"
-            "Return the whole world with the change made and everything else as it was, with "
-            "the same ids. The character stays as it is, so keep what they belong to and where "
-            "they are unless the change removes it. If the request removes or changes a fixed "
-            "rule, list that rule's id in dropped_rule_ids."
+            f"{WORLD_CHANGE}"
         )
     else:
         parts.append(
@@ -227,7 +239,8 @@ def rules_instruction(rules: list[RuleP]) -> str:
 def rating_instruction(rating: str) -> str:
     return (
         f"The player changed the story's rating. {RATINGS.get(rating, RATINGS['teen'])} Bring "
-        "anything beyond that within it, and keep everything else."
+        "anything beyond that within it: rewrite in full every part that goes beyond it, hidden "
+        "parts included (secrets, agendas, mystery answers and clues), and keep everything else."
     )
 
 

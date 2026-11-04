@@ -8,7 +8,17 @@ import pytest
 
 from engine.state import GiftStrength, PhysicsMode
 from graph.drafting import chain, samples
-from graph.drafting.schema import DraftProposal, ExtraordinaryP, RuleP, WorldProposal
+from graph.drafting.prompts import current_rules
+from graph.drafting.schema import (
+    DraftProposal,
+    ExtraordinaryP,
+    NpcP,
+    PeopleP,
+    PlaceP,
+    RemovalP,
+    RuleP,
+    WorldChange,
+)
 from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
 from graph.llm import (
     Block,
@@ -117,63 +127,107 @@ def test_model_failures_reach_the_caller(fake, llm):
 # Revise.
 
 
-def test_a_world_revision_replaces_the_world_and_keeps_the_character(fake, llm):
-    world = samples.naples_world()
-    world.title = "Blood on the Bay"
-    fake.script(Node.DRAFTER, Reply(json=world))
+def test_a_world_revision_asks_for_only_the_change_and_keeps_everything_else(fake, llm):
+    fake.script(Node.DRAFTER, Reply(json=WorldChange(title="Blood on the Bay")))
     draft = _naples_draft()
 
     revised = run(chain.revise(llm, draft, "world", "Call it Blood on the Bay."))
 
     [request] = fake.calls(Node.DRAFTER)
-    assert request.json_schema["title"] == "WorldProposal"
+    assert request.json_schema["title"] == "WorldChange"
     text = _prompt_text(request)
     assert "Call it Blood on the Bay." in text
+    assert "Reply with only what the change touches" in text
     assert '"answer"' in text  # the model sees the whole draft, hidden parts included
-    assert revised.proposal.world.title == "Blood on the Bay"
+    assert '"known_to_player": true' not in text  # but not the fields left at their defaults
+    assert revised.state().bible.title == "Blood on the Bay"
+    before, after = draft.state(), revised.state()
+    assert after.model_copy(update={"bible": before.bible}) == before
+    assert after.bible.model_copy(update={"title": before.bible.title}) == before.bible
     assert revised.proposal.character == draft.proposal.character
 
 
-def test_a_revision_keeps_the_fixed_rules_the_model_forgot(fake, llm):
-    world = samples.naples_world()
-    world.rules = [RuleP(id="omerta", text="Nobody talks to the police.", fixed=False)]
-    fake.script(Node.DRAFTER, Reply(json=world))
+def test_races_asked_for_in_plain_words_join_the_world(fake, llm):
+    """The change Miki asked for on 2026-11-04, which failed when the model had to write the
+    whole world back."""
+    fake.script(
+        Node.DRAFTER,
+        Reply(
+            json=WorldChange(
+                peoples=[
+                    PeopleP(id="vampires", name="Vampires", lifespan_years=None),
+                    PeopleP(id="orcs", name="Orcs", lifespan_years=60),
+                    PeopleP(id="demons", name="Demons"),
+                ]
+            )
+        ),
+    )
+    draft = _cultivation_draft()
+
+    revised = run(chain.revise(llm, draft, "world", "Add vampires, orcs and demons as races."))
+
+    peoples = [p.name for p in revised.state().bible.peoples]
+    assert peoples[-3:] == ["Vampires", "Orcs", "Demons"]
+    assert peoples[:-3] == [p.name for p in draft.state().bible.peoples]
+    assert "Peoples: " in " ".join(world_lines(revised.state()))
+    assert public_rules(revised.state()) == public_rules(draft.state())
+
+
+def test_a_revision_changes_only_the_rules_it_gives(fake, llm):
+    rule = RuleP(id="omerta", text="Nobody talks to the police.", fixed=False)
+    fake.script(Node.DRAFTER, Reply(json=WorldChange(rules=[rule])))
 
     revised = run(chain.revise(llm, _naples_draft(), "world", "Make it rain more."))
 
     rules = {r.id: r for r in revised.state().bible.rules}
     assert {"no-supernatural", "human-limits", "omerta"} <= set(rules)
     assert rules["no-supernatural"].fixed
+    assert rules["omerta"].text == "Nobody talks to the police."
     assert revised.released_rules == frozenset()
 
 
 def test_a_revision_can_drop_a_genre_rule_when_the_player_asks(fake, llm):
-    world = samples.naples_world().model_copy(
-        update={
-            "extraordinary": [
-                ExtraordinaryP(id="vampires", kind="vampires", prevalence="hidden"),
-            ],
-            "rules": [
-                RuleP(
-                    id="vampires-hidden",
-                    text="Vampires hide among the living.",
-                    fixed=True,
-                    topic="existence",
-                    about=["vampires"],
-                )
-            ],
-            "dropped_rule_ids": ["no-supernatural", "human-limits"],
-        }
+    change = WorldChange(
+        extraordinary=[ExtraordinaryP(id="vampires", kind="vampires", prevalence="hidden")],
+        rules=[
+            RuleP(
+                id="vampires-hidden",
+                text="Vampires hide among the living.",
+                fixed=True,
+                topic="existence",
+                about=["vampires"],
+            )
+        ],
+        removed=[RemovalP(section="extraordinary", id="supernatural")],
+        dropped_rule_ids=["no-supernatural", "human-limits"],
     )
-    fake.script(Node.DRAFTER, Reply(json=world))
+    fake.script(Node.DRAFTER, Reply(json=change))
 
     revised = run(chain.revise(llm, _naples_draft(), "world", "Add hidden vampires."))
 
     state = revised.state()
     assert revised.released_rules == {"no-supernatural", "human-limits"}
     assert not state.bible.grounded
-    assert {r.id for r in state.bible.rules} == {"vampires-hidden"}
+    assert {r.id for r in state.bible.rules} == {"omerta", "vampires-hidden"}
+    assert {k.id for k in state.bible.extraordinary} == {"vampires"}
     assert revised.proposal.world.dropped_rule_ids == []
+
+
+def test_a_fixed_rule_outlasts_a_change_that_forgets_to_drop_it(fake, llm):
+    """G7: a starter's fixed rule goes only when the change names it, so a model that removes
+    the 'nothing supernatural' kind and keeps quiet about the rule leaves the world grounded."""
+    change = WorldChange(
+        extraordinary=[ExtraordinaryP(id="vampires", kind="vampires", prevalence="hidden")],
+        removed=[RemovalP(section="extraordinary", id="supernatural")],
+    )
+    fake.script(Node.DRAFTER, Reply(json=change))
+
+    revised = run(chain.revise(llm, _naples_draft(), "world", "Add hidden vampires."))
+
+    assert revised.released_rules == frozenset()
+    state = revised.state()
+    assert state.bible.grounded
+    assert "no-supernatural" in {r.id for r in state.bible.rules}
 
 
 def test_a_character_revision_replaces_only_the_character(fake, llm):
@@ -220,9 +274,7 @@ def test_unchanged_lines_need_no_model_call():
 
 def test_rewritten_lines_ask_the_model_to_match_them(fake, llm):
     draft = _naples_draft()
-    world = samples.naples_world()
-    world.era = "Naples, 1975: the heat of summer"
-    fake.script(Node.DRAFTER, Reply(json=world))
+    fake.script(Node.DRAFTER, Reply(json=WorldChange(era="Naples, 1975: the heat of summer")))
 
     lines = world_lines(draft.state())
     lines[1] = "Naples, 1975: the heat of summer."
@@ -248,9 +300,8 @@ def test_a_stronger_gift_asks_the_model_for_a_new_gift(fake, llm):
 
 def test_rules_set_by_the_player_stay_word_for_word(fake, llm):
     draft = _naples_draft()
-    world = samples.naples_world()
-    world.rules = [RuleP(id="omerta", text="The model's own wording.", fixed=True)]
-    fake.script(Node.DRAFTER, Reply(json=world))
+    rule = RuleP(id="omerta", text="The model's own wording.", fixed=True)
+    fake.script(Node.DRAFTER, Reply(json=WorldChange(rules=[rule])))
     edits = chain.Edits(
         rules=[
             chain.RuleEdit(
@@ -295,17 +346,198 @@ def test_opening_up_a_genre_rule_releases_it_with_no_model_call(fake, llm):
     assert not rule.fixed
 
 
-def test_keep_fixed_rules_adds_back_what_was_not_dropped():
-    previous = [
-        RuleP(id="a", text="A.", fixed=True),
-        RuleP(id="b", text="B.", fixed=True),
-        RuleP(id="c", text="C.", fixed=False),
+# Merging a change (G1).
+
+
+def _merge(change: WorldChange, draft: chain.Draft | None = None):
+    draft = draft or _naples_draft()
+    return chain.apply_change(draft.proposal.world, current_rules(draft.state()), change)
+
+
+def test_an_empty_change_leaves_the_world_exactly_as_it_was():
+    draft = _naples_draft()
+
+    world, let_go = _merge(WorldChange(), draft)
+
+    again = replace(draft, proposal=DraftProposal(world=world, character=draft.proposal.character))
+    assert again.state() == draft.state()
+    assert let_go == frozenset()
+
+
+def test_a_change_replaces_records_by_id_adds_new_ones_and_removes_what_it_lists():
+    draft = _naples_draft()
+    places = draft.proposal.world.places
+    bar = places[1].model_copy(update={"mood": "empty, after the raid"})
+    change = WorldChange(
+        places=[bar, PlaceP(id="docks", name="the docks", kind="wilds")],
+        removed=[RemovalP(section="places", id=places[2].id)],
+    )
+
+    world, _ = _merge(change, draft)
+
+    assert [p.id for p in world.places] == [places[0].id, bar.id, *[p.id for p in places[3:]]] + [
+        "docks"
     ]
-    world = WorldProposal(title="", genre="", tone="", era="", dropped_rule_ids=["b"])
+    assert world.places[1].mood == "empty, after the raid"
+    assert world.npcs == draft.proposal.world.npcs
 
-    kept = chain.keep_fixed_rules(previous, world)
 
-    assert [r.id for r in kept.rules] == ["a"]
+def test_a_removal_that_names_its_list_a_little_off_still_removes_the_record():
+    draft = _naples_draft()
+    place = draft.proposal.world.places[-1].id
+    npc = draft.proposal.world.npcs[-1].id
+
+    world, _ = _merge(
+        WorldChange(
+            removed=[
+                RemovalP(section="Place", id=place),  # the singular
+                RemovalP(section="characters", id=npc),  # no such list: wherever the id is
+            ]
+        ),
+        draft,
+    )
+
+    assert place not in {p.id for p in world.places}
+    assert npc not in {n.id for n in world.npcs}
+    assert world.factions == draft.proposal.world.factions
+
+
+def test_a_record_matched_by_its_name_keeps_its_id_so_references_hold():
+    draft = _naples_draft()
+    npc = draft.proposal.world.npcs[0]
+    renamed = NpcP(id="someone-new", name=npc.name, description="Older now, and tired.")
+
+    world, _ = _merge(WorldChange(npcs=[renamed]), draft)
+
+    assert [n.id for n in world.npcs] == [n.id for n in draft.proposal.world.npcs]
+    assert world.npcs[0].description == "Older now, and tired."
+
+
+def test_a_rewritten_fixed_rule_stays_in_place_and_lets_the_old_one_go():
+    draft = _naples_draft()
+    rule = RuleP(id="human-limits", text="Nobody can outrun a bullet.", fixed=True)
+
+    world, let_go = _merge(WorldChange(rules=[rule], dropped_rule_ids=["human-limits"]), draft)
+
+    assert [r.id for r in world.rules] == [r.id for r in current_rules(draft.state())]
+    assert next(r for r in world.rules if r.id == "human-limits").text == rule.text
+    assert let_go == {"human-limits"}
+
+
+def _cultivation_with_open_rule() -> tuple[chain.Draft, list[RuleP]]:
+    draft = _cultivation_draft()
+    cost = RuleP(
+        id="time-costs-years",
+        text="Each use of a time power costs a year of life.",
+        fixed=False,
+        topic="limits",
+        about=["time-powers"],
+    )
+    return draft, [*current_rules(draft.state()), cost]
+
+
+def test_removing_a_kind_takes_its_open_rules_along_and_keeps_its_fixed_ones():
+    draft, rules = _cultivation_with_open_rule()
+    gone = RemovalP(section="extraordinary", id="time-powers")
+
+    world, let_go = chain.apply_change(draft.proposal.world, rules, WorldChange(removed=[gone]))
+
+    assert "time-powers" not in {k.id for k in world.extraordinary}
+    assert {r.id for r in world.rules} == {"qi-exists", "time-powers-exist", "realm-ceiling"}
+    assert let_go == frozenset()
+
+    change = WorldChange(removed=[gone], dropped_rule_ids=["time-powers-exist"])
+    world, let_go = chain.apply_change(draft.proposal.world, rules, change)
+
+    assert {r.id for r in world.rules} == {"qi-exists", "realm-ceiling"}
+    assert let_go == {"time-powers-exist"}
+
+
+def test_a_fixed_rule_listed_as_removed_stays_until_the_change_drops_it():
+    removed = [RemovalP(section="rules", id="human-limits"), RemovalP(section="rules", id="omerta")]
+
+    world, let_go = _merge(WorldChange(removed=removed))
+
+    assert [r.id for r in world.rules] == ["no-supernatural", "human-limits"]
+    assert let_go == frozenset()
+
+
+def test_a_removal_that_could_mean_two_records_or_none_removes_nothing():
+    draft = _naples_draft()
+    vampires = WorldChange(
+        extraordinary=[ExtraordinaryP(id="vampires", kind="vampires", prevalence="hidden")],
+        peoples=[PeopleP(id="vampires", name="Vampires")],
+    )
+    world, _ = _merge(vampires, draft)
+    with_vampires = replace(
+        draft, proposal=DraftProposal(world=world, character=draft.proposal.character)
+    )
+
+    again, _ = _merge(
+        WorldChange(
+            removed=[
+                RemovalP(section="monsters", id="vampires"),  # a kind and a people: which?
+                RemovalP(section="stuff", id="the-moon"),  # in no list at all
+            ]
+        ),
+        with_vampires,
+    )
+
+    assert again == world
+
+
+def test_a_record_given_a_new_id_by_mistake_brings_its_references_back_to_the_old_one():
+    draft = _naples_draft()
+    carmine = draft.proposal.world.npcs[0]
+    opening = draft.proposal.world.opening
+    change = WorldChange(
+        npcs=[carmine.model_copy(update={"id": "carmine-russo", "description": "Grey now."})],
+        opening=opening.model_copy(
+            update={"present_ids": ["player", "carmine-russo", "bartender"]}
+        ),
+    )
+
+    world, _ = _merge(change, draft)
+
+    assert [n.id for n in world.npcs] == [n.id for n in draft.proposal.world.npcs]
+    assert world.npcs[0].description == "Grey now."
+    assert world.opening.present_ids == ["player", "carmine", "bartender"]
+    again = replace(draft, proposal=DraftProposal(world=world, character=draft.proposal.character))
+    assert set(again.state().characters) == set(draft.state().characters)
+    assert again.state().scene.present_ids == draft.state().scene.present_ids
+
+
+def test_a_kind_given_a_new_id_by_mistake_is_matched_by_what_it_is():
+    draft = _cultivation_draft()
+    rare = ExtraordinaryP(id="qi-cultivation", kind="qi cultivation", prevalence="rare")
+    rule = RuleP(
+        id="qi-is-scarce",
+        text="Few are born able to gather qi.",
+        fixed=False,
+        topic="limits",
+        about=["qi-cultivation"],
+    )
+
+    world, _ = _merge(WorldChange(extraordinary=[rare], rules=[rule]), draft)
+
+    assert [k.id for k in world.extraordinary] == ["qi", "time-powers"]
+    assert world.extraordinary[0].prevalence == "rare"
+    assert next(r for r in world.rules if r.id == "qi-is-scarce").about == ["qi"]
+
+
+def test_texts_and_parts_change_only_when_the_change_gives_them():
+    draft = _naples_draft()
+    before = draft.proposal.world
+
+    world, _ = _merge(WorldChange(era="Naples, 1980", norms=["Debts are paid in blood."]), draft)
+
+    assert (world.era, world.norms) == ("Naples, 1980", ["Debts are paid in blood."])
+    assert (world.title, world.summary, world.nature) == (
+        before.title,
+        before.summary,
+        before.nature,
+    )
+    assert (world.calendar, world.opening) == (before.calendar, before.opening)
 
 
 def test_a_draft_round_trips_through_json():
@@ -346,9 +578,8 @@ def test_rules_set_before_drafting_join_the_drafted_ones_in_one_call(fake, llm):
 
 def test_the_model_cant_release_a_starter_rule_the_player_kept(fake, llm):
     draft = _naples_draft()
-    world = samples.naples_world()
-    world.dropped_rule_ids = ["no-supernatural", "human-limits"]
-    fake.script(Node.DRAFTER, Reply(json=world))
+    change = WorldChange(dropped_rule_ids=["no-supernatural", "human-limits"])
+    fake.script(Node.DRAFTER, Reply(json=change))
     rules = [
         chain.RuleEdit(id=r.id, text=r.text, fixed=r.fixed) for r in public_rules(draft.state())
     ]
