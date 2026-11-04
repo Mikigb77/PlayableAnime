@@ -36,6 +36,7 @@ class CallRecord:
     cost_usd: Decimal
     price_known: bool
     error_kind: str | None = None
+    cached_tokens: int = 0  # part of input_tokens, billed at the cached rate
 
     def as_log(self) -> dict[str, Any]:
         data = asdict(self)
@@ -83,6 +84,7 @@ class TurnTelemetry:
             "input_tokens": sum(c.input_tokens for c in calls),
             "output_tokens": sum(c.output_tokens for c in calls),
             "thinking_tokens": sum(c.thinking_tokens for c in calls),
+            "cached_tokens": sum(c.cached_tokens for c in calls),
             "images": sum(c.images for c in calls),
             "latency_ms": sum(c.latency_ms for c in calls),
             "cost_usd": float(self.cost_usd),

@@ -54,8 +54,10 @@ class Env(BaseSettings):
     # `playable-anime` project: a Google ID token must name one of them as its audience. Empty
     # turns Google sign-in off. Client ids aren't secrets.
     google_oauth_client_ids: str = ""
-    # Comma-separated. A verified Google sign-in with one of these emails gets the owner role.
-    owner_emails: str = "mikigb77@gmail.com"
+    # Comma-separated. A verified Google sign-in with one of these emails gets the owner role (K7).
+    # No default, so no address is in the public repo: production sets it from the OWNER_EMAILS
+    # GitHub secret (docs/DEPLOY.md).
+    owner_emails: str = ""
     # The youngest age that can sign up. Under 17 gets Teen only (F8).
     min_signup_age: int = 13
     # How many proxies append to X-Forwarded-For before the request reaches us: 1 on Cloud Run

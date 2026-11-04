@@ -321,6 +321,7 @@ def transcription_chunk(response: Any) -> Chunk:
             _count(usage, "prompt_token_count"),
             _count(usage, "candidates_token_count") + thinking,
             thinking,
+            _count(usage, "cached_content_token_count"),
         ),
         finish=_finish(metadata) or Finish("stop"),
     )
@@ -426,10 +427,13 @@ def to_chunk(message: Any) -> Chunk:
     """Turns one LangChain message chunk into ours: text, pictures, usage and how it ended."""
     usage = message.usage_metadata or {}
     reasoning = (usage.get("output_token_details") or {}).get("reasoning", 0)
+    cached = (usage.get("input_token_details") or {}).get("cache_read", 0)
     return Chunk(
         text=message.text or "",
         images=_images(message.content),
-        usage=Usage(usage.get("input_tokens", 0), usage.get("output_tokens", 0), reasoning),
+        usage=Usage(
+            usage.get("input_tokens", 0), usage.get("output_tokens", 0), reasoning, cached or 0
+        ),
         finish=_finish(message.response_metadata or {}),
     )
 

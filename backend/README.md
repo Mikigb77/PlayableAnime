@@ -45,8 +45,8 @@ stories, either:
 
 - send your own Gemini key in the `X-LLM-Api-Key` header (the app's Account screen does this), or
 - set `LLM_PROVIDER=vertex` and give Application Default Credentials access to the
-  `playable-anime` project: `gcloud auth application-default login`, signing in as
-  tech.garbar@gmail.com. Note that ADC is machine-wide, so this replaces whatever ADC you use for
+  `playable-anime` project: `gcloud auth application-default login`, signing in with the
+  Google account that owns the project. Note that ADC is machine-wide, so this replaces whatever ADC you use for
   other projects. No service-account keys anywhere (B11).
 
 ## Settings
@@ -68,7 +68,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
 | `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
 | `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |
-| `OWNER_EMAILS` | `mikigb77@gmail.com` | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). |
+| `OWNER_EMAILS` | none | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). Set it to your own Google email locally; production gets it from the `OWNER_EMAILS` GitHub secret, so no address is in the repo. |
 | `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
 | `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
 | `PICTURE_MODEL` | `gemini-3.1-flash-lite-image` | The picture model (M8), read by `graph/llm/config.py`. |

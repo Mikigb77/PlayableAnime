@@ -15,7 +15,7 @@ from tests.conftest import ADULT_BIRTH_DATE, PASSWORD, auth_headers
 
 pytestmark = pytest.mark.django_db
 
-OWNER = "mikigb77@gmail.com"
+OWNER = "owner@example.com"
 
 
 @pytest.fixture(autouse=True)

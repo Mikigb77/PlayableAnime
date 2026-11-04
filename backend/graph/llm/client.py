@@ -473,6 +473,7 @@ class _Trace:
             input_tokens=self.usage.input_tokens,
             output_tokens=self.usage.output_tokens,
             thinking_tokens=self.usage.thinking_tokens,
+            cached_tokens=self.usage.cached_tokens,
             images=self.images,
             latency_ms=self._elapsed_ms(),
             first_token_ms=self.first_token_ms,

@@ -24,23 +24,36 @@ class Price:
     input_per_m: Decimal
     output_per_m: Decimal
     image_output_per_m: Decimal | None = None  # image models bill a picture's output tokens
+    # Prompt tokens Gemini had just seen (implicit caching, on by default) bill at this rate.
+    # None bills them as ordinary input.
+    cached_input_per_m: Decimal | None = None
 
 
-def _price(input_per_m: str, output_per_m: str, image_output_per_m: str | None = None) -> Price:
+def _price(
+    input_per_m: str,
+    output_per_m: str,
+    image_output_per_m: str | None = None,
+    *,
+    cached: str | None = None,
+) -> Price:
     return Price(
         Decimal(input_per_m),
         Decimal(output_per_m),
         Decimal(image_output_per_m) if image_output_per_m else None,
+        Decimal(cached) if cached else None,
     )
 
 
+# Cached input is a tenth of the input price for every text and image model below (checked
+# 2026-11-04). The price list gives Transcribe no cached rate.
 PRICES: dict[str, Price] = {
-    "gemini-3.5-flash": _price("1.50", "9.00"),
-    "gemini-3.5-flash-lite": _price("0.30", "2.50"),
-    "gemini-3.1-flash-lite": _price("0.25", "1.50"),
-    "gemini-3.1-pro-preview": _price("2.00", "12.00"),  # prompts up to 200K tokens
+    "gemini-3.5-flash": _price("1.50", "9.00", cached="0.15"),
+    "gemini-3.5-flash-lite": _price("0.30", "2.50", cached="0.03"),
+    "gemini-3.1-flash-lite": _price("0.25", "1.50", cached="0.025"),
+    # Prompts up to 200K tokens.
+    "gemini-3.1-pro-preview": _price("2.00", "12.00", cached="0.20"),
     # A 1K picture is 1,120 output tokens at $30 per million: $0.034 (M8). Bigger sizes bill more.
-    "gemini-3.1-flash-lite-image": _price("0.25", "1.50", "30.00"),
+    "gemini-3.1-flash-lite-image": _price("0.25", "1.50", "30.00", cached="0.025"),
     # Speech to text (V6), the file version: audio in at $2.00 and text out at $12 per million
     # tokens, about $0.005 a minute of speech. Its preview name, `-preview`, matches this entry.
     "gemini-3.5-transcribe": _price("2.00", "12.00"),
@@ -75,11 +88,17 @@ def estimate_cost(
 
     A picture call bills its output tokens at the image rate, and never less than a 1K picture
     each, in case the provider left the image tokens out of the usage.
+    Cached prompt tokens bill at the model's cached rate.
     """
     price, known = price_for(model)
     if images and price.image_output_per_m is None:
         price, known = FALLBACK_PRICE, False  # a text price would undercount a picture
-    cost = usage.input_tokens * price.input_per_m / _MILLION
+    cached = min(usage.cached_tokens, usage.input_tokens)
+    cached_rate = price.cached_input_per_m
+    if cached_rate is None:
+        cached_rate = price.input_per_m
+    cost = (usage.input_tokens - cached) * price.input_per_m / _MILLION
+    cost += cached * cached_rate / _MILLION
     if images and price.image_output_per_m is not None:
         tokens = max(usage.output_tokens, images * TOKENS_PER_1K_IMAGE)
         cost += tokens * price.image_output_per_m / _MILLION
