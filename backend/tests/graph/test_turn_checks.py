@@ -3,12 +3,15 @@
 from engine.context import ContentPrefs, GoreLevel, ImageSetting, Rating, StorySettings, TurnContext
 from engine.contracts import (
     ActionKind,
+    Aim,
     DirectorPlan,
     EventKind,
     EventSource,
+    Harm,
     Intent,
     IntentStep,
     OutcomeClass,
+    Peril,
     PictureDecision,
     PictureKind,
     PictureTrigger,
@@ -218,6 +221,28 @@ def test_stop_reasons_follow_the_step():
         steps=[resolved(0, StepResult.FAILURE, OutcomeClass.RULED_OUT), resolved(1)]
     )
     assert check_resolution(ruled_out)[0].stop_reason is StopReason.RULED_OUT
+
+
+def test_a_plan_stops_where_something_struck_back_and_hurt_the_character():
+    """N6: the throw hit, but Zhao's answer cut Lin, so the run waits for the player."""
+
+    def struck(harm: Harm) -> Peril:
+        return Peril(
+            by_ids=["zhao"],
+            by="Zhao",
+            aim=Aim.WOUND,
+            outcome_class=OutcomeClass.CONTESTED,
+            reason="Zhao strikes back",
+            result=StepResult.SUCCESS if harm is not Harm.NONE else StepResult.FAILURE,
+            harm=harm,
+        )
+
+    hurt = Resolution(steps=[resolved(0, perils=[struck(Harm.WOUNDED)]), resolved(1)])
+    checked, issues = check_resolution(hurt)
+    assert (checked.stopped_at_step, checked.stop_reason) == (0, StopReason.STRUCK)
+    assert [i.code for i in issues] == ["plan_not_stopped"]
+    missed = Resolution(steps=[resolved(0, perils=[struck(Harm.NONE)]), resolved(1)])
+    assert check_resolution(missed) == (missed, [])
 
 
 def test_a_declared_stop_with_steps_after_it_is_enforced():

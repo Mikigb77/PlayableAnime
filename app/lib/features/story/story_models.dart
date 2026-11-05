@@ -182,6 +182,41 @@ class SceneBeat {
   final SceneRoll? roll;
 }
 
+/// What struck back at the character right after a step (N6): the foes still fighting them, or a
+/// danger the step met, such as a long drop, settled like a step, by the facts or by a roll.
+class SceneStruck {
+  const SceneStruck({
+    required this.by,
+    required this.outcomeClass,
+    this.harm = 'none',
+    this.reason = '',
+    this.roll,
+  });
+
+  factory SceneStruck.fromJson(Json json) => SceneStruck(
+    by: json['by'] as String? ?? '',
+    outcomeClass: OutcomeClass.fromWire(json['class'] as String?),
+    harm: json['harm'] as String? ?? 'none',
+    reason: json['reason'] as String? ?? '',
+    roll: _roll(json['roll']),
+  );
+
+  /// Who or what struck, such as "the grey mage" or "the long drop to the river".
+  final String by;
+  final OutcomeClass outcomeClass;
+
+  /// What it did: `none`, `hurt`, `wounded`, `subdued`, `badly_wounded`, `maimed`, `dying` or
+  /// `dead`.
+  final String harm;
+  final String reason;
+  final SceneRoll? roll;
+
+  bool get harmed => harm != 'none';
+
+  /// A wound that puts the character's life or body at stake.
+  bool get grave => const {'badly_wounded', 'maimed', 'dying', 'dead'}.contains(harm);
+}
+
 /// One step of the player's action, as the engine settled it (A2, A8).
 class SceneStep {
   const SceneStep({
@@ -190,6 +225,7 @@ class SceneStep {
     this.reason = '',
     this.roll,
     this.beats = const [],
+    this.struck = const [],
   });
 
   factory SceneStep.fromJson(Json json) => SceneStep(
@@ -198,6 +234,7 @@ class SceneStep {
     reason: json['reason'] as String? ?? '',
     roll: _roll(json['roll']),
     beats: _list(json['beats'], SceneBeat.fromJson),
+    struck: _list(json['struck'], SceneStruck.fromJson),
   );
 
   final String text;
@@ -209,6 +246,9 @@ class SceneStep {
 
   /// The beats worth explaining (R2), when the engine sent any.
   final List<SceneBeat> beats;
+
+  /// What struck back at the character after it (N6), in order.
+  final List<SceneStruck> struck;
 }
 
 /// One link of a cause-and-effect chain (A9).

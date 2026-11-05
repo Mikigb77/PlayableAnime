@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from engine import pipeline
 from engine.context import TurnContext
-from engine.contracts import Intent, OutcomeClass, Resolution
+from engine.contracts import Harm, Intent, OutcomeClass, Resolution
 from engine.rng import SeededRng
 from engine.state.world import WorldState
 from graph.turn.errors import RefusedStep
@@ -51,6 +51,8 @@ def _died_by_own_hand(intent: Intent | None, resolution: Resolution, player_id: 
     blast of your own throw (W10a)."""
     if intent is None or not resolution.steps:
         return False
+    if any(p.harm is Harm.DEAD for p in resolution.steps[-1].perils):
+        return False  # struck down by a foe or a danger (N6)
     last = resolution.steps[-1].index
     if last >= len(intent.steps):
         return False

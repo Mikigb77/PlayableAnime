@@ -71,12 +71,22 @@ def gap_logit(gap: float) -> float:
     return top + share * (bottom - top)
 
 
-def settle(base_logit: float, shift: float, band: tuple[float, float], difficulty: Difficulty):
+def settle(
+    base_logit: float,
+    shift: float,
+    band: tuple[float, float],
+    difficulty: Difficulty,
+    *,
+    against_player: bool = False,
+):
     """The final odds: the base and the shifts, held inside the class's band, then the
-    difficulty, held inside the band again so it never changes the class (A5)."""
+    difficulty, held inside the band again so it never changes the class (A5). The difficulty
+    works for the player: it eases their rolls, and hardens those `against_player`, such as a foe
+    striking back (N6)."""
     low, high = band
     odds = min(high, max(low, sigmoid(base_logit + shift)))
-    odds = min(high, max(low, sigmoid(logit(odds) + DIFFICULTY_SHIFT[difficulty])))
+    eased = DIFFICULTY_SHIFT[difficulty]
+    odds = min(high, max(low, sigmoid(logit(odds) + (-eased if against_player else eased))))
     return round(odds, 4)
 
 

@@ -27,8 +27,9 @@ and branching (C8), editable memory (C7), the model part of the world tick (W6, 
 (E3), the remaining slash commands, Gemini transcription (V6, P1), and everything P2. A death the
 player chooses and `/end` already end a story, and the player can carry it on as a random person of
 the world or as one of the player character's heirs, a child too young to act after a time jump to
-their sixteenth birthday (N6). Until the world can kill the player character, a fatal outcome that
-others cause is a defeat on every difficulty.
+their sixteenth birthday (N6). Foes and dangers can kill or maim the player character on every
+difficulty, logic first and the dice only between (N6); rewinding after a death, by difficulty, is
+next (C8).
 
 **Not done without Miki:** any deploy, any production migration that drops data, deleting data, and
 anything that adds cost to the GCP or Neon bill (see [What only Miki can do](#what-only-miki-can-do)).

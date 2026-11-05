@@ -10,9 +10,10 @@ import re
 from dataclasses import dataclass
 from statistics import median
 
+from engine.invariants import ancestry
 from engine.resolve.words import stems
 from engine.state.bible import PowerLadder
-from engine.state.cast import Character
+from engine.state.cast import Character, CharacterStatus
 from engine.state.sheet import Health, PowerAxis
 from engine.state.world import WorldState
 
@@ -46,6 +47,9 @@ HELPLESS_NAMES = frozenset({"bound"})
 # Words that turn a helpless state into its opposite or less: "half asleep", "no longer bound".
 NOT_HELPLESS = frozenset("not no never half barely nearly almost longer".split())
 SUBDUED_STATE = "subdued"
+# A8: allies count. Each other one within a step of the strongest adds this, up to the cap.
+NUMBERS_STEP = 0.5
+MAX_NUMBERS = 1.0
 
 
 @dataclass(frozen=True)
@@ -131,6 +135,31 @@ def standing(state: WorldState, character: Character, axis: PowerAxis, measure: 
         tier=max(0.0, base_tier(state, character, axis) - penalty),
         rung=on_ladder[0] if on_ladder else None,
         notes=tuple(notes),
+    )
+
+
+def ranked_with_numbers(side: list[Standing], measure: Scale) -> tuple[list[Standing], float]:
+    """A8. One side of a contest, strongest first, and how many steps those close behind the
+    strongest add to it: half a step each within a step of them, up to one."""
+    ranked = sorted(side, key=lambda s: (-s.tier, s.character.id))
+    strongest = ranked[0]
+    close = sum(1 for s in ranked[1:] if strongest.tier - s.tier < measure.step)
+    return ranked, min(MAX_NUMBERS, NUMBERS_STEP * close)
+
+
+def in_the_fray(state: WorldState, character: Character) -> bool:
+    """W10, N6. Alive, able to act (not asleep, bound, subdued or dying) and with the player
+    character: in the scene, or somewhere in or around the player character's place. Someone the
+    state doesn't place counts."""
+    if character.id == state.player_id or character.status is not CharacterStatus.ALIVE:
+        return False
+    if helpless_state(character) is not None:
+        return False
+    here = state.player.location_id or state.scene.place_id
+    if character.id in state.scene.present_ids or character.location_id is None or here is None:
+        return True
+    return here in ancestry(state.places, character.location_id) or (
+        character.location_id in ancestry(state.places, here)
     )
 
 

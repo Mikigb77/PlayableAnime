@@ -10,6 +10,7 @@ from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import ContentPrefs, EventFrequency
 from engine.contracts import (
     ActionKind,
+    Aim,
     CharacterChange,
     EventSource,
     Intent,
@@ -129,7 +130,10 @@ def mage_fight_world():
 
 
 def strike(turn: int) -> Intent:
-    return act(f"Strike at the mage ({turn})", "strike", ActionKind.EXCHANGE, 10)
+    intent = act(f"Strike at the mage ({turn})", "strike", ActionKind.EXCHANGE, 10)
+    # The mage only parries, so thirty exchanges leave the player character standing (N6).
+    intent.steps[0].facts.foes_mean = Aim.NONE
+    return intent
 
 
 def test_long_fight_takes_minutes_brings_nothing_unrelated_and_pictures_its_start_and_blow():

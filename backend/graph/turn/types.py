@@ -18,6 +18,7 @@ from engine.contracts import (
     BeatVerdict,
     ChoiceKind,
     DirectorPlan,
+    Harm,
     Intent,
     OutcomeClass,
     PictureKind,
@@ -164,12 +165,24 @@ class BeatDetail(_ApiModel):
     roll: RollDetail | None = None
 
 
+class StruckDetail(_ApiModel):
+    """N6: what struck back at the player character after a step: the foes still fighting them, or
+    a danger the step met, settled like a step, by the facts or by a roll."""
+
+    by: str
+    outcome_class: OutcomeClass = Field(alias="class")
+    harm: Harm
+    reason: str
+    roll: RollDetail | None = None
+
+
 class StepDetail(_ApiModel):
     text: str
     outcome_class: OutcomeClass = Field(alias="class")
     reason: str
     roll: RollDetail | None = None
     beats: list[BeatDetail] | None = None
+    struck: list[StruckDetail] | None = None
 
 
 class LinkDetail(_ApiModel):
