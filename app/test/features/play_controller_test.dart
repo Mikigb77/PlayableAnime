@@ -732,6 +732,28 @@ void main() {
       expect(play.story!.scenes.last.turn, before);
     });
 
+    test('a turn played anew after a rewind elsewhere is not hidden by a block here', () async {
+      final here = control();
+      final elsewhere = control();
+      await here.play.start();
+      await here.play.act('I challenge the elder', inputMode: 'typed');
+      await until(here.play, () => here.play.ended);
+      final turn = here.play.story!.scenes.last.turn;
+      await here.play.report(turn, category: 'other', block: true);
+      expect(here.play.isBlocked(here.play.story!.scenes.last), isTrue);
+
+      await elsewhere.play.start();
+      expect(await elsewhere.play.rewind(1), isTrue);
+      await elsewhere.play.act('I bow to the elder', inputMode: 'typed');
+      await until(elsewhere.play, () => elsewhere.play.pending == null);
+
+      await here.play.reload();
+      final last = here.play.story!.scenes.last;
+      expect(last.turn, turn);
+      expect(here.play.ended, isFalse);
+      expect(here.play.isBlocked(last), isFalse);
+    });
+
     test('someone new carries the story on: their opening comes first, then play', () async {
       final (:play, notices: _, texts: _) = control();
       await play.start();

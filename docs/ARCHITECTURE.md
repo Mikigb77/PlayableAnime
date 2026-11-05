@@ -1077,9 +1077,10 @@ taken back a few scenes, by difficulty: up to 5 on Story, 1 on Balanced and none
 
 - **What a turn keeps** (`stories/rewind.keep`): every saved turn keeps the world state it left in
   `stories_turnsnapshot`, in the turn's own transaction (B12), as the same document as
-  `Story.state`, and drops the ones no rewind can reach any more (more than 5 turns back). Carrying
-  the story on as someone new (`rewind.forget`) drops them all, so a rewind never reaches back into
-  another character's story.
+  `Story.state`, and drops the ones more than 10 turns back: twice the farthest reach, so after a
+  rewind as far as it goes the next death can reach as far again. None is kept from before the
+  story's opening, and carrying the story on as someone new (`rewind.forget`) drops them all, so a
+  rewind never reaches back into another character's story.
 - **How far an ending reaches** (`rewind.reach`): settled when the turn that reached the ending is
   saved, from the difficulty the turn was played on, so changing it afterwards changes nothing, and
   from the states the story kept back to back before that turn. It is saved on the ending
@@ -1088,7 +1089,8 @@ taken back a few scenes, by difficulty: up to 5 on Story, 1 on Balanced and none
 - **The rewind** (`rewind.rewind`, `POST /v1/stories/{id}/rewind`): under the story's row lock it
   checks the version (T10), the ending and how far it reaches, then puts the world state back to
   the kept one, writes the pending events back from it (`pending.write_back`, so events the
-  rewound scenes applied wait again and the ones they scheduled are cancelled, W10), marks the
+  rewound scenes applied wait again), cancels every row the rewound scenes scheduled, fired or not
+  (`pending.cancel_after`, W10), marks the
   later scenes `rewound_at`, drops the kept states after the moment it went back to, lifts the
   ending and anyone drawn to carry it on, and moves the version on. Nobody in the story remembers,
   since nothing outside the restored state survives, and nothing is refunded.
@@ -1100,6 +1102,7 @@ taken back a few scenes, by difficulty: up to 5 on Story, 1 on Balanced and none
   place drawn for a look version the restored world never reached (M5), or for a character or place
   it doesn't have, are renamed out of reuse (`subject~<id>`), so a scene played anew gets its own
   picture and a face or place that changes again is drawn again. Their rows stay with their cost.
+  A picture asked for a scene that a rewind takes back while it waits is refused as not found.
 - **The same moment plays the same way** (A3): a turn's rolls are seeded by the story, timeline
   and turn, so doing exactly the same again goes the same way. A rewind is a chance to play it
   differently, not a reroll.

@@ -14,8 +14,10 @@ from engine.state.records import PendingEvent as Event
 from engine.state.world import WorldState
 from graph.drafting.samples import SUCCESSOR
 from graph.llm import FakeBackend, Node, Reply
+from lucid.errors import ApiError, ErrorCode
 from media.models import Image, ImageStatus, ScenePicture
-from media.plans import retire_rewound
+from media.plans import plan_picture, retire_rewound
+from media.prompts import Brief
 from moderation.models import Report
 from stories import pending, rewind
 from stories.export import export_stories
@@ -87,6 +89,15 @@ LEAPT = {
 }
 
 
+@pytest.fixture(autouse=True)
+def quick_play(settings, starter_credit_for_everyone):
+    """The per-minute turn limit (T9) is lifted: these stories play faster than anyone types."""
+    settings.BILLING = {
+        **settings.BILLING,
+        "PER_MINUTE": {**settings.BILLING["PER_MINUTE"], "turn": 1000},
+    }
+
+
 @pytest.fixture
 def client(player) -> Client:
     return Client(headers=auth_headers(player))
@@ -140,11 +151,11 @@ def test_each_turn_keeps_the_world_it_left_and_only_as_many_as_a_rewind_reaches(
     story = opened(player, make_story, model)
     assert TurnSnapshot.objects.get(story=story, turn=1).state == story.state
 
-    for _ in range(rewind.FARTHEST + 2):
+    for _ in range(rewind.KEPT + 2):
         act(player, story, model)
 
     kept = list(TurnSnapshot.objects.filter(story=story).values_list("turn", flat=True))
-    assert kept == list(range(story.turn - rewind.FARTHEST, story.turn + 1))
+    assert kept == list(range(story.turn - rewind.KEPT, story.turn + 1))
     assert TurnSnapshot.objects.get(story=story, turn=story.turn).state == story.state
 
 
@@ -242,7 +253,8 @@ def test_more_scenes_than_any_difficulty_reaches_is_refused(client, player, make
     response = rewind_by(client, story, rewind.FARTHEST + 1)
 
     assert response.status_code == 400
-    assert response.json()["error"]["details"]["fields"][0]["field"] == "scenes"
+    [error] = response.json()["error"]["details"]["fields"]
+    assert (error["field"], error["type"]) == ("scenes", "too_far")
 
 
 # --- the rewind ----------------------------------------------------------------------------------
@@ -318,6 +330,22 @@ def test_the_same_moment_plays_the_same_way_again(client, player, make_story, mo
     assert Scene.objects.live().get(story=story, turn=3).details["steps"] == first
 
 
+def test_after_a_rewind_as_far_as_it_goes_the_next_death_reaches_as_far_again(
+    client, player, make_story, model
+):
+    story = fallen(player, make_story, model, looks=8)
+    assert (story.turn, story.ending["rewind"]) == (10, 5)
+    assert rewind_by(client, story, 5).status_code == 200
+    story.refresh_from_db()
+    act(player, story, model)
+
+    act(player, story, model, CROSS, FELL)
+
+    assert (story.turn, story.ending["rewind"]) == (7, 5)
+    assert rewind_by(client, story, 5).status_code == 200
+    assert Story.objects.get(pk=story.pk).turn == 2
+
+
 def test_carrying_on_as_someone_new_forgets_the_kept_worlds(
     client, player, make_story, model, monkeypatch
 ):
@@ -356,6 +384,7 @@ def test_events_the_rewound_scenes_applied_wait_again_and_the_ones_they_set_neve
             "pending_events": {
                 "rider": _event("rider", EventStatus.APPLIED, applied_turn=2),
                 "rumor": _event("rumor", created_turn=2),
+                "omen": _event("omen", EventStatus.APPLIED, created_turn=2, applied_turn=2),
             },
         }
     )
@@ -367,6 +396,8 @@ def test_events_the_rewound_scenes_applied_wait_again_and_the_ones_they_set_neve
     assert rows["rider"].status == PendingEventStatus.PENDING
     assert rows["rider"].applied_turn is None
     assert rows["rumor"].status == PendingEventStatus.CANCELLED
+    # Set and fired in a scene taken back: the world it went back to never had it.
+    assert rows["omen"].status == PendingEventStatus.CANCELLED
 
 
 def _at_death(player, make_story, then: WorldState, now: WorldState) -> Story:
@@ -405,6 +436,18 @@ def test_a_rewound_scenes_picture_isnt_reused_by_the_scene_played_anew(player, m
     kept.refresh_from_db()
     assert picture.subject == f"turn-2~{picture.pk.hex}"
     assert kept.subject == "turn-1"
+
+
+def test_a_picture_asked_for_a_scene_a_rewind_took_back_meanwhile_isnt_planned(player, make_story):
+    story = make_story(player)
+    scene = Scene.objects.create(story=story, turn=2, kind="action", narration="The fall.")
+    Scene.objects.filter(pk=scene.pk).update(rewound_at=timezone.now())
+
+    with pytest.raises(ApiError) as refused:
+        plan_picture(scene, kind="scene", trigger="illustrate", brief=Brief(description="A fall."))
+
+    assert refused.value.code == ErrorCode.NOT_FOUND
+    assert not Image.objects.filter(story=story).exists()
 
 
 def test_a_face_or_place_drawn_for_a_look_the_world_went_back_from_is_drawn_again(

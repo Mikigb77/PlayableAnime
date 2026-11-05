@@ -311,9 +311,13 @@ class PlayController extends ChangeNotifier {
     final byTurn = {for (final s in loaded) s.turn: s};
     for (final scene in fresh.scenes) {
       final old = byTurn[scene.turn];
+      // A different scene in the same turn: a rewind elsewhere took the old one back and it was
+      // played anew (C8). Nothing this screen knew of the old one carries over.
+      final same = old != null && old.narration == scene.narration;
+      if (old != null && !same) _blocked.remove(scene.turn);
       // A picture this screen already has is newer than a fetched "planned".
       byTurn[scene.turn] =
-          old?.image != null && !old!.image!.isPending && scene.image?.isPending == true
+          same && old.image != null && !old.image!.isPending && scene.image?.isPending == true
           ? scene.withImage(old.image)
           : scene;
     }

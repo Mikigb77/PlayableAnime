@@ -171,8 +171,8 @@ async def carry_on(request: HttpRequest, story_id: str, body: CarryOnIn) -> Stor
 class RewindIn(Schema):
     expected_version: int = Field(ge=0)
     # How many scenes to take back, from the last: 1 goes back to just before the scene the
-    # ending came in.
-    scenes: int = Field(ge=1, le=rewind.FARTHEST)
+    # ending came in. More than the ending reaches is refused as `too_far`.
+    scenes: int = Field(ge=1)
 
 
 @stories_router.post("/{story_id}/rewind", response=StoryOut)

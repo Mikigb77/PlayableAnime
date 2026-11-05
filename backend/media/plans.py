@@ -13,6 +13,7 @@ from django.db import IntegrityError, transaction
 from engine.contracts import FIRST_PICTURES
 from engine.looks import place_version
 from engine.state.world import WorldState
+from lucid.errors import ApiError, ErrorCode
 from media.briefs import player_at, scene_figures, time_of_day
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
@@ -68,7 +69,10 @@ def plan_picture(
         version = None
     with transaction.atomic():
         # Serialises planning per scene, so two requests can't both plan it.
-        Scene.objects.select_for_update().filter(pk=scene.pk).first()
+        locked = Scene.objects.select_for_update().filter(pk=scene.pk).only("rewound_at").first()
+        if locked is not None and locked.rewound_at is not None:
+            # A rewind took the scene back while this waited (C8): the story no longer has it.
+            raise ApiError(ErrorCode.NOT_FOUND, "Scene not found.")
         existing = ScenePicture.objects.select_related("image").filter(scene=scene).first()
         if existing is not None:
             return existing

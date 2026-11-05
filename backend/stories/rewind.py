@@ -10,10 +10,10 @@ are taken out of the story, and what they cost isn't refunded. The dice for a mo
 differently, not a reroll.
 
 Each saved turn keeps the world state it left (`TurnSnapshot`, saved with the turn, B12), and a
-story keeps only those a rewind can reach. Someone new carrying the story on (N6) drops them all,
-so a rewind never reaches back into another character's story. `POST /v1/stories/{id}/rewind`
-puts the story back to one of them in one transaction: the world state and its pending events
-(W10), the scenes, the pictures, and the version moves on (T10).
+story keeps only those a rewind can reach, so never one from before its opening. Someone new
+carrying the story on (N6) drops them all, so a rewind never reaches back into another character's
+story. `POST /v1/stories/{id}/rewind` puts the story back to one of them in one transaction: the
+world state and its pending events (W10), the scenes, the pictures, and the version moves on (T10).
 """
 
 from __future__ import annotations
@@ -37,13 +37,16 @@ logger = logging.getLogger("stories.rewind")
 # How many scenes back a death on each difficulty can be rewound.
 REACH = {Difficulty.STORY: 5, Difficulty.BALANCED: 1, Difficulty.BRUTAL: 0}
 FARTHEST = max(REACH.values())
+# How many turns back the kept states go: twice the farthest reach, so that after a rewind as far
+# as it goes the next death can still reach as far again.
+KEPT = 2 * FARTHEST
 
 
 def keep(story: Story, turn: int, state: dict) -> None:
     """Keeps the world state turn `turn` left, as saved on the story, and drops the ones no rewind
     can reach any more. Call it in the turn's transaction."""
     TurnSnapshot.objects.update_or_create(story=story, turn=turn, defaults={"state": state})
-    TurnSnapshot.objects.filter(story=story, turn__lt=turn - FARTHEST).delete()
+    TurnSnapshot.objects.filter(story=story, turn__lt=turn - KEPT).delete()
 
 
 def reach(story: Story, turn: int, difficulty: Difficulty, ending: Ending) -> int:
@@ -111,6 +114,7 @@ def rewind(story: Story, expected_version: int, scenes: int) -> Story:
         # The events the rewound scenes applied wait again, and the ones they scheduled never
         # come (W10).
         pending.write_back(current, state, restored)
+        pending.cancel_after(current, to_turn)
         now = timezone.now()
         rewound = list(
             Scene.objects.live()
