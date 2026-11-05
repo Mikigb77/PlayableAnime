@@ -1,0 +1,226 @@
+"""N6: someone else carries the story on after its ending, in the same world.
+
+After a death, or an ending the player chose, the player can carry on as a random person of the
+world. Code draws who that person is by the world's own population odds (rule 2: model nodes
+propose, code decides), and the drafting model only fills in someone who fits the draw:
+
+- **Where**: a place where people live, likelier a city than a village, never a ruin or the wilds.
+- **Station**, by population: most people are common folk, about 1 in 5 has a trade or a craft,
+  about 1 in 40 is a notable (a rich merchant, an official, an elder), about 1 in 1,000 belongs to
+  a noble house, and about 1 in 50,000 to a ruling family, never as its ruler (Miki, 2026-11-05:
+  royalty is 1 in 10,000 to 1 in 100,000). Nobody is drawn as a king or a god.
+- **Might**, as a stranger's (W1): most are ordinary, about 1 in 15 knows how to fight, and a
+  hidden master is rare, rarer where nothing is extraordinary (`strangers.master_odds`).
+- **Age**: an adult of working age.
+- **People** (G23): the world's peoples, likelier the ones the story has met more of.
+
+`carry_on` makes the drawn person the player character. The old one stays in the world, dead or,
+after an ending the player chose, alive like anyone else, and is recorded in `fallen`, so the people
+who knew them can remember them (N6). What was the old player character's alone stays theirs:
+their goals, the leads offered to them, their reputation with factions and places (W3) and what
+they knew (C6). The new one starts as a stranger to the world, with their first scene still to
+tell (`opening_due`).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from enum import StrEnum
+
+from pydantic import Field
+
+from engine.base import EngineModel, Tier
+from engine.resolve.strangers import (
+    ORDINARY_TIER,
+    PEAK_PERSON_TIER,
+    TOUGH_ODDS,
+    master_odds,
+    strongest,
+)
+from engine.rng import SeededRng
+from engine.state.cast import Activity, Character, PlaceStatus, Reputation
+from engine.state.records import Fallen, GoalStatus, LeadStatus
+from engine.state.scene import SceneFrame
+from engine.state.world import WorldState
+
+
+class Station(StrEnum):
+    """Where someone stands among the world's people, by population."""
+
+    COMMON = "common"  # labourers, farmers, servants, the poor
+    SKILLED = "skilled"  # a trade or a craft: smiths, traders, soldiers, clerks
+    NOTABLE = "notable"  # a rich merchant, a local official, an officer, an elder
+    NOBLE = "noble"  # a noble house or a high office
+    ROYAL = "royal"  # a ruling family, never its ruler
+
+
+# How likely each station is; common folk are everyone else.
+STATION_ODDS: dict[Station, float] = {
+    Station.ROYAL: 1 / 50_000,
+    Station.NOBLE: 1 / 1_000,
+    Station.NOTABLE: 1 / 40,
+    Station.SKILLED: 1 / 5,
+}
+STATION_ODDS[Station.COMMON] = 1 - sum(STATION_ODDS.values())
+
+# Influence and wealth for each station, as A8 tiers (1 is an ordinary person's).
+STANDING: dict[Station, tuple[int, int]] = {
+    Station.COMMON: (1, 1),
+    Station.SKILLED: (1, 2),
+    Station.NOTABLE: (2, 3),
+    Station.NOBLE: (4, 4),
+    Station.ROYAL: (5, 5),
+}
+
+# Where people live, by the words in a place's kind: likelier a city than a village. Kinds that
+# match none count once; kinds nobody lives in never come up.
+PLACE_WEIGHTS: tuple[tuple[str, int], ...] = (
+    ("capital", 12),
+    ("city", 10),
+    ("port", 6),
+    ("town", 5),
+    ("district", 4),
+    ("quarter", 4),
+    ("market", 3),
+    ("village", 2),
+)
+EMPTY_KINDS = ("wild", "ruin", "region", "realm", "continent", "world", "sea", "ocean", "desert")
+
+# An adult of working age.
+AGES = (16, 60)
+
+
+class Lot(EngineModel):
+    """Who the next player character is, as drawn: the drafting model fills in a person who fits
+    it, and code holds the result to it."""
+
+    place_id: str | None = None
+    station: Station = Station.COMMON
+    might: Tier = ORDINARY_TIER
+    master: bool = Field(default=False, description="A hidden master (W1).")
+    age: int = Field(ge=0)
+    people_id: str | None = None
+    one_in: int = Field(ge=1, description="How rare a person like this is: one in this many.")
+
+
+def draw(state: WorldState, rng: SeededRng) -> Lot:
+    """A random person of the world, by its population odds."""
+    station = _pick(
+        [(s, STATION_ODDS[s]) for s in Station], rng.child("station"), default=Station.COMMON
+    )
+    might, master, might_odds = _might(state, rng.child("might"))
+    low, high = AGES
+    return Lot(
+        place_id=_place(state, rng.child("place")),
+        station=station,
+        might=might,
+        master=master,
+        age=rng.child("age").randint(low, high),
+        people_id=_people(state, rng.child("people")),
+        one_in=max(1, round(1 / (STATION_ODDS[station] * might_odds))),
+    )
+
+
+def carry_on(
+    state: WorldState, successor: Character, situation: str, *, ending: str, turn: int
+) -> WorldState:
+    """`successor` becomes the player character, after the story's ending in scene `turn`. The
+    old player character stays in the world and is remembered in `fallen`; the new one's first
+    scene opens on `situation`. Returns a new state."""
+    if successor.id in state.characters:
+        raise ValueError(f"the successor {successor.id!r} is already in the story")
+    new = state.model_copy(deep=True)
+    old = new.player
+    new.fallen.append(
+        Fallen(
+            character_id=old.id,
+            name=old.name,
+            ending=ending,
+            turn=turn,
+            world_s=new.world_s,
+            successor_id=successor.id,
+        )
+    )
+    if old.alive:
+        # W15: one more character in the world, kept and moved on by their clocks.
+        old.activity = Activity.DORMANT
+    new.characters[successor.id] = successor.model_copy(
+        update={"known_by": [successor.id], "met_by": [successor.id]}
+    )
+    new.player_id = successor.id
+    # C6: they know where they live, and the places around it.
+    place = new.places.get(successor.location_id or "")
+    seen: set[str] = set()
+    while place is not None and place.id not in seen:
+        seen.add(place.id)
+        if successor.id not in place.known_by:
+            place.known_by.append(successor.id)
+        place = new.places.get(place.parent_id or "")
+    for goal in new.goals.values():
+        if goal.status is GoalStatus.ACTIVE:
+            goal.status = GoalStatus.ABANDONED
+    for lead in new.leads.values():
+        if lead.status is LeadStatus.OPEN:
+            lead.status = LeadStatus.EXPIRED
+    for record in (*new.factions.values(), *new.places.values()):
+        record.player_reputation = Reputation()
+    new.time_effects = [e for e in new.time_effects if e.character_id != old.id]
+    new.scene = SceneFrame(
+        place_id=successor.location_id, present_ids=[successor.id], ended_on=situation
+    )
+    new.opening_due = True
+    return new
+
+
+def _might(state: WorldState, rng: SeededRng) -> tuple[int, bool, float]:
+    """Their might, whether they are a hidden master, and how likely that was."""
+    master = master_odds(state)
+    roll = rng.random()
+    if roll < master:
+        # Halfway to the strongest the world holds, and never less than the best a real person
+        # can be (A9).
+        return max(PEAK_PERSON_TIER, (ORDINARY_TIER + strongest(state)) // 2), True, master
+    if roll < master + TOUGH_ODDS:
+        return ORDINARY_TIER + 1, False, TOUGH_ODDS
+    return ORDINARY_TIER, False, 1 - master - TOUGH_ODDS
+
+
+def _place(state: WorldState, rng: SeededRng) -> str | None:
+    places = [
+        (place.id, _lived_in(place.kind))
+        for place in sorted(state.places.values(), key=lambda p: p.id)
+        if place.status is not PlaceStatus.RUINED
+    ]
+    return _pick(places, rng, default=None)
+
+
+def _lived_in(kind: str) -> int:
+    words = kind.casefold()
+    if any(empty in words for empty in EMPTY_KINDS):
+        return 0
+    return next((weight for word, weight in PLACE_WEIGHTS if word in words), 1)
+
+
+def _people(state: WorldState, rng: SeededRng) -> str | None:
+    met: dict[str, int] = {}
+    for character in state.characters.values():
+        if character.people_id:
+            met[character.people_id] = met.get(character.people_id, 0) + 1
+    peoples = [
+        (p.id, 1 + met.get(p.id, 0)) for p in sorted(state.bible.peoples, key=lambda p: p.id)
+    ]
+    return _pick(peoples, rng, default=None)
+
+
+def _pick[T](weighted: Sequence[tuple[T, float]], rng: SeededRng, *, default: T) -> T:
+    total = sum(weight for _, weight in weighted if weight > 0)
+    if total <= 0:
+        return default
+    point = rng.random() * total
+    for item, weight in weighted:
+        if weight <= 0:
+            continue
+        point -= weight
+        if point < 0:
+            return item
+    return next(item for item, weight in reversed(weighted) if weight > 0)

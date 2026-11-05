@@ -44,6 +44,18 @@ class FakeStory {
   /// How the story ended (N6), once it has: then it takes no more turns.
   JsonMap? ending;
 
+  /// The player character, by id and name: the one an ending names (N6).
+  String playerId = 'shen_yu';
+  String playerName = 'Shen Yu';
+
+  /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
+  JsonMap? successor;
+
+  /// Someone new carries the story on, and their opening is still to be told (N6). [situation] is
+  /// the moment it opens on.
+  bool openingDue = false;
+  String situation = '';
+
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
 
   JsonMap get clock => {'world_s': worldS, 'label': fakeWorldLabel(worldS), 'timeline_id': 'main'};
@@ -72,6 +84,8 @@ class FakeStory {
     'cover_url': coverUrl,
     'premise': premise,
     'ending': ending,
+    'successor': ending == null ? null : successor,
+    'opening_due': openingDue,
   };
 }
 
@@ -111,6 +125,73 @@ class FakeStoryState {
     story.version = 3;
   }
 }
+
+/// What drawing someone to carry a story on costs: one drafting call (N6, K2).
+const _drawCents = 3;
+
+/// Refuses a story that isn't at an ending the player left open (N6).
+void _atOpenEnding(FakeStory story) {
+  final (type, message) = switch (story.ending) {
+    null => ('not_ended', 'This story hasn\'t reached an ending, so nobody needs to carry it on.'),
+    {'closed': true} => ('closed', 'This story is closed. Start again from its premise instead.'),
+    _ => (null, ''),
+  };
+  if (type == null) return;
+  throw FakeError(400, 'validation_error', message, {
+    'fields': [
+      {'field': 'story_id', 'source': 'path', 'type': type, 'message': message},
+    ],
+  });
+}
+
+/// The people drawn in turn to carry a story on: common folk first, then rarer ones.
+const _successors = <JsonMap>[
+  {
+    'name': 'Mei Lin',
+    'age': 23,
+    'station': 'common',
+    'one_in': 1,
+    'master': false,
+    'place': 'Azure Cloud Town',
+    'people': null,
+    'lines': [
+      'Mei Lin, 23.',
+      'A tea seller at the foot of the mountain, quick with sums and quicker with gossip.',
+      'Skilled: brewing, haggling.',
+    ],
+    'situation': 'At dawn, Mei Lin sets out cups for the disciples who come down from the sect.',
+  },
+  {
+    'name': 'Old Bo',
+    'age': 54,
+    'station': 'skilled',
+    'one_in': 1000,
+    'master': true,
+    'place': 'Azure Cloud Town',
+    'people': null,
+    'lines': [
+      'Old Bo, 54.',
+      'The town\'s blacksmith, who hums while he works and never seems to tire.',
+      'Expert: smithing. Master: the sword, though nobody has seen him hold one.',
+    ],
+    'situation': 'The forge is already hot when a sect messenger knocks at Old Bo\'s door.',
+  },
+  {
+    'name': 'Lady Qiao Yun',
+    'age': 31,
+    'station': 'noble',
+    'one_in': 1000,
+    'master': false,
+    'place': 'The capital',
+    'people': null,
+    'lines': [
+      'Lady Qiao Yun, 31.',
+      'A minor noble of the capital, sent to the sect with a letter she has not read.',
+      'Skilled: etiquette, calligraphy.',
+    ],
+    'situation': 'Lady Qiao Yun\'s carriage stops at the sect gate as the bell rings noon.',
+  },
+];
 
 void registerStoryRoutes(FakeBackend b) {
   final stories = b.data.stories;
@@ -167,6 +248,61 @@ void registerStoryRoutes(FakeBackend b) {
       );
     }
     story.ending = {...ending, 'closed': true};
+    return FakeResponse.json(story.toJson());
+  });
+
+  // N6: draws someone to carry the story on, charged like a draft. Drawing again replaces them.
+  b.route('POST', '/v1/stories/:id/successor', (r) async {
+    final story = stories.get(r.param('id'), r.userId!);
+    _atOpenEnding(story);
+    final balance = b.data.account.balanceOf(r.userId!);
+    if (!r.usesOwnKey && balance < _drawCents) {
+      throw FakeError(402, 'out_of_credits', 'Not enough credits.', {
+        'balance_cents': balance,
+        'available_cents': balance,
+      });
+    }
+    if (b.pace.drafting > Duration.zero) await Future<void>.delayed(b.pace.drafting);
+    final draws = ((story.successor?['draws'] as int?) ?? 0) + 1;
+    story.successor = {..._successors[(draws - 1) % _successors.length], 'draws': draws};
+    if (!r.usesOwnKey) {
+      b.data.account.charge(r.userId!, kind: 'draft', cents: _drawCents, now: b.now());
+    }
+    return FakeResponse.json(story.successor);
+  });
+
+  // N6: starts as the person drawn. The ending is lifted, and the next turn is their opening.
+  b.route('POST', '/v1/stories/:id/carry-on', (r) {
+    final story = stories.get(r.param('id'), r.userId!);
+    final expected = (r.json['expected_version'] as num?)?.toInt();
+    if (expected != story.version) {
+      throw FakeError(409, 'version_conflict', 'The story moved on.', {
+        'current_version': story.version,
+      });
+    }
+    _atOpenEnding(story);
+    final drawn = story.successor;
+    if (drawn == null) {
+      throw const FakeError(400, 'validation_error', 'Draw someone to carry the story on first.', {
+        'fields': [
+          {
+            'field': 'story_id',
+            'source': 'path',
+            'type': 'no_successor',
+            'message': 'Draw someone to carry the story on first.',
+          },
+        ],
+      });
+    }
+    story
+      ..playerId = 'pc-${story.version}'
+      ..playerName = drawn['name'] as String
+      ..situation = drawn['situation'] as String
+      ..ending = null
+      ..successor = null
+      ..openingDue = true
+      ..version += 1
+      ..updatedAt = b.now();
     return FakeResponse.json(story.toJson());
   });
 

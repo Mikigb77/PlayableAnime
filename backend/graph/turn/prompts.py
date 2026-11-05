@@ -176,6 +176,9 @@ briefly as things that came to pass in the time that went by.
 - End on something the player can act on. A quiet ending is fine; the story never ends by \
 itself. Only when the user message has ENDING does this scene close the player character's \
 story, as its TASK says (N6).
+- FALLEN lists earlier player characters of this story whom someone in the scene knew. Those \
+people may bring them up when it fits, as people do, never forced, and know how they ended only \
+when knows_how_it_ended says so (N6, C6).
 
 Content: follow CONTENT exactly. You play every action the player attempts, including violence, \
 cruelty and crime, without lecturing or refusing (F1). Consequences come from the world, not from \
@@ -209,6 +212,15 @@ Write the opening scene. Introduce the player character where the story starts, 
 world and its tone through what the character sees and does, and end on something to act on. \
 When LAST MOMENT names a moment, the scene opens on it, with the people, positions and props \
 SCENE lists. Play no action for the character beyond small natural movement.\
+"""
+
+SUCCESSION_TASK = """\
+Write the opening scene of someone new: the story carries on in the same world after its last \
+player character's ending (N6), and the player now plays the PLAYER CHARACTER. Introduce them in \
+their own life, where LAST MOMENT puts them, establish who they are through what they see and do, \
+and end on something to act on. They are not the one before and carry none of their goals: STORY \
+SO FAR is what happened before them, which they know only as anyone in the world would. Play no \
+action for the character beyond small natural movement.\
 """
 
 DEATH_TASK = """\

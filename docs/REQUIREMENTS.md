@@ -1056,18 +1056,31 @@ action, not an ending.
 
 A death or an epilogue is the story's ending, told on its last scene with nothing more to act on. A
 death by the character's own hand is told as F1 says. From then on the
-story takes no more turns (`story_ended`), and the player closes it, which keeps it in the Library to
-read, or starts again from the same premise, which opens the create flow with the premise filled in.
-After a death by the character's own hand, one quiet line says where to find support, with no
-lecture.
+story takes no more turns (`story_ended`), and the player carries it on as someone else in the same
+world, closes it, which keeps it in the Library to read, or starts again from the same premise, which
+opens the create flow with the premise filled in. After a death by the character's own hand, one
+quiet line says where to find support, with no lecture.
 
-Not built yet (Miki, 2026-11-05): after an ending the player can also carry on as someone else in
-the same world. Either a random person, picked by the world's population odds (a king or a god is as
-rare as they are in that world, so royalty is about 1 in 10,000 to 1 in 100,000) and shown on a
-character screen to start as or reroll, without editing; or an heir the story already has, such as a
-child or grandchild. An unborn child counts only if the mother lives, which logic decides first and a
-roll only when the facts leave it open; playing as that child starts after a time jump to when they
-can act. NPCs remember the fallen naturally, when it fits, never forced. Rewinding comes with C8.
+Carrying on as someone else (Miki, 2026-11-05) draws a random person of the world by its population
+odds, and code decides who they are: where they live (cities more than villages, never ruins or the
+wilds), their people, their age (16 to 60), and their station. Most are common folk; one in five is
+skilled in a trade, one in forty is a person of note, about one in a thousand is noble, and about
+one in fifty thousand belongs to the ruling family, never its ruler, and never a god or anyone the
+story already has. Their strength follows the stranger odds (W1): one in fifteen is tougher than most,
+and a hidden master is as rare as the world makes them. The drafter fills in only their name, looks,
+skills, belongings and the moment their first scene opens on, held to that draw (G2, G12). The player
+sees them on a character screen, with how rare they are, and starts as them or draws again, without
+editing; each draw is one drafting call, charged like a draft (K2). Starting as them lifts the
+ending, and the story's next turn is their opening. The old player character stays in the world: dead
+and remembered, or, after an epilogue, living on away from the story's centre. Their goals, leads
+and reputation were theirs alone, so the newcomer starts with none, and nobody in the story knows
+them yet, though they know the place they live in (C6). People who knew the fallen remember them naturally, when it fits, never forced:
+the narrator is told who in the scene knew them and whether they know how it ended.
+
+Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
+unborn child counts only if the mother lives, which logic decides first and a roll only when the
+facts leave it open; playing as that child starts after a time jump to when they can act. Rewinding
+comes with C8.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has
 decided stay open until the narrator first describes them. From then on the engine records them as
@@ -1348,7 +1361,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player closes or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as someone else is next (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as an heir is next (N6). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

@@ -51,6 +51,9 @@ class Story(models.Model):
     # N6: how the player character's story ended, once it has, as API.md's `Ending`. Null while
     # it plays on. A story at an ending takes no more turns.
     ending = models.JSONField(null=True, blank=True)
+    # N6: the person drawn to carry the story on after its ending, until the player starts as
+    # them or draws someone else: `stories.succession.Drawn`.
+    successor = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

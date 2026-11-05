@@ -64,7 +64,9 @@ class _Turns extends StoryRepository {
   Future<Story> close(String id) async {
     closes++;
     final e = ending!;
+    // Closing doesn't move the version: the story stays at the scene that ended it.
     return story.copyWith(
+      version: e.turn,
       ending: StoryEnding(
         kind: e.kind,
         characterId: e.characterId,

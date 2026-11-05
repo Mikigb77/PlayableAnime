@@ -96,8 +96,9 @@ class TurnInput:
             raise ValueError(f"a {self.kind} turn needs the action's text")
         if self.kind is TurnKind.STANDING and self.standing is None:
             raise ValueError("a standing turn needs wait or observe")
-        if self.kind is TurnKind.OPENING and self.state.turn != 0:
-            raise ValueError("only a story with no scenes gets an opening turn")
+        if self.kind is TurnKind.OPENING and not (self.state.turn == 0 or self.state.opening_due):
+            # N6: a story carried on by someone new opens again, for them.
+            raise ValueError("only a story with no scenes, or someone new, gets an opening turn")
         if self.kind is TurnKind.END and self.state.turn == 0:
             raise ValueError("a story that hasn't opened can't end")
         if self.drop_refused and self.kind is not TurnKind.END:

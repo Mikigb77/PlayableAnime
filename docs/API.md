@@ -302,6 +302,8 @@ makes one from an example world.
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
 | POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
+| POST | `/v1/stories/{id}/successor` | | `Successor` (N6): draws a random person of the world to carry the story on, by its population odds, replacing anyone drawn before. One drafting call, metered and charged like a draft (K2, so `402 out_of_credits` and the draft rate limits apply). Only a story at an ending the player hasn't closed; any other is a `validation_error` of type `not_ended` or `closed`. The version doesn't move. |
+| POST | `/v1/stories/{id}/carry-on` | `{expected_version}` | `Story` with the last 20 scenes (N6): the person drawn becomes the player character, the ending is lifted, `opening_due` is true and the version moves on. A `validation_error` of type `no_successor` when nobody was drawn, `not_ended` or `closed` as above, and `409 version_conflict` when the story moved on. |
 | GET | `/v1/stories/{id}/memory` | | `MemoryView` (C6) |
 | GET | `/v1/stories/{id}/status` | | `StatusView` (`/status`, A8, G16, W10) |
 
@@ -311,12 +313,22 @@ StorySummary  {id, title, genre, rating, turn, world_time_label, cover_url?,
 Story         {id, title, genre, rating, version, turn,      # turn 0: play the opening
                settings: StorySettings, clock: Clock, scenes: [Scene], cover_url?,
                premise: string,                          # what it started from, to start again (N6)
-               ending?: Ending}                          # set once it reached its ending (N6)
+               ending?: Ending,                          # set once it reached its ending (N6)
+               successor?: Successor,                    # who was drawn to carry it on, at its ending
+               opening_due: bool}                        # someone new carries it on: the next turn
+                                                         # is their opening (N6)
 Ending        {kind: "death"|"chosen",                    # the character died, or the player used /end
                character_id, character,                  # who, and their name as the story last knew it
                self_inflicted: bool,                     # harm they aimed at themselves killed them (F1)
                turn?: int,                               # the scene it came in; null for an older story
                closed: bool}                             # the player closed it (POST .../close)
+Successor     {name, age?: int, place?: string, people?: string,
+               station: "common"|"skilled"|"notable"|"noble"|"royal",
+               one_in: int,                              # how rare: one in this many (1 for the commonest)
+               master: bool,                             # a hidden master: the player knows, the world doesn't
+               lines: [string],                          # who they are, in the world's words (G2, G16)
+               situation: string,                        # the moment their first scene opens on
+               draws: int}                               # how many were drawn for this ending so far
 StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                difficulty: "story"|"balanced"|"brutal",
                event_frequency: "calm"|"normal"|"dramatic",
@@ -339,8 +351,9 @@ TurnRequest {kind: "action"|"choice"|"standing"|"opening"|"end",
 ```
 
 `kind: "opening"` writes the opening scene of a story that has none yet, right after
-`POST /v1/drafts/{id}/start`; any other kind on such a story, or an opening on a story that has
-opened, is a `validation_error`. Each kind takes only its own field. `input_mode` is how an action
+`POST /v1/drafts/{id}/start`, or of someone new who carries the story on (`Story.opening_due`, N6);
+any other kind on such a story is a `validation_error` of type `not_opened`, and an opening on a
+story that has opened is one of type `already_opened`. Each kind takes only its own field. `input_mode` is how an action
 was entered (V7), `typed` when left out; a choice and a standing action are always saved as
 `choice`, and the opening has none.
 

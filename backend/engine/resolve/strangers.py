@@ -158,7 +158,7 @@ def _measure(state: WorldState, actor: Character, rng: SeededRng) -> tuple[int, 
     master = master_odds(state)
     if draw < master:
         mine = base_tier(state, actor, PowerAxis.MIGHT)
-        return max(ORDINARY_TIER, min(mine + step, _strongest(state))), True
+        return max(ORDINARY_TIER, min(mine + step, strongest(state))), True
     if draw < master + TOUGH_ODDS:
         return ORDINARY_TIER + step, False
     return ORDINARY_TIER, False
@@ -171,7 +171,7 @@ def master_odds(state: WorldState) -> float:
     return max(MASTER_ODDS[p] for p in prevalences)
 
 
-def _strongest(state: WorldState) -> int:
+def strongest(state: WorldState) -> int:
     """A9. The strongest the world holds: its highest rung of might, the strongest body in it,
     or the best a real person can be, so a hidden master is never a champion that couldn't
     exist."""

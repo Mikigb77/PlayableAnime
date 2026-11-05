@@ -104,6 +104,17 @@ class StoryRepository {
   Future<Story> close(String id) async =>
       Story.fromJson(await _api.post('/v1/stories/$id/close', null) as Json);
 
+  /// Draws someone new to carry the story on after its ending (N6), replacing anyone drawn before.
+  /// It is one drafting call, charged like a draft (K2).
+  Future<Successor> drawSuccessor(String id) async =>
+      Successor.fromJson(await _api.post('/v1/stories/$id/successor', null) as Json);
+
+  /// Starts as the person drawn (N6): the ending is lifted, and the story's next turn is their
+  /// opening.
+  Future<Story> carryOn(String id, {required int expectedVersion}) async => Story.fromJson(
+    await _api.post('/v1/stories/$id/carry-on', {'expected_version': expectedVersion}) as Json,
+  );
+
   Future<StatusData> status(String id) async =>
       StatusData.fromJson(await _api.get('/v1/stories/$id/status') as Json);
 

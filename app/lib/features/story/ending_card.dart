@@ -6,19 +6,23 @@ import '../../design/design.dart';
 import 'story_models.dart';
 
 /// The end of a story (N6), under its last scene: the character died, or the player ended it with
-/// `/end`. It takes no more turns, so the composer gives way to this. The player closes the story
-/// or starts again from the same premise. After a character took their own life, one quiet line
-/// says where to find support.
+/// `/end`. It takes no more turns, so the composer gives way to this. The player carries the story
+/// on as someone else in its world, starts again from the same premise, or closes the story. After
+/// a character took their own life, one quiet line says where to find support.
 class EndingCard extends StatelessWidget {
   const EndingCard({
     super.key,
     required this.ending,
     required this.onStartAgain,
+    this.onCarryOn,
     this.onClose,
     this.closing = false,
   });
 
   final StoryEnding ending;
+
+  /// Opens the person drawn to carry the story on. Not offered once it is closed.
+  final VoidCallback? onCarryOn;
 
   /// Opens the create flow with the same premise filled in, to keep or change.
   final VoidCallback? onStartAgain;
@@ -73,17 +77,23 @@ class EndingCard extends StatelessWidget {
               spacing: Space.sm,
               runSpacing: Space.sm,
               children: [
-                if (!ending.closed && onClose != null)
-                  OutlinedButton(
-                    key: const ValueKey('ending.close'),
-                    onPressed: closing ? null : onClose,
-                    child: Text(l10n.endingClose),
+                if (!ending.closed && onCarryOn != null)
+                  FilledButton(
+                    key: const ValueKey('ending.carryOn'),
+                    onPressed: closing ? null : onCarryOn,
+                    child: Text(l10n.endingCarryOn),
                   ),
                 FilledButton.tonal(
                   key: const ValueKey('ending.startAgain'),
                   onPressed: onStartAgain,
                   child: Text(l10n.endingStartAgain),
                 ),
+                if (!ending.closed && onClose != null)
+                  OutlinedButton(
+                    key: const ValueKey('ending.close'),
+                    onPressed: closing ? null : onClose,
+                    child: Text(l10n.endingClose),
+                  ),
               ],
             ),
             if (ending.isDeath && ending.selfInflicted) ...[

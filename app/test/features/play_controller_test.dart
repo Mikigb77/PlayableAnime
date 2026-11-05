@@ -659,6 +659,46 @@ void main() {
       expect(here.play.pending, isNull);
     });
 
+    test('someone new carries the story on: their opening comes first, then play', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('I stab myself', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+
+      await repository.drawSuccessor(_demo);
+      final carried = await repository.carryOn(_demo, expectedVersion: play.story!.version);
+      expect(carried.openingDue, isTrue);
+      expect(carried.ending, isNull);
+      play.carriedOn(carried);
+
+      expect(play.ended, isFalse);
+      expect(play.opening, isTrue);
+      expect(play.canAct, isFalse);
+      expect(await play.act('I look around', inputMode: 'typed'), isFalse);
+      await until(play, () => play.pending == null);
+      // Only the opening came next.
+      expect(turnRequests().last.json['kind'], 'opening');
+      expect(play.story!.scenes.last.kind, 'opening');
+      expect(play.story!.scenes.last.narration, startsWith('At dawn, Mei Lin'));
+      expect(play.story!.openingDue, isFalse);
+      expect(play.opening, isFalse);
+      expect(play.canAct, isTrue);
+    });
+
+    test('a story carried on elsewhere loads without its ending, and opens', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('I stab myself', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+      await repository.drawSuccessor(_demo);
+      await repository.carryOn(_demo, expectedVersion: play.story!.version);
+
+      await play.reload();
+      expect(play.ended, isFalse);
+      await until(play, () => play.pending == null && play.story!.scenes.last.kind == 'opening');
+      expect(play.canAct, isTrue);
+    });
+
     test('a turn refused because the story ended reloads it', () async {
       final (:play, :notices, texts: _) = control();
       await play.start();

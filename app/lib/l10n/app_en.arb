@@ -559,6 +559,8 @@
   "slashThoughtsArg": "<character>",
   "storySettings": "Story settings",
   "storyBegin": "Begin the story",
+  "storyCarriedOnBeginning": "The story carries on with someone new.",
+  "storyCarriedOnBegin": "Begin their story",
   "storyClock": "In the story it is {time}",
   "@storyClock": {
     "description": "Screen-reader label for the world's date and time under the title.",
@@ -614,7 +616,7 @@
     }
   },
   "endingChosenTitleNameless": "The story ends here",
-  "endingBody": "This story takes no more turns. Close it, or start again from the same premise.",
+  "endingBody": "This story takes no more turns. Carry it on as someone else in its world, start again from the same premise, or close it.",
   "endingClosedTitle": "The end",
   "endingClosedBody": "You closed this story. It stays in your Library to read.",
   "endingClose": "Close the story",
@@ -624,6 +626,58 @@
     "description": "One quiet line under the ending after a character took their own life (N6)."
   },
   "endingCloseFailed": "The story couldn't be closed. Try again.",
+  "endingCarryOn": "Carry on as someone else",
+  "successorTitle": "Someone else",
+  "@successorTitle": {
+    "description": "Title of the screen that shows the person drawn to carry a story on after its ending (N6)."
+  },
+  "successorDrawing": "Someone in this world is stepping forward",
+  "successorDrawingBody": "Who they are comes down to chance, the way it would among the world's people: most are ordinary folk, and royalty is very rare.",
+  "successorIntro": "The story carries on with someone new in the same world. People who knew the one before may remember them.",
+  "successorStation": "{station, select, common{Common folk} skilled{Skilled in a trade} notable{A person of note} noble{Nobility} royal{The ruling family} other{Common folk}}",
+  "@successorStation": {
+    "description": "Where the person drawn stands among the world's people (N6).",
+    "placeholders": {
+      "station": {
+        "type": "String"
+      }
+    }
+  },
+  "successorOneIn": "1 in {count}",
+  "@successorOneIn": {
+    "description": "How rare a person like this is among the world's people (N6).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "successorAge": "{age} years old",
+  "@successorAge": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "successorMaster": "Hidden master",
+  "successorMasterBody": "Far stronger than they look. You know it; the world doesn't.",
+  "successorWhoTheyAre": "Who they are",
+  "successorWhereItBegins": "Where it begins",
+  "successorStart": "Start as {name}",
+  "@successorStart": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "successorStartNameless": "Start as them",
+  "successorDrawAgain": "Draw someone else",
+  "successorDrawCost": "Drawing someone uses credits, like a draft.",
+  "successorUnavailable": "Nobody needs to carry this story on: it hasn't reached an open ending.",
+  "successorMovedOn": "The story changed meanwhile. Here it is as it is now.",
   "storyHidden": "You blocked this scene, so its text is hidden.",
   "storyPortraits": "In this scene",
   "storyPortraitsLabel": "In this scene: {names}",

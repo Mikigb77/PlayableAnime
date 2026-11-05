@@ -402,7 +402,8 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
-    world = world.model_copy(update={"turn": turn.ctx.turn})
+    # N6: once told, a successor's opening is done.
+    world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})
     # M4, M5: a scene that changed the look it pictures draws the new look.
     world, plan = pipeline.settle_picture(world, state["plan"])
     scene = scene_draft(

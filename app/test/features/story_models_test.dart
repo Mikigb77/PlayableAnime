@@ -100,6 +100,52 @@ void main() {
       expect(next.clockLabel, 'Day 1, morning');
     });
 
+    test('a story at its ending reads who was drawn to carry it on (N6)', () {
+      final story = Story.fromJson(const {
+        'id': 's',
+        'title': 'The Ninth Peak',
+        'version': 5,
+        'scenes': <Object>[],
+        'ending': {'kind': 'death', 'character': 'Shen Yu', 'turn': 5},
+        'successor': {
+          'name': 'Lady Qiao Yun',
+          'age': 31,
+          'station': 'noble',
+          'one_in': 1000,
+          'master': true,
+          'place': 'The capital',
+          'people': null,
+          'lines': ['Lady Qiao Yun, 31.'],
+          'situation': 'Her carriage stops at the gate.',
+          'draws': 2,
+        },
+        'opening_due': false,
+      });
+      final drawn = story.successor!;
+      expect(
+        (drawn.name, drawn.age, drawn.station, drawn.oneIn),
+        ('Lady Qiao Yun', 31, 'noble', 1000),
+      );
+      expect((drawn.master, drawn.place, drawn.people), (true, 'The capital', null));
+      expect(drawn.lines, ['Lady Qiao Yun, 31.']);
+      expect((drawn.situation, drawn.draws), ('Her carriage stops at the gate.', 2));
+      expect(story.openingDue, isFalse);
+
+      final carried = Story.fromJson(const {
+        'id': 's',
+        'title': 'The Ninth Peak',
+        'version': 6,
+        'scenes': <Object>[],
+        'opening_due': true,
+      });
+      expect(carried.openingDue, isTrue);
+      final opened = carried.withScene(
+        const Scene(turn: 6, narration: 'n', choices: [], kind: 'opening'),
+        version: 7,
+      );
+      expect(opened.openingDue, isFalse);
+    });
+
     test('a turn request carries its kind, mode and expected version', () {
       expect(const TurnInput.action('Go', inputMode: 'voice').toJson(7), {
         'kind': 'action',

@@ -23,7 +23,8 @@ import 'fake_stories.dart';
 /// Endings (N6): "kill myself", "stab myself" or "jump to my death" kills the character by their
 /// own hand, which brings the story to its ending. `/end` (`kind: "end"`) tells an epilogue; a
 /// note asking to become a king or emperor is refused with `ending.refused`, unless the turn says
-/// `drop_refused`. A story at its ending answers every turn with `story_ended`.
+/// `drop_refused`. A story at its ending answers every turn with `story_ended`. Someone who carries
+/// it on (`POST /successor`, `/carry-on`) starts with an opening of their own.
 ///
 /// The action's words shape the scene: "attack" or "duel" is a fight with a roll and a picture
 /// (M1 counts fights), "then" chains steps that stop where one fails (R6), "stop time" runs the
@@ -63,16 +64,16 @@ void registerTurnRoutes(FakeBackend b) {
     final ending = switch (kind) {
       _ when _ownDeath.hasMatch(action) => {
         'kind': 'death',
-        'character_id': 'shen_yu',
-        'character': 'Shen Yu',
+        'character_id': story.playerId,
+        'character': story.playerName,
         'self_inflicted': true,
         'turn': turn,
         'closed': false,
       },
       'end' => {
         'kind': 'chosen',
-        'character_id': 'shen_yu',
-        'character': 'Shen Yu',
+        'character_id': story.playerId,
+        'character': story.playerName,
         'self_inflicted': false,
         'turn': turn,
         'closed': false,
@@ -92,6 +93,7 @@ void registerTurnRoutes(FakeBackend b) {
       story.worldS = (scene['time'] as JsonMap)['world_end_s'] as int;
       story.updatedAt = b.now();
       story.ending = ending;
+      story.openingDue = false;
       if ((scene['image'] as JsonMap?)?['kind'] == 'portrait') story.metLan = true;
       if (!byok) {
         b.data.account.charge(
@@ -193,10 +195,14 @@ void _validate(String kind, JsonMap body, FakeStory story) {
     throw const FakeError.validation('Only an end turn takes drop_refused.');
   }
   if (kind == 'opening') {
-    if (story.scenes.isNotEmpty) throw const FakeError.validation('The story has opened.');
+    if (story.scenes.isNotEmpty && !story.openingDue) {
+      throw const FakeError.validation('The story has opened.');
+    }
     return;
   }
-  if (story.scenes.isEmpty) throw const FakeError.validation('Play the opening first.');
+  if (story.scenes.isEmpty || story.openingDue) {
+    throw const FakeError.validation('Play the opening first.');
+  }
   switch (kind) {
     case 'action':
       final action = (body['action'] as String? ?? '').trim();
@@ -324,6 +330,8 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {boo
     kind,
     standing,
   )) {
+    // Someone new carries the story on from the moment they were drawn in (N6).
+    ('opening', _) when story.openingDue => '${story.situation}\n\n$_openingLine',
     ('opening', _) => '${story.premise}\n\n$_openingLine',
     _ when ending && _ownDeath.hasMatch(said) => _lastScene,
     ('end', _) => _epilogue,

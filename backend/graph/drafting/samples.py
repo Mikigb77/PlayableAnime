@@ -472,9 +472,28 @@ def cultivation() -> DraftProposal:
     return DraftProposal(world=cultivation_world(), character=cultivation_character())
 
 
+# The offline drafter's person to carry a story on with (N6), whatever the draw (a
+# `graph.drafting.successor.SuccessorProposal`).
+SUCCESSOR = {
+    "name": "Mara Venn",
+    "description": "A broad-shouldered woman who hauls freight and laughs too loud.",
+    "appearance": "Sun-browned, a scar through one eyebrow, a coat patched at both elbows.",
+    "skills": [{"name": "hauling", "level": "skilled"}, {"name": "haggling", "level": "fair"}],
+    "traits": [{"name": "stubborn", "kind": "flaw"}],
+    "temperament": {"traits": ["wry", "loyal"], "wants": ["a cart of her own"]},
+    "items": [{"name": "a hooked pole"}, {"name": "a battered lantern"}],
+    "money": 12,
+    "rank": "freight hauler",
+    "backstory": ["Grew up hauling for her uncle."],
+    "situation": "Before dawn, Mara heaves the first crate of the day off a wagon as its axle "
+    "groans and starts to give.",
+}
+
+
 def offline_backend(*, grounded: bool) -> FakeBackend:
     """The offline drafter for `LLM_PROVIDER=fake`: the Naples draft for a grounded starter, the
-    outer disciple otherwise, whatever the premise says."""
+    outer disciple otherwise, whatever the premise says, and the same person to carry a story on
+    with whatever the draw."""
     sample = naples() if grounded else cultivation()
 
     def reply(request: Request) -> Reply:
@@ -483,6 +502,8 @@ def offline_backend(*, grounded: bool) -> FakeBackend:
             return Reply(json=WorldChange())  # no model to make the change: the world stays
         if title == "CharacterProposal":
             return Reply(json=sample.character)
+        if title == "SuccessorProposal":
+            return Reply(json=SUCCESSOR)
         return Reply(json=sample)
 
     return FakeBackend(default=reply, keep_requests=False)
