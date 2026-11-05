@@ -161,8 +161,9 @@ class PromptCache:
         try:
             ttl_s = await self._extend(entry.model, name or "", TTL_S)
         except ProviderError as error:
-            # Gone or refused: the next call with this start makes a new one.
-            if self._entries.get(key) is entry:
+            # A passing failure leaves the cache to the next use, which tries again. Gone or
+            # refused: the next call with this start makes a new one.
+            if error.kind != "transient" and self._entries.get(key) is entry:
                 del self._entries[key]
             logger.warning(
                 "Couldn't extend a prompt cache",

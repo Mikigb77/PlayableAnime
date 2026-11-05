@@ -169,6 +169,26 @@ def test_a_cache_that_cant_be_extended_is_dropped_and_made_again():
     assert asyncio.run(scenario()) == (None, "cachedContents/2")
 
 
+def test_a_cache_that_failed_to_extend_for_a_moment_is_kept_and_extended_on_the_next_use():
+    vertex, clock = Vertex(), Clock()
+    vertex.extend_error = ProviderError("transient", "ServerError: 503", status=503)
+    cache = _cache(vertex, clock)
+
+    async def scenario():
+        cache.use(MODEL, SYSTEM, STABLE)
+        await _settle()
+        clock.now += TTL_S - REFRESH_BELOW_S + 1
+        cache.use(MODEL, SYSTEM, STABLE)
+        await _settle()
+        vertex.extend_error = None
+        kept = cache.use(MODEL, SYSTEM, STABLE)
+        await _settle()
+        return kept
+
+    assert asyncio.run(scenario()) == "cachedContents/1"
+    assert len(vertex.extended) == 2 and len(vertex.made) == 1
+
+
 def test_a_start_vertex_finds_too_small_is_not_tried_again_nor_any_smaller(caplog):
     vertex, clock = Vertex(TOO_SMALL), Clock()
     cache = _cache(vertex, clock)
