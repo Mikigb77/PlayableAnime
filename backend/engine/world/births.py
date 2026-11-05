@@ -8,6 +8,8 @@ to the player character, or with the player character there as the other parent,
 for them (W10).
 """
 
+import re
+
 from engine.state.cast import Character, DeathCertainty, Prominence
 from engine.state.records import EventStatus, Origin, OriginKind, PendingEvent
 from engine.state.world import WorldState
@@ -82,6 +84,17 @@ def on_birth(w: World, event: PendingEvent) -> bool:
     state.characters[child.id] = child
     event.subject_ids = list(dict.fromkeys([*event.subject_ids, child.id]))
     return state.player_id in child.met_by
+
+
+def is_placeholder(character: Character) -> bool:
+    """Whether someone born in the story still has the name they were born with: "Mira's child"
+    until the story names them."""
+    origin = character.origin
+    return (
+        origin is not None
+        and origin.kind is OriginKind.BIRTH
+        and re.fullmatch(r".*'s child( \d+)?", character.name) is not None
+    )
 
 
 def _placeholder(state: WorldState, carrier: Character) -> str:

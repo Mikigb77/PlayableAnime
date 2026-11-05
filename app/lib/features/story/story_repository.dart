@@ -104,10 +104,12 @@ class StoryRepository {
   Future<Story> close(String id) async =>
       Story.fromJson(await _api.post('/v1/stories/$id/close', null) as Json);
 
-  /// Draws someone new to carry the story on after its ending (N6), replacing anyone drawn before.
-  /// It is one drafting call, charged like a draft (K2).
-  Future<Successor> drawSuccessor(String id) async =>
-      Successor.fromJson(await _api.post('/v1/stories/$id/successor', null) as Json);
+  /// Draws someone new to carry the story on after its ending (N6), or takes the heir [heirId],
+  /// replacing anyone drawn before. It is one drafting call, charged like a draft (K2).
+  Future<Successor> drawSuccessor(String id, {String? heirId}) async {
+    final query = heirId == null ? '' : '?heir_id=${Uri.encodeQueryComponent(heirId)}';
+    return Successor.fromJson(await _api.post('/v1/stories/$id/successor$query', null) as Json);
+  }
 
   /// Starts as the person drawn (N6): the ending is lifted, and the story's next turn is their
   /// opening.

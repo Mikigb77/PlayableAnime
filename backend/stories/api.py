@@ -143,11 +143,14 @@ def _close(story: Story) -> Story:
 
 
 @stories_router.post("/{story_id}/successor", response=succession.SuccessorOut)
-async def draw_successor(request: HttpRequest, story_id: str) -> succession.SuccessorOut:
+async def draw_successor(
+    request: HttpRequest, story_id: str, heir_id: str | None = None
+) -> succession.SuccessorOut:
     """N6: draws a random person of the world to carry the story on after its ending, by its
-    population odds. One drafting call, charged like a draft; drawing again replaces them."""
+    population odds, or with `?heir_id=`, takes one of the player character's heirs. One drafting
+    call, charged like a draft; drawing again replaces them."""
     story = await _load(request, story_id)
-    return await succession.draw(request, story)
+    return await succession.draw(request, story, heir_id)
 
 
 class CarryOnIn(Schema):

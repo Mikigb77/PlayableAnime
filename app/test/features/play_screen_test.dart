@@ -728,6 +728,77 @@ void main() {
       expect(find.text('Mei Lin'), findsOneWidget);
       expect(draws(), isEmpty);
     });
+
+    testWidgets('a child carries the story on, years later, or someone from the world', (
+      tester,
+    ) async {
+      await serve(tester);
+      await open(tester);
+      await die(tester);
+      final fake = backend.data.stories.get(_demo, FakeAuthState.demoUserId);
+      final worldS = fake.worldS;
+      fake.heirs = [
+        {'id': 'xiao', 'name': 'Shen Xiao', 'relation': 'child', 'age': 4, 'years': 12},
+        {
+          'id': 'unborn:lan',
+          'name': 'Lan\'s child, not yet born',
+          'relation': 'child',
+          'age': null,
+          'unborn': true,
+          'years': 17,
+        },
+      ];
+      await carryOn(tester);
+
+      // The heirs come first, with someone from the world, and nothing is drawn until one is
+      // picked.
+      expect(find.text(l10n.successorChoose), findsOneWidget);
+      expect(find.text('Shen Xiao'), findsOneWidget);
+      expect(
+        find.text('${l10n.successorHeirOf('child', 'Shen Yu')} · ${l10n.successorAge(4)}'),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.successorYearsLater(12)), findsOneWidget);
+      expect(
+        find.text('${l10n.successorHeirOf('child', 'Shen Yu')} · ${l10n.successorUnborn}'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('successor.random')), findsOneWidget);
+      expect(draws(), isEmpty);
+
+      // Someone from the world is still a choice, and then the heirs again.
+      await tester.tap(find.byKey(const ValueKey('successor.random')));
+      await settle(tester, frames: 10);
+      expect(find.text('Mei Lin'), findsOneWidget);
+      expect(find.byKey(const ValueKey('successor.drawAgain')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('successor.chooseAgain')));
+      await settle(tester);
+      expect(find.text(l10n.successorChoose), findsOneWidget);
+      expect(draws(), hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('successor.heir.xiao')));
+      await settle(tester, frames: 10);
+      expect(find.byKey(const ValueKey('successor.name')), findsOneWidget);
+      expect(find.text('${l10n.successorAge(16)} · Azure Cloud Town'), findsOneWidget);
+      expect(
+        find.text(
+          '${l10n.successorHeirOf('child', 'Shen Yu')} · ${l10n.successorYearsLater(12)}'
+              .toUpperCase(),
+        ),
+        findsOneWidget,
+      );
+      expect(draws(), hasLength(2));
+
+      await tester.tap(find.byKey(const ValueKey('successor.start')));
+      await settle(tester, frames: 12);
+      await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+      await settle(tester);
+      expect(find.byType(SuccessorScreen), findsNothing);
+      final story = backend.data.stories.get(_demo, FakeAuthState.demoUserId);
+      expect(story.playerName, 'Shen Xiao');
+      expect(story.scenes.last['kind'], 'opening');
+      expect(story.worldS, greaterThanOrEqualTo(worldS + 12 * 365 * 24 * 3600));
+    });
   });
 
   testWidgets('at twice the text size nothing overflows', (tester) async {

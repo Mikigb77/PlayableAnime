@@ -1093,10 +1093,26 @@ and only the parents who are there meet them; a birth to the player character, o
 the other parent, stops the clock for them. Memory shows the player character's parents, children
 and grandchildren as such, and `/status` a child on the way.
 
-Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
-unborn child counts only if the mother lives, which logic decides first and a roll only when the
-facts leave it open; playing as that child starts after a time jump to when they can act. Rewinding
-comes with C8.
+The player can also carry the story on as an heir (Miki, 2026-11-05): a living child, grandchild or
+later descendant of the player character whose story ended, or a child of theirs, or of one of
+their descendants, still on the way. An unborn child counts only if the one who carries them lives,
+and logic decides that first: alive and well, they are an heir, and dead, never. Only a carrier who
+is dying leaves it open, and a seeded roll settles it once per ending, so asking again gives the
+same answer. When there are heirs, the carry-on screen offers them first, children before
+grandchildren and a child on the way last, with someone drawn from the world as the other choice.
+Picking an heir is one drafting call, charged like a draft (K2), and the player can go back to the
+choice. An heir under 16 is played from their sixteenth birthday, and a child on the way from the
+sixteenth birthday after they are born. The world runs on to that day first, as a time skip does
+(E7): every pending event and the world's own processes apply on the way, the child is born when
+due, and everyone alive grows older by the years that went by. Nothing is told of those years but
+what the world recorded, and the narrator is told how long ago the last story ended. If the heir
+doesn't live to that day, the player chooses again. An heir grown up off-screen is drafted as an
+ordinary person of their parents' standing, held to what a person can do (G12); one the story has
+already shown keeps who they are, and the drafter fills in only what is missing. Either way the
+heir keeps their family, place, ties and a name the story gave them, and a placeholder name such
+as "Mira's child" is replaced. They know their family: their parents, children, brothers and
+sisters know of them, and the living ones have met them. The fallen is remembered as of their
+ending, years before. Rewinding comes with C8.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has
 decided stay open until the narrator first describes them. From then on the engine records them as
@@ -1377,7 +1393,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. The world records families and has children born, and carrying on as an heir is next. Deaths others cause are defeats until the world can kill (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world or one of the player character's heirs, closes, or starts again from. The world records families and has children born, and a child too young to act is played after a time jump to their sixteenth birthday. Deaths others cause are defeats until the world can kill (N6). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

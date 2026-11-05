@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from engine.base import DAY
 from engine.context import TurnContext
 from engine.contracts import (
     BeatResolution,
@@ -21,7 +22,7 @@ from engine.contracts import (
     Intent,
     Resolution,
 )
-from engine.labels import in_label, moment, span_label
+from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState, natural_key
@@ -421,6 +422,12 @@ def narration_brief(
         sections.append(("NOW", _now_view(after)))
         # N6: someone new carries the story on after its ending.
         opening = prompts.SUCCESSION_TASK if before.opening_due else prompts.OPENING_TASK
+        if before.opening_due and before.fallen:
+            # An heir's story may start years after the ending, once they can act.
+            last = before.fallen[-1]
+            since = before.world_s - last.world_s
+            if since >= DAY:
+                sections.append(("ENDED", f"{last.name}'s story ended {ago_label(since)}."))
         sections.append(("TASK", opening))
     else:
         if intent is not None:

@@ -51,6 +51,10 @@ class FakeStory {
   /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
   JsonMap? successor;
 
+  /// The player character's heirs, offered at their ending (N6): a fake story has none unless a
+  /// test or a demo gives it some.
+  List<JsonMap> heirs = [];
+
   /// Someone new carries the story on, and their opening is still to be told (N6). [situation] is
   /// the moment it opens on.
   bool openingDue = false;
@@ -85,6 +89,7 @@ class FakeStory {
     'premise': premise,
     'ending': ending,
     'successor': ending == null ? null : successor,
+    'heirs': ending == null || ending?['closed'] == true ? const <JsonMap>[] : heirs,
     'opening_due': openingDue,
   };
 }
@@ -142,6 +147,30 @@ void _atOpenEnding(FakeStory story) {
       {'field': 'story_id', 'source': 'path', 'type': type, 'message': message},
     ],
   });
+}
+
+/// An heir as the drafter fills them in, grown up to 16 when they had years to grow (N6).
+JsonMap _grownUp(JsonMap heir, int draws) {
+  final unborn = heir['unborn'] == true;
+  final name = unborn ? 'Shen Lian' : heir['name'] as String;
+  final years = heir['years'] as int? ?? 0;
+  final age = years > 0 ? 16 : heir['age'] as int?;
+  return {
+    'name': name,
+    'age': age,
+    'station': 'common',
+    'one_in': 1,
+    'master': false,
+    'place': 'Azure Cloud Town',
+    'people': null,
+    'lines': [
+      '$name, ${age ?? 16}.',
+      'Raised at the foot of the mountain on stories of a parent who never came home.',
+    ],
+    'situation': 'On the morning $name turns ${age ?? 16}, a letter arrives from the sect.',
+    'draws': draws,
+    'heir': heir,
+  };
 }
 
 /// The people drawn in turn to carry a story on: common folk first, then rarer ones.
@@ -262,9 +291,25 @@ void registerStoryRoutes(FakeBackend b) {
         'available_cents': balance,
       });
     }
+    final heirId = r.query('heir_id');
+    final heir = heirId == null ? null : story.heirs.where((h) => h['id'] == heirId).firstOrNull;
+    if (heirId != null && heir == null) {
+      throw const FakeError(400, 'validation_error', 'Nobody by that id can carry this story on.', {
+        'fields': [
+          {
+            'field': 'heir_id',
+            'source': 'query',
+            'type': 'unknown_heir',
+            'message': 'Nobody by that id can carry this story on.',
+          },
+        ],
+      });
+    }
     if (b.pace.drafting > Duration.zero) await Future<void>.delayed(b.pace.drafting);
     final draws = ((story.successor?['draws'] as int?) ?? 0) + 1;
-    story.successor = {..._successors[(draws - 1) % _successors.length], 'draws': draws};
+    story.successor = heir == null
+        ? {..._successors[(draws - 1) % _successors.length], 'draws': draws}
+        : _grownUp(heir, draws);
     if (!r.usesOwnKey) {
       b.data.account.charge(r.userId!, kind: 'draft', cents: _drawCents, now: b.now());
     }
@@ -294,12 +339,16 @@ void registerStoryRoutes(FakeBackend b) {
         ],
       });
     }
+    // An heir too young to act starts once the world has run on to the day they can.
+    final years = (drawn['heir'] as JsonMap?)?['years'] as int? ?? 0;
     story
+      ..worldS += years * 365 * 24 * 3600
       ..playerId = 'pc-${story.version}'
       ..playerName = drawn['name'] as String
       ..situation = drawn['situation'] as String
       ..ending = null
       ..successor = null
+      ..heirs = []
       ..openingDue = true
       ..version += 1
       ..updatedAt = b.now();

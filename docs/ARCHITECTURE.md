@@ -164,6 +164,7 @@ these functions and saves the result.
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
+| `engine/heirs.py` | Heirs (N6): `heirs` lists who of the player character's family can carry the story on at its ending (living descendants, and a child on the way whose carrier lives, a dying carrier's child settled by a seeded roll in `unborn_lost`), and `time_jump` runs the world on to the day an heir too young to act turns 16. No model calls. See [Carrying a story on as an heir](#carrying-a-story-on-as-an-heir). |
 | `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`. See [Families and births](#families-and-births). |
 | `engine/succession.py` | Carrying a story on as someone else after its ending (N6): `draw` picks a random person of the world by its population odds (place, people, age, station, might, a hidden master as rare as the world makes them, and how rare that is), and `carry_on` makes them the player character, keeping the old one in the world (`WorldState.fallen`) and setting `opening_due`. No model calls. See [Carrying a story on](#carrying-a-story-on-as-someone-else). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
@@ -909,8 +910,9 @@ flowchart LR
 ## Carrying a story on as someone else
 
 Requirements: N6, W1, W3, C6, G2, G12, K2. After an ending the player can carry the story on as a
-random person of the same world. Code draws who they are and the drafter fills them in, the same
-split as drafting (the model proposes, code decides).
+random person of the same world, or as one of the player character's heirs
+([below](#carrying-a-story-on-as-an-heir)). Code draws who they are and the drafter fills them in,
+the same split as drafting (the model proposes, code decides).
 
 - **The draw** (`engine/succession.draw`, seeded per story, ending and draw so a reroll is new)
   picks a place weighted by its kind (a capital or city most, a village less; a kind that names no
@@ -954,8 +956,10 @@ split as drafting (the model proposes, code decides).
   the ending, clears `successor` and moves the version on. Neither works on a story that isn't at
   an ending, or that the player closed.
 - **The app** opens the person drawn from the ending card (`features/story/successor_screen.dart`),
-  draws on opening when nobody was drawn yet, and offers to start as them or draw again. Starting
-  pops the carried-on story back to the play screen, which plays their opening at once.
+  which fetches the story as it opens. With heirs it offers them and someone from the world;
+  otherwise it draws on opening when nobody was drawn yet. It offers to start as them, or to draw
+  again (back to the choice, when there are heirs). Starting pops the carried-on story back to the
+  play screen, which plays their opening at once.
 
 ## Families and births
 
@@ -992,6 +996,43 @@ grandchildren can carry a story on as heirs.
   by name (parents, children, the dead marked, a child on the way and when it is due), and marks
   the player character's kin they haven't learned of with `unknown_to_you`. Memory marks the
   player character's parents, children and grandchildren, and `/status` shows a child on the way.
+
+## Carrying a story on as an heir
+
+Requirements: N6, E7, W10, C6, G12, K2, A2, A3. After an ending the player can carry the story on as
+one of the player character's heirs instead of someone drawn at random.
+
+- **Who is an heir** (`engine/heirs.heirs`): every living descendant of the player character
+  (`kin.descendants`), children first, then grandchildren and so on, then any child on the way
+  whose carrier or other parent is the player character or one of their descendants. Logic decides
+  an unborn child first (A2): a living carrier who isn't dying makes them an heir, a dead one never.
+  Only a dying carrier leaves it open, and `unborn_lost` settles that with a roll seeded per story
+  and ending, so the list is the same however often it is asked. An unborn heir's id is `unborn:`
+  and the carrier's id.
+- **The time jump** (`heirs.time_jump`): an heir under `AGE_OF_ACTION` (16) is played from their
+  sixteenth birthday, and an unborn one from the sixteenth birthday after their due date. The world
+  runs on to that day through `catch_up` in a loop, applying everything due on the way whatever it
+  would have stopped the clock for, seeded per story, turn and heir so it plays the same every time
+  (A3). The child on the way is born when due (`births`), and everyone alive grows older by the
+  years that went by (someone born on the way by their own years); the dead keep the age they died
+  at. `born_of` finds the child a pregnancy brought.
+- **The heir** (`graph/drafting/successor.propose_heir`, `build_heir`): one drafter call with the
+  heir, their parents and family, how many years went by, and the names the story has. They keep
+  their id, family, place, people, age, ties, memberships and a name the story gave them; a
+  placeholder name ("Mira's child") is replaced. One who grew up in a time jump, or that the story
+  never filled in, gets a new sheet held to a person's peak (G12), an ordinary person's might, and
+  their own or their parents' influence and wealth, whichever is higher, titled when a parent is.
+  Their attitudes and connections stay.
+- **Carrying on** (`engine/succession.carry_on`): an heir is already in the world, so they keep who
+  knows them and who they have met, become a key character, and know their family: their parents,
+  children, brothers and sisters know of them, and the living ones have met them. The fallen is
+  recorded as of their ending (`ended_s`), years before. The opening's brief gets an `ENDED`
+  section saying how long ago the last story ended, so the narrator lets the world have moved on.
+- **The API** (`stories/succession.py`): a story at an open ending lists `heirs` (API.md `Heir`).
+  `POST /successor?heir_id=` runs the jump in a worker thread, drafts the heir in the world as it
+  will be, and keeps them on `Story.successor` with the `heir` they were drawn as. An id that isn't
+  an heir is `unknown_heir`, and an heir who didn't live through the jump is `heir_lost`.
+  `POST /carry-on` runs the same jump again, which lands on the same world, and carries on from it.
 
 ## Safety, ratings and reports
 

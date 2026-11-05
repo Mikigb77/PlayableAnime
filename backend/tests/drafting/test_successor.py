@@ -2,10 +2,27 @@
 the draw."""
 
 from engine.samples import cultivation_world, grounded_world
-from engine.state import PowerAxis, Prevalence
+from engine.state import (
+    Attitude,
+    Character,
+    CharacterStatus,
+    DeathCertainty,
+    Origin,
+    OriginKind,
+    PowerAxis,
+    Prevalence,
+    Skill,
+    SkillLevel,
+)
 from engine.succession import Lot, Station, carry_on
 from graph.drafting.assemble import PLAYER_FALLBACK_NAME
-from graph.drafting.successor import SuccessorProposal, build, successor_prompt
+from graph.drafting.successor import (
+    SuccessorProposal,
+    build,
+    build_heir,
+    heir_prompt,
+    successor_prompt,
+)
 from graph.drafting.view import character_lines
 
 
@@ -112,3 +129,76 @@ def test_the_world_decides_whether_a_strong_body_is_possible():
     ordinary, _ = build(state, lot(place_id="well"), proposal())
     assert strong.sheet.attributes.strength == 9
     assert ordinary.sheet.attributes.strength == 5
+
+
+# --- Heirs ------------------------------------------------------------------------------------
+
+
+def heir_world():
+    """Luca, a capo with a title, dead; his newborn son grown up off-screen, still unnamed, and
+    his daughter Rosa, drafted with skills of her own."""
+    state = grounded_world()
+    luca = state.player
+    luca.sheet.resources.title = "Don of the Quartieri"
+    luca.sheet.axes.influence, luca.sheet.axes.wealth = 3, 4
+    luca.status, luca.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    state.characters["npc-1"] = Character(
+        id="npc-1",
+        name="Luca Esposito's child",
+        age=16,
+        location_id="bar",
+        parent_ids=["luca"],
+        description="A newborn, the child of Luca Esposito.",
+        origin=Origin(kind=OriginKind.BIRTH, ref_id="event-1"),
+    )
+    state.characters["npc-1"].sheet.disposition.attitudes["carmine"] = Attitude(affinity=-40)
+    rosa = Character(
+        id="rosa", name="Rosa", age=30, location_id="bar", parent_ids=["luca"], appearance="Dark."
+    )
+    rosa.sheet.skills = [Skill(name="bookkeeping", level=SkillLevel.SKILLED)]
+    state.characters["rosa"] = rosa
+    return state
+
+
+def test_an_heir_who_grew_up_off_screen_is_who_the_drafter_says_held_to_their_family():
+    state = heir_world()
+
+    heir, situation = build_heir(
+        state, state.characters["npc-1"], proposal(attributes={"strength": 9}), grown=True
+    )
+
+    assert (heir.id, heir.name, heir.age, heir.parent_ids) == ("npc-1", "Mara Venn", 16, ["luca"])
+    assert heir.location_id == "bar" and heir.prominence.value == "key"
+    assert heir.description == "A broad-shouldered hauler."
+    sheet = heir.sheet
+    assert sheet.attributes.strength == 5  # a person, however strong their parent was
+    assert (sheet.axes.might, sheet.axes.influence, sheet.axes.wealth) == (1, 3, 4)
+    assert sheet.resources.title == "Lady of the Docks"  # a titled family
+    assert [s.name for s in sheet.skills] == ["hauling"]
+    # What the world already held of them stays theirs.
+    assert sheet.disposition.attitudes["carmine"].affinity == -40
+    assert situation == "Before dawn, an axle starts to give."
+    assert state.characters["npc-1"].name == "Luca Esposito's child"  # the state is untouched
+
+
+def test_an_heir_the_story_already_has_keeps_their_name_and_sheet():
+    state = heir_world()
+
+    heir, _ = build_heir(state, state.characters["rosa"], proposal(name="Mara Venn"), grown=False)
+
+    assert heir.name == "Rosa" and heir.appearance == "Dark."
+    assert heir.description == "A broad-shouldered hauler."  # she had none
+    assert [s.name for s in heir.sheet.skills] == ["bookkeeping"]
+
+
+def test_the_heir_prompt_names_their_family_and_the_years_since():
+    state = heir_world()
+
+    prompt = heir_prompt(state, state.characters["npc-1"], years=17)
+
+    assert "THE HEIR" in prompt and "Name: none yet; give them one." in prompt
+    assert "Parent: Luca Esposito (the last player character, now dead), Don of the" in prompt
+    assert "They grew up in the 17 years since the last story ended." in prompt
+    assert "Lives in: " in prompt
+    rosa = heir_prompt(state, state.characters["rosa"], years=0)
+    assert "Name: Rosa." in rosa and "grew up" not in rosa

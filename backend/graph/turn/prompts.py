@@ -227,8 +227,12 @@ Write the opening scene of someone new: the story carries on in the same world a
 player character's ending (N6), and the player now plays the PLAYER CHARACTER. Introduce them in \
 their own life, where LAST MOMENT puts them, establish who they are through what they see and do, \
 and end on something to act on. They are not the one before and carry none of their goals: STORY \
-SO FAR is what happened before them, which they know only as anyone in the world would. Play no \
-action for the character beyond small natural movement.\
+SO FAR is what happened before them, which they know only as anyone in the world would. When \
+their family names the one before as a parent or grandparent, they are that person's heir and \
+know them as family does. When ENDED says the last story ended long ago, the world has moved on \
+that long: show the years in the place and the people as STORY SO FAR and CONTINUITY allow, and \
+invent no great events of those years. Play no action for the character beyond small natural \
+movement.\
 """
 
 DEATH_TASK = """\

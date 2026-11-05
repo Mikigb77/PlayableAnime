@@ -39,7 +39,7 @@ from engine.resolve.strangers import (
     strongest,
 )
 from engine.rng import SeededRng
-from engine.state.cast import Activity, Character, PlaceStatus, Reputation
+from engine.state.cast import Activity, Character, PlaceStatus, Prominence, Reputation
 from engine.state.records import Fallen, GoalStatus, LeadStatus
 from engine.state.scene import SceneFrame
 from engine.state.world import WorldState
@@ -131,13 +131,22 @@ def draw(state: WorldState, rng: SeededRng) -> Lot:
 
 
 def carry_on(
-    state: WorldState, successor: Character, situation: str, *, ending: str, turn: int
+    state: WorldState,
+    successor: Character,
+    situation: str,
+    *,
+    ending: str,
+    turn: int,
+    ended_s: int | None = None,
 ) -> WorldState:
-    """`successor` becomes the player character, after the story's ending in scene `turn`. The
-    old player character stays in the world and is remembered in `fallen`; the new one's first
-    scene opens on `situation`. Returns a new state."""
-    if successor.id in state.characters:
-        raise ValueError(f"the successor {successor.id!r} is already in the story")
+    """`successor` becomes the player character, after the story's ending in scene `turn`, at
+    `ended_s` (now, unless the world ran on since, for an heir). The old player character stays
+    in the world and is remembered in `fallen`; the new one's first scene opens on `situation`.
+    `successor` is someone new, or an heir the story has (`engine.heirs`), as they are now.
+    Returns a new state."""
+    heir = successor.id in state.characters
+    if successor.id == state.player_id:
+        raise ValueError(f"{successor.id!r} is the player character already")
     new = state.model_copy(deep=True)
     old = new.player
     new.fallen.append(
@@ -146,7 +155,7 @@ def carry_on(
             name=old.name,
             ending=ending,
             turn=turn,
-            world_s=new.world_s,
+            world_s=new.world_s if ended_s is None else ended_s,
             successor_id=successor.id,
         )
     )
@@ -162,9 +171,21 @@ def carry_on(
                 if witness is not None and witness.alive and cid != old.id:
                     if cid not in death.known_by:
                         death.known_by.append(cid)
-    new.characters[successor.id] = successor.model_copy(
-        update={"known_by": [successor.id], "met_by": [successor.id]}
-    )
+    if heir:
+        # An heir keeps who knows them, and knows their own family (C6).
+        new.characters[successor.id] = successor.model_copy(
+            update={
+                "known_by": list(dict.fromkeys([*successor.known_by, successor.id])),
+                "met_by": list(dict.fromkeys([*successor.met_by, successor.id])),
+                "activity": Activity.ACTIVE,
+                "prominence": Prominence.KEY,
+            }
+        )
+        _knows_family(new, successor.id)
+    else:
+        new.characters[successor.id] = successor.model_copy(
+            update={"known_by": [successor.id], "met_by": [successor.id]}
+        )
     new.player_id = successor.id
     # C6: they know where they live, and the places around it.
     place = new.places.get(successor.location_id or "")
@@ -188,6 +209,28 @@ def carry_on(
     )
     new.opening_due = True
     return new
+
+
+def _knows_family(state: WorldState, heir_id: str) -> None:
+    """An heir knows their parents, brothers and sisters, and children, and has met those alive,
+    as they have them."""
+    heir = state.characters[heir_id]
+    parents = set(heir.parent_ids)
+    kin = [
+        c
+        for c in state.characters.values()
+        if c.id != heir_id
+        and (c.id in parents or heir_id in c.parent_ids or parents & set(c.parent_ids))
+    ]
+    for relative in kin:
+        if heir_id not in relative.known_by:
+            relative.known_by.append(heir_id)
+        if relative.alive:
+            for record, other in ((relative, heir_id), (heir, relative.id)):
+                if other not in record.met_by:
+                    record.met_by.append(other)
+                if other not in record.known_by:
+                    record.known_by.append(other)
 
 
 def _might(state: WorldState, rng: SeededRng) -> tuple[int, bool, float]:

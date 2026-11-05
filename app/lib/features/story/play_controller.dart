@@ -318,6 +318,7 @@ class PlayController extends ChangeNotifier {
       // A copy older than the one loaded doesn't take back an ending a scene brought.
       ending: fresh.version >= current.version ? fresh.ending : current.ending,
       successor: fresh.successor,
+      heirs: fresh.heirs,
       openingDue: fresh.version >= current.version ? fresh.openingDue : current.openingDue,
     );
     if (scenes.isNotEmpty && scenes.first.turn < _anchorTurn) _anchorTurn = scenes.first.turn;
