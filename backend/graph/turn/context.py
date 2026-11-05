@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from engine.base import DAY
 from engine.context import TurnContext
 from engine.contracts import (
     BeatResolution,
@@ -21,10 +22,10 @@ from engine.contracts import (
     Intent,
     Resolution,
 )
-from engine.labels import moment, span_label
+from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
-from engine.state.records import GoalStatus, LeadStatus, PendingEvent
-from engine.state.world import WorldState
+from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent
+from engine.state.world import WorldState, natural_key
 from graph.llm import Prompt
 from graph.turn import prompts
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
@@ -46,6 +47,8 @@ _INTERPRET_WORLD = {
     "travel",
 }
 _RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin", "look_version"}
+# Shown by name in a character's `family` (N6) instead of as ids and in-world seconds.
+_KIN = {"parent_ids", "expecting"}
 _NPC_HIDDEN = {
     "secrets": True,
     "personal_offset_s": True,
@@ -92,14 +95,50 @@ def place_name(state: WorldState) -> str | None:
 
 
 def _player_view(state: WorldState) -> dict[str, Any]:
-    return {"id": state.player_id} | _dump(
-        state.player, exclude={*_RECORD_NOISE, "personal_offset_s"}
+    view = {"id": state.player_id} | _dump(
+        state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
     )
+    # The player character's own family, marking anyone of it they don't know of (C6).
+    return view | _family_view(state, state.player, knower=state.player_id)
+
+
+def _family_view(
+    state: WorldState, character: Character, *, knower: str | None = None
+) -> dict[str, Any]:
+    """N6: a character's parents and children by name, and a child they carry, when due. With
+    `knower`, kin that character doesn't know of are marked so."""
+    children = [c for c in state.characters.values() if character.id in c.parent_ids]
+    family: dict[str, Any] = {}
+    for key, ids in (
+        ("parents", character.parent_ids),
+        ("children", [c.id for c in sorted(children, key=lambda c: natural_key(c.id))]),
+    ):
+        named = [_kin_name(state, i, knower) for i in ids if i in state.characters]
+        if named:
+            family[key] = named
+    expecting = character.expecting
+    if expecting is not None and character.alive:
+        other = state.characters.get(expecting.other_parent_id or "")
+        family["expecting"] = {
+            "with": other.name if other is not None else None,
+            "due": in_label(max(0, expecting.due_s - state.world_s)),
+        }
+    return {"family": family} if family else {}
+
+
+def _kin_name(state: WorldState, character_id: str, knower: str | None) -> dict[str, Any]:
+    kin = state.characters[character_id]
+    view: dict[str, Any] = {"id": kin.id, "name": kin.name}
+    if not kin.alive:
+        view["dead"] = True
+    if knower is not None and knower not in kin.known_by:
+        view["unknown_to_you"] = True
+    return view
 
 
 def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
-    hidden = dict.fromkeys(_RECORD_NOISE, True) | _NPC_HIDDEN
-    view = {"id": character.id} | _dump(character, exclude=hidden)
+    hidden = dict.fromkeys({*_RECORD_NOISE, *_KIN}, True) | _NPC_HIDDEN
+    view = {"id": character.id} | _dump(character, exclude=hidden) | _family_view(state, character)
     sheet = view.get("sheet", {})
     if "powers" in sheet:
         # A power kept secret stays out until it is used, and resolve's outcome tells of it then.
@@ -383,6 +422,12 @@ def narration_brief(
         sections.append(("NOW", _now_view(after)))
         # N6: someone new carries the story on after its ending.
         opening = prompts.SUCCESSION_TASK if before.opening_due else prompts.OPENING_TASK
+        if before.opening_due and before.fallen:
+            # An heir's story may start years after the ending, once they can act.
+            last = before.fallen[-1]
+            since = before.world_s - last.world_s
+            if since >= DAY:
+                sections.append(("ENDED", f"{last.name}'s story ended {ago_label(since)}."))
         sections.append(("TASK", opening))
     else:
         if intent is not None:
@@ -399,7 +444,10 @@ def narration_brief(
     seen = [
         e
         for e in fired
-        if _perceived(e, after) and not e.kind.startswith("director.") and e.id not in told
+        if _perceived(e, after)
+        and not e.kind.startswith("director.")
+        and e.id not in told
+        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
     ]
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
@@ -485,6 +533,12 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
                 {"id": i, "who": made[i].name, "about": made[i].description}
                 for i in step.strangers
                 if i in made
+            ]
+        if step.perils:
+            # N6: what struck back at the player character after their step, in order.
+            view["struck"] = [
+                {"by": p.by, "means": p.aim.value, "harm": p.harm.value, "why": p.reason}
+                for p in step.perils
             ]
         if step.interrupted:
             view["interrupted"] = True

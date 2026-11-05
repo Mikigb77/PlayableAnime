@@ -23,11 +23,13 @@ polished app on Android, iOS and the web build.
 
 **Out of the first version, planned next:** store payments and plans (K3 to K5, which need store
 accounts), retrieval with pgvector (C4), Spanish (S10, though the app is built ready for it), undo
-and branching (C8), editable memory (C7), the model part of the world tick (W6, P1), NPC agendas
-(E3), the remaining slash commands, Gemini transcription (V6, P1), carrying on as an heir after an
-ending (N6), and everything P2. A death the player chooses and `/end` already end a story, and the
-player can carry it on as a random person of the world (N6); until the world can kill the player
-character, a fatal outcome that others cause is a defeat on every difficulty.
+and branching saves (C8, beyond the rewind after a death), editable memory (C7), the model part of
+the world tick (W6, P1), NPC agendas (E3), the remaining slash commands, Gemini transcription (V6,
+P1), and everything P2. A death the player chooses and `/end` already end a story, and the player can carry it on as a random person of
+the world or as one of the player character's heirs, a child too young to act after a time jump to
+their sixteenth birthday (N6). Foes and dangers can kill or maim the player character on every
+difficulty, logic first and the dice only between (N6), and a death they cause can be rewound up to
+5 scenes on Story, 1 on Balanced and none on Brutal (C8).
 
 **Not done without Miki:** any deploy, any production migration that drops data, deleting data, and
 anything that adds cost to the GCP or Neon bill (see [What only Miki can do](#what-only-miki-can-do)).

@@ -54,6 +54,10 @@ class AttitudeShift(EngineModel):
 class ConditionChange(EngineModel):
     health: Health | None = None
     wounds: list[str] = Field(default_factory=list)
+    lasting_wounds: list[str] = Field(
+        default_factory=list,
+        description="Engine only (N6, G17): wounds that last, such as a lost hand or an eye.",
+    )
     states: list[str] = Field(default_factory=list, description="Passing states that begin.")
     cleared_states: list[str] = Field(default_factory=list)
 
@@ -74,6 +78,18 @@ class PowerChange(EngineModel):
     ready_at_personal_s: int | None = None
     hit_mode: HitMode | None = None
     settings: list[PowerSetting] = Field(default_factory=list)
+
+
+class Expecting(EngineModel):
+    """N6. A child on the way, as the scene made it so, or a pregnancy that ended."""
+
+    other_parent_id: str | None = Field(
+        default=None, description="The child's other parent, by id, when the story knows them."
+    )
+    ended: bool = Field(
+        default=False,
+        description="The pregnancy ended without a birth, as the scene showed, or was never real.",
+    )
 
 
 class CharacterChange(EngineModel):
@@ -106,6 +122,17 @@ class CharacterChange(EngineModel):
     rank: str | None = None
     meets_player: bool = False
     known_to_player: bool = False
+    parent_ids: list[str] = Field(
+        default_factory=list,
+        description="N6: their parents, by id: for someone met as someone's child, or a "
+        "parentage the scene reveals. Added to what the story has, never taken back; two at most. "
+        "Never the player character's parents or children: their family comes from their story.",
+    )
+    expecting: Expecting | None = Field(
+        default=None,
+        description="N6: they now carry a child, as the scene made it so, or with ended, a "
+        "pregnancy is over. The child is born when it is due, if they live.",
+    )
     rulings: list[Ruling] = Field(default_factory=list, description="Engine only (A9).")
     gains: list[Gain] = Field(default_factory=list, description="Engine only (A4, G17).")
     backstory: list[str] = Field(default_factory=list, description="Engine only (N4).")

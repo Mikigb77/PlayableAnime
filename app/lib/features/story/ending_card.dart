@@ -7,8 +7,9 @@ import 'story_models.dart';
 
 /// The end of a story (N6), under its last scene: the character died, or the player ended it with
 /// `/end`. It takes no more turns, so the composer gives way to this. The player carries the story
-/// on as someone else in its world, starts again from the same premise, or closes the story. After
-/// a character took their own life, one quiet line says where to find support.
+/// on as someone else in its world, starts again from the same premise, or closes the story, and
+/// after a death not by the character's own hand on Story or Balanced, rewinds a few scenes (C8).
+/// After a character took their own life, one quiet line says where to find support.
 class EndingCard extends StatelessWidget {
   const EndingCard({
     super.key,
@@ -16,6 +17,7 @@ class EndingCard extends StatelessWidget {
     required this.onStartAgain,
     this.onCarryOn,
     this.onClose,
+    this.onRewind,
     this.closing = false,
   });
 
@@ -29,6 +31,11 @@ class EndingCard extends StatelessWidget {
 
   /// Closes the story. Not offered once it is closed.
   final VoidCallback? onClose;
+
+  /// Asks how far back to rewind (C8). Offered only while the ending can be rewound.
+  final VoidCallback? onRewind;
+
+  /// Closing or rewinding is under way.
   final bool closing;
 
   String _title(BuildContext context) {
@@ -67,7 +74,11 @@ class EndingCard extends StatelessWidget {
             ),
             const SizedBox(height: Space.sm),
             Text(
-              ending.closed ? l10n.endingClosedBody : l10n.endingBody,
+              ending.closed
+                  ? l10n.endingClosedBody
+                  : ending.canRewind && onRewind != null
+                  ? l10n.endingBodyRewind(ending.rewind)
+                  : l10n.endingBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium!.copyWith(color: muted),
             ),
@@ -77,6 +88,12 @@ class EndingCard extends StatelessWidget {
               spacing: Space.sm,
               runSpacing: Space.sm,
               children: [
+                if (ending.canRewind && onRewind != null)
+                  FilledButton(
+                    key: const ValueKey('ending.rewind'),
+                    onPressed: closing ? null : onRewind,
+                    child: Text(l10n.endingRewind),
+                  ),
                 if (!ending.closed && onCarryOn != null)
                   FilledButton(
                     key: const ValueKey('ending.carryOn'),

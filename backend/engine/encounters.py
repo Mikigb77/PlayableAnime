@@ -18,7 +18,8 @@ these on its working copy before and after each step, and `settle` once the plan
   Something that isn't a fight turns into one when a step fights; a fight stays a fight whatever
   else is proposed, since a chase inside a fight is the same fight.
 - **End.** It ends when none of its opponents is still in it (each is dead, missing, helpless, or
-  somewhere the player character isn't), when the player character is dead or helpless, or when
+  somewhere the player character isn't), when a step of the player character's got cleanly away
+  from all of those still in it (N6), when the player character is dead or helpless, or when
   `LAPSE_S` of in-world time pass with no exchange: a truce, a surrender or walking away. A time
   skip, or a step as long as that which doesn't fight or carry on the encounter itself, such as a
   night's sleep, ends it before it plays, so the stretch gets its events (E7). A time skip is a
@@ -31,9 +32,8 @@ from engine.base import MINUTE
 from engine.context import TurnContext
 from engine.contracts.intent import ActionKind
 from engine.contracts.resolution import StepResolution
-from engine.invariants import ancestry
-from engine.resolve.power import helpless_state
-from engine.state.cast import CharacterStatus, Prominence
+from engine.resolve.power import helpless_state, in_the_fray
+from engine.state.cast import Prominence
 from engine.state.scene import Encounter, EncounterKind
 from engine.state.world import WorldState
 
@@ -77,9 +77,10 @@ def before_step(state: WorldState, step: StepResolution, actor_id: str) -> None:
 
 
 def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnContext) -> None:
-    """After a step played out in full: start an encounter, bring someone new into it, or count
-    an exchange. A step cut short by an event didn't happen as resolved, and a time skip is a
-    montage, never an encounter (E7), so they do none of these."""
+    """After a step played out in full: start an encounter, bring someone new into it, count an
+    exchange, or end it when the player character got away from everyone still in it (N6). A
+    step cut short by an event didn't happen as resolved, and a time skip is a montage, never an
+    encounter (E7), so they do none of these."""
     if step.interrupted or step.kind is ActionKind.TIME_SKIP:
         return
     opponents = _opponents(state, step, actor_id)
@@ -98,6 +99,11 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
             key=any(strong_foe(state, i) for i in opponents),
         )
         return
+    if step.escaped and actor_id == state.player_id:
+        behind = set(step.escaped)
+        if not any(still_in_it(state, i) for i in encounter.opponent_ids if i not in behind):
+            state.scene.encounter = None  # N6: they got away from everyone still in it
+            return
     exchange = _exchange(state, encounter, step, actor_id, opponents)
     fight = encounter.kind is EncounterKind.FIGHT
     # A fight takes in only those a step fights; anything else takes in whoever its steps face,
@@ -136,16 +142,7 @@ def still_in_it(state: WorldState, character_id: str) -> bool:
     asleep, bound, subdued or dying), and with the player character, which means in the scene or
     at the player character's place. Someone the state doesn't place stays in it."""
     character = state.characters.get(character_id)
-    if character is None or character_id == state.player_id:
-        return False
-    if character.status is not CharacterStatus.ALIVE or helpless_state(character) is not None:
-        return False
-    here = state.player.location_id or state.scene.place_id
-    if character_id in state.scene.present_ids or character.location_id is None or here is None:
-        return True
-    return here in ancestry(state.places, character.location_id) or (
-        character.location_id in ancestry(state.places, here)
-    )
+    return character is not None and in_the_fray(state, character)
 
 
 def _opponents(state: WorldState, step: StepResolution, actor_id: str) -> list[str]:

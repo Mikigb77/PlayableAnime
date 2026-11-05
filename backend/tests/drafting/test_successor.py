@@ -2,10 +2,31 @@
 the draw."""
 
 from engine.samples import cultivation_world, grounded_world
-from engine.state import PowerAxis, Prevalence
+from engine.state import (
+    Attitude,
+    Character,
+    CharacterStatus,
+    DeathCertainty,
+    Health,
+    Item,
+    Origin,
+    OriginKind,
+    PowerAxis,
+    Prevalence,
+    Skill,
+    SkillLevel,
+    Trait,
+    Wound,
+)
 from engine.succession import Lot, Station, carry_on
 from graph.drafting.assemble import PLAYER_FALLBACK_NAME
-from graph.drafting.successor import SuccessorProposal, build, successor_prompt
+from graph.drafting.successor import (
+    SuccessorProposal,
+    build,
+    build_heir,
+    heir_prompt,
+    successor_prompt,
+)
 from graph.drafting.view import character_lines
 
 
@@ -112,3 +133,115 @@ def test_the_world_decides_whether_a_strong_body_is_possible():
     ordinary, _ = build(state, lot(place_id="well"), proposal())
     assert strong.sheet.attributes.strength == 9
     assert ordinary.sheet.attributes.strength == 5
+
+
+# --- Heirs ------------------------------------------------------------------------------------
+
+
+def heir_world():
+    """Luca, a capo with a title, dead; his newborn son grown up off-screen, still unnamed, and
+    his daughter Rosa, drafted with skills of her own."""
+    state = grounded_world()
+    luca = state.player
+    luca.sheet.resources.title = "Don of the Quartieri"
+    luca.sheet.axes.influence, luca.sheet.axes.wealth = 3, 4
+    luca.status, luca.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+    state.characters["npc-1"] = Character(
+        id="npc-1",
+        name="Luca Esposito's child",
+        age=16,
+        location_id="bar",
+        parent_ids=["luca"],
+        description="A newborn, the child of Luca Esposito.",
+        origin=Origin(kind=OriginKind.BIRTH, ref_id="event-1"),
+    )
+    state.characters["npc-1"].sheet.disposition.attitudes["carmine"] = Attitude(affinity=-40)
+    rosa = Character(
+        id="rosa", name="Rosa", age=30, location_id="bar", parent_ids=["luca"], appearance="Dark."
+    )
+    rosa.sheet.skills = [Skill(name="bookkeeping", level=SkillLevel.SKILLED)]
+    state.characters["rosa"] = rosa
+    return state
+
+
+def test_an_heir_who_grew_up_off_screen_is_who_the_drafter_says_held_to_their_family():
+    state = heir_world()
+
+    heir, situation = build_heir(
+        state, state.characters["npc-1"], proposal(attributes={"strength": 9}), grown=True
+    )
+
+    assert (heir.id, heir.name, heir.age, heir.parent_ids) == ("npc-1", "Mara Venn", 16, ["luca"])
+    assert heir.location_id == "bar" and heir.prominence.value == "key"
+    assert heir.description == "A broad-shouldered hauler."
+    sheet = heir.sheet
+    assert sheet.attributes.strength == 5  # a person, however strong their parent was
+    assert (sheet.axes.might, sheet.axes.influence, sheet.axes.wealth) == (1, 3, 4)
+    assert sheet.resources.title == "Lady of the Docks"  # a titled family
+    assert [s.name for s in sheet.skills] == ["hauling"]
+    # What the world already held of them stays theirs.
+    assert sheet.disposition.attitudes["carmine"].affinity == -40
+    assert situation == "Before dawn, an axle starts to give."
+    assert state.characters["npc-1"].name == "Luca Esposito's child"  # the state is untouched
+
+
+def test_an_heir_the_story_already_has_keeps_their_name_and_sheet():
+    state = heir_world()
+
+    heir, _ = build_heir(state, state.characters["rosa"], proposal(name="Mara Venn"), grown=False)
+
+    assert heir.name == "Rosa" and heir.appearance == "Dark."
+    assert heir.description == "A broad-shouldered hauler."  # she had none
+    assert [s.name for s in heir.sheet.skills] == ["bookkeeping"]
+
+
+def test_an_heir_drafted_anew_keeps_what_the_world_holds_of_them():
+    """A son the story never filled in, wounded at the ending, with his father's ring."""
+    state = heir_world()
+    tonio = Character(id="tonio", name="Tonio", age=20, location_id="bar", parent_ids=["luca"])
+    condition = tonio.sheet.condition
+    condition.health = Health.BADLY_WOUNDED
+    condition.wounds = [Wound(text="a knife in the side"), Wound(text="a lost eye", lasting=True)]
+    tonio.sheet.resources.items = [Item(id="a-hooked-pole", name="His father's ring")]
+    tonio.sheet.resources.money = 30
+    tonio.sheet.traits = [Trait(name="Stubborn")]
+    state.characters["tonio"] = tonio
+
+    heir, _ = build_heir(state, tonio, proposal(traits=[{"name": "Patient"}]), grown=False)
+
+    sheet = heir.sheet
+    assert [s.name for s in sheet.skills] == ["hauling"]  # filled in
+    assert sheet.condition.health is Health.BADLY_WOUNDED and len(sheet.condition.wounds) == 2
+    assert [i.name for i in sheet.resources.items] == ["His father's ring", "a hooked pole"]
+    assert len({i.id for i in sheet.resources.items}) == 2
+    assert sheet.resources.money == 30
+    assert [t.name for t in sheet.traits] == ["Stubborn", "Patient"]
+
+    # Grown up years later: only the lasting wound is left.
+    grown, _ = build_heir(state, tonio, proposal(), grown=True)
+    assert grown.sheet.condition.health is Health.UNHURT
+    assert [w.text for w in grown.sheet.condition.wounds] == ["a lost eye"]
+    assert "His father's ring" in [i.name for i in grown.sheet.resources.items]
+
+
+def test_the_heir_prompt_names_how_far_down_the_family_they_are():
+    state = heir_world()
+    state.characters["mia"] = Character(id="mia", name="Mia", age=8, parent_ids=["rosa"])
+    state.characters["ugo"] = Character(id="ugo", name="Ugo", age=0, parent_ids=["mia"])
+
+    assert "Grandchild of Luca Esposito" in heir_prompt(state, state.characters["mia"], years=8)
+    great = heir_prompt(state, state.characters["ugo"], years=16)
+    assert "Great-grandchild of Luca Esposito" in great and "Grandchild of" not in great
+
+
+def test_the_heir_prompt_names_their_family_and_the_years_since():
+    state = heir_world()
+
+    prompt = heir_prompt(state, state.characters["npc-1"], years=17)
+
+    assert "THE HEIR" in prompt and "Name: none yet; give them one." in prompt
+    assert "Parent: Luca Esposito (the last player character, now dead), Don of the" in prompt
+    assert "They grew up in the 17 years since the last story ended." in prompt
+    assert "Lives in: " in prompt
+    rosa = heir_prompt(state, state.characters["rosa"], years=0)
+    assert "Name: Rosa." in rosa and "grew up" not in rosa

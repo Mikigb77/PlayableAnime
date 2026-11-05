@@ -14,19 +14,21 @@ import '../library/library.dart';
 import 'story_models.dart';
 import 'story_repository.dart';
 
-/// Carrying a story on as someone else after its ending (N6): a random person of its world, drawn
-/// by the world's population odds, shown the way the create flow shows a character (G2, G16). The
-/// player starts as them or draws someone else; nothing about them is edited. Drawing is one
-/// drafting call, charged like a draft (K2).
+/// Carrying a story on as someone else after its ending (N6): one of the player character's heirs,
+/// or a random person of its world, drawn by the world's population odds, shown the way the create
+/// flow shows a character (G2, G16). The player starts as them or chooses someone else; nothing
+/// about them is edited. Each one shown is one drafting call, charged like a draft (K2).
 ///
-/// The screen draws someone as it opens, unless someone was drawn already. Starting as them pops
-/// the carried-on story back to the play screen, which plays their opening.
+/// When the player character left heirs, the screen opens on the choice between them and someone
+/// from the world. Otherwise it draws someone as it opens, unless someone was drawn already.
+/// Starting as them pops the carried-on story back to the play screen, which plays their opening.
 class SuccessorScreen extends ConsumerStatefulWidget {
   const SuccessorScreen({super.key, required this.storyId, this.story});
 
   final String storyId;
 
-  /// The story as the play screen has it, to skip a fetch.
+  /// The story as the play screen has it, for its look while the screen fetches it: a scene's
+  /// ending doesn't carry the heirs, so the screen always asks for the story as it is now.
   final Story? story;
 
   @override
@@ -43,16 +45,18 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
   bool _drawing = false;
   bool _starting = false;
 
+  /// The choice between the heirs and someone from the world is showing.
+  bool _choosing = false;
+
+  /// The heir last asked for, or null for someone from the world: what a retry asks for again.
+  String? _heirId;
+
   StoryRepository get _repository => ref.read(storyRepositoryProvider);
 
   @override
   void initState() {
     super.initState();
-    if (widget.story case final story?) {
-      _opened(story);
-    } else {
-      unawaited(_load());
-    }
+    unawaited(_load());
   }
 
   Future<void> _load() async {
@@ -71,12 +75,17 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
   void _opened(Story story) {
     _story = story;
     _drawn = story.successor;
+    _choosing = false;
     if (story.openingDue) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _done(story));
     } else if (_drawn == null && _available) {
-      _drawing = true;
-      _error = null;
-      unawaited(_request());
+      if (story.heirs.isNotEmpty) {
+        _choosing = true;
+      } else {
+        _drawing = true;
+        _error = null;
+        unawaited(_request());
+      }
     }
   }
 
@@ -86,25 +95,47 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
     return ending != null && !ending.closed;
   }
 
-  /// Draws someone (else), replacing whoever was drawn before.
-  Future<void> _draw() async {
+  /// Draws someone (else), or takes the heir [heirId], replacing whoever was drawn before.
+  Future<void> _draw({String? heirId}) async {
     if (_drawing || _starting) return;
     setState(() {
       _drawing = true;
+      _choosing = false;
+      _heirId = heirId;
       _error = null;
     });
     await _request();
   }
 
+  /// Asks again for whoever was asked for last.
+  Future<void> _retry() => _draw(heirId: _heirId);
+
+  /// Back to the choice between the heirs and someone from the world. Nothing is charged until
+  /// the player picks.
+  void _chooseAgain() {
+    if (_drawing || _starting) return;
+    setState(() {
+      _choosing = true;
+      _error = null;
+    });
+  }
+
   Future<void> _request() async {
     try {
-      final drawn = await _repository.drawSuccessor(widget.storyId);
+      final drawn = await _repository.drawSuccessor(widget.storyId, heirId: _heirId);
       if (!mounted) return;
       _drawn = drawn;
       if (ref.exists(meProvider)) ref.read(meProvider.notifier).refreshQuietly();
     } on Object catch (e) {
       if (!mounted) return;
-      _error = e;
+      if (_heirLost(e)) {
+        // They died in the years before they could act: back to the choice, nothing charged.
+        final name = _story?.heirs.where((h) => h.id == _heirId).firstOrNull?.name ?? '';
+        _choosing = true;
+        _snack(context.l10n.successorHeirLost(name.trim()));
+      } else {
+        _error = e;
+      }
       if (_ended(e)) unawaited(_load());
     } finally {
       if (mounted) setState(() => _drawing = false);
@@ -148,6 +179,14 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
     _ => false,
   };
 
+  /// The heir asked for didn't live to the day they could act.
+  static bool _heirLost(Object error) => switch (error) {
+    ApiException(code: ApiErrorCode.validationError, :final fields) => fields.any(
+      (f) => f is Map && f['type'] == 'heir_lost',
+    ),
+    _ => false,
+  };
+
   /// Back to the play screen with the carried-on story, which plays the newcomer's opening.
   void _done(Story story) {
     if (!mounted) return;
@@ -184,17 +223,31 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
             icon: Icons.history_edu_outlined,
             title: l10n.successorUnavailable,
           ),
-          (_, _) when _drawing => const _Drawing(),
-          (_, null) => _FirstDrawFailed(error: _error, onDraw: _draw),
-          (_, final Successor drawn) => _SuccessorView(successor: drawn),
+          (_, _) when _drawing => _Drawing(heir: _heirId != null),
+          (final Story story, _) when _choosing => _Chooser(
+            heirs: story.heirs,
+            fallen: story.ending?.character ?? '',
+            onPick: (heirId) => _draw(heirId: heirId),
+          ),
+          (final Story story, null) => _FirstDrawFailed(
+            error: _error,
+            onDraw: _retry,
+            onChoose: story.heirs.isNotEmpty ? _chooseAgain : null,
+          ),
+          (final Story story, final Successor drawn) => _SuccessorView(
+            successor: drawn,
+            fallen: story.ending?.character ?? '',
+          ),
         },
-        bottomNavigationBar: drawn != null && _available && !_drawing
+        bottomNavigationBar: drawn != null && _available && !_drawing && !_choosing
             ? _Actions(
                 name: drawn.name,
                 error: _error,
                 starting: _starting,
+                choose: story?.heirs.isNotEmpty ?? false,
                 onStart: _start,
-                onDrawAgain: _draw,
+                onDrawAgain: _retry,
+                onChooseAgain: _chooseAgain,
               )
             : null,
       ),
@@ -204,7 +257,10 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
 
 /// While someone is drawn: what is happening, honestly, without fake progress.
 class _Drawing extends StatelessWidget {
-  const _Drawing();
+  const _Drawing({this.heir = false});
+
+  /// An heir is being filled in, rather than someone drawn by chance.
+  final bool heir;
 
   @override
   Widget build(BuildContext context) {
@@ -229,11 +285,12 @@ class _Drawing extends StatelessWidget {
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: Space.sm),
-                Text(
-                  l10n.successorDrawingBody,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyLarge!.copyWith(color: context.lucid.textSecondary),
-                ),
+                if (!heir)
+                  Text(
+                    l10n.successorDrawingBody,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge!.copyWith(color: context.lucid.textSecondary),
+                  ),
               ],
             ),
           ),
@@ -243,13 +300,17 @@ class _Drawing extends StatelessWidget {
   }
 }
 
-/// The first draw failed: what went wrong, and a way to try again. Out of credits offers the
+/// The first draw failed: what went wrong, and a way to try again, or to choose someone else
+/// when there are heirs (one may not have lived to carry the story on). Out of credits offers the
 /// player's own key, and drawing again on it (K6).
 class _FirstDrawFailed extends StatelessWidget {
-  const _FirstDrawFailed({required this.error, required this.onDraw});
+  const _FirstDrawFailed({required this.error, required this.onDraw, this.onChoose});
 
   final Object? error;
   final VoidCallback onDraw;
+
+  /// Back to the choice between the heirs and someone from the world.
+  final VoidCallback? onChoose;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -269,6 +330,15 @@ class _FirstDrawFailed extends StatelessWidget {
               onPressed: onDraw,
               child: Text(context.l10n.retry),
             ),
+            if (onChoose case final onChoose?) ...[
+              const SizedBox(height: Space.sm),
+              OutlinedButton.icon(
+                key: const ValueKey('successor.chooseAgain'),
+                onPressed: onChoose,
+                icon: const Icon(Icons.people_outline),
+                label: Text(context.l10n.successorChooseAgain),
+              ),
+            ],
           ],
         ),
       ),
@@ -279,9 +349,12 @@ class _FirstDrawFailed extends StatelessWidget {
 /// The person drawn, in the world's words: where they stand and how rare that is, who they are,
 /// and the moment their story opens on.
 class _SuccessorView extends StatelessWidget {
-  const _SuccessorView({required this.successor});
+  const _SuccessorView({required this.successor, required this.fallen});
 
   final Successor successor;
+
+  /// The player character whose story ended, by name.
+  final String fallen;
 
   @override
   Widget build(BuildContext context) {
@@ -294,10 +367,16 @@ class _SuccessorView extends StatelessWidget {
       if (successor.people case final people? when people.trim().isNotEmpty) people.trim(),
       if (successor.place case final place? when place.trim().isNotEmpty) place.trim(),
     ];
-    final station = [
-      l10n.successorStation(successor.station),
-      if (successor.oneIn > 1) l10n.successorOneIn(successor.oneIn),
-    ].join(' · ');
+    final station = switch (successor.heir) {
+      final heir? => [
+        _relation(context, heir, fallen),
+        if (heir.years > 0) l10n.successorYearsLater(heir.years),
+      ],
+      null => [
+        l10n.successorStation(successor.station),
+        if (successor.oneIn > 1) l10n.successorOneIn(successor.oneIn),
+      ],
+    }.join(' · ');
     return ListView(
       padding: const EdgeInsets.fromLTRB(Space.gutter, Space.lg, Space.gutter, Space.xxl),
       children: [
@@ -427,15 +506,21 @@ class _Actions extends StatelessWidget {
     required this.name,
     required this.error,
     required this.starting,
+    required this.choose,
     required this.onStart,
     required this.onDrawAgain,
+    required this.onChooseAgain,
   });
 
   final String name;
   final Object? error;
   final bool starting;
+
+  /// There are heirs to choose from, so "someone else" goes back to the choice.
+  final bool choose;
   final VoidCallback onStart;
   final VoidCallback onDrawAgain;
+  final VoidCallback onChooseAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -481,21 +566,159 @@ class _Actions extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: Space.sm),
-                  OutlinedButton.icon(
-                    key: const ValueKey('successor.drawAgain'),
-                    onPressed: starting ? null : onDrawAgain,
-                    icon: const Icon(Icons.casino_outlined),
-                    label: Text(l10n.successorDrawAgain),
-                  ),
+                  if (choose)
+                    OutlinedButton.icon(
+                      key: const ValueKey('successor.chooseAgain'),
+                      onPressed: starting ? null : onChooseAgain,
+                      icon: const Icon(Icons.people_outline),
+                      label: Text(l10n.successorChooseAgain),
+                    )
+                  else
+                    OutlinedButton.icon(
+                      key: const ValueKey('successor.drawAgain'),
+                      onPressed: starting ? null : onDrawAgain,
+                      icon: const Icon(Icons.casino_outlined),
+                      label: Text(l10n.successorDrawAgain),
+                    ),
                   const SizedBox(height: Space.xs),
                   Text(
-                    l10n.successorDrawCost,
+                    choose ? l10n.successorChooseCost : l10n.successorDrawCost,
                     textAlign: TextAlign.center,
                     style: context.lucidText.meta.copyWith(color: colors.textMuted),
                   ),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// How an heir is related to the player character whose story ended.
+String _relation(BuildContext context, Heir heir, String fallen) =>
+    context.l10n.successorHeirOf(heir.relation.replaceAll('-', ''), fallen.trim());
+
+/// The choice of who carries the story on (N6): one of the player character's heirs, or someone
+/// from the world. Picking one fills them in, charged like a draft.
+class _Chooser extends StatelessWidget {
+  const _Chooser({required this.heirs, required this.fallen, required this.onPick});
+
+  final List<Heir> heirs;
+  final String fallen;
+
+  /// Called with the heir picked, or null for someone from the world.
+  final ValueChanged<String?> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Space.gutter, Space.lg, Space.gutter, Space.xxl),
+      children: [
+        ContentColumn.reading(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(l10n.successorChoose, style: theme.textTheme.headlineSmall),
+              ),
+              const SizedBox(height: Space.xs),
+              Text(
+                l10n.successorChooseBody(fallen.trim()),
+                style: theme.textTheme.bodyMedium!.copyWith(color: colors.textMuted),
+              ),
+              const SizedBox(height: Space.lg),
+              for (final heir in heirs) ...[
+                _Choice(
+                  key: ValueKey('successor.heir.${heir.id}'),
+                  icon: Icons.family_restroom_outlined,
+                  title: heir.name,
+                  lines: [
+                    [
+                      _relation(context, heir, fallen),
+                      if (heir.unborn)
+                        l10n.successorUnborn
+                      else if (heir.age case final age?)
+                        l10n.successorAge(age),
+                    ].join(' · '),
+                    if (heir.years > 0) l10n.successorYearsLater(heir.years),
+                  ],
+                  onTap: () => onPick(heir.id),
+                ),
+                const SizedBox(height: Space.sm),
+              ],
+              _Choice(
+                key: const ValueKey('successor.random'),
+                icon: Icons.casino_outlined,
+                title: l10n.successorRandom,
+                lines: [l10n.successorRandomBody],
+                onTap: () => onPick(null),
+              ),
+              const SizedBox(height: Space.md),
+              Text(
+                l10n.successorChooseCost,
+                textAlign: TextAlign.center,
+                style: context.lucidText.meta.copyWith(color: colors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Choice extends StatelessWidget {
+  const _Choice({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.lines,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<String> lines;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Space.lg),
+          child: Row(
+            children: [
+              ExcludeSemantics(child: Icon(icon, color: colors.accent)),
+              const SizedBox(width: Space.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleMedium),
+                    for (final line in lines) ...[
+                      const SizedBox(height: Space.xxs),
+                      Text(
+                        line,
+                        style: theme.textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              ExcludeSemantics(child: Icon(Icons.chevron_right, color: colors.textMuted)),
+            ],
           ),
         ),
       ),

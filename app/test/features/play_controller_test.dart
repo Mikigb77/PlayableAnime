@@ -659,6 +659,101 @@ void main() {
       expect(here.play.pending, isNull);
     });
 
+    test('a death by others is rewound: the world and the feed go back to before it', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.act('I look around', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+      final before = play.story!.scenes.last;
+      await play.act('I challenge the elder', inputMode: 'typed');
+      await until(play, () => play.ended);
+
+      final ending = play.story!.ending!;
+      expect((ending.selfInflicted, ending.rewind, ending.canRewind), (false, 1, true));
+      final version = play.story!.version;
+
+      expect(await play.rewind(1), isTrue);
+      expect(play.ended, isFalse);
+      expect(play.rewinding, isFalse);
+      expect(play.story!.scenes.last.turn, before.turn);
+      expect(play.story!.scenes.last.narration, before.narration);
+      expect(play.story!.version, version + 1);
+      expect(play.canAct, isTrue);
+      expect(notices.whereType<RewindFailed>(), isEmpty);
+      final sent = backend.requests
+          .where((r) => r.method == 'POST' && r.uri.path.endsWith('/rewind'))
+          .single
+          .json;
+      expect(sent, {'expected_version': version, 'scenes': 1});
+
+      // The story plays on from there, in the turn it went back to.
+      await play.act('I bow to the elder', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+      expect(play.story!.scenes.last.turn, before.turn + 1);
+      expect(play.ended, isFalse);
+    });
+
+    test('a death the player chose is always real: there is no rewind', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('I stab myself', inputMode: 'typed');
+      await until(play, () => play.ended);
+
+      expect(play.story!.ending!.canRewind, isFalse);
+      expect(await play.rewind(1), isFalse);
+      expect(backend.requests.where((r) => r.uri.path.endsWith('/rewind')), isEmpty);
+    });
+
+    test('a rewind the server refuses says so and keeps the ending', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.act('I fight the wolves', inputMode: 'typed');
+      await until(play, () => play.ended);
+
+      // Balanced reaches one scene back, not two.
+      expect(await play.rewind(2), isFalse);
+      expect(play.ended, isTrue);
+      expect(notices.whereType<RewindFailed>(), hasLength(1));
+    });
+
+    test('a story rewound on another device loads without the scenes taken back', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('I look around', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+      final before = play.story!.scenes.last.turn;
+      await play.act('I cross the rotten bridge', inputMode: 'typed');
+      await until(play, () => play.ended);
+      await repository.rewind(_demo, expectedVersion: play.story!.version, scenes: 1);
+
+      await play.reload();
+
+      expect(play.ended, isFalse);
+      expect(play.story!.scenes.last.turn, before);
+    });
+
+    test('a turn played anew after a rewind elsewhere is not hidden by a block here', () async {
+      final here = control();
+      final elsewhere = control();
+      await here.play.start();
+      await here.play.act('I challenge the elder', inputMode: 'typed');
+      await until(here.play, () => here.play.ended);
+      final turn = here.play.story!.scenes.last.turn;
+      await here.play.report(turn, category: 'other', block: true);
+      expect(here.play.isBlocked(here.play.story!.scenes.last), isTrue);
+
+      await elsewhere.play.start();
+      expect(await elsewhere.play.rewind(1), isTrue);
+      await elsewhere.play.act('I bow to the elder', inputMode: 'typed');
+      await until(elsewhere.play, () => elsewhere.play.pending == null);
+
+      await here.play.reload();
+      final last = here.play.story!.scenes.last;
+      expect(last.turn, turn);
+      expect(here.play.ended, isFalse);
+      expect(here.play.isBlocked(last), isFalse);
+    });
+
     test('someone new carries the story on: their opening comes first, then play', () async {
       final (:play, notices: _, texts: _) = control();
       await play.start();

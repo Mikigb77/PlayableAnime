@@ -131,7 +131,9 @@ def test_calling_the_stab_a_matter_of_stealth_doesnt_get_a_knife_through_dragon_
     for seed in SEEDS:
         (settled,) = resolve(state, Intent(steps=[sneaky]), seed).steps
         assert (settled.outcome_class, settled.roll) == (OutcomeClass.RULED_OUT, None)
-        assert settled.effects.empty
+        assert not any(c.id == "dragon" for c in settled.effects.characters)
+        # Awake, the dragon answers the knife, and nothing Lin has can stop it (N6).
+        assert [a.by_ids for a in settled.perils] == ([] if asleep else [["dragon"]])
 
 
 def test_a_guard_awake_beside_a_sleeping_elder_doesnt_make_the_elder_easier_to_hurt():

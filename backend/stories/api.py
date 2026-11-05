@@ -17,7 +17,7 @@ from engine.context import StorySettings
 from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView
 from lucid.errors import field_error, version_conflict
-from stories import endings, responses, succession, turns
+from stories import endings, responses, rewind, succession, turns
 from stories.access import graph_stories, owned_story
 from stories.models import Scene, Story
 from stories.schemas import SceneOut, StoryOut, StoryPatch, StorySummaryOut, TurnIn
@@ -57,7 +57,7 @@ async def list_scenes(
 ) -> list[SceneOut]:
     """Older scenes for scrollback: the `limit` scenes before turn `before`, oldest first."""
     story = await _load(request, story_id)
-    scenes = Scene.objects.filter(story=story)
+    scenes = Scene.objects.live().filter(story=story)
     if query.before is not None:
         scenes = scenes.filter(turn__lt=query.before)
     rows = [scene async for scene in scenes.order_by("-turn")[: query.limit]]
@@ -136,18 +136,23 @@ def _close(story: Story) -> Story:
                 type="not_ended",
             )
         if not ending.closed:
-            story.ending = ending.model_copy(update={"closed": True}).model_dump(mode="json")
+            # A closed story stays as it ended: it can't be rewound either (C8).
+            closed = ending.model_copy(update={"closed": True, "rewind": 0})
+            story.ending = closed.model_dump(mode="json")
             # Not `updated_at`: the Library lists stories by when they were last played.
             story.save(update_fields=["ending"])
     return story
 
 
 @stories_router.post("/{story_id}/successor", response=succession.SuccessorOut)
-async def draw_successor(request: HttpRequest, story_id: str) -> succession.SuccessorOut:
+async def draw_successor(
+    request: HttpRequest, story_id: str, heir_id: str | None = None
+) -> succession.SuccessorOut:
     """N6: draws a random person of the world to carry the story on after its ending, by its
-    population odds. One drafting call, charged like a draft; drawing again replaces them."""
+    population odds, or with `?heir_id=`, takes one of the player character's heirs. One drafting
+    call, charged like a draft; drawing again replaces them."""
     story = await _load(request, story_id)
-    return await succession.draw(request, story)
+    return await succession.draw(request, story, heir_id)
 
 
 class CarryOnIn(Schema):
@@ -159,7 +164,24 @@ async def carry_on(request: HttpRequest, story_id: str, body: CarryOnIn) -> Stor
     """N6: the person drawn becomes the player character, and the story's next turn is their
     opening. The old player character stays in the world, remembered."""
     story = await _load(request, story_id)
-    story = await sync_to_async(succession.carry_on)(story, body.expected_version)
+    story = await succession.carry_on(story, body.expected_version)
+    return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
+
+
+class RewindIn(Schema):
+    expected_version: int = Field(ge=0)
+    # How many scenes to take back, from the last: 1 goes back to just before the scene the
+    # ending came in. More than the ending reaches is refused as `too_far`.
+    scenes: int = Field(ge=1)
+
+
+@stories_router.post("/{story_id}/rewind", response=StoryOut)
+async def rewind_story(request: HttpRequest, story_id: str, body: RewindIn) -> StoryOut:
+    """C8: takes the story back `scenes` scenes from a death, to the world exactly as it was then,
+    as far as `Ending.rewind` allows. Nobody in the story remembers, the later scenes are taken
+    out, and what they cost isn't refunded."""
+    story = await _load(request, story_id)
+    story = await sync_to_async(rewind.rewind)(story, body.expected_version, body.scenes)
     return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
 
 
@@ -186,7 +208,7 @@ async def _load(request: HttpRequest, story_id: str) -> Story:
 
 
 def _story_out(story: Story, count: int, request: HttpRequest) -> StoryOut:
-    scenes = list(Scene.objects.filter(story=story).order_by("-turn")[:count])[::-1]
+    scenes = list(Scene.objects.live().filter(story=story).order_by("-turn")[:count])[::-1]
     state = WorldState.model_validate(story.state)
     return responses.story_out(story, state, scenes, request=request)
 

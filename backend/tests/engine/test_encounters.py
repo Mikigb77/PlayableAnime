@@ -2,7 +2,8 @@
 
 Every test runs the pipeline's own seams (resolve, play out, direct), many seeds where a roll is
 involved, on the cultivation sample: Lin at the outer-court well with Senior Brother Zhao, a key
-NPC a realm above him.
+NPC a realm above him. Foes here only parry (`foes_mean` none), so the fight is about the
+encounter's bookkeeping; what strikes back is `tests/engine/resolve/test_answers.py`'s (N6).
 """
 
 import pytest
@@ -51,11 +52,13 @@ def rng(seed: int | str = 0, turn: int = 3) -> SeededRng:
 
 
 def step(text: str, kind: ActionKind = ActionKind.EXCHANGE, duration_s: int = 5, **kw):
+    facts = kw.pop("facts", StepFacts())
     return IntentStep(
         text=text,
         verb=kw.pop("verb", text.split()[0]),
         kind=kind,
         proposed_duration_s=duration_s,
+        facts=facts.model_copy(update={"foes_mean": Aim.NONE}),
         **kw,
     )
 
@@ -127,7 +130,7 @@ def test_aiming_harm_at_someone_who_can_answer_starts_a_fight_whatever_the_roll(
 
 def test_a_swing_the_power_gap_rules_out_still_starts_the_fight():
     """A2, A8: the god notices the swing. Lin against the elder, two realms up, is ruled out, and
-    the elder answers it."""
+    the fight is on."""
     state = cultivation_world()
     state.characters["elder-mo"].location_id = "well"
     state.scene.present_ids.append("elder-mo")
@@ -298,6 +301,27 @@ def test_the_fight_ends_when_the_foe_is_somewhere_the_player_is_not():
     state.characters["zhao"].location_id = "inner-court"
     state.scene.present_ids = ["lin", "zhao"]
     assert turn(state, strike())[0].scene.encounter is not None
+
+
+def test_getting_cleanly_away_from_everyone_in_it_ends_the_fight():
+    """N6: a run that leaves the foe behind ends the fight; one that fails or partly works keeps
+    it on."""
+    run = IntentStep(
+        text="run for the gate",
+        verb="run",
+        kind=ActionKind.MOVE,
+        proposed_duration_s=20,
+        facts=StepFacts(opposition_ids=["zhao"], can_respond=True, foes_mean=Aim.WOUND),
+    )
+    seen = set()
+    for seed in range(60):
+        after, played, _ = turn(fight_on(cultivation_world()), run, seed=seed)
+        [settled] = played.resolution.steps
+        seen.add(settled.result)
+        clean = settled.result.value == "success"
+        assert (settled.escaped == ["zhao"]) is clean
+        assert (after.scene.encounter is None) is clean
+    assert len(seen) > 1
 
 
 def test_the_fight_ends_when_the_player_character_falls():

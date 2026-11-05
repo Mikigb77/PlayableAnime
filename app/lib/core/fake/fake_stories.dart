@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../json.dart';
 import 'fake_backend.dart';
 import 'fake_data.dart';
@@ -51,12 +53,29 @@ class FakeStory {
   /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
   JsonMap? successor;
 
+  /// The player character's heirs, offered at their ending (N6): a fake story has none unless a
+  /// test or a demo gives it some.
+  List<JsonMap> heirs = [];
+
   /// Someone new carries the story on, and their opening is still to be told (N6). [situation] is
   /// the moment it opens on.
   bool openingDue = false;
   String situation = '';
 
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
+
+  /// How many scenes back a death in the next scene could be rewound (C8): up to 5 on Story, 1 on
+  /// Balanced and none on Brutal, and never back past the newest opening, so a rewind never
+  /// reaches into someone else's story.
+  int get rewindReach {
+    final most = switch (settings['difficulty']) {
+      'story' => 5,
+      'balanced' => 1,
+      _ => 0,
+    };
+    final opening = scenes.lastIndexWhere((s) => s['kind'] == 'opening');
+    return math.min(most, scenes.length - math.max(opening, 0));
+  }
 
   JsonMap get clock => {'world_s': worldS, 'label': fakeWorldLabel(worldS), 'timeline_id': 'main'};
 
@@ -85,6 +104,7 @@ class FakeStory {
     'premise': premise,
     'ending': ending,
     'successor': ending == null ? null : successor,
+    'heirs': ending == null || ending?['closed'] == true ? const <JsonMap>[] : heirs,
     'opening_due': openingDue,
   };
 }
@@ -142,6 +162,30 @@ void _atOpenEnding(FakeStory story) {
       {'field': 'story_id', 'source': 'path', 'type': type, 'message': message},
     ],
   });
+}
+
+/// An heir as the drafter fills them in, grown up to 16 when they had years to grow (N6).
+JsonMap _grownUp(JsonMap heir, int draws) {
+  final unborn = heir['unborn'] == true;
+  final name = unborn ? 'Shen Lian' : heir['name'] as String;
+  final years = heir['years'] as int? ?? 0;
+  final age = years > 0 ? 16 : heir['age'] as int?;
+  return {
+    'name': name,
+    'age': age,
+    'station': 'common',
+    'one_in': 1,
+    'master': false,
+    'place': 'Azure Cloud Town',
+    'people': null,
+    'lines': [
+      '$name, ${age ?? 16}.',
+      'Raised at the foot of the mountain on stories of a parent who never came home.',
+    ],
+    'situation': 'On the morning $name turns ${age ?? 16}, a letter arrives from the sect.',
+    'draws': draws,
+    'heir': heir,
+  };
 }
 
 /// The people drawn in turn to carry a story on: common folk first, then rarer ones.
@@ -247,7 +291,47 @@ void registerStoryRoutes(FakeBackend b) {
         'This story hasn\'t reached an ending. End it with /end first.',
       );
     }
-    story.ending = {...ending, 'closed': true};
+    story.ending = {...ending, 'closed': true, 'rewind': 0};
+    return FakeResponse.json(story.toJson());
+  });
+
+  // C8: takes a story back a few scenes from a death, to the world as it was then.
+  b.route('POST', '/v1/stories/:id/rewind', (r) {
+    final story = stories.get(r.param('id'), r.userId!);
+    final expected = (r.json['expected_version'] as num?)?.toInt();
+    if (expected != story.version) {
+      throw FakeError(409, 'version_conflict', 'The story moved on.', {
+        'current_version': story.version,
+      });
+    }
+    final ending = story.ending;
+    if (ending == null) {
+      throw const FakeError.validation(
+        'This story hasn\'t reached an ending, so there is nothing to rewind.',
+      );
+    }
+    _atOpenEnding(story);
+    final scenes = (r.json['scenes'] as num?)?.toInt() ?? 0;
+    final most = ending['rewind'] as int? ?? 0;
+    if (scenes < 1 || scenes > most) {
+      throw FakeError(400, 'validation_error', 'This ending can\'t be rewound that far.', {
+        'fields': [
+          {
+            'field': 'scenes',
+            'source': 'body',
+            'type': 'too_far',
+            'message': 'This ending can\'t be rewound that far.',
+          },
+        ],
+      });
+    }
+    story.scenes.removeRange(story.scenes.length - scenes, story.scenes.length);
+    story
+      ..worldS = (story.scenes.last['time'] as JsonMap?)?['world_end_s'] as int? ?? story.worldS
+      ..ending = null
+      ..successor = null
+      ..version += 1
+      ..updatedAt = b.now();
     return FakeResponse.json(story.toJson());
   });
 
@@ -262,9 +346,34 @@ void registerStoryRoutes(FakeBackend b) {
         'available_cents': balance,
       });
     }
+    final heirId = r.query('heir_id');
+    final heir = heirId == null ? null : story.heirs.where((h) => h['id'] == heirId).firstOrNull;
+    if (heirId != null && heir == null) {
+      throw const FakeError(400, 'validation_error', 'Nobody by that id can carry this story on.', {
+        'fields': [
+          {
+            'field': 'heir_id',
+            'source': 'query',
+            'type': 'unknown_heir',
+            'message': 'Nobody by that id can carry this story on.',
+          },
+        ],
+      });
+    }
+    if (heir?['lost'] == true) {
+      // Fake-only: an heir who doesn't live through the years before they could act.
+      final message = '${heir!['name']} didn\'t live to carry the story on. Choose someone else.';
+      throw FakeError(400, 'validation_error', message, {
+        'fields': [
+          {'field': 'heir_id', 'source': 'query', 'type': 'heir_lost', 'message': message},
+        ],
+      });
+    }
     if (b.pace.drafting > Duration.zero) await Future<void>.delayed(b.pace.drafting);
     final draws = ((story.successor?['draws'] as int?) ?? 0) + 1;
-    story.successor = {..._successors[(draws - 1) % _successors.length], 'draws': draws};
+    story.successor = heir == null
+        ? {..._successors[(draws - 1) % _successors.length], 'draws': draws}
+        : _grownUp(heir, draws);
     if (!r.usesOwnKey) {
       b.data.account.charge(r.userId!, kind: 'draft', cents: _drawCents, now: b.now());
     }
@@ -294,12 +403,16 @@ void registerStoryRoutes(FakeBackend b) {
         ],
       });
     }
+    // An heir too young to act starts once the world has run on to the day they can.
+    final years = (drawn['heir'] as JsonMap?)?['years'] as int? ?? 0;
     story
+      ..worldS += years * 365 * 24 * 3600
       ..playerId = 'pc-${story.version}'
       ..playerName = drawn['name'] as String
       ..situation = drawn['situation'] as String
       ..ending = null
       ..successor = null
+      ..heirs = []
       ..openingDue = true
       ..version += 1
       ..updatedAt = b.now();

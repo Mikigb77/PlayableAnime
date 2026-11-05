@@ -30,7 +30,7 @@ class ReportIn(Schema):
 @reports_router.post("/{story_id}/scenes/{turn}/report", response={204: None})
 async def report_scene(request: HttpRequest, story_id: str, turn: int, body: ReportIn):
     story = await owned_story(request, story_id)
-    scene = await Scene.objects.filter(story=story, turn=turn).afirst()
+    scene = await Scene.objects.live().filter(story=story, turn=turn).afirst()
     if scene is None:
         raise ApiError(ErrorCode.NOT_FOUND, "Scene not found.")
     await areport_scene(

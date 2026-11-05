@@ -160,10 +160,12 @@ these functions and saves the result.
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar, and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
-| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
+| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
-| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
+| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character gets cleanly away from all of them (N6), the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
+| `engine/heirs.py` | Heirs (N6): `heirs` lists who of the player character's family can carry the story on at its ending (living descendants, and a child on the way whose carrier lives, a dying carrier's child settled by a seeded roll in `unborn_lost`), and `time_jump` runs the world on to the day an heir too young to act turns 16. No model calls. See [Carrying a story on as an heir](#carrying-a-story-on-as-an-heir). |
+| `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`. See [Families and births](#families-and-births). |
 | `engine/succession.py` | Carrying a story on as someone else after its ending (N6): `draw` picks a random person of the world by its population odds (place, people, age, station, might, a hidden master as rare as the world makes them, and how rare that is), and `carry_on` makes them the player character, keeping the old one in the world (`WorldState.fallen`) and setting `opening_due`. No model calls. See [Carrying a story on](#carrying-a-story-on-as-someone-else). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
@@ -221,7 +223,8 @@ a new one.
   answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of who did a
   death or a grave harm reaches the victim's family and friends, or one of the victims' factions
   and the factions those sit in), `world.discovery` (a look at a secret deed's traces),
-  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival` and `world.tick`. Whether an
+  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival`, `world.birth` (a child born
+  when due, N6) and `world.tick`. Whether an
   event needs the player is decided when it applies, from the state at that moment, and stored on
   the applied event: guards who find the player where they came need them, and guards who find
   them gone search instead. Delays come from the map: a witness walks to the faction's seat (the
@@ -478,8 +481,31 @@ it (W10a), a helpless state on the sheet
    someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8). The
    targets it harmed are the deed's victims and everyone else who stood in the way its targets;
    `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
+9. **What strikes back** (`perils.py`; N6, A2, A5). After each step the player character takes,
+   `strike_back` settles what answers it, as `StepResolution.perils`, with its harm in the step's
+   `effects`. First the foes still in the fight: those of the scene's fight, those this plan
+   fought, and, when the step aims harm or fights, those it faced, unless they are dead, helpless,
+   elsewhere, frozen in the character's time stop, taken out by this plan, or left behind by a
+   move that harms no one and cleanly succeeded against them, such as a run or a leap
+   (`StepResolution.escaped`, which ends the fight in `engine.encounters` once no one in it is
+   left). Waiting or watching in a fight, the foes strike all the same. What they mean is
+   `StepFacts.foes_mean` (a sparring partner subdues), or the step's own aim when it was aimed at
+   them, or at least a wound. They are measured on might like a step of theirs (step 4, numbers
+   included, `power.ranked_with_numbers`): two steps or more below the character is ruled out,
+   two or more above is certain, and so is anything against a character who is helpless, however
+   strong. Between is rolled with the difficulty against them (`odds.settle(...,
+   against_player=True)`) and the character's own step moving the odds by `EXPOSED_SHIFT` (open
+   after a miss, on top after a clean success). Then a danger the step met (`StepFacts.danger`,
+   `danger_class`, `danger_harm`), lowered one class for each step of might the character stands
+   above a person's peak, and never for harm they turn on themselves. A killing blow that is
+   certain kills; a rolled one that lands kills on `FATAL_ODDS` and otherwise leaves the character
+   badly wounded, or maimed (`MAIM_ODDS`) with a lasting wound (`ConditionChange.lasting_wounds`,
+   engine only); a partial one wounds. Harm builds up a step at a time, and anything harmful on
+   top of dying kills. Each foe's blow is their deed against the character (W1), and a death
+   ends the plan like one by the character's own blast.
 
-A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`
+A chained plan stops at the first step that doesn't cleanly succeed, or after which something
+struck back and hurt the player character (`StopReason.STRUCK`), with the rest in `unplayed`
 (R6), except past a step only the actor's own nature stood in the way of, which was done (G15).
 Each step also records its `kind`, the `opponent_ids` it fought or faced and the `encounter` it
 starts or carries on, which `engine.encounters` follows (W10). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
@@ -594,22 +620,28 @@ tokens as `cached_tokens` and prices them at that rate, so the estimate follows 
 2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
 
 **Prompt caches** (`graph/llm/cache.py`, T5, K2). Gemini's implicit caching, on by default, never
-hit for us: `cached_tokens` was 0 on every call on 2026-11-04 and 05, although each narrator prompt
-started with about 6K tokens that were the same on every turn of a story, and others report it
+hit for us: `cached_tokens` was 0 on every call on 2026-11-04 and 05 but one, and others report it
 hitting only on far longer prompts on Gemini 3.x. So the parts of a prompt that stay the same from
 turn to turn come first, and the backend keeps them in an explicit cache on Vertex AI:
 
 - `Prompt.stable_chars` marks how much of the prompt's one message stays the same. The narrator's
   is STYLE, CONTENT and WORLD (the opening's PREMISE now comes after WORLD), and interpret's is its
   WORLD. With the system text, that start is the cache.
+- Vertex AI caches nothing under 4,096 tokens. On 2026-11-05 a real story's narrator start was
+  3,206 tokens and interpret's 3,253, so both were refused. The narrator's system text now ends with
+  a guide to the brief's sections (`prompts.BRIEF_GUIDE`, about 1,100 tokens), which takes an
+  ordinary world's start to about 4,600. It explains the brief and adds no rule; a test checks it
+  names every section the brief writes. Interpret's start stays under the minimum for most worlds,
+  where the saving would be about a tenth of a cent a turn: it is tried, and a size refused once
+  isn't tried again.
 - The first call with a new start is sent whole, and the cache is made in the background, so no
   player waits for it. Later calls send only the rest and name the cache, without the system text,
   which the cache holds. The cache is made while the call that started it streams, so it is done
   before the response ends (B8); if it isn't, the next call is simply sent whole.
 - A cache lives 15 minutes. A use that finds less than 10 minutes left extends it, in the
   background, so it lives about 15 minutes past its story's last turn. Storage costs $1 per million
-  tokens an hour on the Flash models: about $0.0003 a turn for a 6K start read every 3 minutes,
-  against about $0.009 saved on each narrator call. Storage isn't in the per-turn estimate.
+  tokens an hour on the Flash models: about $0.0003 a turn for a 4.6K start read every 3 minutes,
+  against about $0.006 saved on each narrator call. Storage isn't in the per-turn estimate.
 - A start Vertex AI finds too small to cache is remembered for its model, and no start as small is
   tried again; any other failure waits 15 minutes. A call naming a cache that Vertex AI refuses
   (one that expired early, say) goes again whole at once, and the cache is dropped. Every call
@@ -780,12 +812,14 @@ filled in, are not served.
    check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
    `version_conflict`), the `Scene` row with its time labels in the world's calendar
    (`engine.labels.scene_time`) and its cast, the pending events the turn scheduled, applied or
-   cancelled, the picture plan (`media.plans.plan_picture`, M1; drawn in the app's own request, M3)
-   and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
+   cancelled, the world state kept for a rewind (`stories.rewind.keep`, C8), the picture plan
+   (`media.plans.plan_picture`, M1; drawn in the app's own request, M3) and the charge
+   (`meter.charge`, K2). A picture that can't be planned leaves the scene without
    one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
    the new version and clock; if its picture URLs can't be read then, it goes without them,
    since the turn is already saved. A turn that reached an ending saves it on the story row
-   (`Story.ending`, `stories/endings.py`) with the character's name and the scene, and sends it as
+   (`Story.ending`, `stories/endings.py`) with the character's name, the scene and how many scenes
+   back it can be rewound (`stories.rewind.reach`, C8), and sends it as
    `story.ending` (N6). Migration `0005_older_endings` records a death ending on older stories
    whose player character was already dead, so the Library shows them ended without loading their
    state.
@@ -907,8 +941,9 @@ flowchart LR
 ## Carrying a story on as someone else
 
 Requirements: N6, W1, W3, C6, G2, G12, K2. After an ending the player can carry the story on as a
-random person of the same world. Code draws who they are and the drafter fills them in, the same
-split as drafting (the model proposes, code decides).
+random person of the same world, or as one of the player character's heirs
+([below](#carrying-a-story-on-as-an-heir)). Code draws who they are and the drafter fills them in,
+the same split as drafting (the model proposes, code decides).
 
 - **The draw** (`engine/succession.draw`, seeded per story, ending and draw so a reroll is new)
   picks a place weighted by its kind (a capital or city most, a village less; a kind that names no
@@ -952,8 +987,134 @@ split as drafting (the model proposes, code decides).
   the ending, clears `successor` and moves the version on. Neither works on a story that isn't at
   an ending, or that the player closed.
 - **The app** opens the person drawn from the ending card (`features/story/successor_screen.dart`),
-  draws on opening when nobody was drawn yet, and offers to start as them or draw again. Starting
-  pops the carried-on story back to the play screen, which plays their opening at once.
+  which fetches the story as it opens. With heirs it offers them and someone from the world;
+  otherwise it draws on opening when nobody was drawn yet. It offers to start as them, or to draw
+  again (back to the choice, when there are heirs). Starting pops the carried-on story back to the
+  play screen, which plays their opening at once.
+
+## Families and births
+
+Requirements: N6, W4, W10, F3, C6, G2. The world keeps who is whose child, so that children and
+grandchildren can carry a story on as heirs.
+
+- **Parents** are `Character.parent_ids`, two at most. The drafter's `NpcP.parent_ids` and
+  `CharacterProposal.parent_ids` name them by id or name, the player character's own children
+  included, and `assemble` drops anyone unknown, themselves, a third parent, and a link that would
+  make someone their own ancestor (the first proposed wins). The narrator's
+  `CharacterChange.parent_ids` adds parents on the same terms, applied after every character in
+  the delta, and never the player character's parents or children (N4): those are drafted,
+  claimed or born in play. `check_state` refuses unknown parents and loops. `engine/kin.py` walks
+  the lineage.
+- **Family to the world.** `knowledge.closeness` counts a parent and child as family, so word of a
+  death reaches them (W4) and an avenger can rise from them. `ties_of` leaves out children under
+  `norms.CHILD_AGE`, who are too young to carry word on or avenge anyone.
+- **A child on the way** is `Character.expecting` (`Pregnancy`: the other parent, when it was
+  conceived and when it is due, `tuning.GESTATION_S` later). The narrator sets it with
+  `CharacterChange.expecting`, or ends it with `ended`; `apply` refuses it for the dead, for anyone
+  already expecting, for an unknown other parent, and unless both parents are adults by
+  `limits.adult_problem` (F3).
+- **Birth** (`engine/world/births.py`): `ensure_births` keeps a `world.birth` event pending at
+  the due time for each living character who is expecting, at the start of every catch-up. When it
+  falls due the child is born if the one who carries them is still alive: a minor NPC of age 0
+  with the carrier's people and place, a placeholder name such as "Mira's child" (numbered when
+  taken), both parents, and an `OriginKind.BIRTH` origin. The parents who are there meet and know
+  the child; one elsewhere learns of it as the story has them (C6). The event needs the player
+  when they meet the child, so a birth to them stops the clock. A birth that doesn't happen (the
+  pregnancy ended, or the carrier died) is cancelled, so the narrator is never told of it; a
+  confirmed death ends the pregnancy, and a presumed one keeps it, so the child is born if they
+  come back (C1).
+- **What the models and the player read.** The narrator's brief shows each character's `family`
+  by name (parents, children, the dead marked, a child on the way and when it is due), and marks
+  the player character's kin they haven't learned of with `unknown_to_you`. Memory marks the
+  player character's parents, children and grandchildren, and `/status` shows a child on the way.
+
+## Carrying a story on as an heir
+
+Requirements: N6, E7, W10, C6, G12, K2, A2, A3. After an ending the player can carry the story on as
+one of the player character's heirs instead of someone drawn at random.
+
+- **Who is an heir** (`engine/heirs.heirs`): every living descendant of the player character
+  (`kin.descendants`), children first, then grandchildren and so on, then any child on the way
+  whose carrier or other parent is the player character or one of their descendants. Logic decides
+  an unborn child first (A2): a living carrier who isn't dying makes them an heir, a dead one never.
+  Only a dying carrier leaves it open, and `unborn_lost` settles that with a roll seeded per story
+  and ending, so the list is the same however often it is asked. `settled` makes the roll the
+  world's when the story is carried on, whoever carries it: a pregnancy it lost ends, so the world
+  never has a child born that was never offered. An unborn heir's id is `unborn:` and the
+  carrier's id.
+- **The time jump** (`heirs.time_jump`): an heir under `AGE_OF_ACTION` (16) is played from their
+  sixteenth birthday, and an unborn one from the sixteenth birthday after their due date
+  (`jump_for`, which runs on to the child's own birthday if the world held the birth past it). The
+  world runs on to that day through `catch_up` in a loop, applying everything due on the way
+  whatever it would have stopped the clock for, seeded per story, turn and heir so it plays the
+  same every time (A3). The old player character's time effects end first, so a time stop of
+  theirs doesn't hold the years. The child on the way is born when due (`births`), and everyone
+  grows older by the years they lived through: someone born in the story by their own years,
+  someone who died on the way up to their death, and the dead before it not at all. `born_of`
+  finds the child a pregnancy brought.
+- **The heir** (`graph/drafting/successor.propose_heir`, `build_heir`): one drafter call with the
+  heir, their parents and family, how many years went by, and the names the story has. They keep
+  their id, family, place, people, age, ties, memberships and a name the story gave them; a
+  placeholder name ("Mira's child") is replaced. One who grew up in a time jump, or that the story
+  never filled in, gets a new sheet held to a person's peak (G12), an ordinary person's might, and
+  their own or their parents' influence and wealth, whichever is higher, titled when a parent is.
+  What the world held of them stays (`_kept`): attitudes, connections, powers and what they learned,
+  traits and belongings alongside the drafter's, their standing, and their condition, of which
+  years of growing up leave only a lasting wound.
+- **Carrying on** (`engine/succession.carry_on`): an heir is already in the world, so they keep who
+  knows them and who they have met, become a key character, and know their family: their parents,
+  children, brothers and sisters know of them, and the living ones have met them. They know of
+  their grandparents and those before them, and a descendant of the fallen knows how they died.
+  The fallen is recorded as of their ending (`ended_s`), years before. The opening's brief gets an `ENDED`
+  section saying how long ago the last story ended, so the narrator lets the world have moved on.
+- **The API** (`stories/succession.py`): a story at an open ending lists `heirs` (API.md `Heir`).
+  `POST /successor?heir_id=` runs the jump in a worker thread, drafts the heir in the world as it
+  will be, and keeps them on `Story.successor` with the `heir` they were drawn as. An id that isn't
+  an heir is `unknown_heir`, and an heir who didn't live through the jump is `heir_lost`.
+  `POST /carry-on` runs the same jump before it takes the row lock, off the database's thread, and
+  uses it if the story is still as it was read (otherwise it runs it again under the lock); the
+  jump lands on the same world every time. The app goes back to the choice when an heir was lost.
+
+## Rewinding after a death
+
+Requirements: C8, N6, A3, B12, T10, W10, F6, M1, M4, M5. A death by others or by the world can be
+taken back a few scenes, by difficulty: up to 5 on Story, 1 on Balanced and none on Brutal (Miki,
+2026-11-05). A death the player chose is always real, and so is an ending told with `/end`.
+
+- **What a turn keeps** (`stories/rewind.keep`): every saved turn keeps the world state it left in
+  `stories_turnsnapshot`, in the turn's own transaction (B12), as the same document as
+  `Story.state`, and drops the ones more than 10 turns back: twice the farthest reach, so after a
+  rewind as far as it goes the next death can reach as far again. None is kept from before the
+  story's opening, and carrying the story on as someone new (`rewind.forget`) drops them all, so a
+  rewind never reaches back into another character's story.
+- **How far an ending reaches** (`rewind.reach`): settled when the turn that reached the ending is
+  saved, from the difficulty the turn was played on, so changing it afterwards changes nothing, and
+  from the states the story kept back to back before that turn. It is saved on the ending
+  (`Ending.rewind`), 0 for a death by the character's own hand or a chosen ending, and set to 0
+  when the story is closed.
+- **The rewind** (`rewind.rewind`, `POST /v1/stories/{id}/rewind`): under the story's row lock it
+  checks the version (T10), the ending and how far it reaches, then puts the world state back to
+  the kept one, writes the pending events back from it (`pending.write_back`, so events the
+  rewound scenes applied wait again), cancels every row the rewound scenes scheduled, fired or not
+  (`pending.cancel_after`, W10), marks the
+  later scenes `rewound_at`, drops the kept states after the moment it went back to, lifts the
+  ending and anyone drawn to carry it on, and moves the version on. Nobody in the story remembers,
+  since nothing outside the restored state survives, and nothing is refunded.
+- **Rewound scenes** stay as rows, so a report on one still reaches staff (F6, T16), and the
+  account export lists them marked `rewound`. Everything that shows or plays the story reads
+  `Scene.objects.live()`: the scene list, the next turn's scenes and choices, pictures and reports
+  by turn, and which turns are blocked. Only one live scene has each turn.
+- **Pictures** (`media/plans.retire_rewound`): a rewound scene's own picture, and any portrait or
+  place drawn for a look version the restored world never reached (M5), or for a character or place
+  it doesn't have, are renamed out of reuse (`subject~<id>`), so a scene played anew gets its own
+  picture and a face or place that changes again is drawn again. Their rows stay with their cost.
+  A picture asked for a scene that a rewind takes back while it waits is refused as not found.
+- **The same moment plays the same way** (A3): a turn's rolls are seeded by the story, timeline
+  and turn, so doing exactly the same again goes the same way. A rewind is a chance to play it
+  differently, not a reroll.
+- **The app** offers Rewind on the ending card while `Ending.rewind` is above 0. A sheet asks how
+  many scenes back, naming the action each choice takes back first, and the play screen loads the
+  story the rewind answered with, without the scenes taken back.
 
 ## Safety, ratings and reports
 
@@ -1128,9 +1289,10 @@ object, and the raw world state as memory.
 - **Endings** (N6, `app/lib/features/story/ending_card.dart`): `/end` asks for a confirmation and
   sends an end turn with the note typed after it. A refused note shows its parts with their reasons
   and offers to play on or end without them. A story at its ending shows the ending card instead
-  of the action box: close the story, or start again, which opens the create flow with its premise
-  filled in, and one quiet line on where to find support after a self-inflicted death. The Library
-  marks an ended story.
+  of the action box: carry it on as someone else, close the story, or start again, which opens the
+  create flow with its premise filled in, and one quiet line on where to find support after a
+  self-inflicted death. After a death the player didn't choose, on Story or Balanced, it offers to
+  rewind (C8, `rewind_sheet.dart`). The Library marks an ended story.
 - **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
   request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
   if it fails.
@@ -1362,14 +1524,24 @@ app                   shows the narration, then asks for the picture in its own 
   thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
   again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
-  prompt, the world's genre, era, tone and setting from the bible, and the known characters in the
-  picture with the appearance from their entry (C9). `media/prompts.py` turns it into the prompt:
-  one house style for every picture (the app's cinematic, dark-first look), the world's own era,
-  the framing and aspect ratio per kind (portraits and covers 3:4, places and scenes 16:9), and the
-  mild-in-every-rating rules. Ready portraits of up to three known characters go along as reference
-  images. The picture safety settings in `graph.llm.safety` back the rules up in every rating. A
-  scene nobody wrote an image prompt for (Illustrate on any scene) is described by the end of its
-  narration, which the same rules keep mild.
+  prompt, the world's genre, era, tone and the story's premise, the people in the picture with the
+  appearance from their entry (C9), who "you" is, and for a scene the time of day on the story's
+  clock. `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those
+  the image prompt names, with the director's subject first even when they just died or the
+  player hasn't met them, and the player character when the prompt says "you" or names them, or
+  names no one else; a prompt that names no one falls back to the subject, the player character
+  and the people the player knows there. `media/prompts.py` turns the brief into the prompt, the
+  moment first, then how the people look, then the world: one house style for every picture (the
+  app's cinematic, dark-first look, lit for the moment's time of day), the world's own era (the
+  premise only on a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places
+  and scenes 16:9), and the mild-in-every-rating rules. Ready portraits of up to three of the
+  people go along as reference images, each set right after a label saying whose it is
+  (`ImagePart.label`) and used only for the face, hair and build. A portrait takes only its
+  expression from the moment, since it is every later picture's reference. The picture safety
+  settings in `graph.llm.safety` back the rules up in every rating. A scene nobody wrote an image
+  prompt for (Illustrate on any scene) is described by the end of its narration, which the same
+  rules keep mild, with the people it names from the cast saved with the scene, that scene's
+  player character as "you" (N6), their portraits and the scene's time of day.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls
@@ -1487,7 +1659,8 @@ endpoint lets anyone spend our Vertex budget.
 | `accounts_refreshtoken` | Refresh tokens as SHA-256 hashes, per session, with expiry and when each was spent. |
 | `accounts_throttle` | Sign-in brute-force counters: an HMAC key, the window start and the hits. |
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
-| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
+| `stories_scene` | One row per turn, unique per story and turn among the scenes no rewind took back (`rewound_at` is null, C8): kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
+| `stories_turnsnapshot` | The world state each saved turn left (C8), unique per story and turn, for a rewind after a death. A story keeps only the last few a rewind can reach, and none from before someone new carried it on (N6). |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". A row's id is derived from the story and the engine's event id, and its payload holds the engine's `PendingEvent` (see [Turn endpoint](#turn-endpoint)). |
 | `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger and whether it is the subject's first picture (K1), the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |

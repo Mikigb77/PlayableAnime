@@ -1,6 +1,7 @@
 """N6 on the turn graph: someone new carries the story on with an opening of their own, and the
 people who knew an earlier player character can remember them."""
 
+from engine.base import YEAR
 from engine.context import Rating, TurnContext
 from engine.samples import grounded_world
 from engine.state import Character, CharacterStatus, DeathCertainty, Deed, StatusChange
@@ -125,3 +126,22 @@ def test_nobody_brings_up_the_fallen_when_nobody_there_knew_them(fake, make_clie
     run(collect(run_turn(opening_of(carried()), make_client())))
 
     assert "FALLEN" not in told(fake)
+
+
+def test_an_heirs_opening_is_told_how_long_ago_the_last_story_ended(fake, make_client):
+    """N6: an heir too young to act starts years after the ending, and the narrator knows it."""
+    state = carried()
+    fake.script(Node.NARRATOR, Reply(json=OPENING))
+    state.world_s += 16 * YEAR
+
+    run(collect(run_turn(opening_of(state), make_client())))
+
+    assert "## ENDED\nLuca Esposito's story ended 16 years ago." in told(fake)
+
+
+def test_an_opening_right_after_the_ending_says_nothing_of_time_gone_by(fake, make_client):
+    fake.script(Node.NARRATOR, Reply(json=OPENING))
+
+    run(collect(run_turn(opening_of(carried()), make_client())))
+
+    assert "## ENDED" not in told(fake)

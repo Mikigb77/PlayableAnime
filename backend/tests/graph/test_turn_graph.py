@@ -462,6 +462,50 @@ def test_only_beats_that_found_something_new_are_explained(fake, make_client):
     assert '{"beat":"pick up a stick","uses":"a stick","check":"made_canon"' in outcome
 
 
+def test_what_strikes_back_is_settled_before_it_is_told_and_the_scene_says_why(fake, make_client):
+    """N6: the falling rocks wound Lin for certain, so the plan stops there; the narrator plays
+    the wound as OUTCOME says, and the scene's details explain it."""
+    rockfall = {
+        "steps": [
+            {
+                "text": "run under the crumbling arch",
+                "verb": "run",
+                "kind": "move",
+                "proposed_duration_s": 5,
+                "facts": {
+                    "danger": "the falling rocks",
+                    "danger_class": "certain",
+                    "danger_harm": "wound",
+                },
+            },
+            STONE["steps"][1],
+        ]
+    }
+    fake.script(Node.INTERPRET, Reply(json=rockfall))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input(action="I run under the arch and on to the gate"))
+
+    assert result.state.player.sheet.condition.health.value == "wounded"
+    details = result.scene.model_dump(mode="json")["details"]
+    assert details["stopped_at_step"] == 0
+    assert details["steps"][0]["struck"] == [
+        {
+            "by": "the falling rocks",
+            "class": "certain",
+            "harm": "wounded",
+            "reason": "The falling rocks, and there's no escaping it: you are wounded.",
+            "roll": None,
+        }
+    ]
+    told = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    assert (
+        '"struck":[{"by":"the falling rocks","means":"wound","harm":"wounded",'
+        '"why":"The falling rocks, and there\'s no escaping it: you are wounded."}]'
+    ) in told
+    assert '"stop_reason":"struck"' in told
+
+
 def test_an_action_that_fits_nothing_still_plays(fake, make_client):
     fake.script(Node.INTERPRET, Reply(json={"summary": ""}))
     fake.script(Node.NARRATOR, Reply(json=SCENE))

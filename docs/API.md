@@ -153,10 +153,14 @@ costs nothing. The turn endpoint and pictures run these checks, and drafting doe
 
 ```text
 ExportStory  {id, title, premise, genre, rating, settings, turn, version, created_at, updated_at,
-              scenes: [ExportScene]}                       # every scene, in turn order
+              scenes: [ExportScene]}                       # every scene, in turn order; one a
+                                                           # rewind took back comes before the
+                                                           # scene played anew in its turn (C8)
 ExportScene  {turn, kind, player_action?, input_mode?, narration, choices, details, event?,
               time: {world_start_s, world_end_s, label, duration_label, personal_label?},
-              image?: {kind, status, url?}, created_at}
+              image?: {kind, status, url?},
+              rewound: bool,                               # a rewind took it back (C8)
+              created_at}
 ```
 
 ## Dictation (V1, V2, V5, V6)
@@ -302,8 +306,9 @@ makes one from an example world.
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
 | POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
-| POST | `/v1/stories/{id}/successor` | | `Successor` (N6): draws a random person of the world to carry the story on, by its population odds, replacing anyone drawn before. One drafting call, metered and charged like a draft (K2, so `402 out_of_credits` and the draft rate limits apply). Only a story at an ending the player hasn't closed; any other is a `validation_error` of type `not_ended` or `closed`. The version doesn't move. |
-| POST | `/v1/stories/{id}/carry-on` | `{expected_version}` | `Story` with the last 20 scenes (N6): the person drawn becomes the player character, the ending is lifted, `opening_due` is true and the version moves on. A `validation_error` of type `no_successor` when nobody was drawn, `not_ended` or `closed` as above, and `409 version_conflict` when the story moved on. |
+| POST | `/v1/stories/{id}/successor?heir_id=` | | `Successor` (N6): draws a random person of the world to carry the story on, by its population odds, or with `heir_id` (an `Heir.id` from the story's `heirs`) takes that heir, as they will be once the world has run on to the day they can act. Either replaces anyone drawn before. One drafting call, metered and charged like a draft (K2, so `402 out_of_credits` and the draft rate limits apply). Only a story at an ending the player hasn't closed; any other is a `validation_error` of type `not_ended` or `closed`. An `heir_id` that isn't one of the heirs is a `validation_error` of type `unknown_heir`, and an heir who doesn't live to that day one of type `heir_lost` (both with `source: "query"`): choose someone else. The version doesn't move. |
+| POST | `/v1/stories/{id}/carry-on` | `{expected_version}` | `Story` with the last 20 scenes (N6): the person drawn becomes the player character, the ending is lifted, `opening_due` is true and the version moves on. For an heir the world first runs on to the day they can act, so the clock jumps ahead. A `validation_error` of type `no_successor` when nobody was drawn, `not_ended` or `closed` as above, and `409 version_conflict` when the story moved on. |
+| POST | `/v1/stories/{id}/rewind` | `{expected_version, scenes}` | `Story` with the last 20 scenes (C8, N6): takes the story back `scenes` scenes (1 to 5) from a death, to the world exactly as it was when the scene it goes back to ended. `scenes: 1` goes back to just before the scene the death came in. The later scenes are gone from the story (and from `/scenes`), the ending and anyone drawn to carry it on are lifted, `turn` is the scene it went back to, and the version moves on. Nobody in the story remembers, and nothing is refunded. At most `Ending.rewind` scenes; more is a `validation_error` of type `too_far` on `scenes`. `not_ended` or `closed` as for `/successor`, and `409 version_conflict` when the story moved on. |
 | GET | `/v1/stories/{id}/memory` | | `MemoryView` (C6) |
 | GET | `/v1/stories/{id}/status` | | `StatusView` (`/status`, A8, G16, W10) |
 
@@ -315,20 +320,35 @@ Story         {id, title, genre, rating, version, turn,      # turn 0: play the 
                premise: string,                          # what it started from, to start again (N6)
                ending?: Ending,                          # set once it reached its ending (N6)
                successor?: Successor,                    # who was drawn to carry it on, at its ending
+               heirs: [Heir],                            # who of the family can carry it on, at an
+                                                         # ending not closed; empty otherwise (N6)
                opening_due: bool}                        # someone new carries it on: the next turn
                                                          # is their opening (N6)
 Ending        {kind: "death"|"chosen",                    # the character died, or the player used /end
                character_id, character,                  # who, and their name as the story last knew it
                self_inflicted: bool,                     # harm they aimed at themselves killed them (F1)
                turn?: int,                               # the scene it came in; null for an older story
-               closed: bool}                             # the player closed it (POST .../close)
+               closed: bool,                             # the player closed it (POST .../close)
+               rewind: int}                              # how many scenes back it can be rewound
+                                                         # (C8): up to 5 on Story, 1 on Balanced, 0 on
+                                                         # Brutal, by the difficulty the death was
+                                                         # played on; 0 for a death by the
+                                                         # character's own hand, a chosen ending or a
+                                                         # closed story
 Successor     {name, age?: int, place?: string, people?: string,
                station: "common"|"skilled"|"notable"|"noble"|"royal",
                one_in: int,                              # how rare: one in this many (1 for the commonest)
                master: bool,                             # a hidden master: the player knows, the world doesn't
                lines: [string],                          # who they are, in the world's words (G2, G16)
                situation: string,                        # the moment their first scene opens on
-               draws: int}                               # how many were drawn for this ending so far
+               draws: int,                               # how many were drawn for this ending so far
+               heir?: Heir}                              # the heir they are, rather than a random draw
+Heir          {id, name,                                 # a child not born yet: "Mira's child, not yet born"
+               relation: "child"|"grandchild"|"great-grandchild"|"descendant",
+               age?: int,                                # now; null for a child not born yet
+               unborn: bool,
+               years: int}                               # years the story skips before they can act
+                                                         # (until they are 16); 0 for none
 StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                difficulty: "story"|"balanced"|"brutal",
                event_frequency: "calm"|"normal"|"dramatic",
@@ -408,9 +428,15 @@ SceneDetails {steps: [{text,                                    # the step in pl
                        roll?: {odds_label, result: "success"|"partial"|"failure", seed},
                        beats?: [{beat, thing,                    # R2: only beats that found
                                  verdict: "made_canon"|"empty",  # something new or came up
-                                 reason, roll?}]}],              # empty; empty stopped the step
+                                 reason, roll?}],                # empty; empty stopped the step
+                       struck?: [{by,                            # N6: what struck back after
+                                  class, reason, roll?,          # the step, foes then a danger
+                                  harm: "none"|"hurt"|"wounded"|"subdued"|"badly_wounded"
+                                        |"maimed"|"dying"|"dead"}]}],
               chain?: [{link, class, reason}],                   # a cause-and-effect chain (A9)
-              stopped_at_step?: int}                             # a chained plan stopped here (R6)
+              stopped_at_step?: int}                             # a chained plan stopped here (R6),
+                                                                 # or something struck and hurt
+                                                                 # the player character (N6)
 
 SceneImage {planned: bool,                  # code planned it (M1); false for Illustrate (M2)
             kind: "portrait"|"place"|"scene"|"cover",
@@ -475,6 +501,7 @@ Only what the player character knows, in the world's words. Hidden truth never a
 ```text
 MemoryView {character: {name, lines: [string], portrait_url?},
             people:   [{id, name, lines: [string], attitude_label?, portrait_url?, status_label}],
+                                          # family comes first: "Your child." (N6)
             places:   [{id, name, lines: [string], image_url?}],
             factions: [{id, name, lines: [string], standing_label}],    # esteem and fear in words (W3)
             goals:    [{id, text}],
@@ -483,7 +510,8 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             deeds:    [{id, text, when_label, known_label}],
             threads:  [{id, title, status}]}
 
-StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4)
+StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
+                                          # lines include a child on the way (N6)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10)

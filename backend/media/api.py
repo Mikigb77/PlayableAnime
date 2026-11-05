@@ -58,7 +58,7 @@ async def _scene_picture(
 ) -> PictureOut:
     story = await owned_story(request, story_id)
     provider, key = _byok(request)
-    scene = await Scene.objects.filter(story=story, turn=turn).afirst()
+    scene = await Scene.objects.live().filter(story=story, turn=turn).afirst()
     if scene is None:
         raise ApiError(ErrorCode.NOT_FOUND, "Scene not found.")
     result = await scene_picture(

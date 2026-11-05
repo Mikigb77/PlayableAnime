@@ -30,7 +30,7 @@ from stories.schemas import (
     StorySettings,
     StorySummaryOut,
 )
-from stories.succession import drawn_of, successor_out
+from stories.succession import drawn_of, heirs_of, successor_out
 
 LIBRARY_SIZE = 50
 
@@ -61,7 +61,9 @@ def scenes_out(
 def blocked_turns(story: Story, turns: Sequence[int]) -> set[int]:
     """Which of `turns` the player blocked (F6), like `moderation.service.blocked_turns` but
     for synchronous code and only for the scenes being shown."""
-    rows = Report.objects.filter(story=story, block=True, scene__turn__in=list(turns))
+    rows = Report.objects.filter(
+        story=story, block=True, scene__turn__in=list(turns), scene__rewound_at__isnull=True
+    )
     return set(rows.values_list("scene__turn", flat=True))
 
 
@@ -131,6 +133,7 @@ def story_out(
             if ending and not ending.closed and (drawn := drawn_of(story))
             else None
         ),
+        heirs=heirs_of(story, state, ending) if ending and not ending.closed else [],
         opening_due=state.opening_due,
     )
 

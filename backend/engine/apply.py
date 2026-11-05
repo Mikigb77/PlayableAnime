@@ -35,6 +35,7 @@ from engine.context import TurnContext
 from engine.contracts.delta import (
     AttitudeShift,
     CharacterChange,
+    Expecting,
     FactionChange,
     ItemChange,
     PlaceChange,
@@ -50,6 +51,8 @@ from engine.invariants import (
     is_real_name,
     place_rebuild_problem,
 )
+from engine.kin import descendants
+from engine.limits import adult_problem
 from engine.looks import look_after
 from engine.state.cast import (
     Character,
@@ -60,6 +63,7 @@ from engine.state.cast import (
     Membership,
     Place,
     PlaceStatus,
+    Pregnancy,
     Prominence,
 )
 from engine.state.records import (
@@ -84,6 +88,7 @@ from engine.state.sheet import (
 )
 from engine.state.world import ActiveTimeEffect, WorldState
 from engine.timekeeping import effect_over
+from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
@@ -119,7 +124,8 @@ def apply_delta(
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
     come back in `Applied.rejected`, and the rest still applies. It doesn't touch `state.turn`.
 
-    Places and factions go first, so characters in the same delta can refer to them.
+    Places and factions go first, so characters in the same delta can refer to them, and family
+    ties after every character.
     """
     return apply_in_place(state.model_copy(deep=True), delta, ctx, source=source)
 
@@ -136,6 +142,8 @@ def apply_in_place(
         applier.faction(change)
     for change in delta.characters:
         applier.character(change)
+    for change in delta.characters:
+        applier.family(change)
     for fact in delta.facts:
         applier.fact(fact)
     for item in delta.items:
@@ -495,6 +503,66 @@ class _Applier:
         self.state.characters[character.id] = character
         return character
 
+    def family(self, change: CharacterChange) -> None:
+        """N6: parents and a child on the way, once everyone in the delta is there, so a child
+        and their parent can arrive in the same scene in either order."""
+        character = self.state.characters.get(change.id)
+        if character is None:
+            return  # its creation was refused
+        if change.parent_ids:
+            self.parents(character, change.parent_ids)
+        if change.expecting is not None:
+            self.expecting(character, change.expecting)
+
+    def parents(self, character: Character, parent_ids: list[str]) -> None:
+        """N6: parents are added, never taken back, two at most, and never a descendant. The
+        player character's own family is drafted, claimed by the player (N4) or born in play,
+        never the narrator's to make up."""
+        subject = f"character {character.id}"
+        player = self.state.player_id
+        if character.id == player and not self.engine:
+            self.reject(subject, "parents", "the player character's parents aren't the narrator's")
+            return
+        for parent_id in parent_ids:
+            if parent_id in character.parent_ids:
+                continue
+            if parent_id == player and not self.engine:
+                self.reject(
+                    subject, "parents", "the player character's children aren't the narrator's"
+                )
+            elif parent_id == character.id or parent_id not in self.state.characters:
+                self.reject(subject, "parents", f"no one else called {parent_id!r}")
+            elif len(character.parent_ids) >= 2:
+                self.reject(subject, "parents", "two parents at most")
+            elif parent_id in descendants(self.state, character.id):
+                self.reject(subject, "parents", f"{parent_id!r} descends from them")
+            else:
+                character.parent_ids.append(parent_id)
+
+    def expecting(self, character: Character, expecting: Expecting) -> None:
+        """N6: a child on the way, due a gestation from now, or a pregnancy that ended without a
+        birth. Both parents are adults (F3)."""
+        subject = f"character {character.id}"
+        now = self.state.world_s
+        other_id = expecting.other_parent_id
+        other = self.state.characters.get(other_id or "")
+        if expecting.ended:
+            if character.expecting is None:
+                self.reject(subject, "expecting", "they carry no child")
+            character.expecting = None  # its birth, still pending, finds nobody expecting
+        elif not character.alive:
+            self.reject(subject, "expecting", "the dead carry no child")
+        elif character.expecting is not None:
+            self.reject(subject, "expecting", "they already carry a child")
+        elif other_id is not None and (other is None or other_id == character.id):
+            self.reject(subject, "expecting", f"no other parent called {other_id!r}")
+        elif problem := adult_problem(character) or (other and adult_problem(other)):
+            self.reject(subject, "expecting", f"only adults have children here ({problem})")
+        else:
+            character.expecting = Pregnancy(
+                other_parent_id=other_id, conceived_s=now, due_s=now + GESTATION_S
+            )
+
     def membership(self, character: Character, change: CharacterChange) -> None:
         if change.faction_id not in self.state.factions:
             self.reject(f"character {character.id}", "faction", f"no faction {change.faction_id!r}")
@@ -550,6 +618,8 @@ class _Applier:
         if update.health is not None:
             condition.health = update.health
         condition.wounds.extend(Wound(text=w) for w in update.wounds)
+        if update.lasting_wounds and self.engine_only(f"character {character.id}", "lasting wound"):
+            condition.wounds.extend(Wound(text=w, lasting=True) for w in update.lasting_wounds)
         cleared = {s.casefold() for s in update.cleared_states}
         condition.states = [s for s in condition.states if s.name.casefold() not in cleared]
         for state_name in update.states:

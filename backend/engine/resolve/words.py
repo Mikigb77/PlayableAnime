@@ -76,6 +76,14 @@ def possessive(state: WorldState, character_id: str) -> str:
     return f"{who}'" if who.endswith("s") else f"{who}'s"
 
 
+def names(state: WorldState, people: list[Character]) -> str:
+    """'A, B and C', each as `name` gives them."""
+    named = [name(state, p.id) for p in people]
+    if len(named) <= 2:
+        return " and ".join(named)
+    return f"{', '.join(named[:-1])} and {named[-1]}"
+
+
 def is_are(state: WorldState, character_id: str) -> str:
     return "are" if character_id == state.player_id else "is"
 

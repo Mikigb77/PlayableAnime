@@ -1,6 +1,8 @@
 """What the model nodes read: the interpret prompt and the narrator's brief (B5 step 4)."""
 
-from engine.base import HOUR, MINUTE
+import json
+
+from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
     GoreLevel,
@@ -27,8 +29,8 @@ from engine.contracts import (
 )
 from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import CharacterStatus, DeathCertainty
-from engine.state.records import PendingEvent, StepResult
+from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
+from engine.state.records import EventStatus, PendingEvent, StepResult
 from engine.state.sheet import Power
 from engine.state.world import EventSize
 from graph.turn import prompts
@@ -314,6 +316,15 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
         PendingEvent(id="e3", kind="visit", title="RIGHT-HERE", due_s=0, place_id="well"),
         PendingEvent(id="e4", kind="plot", title="FAR-AWAY", due_s=0, place_id="inner-court"),
         PendingEvent(id="e5", kind="plot", title="NOWHERE", due_s=0),
+        # A birth that came to nothing, here, is never told (N6).
+        PendingEvent(
+            id="e6",
+            kind="world.birth",
+            title="NEVER-BORN",
+            due_s=0,
+            place_id="well",
+            status=EventStatus.CANCELLED,
+        ),
     ]
     text = narration_brief(
         before=state,
@@ -327,7 +338,7 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
     ).user
     for title in ("NEEDS-YOU", "ABOUT-YOU", "RIGHT-HERE"):
         assert title in text
-    for title in ("FAR-AWAY", "NOWHERE"):
+    for title in ("FAR-AWAY", "NOWHERE", "NEVER-BORN"):
         assert title not in text
 
 
@@ -435,3 +446,54 @@ def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
     )
 
     assert fallback_prompt(state, decision) == "Lin Feng killed Zhao Kun at the outer-court well."
+
+
+def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
+    """N6: parents and children by name, the dead marked, and a pregnancy with when it is due.
+    The player character's own family marks kin they haven't learned of (C6)."""
+    state = grounded_world()
+    state.world_s = 10 * DAY
+    state.characters["gennaro"] = Character(id="gennaro", name="Gennaro", parent_ids=["luca"])
+    state.characters["nina"] = Character(
+        id="nina", name="Nina", parent_ids=["luca"], known_by=["luca"]
+    )
+    state.characters["bartender"].parent_ids = ["carmine"]
+    state.characters["carmine"].expecting = Pregnancy(
+        other_parent_id="luca", conceived_s=0, due_s=40 * DAY
+    )
+    gone = state.characters["nina"]
+    gone.status, gone.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+
+    text = brief(state).user
+    present = json.loads(text.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"]
+    you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+
+    carmine, bartender = present
+    assert carmine["family"] == {
+        "children": [{"id": "bartender", "name": "Gennaro"}],
+        "expecting": {"with": "Luca Esposito", "due": "in 4 weeks"},
+    }
+    assert bartender["family"] == {"parents": [{"id": "carmine", "name": "Carmine Russo"}]}
+    assert "parent_ids" not in bartender and "expecting" not in carmine
+    # Luca hasn't learned of his son Gennaro, and knows his daughter Nina.
+    assert you["family"] == {
+        "children": [
+            {"id": "gennaro", "name": "Gennaro", "unknown_to_you": True},
+            {"id": "nina", "name": "Nina", "dead": True},
+        ]
+    }
+
+
+def test_the_narrators_guide_names_every_section_the_brief_writes():
+    # T5: the guide brings the cached start past Vertex AI's 4,096-token minimum, and it must
+    # describe the brief as it is.
+    import inspect
+    import re
+
+    from graph.turn import context
+
+    written = set(re.findall(r'\("([A-Z][A-Z ]+)",', inspect.getsource(context.narration_brief)))
+    assert {"STYLE", "WORLD", "OUTCOME", "ENDING", "TASK"} <= written
+    missing = [name for name in sorted(written) if f"- {name}: " not in prompts.BRIEF_GUIDE]
+    assert missing == []
+    assert prompts.NARRATOR_SYSTEM.endswith(prompts.BRIEF_GUIDE)

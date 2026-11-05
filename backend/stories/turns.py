@@ -8,8 +8,9 @@ saves it (B5, B7, B12, S3, T5, T10, K2, V7).
 The checks that can fail (auth, ownership, rating, version, the request itself, then credits,
 rate limit and quota) run before the stream starts, so they come back as JSON errors. Once the
 stream has started, a failure is an `error` event. Nothing is saved until the turn completes: the
-world state, the scene, its pending events, its picture plan, the ledger entry and the version
-bump are saved in one transaction, or none of them are (API.md).
+world state, the scene, its pending events, its picture plan, the ledger entry, the version bump
+and the world state kept for a rewind (C8) are saved in one transaction, or none of them are
+(API.md).
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ from pydantic import ValidationError
 
 from billing import meter
 from engine.context import ContentPrefs, Rating, TurnContext
-from engine.contracts import PictureKind
+from engine.contracts import PictureKind, PictureTrigger
 from engine.invariants import InvariantError
 from engine.labels import scene_time
 from engine.looks import place_looks
@@ -55,9 +56,10 @@ from graph.turn import (
     turn_graph,
 )
 from lucid.errors import ApiError, ErrorCode, envelope, field_error, version_conflict
+from media.briefs import THREAD_SUBJECTS, known_cast, scene_figures, time_of_day
 from media.plans import look_for_story, plan_picture
-from media.prompts import MAX_FIGURES, Brief, Figure
-from stories import endings, pending, responses
+from media.prompts import Brief
+from stories import endings, pending, responses, rewind
 from stories.models import Scene, Story
 from stories.schemas import TurnIn
 
@@ -117,7 +119,7 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
 
 
 def _choice_label(story: Story, turn: int, choice_id: str | None) -> str:
-    scene = Scene.objects.filter(story=story, turn=turn).only("choices").first()
+    scene = Scene.objects.live().filter(story=story, turn=turn).only("choices").first()
     for choice in (scene.choices if scene else None) or []:
         if isinstance(choice, dict) and choice.get("id") == choice_id and choice.get("label"):
             return str(choice["label"])
@@ -131,7 +133,8 @@ def _past_scenes(story: Story, state: WorldState) -> tuple[PastScene, ...]:
     chapter = Q(turn__gt=last_chapter, turn__lte=last_chapter + MAX_CHAPTER_TURNS)
     recent = Q(turn__gt=state.turn - RECENT_SCENES)
     rows = (
-        Scene.objects.filter(story=story, turn__lte=state.turn)
+        Scene.objects.live()
+        .filter(story=story, turn__lte=state.turn)
         .filter(chapter | recent)
         .order_by("turn")
         .values_list("turn", "narration", "player_action")
@@ -331,10 +334,17 @@ def save(
     story = prepared.story
     state = result.state
     draft = result.scene
-    ending = endings.record(result.ending, state, draft.turn) if result.ending else None
+    data = state.model_dump(mode="json")
+    ending = None
     with transaction.atomic():
+        if result.ending is not None:
+            # C8: how far back the ending can be rewound, by the difficulty it was played on.
+            reach = rewind.reach(
+                story, draft.turn, prepared.input.ctx.settings.difficulty, result.ending
+            )
+            ending = endings.record(result.ending, state, draft.turn, rewind=reach)
         saved = Story.objects.filter(pk=story.pk, version=prepared.read_version).update(
-            state=state.model_dump(mode="json"),
+            state=data,
             turn=state.turn,
             version=F("version") + 1,
             updated_at=timezone.now(),
@@ -373,6 +383,7 @@ def save(
             image_prompt=draft.picture.prompt if draft.picture else None,
         )
         pending.write_back(story, prepared.input.state, state)
+        rewind.keep(story, state.turn, data)
         _plan_picture(story, scene, state, result)
         meter.charge(ticket, telemetry.calls, story_id=story.pk, turn=scene.turn)
     story.version = prepared.read_version + 1
@@ -398,15 +409,7 @@ asave = sync_to_async(save)
 
 def cast(state: WorldState) -> list[dict[str, str]]:
     """The other characters there at the scene's end whom the player knows (M4, M5)."""
-    player_id = state.player_id
-    entries = []
-    for character_id in dict.fromkeys(state.scene.present_ids):
-        character = state.characters.get(character_id)
-        if character is None or character_id == player_id or not character.alive:
-            continue
-        if player_id in character.known_by or player_id in character.met_by:
-            entries.append({"character_id": character_id, "name": character.name})
-    return entries
+    return [{"character_id": c.id, "name": c.name} for c in known_cast(state)]
 
 
 def _plan_picture(story: Story, scene: Scene, state: WorldState, result: TurnResult) -> None:
@@ -422,7 +425,7 @@ def _plan_picture(story: Story, scene: Scene, state: WorldState, result: TurnRes
                 scene,
                 kind=picture.kind.value,
                 trigger=decision.trigger.value,
-                brief=brief(story, state, picture),
+                brief=brief(story, state, picture, decision.trigger),
                 subject_id=picture.subject_id,
                 # M1, M5: a place or face that changed for good is drawn once more, then reused.
                 version=decision.version,
@@ -431,9 +434,15 @@ def _plan_picture(story: Story, scene: Scene, state: WorldState, result: TurnRes
         log_failure("A scene's picture couldn't be planned, so the scene has none", error)
 
 
-def brief(story: Story, state: WorldState, picture: ScenePicture) -> Brief:
-    """What to draw: the prompt, the world's look (S7), and the subject or the known people in
-    the scene with the appearance kept in their entries (C9, M5)."""
+def brief(
+    story: Story,
+    state: WorldState,
+    picture: ScenePicture,
+    trigger: PictureTrigger | None = None,
+) -> Brief:
+    """What to draw: the prompt, the world's look (S7), and the subject, or for a scene or cover
+    the people in it with the appearance kept in their entries (C9, M5), chosen by
+    `media.briefs.scene_figures`. A scene picture also gets the time of day, to be lit for."""
     look = look_for_story(story)
     subject_id = picture.subject_id
     if picture.kind is PictureKind.PORTRAIT and subject_id in state.characters:
@@ -452,12 +461,16 @@ def brief(story: Story, state: WorldState, picture: ScenePicture) -> Brief:
             subject_name=place.name,
             subject_appearance=place_looks(place),
         )
-    people = [state.player, *(state.characters[e["character_id"]] for e in cast(state))]
-    figures = tuple(
-        Figure(id=person.id, name=person.name, appearance=person.appearance or person.description)
-        for person in people[:MAX_FIGURES]
+    if trigger in THREAD_SUBJECTS:
+        subject_id = None
+    scene = picture.kind is PictureKind.SCENE
+    return Brief(
+        description=picture.prompt,
+        look=look,
+        figures=scene_figures(state, picture.prompt, subject_id=subject_id),
+        you=state.player.name,
+        time=time_of_day(state.bible.calendar, state.world_s) if scene else "",
     )
-    return Brief(description=picture.prompt, look=look, figures=figures)
 
 
 def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:

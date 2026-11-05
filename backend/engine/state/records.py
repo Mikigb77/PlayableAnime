@@ -32,6 +32,7 @@ class OriginKind(StrEnum):
     AGENDA = "agenda"  # a faction's or a key NPC's plan (W6, E3)
     CLOCK = "clock"
     EMERGENCE = "emergence"  # W15: born of the world state
+    BIRTH = "birth"  # N6: born to someone in the story
     SUCCESSOR = "successor"  # W15a: a new faction derived from a destroyed one
     NARRATOR = "narrator"  # N7: a detail that became canon when first told
     PLAYER = "player"  # N4: a backstory claim, or a goal the player stated

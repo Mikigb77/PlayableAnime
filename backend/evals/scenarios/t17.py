@@ -9,6 +9,7 @@ pass condition is about the telling.
 from __future__ import annotations
 
 import math
+from collections import Counter
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import ContentPrefs, Difficulty, EventFrequency, Rating, StorySettings
@@ -17,7 +18,9 @@ from engine.contracts import (
     Aim,
     Beat,
     EventSource,
+    Harm,
     Intent,
+    IntentStep,
     MeansVerdict,
     OutcomeClass,
     PictureTrigger,
@@ -31,6 +34,7 @@ from engine.state import (
     CharacterStatus,
     ClockStatus,
     EventStatus,
+    Health,
     PassingState,
     PowerAxis,
     StepResult,
@@ -167,8 +171,15 @@ async def quiet_life_eval(ev: Eval) -> None:
 # --- Long fight (W10, W16, M1) -----------------------------------------------------------------
 
 
+# The mage parries and presses without striking to hurt: this scenario is about the fight's clock,
+# and how a foe's blows land is t17.mortal-fight's (N6).
+HOLDS_BACK = facts(foes_mean=Aim.NONE)
+
+
 def strike(n: int) -> Intent:
-    return act(f"Strike at the mage ({n})", "strike", ActionKind.EXCHANGE, 10)
+    return plan(
+        step(f"Strike at the mage ({n})", ActionKind.EXCHANGE, 10, verb="strike", facts=HOLDS_BACK)
+    )
 
 
 @scenario(
@@ -184,7 +195,7 @@ def strike(n: int) -> Intent:
 async def long_fight(ev: Eval) -> None:
     for seed in ev.seeds(4, live=1):
         story = ev.story(worlds.mage_fight(), seed=f"{seed}/first-blow", under_way=True)
-        first = await story.act("I attack the grey mage", plan(attack("mage")))
+        first = await story.act("I attack the grey mage", plan(attack("mage", facts=HOLDS_BACK)))
         fight = first.state.scene.encounter
         ev.check(
             "attacking a key NPC starts a fight",
@@ -252,6 +263,135 @@ async def long_fight(ev: Eval) -> None:
             ),
             story.turns[-5:],
         )
+
+
+# --- Mortal fight (N6, A2, A5) -----------------------------------------------------------------
+
+THUGS = ["thug-0", "thug-1", "thug-2"]
+
+
+def leap() -> IntentStep:
+    return step(
+        "leap off the bridge into the river",
+        ActionKind.MOVE,
+        3,
+        verb="leap",
+        facts=facts(
+            opposition_ids=THUGS,
+            can_respond=True,
+            danger="the thirty-meter drop to the river",
+            danger_class=OutcomeClass.CONTESTED,
+            danger_harm=Aim.KILL,
+        ),
+    )
+
+
+def on_the_bridge(seed: str, ev: Eval) -> Story:
+    story = ev.story(worlds.bridge_ambush(), seed=seed, under_way=True)
+    story.change(lambda state: worlds.start_fight(state, *THUGS))
+    return story
+
+
+@scenario(
+    "t17.mortal-fight",
+    suite="T17",
+    title="Mortal fight",
+    requirements=("N6", "A2", "A5", "T17"),
+    passes_when=(
+        "An elder three realms up cuts the player down with no roll, but sparring he only brings "
+        "them down; against three thugs the player can kill one, be cut, die, or leap from the "
+        "bridge and get away, and every blow and fall is told as the engine settled it (N6)"
+    ),
+)
+async def mortal_fight(ev: Eval) -> None:
+    told = []
+    for seed in ev.seeds(6, live=1):
+        story = ev.story(worlds.elder_bai(), seed=f"{seed}/enemy", under_way=True)
+        played = await story.act("I cut down Elder Bai", plan(attack("bai", "sword")))
+        struck = played.step(0).perils
+        ev.check(
+            "an elder three realms up cuts Lin down, with no roll (A2)",
+            [(p.harm, p.roll) for p in struck] == [(Harm.DEAD, None)]
+            and not played.state.characters["lin"].alive,
+            f"{seed}: {[p.reason for p in struck]}",
+            live=False,
+        )
+        told.append(("the elder", played))
+
+        story = ev.story(worlds.elder_bai(sparring=True), seed=f"{seed}/sparring", under_way=True)
+        spar = attack(
+            "bai",
+            aim=Aim.SUBDUE,
+            text="spar with Elder Bai",
+            verb="spar",
+            facts=facts(opposition_ids=["bai"], can_respond=True, foes_mean=Aim.SUBDUE),
+        )
+        played = await story.act("I spar with Elder Bai", plan(spar))
+        harms = {p.harm for s in played.steps for p in s.perils}
+        ev.check(
+            "sparring, the master only brings Lin down",
+            harms <= {Harm.NONE, Harm.HURT, Harm.SUBDUED} and played.state.characters["lin"].alive,
+            f"{seed}: {harms}",
+        )
+        told.append(("sparring", played))
+
+    seen: Counter[str] = Counter()
+    for seed in ev.seeds(60, live=2):
+        story = on_the_bridge(f"{seed}/fight", ev)
+        played = await story.act(
+            "I cut down the first thug, then the second",
+            plan(attack("thug-0", "sword"), attack("thug-1", "sword")),
+        )
+        steps = played.steps
+        ev.check(
+            "a blow that lands stops the plan there, for the player to react (R6)",
+            not any(s.hurt_by_peril for s in steps[:-1]),
+            f"{seed}: {[[p.reason for p in s.perils] for s in steps]}",
+        )
+        after = played.state
+        lin = after.characters["lin"]
+        killed = sum(not after.characters[t].alive for t in THUGS)
+        seen["killed a thug and was cut"] += bool(
+            killed and lin.alive and lin.sheet.condition.health is not Health.UNHURT
+        )
+        seen["died"] += not lin.alive
+        if seed.endswith("/0") or seed.endswith("/1"):
+            told.append(("the thugs", played))
+
+        story = on_the_bridge(f"{seed}/leap", ev)
+        played = await story.act("I leap off the bridge into the river", plan(leap()))
+        after = played.state
+        lin = after.characters["lin"]
+        got_away = lin.alive and after.scene.encounter is None
+        seen["leapt and got away"] += got_away
+        seen["the fall killed him"] += any(
+            p.harm is Harm.DEAD and not p.by_ids for p in played.step(0).perils
+        )
+        if seed.endswith("/0"):
+            told.append(("the leap", played))
+    ev.metric("bridge", dict(seen))
+    ev.check(
+        "Lin can kill a thug and be cut, die, or leap and get away, and the fall can kill (N6)",
+        all(seen[k] for k in ("killed a thug and was cut", "died", "leapt and got away"))
+        and seen["the fall killed him"] > 0,
+        str(dict(seen)),
+        live=False,
+    )
+    await ev.judge(
+        "what strikes back is told as settled",
+        Rubric(
+            must=(
+                "Every blow or fall that strikes Lin plays exactly as OUTCOME's struck says: a "
+                "miss misses, a wound wounds, and a killing blow kills",
+                "When the plan stopped, the scene stops there and hands the choice back",
+            ),
+            must_not=(
+                "Lin survives what OUTCOME says killed him",
+                "A foe strikes harder or more often than OUTCOME says",
+            ),
+        ),
+        told,
+    )
 
 
 # --- Ignored event (W16) -----------------------------------------------------------------------

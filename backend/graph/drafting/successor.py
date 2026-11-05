@@ -15,8 +15,11 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from engine.heirs import RELATIONS
 from engine.invariants import is_real_name
+from engine.kin import descendants
 from engine.limits import real_entity
+from engine.resolve.strangers import ORDINARY_TIER
 from engine.state import (
     BackstoryClaim,
     Character,
@@ -34,6 +37,7 @@ from engine.state import (
     WorldState,
 )
 from engine.succession import STANDING, Lot, Station
+from engine.world.births import is_placeholder
 from graph.drafting.assemble import (
     HUMAN_PEAK,
     MAX,
@@ -128,7 +132,80 @@ async def propose(
     )
 
 
-def successor_prompt(state: WorldState, lot: Lot) -> str:
+HEIR_SYSTEM = """\
+You draft the next player character for Lucid Saga, an endless story game where the player can do \
+anything and the world remembers it. The story's last player character has reached their ending, \
+and the player carries on as their heir: a child or grandchild the story already has. Fill in who \
+the heir is now, as JSON that follows the schema. Code checks every field.
+
+- Keep to what the story has: their parents, age, people and home. When they grew up in the years \
+since the ending, decide who they became: a trade, skills, wants of their own, what they own. \
+Someone who was a child in the story keeps that past.
+- Give them a name only when they have none yet; otherwise repeat the name given.
+- Attributes: 3 is an average person and 5 the peak of what a person can be. An heir is a person, \
+however strong their parent was.
+- Their standing follows their family's, as the world would treat a child of theirs.
+- The situation is a moment of their life now, where they live, ending on something to act on. \
+They know their family as family does, and the rest of the world only as anyone there would.
+
+Every person and organisation is fictional, with no real living person. There is no sexual \
+content in any rating. Write in English, in plain words, in the world's own voice.\
+"""
+
+
+async def propose_heir(
+    llm: ModelClient, state: WorldState, heir: Character, *, years: int, rating: str
+) -> SuccessorProposal:
+    """The drafter's heir, as they are now. `state` is the world now, `years` how long it ran
+    on since the ending."""
+    system = f"{HEIR_SYSTEM}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
+    return await llm.structured(
+        Node.DRAFTER, Prompt.build(system, heir_prompt(state, heir, years=years)), SuccessorProposal
+    )
+
+
+def heir_prompt(state: WorldState, heir: Character, *, years: int) -> str:
+    fallen = state.characters.get(state.player_id)
+    who = []
+    if is_placeholder(heir):
+        who.append("Name: none yet; give them one.")
+    else:
+        who.append(f"Name: {heir.name}.")
+    if heir.age is not None:
+        who.append(f"Age: {heir.age}.")
+    parents = [state.characters[p] for p in heir.parent_ids if p in state.characters]
+    for parent in parents:
+        role = "the last player character" if parent.id == state.player_id else "a parent"
+        status = "" if parent.alive else ", now dead"
+        line = f"Parent: {parent.name} ({role}{status})"
+        detail = parent.sheet.resources.title or parent.sheet.resources.rank
+        who.append(f"{line}, {detail}." if detail else f"{line}.")
+    if fallen is not None and fallen.id not in heir.parent_ids:
+        generation = descendants(state, fallen.id).get(heir.id)
+        if generation is not None:
+            relation = RELATIONS.get(generation, "descendant").capitalize()
+            who.append(f"{relation} of {fallen.name}, the last player character.")
+    if years:
+        who.append(f"They grew up in the {years} years since the last story ended.")
+    if heir.description:
+        who.append(f"As the story knew them: {heir.description}")
+    people = next((p for p in state.bible.peoples if p.id == heir.people_id), None)
+    if people is not None:
+        who.append(f"People: {people.name}. {people.description}".strip())
+    where = _where(state, heir.location_id)
+    if where:
+        who.append("Lives in: " + where)
+    return "\n\n".join(
+        [
+            "THE WORLD\n" + "\n".join(_world_lines(state)),
+            "THE HEIR\n" + "\n".join(who),
+            "NAMES ALREADY IN THE STORY\n" + ", ".join(_taken(state)),
+            "Draft this person as they are now.",
+        ]
+    )
+
+
+def _world_lines(state: WorldState) -> list[str]:
     bible = state.bible
     world = [f"Genre: {bible.genre}.", f"Tone: {bible.tone}."]
     if bible.era:
@@ -136,35 +213,51 @@ def successor_prompt(state: WorldState, lot: Lot) -> str:
     world += [f"- {rule.text}" for rule in bible.rules[:8]]
     if state.summary:
         world.append(f"Situation: {state.summary}")
+    return world
+
+
+def _where(state: WorldState, place_id: str | None) -> str:
+    place = state.places.get(place_id or "")
+    if place is None:
+        return ""
+    where = [place.name + (f", a {place.kind}" if place.kind else "")]
+    parent = state.places.get(place.parent_id or "")
+    if parent is not None:
+        where.append(f"in {parent.name}")
+    lines = [", ".join(where) + "."]
+    if place.description:
+        lines.append(place.description)
+    return " ".join(lines)
+
+
+def _taken(state: WorldState) -> list[str]:
+    """The names that matter most, so the prompt stays small in a long story; `build` refuses
+    any name the story has."""
+    named = sorted(
+        state.characters.values(), key=lambda c: (c.prominence is not Prominence.KEY, c.name)
+    )
+    return [c.name for c in named][:NAMES_SHOWN]
+
+
+def successor_prompt(state: WorldState, lot: Lot) -> str:
+    world = _world_lines(state)
+    bible = state.bible
     who = [f"Station: {STATIONS[lot.station]}.", f"Age: {lot.age}.", f"Might: {_might(lot)}."]
-    rung = _rung(state, lot)
+    rung = _rung(state, lot.might)
     if rung is not None:
         ladder, index = rung
         who.append(f"On the {ladder.name}: {ladder.rungs[index].name}.")
     people = next((p for p in bible.peoples if p.id == lot.people_id), None)
     if people is not None:
         who.append(f"People: {people.name}. {people.description}".strip())
-    place = state.places.get(lot.place_id or "")
-    if place is not None:
-        where = [place.name + (f", a {place.kind}" if place.kind else "")]
-        parent = state.places.get(place.parent_id or "")
-        if parent is not None:
-            where.append(f"in {parent.name}")
-        lines = [", ".join(where) + "."]
-        if place.description:
-            lines.append(place.description)
-        who.append("Lives in: " + " ".join(lines))
-    # The names that matter most, so the prompt stays small in a long story; `build` refuses any
-    # name the story has.
-    named = sorted(
-        state.characters.values(), key=lambda c: (c.prominence is not Prominence.KEY, c.name)
-    )
-    taken = [c.name for c in named][:NAMES_SHOWN]
+    where = _where(state, lot.place_id)
+    if where:
+        who.append("Lives in: " + where)
     return "\n\n".join(
         [
             "THE WORLD\n" + "\n".join(world),
             "THE DRAW\n" + "\n".join(who),
-            "NAMES ALREADY IN THE STORY\n" + ", ".join(taken),
+            "NAMES ALREADY IN THE STORY\n" + ", ".join(_taken(state)),
             "Draft this person.",
         ]
     )
@@ -176,13 +269,132 @@ def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Cha
     # Only a hidden master in a world with something extraordinary goes past a person's peak
     # (A4, G8, G13).
     peak = 10 if lot.master and not state.bible.grounded else HUMAN_PEAK
+    influence, wealth = STANDING[lot.station]
+    sheet = _sheet(
+        state,
+        proposal,
+        peak=peak,
+        axes=PowerAxes(might=lot.might, influence=influence, wealth=wealth),
+        titled=lot.station is not Station.COMMON,
+    )
+    character = Character(
+        id=_new_id(state),
+        name=_new_name(state, proposal),
+        aliases=[a for a in _texts(proposal.aliases, 4, NAME_LIMIT) if _fictional(a)],
+        prominence=Prominence.KEY,
+        description=_text(proposal.description),
+        appearance=_text(proposal.appearance),
+        age=lot.age,
+        people_id=lot.people_id,
+        location_id=lot.place_id,
+        sheet=sheet,
+        origin=Origin(kind=OriginKind.EMERGENCE),
+    )
+    situation = _text(proposal.situation, SITUATION_LIMIT) or ordinary_day(state, character)
+    return character, situation
+
+
+def build_heir(
+    state: WorldState, heir: Character, proposal: SuccessorProposal, *, grown: bool
+) -> tuple[Character, str]:
+    """An heir as the player will play them, from the drafter's proposal, and the moment their
+    first scene opens on. `state` is the world as it is when they start, and `grown` says they
+    grew up off-screen, in a time jump: then who they became is the drafter's, held to their
+    parents' standing and a person's might. Otherwise the story already has them, and the
+    proposal only fills in what it lacks. They keep their id, family, place, people, age, ties
+    and memberships, and a name the story gave them."""
+    parents = [state.characters[p] for p in heir.parent_ids if p in state.characters]
+    fresh = grown or not heir.sheet.skills
+    update: dict = {"prominence": Prominence.KEY}
+    if is_placeholder(heir):
+        update["name"] = _new_name(state, proposal)
+    if grown or not heir.description:
+        update["description"] = _text(proposal.description)
+    if grown or not heir.appearance:
+        update["appearance"] = _text(proposal.appearance)
+        if heir.appearance:
+            update["look_version"] = heir.look_version + 1  # M5: drawn again, grown up
+    if fresh:
+        might = heir.sheet.axes.might if not grown else ORDINARY_TIER
+        axes = PowerAxes(
+            might=might,
+            influence=max([heir.sheet.axes.influence, *(p.sheet.axes.influence for p in parents)]),
+            wealth=max([heir.sheet.axes.wealth, *(p.sheet.axes.wealth for p in parents)]),
+        )
+        sheet = _sheet(
+            state,
+            proposal,
+            peak=HUMAN_PEAK,
+            axes=axes,
+            titled=any(p.sheet.resources.title for p in parents),
+        )
+        update["sheet"] = _kept(heir.sheet, sheet, grown=grown)
+    character = heir.model_copy(deep=True, update=update)
+    situation = _text(proposal.situation, SITUATION_LIMIT) or ordinary_day(state, character)
+    return character, situation
+
+
+def _kept(old: CharacterSheet, new: CharacterSheet, *, grown: bool) -> CharacterSheet:
+    """A drafted sheet for an heir, keeping what the world already holds of them: how they feel
+    about people and who they are tied to, their powers and what they learned, their traits and
+    belongings, their standing, and their condition. Years of growing up heal all but a lasting
+    wound."""
+    sheet = new.model_copy(deep=True)
+    sheet.disposition.attitudes = dict(old.disposition.attitudes)
+    sheet.traits = _merged(old.traits, new.traits)
+    for field in ("powers", "techniques", "rulings", "growth", "practice", "backstory"):
+        if getattr(old, field):
+            setattr(sheet, field, list(getattr(old, field)))
+    if old.ladders and not grown:
+        sheet.ladders = list(old.ladders)
+    held, drafted = old.resources, new.resources
+    ids = {item.id for item in held.items}
+    items = list(held.items)
+    for item in _merged(held.items, drafted.items)[len(held.items) :]:
+        item_id, n = item.id, 2
+        while item_id in ids:
+            item_id, n = f"{item.id}-{n}", n + 1
+        ids.add(item_id)
+        items.append(item.model_copy(update={"id": item_id}))
+    sheet.resources = drafted.model_copy(
+        update={
+            "items": items,
+            "money": held.money or drafted.money,
+            "currency": held.currency or drafted.currency,
+            "title": held.title or drafted.title,
+            "rank": held.rank or drafted.rank,
+            "family_name": held.family_name or drafted.family_name,
+            "connections": list(held.connections),
+        }
+    )
+    if grown:
+        lasting = [w for w in old.condition.wounds if w.lasting]
+        sheet.condition = sheet.condition.model_copy(update={"wounds": lasting})
+    else:
+        sheet.condition = old.condition.model_copy(deep=True)
+    return sheet
+
+
+def _merged[T: (Trait, Item)](held: list[T], drafted: list[T]) -> list[T]:
+    """What they hold, then what the drafter gave them that they don't, by name."""
+    names = {t.name.casefold() for t in held}
+    return [*held, *(t for t in drafted if t.name.casefold() not in names)]
+
+
+def _sheet(
+    state: WorldState,
+    proposal: SuccessorProposal,
+    *,
+    peak: int,
+    axes: PowerAxes,
+    titled: bool,
+) -> CharacterSheet:
     attributes = {
         name: _clamp(value, 0, peak, 3) for name, value in proposal.attributes.model_dump().items()
     }
-    influence, wealth = STANDING[lot.station]
-    rung = _rung(state, lot)
+    rung = _rung(state, axes.might)
     item_ids = _Ids("item")
-    sheet = CharacterSheet(
+    return CharacterSheet(
         attributes=attributes,
         skills=_skills(proposal.skills),
         traits=[
@@ -191,7 +403,7 @@ def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Cha
             if _name(t.name)
         ],
         disposition=Disposition(temperament=_temperament(proposal.temperament)),
-        axes=PowerAxes(might=lot.might, influence=influence, wealth=wealth),
+        axes=axes,
         ladders=[LadderPosition(ladder_id=rung[0].id, rung=rung[1])] if rung else [],
         resources=Resources(
             items=[
@@ -208,31 +420,22 @@ def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Cha
             ],
             money=_clamp(proposal.money, 0, 10**12, 0),
             currency=_text(proposal.currency, 40),
-            title=_text(proposal.title, 120) if lot.station is not Station.COMMON else "",
+            title=_text(proposal.title, 120) if titled else "",
             rank=_text(proposal.rank, 120),
             family_name=_fictional(_text(proposal.family_name, 120)),
         ),
         backstory=[BackstoryClaim(text=t) for t in _texts(proposal.backstory, 4)],
     )
+
+
+def _new_name(state: WorldState, proposal: SuccessorProposal) -> str:
+    """The proposal's name, unless it is a real person's (G12), a placeholder or one the story
+    already has: then the default name, numbered."""
     name = _fictional(_name(proposal.name))
     taken = {c.name.casefold() for c in state.characters.values()}
     if not is_real_name(name) or name.casefold() in taken:
         name = _fallback_name(taken)
-    character = Character(
-        id=_new_id(state),
-        name=name,
-        aliases=[a for a in _texts(proposal.aliases, 4, NAME_LIMIT) if _fictional(a)],
-        prominence=Prominence.KEY,
-        description=_text(proposal.description),
-        appearance=_text(proposal.appearance),
-        age=lot.age,
-        people_id=lot.people_id,
-        location_id=lot.place_id,
-        sheet=sheet,
-        origin=Origin(kind=OriginKind.EMERGENCE),
-    )
-    situation = _text(proposal.situation, SITUATION_LIMIT) or ordinary_day(state, character)
-    return character, situation
+    return name
 
 
 def ordinary_day(state: WorldState, character: Character) -> str:
@@ -258,12 +461,12 @@ def _might(lot: Lot) -> str:
     return "an ordinary person"
 
 
-def _rung(state: WorldState, lot: Lot):
-    """The highest rung of the world's ladder of might that the drawn might reaches (G18)."""
+def _rung(state: WorldState, might: int):
+    """The highest rung of the world's ladder of might that a might reaches (G18)."""
     ladder = next((lad for lad in state.bible.ladders if lad.axis is PowerAxis.MIGHT), None)
     if ladder is None:
         return None
-    reached = [i for i, rung in enumerate(ladder.rungs) if rung.tier <= lot.might]
+    reached = [i for i, rung in enumerate(ladder.rungs) if rung.tier <= might]
     return (ladder, reached[-1]) if reached else None
 
 

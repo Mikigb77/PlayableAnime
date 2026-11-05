@@ -73,6 +73,7 @@ from engine.contracts.resolution import (
     TrainingSoFar,
 )
 from engine.resolve import odds as odds_mod
+from engine.resolve import perils as perils_mod
 from engine.resolve import strangers as strangers_mod
 from engine.resolve.chain import settle_chain
 from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world_check
@@ -83,7 +84,9 @@ from engine.resolve.power import (
     Standing,
     base_tier,
     claims_frozen_in_time,
+    helpless_name,
     helpless_state,
+    ranked_with_numbers,
     scale,
     standing,
 )
@@ -91,12 +94,13 @@ from engine.resolve.powers import claims as claims_mod
 from engine.resolve.powers import growth, sensing
 from engine.resolve.powers import theories as theories_mod
 from engine.resolve.powers import time_stop as stop
-from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
+from engine.resolve.words import cap, is_are, mentions, name, names, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, PlaceStatus
 from engine.state.records import RollRecord, StepResult, Trace, TraceKind
 from engine.state.scene import EncounterKind
 from engine.state.sheet import (
+    Health,
     HitMode,
     Power,
     PowerAxis,
@@ -121,9 +125,6 @@ TECHNIQUE_SHIFT = 0.6  # G25: technique matters most within a gap
 TRAIT_SHIFT = 0.3  # a gift used, or a flaw that gets in the way
 MAX_TRAITS = 2
 ATTITUDE_SHIFT = 1.2  # A3: at full devotion or full hatred, on the influence axis
-# A8: allies count. Each other opponent within a step of the strongest adds this, up to the cap.
-NUMBERS_STEP = 0.5
-MAX_NUMBERS = 1.0
 INTIMIDATION = ("intimidate", "threaten", "menace", "scare", "frighten", "coerce", "bully")
 
 _MEANS_ORDER = [MeansVerdict.CLEARLY_NOT, MeansVerdict.CLOSE_CALL, MeansVerdict.CLEARLY_ENOUGH]
@@ -161,6 +162,8 @@ class _Frame:
     gone: str | None = None  # why the actor can't act any more, such as their own blast
     met: list[Character] = field(default_factory=list)  # strangers this plan made real (F1)
     alert: set[str] = field(default_factory=set)  # hidden masters among them, who see it coming
+    fighting: list[str] = field(default_factory=list)  # foes this plan fought (N6)
+    out: set[str] = field(default_factory=set)  # foes it killed, subdued or got away from (N6)
 
 
 @dataclass
@@ -227,9 +230,13 @@ def resolve_intent(
             else:
                 stop_reason = StopReason.FAILED
             break
+        if settled.hurt_by_peril and later:
+            # N6. Struck, the character reacts before anything else they planned.
+            stopped_at, unplayed, stop_reason = i, [s.text for s in later], StopReason.STRUCK
+            break
 
     if not steps and intent.standing is not None:
-        steps = [_standing_step(intent.standing)]
+        steps = [_standing_step(state, actor, intent.standing, ctx, rng, frame)]
 
     return Resolution(
         actor_id=intent.actor_id if intent.actor_id in state.characters else None,
@@ -245,15 +252,49 @@ def resolve_intent(
     )
 
 
-def _standing_step(standing_action: StandingAction) -> StepResolution:
+def _standing_step(
+    state: WorldState,
+    actor: Character,
+    standing_action: StandingAction,
+    ctx: TurnContext,
+    rng: SeededRng,
+    frame: _Frame,
+) -> StepResolution:
+    """Waiting or watching (S2). In a fight the foes still in it strike all the same (N6)."""
     kind = ActionKind(standing_action.value)
-    return StepResolution(
+    duration_s = bound_duration(kind, STANDING_DURATIONS_S[standing_action])
+    standing = StepResolution(
         index=0,
         text=standing_action.value,
         outcome_class=OutcomeClass.CERTAIN,
         reason=NOTHING_IN_THE_WAY,
         result=StepResult.SUCCESS,
-        duration_s=bound_duration(kind, STANDING_DURATIONS_S[standing_action]),
+        duration_s=duration_s,
+    )
+    if actor.id != state.player_id or state.scene.encounter is None:
+        return standing
+    still = IntentStep(
+        text=standing_action.value,
+        verb=standing_action.value,
+        kind=kind,
+        proposed_duration_s=duration_s,
+    )
+    struck = perils_mod.strike_back(
+        state,
+        actor,
+        still,
+        outcome_class=OutcomeClass.CERTAIN,
+        result=StepResult.SUCCESS,
+        faced=[],
+        out=set(),
+        fighting=[],
+        frozen=frame.frozen,
+        health=actor.sheet.condition.health,
+        difficulty=ctx.settings.difficulty,
+        rng=rng.child("resolve", "step", 0, "peril"),
+    )
+    return standing.model_copy(
+        update={"perils": struck.perils, "effects": struck.effects, "deeds": struck.deeds}
     )
 
 
@@ -533,6 +574,33 @@ def _settle_step(
             deeds.append(deed)
     reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
 
+    if actor.id == state.player_id and frame.gone is None:
+        # N6. The foes still in the fight answer, and a danger the step faced strikes.
+        frame.out |= _taken_out(effects)
+        struck = perils_mod.strike_back(
+            state,
+            actor,
+            step,
+            outcome_class=settled.outcome_class,
+            result=settled.result,
+            faced=opposition.responsive if opposition is not None else [],
+            out=frame.out,
+            fighting=frame.fighting,
+            frozen=frozen_now,
+            health=_health_now(effects, actor),
+            difficulty=ctx.settings.difficulty,
+            rng=rng.child("peril"),
+        )
+        perils, escaped = struck.perils, struck.escaped
+        frame.fighting = list(dict.fromkeys([*frame.fighting, *struck.fighting]))
+        frame.out |= set(struck.escaped)
+        effects = _merge(effects, struck.effects)
+        deeds.extend(struck.deeds)
+        if struck.dead:
+            frame.gone = f"{cap(name(state, actor.id))} {is_are(state, actor.id)} dead."
+    else:
+        perils, escaped = [], []
+
     if opposition is not None:
         # Harm to oneself is no deed against anyone (W1): only others are its victims.
         others_hit = [t for t in targets if t.id != actor.id]
@@ -577,6 +645,8 @@ def _settle_step(
         kind=step.kind,
         encounter=encounter,
         opponent_ids=opponent_ids,
+        perils=perils,
+        escaped=escaped,
     )
     return resolution, stakes, own_choice
 
@@ -878,6 +948,32 @@ def _kills(effects: StateDelta, character: Character) -> bool:
     )
 
 
+def _taken_out(effects: StateDelta) -> set[str]:
+    """N6. Whom a step's own changes killed or left helpless (dying, subdued, knocked out), so
+    they don't strike back."""
+    return {
+        change.id
+        for change in effects.characters
+        if change.status is CharacterStatus.DEAD
+        or (
+            change.condition is not None
+            and (
+                change.condition.health is Health.DYING
+                or any(helpless_name(s) for s in change.condition.states)
+            )
+        )
+    }
+
+
+def _health_now(effects: StateDelta, character: Character) -> Health:
+    """The character's health once a step's own changes are in: the last one it sets."""
+    health = character.sheet.condition.health
+    for change in effects.characters:
+        if change.id == character.id and change.condition and change.condition.health:
+            health = change.condition.health
+    return health
+
+
 def _merge(*deltas: StateDelta) -> StateDelta:
     """One delta holding every change of the given ones, in order."""
     merged = StateDelta()
@@ -1019,10 +1115,8 @@ def _contested(
             measure = scale(state, axis, actor, *opposition.responsive)
             mine, known_power = standing(state, actor, axis, measure), False
             ranked = (standing(state, c, axis, measure) for c in opposition.responsive)
-        theirs = sorted(ranked, key=lambda s: (-s.tier, s.character.id))
+        theirs, numbers = ranked_with_numbers(list(ranked), measure)
         strongest = theirs[0]
-        close = sum(1 for s in theirs[1:] if strongest.tier - s.tier < measure.step)
-        numbers = min(MAX_NUMBERS, NUMBERS_STEP * close)
         gap = (strongest.tier - mine.tier) / measure.step + numbers
         lead = _compare(state, mine, strongest, gap, numbers > 0)
         if known_power:
@@ -1053,7 +1147,7 @@ def _contested(
         base = odds_mod.logit(odds_mod.UNMEASURED_ODDS[outcome_class])
         lead = f"{cap(what)} can push back"
         if opposition.responsive:
-            lead = f"{cap(_names(state, opposition.responsive))} can push back"
+            lead = f"{cap(names(state, opposition.responsive))} can push back"
     odds = odds_mod.settle(base, shift, odds_mod.BANDS[outcome_class], difficulty)
     roll = odds_mod.roll(
         rng.child("outcome"),
@@ -1265,7 +1359,7 @@ def _with_chain(
     if opposition.can_push_back:
         proposed = step.facts.proposed_class
         who = (
-            _names(state, opposition.responsive)
+            names(state, opposition.responsive)
             if opposition.responsive
             else step.facts.opposition.strip() or "they"
         )
@@ -1428,13 +1522,6 @@ def _withstanding(state: WorldState, target: Character, measure: Scale) -> Stand
     return might if might.tier >= station.tier else station
 
 
-def _names(state: WorldState, people: list[Character]) -> str:
-    names = [name(state, p.id) for p in people]
-    if len(names) <= 2:
-        return " and ".join(names)
-    return f"{', '.join(names[:-1])} and {names[-1]}"
-
-
 def _notes(found: Standing) -> str:
     return f", {', '.join(found.notes)}," if found.notes else ""
 
@@ -1473,7 +1560,7 @@ def _helpless_lead(state: WorldState, opposition: _Opposition) -> str:
         if len(opposition.helpless) == 1:
             who = name(state, person.id)
             return f"{cap(who)} {is_are(state, person.id)} {why} and can't respond"
-        everyone = _names(state, [p for p, _ in opposition.helpless])
+        everyone = names(state, [p for p, _ in opposition.helpless])
         return f"{cap(everyone)} can't respond ({why})"
     if opposition.unmeasured_frozen:
         return "Nothing in the way can respond"

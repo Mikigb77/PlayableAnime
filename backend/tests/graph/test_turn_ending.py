@@ -7,9 +7,11 @@ from engine.context import Rating, TurnContext
 from engine.contracts import (
     ActionKind,
     Aim,
+    Harm,
     Intent,
     IntentStep,
     OutcomeClass,
+    Peril,
     Resolution,
     StepResolution,
 )
@@ -234,6 +236,26 @@ def test_harming_yourself_before_dying_of_something_else_is_no_self_inflicted_de
     )
 
     ending = ending_of(before, after, Intent(steps=[cut, jump]), played(cut, jump), TurnKind.ACTION)
+    assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
+
+
+def test_struck_down_while_turning_harm_on_yourself_is_no_self_inflicted_death():
+    """N6: a foe's blow killed them in the step where they cut their own palm."""
+    before, after = died()
+    cut = POISON.model_copy(update={"text": "cut my palm for the oath", "aim": Aim.WOUND})
+    resolution = played(cut)
+    blow = Peril(
+        by_ids=["carmine"],
+        by="Carmine",
+        aim=Aim.KILL,
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="Carmine strikes back, and you can't stop it: it kills you.",
+        result=StepResult.SUCCESS,
+        harm=Harm.DEAD,
+    )
+    resolution.steps[0].perils = [blow]
+
+    ending = ending_of(before, after, Intent(steps=[cut]), resolution, TurnKind.ACTION)
     assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
 
 

@@ -146,6 +146,53 @@ void main() {
       expect(opened.openingDue, isFalse);
     });
 
+    test('a story at its ending reads the heirs who can carry it on (N6)', () {
+      final story = Story.fromJson(const {
+        'id': 's',
+        'title': 'The Ninth Peak',
+        'version': 5,
+        'scenes': <Object>[],
+        'ending': {'kind': 'death', 'character': 'Shen Yu', 'turn': 5},
+        'heirs': [
+          {'id': 'xiao', 'name': 'Shen Xiao', 'relation': 'child', 'age': 4, 'years': 12},
+          {
+            'id': 'unborn:lan',
+            'name': "Lan's child, not yet born",
+            'relation': 'grandchild',
+            'age': null,
+            'unborn': true,
+            'years': 17,
+          },
+        ],
+        'successor': {
+          'name': 'Shen Xiao',
+          'age': 16,
+          'station': 'common',
+          'one_in': 1,
+          'lines': <Object>[],
+          'situation': 'Dawn.',
+          'heir': {'id': 'xiao', 'name': 'Shen Xiao', 'relation': 'child', 'age': 4, 'years': 12},
+        },
+      });
+      final [xiao, unborn] = story.heirs;
+      expect((xiao.id, xiao.name, xiao.relation, xiao.age), ('xiao', 'Shen Xiao', 'child', 4));
+      expect((xiao.unborn, xiao.years), (false, 12));
+      expect(
+        (unborn.relation, unborn.age, unborn.unborn, unborn.years),
+        ('grandchild', null, true, 17),
+      );
+      expect(story.successor!.heir?.id, 'xiao');
+      expect(story.copyWith(version: 6).heirs, hasLength(2));
+
+      final plain = Story.fromJson(const {
+        'id': 's',
+        'title': 't',
+        'version': 1,
+        'scenes': <Object>[],
+      });
+      expect(plain.heirs, isEmpty);
+    });
+
     test('a turn request carries its kind, mode and expected version', () {
       expect(const TurnInput.action('Go', inputMode: 'voice').toJson(7), {
         'kind': 'action',

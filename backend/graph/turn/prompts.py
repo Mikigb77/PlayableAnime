@@ -79,6 +79,20 @@ choice from the player (G15).
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
+- facts.foes_mean: in a fight, what those fighting the character are out to do to them, from who \
+they are and the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring \
+partner holding back, guards taking them alive, a master testing a student), or none when they \
+won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. Code \
+decides whether their blows land (N6). A step that tries to get away from a fight (a run, a \
+leap, a dive into the crowd) names the foes it gets away from in facts.opposition_ids, so code \
+can judge whether they catch the character.
+- facts.danger: what can hurt the character in this step however it goes, that no one in the \
+scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
+danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
+ruled_out when it can't), and danger_harm whether it kills or wounds. Judge it for an ordinary \
+person: code adjusts it for the character's body. A leap from a bridge to get away is a move \
+with a danger, not harm turned on themselves. Leave danger empty when nothing threatens them, and \
+for harm they turn on themselves, where the danger is the means.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
 filler (R7). gist: what to say when the player gives only the gist ("I threaten him").
 - A link that burns down or wrecks a place: its place_id and place_harm (damaged or ruined).
@@ -156,6 +170,12 @@ moment it goes wrong and show why, matching the step's reason. An action the wor
 plays as what it really is.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
+- struck under a step in OUTCOME is what struck back at the player character right after it: the \
+foes still fighting them, or a danger the step met, such as a long drop. Play each as its harm \
+says, no more and no less: none misses or can't hurt them, hurt and wounded are wounds they can \
+fight on with, subdued brings them down or takes them, badly_wounded and maimed are grave, maimed \
+leaving a wound that lasts, such as a lost hand or eye, dying is their life running out, and dead \
+kills them (N6). Foes act as they would, but never beyond what struck says.
 - When a step in OUTCOME lists its beats, play them in that order. made_canon is something the \
 place turned out to hold, so it is there now. empty is a search that comes up empty or a thing \
 that isn't there: play the reach for it, and the step stops at that beat (R2).
@@ -200,12 +220,94 @@ character's look changes for good, such as a lost eye, a scar or grey hair after
 changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
 disguise or anything else that passes, which is their condition. Never set a death, a cause, \
 rulings, gains or backstory: the engine records those.
+- family (N6): parent_ids names someone's parents when the scene shows or reveals it, such as a \
+child met with their mother. When a scene makes someone pregnant, set expecting on whoever \
+carries the child, with the other parent: the child is born when it is due, if they live, and \
+never if they die first. When a pregnancy ends without a birth, set expecting with ended. Only \
+adults have children. Never make up the player character's parents or children: those come from \
+their story, and family marked unknown_to_you is kin they haven't learned of yet. A newborn the \
+world brought keeps a placeholder name such as "Mira's child" until someone names them: give \
+their name then, under their id.
 - places, factions, facts, items and leads that this scene established or changed. Never mark a \
 place ruined or a faction destroyed: the engine does that.
 - scene_end: the exact moment this scene stops on, where, who is present and where they stand, \
 and the things in hand or in the scene that matter next.
 - summary: the whole story so far in at most 150 words.
 """
+
+# A reference to the brief's sections, after the rules (T5). It helps the narrator read the brief,
+# and it takes the system text and the brief's stable start (STYLE, CONTENT and WORLD) past Vertex
+# AI's minimum of 4,096 tokens for a prompt cache, which they fell short of on 2026-11-05 at about
+# 3,200 (`graph.llm.cache`). It explains; it adds no rule. A test checks it names every section
+# `narration_brief` writes.
+BRIEF_GUIDE = """\
+How the brief is laid out. The user message is a list of sections, each a "## NAME" line and then \
+its content, mostly JSON. They come in about this order. A section that doesn't apply this turn \
+is left out, and a list with nothing in it may be empty.
+- STYLE: the genre, the tone (with what the player asked for, if anything) and how long the scene \
+runs.
+- CONTENT: the rules for this story's rating and the player's content settings. They outrank \
+anything else in the brief.
+- WORLD: the world's bible. Its genre, era and tone; what is extraordinary in it; its peoples, \
+creatures and nature; how strict physics is (physics) and how power tiers compare with raw force \
+(force); its power ladders; its calendar; how people travel and whether news travels instantly \
+(travel); how wounds heal and whether the dead can come back (medicine); its laws, norms and \
+rules. It holds no hidden answers: what the world keeps secret is never in the brief.
+- PREMISE: on the opening only, the story the player asked for.
+- STORY SO FAR: chapters, each a summary of a stretch of turns; summary, the whole story so far \
+in brief; and recent_scenes, the last few scenes in full, each with the turn and the player's \
+action. Carry on from them; never retell them.
+- CONTINUITY: lines never to contradict: who is dead, which factions are destroyed, which places \
+are no longer thriving, and the key facts the player character knows. A fact the character only \
+believes says so: it is what they believe, not what is true.
+- GOALS AND THREADS: the player character's active goals, the open threads they know of with \
+their stakes, and the leads on offer.
+- PLAYER CHARACTER: the player character's record: who they are, how they look and their age, \
+where they are and what they are doing, the groups they belong to, their family by name, and \
+their sheet: attributes, skills, traits, powers and techniques with their costs, disposition, \
+resources, condition, and the ladders they climb. rulings and growth record what was settled \
+about their powers and how they grew; backstory is what was recorded of their past.
+- KNOWN: the people, places and factions the player character knows of who aren't in the scene, \
+with aliases, and a status when it isn't the usual one, such as dead or ruined. Use these names \
+as spelled.
+- LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
+- SCENE: the place; the people present with the player character, each without their secrets, \
+with toward_you and sometimes apparent_affinity; where everyone stands (positions); the things \
+that matter (props); and the fight, chase, duel of words or negotiation under way, if any \
+(encounter). A power someone keeps secret is left out until it is used.
+- FALLEN: earlier player characters of this story whom someone in the scene knew.
+- NOW: on an opening, the date and the hour.
+- ENDED: on the opening of someone new, how long ago the last player character's story ended.
+- TASK: what this scene must do when it isn't an ordinary turn. An opening's, or the opening of \
+someone new, comes here; a death's or an epilogue's comes last, after ENDING.
+- ACTION: what the player meant, read from their words: a summary, the steps in order with what \
+each aims at and any words to speak, theories about how their powers work, backstory claims, new \
+goals, what they respond to, and outcome claims, which are hopes.
+- OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
+odds when a roll decided it, costs, beats, chain (the links of cause and effect it weighed, each \
+with whether it holds), interrupted, met and struck. Then stopped_at_step, stop_reason and \
+unplayed when the plan stopped early, now_canon for what became true, rulings, and backstory with \
+whether each claim was recorded.
+- TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
+words and in world seconds, and your_seconds_lived when the player character lived through a \
+different span from the world.
+- FIRED: events in the world that came due while the scene played and that the player character \
+can notice. needs_you marks one that calls for them.
+- EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
+it needs a decision, and what follows from it.
+- HAPPENINGS: smaller events that came to pass in the time that went by, in the same form.
+- CALLBACKS: open threads to touch on.
+- SUGGESTIONS: how many suggestions to write and of which kinds, and the thread a thread \
+suggestion follows.
+- PICTURE: a picture comes with this scene: its kind, its subject and why.
+- ENDING: this scene ends the player character's story: how (kind), and the player's wish for it \
+or what the world left out of it. Its TASK follows.
+
+Ids: every person, place, faction, item, thread and lead has a stable snake_case id. Ids are for \
+update; the narration, the suggestions and the image prompt use names. Times are the world's \
+calendar dates and hours, as given; seconds are only for reckoning.
+"""
+NARRATOR_SYSTEM = f"{NARRATOR_SYSTEM}\n{BRIEF_GUIDE}"
 
 OPENING_TASK = """\
 Write the opening scene. Introduce the player character where the story starts, establish the \
@@ -219,8 +321,12 @@ Write the opening scene of someone new: the story carries on in the same world a
 player character's ending (N6), and the player now plays the PLAYER CHARACTER. Introduce them in \
 their own life, where LAST MOMENT puts them, establish who they are through what they see and do, \
 and end on something to act on. They are not the one before and carry none of their goals: STORY \
-SO FAR is what happened before them, which they know only as anyone in the world would. Play no \
-action for the character beyond small natural movement.\
+SO FAR is what happened before them, which they know only as anyone in the world would. When \
+their family names the one before as a parent or grandparent, they are that person's heir and \
+know them as family does. When ENDED says the last story ended long ago, the world has moved on \
+that long: show the years in the place and the people as STORY SO FAR and CONTINUITY allow, and \
+invent no great events of those years. Play no action for the character beyond small natural \
+movement.\
 """
 
 DEATH_TASK = """\

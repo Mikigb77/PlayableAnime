@@ -1,12 +1,12 @@
 """Drawing pictures in live mode the way the picture endpoint does (M1, M5, M6, S7, T18).
 
-The prompt builder, reference portraits and picture model are the product's own
-(`media.prompts`, `media.drawing`), so a picture eval judges what a player would see. The briefs
-are built from the story's state as `stories.turns.brief` and `media.plans.brief_for_scene` build
-them; those need Django, so the few lines are repeated here and a test keeps them alike. A
-portrait the eval asks for outside the director's plan is described as "Portrait of <name>.".
-Only the storage is left out: the eval keeps the bytes and writes them next to its results for
-staff to spot-check.
+The prompt builder, the choice of who is in a picture, reference portraits and picture model are
+the product's own (`media.prompts`, `media.briefs`, `media.drawing`), so a picture eval judges what
+a player would see. The briefs are put together from the story's state as `stories.turns.brief`
+and `media.plans.brief_for_scene` do; those need Django, so the few lines are repeated here and a
+test keeps them alike. A portrait the eval asks for outside the director's plan is described as
+"Portrait of <name>.". Only the storage is left out: the eval keeps the bytes and writes them next
+to its results for staff to spot-check.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from engine.state.world import WorldState
+from media import briefs
 from media.drawing import DrawError, DrawRequest, PictureModel, Reference
 from media.prompts import MAX_FIGURES, MAX_REFERENCES, Brief, Figure, WorldLook, build_prompt
 
@@ -60,25 +61,14 @@ def look(state: WorldState, premise: str = "") -> WorldLook:
 
 def known_cast(state: WorldState) -> list[str]:
     """The living characters in the scene the player knows, as the turn endpoint lists them."""
-    player_id = state.player_id
-    ids = []
-    for character_id in dict.fromkeys(state.scene.present_ids):
-        character = state.characters.get(character_id)
-        if character is None or character_id == player_id or not character.alive:
-            continue
-        if player_id in character.known_by or player_id in character.met_by:
-            ids.append(character_id)
-    return ids
+    return [character.id for character in briefs.known_cast(state)]
 
 
 def figures(state: WorldState, ids: Sequence[str] = ()) -> tuple[Figure, ...]:
     """The player and the named people (or the scene's known cast), with their appearances."""
     people = [state.player_id, *(ids or known_cast(state))]
     chosen = [state.characters[i] for i in dict.fromkeys(people) if i in state.characters]
-    return tuple(
-        Figure(id=c.id, name=c.name, appearance=c.appearance or c.description)
-        for c in chosen[:MAX_FIGURES]
-    )
+    return tuple(briefs.figure(c) for c in chosen[:MAX_FIGURES])
 
 
 def scene_brief(
@@ -87,14 +77,23 @@ def scene_brief(
     *,
     premise: str = "",
     people: Sequence[str] = (),
+    subject_id: str | None = None,
 ) -> Brief:
     """A scene picture, from the narrator's image prompt as written, or `ending()` of the
-    scene's narration when it wrote none (as `stories.turns.brief` and
-    `media.plans.brief_for_scene` build theirs)."""
+    scene's narration when it wrote none, as `stories.turns.brief` builds it: the people the
+    description names, the subject first (`media.briefs`), unless the eval names the `people`,
+    who "you" is, and the time of day."""
+    chosen = (
+        figures(state, people)
+        if people
+        else briefs.scene_figures(state, description, subject_id=subject_id)
+    )
     return Brief(
         description=description,
         look=look(state, premise),
-        figures=figures(state, people),
+        figures=chosen,
+        you=state.player.name,
+        time=briefs.time_of_day(state.bible.calendar, state.world_s),
     )
 
 
@@ -117,13 +116,16 @@ async def draw(
 ) -> Picture | NotDrawn:
     """One picture, with up to `MAX_REFERENCES` reference portraits as the endpoint sends (M5)."""
     chosen = list(references)[:MAX_REFERENCES]
-    prompt = build_prompt(kind, brief, references=[label for label, _ in chosen])
+    prompt = build_prompt(kind, brief, references=[name for name, _ in chosen])
     request = DrawRequest(
         kind=kind,
         system=prompt.system,
         prompt=prompt.user,
         aspect_ratio=prompt.aspect_ratio,
-        references=tuple(Reference(label, p.data, p.mime_type) for label, p in chosen),
+        references=tuple(
+            Reference(name, p.data, p.mime_type, label)
+            for (name, p), label in zip(chosen, prompt.labels, strict=True)
+        ),
     )
     try:
         drawn = await model.draw(request)

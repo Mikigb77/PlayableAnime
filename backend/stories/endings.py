@@ -2,9 +2,9 @@
 
 A story reaches an ending when the player character dies, or when the player ends it with `/end`
 and its epilogue is told. From then on it takes no more turns (`story_ended`). The player then
-closes it, starts again from the same premise, or (later) carries on as someone else in the same
-world. A story saved before endings were recorded, whose player character is already dead, is at
-a death ending too.
+closes it, starts again from the same premise, carries on as someone else in the same world, or,
+after a death not by their own hand, rewinds a few scenes (C8, `stories.rewind`). A story saved
+before endings were recorded, whose player character is already dead, is at a death ending too.
 """
 
 from __future__ import annotations
@@ -32,10 +32,13 @@ class EndingOut(BaseModel):
     turn: int | None = None
     # The player closed the story: it stays in the Library to read, and nothing more happens.
     closed: bool = False
+    # C8: how many scenes back the player can rewind from here (`stories.rewind`), settled when
+    # the ending came. 0 for none, and once the story is closed.
+    rewind: int = 0
 
 
-def record(ending: Ending, state: WorldState, turn: int) -> dict[str, Any]:
-    """The ending a turn reached, as saved on the story row."""
+def record(ending: Ending, state: WorldState, turn: int, *, rewind: int = 0) -> dict[str, Any]:
+    """The ending a turn reached, as saved on the story row, with how far it can be rewound."""
     character = state.characters.get(ending.character_id)
     return EndingOut(
         kind=ending.kind,
@@ -43,6 +46,7 @@ def record(ending: Ending, state: WorldState, turn: int) -> dict[str, Any]:
         character=character.name if character else "",
         self_inflicted=ending.self_inflicted,
         turn=turn,
+        rewind=rewind,
     ).model_dump(mode="json")
 
 

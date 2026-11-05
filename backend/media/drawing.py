@@ -15,11 +15,13 @@ from typing import Any, Protocol
 
 @dataclass(frozen=True, repr=False)
 class Reference:
-    """An image sent with the prompt, such as a known character's portrait (M5)."""
+    """An image sent with the prompt, such as a known character's portrait (M5). Its `label`
+    goes just before it, saying whose it is (`media.prompts.PicturePrompt.labels`)."""
 
     name: str
     data: bytes
     mime_type: str = "image/png"
+    label: str = ""
 
     def __repr__(self) -> str:
         return f"Reference(name={self.name!r}, bytes={len(self.data)})"
@@ -103,7 +105,7 @@ class GraphPictureModel:
         prompt = Prompt.build(
             request.system,
             request.prompt,
-            images=[ImagePart(ref.data, ref.mime_type) for ref in request.references],
+            images=[ImagePart(ref.data, ref.mime_type, ref.label) for ref in request.references],
         )
         before = len(self.telemetry.calls)
         try:

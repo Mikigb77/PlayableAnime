@@ -511,7 +511,7 @@ and what the world has in the way, so being powerful matters but doesn't mean wi
 | A2 | **Logic first, dice only for real doubt** (Miki, 2026-11-03). Every turn first works out from the facts whether each step of the action (R2) can work for the character as they stand: the world's rules (G6), the sheet (G13), what stands in the way, whether it can respond at all, where everyone is and how much time there is. It follows the world's own logic through to every consequence, whatever that logic is: if the world says a rock thrown in stopped time lands with overwhelming force, the troll dies, the wall behind it breaks and the blast is heard (W10a). The same reasoning holds in every genre and for every means, from a bazooka to a force field (A9). The interpret step proposes the facts and code decides the class (B5). **Certain:** the facts settle that it works, so it happens with no roll. That covers opening an unlocked door, and it covers cutting down a troll frozen by time stop, because a target that can't dodge, block or react is no contest when the blow can hurt it. **Contested:** someone or something can still push back, so a roll decides (A3), and the step can fail, partly succeed or cost something. **Long shot:** the same, with small but real odds, so a clever or desperate plan can work, and a clever approach shifts the odds within bounds. A plan that goes around the opponent's strength instead of meeting it is judged on its own facts, link by link (A9). **Ruled out:** the facts settle that it can't work, so it fails with no roll, either because the world forbids it (a fireball in a grounded world plays as what it really is, G8) or because the situation does (a kitchen knife against an ancient dragon's scales). When nothing can push back, the only question is whether the character's means are enough (A8): clearly enough is certain, clearly not is ruled out, and only a genuinely close call is rolled, and then only between outcomes the facts allow (the blade bites deep or kills, but never bounces off harmlessly). No roll, difficulty (A5) or narrator can overturn a certain or ruled-out step. The class and the facts behind it are recorded on the scene, so the player can see why (A8). | P0 |
 | A3 | Outcomes are decided by the engine, not by the narrator's mood. A step the facts settle needs no roll (A2). Every other step gets a seeded roll weighted by the character's relevant power against the opposition's strength, recorded on the scene with its seed. The narrator writes the result it is given. This covers social, stealth and investigation actions as well as fights: persuading, lying, seducing or intimidating someone rolls against that character's attitude (W4) and traits. Decided in WS21: a threat rests on what the one making it can do. When their might, as the world can know it (a power it knows of, hidden strength as it shows), is above their standing, the threat is measured on that might against the target's own might or standing, whichever is higher, so a known light-speed thrower's threat lands on a king, and a target as strong as the threat isn't cowed (W5). | P1 |
 | A4 | **Growth is open-ended, and every gain needs a believable reason.** There is no fixed skill tree. Any growth path is allowed if the story can explain it: training, a teacher, watching a master, a stolen technique, a near-death breakthrough, a bloodline awakening, a forbidden ritual, a lucky find, each only where the world allows it (G6). In a grounded world, growth stops at what a real person could do. In a world with a power ladder, climbing a rung is a breakthrough (G19). Time skips are allowed ("I train here for a year"), and the clock (W10) and the world tick (W6) run for that time. The engine judges each gain from four inputs. **Traits** come first and can rewrite the usual rules: a genius can invent a new technique training alone, and a copycat eye can learn a move after seeing it once. **Effort and time** spent. **What they had to learn from:** a master, a book, a rival, their own experiments. **The world's power rules:** what the world bible says is possible, and its ceilings. A ceiling can only be broken by a recorded discovery (a forbidden art, a new law of magic) that changes the world bible for everyone. The same year alone makes an ordinary character a little sharper and a genius dangerous. Each gain is recorded on the sheet with its turn, source and reason, and getting caught learning (spying on a dojo) is a deed (W1). Time skips follow E7. Decided in WS9b: effort counts in full for the first 12 hours of a stretch and a third after that; a master, a rival or someone to watch counts only as a living character beside the learner, and a copycat learns a move at once only from someone who knows it. A stretch cut short by an event (E7) keeps the effort put in until then, so training adds up across interruptions. The rough figures are in `engine/resolve/powers/growth.py`. | P1 |
-| A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. | P1 |
+| A5 | A per-story difficulty: Story (actions mostly succeed), Balanced and Brutal. It changes the odds of rolled steps (A3), never a certain or ruled-out one (A2), and never what the world remembers. Rolls against the player character, such as a foe's blow or a fall (N6), move the other way: foes land less on Story and more on Brutal. It also sets how far back a death others caused can be rewound: 5 scenes on Story, 1 on Balanced, none on Brutal (C8, N6). | P1 |
 | A6 | The player can't write other characters' reactions or outcomes. "I kill him and everyone cheers" plays as an attempt to kill him, and the narrator decides how people react. | P0 |
 
 The docs already note this problem: in a test, Gemini let a "kill this character" action fail with no
@@ -1038,12 +1038,38 @@ premise's clocks keep running without them, and the story follows the player. Th
 doesn't lock the genre, so a samurai drama can turn into a merchant story, but the world's fixed
 rules still hold (G7, G11).
 
-**N6 Endings, death and legacy (P1).** The player character can die. A death the player chooses,
-such as a knife to their own heart or a leap from the battlements, is always real (F1). Difficulty
-only softens deaths that others cause: on Story such a fatal outcome becomes a defeat instead
-(captured, maimed, or rescued at a price), and on Balanced and Brutal it kills. Until the world can
-kill the player character in a fight or a disaster, a fatal outcome that others cause is a defeat on
-every difficulty.
+**N6 Endings, death and legacy (P1).** The player character can die, on every difficulty (Miki,
+2026-11-05). A death the player chooses, such as a knife to their own heart or a leap from the
+battlements, is always real (F1). Others and the world can kill them too. In a fight, the foes still
+in it strike back after each step the player character takes, and a step that meets a danger no one
+in the scene embodies, such as the drop from a bridge or a burning roof, meets it. Code settles both
+like any step, logic first (A2): a foe far stronger lands a blow the character can't stop, and so
+does anyone against a character who is bound, asleep or dying; one far weaker can't get through; a
+body far above a person's peak takes a fall that would kill a person. Only what lies between is
+rolled, and the difficulty works for the player there too (A5). The character's own step moves those
+odds: a blow that missed leaves them open, and a clean one keeps them on top. What the foes are out
+to do is the interpret step's to propose from who they are: a killer kills, a sparring partner holds
+back and only brings the character down, guards take them alive, and foes who won't fight back don't.
+
+Wounds come in grades. A killing blow the character couldn't stop kills them: cut in half,
+beheaded, unless a power answers it first. One that lands in a fight that was open kills outright on
+a roll, and otherwise leaves them badly wounded, or maimed with a wound that lasts, such as a lost
+hand or eye. Lesser blows wound or hurt, and harm builds up: a blow no worse than what they already
+carry makes it a step worse, and anything harmful on top of dying kills. A blow that lands stops a
+chained plan there, so the player reacts (R6), and a step that gets cleanly away from the foes it
+faced, such as a run or a leap from the bridge, leaves them behind and ends the fight (W10). Each
+foe's blow is their deed against the player character (W1), and the scene details show what struck
+back, how it was settled and what it did (A8).
+
+A death others or the world caused can be rewound (C8, Miki 2026-11-05): up to 5 scenes on Story, 1
+on Balanced and none on Brutal, by the difficulty the fatal scene was played on, so changing it
+afterwards changes nothing. A death the player chose is always real, and so is an ending told with
+`/end`. A rewind sits outside the fiction: the world goes back to exactly how it was when the scene
+it goes back to ended, nobody in the story remembers, and the scenes after it are gone from the
+story, with nothing they cost refunded. The dice for a moment stay the same (A3), so doing exactly
+the same thing again goes the same way: a rewind is a chance to play it differently, not a reroll.
+The ending card offers it, and asks how many scenes back. A rewind never reaches back past someone
+new carrying the story on, nor into a story the player closed.
 
 The story never ends on its own (S4), and endless play stays the default, but the player can end it
 with `/end` and an optional note on how it ends. The world checks the note like any action: what it
@@ -1057,8 +1083,9 @@ action, not an ending.
 A death or an epilogue is the story's ending, told on its last scene with nothing more to act on. A
 death by the character's own hand is told as F1 says. From then on the
 story takes no more turns (`story_ended`), and the player carries it on as someone else in the same
-world, closes it, which keeps it in the Library to read, or starts again from the same premise, which
-opens the create flow with the premise filled in. After a death by the character's own hand, one
+world, closes it, which keeps it in the Library to read, starts again from the same premise, which
+opens the create flow with the premise filled in, or, after a death they didn't choose, rewinds as
+far as the difficulty allows. After a death by the character's own hand, one
 quiet line says where to find support, with no lecture.
 
 Carrying on as someone else (Miki, 2026-11-05) draws a random person of the world by its population
@@ -1077,10 +1104,43 @@ and reputation were theirs alone, so the newcomer starts with none, and nobody i
 them yet, though they know the place they live in (C6). People who knew the fallen remember them naturally, when it fits, never forced:
 the narrator is told who in the scene knew them and whether they know how it ended.
 
-Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
-unborn child counts only if the mother lives, which logic decides first and a roll only when the
-facts leave it open; playing as that child starts after a time jump to when they can act. Rewinding
-comes with C8.
+The world keeps families so that heirs can carry a story on. Each character records their parents,
+as far as the story has them: the drafter links the key characters it drafts, the player character
+included (a parentage the player character doesn't know of stays a secret), and the narrator
+records a parentage a scene shows or reveals. The player character's own parents and children are
+never the narrator's to make up: they are drafted, claimed by the player (N4) or born in play.
+Nobody has more than two parents or descends from themselves, and a parent and child are family to
+the world, so word of a death reaches them and they may avenge it (W4), once they are old enough to
+act on it. When a scene makes someone pregnant, the narrator says so, and says when a pregnancy ends
+without a birth; only adults have children (F3), and nobody carries two at once. The child is born a
+gestation later (270 days, the same for every people for now) if the one who carries them is alive
+then, and never if they die first (W10); a presumed death holds the birth until they come back
+(C1). A newborn starts with a placeholder name, such as "Mira's child", until the story names them,
+and only the parents who are there meet them; a birth to the player character, or with them there as
+the other parent, stops the clock for them. Memory shows the player character's parents, children
+and grandchildren as such, and `/status` a child on the way.
+
+The player can also carry the story on as an heir (Miki, 2026-11-05): a living child, grandchild or
+later descendant of the player character whose story ended, or a child of theirs, or of one of
+their descendants, still on the way. An unborn child counts only if the one who carries them lives,
+and logic decides that first: alive and well, they are an heir, and dead, never. Only a carrier who
+is dying leaves it open, and a seeded roll settles it once per ending, so asking again gives the
+same answer, and the world keeps to it: a child the roll lost is never born. When there are heirs, the carry-on screen offers them first, children before
+grandchildren and a child on the way last, with someone drawn from the world as the other choice.
+Picking an heir is one drafting call, charged like a draft (K2), and the player can go back to the
+choice. An heir under 16 is played from their sixteenth birthday, and a child on the way from the
+sixteenth birthday after they are born. The world runs on to that day first, as a time skip does
+(E7): every pending event and the world's own processes apply on the way, the child is born when
+due, and everyone alive grows older by the years that went by. Nothing is told of those years but
+what the world recorded, and the narrator is told how long ago the last story ended. If the heir
+doesn't live to that day, the player is told so and chooses again, with nothing charged. An heir grown up off-screen is drafted as an
+ordinary person of their parents' standing, held to what a person can do (G12); one the story has
+already shown keeps who they are, and the drafter fills in only what is missing. Either way the
+heir keeps their family, place, ties, belongings, powers, traits, lasting wounds and a name the
+story gave them, and a placeholder name such as "Mira's child" is replaced. They know their family:
+their parents, children, brothers and sisters know of them, and the living ones have met them; they
+know of their grandparents, and how the fallen died. The fallen is remembered as of their
+ending, years before.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has
 decided stay open until the narrator first describes them. From then on the engine records them as
@@ -1113,7 +1173,7 @@ the story does. Today's engine already covers C1 and part of C2.
 | C5 | **Continuity check, in two parts.** Before narration, code checks the plan (the resolved action and the director's pick) against the invariants, since narration streams to the player as it is written (S3). After narration, a cheap model compares the finished scene with the invariants and with what the characters present know, and any slip is repaired in the next scene. The check blocks contradictions, not novelty: a character may act against type when an agenda or event explains it. | P1 |
 | C6 | **Player-visible memory shows only what the character knows** (decided by Miki 2026-11-03): their own deeds, people and places they have met, goals, and rumors they have heard, marked unconfirmed. Hidden world state (whether a rumor is true from W13, NPC trust from W4, faction plans from W6) stays off screen, except in a spoiler view after an arc ends. Facts carry a truth value and a list of who knows them, so the screen can filter by the player character's knowledge. Decided in the WS21 follow-up: the screen tells the character's deeds in the world's words (G16) by what they know: "You killed Zhao Kun at the well", someone they never learned the name of as "someone", and a death only where they know of it. | P0 |
 | C7 | **Editable memory, in two modes.** In **Canon** stories the player can pin, annotate and correct the narrator's misreadings of what their character knows, but never hidden state or world truth, so the editor can't undo consequences that A7 forbids through text. In **Sandbox** stories the player can edit anything, each edit is logged as a retcon, and the story is marked as Sandbox. All edits are logged so that support can explain odd behavior later. | P1 |
-| C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. The same versions back in-fiction world rewinds (W10a), which are different: the character remembers them. | P1 |
+| C8 | **Undo and branching:** undo the last turn, or branch a save from any past turn. World state is versioned per turn so this is cheap. The same versions back in-fiction world rewinds (W10a), which are different: the character remembers them. Done so far: each turn keeps the world state it left, as far back as a rewind reaches, and a death others or the world caused can be rewound up to 5 scenes on Story, 1 on Balanced and none on Brutal (N6). Undo during play and branching are still to come. | P1 |
 | C9 | **Character consistency:** personality, speech style and appearance per character, kept in their entry and reused for portraits. Personality can change, but only through a recorded cause such as trauma, love or betrayal (C1), and the player's own temperament follows G15. | P1 |
 
 ## Story, play and app features
@@ -1184,7 +1244,7 @@ drawn once for everyone, about $0.37 for all eleven (M1, M7).
 | M2 | **A budget per story.** Automatic key-scene pictures stay within a budget that starts at about one per ten turns on average. Turns are the right unit here because this is about cost, not world time (W10). On top of that, the player can tap **Illustrate** on any scene and pay for it in credits, even with automatic pictures off. A per-story setting (S6) picks off, key moments only (the default), or more often. A fight with a key NPC or a strong monster always gets both its pictures, borrowing against the coming turns, so the average still holds. Drawing a changed place or face again (M1, M5) spends the same budget, and waits for it while the place or the person is still in the scene. | P1 |
 | M3 | **Pictures never slow the story.** The narration streams first (S3), and the picture fills its place in the scene when it is ready, usually a few seconds later. The app asks for it in its own request when the scene says one is planned, because nothing may run after a response ends on Cloud Run (B8). The request is safe to repeat, so the app asks again if a picture never arrived, and it is never paid for twice. A picture that fails or is blocked is skipped quietly, never shown as an error, and the scene is complete without it. Asking again doesn't retry a skipped picture, so a failure never costs twice. Illustrate (M2) tries it again, and a portrait or place that failed or wasn't affordable is also tried again the next time it comes up; a blocked one only through Illustrate. | P1 |
 | M4 | **Made once, reused.** Pictures are stored in Cloud Storage in Frankfurt, keyed by character, place or scene. A portrait is reused wherever that character appears, and a place's picture whenever the player returns. Each is keyed by its look version too, so when a place or a face changes for good it is drawn once more and that picture is reused from then on. Earlier pictures stay with the scenes that showed them. Pictures are exported with the stories, every version included, and deleted with the account (T12). | P1 |
-| M5 | **The same face every time.** Every picture uses the app's house style (S7) and the world's era and look. A scene with a known character passes that character's portrait to the model as a reference image, along with the appearance kept in their entry (C9). When a character changes for good (a lost eye, old age, G17), the portrait is redrawn once, from the earlier portrait, and the new one is the reference from then on. The narrator or the engine states the lasting change (what changed, with the appearance written again), and code decides: the kept appearance is made to show it and the look moves on once. An appearance written again without one, in the same words or others, never redraws a portrait, and a passing state such as mud or blood is their condition, not their appearance. A scene that changes the look it pictures draws the new look. | P1 |
+| M5 | **The same face every time, and the moment as told.** Every picture uses the app's house style (S7) and the world's era and look, and a scene picture is lit for the time of day on the story's clock (W10). The story's premise goes only into its cover, since it tells how the story began, not the scene a picture shows. A scene picture shows the people its image prompt names, not everyone who is there (Miki, 2026-11-05): the picture's subject first, whoever the moment is about (the one who dies, the foe of a fight, the doer of a deed), even one who just died or whom the player hasn't met; then the player character when the prompt says "you" or names them, or names no one else. A prompt that names no one shows the subject, the player character and the people the player knows there. Each person's portrait goes to the model as a reference image, labelled with whose it is and used only for the face, hair and build, never the portrait's pose, framing or background, along with the appearance kept in their entry (C9). A portrait takes only its expression from the scene it is drawn in, since it is the reference for every later picture. A scene the player illustrates (M2) is drawn the same way, from the people its text names, their portraits, who "you" is and the time, with the looks they have now. When a character changes for good (a lost eye, old age, G17), the portrait is redrawn once, from the earlier portrait, and the new one is the reference from then on. The narrator or the engine states the lasting change (what changed, with the appearance written again), and code decides: the kept appearance is made to show it and the look moves on once. An appearance written again without one, in the same words or others, never redraws a portrait, and a passing state such as mud or blood is their condition, not their appearance. A scene that changes the look it pictures draws the new look. | P1 |
 | M6 | **Pictures stay mild in every rating.** No nudity or sexual content, and violence with no more than mild gore, even in Mature stories: the text carries the graphic detail and the image prompt never does. F3 applies in full: no minor in any romantic or suggestive picture, and no real person (G12). Store screenshots stay 4+. | P1 |
 | M7 | **Billing.** Each picture is a ledger entry at its real cost plus margin (K2), logged with its model and cost (T5). The owner pays nothing (K7). A picture never takes a balance below zero: without credits a planned picture is skipped, and the turn goes on, while Illustrate (M2), which the player asked for, tells them they are out of credits and offers their own key. A Gemini API key on the free tier can't make pictures, so a BYOK player's pictures use their key if it is on a paid tier, then credits if they have any, and otherwise there are none. The starter premises' covers are the house's: each is logged with its model and cost (T5), and no player's ledger is charged. So are a new player's first pictures, in their first story, while the house allowance lasts (K1, Miki 2026-11-04): each is logged with its model and cost (T5) and written to the ledger at no charge, keeping what it would have cost, like the owner's. A first picture the allowance no longer covers is the player's, like any other. | P1 |
 | M8 | **The model is a config setting** (B6). The default is the cheapest Gemini image model that passes T18's picture evals, at 1K, which fits a phone screen. Today that means Gemini 3.1 Flash-Lite Image or Nano Banana 2.1, about $0.034 a picture. Batch pricing is half that but can take hours, so it suits only work that can wait. | P1 |
@@ -1225,6 +1285,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | --- | --- | --- |
 | Quiet life | 30 turns of farming with a spouse and no ambitions, on calm and on normal | Events with stakes arrive at least as often as W16's threshold, stay farm-sized, and calm returns after each one |
 | Long fight | A 30-turn fight with a mage | Only a few in-world minutes pass, no unrelated W16 event interrupts, and the world off-screen barely moves (W10) |
+| Mortal fight | The player attacks an elder three realms up, then spars with him as their master; on a rope bridge, three thugs of the player's strength close in, and the player cuts at two of them, or leaps into the river far below, over many seeds | The elder cuts the player down on every seed with no roll, and sparring he only brings them down. On the bridge the player can kill a thug and be cut, die, or leap and get away, and the fall can kill. A blow that lands stops the plan there, and every blow and fall is told as the engine settled it (N6, A2, A5) |
 | Fleeing witness | Kill someone, let a witness flee, then spend 10 short turns (about 3 in-world minutes) brewing a potion | No guards arrive until the report could really have been made and they could have travelled (W10) |
 | Interrupted sleep | After the fleeing-witness run, the player sleeps for 8 hours | The engine plays the night in time order, and the guards wake the player at the moment they arrive |
 | A day in town | From the farm at dawn, the player walks into the village, eats at the inn, then stays there until nightfall | Each action moves the clock by what it really takes, the wait ends at nightfall on the clock, and every scene's light and time of day match the clock (W10) |
@@ -1361,7 +1422,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as an heir is next (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real, and so are deaths others cause, on every difficulty, with a rewind of up to 5 scenes on Story, 1 on Balanced and none on Brutal | Done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world or one of the player character's heirs, closes, or starts again from. The world records families and has children born, and a child too young to act is played after a time jump to their sixteenth birthday. Foes and dangers can kill or maim the player character, logic first and the dice only between (N6), and such a death can be rewound up to 5 scenes on Story, 1 on Balanced and none on Brutal (C8). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

@@ -182,6 +182,41 @@ class SceneBeat {
   final SceneRoll? roll;
 }
 
+/// What struck back at the character right after a step (N6): the foes still fighting them, or a
+/// danger the step met, such as a long drop, settled like a step, by the facts or by a roll.
+class SceneStruck {
+  const SceneStruck({
+    required this.by,
+    required this.outcomeClass,
+    this.harm = 'none',
+    this.reason = '',
+    this.roll,
+  });
+
+  factory SceneStruck.fromJson(Json json) => SceneStruck(
+    by: json['by'] as String? ?? '',
+    outcomeClass: OutcomeClass.fromWire(json['class'] as String?),
+    harm: json['harm'] as String? ?? 'none',
+    reason: json['reason'] as String? ?? '',
+    roll: _roll(json['roll']),
+  );
+
+  /// Who or what struck, such as "the grey mage" or "the long drop to the river".
+  final String by;
+  final OutcomeClass outcomeClass;
+
+  /// What it did: `none`, `hurt`, `wounded`, `subdued`, `badly_wounded`, `maimed`, `dying` or
+  /// `dead`.
+  final String harm;
+  final String reason;
+  final SceneRoll? roll;
+
+  bool get harmed => harm != 'none';
+
+  /// A wound that puts the character's life or body at stake.
+  bool get grave => const {'badly_wounded', 'maimed', 'dying', 'dead'}.contains(harm);
+}
+
 /// One step of the player's action, as the engine settled it (A2, A8).
 class SceneStep {
   const SceneStep({
@@ -190,6 +225,7 @@ class SceneStep {
     this.reason = '',
     this.roll,
     this.beats = const [],
+    this.struck = const [],
   });
 
   factory SceneStep.fromJson(Json json) => SceneStep(
@@ -198,6 +234,7 @@ class SceneStep {
     reason: json['reason'] as String? ?? '',
     roll: _roll(json['roll']),
     beats: _list(json['beats'], SceneBeat.fromJson),
+    struck: _list(json['struck'], SceneStruck.fromJson),
   );
 
   final String text;
@@ -209,6 +246,9 @@ class SceneStep {
 
   /// The beats worth explaining (R2), when the engine sent any.
   final List<SceneBeat> beats;
+
+  /// What struck back at the character after it (N6), in order.
+  final List<SceneStruck> struck;
 }
 
 /// One link of a cause-and-effect chain (A9).
@@ -468,6 +508,7 @@ class StoryEnding {
     this.selfInflicted = false,
     this.turn,
     this.closed = false,
+    this.rewind = 0,
   });
 
   factory StoryEnding.fromJson(Json json) => StoryEnding(
@@ -477,6 +518,7 @@ class StoryEnding {
     selfInflicted: json['self_inflicted'] as bool? ?? false,
     turn: (json['turn'] as num?)?.toInt(),
     closed: json['closed'] as bool? ?? false,
+    rewind: (json['rewind'] as num?)?.toInt() ?? 0,
   );
 
   static StoryEnding? maybe(Object? json) => json is Json ? StoryEnding.fromJson(json) : null;
@@ -497,7 +539,14 @@ class StoryEnding {
   /// The player closed the story; it stays in the Library to read.
   final bool closed;
 
+  /// How many scenes back the player can rewind (C8): a death not by the character's own hand,
+  /// up to 5 scenes on Story, 1 on Balanced and none on Brutal. 0 once closed.
+  final int rewind;
+
   bool get isDeath => kind == 'death';
+
+  /// The ending can be taken back a few scenes (C8).
+  bool get canRewind => !closed && rewind > 0;
 
   @override
   bool operator ==(Object other) =>
@@ -507,14 +556,54 @@ class StoryEnding {
       other.character == character &&
       other.selfInflicted == selfInflicted &&
       other.turn == turn &&
-      other.closed == closed;
+      other.closed == closed &&
+      other.rewind == rewind;
 
   @override
-  int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
+  int get hashCode =>
+      Object.hash(kind, characterId, character, selfInflicted, turn, closed, rewind);
+}
+
+/// Someone of the player character's family who can carry the story on after its ending (N6):
+/// a child or grandchild, or a child not born yet.
+class Heir {
+  const Heir({
+    required this.id,
+    required this.name,
+    this.relation = 'child',
+    this.age,
+    this.unborn = false,
+    this.years = 0,
+  });
+
+  factory Heir.fromJson(Json json) => Heir(
+    id: json['id'] as String,
+    name: json['name'] as String? ?? '',
+    relation: json['relation'] as String? ?? 'child',
+    age: (json['age'] as num?)?.toInt(),
+    unborn: json['unborn'] as bool? ?? false,
+    years: (json['years'] as num? ?? 0).toInt(),
+  );
+
+  static Heir? maybe(Object? json) => json is Json ? Heir.fromJson(json) : null;
+
+  final String id;
+  final String name;
+
+  /// child, grandchild or great-grandchild of the player character whose story ended.
+  final String relation;
+
+  /// Their age now; null for a child not born yet.
+  final int? age;
+  final bool unborn;
+
+  /// The years the story skips before they can act: until they are 16, or born and 16.
+  final int years;
 }
 
 /// Someone drawn to carry a story on after its ending (N6, docs/API.md `Successor`): a random
-/// person of the world, by its population odds. The player starts as them or draws again.
+/// person of the world, by its population odds, or one of the player character's heirs. The
+/// player starts as them or chooses someone else.
 class Successor {
   const Successor({
     required this.name,
@@ -527,6 +616,7 @@ class Successor {
     this.lines = const [],
     this.situation = '',
     this.draws = 1,
+    this.heir,
   });
 
   factory Successor.fromJson(Json json) => Successor(
@@ -540,6 +630,7 @@ class Successor {
     lines: _strings(json['lines']),
     situation: json['situation'] as String? ?? '',
     draws: (json['draws'] as num? ?? 1).toInt(),
+    heir: Heir.maybe(json['heir']),
   );
 
   static Successor? maybe(Object? json) => json is Json ? Successor.fromJson(json) : null;
@@ -568,6 +659,9 @@ class Successor {
 
   /// How many people have been drawn for this ending so far.
   final int draws;
+
+  /// The player character's heir, rather than someone drawn at random.
+  final Heir? heir;
 }
 
 class Story {
@@ -584,6 +678,7 @@ class Story {
     this.settings = const StorySettings(),
     this.ending,
     this.successor,
+    this.heirs = const [],
     this.openingDue = false,
   });
 
@@ -600,6 +695,7 @@ class Story {
     settings: StorySettings.fromJson(json['settings'] as Json?),
     ending: StoryEnding.maybe(json['ending']),
     successor: Successor.maybe(json['successor']),
+    heirs: _list(json['heirs'], Heir.fromJson),
     openingDue: json['opening_due'] as bool? ?? false,
   );
 
@@ -629,6 +725,9 @@ class Story {
   /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
   final Successor? successor;
 
+  /// Who of the player character's family can carry the story on from its ending (N6).
+  final List<Heir> heirs;
+
   /// Someone new carries the story on, and their first scene is still to be told: the next turn
   /// is their opening (N6).
   final bool openingDue;
@@ -654,6 +753,7 @@ class Story {
     settings: settings ?? this.settings,
     ending: ending ?? this.ending,
     successor: successor,
+    heirs: heirs,
     openingDue: openingDue ?? this.openingDue,
   );
 

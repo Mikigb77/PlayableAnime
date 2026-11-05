@@ -24,7 +24,7 @@ import asyncio
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -415,7 +415,9 @@ async def _draw_request(story: Story, image: Image) -> DrawRequest:
         system=prompt.system,
         prompt=prompt.user,
         aspect_ratio=prompt.aspect_ratio,
-        references=tuple(references),
+        references=tuple(
+            replace(ref, label=label) for ref, label in zip(references, prompt.labels, strict=True)
+        ),
     )
 
 

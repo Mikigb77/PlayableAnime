@@ -327,16 +327,18 @@ def to_messages(prompt: Prompt) -> list[BaseMessage]:
             messages.append(AIMessage(message.text))
         elif index == last and prompt.images:
             content: list[str | dict[str, Any]] = [{"type": "text", "text": message.text}]
-            content += [
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{image.mime_type};base64,"
-                        + base64.b64encode(image.data).decode()
-                    },
-                }
-                for image in prompt.images
-            ]
+            for image in prompt.images:
+                if image.label:
+                    content.append({"type": "text", "text": image.label})
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{image.mime_type};base64,"
+                            + base64.b64encode(image.data).decode()
+                        },
+                    }
+                )
             messages.append(HumanMessage(content=content))
         else:
             messages.append(HumanMessage(message.text))

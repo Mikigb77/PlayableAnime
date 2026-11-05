@@ -4,7 +4,7 @@ from enum import StrEnum
 
 from pydantic import Field, model_validator
 
-from engine.base import Affinity, EngineModel, Esteem, Fear, Name, Percent, Seconds
+from engine.base import Affinity, EngineModel, Esteem, Fear, Name, Percent, Seconds, WorldSeconds
 from engine.state.records import Origin, StatusChange
 from engine.state.sheet import Attitude, CharacterSheet
 
@@ -63,6 +63,15 @@ class Agenda(EngineModel):
     clock_id: str | None = None
 
 
+class Pregnancy(EngineModel):
+    """N6. A child on the way. It is born when it is due if the one who carries it is alive then
+    (`engine.world.births`), and never if they die first."""
+
+    other_parent_id: str | None = None
+    conceived_s: WorldSeconds
+    due_s: WorldSeconds
+
+
 class Character(EngineModel):
     """Anyone in the world, the player character included: the same parts in every genre (G13).
 
@@ -105,6 +114,15 @@ class Character(EngineModel):
     origin: Origin | None = None
     known_by: list[str] = Field(default_factory=list)
     met_by: list[str] = Field(default_factory=list)
+    parent_ids: list[str] = Field(
+        default_factory=list,
+        max_length=2,
+        description="N6: their parents, by id, as far as the story has them. Lineage runs through "
+        "these, so children and grandchildren can carry a story on.",
+    )
+    expecting: Pregnancy | None = Field(
+        default=None, description="N6: a child they carry, born when it is due if they live."
+    )
 
     @model_validator(mode="after")
     def _death_has_certainty(self) -> "Character":

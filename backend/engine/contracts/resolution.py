@@ -11,7 +11,7 @@ from pydantic import Field
 
 from engine.base import EngineModel, Severity
 from engine.contracts.delta import StateDelta
-from engine.contracts.intent import ActionKind, OutcomeClass, UseSource
+from engine.contracts.intent import ActionKind, Aim, OutcomeClass, UseSource
 from engine.state.records import RollRecord, StepResult, Trace, Visibility
 from engine.state.scene import EncounterKind
 from engine.state.sheet import CostKind, Ruling
@@ -95,6 +95,36 @@ class TrainingSoFar(EngineModel):
     need_s: float = Field(default=0, ge=0)
 
 
+class Harm(StrEnum):
+    """N6. What a peril did to the player character, worst last."""
+
+    NONE = "none"  # it missed, or couldn't hurt them
+    HURT = "hurt"
+    WOUNDED = "wounded"
+    SUBDUED = "subdued"  # knocked down, pinned or taken
+    BADLY_WOUNDED = "badly_wounded"
+    MAIMED = "maimed"  # badly wounded, with a wound that lasts: a lost hand, an eye
+    DYING = "dying"
+    DEAD = "dead"
+
+
+class Peril(EngineModel):
+    """N6, A2. What struck back at the player character in a step: the foes fighting them, or a
+    danger the step faced, such as a long drop. Settled like any step, logic first and the dice only
+    where the facts leave it open, and recorded before anything is narrated (F4)."""
+
+    by_ids: list[str] = Field(
+        default_factory=list, description="The foes who struck; empty for a danger."
+    )
+    by: str = Field(description="Who or what struck, in words.")
+    aim: Aim = Field(description="What they were out to do, or what the danger does.")
+    outcome_class: OutcomeClass
+    reason: str = Field(description="In the world's words (A8).")
+    roll: RollRecord | None = None
+    result: StepResult
+    harm: Harm = Harm.NONE
+
+
 class StepResolution(EngineModel):
     """One step of the plan, settled. `effects` are the engine's own state changes for the outcome,
     such as a death, applied whether or not the narration is blocked (F4)."""
@@ -140,6 +170,21 @@ class StepResolution(EngineModel):
         description="W10: the living characters besides the actor that the step fought or faced: "
         "the aim's targets and whoever stood in the way.",
     )
+    perils: list[Peril] = Field(
+        default_factory=list,
+        description="N6: what struck back at the player character in this step, foes first, "
+        "then a danger; their harm is in `effects`.",
+    )
+    escaped: list[str] = Field(
+        default_factory=list,
+        description="N6: the foes this step got cleanly away from. `engine.encounters` ends the "
+        "fight once the player character has left everyone still in it behind.",
+    )
+
+    @property
+    def hurt_by_peril(self) -> bool:
+        """A peril did the player character harm, so the plan stops for them to react."""
+        return any(a.harm is not Harm.NONE for a in self.perils)
 
     @property
     def clean_success(self) -> bool:
@@ -162,6 +207,7 @@ class StopReason(StrEnum):
     PARTIAL = "partial"
     RULED_OUT = "ruled_out"
     INTERRUPTED = "interrupted"  # something that needs the player happened (W10)
+    STRUCK = "struck"  # a foe or a danger hurt the player character (N6)
 
 
 class Resolution(EngineModel):

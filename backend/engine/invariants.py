@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
+from engine.kin import ancestors
 from engine.state.bible import Resurrection
 from engine.state.cast import (
     Character,
@@ -209,6 +210,17 @@ def check_state(state: WorldState) -> list[Violation]:
                 found.append(
                     Violation(f"character {c.id}", "reference", f"no rung {position.rung}")
                 )
+        for parent_id in c.parent_ids:
+            if parent_id == c.id or parent_id not in state.characters:
+                found.append(
+                    Violation(f"character {c.id}", "reference", f"unknown parent {parent_id}")
+                )
+        if c.expecting is not None:
+            other = c.expecting.other_parent_id
+            if other is not None and (other == c.id or other not in state.characters):
+                found.append(
+                    Violation(f"character {c.id}", "reference", f"unknown other parent {other}")
+                )
     for f in state.factions.values():
         if f.parent_id is not None and f.parent_id not in state.factions:
             found.append(Violation(f"faction {f.id}", "reference", "unknown parent faction"))
@@ -220,6 +232,11 @@ def check_state(state: WorldState) -> list[Violation]:
             Violation(f"{kind} {i}", "reference", "its parents loop back to it")
             for i in _loops(records)
         )
+    found.extend(
+        Violation(f"character {i}", "N6", "they are their own ancestor")
+        for i in sorted(state.characters)
+        if i in ancestors(state.characters, i)
+    )
     return found
 
 

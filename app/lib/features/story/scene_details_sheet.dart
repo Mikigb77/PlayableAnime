@@ -6,8 +6,9 @@ import 'scene_view.dart';
 import 'story_models.dart';
 
 /// "How it played out" (A8): each step of the action as the engine settled it, whether the facts
-/// settled it or a roll did, the odds and the result, the reason in the world's words, where a
-/// chained plan stopped (R6), any cause-and-effect chain (A9), and both clocks (W10, W10a).
+/// settled it or a roll did, the odds and the result, the reason in the world's words, what struck
+/// back after it (N6), where a chained plan stopped (R6), any cause-and-effect chain (A9), and
+/// both clocks (W10, W10a).
 Future<void> showSceneDetails(BuildContext context, Scene scene) => showAppSheet<void>(
   context: context,
   title: context.l10n.sceneDetails,
@@ -202,6 +203,10 @@ class _StepTile extends StatelessWidget {
                   const SizedBox(height: Space.md),
                   _BeatTile(beat: beat),
                 ],
+                for (final struck in step.struck) ...[
+                  const SizedBox(height: Space.md),
+                  _StruckTile(struck: struck),
+                ],
               ],
             ),
           ),
@@ -267,6 +272,77 @@ class _BeatTile extends StatelessWidget {
             ),
           ],
           if (roll != null) ...[const SizedBox(height: Space.xs), _RollLine(roll: roll)],
+        ],
+      ),
+    );
+  }
+}
+
+/// What struck back at the character after a step (N6): the foes still fighting them, or a
+/// danger the step met, with how it was settled and what it did.
+class _StruckTile extends StatelessWidget {
+  const _StruckTile({required this.struck});
+
+  final SceneStruck struck;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    final l10n = context.l10n;
+    final color = !struck.harmed
+        ? colors.success
+        : struck.grave
+        ? colors.danger
+        : colors.caution;
+    final roll = struck.roll;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, Space.sm),
+      decoration: BoxDecoration(
+        border: BorderDirectional(start: BorderSide(color: color, width: 2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
+                  struck.harmed ? Icons.bolt_rounded : Icons.shield_outlined,
+                  size: 16,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(child: Text(l10n.detailsStruck, style: theme.textTheme.titleSmall)),
+            ],
+          ),
+          const SizedBox(height: Space.xs),
+          Wrap(
+            spacing: Space.sm,
+            runSpacing: Space.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutcomeClassLabel(struck.outcomeClass),
+              if (roll != null)
+                _RollLine(roll: roll)
+              else
+                Text(l10n.detailsNoRoll, style: context.lucidText.meta),
+            ],
+          ),
+          if (struck.reason.isNotEmpty) ...[
+            const SizedBox(height: Space.xs),
+            Text(
+              struck.reason,
+              style: context.lucidText.narration.copyWith(
+                fontSize: 15,
+                height: 1.45,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
         ],
       ),
     );
