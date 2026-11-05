@@ -38,6 +38,17 @@ plausibly holds it: plausible, uncertain or absent.
 out, pinned or bound), or none for anything that doesn't harm them: a warning shot, a shove out \
 of the way, a threat. Read it from the player's words ("I cut him down" is kill, "I knock him \
 out" is subdue), never harsher than they chose. A harmful aim puts its targets in the way.
+- Harm the character turns on themselves (a blade to their own heart, a jump from the \
+battlements, walking into the fire) targets their own id from PLAYER CHARACTER with the aim the \
+player chose (F1). Nothing stands in the way unless someone or something there could stop them, \
+and the danger itself (the fall, the blade) is the means, judged in facts.means. Hesitation or \
+fear is never opposition: the choice is the player's (G15).
+- A harmful aim at someone the player doesn't name ("some random guy", "the nearest \
+passer-by"): when someone in SCENE fits, put their id in target_ids. When nobody there does, \
+leave target_ids empty and describe them in stranger: who they are, in a few words, whether the \
+place plausibly holds someone like that right now (a busy street at noon: plausible; a locked \
+cellar: absent), and crowd when others are around to see it (W1, W2). Never pick or invent how \
+strong they are: code rolls that.
 - When a step's outcome rests on cause and effect that isn't obvious, write the chain link by \
 link, with the facts each link rests on (rule, power or character ids, or plain words) and the \
 in-world seconds it takes. For each link, list in answers what would let the target escape or \
@@ -134,6 +145,12 @@ details of the place. Then the outcome the engine resolved (OUTCOME). Then how t
 Never open with the result, with a recap, or with the player's words repeated back.
 - How the character acts shows who they are: their skills, powers and temperament, and a power \
 shows its cost. Temperament colours the telling but never adds a choice.
+- Harm the character turns on themselves plays as the player chose it (F1): their temperament \
+can show, such as trembling hands or a last doubt, but it never stops them, and the outcome is \
+OUTCOME's. CONTENT says how a death by their own hand is told.
+- met under a step in OUTCOME lists people that step made real: a stranger it aimed at, and an \
+onlooker who saw it. They are there now, as described; reuse their ids in update, and give a \
+name only once the character learns it.
 - A failure or partial success is an attempt that meets something: play the action up to the \
 moment it goes wrong and show why, matching the step's reason. An action the world rules out \
 plays as what it really is.
@@ -220,6 +237,8 @@ Rating: Teen.
 - Romance: attraction and a kiss, nothing more.
 - Sexual violence is never present.
 - Cruelty and crime are present but not lingered on.
+- A character taking their own life happens off the page: the moment before, then what it \
+leaves behind, never how.
 """
 
 _MATURE = """\
@@ -232,6 +251,8 @@ sensations of sex. Later scenes can still refer to what happened.
 scene cuts to the aftermath, with no sexual detail.
 - Cruelty and crime at any scale. Torture can be shown when it serves the story, never at length \
 for its own sake.
+- A character taking their own life is told plainly, as the player chose it, and never lingered \
+on or told as a method to copy.
 """
 
 _GORE = {

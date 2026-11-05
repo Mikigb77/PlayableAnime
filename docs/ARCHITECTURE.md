@@ -404,8 +404,22 @@ it (W10a), a helpless state on the sheet
    (asleep, tied up, stunned, subdued, dying, read on whole words so "half asleep" or "bound by an
    oath" doesn't count) means they can't respond whatever was proposed, and the model's word that
    they can't respond (unaware, frozen with fear) is taken unless it claims stopped time that isn't
-   in effect. A harmful aim lands only on the targets the step names, if they are alive; on whoever
-   stands in the way only when it names no one.
+   in effect, or claims it of a hidden master (below). A harmful aim lands only on the targets the
+   step names, if they are alive; on whoever stands in the way only when it names no one. Harm the
+   actor aims at their own body (a knife to their own heart, a jump from the battlements) lands
+   on them too: they never stand in their own way, so only the means decide it (F1, G15). It is
+   no deed and no fight, and once it kills them the rest of the plan is ruled out ("You are
+   dead.") and takes no time.
+   A harmful aim at someone the scene hasn't named ("some random guy") carries the interpret
+   step's `stranger`: who they are, whether the place holds them now and whether a crowd is
+   watching. `strangers.meet` checks the find like a beat (plausible is found, uncertain is
+   rolled, absent ends the step), then makes them real: a minor character where the actor is,
+   with might rolled by the world (most ordinary at tier 1, about 1 in 15 one step tougher, and
+   a hidden master one step above the actor, capped at the strongest the world holds and always
+   able to respond, from 1 in 1,000 in a grounded world to 1 in 200 where powers are common).
+   In a crowd with nobody else recorded there, an onlooker is made real too, to witness it (W1,
+   W2). They go first in the step's `effects` and in `StepResolution.strangers`, and the
+   narrator meets them under those ids (`met` in OUTCOME).
 4. **The class** (A2, G18). Power is measured on the step's axis (`power.py`), from the sheet's
    tier raised to its ladder rung, minus condition (wounds, exhaustion, an empty reserve,
    weakening). Gaps are counted in steps: the rungs of the world's ladder on that axis, or two
@@ -652,9 +666,15 @@ text was shown, the client yields `StreamRestart` before retrying, which the tur
 harassment off in Mature; hate speech, dangerous content and, in Mature, sexual content filtered
 only at high probability as backstops for G12, F3 and the fade-out rule; Teen filters sexual
 content from medium; pictures filter from medium, and sexual content from low (M6). The interpret
-step in Mature reads the action with harassment, hate speech and sexual content off, because a
-block there is the one that stops the deed itself (F4); the narrator's filters and the code's hard
-limits still bound what is told. WS16 checked the table against google-genai 2.34's options: the
+step reads the action with dangerous content off in both ratings, and in Mature with every text
+filter off, because a block there is the one that stops the deed itself (F4); Gemini files a
+character's self-harm under dangerous content, and on 2026-11-05 it blocked "I stab myself". The
+narrator's filters and the code's hard limits still bound what is told. The Mature narrator runs
+with dangerous content off too, so a death the player chose is told, while
+`engine.limits.harm_instructions` holds F3's line on instructions in code; Teen keeps the filter,
+so such a death is cut away from there. Chapter summaries run with dangerous content off in both
+ratings, since they only retell what was told and a blocked one would be asked for again every
+turn; `after_turn` drops one that reads as instructions. WS16 checked the table against google-genai 2.34's options: the
 image categories exist only on Vertex AI and are refused by the Gemini API a player's key uses,
 so they stay unset until T18's live picture evals, and `BLOCK_NONE` stays unused because Vertex
 restricts it. T15's content-line evals tune the rest.
@@ -690,12 +710,12 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
 | 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
-| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
+| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
 
 **Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
 and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent

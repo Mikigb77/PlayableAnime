@@ -20,7 +20,14 @@ from engine.world.answers import law_at
 from engine.world.cast import maybe_resistance
 from engine.world.clocks import deed_moves_clocks
 from engine.world.discovery import attributed, body_trace, schedule_look, ties_trace
-from engine.world.geography import ancestors, characters_at, faction_seat, region_of, travel_s
+from engine.world.geography import (
+    ancestors,
+    characters_at,
+    faction_seat,
+    perceives,
+    region_of,
+    travel_s,
+)
 from engine.world.knowledge import (
     FRIEND,
     character_learns,
@@ -49,8 +56,6 @@ from engine.world.tuning import (
     UNKNOWN_TRIP_S,
 )
 
-# Passing states in which someone perceives nothing around them.
-_UNAWARE = ("asleep", "sleeping", "unconscious", "knocked out", "senseless", "comatose")
 CONQUEST_STABILITY_LOSS = 30
 
 
@@ -71,11 +76,6 @@ def record_consequences(
         deed = record_deed(w, resolution, proposed)
         react(w, deed)
     return new
-
-
-def perceives(character: Character) -> bool:
-    states = " ".join(s.name.casefold() for s in character.sheet.condition.states)
-    return not any(word in states for word in _UNAWARE)
 
 
 def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Deed:

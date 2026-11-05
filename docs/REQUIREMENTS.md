@@ -45,11 +45,11 @@ enforces them, and the narrator never moralizes.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| F1 | The narrator plays any action the player attempts, including violence, cruelty, crime and villainy, with no in-character lecturing or refusal. Consequences come from the world (W1–W16), never from the narrator. | P0 |
+| F1 | The narrator plays any action the player attempts, including violence, cruelty, crime and villainy, with no in-character lecturing or refusal. Consequences come from the world (W1–W16), never from the narrator. That includes harm the character turns on themselves, such as a knife to their own heart or a jump from the battlements: it lands on their own body like any other aim, only the means decide it, and their temperament can show (trembling hands, a last doubt) but never stops them (Miki, 2026-11-05). A death by their own hand is told plainly in Mature and off the page in Teen, never lingered on or told as a method. | P0 |
 | F2 | Two ratings per story: **Teen** and **Mature (17+)**, as set out in the table below. There is no explicit sex in any rating. A new story starts at Teen until the player picks Mature, which only an adult account can (F8). | P0 |
 | F3 | Hard limits in every rating, enforced in code: no romantic or sexual content involving minors or characters with childlike bodies or behavior, whatever age they are given, so every character in a romance scene has an adult age recorded. No sexual content about real people. No real-world harm instructions (weapons, drugs, hacking). Sexual violence is never described; it can only happen off-page (see the table). | P0 |
 | F4 | **A blocked description never blocks the deed.** The engine resolves and records the action in code (A2, A3, W1) before narration, so a refusal or safety block only affects how it is told. The narration first retries as a cut-away, then falls back to a neutral template line ("What happened in the alley stays off the page. Its consequences won't."). Only when the action itself can't be read (the interpret step in B5 is blocked) does the player get a clear message with a rephrase or retry option, never an error. Every block is logged with its category. | P0 |
-| F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. | P0 |
+| F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. Dangerous content, where Gemini files a character's self-harm, is off wherever it would stop the story rather than an instruction: the interpret step and chapter summaries in both ratings, and the narrator in Mature, where code holds F3's line on instructions (2026-11-05: it had blocked "I stab myself" and a knife to a stranger). | P0 |
 | F6 | Report and block on every scene, with reports reviewed in the Django admin. Apple requires this for AI content apps (guideline 1.2). | P0 |
 | F7 | **Player content preferences:** gore level (low, medium or high), romance on or off, and dark themes on or off. The world and NPCs only start themes that are switched on. The player's own actions are bounded only by the rating. | P1 |
 | F8 | **Age gate:** a declared birth date at sign-up, plus the store's 17+ rating. Apple 1.2.1 accepts verified or declared age. Under-17 accounts get Teen only, and their limit lifts on the 17th birthday. Nobody under `MIN_SIGNUP_AGE` (13 for now, for Miki to confirm with the privacy policy) can sign up. | P0 |
@@ -103,8 +103,9 @@ in code whatever a model or a player says:
   `unreadable_action` and a message that names the line, so the player can say it another way.
   Every block, from the code or from Gemini, is logged with its category (F4).
 - A story above the account's rating limit is closed on every story route (F8). The interpret step
-  in a Mature story turns Gemini's text filters off except dangerous content, so the engine, not a
-  filter, reads the action (F5).
+  turns Gemini's dangerous-content filter off in both ratings, and in a Mature story all its text
+  filters, so the engine, not a filter, reads the action (F5). The Mature narrator runs without
+  the dangerous-content filter too, so the code's check on instructions holds F3 there.
 - A report is one per scene and player, and a block is never undone. Only superusers and staff in
   the report handlers group read story text in the admin (F6, T16).
 
@@ -656,7 +657,7 @@ this as state. It is not something the narrator is just asked to remember.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| W1 | **Deeds.** Every significant player act (killing, saving, betraying, conquering, a public display of power) is recorded as a deed with turn, place, victims, severity 1–5 and witnesses. | P0 |
+| W1 | **Deeds.** Every significant player act (killing, saving, betraying, conquering, a public display of power) is recorded as a deed with turn, place, victims, severity 1–5 and witnesses. A victim the scene hasn't named ("I kill some random guy") is made real first, when the place plausibly holds someone like that, so the deed has a victim and the world answers it; in a crowd an onlooker is made real too, to witness it (W2). Who the stranger turns out to be is rolled: most are ordinary, about 1 in 15 knows how to fight, and a hidden master who always sees it coming is rare, from about 1 in 1,000 in a grounded world to 1 in 200 where powers are everywhere (Miki, 2026-11-05). Harm the character does only to themselves is no deed against anyone. | P0 |
 | W2 | **Who knows.** Every deed is secret, witnessed or public. Rumors spread to nearby places and factions over in-world time, and their accuracy can drop as they travel. Characters react only to what they could know. | P0 |
 | W3 | **Reputation.** The player has a reputation with each faction and each region, on two separate axes: *esteem* (how much they like you) and *fear* (how dangerous they think you are). A feared tyrant has high fear and low esteem. Reputation moves only by the engine's rules, from deeds and the word that spreads about them, never because the narrator says so. | P0 |
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). The engine moves attitudes by its rules; the narrator can nudge one by at most 10 points per scene, so a single line of dialogue can't turn an enemy into a friend. | P0 |

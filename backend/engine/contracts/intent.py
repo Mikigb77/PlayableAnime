@@ -127,6 +127,21 @@ class Beat(EngineModel):
     uses: list[BeatUse] = Field(default_factory=list)
 
 
+class Stranger(EngineModel):
+    """F1, W1, W2. Someone a harmful step aims at whom the scene hasn't named: "a random guy",
+    "the nearest passer-by". Code makes them real when the place holds them, with strength
+    the world rolls for them, so the deed has a victim, witnesses and consequences."""
+
+    who: str = Field(description="Who they are, in a few words: 'a dockhand hauling crates'.")
+    plausibility: Plausibility = Field(
+        description="Whether the place plausibly holds someone like that right now."
+    )
+    crowd: bool = Field(
+        default=False,
+        description="Others are around to see it, such as a busy street or a full tavern.",
+    )
+
+
 class PlaceHarm(StrEnum):
     """A9, W7. What a link of a chain does to a place, such as a hall that burns down."""
 
@@ -276,6 +291,13 @@ class IntentStep(EngineModel):
     target_ids: list[str] = Field(default_factory=list)
     targets: list[str] = Field(default_factory=list, description="Targets in words.")
     aim: Aim = Field(default=Aim.NONE, description="What success does to the targets (F4).")
+    stranger: Stranger | None = Field(
+        default=None,
+        description=(
+            "A harmful aim at someone SCENE doesn't list, when nobody there fits: who they are"
+            " and whether the place holds them now (F1, W1)."
+        ),
+    )
     axis: PowerAxis | None = None
     uses: list[SheetUse] = Field(default_factory=list)
     beats: list[Beat] = Field(default_factory=list)

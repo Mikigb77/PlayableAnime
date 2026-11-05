@@ -392,6 +392,23 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 
+def _checked_chapter(chapter: ChapterOutput, issues: list[Issue]) -> ChapterOutput | None:
+    """F3: a summary that reads as real-world working instructions is dropped, never kept. The
+    summarizer runs with dangerous content off (C3), so code holds this line instead."""
+    domain = limits.harm_instructions(chapter.summary)
+    if domain is None:
+        return chapter
+    log_block(
+        "summarizer",
+        [limits.LimitCategory.HARM_INSTRUCTIONS.value],
+        stage="response",
+        source="code",
+        domain=domain,
+    )
+    issues.append(Issue("chapter_skipped", limits.LimitCategory.HARM_INSTRUCTIONS.value))
+    return None
+
+
 @timed("after_turn")
 async def after_turn(state: TurnState) -> dict[str, Any]:
     """Step 7: the chapter summary started in step 1 (C3), the C1 check on the whole turn, and the
@@ -412,11 +429,14 @@ async def after_turn(state: TurnState) -> dict[str, Any]:
             pending.task.cancel()
             issues.append(Issue("chapter_late", "asked for again next turn"))
         else:
+            chapter: ChapterOutput | None = None
             try:
                 chapter = pending.task.result()
             except LLMError as error:
                 issues.append(Issue("chapter_skipped", error.code))
             else:
+                chapter = _checked_chapter(chapter, issues)
+            if chapter is not None:
                 world = world.model_copy(deep=True)
                 world.chapters.append(
                     Chapter(

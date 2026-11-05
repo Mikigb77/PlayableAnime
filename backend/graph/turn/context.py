@@ -409,6 +409,16 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             view["chain"] = [
                 {"link": link.text, "holds": link.holds, "why": link.reason} for link in step.chain
             ]
+        if step.strangers:
+            # F1, W2: who this step made real, so the narrator meets them under these ids.
+            made: dict[str, Any] = {}
+            for change in step.effects.characters:  # the first change per id is the one that
+                made.setdefault(change.id, change)  # made them; a kill or a wound comes after
+            view["met"] = [
+                {"id": i, "who": made[i].name, "about": made[i].description}
+                for i in step.strangers
+                if i in made
+            ]
         if step.interrupted:
             view["interrupted"] = True
         steps.append(view)

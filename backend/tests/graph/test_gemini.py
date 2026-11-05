@@ -203,7 +203,8 @@ def test_a_streamed_structured_call_end_to_end():
         "HARM_CATEGORY_HARASSMENT": "OFF",
         "HARM_CATEGORY_HATE_SPEECH": "BLOCK_ONLY_HIGH",
         "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_ONLY_HIGH",
-        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
+        # The Mature narrator tells a chosen death; code holds F3's line on instructions.
+        "HARM_CATEGORY_DANGEROUS_CONTENT": "OFF",
     }
 
 
