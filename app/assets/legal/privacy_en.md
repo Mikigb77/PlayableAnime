@@ -44,7 +44,7 @@ works.
 | Service | What it does | Where |
 | --- | --- | --- |
 | Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures and logs | EU: Frankfurt |
-| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures and writes down online dictation. Google doesn't use this data to train its models | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
+| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures and writes down online dictation. Google doesn't use this data to train its models. The part of a story's prompts that stays the same from turn to turn (its style, content settings and world) is kept in a Vertex AI cache until 15 minutes after your last turn, so it costs less | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
 | Neon | Hosts the database | Frankfurt (AWS eu-central-1) |
 | Google Sign-In | Confirms who you are when you sign in with Google | Google |
 
