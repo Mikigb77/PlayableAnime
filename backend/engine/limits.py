@@ -391,7 +391,9 @@ def check_action(state: WorldState, intent: Intent, rating: Rating) -> list[Limi
         kind = intimacy(step)
         if kind is not None:
             hits += _intimacy_hits(state, step, index, actor_id, kind, rating)
-        for words in [*step.targets, step.facts.opposition, *_names_of(state, step.target_ids)]:
+        stranger = [step.stranger.who] if step.stranger is not None else []
+        named = _names_of(state, step.target_ids)
+        for words in [*step.targets, *stranger, step.facts.opposition, *named]:
             entity = real_entity(words) if words else None
             if entity is not None and entity.kind == "person":
                 hits.append(LimitHit(LimitCategory.REAL_PERSON, entity.name, "a target", index))

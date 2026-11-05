@@ -164,6 +164,7 @@ these functions and saves the result.
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
+| `engine/succession.py` | Carrying a story on as someone else after its ending (N6): `draw` picks a random person of the world by its population odds (place, people, age, station, might, a hidden master as rare as the world makes them, and how rare that is), and `carry_on` makes them the player character, keeping the old one in the world (`WorldState.fallen`) and setting `opening_due`. No model calls. See [Carrying a story on](#carrying-a-story-on-as-someone-else). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
 **The turn, as the graph calls it** (B5). Every function takes the state as read-only and returns
@@ -404,8 +405,22 @@ it (W10a), a helpless state on the sheet
    (asleep, tied up, stunned, subdued, dying, read on whole words so "half asleep" or "bound by an
    oath" doesn't count) means they can't respond whatever was proposed, and the model's word that
    they can't respond (unaware, frozen with fear) is taken unless it claims stopped time that isn't
-   in effect. A harmful aim lands only on the targets the step names, if they are alive; on whoever
-   stands in the way only when it names no one.
+   in effect, or claims it of a hidden master (below). A harmful aim lands only on the targets the
+   step names, if they are alive; on whoever stands in the way only when it names no one. Harm the
+   actor aims at their own body (a knife to their own heart, a jump from the battlements) lands
+   on them too: they never stand in their own way, so only the means decide it (F1, G15). It is
+   no deed and no fight, and once it kills them the rest of the plan is ruled out ("You are
+   dead.") and takes no time.
+   A harmful aim at someone the scene hasn't named ("some random guy") carries the interpret
+   step's `stranger`: who they are, whether the place holds them now and whether a crowd is
+   watching. `strangers.meet` checks the find like a beat (plausible is found, uncertain is
+   rolled, absent ends the step), then makes them real: a minor character where the actor is,
+   with might rolled by the world (most ordinary at tier 1, about 1 in 15 one step tougher, and
+   a hidden master one step above the actor, capped at the strongest the world holds and always
+   able to respond, from 1 in 1,000 in a grounded world to 1 in 200 where powers are common).
+   In a crowd with nobody else recorded there, an onlooker is made real too, to witness it (W1,
+   W2). They go first in the step's `effects` and in `StepResolution.strangers`, and the
+   narrator meets them under those ids (`met` in OUTCOME).
 4. **The class** (A2, G18). Power is measured on the step's axis (`power.py`), from the sheet's
    tier raised to its ladder rung, minus condition (wounds, exhaustion, an empty reserve,
    weakening). Gaps are counted in steps: the rungs of the world's ladder on that axis, or two
@@ -573,12 +588,39 @@ environment, `backend/.env` and the repo-root `.env.local`:
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
 `graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
-the estimate never undercounts. Gemini caches prompts implicitly: when a prompt starts the way one
-it saw moments ago did (at least 4,096 tokens on the newer Flash models), it bills that start at
-its cached rate, a tenth of the input price for every model above (checked 2026-11-04). Each call
-records those tokens as `cached_tokens` and prices them at that rate, so the estimate follows the
-bill. A prompt gets the most from this when its unchanging parts come first. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+the estimate never undercounts. Prompt tokens Gemini reads from a cache bill at its cached rate,
+a tenth of the input price for every model above (checked 2026-11-04). Each call records those
+tokens as `cached_tokens` and prices them at that rate, so the estimate follows the bill. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
 2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
+
+**Prompt caches** (`graph/llm/cache.py`, T5, K2). Gemini's implicit caching, on by default, never
+hit for us: `cached_tokens` was 0 on every call on 2026-11-04 and 05, although each narrator prompt
+started with about 6K tokens that were the same on every turn of a story, and others report it
+hitting only on far longer prompts on Gemini 3.x. So the parts of a prompt that stay the same from
+turn to turn come first, and the backend keeps them in an explicit cache on Vertex AI:
+
+- `Prompt.stable_chars` marks how much of the prompt's one message stays the same. The narrator's
+  is STYLE, CONTENT and WORLD (the opening's PREMISE now comes after WORLD), and interpret's is its
+  WORLD. With the system text, that start is the cache.
+- The first call with a new start is sent whole, and the cache is made in the background, so no
+  player waits for it. Later calls send only the rest and name the cache, without the system text,
+  which the cache holds. The cache is made while the call that started it streams, so it is done
+  before the response ends (B8); if it isn't, the next call is simply sent whole.
+- A cache lives 15 minutes. A use that finds less than 10 minutes left extends it, in the
+  background, so it lives about 15 minutes past its story's last turn. Storage costs $1 per million
+  tokens an hour on the Flash models: about $0.0003 a turn for a 6K start read every 3 minutes,
+  against about $0.009 saved on each narrator call. Storage isn't in the per-turn estimate.
+- A start Vertex AI finds too small to cache is remembered for its model, and no start as small is
+  tried again; any other failure waits 15 minutes. A call naming a cache that Vertex AI refuses
+  (one that expired early, say) goes again whole at once, and the cache is dropped. Every call
+  works without a cache; a cache only makes it cheaper.
+- Only on our Vertex AI account: a call with a player's own key (S9) never makes or names one.
+  Caches live in the process's memory, so another instance makes its own, which costs only
+  storage. A cutaway's system text is rare, so it isn't cached.
+
+Each made cache logs `cache_made` with its size in tokens, and each failure `cache_too_small`,
+`cache_failed` or `cache_refused`; the deploy's model check makes one and says whether Gemini read
+from it ([DEPLOY.md](DEPLOY.md#checking-the-models)).
 
 **Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
 with `vertexai=True` and Application Default Credentials (B11). `langchain-google-vertexai`'s
@@ -625,9 +667,15 @@ text was shown, the client yields `StreamRestart` before retrying, which the tur
 harassment off in Mature; hate speech, dangerous content and, in Mature, sexual content filtered
 only at high probability as backstops for G12, F3 and the fade-out rule; Teen filters sexual
 content from medium; pictures filter from medium, and sexual content from low (M6). The interpret
-step in Mature reads the action with harassment, hate speech and sexual content off, because a
-block there is the one that stops the deed itself (F4); the narrator's filters and the code's hard
-limits still bound what is told. WS16 checked the table against google-genai 2.34's options: the
+step reads the action with dangerous content off in both ratings, and in Mature with every text
+filter off, because a block there is the one that stops the deed itself (F4); Gemini files a
+character's self-harm under dangerous content, and on 2026-11-05 it blocked "I stab myself". The
+narrator's filters and the code's hard limits still bound what is told. The Mature narrator runs
+with dangerous content off too, so a death the player chose is told, while
+`engine.limits.harm_instructions` holds F3's line on instructions in code; Teen keeps the filter,
+so such a death is cut away from there. Chapter summaries run with dangerous content off in both
+ratings, since they only retell what was told and a blocked one would be asked for again every
+turn; `after_turn` drops one that reads as instructions. WS16 checked the table against google-genai 2.34's options: the
 image categories exist only on Vertex AI and are refused by the Gemini API a player's key uses,
 so they stay unset until T18's live picture evals, and `BLOCK_NONE` stays unused because Vertex
 restricts it. T15's content-line evals tune the rest.
@@ -663,23 +711,25 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
-| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
-| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. |
+| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). An end turn's note is first held to what the world allows (`graph/turn/ending.py`'s `earned`, N6): it resolves the note, drops every step ruled out or left to a long shot, and resolves the rest again until nothing is dropped, so every refused part is found at once although a plan stops at its first (R6); the note's outcome claims are refused too (A6). Unless the player asked to end without them, refused parts end the turn with `EndingRefused` before anything plays. Ending without them keeps the rest of the note without its claims, with its summary made from the kept steps, and the brief gets `left_out` instead of the note's words. After `play_out`, `ending_of` reads the turn's ending: a death when the player character was alive before it and is dead after (self-inflicted when the last step played, the one that killed them, aimed harm at their own id), or a chosen ending for an end turn. A turn with an ending plans no event, picture or suggestions. The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
+| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
-| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
+| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
 
 **Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
 and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent
 only when text was shown: `retry` when the model failed partway and is being retried, `cutaway`
 and `template` when the narration was blocked. `TurnCompleted.result` carries the state to save,
-the scene, the intent, the resolution, the plan, the pending events that fired, the issues the
-checks found and each node's time in milliseconds for the T5 line.
+the scene, the intent, the resolution, the plan, the pending events that fired, the turn's
+`Ending` if it reached one (N6), the issues the checks found and each node's time in milliseconds
+for the T5 line.
 
 **Errors.** `UnreadableAction` (`unreadable_action`, 422) when the interpret step is blocked, the
 one block the player sees (F4), and its subclass `LimitReached` when the action crosses a hard
-limit, with its own message and `details = {"category": ...}`. `LLMUnavailable` and `BadKey` from the model layer otherwise, and
+limit, with its own message and `details = {"category": ...}`. `EndingRefused` when an end turn's
+note asks for what the world won't give, with each refused part's text, reason and class (N6). `LLMUnavailable` and `BadKey` from the model layer otherwise, and
 `InvariantError` for an engine bug. Nothing is saved on any of them, and a chapter summary still
 running is cancelled, so nothing outlives the response (B8).
 
@@ -710,7 +760,9 @@ filled in, are not served.
 
 1. **Before the stream**, in API.md's order: auth, ownership and rating (`owned_story`), the
    version (T10), the BYOK headers, the request against the story (an opening only on a story with
-   no scenes, a choice only from the last scene's suggestions), then `billing.meter.astart` (rate
+   no scenes or with someone new to open on, `opening_due`, N6, a choice only from the last scene's
+   suggestions, and no turn at all on a story at its
+   ending, `409 story_ended`, N6), then `billing.meter.astart` (rate
    limit, quota and credit hold). Each failure is an ordinary JSON error, and none counts against
    the rate limit or quota.
 2. **Read** (`turns.prepare`): the world state with the story's pending rows on its timeline
@@ -722,7 +774,8 @@ filled in, are not served.
    `narration.reset`. The model client and LangGraph are built off the event loop, since the first
    turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
    `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
-   charged.
+   charged. An end turn whose note the world refuses ends with `ending.refused` instead, with
+   nothing saved or charged either (N6).
 4. **Save** (`turns.save`), in one transaction: the state, `turn` and `version` with an optimistic
    check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
    `version_conflict`), the `Scene` row with its time labels in the world's calendar
@@ -731,7 +784,11 @@ filled in, are not served.
    and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
    one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
    the new version and clock; if its picture URLs can't be read then, it goes without them,
-   since the turn is already saved.
+   since the turn is already saved. A turn that reached an ending saves it on the story row
+   (`Story.ending`, `stories/endings.py`) with the character's name and the scene, and sends it as
+   `story.ending` (N6). Migration `0005_older_endings` records a death ending on older stories
+   whose player character was already dead, so the Library shows them ended without loading their
+   state.
 5. **Always**, however the turn ends: the credit hold is released (a no-op after the charge; a
    stream Django closes before it started releases it too), a BYOK client is closed, and T5's one
    line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
@@ -751,7 +808,8 @@ The other endpoints read the same rows: the Library (its `world_time_label` come
 calendar and clock, read in the database, so no whole world state is loaded), a story with its last
 scenes, scrollback, `PATCH` (title and settings only, under a row lock, so two changes sent
 together both count and a turn saved meanwhile is never undone),
-`DELETE`, and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
+`DELETE`, `close` (N6: marks the ending closed under a row lock, without moving the version or the
+Library's order), and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
 URLs from `media.lookups`).
 
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
@@ -845,6 +903,57 @@ flowchart LR
 - **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
   the Naples vendetta for a grounded starter, the cultivation sample otherwise. A change to the
   world comes back empty, so the world stays as it is.
+
+## Carrying a story on as someone else
+
+Requirements: N6, W1, W3, C6, G2, G12, K2. After an ending the player can carry the story on as a
+random person of the same world. Code draws who they are and the drafter fills them in, the same
+split as drafting (the model proposes, code decides).
+
+- **The draw** (`engine/succession.draw`, seeded per story, ending and draw so a reroll is new)
+  picks a place weighted by its kind (a capital or city most, a village less; a kind that names no
+  settlement and names the wilds, a forest, a cave or the like, or a ruined place, never),
+  a people weighted by how many of its characters belong to it, an age from 16 to 60, and a station:
+  common, skilled (1 in 5), notable (1 in 40), noble (about 1 in 1,000) or the ruling family (about
+  1 in 50,000, never its ruler). Might follows W1's stranger odds: about 1 in 15 is tougher than
+  most, and a hidden master (as rare as the world makes them) stands at least at the peak of a
+  person and halfway to the world's strongest. `one_in` says how rare the draw is. A drawn person
+  has no powers of their own; their might sits on the world's ladder when it has one.
+- **The person** (`graph/drafting/successor`): one drafter call, `SuccessorProposal`, with the world,
+  the draw and the names the story already has. `build` holds the proposal to the draw: attributes
+  stop at a person's peak in a grounded world or for anyone not strong, axes come from the draw,
+  only a non-common station keeps a title, and a real name (G12) or a name the story has gets the
+  default name, numbered when the story has one already. Only a hidden master in a world with
+  something extraordinary goes past a person's peak. The player reads them in the world's words
+  (`view.character_lines`), never numbers, and an opening moment that names someone they don't
+  know or quotes a secret is replaced with an ordinary day (C6).
+- **Carrying on** (`engine/succession.carry_on`): the newcomer becomes `player_id`, known only to
+  themselves and to the places they live in (C6). The old player character stays in the world, dead
+  or, after an epilogue, dormant away from the story's centre, and is recorded in `fallen`; whoever
+  was in the scene when they died is added to who knows of the death. Their
+  active goals are abandoned, their open leads expire, their reputation with factions and places
+  goes, and their time effects end. The scene frame moves to the newcomer's place with the
+  situation they were drawn in, and `opening_due` is set.
+- **The opening** is an ordinary `kind: "opening"` turn while `opening_due` is set. Its brief has
+  `SUCCESSION_TASK` instead of the first opening's task, and `apply_update` clears `opening_due`.
+- **Remembering the fallen.** Every brief has a `FALLEN` section when someone present (alive, not
+  the player) knew an earlier player character, having met them (`met_by`) or holding an attitude
+  toward them: each fallen with how they ended and who remembers them. `knows_how_it_ended` is
+  true for whoever saw or heard of the death (its `StatusChange.known_by`) or knows of a deed
+  against them (its witnesses and `known_by`, which word of a killing reaches, W4), and always for
+  an epilogue. The narrator brings them
+  up only when it fits, never forced, and never tells a death to someone who doesn't know of it.
+- **The API** (`stories/succession.py`): `POST /successor` draws inside `drafts.service.model_call`,
+  so it is metered and charged like a draft (K2), and keeps who was drawn on `Story.successor` (the
+  story's version doesn't move, and drawing again replaces them). It is kept, and charged, only if
+  the story is still at the ending it was drawn from: a version that moved on meanwhile is a
+  `version_conflict`, and a draw that lands after another counts after it. `POST /carry-on` checks the
+  version, the ending and that someone was drawn under a row lock, saves the carried-on state, lifts
+  the ending, clears `successor` and moves the version on. Neither works on a story that isn't at
+  an ending, or that the player closed.
+- **The app** opens the person drawn from the ending card (`features/story/successor_screen.dart`),
+  draws on opening when nobody was drawn yet, and offers to start as them or draw again. Starting
+  pops the carried-on story back to the play screen, which plays their opening at once.
 
 ## Safety, ratings and reports
 
@@ -1014,8 +1123,14 @@ object, and the raw world state as memory.
   layer's own limits. Providers retry a failed read on their own only for a network or server
   failure, three times at most (`retryTransient`); a 404, a 403 or a limit is final (T9).
 - **Turns stream** as Server-Sent Events (S3). The client parses them into `TurnEvent`s that always
-  end in `SceneCompleted` or `TurnFailed`, so a dropped connection is a typed error, not a hang.
-  An interim JSON answer is replayed as the same events.
+  end in `SceneCompleted`, `TurnFailed` or `EndingRefused`, so a dropped connection is a typed
+  error, not a hang. An interim JSON answer is replayed as the same events.
+- **Endings** (N6, `app/lib/features/story/ending_card.dart`): `/end` asks for a confirmation and
+  sends an end turn with the note typed after it. A refused note shows its parts with their reasons
+  and offers to play on or end without them. A story at its ending shows the ending card instead
+  of the action box: close the story, or start again, which opens the create flow with its premise
+  filled in, and one quiet line on where to find support after a self-inflicted death. The Library
+  marks an ended story.
 - **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
   request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
   if it fails.

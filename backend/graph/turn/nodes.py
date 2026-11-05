@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from engine import limits, pipeline
 from engine.apply import DeltaSource, apply_delta
-from engine.contracts import Intent, Resolution
+from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
 from engine.pipeline import PlayOut
 from engine.rng import SeededRng
@@ -43,8 +43,9 @@ from graph.llm import (
     TextDelta,
 )
 from graph.turn import check
+from graph.turn import ending as ending_mod
 from graph.turn.context import chapter_prompt, interpret_prompt, narration_brief
-from graph.turn.errors import LimitReached, UnreadableAction
+from graph.turn.errors import EndingRefused, LimitReached, UnreadableAction
 from graph.turn.outputs import ChapterOutput, NarratorOutput
 from graph.turn.scene import scene_draft
 from graph.turn.types import (
@@ -191,7 +192,8 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     the opening has no action. A blocked interpret call is the one block the player sees (F4)."""
     turn = state["input"]
     world = state["world"]
-    if turn.kind is TurnKind.OPENING:
+    if turn.kind is TurnKind.OPENING or (turn.kind is TurnKind.END and not turn.action):
+        # N6: an ending with no note is told from things as they stand.
         return {"intent": None}
     if turn.kind is TurnKind.STANDING:
         return {"intent": Intent(standing=turn.standing, summary=str(turn.standing))}
@@ -228,6 +230,14 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     intent = state.get("intent")
     rng = turn_rng(turn)
     issues: list[Issue] = []
+    left_out: tuple[str, ...] = ()
+    if turn.kind is TurnKind.END and intent is not None:
+        # N6: an ending keeps only what the world allows of the note.
+        kept, refused = ending_mod.earned(world, intent, turn.ctx, turn_rng(turn))
+        if refused and not turn.drop_refused:
+            raise EndingRefused(refused)
+        intent = kept
+        left_out = tuple(r.text for r in refused)
     if intent is None:
         played = PlayOut(state=world, resolution=Resolution())
     else:
@@ -241,13 +251,23 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     # The director decides, then its records go in before anything is narrated, so the plan's
     # new threads and leads are in the state the check and the narrator see (W16, N1, N2).
     plan = pipeline.direct(played.state, played.resolution, turn.ctx, rng, intent=intent)
+    ending = ending_mod.ending_of(turn.state, played.state, intent, played.resolution, turn.kind)
+    if ending is not None:
+        # N6: the protagonist's last scene ends on them, with no new event, picture or
+        # suggestion to act on.
+        plan = plan.model_copy(
+            update={"event": None, "picture": None, "suggestions": SuggestionPlan(count=0)}
+        )
     played = replace(played, state=pipeline.record_direction(played.state, plan, turn.ctx))
     plan, found = check.check_plan(played.state, plan, turn.ctx)
     issues += found
     return {
+        "intent": intent,
         "played": played,
         "resolution": played.resolution,
         "plan": plan,
+        "ending": ending,
+        "left_out": left_out,
         "world": played.state,
         "issues": _issues(state, issues),
     }
@@ -269,6 +289,11 @@ async def build_context(state: TurnState) -> dict[str, Any]:
         fired=fired,
         scenes=turn.scenes,
         premise=turn.premise,
+        ending=state.get("ending"),
+        # The player's own words on how it ends, unless the world refused some of them: then the
+        # narrator gets only what was kept, and what was left out, so it is never granted (N6).
+        wish=turn.action if turn.kind is TurnKind.END and not state.get("left_out") else None,
+        left_out=state.get("left_out", ()),
     )
     return {"brief": brief}
 
@@ -377,7 +402,8 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
-    world = world.model_copy(update={"turn": turn.ctx.turn})
+    # N6: once told, a successor's opening is done.
+    world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})
     # M4, M5: a scene that changed the look it pictures draws the new look.
     world, plan = pipeline.settle_picture(world, state["plan"])
     scene = scene_draft(
@@ -390,6 +416,23 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         mode=mode,
     )
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
+
+
+def _checked_chapter(chapter: ChapterOutput, issues: list[Issue]) -> ChapterOutput | None:
+    """F3: a summary that reads as real-world working instructions is dropped, never kept. The
+    summarizer runs with dangerous content off (C3), so code holds this line instead."""
+    domain = limits.harm_instructions(chapter.summary)
+    if domain is None:
+        return chapter
+    log_block(
+        "summarizer",
+        [limits.LimitCategory.HARM_INSTRUCTIONS.value],
+        stage="response",
+        source="code",
+        domain=domain,
+    )
+    issues.append(Issue("chapter_skipped", limits.LimitCategory.HARM_INSTRUCTIONS.value))
+    return None
 
 
 @timed("after_turn")
@@ -412,11 +455,14 @@ async def after_turn(state: TurnState) -> dict[str, Any]:
             pending.task.cancel()
             issues.append(Issue("chapter_late", "asked for again next turn"))
         else:
+            chapter: ChapterOutput | None = None
             try:
                 chapter = pending.task.result()
             except LLMError as error:
                 issues.append(Issue("chapter_skipped", error.code))
             else:
+                chapter = _checked_chapter(chapter, issues)
+            if chapter is not None:
                 world = world.model_copy(deep=True)
                 world.chapters.append(
                     Chapter(
@@ -444,6 +490,7 @@ async def after_turn(state: TurnState) -> dict[str, Any]:
         plan=state["plan"],
         fired=(*state["passage"].fired, *state["played"].fired),
         issues=tuple(issues),
+        ending=state.get("ending"),
     )
     return {"world": world, "result": result, "issues": issues}
 

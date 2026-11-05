@@ -13,6 +13,7 @@ from engine.state.records import (
     Deed,
     EventStatus,
     Fact,
+    Fallen,
     Goal,
     Lead,
     PendingEvent,
@@ -135,6 +136,14 @@ class WorldState(EngineModel):
     summary: str = ""
     chapters: list[Chapter] = Field(default_factory=list)
     id_counters: dict[str, int] = Field(default_factory=dict)
+    fallen: list[Fallen] = Field(
+        default_factory=list, description="N6: earlier player characters, oldest first."
+    )
+    opening_due: bool = Field(
+        default=False,
+        description="N6: someone new carries the story on, and their first scene is still to "
+        "be told as an opening.",
+    )
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> "WorldState":

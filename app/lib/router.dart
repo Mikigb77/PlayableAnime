@@ -17,6 +17,7 @@ import 'features/story/memory_screen.dart';
 import 'features/story/status_screen.dart';
 import 'features/story/story_models.dart';
 import 'features/story/story_screen.dart';
+import 'features/story/successor_screen.dart';
 import 'home_shell.dart';
 
 /// Route paths, so features link without spelling them out.
@@ -39,12 +40,16 @@ abstract final class Routes {
   static String memory(String id) => '/story/$id/memory';
   static String status(String id) => '/story/$id/status';
 
+  /// Who carries a story on after its ending (N6).
+  static String successor(String id) => '/story/$id/successor';
+
   /// Reachable while signed out.
   static const _public = {splash, welcome, gallery, privacy};
 }
 
 /// Signed out: the welcome and sign-in screens (WS13). Signed in: the tabs (Discover, Library,
-/// Account), the create flow, and the play screen with its memory and status pages.
+/// Account), the create flow, and the play screen with its memory and status pages and, after an
+/// ending, the person drawn to carry the story on.
 final routerProvider = Provider<GoRouter>((ref) {
   final session = ValueNotifier(ref.read(sessionProvider));
   ref
@@ -107,6 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => CreateStoryScreen(
           premise: _extra<Premise>(state),
           premiseId: state.uri.queryParameters['premise'],
+          again: _extra<StartAgain>(state)?.premise,
         ),
       ),
       GoRoute(
@@ -123,6 +129,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'status',
             builder: (_, state) =>
                 StatusScreen(storyId: state.pathParameters['id']!, genre: _extra<String>(state)),
+          ),
+          GoRoute(
+            path: 'successor',
+            builder: (_, state) =>
+                SuccessorScreen(storyId: state.pathParameters['id']!, story: _extra<Story>(state)),
           ),
         ],
       ),

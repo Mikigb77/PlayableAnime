@@ -103,6 +103,23 @@ class SceneSaved extends PlayNotice {
   final int turn;
 }
 
+/// Closing the story at its ending failed (N6); it can be tried again.
+class CloseFailed extends PlayNotice {
+  const CloseFailed(this.error);
+  final ApiException error;
+}
+
+/// What the world refused of an ending's note (N6). Nothing was saved or charged: the player plays
+/// on, or ends without it.
+@immutable
+class EndingRefusal {
+  const EndingRefusal({required this.turn, required this.parts});
+
+  /// The end turn that was refused, to send again without what was refused.
+  final PendingTurn turn;
+  final List<RefusedPart> parts;
+}
+
 /// Runs one story on the play screen: loading it and its older scenes, the turn in flight and its
 /// stream (S3, T10), every error the API can answer (T7), pictures after the text (M3, M4),
 /// reports and blocks (F6) and settings (S6). The screen draws what this holds.
@@ -159,8 +176,26 @@ class PlayController extends ChangeNotifier {
   /// A turn is under way, so another can't start.
   bool get busy => _pending != null && !_pending!.failed;
 
-  /// The story has its opening and the player can act.
-  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !busy;
+  /// The story has its opening, hasn't reached its ending, and the player can act.
+  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !opening && !ended && !busy;
+
+  /// The next turn is an opening: the story has no scenes yet, or someone new carries it on (N6).
+  bool get opening {
+    final story = _story;
+    return story != null && story.ending == null && (story.scenes.isEmpty || story.openingDue);
+  }
+
+  /// The story reached its ending (N6): it takes no more turns.
+  bool get ended => _story?.ending != null;
+
+  /// What the world refused of the last ending's note, until the player plays on or ends without
+  /// it (N6).
+  EndingRefusal? get refusal => _refusal;
+  EndingRefusal? _refusal;
+
+  /// Closing the story is under way.
+  bool get closing => _closing;
+  bool _closing = false;
 
   /// The first turn of the first load. Older scenes are laid out above it, so loading them never
   /// moves what the player is looking at.
@@ -192,7 +227,7 @@ class PlayController extends ChangeNotifier {
   // ---- Loading ----------------------------------------------------------------------------
 
   /// Opens the story: the one passed in, or fetched. A story with no scenes yet (just started
-  /// from a draft) plays its opening turn at once.
+  /// from a draft), or carried on by someone new (N6), plays its opening turn at once.
   Future<void> start() async {
     if (_initial case final story?) {
       _replace(story);
@@ -232,7 +267,7 @@ class PlayController extends ChangeNotifier {
     final story = _story;
     if (story == null) return;
     _paintPlanned();
-    if (story.scenes.isEmpty && !_openingAsked && _pending == null) {
+    if (opening && !_openingAsked && _pending == null) {
       _openingAsked = true;
       unawaited(begin());
     }
@@ -280,6 +315,10 @@ class PlayController extends ChangeNotifier {
       clockLabel: fresh.clockLabel,
       coverUrl: fresh.coverUrl,
       settings: fresh.settings,
+      // A copy older than the one loaded doesn't take back an ending a scene brought.
+      ending: fresh.version >= current.version ? fresh.ending : current.ending,
+      successor: fresh.successor,
+      openingDue: fresh.version >= current.version ? fresh.openingDue : current.openingDue,
     );
     if (scenes.isNotEmpty && scenes.first.turn < _anchorTurn) _anchorTurn = scenes.first.turn;
   }
@@ -340,6 +379,65 @@ class PlayController extends ChangeNotifier {
   Future<bool> stand(String standing, {required String label}) =>
       _take(TurnInput.standing(standing), label: label);
 
+  /// Ends the story (N6): an epilogue from things as they stand, or from [note], the player's
+  /// words on how it should end. [label] is what the feed shows above it.
+  Future<bool> end({String? note, String inputMode = 'typed', required String label}) => _take(
+    TurnInput.end(note, inputMode: inputMode),
+    label: label,
+    spoken: note != null && (inputMode == 'voice' || inputMode == 'voice_edited'),
+  );
+
+  /// Ends the story without what the world refused of the note (N6).
+  Future<bool> endWithoutRefused() {
+    final refused = _refusal;
+    if (refused == null) return Future.value(false);
+    final turn = refused.turn;
+    return _take(turn.input.withoutRefused(), label: turn.label, spoken: turn.spoken);
+  }
+
+  /// Plays on after an ending was refused (N6): nothing changed.
+  void playOn() {
+    if (_refusal == null) return;
+    _refusal = null;
+    _changed();
+  }
+
+  /// Closes the story at its ending (N6). It stays in the Library to read.
+  Future<void> close() async {
+    if (_closing || !ended || _disposed) return;
+    _closing = true;
+    _changed();
+    try {
+      final fresh = await repository.close(storyId);
+      if (_disposed) return;
+      _merge(fresh);
+    } on ApiException catch (e) {
+      if (_disposed) return;
+      _notice(CloseFailed(e));
+    } on Object {
+      if (_disposed) return;
+      _notice(const CloseFailed(ApiException(ApiErrorCode.unknown)));
+    } finally {
+      _closing = false;
+    }
+    _changed();
+  }
+
+  /// The story carried on by someone new (N6), as `POST /carry-on` answered it: the ending is
+  /// lifted, and their opening plays at once.
+  void carriedOn(Story fresh) {
+    if (_disposed) return;
+    _refusal = null;
+    _openingAsked = false;
+    if (_story == null) {
+      _replace(fresh);
+    } else {
+      _merge(fresh);
+    }
+    _changed();
+    _afterLoad();
+  }
+
   /// Tries the failed turn again, exactly as it was.
   Future<bool> retry() {
     final failed = _pending;
@@ -361,7 +459,10 @@ class PlayController extends ChangeNotifier {
 
   Future<bool> _take(TurnInput input, {String? label, bool spoken = false}) async {
     final story = _story;
-    if (story == null || busy || _disposed) return false;
+    // A story at its ending takes no more turns, and someone new starts with their opening (N6).
+    if (story == null || busy || _disposed || story.ending != null) return false;
+    if (story.openingDue && input.kind != 'opening') return false;
+    _refusal = null;
     _pending = PendingTurn(input: input, label: label, spoken: spoken);
     _startedTurn = null;
     _changed();
@@ -422,8 +523,9 @@ class PlayController extends ChangeNotifier {
         // The session is over and the router takes the player to sign in.
         _pending = null;
         _changed();
-      case ApiErrorCode.validationError:
-        // Most likely a choice that is no longer offered: show the story as it is now.
+      case ApiErrorCode.validationError || ApiErrorCode.storyEnded:
+        // Most likely a choice that is no longer offered, or a story that reached its ending
+        // elsewhere (N6): show the story as it is now.
         _pending = null;
         _changed();
         _notice(TurnRefused(error));
@@ -447,7 +549,12 @@ class PlayController extends ChangeNotifier {
         // Blocked and rewritten (F4), or retried after a failure (T7): start the text over.
         _pending = pending.copyWith(text: '');
         _changed();
-      case SceneCompleted(:final scene, :final version, :final clock):
+      case EndingRefused(:final refused):
+        // N6: nothing was saved or charged. The player plays on, or ends without it.
+        _refusal = EndingRefusal(turn: pending, parts: refused);
+        _pending = null;
+        _changed();
+      case SceneCompleted(:final scene, :final version, :final clock, :final ending):
         final Scene saved;
         try {
           saved = Scene.fromJson(scene);
@@ -465,6 +572,7 @@ class PlayController extends ChangeNotifier {
           saved,
           version: math.max(version, _story!.version),
           clockLabel: clock['label'] as String?,
+          ending: StoryEnding.maybe(ending),
         );
         _remember([saved]);
         _pending = null;

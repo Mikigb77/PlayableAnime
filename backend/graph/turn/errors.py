@@ -1,5 +1,6 @@
 """Errors a turn can end with besides the model layer's own (`graph.llm.errors`)."""
 
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -29,3 +30,26 @@ class LimitReached(UnreadableAction):
         super().__init__(categories=(category,), message=message)
         self.category = category
         self.details = {"category": category}
+
+
+@dataclass(frozen=True)
+class RefusedStep:
+    """A part of an ending's note the world won't grant, with its reason in the world's words."""
+
+    text: str
+    reason: str
+    outcome_class: str
+
+
+class EndingRefused(Exception):
+    """N6: an ending's note asks for something the world rules out, or that would take a long
+    shot to earn, so no epilogue is told. Nothing is saved or charged. The app offers to play on
+    or to end without it (`drop_refused`)."""
+
+    code = "ending_refused"
+    default_message = "The world won't give your story that ending yet."
+
+    def __init__(self, refused: list[RefusedStep]) -> None:
+        self.message = self.default_message
+        super().__init__(self.message)
+        self.refused = refused

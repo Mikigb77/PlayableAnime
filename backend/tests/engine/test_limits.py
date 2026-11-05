@@ -6,7 +6,7 @@ from engine import limits
 from engine.context import Rating
 from engine.contracts import ActionKind, Intent, IntentStep, StateDelta
 from engine.contracts.delta import CharacterChange, FactionChange
-from engine.contracts.intent import Beat, StepFacts
+from engine.contracts.intent import Aim, Beat, Plausibility, StepFacts, Stranger
 from engine.limits import Intimacy, LimitCategory
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character
@@ -246,6 +246,16 @@ def test_fictional_and_historical_names_pass(name):
 
 def test_a_step_at_a_real_person_never_plays():
     intent = Intent(steps=[step("punch Elon Musk", targets=["Elon Musk"])])
+
+    [hit] = limits.check_action(grounded_world(), intent, Rating.MATURE)
+
+    assert hit.category is LimitCategory.REAL_PERSON and hit.subject == "Elon Musk"
+
+
+def test_a_stranger_who_is_a_real_person_never_plays():
+    # F1, W1: a victim the scene hasn't named is made real, so a real name there is held too.
+    stranger = Stranger(who="Elon Musk", plausibility=Plausibility.PLAUSIBLE)
+    intent = Intent(steps=[step("stab a random man", aim=Aim.KILL, stranger=stranger)])
 
     [hit] = limits.check_action(grounded_world(), intent, Rating.MATURE)
 

@@ -93,16 +93,21 @@ class Prompt:
     """What a node sends to a model.
 
     Its repr shows only sizes, so a stray log line can never carry a full prompt (T6).
-    `images` go with the last user message.
+    `images` go with the last user message. `stable_chars` is how much of a lone user message
+    stays the same from call to call (the world, the rules): with the system text, the backend
+    may keep it in a cache that Gemini bills at its cached rate (`graph.llm.cache`).
     """
 
     system: str
     messages: tuple[Message, ...]
     images: tuple[ImagePart, ...] = ()
+    stable_chars: int = 0
 
     def __post_init__(self) -> None:
         if not self.messages or self.messages[-1].role != "user":
             raise ValueError("A prompt must end with a user message")
+        if not 0 <= self.stable_chars <= len(self.messages[-1].text):
+            raise ValueError("A prompt's stable start must be part of its last message")
 
     @classmethod
     def build(
@@ -112,8 +117,23 @@ class Prompt:
         *,
         history: Sequence[Message] = (),
         images: Sequence[ImagePart] = (),
+        stable_chars: int = 0,
     ) -> Prompt:
-        return cls(system=system, messages=(*history, Message("user", user)), images=tuple(images))
+        return cls(
+            system=system,
+            messages=(*history, Message("user", user)),
+            images=tuple(images),
+            stable_chars=stable_chars,
+        )
+
+    def stable_split(self) -> tuple[str, str] | None:
+        """The stable start and the rest of a prompt that is one text message with a stable
+        start, the rest without the blank line between them; None for any other prompt."""
+        if not self.stable_chars or len(self.messages) != 1 or self.images:
+            return None
+        text = self.messages[0].text
+        rest = text[self.stable_chars :].lstrip("\n")
+        return (text[: self.stable_chars], rest) if rest else None
 
     def __repr__(self) -> str:
         chars = len(self.system) + sum(len(m.text) for m in self.messages)

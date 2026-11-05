@@ -458,6 +458,13 @@ class _Applier:
             for practice in change.practice:
                 kept = [p for p in character.sheet.practice if p.key != practice.key]
                 character.sheet.practice = [*kept, practice.model_copy()]
+        if change.axes is not None and self.engine_only(subject, "axes"):
+            # F1: only someone the engine makes real comes with their measure; anyone known
+            # keeps theirs.
+            if created:
+                character.sheet.axes = change.axes.model_copy()
+            else:
+                self.reject(subject, "axes", "a known character's measure doesn't change here")
         if change.skills and self.engine_only(subject, "skills"):
             for skill in change.skills:
                 wanted = skill.name.casefold()

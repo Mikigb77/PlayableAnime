@@ -458,6 +458,118 @@ class StorySettings {
       Object.hash(narrationLength, tone, difficulty, eventFrequency, images, suggestions);
 }
 
+/// How the player character's story ended (N6, docs/API.md `Ending`). A story at its ending takes
+/// no more turns: the player closes it or starts again from its premise.
+class StoryEnding {
+  const StoryEnding({
+    required this.kind,
+    this.characterId = '',
+    this.character = '',
+    this.selfInflicted = false,
+    this.turn,
+    this.closed = false,
+  });
+
+  factory StoryEnding.fromJson(Json json) => StoryEnding(
+    kind: json['kind'] as String? ?? 'death',
+    characterId: json['character_id'] as String? ?? '',
+    character: json['character'] as String? ?? '',
+    selfInflicted: json['self_inflicted'] as bool? ?? false,
+    turn: (json['turn'] as num?)?.toInt(),
+    closed: json['closed'] as bool? ?? false,
+  );
+
+  static StoryEnding? maybe(Object? json) => json is Json ? StoryEnding.fromJson(json) : null;
+
+  /// `death` (the character died) or `chosen` (the player ended it with /end).
+  final String kind;
+  final String characterId;
+
+  /// Who fell or retired, by the name the story last knew them by.
+  final String character;
+
+  /// Harm they aimed at their own body killed them (F1).
+  final bool selfInflicted;
+
+  /// The scene the ending came in.
+  final int? turn;
+
+  /// The player closed the story; it stays in the Library to read.
+  final bool closed;
+
+  bool get isDeath => kind == 'death';
+
+  @override
+  bool operator ==(Object other) =>
+      other is StoryEnding &&
+      other.kind == kind &&
+      other.characterId == characterId &&
+      other.character == character &&
+      other.selfInflicted == selfInflicted &&
+      other.turn == turn &&
+      other.closed == closed;
+
+  @override
+  int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
+}
+
+/// Someone drawn to carry a story on after its ending (N6, docs/API.md `Successor`): a random
+/// person of the world, by its population odds. The player starts as them or draws again.
+class Successor {
+  const Successor({
+    required this.name,
+    this.age,
+    this.station = 'common',
+    this.oneIn = 1,
+    this.master = false,
+    this.place,
+    this.people,
+    this.lines = const [],
+    this.situation = '',
+    this.draws = 1,
+  });
+
+  factory Successor.fromJson(Json json) => Successor(
+    name: json['name'] as String? ?? '',
+    age: (json['age'] as num?)?.toInt(),
+    station: json['station'] as String? ?? 'common',
+    oneIn: (json['one_in'] as num? ?? 1).toInt(),
+    master: json['master'] as bool? ?? false,
+    place: json['place'] as String?,
+    people: json['people'] as String?,
+    lines: _strings(json['lines']),
+    situation: json['situation'] as String? ?? '',
+    draws: (json['draws'] as num? ?? 1).toInt(),
+  );
+
+  static Successor? maybe(Object? json) => json is Json ? Successor.fromJson(json) : null;
+
+  final String name;
+  final int? age;
+
+  /// common, skilled, notable, noble or royal: where they stand among the world's people.
+  final String station;
+
+  /// How rare a person like this is: one in this many. 1 for the commonest.
+  final int oneIn;
+
+  /// A hidden master: the player knows, and the world doesn't.
+  final bool master;
+
+  /// Where they live, and the people they belong to, by name.
+  final String? place;
+  final String? people;
+
+  /// Who they are, in the world's own words (G2, G16).
+  final List<String> lines;
+
+  /// The moment their first scene opens on.
+  final String situation;
+
+  /// How many people have been drawn for this ending so far.
+  final int draws;
+}
+
 class Story {
   const Story({
     required this.id,
@@ -470,6 +582,9 @@ class Story {
     this.clockLabel,
     this.coverUrl,
     this.settings = const StorySettings(),
+    this.ending,
+    this.successor,
+    this.openingDue = false,
   });
 
   factory Story.fromJson(Json json) => Story(
@@ -483,6 +598,9 @@ class Story {
     clockLabel: (json['clock'] as Json?)?['label'] as String?,
     coverUrl: json['cover_url'] as String?,
     settings: StorySettings.fromJson(json['settings'] as Json?),
+    ending: StoryEnding.maybe(json['ending']),
+    successor: Successor.maybe(json['successor']),
+    openingDue: json['opening_due'] as bool? ?? false,
   );
 
   final String id;
@@ -505,12 +623,24 @@ class Story {
   final String? coverUrl;
   final StorySettings settings;
 
+  /// Set once the story has reached its ending (N6). Then it takes no more turns.
+  final StoryEnding? ending;
+
+  /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
+  final Successor? successor;
+
+  /// Someone new carries the story on, and their first scene is still to be told: the next turn
+  /// is their opening (N6).
+  final bool openingDue;
+
   Story copyWith({
     List<Scene>? scenes,
     int? version,
     String? clockLabel,
     String? title,
     StorySettings? settings,
+    StoryEnding? ending,
+    bool? openingDue,
   }) => Story(
     id: id,
     title: title ?? this.title,
@@ -522,13 +652,20 @@ class Story {
     clockLabel: clockLabel ?? this.clockLabel,
     coverUrl: coverUrl,
     settings: settings ?? this.settings,
+    ending: ending ?? this.ending,
+    successor: successor,
+    openingDue: openingDue ?? this.openingDue,
   );
 
-  Story withScene(Scene scene, {required int version, String? clockLabel}) => copyWith(
-    scenes: [...scenes.where((s) => s.turn != scene.turn), scene],
-    version: version,
-    clockLabel: clockLabel,
-  );
+  /// The story with a saved scene. Once any scene is saved, no opening is due.
+  Story withScene(Scene scene, {required int version, String? clockLabel, StoryEnding? ending}) =>
+      copyWith(
+        scenes: [...scenes.where((s) => s.turn != scene.turn), scene],
+        version: version,
+        clockLabel: clockLabel,
+        ending: ending,
+        openingDue: false,
+      );
 }
 
 /// The `/status` page (S5): the sheet, reputation and the date (docs/API.md `StatusView`).

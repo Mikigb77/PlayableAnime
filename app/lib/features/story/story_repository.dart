@@ -11,19 +11,22 @@ class TurnInput {
   const TurnInput.action(String this.action, {required this.inputMode})
     : kind = 'action',
       choiceId = null,
-      standing = null;
+      standing = null,
+      dropRefused = false;
 
   const TurnInput.choice(String this.choiceId)
     : kind = 'choice',
       action = null,
       standing = null,
-      inputMode = 'choice';
+      inputMode = 'choice',
+      dropRefused = false;
 
   const TurnInput.standing(String this.standing)
     : kind = 'standing',
       action = null,
       choiceId = null,
-      inputMode = 'choice';
+      inputMode = 'choice',
+      dropRefused = false;
 
   /// The opening scene of a story that has none yet, right after a draft starts.
   /// The opening has no input mode: nobody entered anything (V7).
@@ -32,7 +35,18 @@ class TurnInput {
       action = null,
       choiceId = null,
       standing = null,
-      inputMode = null;
+      inputMode = null,
+      dropRefused = false;
+
+  /// Ends the story with `/end` (N6): an epilogue, told from things as they stand or from
+  /// [note], the player's words on how it should end. With [dropRefused], what the world refused
+  /// of the note is left out instead of handed back.
+  const TurnInput.end(String? note, {String? inputMode, this.dropRefused = false})
+    : kind = 'end',
+      action = note,
+      choiceId = null,
+      standing = null,
+      inputMode = note == null ? null : inputMode;
 
   final String kind;
   final String? action;
@@ -42,12 +56,19 @@ class TurnInput {
   /// typed, voice, voice_edited or choice (V7).
   final String? inputMode;
 
+  /// An end turn only: tell the epilogue without what the world refused of the note.
+  final bool dropRefused;
+
+  /// This end turn again, leaving out what the world refused.
+  TurnInput withoutRefused() => TurnInput.end(action, inputMode: inputMode, dropRefused: true);
+
   Json toJson(int expectedVersion) => {
     'kind': kind,
     'action': ?action,
     'choice_id': ?choiceId,
     'standing': ?standing,
     'input_mode': ?inputMode,
+    if (dropRefused) 'drop_refused': true,
     'expected_version': expectedVersion,
   };
 }
@@ -77,6 +98,21 @@ class StoryRepository {
           if (settings != null && settings.isNotEmpty) 'settings': settings,
         })
         as Json,
+  );
+
+  /// Closes a story at its ending (N6). It stays in the Library to read.
+  Future<Story> close(String id) async =>
+      Story.fromJson(await _api.post('/v1/stories/$id/close', null) as Json);
+
+  /// Draws someone new to carry the story on after its ending (N6), replacing anyone drawn before.
+  /// It is one drafting call, charged like a draft (K2).
+  Future<Successor> drawSuccessor(String id) async =>
+      Successor.fromJson(await _api.post('/v1/stories/$id/successor', null) as Json);
+
+  /// Starts as the person drawn (N6): the ending is lifted, and the story's next turn is their
+  /// opening.
+  Future<Story> carryOn(String id, {required int expectedVersion}) async => Story.fromJson(
+    await _api.post('/v1/stories/$id/carry-on', {'expected_version': expectedVersion}) as Json,
   );
 
   Future<StatusData> status(String id) async =>

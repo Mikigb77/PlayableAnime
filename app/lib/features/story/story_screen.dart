@@ -14,9 +14,11 @@ import '../../design/design.dart';
 import '../../router.dart' show Routes;
 import '../account/account_repository.dart';
 import '../account/out_of_credits_sheet.dart';
+import '../create/create_story_screen.dart' show StartAgain;
 import '../library/library.dart';
 import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
+import 'ending_card.dart';
 import 'play_controller.dart';
 import 'scene_details_sheet.dart';
 import 'scene_menu.dart';
@@ -32,7 +34,8 @@ import 'turn_error_card.dart';
 ///
 /// Every scene has its details (A8) and a menu to illustrate (M2) or report it (F6); the app bar
 /// opens `/status`, Memory and the story's settings (S6). A story that has no scenes yet, just
-/// started from a draft, plays its opening turn as soon as it opens.
+/// started from a draft, plays its opening turn as soon as it opens, and so does a story someone
+/// new carries on after its ending (N6).
 class StoryScreen extends ConsumerStatefulWidget {
   const StoryScreen({super.key, required this.storyId, this.initialStory});
 
@@ -149,6 +152,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         if (ref.exists(meProvider)) ref.read(meProvider.notifier).refreshQuietly();
       case TurnRefused(:final error):
         _snack(describeError(l10n, error).message);
+      case CloseFailed():
+        _snack(l10n.endingCloseFailed);
     }
   }
 
@@ -202,9 +207,68 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       case 'status':
         _action.clear();
         _openStatus();
+      case 'end':
+        final note = text.substring(1 + name.length).trim();
+        unawaited(_end(note.isEmpty ? null : note));
       default:
         _snack(context.l10n.storyUnknownCommand(name));
     }
+  }
+
+  /// `/end`, with or without a note on how the story should end (N6). It can't be undone, so the
+  /// player confirms first.
+  Future<void> _end(String? note) async {
+    final l10n = context.l10n;
+    final mode = _mode.mode.wire;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.endConfirmTitle),
+        content: Text(note == null ? l10n.endConfirmBody : l10n.endConfirmBodyNote),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.endConfirmKeep),
+          ),
+          TextButton(
+            key: const ValueKey('end.confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.endConfirmEnd),
+          ),
+        ],
+      ),
+    );
+    if (!(sure ?? false) || !mounted) return;
+    _following = true;
+    final sent = _action.text.trim();
+    final started = await _play.end(note: note, inputMode: mode, label: note ?? l10n.endLabel);
+    if (started && mounted && _action.text.trim() == sent) _action.clear();
+  }
+
+  void _endWithoutRefused() {
+    _following = true;
+    unawaited(_play.endWithoutRefused());
+  }
+
+  /// Carrying the story on as someone else (N6): the person drawn, to start as or draw again. Once
+  /// the player starts as them, their opening plays here.
+  Future<void> _carryOn() async {
+    final carried = await context.push<Story>(Routes.successor(widget.storyId), extra: _play.story);
+    if (!mounted) return;
+    if (carried == null) {
+      // Whoever was drawn stays with the story, to come back to.
+      unawaited(_play.reload());
+      return;
+    }
+    ref.invalidate(storiesProvider);
+    _following = true;
+    _play.carriedOn(carried);
+  }
+
+  /// The create flow with this story's premise filled in, to keep or change (N6).
+  void _startAgain() {
+    final premise = _play.story?.premise;
+    unawaited(context.push(Routes.create, extra: StartAgain(premise ?? '')));
   }
 
   void _choose(Choice choice) {
@@ -367,7 +431,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   void _follow([int attempt = 0]) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_following || !_scroll.hasClients) return;
-      if (_play.pending?.isOpening ?? false) return;
+      // The first opening is read from the title page; someone new's opening is followed (N6).
+      if ((_play.pending?.isOpening ?? false) && (_play.story?.scenes.isEmpty ?? true)) return;
       if (!_scroll.position.hasContentDimensions) return;
       final card = _pendingKey.currentContext?.findRenderObject();
       final position = _scroll.position;
@@ -500,15 +565,20 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   ],
                 ),
               ),
-              Composer(
-                controller: _action,
-                focusNode: _focus,
-                enabled: story.scenes.isNotEmpty,
-                busy: _play.busy,
-                onSubmit: _send,
-                mic: DictationButton(tracker: _mode, storyId: widget.storyId),
-                commands: [SlashCommand('status', l10n.slashStatus)],
-              ),
+              // A story at its ending takes no more turns (N6): its card says what's next.
+              if (story.ending == null)
+                Composer(
+                  controller: _action,
+                  focusNode: _focus,
+                  enabled: story.scenes.isNotEmpty && !story.openingDue,
+                  busy: _play.busy,
+                  onSubmit: _send,
+                  mic: DictationButton(tracker: _mode, storyId: widget.storyId),
+                  commands: [
+                    SlashCommand('status', l10n.slashStatus),
+                    SlashCommand('end', l10n.slashEnd),
+                  ],
+                ),
             ],
           ),
         },
@@ -569,8 +639,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
             children: [
               if (startsHere) top else const SizedBox(height: Space.lg),
               for (final s in newer) scene(s),
-              if (story.scenes.isEmpty && pending == null)
-                ContentColumn.reading(child: _Begin(onBegin: _play.begin)),
+              if (_play.opening && pending == null)
+                ContentColumn.reading(
+                  child: _Begin(onBegin: _play.begin, carriedOn: story.scenes.isNotEmpty),
+                ),
               if (pending != null)
                 ContentColumn.reading(
                   key: _pendingKey,
@@ -583,7 +655,28 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                     onDismiss: pending.isOpening ? null : () => _dismiss(pending),
                   ),
                 ),
-              if (last != null && !_play.busy)
+              if (_play.refusal case final refusal? when pending == null)
+                ContentColumn.reading(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(Space.gutter, Space.lg, Space.gutter, 0),
+                    child: EndingRefusedCard(
+                      parts: refusal.parts,
+                      onPlayOn: _play.playOn,
+                      onEndWithout: _endWithoutRefused,
+                    ),
+                  ),
+                ),
+              if (story.ending case final ending? when pending == null)
+                ContentColumn.reading(
+                  child: EndingCard(
+                    ending: ending,
+                    closing: _play.closing,
+                    onClose: () => unawaited(_play.close()),
+                    onCarryOn: () => unawaited(_carryOn()),
+                    onStartAgain: (story.premise ?? '').trim().isEmpty ? null : _startAgain,
+                  ),
+                ),
+              if (last != null && !_play.busy && story.ending == null && !story.openingDue)
                 ContentColumn.reading(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(Space.gutter, Space.lg, Space.gutter, 0),
@@ -731,11 +824,13 @@ class _Top extends StatelessWidget {
   }
 }
 
-/// A story with no scenes whose opening didn't start (out of credits, say): begin by hand.
+/// An opening that didn't start (out of credits, say): begin by hand. The story has no scenes
+/// yet, or someone new carries it on ([carriedOn], N6).
 class _Begin extends StatelessWidget {
-  const _Begin({required this.onBegin});
+  const _Begin({required this.onBegin, this.carriedOn = false});
 
   final VoidCallback onBegin;
+  final bool carriedOn;
 
   @override
   Widget build(BuildContext context) {
@@ -745,12 +840,15 @@ class _Begin extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            l10n.storyBeginning,
+            carriedOn ? l10n.storyCarriedOnBeginning : l10n.storyBeginning,
             textAlign: TextAlign.center,
             style: context.lucidText.playerAction,
           ),
           const SizedBox(height: Space.lg),
-          FilledButton(onPressed: onBegin, child: Text(l10n.storyBegin)),
+          FilledButton(
+            onPressed: onBegin,
+            child: Text(carriedOn ? l10n.storyCarriedOnBegin : l10n.storyBegin),
+          ),
         ],
       ),
     );

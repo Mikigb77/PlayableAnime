@@ -32,6 +32,7 @@ from engine.state.sheet import (
     HitMode,
     ItemKind,
     LadderPosition,
+    PowerAxes,
     Practice,
     Ruling,
     Skill,
@@ -122,6 +123,10 @@ class CharacterChange(EngineModel):
     skills: list[Skill] = Field(
         default_factory=list,
         description="Engine only: a skill learned or raised by training (A4), by name.",
+    )
+    axes: PowerAxes | None = Field(
+        default=None,
+        description="Engine only: the A8 tiers of someone new the engine makes real (F1).",
     )
 
 

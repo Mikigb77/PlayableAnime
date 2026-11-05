@@ -18,6 +18,7 @@ from engine.visibility import MemoryView, StatusView, clock_view, memory_view, s
 from media.lookups import cover_urls, place_urls, portrait_urls, scene_images
 from media.storage import SignedUrl
 from moderation.models import Report
+from stories import endings
 from stories.models import Scene, Story
 from stories.schemas import (
     ChoiceOut,
@@ -29,6 +30,7 @@ from stories.schemas import (
     StorySettings,
     StorySummaryOut,
 )
+from stories.succession import drawn_of, successor_out
 
 LIBRARY_SIZE = 50
 
@@ -110,6 +112,7 @@ def story_out(
     story: Story, state: WorldState, scenes: Sequence[Scene], *, request: HttpRequest | None
 ) -> StoryOut:
     cover = cover_urls([story.pk], request=request).get(str(story.pk))
+    ending = endings.of_story(story.ending, state)
     return StoryOut(
         id=str(story.pk),
         title=story.title,
@@ -121,6 +124,14 @@ def story_out(
         clock=clock_view(state),
         scenes=scenes_out(story, scenes, request=request),
         cover_url=cover.url if cover else None,
+        premise=story.premise,
+        ending=ending,
+        successor=(
+            successor_out(state, drawn)
+            if ending and not ending.closed and (drawn := drawn_of(story))
+            else None
+        ),
+        opening_due=state.opening_due,
     )
 
 
@@ -146,6 +157,7 @@ def library(stories: Iterable[Story], *, request: HttpRequest | None) -> list[St
                 turn=story.turn,
                 world_time_label=clock_label(calendar, int(story.world_s or 0)),
                 cover_url=cover.url if cover else None,
+                ending=endings.of_story(story.ending),
                 updated_at=story.updated_at,
             )
         )

@@ -38,6 +38,17 @@ plausibly holds it: plausible, uncertain or absent.
 out, pinned or bound), or none for anything that doesn't harm them: a warning shot, a shove out \
 of the way, a threat. Read it from the player's words ("I cut him down" is kill, "I knock him \
 out" is subdue), never harsher than they chose. A harmful aim puts its targets in the way.
+- Harm the character turns on themselves (a blade to their own heart, a jump from the \
+battlements, walking into the fire) targets their own id from PLAYER CHARACTER with the aim the \
+player chose (F1). Nothing stands in the way unless someone or something there could stop them, \
+and the danger itself (the fall, the blade) is the means, judged in facts.means. Hesitation or \
+fear is never opposition: the choice is the player's (G15).
+- A harmful aim at someone the player doesn't name ("some random guy", "the nearest \
+passer-by"): when someone in SCENE fits, put their id in target_ids. When nobody there does, \
+leave target_ids empty and describe them in stranger: who they are, in a few words, whether the \
+place plausibly holds someone like that right now (a busy street at noon: plausible; a locked \
+cellar: absent), and crowd when others are around to see it (W1, W2). Never pick or invent how \
+strong they are: code rolls that.
 - When a step's outcome rests on cause and effect that isn't obvious, write the chain link by \
 link, with the facts each link rests on (rule, power or character ids, or plain words) and the \
 in-world seconds it takes. For each link, list in answers what would let the target escape or \
@@ -134,6 +145,12 @@ details of the place. Then the outcome the engine resolved (OUTCOME). Then how t
 Never open with the result, with a recap, or with the player's words repeated back.
 - How the character acts shows who they are: their skills, powers and temperament, and a power \
 shows its cost. Temperament colours the telling but never adds a choice.
+- Harm the character turns on themselves plays as the player chose it (F1): their temperament \
+can show, such as trembling hands or a last doubt, but it never stops them, and the outcome is \
+OUTCOME's. CONTENT says how a death by their own hand is told.
+- met under a step in OUTCOME lists people that step made real: a stranger it aimed at, and an \
+onlooker who saw it. They are there now, as described; reuse their ids in update, and give a \
+name only once the character learns it.
 - A failure or partial success is an attempt that meets something: play the action up to the \
 moment it goes wrong and show why, matching the step's reason. An action the world rules out \
 plays as what it really is.
@@ -156,7 +173,12 @@ player character; when apparent_affinity is given, that is what they let show.
 ends. When it needs no decision, it is something that already played out: tell it as done. Weave \
 in the CALLBACKS naturally. Show what the FIRED events made happen, and tell the HAPPENINGS \
 briefly as things that came to pass in the time that went by.
-- End on something the player can act on. A quiet ending is fine; the story never ends.
+- End on something the player can act on. A quiet ending is fine; the story never ends by \
+itself. Only when the user message has ENDING does this scene close the player character's \
+story, as its TASK says (N6).
+- FALLEN lists earlier player characters of this story whom someone in the scene knew. Those \
+people may bring them up when it fits, as people do, never forced, and know how they ended only \
+when knows_how_it_ended says so (N6, C6).
 
 Content: follow CONTENT exactly. You play every action the player attempts, including violence, \
 cruelty and crime, without lecturing or refusing (F1). Consequences come from the world, not from \
@@ -192,6 +214,33 @@ When LAST MOMENT names a moment, the scene opens on it, with the people, positio
 SCENE lists. Play no action for the character beyond small natural movement.\
 """
 
+SUCCESSION_TASK = """\
+Write the opening scene of someone new: the story carries on in the same world after its last \
+player character's ending (N6), and the player now plays the PLAYER CHARACTER. Introduce them in \
+their own life, where LAST MOMENT puts them, establish who they are through what they see and do, \
+and end on something to act on. They are not the one before and carry none of their goals: STORY \
+SO FAR is what happened before them, which they know only as anyone in the world would. Play no \
+action for the character beyond small natural movement.\
+"""
+
+DEATH_TASK = """\
+ENDING: the player character dies in this scene, as OUTCOME settled (N6). It is their last scene. \
+Play it up to the end of their life as CONTENT allows, then close on what their death leaves \
+behind around them: who sees it, what stays unfinished. No hook, no question, nothing left for \
+them to act on: the story ends here for them. When ENDING has a wish, it is how the player hoped \
+the story would end, and only what OUTCOME settled of it happened; its left_out never happens.\
+"""
+
+EPILOGUE_TASK = """\
+ENDING: the player has chosen to end the story here (N6), and this scene is its epilogue. Play \
+what OUTCOME settled of their wish, if ENDING has one, then tell where this leaves the player \
+character and the people and threads around them. You may look ahead in a few lines at most, \
+framed as what is to come, without deciding the fate of anyone the world hasn't settled. The wish \
+is a hope: only what OUTCOME settled happened, so never grant what it left out. ENDING's \
+left_out is what the player asked for and the world refused: none of it happens. Close the story \
+on a last image: no hook, no question, nothing to act on.\
+"""
+
 CUTAWAY_SYSTEM = """
 
 This scene was blocked by a content filter. Retell it as a cut-away (F4): show the moment just \
@@ -220,6 +269,8 @@ Rating: Teen.
 - Romance: attraction and a kiss, nothing more.
 - Sexual violence is never present.
 - Cruelty and crime are present but not lingered on.
+- A character taking their own life happens off the page: the moment before, then what it \
+leaves behind, never how.
 """
 
 _MATURE = """\
@@ -232,6 +283,8 @@ sensations of sex. Later scenes can still refer to what happened.
 scene cuts to the aftermath, with no sexual detail.
 - Cruelty and crime at any scale. Torture can be shown when it serves the story, never at length \
 for its own sake.
+- A character taking their own life is told plainly, as the player chose it, and never lingered \
+on or told as a method to copy.
 """
 
 _GORE = {

@@ -45,11 +45,11 @@ enforces them, and the narrator never moralizes.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| F1 | The narrator plays any action the player attempts, including violence, cruelty, crime and villainy, with no in-character lecturing or refusal. Consequences come from the world (W1–W16), never from the narrator. | P0 |
+| F1 | The narrator plays any action the player attempts, including violence, cruelty, crime and villainy, with no in-character lecturing or refusal. Consequences come from the world (W1–W16), never from the narrator. That includes harm the character turns on themselves, such as a knife to their own heart or a jump from the battlements: it lands on their own body like any other aim, only the means decide it, and their temperament can show (trembling hands, a last doubt) but never stops them (Miki, 2026-11-05). A death by their own hand is told plainly in Mature and off the page in Teen, never lingered on or told as a method. | P0 |
 | F2 | Two ratings per story: **Teen** and **Mature (17+)**, as set out in the table below. There is no explicit sex in any rating. A new story starts at Teen until the player picks Mature, which only an adult account can (F8). | P0 |
 | F3 | Hard limits in every rating, enforced in code: no romantic or sexual content involving minors or characters with childlike bodies or behavior, whatever age they are given, so every character in a romance scene has an adult age recorded. No sexual content about real people. No real-world harm instructions (weapons, drugs, hacking). Sexual violence is never described; it can only happen off-page (see the table). | P0 |
 | F4 | **A blocked description never blocks the deed.** The engine resolves and records the action in code (A2, A3, W1) before narration, so a refusal or safety block only affects how it is told. The narration first retries as a cut-away, then falls back to a neutral template line ("What happened in the alley stays off the page. Its consequences won't."). Only when the action itself can't be read (the interpret step in B5 is blocked) does the player get a clear message with a rephrase or retry option, never an error. Every block is logged with its category. | P0 |
-| F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. | P0 |
+| F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. Dangerous content, where Gemini files a character's self-harm, is off wherever it would stop the story rather than an instruction: the interpret step and chapter summaries in both ratings, and the narrator in Mature, where code holds F3's line on instructions (2026-11-05: it had blocked "I stab myself" and a knife to a stranger). | P0 |
 | F6 | Report and block on every scene, with reports reviewed in the Django admin. Apple requires this for AI content apps (guideline 1.2). | P0 |
 | F7 | **Player content preferences:** gore level (low, medium or high), romance on or off, and dark themes on or off. The world and NPCs only start themes that are switched on. The player's own actions are bounded only by the rating. | P1 |
 | F8 | **Age gate:** a declared birth date at sign-up, plus the store's 17+ rating. Apple 1.2.1 accepts verified or declared age. Under-17 accounts get Teen only, and their limit lifts on the 17th birthday. Nobody under `MIN_SIGNUP_AGE` (13 for now, for Miki to confirm with the privacy policy) can sign up. | P0 |
@@ -103,8 +103,9 @@ in code whatever a model or a player says:
   `unreadable_action` and a message that names the line, so the player can say it another way.
   Every block, from the code or from Gemini, is logged with its category (F4).
 - A story above the account's rating limit is closed on every story route (F8). The interpret step
-  in a Mature story turns Gemini's text filters off except dangerous content, so the engine, not a
-  filter, reads the action (F5).
+  turns Gemini's dangerous-content filter off in both ratings, and in a Mature story all its text
+  filters, so the engine, not a filter, reads the action (F5). The Mature narrator runs without
+  the dangerous-content filter too, so the code's check on instructions holds F3 there.
 - A report is one per scene and player, and a block is never undone. Only superusers and staff in
   the report handlers group read story text in the admin (F6, T16).
 
@@ -656,7 +657,7 @@ this as state. It is not something the narrator is just asked to remember.
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
-| W1 | **Deeds.** Every significant player act (killing, saving, betraying, conquering, a public display of power) is recorded as a deed with turn, place, victims, severity 1–5 and witnesses. | P0 |
+| W1 | **Deeds.** Every significant player act (killing, saving, betraying, conquering, a public display of power) is recorded as a deed with turn, place, victims, severity 1–5 and witnesses. A victim the scene hasn't named ("I kill some random guy") is made real first, when the place plausibly holds someone like that, so the deed has a victim and the world answers it; in a crowd an onlooker is made real too, to witness it (W2). Who the stranger turns out to be is rolled: most are ordinary, about 1 in 15 knows how to fight, and a hidden master who always sees it coming is rare, from about 1 in 1,000 in a grounded world to 1 in 200 where powers are everywhere (Miki, 2026-11-05). Harm the character does only to themselves is no deed against anyone. | P0 |
 | W2 | **Who knows.** Every deed is secret, witnessed or public. Rumors spread to nearby places and factions over in-world time, and their accuracy can drop as they travel. Characters react only to what they could know. | P0 |
 | W3 | **Reputation.** The player has a reputation with each faction and each region, on two separate axes: *esteem* (how much they like you) and *fear* (how dangerous they think you are). A feared tyrant has high fear and low esteem. Reputation moves only by the engine's rules, from deeds and the word that spreads about them, never because the narrator says so. | P0 |
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). The engine moves attitudes by its rules; the narrator can nudge one by at most 10 points per scene, so a single line of dialogue can't turn an enemy into a friend. | P0 |
@@ -1037,12 +1038,49 @@ premise's clocks keep running without them, and the story follows the player. Th
 doesn't lock the genre, so a samurai drama can turn into a merchant story, but the world's fixed
 rules still hold (G7, G11).
 
-**N6 Endings, death and legacy (P1).** The player character can die on Balanced and Brutal. On
-Story, a fatal outcome becomes a defeat instead: captured, maimed, or rescued at a price. After a
-death or a chosen retirement, the player can continue as another character in the same world (an
-heir, an ally or a newcomer) while the world remembers the old protagonist, write an epilogue, or
-rewind with C8. The story never ends on its own (S4), but the player can end it. Until N6 is built,
-every difficulty treats a fatal outcome as a defeat.
+**N6 Endings, death and legacy (P1).** The player character can die. A death the player chooses,
+such as a knife to their own heart or a leap from the battlements, is always real (F1). Difficulty
+only softens deaths that others cause: on Story such a fatal outcome becomes a defeat instead
+(captured, maimed, or rescued at a price), and on Balanced and Brutal it kills. Until the world can
+kill the player character in a fight or a disaster, a fatal outcome that others cause is a defeat on
+every difficulty.
+
+The story never ends on its own (S4), and endless play stays the default, but the player can end it
+with `/end` and an optional note on how it ends. The world checks the note like any action: what it
+rules out or leaves to a long shot is handed back with its reasons, and nothing is saved or charged,
+so the player plays on to earn that ending or ends without those parts. Contested parts are rolled.
+An outcome or someone else's reaction that the note claims ("and the sect names me emperor") is
+refused too, since the player never writes those (A6). What remains plays in an epilogue, and the
+narrator is told what was left out, never the note as written. Retiring in the fiction ("I hang up my sword") is an ordinary
+action, not an ending.
+
+A death or an epilogue is the story's ending, told on its last scene with nothing more to act on. A
+death by the character's own hand is told as F1 says. From then on the
+story takes no more turns (`story_ended`), and the player carries it on as someone else in the same
+world, closes it, which keeps it in the Library to read, or starts again from the same premise, which
+opens the create flow with the premise filled in. After a death by the character's own hand, one
+quiet line says where to find support, with no lecture.
+
+Carrying on as someone else (Miki, 2026-11-05) draws a random person of the world by its population
+odds, and code decides who they are: where they live (cities more than villages, never ruins or the
+wilds), their people, their age (16 to 60), and their station. Most are common folk; one in five is
+skilled in a trade, one in forty is a person of note, about one in a thousand is noble, and about
+one in fifty thousand belongs to the ruling family, never its ruler, and never a god or anyone the
+story already has. Their strength follows the stranger odds (W1): one in fifteen is tougher than most,
+and a hidden master is as rare as the world makes them. The drafter fills in only their name, looks,
+skills, belongings and the moment their first scene opens on, held to that draw (G2, G12). The player
+sees them on a character screen, with how rare they are, and starts as them or draws again, without
+editing; each draw is one drafting call, charged like a draft (K2). Starting as them lifts the
+ending, and the story's next turn is their opening. The old player character stays in the world: dead
+and remembered, or, after an epilogue, living on away from the story's centre. Their goals, leads
+and reputation were theirs alone, so the newcomer starts with none, and nobody in the story knows
+them yet, though they know the place they live in (C6). People who knew the fallen remember them naturally, when it fits, never forced:
+the narrator is told who in the scene knew them and whether they know how it ended.
+
+Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
+unborn child counts only if the mother lives, which logic decides first and a roll only when the
+facts leave it open; playing as that child starts after a time jump to when they can act. Rewinding
+comes with C8.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has
 decided stay open until the narrator first describes them. From then on the engine records them as
@@ -1089,7 +1127,7 @@ These are the parts of the product the player sees, most of them already listed 
 | S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
-| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
+| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. | P1 |
 | S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. See the images section (M1 to M8). | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
@@ -1163,7 +1201,7 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T2 | **Neon:** the `production` branch for live data, one branch per feature that expires after 7 days, the pooled URL for the app and the direct URL for migrations, and compute that scales to zero. Migrations run before each deploy. | P0 |
 | T3 | **Cold start:** the first request after idle answers in under 5 s (Cloud Run start plus Neon wake). Health checks never touch the database. | P0 |
 | T4 | **Logging:** structured JSON logs to stdout, which Cloud Run sends to Cloud Logging. Every line has severity, request id, trace id (from `X-Cloud-Trace-Context`), user id and story id. | P0 |
-| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens (and how many input tokens Gemini billed at its cached rate), latency, estimated cost, safety blocks, retries, how the action was entered (V7), and how far the clock moved with each step's kind and seconds (W10). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
+| T5 | **Turn telemetry:** one log entry per turn with model, input and output tokens (and how many input tokens Gemini billed at its cached rate: the start of a prompt that stays the same from turn to turn is kept in an explicit Vertex AI cache, so it bills at that rate), latency, estimated cost, safety blocks, retries, how the action was entered (V7), and how far the clock moved with each step's kind and seconds (W10). Each picture gets its own entry with its model and cost (M7). These feed a log-based metric and a cost dashboard. | P0 |
 | T6 | **Never logged:** API keys (BYOK or ours), auth tokens and full prompts. Story text is logged only at DEBUG, and DEBUG is off in production. | P0 |
 | T7 | **Errors:** uncaught exceptions reach Error Reporting. LLM failures are retried once (a 429 on our shared Vertex AI quota twice, after waits of 2 s and 6 s, since it comes in bursts that pass within seconds) and then return a typed error the app can show (`llm_unavailable`, `blocked`, `bad_key`, `out_of_credits`), never a bare 500. | P0 |
 | T8 | **Auth:** no Firebase. Sign in with Google, through an OAuth client in the `playable-anime` GCP project, plus our own email login in Django. On iOS, Apple requires an equivalent login option when Google sign-in is offered (guideline 4.8), so plan for Sign in with Apple there. The backend verifies Google's ID token once at sign-in, then issues its own short-lived access token and a refresh token. These are checked on every request except `/health` and sign-in itself. Refresh tokens rotate on every use and are stored only as hashes, a reused one signs its device out, and repeated wrong passwords are throttled. | P0 |
@@ -1323,7 +1361,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty | Done. Death on Balanced and Brutal with legacy options, defeat on Story (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as an heir is next (N6). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

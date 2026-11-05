@@ -43,6 +43,7 @@ def test_the_library_lists_your_own_stories_most_recently_played_first(
         "turn",
         "world_time_label",
         "cover_url",
+        "ending",
         "updated_at",
     }
     assert (first["id"], first["genre"], first["rating"], first["turn"]) == (

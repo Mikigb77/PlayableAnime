@@ -19,8 +19,10 @@ import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/story/scene_details_sheet.dart';
 import 'package:playable_anime/features/story/scene_view.dart';
 import 'package:playable_anime/features/story/status_screen.dart';
+import 'package:playable_anime/features/story/story_models.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
 import 'package:playable_anime/features/story/story_screen.dart';
+import 'package:playable_anime/features/story/successor_screen.dart';
 import 'package:playable_anime/features/story/turn_error_card.dart';
 import 'package:playable_anime/features/voice/dictation_mode.dart';
 
@@ -88,6 +90,13 @@ void main() {
             GoRoute(
               path: 'memory',
               builder: (_, _) => const Scaffold(body: Text('Memory')),
+            ),
+            GoRoute(
+              path: 'successor',
+              builder: (_, state) => SuccessorScreen(
+                storyId: state.pathParameters['id']!,
+                story: state.extra as Story?,
+              ),
             ),
           ],
         ),
@@ -609,6 +618,116 @@ void main() {
     await tester.tap(find.text(l10n.storyLatest));
     await settle(tester, frames: 12);
     expect(find.byKey(const ValueKey('choices-25')), findsOneWidget);
+  });
+
+  group('after an ending (N6)', () {
+    List<JsonMap> draws() => [
+      for (final e in backend.data.account.ledgerOf(FakeAuthState.demoUserId))
+        if (e['kind'] == 'draft') e,
+    ];
+
+    Future<void> die(WidgetTester tester) async {
+      await send(tester, 'I stab myself');
+      await settle(tester, frames: 10);
+      expect(find.text(l10n.endingDeathTitle('Shen Yu')), findsOneWidget);
+    }
+
+    Future<void> carryOn(WidgetTester tester) async {
+      await tapLast(tester, find.byKey(const ValueKey('ending.carryOn')));
+      await settle(tester, frames: 10);
+    }
+
+    testWidgets('someone else carries the story on, starting with an opening of their own', (
+      tester,
+    ) async {
+      await serve(tester);
+      await open(tester);
+      await die(tester);
+      await carryOn(tester);
+
+      // Someone is drawn as the screen opens, charged like a draft (K2).
+      expect(find.byType(SuccessorScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('successor.name')), findsOneWidget);
+      expect(find.text('Mei Lin'), findsOneWidget);
+      expect(find.text(l10n.successorStation('common').toUpperCase()), findsOneWidget);
+      expect(find.byKey(const ValueKey('successor.master')), findsNothing);
+      expect(draws(), hasLength(1));
+
+      // Drawing again draws someone else.
+      await tester.tap(find.byKey(const ValueKey('successor.drawAgain')));
+      await settle(tester, frames: 10);
+      expect(find.text('Old Bo'), findsOneWidget);
+      expect(
+        find.text(
+          '${l10n.successorStation('skilled')} · ${l10n.successorOneIn(1000)}'.toUpperCase(),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('successor.master')), findsOneWidget);
+      expect(draws(), hasLength(2));
+
+      await tester.tap(find.byKey(const ValueKey('successor.start')));
+      await settle(tester, frames: 12);
+
+      // Back on the story: the ending is lifted and the newcomer's opening is told.
+      expect(find.byType(SuccessorScreen), findsNothing);
+      expect(find.text(l10n.endingDeathTitle('Shen Yu')), findsNothing);
+      await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+      await settle(tester);
+      final story = backend.data.stories.get(_demo, FakeAuthState.demoUserId);
+      expect(story.openingDue, isFalse);
+      expect(story.scenes.last['kind'], 'opening');
+      expect(words('Old Bo\'s door'), findsWidgets);
+      expect(tester.widget<Composer>(find.byType(Composer)).enabled, isTrue);
+
+      // And the new character can die too, under their own name.
+      await send(tester, 'I stab myself');
+      await settle(tester, frames: 10);
+      expect(find.text(l10n.endingDeathTitle('Old Bo')), findsOneWidget);
+    });
+
+    testWidgets('leaving the screen keeps who was drawn, at no new charge', (tester) async {
+      await serve(tester);
+      await open(tester);
+      await die(tester);
+      await carryOn(tester);
+      expect(find.text('Mei Lin'), findsOneWidget);
+
+      await tester.pageBack();
+      await settle(tester, frames: 10);
+      expect(find.text(l10n.endingDeathTitle('Shen Yu')), findsOneWidget);
+
+      await carryOn(tester);
+      expect(find.text('Mei Lin'), findsOneWidget);
+      expect(draws(), hasLength(1));
+    });
+
+    testWidgets('out of credits offers the player\'s own key, and draws on it', (tester) async {
+      await serve(tester);
+      await open(tester);
+      await die(tester);
+      final account = backend.data.account;
+      account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'turn',
+        cents: account.balanceOf(FakeAuthState.demoUserId),
+        now: backend.now(),
+      );
+      await carryOn(tester);
+
+      expect(find.text('Mei Lin'), findsNothing);
+      expect(find.text(l10n.oocCarryOn), findsOneWidget);
+      await tester.tap(find.text(l10n.oocCarryOn));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('ooc.useKey')));
+      await settle(tester);
+      await tester.enterText(find.byKey(const Key('account.ownKey')), 'AIza-from-the-sheet');
+      await tester.tap(find.byKey(const Key('account.ownKey.save')));
+      await settle(tester, frames: 10);
+
+      expect(find.text('Mei Lin'), findsOneWidget);
+      expect(draws(), isEmpty);
+    });
   });
 
   testWidgets('at twice the text size nothing overflows', (tester) async {

@@ -27,7 +27,7 @@ from engine.state.records import GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState
 from graph.llm import Prompt
 from graph.turn import prompts
-from graph.turn.types import RECENT_SCENES, PastScene
+from graph.turn.types import RECENT_SCENES, Ending, PastScene
 
 # Facts this important, which the player character knows, always reach the narrator.
 KEY_FACT_IMPORTANCE = 4
@@ -112,6 +112,55 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     if attitude is not None:
         view["toward_you"] = _dump(attitude)
     return view
+
+
+def _fallen_view(state: WorldState) -> list[dict[str, Any]]:
+    """N6: the story's earlier player characters whom someone in the scene knew, so those people
+    can remember them, and whether each of them knows how it ended (C6)."""
+    present = [
+        state.characters[cid]
+        for cid in state.scene.present_ids
+        if cid != state.player_id and cid in state.characters
+    ]
+    views = []
+    for fallen in state.fallen:
+        character = state.characters.get(fallen.character_id)
+        if character is None:
+            continue
+        # `met_by` lists who met a character: the fallen, when they were the player character.
+        knew = [
+            c
+            for c in present
+            if c.alive
+            and c.id != character.id
+            and (character.id in c.met_by or character.id in c.sheet.disposition.attitudes)
+        ]
+        if not knew:
+            continue
+        died = fallen.ending == "death"
+        told = _told_of_death(state, character) if died else set()
+        views.append(
+            {
+                "name": fallen.name,
+                "ending": "died" if died else "left the story's centre and lives on",
+                "remembered_by": [
+                    {"name": c.name, "knows_how_it_ended": not died or c.id in told} for c in knew
+                ],
+            }
+        )
+    return views
+
+
+def _told_of_death(state: WorldState, character: Character) -> set[str]:
+    """Who knows how a character died: who saw it or heard of it (`StatusChange.known_by`), and
+    who knows of a deed that killed or harmed them, by seeing it or by word reaching them (W2,
+    W4)."""
+    death = next((s for s in reversed(character.status_history) if s.status == "dead"), None)
+    told = set(death.known_by) if death is not None else set()
+    for deed in state.deeds.values():
+        if character.id in deed.victim_ids:
+            told.update(deed.known_by, deed.witness_ids, deed.unnoticed_witness_ids)
+    return told
 
 
 def _scene_view(state: WorldState) -> dict[str, Any]:
@@ -231,9 +280,12 @@ def _goals_and_threads(state: WorldState) -> dict[str, Any]:
 def interpret_prompt(state: WorldState, action: str) -> Prompt:
     """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`."""
     frame = state.scene
+    # The world comes first and alone: it stays the same from turn to turn, so the backend can
+    # keep it cached with the system text (`Prompt.stable_chars`).
+    world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
     user = render(
         [
-            ("WORLD", _world_view(state, include=_INTERPRET_WORLD)),
+            world,
             ("PLAYER CHARACTER", _player_view(state)),
             ("SCENE", _scene_view(state)),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
@@ -243,7 +295,7 @@ def interpret_prompt(state: WorldState, action: str) -> Prompt:
             ("ACTION", action.strip()),
         ]
     )
-    return Prompt.build(prompts.INTERPRET_SYSTEM, user)
+    return Prompt.build(prompts.INTERPRET_SYSTEM, user, stable_chars=len(render([world])))
 
 
 @dataclass(frozen=True)
@@ -254,10 +306,14 @@ class NarrationBrief:
     user: str
     place: str | None
     suggestions: int
+    # How much of `user` stays the same from turn to turn (`Prompt.stable_chars`).
+    stable_chars: int = 0
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
-        system = self.system + (prompts.CUTAWAY_SYSTEM if cutaway else "")
-        return Prompt.build(system, self.user)
+        if cutaway:
+            # A cutaway is rare, so a cache made for its system text would go unused.
+            return Prompt.build(self.system + prompts.CUTAWAY_SYSTEM, self.user)
+        return Prompt.build(self.system, self.user, stable_chars=self.stable_chars)
 
     def template_line(self) -> str:
         where = f"in {self.place}" if self.place else "there"
@@ -275,12 +331,17 @@ def narration_brief(
     fired: Sequence[PendingEvent],
     scenes: Sequence[PastScene],
     premise: str = "",
+    ending: Ending | None = None,
+    wish: str | None = None,
+    left_out: Sequence[str] = (),
 ) -> NarrationBrief:
     """B5 step 4: the narrator's prompt.
 
     `before` is the state the turn started from, so the scene picks up where the last one ended
     (R3). `after` is the state once the steps played out, with the time that passed and every
-    consequence the engine recorded.
+    consequence the engine recorded. `ending` is set when this scene ends the player character's
+    story (N6), with `wish`, the player's note on how, for an ending they chose, or `left_out`,
+    the parts of it the world refused when the player ended without them.
     """
     settings = ctx.settings
     tone = before.bible.tone or "the genre's own voice"
@@ -297,10 +358,16 @@ def narration_brief(
         romance=ctx.content_prefs.romance,
         dark_themes=ctx.content_prefs.dark_themes,
     )
-    sections: list[tuple[str, Any]] = [
+    # What stays the same from turn to turn comes first, so the backend can keep it cached with
+    # the system text and Gemini bills it at its cached rate (`Prompt.stable_chars`).
+    stable: list[tuple[str, Any]] = [
         ("STYLE", style),
         ("CONTENT", content),
         ("WORLD", _world_view(before)),
+    ]
+    sections: list[tuple[str, Any]] = [
+        *stable,
+        *([("PREMISE", premise)] if premise and ctx.turn <= 1 else []),
         ("STORY SO FAR", _past(before, scenes)),
         ("CONTINUITY", _continuity(after) or ["(nothing yet)"]),
         ("GOALS AND THREADS", _goals_and_threads(before)),
@@ -309,12 +376,14 @@ def narration_brief(
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
     ]
-    if premise and ctx.turn <= 1:
-        sections.insert(2, ("PREMISE", premise))
+    if fallen := _fallen_view(after):
+        sections.append(("FALLEN", fallen))
 
-    if intent is None and not resolution.steps:
+    if intent is None and not resolution.steps and ending is None:
         sections.append(("NOW", _now_view(after)))
-        sections.append(("TASK", prompts.OPENING_TASK))
+        # N6: someone new carries the story on after its ending.
+        opening = prompts.SUCCESSION_TASK if before.opening_due else prompts.OPENING_TASK
+        sections.append(("TASK", opening))
     else:
         if intent is not None:
             sections.append(("ACTION", _action_view(intent)))
@@ -364,11 +433,21 @@ def narration_brief(
                 },
             )
         )
+    if ending is not None:
+        told_ending: dict[str, Any] = {"kind": ending.kind}
+        if wish:
+            told_ending["wish"] = wish
+        if left_out:
+            told_ending["left_out"] = list(left_out)
+        sections.append(("ENDING", told_ending))
+        task = prompts.DEATH_TASK if ending.kind == "death" else prompts.EPILOGUE_TASK
+        sections.append(("TASK", task))
     return NarrationBrief(
         system=prompts.NARRATOR_SYSTEM,
         user=render(sections),
         place=place_name(after),
         suggestions=suggestions,
+        stable_chars=len(render(stable)),
     )
 
 
@@ -396,6 +475,16 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
         if step.chain:
             view["chain"] = [
                 {"link": link.text, "holds": link.holds, "why": link.reason} for link in step.chain
+            ]
+        if step.strangers:
+            # F1, W2: who this step made real, so the narrator meets them under these ids.
+            made: dict[str, Any] = {}
+            for change in step.effects.characters:  # the first change per id is the one that
+                made.setdefault(change.id, change)  # made them; a kill or a wound comes after
+            view["met"] = [
+                {"id": i, "who": made[i].name, "about": made[i].description}
+                for i in step.strangers
+                if i in made
             ]
         if step.interrupted:
             view["interrupted"] = True

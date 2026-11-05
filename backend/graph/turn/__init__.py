@@ -10,7 +10,7 @@
 Importing this package doesn't load LangGraph; the first turn does (B10).
 """
 
-from graph.turn.errors import UnreadableAction
+from graph.turn.errors import EndingRefused, RefusedStep, UnreadableAction
 from graph.turn.outputs import ChapterOutput, NarratorOutput, SuggestionOut
 from graph.turn.runner import run_turn, turn_graph
 from graph.turn.types import (
@@ -18,6 +18,7 @@ from graph.turn.types import (
     MAX_CHAPTER_TURNS,
     RECENT_SCENES,
     Choice,
+    Ending,
     Issue,
     NarrationDelta,
     NarrationMode,
@@ -41,12 +42,15 @@ __all__ = [
     "RECENT_SCENES",
     "ChapterOutput",
     "Choice",
+    "Ending",
+    "EndingRefused",
     "Issue",
     "NarrationDelta",
     "NarrationMode",
     "NarrationReset",
     "NarratorOutput",
     "PastScene",
+    "RefusedStep",
     "SceneDetails",
     "SceneDraft",
     "SceneEvent",
