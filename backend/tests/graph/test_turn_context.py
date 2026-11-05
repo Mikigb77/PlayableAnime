@@ -30,7 +30,7 @@ from engine.contracts import (
 from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
-from engine.state.records import PendingEvent, StepResult
+from engine.state.records import EventStatus, PendingEvent, StepResult
 from engine.state.sheet import Power
 from engine.state.world import EventSize
 from graph.turn import prompts
@@ -316,6 +316,15 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
         PendingEvent(id="e3", kind="visit", title="RIGHT-HERE", due_s=0, place_id="well"),
         PendingEvent(id="e4", kind="plot", title="FAR-AWAY", due_s=0, place_id="inner-court"),
         PendingEvent(id="e5", kind="plot", title="NOWHERE", due_s=0),
+        # A birth that came to nothing, here, is never told (N6).
+        PendingEvent(
+            id="e6",
+            kind="world.birth",
+            title="NEVER-BORN",
+            due_s=0,
+            place_id="well",
+            status=EventStatus.CANCELLED,
+        ),
     ]
     text = narration_brief(
         before=state,
@@ -329,7 +338,7 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
     ).user
     for title in ("NEEDS-YOU", "ABOUT-YOU", "RIGHT-HERE"):
         assert title in text
-    for title in ("FAR-AWAY", "NOWHERE"):
+    for title in ("FAR-AWAY", "NOWHERE", "NEVER-BORN"):
         assert title not in text
 
 
@@ -441,7 +450,7 @@ def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
 
 def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
     """N6: parents and children by name, the dead marked, and a pregnancy with when it is due.
-    The player character's own family is only what they know of (C6)."""
+    The player character's own family marks kin they haven't learned of (C6)."""
     state = grounded_world()
     state.world_s = 10 * DAY
     state.characters["gennaro"] = Character(id="gennaro", name="Gennaro", parent_ids=["luca"])
@@ -466,5 +475,10 @@ def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
     }
     assert bartender["family"] == {"parents": [{"id": "carmine", "name": "Carmine Russo"}]}
     assert "parent_ids" not in bartender and "expecting" not in carmine
-    # Luca doesn't know of his son Gennaro, and knows his daughter Nina died.
-    assert you["family"] == {"children": [{"id": "nina", "name": "Nina", "dead": True}]}
+    # Luca hasn't learned of his son Gennaro, and knows his daughter Nina.
+    assert you["family"] == {
+        "children": [
+            {"id": "gennaro", "name": "Gennaro", "unknown_to_you": True},
+            {"id": "nina", "name": "Nina", "dead": True},
+        ]
+    }

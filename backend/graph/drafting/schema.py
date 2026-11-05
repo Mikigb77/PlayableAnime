@@ -336,7 +336,8 @@ class NpcP(Proposal):
     parent_ids: list[str] = Field(
         default_factory=list,
         description="N6: their mother and father among the key characters, by id, or the "
-        "player character's id for the player character's own child. Two at most.",
+        "player character's id for the player character's own child. Two at most. Only family "
+        "the player character knows of when they are part of it; a hidden parentage is a secret.",
     )
     temperament: TemperamentP = Field(default_factory=TemperamentP)
     attributes: AttributesP = Field(default_factory=AttributesP)
@@ -569,8 +570,8 @@ class CharacterProposal(Proposal):
     connections: list[ConnectionP] = Field(default_factory=list)
     parent_ids: list[str] = Field(
         default_factory=list,
-        description="N6: the character's mother and father among the key characters, by id. Two "
-        "at most.",
+        description="N6: the character's mother and father among the key characters, by id, as "
+        "the character knows them. Two at most; a hidden parentage is someone's secret.",
     )
     memberships: list[MembershipP] = Field(default_factory=list)
     ladders: list[LadderPositionP] = Field(default_factory=list)

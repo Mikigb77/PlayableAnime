@@ -33,7 +33,7 @@ from engine.world.answers import (
     schedule_revenge,
 )
 from engine.world.geography import is_within
-from engine.world.norms import Nature, deed_nature, is_crime
+from engine.world.norms import CHILD_AGE, Nature, deed_nature, is_crime
 from engine.world.scheduling import World
 from engine.world.telling import account
 from engine.world.tuning import (
@@ -85,10 +85,13 @@ def closeness(state: WorldState, character: Character, other_id: str) -> int:
 
 
 def ties_of(state: WorldState, person_id: str, *, least: int = FRIEND) -> list[tuple[str, int]]:
-    """Living characters at least this close to someone, closest first, then by id."""
+    """Living characters at least this close to someone, closest first, then by id. A young child
+    is family, but too young to carry word on, look into a death or avenge it."""
     found = []
     for character in state.characters.values():
         if character.id == person_id or not character.alive:
+            continue
+        if character.age is not None and character.age < CHILD_AGE:
             continue
         tie = closeness(state, character, person_id)
         if tie >= least:

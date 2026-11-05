@@ -235,7 +235,7 @@ def check_state(state: WorldState) -> list[Violation]:
     found.extend(
         Violation(f"character {i}", "N6", "they are their own ancestor")
         for i in sorted(state.characters)
-        if i in ancestors(state, i)
+        if i in ancestors(state.characters, i)
     )
     return found
 

@@ -164,7 +164,7 @@ these functions and saves the result.
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
-| `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`, and `GESTATION_S`. See [Families and births](#families-and-births). |
+| `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`. See [Families and births](#families-and-births). |
 | `engine/succession.py` | Carrying a story on as someone else after its ending (N6): `draw` picks a random person of the world by its population odds (place, people, age, station, might, a hidden master as rare as the world makes them, and how rare that is), and `carry_on` makes them the player character, keeping the old one in the world (`WorldState.fallen`) and setting `opening_due`. No model calls. See [Carrying a story on](#carrying-a-story-on-as-someone-else). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
@@ -966,25 +966,32 @@ grandchildren can carry a story on as heirs.
   `CharacterProposal.parent_ids` name them by id or name, the player character's own children
   included, and `assemble` drops anyone unknown, themselves, a third parent, and a link that would
   make someone their own ancestor (the first proposed wins). The narrator's
-  `CharacterChange.parent_ids` adds parents on the same terms, never for the player character
-  (N4), and `check_state` refuses unknown parents and loops. `engine/kin.py` walks the lineage.
+  `CharacterChange.parent_ids` adds parents on the same terms, applied after every character in
+  the delta, and never the player character's parents or children (N4): those are drafted,
+  claimed or born in play. `check_state` refuses unknown parents and loops. `engine/kin.py` walks
+  the lineage.
 - **Family to the world.** `knowledge.closeness` counts a parent and child as family, so word of a
-  death reaches them (W4) and an avenger can rise from them.
+  death reaches them (W4) and an avenger can rise from them. `ties_of` leaves out children under
+  `norms.CHILD_AGE`, who are too young to carry word on or avenge anyone.
 - **A child on the way** is `Character.expecting` (`Pregnancy`: the other parent, when it was
-  conceived and when it is due, `GESTATION_S` later). The narrator sets it with
-  `CharacterChange.expecting`; `apply` refuses it for the dead, for anyone already expecting, for
-  an unknown other parent, and unless both parents are adults by `limits.adult_problem` (F3).
+  conceived and when it is due, `tuning.GESTATION_S` later). The narrator sets it with
+  `CharacterChange.expecting`, or ends it with `ended`; `apply` refuses it for the dead, for anyone
+  already expecting, for an unknown other parent, and unless both parents are adults by
+  `limits.adult_problem` (F3).
 - **Birth** (`engine/world/births.py`): `ensure_births` keeps a `world.birth` event pending at
   the due time for each living character who is expecting, at the start of every catch-up. When it
-  falls due the child is born if the one who carries them is still alive (otherwise the pregnancy
-  just ends): a minor NPC of age 0 with the carrier's people and place, a placeholder name such as
-  "Mira's child", both parents, and an `OriginKind.BIRTH` origin. The parents who are there meet
-  and know the child; one elsewhere learns of it as the story has them (C6). The event needs the
-  player when they meet the child, so a birth to them stops the clock.
+  falls due the child is born if the one who carries them is still alive: a minor NPC of age 0
+  with the carrier's people and place, a placeholder name such as "Mira's child" (numbered when
+  taken), both parents, and an `OriginKind.BIRTH` origin. The parents who are there meet and know
+  the child; one elsewhere learns of it as the story has them (C6). The event needs the player
+  when they meet the child, so a birth to them stops the clock. A birth that doesn't happen (the
+  pregnancy ended, or the carrier died) is cancelled, so the narrator is never told of it; a
+  confirmed death ends the pregnancy, and a presumed one keeps it, so the child is born if they
+  come back (C1).
 - **What the models and the player read.** The narrator's brief shows each character's `family`
-  by name (parents, children, a child on the way and when it is due), and the player character's
-  only as far as they know it. Memory marks the player character's parents, children and
-  grandchildren, and `/status` shows a child on the way.
+  by name (parents, children, the dead marked, a child on the way and when it is due), and marks
+  the player character's kin they haven't learned of with `unknown_to_you`. Memory marks the
+  player character's parents, children and grandchildren, and `/status` shows a child on the way.
 
 ## Safety, ratings and reports
 

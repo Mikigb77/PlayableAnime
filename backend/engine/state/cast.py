@@ -65,7 +65,7 @@ class Agenda(EngineModel):
 
 class Pregnancy(EngineModel):
     """N6. A child on the way. It is born when it is due if the one who carries it is alive then
-    (`engine.world.kin`), and never if they die first."""
+    (`engine.world.births`), and never if they die first."""
 
     other_parent_id: str | None = None
     conceived_s: WorldSeconds

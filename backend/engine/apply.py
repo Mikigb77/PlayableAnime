@@ -51,7 +51,7 @@ from engine.invariants import (
     is_real_name,
     place_rebuild_problem,
 )
-from engine.kin import GESTATION_S, descendants
+from engine.kin import descendants
 from engine.limits import adult_problem
 from engine.looks import look_after
 from engine.state.cast import (
@@ -88,6 +88,7 @@ from engine.state.sheet import (
 )
 from engine.state.world import ActiveTimeEffect, WorldState
 from engine.timekeeping import effect_over
+from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
@@ -514,16 +515,22 @@ class _Applier:
             self.expecting(character, change.expecting)
 
     def parents(self, character: Character, parent_ids: list[str]) -> None:
-        """N6: parents are added, never taken back, two at most, and never a descendant."""
+        """N6: parents are added, never taken back, two at most, and never a descendant. The
+        player character's own family is drafted, claimed by the player (N4) or born in play,
+        never the narrator's to make up."""
         subject = f"character {character.id}"
-        if character.id == self.state.player_id and not self.engine:
-            # The player character's family is drafted or claimed by the player (N4).
+        player = self.state.player_id
+        if character.id == player and not self.engine:
             self.reject(subject, "parents", "the player character's parents aren't the narrator's")
             return
         for parent_id in parent_ids:
             if parent_id in character.parent_ids:
                 continue
-            if parent_id == character.id or parent_id not in self.state.characters:
+            if parent_id == player and not self.engine:
+                self.reject(
+                    subject, "parents", "the player character's children aren't the narrator's"
+                )
+            elif parent_id == character.id or parent_id not in self.state.characters:
                 self.reject(subject, "parents", f"no one else called {parent_id!r}")
             elif len(character.parent_ids) >= 2:
                 self.reject(subject, "parents", "two parents at most")
@@ -533,12 +540,17 @@ class _Applier:
                 character.parent_ids.append(parent_id)
 
     def expecting(self, character: Character, expecting: Expecting) -> None:
-        """N6: a child on the way, due a gestation from now. Both parents are adults (F3)."""
+        """N6: a child on the way, due a gestation from now, or a pregnancy that ended without a
+        birth. Both parents are adults (F3)."""
         subject = f"character {character.id}"
         now = self.state.world_s
         other_id = expecting.other_parent_id
         other = self.state.characters.get(other_id or "")
-        if not character.alive:
+        if expecting.ended:
+            if character.expecting is None:
+                self.reject(subject, "expecting", "they carry no child")
+            character.expecting = None  # its birth, still pending, finds nobody expecting
+        elif not character.alive:
             self.reject(subject, "expecting", "the dead carry no child")
         elif character.expecting is not None:
             self.reject(subject, "expecting", "they already carry a child")

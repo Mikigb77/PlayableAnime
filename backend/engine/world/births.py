@@ -8,9 +8,13 @@ to the player character, or with the player character there as the other parent,
 for them (W10).
 """
 
-from engine.state.cast import Character, Prominence
-from engine.state.records import Origin, OriginKind, PendingEvent
+from engine.state.cast import Character, DeathCertainty, Prominence
+from engine.state.records import EventStatus, Origin, OriginKind, PendingEvent
+from engine.state.world import WorldState
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
+
+# How much of the carrier's name a newborn's placeholder name keeps, so it stays a `Name`.
+NAME_ROOM = 180
 
 
 def ensure_births(w: World) -> None:
@@ -38,16 +42,22 @@ def ensure_births(w: World) -> None:
 
 def on_birth(w: World, event: PendingEvent) -> bool:
     """The child is born, if the one who carries them lives. True if it needs the player
-    character: they gave birth, or they are the other parent and there."""
+    character: they gave birth, or they are the other parent and there. A birth that doesn't
+    happen is cancelled, so nobody is told of it."""
     state = w.state
     carrier = state.characters.get(str(event.payload.get("parent_id")))
-    if carrier is None or carrier.expecting is None:
+    expecting = carrier.expecting if carrier is not None else None
+    if carrier is None or expecting is None or expecting.due_s != event.payload.get("due_s"):
+        # The pregnancy ended, or this is a later one, with its own birth.
+        event.status = EventStatus.CANCELLED
         return False
-    if carrier.expecting.due_s != event.payload.get("due_s"):
-        return False  # a later pregnancy, with its own birth
-    expecting, carrier.expecting = carrier.expecting, None
     if not carrier.alive:
-        return False  # the child died with them
+        event.status = EventStatus.CANCELLED
+        if carrier.death_certainty is DeathCertainty.CONFIRMED:
+            carrier.expecting = None  # the child died with them
+        # A presumed death can turn out false (C1): if they come back, so does the birth.
+        return False
+    carrier.expecting = None
     other = state.characters.get(expecting.other_parent_id or "")
     parents = [carrier, *([other] if other is not None else [])]
     names = " and ".join(p.name for p in parents)
@@ -58,7 +68,7 @@ def on_birth(w: World, event: PendingEvent) -> bool:
     child = Character(
         id=state.new_id("npc"),
         # A placeholder until the story names them; a rename keeps it as an alias.
-        name=f"{carrier.name}'s child",
+        name=_placeholder(state, carrier),
         prominence=Prominence.MINOR,
         description=f"A newborn, the child of {names}.",
         age=0,
@@ -72,3 +82,14 @@ def on_birth(w: World, event: PendingEvent) -> bool:
     state.characters[child.id] = child
     event.subject_ids = list(dict.fromkeys([*event.subject_ids, child.id]))
     return state.player_id in child.met_by
+
+
+def _placeholder(state: WorldState, carrier: Character) -> str:
+    """ "Mira's child", then "Mira's child 2" for the next one still unnamed, within `Name`'s
+    length."""
+    base = f"{carrier.name[:NAME_ROOM]}'s child"
+    taken = {c.name for c in state.characters.values()}
+    name, n = base, 2
+    while name in taken:
+        name, n = f"{base} {n}", n + 1
+    return name

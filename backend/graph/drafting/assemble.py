@@ -34,6 +34,7 @@ from datetime import datetime
 
 from engine.base import HOUR, MINUTE, TIER_MAX, YEAR
 from engine.invariants import InvariantError, check_state, is_real_name
+from engine.kin import ancestors
 from engine.state import (
     Activity,
     Agenda,
@@ -783,7 +784,7 @@ class _Assembler:
                     break
                 if parent_id == child_id or parent_id not in characters:
                     continue
-                if child_id in _ancestors(characters, parent_id):
+                if child_id in ancestors(characters, parent_id):
                     continue  # it would make them their own ancestor
                 child.parent_ids.append(parent_id)
 
@@ -1110,17 +1111,6 @@ def _with_ids(ids: _Ids, records: list, name_field: str) -> list:
 
 def _not_player(character_id: str | None) -> str | None:
     return None if character_id == PLAYER_ID else character_id
-
-
-def _ancestors(characters: dict[str, Character], character_id: str) -> set[str]:
-    found: set[str] = set()
-    frontier = [character_id]
-    while frontier:
-        for parent_id in characters[frontier.pop()].parent_ids:
-            if parent_id not in found:
-                found.add(parent_id)
-                frontier.append(parent_id)
-    return {character_id} | found
 
 
 def _break_cycles(records: dict[str, Place] | dict[str, Faction]) -> None:

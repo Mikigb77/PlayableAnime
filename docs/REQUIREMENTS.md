@@ -1079,16 +1079,19 @@ the narrator is told who in the scene knew them and whether they know how it end
 
 The world keeps families so that heirs can carry a story on. Each character records their parents,
 as far as the story has them: the drafter links the key characters it drafts, the player character
-included, and the narrator records a parentage a scene shows or reveals, never the player
-character's own parents (N4). Nobody has more than two parents or descends from themselves, and a
-parent and child are family to the world, so word of a death reaches them and they may avenge it
-(W4). When a scene makes someone pregnant, the narrator says so; only adults have children (F3), and
-nobody carries two at once. The child is born a gestation later (270 days, the same for every
-people for now) if the one who carries them is alive then, and never if they die first (W10). A
-newborn starts with a placeholder name, such as "Mira's child", until the story names them, and only
-the parents who are there meet them; a birth to the player character, or with them there as the
-other parent, stops the clock for them. Memory shows the player character's parents, children and
-grandchildren as such, and `/status` a child on the way.
+included (a parentage the player character doesn't know of stays a secret), and the narrator
+records a parentage a scene shows or reveals. The player character's own parents and children are
+never the narrator's to make up: they are drafted, claimed by the player (N4) or born in play.
+Nobody has more than two parents or descends from themselves, and a parent and child are family to
+the world, so word of a death reaches them and they may avenge it (W4), once they are old enough to
+act on it. When a scene makes someone pregnant, the narrator says so, and says when a pregnancy ends
+without a birth; only adults have children (F3), and nobody carries two at once. The child is born a
+gestation later (270 days, the same for every people for now) if the one who carries them is alive
+then, and never if they die first (W10); a presumed death holds the birth until they come back
+(C1). A newborn starts with a placeholder name, such as "Mira's child", until the story names them,
+and only the parents who are there meet them; a birth to the player character, or with them there as
+the other parent, stops the clock for them. Memory shows the player character's parents, children
+and grandchildren as such, and `/status` a child on the way.
 
 Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
 unborn child counts only if the mother lives, which logic decides first and a roll only when the

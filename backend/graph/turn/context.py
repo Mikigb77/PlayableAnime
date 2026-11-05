@@ -23,7 +23,7 @@ from engine.contracts import (
 )
 from engine.labels import in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
-from engine.state.records import GoalStatus, LeadStatus, PendingEvent
+from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState, natural_key
 from graph.llm import Prompt
 from graph.turn import prompts
@@ -97,7 +97,7 @@ def _player_view(state: WorldState) -> dict[str, Any]:
     view = {"id": state.player_id} | _dump(
         state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
     )
-    # The player character's own family, as far as they know it (C6).
+    # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
 
 
@@ -105,18 +105,14 @@ def _family_view(
     state: WorldState, character: Character, *, knower: str | None = None
 ) -> dict[str, Any]:
     """N6: a character's parents and children by name, and a child they carry, when due. With
-    `knower`, only the family that character knows of."""
+    `knower`, kin that character doesn't know of are marked so."""
     children = [c for c in state.characters.values() if character.id in c.parent_ids]
     family: dict[str, Any] = {}
     for key, ids in (
         ("parents", character.parent_ids),
         ("children", [c.id for c in sorted(children, key=lambda c: natural_key(c.id))]),
     ):
-        named = [
-            _kin_name(state, i)
-            for i in ids
-            if i in state.characters and (knower is None or knower in state.characters[i].known_by)
-        ]
+        named = [_kin_name(state, i, knower) for i in ids if i in state.characters]
         if named:
             family[key] = named
     expecting = character.expecting
@@ -129,11 +125,13 @@ def _family_view(
     return {"family": family} if family else {}
 
 
-def _kin_name(state: WorldState, character_id: str) -> dict[str, Any]:
+def _kin_name(state: WorldState, character_id: str, knower: str | None) -> dict[str, Any]:
     kin = state.characters[character_id]
     view: dict[str, Any] = {"id": kin.id, "name": kin.name}
     if not kin.alive:
         view["dead"] = True
+    if knower is not None and knower not in kin.known_by:
+        view["unknown_to_you"] = True
     return view
 
 
@@ -439,7 +437,10 @@ def narration_brief(
     seen = [
         e
         for e in fired
-        if _perceived(e, after) and not e.kind.startswith("director.") and e.id not in told
+        if _perceived(e, after)
+        and not e.kind.startswith("director.")
+        and e.id not in told
+        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
     ]
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))

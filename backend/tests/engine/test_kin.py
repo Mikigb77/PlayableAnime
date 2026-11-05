@@ -10,7 +10,7 @@ from engine.base import DAY
 from engine.context import TurnContext
 from engine.contracts import CharacterChange, Expecting, StateDelta
 from engine.invariants import check_state, check_transition
-from engine.kin import GESTATION_S, ancestors, descendants, related
+from engine.kin import ancestors, descendants, related
 from engine.rng import SeededRng
 from engine.samples import grounded_world
 from engine.state import (
@@ -25,6 +25,7 @@ from engine.state import (
 from engine.visibility import memory_view, status_view
 from engine.world import Kind
 from engine.world.knowledge import FAMILY, closeness
+from engine.world.tuning import GESTATION_S
 
 NARRATOR = DeltaSource.NARRATOR
 ENGINE = DeltaSource.ENGINE
@@ -64,7 +65,7 @@ def family() -> WorldState:
 def test_lineage_runs_up_and_down_the_generations():
     state = family()
 
-    assert ancestors(state, "nino") == {"sofia", "carmine"}
+    assert ancestors(state.characters, "nino") == {"sofia", "carmine"}
     assert descendants(state, "carmine") == {"sofia": 1, "nino": 2}
     assert descendants(state, "nino") == {}
     assert related(state, "sofia", "nino") and related(state, "nino", "sofia")
@@ -78,6 +79,10 @@ def test_a_parent_and_child_are_family_to_the_world():
     assert closeness(state, state.characters["nino"], "sofia") == FAMILY
     # Word of a death reaches family, so killing Nino reaches his mother (W4).
     assert ("sofia", FAMILY) in world.knowledge.ties_of(state, "nino")
+    # Little Nino is family too, but too young to carry word on or avenge her.
+    assert "nino" not in dict(world.knowledge.ties_of(state, "sofia"))
+    state.characters["nino"].age = 20
+    assert ("nino", FAMILY) in world.knowledge.ties_of(state, "sofia")
 
 
 # --- Parentage, as the narrator proposes it -------------------------------------------------
@@ -101,28 +106,37 @@ def test_parents_are_added_never_more_than_two_and_never_a_descendant():
 
     applied = apply(
         state,
-        CharacterChange(id="nino", parent_ids=["sofia", "luca"]),  # adds Luca
+        CharacterChange(id="nino", parent_ids=["sofia", "bartender"]),  # adds Gennaro
         CharacterChange(id="sofia", parent_ids=["nino"]),  # her own son
         CharacterChange(id="carmine", parent_ids=["carmine", "ghost"]),
     )
 
-    assert applied.state.characters["nino"].parent_ids == ["sofia", "luca"]
+    assert applied.state.characters["nino"].parent_ids == ["sofia", "bartender"]
     assert applied.state.characters["sofia"].parent_ids == ["carmine"]
     assert reasons(applied) == [
         "'nino' descends from them",
         "no one else called 'carmine'",
         "no one else called 'ghost'",
     ]
-    third = apply(applied.state, CharacterChange(id="nino", parent_ids=["bartender"]))
+    third = apply(applied.state, CharacterChange(id="nino", parent_ids=["carmine"]))
     assert reasons(third) == ["two parents at most"]
 
 
-def test_the_player_characters_parents_arent_the_narrators():
+def test_the_player_characters_family_isnt_the_narrators_to_make_up():
+    """N4: their family is drafted, claimed by the player or born in play."""
     state = grounded_world()
-    change = CharacterChange(id="luca", parent_ids=["carmine"])
+    parent = CharacterChange(id="luca", parent_ids=["carmine"])
+    child = CharacterChange(id="bartender", parent_ids=["luca"])
 
-    assert reasons(apply(state, change)) == ["the player character's parents aren't the narrator's"]
-    assert apply(state, change, source=ENGINE).state.player.parent_ids == ["carmine"]
+    applied = apply(state, parent, child)
+
+    assert reasons(applied) == [
+        "the player character's parents aren't the narrator's",
+        "the player character's children aren't the narrator's",
+    ]
+    engine = apply(state, parent, child, source=ENGINE).state
+    assert engine.player.parent_ids == ["carmine"]
+    assert engine.characters["bartender"].parent_ids == ["luca"]
 
 
 def test_a_child_and_their_parent_can_arrive_in_the_same_scene_in_either_order():
@@ -134,16 +148,6 @@ def test_a_child_and_their_parent_can_arrive_in_the_same_scene_in_either_order()
 
     assert not applied.rejected
     assert applied.state.characters["pia"].parent_ids == ["rosa"]
-
-
-def test_a_child_of_the_player_character_is_the_narrators_to_reveal():
-    applied = apply(
-        grounded_world(),
-        CharacterChange(id="pia", name="Pia", age=6, location_id="bar", parent_ids=["luca"]),
-    )
-
-    assert not applied.rejected
-    assert descendants(applied.state, "luca") == {"pia": 1}
 
 
 # --- A child on the way ---------------------------------------------------------------------
@@ -192,6 +196,25 @@ def test_the_dead_carry_no_child_and_no_one_carries_two_at_once():
     )
 
     assert reasons(applied) == ["they already carry a child", "the dead carry no child"]
+
+
+def test_a_pregnancy_can_end_without_a_birth():
+    state = expecting(family(), "sofia")
+    world.catch_up(state, DAY, ctx(), rng(), copy=False)  # the birth is pending
+
+    applied = apply(
+        state,
+        CharacterChange(id="sofia", expecting=Expecting(ended=True)),
+        CharacterChange(id="carmine", expecting=Expecting(ended=True)),
+    )
+    after = world.catch_up(applied.state, 8 * DAY, ctx(), rng())
+
+    assert reasons(applied) == ["they carry no child"]
+    assert applied.state.characters["sofia"].expecting is None
+    assert born(after.state) == []
+    # Its birth came to nothing, so nobody is told of it.
+    (birth,) = [e for e in after.fired if e.kind == Kind.BIRTH]
+    assert birth.status is EventStatus.CANCELLED
 
 
 def test_the_state_never_has_a_missing_parent_or_a_loop():
@@ -265,10 +288,40 @@ def test_a_child_whose_carrier_dies_first_is_never_born():
     sofia = state.characters["sofia"]
     sofia.status, sofia.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
 
-    after = world.catch_up(state, 8 * DAY, ctx(), rng()).state
+    after = world.catch_up(state, 8 * DAY, ctx(), rng())
 
-    assert born(after) == []
-    assert after.characters["sofia"].expecting is None
+    assert born(after.state) == []
+    assert after.state.characters["sofia"].expecting is None
+    (birth,) = [e for e in after.fired if e.kind == Kind.BIRTH]
+    assert birth.status is EventStatus.CANCELLED
+
+
+def test_a_presumed_death_holds_the_birth_until_they_come_back():
+    """C1: a presumed death can turn out false, and the child is born when they return."""
+    state = expecting(family(), "sofia")
+    world.catch_up(state, DAY, ctx(), rng(), copy=False)
+    sofia = state.characters["sofia"]
+    sofia.status, sofia.death_certainty = CharacterStatus.DEAD, DeathCertainty.PRESUMED
+
+    world.catch_up(state, 8 * DAY, ctx(), rng(), copy=False)
+    assert born(state) == [] and sofia.expecting is not None
+
+    sofia.status, sofia.death_certainty = CharacterStatus.ALIVE, None
+    world.catch_up(state, 8 * DAY + 1, ctx(), rng(), copy=False)
+    assert [c.parent_ids for c in born(state)] == [["sofia"]]
+
+
+def test_a_newborns_placeholder_name_is_a_name_and_never_taken():
+    state = family()
+    state.characters["sofia"].name = "S" * 200
+    state.characters["nina"] = Character(id="nina", name="Nina")
+    expecting(state, "sofia")
+    state = world.catch_up(state, 7 * DAY, ctx(), rng()).state
+    expecting(state, "sofia", due_s=8 * DAY)
+    state = world.catch_up(state, 9 * DAY, ctx(), rng()).state
+
+    first, second = sorted((c.name for c in born(state)), key=len)
+    assert first == "S" * 180 + "'s child" and second == first + " 2"
 
 
 def test_a_birth_to_the_player_character_stops_the_clock_for_them():
