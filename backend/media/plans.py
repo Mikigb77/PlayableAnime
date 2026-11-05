@@ -11,7 +11,9 @@ from __future__ import annotations
 from django.db import IntegrityError, transaction
 
 from engine.contracts import FIRST_PICTURES
+from engine.looks import place_version
 from engine.state.world import WorldState
+from lucid.errors import ApiError, ErrorCode
 from media.briefs import player_at, scene_figures, time_of_day
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
@@ -23,6 +25,8 @@ ILLUSTRATE = "illustrate"
 RETRIED_WHEN_PLANNED = (SkipReason.FAILED, SkipReason.NO_CREDITS)
 # A scene marked planned without a plan (`Scene.image_planned`), such as by hand in a test.
 SCENE_FLAG = "scene_flag"
+# C8: what marks the subject of a picture a rewind took out of the story, so nothing reuses it.
+RETIRED = "~"
 
 
 def subject_for(kind: str, scene: Scene, subject_id: str | None) -> str:
@@ -65,7 +69,10 @@ def plan_picture(
         version = None
     with transaction.atomic():
         # Serialises planning per scene, so two requests can't both plan it.
-        Scene.objects.select_for_update().filter(pk=scene.pk).first()
+        locked = Scene.objects.select_for_update().filter(pk=scene.pk).only("rewound_at").first()
+        if locked is not None and locked.rewound_at is not None:
+            # A rewind took the scene back while this waited (C8): the story no longer has it.
+            raise ApiError(ErrorCode.NOT_FOUND, "Scene not found.")
         existing = ScenePicture.objects.select_related("image").filter(scene=scene).first()
         if existing is not None:
             return existing
@@ -128,6 +135,40 @@ def _reset(image: Image, trigger: str) -> None:
     image.attempts = 0
     image.claim = None
     image.claimed_at = None
+
+
+def retire_rewound(story_id, state: WorldState, scene_ids) -> int:
+    """C8: takes the pictures a rewind took out of the story out of reuse, in the rewind's
+    transaction: the pictures of the rewound scenes `scene_ids`, so a scene played anew in their
+    turn gets its own, and each portrait or place drawn for a look the world as it is now
+    (`state`) never had, so a face or place that changes again is drawn again (M1, M4, M5).
+    Their rows stay, renamed, with what they cost. Returns how many it took out."""
+    retired = list(
+        Image.objects.filter(
+            story_id=story_id, kind=ImageKind.SCENE, scene_links__scene_id__in=list(scene_ids)
+        ).exclude(subject__contains=RETIRED)
+    )
+    looks = Image.objects.filter(
+        story_id=story_id, kind__in=(ImageKind.PORTRAIT, ImageKind.PLACE)
+    ).exclude(subject__contains=RETIRED)
+    for image in looks.only("id", "kind", "subject", "version"):
+        if image.version > _look_now(state, image.kind, image.subject):
+            retired.append(image)
+    for image in retired:
+        # Unique per picture, and within the column's length.
+        room = Image._meta.get_field("subject").max_length - len(RETIRED) - 32
+        image.subject = f"{image.subject[:room]}{RETIRED}{image.pk.hex}"
+    Image.objects.bulk_update(retired, ["subject"])
+    return len(retired)
+
+
+def _look_now(state: WorldState, kind: str, subject: str) -> int:
+    """The look version a portrait's character or a place has in `state`, or 0 if it has none."""
+    if kind == ImageKind.PORTRAIT:
+        character = state.characters.get(subject)
+        return character.look_version if character is not None else 0
+    place = state.places.get(subject)
+    return place_version(place) if place is not None else 0
 
 
 def look_for_story(story: Story) -> WorldLook:

@@ -129,6 +129,17 @@ def write_back(story: Story, before: WorldState, after: WorldState) -> int:
     return len(rows)
 
 
+def cancel_after(story: Story, turn: int) -> int:
+    """C8: cancels every row a turn after `turn` scheduled, as when a rewind takes those turns
+    back: the world it went back to never scheduled them, whether or not they had fired. Call it
+    in the rewind's transaction, after `write_back`. Returns how many rows it cancelled."""
+    return (
+        Row.objects.filter(story=story, created_turn__gt=turn)
+        .exclude(status=PendingEventStatus.CANCELLED)
+        .update(status=PendingEventStatus.CANCELLED)
+    )
+
+
 def _event(story: Story, row: Row, event_id: str | None) -> Event | None:
     data = dict(row.payload) if isinstance(row.payload, dict) else {}
     if event_id is None:

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../json.dart';
 import 'fake_backend.dart';
 import 'fake_data.dart';
@@ -61,6 +63,19 @@ class FakeStory {
   String situation = '';
 
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
+
+  /// How many scenes back a death in the next scene could be rewound (C8): up to 5 on Story, 1 on
+  /// Balanced and none on Brutal, and never back past the newest opening, so a rewind never
+  /// reaches into someone else's story.
+  int get rewindReach {
+    final most = switch (settings['difficulty']) {
+      'story' => 5,
+      'balanced' => 1,
+      _ => 0,
+    };
+    final opening = scenes.lastIndexWhere((s) => s['kind'] == 'opening');
+    return math.min(most, scenes.length - math.max(opening, 0));
+  }
 
   JsonMap get clock => {'world_s': worldS, 'label': fakeWorldLabel(worldS), 'timeline_id': 'main'};
 
@@ -276,7 +291,47 @@ void registerStoryRoutes(FakeBackend b) {
         'This story hasn\'t reached an ending. End it with /end first.',
       );
     }
-    story.ending = {...ending, 'closed': true};
+    story.ending = {...ending, 'closed': true, 'rewind': 0};
+    return FakeResponse.json(story.toJson());
+  });
+
+  // C8: takes a story back a few scenes from a death, to the world as it was then.
+  b.route('POST', '/v1/stories/:id/rewind', (r) {
+    final story = stories.get(r.param('id'), r.userId!);
+    final expected = (r.json['expected_version'] as num?)?.toInt();
+    if (expected != story.version) {
+      throw FakeError(409, 'version_conflict', 'The story moved on.', {
+        'current_version': story.version,
+      });
+    }
+    final ending = story.ending;
+    if (ending == null) {
+      throw const FakeError.validation(
+        'This story hasn\'t reached an ending, so there is nothing to rewind.',
+      );
+    }
+    _atOpenEnding(story);
+    final scenes = (r.json['scenes'] as num?)?.toInt() ?? 0;
+    final most = ending['rewind'] as int? ?? 0;
+    if (scenes < 1 || scenes > most) {
+      throw FakeError(400, 'validation_error', 'This ending can\'t be rewound that far.', {
+        'fields': [
+          {
+            'field': 'scenes',
+            'source': 'body',
+            'type': 'too_far',
+            'message': 'This ending can\'t be rewound that far.',
+          },
+        ],
+      });
+    }
+    story.scenes.removeRange(story.scenes.length - scenes, story.scenes.length);
+    story
+      ..worldS = (story.scenes.last['time'] as JsonMap?)?['world_end_s'] as int? ?? story.worldS
+      ..ending = null
+      ..successor = null
+      ..version += 1
+      ..updatedAt = b.now();
     return FakeResponse.json(story.toJson());
   });
 

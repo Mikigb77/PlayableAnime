@@ -98,8 +98,19 @@ class ImageKind(models.TextChoices):
     COVER = "cover", "Cover"
 
 
+class SceneQuerySet(models.QuerySet):
+    def live(self) -> "SceneQuerySet":
+        """The scenes of the story as it stands, without those a rewind took back (C8)."""
+        return self.filter(rewound_at__isnull=True)
+
+
 class Scene(models.Model):
-    """One turn of a story, as the player reads it (the Scene in docs/API.md)."""
+    """One turn of a story, as the player reads it (the Scene in docs/API.md).
+
+    A rewind (C8) takes the scenes after the moment it goes back to out of the story, but keeps
+    their rows, marked `rewound_at`, so a report on one still reaches staff (F6, T16). The story's
+    own scenes are `Scene.objects.live()`: one per turn.
+    """
 
     story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name="scenes")
     turn = models.PositiveIntegerField()
@@ -136,16 +147,48 @@ class Scene(models.Model):
     )
     image_prompt = models.TextField(null=True, blank=True)
     image_url = models.URLField(max_length=2048, null=True, blank=True)
+    # C8: when a rewind took this scene back. The story no longer has it, and a scene played
+    # anew takes its turn.
+    rewound_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = SceneQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["story", "turn"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["story", "turn"],
+                condition=models.Q(rewound_at__isnull=True),
+                name="scene_story_turn_live_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.story_id} turn {self.turn}"
+
+
+class TurnSnapshot(models.Model):
+    """C8: the world state a saved turn left, so a rewind can put the story back to it.
+
+    Saved with the turn, in its transaction, as the same document as `Story.state`. A story keeps
+    only the few a rewind can reach (`stories.rewind`), and none from before someone new carried
+    it on (N6).
+    """
+
+    story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name="snapshots")
+    turn = models.PositiveIntegerField()
+    state = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["story", "turn"]
         constraints = [
-            models.UniqueConstraint(fields=["story", "turn"], name="scene_story_turn_unique"),
+            models.UniqueConstraint(fields=["story", "turn"], name="snapshot_story_turn_unique"),
         ]
 
     def __str__(self) -> str:
-        return f"{self.story_id} turn {self.turn}"
+        return f"{self.story_id} after turn {self.turn}"
 
 
 class PendingEventStatus(models.TextChoices):

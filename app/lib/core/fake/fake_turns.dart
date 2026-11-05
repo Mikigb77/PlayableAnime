@@ -21,7 +21,9 @@ import 'fake_stories.dart';
 /// - `[fail:picture]` plans a picture that is then skipped, as a blocked one would be (M3).
 ///
 /// Endings (N6): "kill myself", "stab myself" or "jump to my death" kills the character by their
-/// own hand, which brings the story to its ending. `/end` (`kind: "end"`) tells an epilogue; a
+/// own hand, which brings the story to its ending, and "challenge the elder", "fight the wolves" or
+/// "cross the rotten bridge" gets them killed by others or the world, which can be rewound (C8,
+/// `POST /rewind`) up to 5 scenes on Story, 1 on Balanced and none on Brutal. `/end` (`kind: "end"`) tells an epilogue; a
 /// note asking to become a king or emperor is refused with `ending.refused`, unless the turn says
 /// `drop_refused`. A story at its ending answers every turn with `story_ended`. Someone who carries
 /// it on (`POST /successor`, `/carry-on`) starts with an opening of their own.
@@ -69,6 +71,16 @@ void registerTurnRoutes(FakeBackend b) {
         'self_inflicted': true,
         'turn': turn,
         'closed': false,
+        'rewind': 0,
+      },
+      _ when _killedBy.hasMatch(action) => {
+        'kind': 'death',
+        'character_id': story.playerId,
+        'character': story.playerName,
+        'self_inflicted': false,
+        'turn': turn,
+        'closed': false,
+        'rewind': story.rewindReach,
       },
       'end' => {
         'kind': 'chosen',
@@ -77,6 +89,7 @@ void registerTurnRoutes(FakeBackend b) {
         'self_inflicted': false,
         'turn': turn,
         'closed': false,
+        'rewind': 0,
       },
       _ => null,
     };
@@ -283,6 +296,10 @@ final _ownDeath = RegExp(
   r'(kill|stab|poison) myself|jump to my death|take my own life',
   caseSensitive: false,
 );
+final _killedBy = RegExp(
+  r'challenge the elder|fight the wolves|cross the rotten bridge',
+  caseSensitive: false,
+);
 final _unearned = RegExp(r'\b(king|queen|emperor|throne)\b', caseSensitive: false);
 
 const _epilogue =
@@ -290,6 +307,8 @@ const _epilogue =
     'road runs down into the valley mist, where nobody knows your name yet.';
 const _lastScene =
     'Your hand shakes, then it doesn\'t. The world narrows to one cold point and goes still.';
+const _cutDown =
+    'The blow comes faster than you can turn. There is a flash of cold, then nothing at all.';
 
 JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {bool ending = false}) {
   final kind = body['kind'] as String? ?? 'action';
@@ -334,6 +353,7 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {boo
     ('opening', _) when story.openingDue => '${story.situation}\n\n$_openingLine',
     ('opening', _) => '${story.premise}\n\n$_openingLine',
     _ when ending && _ownDeath.hasMatch(said) => _lastScene,
+    _ when ending && _killedBy.hasMatch(said) => _cutDown,
     ('end', _) => _epilogue,
     ('standing', 'wait') => _waitNarration,
     ('standing', _) => _observeNarration,

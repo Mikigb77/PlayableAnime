@@ -22,6 +22,7 @@ BODY = {
     "expected_version": 0,
     "category": "other",
     "block": False,
+    "scenes": 1,
 }
 
 

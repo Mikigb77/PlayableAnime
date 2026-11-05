@@ -33,6 +33,8 @@ def scene_data(scene: Scene) -> dict:
             if has_image
             else None
         ),
+        # C8: a rewind took it back out of the story, though the player saw it.
+        "rewound": scene.rewound_at is not None,
         "created_at": scene.created_at.isoformat(),
     }
 
@@ -54,10 +56,11 @@ def story_data(story: Story) -> dict:
 
 
 def export_stories(owner_id) -> list[dict]:
-    """Every story the user owns, oldest first, each with all its scenes in turn order."""
+    """Every story the user owns, oldest first, each with all its scenes in turn order, and the
+    ones a rewind took back (C8) before the scene played anew in their turn."""
     stories = (
         Story.objects.filter(owner_id=owner_id)
         .order_by("created_at")
-        .prefetch_related(Prefetch("scenes", queryset=Scene.objects.order_by("turn")))
+        .prefetch_related(Prefetch("scenes", queryset=Scene.objects.order_by("turn", "created_at")))
     )
     return [story_data(story) for story in stories]

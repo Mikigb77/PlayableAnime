@@ -60,9 +60,10 @@ async def blocked_turns(story: Story | str) -> set[int]:
     """The turns of a story whose text its player blocked (F6). The app shows these scenes
     without their text, so the scene list sets `blocked` from this."""
     story_id = story.pk if isinstance(story, Story) else story
-    turns = Report.objects.filter(story_id=story_id, block=True).values_list(
-        "scene__turn", flat=True
-    )
+    # A rewound scene's turn belongs to the scene played anew (C8).
+    turns = Report.objects.filter(
+        story_id=story_id, block=True, scene__rewound_at__isnull=True
+    ).values_list("scene__turn", flat=True)
     return {turn async for turn in turns}
 
 

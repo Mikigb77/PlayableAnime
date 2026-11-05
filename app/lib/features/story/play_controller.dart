@@ -109,6 +109,12 @@ class CloseFailed extends PlayNotice {
   final ApiException error;
 }
 
+/// Rewinding the story failed (C8); it can be tried again.
+class RewindFailed extends PlayNotice {
+  const RewindFailed(this.error);
+  final ApiException error;
+}
+
 /// What the world refused of an ending's note (N6). Nothing was saved or charged: the player plays
 /// on, or ends without it.
 @immutable
@@ -197,6 +203,10 @@ class PlayController extends ChangeNotifier {
   bool get closing => _closing;
   bool _closing = false;
 
+  /// A rewind is under way (C8).
+  bool get rewinding => _rewinding;
+  bool _rewinding = false;
+
   /// The first turn of the first load. Older scenes are laid out above it, so loading them never
   /// moves what the player is looking at.
   int get anchorTurn => _anchorTurn;
@@ -282,23 +292,32 @@ class PlayController extends ChangeNotifier {
   }
 
   /// Folds a fresh copy of the story into what is loaded. When the fresh scenes don't join up
-  /// with the loaded ones (many turns played elsewhere), the loaded ones are dropped, so the feed
-  /// never has a gap.
+  /// with the loaded ones (many turns played elsewhere), or the story was rewound elsewhere (C8),
+  /// the loaded ones are dropped, so the feed never has a gap or a scene taken back.
   void _merge(Story fresh) {
     final current = _story!;
     final loaded = current.scenes;
-    if (fresh.scenes.isNotEmpty &&
-        loaded.isNotEmpty &&
-        fresh.scenes.first.turn > loaded.last.turn + 1) {
+    final latest = fresh.scenes.lastOrNull?.turn ?? 0;
+    final rewound =
+        fresh.version > current.version && loaded.isNotEmpty && loaded.last.turn > latest;
+    if (rewound ||
+        (fresh.scenes.isNotEmpty &&
+            loaded.isNotEmpty &&
+            fresh.scenes.first.turn > loaded.last.turn + 1)) {
+      _blocked.removeWhere((turn) => turn > latest);
       _replace(fresh);
       return;
     }
     final byTurn = {for (final s in loaded) s.turn: s};
     for (final scene in fresh.scenes) {
       final old = byTurn[scene.turn];
+      // A different scene in the same turn: a rewind elsewhere took the old one back and it was
+      // played anew (C8). Nothing this screen knew of the old one carries over.
+      final same = old != null && old.narration == scene.narration;
+      if (old != null && !same) _blocked.remove(scene.turn);
       // A picture this screen already has is newer than a fetched "planned".
       byTurn[scene.turn] =
-          old?.image != null && !old!.image!.isPending && scene.image?.isPending == true
+          same && old.image != null && !old.image!.isPending && scene.image?.isPending == true
           ? scene.withImage(old.image)
           : scene;
     }
@@ -422,6 +441,48 @@ class PlayController extends ChangeNotifier {
       _closing = false;
     }
     _changed();
+  }
+
+  /// Takes the story back [scenes] scenes from its ending (C8): the world as it was then, and the
+  /// scenes after it gone from the feed. Another device that moved the story on wins (T10).
+  Future<bool> rewind(int scenes) async {
+    final story = _story;
+    if (_rewinding || _closing || story == null || _disposed) return false;
+    if (!(story.ending?.canRewind ?? false)) return false;
+    _rewinding = true;
+    _changed();
+    var done = false;
+    try {
+      final fresh = await repository.rewind(
+        storyId,
+        expectedVersion: story.version,
+        scenes: scenes,
+      );
+      if (_disposed) return false;
+      _refusal = null;
+      // The scenes taken back may have been blocked here; the ones played anew in their turns
+      // are not (F6).
+      final latest = fresh.scenes.lastOrNull?.turn ?? 0;
+      _blocked.removeWhere((turn) => turn > latest);
+      _replace(fresh);
+      done = true;
+    } on ApiException catch (e) {
+      if (_disposed) return false;
+      if (e.code == ApiErrorCode.versionConflict) {
+        _notice(const StoryMovedOn());
+        unawaited(reload());
+      } else {
+        _notice(RewindFailed(e));
+      }
+    } on Object {
+      if (_disposed) return false;
+      _notice(const RewindFailed(ApiException(ApiErrorCode.unknown)));
+    } finally {
+      _rewinding = false;
+    }
+    _changed();
+    if (done) _afterLoad();
+    return done;
   }
 
   /// The story carried on by someone new (N6), as `POST /carry-on` answered it: the ending is
