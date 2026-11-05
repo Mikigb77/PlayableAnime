@@ -177,7 +177,13 @@ class PlayController extends ChangeNotifier {
   bool get busy => _pending != null && !_pending!.failed;
 
   /// The story has its opening, hasn't reached its ending, and the player can act.
-  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !ended && !busy;
+  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !opening && !ended && !busy;
+
+  /// The next turn is an opening: the story has no scenes yet, or someone new carries it on (N6).
+  bool get opening {
+    final story = _story;
+    return story != null && story.ending == null && (story.scenes.isEmpty || story.openingDue);
+  }
 
   /// The story reached its ending (N6): it takes no more turns.
   bool get ended => _story?.ending != null;
@@ -221,7 +227,7 @@ class PlayController extends ChangeNotifier {
   // ---- Loading ----------------------------------------------------------------------------
 
   /// Opens the story: the one passed in, or fetched. A story with no scenes yet (just started
-  /// from a draft) plays its opening turn at once.
+  /// from a draft), or carried on by someone new (N6), plays its opening turn at once.
   Future<void> start() async {
     if (_initial case final story?) {
       _replace(story);
@@ -261,7 +267,7 @@ class PlayController extends ChangeNotifier {
     final story = _story;
     if (story == null) return;
     _paintPlanned();
-    if (story.scenes.isEmpty && !_openingAsked && _pending == null) {
+    if (opening && !_openingAsked && _pending == null) {
       _openingAsked = true;
       unawaited(begin());
     }
@@ -309,7 +315,10 @@ class PlayController extends ChangeNotifier {
       clockLabel: fresh.clockLabel,
       coverUrl: fresh.coverUrl,
       settings: fresh.settings,
-      ending: fresh.ending ?? current.ending,
+      // A copy older than the one loaded doesn't take back an ending a scene brought.
+      ending: fresh.version >= current.version ? fresh.ending : current.ending,
+      successor: fresh.successor,
+      openingDue: fresh.version >= current.version ? fresh.openingDue : current.openingDue,
     );
     if (scenes.isNotEmpty && scenes.first.turn < _anchorTurn) _anchorTurn = scenes.first.turn;
   }
@@ -414,6 +423,21 @@ class PlayController extends ChangeNotifier {
     _changed();
   }
 
+  /// The story carried on by someone new (N6), as `POST /carry-on` answered it: the ending is
+  /// lifted, and their opening plays at once.
+  void carriedOn(Story fresh) {
+    if (_disposed) return;
+    _refusal = null;
+    _openingAsked = false;
+    if (_story == null) {
+      _replace(fresh);
+    } else {
+      _merge(fresh);
+    }
+    _changed();
+    _afterLoad();
+  }
+
   /// Tries the failed turn again, exactly as it was.
   Future<bool> retry() {
     final failed = _pending;
@@ -435,8 +459,9 @@ class PlayController extends ChangeNotifier {
 
   Future<bool> _take(TurnInput input, {String? label, bool spoken = false}) async {
     final story = _story;
-    // A story at its ending takes no more turns (N6).
+    // A story at its ending takes no more turns, and someone new starts with their opening (N6).
     if (story == null || busy || _disposed || story.ending != null) return false;
+    if (story.openingDue && input.kind != 'opening') return false;
     _refusal = null;
     _pending = PendingTurn(input: input, label: label, spoken: spoken);
     _startedTurn = null;

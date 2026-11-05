@@ -114,6 +114,55 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     return view
 
 
+def _fallen_view(state: WorldState) -> list[dict[str, Any]]:
+    """N6: the story's earlier player characters whom someone in the scene knew, so those people
+    can remember them, and whether each of them knows how it ended (C6)."""
+    present = [
+        state.characters[cid]
+        for cid in state.scene.present_ids
+        if cid != state.player_id and cid in state.characters
+    ]
+    views = []
+    for fallen in state.fallen:
+        character = state.characters.get(fallen.character_id)
+        if character is None:
+            continue
+        # `met_by` lists who met a character: the fallen, when they were the player character.
+        knew = [
+            c
+            for c in present
+            if c.alive
+            and c.id != character.id
+            and (character.id in c.met_by or character.id in c.sheet.disposition.attitudes)
+        ]
+        if not knew:
+            continue
+        died = fallen.ending == "death"
+        told = _told_of_death(state, character) if died else set()
+        views.append(
+            {
+                "name": fallen.name,
+                "ending": "died" if died else "left the story's centre and lives on",
+                "remembered_by": [
+                    {"name": c.name, "knows_how_it_ended": not died or c.id in told} for c in knew
+                ],
+            }
+        )
+    return views
+
+
+def _told_of_death(state: WorldState, character: Character) -> set[str]:
+    """Who knows how a character died: who saw it or heard of it (`StatusChange.known_by`), and
+    who knows of a deed that killed or harmed them, by seeing it or by word reaching them (W2,
+    W4)."""
+    death = next((s for s in reversed(character.status_history) if s.status == "dead"), None)
+    told = set(death.known_by) if death is not None else set()
+    for deed in state.deeds.values():
+        if character.id in deed.victim_ids:
+            told.update(deed.known_by, deed.witness_ids, deed.unnoticed_witness_ids)
+    return told
+
+
 def _scene_view(state: WorldState) -> dict[str, Any]:
     frame = state.scene
     place_id = frame.place_id or state.player.location_id
@@ -327,10 +376,14 @@ def narration_brief(
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
     ]
+    if fallen := _fallen_view(after):
+        sections.append(("FALLEN", fallen))
 
     if intent is None and not resolution.steps and ending is None:
         sections.append(("NOW", _now_view(after)))
-        sections.append(("TASK", prompts.OPENING_TASK))
+        # N6: someone new carries the story on after its ending.
+        opening = prompts.SUCCESSION_TASK if before.opening_due else prompts.OPENING_TASK
+        sections.append(("TASK", opening))
     else:
         if intent is not None:
             sections.append(("ACTION", _action_view(intent)))

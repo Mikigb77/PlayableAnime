@@ -17,7 +17,7 @@ from engine.context import StorySettings
 from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView
 from lucid.errors import field_error, version_conflict
-from stories import endings, responses, turns
+from stories import endings, responses, succession, turns
 from stories.access import graph_stories, owned_story
 from stories.models import Scene, Story
 from stories.schemas import SceneOut, StoryOut, StoryPatch, StorySummaryOut, TurnIn
@@ -140,6 +140,27 @@ def _close(story: Story) -> Story:
             # Not `updated_at`: the Library lists stories by when they were last played.
             story.save(update_fields=["ending"])
     return story
+
+
+@stories_router.post("/{story_id}/successor", response=succession.SuccessorOut)
+async def draw_successor(request: HttpRequest, story_id: str) -> succession.SuccessorOut:
+    """N6: draws a random person of the world to carry the story on after its ending, by its
+    population odds. One drafting call, charged like a draft; drawing again replaces them."""
+    story = await _load(request, story_id)
+    return await succession.draw(request, story)
+
+
+class CarryOnIn(Schema):
+    expected_version: int = Field(ge=0)
+
+
+@stories_router.post("/{story_id}/carry-on", response=StoryOut)
+async def carry_on(request: HttpRequest, story_id: str, body: CarryOnIn) -> StoryOut:
+    """N6: the person drawn becomes the player character, and the story's next turn is their
+    opening. The old player character stays in the world, remembered."""
+    story = await _load(request, story_id)
+    story = await sync_to_async(succession.carry_on)(story, body.expected_version)
+    return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
 
 
 @stories_router.get("/{story_id}/memory", response=MemoryView)

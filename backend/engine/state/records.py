@@ -226,6 +226,19 @@ class Goal(EngineModel):
     lead_id: str | None = Field(default=None, description="Set when the player accepted a lead.")
 
 
+class Fallen(EngineModel):
+    """N6. An earlier player character, whose story ended before someone else carried it on. The
+    character stays in `characters`, dead or, after an ending the player chose, alive as anyone
+    else in the world, and the people who knew them may remember them."""
+
+    character_id: str
+    name: str
+    ending: str = Field(description="death or chosen, as the story's ending was.")
+    turn: int = Field(ge=0, description="The scene the ending came in.")
+    world_s: WorldSeconds
+    successor_id: str
+
+
 class LeadStatus(StrEnum):
     OPEN = "open"
     TAKEN = "taken"

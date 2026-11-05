@@ -18,6 +18,7 @@ from engine.contracts import StandingAction
 from engine.visibility import ClockView
 from graph.turn import TurnKind
 from stories.endings import EndingOut
+from stories.succession import SuccessorOut
 
 ACTION_CHARS = 2000
 TITLE_CHARS = 120
@@ -199,3 +200,7 @@ class StoryOut(BaseModel):
     premise: str = ""
     # N6: set once the story has reached its ending. Then it takes no more turns.
     ending: EndingOut | None = None
+    # N6: the person last drawn to carry the story on from its ending, if any.
+    successor: SuccessorOut | None = None
+    # N6: someone new carries the story on, and their opening is the next turn.
+    opening_due: bool = False

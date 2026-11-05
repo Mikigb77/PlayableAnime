@@ -17,13 +17,13 @@ from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.state import (
     Character,
     GiftStrength,
+    GoalStatus,
     RuleTopic,
     SkillLevel,
     TraitKind,
     WorldRule,
     WorldState,
 )
-from graph.drafting.schema import PLAYER_ID
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
@@ -46,23 +46,23 @@ def world_lines(state: WorldState) -> list[str]:
     if bible.peoples:
         lines.append(_sentence("Peoples: " + _join([p.name for p in bible.peoples[:6]])))
     factions = sorted(
-        (f for f in state.factions.values() if _known(f.known_by)),
+        (f for f in state.factions.values() if _known(state, f.known_by)),
         key=lambda f: (f.parent_id is not None, f.id),
     )
     for faction in factions[:3]:
         lines.append(_entry(faction.name, faction.description))
     for clock in sorted(state.clocks.values(), key=lambda c: c.id):
-        if _known(clock.known_by) and len(lines) < WORLD_LINES:
+        if _known(state, clock.known_by) and len(lines) < WORLD_LINES:
             lines.append(_clock_line(clock.name, clock.interval_s, clock.remaining))
     threads = state.threads
     for mystery in bible.mysteries:
         thread = threads.get(mystery.thread_id or "")
-        if thread is not None and _known(thread.known_by):
+        if thread is not None and _known(state, thread.known_by):
             lines.append(mystery.question)
     people = [
         c
         for c in state.npcs()
-        if _known(c.known_by) and c.prominence.value == "key" and c.description
+        if _known(state, c.known_by) and c.prominence.value == "key" and c.description
     ]
     for npc in people[:2]:
         lines.append(_entry(npc.name, npc.description))
@@ -142,7 +142,8 @@ def character_lines(state: WorldState) -> list[str]:
         lines.append(" ".join(held))
     if resources.connections:
         lines.append(_sentence(_capital(_join([c.name for c in resources.connections]))))
-    for goal in sorted(state.goals.values(), key=lambda g: g.id)[:2]:
+    active = [g for g in state.goals.values() if g.status is GoalStatus.ACTIVE]
+    for goal in sorted(active, key=lambda g: g.id)[:2]:
         lines.append(_sentence(f"Goal: {goal.text.rstrip('.')}"))
     return _guard(state, lines)[:CHARACTER_LINES]
 
@@ -180,15 +181,16 @@ def hidden_texts(state: WorldState) -> list[str]:
             texts += [character.agenda.goal, character.agenda.method, character.agenda.secret]
     for faction in state.factions.values():
         texts += [*faction.secrets, faction.goal, faction.methods]
-    texts += [f.text for f in state.facts.values() if PLAYER_ID not in f.known_by]
+    texts += [f.text for f in state.facts.values() if state.player_id not in f.known_by]
     return [t for t in texts if t]
 
 
 def unknown_names(state: WorldState) -> list[str]:
     """Names of people, factions and places the character doesn't know exist."""
-    names = [c.name for c in state.npcs() if PLAYER_ID not in c.known_by]
-    names += [f.name for f in state.factions.values() if PLAYER_ID not in f.known_by]
-    names += [p.name for p in state.places.values() if PLAYER_ID not in p.known_by]
+    pc = state.player_id
+    names = [c.name for c in state.npcs() if pc not in c.known_by]
+    names += [f.name for f in state.factions.values() if pc not in f.known_by]
+    names += [p.name for p in state.places.values() if pc not in p.known_by]
     return names
 
 
@@ -211,8 +213,8 @@ def _words(text: str) -> str:
 # Wording.
 
 
-def _known(known_by: list[str]) -> bool:
-    return PLAYER_ID in known_by
+def _known(state: WorldState, known_by: list[str]) -> bool:
+    return state.player_id in known_by
 
 
 def _who(state: WorldState, pc: Character) -> str:

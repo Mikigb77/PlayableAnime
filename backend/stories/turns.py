@@ -85,9 +85,11 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
         # N6: the player character's story is over; the story takes no more turns.
         raise endings.ended(ending)
     kind = TurnKind(body.kind)
-    if kind is TurnKind.OPENING and state.turn != 0:
+    # N6: a story carried on by someone new opens again, for them.
+    opening_due = state.turn == 0 or state.opening_due
+    if kind is TurnKind.OPENING and not opening_due:
         raise field_error("kind", "This story has already opened.", type="already_opened")
-    if kind is not TurnKind.OPENING and state.turn == 0:
+    if kind is not TurnKind.OPENING and opening_due:
         raise field_error(
             "kind", "This story hasn't opened yet: play its opening first.", type="not_opened"
         )

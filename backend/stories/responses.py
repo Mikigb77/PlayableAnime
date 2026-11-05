@@ -30,6 +30,7 @@ from stories.schemas import (
     StorySettings,
     StorySummaryOut,
 )
+from stories.succession import drawn_of, successor_out
 
 LIBRARY_SIZE = 50
 
@@ -111,6 +112,7 @@ def story_out(
     story: Story, state: WorldState, scenes: Sequence[Scene], *, request: HttpRequest | None
 ) -> StoryOut:
     cover = cover_urls([story.pk], request=request).get(str(story.pk))
+    ending = endings.of_story(story.ending, state)
     return StoryOut(
         id=str(story.pk),
         title=story.title,
@@ -123,7 +125,13 @@ def story_out(
         scenes=scenes_out(story, scenes, request=request),
         cover_url=cover.url if cover else None,
         premise=story.premise,
-        ending=endings.of_story(story.ending, state),
+        ending=ending,
+        successor=(
+            successor_out(state, drawn)
+            if ending and not ending.closed and (drawn := drawn_of(story))
+            else None
+        ),
+        opening_due=state.opening_due,
     )
 
 
