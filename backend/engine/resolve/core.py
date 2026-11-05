@@ -73,6 +73,7 @@ from engine.contracts.resolution import (
     TrainingSoFar,
 )
 from engine.resolve import odds as odds_mod
+from engine.resolve import strangers as strangers_mod
 from engine.resolve.chain import settle_chain
 from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world_check
 from engine.resolve.durations import lived_estimate, step_timing, until_time
@@ -92,7 +93,7 @@ from engine.resolve.powers import theories as theories_mod
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
-from engine.state.cast import Character, PlaceStatus
+from engine.state.cast import Character, CharacterStatus, PlaceStatus
 from engine.state.records import RollRecord, StepResult, Trace, TraceKind
 from engine.state.scene import EncounterKind
 from engine.state.sheet import (
@@ -158,6 +159,8 @@ class _Frame:
     rulings: list[Ruling] = field(default_factory=list)
     practice: dict[str, float] = field(default_factory=dict)
     gone: str | None = None  # why the actor can't act any more, such as their own blast
+    met: list[Character] = field(default_factory=list)  # strangers this plan made real (F1)
+    alert: set[str] = field(default_factory=set)  # hidden masters among them, who see it coming
 
 
 @dataclass
@@ -307,6 +310,8 @@ def _settle_step(
 ) -> tuple[StepResolution, bool, bool]:
     """The step settled, whether it held real stakes (W16), and whether only the actor's own
     nature stood in its way, so it was done whatever the roll said (G15)."""
+    if frame.met:
+        state = _with_people(state, frame.met)
     drawn = Drawn()
     beats: list[BeatResolution] = []
     chain: list[LinkResolution] = []
@@ -320,7 +325,8 @@ def _settle_step(
     deeds: list[ProposedDeed] = []
     after: list[str] = []  # what follows from the outcome, in words, after its reason
 
-    if frame.gone is not None:
+    gone = frame.gone is not None
+    if gone:
         settled = Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, frame.gone)
     else:
         settled = world_check(state, actor, step) or sheet_check(state, actor, step, drawn)
@@ -366,8 +372,22 @@ def _settle_step(
         showing = settled is None
         settled = settled or Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
 
+    met: strangers_mod.Met | None = None
+    if settled is None and step.aim.harmful and step.stranger is not None:
+        if not any(t in state.characters and t != actor.id for t in step.target_ids):
+            # F1, W1. The victim is someone the scene hasn't named: make them real first.
+            met = strangers_mod.meet(state, actor, step, index, ctx, rng.child("stranger"))
+            beats = [*beats, met.check]
+            settled = met.settled
+            if met.people:
+                frame.met.extend(met.people)
+                if met.alert:
+                    frame.alert.add(met.people[0].id)
+                state = _with_people(state, met.people)
+                targeted = [*step.target_ids, met.people[0].id]
+                step = step.model_copy(update={"target_ids": targeted})
     if settled is None:
-        opposition = _opposition(state, actor, step, frozen_now)
+        opposition = _opposition(state, actor, step, frozen_now, frame.alert)
         if holding is not None and frozen_now:
             hit, tested = _stopped_hit(state, actor, step, holding, frame, opposition)
             extra = _merge(extra, tested)
@@ -419,6 +439,8 @@ def _settle_step(
         )
     duration = timing.duration_s
     personal = timing.personal_s
+    if gone:
+        duration, personal = 0, None  # the dead take no time over anything
     if not frozen:
         duration += chain_s
     elif duration > 0 and chain_s:
@@ -468,6 +490,8 @@ def _settle_step(
     happened = settled.outcome_class is not OutcomeClass.RULED_OUT
     if happened:
         effects = aim_effects(step, settled.result, targets)
+    if met is not None:
+        effects = _merge(met.effects, effects)  # they're real before anything happens to them
     effects = _merge(effects, extra)
     reason = settled.reason
     # W10a. A stopped-time hit that was made lands however the target fares: a throw that a
@@ -483,6 +507,9 @@ def _settle_step(
             deeds.append(blasted.deed)
         if blasted.actor_dies:
             frame.gone = f"{cap(name(state, actor.id))} died in the blast of {_own(state, actor)}."
+    if frame.gone is None and _kills(effects, actor):
+        # F1. Harm turned on themselves that killed them ends the plan: the dead do nothing more.
+        frame.gone = f"{cap(name(state, actor.id))} {is_are(state, actor.id)} dead."
     frame.training = None
     if growing and happened:
         why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration)
@@ -504,17 +531,19 @@ def _settle_step(
     reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
 
     if opposition is not None:
+        # Harm to oneself is no deed against anyone (W1): only others are its victims.
+        others_hit = [t for t in targets if t.id != actor.id]
         deed = proposed_deed(
             step,
             settled.outcome_class,
             settled.result,
             actor.id if actor.id != state.player_id else None,
-            targets=targets,
+            targets=others_hit,
             others=[c for c in opposition.characters if c not in targets],
             in_stopped_time=frozen_now,
         )
         if deed is not None and frozen_now and holding is not None:
-            deed = _stopped_deed(state, actor, step, deed, holding, hit, targets, settled)
+            deed = _stopped_deed(state, actor, step, deed, holding, hit, others_hit, settled)
         if deed is not None:
             deeds.insert(0, deed)
     stakes = bool(
@@ -524,7 +553,7 @@ def _settle_step(
         or (hit is not None and hit.blast is not None)
     )
     used = [p for p in drawn.powers if p is new_stop or p is new_tempo or not _time_power(p)]
-    encounter, opponent_ids = _engagement(step, opposition)
+    encounter, opponent_ids = _engagement(step, opposition, actor.id)
     resolution = StepResolution(
         index=index,
         text=step.text,
@@ -536,6 +565,7 @@ def _settle_step(
         duration_s=duration,
         personal_s=personal,
         beats=beats,
+        strangers=[p.id for p in met.people] if met is not None else [],
         chain=chain,
         stopped_at_link=stopped_at_link,
         effects=effects,
@@ -549,7 +579,7 @@ def _settle_step(
 
 
 def _engagement(
-    step: IntentStep, opposition: _Opposition | None
+    step: IntentStep, opposition: _Opposition | None, actor_id: str
 ) -> tuple[EncounterKind | None, list[str]]:
     """W10. The encounter a step starts or carries on, and with whom; `engine.encounters`
     decides what comes of it. A step settled before it was tried, such as reaching for a sword
@@ -559,9 +589,10 @@ def _engagement(
     Everyone the step faced is still named, so it can carry on an encounter it doesn't start."""
     if opposition is None:
         return None, []
-    faced = [c.id for c in (*opposition.targets, *opposition.characters)]
+    others = [t for t in opposition.targets if t.id != actor_id]  # nobody fights themselves
+    faced = [c.id for c in (*others, *opposition.characters)]
     faced = list(dict.fromkeys(faced))
-    if step.aim.harmful and opposition.targets:
+    if step.aim.harmful and others:
         return EncounterKind.FIGHT, faced
     if step.encounter is not None and opposition.responsive:
         responsive = {c.id for c in opposition.responsive}
@@ -821,6 +852,21 @@ def _sentence(text: str) -> str:
     return text if not text or text.endswith((".", "!", "?")) else f"{text}."
 
 
+def _with_people(state: WorldState, people: list[Character]) -> WorldState:
+    """The state as this plan sees it, with the strangers it made real (F1). The state the
+    caller passed stays as it was."""
+    characters = {**state.characters, **{p.id: p for p in people}}
+    return state.model_copy(update={"characters": characters})
+
+
+def _kills(effects: StateDelta, character: Character) -> bool:
+    """Whether these changes leave the character dead."""
+    return any(
+        change.id == character.id and change.status is CharacterStatus.DEAD
+        for change in effects.characters
+    )
+
+
 def _merge(*deltas: StateDelta) -> StateDelta:
     """One delta holding every change of the given ones, in order."""
     merged = StateDelta()
@@ -845,14 +891,20 @@ def _merge(*deltas: StateDelta) -> StateDelta:
     return merged
 
 
-def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: bool) -> _Opposition:
+def _opposition(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    frozen: bool,
+    alert: set[str] | frozenset[str] = frozenset(),
+) -> _Opposition:
     """A2, A8. Who stands in the way, checked against the state.
 
     The targets of a harmful aim, or of a social step, stand in the way whatever was proposed. The
     dead never do. A time stop freezes everyone but its user and those immune to it (W10a), a
     helpless state on the sheet (asleep, bound, stunned) means they can't respond whatever was
     proposed, and the model's word that they can't respond (unaware, cornered) is taken unless it
-    claims a time stop that isn't there.
+    claims a time stop that isn't there, or they are a hidden master who sees it coming (`alert`).
     """
     facts = step.facts
     ids = list(dict.fromkeys(facts.opposition_ids))
@@ -873,7 +925,7 @@ def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: b
     for person in people:
         on_sheet = helpless_state(person)
         why = FROZEN if frozen and not stop.immune(person) else on_sheet
-        if why is None and says_cannot and not refuted:
+        if why is None and says_cannot and not refuted and person.id not in alert:
             why = facts.why_not.strip() or "unable to respond"
         if why is None:
             found.responsive.append(person)
@@ -892,6 +944,11 @@ def _opposition(state: WorldState, actor: Character, step: IntentStep, frozen: b
         # The aim lands on whom the step names, if they're alive; on whoever stands in the way
         # only when it names no one.
         found.targets = [p for p in people if p.id in target_ids] if step.target_ids else people
+        if actor.id in target_ids and actor.alive:
+            # F1. Harm the actor aims at their own body (a blade turned on themselves, a jump
+            # from the battlements) lands on them like any other target. They never stand in
+            # their own way: the choice is theirs, so only the means decide (A2, G15).
+            found.targets.append(actor)
     return found
 
 

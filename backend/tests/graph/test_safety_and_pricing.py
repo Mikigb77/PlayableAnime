@@ -28,11 +28,15 @@ def test_mature_is_never_stricter_than_teen_and_pictures_never_looser_than_text(
 
 def test_backstops_hold_in_every_rating():
     # F3 and Google's policy: real-world harm instructions and explicit sex are filtered even in
-    # Mature, at the most permissive level that still filters.
+    # Mature, at the most permissive level that still filters, for every node that writes text
+    # without a code check behind it.
     for rating in ("teen", "mature"):
         settings = safety_settings(rating)
         assert settings["dangerous_content"] != "off"
         assert settings["sexually_explicit"] != "off"
+        assert safety_settings(rating, node="drafter")["dangerous_content"] != "off"
+    assert safety_settings("teen", node="narrator")["dangerous_content"] != "off"
+    assert safety_settings("mature", node="narrator")["sexually_explicit"] != "off"
 
 
 def test_mature_interpret_reads_the_action_with_the_text_filters_off():
@@ -41,15 +45,36 @@ def test_mature_interpret_reads_the_action_with_the_text_filters_off():
     narrator = safety_settings("mature", node="narrator")
     strictness = {name: rank for rank, name in enumerate(THRESHOLDS)}
 
-    assert interpret["sexually_explicit"] == "off" and interpret["hate_speech"] == "off"
-    assert interpret["dangerous_content"] == narrator["dangerous_content"] != "off"
+    assert set(interpret.values()) == {"off"}
     for category in HARM_CATEGORIES:
         assert strictness[interpret[category]] <= strictness[narrator[category]]
-    # Teen keeps the narrator's settings, and pictures stay mild whoever draws them.
-    assert safety_settings("teen", node="interpret") == safety_settings("teen")
+    # Pictures stay mild whoever draws them.
     assert safety_settings("mature", picture=True, node="interpret") == safety_settings(
         "mature", picture=True
     )
+
+
+def test_a_characters_own_death_is_readable_in_every_rating():
+    # Gemini files self-harm under dangerous content: "I stab myself" was blocked at the
+    # interpret step on 2026-11-05, so the deed never happened (F1, F4).
+    for rating in ("teen", "mature"):
+        interpret = safety_settings(rating, node="interpret")
+        assert interpret["dangerous_content"] == "off"
+    # Teen keeps the narrator's other lines.
+    teen = safety_settings("teen")
+    teen_interpret = safety_settings("teen", node="interpret")
+    assert {k: v for k, v in teen_interpret.items() if k != "dangerous_content"} == {
+        k: v for k, v in teen.items() if k != "dangerous_content"
+    }
+
+
+def test_mature_tells_a_chosen_death_and_teen_cuts_away_from_it():
+    # F1, Miki 2026-11-05: in Mature the narrator and the summaries tell it; code holds F3's line
+    # on instructions there (engine.limits.harm_instructions). Teen keeps the filter, so a
+    # blocked telling becomes a cut-away (F4).
+    for node in ("narrator", "summarizer"):
+        assert safety_settings("mature", node=node)["dangerous_content"] == "off"
+        assert safety_settings("teen", node=node)["dangerous_content"] == "block_only_high"
 
 
 @pytest.mark.parametrize("rating", ["teen", "mature"])

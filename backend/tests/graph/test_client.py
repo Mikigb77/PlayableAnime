@@ -58,7 +58,7 @@ def test_the_request_carries_the_nodes_model_settings_and_the_ratings_safety(fak
     assert request.model == DEFAULT_NODES[Node.INTERPRET].model
     assert request.options.thinking == "high"
     assert request.options.timeout_s == DEFAULT_NODES[Node.INTERPRET].options.timeout_s
-    assert request.safety == safety_settings("teen")
+    assert request.safety == safety_settings("teen", node=Node.INTERPRET)
     assert request.json_schema == Narration.model_json_schema()
     assert request.image is None
 
@@ -74,7 +74,7 @@ def test_each_node_gets_its_own_safety_settings(fake, make_client):
 
     interpret, narrator = fake.requests
     assert interpret.safety == safety_settings("mature", node=Node.INTERPRET)
-    assert narrator.safety == safety_settings("mature")
+    assert narrator.safety == safety_settings("mature", node=Node.NARRATOR)
     assert interpret.safety != narrator.safety
 
 

@@ -111,6 +111,11 @@ class StepResolution(EngineModel):
         default=None, ge=0, description="The actor's lived seconds, when they differ (W10a)."
     )
     beats: list[BeatResolution] = Field(default_factory=list, description="R2's beat check.")
+    strangers: list[str] = Field(
+        default_factory=list,
+        description="F1, W2: the ids of people this step made real, the stranger it aimed at "
+        "first and any onlooker after; `effects` creates them.",
+    )
     chain: list[LinkResolution] = Field(default_factory=list)
     stopped_at_link: int | None = None
     effects: StateDelta = Field(default_factory=StateDelta)
