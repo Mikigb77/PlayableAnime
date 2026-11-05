@@ -19,6 +19,7 @@ from engine.contracts import (
     BeatUse,
     BeatVerdict,
     CharacterChange,
+    Harm,
     Intent,
     OutcomeClass,
     PictureTrigger,
@@ -265,7 +266,13 @@ async def broken_plan(ev: Eval) -> None:
         played = await story.act("I throw the stone, then run for the tunnel", throw_then_run())
         throw = played.step(0)
         if throw.result is StepResult.SUCCESS:
-            ev.check("a clean hit lets the run play", len(played.steps) == 2, seed)
+            # The troll strikes back all the same (N6); only a blow that lands stops the run.
+            landed = any(a.harm is not Harm.NONE for a in throw.perils)
+            ev.check(
+                "a clean hit lets the run play, unless the troll's blow lands",
+                len(played.steps) == (1 if landed else 2),
+                f"{seed}: {[a.reason for a in throw.perils]}",
+            )
             continue
         misses.append(played)
         ev.check(

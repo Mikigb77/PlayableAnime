@@ -17,6 +17,10 @@ from engine.resolve.words import odds_label
 from engine.rng import SeededRng
 from engine.state.records import RollRecord, StepResult
 
+# A8: each opponent close in strength to the strongest adds this much to the gap, up to the most.
+NUMBERS_STEP = 0.5
+MAX_NUMBERS = 1.0
+
 # G18: one step up (a realm) is a long shot at best, two or more is ruled out in a straight fight,
 # and two below can't push back at all. Gaps are opposition minus actor, in steps of power.
 LONG_SHOT_AT = 1.0
@@ -71,12 +75,22 @@ def gap_logit(gap: float) -> float:
     return top + share * (bottom - top)
 
 
-def settle(base_logit: float, shift: float, band: tuple[float, float], difficulty: Difficulty):
+def settle(
+    base_logit: float,
+    shift: float,
+    band: tuple[float, float],
+    difficulty: Difficulty,
+    *,
+    against_player: bool = False,
+):
     """The final odds: the base and the shifts, held inside the class's band, then the
-    difficulty, held inside the band again so it never changes the class (A5)."""
+    difficulty, held inside the band again so it never changes the class (A5). The difficulty
+    works for the player: it eases their rolls, and hardens those `against_player`, such as a foe
+    striking back (N6)."""
     low, high = band
     odds = min(high, max(low, sigmoid(base_logit + shift)))
-    odds = min(high, max(low, sigmoid(logit(odds) + DIFFICULTY_SHIFT[difficulty])))
+    eased = DIFFICULTY_SHIFT[difficulty]
+    odds = min(high, max(low, sigmoid(logit(odds) + (-eased if against_player else eased))))
     return round(odds, 4)
 
 

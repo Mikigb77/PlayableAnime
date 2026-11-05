@@ -375,6 +375,20 @@ void main() {
     expect(find.text(l10n.classContested.toUpperCase()), findsWidgets);
   });
 
+  testWidgets('scene details say what struck back after a step (N6)', (tester) async {
+    await serve(tester);
+    await open(tester);
+    await send(tester, 'I strike at the masked disciple');
+    await settle(tester);
+    await openDetails(tester, 4);
+    expect(find.text(l10n.detailsStruck), findsOneWidget);
+    expect(
+      find.text('The masked disciple strikes back (unlikely): it misses you.'),
+      findsOneWidget,
+    );
+    expect(words(l10n.detailsOdds('unlikely')), findsOneWidget);
+  });
+
   testWidgets('scene details explain the beats that made something true (R2)', (tester) async {
     await serve(tester);
     await open(tester);

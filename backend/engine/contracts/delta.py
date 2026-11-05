@@ -54,6 +54,10 @@ class AttitudeShift(EngineModel):
 class ConditionChange(EngineModel):
     health: Health | None = None
     wounds: list[str] = Field(default_factory=list)
+    lasting_wounds: list[str] = Field(
+        default_factory=list,
+        description="Engine only (N6, G17): wounds that last, such as a lost hand or an eye.",
+    )
     states: list[str] = Field(default_factory=list, description="Passing states that begin.")
     cleared_states: list[str] = Field(default_factory=list)
 

@@ -16,6 +16,7 @@ from engine.base import DAY, HOUR, MINUTE
 from engine.context import Difficulty, StorySettings
 from engine.contracts import (
     ActionKind,
+    Aim,
     Contact,
     EffectScale,
     GrowthKind,
@@ -396,7 +397,15 @@ async def unrivalled(ev: Eval) -> None:
         # something to answer (W5).
         await story.act(
             "I cut down the Northern envoy in front of the others",
-            plan(attack("envoy-0", "sword", text="cut down the Northern envoy")),
+            # Unarmed among the sect's elders, the envoy doesn't fight back (N6).
+            plan(
+                attack(
+                    "envoy-0",
+                    "sword",
+                    text="cut down the Northern envoy",
+                    facts=facts(opposition_ids=["envoy-0"], can_respond=True, foes_mean=Aim.NONE),
+                )
+            ),
         )
         for _ in range(turns):
             await story.act(

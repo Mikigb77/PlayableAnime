@@ -502,15 +502,34 @@ JsonMap _details(String said, int turn, bool fight, bool timeStop) {
     };
   }
   if (fight) {
+    // N6: the foe strikes back after the blow, and lands it when the blow only partly worked.
+    final partial = turn % 3 == 0;
     return {
       'steps': [
-        step(
-          'Land the blow before they can answer',
-          'contested',
-          'They are quick, but they did not see you coming.',
-          'better than even',
-          turn % 3 == 0 ? 'partial' : 'success',
-        ),
+        {
+          ...step(
+            'Land the blow before they can answer',
+            'contested',
+            'They are quick, but they did not see you coming.',
+            'better than even',
+            partial ? 'partial' : 'success',
+          ),
+          'struck': [
+            {
+              'by': 'the masked disciple',
+              'class': 'contested',
+              'harm': partial ? 'wounded' : 'none',
+              'reason': partial
+                  ? 'The masked disciple strikes back (even odds): you are wounded.'
+                  : 'The masked disciple strikes back (unlikely): it misses you.',
+              'roll': {
+                'odds_label': partial ? 'even odds' : 'unlikely',
+                'result': partial ? 'success' : 'failure',
+                'seed': 'fake-$turn-struck',
+              },
+            },
+          ],
+        },
       ],
     };
   }

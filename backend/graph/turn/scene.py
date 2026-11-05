@@ -30,6 +30,7 @@ from graph.turn.types import (
     SceneEvent,
     ScenePicture,
     StepDetail,
+    StruckDetail,
     TurnInput,
     TurnKind,
 )
@@ -119,12 +120,23 @@ def _step_detail(step: StepResolution) -> StepDetail:
         for beat in step.beats
         if beat.verdict is not BeatVerdict.HOLDS
     ]
+    struck = [
+        StruckDetail(
+            by=peril.by,
+            outcome_class=peril.outcome_class,
+            harm=peril.harm,
+            reason=peril.reason,
+            roll=_roll_detail(peril.roll),
+        )
+        for peril in step.perils
+    ]
     return StepDetail(
         text=step.text,
         outcome_class=step.outcome_class,
         reason=step.reason,
         roll=_roll_detail(step.roll),
         beats=beats or None,
+        struck=struck or None,
     )
 
 

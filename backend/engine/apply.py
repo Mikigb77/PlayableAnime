@@ -618,6 +618,8 @@ class _Applier:
         if update.health is not None:
             condition.health = update.health
         condition.wounds.extend(Wound(text=w) for w in update.wounds)
+        if update.lasting_wounds and self.engine_only(f"character {character.id}", "lasting wound"):
+            condition.wounds.extend(Wound(text=w, lasting=True) for w in update.lasting_wounds)
         cleared = {s.casefold() for s in update.cleared_states}
         condition.states = [s for s in condition.states if s.name.casefold() not in cleared]
         for state_name in update.states:

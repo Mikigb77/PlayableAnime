@@ -417,9 +417,15 @@ SceneDetails {steps: [{text,                                    # the step in pl
                        roll?: {odds_label, result: "success"|"partial"|"failure", seed},
                        beats?: [{beat, thing,                    # R2: only beats that found
                                  verdict: "made_canon"|"empty",  # something new or came up
-                                 reason, roll?}]}],              # empty; empty stopped the step
+                                 reason, roll?}],                # empty; empty stopped the step
+                       struck?: [{by,                            # N6: what struck back after
+                                  class, reason, roll?,          # the step, foes then a danger
+                                  harm: "none"|"hurt"|"wounded"|"subdued"|"badly_wounded"
+                                        |"maimed"|"dying"|"dead"}]}],
               chain?: [{link, class, reason}],                   # a cause-and-effect chain (A9)
-              stopped_at_step?: int}                             # a chained plan stopped here (R6)
+              stopped_at_step?: int}                             # a chained plan stopped here (R6),
+                                                                 # or something struck and hurt
+                                                                 # the player character (N6)
 
 SceneImage {planned: bool,                  # code planned it (M1); false for Illustrate (M2)
             kind: "portrait"|"place"|"scene"|"cover",

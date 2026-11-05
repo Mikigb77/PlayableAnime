@@ -534,6 +534,12 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
                 for i in step.strangers
                 if i in made
             ]
+        if step.perils:
+            # N6: what struck back at the player character after their step, in order.
+            view["struck"] = [
+                {"by": p.by, "means": p.aim.value, "harm": p.harm.value, "why": p.reason}
+                for p in step.perils
+            ]
         if step.interrupted:
             view["interrupted"] = True
         steps.append(view)

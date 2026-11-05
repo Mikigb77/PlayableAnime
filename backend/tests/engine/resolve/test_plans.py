@@ -58,10 +58,14 @@ def test_a_chained_plan_stops_at_the_first_step_that_doesnt_cleanly_succeed():
     assert stopped and went_on
     for r in stopped:
         assert len(r.steps) == 1 and r.unplayed == ["run for the gate"]
-        assert r.stop_reason in (StopReason.FAILED, StopReason.PARTIAL)
+        assert r.stop_reason in (StopReason.FAILED, StopReason.PARTIAL, StopReason.STRUCK)
         assert (r.stop_reason is StopReason.PARTIAL) == (r.steps[0].result is StepResult.PARTIAL)
+        # A clean hit still stops the plan when Zhao's answer hurt them (N6).
+        assert (r.stop_reason is StopReason.STRUCK) == r.steps[0].clean_success
+        assert r.steps[0].clean_success <= r.steps[0].hurt_by_peril
     for r in went_on:
         assert [s.result for s in r.steps] == [StepResult.SUCCESS, StepResult.SUCCESS]
+        assert not r.steps[0].hurt_by_peril
         assert r.unplayed == []
 
 

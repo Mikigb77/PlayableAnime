@@ -79,6 +79,18 @@ choice from the player (G15).
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
+- facts.foes_mean: in a fight, what those fighting the character are out to do to them, from who \
+they are and the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring \
+partner holding back, guards taking them alive, a master testing a student), or none when they \
+won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. Code \
+decides whether their blows land (N6).
+- facts.danger: what can hurt the character in this step however it goes, that no one in the \
+scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
+danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
+ruled_out when it can't), and danger_harm whether it kills or wounds. Judge it for an ordinary \
+person: code adjusts it for the character's body. A leap from a bridge to get away is a move \
+with a danger, not harm turned on themselves. Leave danger empty when nothing threatens them, and \
+for harm they turn on themselves, where the danger is the means.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
 filler (R7). gist: what to say when the player gives only the gist ("I threaten him").
 - A link that burns down or wrecks a place: its place_id and place_harm (damaged or ruined).
@@ -156,6 +168,12 @@ moment it goes wrong and show why, matching the step's reason. An action the wor
 plays as what it really is.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
+- struck under a step in OUTCOME is what struck back at the player character right after it: the \
+foes still fighting them, or a danger the step met, such as a long drop. Play each as its harm \
+says, no more and no less: none misses or can't hurt them, hurt and wounded are wounds they can \
+fight on with, subdued brings them down or takes them, badly_wounded and maimed are grave, maimed \
+leaving a wound that lasts, such as a lost hand or eye, dying is their life running out, and dead \
+kills them (N6). Foes act as they would, but never beyond what struck says.
 - When a step in OUTCOME lists its beats, play them in that order. made_canon is something the \
 place turned out to hold, so it is there now. empty is a search that comes up empty or a thing \
 that isn't there: play the reach for it, and the step stops at that beat (R2).

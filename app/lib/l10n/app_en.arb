@@ -803,6 +803,10 @@
     }
   },
   "detailsStopped": "The plan stopped here. What came after it didn't happen.",
+  "detailsStruck": "What struck back",
+  "@detailsStruck": {
+    "description": "Under a step in the scene details: what struck back at the character after it, the foes still fighting them or a danger such as a long drop (N6)."
+  },
   "detailsLegend": "Certain and ruled-out steps are settled by the facts. Only contested steps and long shots are rolled.",
   "classCertain": "Certain",
   "classContested": "Contested",

@@ -279,6 +279,33 @@ class StepFacts(EngineModel):
             " from the player."
         ),
     )
+    foes_mean: Aim | None = Field(
+        default=None,
+        description=(
+            "N6: in a fight, what those fighting the character are out to do to them: kill,"
+            " wound, subdue (a sparring partner holding back, guards taking them alive), or none"
+            " when they won't strike back. None when there is no fight or it follows the"
+            " character's own aim."
+        ),
+    )
+    danger: str = Field(
+        default="",
+        description=(
+            "N6: what can hurt the character in this step however it goes, that no one in the"
+            " scene embodies: a long drop, fire, a collapsing roof, a stampede, a pack of wolves"
+            " SCENE doesn't list. Empty when nothing does."
+        ),
+    )
+    danger_class: OutcomeClass | None = Field(
+        default=None,
+        description=(
+            "N6: how surely the danger hurts an ordinary person: certain, contested, long_shot,"
+            " or ruled_out when it can't. Code adjusts it for the character's body."
+        ),
+    )
+    danger_harm: Aim | None = Field(
+        default=None, description="N6: what the danger does when it hurts: kill or wound."
+    )
 
 
 class IntentStep(EngineModel):

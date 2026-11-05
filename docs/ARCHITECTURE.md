@@ -162,7 +162,7 @@ these functions and saves the result.
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
-| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
+| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character gets cleanly away from all of them (N6), the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
 | `engine/heirs.py` | Heirs (N6): `heirs` lists who of the player character's family can carry the story on at its ending (living descendants, and a child on the way whose carrier lives, a dying carrier's child settled by a seeded roll in `unborn_lost`), and `time_jump` runs the world on to the day an heir too young to act turns 16. No model calls. See [Carrying a story on as an heir](#carrying-a-story-on-as-an-heir). |
 | `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`. See [Families and births](#families-and-births). |
@@ -481,8 +481,30 @@ it (W10a), a helpless state on the sheet
    someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8). The
    targets it harmed are the deed's victims and everyone else who stood in the way its targets;
    `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
+9. **What strikes back** (`perils.py`; N6, A2, A5). After each step the player character takes,
+   `strike_back` settles what answers it, as `StepResolution.perils`, with its harm in the step's
+   `effects`. First the foes still in the fight: those of the scene's fight, those this plan
+   fought, and, when the step aims harm or fights, those it faced, unless they are dead, helpless,
+   elsewhere, frozen in the character's time stop, taken out by this plan, or left behind by a
+   move that harms no one and cleanly succeeded against them, such as a run or a leap
+   (`StepResolution.escaped`, which ends the fight in `engine.encounters` once no one in it is
+   left). Waiting or watching in a fight, the foes strike all the same. What they mean is
+   `StepFacts.foes_mean` (a sparring partner subdues), or the step's own aim, or at least a wound.
+   They are measured on might like a step of theirs (step 4, numbers included): two steps or more
+   below the character is ruled out, two or more above, or a character who is helpless, is
+   certain, and between is rolled with the difficulty against them (`odds.settle(...,
+   against_player=True)`) and the character's own step moving the odds by `EXPOSED_SHIFT` (open
+   after a miss, on top after a clean success). Then a danger the step met (`StepFacts.danger`,
+   `danger_class`, `danger_harm`), lowered one class for each step of might the character stands
+   above a person's peak, and never for harm they turn on themselves. A killing blow that is
+   certain kills; a rolled one that lands kills on `FATAL_ODDS` and otherwise leaves the character
+   badly wounded, or maimed (`MAIM_ODDS`) with a lasting wound (`ConditionChange.lasting_wounds`,
+   engine only); a partial one wounds. Harm builds up a step at a time, and anything harmful on
+   top of dying kills. Each foe's blow is their deed against the character (W1), and a death
+   ends the plan like one by the character's own blast.
 
-A chained plan stops at the first step that doesn't cleanly succeed, with the rest in `unplayed`
+A chained plan stops at the first step that doesn't cleanly succeed, or after which something
+struck back and hurt the player character (`StopReason.STRUCK`), with the rest in `unplayed`
 (R6), except past a step only the actor's own nature stood in the way of, which was done (G15).
 Each step also records its `kind`, the `opponent_ids` it fought or faced and the `encounter` it
 starts or carries on, which `engine.encounters` follows (W10). Reasons are written in the world's words and speak to the player ("Elder Mo at Core

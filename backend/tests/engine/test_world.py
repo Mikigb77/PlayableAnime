@@ -19,6 +19,7 @@ from engine.contracts import (
     SheetPart,
     SheetUse,
     StateDelta,
+    StepFacts,
     StepResolution,
 )
 from engine.invariants import check_transition
@@ -913,6 +914,9 @@ def test_resolves_deeds_flow_into_the_world_whether_the_shot_kills_wounds_or_mis
         aim=Aim.KILL,
         target_ids=["carmine"],
         uses=[SheetUse(part=SheetPart.ITEM, ref="pistol")],
+        # Carmine doesn't strike back here, so the shot's own deed is the only one; how a foe
+        # answers is in tests/engine/resolve/test_answers.py.
+        facts=StepFacts(foes_mean=Aim.NONE),
     )
     seen = set()
     for seed in range(40):

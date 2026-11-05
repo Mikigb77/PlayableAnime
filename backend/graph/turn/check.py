@@ -137,9 +137,10 @@ def check_resolution(
 
     A2: no roll can overturn a certain or ruled-out step, so the class wins over a result that
     disagrees with it. A3: a contested or long-shot step is decided by its roll, so the roll's
-    result wins. R6: a chained plan stops at its first step that doesn't cleanly succeed, and the
-    steps after it, with any `overflow` past `MAX_STEPS`, are listed as unplayed, so the narrator
-    hands the scene back.
+    result wins. R6: a chained plan stops at its first step that doesn't cleanly succeed, or
+    after which something struck back and hurt the player character (N6), and the steps after
+    it, with any `overflow` past `MAX_STEPS`, are listed as unplayed, so the narrator hands the
+    scene back.
     """
     issues: list[Issue] = []
     steps: list[StepResolution] = []
@@ -154,7 +155,7 @@ def check_resolution(
 
         later = resolution.steps[position + 1 :]
         declared = step.index == resolution.stopped_at_step
-        if later and (declared or not step.clean_success):
+        if later and (declared or not step.clean_success or step.hurt_by_peril):
             issues.append(
                 Issue("plan_not_stopped", "the steps after it were not played", str(step.index))
             )
@@ -221,6 +222,8 @@ def _stop_reason(step: StepResolution) -> StopReason:
         return StopReason.RULED_OUT
     if step.result is StepResult.PARTIAL:
         return StopReason.PARTIAL
+    if step.result is StepResult.SUCCESS and step.hurt_by_peril:
+        return StopReason.STRUCK  # it worked, but something struck back and hurt them (N6)
     return StopReason.FAILED
 
 

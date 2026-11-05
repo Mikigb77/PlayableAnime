@@ -127,7 +127,8 @@ def mage_fight() -> WorldState:
         id="mage",
         name="the grey mage",
         prominence=Prominence.KEY,
-        description="A gaunt mage in grey robes, crackling with power.",
+        description="A gaunt mage in grey robes, crackling with power, who means to test Lin, "
+        "parrying and pressing him without striking to hurt.",
         appearance="Sixty, gaunt, grey robes, a staff of black wood.",
         age=60,
         location_id="well",
@@ -407,6 +408,7 @@ def conquered() -> WorldState:
             name=f"the {kingdom} Kingdom's envoy",
             location_id="well",
             memberships=[Membership(faction_id=f"kingdom-{n}", rank="envoy", loyalty=80)],
+            description="An unarmed envoy among the sect's elders, here to talk.",
             sheet=CharacterSheet(axes=PowerAxes(might=2, influence=4)),
         )
         add(state, envoy)
@@ -511,6 +513,41 @@ def bandit_road() -> WorldState:
         ended_on="The bandit chief holds a blade to the merchant's throat.",
     )
     return add(state, bandit, merchant)
+
+
+def elder_bai(*, sparring: bool = False) -> WorldState:
+    """Lin before Elder Bai, three realms above him, at the well: an enemy of the outer court, or
+    his master sparring with him (N6)."""
+    state = sect()
+    about = (
+        "Lin's master, sparring with him to test his footwork, holding back his strength."
+        if sparring
+        else "An elder who despises outer disciples, and kills those who raise a hand to him."
+    )
+    return add(state, disciple("bai", "Elder Bai", rung=3, description=about))
+
+
+def bridge_ambush() -> WorldState:
+    """Lin on a rope bridge high over a river gorge, with three thugs of his own strength closing
+    in, knives out (N6)."""
+    state = sect()
+    state.places["bridge"] = Place(
+        id="bridge", name="the rope bridge over the gorge", kind="bridge", parent_id="azure-peak"
+    )
+    state.characters["lin"].location_id = "bridge"
+    state.scene = SceneFrame(
+        place_id="bridge",
+        present_ids=["lin"],
+        ended_on="Three thugs step onto the bridge from both ends, knives out. The river roars "
+        "thirty meters below.",
+    )
+    thugs = [
+        disciple(f"thug-{n}", f"the {nth} thug", description="A hired thug with a long knife.")
+        for n, nth in enumerate(("first", "second", "third"))
+    ]
+    for thug in thugs:
+        thug.location_id = "bridge"
+    return add(state, *thugs)
 
 
 def friend_under_arrows() -> WorldState:
