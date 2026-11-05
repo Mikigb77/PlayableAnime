@@ -29,6 +29,7 @@ class Kind(StrEnum):
     CLOCK_END = "clock_end"  # a clock's end, also scheduled by the drafter (E2, S1)
     EMERGENCE = "world.emergence"  # a character or faction born of the world state (W15)
     REVIVAL = "world.revival"  # a destroyed faction may rise again (W15a)
+    BIRTH = "world.birth"  # a child is born when it is due, if its carrier lives (N6)
     TICK = "world.tick"  # the deterministic world tick (W6)
 
 

@@ -26,7 +26,8 @@ accounts), retrieval with pgvector (C4), Spanish (S10, though the app is built r
 and branching (C8), editable memory (C7), the model part of the world tick (W6, P1), NPC agendas
 (E3), the remaining slash commands, Gemini transcription (V6, P1), carrying on as an heir after an
 ending (N6), and everything P2. A death the player chooses and `/end` already end a story, and the
-player can carry it on as a random person of the world (N6); until the world can kill the player
+player can carry it on as a random person of the world (N6). The world records families and has
+children born, ready for heirs; until the world can kill the player
 character, a fatal outcome that others cause is a defeat on every difficulty.
 
 **Not done without Miki:** any deploy, any production migration that drops data, deleting data, and

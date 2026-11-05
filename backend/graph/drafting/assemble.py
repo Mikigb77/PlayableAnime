@@ -319,6 +319,7 @@ class _Assembler:
         npcs = self._npcs()
         player = self._player()
         characters = {PLAYER_ID: player, **{c.id: c for c in npcs}}
+        self._link_parents(characters)
         clocks = self._clocks()
         threads = self._threads()
         self._link_threads(clocks, threads, bible.mysteries)
@@ -770,6 +771,22 @@ class _Assembler:
             )
         return npcs
 
+    def _link_parents(self, characters: dict[str, Character]) -> None:
+        """N6: who is whose child among the drafted characters: two parents at most, never
+        themselves, and never someone who descends from them."""
+        proposed = [(PLAYER_ID, self.character.parent_ids)]
+        proposed += [(npc_id, npc.parent_ids) for npc_id, npc in self.npc_list]
+        for child_id, raw in proposed:
+            child = characters[child_id]
+            for parent_id in self.chars.all(raw):
+                if len(child.parent_ids) >= 2:
+                    break
+                if parent_id == child_id or parent_id not in characters:
+                    continue
+                if child_id in _ancestors(characters, parent_id):
+                    continue  # it would make them their own ancestor
+                child.parent_ids.append(parent_id)
+
     def _player(self) -> Character:
         c = self.character
         sheet = self._sheet(c, player=True)
@@ -1093,6 +1110,17 @@ def _with_ids(ids: _Ids, records: list, name_field: str) -> list:
 
 def _not_player(character_id: str | None) -> str | None:
     return None if character_id == PLAYER_ID else character_id
+
+
+def _ancestors(characters: dict[str, Character], character_id: str) -> set[str]:
+    found: set[str] = set()
+    frontier = [character_id]
+    while frontier:
+        for parent_id in characters[frontier.pop()].parent_ids:
+            if parent_id not in found:
+                found.add(parent_id)
+                frontier.append(parent_id)
+    return {character_id} | found
 
 
 def _break_cycles(records: dict[str, Place] | dict[str, Faction]) -> None:

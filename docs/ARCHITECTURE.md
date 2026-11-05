@@ -160,10 +160,11 @@ these functions and saves the result.
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar, and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
-| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
+| `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
 | `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
+| `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`, and `GESTATION_S`. See [Families and births](#families-and-births). |
 | `engine/succession.py` | Carrying a story on as someone else after its ending (N6): `draw` picks a random person of the world by its population odds (place, people, age, station, might, a hidden master as rare as the world makes them, and how rare that is), and `carry_on` makes them the player character, keeping the old one in the world (`WorldState.fallen`) and setting `opening_due`. No model calls. See [Carrying a story on](#carrying-a-story-on-as-someone-else). |
 | `engine/samples.py` | Three sample worlds: the Naples vendetta and the Azure Cloud Sect from the requirements, and T17's quiet farm, for tests and development. |
 
@@ -221,7 +222,8 @@ a new one.
   answer or one person's revenge arrives), `world.rumor`, `world.tidings` (word of who did a
   death or a grave harm reaches the victim's family and friends, or one of the victims' factions
   and the factions those sit in), `world.discovery` (a look at a secret deed's traces),
-  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival` and `world.tick`. Whether an
+  `world.clock_step`, `clock_end`, `world.emergence`, `world.revival`, `world.birth` (a child born
+  when due, N6) and `world.tick`. Whether an
   event needs the player is decided when it applies, from the state at that moment, and stored on
   the applied event: guards who find the player where they came need them, and guards who find
   them gone search instead. Delays come from the map: a witness walks to the faction's seat (the
@@ -954,6 +956,35 @@ split as drafting (the model proposes, code decides).
 - **The app** opens the person drawn from the ending card (`features/story/successor_screen.dart`),
   draws on opening when nobody was drawn yet, and offers to start as them or draw again. Starting
   pops the carried-on story back to the play screen, which plays their opening at once.
+
+## Families and births
+
+Requirements: N6, W4, W10, F3, C6, G2. The world keeps who is whose child, so that children and
+grandchildren can carry a story on as heirs.
+
+- **Parents** are `Character.parent_ids`, two at most. The drafter's `NpcP.parent_ids` and
+  `CharacterProposal.parent_ids` name them by id or name, the player character's own children
+  included, and `assemble` drops anyone unknown, themselves, a third parent, and a link that would
+  make someone their own ancestor (the first proposed wins). The narrator's
+  `CharacterChange.parent_ids` adds parents on the same terms, never for the player character
+  (N4), and `check_state` refuses unknown parents and loops. `engine/kin.py` walks the lineage.
+- **Family to the world.** `knowledge.closeness` counts a parent and child as family, so word of a
+  death reaches them (W4) and an avenger can rise from them.
+- **A child on the way** is `Character.expecting` (`Pregnancy`: the other parent, when it was
+  conceived and when it is due, `GESTATION_S` later). The narrator sets it with
+  `CharacterChange.expecting`; `apply` refuses it for the dead, for anyone already expecting, for
+  an unknown other parent, and unless both parents are adults by `limits.adult_problem` (F3).
+- **Birth** (`engine/world/births.py`): `ensure_births` keeps a `world.birth` event pending at
+  the due time for each living character who is expecting, at the start of every catch-up. When it
+  falls due the child is born if the one who carries them is still alive (otherwise the pregnancy
+  just ends): a minor NPC of age 0 with the carrier's people and place, a placeholder name such as
+  "Mira's child", both parents, and an `OriginKind.BIRTH` origin. The parents who are there meet
+  and know the child; one elsewhere learns of it as the story has them (C6). The event needs the
+  player when they meet the child, so a birth to them stops the clock.
+- **What the models and the player read.** The narrator's brief shows each character's `family`
+  by name (parents, children, a child on the way and when it is due), and the player character's
+  only as far as they know it. Memory marks the player character's parents, children and
+  grandchildren, and `/status` shows a child on the way.
 
 ## Safety, ratings and reports
 

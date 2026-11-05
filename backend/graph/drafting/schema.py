@@ -333,6 +333,11 @@ class NpcP(Proposal):
     people_id: str = ""
     location_id: str = ""
     memberships: list[MembershipP] = Field(default_factory=list)
+    parent_ids: list[str] = Field(
+        default_factory=list,
+        description="N6: their mother and father among the key characters, by id, or the "
+        "player character's id for the player character's own child. Two at most.",
+    )
     temperament: TemperamentP = Field(default_factory=TemperamentP)
     attributes: AttributesP = Field(default_factory=AttributesP)
     skills: list[SkillP] = Field(default_factory=list)
@@ -562,6 +567,11 @@ class CharacterProposal(Proposal):
     rank: str = Field(default="", description="Standing in the world's own ranks.")
     family_name: str = ""
     connections: list[ConnectionP] = Field(default_factory=list)
+    parent_ids: list[str] = Field(
+        default_factory=list,
+        description="N6: the character's mother and father among the key characters, by id. Two "
+        "at most.",
+    )
     memberships: list[MembershipP] = Field(default_factory=list)
     ladders: list[LadderPositionP] = Field(default_factory=list)
     axes: AxesP = Field(default_factory=AxesP)

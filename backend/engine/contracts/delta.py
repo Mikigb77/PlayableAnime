@@ -76,6 +76,14 @@ class PowerChange(EngineModel):
     settings: list[PowerSetting] = Field(default_factory=list)
 
 
+class Expecting(EngineModel):
+    """N6. A child on the way, as the scene made it so."""
+
+    other_parent_id: str | None = Field(
+        default=None, description="The child's other parent, by id, when the story knows them."
+    )
+
+
 class CharacterChange(EngineModel):
     """A new character (a name is required) or a change to a known one."""
 
@@ -106,6 +114,16 @@ class CharacterChange(EngineModel):
     rank: str | None = None
     meets_player: bool = False
     known_to_player: bool = False
+    parent_ids: list[str] = Field(
+        default_factory=list,
+        description="N6: their parents, by id: for someone born or met as someone's child, or a "
+        "parentage the scene reveals. Added to what the story has, never taken back; two at most.",
+    )
+    expecting: Expecting | None = Field(
+        default=None,
+        description="N6: they now carry a child, as the scene made it so. It is born when it is "
+        "due, if they live.",
+    )
     rulings: list[Ruling] = Field(default_factory=list, description="Engine only (A9).")
     gains: list[Gain] = Field(default_factory=list, description="Engine only (A4, G17).")
     backstory: list[str] = Field(default_factory=list, description="Engine only (N4).")

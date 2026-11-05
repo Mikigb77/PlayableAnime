@@ -1077,6 +1077,19 @@ and reputation were theirs alone, so the newcomer starts with none, and nobody i
 them yet, though they know the place they live in (C6). People who knew the fallen remember them naturally, when it fits, never forced:
 the narrator is told who in the scene knew them and whether they know how it ended.
 
+The world keeps families so that heirs can carry a story on. Each character records their parents,
+as far as the story has them: the drafter links the key characters it drafts, the player character
+included, and the narrator records a parentage a scene shows or reveals, never the player
+character's own parents (N4). Nobody has more than two parents or descends from themselves, and a
+parent and child are family to the world, so word of a death reaches them and they may avenge it
+(W4). When a scene makes someone pregnant, the narrator says so; only adults have children (F3), and
+nobody carries two at once. The child is born a gestation later (270 days, the same for every
+people for now) if the one who carries them is alive then, and never if they die first (W10). A
+newborn starts with a placeholder name, such as "Mira's child", until the story names them, and only
+the parents who are there meet them; a birth to the player character, or with them there as the
+other parent, stops the clock for them. Memory shows the player character's parents, children and
+grandchildren as such, and `/status` a child on the way.
+
 Not built yet: carrying on as an heir the story already has, such as a child or grandchild. An
 unborn child counts only if the mother lives, which logic decides first and a roll only when the
 facts leave it open; playing as that child starts after a time jump to when they can act. Rewinding
@@ -1361,7 +1374,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as an heir is next (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player carries on as a random person of the world, closes, or starts again from. The world records families and has children born, and carrying on as an heir is next. Deaths others cause are defeats until the world can kill (N6). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

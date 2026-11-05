@@ -11,11 +11,13 @@ separate projection (P1).
 URLs for portraits and pictures are left empty here; the API fills them from the scene images.
 """
 
+from functools import cached_property
 from typing import Literal
 
 from pydantic import Field
 
 from engine.base import EngineModel
+from engine.kin import descendants
 from engine.labels import ago_label, clock_label, in_label
 from engine.state.cast import (
     Character,
@@ -39,6 +41,7 @@ from engine.state.world import WorldState, natural_key
 from engine.world.telling import cap, tell
 
 SINCE_LIMIT = 6
+_DESCENDANT_WORDS = {1: "Your child.", 2: "Your grandchild."}
 
 
 # --- the views, as API.md shapes them ------------------------------------------------------
@@ -325,6 +328,8 @@ class _Knowledge:
 
     def person(self, c: Character) -> PersonEntry:
         lines = [c.description] if c.description else []
+        if kin := self.kin_line(c):
+            lines.insert(0, kin)
         lines += self.facts_about(c.id)
         attitude = None
         if self.player_id in c.met_by:
@@ -339,6 +344,16 @@ class _Knowledge:
             attitude_label=attitude,
             status_label=_status_words(status, presumed),
         )
+
+    @cached_property
+    def descendants(self) -> dict[str, int]:
+        return descendants(self.state, self.player_id)
+
+    def kin_line(self, c: Character) -> str | None:
+        """N6: how someone is family to the player character, if they are."""
+        if c.id in self.state.player.parent_ids:
+            return "Your parent."
+        return _DESCENDANT_WORDS.get(self.descendants.get(c.id, 0))
 
     def place(self, p: Place) -> PlaceEntry:
         lines = [_cap(p.kind)] if p.kind else []
@@ -394,6 +409,11 @@ class _Knowledge:
         lines += [_cap(w.text) for w in condition.wounds]
         lines += [_cap(s.name) for s in condition.states]
         lines += [_cap(f"{r.name}: {r.level}%") for r in condition.reserves]
+        expecting = player.expecting
+        if expecting is not None and player.alive:
+            # N6: a child on the way, born when it is due.
+            due = max(0, expecting.due_s - self.now)
+            lines.append(f"Expecting a child, due {in_label(due)}")
         return lines
 
     def power_lines(self, player: Character) -> list[str]:

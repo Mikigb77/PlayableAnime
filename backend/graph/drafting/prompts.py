@@ -34,7 +34,9 @@ is usually fixed; how far it can go is usually open. Link each rule to the kinds
 ranks, levels), lowest rung first. The gaps between rungs are large and felt.
 - Two to ten places, up to eight factions (a faction can sit inside a larger one: a crew inside a \
 family, a court inside a sect) and two to eight key characters, each with a temperament, what \
-they want and, where it fits, an agenda and a secret. Give every adult an age.
+they want and, where it fits, an agenda and a secret. Give every adult an age. Where key \
+characters are family, record it with parent_ids: a child names their parents, the player \
+character included.
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). Nothing is timed in turns, and the clocks run whether or not the \

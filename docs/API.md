@@ -475,6 +475,7 @@ Only what the player character knows, in the world's words. Hidden truth never a
 ```text
 MemoryView {character: {name, lines: [string], portrait_url?},
             people:   [{id, name, lines: [string], attitude_label?, portrait_url?, status_label}],
+                                          # family comes first: "Your child." (N6)
             places:   [{id, name, lines: [string], image_url?}],
             factions: [{id, name, lines: [string], standing_label}],    # esteem and fear in words (W3)
             goals:    [{id, text}],
@@ -483,7 +484,8 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             deeds:    [{id, text, when_label, known_label}],
             threads:  [{id, title, status}]}
 
-StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4)
+StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
+                                          # lines include a child on the way (N6)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10)

@@ -1,6 +1,8 @@
 """What the model nodes read: the interpret prompt and the narrator's brief (B5 step 4)."""
 
-from engine.base import HOUR, MINUTE
+import json
+
+from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
     GoreLevel,
@@ -27,7 +29,7 @@ from engine.contracts import (
 )
 from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import CharacterStatus, DeathCertainty
+from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
 from engine.state.records import PendingEvent, StepResult
 from engine.state.sheet import Power
 from engine.state.world import EventSize
@@ -435,3 +437,34 @@ def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
     )
 
     assert fallback_prompt(state, decision) == "Lin Feng killed Zhao Kun at the outer-court well."
+
+
+def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
+    """N6: parents and children by name, the dead marked, and a pregnancy with when it is due.
+    The player character's own family is only what they know of (C6)."""
+    state = grounded_world()
+    state.world_s = 10 * DAY
+    state.characters["gennaro"] = Character(id="gennaro", name="Gennaro", parent_ids=["luca"])
+    state.characters["nina"] = Character(
+        id="nina", name="Nina", parent_ids=["luca"], known_by=["luca"]
+    )
+    state.characters["bartender"].parent_ids = ["carmine"]
+    state.characters["carmine"].expecting = Pregnancy(
+        other_parent_id="luca", conceived_s=0, due_s=40 * DAY
+    )
+    gone = state.characters["nina"]
+    gone.status, gone.death_certainty = CharacterStatus.DEAD, DeathCertainty.CONFIRMED
+
+    text = brief(state).user
+    present = json.loads(text.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"]
+    you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+
+    carmine, bartender = present
+    assert carmine["family"] == {
+        "children": [{"id": "bartender", "name": "Gennaro"}],
+        "expecting": {"with": "Luca Esposito", "due": "in 4 weeks"},
+    }
+    assert bartender["family"] == {"parents": [{"id": "carmine", "name": "Carmine Russo"}]}
+    assert "parent_ids" not in bartender and "expecting" not in carmine
+    # Luca doesn't know of his son Gennaro, and knows his daughter Nina died.
+    assert you["family"] == {"children": [{"id": "nina", "name": "Nina", "dead": True}]}

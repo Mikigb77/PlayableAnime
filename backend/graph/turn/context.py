@@ -21,10 +21,10 @@ from engine.contracts import (
     Intent,
     Resolution,
 )
-from engine.labels import moment, span_label
+from engine.labels import in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import GoalStatus, LeadStatus, PendingEvent
-from engine.state.world import WorldState
+from engine.state.world import WorldState, natural_key
 from graph.llm import Prompt
 from graph.turn import prompts
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
@@ -46,6 +46,8 @@ _INTERPRET_WORLD = {
     "travel",
 }
 _RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin", "look_version"}
+# Shown by name in a character's `family` (N6) instead of as ids and in-world seconds.
+_KIN = {"parent_ids", "expecting"}
 _NPC_HIDDEN = {
     "secrets": True,
     "personal_offset_s": True,
@@ -92,14 +94,52 @@ def place_name(state: WorldState) -> str | None:
 
 
 def _player_view(state: WorldState) -> dict[str, Any]:
-    return {"id": state.player_id} | _dump(
-        state.player, exclude={*_RECORD_NOISE, "personal_offset_s"}
+    view = {"id": state.player_id} | _dump(
+        state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
     )
+    # The player character's own family, as far as they know it (C6).
+    return view | _family_view(state, state.player, knower=state.player_id)
+
+
+def _family_view(
+    state: WorldState, character: Character, *, knower: str | None = None
+) -> dict[str, Any]:
+    """N6: a character's parents and children by name, and a child they carry, when due. With
+    `knower`, only the family that character knows of."""
+    children = [c for c in state.characters.values() if character.id in c.parent_ids]
+    family: dict[str, Any] = {}
+    for key, ids in (
+        ("parents", character.parent_ids),
+        ("children", [c.id for c in sorted(children, key=lambda c: natural_key(c.id))]),
+    ):
+        named = [
+            _kin_name(state, i)
+            for i in ids
+            if i in state.characters and (knower is None or knower in state.characters[i].known_by)
+        ]
+        if named:
+            family[key] = named
+    expecting = character.expecting
+    if expecting is not None and character.alive:
+        other = state.characters.get(expecting.other_parent_id or "")
+        family["expecting"] = {
+            "with": other.name if other is not None else None,
+            "due": in_label(max(0, expecting.due_s - state.world_s)),
+        }
+    return {"family": family} if family else {}
+
+
+def _kin_name(state: WorldState, character_id: str) -> dict[str, Any]:
+    kin = state.characters[character_id]
+    view: dict[str, Any] = {"id": kin.id, "name": kin.name}
+    if not kin.alive:
+        view["dead"] = True
+    return view
 
 
 def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
-    hidden = dict.fromkeys(_RECORD_NOISE, True) | _NPC_HIDDEN
-    view = {"id": character.id} | _dump(character, exclude=hidden)
+    hidden = dict.fromkeys({*_RECORD_NOISE, *_KIN}, True) | _NPC_HIDDEN
+    view = {"id": character.id} | _dump(character, exclude=hidden) | _family_view(state, character)
     sheet = view.get("sheet", {})
     if "powers" in sheet:
         # A power kept secret stays out until it is used, and resolve's outcome tells of it then.

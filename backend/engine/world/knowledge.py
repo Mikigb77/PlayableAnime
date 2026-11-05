@@ -20,6 +20,7 @@ from engine.base import (
     TRUST_MAX,
     TRUST_MIN,
 )
+from engine.kin import related
 from engine.state.cast import Character, Faction, FactionStatus, Prominence, Reputation
 from engine.state.records import Deed
 from engine.state.sheet import Attitude, ConnectionKind, Grudge
@@ -55,9 +56,12 @@ FAMILY, FRIEND, COMRADE = 3, 2, 1
 
 
 def closeness(state: WorldState, character: Character, other_id: str) -> int:
-    """How close a character is to someone: family 3, friend or ally 2, comrade in a faction 1,
-    stranger 0. Either side's records count."""
+    """How close a character is to someone: family 3 (a parent or child, or a family
+    connection), friend or ally 2, comrade in a faction 1, stranger 0. Either side's records
+    count."""
     other = state.characters.get(other_id)
+    if related(state, character.id, other_id):  # N6: parent and child
+        return FAMILY
     best = 0
     for a, b in ((character, other_id), (other, character.id)):
         if a is None:
