@@ -26,6 +26,7 @@ ErrorCopy describeError(AppLocalizations l10n, Object error) {
       title: l10n.errorVersionConflictTitle,
       message: l10n.errorVersionConflict,
     ),
+    ApiErrorCode.storyEnded => (title: l10n.errorStoryEndedTitle, message: l10n.errorStoryEnded),
     ApiErrorCode.unreadableAction => (
       title: l10n.errorUnreadableActionTitle,
       message: l10n.errorUnreadableAction,

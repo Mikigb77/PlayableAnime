@@ -1038,12 +1038,34 @@ premise's clocks keep running without them, and the story follows the player. Th
 doesn't lock the genre, so a samurai drama can turn into a merchant story, but the world's fixed
 rules still hold (G7, G11).
 
-**N6 Endings, death and legacy (P1).** The player character can die on Balanced and Brutal. On
-Story, a fatal outcome becomes a defeat instead: captured, maimed, or rescued at a price. After a
-death or a chosen retirement, the player can continue as another character in the same world (an
-heir, an ally or a newcomer) while the world remembers the old protagonist, write an epilogue, or
-rewind with C8. The story never ends on its own (S4), but the player can end it. Until N6 is built,
-every difficulty treats a fatal outcome as a defeat.
+**N6 Endings, death and legacy (P1).** The player character can die. A death the player chooses,
+such as a knife to their own heart or a leap from the battlements, is always real (F1). Difficulty
+only softens deaths that others cause: on Story such a fatal outcome becomes a defeat instead
+(captured, maimed, or rescued at a price), and on Balanced and Brutal it kills. Until the world can
+kill the player character in a fight or a disaster, a fatal outcome that others cause is a defeat on
+every difficulty.
+
+The story never ends on its own (S4), and endless play stays the default, but the player can end it
+with `/end` and an optional note on how it ends. The world checks the note like any action: what it
+rules out or leaves to a long shot is handed back with its reasons, and nothing is saved or charged,
+so the player plays on to earn that ending or ends without those parts. Contested parts are rolled.
+What remains plays in an epilogue. Retiring in the fiction ("I hang up my sword") is an ordinary
+action, not an ending.
+
+A death or an epilogue is the story's ending, told on its last scene with nothing more to act on. A
+death by the character's own hand is told as F1 says. From then on the
+story takes no more turns (`story_ended`), and the player closes it, which keeps it in the Library to
+read, or starts again from the same premise, which opens the create flow with the premise filled in.
+After a death by the character's own hand, one quiet line says where to find support, with no
+lecture.
+
+Not built yet (Miki, 2026-11-05): after an ending the player can also carry on as someone else in
+the same world. Either a random person, picked by the world's population odds (a king or a god is as
+rare as they are in that world, so royalty is about 1 in 10,000 to 1 in 100,000) and shown on a
+character screen to start as or reroll, without editing; or an heir the story already has, such as a
+child or grandchild. An unborn child counts only if the mother lives, which logic decides first and a
+roll only when the facts leave it open; playing as that child starts after a time jump to when they
+can act. NPCs remember the fallen naturally, when it fits, never forced. Rewinding comes with C8.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has
 decided stay open until the narrator first describes them. From then on the engine records them as
@@ -1090,7 +1112,7 @@ These are the parts of the product the player sees, most of them already listed 
 | S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
-| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
+| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. | P1 |
 | S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. See the images section (M1 to M8). | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
@@ -1324,7 +1346,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 | World tick (W6) | Decided 2026-11-03: catch-up on in-world time at the start of each turn | Done. The deterministic part runs in code (P0); a cheap model writes faction and NPC moves (P1). See W6, W10, B5 and B8. |
 | Memory screen | Decided 2026-11-03: only what the character knows | Done. See principle 4 and C6. |
 | Ruined places and uncertain deaths | Decided 2026-11-03: they can change, but only with a recorded cause | Done. See C1, W7 and W15a. |
-| Player death | Decided 2026-11-03: by difficulty | Done. Death on Balanced and Brutal with legacy options, defeat on Story (N6). |
+| Player death | Decided 2026-11-03: by difficulty; 2026-11-05: a death the player chooses is always real | Partly done. A chosen death and `/end` bring the story to its ending, which the player closes or starts again from. Deaths others cause are defeats until the world can kill, and carrying on as someone else is next (N6). |
 | Memory editing | Decided 2026-11-03: Canon plus a Sandbox mode | Done. See C7. |
 | Default event frequency | Decided 2026-11-03: normal | Done. See W16 and S6. |
 | Mysteries | Decided 2026-11-03: major mysteries at creation, minor details when first told | Done. See N7. |

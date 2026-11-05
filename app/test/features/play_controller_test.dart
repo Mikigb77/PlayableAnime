@@ -22,11 +22,18 @@ class _Scripted extends StoryRepository {
 
   final script = <Stream<TurnEvent>>[];
 
+  /// The next turn is refused with this before its stream starts, once.
+  ApiException? turnError;
+
   /// The next Illustrate fails with this, once.
   ApiException? illustrateError;
 
   @override
   Future<Stream<TurnEvent>> takeTurn(String id, TurnInput input, {required int expectedVersion}) {
+    if (turnError case final error?) {
+      turnError = null;
+      return Future.error(error);
+    }
     if (script.isNotEmpty) return Future.value(script.removeAt(0));
     return super.takeTurn(id, input, expectedVersion: expectedVersion);
   }
@@ -554,6 +561,113 @@ void main() {
         play.save(title: 'x' * 121),
         throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
       );
+    });
+  });
+
+  group('endings', () {
+    test('a death by your own hand brings the story to its ending', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('I stab myself', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+
+      final ending = play.story!.ending!;
+      expect(ending.isDeath, isTrue);
+      expect(ending.selfInflicted, isTrue);
+      expect(ending.character, 'Shen Yu');
+      expect(play.ended, isTrue);
+      expect(play.canAct, isFalse);
+      expect(play.story!.scenes.last.choices, isEmpty);
+      // No more turns: nothing is sent.
+      expect(await play.act('I get up', inputMode: 'typed'), isFalse);
+      expect(turnRequests(), hasLength(1));
+    });
+
+    test('/end with no note tells an epilogue and ends the story', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.end(label: 'End the story');
+      await until(play, () => play.pending == null);
+
+      final last = play.story!.scenes.last;
+      expect(last.kind, 'end');
+      expect(play.story!.ending!.kind, 'chosen');
+      final sent = turnRequests().single.json;
+      expect(sent['kind'], 'end');
+      expect(sent.containsKey('action'), isFalse);
+      expect(sent.containsKey('input_mode'), isFalse);
+      expect(sent.containsKey('drop_refused'), isFalse);
+    });
+
+    test('a note the world refuses changes nothing, until the player ends without it', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      final before = play.story!;
+      await play.end(note: 'I take the throne', inputMode: 'voice', label: 'I take the throne');
+      await until(play, () => play.pending == null);
+
+      final refusal = play.refusal!;
+      expect(refusal.parts.single.text, 'take the throne');
+      expect(refusal.parts.single.reason, isNotEmpty);
+      expect(play.story!.version, before.version);
+      expect(play.story!.ending, isNull);
+
+      play.playOn();
+      expect(play.refusal, isNull);
+      expect(play.canAct, isTrue);
+
+      await play.end(note: 'I take the throne', inputMode: 'voice', label: 'I take the throne');
+      await until(play, () => play.refusal != null);
+      await play.endWithoutRefused();
+      await until(play, () => play.pending == null);
+      expect(play.refusal, isNull);
+      expect(play.story!.ending!.kind, 'chosen');
+      final last = turnRequests().last.json;
+      expect(
+        (last['action'], last['input_mode'], last['drop_refused']),
+        ('I take the throne', 'voice', true),
+      );
+    });
+
+    test('closing a story at its ending keeps it to read', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.end(label: 'End the story');
+      await until(play, () => play.pending == null);
+
+      await play.close();
+      expect(play.story!.ending!.closed, isTrue);
+      expect(play.closing, isFalse);
+      expect(notices.whereType<CloseFailed>(), isEmpty);
+      expect(
+        backend.requests.where((r) => r.method == 'POST' && r.uri.path.endsWith('/close')),
+        hasLength(1),
+      );
+    });
+
+    test('a story that ended on another device is shown as it is now', () async {
+      final elsewhere = control();
+      final here = control();
+      await elsewhere.play.start();
+      await here.play.start();
+      await elsewhere.play.end(label: 'End the story');
+      await until(elsewhere.play, () => elsewhere.play.pending == null);
+
+      await here.play.act('I wait by the window', inputMode: 'typed');
+      await until(here.play, () => here.play.ended);
+      expect(here.notices.whereType<StoryMovedOn>(), hasLength(1));
+      expect(here.play.pending, isNull);
+    });
+
+    test('a turn refused because the story ended reloads it', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      repository.turnError = const ApiException(ApiErrorCode.storyEnded, status: 409);
+
+      expect(await play.act('I wait', inputMode: 'typed'), isFalse);
+      expect(play.pending, isNull);
+      expect(notices.whereType<TurnRefused>().single.error.code, ApiErrorCode.storyEnded);
+      await until(play, () => !play.loading);
     });
   });
 }

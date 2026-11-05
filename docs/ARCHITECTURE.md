@@ -710,9 +710,9 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. |
-| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
-| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. |
+| 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). An end turn's note is first held to what the world allows (`graph/turn/ending.py`'s `earned`, N6): it resolves the note, drops every step ruled out or left to a long shot, and resolves the rest again until nothing is dropped, so every refused part is found at once although a plan stops at its first (R6). Unless the player asked to end without them, refused parts end the turn with `EndingRefused` before anything plays. After `play_out`, `ending_of` reads the turn's ending: a death when the player character was alive before it and is dead after (self-inflicted when a harmful step aimed at their own id), or a chosen ending for an end turn. A turn with an ending plans no event, picture or suggestions. The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
+| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
 | 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
@@ -721,12 +721,14 @@ async with aclosing(run_turn(turn, llm)) as events:
 and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent
 only when text was shown: `retry` when the model failed partway and is being retried, `cutaway`
 and `template` when the narration was blocked. `TurnCompleted.result` carries the state to save,
-the scene, the intent, the resolution, the plan, the pending events that fired, the issues the
-checks found and each node's time in milliseconds for the T5 line.
+the scene, the intent, the resolution, the plan, the pending events that fired, the turn's
+`Ending` if it reached one (N6), the issues the checks found and each node's time in milliseconds
+for the T5 line.
 
 **Errors.** `UnreadableAction` (`unreadable_action`, 422) when the interpret step is blocked, the
 one block the player sees (F4), and its subclass `LimitReached` when the action crosses a hard
-limit, with its own message and `details = {"category": ...}`. `LLMUnavailable` and `BadKey` from the model layer otherwise, and
+limit, with its own message and `details = {"category": ...}`. `EndingRefused` when an end turn's
+note asks for what the world won't give, with each refused part's text, reason and class (N6). `LLMUnavailable` and `BadKey` from the model layer otherwise, and
 `InvariantError` for an engine bug. Nothing is saved on any of them, and a chapter summary still
 running is cancelled, so nothing outlives the response (B8).
 
@@ -757,7 +759,8 @@ filled in, are not served.
 
 1. **Before the stream**, in API.md's order: auth, ownership and rating (`owned_story`), the
    version (T10), the BYOK headers, the request against the story (an opening only on a story with
-   no scenes, a choice only from the last scene's suggestions), then `billing.meter.astart` (rate
+   no scenes, a choice only from the last scene's suggestions, and no turn at all on a story at its
+   ending, `409 story_ended`, N6), then `billing.meter.astart` (rate
    limit, quota and credit hold). Each failure is an ordinary JSON error, and none counts against
    the rate limit or quota.
 2. **Read** (`turns.prepare`): the world state with the story's pending rows on its timeline
@@ -769,7 +772,8 @@ filled in, are not served.
    `narration.reset`. The model client and LangGraph are built off the event loop, since the first
    turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
    `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
-   charged.
+   charged. An end turn whose note the world refuses ends with `ending.refused` instead, with
+   nothing saved or charged either (N6).
 4. **Save** (`turns.save`), in one transaction: the state, `turn` and `version` with an optimistic
    check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
    `version_conflict`), the `Scene` row with its time labels in the world's calendar
@@ -778,7 +782,9 @@ filled in, are not served.
    and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
    one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
    the new version and clock; if its picture URLs can't be read then, it goes without them,
-   since the turn is already saved.
+   since the turn is already saved. A turn that reached an ending saves it on the story row
+   (`Story.ending`, `stories/endings.py`) with the character's name and the scene, and sends it as
+   `story.ending` (N6).
 5. **Always**, however the turn ends: the credit hold is released (a no-op after the charge; a
    stream Django closes before it started releases it too), a BYOK client is closed, and T5's one
    line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
@@ -798,7 +804,8 @@ The other endpoints read the same rows: the Library (its `world_time_label` come
 calendar and clock, read in the database, so no whole world state is loaded), a story with its last
 scenes, scrollback, `PATCH` (title and settings only, under a row lock, so two changes sent
 together both count and a turn saved meanwhile is never undone),
-`DELETE`, and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
+`DELETE`, `close` (N6: marks the ending closed under a row lock, without moving the version or the
+Library's order), and the Memory and `/status` views (`engine.visibility`, with portrait and place picture
 URLs from `media.lookups`).
 
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
@@ -1061,8 +1068,14 @@ object, and the raw world state as memory.
   layer's own limits. Providers retry a failed read on their own only for a network or server
   failure, three times at most (`retryTransient`); a 404, a 403 or a limit is final (T9).
 - **Turns stream** as Server-Sent Events (S3). The client parses them into `TurnEvent`s that always
-  end in `SceneCompleted` or `TurnFailed`, so a dropped connection is a typed error, not a hang.
-  An interim JSON answer is replayed as the same events.
+  end in `SceneCompleted`, `TurnFailed` or `EndingRefused`, so a dropped connection is a typed
+  error, not a hang. An interim JSON answer is replayed as the same events.
+- **Endings** (N6, `app/lib/features/story/ending_card.dart`): `/end` asks for a confirmation and
+  sends an end turn with the note typed after it. A refused note shows its parts with their reasons
+  and offers to play on or end without them. A story at its ending shows the ending card instead
+  of the action box: close the story, or start again, which opens the create flow with its premise
+  filled in, and one quiet line on where to find support after a self-inflicted death. The Library
+  marks an ended story.
 - **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
   request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
   if it fails.

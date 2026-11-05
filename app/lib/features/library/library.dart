@@ -15,6 +15,7 @@ class StorySummary {
     this.worldTimeLabel,
     this.coverUrl,
     this.updatedAt,
+    this.ended = false,
   });
 
   factory StorySummary.fromJson(JsonMap json) => StorySummary(
@@ -26,6 +27,7 @@ class StorySummary {
     worldTimeLabel: json['world_time_label'] as String?,
     coverUrl: json['cover_url'] as String?,
     updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
+    ended: json['ending'] != null,
   );
 
   final String id;
@@ -42,6 +44,9 @@ class StorySummary {
   final String? worldTimeLabel;
   final String? coverUrl;
   final DateTime? updatedAt;
+
+  /// The story reached its ending (N6): it can be read, not played.
+  final bool ended;
 }
 
 class LibraryRepository {

@@ -81,4 +81,43 @@ void main() {
     ).toList();
     expect((out.single as TurnFailed).error.code, ApiErrorCode.server);
   });
+
+  test('a scene that ends the story carries its ending', () async {
+    final out = await parseTurnEvents(
+      events(
+        encodeSseEvent('scene.completed', {
+          'scene': {'turn': 4, 'kind': 'end'},
+          'story': {
+            'version': 9,
+            'clock': {'label': 'Day 2, night'},
+            'ending': {'kind': 'chosen', 'character': 'Shen Yu'},
+          },
+        }),
+      ),
+    ).toList();
+    expect((out.single as SceneCompleted).ending?['kind'], 'chosen');
+  });
+
+  test('a refused ending ends the stream with what was refused', () async {
+    final out = await parseTurnEvents(
+      events(
+        '${encodeSseEvent('turn.started', {'turn': 4})}'
+        '${encodeSseEvent('ending.refused', {
+          'message': 'Not yet.',
+          'refused': [
+            {'text': 'take the throne', 'reason': 'Nobody follows you.', 'class': 'long_shot'},
+          ],
+        })}'
+        '${encodeSseEvent('narration.delta', {'text': 'ignored after the end'})}',
+      ),
+    ).toList();
+    expect(out.map((e) => e.runtimeType), [TurnStarted, EndingRefused]);
+    final refused = out.last as EndingRefused;
+    expect(refused.message, 'Not yet.');
+    final part = refused.refused.single;
+    expect(
+      (part.text, part.reason, part.outcomeClass),
+      ('take the throne', 'Nobody follows you.', 'long_shot'),
+    );
+  });
 }

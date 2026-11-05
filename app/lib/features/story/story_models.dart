@@ -458,6 +458,70 @@ class StorySettings {
       Object.hash(narrationLength, tone, difficulty, eventFrequency, images, suggestions);
 }
 
+/// How the player character's story ended (N6, docs/API.md `Ending`). A story at its ending takes
+/// no more turns: the player closes it or starts again from its premise.
+class StoryEnding {
+  const StoryEnding({
+    required this.kind,
+    this.characterId = '',
+    this.character = '',
+    this.selfInflicted = false,
+    this.turn,
+    this.closed = false,
+  });
+
+  factory StoryEnding.fromJson(Json json) => StoryEnding(
+    kind: json['kind'] as String? ?? 'death',
+    characterId: json['character_id'] as String? ?? '',
+    character: json['character'] as String? ?? '',
+    selfInflicted: json['self_inflicted'] as bool? ?? false,
+    turn: (json['turn'] as num?)?.toInt(),
+    closed: json['closed'] as bool? ?? false,
+  );
+
+  static StoryEnding? maybe(Object? json) => json is Json ? StoryEnding.fromJson(json) : null;
+
+  /// `death` (the character died) or `chosen` (the player ended it with /end).
+  final String kind;
+  final String characterId;
+
+  /// Who fell or retired, by the name the story last knew them by.
+  final String character;
+
+  /// Harm they aimed at their own body killed them (F1).
+  final bool selfInflicted;
+
+  /// The scene the ending came in.
+  final int? turn;
+
+  /// The player closed the story; it stays in the Library to read.
+  final bool closed;
+
+  bool get isDeath => kind == 'death';
+
+  StoryEnding closedNow() => StoryEnding(
+    kind: kind,
+    characterId: characterId,
+    character: character,
+    selfInflicted: selfInflicted,
+    turn: turn,
+    closed: true,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is StoryEnding &&
+      other.kind == kind &&
+      other.characterId == characterId &&
+      other.character == character &&
+      other.selfInflicted == selfInflicted &&
+      other.turn == turn &&
+      other.closed == closed;
+
+  @override
+  int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
+}
+
 class Story {
   const Story({
     required this.id,
@@ -470,6 +534,7 @@ class Story {
     this.clockLabel,
     this.coverUrl,
     this.settings = const StorySettings(),
+    this.ending,
   });
 
   factory Story.fromJson(Json json) => Story(
@@ -483,6 +548,7 @@ class Story {
     clockLabel: (json['clock'] as Json?)?['label'] as String?,
     coverUrl: json['cover_url'] as String?,
     settings: StorySettings.fromJson(json['settings'] as Json?),
+    ending: StoryEnding.maybe(json['ending']),
   );
 
   final String id;
@@ -505,12 +571,16 @@ class Story {
   final String? coverUrl;
   final StorySettings settings;
 
+  /// Set once the story has reached its ending (N6). Then it takes no more turns.
+  final StoryEnding? ending;
+
   Story copyWith({
     List<Scene>? scenes,
     int? version,
     String? clockLabel,
     String? title,
     StorySettings? settings,
+    StoryEnding? ending,
   }) => Story(
     id: id,
     title: title ?? this.title,
@@ -522,13 +592,16 @@ class Story {
     clockLabel: clockLabel ?? this.clockLabel,
     coverUrl: coverUrl,
     settings: settings ?? this.settings,
+    ending: ending ?? this.ending,
   );
 
-  Story withScene(Scene scene, {required int version, String? clockLabel}) => copyWith(
-    scenes: [...scenes.where((s) => s.turn != scene.turn), scene],
-    version: version,
-    clockLabel: clockLabel,
-  );
+  Story withScene(Scene scene, {required int version, String? clockLabel, StoryEnding? ending}) =>
+      copyWith(
+        scenes: [...scenes.where((s) => s.turn != scene.turn), scene],
+        version: version,
+        clockLabel: clockLabel,
+        ending: ending,
+      );
 }
 
 /// The `/status` page (S5): the sheet, reputation and the date (docs/API.md `StatusView`).

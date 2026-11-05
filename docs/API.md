@@ -34,6 +34,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
   | 409 | `version_conflict` | `expected_version` is stale: another turn won (T10). `details.current_version`. |
+  | 409 | `story_ended` | A turn on a story at its ending (N6). `details.ending` is its `Ending`. Show the ending instead of the action box. |
   | 422 | `unreadable_action` | The interpret step was blocked, so the action can't be read. Offer rephrase or retry (F4). When the action crosses a hard limit, `details.category` names it (`minor`, `sexual`, `sexual_violence` or `real_person`, F2, F3, G12) and `message` says which line it is, so show the message as it is. On a turn it arrives as the stream's `error` event. |
   | 422 | `bad_key` | The BYOK key was rejected by the provider. |
   | 429 | `rate_limited` | Per-user rate limit (T9). `details.retry_after_s`. |
@@ -300,13 +301,22 @@ makes one from an example world.
 | PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. |
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
+| POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
 | GET | `/v1/stories/{id}/memory` | | `MemoryView` (C6) |
 | GET | `/v1/stories/{id}/status` | | `StatusView` (`/status`, A8, G16, W10) |
 
 ```text
-StorySummary  {id, title, genre, rating, turn, world_time_label, cover_url?, updated_at}
+StorySummary  {id, title, genre, rating, turn, world_time_label, cover_url?,
+               ending?: Ending, updated_at}
 Story         {id, title, genre, rating, version, turn,      # turn 0: play the opening
-               settings: StorySettings, clock: Clock, scenes: [Scene], cover_url?}
+               settings: StorySettings, clock: Clock, scenes: [Scene], cover_url?,
+               premise: string,                          # what it started from, to start again (N6)
+               ending?: Ending}                          # set once it reached its ending (N6)
+Ending        {kind: "death"|"chosen",                    # the character died, or the player used /end
+               character_id, character,                  # who, and their name as the story last knew it
+               self_inflicted: bool,                     # harm they aimed at themselves killed them (F1)
+               turn?: int,                               # the scene it came in; null for an older story
+               closed: bool}                             # the player closed it (POST .../close)
 StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                difficulty: "story"|"balanced"|"brutal",
                event_frequency: "calm"|"normal"|"dramatic",
@@ -318,11 +328,13 @@ Clock         {world_s, label, timeline_id}              # label such as "Day 3,
 ### Turns (B5, B7, S3, T10, V7)
 
 ```text
-TurnRequest {kind: "action"|"choice"|"standing"|"opening",
-             action?: string,            # kind=action only, 1 to 2000 characters, trimmed
+TurnRequest {kind: "action"|"choice"|"standing"|"opening"|"end",
+             action?: string,            # kind=action, 1 to 2000 characters, trimmed; or kind=end's
+                                         # optional note on how the story ends (N6)
              choice_id?: string,         # kind=choice only: an id from the last scene's choices
              standing?: "wait"|"observe",# kind=standing only (S2)
              input_mode?: "typed"|"voice"|"voice_edited"|"choice",  # V7, see below
+             drop_refused?: bool,        # kind=end only: end without what the world refused
              expected_version: int}      # the Story.version the app last saw (T10)
 ```
 
@@ -331,6 +343,15 @@ TurnRequest {kind: "action"|"choice"|"standing"|"opening",
 opened, is a `validation_error`. Each kind takes only its own field. `input_mode` is how an action
 was entered (V7), `typed` when left out; a choice and a standing action are always saved as
 `choice`, and the opening has none.
+
+`kind: "end"` is `/end` (N6): the scene is the story's epilogue, told from things as they stand, or
+from `action`, the player's note on how it should end, which the world checks like any action. When
+the world rules out a part of the note or leaves it to a long shot, the stream ends with
+`ending.refused` and nothing is saved or charged; the same turn sent again with `drop_refused: true`
+ends the story without those parts. An end turn with no note has no `input_mode`, and one with a note
+is typed or spoken, never `choice`. A turn whose character dies (`Ending.kind` `death`) or an end turn
+brings the story to its ending: its scene has no choices, picture or event, and `scene.completed`
+carries `story.ending`. From then on every turn is `409 story_ended`.
 
 Checks that can fail (auth, ownership, rating, version, the request itself, then credits, rate
 limit and quota) run before the stream starts and come back as ordinary JSON errors. Once the
@@ -342,7 +363,8 @@ server answers `200` with `Content-Type: text/event-stream`, it sends these even
 | `turn.started` | `{turn}` | Sent at once, so the app can show the action and a typing state. |
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
-| `scene.completed` | `{scene: Scene, story: {version, clock}}` | The turn is saved. Always the last event of a successful turn. |
+| `scene.completed` | `{scene: Scene, story: {version, clock, ending?: Ending}}` | The turn is saved. Always the last event of a successful turn. `story.ending` is there when this turn brought the story to its ending (N6). |
+| `ending.refused` | `{message, refused: [{text, reason, class}]}` | An end turn's note asked for what the world won't give (N6). The last event: nothing was saved or charged. Each refused part comes with its reason in the world's words, and `class` is `ruled_out` or `long_shot`. Offer to play on, or to send the turn again with `drop_refused: true`. |
 | `error` | `{code, message, details}` | The turn failed after streaming began. Nothing was saved and no credits were charged, so the app discards the partial scene. `code` is `unreadable_action` (the interpret step runs after `turn.started`, so this is where it arrives: offer to rephrase or retry, F4, and for a hard limit show `message` as it is, with `details.category` as in the JSON error), `llm_unavailable` or `bad_key` (offer a retry or a look at the key), `version_conflict` (another turn was saved first: reload, `details.current_version`) or `internal_error`. `details` is `{}` when there are none. |
 
 A turn is all or nothing: the world state, the scene, the ledger entry and the version bump are saved
@@ -351,8 +373,9 @@ together only when the turn completes.
 ### Scene
 
 ```text
-Scene {turn, kind: "opening"|"action"|"choice"|"standing",
-       player_action?: string,       # the words sent, a choice's label, or "wait" or "observe"
+Scene {turn, kind: "opening"|"action"|"choice"|"standing"|"end",
+       player_action?: string,       # the words sent, a choice's label, "wait" or "observe", or
+                                     # an end turn's note
        input_mode?: string,
        narration: string,
        choices: [{id, label, kind: "thread"|"personal"|"side"|"wild"}],   # 0 to 4 (S2)

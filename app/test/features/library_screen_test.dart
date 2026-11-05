@@ -114,4 +114,15 @@ void main() {
     expect(story.coverUrl, isNull);
     expect(story.updatedAt, DateTime.utc(2026, 11, 3, 10));
   });
+
+  test('a story at its ending says so', () {
+    final story = StorySummary.fromJson(const {
+      'id': 's',
+      'title': 'T',
+      'turn': 12,
+      'ending': {'kind': 'death', 'character': 'Shen Yu', 'closed': true},
+    });
+    expect(story.ended, isTrue);
+    expect(StorySummary.fromJson(const {'id': 's', 'title': 'T', 'turn': 1}).ended, isFalse);
+  });
 }
