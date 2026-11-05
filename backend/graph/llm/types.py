@@ -47,10 +47,13 @@ class Message:
 
 @dataclass(frozen=True, repr=False)
 class ImagePart:
-    """An image sent to the model, such as a reference portrait (M5), or one it made."""
+    """An image sent to the model, such as a reference portrait (M5), or one it made. A `label`
+    goes to the model as text just before the image, saying what it is ("Image 1: the portrait
+    of Rosa.")."""
 
     data: bytes
     mime_type: str = "image/png"
+    label: str = ""
 
     def __repr__(self) -> str:
         return f"ImagePart(mime_type={self.mime_type!r}, bytes={len(self.data)})"

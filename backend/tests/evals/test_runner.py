@@ -245,6 +245,7 @@ def test_pictures_go_to_the_judge_as_images():
 
 def test_a_scene_is_described_as_the_picture_endpoint_describes_it():
     from evals.pictures import ending, scene_brief
+    from media import briefs
     from media.plans import _ending
 
     long = "It begins. " + "The rain falls on the court. " * 60 + "Lin draws. The mage turns!"
@@ -252,6 +253,12 @@ def test_a_scene_is_described_as_the_picture_endpoint_describes_it():
         assert ending(text) == _ending(text)
     # The narrator's image prompt goes in as written, however long.
     assert scene_brief(worlds.farm(), long).description == long
+    # Who is in it, who "you" is and the hour, as `stories.turns.brief` has them.
+    state = worlds.farm()
+    brief = scene_brief(state, "You lift the bucket.")
+    assert brief.figures == briefs.scene_figures(state, "You lift the bucket.")
+    assert brief.you == state.player.name
+    assert brief.time == briefs.time_of_day(state.bible.calendar, state.world_s)
 
 
 # --- results -----------------------------------------------------------------------------------

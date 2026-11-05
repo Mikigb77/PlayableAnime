@@ -11,6 +11,8 @@ from __future__ import annotations
 from django.db import IntegrityError, transaction
 
 from engine.contracts import FIRST_PICTURES
+from engine.state.world import WorldState
+from media.briefs import player_at, scene_figures, time_of_day
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
 from stories.models import ImageKind, Scene, Story
@@ -142,10 +144,30 @@ def look_for_story(story: Story) -> WorldLook:
 
 
 def brief_for_scene(story: Story, scene: Scene) -> Brief:
-    """What to draw for a scene nobody wrote an image prompt for: the scene's own text, which the
-    picture rules keep mild (M6)."""
+    """What to draw for a scene nobody planned a picture for, such as Illustrate on any scene: the
+    scene's own text, which the picture rules keep mild (M6), with the people it names as they
+    look and their reference portraits (M5), who "you" is, and the time of day, as a planned
+    scene picture has them. The people are the scene's player character and the cast saved with
+    the scene, drawn with the look they have now."""
     description = scene.image_prompt or _ending(scene.narration)
-    return Brief(description=description, look=look_for_story(story))
+    look = look_for_story(story)
+    try:
+        state = WorldState.model_validate(story.state)
+    except ValueError:
+        return Brief(description=description, look=look)
+    player = player_at(state, scene.turn)
+    present = [
+        str(entry.get("character_id") or "")
+        for entry in scene.cast or ()
+        if isinstance(entry, dict)
+    ]
+    return Brief(
+        description=description,
+        look=look,
+        figures=scene_figures(state, description, player_id=player, present=present),
+        you=state.characters[player].name,
+        time=time_of_day(state.bible.calendar, scene.world_end_s),
+    )
 
 
 def _ending(text: str, limit: int = 1000) -> str:

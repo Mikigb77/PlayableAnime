@@ -145,9 +145,11 @@ together.
   it (`CoverImage`). The starter premises' covers are drawn once for everyone by the backend's
   `draw_premise_covers` command, with the same framing.
 - **The house style (S7, M5)** suits the dark page: stylised and cinematic with an anime influence,
-  painterly low-key light, deep ink shadows, atmospheric depth and a restrained palette with one
-  strong accent, in the world's own era and look. No text, logos, panels or borders. Mild in every
-  rating (M6).
+  painterly light true to the moment's time of day and mood, rich shadows, atmospheric depth and a
+  restrained palette with one strong accent, in the world's own era and look. A scene is lit for
+  the hour on the story's clock, while its bottom edge stays calm and darker for the fade. One
+  uninterrupted image, like a still from an animated film, with no border or vignette of its own
+  and no writing in it: no text, logos or panels. Mild in every rating (M6).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
 ## App icon
