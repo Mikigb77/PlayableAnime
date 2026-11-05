@@ -19,14 +19,23 @@ import 'premise_step.dart';
 /// A new story (G1, G2, S1): a premise from Discover or the player's own idea, then the drafted
 /// world and character to review, change and start. Starting opens the play screen, which plays
 /// the opening scene.
+/// Starting again from an ended story's premise (N6): the create flow opens with it filled in.
+class StartAgain {
+  const StartAgain(this.premise);
+  final String premise;
+}
+
 class CreateStoryScreen extends ConsumerStatefulWidget {
-  const CreateStoryScreen({super.key, this.premise, this.premiseId});
+  const CreateStoryScreen({super.key, this.premise, this.premiseId, this.again});
 
   /// The starter, when Discover passed it along.
   final Premise? premise;
 
   /// The starter's id, from the link, for when the starter itself didn't come along (a reload).
   final String? premiseId;
+
+  /// The premise of a story that ended, to start again from (N6).
+  final String? again;
 
   @override
   ConsumerState<CreateStoryScreen> createState() => _CreateStoryScreenState();
@@ -166,7 +175,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                       CreateStage.premise => PremiseStep(
                         key: const ValueKey(CreateStage.premise),
                         flow: _flow,
-                        form: _form ??= PremiseForm(premise: starter?.premise),
+                        form: _form ??= PremiseForm(premise: starter?.premise ?? widget.again),
                         onDraft: () => _draft(starter),
                         starter: starter,
                       ),

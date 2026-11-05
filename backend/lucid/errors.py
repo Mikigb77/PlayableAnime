@@ -35,6 +35,7 @@ class ErrorCode(StrEnum):
     NOT_FOUND = "not_found"
     METHOD_NOT_ALLOWED = "method_not_allowed"
     VERSION_CONFLICT = "version_conflict"
+    STORY_ENDED = "story_ended"
     UNREADABLE_ACTION = "unreadable_action"
     BAD_KEY = "bad_key"
     RATE_LIMITED = "rate_limited"
@@ -54,6 +55,7 @@ STATUS = {
     ErrorCode.NOT_FOUND: 404,
     ErrorCode.METHOD_NOT_ALLOWED: 405,
     ErrorCode.VERSION_CONFLICT: 409,
+    ErrorCode.STORY_ENDED: 409,
     ErrorCode.UNREADABLE_ACTION: 422,
     ErrorCode.BAD_KEY: 422,
     ErrorCode.RATE_LIMITED: 429,
@@ -73,6 +75,7 @@ DEFAULT_MESSAGES = {
     ErrorCode.NOT_FOUND: "Not found.",
     ErrorCode.METHOD_NOT_ALLOWED: "Method not allowed.",
     ErrorCode.VERSION_CONFLICT: "The story moved on. Reload it and try again.",
+    ErrorCode.STORY_ENDED: "This story has reached its ending.",
     ErrorCode.UNREADABLE_ACTION: "That action couldn't be read. Try rephrasing it.",
     ErrorCode.BAD_KEY: "Your API key was rejected.",
     ErrorCode.RATE_LIMITED: "Slow down a little, then try again.",

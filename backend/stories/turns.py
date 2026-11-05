@@ -42,6 +42,7 @@ from graph.llm import BadKey, ByokKey, LLMError, LLMUnavailable, TurnTelemetry, 
 from graph.turn import (
     MAX_CHAPTER_TURNS,
     RECENT_SCENES,
+    EndingRefused,
     NarrationDelta,
     NarrationReset,
     PastScene,
@@ -56,7 +57,7 @@ from graph.turn import (
 from lucid.errors import ApiError, ErrorCode, envelope, field_error, version_conflict
 from media.plans import look_for_story, plan_picture
 from media.prompts import MAX_FIGURES, Brief, Figure
-from stories import pending, responses
+from stories import endings, pending, responses
 from stories.models import Scene, Story
 from stories.schemas import TurnIn
 
@@ -79,6 +80,10 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
     narrator and the summarizer read (C3), and the label of a picked suggestion. Raises
     `validation_error` for a turn that can't be played on this story as it stands."""
     state = pending.load(story, WorldState.model_validate(story.state))
+    ending = endings.of_story(story.ending, state)
+    if ending is not None:
+        # N6: the player character's story is over; the story takes no more turns.
+        raise endings.ended(ending)
     kind = TurnKind(body.kind)
     if kind is TurnKind.OPENING and state.turn != 0:
         raise field_error("kind", "This story has already opened.", type="already_opened")
@@ -104,6 +109,7 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
         standing=body.standing,
         premise=story.premise,
         scenes=_past_scenes(story, state),
+        drop_refused=body.drop_refused,
     )
     return PreparedTurn(story=story, input=turn, input_mode=body.mode, read_version=story.version)
 
@@ -229,6 +235,20 @@ async def stream(
         run.outcome = "ok"
         yield sse("scene.completed", completed)
         run.sent = True
+    except EndingRefused as refusal:
+        # N6: the note asked for an ending the world won't give. Nothing saved or charged; the
+        # app offers to play on or to end without it.
+        run.outcome = refusal.code
+        yield sse(
+            "ending.refused",
+            {
+                "message": refusal.message,
+                "refused": [
+                    {"text": r.text, "reason": r.reason, "class": r.outcome_class}
+                    for r in refusal.refused
+                ],
+            },
+        )
     except UnreadableAction as error:
         # F4: the one block the player sees. The app offers to rephrase or retry.
         run.outcome = error.code
@@ -309,12 +329,14 @@ def save(
     story = prepared.story
     state = result.state
     draft = result.scene
+    ending = endings.record(result.ending, state, draft.turn) if result.ending else None
     with transaction.atomic():
         saved = Story.objects.filter(pk=story.pk, version=prepared.read_version).update(
             state=state.model_dump(mode="json"),
             turn=state.turn,
             version=F("version") + 1,
             updated_at=timezone.now(),
+            **({"ending": ending} if ending is not None else {}),
         )
         if saved != 1:
             current = Story.objects.filter(pk=story.pk).values_list("version", flat=True).first()
@@ -359,10 +381,14 @@ def save(
     except Exception as error:
         log_failure("A saved scene's pictures couldn't be read, so it is sent without", error)
         shown = responses.bare_scene(scene)
-    return {
-        "scene": shown.model_dump(mode="json"),
-        "story": {"version": story.version, "clock": clock_view(state).model_dump(mode="json")},
+    story_part: dict[str, Any] = {
+        "version": story.version,
+        "clock": clock_view(state).model_dump(mode="json"),
     }
+    if ending is not None:
+        story.ending = ending
+        story_part["ending"] = ending
+    return {"scene": shown.model_dump(mode="json"), "story": story_part}
 
 
 asave = sync_to_async(save)

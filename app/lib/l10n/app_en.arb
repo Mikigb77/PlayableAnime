@@ -131,6 +131,15 @@
       }
     }
   },
+  "libraryEnded": "Ended · turn {turn}",
+  "@libraryEnded": {
+    "description": "A story that reached its ending (N6).",
+    "placeholders": {
+      "turn": {
+        "type": "int"
+      }
+    }
+  },
   "libraryMeta": "Turn {turn} · {time}",
   "@libraryMeta": {
     "description": "Turn number and the in-world time, such as 'Day 3, dusk'.",
@@ -565,7 +574,7 @@
   "@storyLatest": {
     "description": "Jumps back to the newest scene after scrolling far up."
   },
-  "storyUnknownCommand": "There's no /{name} command. Try /status.",
+  "storyUnknownCommand": "There's no /{name} command. Try /status or /end.",
   "@storyUnknownCommand": {
     "placeholders": {
       "name": {
@@ -573,6 +582,48 @@
       }
     }
   },
+  "slashEnd": "End the story, and say how if you like",
+  "endConfirmTitle": "End the story here?",
+  "endConfirmBody": "The world tells an epilogue from things as they stand. After that, this story takes no more turns. This can't be undone.",
+  "endConfirmBodyNote": "The world checks how you'd like it to end, then tells an epilogue. After that, this story takes no more turns. This can't be undone.",
+  "endConfirmKeep": "Keep playing",
+  "endConfirmEnd": "End it",
+  "endLabel": "End the story",
+  "@endLabel": {
+    "description": "Shown above the epilogue when the player ended the story without saying how."
+  },
+  "endRefusedTitle": "The world won't give you that ending",
+  "endRefusedBody": "To have it, play it out. Or end the story without it.",
+  "endRefusedPlayOn": "Play on",
+  "endRefusedEndWithout": "End without it",
+  "endingDeathTitle": "{name} is dead",
+  "@endingDeathTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "endingDeathTitleNameless": "Your character is dead",
+  "endingChosenTitle": "{name}'s story ends here",
+  "@endingChosenTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "endingChosenTitleNameless": "The story ends here",
+  "endingBody": "This story takes no more turns. Close it, or start again from the same premise.",
+  "endingClosedTitle": "The end",
+  "endingClosedBody": "You closed this story. It stays in your Library to read.",
+  "endingClose": "Close the story",
+  "endingStartAgain": "Start again from the premise",
+  "endingHelpline": "If you're having thoughts of harming yourself, you don't have to face them alone. Free, confidential support is listed at findahelpline.com.",
+  "@endingHelpline": {
+    "description": "One quiet line under the ending after a character took their own life (N6)."
+  },
+  "endingCloseFailed": "The story couldn't be closed. Try again.",
   "storyHidden": "You blocked this scene, so its text is hidden.",
   "storyPortraits": "In this scene",
   "storyPortraitsLabel": "In this scene: {names}",
@@ -724,6 +775,8 @@
   "errorNotFound": "It may have been deleted.",
   "errorVersionConflictTitle": "The story moved on",
   "errorVersionConflict": "Another device played a turn. Showing the latest scene.",
+  "errorStoryEndedTitle": "The story has ended",
+  "errorStoryEnded": "This story reached its ending. Showing it as it is now.",
   "errorUnreadableActionTitle": "The storyteller couldn't read that",
   "errorUnreadableAction": "Try saying it another way.",
   "errorBadKeyTitle": "Your key was rejected",

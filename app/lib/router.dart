@@ -107,6 +107,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => CreateStoryScreen(
           premise: _extra<Premise>(state),
           premiseId: state.uri.queryParameters['premise'],
+          again: _extra<StartAgain>(state)?.premise,
         ),
       ),
       GoRoute(

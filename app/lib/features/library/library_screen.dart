@@ -162,6 +162,7 @@ class _StoryRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final time = story.worldTimeLabel;
     final meta = switch ((story.turn, time)) {
+      _ when story.ended => l10n.libraryEnded(story.turn),
       (0, final time?) => l10n.libraryNotBegun(time),
       (_, final time?) => l10n.libraryMeta(story.turn, time),
       _ => l10n.libraryTurn(story.turn),

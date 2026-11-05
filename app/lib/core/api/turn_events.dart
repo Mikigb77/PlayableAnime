@@ -31,7 +31,12 @@ class NarrationReset extends TurnEvent {
 
 /// The turn is saved. Always the last event of a successful turn.
 class SceneCompleted extends TurnEvent {
-  const SceneCompleted({required this.scene, required this.version, required this.clock});
+  const SceneCompleted({
+    required this.scene,
+    required this.version,
+    required this.clock,
+    this.ending,
+  });
 
   /// The `Scene` object as JSON.
   final JsonMap scene;
@@ -41,6 +46,29 @@ class SceneCompleted extends TurnEvent {
 
   /// The `Clock` object as JSON.
   final JsonMap clock;
+
+  /// The `Ending` object as JSON, when this scene brought the story to its ending (N6).
+  final JsonMap? ending;
+}
+
+/// A part of an ending's note the world won't grant, with its reason in the world's words.
+class RefusedPart {
+  const RefusedPart({required this.text, required this.reason, this.outcomeClass = 'ruled_out'});
+
+  final String text;
+  final String reason;
+
+  /// `ruled_out` or `long_shot`.
+  final String outcomeClass;
+}
+
+/// An end turn whose note asks for an ending the world won't give (N6). Nothing was saved or
+/// charged; the player plays on, or ends without what was refused.
+class EndingRefused extends TurnEvent {
+  const EndingRefused({required this.message, required this.refused});
+
+  final String message;
+  final List<RefusedPart> refused;
 }
 
 /// The turn failed after streaming began: `unreadable_action`, `llm_unavailable`, `bad_key`,
@@ -53,8 +81,8 @@ class TurnFailed extends TurnEvent {
 }
 
 /// Maps raw server-sent events to [TurnEvent]s. Unknown event names are skipped, so the backend
-/// can add events without breaking older apps. The stream always ends with [SceneCompleted] or
-/// [TurnFailed].
+/// can add events without breaking older apps. The stream always ends with [SceneCompleted],
+/// [EndingRefused] or [TurnFailed].
 Stream<TurnEvent> parseTurnEvents(Stream<SseEvent> events) async* {
   try {
     await for (final event in events) {
@@ -68,7 +96,7 @@ Stream<TurnEvent> parseTurnEvents(Stream<SseEvent> events) async* {
       }
       if (mapped == null) continue;
       yield mapped;
-      if (mapped is SceneCompleted || mapped is TurnFailed) return;
+      if (mapped is SceneCompleted || mapped is TurnFailed || mapped is EndingRefused) return;
     }
   } on ApiException catch (e) {
     yield TurnFailed(e);
@@ -99,6 +127,20 @@ TurnEvent? _map(SseEvent event) {
         scene: d['scene'] as JsonMap,
         version: (story['version'] as num?)?.toInt() ?? 0,
         clock: story['clock'] as JsonMap? ?? const {},
+        ending: story['ending'] as JsonMap?,
+      );
+    case 'ending.refused':
+      final d = data();
+      return EndingRefused(
+        message: d['message'] as String? ?? '',
+        refused: [
+          for (final part in d['refused'] as List? ?? const [])
+            RefusedPart(
+              text: (part as JsonMap)['text'] as String? ?? '',
+              reason: part['reason'] as String? ?? '',
+              outcomeClass: part['class'] as String? ?? 'ruled_out',
+            ),
+        ],
       );
     case 'error':
       final d = data();

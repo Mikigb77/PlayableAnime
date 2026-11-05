@@ -50,6 +50,9 @@ class TurnKind(StrEnum):
     ACTION = "action"
     CHOICE = "choice"
     STANDING = "standing"
+    # N6: the player ends the story with `/end`, with or without a note on how. Its scene is the
+    # epilogue.
+    END = "end"
 
 
 @dataclass(frozen=True)
@@ -80,6 +83,9 @@ class TurnInput:
     standing: StandingAction | None = None
     premise: str = ""
     scenes: tuple[PastScene, ...] = ()
+    # N6, an end turn only: tell the epilogue without what the world refused of the note,
+    # instead of handing the refusal back.
+    drop_refused: bool = False
 
     def __post_init__(self) -> None:
         if self.ctx.turn != self.state.turn + 1:
@@ -92,6 +98,10 @@ class TurnInput:
             raise ValueError("a standing turn needs wait or observe")
         if self.kind is TurnKind.OPENING and self.state.turn != 0:
             raise ValueError("only a story with no scenes gets an opening turn")
+        if self.kind is TurnKind.END and self.state.turn == 0:
+            raise ValueError("a story that hasn't opened can't end")
+        if self.drop_refused and self.kind is not TurnKind.END:
+            raise ValueError("only an end turn drops what the world refused")
 
 
 @dataclass(frozen=True)
@@ -219,6 +229,20 @@ class Issue:
     subject: str | None = None
 
 
+EndingKind = Literal["death", "chosen"]
+
+
+@dataclass(frozen=True)
+class Ending:
+    """N6: the turn ended the player character's story. `death` when they died in it, `chosen`
+    when the player ended it with `/end` and they lived. `self_inflicted` when the death was
+    harm they aimed at their own body."""
+
+    kind: EndingKind
+    character_id: str
+    self_inflicted: bool = False
+
+
 @dataclass(frozen=True)
 class TurnResult:
     """The finished turn. `state` is the world state to save, with `turn` bumped. `fired` lists
@@ -232,6 +256,7 @@ class TurnResult:
     fired: tuple[PendingEvent, ...]
     issues: tuple[Issue, ...]
     timings_ms: dict[str, int] = field(default_factory=dict)
+    ending: Ending | None = None
 
     @property
     def narration_mode(self) -> NarrationMode:
@@ -261,6 +286,8 @@ class TurnState(TypedDict, total=False):
     resolution: Resolution
     played: PlayOut
     plan: DirectorPlan
+    ending: Ending | None  # N6: the player character's story ends in this scene
+    left_out: tuple[str, ...]  # N6: what the world refused of an ending's note, ended without
     brief: Any  # graph.turn.context.NarrationBrief
     narration: Any  # graph.turn.outputs.NarratorOutput
     narration_mode: NarrationMode

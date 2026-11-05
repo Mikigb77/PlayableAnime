@@ -10,6 +10,9 @@ enum ApiErrorCode {
   notFound('not_found'),
   methodNotAllowed('method_not_allowed'),
   versionConflict('version_conflict'),
+
+  /// The story has reached its ending (N6): it takes no more turns.
+  storyEnded('story_ended'),
   unreadableAction('unreadable_action'),
   badKey('bad_key'),
   rateLimited('rate_limited'),

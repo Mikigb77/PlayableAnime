@@ -20,6 +20,11 @@ import 'fake_stories.dart';
 /// - `[reset]` streams a few words, then `narration.reset` and a cut-away (F4);
 /// - `[fail:picture]` plans a picture that is then skipped, as a blocked one would be (M3).
 ///
+/// Endings (N6): "kill myself", "stab myself" or "jump to my death" kills the character by their
+/// own hand, which brings the story to its ending. `/end` (`kind: "end"`) tells an epilogue; a
+/// note asking to become a king or emperor is refused with `ending.refused`, unless the turn says
+/// `drop_refused`. A story at its ending answers every turn with `story_ended`.
+///
 /// The action's words shape the scene: "attack" or "duel" is a fight with a roll and a picture
 /// (M1 counts fights), "then" chains steps that stop where one fails (R6), "stop time" runs the
 /// two clocks apart (W10a) with a cause-and-effect chain (A9), "leap" is a long shot and "fly" is
@@ -38,6 +43,9 @@ void registerTurnRoutes(FakeBackend b) {
         'current_version': story.version,
       });
     }
+    if (story.ending case final ending?) {
+      throw FakeError(409, 'story_ended', 'This story has reached its ending.', {'ending': ending});
+    }
     _validate(kind, r.json, story);
     final byok = r.usesOwnKey;
     if (_preStreamError(byok && trigger == 'out_of_credits' ? null : trigger) case final error?) {
@@ -51,7 +59,27 @@ void registerTurnRoutes(FakeBackend b) {
     }
 
     final turn = story.turn + 1;
-    final scene = _buildScene(b, story, r.json, turn);
+    final refused = kind == 'end' && r.json['drop_refused'] != true && _unearned.hasMatch(action);
+    final ending = switch (kind) {
+      _ when _ownDeath.hasMatch(action) => {
+        'kind': 'death',
+        'character_id': 'shen_yu',
+        'character': 'Shen Yu',
+        'self_inflicted': true,
+        'turn': turn,
+        'closed': false,
+      },
+      'end' => {
+        'kind': 'chosen',
+        'character_id': 'shen_yu',
+        'character': 'Shen Yu',
+        'self_inflicted': false,
+        'turn': turn,
+        'closed': false,
+      },
+      _ => null,
+    };
+    final scene = _buildScene(b, story, r.json, turn, ending: ending != null);
     if (trigger == 'picture') b.data.pictures.failing.add('${story.id}-$turn');
     final narration = scene['narration'] as String;
     final chunks = _chunks(narration);
@@ -63,6 +91,7 @@ void registerTurnRoutes(FakeBackend b) {
       story.version += 1;
       story.worldS = (scene['time'] as JsonMap)['world_end_s'] as int;
       story.updatedAt = b.now();
+      story.ending = ending;
       if ((scene['image'] as JsonMap?)?['kind'] == 'portrait') story.metLan = true;
       if (!byok) {
         b.data.account.charge(
@@ -80,6 +109,24 @@ void registerTurnRoutes(FakeBackend b) {
       yield (Duration.zero, 'turn.started', {'turn': turn});
       if (_streamError(trigger, story) case final error?) {
         yield (pace.firstWords, 'error', error);
+        return;
+      }
+      if (refused) {
+        // N6: nothing saved or charged.
+        yield (
+          pace.firstWords,
+          'ending.refused',
+          {
+            'message': 'The world won\'t give your story that ending yet.',
+            'refused': [
+              {
+                'text': 'take the throne',
+                'reason': 'An outer disciple with cut meridians is nowhere near a throne.',
+                'class': 'ruled_out',
+              },
+            ],
+          },
+        );
         return;
       }
       if (trigger == 'llm_unavailable' || action.contains('[reset]')) {
@@ -114,7 +161,7 @@ void registerTurnRoutes(FakeBackend b) {
         'scene.completed',
         {
           'scene': scene,
-          'story': {'version': story.version, 'clock': story.clock},
+          'story': {'version': story.version, 'clock': story.clock, 'ending': ?ending},
         },
       );
     }
@@ -132,13 +179,18 @@ const _turnCents = 2;
 /// comes first, once.
 void _validate(String kind, JsonMap body, FakeStory story) {
   const fields = {'action': 'action', 'choice': 'choice_id', 'standing': 'standing'};
-  if (!const {'action', 'choice', 'standing', 'opening'}.contains(kind)) {
+  if (!const {'action', 'choice', 'standing', 'opening', 'end'}.contains(kind)) {
     throw FakeError.validation('Unknown turn kind $kind.');
   }
   for (final MapEntry(key: other, value: field) in fields.entries) {
-    if (other != kind && body[field] != null) {
+    // An end turn takes an optional note in `action` (N6).
+    final own = other == kind || (kind == 'end' && field == 'action');
+    if (!own && body[field] != null) {
       throw FakeError.validation('A $kind turn takes no $field.');
     }
+  }
+  if (body['drop_refused'] == true && kind != 'end') {
+    throw const FakeError.validation('Only an end turn takes drop_refused.');
   }
   if (kind == 'opening') {
     if (story.scenes.isNotEmpty) throw const FakeError.validation('The story has opened.');
@@ -162,6 +214,15 @@ void _validate(String kind, JsonMap body, FakeStory story) {
     case 'standing':
       if (body['standing'] != 'wait' && body['standing'] != 'observe') {
         throw const FakeError.validation('Standing actions are wait and observe.');
+      }
+    case 'end':
+      // N6: the note is optional, and typed or spoken when there is one.
+      final note = body['action'] as String?;
+      if (note != null && (note.trim().isEmpty || note.length > 2000)) {
+        throw const FakeError.validation('A note on the ending is 1 to 2000 characters.');
+      }
+      if (body['input_mode'] == 'choice') {
+        throw const FakeError.validation('An ending is typed or spoken.');
       }
   }
 }
@@ -212,7 +273,19 @@ final _longShot = RegExp(r'\bleap|\bjump across|\bswing across', caseSensitive: 
 final _ruledOut = RegExp(r'\bfly\b|\bteleport', caseSensitive: false);
 final _rope = RegExp(r'\brope\b', caseSensitive: false);
 
-JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
+final _ownDeath = RegExp(
+  r'(kill|stab|poison) myself|jump to my death|take my own life',
+  caseSensitive: false,
+);
+final _unearned = RegExp(r'\b(king|queen|emperor|throne)\b', caseSensitive: false);
+
+const _epilogue =
+    'The peak is quiet when you leave it. Behind you the sect goes on without you, and ahead the '
+    'road runs down into the valley mist, where nobody knows your name yet.';
+const _lastScene =
+    'Your hand shakes, then it doesn\'t. The world narrows to one cold point and goes still.';
+
+JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {bool ending = false}) {
   final kind = body['kind'] as String? ?? 'action';
   // Saved as sent, as the real endpoint does; the triggers don't shape the scene.
   final sent = (body['action'] as String? ?? '').trim();
@@ -252,6 +325,8 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
     standing,
   )) {
     ('opening', _) => '${story.premise}\n\n$_openingLine',
+    _ when ending && _ownDeath.hasMatch(said) => _lastScene,
+    ('end', _) => _epilogue,
     ('standing', 'wait') => _waitNarration,
     ('standing', _) => _observeNarration,
     _ when timeStop => _timeStopNarration,
@@ -266,6 +341,8 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
   // A key moment gets a scene picture (M1); otherwise a first meeting gets a portrait.
   final pictureKind = switch (images) {
     'off' => null,
+    // The last scene plans no picture or event (N6).
+    _ when ending => null,
     _ when kind == 'opening' || fight || timeStop => 'scene',
     _ when meetsLan && !story.metLan => 'portrait',
     _
@@ -274,22 +351,25 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn) {
       'scene',
     _ => null,
   };
-  final eventSize = turn % 4 == 0 ? const ['personal', 'local', 'world'][(turn ~/ 4) % 3] : null;
+  final eventSize = turn % 4 == 0 && !ending
+      ? const ['personal', 'local', 'world'][(turn ~/ 4) % 3]
+      : null;
 
   return {
     'turn': turn,
     'kind': kind,
-    if (kind == 'action') 'player_action': sent,
+    if (kind == 'action' || (kind == 'end' && sent.isNotEmpty)) 'player_action': sent,
     if (kind == 'choice') 'player_action': choiceLabel,
     // As the server does: the standing action's wire name, which the app shows in its own words.
     if (kind == 'standing') 'player_action': standing,
     'input_mode': switch (kind) {
       'opening' => null,
-      'action' => body['input_mode'] ?? 'typed',
+      'end' when sent.isEmpty => null,
+      'action' || 'end' => body['input_mode'] ?? 'typed',
       _ => 'choice',
     },
     'narration': narration,
-    'choices': suggestions ? pool.take(3).toList() : <Object>[],
+    'choices': suggestions && !ending ? pool.take(3).toList() : <Object>[],
     'standing_actions': ['wait', 'observe'],
     'time': {
       'world_start_s': start,

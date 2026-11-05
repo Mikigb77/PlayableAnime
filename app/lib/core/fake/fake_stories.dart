@@ -41,6 +41,9 @@ class FakeStory {
   /// Whether the player has met Senior Sister Lan, whose first scene plans her portrait.
   bool metLan = false;
 
+  /// How the story ended (N6), once it has: then it takes no more turns.
+  JsonMap? ending;
+
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
 
   JsonMap get clock => {'world_s': worldS, 'label': fakeWorldLabel(worldS), 'timeline_id': 'main'};
@@ -53,6 +56,7 @@ class FakeStory {
     'turn': turn,
     'world_time_label': fakeWorldLabel(worldS),
     'cover_url': coverUrl,
+    'ending': ending,
     'updated_at': updatedAt.toUtc().toIso8601String(),
   };
 
@@ -67,6 +71,7 @@ class FakeStory {
     'scenes': allScenes ? scenes : scenes.sublist(scenes.length > last ? scenes.length - last : 0),
     'cover_url': coverUrl,
     'premise': premise,
+    'ending': ending,
   };
 }
 
@@ -149,6 +154,19 @@ void registerStoryRoutes(FakeBackend b) {
     if (settings case final JsonMap settings) {
       story.settings = {...story.settings, ...settings}..removeWhere((_, v) => v == null);
     }
+    return FakeResponse.json(story.toJson());
+  });
+
+  // N6: closes a story at its ending. Closing a closed story changes nothing.
+  b.route('POST', '/v1/stories/:id/close', (r) {
+    final story = stories.get(r.param('id'), r.userId!);
+    final ending = story.ending;
+    if (ending == null) {
+      throw const FakeError.validation(
+        'This story hasn\'t reached an ending. End it with /end first.',
+      );
+    }
+    story.ending = {...ending, 'closed': true};
     return FakeResponse.json(story.toJson());
   });
 
