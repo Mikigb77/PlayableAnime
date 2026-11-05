@@ -482,3 +482,18 @@ def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
             {"id": "nina", "name": "Nina", "dead": True},
         ]
     }
+
+
+def test_the_narrators_guide_names_every_section_the_brief_writes():
+    # T5: the guide brings the cached start past Vertex AI's 4,096-token minimum, and it must
+    # describe the brief as it is.
+    import inspect
+    import re
+
+    from graph.turn import context
+
+    written = set(re.findall(r'\("([A-Z][A-Z ]+)",', inspect.getsource(context.narration_brief)))
+    assert {"STYLE", "WORLD", "OUTCOME", "ENDING", "TASK"} <= written
+    missing = [name for name in sorted(written) if f"- {name}: " not in prompts.BRIEF_GUIDE]
+    assert missing == []
+    assert prompts.NARRATOR_SYSTEM.endswith(prompts.BRIEF_GUIDE)
