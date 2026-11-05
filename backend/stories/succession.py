@@ -107,13 +107,19 @@ def _heirs_rng(story: Story, state: WorldState, ending: endings.EndingOut) -> Se
     return SeededRng(f"story={story.pk}/ending={ending.turn or state.turn}/heirs")
 
 
-def _jump(story: Story, state: WorldState, heir: heirs.Heir) -> WorldState:
+def _settled(story: Story, state: WorldState, ending: endings.EndingOut) -> WorldState:
+    """The world as the ending's roll left it: a dying carrier's child it lost won't be born."""
+    return heirs.settled(state, _heirs_rng(story, state, ending))
+
+
+def _jump(
+    story: Story, state: WorldState, ending: endings.EndingOut, heir: heirs.Heir
+) -> WorldState:
     """The world when an heir can act: run on to that day, the same way every time (A3)."""
-    if not heir.jump_s:
-        return state
+    settled = _settled(story, state, ending)
     ctx = TurnContext(story_id=str(story.pk), turn=state.turn)
     rng = SeededRng(f"story={story.pk}/turn={state.turn}/heir={heir.id}/jump")
-    return heirs.time_jump(state, state.world_s + heir.jump_s, ctx, rng)
+    return heirs.jump_for(settled, heir, ctx, rng)
 
 
 def _heir_now(state: WorldState, heir: heirs.Heir) -> Character:
@@ -152,7 +158,8 @@ async def draw(request: HttpRequest, story: Story, heir_id: str | None = None) -
                 source="query",
                 type="unknown_heir",
             )
-        now = await sync_to_async(_jump, thread_sensitive=False)(story, state, heir)
+        # Years of the world's life: off the thread the database work shares.
+        now = await sync_to_async(_jump, thread_sensitive=False)(story, state, ending, heir)
         character = _heir_now(now, heir)
         lot = _heir_lot(now, character)
     else:
@@ -232,8 +239,23 @@ def _keep(story: Story, drawn: Drawn, call) -> Drawn:
     return drawn
 
 
-def carry_on(story: Story, expected_version: int) -> Story:
-    """Makes the person drawn the player character, with the story's version moving on (T10)."""
+async def carry_on(story: Story, expected_version: int) -> Story:
+    """Makes the person drawn the player character, with the story's version moving on (T10).
+    An heir's years run first, off the database's thread and outside the row lock: the jump plays
+    the same every time, so it is used if the story is still as it was read."""
+    ahead = None
+    if story.version == expected_version and story.successor:
+        state = WorldState.model_validate(story.state)
+        drawn = Drawn.model_validate(story.successor)
+        ending = endings.of_story(story.ending, state)
+        if drawn.heir is not None and ending is not None and not ending.closed:
+            ahead = await sync_to_async(_jump, thread_sensitive=False)(
+                story, state, ending, drawn.heir
+            )
+    return await sync_to_async(_carry_on)(story, expected_version, ahead)
+
+
+def _carry_on(story: Story, expected_version: int, ahead: WorldState | None) -> Story:
     with transaction.atomic():
         current = (
             Story.objects.select_for_update()
@@ -252,10 +274,11 @@ def carry_on(story: Story, expected_version: int) -> Story:
                 type="no_successor",
             )
         drawn = Drawn.model_validate(current.successor)
-        now = state
+        now = _settled(current, state, ending)
         if drawn.heir is not None:
             # The world runs on to the day the heir can act, as it did when they were drawn.
-            now = _jump(current, state, drawn.heir)
+            same = current.state == story.state and current.successor == story.successor
+            now = ahead if ahead is not None and same else _jump(current, state, ending, drawn.heir)
             _heir_now(now, drawn.heir)
         carried = succession.carry_on(
             now,

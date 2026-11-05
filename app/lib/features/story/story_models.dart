@@ -513,8 +513,6 @@ class StoryEnding {
   int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
 }
 
-/// Someone drawn to carry a story on after its ending (N6, docs/API.md `Successor`): a random
-/// person of the world, by its population odds. The player starts as them or draws again.
 /// Someone of the player character's family who can carry the story on after its ending (N6):
 /// a child or grandchild, or a child not born yet.
 class Heir {
@@ -552,6 +550,9 @@ class Heir {
   final int years;
 }
 
+/// Someone drawn to carry a story on after its ending (N6, docs/API.md `Successor`): a random
+/// person of the world, by its population odds, or one of the player character's heirs. The
+/// player starts as them or chooses someone else.
 class Successor {
   const Successor({
     required this.name,

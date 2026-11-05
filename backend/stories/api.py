@@ -162,7 +162,7 @@ async def carry_on(request: HttpRequest, story_id: str, body: CarryOnIn) -> Stor
     """N6: the person drawn becomes the player character, and the story's next turn is their
     opening. The old player character stays in the world, remembered."""
     story = await _load(request, story_id)
-    story = await sync_to_async(succession.carry_on)(story, body.expected_version)
+    story = await succession.carry_on(story, body.expected_version)
     return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
 
 

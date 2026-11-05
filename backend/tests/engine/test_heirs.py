@@ -4,6 +4,7 @@ to act is played from the day they turn 16, once the world has run on to it."""
 
 import pytest
 
+import engine.heirs
 from engine.base import DAY, YEAR
 from engine.context import TurnContext
 from engine.heirs import (
@@ -11,21 +12,26 @@ from engine.heirs import (
     UNBORN,
     born_of,
     heirs,
+    settled,
     time_jump,
     unborn_lost,
 )
 from engine.rng import SeededRng
 from engine.samples import grounded_world
 from engine.state import (
+    ActiveTimeEffect,
     Character,
     CharacterStatus,
     DeathCertainty,
     Health,
     OriginKind,
     Pregnancy,
+    StatusChange,
+    TimeEffect,
     WorldState,
 )
 from engine.succession import carry_on
+from engine.timekeeping import TimePassage
 
 DUE_S = 30 * DAY
 
@@ -117,6 +123,53 @@ def test_only_a_dying_carrier_leaves_it_to_a_roll_settled_once_per_ending():
         assert (UNBORN + "sofia" in listed) is not bool(lost)
 
 
+def test_the_roll_is_the_worlds_a_child_it_lost_is_never_born():
+    state = family()
+    state.characters["sofia"].sheet.condition.health = Health.DYING
+    seeds = [SeededRng(f"story=s/ending={seed}/heirs") for seed in range(40)]
+    lost = next(r for r in seeds if unborn_lost(state, r) == {"sofia"})
+    kept = next(r for r in seeds if not unborn_lost(state, r))
+
+    assert settled(state, kept) is state
+    after = settled(state, lost)
+    assert after.characters["sofia"].expecting is None
+    assert state.characters["sofia"].expecting is not None  # a new state
+    later = time_jump(after, DUE_S + DAY, ctx(), SeededRng("jump"))
+    assert born_of(later, "sofia", DUE_S) is None
+
+
+def test_the_old_player_characters_time_stop_doesnt_hold_the_years():
+    state = family()
+    state.time_effects.append(
+        ActiveTimeEffect(
+            character_id="luca", power_id="stop", effect=TimeEffect.STOP, started_personal_s=0
+        )
+    )
+
+    later = time_jump(state, DUE_S + DAY, ctx(), SeededRng("jump"))
+
+    assert later.time_effects == []
+    assert born_of(later, "sofia", DUE_S) is not None
+
+
+def test_someone_who_dies_on_the_way_stays_the_age_they_died_at(monkeypatch):
+    state = family()
+    until = state.world_s + 16 * YEAR
+
+    def rosa_dies_ten_years_on(current, until_s, ctx, rng, copy):
+        rosa = current.characters["rosa"]
+        rosa.status = CharacterStatus.DEAD
+        rosa.status_history.append(StatusChange(status="dead", turn=3, world_s=10 * YEAR))
+        start, current.world_s = current.world_s, until_s
+        return TimePassage(state=current, started_s=start, ended_s=until_s)
+
+    monkeypatch.setattr(engine.heirs, "catch_up", rosa_dies_ten_years_on)
+    later = time_jump(state, until, ctx(), SeededRng("jump"))
+
+    assert later.characters["rosa"].age == 30 + 10
+    assert later.characters["tonio"].age == 2 + 16
+
+
 def test_the_world_runs_on_until_the_heir_can_act():
     state = family()
     [*_, unborn] = heirs(state, rng())
@@ -171,6 +224,20 @@ def test_carrying_on_as_an_heir_keeps_them_as_the_world_has_them():
     assert "tonio" in carried.characters["rosa"].met_by and "rosa" in you.met_by
     assert "tonio" not in carried.characters["enzo"].known_by  # a nephew isn't counted
     assert carried.opening_due
+
+
+def test_a_grandchild_knows_of_the_grandparent_before_them_and_how_they_died():
+    state = family()
+    state.player.status_history.append(StatusChange(status="dead", turn=3, world_s=0))
+    later = time_jump(state, state.world_s + 8 * YEAR, ctx(), SeededRng("jump"))
+
+    carried = carry_on(
+        later, later.characters["enzo"], "Dawn.", ending="death", turn=3, ended_s=state.world_s
+    )
+
+    luca = carried.characters["luca"]
+    assert "enzo" in luca.known_by and "enzo" not in luca.met_by
+    assert "enzo" in luca.status_history[-1].known_by
 
 
 @pytest.mark.parametrize("age", [None, 16, 40])

@@ -128,7 +128,14 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
       if (ref.exists(meProvider)) ref.read(meProvider.notifier).refreshQuietly();
     } on Object catch (e) {
       if (!mounted) return;
-      _error = e;
+      if (_heirLost(e)) {
+        // They died in the years before they could act: back to the choice, nothing charged.
+        final name = _story?.heirs.where((h) => h.id == _heirId).firstOrNull?.name ?? '';
+        _choosing = true;
+        _snack(context.l10n.successorHeirLost(name.trim()));
+      } else {
+        _error = e;
+      }
       if (_ended(e)) unawaited(_load());
     } finally {
       if (mounted) setState(() => _drawing = false);
@@ -168,6 +175,14 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
   static bool _ended(Object error) => switch (error) {
     ApiException(code: ApiErrorCode.validationError, :final fields) => fields.any(
       (f) => f is Map && (f['type'] == 'not_ended' || f['type'] == 'closed'),
+    ),
+    _ => false,
+  };
+
+  /// The heir asked for didn't live to the day they could act.
+  static bool _heirLost(Object error) => switch (error) {
+    ApiException(code: ApiErrorCode.validationError, :final fields) => fields.any(
+      (f) => f is Map && f['type'] == 'heir_lost',
     ),
     _ => false,
   };
@@ -214,7 +229,11 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
             fallen: story.ending?.character ?? '',
             onPick: (heirId) => _draw(heirId: heirId),
           ),
-          (_, null) => _FirstDrawFailed(error: _error, onDraw: _retry),
+          (final Story story, null) => _FirstDrawFailed(
+            error: _error,
+            onDraw: _retry,
+            onChoose: story.heirs.isNotEmpty ? _chooseAgain : null,
+          ),
           (final Story story, final Successor drawn) => _SuccessorView(
             successor: drawn,
             fallen: story.ending?.character ?? '',
@@ -281,13 +300,17 @@ class _Drawing extends StatelessWidget {
   }
 }
 
-/// The first draw failed: what went wrong, and a way to try again. Out of credits offers the
+/// The first draw failed: what went wrong, and a way to try again, or to choose someone else
+/// when there are heirs (one may not have lived to carry the story on). Out of credits offers the
 /// player's own key, and drawing again on it (K6).
 class _FirstDrawFailed extends StatelessWidget {
-  const _FirstDrawFailed({required this.error, required this.onDraw});
+  const _FirstDrawFailed({required this.error, required this.onDraw, this.onChoose});
 
   final Object? error;
   final VoidCallback onDraw;
+
+  /// Back to the choice between the heirs and someone from the world.
+  final VoidCallback? onChoose;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -307,6 +330,15 @@ class _FirstDrawFailed extends StatelessWidget {
               onPressed: onDraw,
               child: Text(context.l10n.retry),
             ),
+            if (onChoose case final onChoose?) ...[
+              const SizedBox(height: Space.sm),
+              OutlinedButton.icon(
+                key: const ValueKey('successor.chooseAgain'),
+                onPressed: onChoose,
+                icon: const Icon(Icons.people_outline),
+                label: Text(context.l10n.successorChooseAgain),
+              ),
+            ],
           ],
         ),
       ),

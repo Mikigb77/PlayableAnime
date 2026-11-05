@@ -1098,7 +1098,7 @@ later descendant of the player character whose story ended, or a child of theirs
 their descendants, still on the way. An unborn child counts only if the one who carries them lives,
 and logic decides that first: alive and well, they are an heir, and dead, never. Only a carrier who
 is dying leaves it open, and a seeded roll settles it once per ending, so asking again gives the
-same answer. When there are heirs, the carry-on screen offers them first, children before
+same answer, and the world keeps to it: a child the roll lost is never born. When there are heirs, the carry-on screen offers them first, children before
 grandchildren and a child on the way last, with someone drawn from the world as the other choice.
 Picking an heir is one drafting call, charged like a draft (K2), and the player can go back to the
 choice. An heir under 16 is played from their sixteenth birthday, and a child on the way from the
@@ -1106,12 +1106,13 @@ sixteenth birthday after they are born. The world runs on to that day first, as 
 (E7): every pending event and the world's own processes apply on the way, the child is born when
 due, and everyone alive grows older by the years that went by. Nothing is told of those years but
 what the world recorded, and the narrator is told how long ago the last story ended. If the heir
-doesn't live to that day, the player chooses again. An heir grown up off-screen is drafted as an
+doesn't live to that day, the player is told so and chooses again, with nothing charged. An heir grown up off-screen is drafted as an
 ordinary person of their parents' standing, held to what a person can do (G12); one the story has
 already shown keeps who they are, and the drafter fills in only what is missing. Either way the
-heir keeps their family, place, ties and a name the story gave them, and a placeholder name such
-as "Mira's child" is replaced. They know their family: their parents, children, brothers and
-sisters know of them, and the living ones have met them. The fallen is remembered as of their
+heir keeps their family, place, ties, belongings, powers, traits, lasting wounds and a name the
+story gave them, and a placeholder name such as "Mira's child" is replaced. They know their family:
+their parents, children, brothers and sisters know of them, and the living ones have met them; they
+know of their grandparents, and how the fallen died. The fallen is remembered as of their
 ending, years before. Rewinding comes with C8.
 
 **N7 Details become canon when first told (P1).** Places, lore and NPC backgrounds that nobody has

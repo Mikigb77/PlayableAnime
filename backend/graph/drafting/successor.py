@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from engine.heirs import RELATIONS
 from engine.invariants import is_real_name
+from engine.kin import descendants
 from engine.limits import real_entity
 from engine.resolve.strangers import ORDINARY_TIER
 from engine.state import (
@@ -179,7 +181,10 @@ def heir_prompt(state: WorldState, heir: Character, *, years: int) -> str:
         detail = parent.sheet.resources.title or parent.sheet.resources.rank
         who.append(f"{line}, {detail}." if detail else f"{line}.")
     if fallen is not None and fallen.id not in heir.parent_ids:
-        who.append(f"Grandchild of {fallen.name}, the last player character.")
+        generation = descendants(state, fallen.id).get(heir.id)
+        if generation is not None:
+            relation = RELATIONS.get(generation, "descendant").capitalize()
+            who.append(f"{relation} of {fallen.name}, the last player character.")
     if years:
         who.append(f"They grew up in the {years} years since the last story ended.")
     if heir.description:
@@ -323,14 +328,57 @@ def build_heir(
             axes=axes,
             titled=any(p.sheet.resources.title for p in parents),
         )
-        # What the world already holds of them stays theirs: how they feel about people, and
-        # who they are tied to.
-        sheet.disposition.attitudes = dict(heir.sheet.disposition.attitudes)
-        sheet.resources.connections = list(heir.sheet.resources.connections)
-        update["sheet"] = sheet
+        update["sheet"] = _kept(heir.sheet, sheet, grown=grown)
     character = heir.model_copy(deep=True, update=update)
     situation = _text(proposal.situation, SITUATION_LIMIT) or ordinary_day(state, character)
     return character, situation
+
+
+def _kept(old: CharacterSheet, new: CharacterSheet, *, grown: bool) -> CharacterSheet:
+    """A drafted sheet for an heir, keeping what the world already holds of them: how they feel
+    about people and who they are tied to, their powers and what they learned, their traits and
+    belongings, their standing, and their condition. Years of growing up heal all but a lasting
+    wound."""
+    sheet = new.model_copy(deep=True)
+    sheet.disposition.attitudes = dict(old.disposition.attitudes)
+    sheet.traits = _merged(old.traits, new.traits)
+    for field in ("powers", "techniques", "rulings", "growth", "practice", "backstory"):
+        if getattr(old, field):
+            setattr(sheet, field, list(getattr(old, field)))
+    if old.ladders and not grown:
+        sheet.ladders = list(old.ladders)
+    held, drafted = old.resources, new.resources
+    ids = {item.id for item in held.items}
+    items = list(held.items)
+    for item in _merged(held.items, drafted.items)[len(held.items) :]:
+        item_id, n = item.id, 2
+        while item_id in ids:
+            item_id, n = f"{item.id}-{n}", n + 1
+        ids.add(item_id)
+        items.append(item.model_copy(update={"id": item_id}))
+    sheet.resources = drafted.model_copy(
+        update={
+            "items": items,
+            "money": held.money or drafted.money,
+            "currency": held.currency or drafted.currency,
+            "title": held.title or drafted.title,
+            "rank": held.rank or drafted.rank,
+            "family_name": held.family_name or drafted.family_name,
+            "connections": list(held.connections),
+        }
+    )
+    if grown:
+        lasting = [w for w in old.condition.wounds if w.lasting]
+        sheet.condition = sheet.condition.model_copy(update={"wounds": lasting})
+    else:
+        sheet.condition = old.condition.model_copy(deep=True)
+    return sheet
+
+
+def _merged[T: (Trait, Item)](held: list[T], drafted: list[T]) -> list[T]:
+    """What they hold, then what the drafter gave them that they don't, by name."""
+    names = {t.name.casefold() for t in held}
+    return [*held, *(t for t in drafted if t.name.casefold() not in names)]
 
 
 def _sheet(

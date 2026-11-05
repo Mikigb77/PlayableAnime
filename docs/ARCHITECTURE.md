@@ -1007,32 +1007,42 @@ one of the player character's heirs instead of someone drawn at random.
   whose carrier or other parent is the player character or one of their descendants. Logic decides
   an unborn child first (A2): a living carrier who isn't dying makes them an heir, a dead one never.
   Only a dying carrier leaves it open, and `unborn_lost` settles that with a roll seeded per story
-  and ending, so the list is the same however often it is asked. An unborn heir's id is `unborn:`
-  and the carrier's id.
+  and ending, so the list is the same however often it is asked. `settled` makes the roll the
+  world's when the story is carried on, whoever carries it: a pregnancy it lost ends, so the world
+  never has a child born that was never offered. An unborn heir's id is `unborn:` and the
+  carrier's id.
 - **The time jump** (`heirs.time_jump`): an heir under `AGE_OF_ACTION` (16) is played from their
-  sixteenth birthday, and an unborn one from the sixteenth birthday after their due date. The world
-  runs on to that day through `catch_up` in a loop, applying everything due on the way whatever it
-  would have stopped the clock for, seeded per story, turn and heir so it plays the same every time
-  (A3). The child on the way is born when due (`births`), and everyone alive grows older by the
-  years that went by (someone born on the way by their own years); the dead keep the age they died
-  at. `born_of` finds the child a pregnancy brought.
+  sixteenth birthday, and an unborn one from the sixteenth birthday after their due date
+  (`jump_for`, which runs on to the child's own birthday if the world held the birth past it). The
+  world runs on to that day through `catch_up` in a loop, applying everything due on the way
+  whatever it would have stopped the clock for, seeded per story, turn and heir so it plays the
+  same every time (A3). The old player character's time effects end first, so a time stop of
+  theirs doesn't hold the years. The child on the way is born when due (`births`), and everyone
+  grows older by the years they lived through: someone born in the story by their own years,
+  someone who died on the way up to their death, and the dead before it not at all. `born_of`
+  finds the child a pregnancy brought.
 - **The heir** (`graph/drafting/successor.propose_heir`, `build_heir`): one drafter call with the
   heir, their parents and family, how many years went by, and the names the story has. They keep
   their id, family, place, people, age, ties, memberships and a name the story gave them; a
   placeholder name ("Mira's child") is replaced. One who grew up in a time jump, or that the story
   never filled in, gets a new sheet held to a person's peak (G12), an ordinary person's might, and
   their own or their parents' influence and wealth, whichever is higher, titled when a parent is.
-  Their attitudes and connections stay.
+  What the world held of them stays (`_kept`): attitudes, connections, powers and what they learned,
+  traits and belongings alongside the drafter's, their standing, and their condition, of which
+  years of growing up leave only a lasting wound.
 - **Carrying on** (`engine/succession.carry_on`): an heir is already in the world, so they keep who
   knows them and who they have met, become a key character, and know their family: their parents,
-  children, brothers and sisters know of them, and the living ones have met them. The fallen is
-  recorded as of their ending (`ended_s`), years before. The opening's brief gets an `ENDED`
+  children, brothers and sisters know of them, and the living ones have met them. They know of
+  their grandparents and those before them, and a descendant of the fallen knows how they died.
+  The fallen is recorded as of their ending (`ended_s`), years before. The opening's brief gets an `ENDED`
   section saying how long ago the last story ended, so the narrator lets the world have moved on.
 - **The API** (`stories/succession.py`): a story at an open ending lists `heirs` (API.md `Heir`).
   `POST /successor?heir_id=` runs the jump in a worker thread, drafts the heir in the world as it
   will be, and keeps them on `Story.successor` with the `heir` they were drawn as. An id that isn't
   an heir is `unknown_heir`, and an heir who didn't live through the jump is `heir_lost`.
-  `POST /carry-on` runs the same jump again, which lands on the same world, and carries on from it.
+  `POST /carry-on` runs the same jump before it takes the row lock, off the database's thread, and
+  uses it if the story is still as it was read (otherwise it runs it again under the lock); the
+  jump lands on the same world every time. The app goes back to the choice when an heir was lost.
 
 ## Safety, ratings and reports
 

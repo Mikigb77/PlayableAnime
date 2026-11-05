@@ -714,6 +714,11 @@
   "successorRandomBody": "Drawn by chance, the way the world's people are: most are ordinary folk.",
   "successorChooseAgain": "Choose someone else",
   "successorChooseCost": "Choosing someone uses credits, like a draft.",
+  "successorHeirLost": "{name} didn't live to carry the story on. Choose someone else.",
+  "@successorHeirLost": {
+    "description": "Shown when the heir picked died in the years before they could act (N6). Nothing was charged.",
+    "placeholders": {"name": {"type": "String"}}
+  },
   "storyHidden": "You blocked this scene, so its text is hidden.",
   "storyPortraits": "In this scene",
   "storyPortraitsLabel": "In this scene: {names}",

@@ -31,6 +31,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from engine.base import EngineModel, Tier
+from engine.kin import ancestors
 from engine.resolve.strangers import (
     ORDINARY_TIER,
     PEAK_PERSON_TIER,
@@ -163,10 +164,14 @@ def carry_on(
         # W15: one more character in the world, kept and moved on by their clocks.
         old.activity = Activity.DORMANT
     else:
-        # Whoever was there when they died saw how it ended (C6).
+        # Whoever was there when they died saw how it ended (C6), and an heir of theirs grew up
+        # knowing it.
         death = next((s for s in reversed(old.status_history) if s.status == "dead"), None)
         if death is not None:
-            for cid in new.scene.present_ids:
+            knowers = [*new.scene.present_ids]
+            if heir and old.id in ancestors(new.characters, successor.id):
+                knowers.append(successor.id)
+            for cid in knowers:
                 witness = new.characters.get(cid)
                 if witness is not None and witness.alive and cid != old.id:
                     if cid not in death.known_by:
@@ -213,9 +218,12 @@ def carry_on(
 
 def _knows_family(state: WorldState, heir_id: str) -> None:
     """An heir knows their parents, brothers and sisters, and children, and has met those alive,
-    as they have them."""
+    as they have them. They know of their grandparents and those before them too."""
     heir = state.characters[heir_id]
     parents = set(heir.parent_ids)
+    for ancestor_id in ancestors(state.characters, heir_id) - parents:
+        if heir_id not in state.characters[ancestor_id].known_by:
+            state.characters[ancestor_id].known_by.append(heir_id)
     kin = [
         c
         for c in state.characters.values()

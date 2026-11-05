@@ -305,6 +305,15 @@ void registerStoryRoutes(FakeBackend b) {
         ],
       });
     }
+    if (heir?['lost'] == true) {
+      // Fake-only: an heir who doesn't live through the years before they could act.
+      final message = '${heir!['name']} didn\'t live to carry the story on. Choose someone else.';
+      throw FakeError(400, 'validation_error', message, {
+        'fields': [
+          {'field': 'heir_id', 'source': 'query', 'type': 'heir_lost', 'message': message},
+        ],
+      });
+    }
     if (b.pace.drafting > Duration.zero) await Future<void>.delayed(b.pace.drafting);
     final draws = ((story.successor?['draws'] as int?) ?? 0) + 1;
     story.successor = heir == null

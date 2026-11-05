@@ -7,12 +7,16 @@ from engine.state import (
     Character,
     CharacterStatus,
     DeathCertainty,
+    Health,
+    Item,
     Origin,
     OriginKind,
     PowerAxis,
     Prevalence,
     Skill,
     SkillLevel,
+    Trait,
+    Wound,
 )
 from engine.succession import Lot, Station, carry_on
 from graph.drafting.assemble import PLAYER_FALLBACK_NAME
@@ -189,6 +193,45 @@ def test_an_heir_the_story_already_has_keeps_their_name_and_sheet():
     assert heir.name == "Rosa" and heir.appearance == "Dark."
     assert heir.description == "A broad-shouldered hauler."  # she had none
     assert [s.name for s in heir.sheet.skills] == ["bookkeeping"]
+
+
+def test_an_heir_drafted_anew_keeps_what_the_world_holds_of_them():
+    """A son the story never filled in, wounded at the ending, with his father's ring."""
+    state = heir_world()
+    tonio = Character(id="tonio", name="Tonio", age=20, location_id="bar", parent_ids=["luca"])
+    condition = tonio.sheet.condition
+    condition.health = Health.BADLY_WOUNDED
+    condition.wounds = [Wound(text="a knife in the side"), Wound(text="a lost eye", lasting=True)]
+    tonio.sheet.resources.items = [Item(id="a-hooked-pole", name="His father's ring")]
+    tonio.sheet.resources.money = 30
+    tonio.sheet.traits = [Trait(name="Stubborn")]
+    state.characters["tonio"] = tonio
+
+    heir, _ = build_heir(state, tonio, proposal(traits=[{"name": "Patient"}]), grown=False)
+
+    sheet = heir.sheet
+    assert [s.name for s in sheet.skills] == ["hauling"]  # filled in
+    assert sheet.condition.health is Health.BADLY_WOUNDED and len(sheet.condition.wounds) == 2
+    assert [i.name for i in sheet.resources.items] == ["His father's ring", "a hooked pole"]
+    assert len({i.id for i in sheet.resources.items}) == 2
+    assert sheet.resources.money == 30
+    assert [t.name for t in sheet.traits] == ["Stubborn", "Patient"]
+
+    # Grown up years later: only the lasting wound is left.
+    grown, _ = build_heir(state, tonio, proposal(), grown=True)
+    assert grown.sheet.condition.health is Health.UNHURT
+    assert [w.text for w in grown.sheet.condition.wounds] == ["a lost eye"]
+    assert "His father's ring" in [i.name for i in grown.sheet.resources.items]
+
+
+def test_the_heir_prompt_names_how_far_down_the_family_they_are():
+    state = heir_world()
+    state.characters["mia"] = Character(id="mia", name="Mia", age=8, parent_ids=["rosa"])
+    state.characters["ugo"] = Character(id="ugo", name="Ugo", age=0, parent_ids=["mia"])
+
+    assert "Grandchild of Luca Esposito" in heir_prompt(state, state.characters["mia"], years=8)
+    great = heir_prompt(state, state.characters["ugo"], years=16)
+    assert "Great-grandchild of Luca Esposito" in great and "Grandchild of" not in great
 
 
 def test_the_heir_prompt_names_their_family_and_the_years_since():

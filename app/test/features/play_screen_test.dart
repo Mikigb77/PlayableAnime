@@ -729,6 +729,34 @@ void main() {
       expect(draws(), isEmpty);
     });
 
+    testWidgets('an heir who didn\'t live to act leaves the choice open', (tester) async {
+      await serve(tester);
+      await open(tester);
+      await die(tester);
+      backend.data.stories.get(_demo, FakeAuthState.demoUserId).heirs = [
+        {
+          'id': 'xiao',
+          'name': 'Shen Xiao',
+          'relation': 'child',
+          'age': 4,
+          'years': 12,
+          'lost': true,
+        },
+      ];
+      await carryOn(tester);
+
+      await tester.tap(find.byKey(const ValueKey('successor.heir.xiao')));
+      await settle(tester, frames: 10);
+      expect(find.text(l10n.successorHeirLost('Shen Xiao')), findsOneWidget);
+      expect(find.text(l10n.successorChoose), findsOneWidget);
+      expect(draws(), isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('successor.random')));
+      await settle(tester, frames: 10);
+      expect(find.text('Mei Lin'), findsOneWidget);
+      expect(draws(), hasLength(1));
+    });
+
     testWidgets('a child carries the story on, years later, or someone from the world', (
       tester,
     ) async {
