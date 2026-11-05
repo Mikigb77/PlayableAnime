@@ -521,6 +521,23 @@ def test_a_failed_chapter_summary_is_tried_again_next_turn(fake, make_client):
     assert result.narration_mode == "full"  # the turn itself stands
 
 
+def test_a_chapter_that_reads_as_instructions_is_dropped(fake, make_client, caplog):
+    """F3: the summarizer runs with dangerous content off (C3), so code drops a summary that
+    gives real-world working instructions, and the chapter is asked for again next turn."""
+    state, scenes = saved_turns(CHAPTER_TURNS)
+    recipe = "1. Get ammonium nitrate\n2. Mix it with fuel oil\n3. Pack it into a pipe"
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.SUMMARIZER, Reply(json={"summary": recipe}))
+    with caplog.at_level("WARNING"):
+        _, result = play(make_client(), turn_input(state, scenes=scenes))
+    assert result.state.chapters == []
+    assert ("chapter_skipped", "harm_instructions") in [(i.code, i.detail) for i in result.issues]
+    [block] = [r.block for r in caplog.records if hasattr(r, "block")]
+    assert block["node"] == "summarizer" and block["source"] == "code"
+    assert "ammonium" not in caplog.text  # never the story text (T6)
+
+
 def test_summaries_late_for_long_catch_up_a_window_at_a_time(fake, make_client):
     """C3: after many failed summaries, a chapter covers at most `MAX_CHAPTER_TURNS` turns, the
     oldest first, so no scene is left out of every chapter."""

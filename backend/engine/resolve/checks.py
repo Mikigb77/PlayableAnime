@@ -31,6 +31,17 @@ from engine.timekeeping import effect_over
 FIND_ODDS = 0.5
 
 
+def find_roll(label: str, ctx: TurnContext, rng: SeededRng) -> RollRecord:
+    """R2. The roll on whether a place holds something it only might: an even chance, moved by
+    the difficulty."""
+    odds = odds_mod.settle(
+        odds_mod.logit(FIND_ODDS), 0.0, odds_mod.FIND_BAND, ctx.settings.difficulty
+    )
+    return odds_mod.roll(
+        rng, odds, label=label, allowed=odds_mod.YES_OR_NO, difficulty=ctx.settings.difficulty
+    )
+
+
 @dataclass(frozen=True)
 class Settled:
     """A check that settled the step: its class, result and reason, with the roll that decided it
@@ -282,16 +293,7 @@ def _check_use(
         return verdict(BeatVerdict.MADE_CANON, f"There is {_a(use.thing)} here.")
     if plausibility is Plausibility.ABSENT:
         return verdict(BeatVerdict.EMPTY, f"There is no {_bare(use.thing)} to be found here.")
-    odds = odds_mod.settle(
-        odds_mod.logit(FIND_ODDS), 0.0, odds_mod.FIND_BAND, ctx.settings.difficulty
-    )
-    found = odds_mod.roll(
-        rng,
-        odds,
-        label=f"find {use.thing}",
-        allowed=odds_mod.YES_OR_NO,
-        difficulty=ctx.settings.difficulty,
-    )
+    found = find_roll(f"find {use.thing}", ctx, rng)
     if found.result is StepResult.SUCCESS:
         return verdict(BeatVerdict.MADE_CANON, f"There is {_a(use.thing)} here after all.", found)
     return verdict(BeatVerdict.EMPTY, f"The search turns up no {_bare(use.thing)}.", found)

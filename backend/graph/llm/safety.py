@@ -29,11 +29,15 @@ Why each line is where it is:
   life or sexual violence off the page. The narrator's filters and the code's hard limits
   (`engine.limits`, F3) still bound what is told. Teen keeps the narrator's other settings, and
   a sexual step never plays there anyway (F2).
-- **The story's own telling in Mature** (the narrator and the chapter summaries) runs with
-  dangerous content off, so a death the player chose is told, not cut away (F1, Miki
-  2026-11-05). F3's line on real-world instructions is held there by code instead: a narration
-  that reads as a working procedure is retold as a cut-away (`engine.limits.harm_instructions`).
-  Teen keeps the filter, so such a death happens off the page there.
+- **The narrator in Mature** runs with dangerous content off, so a death the player chose is
+  told, not cut away (F1, Miki 2026-11-05). F3's line on real-world instructions is held there by
+  code instead: a narration that reads as a working procedure is retold as a cut-away
+  (`engine.limits.harm_instructions`). Teen keeps the filter, so such a death happens off the
+  page there.
+- **Chapter summaries** (C3) run with dangerous content off in both ratings. They only retell
+  scenes already told, and a blocked one is asked for again on every turn, so a Teen story with
+  a death in it would never get its chapter. A summary that reads as working instructions is
+  dropped by the same code check before it is kept.
 
 Checked against google-genai 2.34 for WS16 (2026-11-03). `civic_integrity` is deprecated and
 `jailbreak` ("prompts designed to bypass safety filters") stays at Gemini's default. The image
@@ -78,8 +82,8 @@ _INTERPRET: Mapping[Rating, Mapping[str, str]] = {
     "teen": {**_TEXT["teen"], "dangerous_content": "off"},
 }
 
-# Mature: the nodes that tell the story, where code holds F3's line on instructions.
-_TELLS_STORY = (Node.NARRATOR, Node.SUMMARIZER)
+# Mature: the narrator, where code holds F3's line on instructions as it streams.
+_TELLS_STORY = (Node.NARRATOR,)
 
 _PICTURES: Mapping[str, str] = {
     "harassment": "block_medium_and_above",
@@ -99,6 +103,10 @@ def safety_settings(
         return dict(_PICTURES)
     if node == Node.INTERPRET:
         return dict(_INTERPRET[rating])
+    if node == Node.SUMMARIZER:
+        # C3: a chapter only retells what was already told, and a block would ask for it again
+        # every turn; code checks it for instructions before it is kept (F3).
+        return {**_TEXT[rating], "dangerous_content": "off"}
     if rating == "mature" and node in _TELLS_STORY:
         return {**_TEXT[rating], "dangerous_content": "off"}
     return dict(_TEXT[rating])

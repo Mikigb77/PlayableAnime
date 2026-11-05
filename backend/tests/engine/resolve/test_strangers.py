@@ -11,7 +11,7 @@ from engine.contracts.resolution import BeatVerdict
 from engine.resolve import strangers
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
-from engine.state import CharacterStatus, StepResult
+from engine.state import CharacterStatus, PassingState, StepResult
 
 from .worlds import SEEDS, ctx, facts, item, resolve, rng, step
 
@@ -67,6 +67,7 @@ def test_an_ordinary_stranger_who_never_saw_it_coming_dies(monkeypatch):
     )
     assert created.meets_player
     assert (killed.id, killed.status) == (stranger_id, CharacterStatus.DEAD)
+    assert killed.known_to_player  # the player saw what they did, scene record or not
     (deed,) = settled.deeds
     assert deed.victim_ids == [stranger_id]
     assert settled.beats[-1].verdict is BeatVerdict.MADE_CANON
@@ -130,6 +131,18 @@ def test_a_hidden_master_is_never_stronger_than_the_world_holds(monkeypatch):
     assert might == 10  # the strongest body in the world, never beyond it
 
 
+def test_the_dead_never_set_how_strong_a_hidden_master_can_be(monkeypatch):
+    monkeypatch.setattr(strangers, "MASTER_ODDS", dict.fromkeys(strangers.MASTER_ODDS, 1.0))
+    state = in_the_street()
+    state.player.sheet.axes.might = 8
+    state.characters["carmine"].sheet.axes.might = 9
+    state.characters["carmine"].status = CharacterStatus.DEAD
+
+    might, master = strangers._measure(state, state.player, SeededRng("s-t"))
+    assert master
+    assert might == 8  # as strong as the strongest one living, never the dead Carmine
+
+
 @pytest.mark.parametrize(
     ("world", "master"),
     [(grounded_world, 1 / 1000), (cultivation_world, 1 / 200)],
@@ -174,3 +187,14 @@ def test_no_onlooker_is_made_up_where_someone_already_saw_it(monkeypatch):
 
     (settled,) = resolve(state, Intent(steps=[kill_someone(crowd=True)])).steps
     assert len(settled.strangers) == 1
+
+
+def test_someone_asleep_nearby_sees_nothing_so_the_crowd_gives_a_witness(monkeypatch):
+    ordinary(monkeypatch)
+    state = in_the_street()
+    sleeper = state.characters["bartender"]
+    sleeper.location_id = "naples"
+    sleeper.sheet.condition.states = [PassingState(name="asleep")]
+
+    (settled,) = resolve(state, Intent(steps=[kill_someone(crowd=True)])).steps
+    assert len(settled.strangers) == 2

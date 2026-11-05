@@ -16,7 +16,7 @@ Who they turn out to be is rolled, since nobody can tell from a glance (A2):
   the strongest the world holds (A9), and alert, so they always see it coming, whatever the
   interpret step proposed.
 
-When a crowd is around to see it and nobody else is recorded there, an onlooker is made real
+When a crowd is around to see it and nobody else there is awake to see it, an onlooker is made real
 too, so a killing in a busy street has a witness who can go to the law (W2, W11).
 """
 
@@ -27,16 +27,16 @@ from engine.contracts.delta import CharacterChange, StateDelta
 from engine.contracts.intent import IntentStep, OutcomeClass, Plausibility, UseSource
 from engine.contracts.resolution import BeatResolution, BeatVerdict
 from engine.invariants import is_real_name
-from engine.resolve import odds as odds_mod
-from engine.resolve.checks import FIND_ODDS, Settled
+from engine.resolve.checks import Settled, find_roll
 from engine.resolve.power import base_tier, scale
 from engine.resolve.words import cap
 from engine.rng import SeededRng
 from engine.state.bible import Prevalence
-from engine.state.cast import Character, CharacterStatus, Prominence
+from engine.state.cast import Character, Prominence
 from engine.state.records import StepResult
 from engine.state.sheet import CharacterSheet, PowerAxes, PowerAxis
 from engine.state.world import WorldState
+from engine.world.geography import characters_at, perceives
 
 # How often a stranger is tougher than they look (someone who knows how to fight), and how often
 # a hidden master, by how common the extraordinary is in the world (G6). Miki, 2026-11-05: a master
@@ -98,16 +98,7 @@ def meet(
     if plausibility is Plausibility.ABSENT:
         return empty(OutcomeClass.RULED_OUT, f"There is nobody like {who} here.")
     if plausibility is Plausibility.UNCERTAIN:
-        odds = odds_mod.settle(
-            odds_mod.logit(FIND_ODDS), 0.0, odds_mod.FIND_BAND, ctx.settings.difficulty
-        )
-        found_roll = odds_mod.roll(
-            rng.child("found"),
-            odds,
-            label=beat,
-            allowed=odds_mod.YES_OR_NO,
-            difficulty=ctx.settings.difficulty,
-        )
+        found_roll = find_roll(beat, ctx, rng.child("found"))
         if found_roll.result is not StepResult.SUCCESS:
             return empty(OutcomeClass.CONTESTED, f"Nobody like {who} comes by.", found_roll)
 
@@ -186,15 +177,14 @@ def _strongest(state: WorldState) -> int:
     exist."""
     ladders = [lad for lad in state.bible.ladders if lad.axis is PowerAxis.MIGHT]
     rungs = [r.tier for lad in ladders for r in lad.rungs]
-    bodies = [base_tier(state, c, PowerAxis.MIGHT) for c in state.characters.values()]
+    bodies = [base_tier(state, c, PowerAxis.MIGHT) for c in state.characters.values() if c.alive]
     return max([PEAK_PERSON_TIER, *rungs, *bodies])
 
 
 def _others_at(state: WorldState, actor: Character, place_id: str) -> bool:
-    return any(
-        c.id != actor.id and c.status is CharacterStatus.ALIVE and c.location_id == place_id
-        for c in state.characters.values()
-    )
+    """Whether someone besides the actor is there and awake to see it, and so will witness the
+    deed as `engine.world.deeds` records it (W2)."""
+    return any(c.id != actor.id and perceives(c) for c in characters_at(state, place_id))
 
 
 def _who(words: str) -> str:

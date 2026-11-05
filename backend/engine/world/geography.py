@@ -112,6 +112,16 @@ def news_neighbours(state: WorldState, place_id: str) -> list[tuple[str, int]]:
     return sorted(found.items(), key=lambda item: (item[1], item[0]))
 
 
+# Passing states in which someone perceives nothing around them.
+_UNAWARE = ("asleep", "sleeping", "unconscious", "knocked out", "senseless", "comatose")
+
+
+def perceives(character: Character) -> bool:
+    """Whether they take in what happens around them: not asleep or knocked out (W2)."""
+    states = " ".join(s.name.casefold() for s in character.sheet.condition.states)
+    return not any(word in states for word in _UNAWARE)
+
+
 def characters_at(
     state: WorldState, place_id: str | None, *, within: bool = False
 ) -> list[Character]:

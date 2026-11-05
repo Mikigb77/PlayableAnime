@@ -469,7 +469,7 @@ def _settle_step(
     if new_stop is not None:
         extra = _merge(extra, _takes_hold(actor, new_stop, started, frame))
         frame.frozen, frame.stop_left_s, frame.stop_power = True, stop.lasts_s(new_stop), new_stop
-    if frame.frozen and frame.stop_left_s is not None:
+    if frame.frozen and frame.stop_left_s is not None and not gone:
         frame.stop_left_s -= timing.personal_s or 0
         if frame.stop_left_s <= 0:
             frame.frozen, frame.stop_left_s, frame.stop_power = False, None, None
@@ -491,6 +491,9 @@ def _settle_step(
     if happened:
         effects = aim_effects(step, settled.result, targets)
     if met is not None:
+        if actor.id == state.player_id:
+            # Not in the scene's record yet, but the player saw what they did to them.
+            effects = _known_to_player(effects, {p.id for p in met.people})
         effects = _merge(met.effects, effects)  # they're real before anything happens to them
     effects = _merge(effects, extra)
     reason = settled.reason
@@ -859,6 +862,14 @@ def _with_people(state: WorldState, people: list[Character]) -> WorldState:
     return state.model_copy(update={"characters": characters})
 
 
+def _known_to_player(effects: StateDelta, ids: set[str]) -> StateDelta:
+    changes = [
+        c.model_copy(update={"known_to_player": True}) if c.id in ids else c
+        for c in effects.characters
+    ]
+    return effects.model_copy(update={"characters": changes})
+
+
 def _kills(effects: StateDelta, character: Character) -> bool:
     """Whether these changes leave the character dead."""
     return any(
@@ -918,6 +929,10 @@ def _opposition(
     ]
     factions = any(i in state.factions for i in ids)
     unmeasured = not people and (bool(facts.opposition.strip()) or factions)
+    if unmeasured and not factions and step.aim.harmful and actor.id in target_ids:
+        # F1, G15. Hesitation before harming yourself ("my fear", "his own nerve") is never
+        # something pushing back: only words that name more, such as guards or a storm, are.
+        unmeasured = _inner_words(actor, facts.opposition) is None
 
     says_cannot = facts.can_respond is False
     refuted = says_cannot and claims_frozen_in_time(facts.why_not) and not frozen
@@ -1167,11 +1182,20 @@ def _inner(state: WorldState, actor: Character, step: IntentStep, opposition: _O
         return False
     if any(i in state.factions for i in facts.opposition_ids):
         return False
-    names = stems(" ".join([actor.name, *actor.aliases]))
-    words = stems(facts.opposition) - names - _INNER_FILLER
-    if words and not words <= _INNER_WORDS:
+    words = _inner_words(actor, facts.opposition)
+    if words is None:
         return False
     return bool(words) or facts.inner or actor.id in facts.opposition_ids
+
+
+def _inner_words(actor: Character, opposition: str) -> frozenset[str] | None:
+    """G15. The inner-state words an opposition is said in, besides the actor's own name (empty
+    when it says nothing else), or None when it names anything more than an inner state."""
+    names = stems(" ".join([actor.name, *actor.aliases]))
+    words = stems(opposition) - names - _INNER_FILLER
+    if words and not words <= _INNER_WORDS:
+        return None
+    return words
 
 
 def _own_choice(

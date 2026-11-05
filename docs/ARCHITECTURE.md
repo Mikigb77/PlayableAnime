@@ -642,10 +642,12 @@ content from medium; pictures filter from medium, and sexual content from low (M
 step reads the action with dangerous content off in both ratings, and in Mature with every text
 filter off, because a block there is the one that stops the deed itself (F4); Gemini files a
 character's self-harm under dangerous content, and on 2026-11-05 it blocked "I stab myself". The
-narrator's filters and the code's hard limits still bound what is told. The Mature narrator and
-chapter summaries run with dangerous content off too, so a death the player chose is told, while
+narrator's filters and the code's hard limits still bound what is told. The Mature narrator runs
+with dangerous content off too, so a death the player chose is told, while
 `engine.limits.harm_instructions` holds F3's line on instructions in code; Teen keeps the filter,
-so such a death is cut away from there. WS16 checked the table against google-genai 2.34's options: the
+so such a death is cut away from there. Chapter summaries run with dangerous content off in both
+ratings, since they only retell what was told and a blocked one would be asked for again every
+turn; `after_turn` drops one that reads as instructions. WS16 checked the table against google-genai 2.34's options: the
 image categories exist only on Vertex AI and are refused by the Gemini API a player's key uses,
 so they stay unset until T18's live picture evals, and `BLOCK_NONE` stays unused because Vertex
 restricts it. T15's content-line evals tune the rest.
@@ -686,7 +688,7 @@ async with aclosing(run_turn(turn, llm)) as events:
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet, the outcome with any unplayed steps, the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene and leaves out any new character or faction named after a real person or organisation (G12), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
-| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
+| 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
 
 **Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
 and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent

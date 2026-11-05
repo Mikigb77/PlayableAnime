@@ -136,3 +136,24 @@ def test_harm_aimed_at_yourself_and_someone_else_is_a_deed_against_them_only():
     assert deed.victim_ids == ["guard"]
     assert "luca" not in deed.target_ids
     assert settled.opponent_ids == ["guard"]
+
+
+@pytest.mark.parametrize("opposition", ["his own fear", "Luca's hesitation", "doubt and dread"])
+def test_hesitation_before_harming_yourself_never_pushes_back(opposition):
+    # G15: trembling is temperament, never opposition, so the knife still decides alone.
+    state = naples_with_sleeping_guard()
+    hesitant = stab_myself()
+    hesitant.facts.opposition = opposition
+
+    (settled,) = resolve(state, Intent(steps=[hesitant])).steps
+    assert (settled.outcome_class, settled.result) == (OutcomeClass.CERTAIN, StepResult.SUCCESS)
+    assert settled.roll is None
+
+
+def test_something_real_in_the_way_of_your_own_death_still_counts():
+    state = naples_with_sleeping_guard()
+    stopped = stab_myself()
+    stopped.facts.opposition = "the bar's bouncers grabbing for the knife"
+
+    (settled,) = resolve(state, Intent(steps=[stopped])).steps
+    assert settled.outcome_class is not OutcomeClass.CERTAIN

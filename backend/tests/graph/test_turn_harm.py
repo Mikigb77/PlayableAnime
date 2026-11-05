@@ -95,6 +95,7 @@ def test_a_random_stranger_in_the_street_is_killed_and_remembered(fake, make_cli
 def test_the_narrator_is_told_who_a_step_made_real():
     state = grounded_world()
     made = CharacterChange(id="stranger-1-0", name="a dockhand", description="A dockhand.")
+    killed = CharacterChange(id="stranger-1-0", status=CharacterStatus.DEAD)
     step = StepResolution(
         index=0,
         text="stab a dockhand",
@@ -103,7 +104,7 @@ def test_the_narrator_is_told_who_a_step_made_real():
         result=StepResult.SUCCESS,
         duration_s=2,
         strangers=["stranger-1-0"],
-        effects=StateDelta(characters=[made]),
+        effects=StateDelta(characters=[made, killed]),
     )
     brief = narration_brief(
         before=state,
@@ -115,4 +116,5 @@ def test_the_narrator_is_told_who_a_step_made_real():
         fired=[],
         scenes=[],
     )
+    # Who they were comes from the change that made them, not the one that killed them.
     assert '"met"' in brief.user and "stranger-1-0" in brief.user and "a dockhand" in brief.user
