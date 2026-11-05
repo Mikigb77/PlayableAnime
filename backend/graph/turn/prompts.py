@@ -200,6 +200,14 @@ character's look changes for good, such as a lost eye, a scar or grey hair after
 changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
 disguise or anything else that passes, which is their condition. Never set a death, a cause, \
 rulings, gains or backstory: the engine records those.
+- family (N6): parent_ids names someone's parents when the scene shows or reveals it, such as a \
+child met with their mother. When a scene makes someone pregnant, set expecting on whoever \
+carries the child, with the other parent: the child is born when it is due, if they live, and \
+never if they die first. When a pregnancy ends without a birth, set expecting with ended. Only \
+adults have children. Never make up the player character's parents or children: those come from \
+their story, and family marked unknown_to_you is kin they haven't learned of yet. A newborn the \
+world brought keeps a placeholder name such as "Mira's child" until someone names them: give \
+their name then, under their id.
 - places, factions, facts, items and leads that this scene established or changed. Never mark a \
 place ruined or a faction destroyed: the engine does that.
 - scene_end: the exact moment this scene stops on, where, who is present and where they stand, \

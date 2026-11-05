@@ -169,6 +169,10 @@ RESISTANCE_DELAY_S = (7 * DAY, 60 * DAY)
 REVIVAL_DELAY_S = (30 * DAY, 365 * DAY)
 SUCCESSOR_ODDS = 0.4  # otherwise the same faction returns, rebuilding
 
+# --- Families (N6) ---------------------------------------------------------------------------
+
+GESTATION_S = 270 * DAY  # how long a child is carried; the same for every people for now (G23)
+
 # --- Agendas in the world tick (W6) --------------------------------------------------------
 
 # On average, how long an active faction or key NPC goes between moves of their own.

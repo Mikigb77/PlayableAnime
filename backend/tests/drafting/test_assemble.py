@@ -411,6 +411,30 @@ def test_people_the_player_hasnt_heard_of_stay_unknown():
     assert PLAYER_ID not in state.characters["ghost"].known_by
 
 
+def test_drafted_families_link_parents_and_children_by_id_or_name():
+    """N6: two parents at most, never themselves, never someone who descends from them, and the
+    player character's child names them by the player's name."""
+    zhao, mo = _world().npcs
+    world = _world(
+        npcs=[
+            zhao.model_copy(update={"parent_ids": ["pc"]}),  # Lin Feng names Zhao as his parent
+            mo,
+            NpcP(id="mei", name="Lin Mei", age=40, parent_ids=["elder-mo", "mei", "nobody"]),
+            NpcP(id="little-bao", name="Little Bao", age=4, parent_ids=["Lin Feng", "mei"]),
+            NpcP(id="wu", name="Wu Han", age=30, parent_ids=["little-bao", "zhao", "mei"]),
+        ]
+    )
+
+    state = assemble(world, _character(parent_ids=["zhao"]))
+
+    assert state.player.parent_ids == ["zhao"]
+    assert state.characters["zhao"].parent_ids == []  # he can't also be Lin Feng's child
+    assert state.characters["mei"].parent_ids == ["elder-mo"]
+    assert state.characters["little-bao"].parent_ids == [PLAYER_ID, "mei"]
+    assert state.characters["wu"].parent_ids == ["little-bao", "zhao"]
+    assert check_state(state) == []
+
+
 # W15.
 
 

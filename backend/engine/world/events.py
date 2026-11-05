@@ -1,4 +1,4 @@
-"""Applying one pending event that fell due (W2, W5, W6, W10, W13, W15, E2).
+"""Applying one pending event that fell due (W2, W5, W6, W10, W13, W15, E2, N6).
 
 `apply_in_place` is the handler the clock runs for every due event, in time order. It leaves the
 event applied, never moves the clock or the timeline, and records on the applied event whether it
@@ -14,6 +14,7 @@ from engine.state.records import EventStatus, PendingEvent
 from engine.state.world import WorldState
 from engine.world.aftermath import on_tidings
 from engine.world.arrivals import on_answer, on_report
+from engine.world.births import on_birth
 from engine.world.cast import on_emergence, on_revival
 from engine.world.clocks import on_clock_end, on_clock_step
 from engine.world.discovery import on_discovery
@@ -34,6 +35,7 @@ _QUIET = {
 _MAY_NEED_PLAYER = {
     Kind.ANSWER: on_answer,
     Kind.CLOCK_END: on_clock_end,
+    Kind.BIRTH: on_birth,
 }
 
 
