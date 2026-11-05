@@ -1362,14 +1362,24 @@ app                   shows the narration, then asks for the picture in its own 
   thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
   again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
-  prompt, the world's genre, era, tone and setting from the bible, and the known characters in the
-  picture with the appearance from their entry (C9). `media/prompts.py` turns it into the prompt:
-  one house style for every picture (the app's cinematic, dark-first look), the world's own era,
-  the framing and aspect ratio per kind (portraits and covers 3:4, places and scenes 16:9), and the
-  mild-in-every-rating rules. Ready portraits of up to three known characters go along as reference
-  images. The picture safety settings in `graph.llm.safety` back the rules up in every rating. A
-  scene nobody wrote an image prompt for (Illustrate on any scene) is described by the end of its
-  narration, which the same rules keep mild.
+  prompt, the world's genre, era, tone and the story's premise, the people in the picture with the
+  appearance from their entry (C9), who "you" is, and for a scene the time of day on the story's
+  clock. `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those
+  the image prompt names, with the director's subject first even when they just died or the
+  player hasn't met them, and the player character when the prompt says "you" or names them, or
+  names no one else; a prompt that names no one falls back to the subject, the player character
+  and the people the player knows there. `media/prompts.py` turns the brief into the prompt, the
+  moment first, then how the people look, then the world: one house style for every picture (the
+  app's cinematic, dark-first look, lit for the moment's time of day), the world's own era (the
+  premise only on a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places
+  and scenes 16:9), and the mild-in-every-rating rules. Ready portraits of up to three of the
+  people go along as reference images, each set right after a label saying whose it is
+  (`ImagePart.label`) and used only for the face, hair and build. A portrait takes only its
+  expression from the moment, since it is every later picture's reference. The picture safety
+  settings in `graph.llm.safety` back the rules up in every rating. A scene nobody wrote an image
+  prompt for (Illustrate on any scene) is described by the end of its narration, which the same
+  rules keep mild, with the people it names from the cast saved with the scene, that scene's
+  player character as "you" (N6), their portraits and the scene's time of day.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls

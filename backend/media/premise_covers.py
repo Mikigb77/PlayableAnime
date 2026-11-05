@@ -135,7 +135,7 @@ def to_draw(
                 "kept",
                 model=cover.model,
                 cost_usd=cover.cost_usd,
-                stale=cover.brief != cover_brief(premise).to_json(),
+                stale=Brief.from_json(cover.brief) != cover_brief(premise),
                 offline=cover.offline,
             )
         )

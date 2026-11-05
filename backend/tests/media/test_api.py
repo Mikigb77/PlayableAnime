@@ -8,6 +8,7 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.models import Role, User
+from engine.samples import grounded_world
 from lucid.errors import ApiError, ErrorCode
 from media import billing
 from media.drawing import DrawBlocked, DrawFailed, KeyCannotDraw
@@ -434,8 +435,33 @@ def test_known_characters_portraits_go_along_as_references(client, painters, met
 
     scene_request = painters.ours.requests[1]
     assert [(ref.name, ref.data) for ref in scene_request.references] == [("Rosa", PNG)]
-    assert "reference portraits of Rosa" in scene_request.prompt
+    # Labelled with whose portrait it is, and used only for the face (M5).
+    assert scene_request.references[0].label == "Image 1: the portrait of Rosa."
+    assert "only for that person's face, hair, build and colouring" in scene_request.prompt
     assert rosa.image.kind == "portrait"
+
+
+def test_illustrate_sends_the_portraits_of_the_people_the_scene_names(client, painters, meter):
+    """M5: a scene the player illustrates keeps faces the same, as a planned one does."""
+    state = grounded_world()
+    story = make_story(state=state.model_dump(mode="json"))
+    plan_picture(
+        make_scene(story, 1), kind="portrait", subject_id="carmine", trigger="first_meeting",
+        brief=Brief(subject_name="Carmine Russo", subject_appearance="grey moustache"),
+    )  # fmt: skip
+    assert _image(client, story, 1).json()["status"] == "ready"
+    make_scene(
+        story, 2, narration="Carmine pours you a glass.",
+        cast=[{"character_id": "carmine", "name": "Carmine Russo"}],
+    )  # fmt: skip
+
+    assert _illustrate(client, story, 2).json()["status"] == "ready"
+
+    request = painters.ours.requests[1]
+    assert [(ref.name, ref.label) for ref in request.references] == [
+        ("Carmine Russo", "Image 1: the portrait of Carmine Russo.")
+    ]
+    assert '"You" in the description is Luca Esposito.' in request.prompt
 
 
 def test_a_redrawn_portrait_is_drawn_from_the_earlier_one(client, painters, meter):

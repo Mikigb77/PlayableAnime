@@ -2,8 +2,11 @@
 
 Every picture shares one house style that matches the app's look (`app/DESIGN.md`, "Pictures"),
 dressed in the world's own era and look, so a 1970s crime family wears suits and a cultivation
-sect wears robes (S7). Known characters' portraits go along as reference images so a face stays
-the same (M5).
+sect wears robes (S7). The prompt leads with the moment the picture shows, then how the people in
+it look, then the world, so the picture follows the narration rather than the world in general. A
+scene picture is lit for the time of day the story clock shows. The portraits of the people in it
+go along as reference images, each labelled with whose it is and used only for that person's face,
+hair and build, so a face stays the same without the portrait's pose or background (M5).
 
 Pictures stay mild in every rating (M6): the text carries the graphic detail, the picture never
 does. The rules say so to the model, and the picture safety settings in `graph.llm.safety` back
@@ -12,6 +15,7 @@ them up. A description is cut to a bounded length, so a long scene can't crowd o
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -21,12 +25,12 @@ from typing import Any
 # Change the two together.
 HOUSE_STYLE = (
     "A stylised, cinematic illustration with an anime-influenced look: clean confident linework, "
-    "painterly low-key lighting, atmospheric depth, deep ink-dark shadows and a restrained "
-    "palette with one strong accent colour. A clear focal point that reads on a phone screen, "
-    "kept in the upper two thirds of the frame; the bottom edge stays calm and dark, because it "
-    "fades into a dark page. One single image that fills the frame edge to edge: no borders, "
-    "panels, split screens, vignettes, text, lettering, captions, speech bubbles, signatures, "
-    "watermarks, logos or interface."
+    "painterly lighting true to the moment's time of day and mood, atmospheric depth, rich "
+    "shadows and a restrained palette with one strong accent colour. A clear focal point that "
+    "reads on a phone screen, kept in the upper two thirds of the frame; the bottom edge stays "
+    "calm and darker, because it fades into a dark page. One single, uninterrupted image that "
+    "fills the frame edge to edge with no border or vignette of its own, like a still from an "
+    "animated film, with no writing anywhere in it."
 )
 
 # M6, F3 and G12, in every rating, Mature included.
@@ -41,17 +45,19 @@ MILD_RULES = (
 
 FRAMING = {
     "portrait": (
-        "A character portrait: head and shoulders, facing three-quarters toward the viewer, the "
-        "face clearly lit and centred in the upper half of the frame, against a dark, simple "
-        "background with a hint of the world, so it still reads cropped to a small circle."
+        "A character portrait: head and shoulders, facing three-quarters toward the viewer in a "
+        "calm pose, the face clearly and evenly lit and centred in the upper half of the frame, "
+        "against a dark, simple background with a hint of the world, so it still reads cropped to "
+        "a small circle."
     ),
     "place": (
         "A wide establishing shot of a place, with no one in the foreground, so its "
         "architecture, scale and mood come through."
     ),
     "scene": (
-        "One key moment of the story, framed like a film still at the instant of highest "
-        "tension, with the people in it recognisable."
+        "One moment of the story, framed like a film still at the instant the description names, "
+        "with the people in it recognisable. Show who and what the description describes, and no "
+        "one else: no extra people, creatures or props."
     ),
     "cover": (
         "A cover image for the story: an evocative, iconic composition of its world and its "
@@ -68,6 +74,10 @@ MAX_APPEARANCE_CHARS = 400
 MAX_FIGURES = 4
 # Reference portraits sent with one picture (M5). Each costs about 1,120 input tokens.
 MAX_REFERENCES = 3
+
+# The second person the narration is told in, so a description that says "you" can be told who
+# that is. English, as the narration is for now (S10).
+SAYS_YOU = re.compile(r"\b(?:you|your|yours|yourself)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -100,7 +110,12 @@ class Brief:
     # The subject's name and appearance, for a portrait or a place.
     subject_name: str = ""
     subject_appearance: str = ""
+    # The people in a scene or cover, the picture's subject first (`media.briefs`).
     figures: tuple[Figure, ...] = ()
+    # Who the description means by "you": the player character, as the narration calls them.
+    you: str = ""
+    # The time of day at the scene, such as "dusk", which a scene picture is lit for (W10).
+    time: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -109,6 +124,8 @@ class Brief:
             "subject_name": self.subject_name,
             "subject_appearance": self.subject_appearance,
             "figures": [vars(figure).copy() for figure in self.figures],
+            "you": self.you,
+            "time": self.time,
         }
 
     @classmethod
@@ -125,6 +142,8 @@ class Brief:
                 for f in data.get("figures") or ()
                 if f.get("id") or f.get("name")
             ),
+            you=str(data.get("you") or ""),
+            time=str(data.get("time") or ""),
         )
 
 
@@ -133,6 +152,8 @@ class PicturePrompt:
     system: str
     user: str
     aspect_ratio: str
+    # One label per reference image, in order, set just before the image it names (M5).
+    labels: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         # Never a full prompt in a log line (T6).
@@ -149,7 +170,11 @@ def build_prompt(
     """The prompt for one picture of `kind`. `references` names the people whose reference
     portraits go with it, in the order the images are attached. `redraw` asks for the same
     character as the attached earlier portrait, as they look now (M5), or for a place, the same
-    place as it is now (M1)."""
+    place as it is now (M1).
+
+    The moment comes first, then how the people in it look, then the world, so the picture shows
+    what the narration tells. The story's premise is left out of everything but a cover: it
+    describes how the story began, not the scene a picture shows."""
     if kind not in FRAMING:
         raise ValueError(f"Unknown picture kind {kind!r}")
     system = "\n\n".join(
@@ -162,23 +187,29 @@ def build_prompt(
         ]
     )
     lines = [f"Picture: {FRAMING[kind]}"]
-    look = brief.look
-    world = [
-        f"genre: {_clip(look.genre, 120)}" if look.genre else "",
-        f"era and look: {_clip(look.era, 300)}" if look.era else "",
-        f"tone: {_clip(look.tone, 200)}" if look.tone else "",
-        f"setting: {_clip(look.setting, 400)}" if look.setting else "",
-    ]
-    if any(world):
-        lines.append("World: " + "; ".join(part for part in world if part) + ".")
     if brief.subject_name or brief.subject_appearance:
         subject = _clip(brief.subject_name, 120)
         if brief.subject_appearance:
             appearance = _clip(brief.subject_appearance, MAX_APPEARANCE_CHARS)
             subject = f"{subject}: {appearance}" if subject else appearance
         lines.append(f"Subject: {subject}")
-    if brief.description:
-        lines.append(f"What it shows: {_clip(brief.description, MAX_DESCRIPTION_CHARS)}")
+    description = _clip(brief.description, MAX_DESCRIPTION_CHARS) if brief.description else ""
+    if description and kind == "portrait":
+        # The portrait is the reference for every later picture of this person (M5), so the
+        # moment shows only in their face, never in the pose, light or background.
+        lines.append(
+            "The moment they are drawn in, for their expression only (keep the portrait's calm "
+            f"pose, even light and simple background): {description}"
+        )
+    elif description:
+        lines.append(f"What it shows: {description}")
+    if brief.you and kind in ("scene", "cover") and SAYS_YOU.search(description):
+        lines.append(f'"You" in the description is {_clip(brief.you, 80)}.')
+    if brief.time and kind == "scene":
+        lines.append(
+            f"Time of day: {_clip(brief.time, 40)}. Wherever the sky or daylight shows, light it "
+            "for that time."
+        )
     figures = [f for f in brief.figures if f.name][:MAX_FIGURES]
     if figures:
         people = "; ".join(
@@ -187,7 +218,16 @@ def build_prompt(
             else _clip(f.name, 80)
             for f in figures
         )
-        lines.append(f"People in it: {people}.")
+        lines.append(f"How the people in it look: {people}.")
+    look = brief.look
+    world = [
+        f"genre: {_clip(look.genre, 120)}" if look.genre else "",
+        f"era and look: {_clip(look.era, 300)}" if look.era else "",
+        f"tone: {_clip(look.tone, 200)}" if look.tone else "",
+        f"setting: {_clip(look.setting, 400)}" if look.setting and kind == "cover" else "",
+    ]
+    if any(world):
+        lines.append("World: " + "; ".join(part for part in world if part) + ".")
     if redraw and kind == "place":
         lines.append(
             "The attached image is this place's earlier picture. Draw the same place from the "
@@ -199,12 +239,32 @@ def build_prompt(
             "the same face, as they look now."
         )
     elif references:
-        names = ", ".join(_clip(name, 80) for name in references)
         lines.append(
-            f"The attached images are reference portraits of {names}, in that order. Keep each "
-            "one's face, hair and build exactly the same."
+            "Each attached image is the portrait of the person its label names. Use a portrait "
+            "only for that person's face, hair, build and colouring, so they are clearly the same "
+            "person; take their pose, the framing, the background and the light from this "
+            "picture, not from the portrait."
         )
-    return PicturePrompt(system=system, user="\n".join(lines), aspect_ratio=ASPECT_RATIOS[kind])
+    return PicturePrompt(
+        system=system,
+        user="\n".join(lines),
+        aspect_ratio=ASPECT_RATIOS[kind],
+        labels=_labels(kind, references, redraw),
+    )
+
+
+def _labels(kind: str, references: Sequence[str], redraw: bool) -> tuple[str, ...]:
+    """The text set just before each attached image, saying whose it is (M5)."""
+    labels = []
+    for number, name in enumerate(references, start=1):
+        name = _clip(name, 80)
+        if redraw and kind == "place":
+            labels.append(f"Image {number}: the earlier picture of {name}.")
+        elif redraw:
+            labels.append(f"Image {number}: the earlier portrait of {name}.")
+        else:
+            labels.append(f"Image {number}: the portrait of {name}.")
+    return tuple(labels)
 
 
 def _clip(text: str, limit: int) -> str:

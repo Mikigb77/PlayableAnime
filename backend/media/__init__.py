@@ -5,6 +5,7 @@
 - `plans`: `plan_picture()`, which the turn calls when code decided a scene gets a picture (M1).
 - `service`: the picture endpoints' work: claim, pay, draw, store, at most once per picture (M3).
 - `prompts`: the house style, the world's look and the mild-in-every-rating rules (S7, M5, M6).
+- `briefs`: who a scene picture shows, the subject first, and the time of day (M1, M5).
 - `drawing`: the picture model behind a small interface, on `graph.llm` (M8).
 - `storage`: private Cloud Storage with signed URLs, or local files in development and tests.
 - `billing`: where a picture is paid for (M7), through the credit meter (`billing.meter`).

@@ -261,6 +261,24 @@ def test_a_cover_from_older_premise_text_is_kept_and_reported(painters):
     assert "hollowmere: kept (drawn from older premise text; pass --force" in out
 
 
+def test_a_cover_whose_brief_was_stored_before_a_field_was_added_is_not_stale(painters):
+    """A field added to `Brief` since, such as who "you" is, doesn't make a cover look stale."""
+    stored = premise_covers.cover_brief(starter("hollowmere")).to_json()
+    del stored["you"], stored["time"]
+    PremiseCover.objects.create(
+        premise_id="hollowmere",
+        storage_key="premises/hollowmere/old.png",
+        mime_type="image/png",
+        size_bytes=10,
+        brief=stored,
+        drawn_at=timezone.now(),
+    )
+
+    out = draw("hollowmere")
+
+    assert "hollowmere: kept" in out and "older premise text" not in out
+
+
 # The offline model (LLM_PROVIDER=fake), for local development.
 
 

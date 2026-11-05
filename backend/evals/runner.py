@@ -80,6 +80,7 @@ from graph.turn import (
     UnreadableAction,
     run_turn,
 )
+from media.briefs import THREAD_SUBJECTS
 
 # How many failures a check keeps the details of. The count covers them all.
 KEPT_DETAILS = 5
@@ -787,7 +788,13 @@ class Eval:
             return None
         picture = played.scene.picture
         description = picture.prompt if picture is not None else ending(played.narration)
-        brief = scene_brief(played.state, description, premise=story.premise, people=people)
+        decision = played.plan.picture
+        subject = decision.subject_id if decision is not None else None
+        if decision is not None and decision.trigger in THREAD_SUBJECTS:
+            subject = None  # a thread, not a person, as `stories.turns.brief` leaves it out
+        brief = scene_brief(
+            played.state, description, premise=story.premise, people=people, subject_id=subject
+        )
         drawn = await draw(
             self.picture_model(story),
             name or f"scene-{played.turn}",

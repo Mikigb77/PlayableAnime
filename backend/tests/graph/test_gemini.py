@@ -416,6 +416,27 @@ def test_messages_carry_the_system_prompt_history_and_reference_images():
     assert content[1]["image_url"]["url"] == expected
 
 
+def test_a_labelled_image_follows_its_label():
+    """M5: each reference portrait goes right after the text saying whose it is."""
+    prompt = Prompt(
+        system="House style.",
+        messages=(Message("user", "Draw the duel."),),
+        images=(
+            ImagePart(b"rosa", label="Image 1: the portrait of Rosa."),
+            ImagePart(b"tonio", label="Image 2: the portrait of Tonio."),
+        ),
+    )
+
+    content = to_messages(prompt)[-1].content
+
+    kinds = [part["type"] for part in content]
+    assert kinds == ["text", "text", "image_url", "text", "image_url"]
+    assert content[1]["text"] == "Image 1: the portrait of Rosa."
+    assert content[2]["image_url"]["url"].endswith(base64.b64encode(b"rosa").decode())
+    assert content[3]["text"] == "Image 2: the portrait of Tonio."
+    assert "Rosa" not in repr(prompt.images[0])  # names are story text (T6)
+
+
 def test_call_kwargs_map_our_settings_to_gemini():
     request = Request(
         node=Node.NARRATOR,

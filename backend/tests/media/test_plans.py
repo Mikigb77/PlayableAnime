@@ -3,6 +3,7 @@ character changes for good (M1, M5)."""
 
 import pytest
 
+from engine.samples import grounded_world
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.plans import brief_for_scene, look_for_story, plan_picture
 from media.prompts import Brief, Figure, WorldLook
@@ -231,6 +232,34 @@ def test_an_unplanned_scene_is_described_by_the_end_of_its_narration():
     assert described.endswith("The blade fell. He won.")
     assert described.startswith("It began quietly.")
     assert len(described) <= 1000
+
+
+def test_an_illustrated_scene_knows_its_people_who_you_are_and_the_time():
+    """M5: Illustrate draws the people the scene's text names, as they look, with who "you" is
+    and the hour, as a planned scene picture has them."""
+    state = grounded_world()  # Luca, at the bar with Carmine, from 21:00
+    story = make_story(state=state.model_dump(mode="json"))
+    scene = make_scene(
+        story, 2,
+        narration="Carmine pours you a glass and slides it over.",
+        cast=[{"character_id": "carmine", "name": "Carmine Russo"}],
+        world_end_s=3 * 3600,
+    )  # fmt: skip
+
+    brief = brief_for_scene(story, scene)
+
+    assert [f.id for f in brief.figures] == ["luca", "carmine"]
+    assert brief.figures[1].appearance == "Fifties, broad, grey moustache, gold rings."
+    assert (brief.you, brief.time) == ("Luca Esposito", "night")
+
+
+def test_an_illustrated_scene_without_a_world_is_its_text_alone():
+    story = make_story()  # a bible, but no characters
+    scene = make_scene(story, 2, narration="The rain stops.")
+
+    assert brief_for_scene(story, scene) == Brief(
+        description="The rain stops.", look=look_for_story(story)
+    )
 
 
 def test_figures_survive_the_plan():
