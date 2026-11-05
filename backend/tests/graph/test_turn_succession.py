@@ -3,7 +3,7 @@ people who knew an earlier player character can remember them."""
 
 from engine.context import Rating, TurnContext
 from engine.samples import grounded_world
-from engine.state import Character, CharacterStatus, DeathCertainty, StatusChange
+from engine.state import Character, CharacterStatus, DeathCertainty, Deed, StatusChange
 from engine.succession import carry_on
 from graph.llm import Node, Reply
 from graph.turn import TurnCompleted, TurnInput, TurnKind, prompts, run_turn
@@ -15,14 +15,19 @@ OPENING = {
 }
 
 
-def carried(*, gennaro_saw_it: bool = False):
-    """Luca died at turn 3, seen by Gennaro if asked; Mara carries the story on."""
+def carried(*, gennaro_saw_it: bool = False, deed: Deed | None = None):
+    """Luca, who had met Gennaro, died at turn 3, seen by Gennaro if asked; Mara carries the story
+    on."""
     state = grounded_world()
     state.turn = 3
     luca = state.player
     luca.status = CharacterStatus.DEAD
     luca.death_certainty = DeathCertainty.CONFIRMED
-    luca.met_by = ["luca", "bartender"]
+    state.characters["bartender"].met_by = ["luca"]
+    # Luca died alone; who knew of it is as asked.
+    state.scene.present_ids = ["luca"]
+    if deed is not None:
+        state.deeds[deed.id] = deed
     luca.status_history.append(
         StatusChange(
             status="dead",
@@ -81,6 +86,37 @@ def test_someone_who_never_heard_of_the_death_doesnt_know_it(fake, make_client):
     run(collect(run_turn(opening_of(state), make_client())))
 
     assert '"name":"Gennaro","knows_how_it_ended":false' in told(fake)
+
+
+def test_word_of_the_killing_tells_someone_how_it_ended(fake, make_client):
+    killing = Deed(
+        id="deed-1",
+        actor_id="carmine",
+        kind="kill",
+        text="Carmine shot Luca on the quay",
+        turn=3,
+        world_s=0,
+        victim_ids=["luca"],
+        known_by=["bartender"],
+    )
+    state = carried(deed=killing)
+    state.scene.present_ids.append("bartender")
+    fake.script(Node.NARRATOR, Reply(json=OPENING))
+
+    run(collect(run_turn(opening_of(state), make_client())))
+
+    assert '"name":"Gennaro","knows_how_it_ended":true' in told(fake)
+
+
+def test_someone_the_fallen_never_met_doesnt_remember_them(fake, make_client):
+    state = carried()
+    state.characters["bartender"].met_by = []
+    state.scene.present_ids.append("bartender")
+    fake.script(Node.NARRATOR, Reply(json=OPENING))
+
+    run(collect(run_turn(opening_of(state), make_client())))
+
+    assert "FALLEN" not in told(fake)
 
 
 def test_nobody_brings_up_the_fallen_when_nobody_there_knew_them(fake, make_client):

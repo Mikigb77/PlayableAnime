@@ -127,32 +127,40 @@ def _fallen_view(state: WorldState) -> list[dict[str, Any]]:
         character = state.characters.get(fallen.character_id)
         if character is None:
             continue
+        # `met_by` lists who met a character: the fallen, when they were the player character.
         knew = [
             c
             for c in present
             if c.alive
             and c.id != character.id
-            and (c.id in character.met_by or character.id in c.sheet.disposition.attitudes)
+            and (character.id in c.met_by or character.id in c.sheet.disposition.attitudes)
         ]
         if not knew:
             continue
-        death = next((s for s in reversed(character.status_history) if s.status == "dead"), None)
         died = fallen.ending == "death"
+        told = _told_of_death(state, character) if died else set()
         views.append(
             {
                 "name": fallen.name,
                 "ending": "died" if died else "left the story's centre and lives on",
                 "remembered_by": [
-                    {
-                        "name": c.name,
-                        "knows_how_it_ended": (not died)
-                        or (death is not None and c.id in death.known_by),
-                    }
-                    for c in knew
+                    {"name": c.name, "knows_how_it_ended": not died or c.id in told} for c in knew
                 ],
             }
         )
     return views
+
+
+def _told_of_death(state: WorldState, character: Character) -> set[str]:
+    """Who knows how a character died: who saw it or heard of it (`StatusChange.known_by`), and
+    who knows of a deed that killed or harmed them, by seeing it or by word reaching them (W2,
+    W4)."""
+    death = next((s for s in reversed(character.status_history) if s.status == "dead"), None)
+    told = set(death.known_by) if death is not None else set()
+    for deed in state.deeds.values():
+        if character.id in deed.victim_ids:
+            told.update(deed.known_by, deed.witness_ids, deed.unnoticed_witness_ids)
+    return told
 
 
 def _scene_view(state: WorldState) -> dict[str, Any]:

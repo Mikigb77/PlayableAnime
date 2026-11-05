@@ -910,8 +910,9 @@ Requirements: N6, W1, W3, C6, G2, G12, K2. After an ending the player can carry 
 random person of the same world. Code draws who they are and the drafter fills them in, the same
 split as drafting (the model proposes, code decides).
 
-- **The draw** (`engine/succession.draw`, seeded per story and draw count so a reroll is new) picks a
-  place weighted by its kind (a capital or city most, a village less, the wilds and ruins never),
+- **The draw** (`engine/succession.draw`, seeded per story, ending and draw so a reroll is new)
+  picks a place weighted by its kind (a capital or city most, a village less; a kind that names no
+  settlement and names the wilds, a forest, a cave or the like, or a ruined place, never),
   a people weighted by how many of its characters belong to it, an age from 16 to 60, and a station:
   common, skilled (1 in 5), notable (1 in 40), noble (about 1 in 1,000) or the ruling family (about
   1 in 50,000, never its ruler). Might follows W1's stranger odds: about 1 in 15 is tougher than
@@ -922,23 +923,31 @@ split as drafting (the model proposes, code decides).
   the draw and the names the story already has. `build` holds the proposal to the draw: attributes
   stop at a person's peak in a grounded world or for anyone not strong, axes come from the draw,
   only a non-common station keeps a title, and a real name (G12) or a name the story has gets the
-  default name. The player reads them in the world's words (`view.character_lines`), never numbers.
+  default name, numbered when the story has one already. Only a hidden master in a world with
+  something extraordinary goes past a person's peak. The player reads them in the world's words
+  (`view.character_lines`), never numbers, and an opening moment that names someone they don't
+  know or quotes a secret is replaced with an ordinary day (C6).
 - **Carrying on** (`engine/succession.carry_on`): the newcomer becomes `player_id`, known only to
   themselves and to the places they live in (C6). The old player character stays in the world, dead
-  or, after an epilogue, dormant away from the story's centre, and is recorded in `fallen`. Their
+  or, after an epilogue, dormant away from the story's centre, and is recorded in `fallen`; whoever
+  was in the scene when they died is added to who knows of the death. Their
   active goals are abandoned, their open leads expire, their reputation with factions and places
   goes, and their time effects end. The scene frame moves to the newcomer's place with the
   situation they were drawn in, and `opening_due` is set.
 - **The opening** is an ordinary `kind: "opening"` turn while `opening_due` is set. Its brief has
   `SUCCESSION_TASK` instead of the first opening's task, and `apply_update` clears `opening_due`.
 - **Remembering the fallen.** Every brief has a `FALLEN` section when someone present (alive, not
-  the player) knew an earlier player character, by meeting them or holding an attitude toward them:
-  each fallen with how they ended and who remembers them, with `knows_how_it_ended` from who knew
-  of the death (its `StatusChange.known_by`), always true for an epilogue. The narrator brings them
+  the player) knew an earlier player character, having met them (`met_by`) or holding an attitude
+  toward them: each fallen with how they ended and who remembers them. `knows_how_it_ended` is
+  true for whoever saw or heard of the death (its `StatusChange.known_by`) or knows of a deed
+  against them (its witnesses and `known_by`, which word of a killing reaches, W4), and always for
+  an epilogue. The narrator brings them
   up only when it fits, never forced, and never tells a death to someone who doesn't know of it.
 - **The API** (`stories/succession.py`): `POST /successor` draws inside `drafts.service.model_call`,
   so it is metered and charged like a draft (K2), and keeps who was drawn on `Story.successor` (the
-  story's version doesn't move, and drawing again replaces them). `POST /carry-on` checks the
+  story's version doesn't move, and drawing again replaces them). It is kept, and charged, only if
+  the story is still at the ending it was drawn from: a version that moved on meanwhile is a
+  `version_conflict`, and a draw that lands after another counts after it. `POST /carry-on` checks the
   version, the ending and that someone was drawn under a row lock, saves the carried-on state, lifts
   the ending, clears `successor` and moves the version on. Neither works on a story that isn't at
   an ending, or that the player closed.

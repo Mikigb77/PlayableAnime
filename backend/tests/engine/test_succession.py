@@ -21,6 +21,7 @@ from engine.state import (
     PlaceStatus,
     Prevalence,
     Reputation,
+    StatusChange,
 )
 from engine.succession import STATION_ODDS, Station, carry_on, draw
 
@@ -75,6 +76,24 @@ def test_a_hidden_master_is_at_least_the_best_a_person_can_be(grounded_lots):
     assert masters and all(lot.might >= 4 for lot in masters)
 
 
+@pytest.mark.parametrize(
+    ("kind", "lived_in"),
+    [
+        ("seaport", True),
+        ("city in the underworld", True),
+        ("sect", True),
+        ("forest", False),
+        ("mountain pass", False),
+        ("cave", False),
+        ("wilds", False),
+    ],
+)
+def test_where_people_make_a_home(kind, lived_in):
+    state = grounded_world()
+    state.places = {"here": Place(id="here", name="Here", kind=kind)}
+    assert (draw(state, SeededRng("home")).place_id == "here") is lived_in
+
+
 def test_people_live_in_cities_more_than_villages_and_never_in_ruins():
     state = grounded_world()
     state.places = {
@@ -109,6 +128,19 @@ def test_carrying_on_makes_the_newcomer_the_player_character():
     assert fallen.successor_id == "pc-2"
     assert not after.characters["luca"].alive  # the dead stay dead (C1)
     assert before.player_id == "luca"  # the state carried on from is untouched
+
+
+def test_whoever_was_there_saw_how_they_died():
+    state = grounded_world()
+    state.player.status_history.append(
+        StatusChange(status="dead", from_status="alive", turn=7, world_s=0, known_by=["luca"])
+    )
+    state.scene.present_ids = ["luca", "bartender"]
+
+    _, after = dead_and_carried(state)
+
+    [death] = [s for s in after.characters["luca"].status_history if s.status == "dead"]
+    assert death.known_by == ["luca", "bartender"]
 
 
 def test_what_was_the_old_player_characters_alone_stays_theirs():

@@ -59,6 +59,8 @@ from graph.drafting.schema import (
 from graph.llm import ModelClient, Node, Prompt
 
 SITUATION_LIMIT = 300
+# How many names already in the story the drafter is shown.
+NAMES_SHOWN = 120
 
 
 class SuccessorProposal(Proposal):
@@ -152,7 +154,12 @@ def successor_prompt(state: WorldState, lot: Lot) -> str:
         if place.description:
             lines.append(place.description)
         who.append("Lives in: " + " ".join(lines))
-    taken = sorted(c.name for c in state.characters.values())
+    # The names that matter most, so the prompt stays small in a long story; `build` refuses any
+    # name the story has.
+    named = sorted(
+        state.characters.values(), key=lambda c: (c.prominence is not Prominence.KEY, c.name)
+    )
+    taken = [c.name for c in named][:NAMES_SHOWN]
     return "\n\n".join(
         [
             "THE WORLD\n" + "\n".join(world),
@@ -166,8 +173,9 @@ def successor_prompt(state: WorldState, lot: Lot) -> str:
 def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Character, str]:
     """The character code makes of the proposal, held to the draw, and the moment their first
     scene opens on."""
-    grounded = state.bible.grounded
-    peak = HUMAN_PEAK if grounded or lot.might <= 1 else 10
+    # Only a hidden master in a world with something extraordinary goes past a person's peak
+    # (A4, G8, G13).
+    peak = 10 if lot.master and not state.bible.grounded else HUMAN_PEAK
     attributes = {
         name: _clamp(value, 0, peak, 3) for name, value in proposal.attributes.model_dump().items()
     }
@@ -209,7 +217,7 @@ def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Cha
     name = _fictional(_name(proposal.name))
     taken = {c.name.casefold() for c in state.characters.values()}
     if not is_real_name(name) or name.casefold() in taken:
-        name = PLAYER_FALLBACK_NAME
+        name = _fallback_name(taken)
     character = Character(
         id=_new_id(state),
         name=name,
@@ -223,11 +231,23 @@ def build(state: WorldState, lot: Lot, proposal: SuccessorProposal) -> tuple[Cha
         sheet=sheet,
         origin=Origin(kind=OriginKind.EMERGENCE),
     )
-    situation = _text(proposal.situation, SITUATION_LIMIT)
-    if not situation:
-        place = state.places.get(lot.place_id or "")
-        situation = f"An ordinary day for {name}" + (f" in {place.name}." if place else ".")
+    situation = _text(proposal.situation, SITUATION_LIMIT) or ordinary_day(state, character)
     return character, situation
+
+
+def ordinary_day(state: WorldState, character: Character) -> str:
+    """The moment a first scene opens on when the drafter gave none that can be shown."""
+    place = state.places.get(character.location_id or "")
+    return f"An ordinary day for {character.name}" + (f" in {place.name}." if place else ".")
+
+
+def _fallback_name(taken: set[str]) -> str:
+    """The default name, numbered when the story already has someone by it."""
+    name, n = PLAYER_FALLBACK_NAME, 1
+    while name.casefold() in taken:
+        n += 1
+        name = f"{PLAYER_FALLBACK_NAME} {n}"
+    return name
 
 
 def _might(lot: Lot) -> str:

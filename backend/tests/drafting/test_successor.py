@@ -53,6 +53,24 @@ def test_a_name_the_story_already_has_is_not_reused():
     assert character.name == PLAYER_FALLBACK_NAME
 
 
+def test_a_second_nameless_newcomer_gets_a_name_of_their_own():
+    state = grounded_world()
+    first, _ = build(state, lot(), proposal(name="Luca Esposito"))
+    state.characters[first.id] = first
+
+    second, _ = build(state, lot(), proposal(name="Luca Esposito"))
+
+    assert second.name == f"{PLAYER_FALLBACK_NAME} 2"
+
+
+def test_only_a_hidden_master_goes_past_a_persons_peak():
+    state = cultivation_world()
+    for kind in state.bible.extraordinary:
+        kind.prevalence = Prevalence.COMMON
+    tough, _ = build(state, lot(place_id="well", might=2), proposal())
+    assert tough.sheet.attributes.strength == 5
+
+
 def test_a_strong_draw_stands_on_the_worlds_ladder():
     state = cultivation_world()
     [ladder] = [lad for lad in state.bible.ladders if lad.axis is PowerAxis.MIGHT]

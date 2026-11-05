@@ -24,6 +24,7 @@ tell (`opening_due`).
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from enum import StrEnum
 
@@ -84,7 +85,15 @@ PLACE_WEIGHTS: tuple[tuple[str, int], ...] = (
     ("market", 3),
     ("village", 2),
 )
-EMPTY_KINDS = ("wild", "ruin", "region", "realm", "continent", "world", "sea", "ocean", "desert")
+# Kinds of place nobody makes a home in, as whole words, unless the kind also names a settlement
+# ("a seaport", "a city in the underworld").
+EMPTY_KINDS = frozenset(
+    (
+        "wild wilds wilderness wasteland waste ruin ruins region realm continent world sea ocean "
+        "lake river desert forest woods jungle swamp marsh mountain mountains peak pass cave "
+        "cavern dungeon battlefield road"
+    ).split()
+)
 
 # An adult of working age.
 AGES = (16, 60)
@@ -144,6 +153,15 @@ def carry_on(
     if old.alive:
         # W15: one more character in the world, kept and moved on by their clocks.
         old.activity = Activity.DORMANT
+    else:
+        # Whoever was there when they died saw how it ended (C6).
+        death = next((s for s in reversed(old.status_history) if s.status == "dead"), None)
+        if death is not None:
+            for cid in new.scene.present_ids:
+                witness = new.characters.get(cid)
+                if witness is not None and witness.alive and cid != old.id:
+                    if cid not in death.known_by:
+                        death.known_by.append(cid)
     new.characters[successor.id] = successor.model_copy(
         update={"known_by": [successor.id], "met_by": [successor.id]}
     )
@@ -195,10 +213,14 @@ def _place(state: WorldState, rng: SeededRng) -> str | None:
 
 
 def _lived_in(kind: str) -> int:
-    words = kind.casefold()
-    if any(empty in words for empty in EMPTY_KINDS):
+    text = kind.casefold()
+    settled = next((weight for word, weight in PLACE_WEIGHTS if word in text), None)
+    if settled is not None:
+        return settled
+    if EMPTY_KINDS.intersection(re.findall(r"[^\W\d_]+", text)):
         return 0
-    return next((weight for word, weight in PLACE_WEIGHTS if word in words), 1)
+    # A house, a sect, a farm, an inn: someone may live there.
+    return 1
 
 
 def _people(state: WorldState, rng: SeededRng) -> str | None:

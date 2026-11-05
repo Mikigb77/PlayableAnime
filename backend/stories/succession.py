@@ -25,7 +25,7 @@ from engine.rng import SeededRng
 from engine.state import Character, WorldState
 from engine.succession import Lot, Station
 from graph.drafting import successor as drafting
-from graph.drafting.view import character_lines
+from graph.drafting.view import character_lines, public_text
 from lucid.errors import field_error, version_conflict
 from stories import endings
 from stories.models import Story
@@ -79,6 +79,9 @@ async def draw(request: HttpRequest, story: Story) -> SuccessorOut:
         # Read as they will be once they carry the story on, so the old player character's goals
         # and what they knew aren't theirs.
         preview = succession.carry_on(state, character, situation, ending="death", turn=state.turn)
+        if not public_text(preview, situation):
+            # It names someone they don't know, or quotes a secret (C6).
+            situation = drafting.ordinary_day(state, character)
         drawn = Drawn(
             draws=count,
             lot=lot,
@@ -86,18 +89,29 @@ async def draw(request: HttpRequest, story: Story) -> SuccessorOut:
             situation=situation,
             lines=character_lines(preview),
         )
-        await sync_to_async(_keep)(story, drawn, call)
+        drawn = await sync_to_async(_keep)(story, drawn, call)
     return successor_out(state, drawn)
 
 
-def _keep(story: Story, drawn: Drawn, call) -> None:
+def _keep(story: Story, drawn: Drawn, call) -> Drawn:
     with transaction.atomic():
-        current = Story.objects.select_for_update().only("ending", "state").get(pk=story.pk)
+        current = (
+            Story.objects.select_for_update()
+            .only("ending", "state", "successor", "version")
+            .get(pk=story.pk)
+        )
         _ready(current, WorldState.model_validate(current.state))
+        if current.version != story.version:
+            # Carried on and played on meanwhile: this person was drawn from another world.
+            raise version_conflict(current.version)
+        # Another draw may have landed meanwhile; this one counts after it.
+        before = Drawn.model_validate(current.successor).draws if current.successor else 0
+        drawn = drawn.model_copy(update={"draws": before + 1})
         story.successor = drawn.model_dump(mode="json")
         # Not `updated_at`: the Library lists stories by when they were last played.
         story.save(update_fields=["successor"])
         call.charge()
+    return drawn
 
 
 def carry_on(story: Story, expected_version: int) -> Story:

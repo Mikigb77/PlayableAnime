@@ -3,12 +3,15 @@ is one drafting call, charged like a draft; carrying on as them lifts the ending
 next turn is their opening."""
 
 import pytest
+from django.db.models import F
 from django.test import Client
 
 from billing.models import CreditHold, LedgerEntry
 from drafts import service
 from graph.drafting.samples import SUCCESSOR
 from graph.llm import FakeBackend, Node, Reply
+from lucid.errors import ApiError, ErrorCode
+from stories import succession
 from stories.models import Story
 from tests.conftest import auth_headers
 from tests.stories.conftest import opening, play
@@ -166,3 +169,56 @@ def test_closing_the_story_puts_away_whoever_was_drawn(client, player, make_stor
 
     assert client.get(f"/v1/stories/{story.pk}").json()["successor"] is None
     assert carry_on(client, story).json()["error"]["details"]["fields"][0]["type"] == "closed"
+
+
+def test_drawing_again_counts_after_a_draw_that_landed_meanwhile(
+    client, player, make_story, model, drafter
+):
+    story = dead(player, make_story, model)
+    draw(client, story)
+    stale = Story.objects.get(pk=story.pk)
+    drawn = succession.Drawn.model_validate(stale.successor)
+    draw(client, story)
+
+    kept = succession._keep(stale, drawn, _Call())
+
+    assert kept.draws == 3
+    assert Story.objects.get(pk=story.pk).successor["draws"] == 3
+
+
+def test_someone_drawn_from_a_world_that_moved_on_is_not_kept(
+    client, player, make_story, model, drafter
+):
+    story = dead(player, make_story, model)
+    draw(client, story)
+    stale = Story.objects.get(pk=story.pk)
+    drawn = succession.Drawn.model_validate(stale.successor)
+    Story.objects.filter(pk=story.pk).update(version=F("version") + 1, successor=None)
+    call = _Call()
+
+    with pytest.raises(ApiError) as refused:
+        succession._keep(stale, drawn, call)
+
+    assert refused.value.code is ErrorCode.VERSION_CONFLICT
+    assert not call.charged and Story.objects.get(pk=story.pk).successor is None
+
+
+def test_an_opening_moment_that_names_a_stranger_to_them_is_not_shown(
+    client, player, make_story, model, drafter
+):
+    story = dead(player, make_story, model)
+    drafter.default = lambda request: Reply(
+        json=SUCCESSOR | {"situation": "Mara watches Elder Mo cross the courtyard."}
+    )
+
+    drawn = draw(client, story)
+
+    assert "Elder Mo" not in drawn["situation"]
+    assert drawn["situation"].startswith("An ordinary day for Mara Venn")
+
+
+class _Call:
+    charged = False
+
+    def charge(self) -> None:
+        self.charged = True
