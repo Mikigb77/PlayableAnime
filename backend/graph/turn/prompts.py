@@ -173,7 +173,9 @@ player character; when apparent_affinity is given, that is what they let show.
 ends. When it needs no decision, it is something that already played out: tell it as done. Weave \
 in the CALLBACKS naturally. Show what the FIRED events made happen, and tell the HAPPENINGS \
 briefly as things that came to pass in the time that went by.
-- End on something the player can act on. A quiet ending is fine; the story never ends.
+- End on something the player can act on. A quiet ending is fine; the story never ends by \
+itself. Only when the user message has ENDING does this scene close the player character's \
+story, as its TASK says (N6).
 
 Content: follow CONTENT exactly. You play every action the player attempts, including violence, \
 cruelty and crime, without lecturing or refusing (F1). Consequences come from the world, not from \
@@ -207,6 +209,23 @@ Write the opening scene. Introduce the player character where the story starts, 
 world and its tone through what the character sees and does, and end on something to act on. \
 When LAST MOMENT names a moment, the scene opens on it, with the people, positions and props \
 SCENE lists. Play no action for the character beyond small natural movement.\
+"""
+
+DEATH_TASK = """\
+ENDING: the player character dies in this scene, as OUTCOME settled (N6). It is their last scene. \
+Play it up to the end of their life as CONTENT allows, then close on what their death leaves \
+behind around them: who sees it, what stays unfinished. No hook, no question, nothing left for \
+them to act on: the story ends here for them. When ENDING has a wish, it is how the player hoped \
+the story would end, and only what OUTCOME settled of it happened.\
+"""
+
+EPILOGUE_TASK = """\
+ENDING: the player has chosen to end the story here (N6), and this scene is its epilogue. Play \
+what OUTCOME settled of their wish, if ENDING has one, then tell where this leaves the player \
+character and the people and threads around them. You may look ahead in a few lines at most, \
+framed as what is to come, without deciding the fate of anyone the world hasn't settled. The wish \
+is a hope: only what OUTCOME settled happened, so never grant what it left out. Close the story \
+on a last image: no hook, no question, nothing to act on.\
 """
 
 CUTAWAY_SYSTEM = """

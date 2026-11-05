@@ -18,6 +18,7 @@ from engine.visibility import MemoryView, StatusView, clock_view, memory_view, s
 from media.lookups import cover_urls, place_urls, portrait_urls, scene_images
 from media.storage import SignedUrl
 from moderation.models import Report
+from stories import endings
 from stories.models import Scene, Story
 from stories.schemas import (
     ChoiceOut,
@@ -121,6 +122,8 @@ def story_out(
         clock=clock_view(state),
         scenes=scenes_out(story, scenes, request=request),
         cover_url=cover.url if cover else None,
+        premise=story.premise,
+        ending=endings.of_story(story.ending, state),
     )
 
 
@@ -146,6 +149,7 @@ def library(stories: Iterable[Story], *, request: HttpRequest | None) -> list[St
                 turn=story.turn,
                 world_time_label=clock_label(calendar, int(story.world_s or 0)),
                 cover_url=cover.url if cover else None,
+                ending=endings.of_story(story.ending),
                 updated_at=story.updated_at,
             )
         )

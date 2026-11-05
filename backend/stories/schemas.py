@@ -17,6 +17,7 @@ from engine.context import (
 from engine.contracts import StandingAction
 from engine.visibility import ClockView
 from graph.turn import TurnKind
+from stories.endings import EndingOut
 
 ACTION_CHARS = 2000
 TITLE_CHARS = 120
@@ -25,6 +26,8 @@ TITLE_CHARS = 120
 class TurnIn(BaseModel):
     """API.md's `TurnRequest`. Each kind takes its own field and no other: `action` for an
     action, `choice_id` for a choice, `standing` for a standing action, and none for the opening.
+    An end turn (N6) takes an optional `action`, the note on how the story should end, and
+    `drop_refused` to end without what the world refused of it.
     """
 
     kind: TurnKind
@@ -34,6 +37,8 @@ class TurnIn(BaseModel):
     # How the action was entered (V7). Optional: an action defaults to typed, and a choice or a
     # standing action is always `choice`.
     input_mode: Literal["typed", "voice", "voice_edited", "choice"] | None = None
+    # N6, an end turn only: tell the epilogue without the parts of the note the world refused.
+    drop_refused: bool = False
     # The story version the app last saw (T10).
     expected_version: int = Field(ge=0)
 
@@ -51,23 +56,27 @@ class TurnIn(BaseModel):
             TurnKind.CHOICE: "choice_id",
             TurnKind.STANDING: "standing",
             TurnKind.OPENING: None,
+            TurnKind.END: "action",
         }[self.kind]
+        optional = self.kind is TurnKind.END  # an ending's note is optional
         for name in ("action", "choice_id", "standing"):
             given = getattr(self, name) is not None
-            if name == wanted and not given:
+            if name == wanted and not given and not optional:
                 raise ValueError(f"A {self.kind} turn needs {name}.")
             if name != wanted and given:
                 raise ValueError(f"A {self.kind} turn takes no {name}.")
-        if self.kind is TurnKind.ACTION and self.input_mode == "choice":
-            raise ValueError("An action is typed or spoken: input_mode can't be choice.")
+        if self.kind in (TurnKind.ACTION, TurnKind.END) and self.input_mode == "choice":
+            raise ValueError(f"A {self.kind} turn is typed or spoken: input_mode can't be choice.")
+        if self.drop_refused and self.kind is not TurnKind.END:
+            raise ValueError("Only an end turn takes drop_refused.")
         return self
 
     @property
     def mode(self) -> str | None:
         """The input mode saved on the scene."""
-        if self.kind is TurnKind.OPENING:
+        if self.kind is TurnKind.OPENING or (self.kind is TurnKind.END and self.action is None):
             return None
-        if self.kind is TurnKind.ACTION:
+        if self.kind in (TurnKind.ACTION, TurnKind.END):
             return self.input_mode or "typed"
         return "choice"
 
@@ -168,6 +177,8 @@ class StorySummaryOut(BaseModel):
     turn: int
     world_time_label: str
     cover_url: str | None = None
+    # N6: set once the story has reached its ending.
+    ending: EndingOut | None = None
     updated_at: datetime
 
 
@@ -184,3 +195,7 @@ class StoryOut(BaseModel):
     clock: ClockView
     scenes: list[SceneOut] = Field(default_factory=list)
     cover_url: str | None = None
+    # What the story started from, so the app can start again from it (N6).
+    premise: str = ""
+    # N6: set once the story has reached its ending. Then it takes no more turns.
+    ending: EndingOut | None = None

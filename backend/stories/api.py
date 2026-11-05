@@ -17,7 +17,7 @@ from engine.context import StorySettings
 from engine.state.world import WorldState
 from engine.visibility import MemoryView, StatusView
 from lucid.errors import field_error, version_conflict
-from stories import responses, turns
+from stories import endings, responses, turns
 from stories.access import graph_stories, owned_story
 from stories.models import Scene, Story
 from stories.schemas import SceneOut, StoryOut, StoryPatch, StorySummaryOut, TurnIn
@@ -113,6 +113,33 @@ async def take_turn(request: HttpRequest, story_id: str, body: TurnIn):
     return turns.TurnStream(
         turns.stream(prepared, ticket=ticket, byok=byok, request=request), ticket
     )
+
+
+@stories_router.post("/{story_id}/close", response=StoryOut)
+async def close_story(request: HttpRequest, story_id: str) -> StoryOut:
+    """N6: closes a story at its ending, after a death or an epilogue. It stays in the Library to
+    read. Closing a closed story changes nothing."""
+    story = await _load(request, story_id)
+    story = await sync_to_async(_close)(story)
+    return await sync_to_async(_story_out)(story, StoryQuery().scenes, request)
+
+
+def _close(story: Story) -> Story:
+    with transaction.atomic():
+        current = Story.objects.select_for_update().only("ending", "state").get(pk=story.pk)
+        ending = endings.of_story(current.ending, WorldState.model_validate(current.state))
+        if ending is None:
+            raise field_error(
+                "story_id",
+                "This story hasn't reached an ending. End it with /end first.",
+                source="path",
+                type="not_ended",
+            )
+        if not ending.closed:
+            story.ending = ending.model_copy(update={"closed": True}).model_dump(mode="json")
+            # Not `updated_at`: the Library lists stories by when they were last played.
+            story.save(update_fields=["ending"])
+    return story
 
 
 @stories_router.get("/{story_id}/memory", response=MemoryView)
