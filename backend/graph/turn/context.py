@@ -231,9 +231,12 @@ def _goals_and_threads(state: WorldState) -> dict[str, Any]:
 def interpret_prompt(state: WorldState, action: str) -> Prompt:
     """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`."""
     frame = state.scene
+    # The world comes first and alone: it stays the same from turn to turn, so the backend can
+    # keep it cached with the system text (`Prompt.stable_chars`).
+    world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
     user = render(
         [
-            ("WORLD", _world_view(state, include=_INTERPRET_WORLD)),
+            world,
             ("PLAYER CHARACTER", _player_view(state)),
             ("SCENE", _scene_view(state)),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
@@ -243,7 +246,7 @@ def interpret_prompt(state: WorldState, action: str) -> Prompt:
             ("ACTION", action.strip()),
         ]
     )
-    return Prompt.build(prompts.INTERPRET_SYSTEM, user)
+    return Prompt.build(prompts.INTERPRET_SYSTEM, user, stable_chars=len(render([world])))
 
 
 @dataclass(frozen=True)
@@ -254,10 +257,14 @@ class NarrationBrief:
     user: str
     place: str | None
     suggestions: int
+    # How much of `user` stays the same from turn to turn (`Prompt.stable_chars`).
+    stable_chars: int = 0
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
-        system = self.system + (prompts.CUTAWAY_SYSTEM if cutaway else "")
-        return Prompt.build(system, self.user)
+        if cutaway:
+            # A cutaway is rare, so a cache made for its system text would go unused.
+            return Prompt.build(self.system + prompts.CUTAWAY_SYSTEM, self.user)
+        return Prompt.build(self.system, self.user, stable_chars=self.stable_chars)
 
     def template_line(self) -> str:
         where = f"in {self.place}" if self.place else "there"
@@ -297,10 +304,16 @@ def narration_brief(
         romance=ctx.content_prefs.romance,
         dark_themes=ctx.content_prefs.dark_themes,
     )
-    sections: list[tuple[str, Any]] = [
+    # What stays the same from turn to turn comes first, so the backend can keep it cached with
+    # the system text and Gemini bills it at its cached rate (`Prompt.stable_chars`).
+    stable: list[tuple[str, Any]] = [
         ("STYLE", style),
         ("CONTENT", content),
         ("WORLD", _world_view(before)),
+    ]
+    sections: list[tuple[str, Any]] = [
+        *stable,
+        *([("PREMISE", premise)] if premise and ctx.turn <= 1 else []),
         ("STORY SO FAR", _past(before, scenes)),
         ("CONTINUITY", _continuity(after) or ["(nothing yet)"]),
         ("GOALS AND THREADS", _goals_and_threads(before)),
@@ -309,8 +322,6 @@ def narration_brief(
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
     ]
-    if premise and ctx.turn <= 1:
-        sections.insert(2, ("PREMISE", premise))
 
     if intent is None and not resolution.steps:
         sections.append(("NOW", _now_view(after)))
@@ -369,6 +380,7 @@ def narration_brief(
         user=render(sections),
         place=place_name(after),
         suggestions=suggestions,
+        stable_chars=len(render(stable)),
     )
 
 

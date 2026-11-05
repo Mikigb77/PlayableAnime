@@ -19,11 +19,17 @@ with room for only a few words: Gemini refuses a schema outside what it takes wi
 before writing anything, which is how every draft failed on 2026-11-04 while plain calls worked.
 A refused schema goes in the prompt instead (`graph.llm.gemini`), so the line says so and the
 check still passes; only a format that fails both ways fails it.
+
+Last, it makes one explicit prompt cache on the narrator's model, as turns do (`graph.llm.cache`),
+sends one call that names it, and says how many prompt tokens Gemini read from it: those bill at
+a tenth of the input price. A cache that doesn't work never fails the check, since turns work
+without one, at the full price.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import logging
 import time
@@ -83,6 +89,14 @@ SCHEMA_OPTIONS = CallOptions(max_output_tokens=64, thinking="low")
 # a 429 in the client: a passing 429 or 503 is no reason to fail a deploy (on 2026-11-04 the
 # narrator's format met two 429s 7 s apart, and the next call a few seconds later went through).
 SCHEMA_RETRY_DELAYS_S = (2.0, 6.0)
+# A stable start of about 6,000 tokens, over the minimum for a cache: 4,096 tokens for the Gemini
+# 3.x Flash models in Google's table (checked 2026-11-05).
+CACHE_SYSTEM = "You answer a health check. Reply with exactly one word."
+CACHE_START = "\n".join(
+    f"Log line {n}: the lighthouse keeper saw ship number {n} pass the northern rocks at dusk."
+    for n in range(1, 301)
+)
+CACHE_PROMPT = "Reply with the word ok."
 
 
 def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
@@ -113,6 +127,10 @@ class Check:
     # For a response format: the schema's name, and whether Gemini took it as a schema.
     schema: str = ""
     in_prompt: bool = False
+    # For the prompt cache: the call's prompt tokens, and how many Gemini read from the cache.
+    cache: bool = False
+    input_tokens: int = 0
+    cached_tokens: int = 0
 
 
 def silence(seconds: float = 1.0, rate: int = 16_000) -> bytes:
@@ -165,6 +183,7 @@ async def run_checks(config: ModelConfig, *, picture: bool) -> list[Check]:
             checks.append(await _check(client, failures, model, nodes))
         for node, schema in response_formats():
             checks.append(await _check_format(client, failures, config, node, schema))
+        checks.append(await _check_cache(client, failures, config))
     finally:
         llm_logger.removeHandler(failures)
         await client.aclose()
@@ -250,8 +269,80 @@ async def _check_format(
     )
 
 
+async def _check_cache(client: ModelClient, failures: _LastFailure, config: ModelConfig) -> Check:
+    """Makes a prompt cache on the narrator's model, sends one call that names it, and deletes
+    it. Turns make theirs the same way, in the background."""
+    node = Node.NARRATOR
+    settings = config.node(node)
+    backend = client.backend
+    cache = getattr(backend, "prompt_cache", None)
+    started = time.monotonic()
+
+    def failed(reason: str, detail: str = "") -> Check:
+        return Check(
+            settings.model,
+            (node.value,),
+            ok=False,
+            seconds=time.monotonic() - started,
+            reason=reason,
+            detail=detail[:DETAIL_CHARS],
+            cache=True,
+        )
+
+    if cache is None:
+        return failed("no_cache", "This backend makes no prompt caches.")
+    failures.fields = {}
+    made = await cache.make(settings.model, CACHE_SYSTEM, CACHE_START)
+    if made is None:
+        return failed(str(failures.fields.get("reason") or "cache_failed"), _detail(failures))
+    request = Request(
+        node=node,
+        model=settings.model,
+        prompt=Prompt.build(
+            CACHE_SYSTEM, f"{CACHE_START}\n\n{CACHE_PROMPT}", stable_chars=len(CACHE_START)
+        ),
+        options=replace(settings.options.merged(TEXT_OPTIONS), timeout_s=60),
+        safety=safety_settings("teen", node=node),
+    )
+    tokens = cached = 0
+    try:
+        async with aclosing(backend.stream(request)) as chunks:
+            async for chunk in chunks:
+                tokens = max(tokens, chunk.usage.input_tokens)
+                cached = max(cached, chunk.usage.cached_tokens)
+    except ProviderError as error:
+        return failed(f"{error.kind}_{error.status}" if error.status else error.kind, error.detail)
+    finally:
+        with contextlib.suppress(ProviderError):
+            await backend.delete_cache(settings.model, made.name)
+        cache.forget(made.name)
+    if not cached:
+        return failed(str(failures.fields.get("reason") or "not_read"), _detail(failures))
+    return Check(
+        settings.model,
+        (node.value,),
+        ok=True,
+        seconds=time.monotonic() - started,
+        cache=True,
+        input_tokens=tokens,
+        cached_tokens=cached,
+    )
+
+
+def _detail(failures: _LastFailure) -> str:
+    return str(failures.fields.get("detail") or "")
+
+
 def describe(check: Check) -> str:
     line = f"{check.model} ({', '.join(check.nodes)})"
+    if check.cache:
+        if check.ok:
+            return (
+                f"{line} prompt cache: Gemini read {check.cached_tokens:,} of "
+                f"{check.input_tokens:,} prompt tokens from it, in {check.seconds:.1f} s"
+            )
+        line = f"{line} prompt cache: not working ({check.reason}), so turns pay the full price"
+        return f"{line}: {check.detail}" if check.detail else line
     line = f"{line} {check.schema} format: " if check.schema else f"{line}: "
     if check.ok:
         line = f"{line}ok in {check.seconds:.1f} s"
@@ -283,7 +374,7 @@ class Command(BaseCommand):
         checks = async_to_sync(run_checks)(config, picture=not no_picture)
         for check in checks:
             self.stdout.write(describe(check))
-        models = [check for check in checks if not check.schema]
+        models = [check for check in checks if not check.schema and not check.cache]
         formats = [check for check in checks if check.schema]
         problems = []
         if failed := [check for check in models if not check.ok]:

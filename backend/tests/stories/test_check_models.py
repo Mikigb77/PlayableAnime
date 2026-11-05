@@ -9,7 +9,9 @@ import pytest
 from django.core.management import CommandError, call_command
 
 from graph.llm import Fail, FakeBackend, ModelClient, ModelConfig, Node, Reply, fill_schema
+from graph.llm.cache import Made, PromptCache
 from graph.llm.config import DEFAULT_NODES
+from graph.llm.types import ProviderError, Usage
 from stories.management.commands import check_models
 
 VERTEX = ModelConfig(provider="vertex")
@@ -249,3 +251,81 @@ def test_the_offline_model_has_nothing_to_check(monkeypatch, capsys):
     call_command("check_models")
 
     assert "nothing to check" in capsys.readouterr().out
+
+
+def caching_backend(monkeypatch, *, cached: int = 6000, fail: Exception | None = None):
+    """A fake Vertex AI backend that makes prompt caches, and reads `cached` tokens from one."""
+
+    def reply(request):
+        if request.prompt.stable_chars:
+            return Reply(text="ok", usage=Usage(6100, 1, 0, cached))
+        return _format_reply(request)
+
+    fake = FakeBackend(default=reply)
+    made: list[tuple[str, str, str]] = []
+    deleted: list[tuple[str, str]] = []
+
+    async def create(model, system, stable, ttl_s):
+        made.append((model, system, stable))
+        if fail is not None:
+            raise fail
+        return Made("cachedContents/9", ttl_s, tokens=6000)
+
+    async def extend(model, name, ttl_s):
+        return ttl_s
+
+    async def delete_cache(model, name):
+        deleted.append((model, name))
+
+    fake.prompt_cache = PromptCache(create, extend)
+    fake.delete_cache = delete_cache
+    monkeypatch.setattr(check_models, "get_model_config", lambda: VERTEX)
+    monkeypatch.setattr(
+        check_models,
+        "build_client",
+        lambda *, rating, recorder=None, config=None, **kwargs: ModelClient(
+            fake, VERTEX, rating=rating, recorder=recorder, retry_delay_s=0
+        ),
+    )
+    script_models(fake)
+    return fake, made, deleted
+
+
+def test_a_prompt_cache_is_made_on_the_narrators_model_read_once_and_deleted(monkeypatch, capsys):
+    fake, made, deleted = caching_backend(monkeypatch)
+
+    call_command("check_models")
+
+    narrator = DEFAULT_NODES[Node.NARRATOR].model
+    assert made == [(narrator, check_models.CACHE_SYSTEM, check_models.CACHE_START)]
+    assert deleted == [(narrator, "cachedContents/9")]
+    [call] = [r for r in fake.requests if r.prompt.stable_chars]
+    assert call.model == narrator
+    assert call.prompt.stable_split() == (check_models.CACHE_START, check_models.CACHE_PROMPT)
+    out = capsys.readouterr().out
+    assert f"{narrator} (narrator) prompt cache: Gemini read 6,000 of 6,100 prompt tokens" in out
+    assert "All 5 models answered, and Gemini took all 6 response formats." in out
+
+
+def test_a_prompt_cache_that_doesnt_work_is_reported_without_failing_the_check(monkeypatch, capsys):
+    too_small = ProviderError(
+        "invalid", "The minimum token count to start caching is 4096.", status=400
+    )
+    fake, made, deleted = caching_backend(monkeypatch, fail=too_small)
+
+    call_command("check_models")
+
+    assert len(made) == 1 and deleted == []
+    assert not [r for r in fake.requests if r.prompt.stable_chars]
+    out = capsys.readouterr().out
+    assert "prompt cache: not working (cache_too_small), so turns pay the full price" in out
+    assert "minimum token count" in out
+
+
+def test_a_prompt_cache_gemini_reads_nothing_from_is_reported(monkeypatch, capsys):
+    _, _, deleted = caching_backend(monkeypatch, cached=0)
+
+    call_command("check_models")
+
+    assert deleted == [(DEFAULT_NODES[Node.NARRATOR].model, "cachedContents/9")]
+    assert "prompt cache: not working (not_read)" in capsys.readouterr().out

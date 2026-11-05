@@ -246,6 +246,35 @@ def test_the_cutaway_prompt_and_the_template_line():
     )
 
 
+def test_what_stays_the_same_each_turn_starts_the_brief_and_is_marked_for_the_cache():
+    # T5: the style, the content rules and the world start the brief, so the backend can keep
+    # them cached with the system text; the opening's premise and the story so far come after.
+    state = grounded_world()
+    opening = brief(state, context=ctx(turn=1), premise="Luca comes home.")
+    later = brief(state, scenes=[PastScene(1, "Luca walks in.", "I walk in")])
+
+    for narration in (opening, later):
+        stable, rest = narration.prompt().stable_split()
+        assert [line for line in stable.splitlines() if line.startswith("## ")] == [
+            "## STYLE",
+            "## CONTENT",
+            "## WORLD",
+        ]
+        assert narration.user == f"{stable}\n\n{rest}"
+    assert opening.prompt().stable_split()[0] == later.prompt().stable_split()[0]
+    assert opening.prompt().stable_split()[1].startswith("## PREMISE\nLuca comes home.")
+    assert later.prompt().stable_split()[1].startswith("## STORY SO FAR")
+    # A cutaway's system text is rare, so it isn't cached.
+    assert later.prompt(cutaway=True).stable_split() is None
+
+
+def test_the_interpret_prompt_starts_with_the_world_marked_for_the_cache():
+    stable, rest = interpret_prompt(grounded_world(), "I open the door").stable_split()
+
+    assert stable.startswith("## WORLD\n") and "\n## " not in stable
+    assert rest.startswith("## PLAYER CHARACTER")
+
+
 def test_the_chapter_prompt_holds_the_scenes():
     prompt = chapter_prompt([PastScene(3, "Zhao falls.", "I stop time")])
     assert prompt.system == prompts.SUMMARIZER_SYSTEM

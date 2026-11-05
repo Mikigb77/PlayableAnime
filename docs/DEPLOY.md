@@ -336,6 +336,17 @@ gemini-3.5-flash-lite (interpret) Intent format: ok in 0.9 s
 gemini-3.5-flash (drafter) DraftProposal format: ok in 1.1 s, though Gemini refused it as a schema, so it goes in the prompt
 ```
 
+Last, it makes one explicit prompt cache on the narrator's model, as turns do
+([ARCHITECTURE.md](ARCHITECTURE.md#model-layer), "Prompt caches"), sends one call that names it,
+deletes it, and says how many of the call's prompt tokens Gemini read from it, which bill at a
+tenth of the input price. It adds about a cent. A cache that doesn't work never fails the check,
+since turns work without one, at the full price; its line says why:
+
+```text
+gemini-3.5-flash (narrator) prompt cache: Gemini read 6,012 of 6,040 prompt tokens from it, in 2.1 s
+gemini-3.5-flash (narrator) prompt cache: not working (cache_failed), so turns pay the full price: ...
+```
+
 To check by hand: `gcloud run jobs execute playable-anime-migrate --project=playable-anime
 --region=europe-west3 --args=manage.py,check_models --task-timeout=10m --wait`.
 
