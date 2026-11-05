@@ -80,12 +80,13 @@ from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world
 from engine.resolve.durations import lived_estimate, step_timing, until_time
 from engine.resolve.effects import aim_effects, power_costs, proposed_deed
 from engine.resolve.power import (
-    SUBDUED_STATE,
     Scale,
     Standing,
     base_tier,
     claims_frozen_in_time,
+    helpless_name,
     helpless_state,
+    ranked_with_numbers,
     scale,
     standing,
 )
@@ -93,12 +94,13 @@ from engine.resolve.powers import claims as claims_mod
 from engine.resolve.powers import growth, sensing
 from engine.resolve.powers import theories as theories_mod
 from engine.resolve.powers import time_stop as stop
-from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
+from engine.resolve.words import cap, is_are, mentions, name, names, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, PlaceStatus
 from engine.state.records import RollRecord, StepResult, Trace, TraceKind
 from engine.state.scene import EncounterKind
 from engine.state.sheet import (
+    Health,
     HitMode,
     Power,
     PowerAxis,
@@ -287,6 +289,7 @@ def _standing_step(
         out=set(),
         fighting=[],
         frozen=frame.frozen,
+        health=actor.sheet.condition.health,
         difficulty=ctx.settings.difficulty,
         rng=rng.child("resolve", "step", 0, "peril"),
     )
@@ -584,6 +587,7 @@ def _settle_step(
             out=frame.out,
             fighting=frame.fighting,
             frozen=frozen_now,
+            health=_health_now(effects, actor),
             difficulty=ctx.settings.difficulty,
             rng=rng.child("peril"),
         )
@@ -945,13 +949,29 @@ def _kills(effects: StateDelta, character: Character) -> bool:
 
 
 def _taken_out(effects: StateDelta) -> set[str]:
-    """N6. Whom a step's own changes killed or subdued, so they don't strike back."""
+    """N6. Whom a step's own changes killed or left helpless (dying, subdued, knocked out), so
+    they don't strike back."""
     return {
         change.id
         for change in effects.characters
         if change.status is CharacterStatus.DEAD
-        or (change.condition is not None and SUBDUED_STATE in change.condition.states)
+        or (
+            change.condition is not None
+            and (
+                change.condition.health is Health.DYING
+                or any(helpless_name(s) for s in change.condition.states)
+            )
+        )
     }
+
+
+def _health_now(effects: StateDelta, character: Character) -> Health:
+    """The character's health once a step's own changes are in: the last one it sets."""
+    health = character.sheet.condition.health
+    for change in effects.characters:
+        if change.id == character.id and change.condition and change.condition.health:
+            health = change.condition.health
+    return health
 
 
 def _merge(*deltas: StateDelta) -> StateDelta:
@@ -1095,10 +1115,8 @@ def _contested(
             measure = scale(state, axis, actor, *opposition.responsive)
             mine, known_power = standing(state, actor, axis, measure), False
             ranked = (standing(state, c, axis, measure) for c in opposition.responsive)
-        theirs = sorted(ranked, key=lambda s: (-s.tier, s.character.id))
+        theirs, numbers = ranked_with_numbers(list(ranked), measure)
         strongest = theirs[0]
-        close = sum(1 for s in theirs[1:] if strongest.tier - s.tier < measure.step)
-        numbers = min(odds_mod.MAX_NUMBERS, odds_mod.NUMBERS_STEP * close)
         gap = (strongest.tier - mine.tier) / measure.step + numbers
         lead = _compare(state, mine, strongest, gap, numbers > 0)
         if known_power:
@@ -1129,7 +1147,7 @@ def _contested(
         base = odds_mod.logit(odds_mod.UNMEASURED_ODDS[outcome_class])
         lead = f"{cap(what)} can push back"
         if opposition.responsive:
-            lead = f"{cap(_names(state, opposition.responsive))} can push back"
+            lead = f"{cap(names(state, opposition.responsive))} can push back"
     odds = odds_mod.settle(base, shift, odds_mod.BANDS[outcome_class], difficulty)
     roll = odds_mod.roll(
         rng.child("outcome"),
@@ -1341,7 +1359,7 @@ def _with_chain(
     if opposition.can_push_back:
         proposed = step.facts.proposed_class
         who = (
-            _names(state, opposition.responsive)
+            names(state, opposition.responsive)
             if opposition.responsive
             else step.facts.opposition.strip() or "they"
         )
@@ -1504,13 +1522,6 @@ def _withstanding(state: WorldState, target: Character, measure: Scale) -> Stand
     return might if might.tier >= station.tier else station
 
 
-def _names(state: WorldState, people: list[Character]) -> str:
-    names = [name(state, p.id) for p in people]
-    if len(names) <= 2:
-        return " and ".join(names)
-    return f"{', '.join(names[:-1])} and {names[-1]}"
-
-
 def _notes(found: Standing) -> str:
     return f", {', '.join(found.notes)}," if found.notes else ""
 
@@ -1549,7 +1560,7 @@ def _helpless_lead(state: WorldState, opposition: _Opposition) -> str:
         if len(opposition.helpless) == 1:
             who = name(state, person.id)
             return f"{cap(who)} {is_are(state, person.id)} {why} and can't respond"
-        everyone = _names(state, [p for p, _ in opposition.helpless])
+        everyone = names(state, [p for p, _ in opposition.helpless])
         return f"{cap(everyone)} can't respond ({why})"
     if opposition.unmeasured_frozen:
         return "Nothing in the way can respond"

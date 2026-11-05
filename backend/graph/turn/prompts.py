@@ -83,7 +83,9 @@ always a fight. Code decides when an encounter starts and ends.
 they are and the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring \
 partner holding back, guards taking them alive, a master testing a student), or none when they \
 won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. Code \
-decides whether their blows land (N6).
+decides whether their blows land (N6). A step that tries to get away from a fight (a run, a \
+leap, a dive into the crowd) names the foes it gets away from in facts.opposition_ids, so code \
+can judge whether they catch the character.
 - facts.danger: what can hurt the character in this step however it goes, that no one in the \
 scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
 danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \

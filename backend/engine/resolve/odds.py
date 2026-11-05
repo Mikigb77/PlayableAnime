@@ -17,10 +17,6 @@ from engine.resolve.words import odds_label
 from engine.rng import SeededRng
 from engine.state.records import RollRecord, StepResult
 
-# A8: each opponent close in strength to the strongest adds this much to the gap, up to the most.
-NUMBERS_STEP = 0.5
-MAX_NUMBERS = 1.0
-
 # G18: one step up (a realm) is a long shot at best, two or more is ruled out in a straight fight,
 # and two below can't push back at all. Gaps are opposition minus actor, in steps of power.
 LONG_SHOT_AT = 1.0

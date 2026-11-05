@@ -489,10 +489,11 @@ it (W10a), a helpless state on the sheet
    move that harms no one and cleanly succeeded against them, such as a run or a leap
    (`StepResolution.escaped`, which ends the fight in `engine.encounters` once no one in it is
    left). Waiting or watching in a fight, the foes strike all the same. What they mean is
-   `StepFacts.foes_mean` (a sparring partner subdues), or the step's own aim, or at least a wound.
-   They are measured on might like a step of theirs (step 4, numbers included): two steps or more
-   below the character is ruled out, two or more above, or a character who is helpless, is
-   certain, and between is rolled with the difficulty against them (`odds.settle(...,
+   `StepFacts.foes_mean` (a sparring partner subdues), or the step's own aim when it was aimed at
+   them, or at least a wound. They are measured on might like a step of theirs (step 4, numbers
+   included, `power.ranked_with_numbers`): two steps or more below the character is ruled out,
+   two or more above is certain, and so is anything against a character who is helpless, however
+   strong. Between is rolled with the difficulty against them (`odds.settle(...,
    against_player=True)`) and the character's own step moving the odds by `EXPOSED_SHIFT` (open
    after a miss, on top after a clean success). Then a danger the step met (`StepFacts.danger`,
    `danger_class`, `danger_harm`), lowered one class for each step of might the character stands

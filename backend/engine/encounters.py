@@ -32,9 +32,8 @@ from engine.base import MINUTE
 from engine.context import TurnContext
 from engine.contracts.intent import ActionKind
 from engine.contracts.resolution import StepResolution
-from engine.invariants import ancestry
-from engine.resolve.power import helpless_state
-from engine.state.cast import CharacterStatus, Prominence
+from engine.resolve.power import helpless_state, in_the_fray
+from engine.state.cast import Prominence
 from engine.state.scene import Encounter, EncounterKind
 from engine.state.world import WorldState
 
@@ -143,16 +142,7 @@ def still_in_it(state: WorldState, character_id: str) -> bool:
     asleep, bound, subdued or dying), and with the player character, which means in the scene or
     at the player character's place. Someone the state doesn't place stays in it."""
     character = state.characters.get(character_id)
-    if character is None or character_id == state.player_id:
-        return False
-    if character.status is not CharacterStatus.ALIVE or helpless_state(character) is not None:
-        return False
-    here = state.player.location_id or state.scene.place_id
-    if character_id in state.scene.present_ids or character.location_id is None or here is None:
-        return True
-    return here in ancestry(state.places, character.location_id) or (
-        character.location_id in ancestry(state.places, here)
-    )
+    return character is not None and in_the_fray(state, character)
 
 
 def _opponents(state: WorldState, step: StepResolution, actor_id: str) -> list[str]:

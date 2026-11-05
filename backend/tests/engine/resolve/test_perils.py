@@ -11,13 +11,17 @@ from engine.context import Difficulty
 from engine.contracts import (
     ActionKind,
     Aim,
+    CharacterChange,
+    ConditionChange,
     Harm,
     Intent,
     OutcomeClass,
     StandingAction,
+    StateDelta,
     StopReason,
 )
 from engine.invariants import check_transition
+from engine.resolve.core import _taken_out
 from engine.resolve.power import SUBDUED_STATE
 from engine.state import (
     CharacterStatus,
@@ -76,6 +80,10 @@ def one(state: WorldState, *steps, seed: int = 0, difficulty=Difficulty.BALANCED
     return resolve(state, Intent(steps=list(steps)), seed, difficulty).steps[0]
 
 
+def meant_by(state: WorldState, attack) -> set[Aim]:
+    return {p.aim for s in range(40) for p in one(state, attack, seed=s).perils}
+
+
 def harms(state: WorldState, *steps, difficulty=Difficulty.BALANCED) -> Counter:
     return Counter(
         tuple(p.harm for p in one(state, *steps, seed=s, difficulty=difficulty).perils)
@@ -118,14 +126,36 @@ def test_a_far_weaker_foe_cant_get_through():
         assert peril.reason == "Zhou strikes back, but you are far beyond them."
 
 
-def test_a_helpless_character_cant_stop_a_blow():
-    state = fighting(add(sect(), disciple("zhou", "Zhou")), "zhou")
-    state.characters["lin"].sheet.condition.states.append(PassingState(name="bound"))
+@pytest.mark.parametrize("rung", [0, 3])
+def test_a_helpless_character_cant_stop_a_blow_however_strong(rung):
+    state = sect()
+    lin = state.characters["lin"]
+    lin.sheet.ladders[0].rung, lin.sheet.axes.might = rung, 2 + 2 * rung
+    state = fighting(add(state, disciple("zhou", "Zhou")), "zhou")
+    lin.sheet.condition.states.append(PassingState(name="bound"))
 
     [peril] = one(state, circle()).perils
 
     assert (peril.outcome_class, peril.roll, peril.harm) == ("certain", None, Harm.WOUNDED)
     assert "bound" in peril.reason
+
+
+def test_a_foe_the_step_left_dead_dying_or_knocked_out_doesnt_strike_back():
+    def hit(**change) -> CharacterChange:
+        return CharacterChange(id=change.pop("id"), **change)
+
+    effects = StateDelta(
+        characters=[
+            hit(id="a", status=CharacterStatus.DEAD),
+            hit(id="b", condition=ConditionChange(health=Health.DYING)),
+            hit(id="c", condition=ConditionChange(states=["knocked out"])),
+            hit(id="d", condition=ConditionChange(states=[SUBDUED_STATE])),
+            hit(id="e", condition=ConditionChange(health=Health.BADLY_WOUNDED)),
+            hit(id="f", condition=ConditionChange(states=["half asleep"])),
+        ]
+    )
+
+    assert _taken_out(effects) == {"a", "b", "c", "d"}
 
 
 def test_killing_the_only_foe_leaves_nobody_to_strike_back():
@@ -161,6 +191,23 @@ def test_a_fair_fight_is_rolled_and_harder_the_harder_the_difficulty():
     assert all(p.roll is not None for p in one(state, circle()).perils)
     # A5: the difficulty works for the player against foes too.
     assert landed[Difficulty.STORY] < landed[Difficulty.BALANCED] < landed[Difficulty.BRUTAL]
+
+
+def test_the_blow_is_the_strongest_foes_deed():
+    state = fighting(
+        add(sect(), disciple("thug", "the thug"), disciple("bai", "Elder Bai", rung=1)), "thug"
+    )
+    state.scene.encounter.opponent_ids.append("bai")
+
+    settled = one(state, circle())
+
+    [peril] = settled.perils
+    assert peril.by_ids == ["bai", "thug"] and peril.by == "Elder Bai and the thug"
+    [deed] = settled.deeds
+    assert (deed.actor_id, deed.text.startswith("Elder Bai and the thug strike back at Lin")) == (
+        "bai",
+        True,
+    )
 
 
 def test_numbers_tell():
@@ -221,12 +268,13 @@ def test_foes_who_wont_strike_back_dont():
 def test_unless_told_otherwise_foes_answer_in_kind_and_at_least_mean_to_wound():
     state = add(sect(), disciple("zhou", "Zhou"))
 
-    def meant(attack) -> set[Aim]:
-        return {p.aim for s in range(40) for p in one(state, attack, seed=s).perils}
-
-    assert meant(strike("zhou")) == {Aim.KILL}
-    assert meant(strike("zhou").model_copy(update={"aim": Aim.SUBDUE})) == {Aim.SUBDUE}
+    assert meant_by(state, strike("zhou")) == {Aim.KILL}
+    assert meant_by(state, strike("zhou").model_copy(update={"aim": Aim.SUBDUE})) == {Aim.SUBDUE}
     assert one(fighting(state, "zhou"), circle(None)).perils[0].aim is Aim.WOUND
+    # Harm aimed at someone else, who can't answer it, doesn't make the foes go for the kill.
+    bystander = add(fighting(add(sect(), disciple("zhou", "Zhou")), "zhou"), disciple("wei", "Wei"))
+    bystander.characters["wei"].sheet.condition.states.append(PassingState(name="asleep"))
+    assert meant_by(bystander, strike("wei")) == {Aim.WOUND}
 
 
 def test_waiting_in_a_fight_the_foes_strike_all_the_same():
@@ -333,6 +381,28 @@ def test_a_maiming_wound_lasts():
     assert [(w.text, w.lasting) for w in lin.sheet.condition.wounds if w.lasting] == [
         ("a maiming wound from Zhou", True)
     ]
+
+
+def test_a_blow_never_heals_what_the_step_did_to_the_character():
+    """Lin cuts his own palm for an oath mid-fight: Zhou's lighter blow builds on that wound."""
+    state = fighting(add(sect(), disciple("zhou", "Zhou")), "zhou")
+    oath = step(
+        "cut my palm for the oath",
+        ActionKind.INSTANT,
+        2,
+        verb="cut",
+        aim=Aim.WOUND,
+        target_ids=["lin"],
+        facts=facts(means="clearly_enough", foes_mean=Aim.WOUND),
+    )
+    seen = set()
+    for seed in SEEDS:
+        settled = one(state, oath, seed=seed)
+        lin = [c.condition.health for c in settled.effects.characters if c.id == "lin"]
+        if settled.perils and settled.perils[0].harm is not Harm.NONE:
+            seen.add(settled.perils[0].harm)
+            assert lin[0] is Health.WOUNDED and lin[-1] is Health.BADLY_WOUNDED
+    assert seen == {Harm.BADLY_WOUNDED}
 
 
 # --- what follows --------------------------------------------------------------------------------

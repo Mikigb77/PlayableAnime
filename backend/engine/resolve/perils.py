@@ -11,7 +11,7 @@ leave it open (A2, A3), and recorded before anything is narrated (F4):
   those it faced, such as a run or a leap, without harming anyone, leaves them behind.
 - **What they are out to do.** What the interpret step says they mean (`StepFacts.foes_mean`): a
   sparring partner holds back, guards take them alive, an assassin kills. Otherwise they answer
-  in kind, and anyone fighting the character means at least to wound them.
+  a step aimed at them in kind, and anyone fighting the character means at least to wound them.
 - **How it lands.** The foes are measured against the character on might, the strongest of them
   with those close behind them adding numbers (A8), the same way the character is measured
   against them. Far stronger foes land it with no roll, and so does anyone against a character
@@ -40,13 +40,19 @@ from engine.context import Difficulty
 from engine.contracts.delta import CharacterChange, ConditionChange, StateDelta
 from engine.contracts.intent import ActionKind, Aim, IntentStep, OutcomeClass
 from engine.contracts.resolution import Harm, Peril, ProposedDeed
-from engine.invariants import ancestry
 from engine.resolve import odds as odds_mod
 from engine.resolve.effects import proposed_deed
-from engine.resolve.power import SUBDUED_STATE, helpless_state, scale, standing
+from engine.resolve.power import (
+    SUBDUED_STATE,
+    helpless_state,
+    in_the_fray,
+    ranked_with_numbers,
+    scale,
+    standing,
+)
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.strangers import PEAK_PERSON_TIER
-from engine.resolve.words import cap, name
+from engine.resolve.words import cap, is_are, name, names
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, DeathCertainty
 from engine.state.records import StepResult
@@ -118,6 +124,7 @@ def strike_back(
     out: set[str],
     fighting: list[str],
     frozen: bool,
+    health: Health,
     difficulty: Difficulty,
     rng: SeededRng,
 ) -> Struck:
@@ -125,26 +132,26 @@ def strike_back(
     `result`: the foes of the fight first, then a danger the step faced. `faced` are the living
     characters who could respond to the step, `out` those this plan already took out of the fight
     (killed, subdued or got away from, this step's kills included), and `fighting` the foes this
-    plan already fought. `frozen` means the player character holds the world in a time stop."""
+    plan already fought. `frozen` means the player character holds the world in a time stop, and
+    `health` is theirs once the step's own changes are in."""
     struck = Struck()
-    health = player.sheet.condition.health
+    before = health
     foes, aim, escaped = _foes(state, player, step, result, faced, out, fighting, frozen)
     struck.fighting, struck.escaped = [f.id for f in foes], escaped
     if foes and aim.harmful:
-        peril = _blow(state, player, step, foes, aim, faced, outcome_class, result, difficulty, rng)
+        peril = _blow(
+            state, player, foes, aim, faced, outcome_class, result, health, difficulty, rng
+        )
         struck.perils.append(peril)
-        if peril.harm is not Harm.NONE:
-            health = _health_after(health, peril.harm)
-        struck.deeds.append(_deed(state, player, foes, peril))
+        health = _health_after(health, peril.harm)
+        struck.deeds.append(_deed(player, peril))
     own_harm = step.aim.harmful and player.id in step.target_ids  # its danger is its means (F1)
     if outcome_class is not OutcomeClass.RULED_OUT and not struck.dead and not own_harm:
-        danger = _danger(state, player, step, result, difficulty, rng.child("danger"))
+        danger = _danger(state, player, step, result, health, difficulty, rng.child("danger"))
         if danger is not None:
-            if danger.harm is not Harm.NONE:
-                danger = _worse(danger, health, player)
-                health = _health_after(health, danger.harm)
+            health = _health_after(health, danger.harm)
             struck.perils.append(danger)
-    struck.effects = _effects(player, struck.perils)
+    struck.effects = _effects(player, struck.perils, before)
     return struck
 
 
@@ -174,7 +181,7 @@ def _foes(
     foes, escaped = [], []
     for foe_id in dict.fromkeys(ids):
         foe = state.characters.get(foe_id)
-        if foe is None or foe_id in out or not _in_the_fight(state, player, foe):
+        if foe is None or foe_id in out or not in_the_fray(state, foe):
             continue
         if frozen and not stop.immune(foe):
             continue  # W10a: frozen in the character's time stop
@@ -184,61 +191,49 @@ def _foes(
         foes.append(foe)
     meant = step.facts.foes_mean
     if meant is None:
-        # In kind: a sparring bout stays one, and anyone fighting the character means at least
-        # to wound them.
-        meant = step.aim if step.aim.harmful else Aim.WOUND
+        # In kind when the step aimed at them, so a sparring bout stays one; otherwise anyone
+        # fighting the character means at least to wound them.
+        at_them = step.aim.harmful and any(f.id in step.target_ids for f in foes)
+        meant = step.aim if at_them else Aim.WOUND
     return foes, meant, escaped
-
-
-def _in_the_fight(state: WorldState, player: Character, foe: Character) -> bool:
-    """Alive, able to act and with the player character, like `encounters.still_in_it`."""
-    if foe.id == player.id or foe.status is not CharacterStatus.ALIVE:
-        return False
-    if helpless_state(foe) is not None:
-        return False
-    here = player.location_id or state.scene.place_id
-    if foe.id in state.scene.present_ids or foe.location_id is None or here is None:
-        return True
-    return here in ancestry(state.places, foe.location_id) or (
-        foe.location_id in ancestry(state.places, here)
-    )
 
 
 def _blow(
     state: WorldState,
     player: Character,
-    step: IntentStep,
     foes: list[Character],
     aim: Aim,
     faced: list[Character],
     outcome_class: OutcomeClass,
     result: StepResult,
+    health: Health,
     difficulty: Difficulty,
     rng: SeededRng,
 ) -> Peril:
     """The foes' blow, measured like a step of theirs against the player character (A8)."""
     measure = scale(state, PowerAxis.MIGHT, player, *foes)
     mine = standing(state, player, PowerAxis.MIGHT, measure)
-    theirs = sorted(
-        (standing(state, f, PowerAxis.MIGHT, measure) for f in foes),
-        key=lambda s: (-s.tier, s.character.id),
+    theirs, numbers = ranked_with_numbers(
+        [standing(state, f, PowerAxis.MIGHT, measure) for f in foes], measure
     )
     strongest = theirs[0]
-    close = sum(1 for s in theirs[1:] if strongest.tier - s.tier < measure.step)
-    numbers = min(odds_mod.MAX_NUMBERS, odds_mod.NUMBERS_STEP * close)
     # The player character stands in their way: the gap is theirs minus the foes', less numbers.
     gap = (mine.tier - strongest.tier) / measure.step - numbers
-    who = _names(state, [s.character for s in theirs])
+    who = names(state, [s.character for s in theirs])
     strike = f"{cap(who)} {'strike' if len(foes) > 1 else 'strikes'} back"
     helpless = helpless_state(player)
     roll = None
-    you, are = name(state, player.id), _are(state, player)
-    if gap >= odds_mod.RULED_OUT_AT:
+    you, are = name(state, player.id), is_are(state, player.id)
+    if helpless is not None:
+        # Whoever they are, a character who can't fend them off can't stop it (A2).
+        outcome, done = OutcomeClass.CERTAIN, StepResult.SUCCESS
+        words = f"{you} {are} {helpless}"
+    elif gap >= odds_mod.RULED_OUT_AT:
         outcome, done = OutcomeClass.RULED_OUT, StepResult.FAILURE
         words = f"{you} {are} far beyond them"
-    elif gap <= odds_mod.CERTAIN_AT or helpless is not None:
+    elif gap <= odds_mod.CERTAIN_AT:
         outcome, done = OutcomeClass.CERTAIN, StepResult.SUCCESS
-        words = f"{you} can't stop it" if helpless is None else f"{you} {are} {helpless}"
+        words = f"{you} can't stop it"
     else:
         outcome = OutcomeClass.LONG_SHOT if gap >= odds_mod.LONG_SHOT_AT else OutcomeClass.CONTESTED
         faced_ids = {c.id for c in faced}
@@ -263,7 +258,7 @@ def _blow(
             words = f"a long shot, {words}"
     harm = _harm(aim, outcome, done, rng.child("harm"))
     peril = Peril(
-        by_ids=[f.id for f in foes],
+        by_ids=[s.character.id for s in theirs],  # the strongest first
         by=who,
         aim=aim,
         outcome_class=outcome,
@@ -272,7 +267,7 @@ def _blow(
         result=done,
         harm=harm,
     )
-    peril = _worse(peril, player.sheet.condition.health, player)
+    peril = _worse(peril, health, player)
     return peril.model_copy(update={"reason": _reason(state, player, strike, words, peril)})
 
 
@@ -281,6 +276,7 @@ def _danger(
     player: Character,
     step: IntentStep,
     result: StepResult,
+    health: Health,
     difficulty: Difficulty,
     rng: SeededRng,
 ) -> Peril | None:
@@ -299,7 +295,7 @@ def _danger(
     if outcome is OutcomeClass.RULED_OUT:
         done, words = StepResult.FAILURE, "it can't do real harm"
         if tougher and proposed is not OutcomeClass.RULED_OUT:
-            words = f"{name(state, player.id)} {_are(state, player)} too tough for it"
+            words = f"{name(state, player.id)} {is_are(state, player.id)} too tough for it"
     elif outcome is OutcomeClass.CERTAIN:
         done, words = StepResult.SUCCESS, "there's no escaping it"
     else:
@@ -329,6 +325,7 @@ def _danger(
         result=done,
         harm=_harm(harm_aim, outcome, done, rng.child("harm")),
     )
+    peril = _worse(peril, health, player)
     return peril.model_copy(update={"reason": _reason(state, player, cap(what), words, peril)})
 
 
@@ -379,8 +376,9 @@ def _health_after(health: Health, harm: Harm) -> Health:
     return level if _HEALTH.index(level) > _HEALTH.index(health) else health
 
 
-def _effects(player: Character, perils: list[Peril]) -> StateDelta:
-    """The engine's changes for what struck: one for each peril that did harm, in order."""
+def _effects(player: Character, perils: list[Peril], health: Health) -> StateDelta:
+    """The engine's changes for what struck, from `health` after the step's own changes: one for
+    each peril that did harm, in order, never leaving them better than they were."""
     changes = []
     for peril in perils:
         if peril.harm is Harm.NONE:
@@ -395,7 +393,8 @@ def _effects(player: Character, perils: list[Peril]) -> StateDelta:
             )
             break
         what = f"from {peril.by}"
-        condition = ConditionChange(health=_HARM_HEALTH.get(peril.harm))
+        health = _health_after(health, peril.harm)
+        condition = ConditionChange(health=health)
         if peril.harm is Harm.SUBDUED:
             condition = ConditionChange(states=[SUBDUED_STATE])
         elif peril.harm is Harm.MAIMED:
@@ -406,12 +405,11 @@ def _effects(player: Character, perils: list[Peril]) -> StateDelta:
     return StateDelta(characters=changes)
 
 
-def _deed(
-    state: WorldState, player: Character, foes: list[Character], peril: Peril
-) -> ProposedDeed:
-    """W1. The strongest foe's blow at the player character is their deed, landed or not."""
+def _deed(player: Character, peril: Peril) -> ProposedDeed:
+    """W1. The blow at the player character is the strongest foe's deed, landed or not."""
+    strike = "strike" if len(peril.by_ids) > 1 else "strikes"
     blow = IntentStep(
-        text=f"{peril.by} strike back at {name(state, player.id)}",
+        text=f"{cap(peril.by)} {strike} back at {player.name}",
         verb="attack",
         target_ids=[player.id],
         aim=peril.aim,
@@ -422,7 +420,7 @@ def _deed(
         blow,
         peril.outcome_class,
         peril.result,
-        foes[0].id,
+        peril.by_ids[0],
         targets=[player],
         others=[],
         in_stopped_time=False,
@@ -437,20 +435,9 @@ def _reason(state: WorldState, player: Character, lead: str, words: str, peril: 
     if peril.outcome_class is OutcomeClass.RULED_OUT:
         return f"{lead}, but {words}."
     you = name(state, player.id)
-    outcome = _HARM_WORDS[peril.harm].format(you=you, are=_are(state, player))
+    outcome = _HARM_WORDS[peril.harm].format(you=you, are=is_are(state, player.id))
     if peril.harm is Harm.NONE:
         outcome = f"it misses {you}" if peril.by_ids else f"{you} come through unhurt"
     if peril.outcome_class is OutcomeClass.CERTAIN:
         return f"{lead}, and {words}: {outcome}."
     return f"{lead} ({words}): {outcome}."
-
-
-def _are(state: WorldState, player: Character) -> str:
-    return "are" if player.id == state.player_id else "is"
-
-
-def _names(state: WorldState, people: list[Character]) -> str:
-    names = [name(state, p.id) for p in people]
-    if len(names) <= 2:
-        return " and ".join(names)
-    return f"{', '.join(names[:-1])} and {names[-1]}"
