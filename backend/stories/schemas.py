@@ -18,7 +18,7 @@ from engine.contracts import StandingAction
 from engine.visibility import ClockView
 from graph.turn import TurnKind
 from stories.endings import EndingOut
-from stories.succession import SuccessorOut
+from stories.succession import HeirOut, SuccessorOut
 
 ACTION_CHARS = 2000
 TITLE_CHARS = 120
@@ -202,5 +202,7 @@ class StoryOut(BaseModel):
     ending: EndingOut | None = None
     # N6: the person last drawn to carry the story on from its ending, if any.
     successor: SuccessorOut | None = None
+    # N6: who of the player character's family can carry the story on from its ending.
+    heirs: list[HeirOut] = Field(default_factory=list)
     # N6: someone new carries the story on, and their opening is the next turn.
     opening_due: bool = False

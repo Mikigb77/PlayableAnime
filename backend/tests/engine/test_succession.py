@@ -178,8 +178,7 @@ def test_someone_who_ended_their_story_alive_lives_on_in_the_world():
     assert after.fallen[0].ending == "chosen"
 
 
-def test_the_newcomer_is_someone_new():
+def test_the_newcomer_is_never_the_player_character_already():
     state = grounded_world()
-    taken = Character(id="carmine", name="Someone")
     with pytest.raises(ValueError):
-        carry_on(state, taken, "Dawn.", ending="death", turn=3)
+        carry_on(state, state.player, "Dawn.", ending="death", turn=3)

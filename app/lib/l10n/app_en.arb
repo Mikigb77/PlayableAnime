@@ -678,6 +678,47 @@
   "successorDrawCost": "Drawing someone uses credits, like a draft.",
   "successorUnavailable": "Nobody needs to carry this story on: it hasn't reached an open ending.",
   "successorMovedOn": "The story changed meanwhile. Here it is as it is now.",
+  "successorChoose": "Who carries the story on?",
+  "successorChooseBody": "{name}'s family can carry it on, or someone from anywhere in this world.",
+  "@successorChooseBody": {
+    "description": "Under the choice of who carries a story on after its ending, when the player character left heirs (N6).",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "successorHeirOf": "{relation, select, child{{name}'s child} grandchild{{name}'s grandchild} greatgrandchild{{name}'s great-grandchild} other{{name}'s descendant}}",
+  "@successorHeirOf": {
+    "description": "How an heir is related to the player character whose story ended (N6).",
+    "placeholders": {
+      "relation": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "successorUnborn": "Not yet born",
+  "successorYearsLater": "{count, plural, =1{Starts 1 year later} other{Starts {count} years later}}",
+  "@successorYearsLater": {
+    "description": "An heir too young to act is played from when they turn 16, so the story skips ahead (N6).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "successorRandom": "Someone from the world",
+  "successorRandomBody": "Drawn by chance, the way the world's people are: most are ordinary folk.",
+  "successorChooseAgain": "Choose someone else",
+  "successorChooseCost": "Choosing someone uses credits, like a draft.",
+  "successorHeirLost": "{name} didn't live to carry the story on. Choose someone else.",
+  "@successorHeirLost": {
+    "description": "Shown when the heir picked died in the years before they could act (N6). Nothing was charged.",
+    "placeholders": {"name": {"type": "String"}}
+  },
   "storyHidden": "You blocked this scene, so its text is hidden.",
   "storyPortraits": "In this scene",
   "storyPortraitsLabel": "In this scene: {names}",

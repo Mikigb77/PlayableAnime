@@ -513,8 +513,46 @@ class StoryEnding {
   int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
 }
 
+/// Someone of the player character's family who can carry the story on after its ending (N6):
+/// a child or grandchild, or a child not born yet.
+class Heir {
+  const Heir({
+    required this.id,
+    required this.name,
+    this.relation = 'child',
+    this.age,
+    this.unborn = false,
+    this.years = 0,
+  });
+
+  factory Heir.fromJson(Json json) => Heir(
+    id: json['id'] as String,
+    name: json['name'] as String? ?? '',
+    relation: json['relation'] as String? ?? 'child',
+    age: (json['age'] as num?)?.toInt(),
+    unborn: json['unborn'] as bool? ?? false,
+    years: (json['years'] as num? ?? 0).toInt(),
+  );
+
+  static Heir? maybe(Object? json) => json is Json ? Heir.fromJson(json) : null;
+
+  final String id;
+  final String name;
+
+  /// child, grandchild or great-grandchild of the player character whose story ended.
+  final String relation;
+
+  /// Their age now; null for a child not born yet.
+  final int? age;
+  final bool unborn;
+
+  /// The years the story skips before they can act: until they are 16, or born and 16.
+  final int years;
+}
+
 /// Someone drawn to carry a story on after its ending (N6, docs/API.md `Successor`): a random
-/// person of the world, by its population odds. The player starts as them or draws again.
+/// person of the world, by its population odds, or one of the player character's heirs. The
+/// player starts as them or chooses someone else.
 class Successor {
   const Successor({
     required this.name,
@@ -527,6 +565,7 @@ class Successor {
     this.lines = const [],
     this.situation = '',
     this.draws = 1,
+    this.heir,
   });
 
   factory Successor.fromJson(Json json) => Successor(
@@ -540,6 +579,7 @@ class Successor {
     lines: _strings(json['lines']),
     situation: json['situation'] as String? ?? '',
     draws: (json['draws'] as num? ?? 1).toInt(),
+    heir: Heir.maybe(json['heir']),
   );
 
   static Successor? maybe(Object? json) => json is Json ? Successor.fromJson(json) : null;
@@ -568,6 +608,9 @@ class Successor {
 
   /// How many people have been drawn for this ending so far.
   final int draws;
+
+  /// The player character's heir, rather than someone drawn at random.
+  final Heir? heir;
 }
 
 class Story {
@@ -584,6 +627,7 @@ class Story {
     this.settings = const StorySettings(),
     this.ending,
     this.successor,
+    this.heirs = const [],
     this.openingDue = false,
   });
 
@@ -600,6 +644,7 @@ class Story {
     settings: StorySettings.fromJson(json['settings'] as Json?),
     ending: StoryEnding.maybe(json['ending']),
     successor: Successor.maybe(json['successor']),
+    heirs: _list(json['heirs'], Heir.fromJson),
     openingDue: json['opening_due'] as bool? ?? false,
   );
 
@@ -629,6 +674,9 @@ class Story {
   /// Who was drawn to carry the story on after its ending, until the player starts as them (N6).
   final Successor? successor;
 
+  /// Who of the player character's family can carry the story on from its ending (N6).
+  final List<Heir> heirs;
+
   /// Someone new carries the story on, and their first scene is still to be told: the next turn
   /// is their opening (N6).
   final bool openingDue;
@@ -654,6 +702,7 @@ class Story {
     settings: settings ?? this.settings,
     ending: ending ?? this.ending,
     successor: successor,
+    heirs: heirs,
     openingDue: openingDue ?? this.openingDue,
   );
 

@@ -30,7 +30,7 @@ from stories.schemas import (
     StorySettings,
     StorySummaryOut,
 )
-from stories.succession import drawn_of, successor_out
+from stories.succession import drawn_of, heirs_of, successor_out
 
 LIBRARY_SIZE = 50
 
@@ -131,6 +131,7 @@ def story_out(
             if ending and not ending.closed and (drawn := drawn_of(story))
             else None
         ),
+        heirs=heirs_of(story, state, ending) if ending and not ending.closed else [],
         opening_due=state.opening_due,
     )
 
