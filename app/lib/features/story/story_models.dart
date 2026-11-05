@@ -508,6 +508,7 @@ class StoryEnding {
     this.selfInflicted = false,
     this.turn,
     this.closed = false,
+    this.rewind = 0,
   });
 
   factory StoryEnding.fromJson(Json json) => StoryEnding(
@@ -517,6 +518,7 @@ class StoryEnding {
     selfInflicted: json['self_inflicted'] as bool? ?? false,
     turn: (json['turn'] as num?)?.toInt(),
     closed: json['closed'] as bool? ?? false,
+    rewind: (json['rewind'] as num?)?.toInt() ?? 0,
   );
 
   static StoryEnding? maybe(Object? json) => json is Json ? StoryEnding.fromJson(json) : null;
@@ -537,7 +539,14 @@ class StoryEnding {
   /// The player closed the story; it stays in the Library to read.
   final bool closed;
 
+  /// How many scenes back the player can rewind (C8): a death not by the character's own hand,
+  /// up to 5 scenes on Story, 1 on Balanced and none on Brutal. 0 once closed.
+  final int rewind;
+
   bool get isDeath => kind == 'death';
+
+  /// The ending can be taken back a few scenes (C8).
+  bool get canRewind => !closed && rewind > 0;
 
   @override
   bool operator ==(Object other) =>
@@ -547,10 +556,12 @@ class StoryEnding {
       other.character == character &&
       other.selfInflicted == selfInflicted &&
       other.turn == turn &&
-      other.closed == closed;
+      other.closed == closed &&
+      other.rewind == rewind;
 
   @override
-  int get hashCode => Object.hash(kind, characterId, character, selfInflicted, turn, closed);
+  int get hashCode =>
+      Object.hash(kind, characterId, character, selfInflicted, turn, closed, rewind);
 }
 
 /// Someone of the player character's family who can carry the story on after its ending (N6):

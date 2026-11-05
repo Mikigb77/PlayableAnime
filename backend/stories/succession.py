@@ -31,7 +31,7 @@ from engine.succession import STANDING, Lot, Station
 from graph.drafting import successor as drafting
 from graph.drafting.view import character_lines, public_text
 from lucid.errors import field_error, version_conflict
-from stories import endings
+from stories import endings, rewind
 from stories.models import Story
 
 
@@ -288,6 +288,8 @@ def _carry_on(story: Story, expected_version: int, ahead: WorldState | None) -> 
             turn=ending.turn if ending.turn is not None else state.turn,
             ended_s=state.world_s,
         )
+        # Their story starts here: a rewind never reaches back into the one that ended (C8).
+        rewind.forget(current)
         Story.objects.filter(pk=story.pk).update(
             state=carried.model_dump(mode="json"),
             ending=None,

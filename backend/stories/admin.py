@@ -11,11 +11,19 @@ class SceneInline(StoryTextAdmin, admin.TabularInline):
     model = Scene
     story_text_fields = ("player_action",)
     extra = 0
-    fields = ("turn", "kind", "player_action", "input_mode", "time_label", "image_status")
+    fields = (
+        "turn",
+        "kind",
+        "player_action",
+        "input_mode",
+        "time_label",
+        "image_status",
+        "rewound_at",
+    )
     readonly_fields = fields
     show_change_link = True
     can_delete = False
-    ordering = ("-turn",)
+    ordering = ("-turn", "-created_at")
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
@@ -57,11 +65,19 @@ class SceneAdmin(StoryTextAdmin, admin.ModelAdmin):
         "event",
         "image_prompt",
     )
-    list_display = ("story", "turn", "kind", "input_mode", "image_status", "created_at")
+    list_display = (
+        "story",
+        "turn",
+        "kind",
+        "input_mode",
+        "image_status",
+        "rewound_at",
+        "created_at",
+    )
     list_filter = ("kind", "input_mode", "image_status")
     search_fields = ("story__id", "story__title")
     raw_id_fields = ("story",)
-    readonly_fields = ("created_at",)
+    readonly_fields = ("created_at", "rewound_at")
 
 
 @admin.register(PendingEvent)

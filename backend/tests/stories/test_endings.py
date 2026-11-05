@@ -81,6 +81,8 @@ def test_a_death_brings_the_story_to_its_ending(client, player, make_story, mode
         "self_inflicted": True,
         "turn": 2,
         "closed": False,
+        # A death the player chose is always real (C8).
+        "rewind": 0,
     }
     assert story.ending == ending
     assert Scene.objects.get(story=story, turn=2).choices == []

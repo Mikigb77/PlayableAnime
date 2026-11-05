@@ -61,7 +61,9 @@ def scenes_out(
 def blocked_turns(story: Story, turns: Sequence[int]) -> set[int]:
     """Which of `turns` the player blocked (F6), like `moderation.service.blocked_turns` but
     for synchronous code and only for the scenes being shown."""
-    rows = Report.objects.filter(story=story, block=True, scene__turn__in=list(turns))
+    rows = Report.objects.filter(
+        story=story, block=True, scene__turn__in=list(turns), scene__rewound_at__isnull=True
+    )
     return set(rows.values_list("scene__turn", flat=True))
 
 

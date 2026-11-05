@@ -114,9 +114,13 @@ class ReportAdmin(admin.ModelAdmin):
 
     @admin.display(description="The scene before")
     def scene_before(self, report: Report) -> str:
+        # The one the player had read just before it, among scenes a rewind took back (C8) too.
+        scene = report.scene
         before = (
-            Scene.objects.filter(story_id=report.story_id, turn__lt=report.scene.turn)
-            .order_by("-turn")
+            Scene.objects.filter(
+                story_id=report.story_id, turn__lt=scene.turn, created_at__lt=scene.created_at
+            )
+            .order_by("-turn", "-created_at")
             .first()
         )
         if before is None:

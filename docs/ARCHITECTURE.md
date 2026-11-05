@@ -806,12 +806,14 @@ filled in, are not served.
    check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
    `version_conflict`), the `Scene` row with its time labels in the world's calendar
    (`engine.labels.scene_time`) and its cast, the pending events the turn scheduled, applied or
-   cancelled, the picture plan (`media.plans.plan_picture`, M1; drawn in the app's own request, M3)
-   and the charge (`meter.charge`, K2). A picture that can't be planned leaves the scene without
+   cancelled, the world state kept for a rewind (`stories.rewind.keep`, C8), the picture plan
+   (`media.plans.plan_picture`, M1; drawn in the app's own request, M3) and the charge
+   (`meter.charge`, K2). A picture that can't be planned leaves the scene without
    one, and the turn still saves. Then `scene.completed` carries the scene in API.md's shape with
    the new version and clock; if its picture URLs can't be read then, it goes without them,
    since the turn is already saved. A turn that reached an ending saves it on the story row
-   (`Story.ending`, `stories/endings.py`) with the character's name and the scene, and sends it as
+   (`Story.ending`, `stories/endings.py`) with the character's name, the scene and how many scenes
+   back it can be rewound (`stories.rewind.reach`, C8), and sends it as
    `story.ending` (N6). Migration `0005_older_endings` records a death ending on older stories
    whose player character was already dead, so the Library shows them ended without loading their
    state.
@@ -1067,6 +1069,44 @@ one of the player character's heirs instead of someone drawn at random.
   uses it if the story is still as it was read (otherwise it runs it again under the lock); the
   jump lands on the same world every time. The app goes back to the choice when an heir was lost.
 
+## Rewinding after a death
+
+Requirements: C8, N6, A3, B12, T10, W10, F6, M1, M4, M5. A death by others or by the world can be
+taken back a few scenes, by difficulty: up to 5 on Story, 1 on Balanced and none on Brutal (Miki,
+2026-11-05). A death the player chose is always real, and so is an ending told with `/end`.
+
+- **What a turn keeps** (`stories/rewind.keep`): every saved turn keeps the world state it left in
+  `stories_turnsnapshot`, in the turn's own transaction (B12), as the same document as
+  `Story.state`, and drops the ones no rewind can reach any more (more than 5 turns back). Carrying
+  the story on as someone new (`rewind.forget`) drops them all, so a rewind never reaches back into
+  another character's story.
+- **How far an ending reaches** (`rewind.reach`): settled when the turn that reached the ending is
+  saved, from the difficulty the turn was played on, so changing it afterwards changes nothing, and
+  from the states the story kept back to back before that turn. It is saved on the ending
+  (`Ending.rewind`), 0 for a death by the character's own hand or a chosen ending, and set to 0
+  when the story is closed.
+- **The rewind** (`rewind.rewind`, `POST /v1/stories/{id}/rewind`): under the story's row lock it
+  checks the version (T10), the ending and how far it reaches, then puts the world state back to
+  the kept one, writes the pending events back from it (`pending.write_back`, so events the
+  rewound scenes applied wait again and the ones they scheduled are cancelled, W10), marks the
+  later scenes `rewound_at`, drops the kept states after the moment it went back to, lifts the
+  ending and anyone drawn to carry it on, and moves the version on. Nobody in the story remembers,
+  since nothing outside the restored state survives, and nothing is refunded.
+- **Rewound scenes** stay as rows, so a report on one still reaches staff (F6, T16), and the
+  account export lists them marked `rewound`. Everything that shows or plays the story reads
+  `Scene.objects.live()`: the scene list, the next turn's scenes and choices, pictures and reports
+  by turn, and which turns are blocked. Only one live scene has each turn.
+- **Pictures** (`media/plans.retire_rewound`): a rewound scene's own picture, and any portrait or
+  place drawn for a look version the restored world never reached (M5), or for a character or place
+  it doesn't have, are renamed out of reuse (`subject~<id>`), so a scene played anew gets its own
+  picture and a face or place that changes again is drawn again. Their rows stay with their cost.
+- **The same moment plays the same way** (A3): a turn's rolls are seeded by the story, timeline
+  and turn, so doing exactly the same again goes the same way. A rewind is a chance to play it
+  differently, not a reroll.
+- **The app** offers Rewind on the ending card while `Ending.rewind` is above 0. A sheet asks how
+  many scenes back, naming the action each choice takes back first, and the play screen loads the
+  story the rewind answered with, without the scenes taken back.
+
 ## Safety, ratings and reports
 
 WS16's part of F1 to F8, G12 and T16. The prompts ask the models to stay inside the ratings table,
@@ -1240,9 +1280,10 @@ object, and the raw world state as memory.
 - **Endings** (N6, `app/lib/features/story/ending_card.dart`): `/end` asks for a confirmation and
   sends an end turn with the note typed after it. A refused note shows its parts with their reasons
   and offers to play on or end without them. A story at its ending shows the ending card instead
-  of the action box: close the story, or start again, which opens the create flow with its premise
-  filled in, and one quiet line on where to find support after a self-inflicted death. The Library
-  marks an ended story.
+  of the action box: carry it on as someone else, close the story, or start again, which opens the
+  create flow with its premise filled in, and one quiet line on where to find support after a
+  self-inflicted death. After a death the player didn't choose, on Story or Balanced, it offers to
+  rewind (C8, `rewind_sheet.dart`). The Library marks an ended story.
 - **Pictures** (M3): the scene arrives with its picture `planned`; the app asks for it in its own
   request, every 1.5 s while it is pending, sizes the slot by `kind` meanwhile, and skips it quietly
   if it fails.
@@ -1609,7 +1650,8 @@ endpoint lets anyone spend our Vertex budget.
 | `accounts_refreshtoken` | Refresh tokens as SHA-256 hashes, per session, with expiry and when each was spent. |
 | `accounts_throttle` | Sign-in brute-force counters: an HMAC key, the window start and the hits. |
 | `stories_story` | One row per story: owner (S8, required), title, premise, genre, rating, settings (S6), the engine that wrote it, the world state as JSONB (C2), `turn`, and `version` for T10. Only a turn writes it (B12). |
-| `stories_scene` | One row per turn, unique per story and turn: kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
+| `stories_scene` | One row per turn, unique per story and turn among the scenes no rewind took back (`rewound_at` is null, C8): kind, action and input mode (V7), narration, choices, details (A2, A9, R6), event (W16), in-world start and end seconds plus the player's own elapsed time (W10, W10a) and their labels, timeline id, the picture flag, kind and prompt (M1), and the cast: the other characters the player knew who were there, for the scene's portraits (M4, M5). The picture itself and its state live in `media_image`. |
+| `stories_turnsnapshot` | The world state each saved turn left (C8), unique per story and turn, for a rewind after a death. A story keeps only the last few a rewind can reach, and none from before someone new carried it on (N6). |
 | `stories_pendingevent` | Off-screen results waiting on in-world time (B12): story, timeline id, due time in in-world seconds, kind, payload, status, and the turns that scheduled and applied it. Indexed for "pending on this timeline, due by now". A row's id is derived from the story and the engine's event id, and its payload holds the engine's `PendingEvent` (see [Turn endpoint](#turn-endpoint)). |
 | `media_image` | One picture of one subject (M4): story, kind, subject, version (M5), status (planned, pending, ready, skipped) and skip reason, the trigger and whether it is the subject's first picture (K1), the brief to draw from, model, cost and payer (M7, T5), storage key, and the claim and attempts that keep it to one drawing (M3). Unique per story, kind, subject and version. |
 | `moderation_report` | A player's report on a scene (F6): story, scene, reporter, category, note, whether they blocked it, and the review (status, reviewer, time, notes). Unique per scene and reporter; indexed for the queue and for a story's blocked scenes. |

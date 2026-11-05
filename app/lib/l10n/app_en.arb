@@ -626,6 +626,36 @@
     "description": "One quiet line under the ending after a character took their own life (N6)."
   },
   "endingCloseFailed": "The story couldn't be closed. Try again.",
+  "endingBodyRewind": "This story takes no more turns, but you can rewind {count, plural, =1{one scene} other{up to {count} scenes}} and play it differently. Or carry it on as someone else in its world, start again from the same premise, or close it.",
+  "@endingBodyRewind": {
+    "description": "Under a death the player can rewind (C8).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "endingRewind": "Rewind",
+  "rewindTitle": "Rewind the story",
+  "rewindBody": "The world goes back to how it was then, and nobody in the story remembers. The scenes after it are gone. Doing exactly the same again goes the same way.",
+  "rewindScenes": "{count, plural, =1{Back one scene} other{Back {count} scenes}}",
+  "@rewindScenes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindBefore": "Before “{action}”",
+  "@rewindBefore": {
+    "description": "Under a rewind choice: the player's action it takes back first (C8).",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindFailed": "The story couldn't be rewound. Try again.",
   "endingCarryOn": "Carry on as someone else",
   "successorTitle": "Someone else",
   "@successorTitle": {

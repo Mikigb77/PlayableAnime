@@ -77,6 +77,22 @@ class _Turns extends StoryRepository {
       ),
     );
   }
+
+  /// Each rewind asked for, as (expected version, scenes) (C8).
+  final rewinds = <(int, int)>[];
+
+  @override
+  Future<Story> rewind(String id, {required int expectedVersion, required int scenes}) async {
+    rewinds.add((expectedVersion, scenes));
+    // Only the opening is left after the rewind these tests ask for.
+    return Story(
+      id: story.id,
+      title: story.title,
+      premise: story.premise,
+      version: expectedVersion + 1,
+      scenes: story.scenes,
+    );
+  }
 }
 
 const _death = {
@@ -262,6 +278,73 @@ void main() {
     expect(turns.closes, 1);
     expect(find.text(l10n.endingClosedTitle), findsOneWidget);
     expect(find.byKey(const ValueKey('ending.close')), findsNothing);
+  });
+
+  testWidgets('a death by others offers a rewind of as many scenes as it reaches', (tester) async {
+    await open(tester);
+    await send(tester, 'I climb');
+    turns.pending!.complete(
+      Stream.fromIterable([
+        const TurnStarted(2),
+        const NarrationDelta('You climb.'),
+        const SceneCompleted(
+          scene: {'turn': 2, 'narration': 'You climb.', 'player_action': 'I climb'},
+          version: 2,
+          clock: {},
+        ),
+      ]),
+    );
+    await settle(tester);
+    await send(tester, 'I challenge the elder');
+    final cutDown = <String, Object?>{..._death, 'self_inflicted': false, 'turn': 3, 'rewind': 2};
+    turns.pending!.complete(
+      Stream.fromIterable([
+        const TurnStarted(3),
+        const NarrationDelta('The blow comes.'),
+        SceneCompleted(
+          scene: const {
+            'turn': 3,
+            'narration': 'The blow comes.',
+            'kind': 'end',
+            'player_action': 'I challenge the elder',
+            'choices': <Object>[],
+          },
+          version: 3,
+          clock: const {},
+          ending: cutDown,
+        ),
+      ]),
+    );
+    await settle(tester);
+
+    final l10n = await english();
+    expect(find.text(l10n.endingBodyRewind(2)), findsOneWidget);
+    expect(find.text(l10n.endingHelpline), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('ending.rewind')));
+    await tester.tap(find.byKey(const ValueKey('ending.rewind')));
+    await settle(tester);
+
+    expect(find.text(l10n.rewindTitle), findsOneWidget);
+    expect(find.text(l10n.rewindBefore('I challenge the elder')), findsOneWidget);
+    expect(find.text(l10n.rewindBefore('I climb')), findsOneWidget);
+    expect(find.byKey(const ValueKey('rewind.3')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('rewind.2')));
+    await settle(tester);
+
+    expect(turns.rewinds, [(3, 2)]);
+    expect(find.byKey(const ValueKey('ending.title')), findsNothing);
+    expect(find.byType(Composer), findsOneWidget);
+    expect(find.text('You climb.'), findsNothing);
+  });
+
+  testWidgets('a death the player chose offers no rewind', (tester) async {
+    await open(tester);
+    await send(tester, 'I stab myself');
+    turns.pending!.complete(_ends(2, 'Your hand shakes, then it does not.', _death));
+    await settle(tester);
+
+    expect(find.byKey(const ValueKey('ending.title')), findsOneWidget);
+    expect(find.byKey(const ValueKey('ending.rewind')), findsNothing);
   });
 
   testWidgets('/end asks first, then tells the epilogue and ends the story', (tester) async {

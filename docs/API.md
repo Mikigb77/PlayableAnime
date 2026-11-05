@@ -153,10 +153,14 @@ costs nothing. The turn endpoint and pictures run these checks, and drafting doe
 
 ```text
 ExportStory  {id, title, premise, genre, rating, settings, turn, version, created_at, updated_at,
-              scenes: [ExportScene]}                       # every scene, in turn order
+              scenes: [ExportScene]}                       # every scene, in turn order; one a
+                                                           # rewind took back comes before the
+                                                           # scene played anew in its turn (C8)
 ExportScene  {turn, kind, player_action?, input_mode?, narration, choices, details, event?,
               time: {world_start_s, world_end_s, label, duration_label, personal_label?},
-              image?: {kind, status, url?}, created_at}
+              image?: {kind, status, url?},
+              rewound: bool,                               # a rewind took it back (C8)
+              created_at}
 ```
 
 ## Dictation (V1, V2, V5, V6)
@@ -304,6 +308,7 @@ makes one from an example world.
 | POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
 | POST | `/v1/stories/{id}/successor?heir_id=` | | `Successor` (N6): draws a random person of the world to carry the story on, by its population odds, or with `heir_id` (an `Heir.id` from the story's `heirs`) takes that heir, as they will be once the world has run on to the day they can act. Either replaces anyone drawn before. One drafting call, metered and charged like a draft (K2, so `402 out_of_credits` and the draft rate limits apply). Only a story at an ending the player hasn't closed; any other is a `validation_error` of type `not_ended` or `closed`. An `heir_id` that isn't one of the heirs is a `validation_error` of type `unknown_heir`, and an heir who doesn't live to that day one of type `heir_lost` (both with `source: "query"`): choose someone else. The version doesn't move. |
 | POST | `/v1/stories/{id}/carry-on` | `{expected_version}` | `Story` with the last 20 scenes (N6): the person drawn becomes the player character, the ending is lifted, `opening_due` is true and the version moves on. For an heir the world first runs on to the day they can act, so the clock jumps ahead. A `validation_error` of type `no_successor` when nobody was drawn, `not_ended` or `closed` as above, and `409 version_conflict` when the story moved on. |
+| POST | `/v1/stories/{id}/rewind` | `{expected_version, scenes}` | `Story` with the last 20 scenes (C8, N6): takes the story back `scenes` scenes (1 to 5) from a death, to the world exactly as it was when the scene it goes back to ended. `scenes: 1` goes back to just before the scene the death came in. The later scenes are gone from the story (and from `/scenes`), the ending and anyone drawn to carry it on are lifted, `turn` is the scene it went back to, and the version moves on. Nobody in the story remembers, and nothing is refunded. At most `Ending.rewind` scenes; more is a `validation_error` of type `too_far` on `scenes`. `not_ended` or `closed` as for `/successor`, and `409 version_conflict` when the story moved on. |
 | GET | `/v1/stories/{id}/memory` | | `MemoryView` (C6) |
 | GET | `/v1/stories/{id}/status` | | `StatusView` (`/status`, A8, G16, W10) |
 
@@ -323,7 +328,13 @@ Ending        {kind: "death"|"chosen",                    # the character died, 
                character_id, character,                  # who, and their name as the story last knew it
                self_inflicted: bool,                     # harm they aimed at themselves killed them (F1)
                turn?: int,                               # the scene it came in; null for an older story
-               closed: bool}                             # the player closed it (POST .../close)
+               closed: bool,                             # the player closed it (POST .../close)
+               rewind: int}                              # how many scenes back it can be rewound
+                                                         # (C8): up to 5 on Story, 1 on Balanced, 0 on
+                                                         # Brutal, by the difficulty the death was
+                                                         # played on; 0 for a death by the
+                                                         # character's own hand, a chosen ending or a
+                                                         # closed story
 Successor     {name, age?: int, place?: string, people?: string,
                station: "common"|"skilled"|"notable"|"noble"|"royal",
                one_in: int,                              # how rare: one in this many (1 for the commonest)

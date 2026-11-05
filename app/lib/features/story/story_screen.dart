@@ -20,6 +20,7 @@ import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
 import 'ending_card.dart';
 import 'play_controller.dart';
+import 'rewind_sheet.dart';
 import 'scene_details_sheet.dart';
 import 'scene_menu.dart';
 import 'scene_view.dart';
@@ -154,6 +155,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         _snack(describeError(l10n, error).message);
       case CloseFailed():
         _snack(l10n.endingCloseFailed);
+      case RewindFailed():
+        _snack(l10n.rewindFailed);
     }
   }
 
@@ -248,6 +251,17 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   void _endWithoutRefused() {
     _following = true;
     unawaited(_play.endWithoutRefused());
+  }
+
+  /// Rewinding a few scenes after a death (C8): how far back, then the feed from there.
+  Future<void> _rewind(int most) async {
+    final scenes = _play.story?.scenes ?? const <Scene>[];
+    final count = await showRewindSheet(context, most: most, scenes: scenes);
+    if (count == null || !mounted) return;
+    if (await _play.rewind(count) && mounted) {
+      ref.invalidate(storiesProvider);
+      _following = true;
+    }
   }
 
   /// Carrying the story on as someone else (N6): the person drawn, to start as or draw again. Once
@@ -670,8 +684,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                 ContentColumn.reading(
                   child: EndingCard(
                     ending: ending,
-                    closing: _play.closing,
+                    closing: _play.closing || _play.rewinding,
                     onClose: () => unawaited(_play.close()),
+                    onRewind: () => unawaited(_rewind(ending.rewind)),
                     onCarryOn: () => unawaited(_carryOn()),
                     onStartAgain: (story.premise ?? '').trim().isEmpty ? null : _startAgain,
                   ),
