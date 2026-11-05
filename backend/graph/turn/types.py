@@ -287,6 +287,7 @@ class TurnState(TypedDict, total=False):
     played: PlayOut
     plan: DirectorPlan
     ending: Ending | None  # N6: the player character's story ends in this scene
+    left_out: tuple[str, ...]  # N6: what the world refused of an ending's note, ended without
     brief: Any  # graph.turn.context.NarrationBrief
     narration: Any  # graph.turn.outputs.NarratorOutput
     narration_mode: NarrationMode

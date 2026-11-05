@@ -59,8 +59,6 @@ class TurnInput {
   /// An end turn only: tell the epilogue without what the world refused of the note.
   final bool dropRefused;
 
-  bool get isEnd => kind == 'end';
-
   /// This end turn again, leaving out what the world refused.
   TurnInput withoutRefused() => TurnInput.end(action, inputMode: inputMode, dropRefused: true);
 

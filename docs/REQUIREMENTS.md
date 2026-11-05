@@ -1049,7 +1049,9 @@ The story never ends on its own (S4), and endless play stays the default, but th
 with `/end` and an optional note on how it ends. The world checks the note like any action: what it
 rules out or leaves to a long shot is handed back with its reasons, and nothing is saved or charged,
 so the player plays on to earn that ending or ends without those parts. Contested parts are rolled.
-What remains plays in an epilogue. Retiring in the fiction ("I hang up my sword") is an ordinary
+An outcome or someone else's reaction that the note claims ("and the sect names me emperor") is
+refused too, since the player never writes those (A6). What remains plays in an epilogue, and the
+narrator is told what was left out, never the note as written. Retiring in the fiction ("I hang up my sword") is an ordinary
 action, not an ending.
 
 A death or an epilogue is the story's ending, told on its last scene with nothing more to act on. A

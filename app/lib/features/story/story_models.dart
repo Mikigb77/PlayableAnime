@@ -499,15 +499,6 @@ class StoryEnding {
 
   bool get isDeath => kind == 'death';
 
-  StoryEnding closedNow() => StoryEnding(
-    kind: kind,
-    characterId: characterId,
-    character: character,
-    selfInflicted: selfInflicted,
-    turn: turn,
-    closed: true,
-  );
-
   @override
   bool operator ==(Object other) =>
       other is StoryEnding &&

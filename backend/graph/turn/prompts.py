@@ -216,7 +216,7 @@ ENDING: the player character dies in this scene, as OUTCOME settled (N6). It is 
 Play it up to the end of their life as CONTENT allows, then close on what their death leaves \
 behind around them: who sees it, what stays unfinished. No hook, no question, nothing left for \
 them to act on: the story ends here for them. When ENDING has a wish, it is how the player hoped \
-the story would end, and only what OUTCOME settled of it happened.\
+the story would end, and only what OUTCOME settled of it happened; its left_out never happens.\
 """
 
 EPILOGUE_TASK = """\
@@ -224,7 +224,8 @@ ENDING: the player has chosen to end the story here (N6), and this scene is its 
 what OUTCOME settled of their wish, if ENDING has one, then tell where this leaves the player \
 character and the people and threads around them. You may look ahead in a few lines at most, \
 framed as what is to come, without deciding the fate of anyone the world hasn't settled. The wish \
-is a hope: only what OUTCOME settled happened, so never grant what it left out. Close the story \
+is a hope: only what OUTCOME settled happened, so never grant what it left out. ENDING's \
+left_out is what the player asked for and the world refused: none of it happens. Close the story \
 on a last image: no hook, no question, nothing to act on.\
 """
 

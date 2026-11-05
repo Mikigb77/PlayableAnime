@@ -284,13 +284,15 @@ def narration_brief(
     premise: str = "",
     ending: Ending | None = None,
     wish: str | None = None,
+    left_out: Sequence[str] = (),
 ) -> NarrationBrief:
     """B5 step 4: the narrator's prompt.
 
     `before` is the state the turn started from, so the scene picks up where the last one ended
     (R3). `after` is the state once the steps played out, with the time that passed and every
     consequence the engine recorded. `ending` is set when this scene ends the player character's
-    story (N6), with `wish`, the player's note on how, for an ending they chose.
+    story (N6), with `wish`, the player's note on how, for an ending they chose, or `left_out`,
+    the parts of it the world refused when the player ended without them.
     """
     settings = ctx.settings
     tone = before.bible.tone or "the genre's own voice"
@@ -382,6 +384,8 @@ def narration_brief(
         told_ending: dict[str, Any] = {"kind": ending.kind}
         if wish:
             told_ending["wish"] = wish
+        if left_out:
+            told_ending["left_out"] = list(left_out)
         sections.append(("ENDING", told_ending))
         task = prompts.DEATH_TASK if ending.kind == "death" else prompts.EPILOGUE_TASK
         sections.append(("TASK", task))

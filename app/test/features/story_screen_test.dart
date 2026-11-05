@@ -63,7 +63,17 @@ class _Turns extends StoryRepository {
   @override
   Future<Story> close(String id) async {
     closes++;
-    return story.copyWith(ending: ending!.closedNow());
+    final e = ending!;
+    return story.copyWith(
+      ending: StoryEnding(
+        kind: e.kind,
+        characterId: e.characterId,
+        character: e.character,
+        selfInflicted: e.selfInflicted,
+        turn: e.turn,
+        closed: true,
+      ),
+    );
   }
 }
 

@@ -4,9 +4,18 @@ with only what the world allows of the player's note on how it should end."""
 import pytest
 
 from engine.context import Rating, TurnContext
-from engine.contracts import ActionKind, Aim, Intent, IntentStep
+from engine.contracts import (
+    ActionKind,
+    Aim,
+    Intent,
+    IntentStep,
+    OutcomeClass,
+    Resolution,
+    StepResolution,
+)
 from engine.samples import grounded_world
 from engine.state.cast import CharacterStatus
+from engine.state.records import StepResult
 from graph.llm import Node, Reply
 from graph.turn import (
     Ending,
@@ -139,23 +148,93 @@ def test_ending_without_what_was_refused_keeps_the_rest(fake, make_client):
     assert [s.text for s in result.resolution.steps] == ["walk out of the bar for the last time"]
     assert [s.text for s in result.intent.steps] == ["walk out of the bar for the last time"]
     assert result.ending == Ending(kind="chosen", character_id="luca")
+    # The narrator gets what was kept and what was left out, never the note as written.
+    prompt = told(fake)
+    assert "I become king" not in prompt
+    assert '"left_out":["become the king of Italy"]' in prompt
 
 
-def test_a_note_that_kills_you_is_a_death():
+def test_an_ending_note_never_claims_how_others_take_it(fake, make_client):
+    # A6: the player never writes outcomes or others' reactions, and an ending is no exception.
+    leave = step("walk out of the bar for the last time", "walk")
+    note = {"summary": "leave", "steps": [leave], "outcome_claims": ["the city mourns me"]}
+    fake.script(Node.INTERPRET, Reply(json=note))
+
+    with pytest.raises(EndingRefused) as refusal:
+        run(
+            collect(run_turn(turn_input(opened(), TurnKind.END, "I leave, mourned"), make_client()))
+        )
+
+    [refused] = refusal.value.refused
+    assert refused.text == "the city mourns me"
+    assert refused.outcome_class == "ruled_out" and refused.reason
+
+
+def test_a_note_with_no_steps_keeps_what_else_it_says(fake, make_client):
+    # A note read as a standing action is played, not dropped for having no steps.
+    fake.script(Node.INTERPRET, Reply(json={"summary": "watch", "standing": "observe"}))
+    fake.script(Node.NARRATOR, Reply(json=EPILOGUE))
+
+    result = play(make_client(), turn_input(opened(), TurnKind.END, "I watch the sea"))
+
+    assert result.intent is not None and result.intent.standing == "observe"
+    assert result.ending == Ending(kind="chosen", character_id="luca")
+
+
+def played(*steps: IntentStep) -> Resolution:
+    """Every step played, cleanly."""
+    return Resolution(
+        steps=[
+            StepResolution(
+                index=i,
+                text=s.text,
+                outcome_class=OutcomeClass.CERTAIN,
+                reason="as it stands",
+                result=StepResult.SUCCESS,
+                duration_s=s.proposed_duration_s,
+            )
+            for i, s in enumerate(steps)
+        ]
+    )
+
+
+def died():
     before = opened()
     after = before.model_copy(deep=True)
     after.characters["luca"].status = CharacterStatus.DEAD
-    poison = IntentStep(
-        text="drink the poison",
-        verb="drink",
+    return before, after
+
+
+POISON = IntentStep(
+    text="drink the poison",
+    verb="drink",
+    kind=ActionKind.INSTANT,
+    proposed_duration_s=5,
+    aim=Aim.KILL,
+    target_ids=["luca"],
+)
+
+
+def test_a_note_that_kills_you_is_a_death():
+    before, after = died()
+
+    ending = ending_of(before, after, Intent(steps=[POISON]), played(POISON), TurnKind.END)
+    assert ending == Ending(kind="death", character_id="luca", self_inflicted=True)
+
+
+def test_harming_yourself_before_dying_of_something_else_is_no_self_inflicted_death():
+    # A blood oath's cut, then a fall: the step that killed them aimed at no one.
+    before, after = died()
+    cut = POISON.model_copy(update={"text": "cut my palm for the oath", "aim": Aim.WOUND})
+    jump = IntentStep(
+        text="leap the gap between the roofs",
+        verb="leap",
         kind=ActionKind.INSTANT,
-        proposed_duration_s=5,
-        aim=Aim.KILL,
-        target_ids=["luca"],
+        proposed_duration_s=3,
     )
 
-    ending = ending_of(before, after, Intent(steps=[poison]), TurnKind.END)
-    assert ending == Ending(kind="death", character_id="luca", self_inflicted=True)
+    ending = ending_of(before, after, Intent(steps=[cut, jump]), played(cut, jump), TurnKind.ACTION)
+    assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
 
 
 def test_dying_of_something_else_is_no_self_inflicted_death():
@@ -171,10 +250,10 @@ def test_dying_of_something_else_is_no_self_inflicted_death():
         target_ids=["carmine"],
     )
 
-    ending = ending_of(before, after, Intent(steps=[throw]), TurnKind.ACTION)
+    ending = ending_of(before, after, Intent(steps=[throw]), played(throw), TurnKind.ACTION)
     assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
 
 
 def test_an_ordinary_turn_reaches_no_ending():
     state = opened()
-    assert ending_of(state, state, None, TurnKind.ACTION) is None
+    assert ending_of(state, state, None, Resolution(), TurnKind.ACTION) is None

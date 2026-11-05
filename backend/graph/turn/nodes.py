@@ -230,12 +230,14 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     intent = state.get("intent")
     rng = turn_rng(turn)
     issues: list[Issue] = []
+    left_out: tuple[str, ...] = ()
     if turn.kind is TurnKind.END and intent is not None:
         # N6: an ending keeps only what the world allows of the note.
         kept, refused = ending_mod.earned(world, intent, turn.ctx, turn_rng(turn))
         if refused and not turn.drop_refused:
             raise EndingRefused(refused)
         intent = kept
+        left_out = tuple(r.text for r in refused)
     if intent is None:
         played = PlayOut(state=world, resolution=Resolution())
     else:
@@ -249,7 +251,7 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     # The director decides, then its records go in before anything is narrated, so the plan's
     # new threads and leads are in the state the check and the narrator see (W16, N1, N2).
     plan = pipeline.direct(played.state, played.resolution, turn.ctx, rng, intent=intent)
-    ending = ending_mod.ending_of(turn.state, played.state, intent, turn.kind)
+    ending = ending_mod.ending_of(turn.state, played.state, intent, played.resolution, turn.kind)
     if ending is not None:
         # N6: the protagonist's last scene ends on them, with no new event, picture or
         # suggestion to act on.
@@ -265,6 +267,7 @@ async def resolve(state: TurnState) -> dict[str, Any]:
         "resolution": played.resolution,
         "plan": plan,
         "ending": ending,
+        "left_out": left_out,
         "world": played.state,
         "issues": _issues(state, issues),
     }
@@ -287,7 +290,10 @@ async def build_context(state: TurnState) -> dict[str, Any]:
         scenes=turn.scenes,
         premise=turn.premise,
         ending=state.get("ending"),
-        wish=turn.action if turn.kind is TurnKind.END else None,
+        # The player's own words on how it ends, unless the world refused some of them: then the
+        # narrator gets only what was kept, and what was left out, so it is never granted (N6).
+        wish=turn.action if turn.kind is TurnKind.END and not state.get("left_out") else None,
+        left_out=state.get("left_out", ()),
     )
     return {"brief": brief}
 

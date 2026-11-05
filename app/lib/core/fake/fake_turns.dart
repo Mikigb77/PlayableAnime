@@ -215,6 +215,15 @@ void _validate(String kind, JsonMap body, FakeStory story) {
       if (body['standing'] != 'wait' && body['standing'] != 'observe') {
         throw const FakeError.validation('Standing actions are wait and observe.');
       }
+    case 'end':
+      // N6: the note is optional, and typed or spoken when there is one.
+      final note = body['action'] as String?;
+      if (note != null && (note.trim().isEmpty || note.length > 2000)) {
+        throw const FakeError.validation('A note on the ending is 1 to 2000 characters.');
+      }
+      if (body['input_mode'] == 'choice') {
+        throw const FakeError.validation('An ending is typed or spoken.');
+      }
   }
 }
 
