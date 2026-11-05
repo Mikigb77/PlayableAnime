@@ -42,6 +42,7 @@ from langchain_google_genai.chat_models import (
     GoogleRateLimitError,
 )
 
+from graph.llm.cache import Made, PromptCache
 from graph.llm.types import (
     Chunk,
     Finish,
@@ -111,6 +112,9 @@ class GeminiBackend:
         self._make_model = make_model
         self._secret = secret
         self._loops: dict[asyncio.AbstractEventLoop, dict[str, ChatGoogleGenerativeAI]] = {}
+        # Explicit caches for prompts' stable starts (`graph.llm.cache`): on our Vertex AI
+        # account only, never with a player's key.
+        self.prompt_cache: PromptCache | None = None
 
     @classmethod
     def vertex(cls, *, project: str, location: str) -> GeminiBackend:
@@ -119,7 +123,9 @@ class GeminiBackend:
                 model=model, vertexai=True, project=project, location=location, max_retries=1
             )
 
-        return cls(provider="vertex", make_model=make_model)
+        backend = cls(provider="vertex", make_model=make_model)
+        backend.prompt_cache = PromptCache(backend.create_cache, backend.extend_cache)
+        return backend
 
     @classmethod
     def with_api_key(cls, api_key: str) -> GeminiBackend:
@@ -179,6 +185,26 @@ class GeminiBackend:
             model = self._model(request.model)
             prompt = with_schema_in_prompt(request) if schema_in_prompt else request.prompt
             kwargs = call_kwargs(request, schema_in_prompt=schema_in_prompt)
+            split = prompt.stable_split() if self.prompt_cache is not None else None
+            cache = self.prompt_cache.use(request.model, prompt.system, split[0]) if split else None
+            if cache is not None and split is not None:
+                streamed = False
+                try:
+                    # The cache holds the system text and the stable start; only the rest goes.
+                    rest = [HumanMessage(split[1])]
+                    async with aclosing(
+                        model.astream(rest, cached_content=cache, **kwargs)
+                    ) as messages:
+                        async for message in messages:
+                            streamed = True
+                            yield to_chunk(message)
+                    return
+                except Exception as error:
+                    refused = classify(error, byok=False)
+                    # A passing failure is the client's to retry; any other may be the cache's.
+                    if streamed or refused.kind == "transient":
+                        raise
+                    self._cache_refused(request, cache, refused)
             async with aclosing(model.astream(to_messages(prompt), **kwargs)) as messages:
                 async for message in messages:
                     yield to_chunk(message)
@@ -212,6 +238,58 @@ class GeminiBackend:
         except Exception as error:
             raise classify(error, byok=False) from error
         yield transcription_chunk(response)
+
+    def _cache_refused(self, request: Request, cache: str, failure: ProviderError) -> None:
+        """A call naming a cache was refused before it started, such as for a cache that
+        expired early: the cache is dropped, and the call goes again whole."""
+        if self.prompt_cache is not None:
+            self.prompt_cache.forget(cache)
+        logger.warning(
+            "Gemini refused a prompt cache; sending the whole prompt",
+            extra={
+                "llm": {
+                    "node": request.node.value,
+                    "model": request.model,
+                    "reason": "cache_refused",
+                    "detail": failure.detail,
+                }
+            },
+        )
+
+    async def create_cache(self, model: str, system: str, stable: str, ttl_s: int) -> Made:
+        """Makes an explicit cache of a system text and a prompt's stable start (Vertex AI)."""
+        try:
+            made = await self._model(model).async_client.caches.create(
+                model=model,
+                config=genai_types.CreateCachedContentConfig(
+                    system_instruction=system,
+                    contents=[genai_types.UserContent(parts=[genai_types.Part(text=stable)])],
+                    ttl=f"{ttl_s}s",
+                    display_name="lucid-prompt-start",
+                ),
+            )
+        except Exception as error:
+            raise classify(error, byok=False) from error
+        if not made.name:
+            raise ProviderError("invalid", "Vertex AI made a cache with no name")
+        tokens = made.usage_metadata.total_token_count if made.usage_metadata else None
+        return Made(name=made.name, ttl_s=ttl_s, tokens=tokens or 0)
+
+    async def extend_cache(self, model: str, name: str, ttl_s: int) -> float:
+        """Pushes a cache's expiry back to `ttl_s` from now."""
+        try:
+            await self._model(model).async_client.caches.update(
+                name=name, config=genai_types.UpdateCachedContentConfig(ttl=f"{ttl_s}s")
+            )
+        except Exception as error:
+            raise classify(error, byok=False) from error
+        return ttl_s
+
+    async def delete_cache(self, model: str, name: str) -> None:
+        try:
+            await self._model(model).async_client.caches.delete(name=name)
+        except Exception as error:
+            raise classify(error, byok=False) from error
 
     async def aclose(self) -> None:
         """Closes the client this loop uses. Clients of other loops are only dropped."""

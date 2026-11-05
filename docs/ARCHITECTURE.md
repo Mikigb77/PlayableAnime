@@ -573,12 +573,39 @@ environment, `backend/.env` and the repo-root `.env.local`:
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
 `graph/llm/pricing.py`. A model missing from the table is priced like the dearest known model, so
-the estimate never undercounts. Gemini caches prompts implicitly: when a prompt starts the way one
-it saw moments ago did (at least 4,096 tokens on the newer Flash models), it bills that start at
-its cached rate, a tenth of the input price for every model above (checked 2026-11-04). Each call
-records those tokens as `cached_tokens` and prices them at that rate, so the estimate follows the
-bill. A prompt gets the most from this when its unchanging parts come first. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
+the estimate never undercounts. Prompt tokens Gemini reads from a cache bill at its cached rate,
+a tenth of the input price for every model above (checked 2026-11-04). Each call records those
+tokens as `cached_tokens` and prices them at that rate, so the estimate follows the bill. Gemini 3.6, 3.7 and 3.8 Flash are cheaper than 3.5 Flash until the end of
 2026 ($0.75 / $3.75), but stay out of the defaults until T18's narration evals have run on them.
+
+**Prompt caches** (`graph/llm/cache.py`, T5, K2). Gemini's implicit caching, on by default, never
+hit for us: `cached_tokens` was 0 on every call on 2026-11-04 and 05, although each narrator prompt
+started with about 6K tokens that were the same on every turn of a story, and others report it
+hitting only on far longer prompts on Gemini 3.x. So the parts of a prompt that stay the same from
+turn to turn come first, and the backend keeps them in an explicit cache on Vertex AI:
+
+- `Prompt.stable_chars` marks how much of the prompt's one message stays the same. The narrator's
+  is STYLE, CONTENT and WORLD (the opening's PREMISE now comes after WORLD), and interpret's is its
+  WORLD. With the system text, that start is the cache.
+- The first call with a new start is sent whole, and the cache is made in the background, so no
+  player waits for it. Later calls send only the rest and name the cache, without the system text,
+  which the cache holds. The cache is made while the call that started it streams, so it is done
+  before the response ends (B8); if it isn't, the next call is simply sent whole.
+- A cache lives 15 minutes. A use that finds less than 10 minutes left extends it, in the
+  background, so it lives about 15 minutes past its story's last turn. Storage costs $1 per million
+  tokens an hour on the Flash models: about $0.0003 a turn for a 6K start read every 3 minutes,
+  against about $0.009 saved on each narrator call. Storage isn't in the per-turn estimate.
+- A start Vertex AI finds too small to cache is remembered for its model, and no start as small is
+  tried again; any other failure waits 15 minutes. A call naming a cache that Vertex AI refuses
+  (one that expired early, say) goes again whole at once, and the cache is dropped. Every call
+  works without a cache; a cache only makes it cheaper.
+- Only on our Vertex AI account: a call with a player's own key (S9) never makes or names one.
+  Caches live in the process's memory, so another instance makes its own, which costs only
+  storage. A cutaway's system text is rare, so it isn't cached.
+
+Each made cache logs `cache_made` with its size in tokens, and each failure `cache_too_small`,
+`cache_failed` or `cache_refused`; the deploy's model check makes one and says whether Gemini read
+from it ([DEPLOY.md](DEPLOY.md#checking-the-models)).
 
 **Providers.** `LLM_PROVIDER=vertex` uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
 with `vertexai=True` and Application Default Credentials (B11). `langchain-google-vertexai`'s
