@@ -36,6 +36,7 @@ void main() {
     '/library',
     '/create?premise=outer-disciple',
     '/account',
+    '/credits',
     '/privacy',
     '/story/story_ninth_peak',
   ]) {

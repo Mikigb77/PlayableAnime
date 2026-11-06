@@ -120,139 +120,151 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           child: ListView(
             padding: const EdgeInsets.only(bottom: Space.xxxl),
             children: [
+              ContentColumn(child: PageHeader(title: l10n.accountTitle)),
+              // Settings keep to the reading width under the header, so fields, switches and their
+              // lines aren't stretched across a wide screen.
               ContentColumn(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    PageHeader(title: l10n.accountTitle),
-                    if (user != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                        child: _ProfileCard(user: user, onEdit: () => _editName(user)),
-                      ),
-                      SectionLabel(l10n.accountCredits),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                        child: BalanceCard(
-                          balanceCents: user.balanceCents,
-                          unlimited: user.unlimited,
-                          onHistory: () => context.push(Routes.credits),
+                child: Align(
+                  alignment: AlignmentDirectional.topStart,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Layout.readingWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (user != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+                            child: _ProfileCard(user: user, onEdit: () => _editName(user)),
+                          ),
+                          SectionLabel(l10n.accountCredits),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+                            child: BalanceCard(
+                              balanceCents: user.balanceCents,
+                              unlimited: user.unlimited,
+                              onHistory: () => context.push(Routes.credits),
+                            ),
+                          ),
+                        ] else if (me.hasError)
+                          ErrorState(error: me.error!, onRetry: () => ref.invalidate(meProvider)),
+                        SectionLabel(l10n.accountOwnKey),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(l10n.accountOwnKeyBody, style: secondary),
+                              const SizedBox(height: Space.lg),
+                              const OwnKeyEditor(),
+                            ],
+                          ),
                         ),
-                      ),
-                    ] else if (me.hasError)
-                      ErrorState(error: me.error!, onRetry: () => ref.invalidate(meProvider)),
-                    SectionLabel(l10n.accountOwnKey),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(l10n.accountOwnKeyBody, style: secondary),
-                          const SizedBox(height: Space.lg),
-                          const OwnKeyEditor(),
+                        if (user != null) ...[
+                          SectionLabel(l10n.accountContent),
+                          _ContentPrefsSection(user: user, onChanged: _updatePrefs),
                         ],
-                      ),
-                    ),
-                    if (user != null) ...[
-                      SectionLabel(l10n.accountContent),
-                      _ContentPrefsSection(user: user, onChanged: _updatePrefs),
-                    ],
-                    SectionLabel(l10n.accountAppearance),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                      child: SegmentedButton<ThemeMode>(
-                        segments: [
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: Text(l10n.themeDark),
-                            icon: const Icon(Icons.dark_mode_outlined),
+                        SectionLabel(l10n.accountAppearance),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+                          child: SegmentedButton<ThemeMode>(
+                            segments: [
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                label: Text(l10n.themeDark),
+                                icon: const Icon(Icons.dark_mode_outlined),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                label: Text(l10n.themeLight),
+                                icon: const Icon(Icons.light_mode_outlined),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                label: Text(l10n.themeSystem),
+                                icon: const Icon(Icons.brightness_auto_outlined),
+                              ),
+                            ],
+                            selected: {mode},
+                            showSelectedIcon: false,
+                            onSelectionChanged: (s) =>
+                                ref.read(themeModeProvider.notifier).set(s.single),
                           ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: Text(l10n.themeLight),
-                            icon: const Icon(Icons.light_mode_outlined),
+                        ),
+                        SectionLabel(l10n.accountLanguage),
+                        const _LanguageSection(),
+                        SectionLabel(l10n.accountDictation),
+                        const _DictationSection(),
+                        SectionLabel(l10n.accountPrivacy),
+                        ListTile(
+                          leading: const Icon(Icons.policy_outlined),
+                          title: Text(l10n.accountPrivacyPolicy),
+                          subtitle: Text(l10n.accountPrivacyPolicyBody),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push(Routes.privacy),
+                        ),
+                        Builder(
+                          builder: (tile) => ListTile(
+                            key: const Key('account.export'),
+                            leading: const Icon(Icons.download_rounded),
+                            title: Text(l10n.accountExport),
+                            subtitle: Text(l10n.accountExportBody),
+                            trailing: _exporting
+                                ? const SizedBox.square(
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : null,
+                            onTap: _exporting ? null : () => _export(tile),
                           ),
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: Text(l10n.themeSystem),
-                            icon: const Icon(Icons.brightness_auto_outlined),
+                        ),
+                        Builder(
+                          builder: (tile) => ListTile(
+                            key: const Key('account.delete'),
+                            leading: Icon(
+                              Icons.delete_forever_outlined,
+                              color: theme.colorScheme.error,
+                            ),
+                            title: Text(
+                              l10n.accountDelete,
+                              style: TextStyle(color: theme.colorScheme.error),
+                            ),
+                            subtitle: Text(l10n.accountDeleteBody),
+                            onTap: () => _delete(tile),
+                          ),
+                        ),
+                        if (ref.watch(appUpdateProvider).phase != UpdatePhase.off) ...[
+                          SectionLabel(l10n.accountApp),
+                          const AppUpdateTile(),
+                        ],
+                        if (showsDeveloper(user)) ...[
+                          SectionLabel(l10n.accountDeveloper),
+                          ListTile(
+                            leading: const Icon(Icons.dns_outlined),
+                            title: Text(l10n.accountApi),
+                            subtitle: Text(
+                              AppConfig.isFake ? l10n.accountApiFake : AppConfig.apiBaseUrl,
+                            ),
                           ),
                         ],
-                        selected: {mode},
-                        showSelectedIcon: false,
-                        onSelectionChanged: (s) =>
-                            ref.read(themeModeProvider.notifier).set(s.single),
-                      ),
-                    ),
-                    SectionLabel(l10n.accountLanguage),
-                    const _LanguageSection(),
-                    SectionLabel(l10n.accountDictation),
-                    const _DictationSection(),
-                    SectionLabel(l10n.accountPrivacy),
-                    ListTile(
-                      leading: const Icon(Icons.policy_outlined),
-                      title: Text(l10n.accountPrivacyPolicy),
-                      subtitle: Text(l10n.accountPrivacyPolicyBody),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => context.push(Routes.privacy),
-                    ),
-                    Builder(
-                      builder: (tile) => ListTile(
-                        key: const Key('account.export'),
-                        leading: const Icon(Icons.download_rounded),
-                        title: Text(l10n.accountExport),
-                        subtitle: Text(l10n.accountExportBody),
-                        trailing: _exporting
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : null,
-                        onTap: _exporting ? null : () => _export(tile),
-                      ),
-                    ),
-                    Builder(
-                      builder: (tile) => ListTile(
-                        key: const Key('account.delete'),
-                        leading: Icon(
-                          Icons.delete_forever_outlined,
-                          color: theme.colorScheme.error,
+                        if (AppConfig.showGallery)
+                          ListTile(
+                            leading: const Icon(Icons.palette_outlined),
+                            title: Text(l10n.accountGallery),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () => context.push(Routes.gallery),
+                          ),
+                        const SizedBox(height: Space.xl),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+                          child: OutlinedButton.icon(
+                            onPressed: () => ref.read(authRepositoryProvider).signOut(),
+                            icon: const Icon(Icons.logout_rounded),
+                            label: Text(l10n.accountSignOut),
+                          ),
                         ),
-                        title: Text(
-                          l10n.accountDelete,
-                          style: TextStyle(color: theme.colorScheme.error),
-                        ),
-                        subtitle: Text(l10n.accountDeleteBody),
-                        onTap: () => _delete(tile),
-                      ),
+                      ],
                     ),
-                    if (ref.watch(appUpdateProvider).phase != UpdatePhase.off) ...[
-                      SectionLabel(l10n.accountApp),
-                      const AppUpdateTile(),
-                    ],
-                    SectionLabel(l10n.accountDeveloper),
-                    ListTile(
-                      leading: const Icon(Icons.dns_outlined),
-                      title: Text(l10n.accountApi),
-                      subtitle: Text(AppConfig.isFake ? l10n.accountApiFake : AppConfig.apiBaseUrl),
-                    ),
-                    if (AppConfig.showGallery)
-                      ListTile(
-                        leading: const Icon(Icons.palette_outlined),
-                        title: Text(l10n.accountGallery),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => context.push(Routes.gallery),
-                      ),
-                    const SizedBox(height: Space.xl),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                      child: OutlinedButton.icon(
-                        onPressed: () => ref.read(authRepositoryProvider).signOut(),
-                        icon: const Icon(Icons.logout_rounded),
-                        label: Text(l10n.accountSignOut),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -262,6 +274,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 }
+
+/// Whether Account shows its Developer section, with the server the app talks to: in development
+/// builds ([devBuild]) and for the owner, never for players.
+@visibleForTesting
+bool showsDeveloper(AccountUser? user, {bool devBuild = AppConfig.showGallery}) =>
+    devBuild || (user?.isOwner ?? false);
 
 /// The player's name and email, their rating limit (F8) and, for the owner, the role (K7).
 class _ProfileCard extends StatelessWidget {
