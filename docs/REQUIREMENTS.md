@@ -1190,7 +1190,7 @@ These are the parts of the product the player sees, most of them already listed 
 | S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. | P1 |
 | S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. See the images section (M1 to M8). | P1 |
-| S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
+| S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. Discover offers the latest story the player can still play on at its top, one tap from where they left off. | P0 |
 | S9 | Bring your own key (Gemini now, more providers later) alongside paid credits for everyone else. | P0 / P1 |
 | S10 | Spanish and English. | P1 |
 | S11 | Sharing, remixing and creator tools. | P2 |
