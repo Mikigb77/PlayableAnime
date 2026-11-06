@@ -171,7 +171,8 @@ class Draft {
   final String? premiseId;
   final Rating rating;
 
-  /// The language the draft is written in and its story starts in, `en` or `es` (S10).
+  /// The language the draft is written in and its story starts and stays in, `en`, `es` or `ca`
+  /// (S10).
   final String language;
   final String title;
   final String genre;

@@ -21,6 +21,7 @@ class SceneCard extends StatelessWidget {
     this.picture,
     this.portraits,
     this.onDetails,
+    this.listen,
     this.onMore,
     this.ornament = true,
     this.gutter = Space.gutter,
@@ -42,6 +43,9 @@ class SceneCard extends StatelessWidget {
   /// Opens the scene details (steps, classes, rolls and reasons, A8).
   final VoidCallback? onDetails;
 
+  /// Reads the scene aloud (V8): the play screen's listen button, beside the menu.
+  final Widget? listen;
+
   /// Opens the scene menu (report and block, F6; illustrate, M2).
   final VoidCallback? onMore;
 
@@ -62,7 +66,7 @@ class SceneCard extends StatelessWidget {
     final colors = context.lucid;
     final pad = EdgeInsets.symmetric(horizontal: gutter);
     final hasMeta = time != null || event != null;
-    final hasFooter = portraits != null || onDetails != null || onMore != null;
+    final hasFooter = portraits != null || onDetails != null || listen != null || onMore != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,6 +120,7 @@ class SceneCard extends StatelessWidget {
                           ),
                   ),
                 ),
+                ?listen,
                 if (onMore != null)
                   IconButton(
                     tooltip: l10n.sceneMore,

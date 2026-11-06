@@ -1326,10 +1326,12 @@ object, and the raw world state as memory.
   screen (`/welcome?to=…`) and opens after sign-in.
 - **Fake API** (`--dart-define=API_MODE=fake`): an `http.Client` inside the app that speaks API.md,
   with one file per area, so the app runs and is tested end to end without a server.
-- **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb`, generated at
-  `flutter pub get` (S10). A story's own language is `StorySettings.language`, separate from the
-  app's: `backend/graph/language.py` puts it in the prompts of every model that writes what the
-  player reads.
+- **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb` and their
+  Catalan in `app_ca.arb`, generated at `flutter pub get` (S10). A story's own language is
+  `StorySettings.language`, separate from the app's: a new story takes the app's when it is set up
+  and keeps it for good. `backend/graph/language.py` puts it in the prompts of every model that
+  writes what the player reads, and `engine.labels`, `engine.visibility` and
+  `graph/drafting/view.py` hold the fixed words the server writes in it.
 
 ## Bring your own key
 
@@ -1486,8 +1488,8 @@ Channels or a small ASGI WebSocket route, and a single action rarely runs long e
 **This device: the phone's own recognizer.** The app uses
 [`speech_to_text`](https://pub.dev/packages/speech_to_text) (7.5.0, September 2026, for Android,
 iOS, macOS and web) over the platform recognizers. Audio never reaches our backend: the app puts
-the transcript in the box as the player speaks. It listens for the story's language (`en-US` or
-`es-ES`, V4, S10), not the phone's, so English spoken to a phone set to Spanish is heard as
+the transcript in the box as the player speaks. It listens for the story's language (`en-US`,
+`es-ES` or `ca-ES`, V4, S10), not the phone's, so English spoken to a phone set to Spanish is heard as
 English.
 
 - **iOS:** `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are in
@@ -1503,6 +1505,67 @@ English.
 
 **Turn API.** The turn request gains an `input_mode` field, one of `typed`, `voice`, `voice_edited`
 or `choice` (V7).
+
+## Reading aloud
+
+Requirements: V8 to V10 in [REQUIREMENTS.md](REQUIREMENTS.md#reading-aloud).
+
+**Choosing the voice.** Miki wanted a narrator that sounds like the read-aloud voices of chat
+assistants, without big charges per use. The options compared on 2026-11-06:
+
+| Voice | Sounds | Cost per minute of speech | Notes |
+| --- | --- | --- | --- |
+| The device's own text to speech (`flutter_tts`) | Flat to fair, by phone | Free | Works offline; the voice depends on the phone and its downloaded languages |
+| Gemini 3.8 Flash-Lite TTS on Vertex AI | Natural, directable like a narrator | About 1.8¢ from 2027-01-01, about 0.9¢ until then | Runs on the account the game already uses, with no new API to enable |
+| Gemini 3.8 Flash TTS on Vertex AI | A little richer | About 2.7¢ | Same call, `VOICE_MODEL` |
+| Cloud Text-to-Speech, Chirp 3 HD voices | Natural, not directable | About 2.7¢ (at $30 per million characters) | Another API to enable and bill |
+
+The studio voice is Flash-Lite TTS (Miki's choice, with the device's voice as the option). It
+detects the language from the text (English and Spanish among its main languages, and Catalan,
+`ca-ES`, in preview in Google's list on 2026-11-06), takes a style direction before the text, and
+costs $1 a million tokens of text in and $12 a million tokens of audio out, at 25 tokens a second
+of speech. Until the end of 2026 Google gives half the audio back as credits;
+`graph/llm/pricing.py` records the 2027 prices so estimates never undercount.
+
+**The backend.** `speech/reading.py` turns a scene's narration into what the voice reads: emphasis
+marks dropped, whitespace collapsed, and parts. The first part is a paragraph or its first
+sentences (up to 240 characters, about 15 seconds of speech), so playback starts quickly, and the
+rest are up to 700 characters (about 45 seconds) of whole paragraphs, split between sentences and
+then words only when a paragraph is too long. The split depends only on the text, so a part's audio
+can be kept. `POST /v1/stories/{id}/scenes/{turn}/audio?part=&voice=` (`speech/reading_api.py`,
+[API.md](API.md#reading-aloud-v8-to-v10)) claims the part's `SceneAudio` row (unique per scene,
+voice and part; a row left `pending` for five minutes by a request that died is taken over), meters
+it (`meter.VOICE`: 3 cents held, 30 parts a minute, 1,000 a day on our key), and calls the model
+layer's `ModelClient.read_aloud` on the `voice` node with the directions (`READING_STYLE`, which
+names no language) and the part. `GeminiBackend` sends it to `generate_content` with
+`response_modalities=["AUDIO"]` and the chosen prebuilt voice, refuses a player's own key (the
+studio voice always runs on our account), and returns Gemini's 24 kHz 16-bit PCM. `speech/audio.py`
+encodes it as 48 kbps mono MP3 with `lameenc` (LAME, about 350 KB a minute, playable on Android,
+iOS and every browser), and the file goes to the pictures' private bucket under
+`stories/{story_id}/voice/`, named by the request's claim, and served by the same signed URLs. The
+part is marked ready and charged in one transaction, with the real cost plus the margin, as a
+`voice` ledger entry: the first request to finish a part wins, and a later one (whose claim ran
+out) deletes its own file and charges nothing. A refusal marks the part `blocked` for good, at no
+charge, and a failure (the model twice, audio that can't be encoded, storage or the charge)
+deletes the row and the file, so the next request tries again. Safety settings are left off, as for dictation: the player has
+already read the scene under the story's rating (F5). A `post_delete` hook removes the file when
+its row goes with its story or account. The node has a 40-second deadline and one retry, and the
+deploy's `check_models` reads a sentence, transcribes the MP3 back with the speech model, and
+fails if it heard the directions.
+
+**The app.** `app/lib/features/narration/` has one app-wide `Narrator` (a `ChangeNotifier` behind
+`narratorProvider`), so one scene is read at a time. Its studio voice asks the API for part 0,
+plays it with [`just_audio`](https://pub.dev/packages/just_audio) (ExoPlayer, AVPlayer, or an audio
+element on the web), and asks for the next part about 20 seconds before the one playing ends (at
+once after a short part), so a part is rarely read and charged for a player who stopped, asking
+again after a second while a part is `pending`. The device's voice uses [`flutter_tts`](https://pub.dev/packages/flutter_tts),
+with the story's language (`en-US`, `es-ES`, `ca-ES`), the device's highest-quality voice for it,
+and the text in paragraphs (Android's engines take at most 4,000 characters at once). Every part
+answer carries its text: a `blocked` part is read in the device's voice, and when the studio voice
+fails (no credits, a limit, the network) the device's voice reads the rest of the scene from the
+part that failed, found in the app's own copy of the spoken text, and the play screen says why. The
+voice settings (`narrationSettingsProvider`) are kept in shared preferences. Android 11 and later
+need the `TTS_SERVICE` intent in the manifest's `<queries>` to find the phone's engine.
 
 ## Images
 

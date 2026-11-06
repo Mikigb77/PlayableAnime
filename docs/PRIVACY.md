@@ -7,9 +7,9 @@
 > The app shows this policy from "Who we are" on, from a copy in `app/assets/legal/privacy_en.md`.
 > An app test fails when the two differ, so after a change run
 > `awk '/^## Who we are/{p=1} p' docs/PRIVACY.md > app/assets/legal/privacy_en.md`.
-> The app also ships the policy in Spanish, `app/assets/legal/privacy_es.md` (S10), for players
-> whose app is in Spanish. Change it in the same PR: a test fails when its sections, tables and
-> lists stop matching the English ones.
+> The app also ships the policy in Spanish, `app/assets/legal/privacy_es.md`, and in Catalan,
+> `app/assets/legal/privacy_ca.md` (S10), for players whose app is in those languages. Change them in
+> the same PR: a test fails when their sections, tables and lists stop matching the English ones.
 >
 > **Open questions for Miki**
 >
@@ -21,7 +21,8 @@
 > 3. **Where Gemini runs.** Turns call Vertex AI on the `global` endpoint, which may process
 >    prompts outside the EU. An EU regional endpoint (for example `europe-west1`) keeps them in the
 >    EU, if the models we use are offered there. The policy must name whichever we choose. Online
-   dictation's model, Gemini 3.5 Transcribe, is offered only on the `global` endpoint today.
+   dictation's model, Gemini 3.5 Transcribe, is offered only on the `global` endpoint today, and so
+   is the studio voice's, Gemini 3.8 Flash-Lite TTS.
 > 4. **Backup window.** Neon's point-in-time restore keeps deleted data in its history for the
 >    plan's restore window. Fill in the real number of days.
 > 5. **Log retention.** Cloud Logging's default bucket keeps logs 30 days. Confirm, or set a
@@ -40,7 +41,8 @@ write to [privacy contact email]. We answer within one month.
 | **Story settings and content preferences:** gore level, romance and dark themes on or off | To shape the stories you get | Contract |
 | **Your stories:** the premise, the actions you type or dictate, the choices you pick, and what the narrator writes back | This is the game: each turn sends the story so far to the AI model to write what happens next | Contract |
 | **Pictures** made for your stories | Shown in your stories, made at key moments | Contract |
-| **Credits:** your balance and what each turn, picture or dictation cost | To charge fairly and show you your spending | Contract |
+| **Scenes read aloud:** the audio the studio voice made of your scenes | So a scene you hear again plays at once and costs nothing | Contract |
+| **Credits:** your balance and what each turn, picture, dictation or scene read aloud cost | To charge fairly and show you your spending | Contract |
 | **Signed-in devices:** when each one signed in and was last used | To keep you signed in and let you sign a device out | Contract |
 | **Technical logs:** request ids, your account id, the story id, errors, timings, costs per turn, and when a scene was blocked by our safety rules and under which category (never the story's text) | To keep the service running, fix bugs and control costs | Legitimate interest |
 | **Reports:** the scene you reported, the reason you picked, any note you wrote, whether you blocked the scene, and what our staff decided | To review scenes that may break our content rules, fix the narrator, and keep a scene you blocked hidden | Legitimate interest |
@@ -68,12 +70,23 @@ The text is part of your story like anything you type. The app asks for micropho
 first time you tap the mic, the mic is on only while it shows it is listening, and typing always
 works.
 
+When you press play on a scene, it is read aloud. In Account, under Reading aloud, you choose the
+voice (V9):
+
+- **Studio voice (the default).** Our server sends the scene's text to Gemini on Google Cloud's
+  Vertex AI, which reads it aloud, and keeps the audio with your story, so hearing the scene again
+  is free. Google doesn't use the text to train its models. The audio is deleted with the story or
+  your account.
+- **This device.** Your device's own text to speech reads the scene, and nothing reaches our
+  servers. Some engines, such as Google's on Android, may use online voices for a language the
+  phone hasn't downloaded.
+
 ## Who processes your data for us
 
 | Service | What it does | Where |
 | --- | --- | --- |
-| Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures and logs | EU: Frankfurt |
-| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures and writes down online dictation. Google doesn't use this data to train its models. The part of a story's prompts that stays the same from turn to turn (its style, content settings and world) is kept in a Vertex AI cache until 15 minutes after your last turn, so it costs less | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
+| Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures, the audio of scenes read aloud, and logs | EU: Frankfurt |
+| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures, writes down online dictation and reads scenes aloud in the studio voice. Google doesn't use this data to train its models. The part of a story's prompts that stays the same from turn to turn (its style, content settings and world) is kept in a Vertex AI cache until 15 minutes after your last turn, so it costs less | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
 | Neon | Hosts the database | Frankfurt (AWS eu-central-1) |
 | Google Sign-In | Confirms who you are when you sign in with Google | Google |
 
@@ -81,13 +94,13 @@ Where data leaves the EU, it does so under the European Commission's standard co
 or the EU-US Data Privacy Framework.
 
 **Your own API key.** If you add your own Gemini API key, your turns go to Google's Gemini API
-under your own account and Google's terms for it. Online dictation still runs on our account. On Gemini's free tier, Google may use what you
+under your own account and Google's terms for it. Online dictation and the studio voice still run on our account. On Gemini's free tier, Google may use what you
 send to improve its products. The app keeps the key on your device and sends it with each request;
 our server uses it for that request only and never stores or logs it.
 
 ## How long we keep it
 
-- **Your account, stories and pictures:** until you delete them.
+- **Your account, stories, pictures and the audio of scenes read aloud:** until you delete them.
 - **Reports:** until you delete the story or your account.
 - **Deleting your account** (Account, Delete account) removes your account, every story, every
   picture and every signed-in device from the live database and storage at once. Copies in the

@@ -136,17 +136,18 @@ lib/
                             installer (MainActivity.kt), the banner above the tabs, Account's line
   l10n/app_en.arb           Every string the player sees (S10)
   l10n/app_es.arb           The same strings in Spanish
+  l10n/app_ca.arb           The same strings in Catalan
 assets/
   fonts/                    Literata and Inter, SIL Open Font License
   fake/                     Placeholder pictures for the fake API
   legal/                    The privacy policy the app shows: privacy_en.md, a copy of docs/PRIVACY.md
-                            (T12), and privacy_es.md, its Spanish
+                            (T12), privacy_es.md, its Spanish, and privacy_ca.md, its Catalan
 ```
 
 ## Building on it
 
 - **Screens** use the components in `design/` and the strings in `l10n/app_en.arb`, each with its
-  Spanish in `l10n/app_es.arb`; see DESIGN.md.
+  Spanish in `l10n/app_es.arb` and its Catalan in `l10n/app_ca.arb`; see DESIGN.md.
 - **API calls** go through `apiClientProvider`. Errors arrive as `ApiException` with a typed `code`;
   `describeError` turns one into the player's words (T7). A turn is `StoryRepository.takeTurn`, a
   stream of `TurnEvent`s that always ends in `SceneCompleted` or `TurnFailed`.

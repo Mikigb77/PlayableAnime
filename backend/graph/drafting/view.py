@@ -18,6 +18,7 @@ from collections.abc import Iterable
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import Language
+from engine.labels import amount, number_label, of_name
 from engine.state import (
     Character,
     GiftStrength,
@@ -35,6 +36,7 @@ HIDDEN_MIN_WORDS = 5  # shorter hidden strings, such as a name, are too common t
 
 EN = Language.EN
 ES = Language.ES
+CA = Language.CA
 
 # S10: the words code adds to the lines, by language.
 _WORDS = {
@@ -53,6 +55,7 @@ _WORDS = {
         "goal": "Goal: ",
         "in": "in",
         "and": " and ",
+        "moments": "moments",
     },
     ES: {
         "beyond": " y más allá",
@@ -69,16 +72,45 @@ _WORDS = {
         "goal": "Objetivo: ",
         "in": "en",
         "and": " y ",
+        "moments": "un momento",
+    },
+    CA: {
+        "beyond": " i més enllà",
+        "peoples": "Pobles: ",
+        # "{of_rung}" is "de Recluta" or "d'Aprenent", as Catalan joins them.
+        "stage": "{stage} {of_rung}",
+        "gifts": "Dons",
+        "flaws": "Defectes",
+        "quirks": "Manies",
+        "wants": "Vol ",
+        "secret": " Ningú no ho sap.",
+        "no_powers": "Sense poders, perquè en aquest món no n'hi ha.",
+        "carries": "Porta ",
+        "owns": "Té ",
+        "goal": "Objectiu: ",
+        "in": "d'aquí a",
+        "and": " i ",
+        "moments": "un moment",
     },
 }
 # Nouns, as "Pericia: espada", so they fit a character of any gender.
-_SKILL_LEVELS_ES = {
-    SkillLevel.UNTRAINED: "Sin formación",
-    SkillLevel.NOVICE: "Nociones",
-    SkillLevel.FAIR: "Soltura",
-    SkillLevel.SKILLED: "Destreza",
-    SkillLevel.EXPERT: "Pericia",
-    SkillLevel.MASTER: "Maestría",
+_SKILL_LEVELS = {
+    ES: {
+        SkillLevel.UNTRAINED: "Sin formación",
+        SkillLevel.NOVICE: "Nociones",
+        SkillLevel.FAIR: "Soltura",
+        SkillLevel.SKILLED: "Destreza",
+        SkillLevel.EXPERT: "Pericia",
+        SkillLevel.MASTER: "Maestría",
+    },
+    CA: {
+        SkillLevel.UNTRAINED: "Sense formació",
+        SkillLevel.NOVICE: "Nocions",
+        SkillLevel.FAIR: "Soltesa",
+        SkillLevel.SKILLED: "Destresa",
+        SkillLevel.EXPERT: "Perícia",
+        SkillLevel.MASTER: "Mestratge",
+    },
 }
 
 
@@ -144,7 +176,9 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
         ladder = state.bible.ladder(position.ladder_id)
         if ladder is not None and position.rung < len(ladder.rungs):
             rung = ladder.rungs[position.rung].name
-            stage = words["stage"].format(stage=_capital(position.stage), rung=rung)
+            stage = words["stage"].format(
+                stage=_capital(position.stage), rung=rung, of_rung=of_name(rung, language)
+            )
             lines.append(_sentence(stage if position.stage else rung))
     if sheet.skills:
         by_level = sorted(sheet.skills, key=lambda s: -s.level.rank)
@@ -191,9 +225,7 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
     if owned:
         held.append(_sentence(words["owns"] + _join(owned, language)))
     if resources.money:
-        money = f"{resources.money:,}"
-        if language is ES:
-            money = money.replace(",", ".")
+        money = number_label(resources.money, language)
         held.append(_sentence(f"{money} {resources.currency}".strip()))
     if held:
         lines.append(" ".join(held))
@@ -292,33 +324,19 @@ def _clock_line(name: str, interval_s: int | None, steps: int, language: Languag
     return _sentence(f"{name.rstrip('.')}: {_WORDS[language]['in']} {when}")
 
 
-# S10: each unit in Spanish, as one (with its article) and as many.
-_UNITS_ES = {
-    "year": ("un año", "años"),
-    "day": ("un día", "días"),
-    "hour": ("una hora", "horas"),
-    "minute": ("un minuto", "minutos"),
-}
-
-
+# S10: each unit in Spanish and Catalan, as one (with its article) and as many.
 def duration(seconds: int, language: Language = EN) -> str:
     """A rough span in words: '10 days', 'an hour', 'a year' (in Spanish '10 días', 'una
-    hora')."""
+    hora'; in Catalan '10 dies', 'una hora')."""
     for size, unit in ((YEAR, "year"), (DAY, "day"), (HOUR, "hour"), (MINUTE, "minute")):
         if seconds >= size:
-            count = round(seconds / size)
-            if language is ES:
-                one, many = _UNITS_ES[unit]
-                return one if count == 1 else f"{count} {many}"
-            if count == 1:
-                return "an hour" if unit == "hour" else f"a {unit}"
-            return f"{count} {unit}s"
-    return "un momento" if language is ES else "moments"
+            return amount(round(seconds / size), unit, language)
+    return _WORDS[language]["moments"]
 
 
 def _skill_level(level: SkillLevel, language: Language) -> str:
-    if language is ES:
-        return _SKILL_LEVELS_ES.get(level, level.value.capitalize())
+    if language in _SKILL_LEVELS:
+        return _SKILL_LEVELS[language].get(level, level.value.capitalize())
     return level.value.capitalize()
 
 

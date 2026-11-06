@@ -356,7 +356,7 @@
   "@accountLanguage": {
     "description": "Account section that picks the app's language (S10)."
   },
-  "accountLanguageBody": "The app's buttons, menus and settings. What a story has already told stays in the language it was written in.",
+  "accountLanguageBody": "The app's buttons, menus and settings. Each story stays in the language it was started in.",
   "languageSystem": "System",
   "@languageSystem": {
     "description": "Language option: follow the device's language, English when it isn't one the app has."
@@ -369,12 +369,33 @@
   "@languageSpanish": {
     "description": "Language option. Always written in Spanish, whatever the app's language."
   },
+  "languageCatalan": "Català",
+  "@languageCatalan": {
+    "description": "Language option. Always written in Catalan, whatever the app's language."
+  },
   "accountDictation": "Dictation",
   "accountDictationBody": "How the mic turns what you say into text. You always see the words and can fix them before sending.",
   "dictationOnline": "Online",
   "dictationDevice": "This device",
   "dictationOnlineBody": "More accurate, and it knows your story's names. Your recording goes to our server and Google's Gemini to be written down, and we don't keep it. Each dictation costs a fraction of a cent in credits.",
   "dictationDeviceBody": "Your device's own speech recognition. Free, and the words appear as you speak, but it often mishears names and other languages' words.",
+  "accountReadingAloud": "Reading aloud",
+  "accountReadingAloudBody": "Press play under a scene to hear it read aloud.",
+  "narrationStudio": "Studio voice",
+  "narrationDevice": "This device",
+  "narrationStudioBody": "A natural voice that reads like an audiobook, from Google's Gemini. The scene's text goes to our server and Gemini to be read, and we keep the audio, so hearing a scene again is free. Each scene costs a few cents in credits the first time it's read.",
+  "narrationDeviceBody": "Your device's own voice. Free, and nothing leaves the device, but it sounds flatter.",
+  "narrationVoiceLabel": "Voice",
+  "narrationVoiceWarm": "Warm",
+  "@narrationVoiceWarm": {"description": "How the studio voice Sulafat sounds, shown beside its name."},
+  "narrationVoiceMature": "Mature",
+  "@narrationVoiceMature": {"description": "How the studio voice Gacrux sounds, shown beside its name."},
+  "narrationVoiceDeep": "Deep",
+  "@narrationVoiceDeep": {"description": "How the studio voice Charon sounds, shown beside its name."},
+  "narrationVoiceSmooth": "Smooth",
+  "@narrationVoiceSmooth": {"description": "How the studio voice Algieba sounds, shown beside its name."},
+  "narrationReadNew": "Read new scenes aloud",
+  "narrationReadNewBody": "Each new scene is read as soon as it's written.",
   "accountOwnKey": "Your own API key",
   "accountOwnKeyBody": "Use your own Gemini API key instead of credits. It stays on this device and is sent only with requests that call the storyteller.",
   "accountKeySaved": "Gemini key saved",
@@ -467,6 +488,7 @@
   "creditsKindDraft": "World draft",
   "creditsKindImage": "Picture",
   "creditsKindSpeech": "Dictation",
+  "creditsKindVoice": "Read aloud",
   "creditsKindTopup": "Top-up",
   "creditsKindAdjustment": "Adjustment",
   "creditsStoryTurn": "{story} · turn {turn}",
@@ -527,6 +549,18 @@
     "description": "Opens the steps, odds and reasons behind a scene."
   },
   "sceneMore": "Scene options",
+  "sceneListen": "Listen",
+  "@sceneListen": {"description": "Reads the scene aloud."},
+  "sceneListenStop": "Stop reading",
+  "narrationReading": "Reading aloud",
+  "narrationReadingDevice": "Reading aloud in this device's voice",
+  "narrationKeepReading": "Read new scenes",
+  "@narrationKeepReading": {"description": "A switch on the reading-aloud bar: read each new scene aloud as it lands."},
+  "narrationStop": "Stop",
+  "narrationOutOfCredits": "You're out of credits for the studio voice, so this device's voice is reading.",
+  "narrationQuota": "Today's studio voice reading is used up, so this device's voice is reading.",
+  "narrationUnavailable": "The studio voice isn't available right now, so this device's voice is reading.",
+  "narrationNoDeviceVoice": "This device has no voice to read aloud with.",
   "youDid": "You: {action}",
   "@youDid": {
     "description": "Screen-reader label for the player's action above a scene.",
@@ -888,11 +922,6 @@
   "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
   "settingsSuggestions": "Suggested choices",
   "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
-  "settingsLanguage": "Story language",
-  "@settingsLanguage": {
-    "description": "Story setting: the language new scenes are written in (S10)."
-  },
-  "settingsLanguageHelp": "New scenes are written in it. What the story has already told stays as it is.",
   "settingsNextScene": "Changes apply from the next scene.",
   "settingsSave": "Save",
   "settingsSaved": "Saved. It applies from the next scene.",

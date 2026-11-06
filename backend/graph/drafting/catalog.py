@@ -24,7 +24,11 @@ from engine.state import (
     Rung,
     WorldRule,
 )
+from graph.drafting.catalog_ca import CATALAN
 from graph.drafting.catalog_es import SPANISH, PremiseText
+
+# S10: each starter's words in the app's other languages.
+_TRANSLATIONS = {Language.ES: SPANISH, Language.CA: CATALAN}
 
 
 @dataclass(frozen=True)
@@ -69,9 +73,9 @@ class StarterPremise:
 
     def text(self, language: Language = Language.EN) -> PremiseText:
         """The words the player reads, in `language` (S10): English, or the starter's Spanish
-        from `graph.drafting.catalog_es`."""
-        if language is Language.ES and (spanish := SPANISH.get(self.id)):
-            return spanish
+        from `graph.drafting.catalog_es` or Catalan from `graph.drafting.catalog_ca`."""
+        if translated := _TRANSLATIONS.get(language, {}).get(self.id):
+            return translated
         return PremiseText(
             title=self.title, genre=self.genre, tagline=self.tagline, premise=self.premise
         )

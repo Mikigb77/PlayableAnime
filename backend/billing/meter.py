@@ -53,12 +53,14 @@ TURN = Use.TURN
 DRAFT = Use.DRAFT
 IMAGE = Use.IMAGE
 SPEECH = Use.SPEECH
+VOICE = Use.VOICE
 
 _ENTRY_KIND = {
     Use.TURN: EntryKind.TURN,
     Use.DRAFT: EntryKind.DRAFT,
     Use.IMAGE: EntryKind.IMAGE,
     Use.SPEECH: EntryKind.SPEECH,
+    Use.VOICE: EntryKind.VOICE,
 }
 
 _QUOTA_MESSAGES = {
@@ -66,6 +68,7 @@ _QUOTA_MESSAGES = {
     Use.DRAFT: "Today's drafts are used up.",
     Use.IMAGE: "Today's pictures are used up.",
     Use.SPEECH: "Today's dictation is used up. Typing always works.",
+    Use.VOICE: "Today's reading aloud is used up. The phone's own voice still works.",
 }
 
 

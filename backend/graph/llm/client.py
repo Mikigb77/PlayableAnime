@@ -1,11 +1,11 @@
 """The model client that graph nodes call: retries, typed errors, telemetry (B6, T5, T7).
 
-A node asks for a structured result, plain text, a streamed structured result, a picture or the
-words in a recording (V6). The
-client resolves the node's model and settings from config, applies the rating's safety settings
-(F5), runs the call on its backend with a deadline, retries a transient failure once (a 429 on our
-shared quota twice, after longer waits), and turns anything else into `LLMUnavailable`,
-`LLMBlocked` or `BadKey`. Every call, failed or not, leaves one `CallRecord` with its recorder.
+A node asks for a structured result, plain text, a streamed structured result, a picture, the
+words in a recording (V6) or a text read aloud (V9). The client resolves the node's model and
+settings from config, applies the rating's safety settings (F5), runs the call on its backend with
+a deadline, retries a transient failure once (a 429 on our shared quota twice, after longer
+waits), and turns anything else into `LLMUnavailable`, `LLMBlocked` or `BadKey`. Every call,
+failed or not, leaves one `CallRecord` with its recorder.
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ from graph.llm.types import (
     Prompt,
     ProviderError,
     Rating,
+    Reading,
     Request,
     Transcription,
     Usage,
@@ -89,6 +90,18 @@ class GeneratedImage:
 
     def __repr__(self) -> str:
         return f"GeneratedImage(mime_type={self.mime_type!r}, bytes={len(self.data)})"
+
+
+@dataclass(frozen=True, repr=False)
+class GeneratedAudio:
+    """Speech the voice model read (V9), as it sent it: for Gemini, raw 16-bit PCM with the rate
+    in `mime_type` (`audio/L16;codec=pcm;rate=24000`)."""
+
+    data: bytes
+    mime_type: str
+
+    def __repr__(self) -> str:
+        return f"GeneratedAudio(mime_type={self.mime_type!r}, bytes={len(self.data)})"
 
 
 class _BadOutput(Exception):
@@ -196,6 +209,26 @@ class ModelClient:
             ),
         )
 
+    async def read_aloud(
+        self,
+        node: Node,
+        text: str,
+        reading: Reading,
+        *,
+        options: CallOptions | None = None,
+    ) -> GeneratedAudio:
+        """`text` read aloud in `reading`'s voice (V9). Style directions go in the text itself,
+        before what is read, as Gemini's TTS models take them.
+
+        The rating's safety settings aren't sent, as for dictation: the text is narration the
+        player has already read, written under the story's rating (F5), and a filter here would
+        only stop them hearing it.
+        """
+        return cast(
+            GeneratedAudio,
+            await self._complete(node, Prompt.build("", text), reading=reading, options=options),
+        )
+
     def stream_structured[T: BaseModel](
         self,
         node: Node,
@@ -233,6 +266,7 @@ class ModelClient:
         image: ImageSpec | None = None,
         audio: AudioPart | None = None,
         transcription: Transcription | None = None,
+        reading: Reading | None = None,
         options: CallOptions | None = None,
     ) -> AsyncIterator[StreamEvent[Any]]:
         settings = self._config.node(node)
@@ -243,12 +277,13 @@ class ModelClient:
             prompt=prompt,
             options=opts,
             safety={}
-            if transcription is not None
+            if transcription is not None or reading is not None
             else safety_settings(self._rating, picture=image is not None, node=node),
             json_schema=_json_schema(schema) if schema is not None else None,
             image=image,
             audio=audio,
             transcription=transcription,
+            reading=reading,
         )
         trace = _Trace(request, self._backend.provider, self._byok, self._config.location)
         try:
@@ -258,12 +293,14 @@ class ModelClient:
                 streamed = False
                 parts: list[str] = []
                 images: list[ImagePart] = []
+                sound: list[AudioPart] = []
                 finish: Finish | None = None
                 try:
                     async with aclosing(self._attempt(request)) as chunks:
                         async for chunk in chunks:
                             trace.usage += chunk.usage
                             images.extend(chunk.images)
+                            sound.extend(chunk.audio)
                             finish = chunk.finish or finish
                             if not chunk.text:
                                 continue
@@ -272,7 +309,9 @@ class ModelClient:
                                 trace.saw_first_token()
                                 streamed = True
                                 yield TextDelta(delta)
-                    value = self._result(request, schema, "".join(parts), images, finish, streamed)
+                    value = self._result(
+                        request, schema, "".join(parts), images, sound, finish, streamed
+                    )
                 except (ProviderError, _BadOutput, TimeoutError) as failure:
                     reason = _reason(failure)
                     if isinstance(failure, ProviderError) and failure.kind != "transient":
@@ -349,6 +388,7 @@ class ModelClient:
         schema: type[BaseModel] | None,
         text: str,
         images: list[ImagePart],
+        sound: list[AudioPart],
         finish: Finish | None,
         streamed: bool,
     ) -> object:
@@ -366,6 +406,11 @@ class ModelClient:
             if not images:
                 raise _BadOutput("no_image")
             return GeneratedImage(images[0].data, images[0].mime_type)
+        if request.reading is not None:
+            # A streamed answer comes in pieces of one stream, all of the first piece's type.
+            if not any(part.data for part in sound):
+                raise _BadOutput("no_audio")
+            return GeneratedAudio(b"".join(part.data for part in sound), sound[0].mime_type)
         if request.transcription is not None:
             return text.strip()  # silence is an empty transcript, not a failure
         if not text.strip():

@@ -58,6 +58,12 @@ void main() {
     expect(asked('es'), isTrue);
     final es = await AppLocalizations.delegate.load(const Locale('es'));
     expect(find.text(es.discoverSignature.toUpperCase()), findsOneWidget);
+
+    await container.read(languageProvider.notifier).set(AppLanguage.catalan);
+    await settle(tester, frames: 10);
+    expect(asked('ca'), isTrue);
+    final ca = await AppLocalizations.delegate.load(const Locale('ca'));
+    expect(find.text(ca.discoverSignature.toUpperCase()), findsOneWidget);
   });
 
   testWidgets('on a phone the signature worlds are a row to swipe, so the rest stays close', (

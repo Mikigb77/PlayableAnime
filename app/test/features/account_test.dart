@@ -212,7 +212,14 @@ void main() {
       await tester.ensureVisible(find.text(l10n.dictationOnlineBody));
       expect(find.text(l10n.dictationOnlineBody), findsOneWidget);
 
-      await tapVisible(tester, find.text(l10n.dictationDevice));
+      // Reading aloud has a "This device" too (V9).
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byType(SegmentedButton<DictationMode>),
+          matching: find.text(l10n.dictationDevice),
+        ),
+      );
 
       expect(container.read(dictationModeProvider), DictationMode.device);
       expect(find.text(l10n.dictationDeviceBody), findsOneWidget);
@@ -224,30 +231,89 @@ void main() {
       await openAccount(tester);
       final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
       expect(container.read(languageProvider), AppLanguage.system);
+      final picker = find.byKey(const Key('account.language.picker'));
+      Finder option(String name) => find.descendant(of: picker, matching: find.text(name));
 
-      await tapVisible(tester, find.text(l10n.languageSpanish));
+      // The language opens a pop-up list, each language named in itself.
+      await tapVisible(tester, find.byKey(const Key('account.language')));
+      expect(picker, findsOneWidget);
+      for (final name in [l10n.languageSystem, 'English', 'Español', 'Català']) {
+        expect(option(name), findsOneWidget);
+      }
+      // Cancel leaves it as it was.
+      await tester.tap(find.descendant(of: picker, matching: find.text(l10n.cancel)));
+      await settle(tester);
+      expect(picker, findsNothing);
+      expect(container.read(languageProvider), AppLanguage.system);
 
+      await tapVisible(tester, find.byKey(const Key('account.language')));
+      await tapVisible(tester, option('Español'));
+
+      expect(picker, findsNothing);
       expect(container.read(languageProvider), AppLanguage.spanish);
       final es = await AppLocalizations.delegate.load(const Locale('es'));
-      // The whole app switches, the tabs included, and each language keeps its own name.
+      // The whole app switches, the tabs included, and the row names the language in itself.
       expect(find.text(es.navAccount), findsWidgets);
       expect(find.text(es.accountLanguageBody), findsOneWidget);
       expect(find.text(l10n.navAccount), findsNothing);
-      expect(find.text('English'), findsOneWidget);
+      expect(find.text(es.themeSystem), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('account.language')),
+          matching: find.text('Español'),
+        ),
+        findsOneWidget,
+      );
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('appearance.language'), 'spanish');
 
-      // "System" names the theme's option too.
-      await tapVisible(
-        tester,
-        find.descendant(
-          of: find.byKey(const Key('account.language')),
-          matching: find.text(es.languageSystem),
-        ),
-      );
+      await tapVisible(tester, find.byKey(const Key('account.language')));
+      await tapVisible(tester, option('Català'));
+      expect(container.read(languageProvider), AppLanguage.catalan);
+      final ca = await AppLocalizations.delegate.load(const Locale('ca'));
+      expect(find.text(ca.navAccount), findsWidgets);
+      expect(find.text(ca.accountLanguageBody), findsOneWidget);
+      expect(prefs.getString('appearance.language'), 'catalan');
+
+      // "System" is in the app's language.
+      await tapVisible(tester, find.byKey(const Key('account.language')));
+      await tapVisible(tester, option(ca.languageSystem));
       expect(find.text(l10n.navAccount), findsWidgets);
       expect(prefs.getString('appearance.language'), 'system');
     });
+
+    testWidgets('the language list scrolls on a short screen', (tester) async {
+      tester.view.physicalSize = const Size(360, 280);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await openAccount(tester);
+      await tapVisible(tester, find.byKey(const Key('account.language')));
+      final picker = find.byKey(const Key('account.language.picker'));
+      final list = find.descendant(of: picker, matching: find.byType(Scrollable));
+      expect(list, findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.descendant(of: picker, matching: find.text('Català')),
+        40,
+        scrollable: list,
+      );
+      await tester.tap(find.descendant(of: picker, matching: find.text('Català')));
+      await settle(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
+      expect(container.read(languageProvider), AppLanguage.catalan);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (device, shown) in [('fr', 'en'), ('ca', 'ca'), ('es', 'es')]) {
+      testWidgets('a device in "$device" shows the app in "$shown"', (tester) async {
+        tester.platformDispatcher.localesTestValue = [Locale(device)];
+        addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+        final words = await AppLocalizations.delegate.load(Locale(shown));
+        await launchApp(tester, backend: backend, store: store);
+        expect(find.text(words.authContinueWithGoogle), findsOneWidget);
+        final container = ProviderScope.containerOf(tester.element(find.byType(WelcomeScreen)));
+        expect(container.read(appLanguageCodeProvider), shown);
+      });
+    }
 
     testWidgets('a saved language applies from the start', (tester) async {
       SharedPreferences.setMockInitialValues({'appearance.language': 'spanish'});
@@ -551,21 +617,26 @@ void main() {
       expect(bullets.items, ['one more', 'two']);
     });
 
-    test('the Spanish policy has the same sections, tables and lists as the English', () {
-      final english = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
-      final spanish = parsePolicy(File('assets/legal/privacy_es.md').readAsStringSync());
-      String shape(PolicyBlock block) => switch (block) {
-        PolicyTable(:final rows) => 'table ${rows.length}',
-        PolicyBullets(:final items) => 'list ${items.length}',
-        _ => block.runtimeType.toString(),
-      };
-      expect(
-        spanish.map(shape).toList(),
-        english.map(shape).toList(),
-        reason: 'Change assets/legal/privacy_es.md with docs/PRIVACY.md (S10)',
-      );
-      expect(spanish.whereType<PolicyHeading>().first.text, 'Quiénes somos');
-    });
+    for (final (locale, name, firstHeading) in [
+      ('es', 'Spanish', 'Quiénes somos'),
+      ('ca', 'Catalan', 'Qui som'),
+    ]) {
+      test('the $name policy has the same sections, tables and lists as the English', () {
+        final english = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
+        final translated = parsePolicy(File('assets/legal/privacy_$locale.md').readAsStringSync());
+        String shape(PolicyBlock block) => switch (block) {
+          PolicyTable(:final rows) => 'table ${rows.length}',
+          PolicyBullets(:final items) => 'list ${items.length}',
+          _ => block.runtimeType.toString(),
+        };
+        expect(
+          translated.map(shape).toList(),
+          english.map(shape).toList(),
+          reason: 'Change assets/legal/privacy_$locale.md with docs/PRIVACY.md (S10)',
+        );
+        expect(translated.whereType<PolicyHeading>().first.text, firstHeading);
+      });
+    }
 
     testWidgets('opens signed out and reads as a page', (tester) async {
       await launchApp(tester, backend: backend, store: store);

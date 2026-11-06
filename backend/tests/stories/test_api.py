@@ -155,43 +155,58 @@ def test_patch_renames_and_changes_only_the_settings_sent(client, player, make_s
         assert response.status_code == 400, bad
 
 
-def test_a_story_switched_to_spanish_carries_on_in_spanish(client, player, make_story, model):
-    # S10: only what comes next changes language; the scenes already told stay as they were.
+def test_a_story_keeps_the_language_it_was_set_up_in(client, player, make_story, model):
+    # S10 (Miki, 2026-11-06): no switching mid-story. An older app that still sends a language
+    # has it ignored, and the story carries on as it began.
     story = opened(player, make_story, model)
-    told = Scene.objects.get(story=story, turn=1).narration
     response = client.patch(
         f"/v1/stories/{story.pk}",
-        {"settings": {"language": "es"}},
+        {"settings": {"language": "es", "images": "off"}},
         content_type="application/json",
     )
+
     assert response.status_code == 200, response.content
-    assert response.json()["settings"]["language"] == "es"
+    assert response.json()["settings"]["language"] == "en"
+    assert response.json()["settings"]["images"] == "off"
+    story.refresh_from_db()
+    assert story.settings.get("language", "en") == "en"
+
+
+@pytest.mark.parametrize(
+    ("language", "day", "named", "alive"),
+    [
+        ("es", "Día ", "Spanish from Spain", "Con vida"),
+        ("ca", "Dia ", "Catalan, speaking to the player as tu", "Amb vida"),
+    ],
+)
+def test_a_story_set_up_in_spanish_or_catalan_is_told_in_it(
+    client, player, make_story, model, language, day, named, alive
+):
+    # S10: the narrator, the interpret step's notes and every fixed word the server writes.
+    story = make_story(player)
+    story.settings = {"language": language}
+    story.save(update_fields=["settings"])
+    model.backend.script(Node.NARRATOR, Reply(json=OPENING))
+    play(player, story, opening(story))
+    story.refresh_from_db()
     model.backend.script(Node.NARRATOR, Reply(json=AFTER))
-    model.backend.script(Node.INTERPRET, Reply(json={"summary": "Miro el pozo.", "steps": []}))
+    model.backend.script(Node.INTERPRET, Reply(json={"summary": "Look.", "steps": []}))
 
-    played = play(
-        player, story, {"kind": "action", "action": "Miro el pozo.", "expected_version": 2}
-    )
+    played = play(player, story, {"kind": "action", "action": "Look.", "expected_version": 2})
 
-    # The fixed words the server writes follow it too: the time bar, the clock, Memory, Status
-    # and the Library. The scene already told keeps its English time bar.
     completed = played.completed
-    assert completed["scene"]["time"]["label"].startswith("Día ")
-    assert completed["story"]["clock"]["label"].startswith("Día ")
-    assert Scene.objects.get(story=story, turn=1).time_label.startswith("Day ")
+    assert completed["scene"]["time"]["label"].startswith(day)
+    assert completed["story"]["clock"]["label"].startswith(day)
     status = client.get(f"/v1/stories/{story.pk}/status").json()
-    assert status["clock"]["label"].startswith("Día ")
+    assert status["clock"]["label"].startswith(day)
     memory = client.get(f"/v1/stories/{story.pk}/memory").json()
-    assert all(p["status_label"] == "Con vida" for p in memory["people"])
+    assert all(p["status_label"] == alive for p in memory["people"])
     [summary] = client.get("/v1/stories").json()
-    assert summary["world_time_label"].startswith("Día ")
-    [narrator] = model.backend.calls(Node.NARRATOR)[-1:]
-    style = narrator.prompt.messages[-1].text.split("## CONTENT")[0]
-    assert "Spanish from Spain" in style
-    assert "STYLE's language" in narrator.prompt.system
+    assert summary["world_time_label"].startswith(day)
+    narrator = model.backend.calls(Node.NARRATOR)[-1]
+    assert named in narrator.prompt.messages[-1].text.split("## CONTENT")[0]
     [interpret] = model.backend.calls(Node.INTERPRET)
-    assert "## LANGUAGE\nSpanish from Spain" in interpret.prompt.messages[-1].text
-    assert Scene.objects.get(story=story, turn=1).narration == told
+    assert f"## LANGUAGE\n{named}" in interpret.prompt.messages[-1].text
 
 
 def test_delete_removes_the_story_with_its_scenes_and_events(client, player, make_story, model):

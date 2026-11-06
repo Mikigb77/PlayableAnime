@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn, a draft, an Illustrate or a dictation (K2, M2, V6). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
+  | 402 | `out_of_credits` | Not enough credits for a turn, a draft, an Illustrate, a dictation or a part read aloud (K2, M2, V6, V10). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -90,14 +90,15 @@ shows as free. A turn, draft or picture on the player's own key (K6) uses no cre
 entry.
 
 **Credits, rate limits and quotas (K2, K6, T9).** Every request that calls a model (a turn, a
-draft or revision, a picture, a dictation) is checked before it starts, in this order:
+draft or revision, a picture, a dictation, a part read aloud) is checked before it starts, in this order:
 
 1. A per-user rate limit per minute, on any key, BYOK and the owner included: `429 rate_limited`
-   with `details.retry_after_s`. Turns, drafts, pictures and dictations each have their own limit.
+   with `details.retry_after_s`. Turns, drafts, pictures, dictations and parts read aloud each have
+   their own limit.
 2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
    (ISO 8601, the next midnight UTC). BYOK requests don't count, and the owner (K7) has none.
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
-   or a draft, 6 for a picture, 1 for a dictation), or it gets `402 out_of_credits` with `details.balance_cents` and
+   or a draft, 6 for a picture, 1 for a dictation, 3 for a part read aloud), or it gets `402 out_of_credits` with `details.balance_cents` and
    `details.available_cents` (less than the balance while another request of the same player is
    running). A planned picture that can't be paid for is `skipped` instead (M7); Illustrate, which
    the player asks for, answers the `402`. A first picture the house pays for (K1) needs no
@@ -232,8 +233,8 @@ first show, when it comes back to the foreground (at most every half hour) and f
 Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
 
-`language` is the app's language, `en` (the default) or `es` (S10): the title, genre, tagline and
-premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
+`language` is the app's language, `en` (the default), `es` or `ca` (S10): the title, genre, tagline
+and premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
 in every language.
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
@@ -264,7 +265,7 @@ BYOK request is free (K6).
 
 ```text
 Draft            {id, premise, premise_id?, rating, title, genre, tone,
-                  language: "en"|"es",       # S10: what it is written in, and its story starts in
+                  language: "en"|"es"|"ca",  # S10: what it is written in, and its story stays in
                   world_lines: [string],       # the one-screen summary in plain words (G1)
                   character_lines: [string],   # the character in the world's words (G2, G16)
                   advanced: DraftAdvanced,
@@ -284,8 +285,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
   `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
   word, in the same model call; one with the id of a drafted rule replaces it. `language` is the
-  app's language, `en` (the default) or `es` (S10): the drafter writes every text the player reads
-  in it, a starter sent by `premise_id` alone takes its premise in that language, and revisions
+  app's language, `en` (the default), `es` or `ca` (S10): the drafter writes every text the player
+  reads in it, a starter sent by `premise_id` alone takes its premise in that language, and revisions
   keep it.
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
@@ -305,8 +306,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   can't overwrite each other either way: the later one answers `409` too, and its model call is
   still charged, since it ran.
 - **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
-  the settings: the draft's `difficulty`, `event_frequency` and `language`, then whatever
-  `settings` sends. A
+  the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends, and
+  the draft's `language`, which `settings` can't change (S10: an older app's is ignored). A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
   returns the same story. The app sends `expected_version` here as with every change; the server
   refuses a stale one with `409 version_conflict` like any other change, so a story never starts
@@ -336,7 +337,7 @@ makes one from an example world.
 | GET | `/v1/stories` | | `[StorySummary]`, only the caller's own (S8) |
 | GET | `/v1/stories/{id}` | `?scenes=20` (0 to 50) | `Story` with the last N scenes, oldest first |
 | GET | `/v1/stories/{id}/scenes` | `?before=<turn>&limit=20` (1 to 50) | `[Scene]`, the `limit` scenes before turn `before`, oldest first, for scrollback |
-| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. |
+| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. A story keeps its `language` (S10): one sent is ignored. |
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
 | POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
@@ -388,13 +389,15 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                event_frequency: "calm"|"normal"|"dramatic",
                images: "off"|"key_moments"|"more",      # M2, default key_moments
                suggestions: bool,                         # S2
-               language: "en"|"es"}                       # S10, default en: new scenes are written
-                                                         # in it; what was told stays as it was.
+               language: "en"|"es"|"ca"}                  # S10, default en: the language the story
+                                                         # started in, for good. Read only: PATCH
+                                                         # and start ignore it.
                                                          # The labels the server writes follow it:
                                                          # the clock, a new scene's time bar, and
                                                          # Memory's and Status's fixed words
 Clock         {world_s, label, timeline_id}              # label such as "Day 3, dusk" or "14 May 1974, 23:10"
-                                                         # ("Día 3, atardecer" in a Spanish story, S10)
+                                                         # ("Día 3, atardecer" in a Spanish story,
+                                                         # "Dia 3, capvespre" in a Catalan one, S10)
 ```
 
 ### Turns (B5, B7, S3, T10, V7)
@@ -533,6 +536,42 @@ Picture {status: "ready"|"pending"|"skipped",
   one still skipped. On a scene that had none, the picture Illustrate planned stays: `skipped`
   after a `402`, so nothing draws it until the player asks again, and planned after a `429`, for
   the app to ask again.
+
+### Reading aloud (V8 to V10)
+
+| Method | Path | Query | Response |
+| --- | --- | --- | --- |
+| POST | `/v1/stories/{id}/scenes/{turn}/audio` | `part` (0 to 99, default 0), `voice` (default `Sulafat`) | `SceneAudio` |
+
+```text
+SceneAudio {status: "ready"|"pending"|"blocked", part, parts, text,
+            url?, expires_at?, duration_ms?}   # url, expires_at and duration_ms only when ready
+```
+
+One part of the scene read aloud in the studio voice (Gemini 3.8 Flash-Lite TTS, V9). Ask for part
+0, play it as soon as it comes, and ask for the next part while it plays, until `parts`.
+
+- **`voice`** is one of `Sulafat` (warm), `Gacrux` (mature), `Charon` (deep) or `Algieba`
+  (smooth). Anything else is `400 validation_error` with the field `voice` (`unknown_voice`), and a
+  part past the end is one with the field `part` (`out_of_range`), both with `source: "query"`.
+- **`text`** is the words the part reads: the narration without emphasis marks, with its
+  whitespace collapsed and a blank line between paragraphs. The parts depend only on the
+  narration, so they never change for a scene.
+- **Safe to repeat.** Each part is read and charged at most once per voice and kept, so asking again
+  answers the same file at no charge (V10). A repeat while the part is being read answers
+  `pending`: ask again after a second. `blocked` means the voice model refused the part, for good
+  and at no charge: read `text` in the device's own voice.
+- `url` is a signed URL to an MP3 (48 kbps mono) that works until `expires_at`, about an hour.
+- **Billing (K2, T9).** Always on our key, even with `X-LLM-Api-Key`, which the app doesn't send
+  here. The checks above apply, with their own rate limit (30 parts a minute) and daily quota
+  (1,000 parts), and a part needs 3 cents available. The real cost, up to about 2 cents for a long
+  part, is charged as a `voice` ledger entry with the story and turn. A part that fails costs
+  nothing.
+- **Errors:** `404 not_found` for an unknown story or scene, or a scene the player blocked (F6),
+  `403 forbidden` for another player's story or one above the account's rating limit (F8), `402
+  out_of_credits`, `429 rate_limited` or `429 quota_exceeded` from the meter, and `503
+  llm_unavailable` after one retry. After any of them the app reads the rest of the scene in the
+  device's voice.
 
 ### Memory and status (C6, G16)
 

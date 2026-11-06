@@ -11,6 +11,7 @@ Importing this package loads no model SDK; the Gemini backend loads on the first
 
 from graph.llm.client import (
     Completed,
+    GeneratedAudio,
     GeneratedImage,
     ModelClient,
     StreamEvent,
@@ -33,6 +34,7 @@ from graph.llm.types import (
     Node,
     Prompt,
     Rating,
+    Reading,
     Thinking,
     Transcription,
 )
@@ -50,6 +52,7 @@ __all__ = [
     "Completed",
     "Fail",
     "FakeBackend",
+    "GeneratedAudio",
     "GeneratedImage",
     "Hang",
     "ImagePart",
@@ -64,6 +67,7 @@ __all__ = [
     "NodeSettings",
     "Prompt",
     "Rating",
+    "Reading",
     "Reply",
     "StreamEvent",
     "StreamRestart",

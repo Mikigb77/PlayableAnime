@@ -37,12 +37,13 @@ class ThemeModeController extends Notifier<ThemeMode> {
 
 final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
 
-/// The app's language (S10): the device's own, or one the player picked. Only the app's fixed
-/// text follows it. What a story has already told stays in the language it was written in.
+/// The app's language (S10): the device's own, or one the player picked. The app's fixed text
+/// follows it, and a new story starts in it. Each story then stays in the language it started in.
 enum AppLanguage {
   system(null),
   english('en'),
-  spanish('es');
+  spanish('es'),
+  catalan('ca');
 
   const AppLanguage(this.code);
 
