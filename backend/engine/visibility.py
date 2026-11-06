@@ -573,8 +573,8 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     ]
     for rumor in sorted(heard, key=lambda r: (r.heard_at[k.player_id], natural_key(r.id))):
         when = ago_label(k.now - rumor.heard_at[k.player_id], language)
-        heard = f"Lo oíste {when}" if language is ES else f"Heard {when}"
-        rumors.append(RumorEntry(id=rumor.id, text=rumor.text, heard_label=heard))
+        label = f"Lo oíste {when}" if language is ES else f"Heard {when}"
+        rumors.append(RumorEntry(id=rumor.id, text=rumor.text, heard_label=label))
     deeds = [
         DeedEntry(
             id=d.id,
