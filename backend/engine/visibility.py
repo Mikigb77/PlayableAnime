@@ -9,6 +9,10 @@ player didn't notice, or anything on another timeline. A spoiler view after an a
 separate projection (P1).
 
 URLs for portraits and pictures are left empty here; the API fills them from the scene images.
+
+The fixed words here (attitudes, standing, health, who saw a deed, "Heard 2 days ago") come in the
+story's language (S10). What the world itself wrote, such as a fact or a deed's telling, stays in
+the language it was written in.
 """
 
 from functools import cached_property
@@ -17,6 +21,7 @@ from typing import Literal
 from pydantic import Field
 
 from engine.base import EngineModel
+from engine.context import Language
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, in_label
 from engine.state.cast import (
@@ -41,7 +46,12 @@ from engine.state.world import WorldState, natural_key
 from engine.world.telling import cap, tell
 
 SINCE_LIMIT = 6
-_DESCENDANT_WORDS = {1: "Your child.", 2: "Your grandchild."}
+EN = Language.EN
+ES = Language.ES
+_DESCENDANT_WORDS = {
+    EN: {1: "Your child.", 2: "Your grandchild."},
+    ES: {1: "Tu hijo o hija.", 2: "Tu nieto o nieta."},
+}
 
 
 # --- the views, as API.md shapes them ------------------------------------------------------
@@ -151,51 +161,97 @@ class StatusView(EngineModel):
 # --- words --------------------------------------------------------------------------------
 
 
-def attitude_label(affinity: int) -> str:
-    """How someone comes across toward the player character (W4): what they show, not what
-    they feel."""
-    if affinity >= 60:
-        return "Warm"
-    if affinity >= 20:
-        return "Friendly"
-    if affinity > -20:
-        return "Neutral"
-    if affinity > -60:
-        return "Cold"
-    return "Hostile"
-
-
-def standing_label(reputation: Reputation) -> str:
-    """Esteem and fear in words (W3): "Respected and feared", "Despised", "Neutral"."""
-    esteem = reputation.esteem
-    if esteem >= 60:
-        words = "Admired"
-    elif esteem >= 20:
-        words = "Respected"
-    elif esteem > -20:
-        words = ""
-    elif esteem > -60:
-        words = "Disliked"
-    else:
-        words = "Despised"
-    fear = "feared" if reputation.fear >= 60 else "wary of you" if reputation.fear >= 20 else ""
-    if words and fear:
-        return f"{words} and {fear}"
-    if fear:
-        return fear[0].upper() + fear[1:]
-    return words or "Neutral"
-
-
-_HEALTH_WORDS = {
-    Health.UNHURT: "Unhurt",
-    Health.HURT: "Hurt",
-    Health.WOUNDED: "Wounded",
-    Health.BADLY_WOUNDED: "Badly wounded",
-    Health.DYING: "Dying",
+# Spanish has no gender-free adjective for most of these, and a character's gender isn't
+# recorded, so the Spanish words are ones that fit anyone: "Cordial", "Con heridas", "Respeto".
+_ATTITUDES = {
+    EN: ("Warm", "Friendly", "Neutral", "Cold", "Hostile"),
+    ES: ("Cordial", "Afable", "Neutral", "Distante", "Hostil"),
 }
 
 
-def _status_words(status: str, presumed: bool = False) -> str:
+def attitude_label(affinity: int, language: Language = EN) -> str:
+    """How someone comes across toward the player character (W4): what they show, not what
+    they feel."""
+    warm, friendly, neutral, cold, hostile = _ATTITUDES[language]
+    if affinity >= 60:
+        return warm
+    if affinity >= 20:
+        return friendly
+    if affinity > -20:
+        return neutral
+    if affinity > -60:
+        return cold
+    return hostile
+
+
+_STANDING = {
+    # admired, respected, disliked, despised, feared, wary, "and", neutral
+    EN: ("Admired", "Respected", "Disliked", "Despised", "feared", "wary of you", "and", "Neutral"),
+    ES: ("Admiración", "Respeto", "Recelo", "Desprecio", "temor", "cautela", "y", "Neutral"),
+}
+
+
+def standing_label(reputation: Reputation, language: Language = EN) -> str:
+    """Esteem and fear in words (W3): "Respected and feared", "Despised", "Neutral"; in Spanish
+    "Respeto y temor", "Desprecio", "Neutral"."""
+    admired, respected, disliked, despised, feared, wary, and_, neutral = _STANDING[language]
+    esteem = reputation.esteem
+    if esteem >= 60:
+        words = admired
+    elif esteem >= 20:
+        words = respected
+    elif esteem > -20:
+        words = ""
+    elif esteem > -60:
+        words = disliked
+    else:
+        words = despised
+    fear = feared if reputation.fear >= 60 else wary if reputation.fear >= 20 else ""
+    if words and fear:
+        return f"{words} {and_} {fear}"
+    if fear:
+        return fear[0].upper() + fear[1:]
+    return words or neutral
+
+
+_HEALTH_WORDS = {
+    EN: {
+        Health.UNHURT: "Unhurt",
+        Health.HURT: "Hurt",
+        Health.WOUNDED: "Wounded",
+        Health.BADLY_WOUNDED: "Badly wounded",
+        Health.DYING: "Dying",
+    },
+    ES: {
+        Health.UNHURT: "Sin heridas",
+        Health.HURT: "Con heridas leves",
+        Health.WOUNDED: "Con heridas",
+        Health.BADLY_WOUNDED: "Con heridas graves",
+        Health.DYING: "Al borde de la muerte",
+    },
+}
+
+# S10: every status a person, place or faction can show, in Spanish.
+_STATUS_WORDS_ES = {
+    CharacterStatus.ALIVE.value: "Con vida",
+    CharacterStatus.MISSING.value: "En paradero desconocido",
+    CharacterStatus.DEAD.value: "Ha muerto",
+    PlaceStatus.THRIVING.value: "Próspero",
+    PlaceStatus.DAMAGED.value: "Con daños",
+    PlaceStatus.RUINED.value: "En ruinas",
+    PlaceStatus.OCCUPIED.value: "Bajo ocupación",
+    FactionStatus.INTACT.value: "Intacta",
+    FactionStatus.WEAKENED.value: "Ha perdido fuerza",
+    FactionStatus.REBUILDING.value: "Se está reconstruyendo",
+    FactionStatus.DESTROYED.value: "Ya no existe",
+}
+
+
+def _status_words(status: str, presumed: bool = False, language: Language = EN) -> str:
+    if language is ES:
+        if status == CharacterStatus.DEAD.value and presumed:
+            return "Se cree que ha muerto"
+        return _STATUS_WORDS_ES.get(status) or status.replace("_", " ").capitalize()
     if status == CharacterStatus.DEAD.value:
         return "Presumed dead" if presumed else "Dead"
     return status.replace("_", " ").capitalize()
@@ -252,8 +308,9 @@ class _PlayerTeller:
 class _Knowledge:
     """The player character's knowledge of one state."""
 
-    def __init__(self, state: WorldState) -> None:
+    def __init__(self, state: WorldState, language: Language = EN) -> None:
         self.state = state
+        self.language = language
         self.player_id = state.player_id
         self.now = state.world_s
         self.timeline = state.timeline_id
@@ -302,8 +359,11 @@ class _Knowledge:
 
     def known_label(self, deed: Deed) -> str:
         """Who saw it, as far as the player character knows (W2, C6)."""
+        es = self.language is ES
         if deed.actor_id != self.player_id:
-            return "You saw it" if self.player_id in deed.witness_ids else "You heard of it"
+            if self.player_id in deed.witness_ids:
+                return "Lo viste" if es else "You saw it"
+            return "Te enteraste" if es else "You heard of it"
         # In stopped time every witness is immune to the stop and unnoticed (W10a), unless the
         # world later reveals them by taking them off `unnoticed_witness_ids`.
         noticed = [
@@ -315,14 +375,14 @@ class _Knowledge:
             names = [n for n in (self.name_of(w) for w in noticed) if n]
             others = len(noticed) - len(names)
             if not names:
-                return "You were seen"
+                return "Te vieron" if es else "You were seen"
             if others:
                 plural = "s" if others > 1 else ""
-                names.append(f"{others} other{plural}")
-            return "Seen by " + _join(names)
+                names.append(f"{others} persona{plural} más" if es else f"{others} other{plural}")
+            return ("Te vieron " if es else "Seen by ") + _join(names, self.language)
         if deed.visibility is Visibility.PUBLIC and not deed.in_stopped_time:
-            return "Done in public"
-        return "No one saw, as far as you know"
+            return "A la vista de todos" if es else "Done in public"
+        return "Nadie lo vio, que tú sepas" if es else "No one saw, as far as you know"
 
     # --- entries --------------------------------------------------------------------------
 
@@ -333,7 +393,9 @@ class _Knowledge:
         lines += self.facts_about(c.id)
         attitude = None
         if self.player_id in c.met_by:
-            attitude = attitude_label(c.attitude_toward(self.player_id).shown_affinity)
+            attitude = attitude_label(
+                c.attitude_toward(self.player_id).shown_affinity, self.language
+            )
         status, presumed = believed_status(
             c.status_history, c.status.value, self.player_id, initial=CharacterStatus.ALIVE.value
         )
@@ -342,7 +404,7 @@ class _Knowledge:
             name=c.name,
             lines=lines,
             attitude_label=attitude,
-            status_label=_status_words(status, presumed),
+            status_label=_status_words(status, presumed, self.language),
         )
 
     @cached_property
@@ -352,8 +414,8 @@ class _Knowledge:
     def kin_line(self, c: Character) -> str | None:
         """N6: how someone is family to the player character, if they are."""
         if c.id in self.state.player.parent_ids:
-            return "Your parent."
-        return _DESCENDANT_WORDS.get(self.descendants.get(c.id, 0))
+            return "Tu padre o tu madre." if self.language is ES else "Your parent."
+        return _DESCENDANT_WORDS[self.language].get(self.descendants.get(c.id, 0))
 
     def place(self, p: Place) -> PlaceEntry:
         lines = [_cap(p.kind)] if p.kind else []
@@ -363,9 +425,11 @@ class _Knowledge:
             p.status_history, p.status.value, self.player_id, initial=PlaceStatus.THRIVING.value
         )
         if status != PlaceStatus.THRIVING.value:
-            lines.append(_status_words(status))
+            lines.append(_status_words(status, language=self.language))
         if self.player_id not in p.visited_by:
-            lines.append("You haven't been there.")
+            lines.append(
+                "Aún no has estado allí." if self.language is ES else "You haven't been there."
+            )
         lines += self.facts_about(p.id)
         return PlaceEntry(id=p.id, name=p.name, lines=lines)
 
@@ -377,10 +441,13 @@ class _Knowledge:
             f.status_history, f.status.value, self.player_id, initial=FactionStatus.INTACT.value
         )
         if status != FactionStatus.INTACT.value:
-            lines.append(_status_words(status))
+            lines.append(_status_words(status, language=self.language))
         lines += self.facts_about(f.id)
         return FactionEntry(
-            id=f.id, name=f.name, lines=lines, standing_label=standing_label(f.player_reputation)
+            id=f.id,
+            name=f.name,
+            lines=lines,
+            standing_label=standing_label(f.player_reputation, self.language),
         )
 
     def player_lines(self, player: Character) -> list[str]:
@@ -405,33 +472,41 @@ class _Knowledge:
 
     def condition_lines(self, player: Character) -> list[str]:
         condition = player.sheet.condition
-        lines = [_HEALTH_WORDS[condition.health]]
+        lines = [_HEALTH_WORDS[self.language][condition.health]]
         lines += [_cap(w.text) for w in condition.wounds]
         lines += [_cap(s.name) for s in condition.states]
         lines += [_cap(f"{r.name}: {r.level}%") for r in condition.reserves]
         expecting = player.expecting
         if expecting is not None and player.alive:
             # N6: a child on the way, born when it is due.
-            due = max(0, expecting.due_s - self.now)
-            lines.append(f"Expecting a child, due {in_label(due)}")
+            due = in_label(max(0, expecting.due_s - self.now), self.language)
+            if self.language is ES:
+                lines.append(f"Esperando un bebé, que nacerá {due}")
+            else:
+                lines.append(f"Expecting a child, due {due}")
         return lines
 
     def power_lines(self, player: Character) -> list[str]:
         lived = player.personal_s(self.now)
         lines = []
+        ready = "disponible" if self.language is ES else "ready"
         for power in player.sheet.powers:
             ready_at = power.ready_at_personal_s
             if ready_at is not None and ready_at > lived:
-                lines.append(_cap(f"{power.name}: ready {in_label(ready_at - lived)}"))
+                when = in_label(ready_at - lived, self.language)
+                lines.append(_cap(f"{power.name}: {ready} {when}"))
             else:
-                lines.append(_cap(f"{power.name}: ready"))
+                lines.append(_cap(f"{power.name}: {ready}"))
         return lines
 
     def resource_lines(self, player: Character) -> list[str]:
         resources = player.sheet.resources
         lines = []
         if resources.money or resources.currency:
-            lines.append(f"{resources.money:,} {resources.currency}".strip())
+            money = f"{resources.money:,}"
+            if self.language is ES:
+                money = money.replace(",", ".")
+            lines.append(f"{money} {resources.currency}".strip())
         for item in sorted(resources.items, key=lambda i: natural_key(i.id)):
             if item.carried:
                 count = f" ({item.quantity})" if item.quantity > 1 else ""
@@ -444,10 +519,11 @@ def _cap(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def _join(names: list[str]) -> str:
+def _join(names: list[str], language: Language = EN) -> str:
     if len(names) <= 1:
         return "".join(names)
-    return ", ".join(names[:-1]) + " and " + names[-1]
+    and_ = " y " if language is ES else " and "
+    return ", ".join(names[:-1]) + and_ + names[-1]
 
 
 def _sort_name(name: str) -> str:
@@ -463,9 +539,10 @@ def _by_name(records):
     return sorted(records, key=lambda r: (_sort_name(r.name), natural_key(r.id)))
 
 
-def memory_view(state: WorldState) -> MemoryView:
-    """The Memory screen (C6): only what the player character knows."""
-    k = _Knowledge(state)
+def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
+    """The Memory screen (C6): only what the player character knows, with its fixed words in the
+    story's language (S10)."""
+    k = _Knowledge(state, language)
     player = state.player
     calendar = state.bible.calendar
 
@@ -483,7 +560,10 @@ def memory_view(state: WorldState) -> MemoryView:
             continue
         if lead.expires_s is not None and lead.expires_s <= k.now:
             continue
-        expires = None if lead.expires_s is None else f"Ends {in_label(lead.expires_s - k.now)}"
+        expires = None
+        if lead.expires_s is not None:
+            ends = "Termina" if language is ES else "Ends"
+            expires = f"{ends} {in_label(lead.expires_s - k.now, language)}"
         leads.append(LeadEntry(id=lead.id, text=lead.text, expires_label=expires))
     rumors = []
     heard = [
@@ -492,13 +572,14 @@ def memory_view(state: WorldState) -> MemoryView:
         if k.player_id in r.heard_at and r.timeline_id == k.timeline
     ]
     for rumor in sorted(heard, key=lambda r: (r.heard_at[k.player_id], natural_key(r.id))):
-        when = ago_label(k.now - rumor.heard_at[k.player_id])
-        rumors.append(RumorEntry(id=rumor.id, text=rumor.text, heard_label=f"Heard {when}"))
+        when = ago_label(k.now - rumor.heard_at[k.player_id], language)
+        label = f"Lo oíste {when}" if language is ES else f"Heard {when}"
+        rumors.append(RumorEntry(id=rumor.id, text=rumor.text, heard_label=label))
     deeds = [
         DeedEntry(
             id=d.id,
             text=k.deed_text(d),
-            when_label=clock_label(calendar, d.world_s),
+            when_label=clock_label(calendar, d.world_s, language),
             known_label=k.known_label(d),
         )
         for d in k.deeds()
@@ -559,18 +640,19 @@ def _without_article(name: str) -> str:
     return name
 
 
-def clock_view(state: WorldState) -> ClockView:
+def clock_view(state: WorldState, language: Language = EN) -> ClockView:
     return ClockView(
         world_s=state.world_s,
-        label=clock_label(state.bible.calendar, state.world_s),
+        label=clock_label(state.bible.calendar, state.world_s, language),
         timeline_id=state.timeline_id,
     )
 
 
-def status_view(state: WorldState) -> StatusView:
+def status_view(state: WorldState, language: Language = EN) -> StatusView:
     """`/status` (A8, G16, W10): the player character's sheet in the world's words, their
-    standing with the factions they know, the clock, and how long ago key events happened."""
-    k = _Knowledge(state)
+    standing with the factions they know, the clock, and how long ago key events happened, with
+    the fixed words in the story's language (S10)."""
+    k = _Knowledge(state, language)
     player = state.player
     lines = (
         k.ladder_lines(player)
@@ -579,7 +661,7 @@ def status_view(state: WorldState) -> StatusView:
         + k.resource_lines(player)
     )
     reputation = [
-        ReputationEntry(name=f.name, label=standing_label(f.player_reputation))
+        ReputationEntry(name=f.name, label=standing_label(f.player_reputation, language))
         for f in _by_name(state.factions.values())
         if k.knows(f)
     ]
@@ -595,12 +677,12 @@ def status_view(state: WorldState) -> StatusView:
     ]
     moments.sort(key=lambda m: (m[0], natural_key(m[1])), reverse=True)
     since = [
-        SinceEntry(text=text, ago_label=ago_label(k.now - when))
+        SinceEntry(text=text, ago_label=ago_label(k.now - when, language))
         for when, _, text in moments[:SINCE_LIMIT]
     ]
     return StatusView(
         character=StatusCharacter(name=player.name, lines=lines),
         reputation=reputation,
-        clock=clock_view(state),
+        clock=clock_view(state, language),
         since=since,
     )

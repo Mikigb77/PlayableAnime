@@ -361,6 +361,8 @@ def save(
             draft.world_start_s,
             draft.world_end_s,
             lived if lived is not None else draft.world_end_s - draft.world_start_s,
+            # S10: the time bar in the story's language when the scene was played.
+            prepared.input.ctx.settings.language,
         )
         scene = Scene.objects.create(
             story=story,
@@ -396,7 +398,7 @@ def save(
         shown = responses.bare_scene(scene)
     story_part: dict[str, Any] = {
         "version": story.version,
-        "clock": clock_view(state).model_dump(mode="json"),
+        "clock": clock_view(state, prepared.input.ctx.settings.language).model_dump(mode="json"),
     }
     if ending is not None:
         story.ending = ending

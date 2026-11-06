@@ -211,8 +211,9 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "title": public_text(state, bible.title),
         "genre": public_text(state, bible.genre),
         "tone": public_text(state, bible.tone),
-        "world_lines": world_lines(state),
-        "character_lines": character_lines(state),
+        # S10: the words code adds come in the draft's language.
+        "world_lines": world_lines(state, Language(row.language)),
+        "character_lines": character_lines(state, Language(row.language)),
         "advanced": {
             "physics": bible.physics.value,
             "rules": [{"id": r.id, "text": r.text, "fixed": r.fixed} for r in public_rules(state)],
@@ -321,8 +322,10 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     state = current.state()
     _refuse_real_people(
         [
-            *_new_texts("world_lines", body.world_lines, world_lines(state)),
-            *_new_texts("character_lines", body.character_lines, character_lines(state)),
+            *_new_texts("world_lines", body.world_lines, world_lines(state, current.language)),
+            *_new_texts(
+                "character_lines", body.character_lines, character_lines(state, current.language)
+            ),
             *_new_texts(
                 "advanced.rules",
                 [r.text for r in advanced.rules or []],

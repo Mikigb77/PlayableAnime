@@ -6,7 +6,7 @@ import pytest
 
 from engine.apply import DeltaSource, apply_delta
 from engine.base import DAY, HOUR
-from engine.context import TurnContext
+from engine.context import Language, TurnContext
 from engine.contracts import CharacterChange, PlaceChange, StateDelta
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
@@ -517,3 +517,77 @@ def test_speech_vocabulary_keeps_a_name_that_starts_like_an_article():
     state.characters["zhao"].name = "An Lushan"
 
     assert "An Lushan" in speech_vocabulary(state)
+
+
+ES = Language.ES
+
+
+@pytest.mark.parametrize(
+    ("esteem", "fear", "label"),
+    [
+        (0, 0, "Neutral"),
+        (70, 0, "Admiración"),
+        (30, 70, "Respeto y temor"),
+        (-30, 30, "Recelo y cautela"),
+        (-90, 0, "Desprecio"),
+        (0, 80, "Temor"),
+    ],
+)
+def test_standing_in_spanish(esteem, fear, label):
+    # S10: words that fit anyone, since a character's gender isn't recorded.
+    assert standing_label(Reputation(esteem=esteem, fear=fear), ES) == label
+
+
+def test_attitudes_in_spanish():
+    labels = [attitude_label(a, ES) for a in (80, 30, 0, -30, -80)]
+
+    assert labels == ["Cordial", "Afable", "Neutral", "Distante", "Hostil"]
+
+
+def test_who_saw_a_deed_in_spanish():
+    state = grounded_world()
+    own_deed(state, "seen-by-strangers", witness_ids=["bartender"], visibility=Visibility.WITNESSED)
+    own_deed(state, "seen-by-known", witness_ids=["carmine", "bartender"])
+    own_deed(state, "secret")
+    own_deed(state, "public", visibility=Visibility.PUBLIC)
+
+    labels = {d.id: d.known_label for d in memory_view(state, ES).deeds}
+
+    assert labels == {
+        "seen-by-strangers": "Te vieron",
+        "seen-by-known": "Te vieron Carmine Russo y 1 persona más",
+        "secret": "Nadie lo vio, que tú sepas",
+        "public": "A la vista de todos",
+    }
+
+
+def test_memory_in_spanish_keeps_the_world_s_own_words():
+    state = grounded_world()
+    state.world_s = DAY
+    state.leads = {"open": Lead(id="open", text="Meet the priest", expires_s=DAY + 3 * HOUR)}
+
+    view = memory_view(state, ES)
+
+    assert [(le.text, le.expires_label) for le in view.leads] == [
+        ("Meet the priest", "Termina en 3 horas")
+    ]
+    assert all(p.status_label == "Con vida" for p in view.people)
+
+
+def test_status_in_spanish():
+    state = cultivation_world()
+    state.world_s = 2 * DAY
+    lin = state.player
+    lin.personal_offset_s = 10
+    lin.sheet.powers[0].ready_at_personal_s = state.world_s + 10 + 3 * HOUR
+    own_deed(state, "old", text="Beat Zhao at the well", world_s=0)
+    state.factions["outer-court"].player_reputation = Reputation(esteem=30)
+
+    view = status_view(state, ES)
+
+    assert view.clock.label == "Día 3, mañana"
+    assert "Time stop: disponible en 3 horas" in view.character.lines
+    assert "Sin heridas" in view.character.lines
+    assert [(s.text, s.ago_label) for s in view.since] == [("Beat Zhao at the well", "hace 2 días")]
+    assert {r.name: r.label for r in view.reputation}["the outer court"] == "Respeto"
+    assert "200.000 lire" in status_view(grounded_world(), ES).character.lines

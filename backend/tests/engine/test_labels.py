@@ -3,6 +3,7 @@
 import pytest
 
 from engine.base import DAY, HOUR, MINUTE
+from engine.context import Language
 from engine.labels import (
     Moment,
     ago_label,
@@ -184,3 +185,45 @@ def test_the_scene_time_bar():
     assert bar.label == "14 May 1974, 23:10"
     assert (bar.duration_label, bar.personal_label) == ("+2 h 10 min", None)
     assert stopped.personal_label == "World: +0 s. You: +40 s."
+
+
+ES = Language.ES
+
+
+def test_the_world_s_dates_in_spanish():
+    # S10: a Spanish story's clock, whatever its calendar.
+    sect = cultivation_world().bible.calendar  # day count from 07:00
+    naples = grounded_world().bible.calendar  # 1974-05-14T21:00
+    frost = Calendar(
+        style=CalendarStyle.CUSTOM,
+        months=[Month(name="Luna de Escarcha", days=30)],
+        start_year=412,
+        start_second_of_day=17 * HOUR,
+    )
+
+    assert clock_label(sect, 2 * DAY + 10 * HOUR, ES) == "Día 3, atardecer"
+    assert clock_label(sect, 17 * HOUR, ES) == "Día 2, noche"
+    assert clock_label(naples, 2 * HOUR + 10 * MINUTE, ES) == "14 de mayo de 1974, 23:10"
+    assert clock_label(frost, 2 * DAY, ES) == "Día 3 de Luna de Escarcha, año 412, atardecer"
+    # What the models read stays English: they write in the story's language anyway.
+    assert moment(sect, 2 * DAY + 10 * HOUR).part_of_day == "dusk"
+
+
+def test_spans_and_rough_times_in_spanish():
+    assert span_label(400 * DAY, ES) == "1 a 35 d"
+    assert duration_label(2 * HOUR + 10 * MINUTE, ES) == "+2 h 10 min"
+    assert personal_label(0, 40, ES) == "Mundo: +0 s. Tú: +40 s."
+    assert ago_label(30, ES) == "hace un momento"
+    assert ago_label(HOUR, ES) == "hace una hora"
+    assert ago_label(2 * DAY, ES) == "hace 2 días"
+    assert ago_label(90 * DAY, ES) == "hace 3 meses"
+    assert in_label(10, ES) == "en un momento"
+    assert in_label(3 * HOUR, ES) == "en 3 horas"
+    assert in_label(800 * DAY, ES) == "en 2 años"
+
+
+def test_the_scene_time_bar_in_spanish():
+    bar = scene_time(grounded_world().bible.calendar, 0, 0, 40, ES)
+
+    assert (bar.label, bar.duration_label) == ("14 de mayo de 1974, 21:00", "+0 s")
+    assert bar.personal_label == "Mundo: +0 s. Tú: +40 s."

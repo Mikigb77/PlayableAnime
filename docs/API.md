@@ -389,8 +389,12 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                images: "off"|"key_moments"|"more",      # M2, default key_moments
                suggestions: bool,                         # S2
                language: "en"|"es"}                       # S10, default en: new scenes are written
-                                                         # in it; what was told stays as it was
+                                                         # in it; what was told stays as it was.
+                                                         # The labels the server writes follow it:
+                                                         # the clock, a new scene's time bar, and
+                                                         # Memory's and Status's fixed words
 Clock         {world_s, label, timeline_id}              # label such as "Day 3, dusk" or "14 May 1974, 23:10"
+                                                         # ("Día 3, atardecer" in a Spanish story, S10)
 ```
 
 ### Turns (B5, B7, S3, T10, V7)

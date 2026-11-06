@@ -69,6 +69,7 @@ class Draft:
             gift=self.gift,
             template=self.template,
             released_rules=self.released_rules,
+            language=self.language,
         )
 
     def state(self) -> WorldState:
@@ -211,12 +212,12 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in shown + hidden]:
             world_asks.append(rules_instruction(forced_rules))
     if edits.world_lines is not None:
-        before = world_lines(state)
+        before = world_lines(state, draft.language)
         after = _clean_lines(edits.world_lines)
         if after != before:
             world_asks.append(lines_instruction("world", before, after))
     if edits.character_lines is not None:
-        before = character_lines(state)
+        before = character_lines(state, draft.language)
         after = _clean_lines(edits.character_lines)
         if after != before:
             character_asks.append(lines_instruction("character", before, after))

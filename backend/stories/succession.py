@@ -200,7 +200,7 @@ async def draw(request: HttpRequest, story: Story, heir_id: str | None = None) -
             lot=lot,
             character=character,
             situation=situation,
-            lines=character_lines(preview),
+            lines=character_lines(preview, language),
             heir=heir,
         )
         drawn = await sync_to_async(_keep)(story, drawn, call)

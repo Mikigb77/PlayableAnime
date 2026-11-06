@@ -6,6 +6,9 @@ always match the structured draft and can't carry hidden truth: mystery answers,
 faction plans, a body's forgotten past and anyone the character doesn't know stay out (C6, N7).
 As a last guard, a line that quotes hidden text, or names someone the character doesn't know, is
 dropped.
+
+The few words code adds ("Peoples:", "Wants", "Goal:") come in the draft's language (S10); the
+rest is the world's own text, which the drafter wrote in it.
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ import re
 from collections.abc import Iterable
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
+from engine.context import Language
 from engine.state import (
     Character,
     GiftStrength,
@@ -29,10 +33,59 @@ WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
 HIDDEN_MIN_WORDS = 5  # shorter hidden strings, such as a name, are too common to match on
 
+EN = Language.EN
+ES = Language.ES
 
-def world_lines(state: WorldState) -> list[str]:
+# S10: the words code adds to the lines, by language.
+_WORDS = {
+    EN: {
+        "beyond": " and beyond",
+        "peoples": "Peoples: ",
+        "stage": "{stage} of {rung}",
+        "gifts": "Gifts",
+        "flaws": "Flaws",
+        "quirks": "Quirks",
+        "wants": "Wants ",
+        "secret": " Nobody knows.",
+        "no_powers": "No powers, since this world has none.",
+        "carries": "Carries ",
+        "owns": "Owns ",
+        "goal": "Goal: ",
+        "in": "in",
+        "and": " and ",
+    },
+    ES: {
+        "beyond": " y más allá",
+        "peoples": "Pueblos: ",
+        "stage": "{stage} de {rung}",
+        "gifts": "Dones",
+        "flaws": "Defectos",
+        "quirks": "Manías",
+        "wants": "Quiere ",
+        "secret": " Nadie lo sabe.",
+        "no_powers": "Sin poderes, porque en este mundo no existen.",
+        "carries": "Lleva ",
+        "owns": "Posee ",
+        "goal": "Objetivo: ",
+        "in": "en",
+        "and": " y ",
+    },
+}
+# Nouns, as "Pericia: espada", so they fit a character of any gender.
+_SKILL_LEVELS_ES = {
+    SkillLevel.UNTRAINED: "Sin formación",
+    SkillLevel.NOVICE: "Nociones",
+    SkillLevel.FAIR: "Soltura",
+    SkillLevel.SKILLED: "Destreza",
+    SkillLevel.EXPERT: "Pericia",
+    SkillLevel.MASTER: "Maestría",
+}
+
+
+def world_lines(state: WorldState, language: Language = EN) -> list[str]:
     """G1: genre and what never changes, then where and when, the ladder and peoples, then the
     factions, deadlines and questions the character knows, then the key people they know."""
+    words = _WORDS[language]
     bible = state.bible
     lines: list[str] = []
     existence = [r for r in bible.rules if r.topic is RuleTopic.EXISTENCE]
@@ -41,10 +94,11 @@ def world_lines(state: WorldState) -> list[str]:
         lines.append(_sentence(bible.era))
     for ladder in bible.ladders[:1]:
         names = [r.name for r in ladder.rungs]
-        rungs = ", ".join(names[:5]) + (" and beyond" if len(names) > 5 else "")
+        rungs = ", ".join(names[:5]) + (words["beyond"] if len(names) > 5 else "")
         lines.append(_sentence(f"{_capital(ladder.name)}: {rungs}"))
     if bible.peoples:
-        lines.append(_sentence("Peoples: " + _join([p.name for p in bible.peoples[:6]])))
+        peoples = _join([p.name for p in bible.peoples[:6]], language)
+        lines.append(_sentence(words["peoples"] + peoples))
     factions = sorted(
         (f for f in state.factions.values() if _known(state, f.known_by)),
         key=lambda f: (f.parent_id is not None, f.id),
@@ -53,7 +107,7 @@ def world_lines(state: WorldState) -> list[str]:
         lines.append(_entry(faction.name, faction.description))
     for clock in sorted(state.clocks.values(), key=lambda c: c.id):
         if _known(state, clock.known_by) and len(lines) < WORLD_LINES:
-            lines.append(_clock_line(clock.name, clock.interval_s, clock.remaining))
+            lines.append(_clock_line(clock.name, clock.interval_s, clock.remaining, language))
     threads = state.threads
     for mystery in bible.mysteries:
         thread = threads.get(mystery.thread_id or "")
@@ -69,8 +123,9 @@ def world_lines(state: WorldState) -> list[str]:
     return _guard(state, lines)[:WORLD_LINES]
 
 
-def character_lines(state: WorldState) -> list[str]:
+def character_lines(state: WorldState, language: Language = EN) -> list[str]:
     """G2, G16: who the character is, in the world's own words rather than numbers."""
+    words = _WORDS[language]
     pc = state.player
     sheet = pc.sheet
     lines = [_who(state, pc)]
@@ -89,9 +144,8 @@ def character_lines(state: WorldState) -> list[str]:
         ladder = state.bible.ladder(position.ladder_id)
         if ladder is not None and position.rung < len(ladder.rungs):
             rung = ladder.rungs[position.rung].name
-            lines.append(
-                _sentence(f"{_capital(position.stage)} of {rung}" if position.stage else rung)
-            )
+            stage = words["stage"].format(stage=_capital(position.stage), rung=rung)
+            lines.append(_sentence(stage if position.stage else rung))
     if sheet.skills:
         by_level = sorted(sheet.skills, key=lambda s: -s.level.rank)
         groups: dict[SkillLevel, list[str]] = {}
@@ -99,7 +153,7 @@ def character_lines(state: WorldState) -> list[str]:
             groups.setdefault(skill.level, []).append(skill.name)
         lines.append(
             " ".join(
-                _sentence(f"{level.value.capitalize()}: {_join(names)}")
+                _sentence(f"{_skill_level(level, language)}: {_join(names, language)}")
                 for level, names in groups.items()
             )
         )
@@ -107,44 +161,48 @@ def character_lines(state: WorldState) -> list[str]:
     flaws = [t.name for t in sheet.traits if t.kind is TraitKind.FLAW]
     quirks = [t.name for t in sheet.traits if t.kind is TraitKind.QUIRK]
     traits = [
-        _sentence(f"{label}: {_join(names)}")
-        for label, names in (("Gifts", gifts), ("Flaws", flaws), ("Quirks", quirks))
+        _sentence(f"{words[label]}: {_join(names, language)}")
+        for label, names in (("gifts", gifts), ("flaws", flaws), ("quirks", quirks))
         if names
     ]
     if traits:
         lines.append(" ".join(traits))
     temperament = sheet.disposition.temperament
-    mood = _capital(_join(temperament.traits)) if temperament.traits else ""
-    wants = f"Wants {_join(temperament.wants)}" if temperament.wants else ""
+    mood = _capital(_join(temperament.traits, language)) if temperament.traits else ""
+    wants = words["wants"] + _join(temperament.wants, language) if temperament.wants else ""
     if mood or wants:
         lines.append(" ".join(_sentence(part) for part in (mood, wants) if part))
     if sheet.powers:
         for power in sheet.powers[:3]:
             detail = power.description or power.name
             limits = f" ({'; '.join(power.limits)})" if power.limits else ""
-            secret = " Nobody knows." if power.secret else ""
+            secret = words["secret"] if power.secret else ""
             lines.append(
                 _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + secret
             )
     elif state.bible.grounded:
-        lines.append("No powers, since this world has none.")
+        lines.append(words["no_powers"])
     resources = sheet.resources
     carried = [i.name for i in resources.items if i.carried]
     owned = [i.name for i in resources.items if not i.carried]
     held = []
     if carried:
-        held.append(_sentence("Carries " + _join(carried)))
+        held.append(_sentence(words["carries"] + _join(carried, language)))
     if owned:
-        held.append(_sentence("Owns " + _join(owned)))
+        held.append(_sentence(words["owns"] + _join(owned, language)))
     if resources.money:
-        held.append(_sentence(f"{resources.money:,} {resources.currency}".strip()))
+        money = f"{resources.money:,}"
+        if language is ES:
+            money = money.replace(",", ".")
+        held.append(_sentence(f"{money} {resources.currency}".strip()))
     if held:
         lines.append(" ".join(held))
     if resources.connections:
-        lines.append(_sentence(_capital(_join([c.name for c in resources.connections]))))
+        connections = _join([c.name for c in resources.connections], language)
+        lines.append(_sentence(_capital(connections)))
     active = [g for g in state.goals.values() if g.status is GoalStatus.ACTIVE]
     for goal in sorted(active, key=lambda g: g.id)[:2]:
-        lines.append(_sentence(f"Goal: {goal.text.rstrip('.')}"))
+        lines.append(_sentence(words["goal"] + goal.text.rstrip(".")))
     return _guard(state, lines)[:CHARACTER_LINES]
 
 
@@ -227,21 +285,41 @@ def _who(state: WorldState, pc: Character) -> str:
     return _sentence(", ".join(parts))
 
 
-def _clock_line(name: str, interval_s: int | None, steps: int) -> str:
+def _clock_line(name: str, interval_s: int | None, steps: int, language: Language = EN) -> str:
     if not interval_s:
         return _sentence(name)
-    return _sentence(f"{name.rstrip('.')}: in {duration(interval_s * steps)}")
+    when = duration(interval_s * steps, language)
+    return _sentence(f"{name.rstrip('.')}: {_WORDS[language]['in']} {when}")
 
 
-def duration(seconds: int) -> str:
-    """A rough span in words: '10 days', 'an hour', 'a year'."""
+# S10: each unit in Spanish, as one (with its article) and as many.
+_UNITS_ES = {
+    "year": ("un año", "años"),
+    "day": ("un día", "días"),
+    "hour": ("una hora", "horas"),
+    "minute": ("un minuto", "minutos"),
+}
+
+
+def duration(seconds: int, language: Language = EN) -> str:
+    """A rough span in words: '10 days', 'an hour', 'a year' (in Spanish '10 días', 'una
+    hora')."""
     for size, unit in ((YEAR, "year"), (DAY, "day"), (HOUR, "hour"), (MINUTE, "minute")):
         if seconds >= size:
             count = round(seconds / size)
+            if language is ES:
+                one, many = _UNITS_ES[unit]
+                return one if count == 1 else f"{count} {many}"
             if count == 1:
                 return "an hour" if unit == "hour" else f"a {unit}"
             return f"{count} {unit}s"
-    return "moments"
+    return "un momento" if language is ES else "moments"
+
+
+def _skill_level(level: SkillLevel, language: Language) -> str:
+    if language is ES:
+        return _SKILL_LEVELS_ES.get(level, level.value.capitalize())
+    return level.value.capitalize()
 
 
 def _entry(name: str, description: str) -> str:
@@ -259,11 +337,11 @@ def _capital(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def _join(items: list[str]) -> str:
+def _join(items: list[str], language: Language = EN) -> str:
     items = [i for i in items if i]
     if len(items) <= 1:
         return "".join(items)
-    return ", ".join(items[:-1]) + " and " + items[-1]
+    return ", ".join(items[:-1]) + _WORDS[language]["and"] + items[-1]
 
 
 def _join_words(rank: str, faction: str) -> str:
