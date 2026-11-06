@@ -2,6 +2,7 @@ import 'fake_account.dart';
 import 'fake_auth.dart';
 import 'fake_drafts.dart';
 import 'fake_pictures.dart';
+import 'fake_releases.dart';
 import 'fake_stories.dart';
 
 /// The fake backend's in-memory database. Each feature area keeps its own slice, defined in its
@@ -17,6 +18,7 @@ class FakeData {
   final stories = FakeStoryState();
   final pictures = FakePictureState();
   final reports = <Map<String, dynamic>>[];
+  final releases = FakeReleaseState();
 
   var _nextId = 100;
 

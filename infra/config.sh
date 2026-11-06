@@ -43,6 +43,11 @@ SECRET_DJANGO_KEY="django-secret-key"
 
 # Pictures (M4): a private bucket in Frankfurt, served through short-lived signed URLs.
 MEDIA_BUCKET="playable-anime-pictures"
+# The app's own updates (S12): each deploy uploads the Android build to this private bucket in
+# Frankfurt, and the API gives the app a short-lived signed URL for the newest one. It keeps the
+# newest RELEASES_KEEP builds.
+RELEASES_BUCKET="playable-anime-releases"
+RELEASES_KEEP="3"
 
 # GitHub Actions signs in through Workload Identity Federation as this account. No JSON key (B11).
 DEPLOYER_SA_NAME="github-deployer"

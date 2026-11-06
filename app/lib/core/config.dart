@@ -17,6 +17,11 @@ abstract final class AppConfig {
 
   static const isFake = apiMode == ApiMode.fake;
 
+  /// `--dart-define=SELF_UPDATE=true`: the APK each deploy publishes, which finds, downloads and
+  /// installs newer builds itself (S12). Off in development and in a build for an app store, which
+  /// updates the app itself.
+  static const selfUpdate = bool.fromEnvironment('SELF_UPDATE');
+
   /// The widget gallery at /gallery, for development: debug builds and the fake API only.
   static const showGallery = kDebugMode || isFake;
 }

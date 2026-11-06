@@ -11,6 +11,7 @@ import 'fake_data.dart';
 import 'fake_drafts.dart';
 import 'fake_pictures.dart';
 import 'fake_premises.dart';
+import 'fake_releases.dart';
 import 'fake_reports.dart';
 import 'fake_speech.dart';
 import 'fake_stories.dart';
@@ -89,7 +90,7 @@ class FakeRequest {
 }
 
 class FakeResponse {
-  const FakeResponse._(this.status, {this.json, this.events});
+  const FakeResponse._(this.status, {this.json, this.events, this.bytes, this.contentType});
 
   factory FakeResponse.json(Object? body, {int status = 200}) => FakeResponse._(status, json: body);
 
@@ -111,9 +112,15 @@ class FakeResponse {
   /// A `text/event-stream` reply; each item is one encoded event (see [encodeSseEvent]).
   factory FakeResponse.sse(Stream<String> events) => FakeResponse._(200, events: events);
 
+  /// A file, such as a downloaded APK.
+  factory FakeResponse.file(List<int> bytes, String contentType) =>
+      FakeResponse._(200, bytes: bytes, contentType: contentType);
+
   final int status;
   final Object? json;
   final Stream<String>? events;
+  final List<int>? bytes;
+  final String? contentType;
 }
 
 typedef FakeHandler = FutureOr<FakeResponse> Function(FakeRequest request);
@@ -152,6 +159,7 @@ class FakeBackend extends http.BaseClient {
     registerPictureRoutes(backend);
     registerReportRoutes(backend);
     registerSpeechRoutes(backend);
+    registerReleaseRoutes(backend);
     return backend;
   }
 
@@ -245,14 +253,16 @@ class FakeBackend extends http.BaseClient {
         request: request,
       );
     }
-    final bytes = response.json == null && response.status == 204
-        ? const <int>[]
-        : utf8.encode(jsonEncode(response.json));
+    final bytes =
+        response.bytes ??
+        (response.json == null && response.status == 204
+            ? const <int>[]
+            : utf8.encode(jsonEncode(response.json)));
     return http.StreamedResponse(
       Stream.value(bytes),
       response.status,
       contentLength: bytes.length,
-      headers: {'content-type': 'application/json; charset=utf-8'},
+      headers: {'content-type': response.contentType ?? 'application/json; charset=utf-8'},
       request: request,
     );
   }
