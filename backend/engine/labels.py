@@ -1,8 +1,8 @@
 """Time in words (W10, W10a, G16): dates in the world's own calendar, durations and how long ago.
 
 The server sends these ready-made, so the app never formats an in-world date itself (API.md),
-in the story's language (S10): English by default, or Spanish. What the turn's models read stays
-English: they write in the story's language whatever their brief is in.
+in the story's language (S10): English by default, Spanish or Catalan. What the turn's models
+read stays English: they write in the story's language whatever their brief is in.
 """
 
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ from engine.state.bible import Calendar, CalendarStyle, TimeOfDayStyle
 
 EN = Language.EN
 ES = Language.ES
+CA = Language.CA
 
 LABEL_YEAR = 365 * DAY
 LABEL_MONTH = 30 * DAY
@@ -45,30 +46,71 @@ MONTH_NAMES = (
     "December",
 )
 
-# S10: the parts of the day and the months as a Spanish story shows them.
-_PART_NAMES_ES = {
-    "night": "noche",
-    "dawn": "amanecer",
-    "morning": "mañana",
-    "midday": "mediodía",
-    "afternoon": "tarde",
-    "dusk": "atardecer",
-    "evening": "anochecer",
+# S10: the parts of the day and the months as a Spanish or Catalan story shows them.
+_PART_NAMES = {
+    ES: {
+        "night": "noche",
+        "dawn": "amanecer",
+        "morning": "mañana",
+        "midday": "mediodía",
+        "afternoon": "tarde",
+        "dusk": "atardecer",
+        "evening": "anochecer",
+    },
+    CA: {
+        "night": "nit",
+        "dawn": "alba",
+        "morning": "matí",
+        "midday": "migdia",
+        "afternoon": "tarda",
+        "dusk": "capvespre",
+        "evening": "vespre",
+    },
 }
-_MONTH_NAMES_ES = (
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-)
+_MONTH_NAMES = {
+    ES: (
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
+    ),
+    CA: (
+        "gener",
+        "febrer",
+        "març",
+        "abril",
+        "maig",
+        "juny",
+        "juliol",
+        "agost",
+        "setembre",
+        "octubre",
+        "novembre",
+        "desembre",
+    ),
+}
+_DAY_WORD = {EN: "Day", ES: "Día", CA: "Dia"}
+_YEAR_WORD = {ES: "año", CA: "any"}
+_CATALAN_VOWELS = frozenset("aeiouàèéíïòóúü")
+
+
+def of_name(name: str, language: Language) -> str:
+    """ "de abril" in Spanish; in Catalan "de maig", but "d'abril" and "d'Hivern" before a
+    vowel sound, though not before an "i" or "u" that leads into another vowel ("de Iuna")."""
+    if language is CA:
+        sound = name.lower().removeprefix("h")
+        glide = sound[:1] in "iu" and sound[1:2] in _CATALAN_VOWELS
+        if sound[:1] in _CATALAN_VOWELS and not glide:
+            return f"d'{name}"
+    return f"de {name}"
 
 
 def part_of_day(second_of_day: int) -> str:
@@ -85,7 +127,7 @@ def _time_of_day(calendar: Calendar, second_of_day: int, language: Language) -> 
     if calendar.time_of_day is TimeOfDayStyle.CLOCK:
         return clock_time(second_of_day)
     part = part_of_day(second_of_day)
-    return _PART_NAMES_ES[part] if language is ES else part
+    return _PART_NAMES[language][part] if language in _PART_NAMES else part
 
 
 def _ordinal(n: int) -> str:
@@ -96,8 +138,7 @@ def _ordinal(n: int) -> str:
 def _day_count(calendar: Calendar, world_s: int, language: Language) -> str:
     since_midnight = calendar.start_second_of_day + world_s
     day = since_midnight // DAY + 1
-    word = "Día" if language is ES else "Day"
-    return f"{word} {day}, {_time_of_day(calendar, since_midnight, language)}"
+    return f"{_DAY_WORD[language]} {day}, {_time_of_day(calendar, since_midnight, language)}"
 
 
 def _gregorian(calendar: Calendar, world_s: int, language: Language) -> str | None:
@@ -107,8 +148,9 @@ def _gregorian(calendar: Calendar, world_s: int, language: Language) -> str | No
     except (ValueError, OverflowError):
         return None
     second_of_day = moment.hour * HOUR + moment.minute * MINUTE + moment.second
-    if language is ES:
-        date = f"{moment.day} de {_MONTH_NAMES_ES[moment.month - 1]} de {moment.year}"
+    if language in _MONTH_NAMES:
+        month = _MONTH_NAMES[language][moment.month - 1]
+        date = f"{moment.day} {of_name(month, language)} de {moment.year}"
     else:
         date = f"{moment.day} {MONTH_NAMES[moment.month - 1]} {moment.year}"
     return f"{date}, {_time_of_day(calendar, second_of_day, language)}"
@@ -131,8 +173,9 @@ def _custom(calendar: Calendar, world_s: int, language: Language) -> str | None:
         day_of_year -= month.days
     era = f" {calendar.era}" if calendar.era else ""
     when = _time_of_day(calendar, since_midnight, language)
-    if language is ES:
-        return f"Día {day_of_year + 1} de {month.name}, año {year}{era}, {when}"
+    if language in _YEAR_WORD:
+        day = f"{_DAY_WORD[language]} {day_of_year + 1} {of_name(month.name, language)}"
+        return f"{day}, {_YEAR_WORD[language]} {year}{era}, {when}"
     return f"{_ordinal(day_of_year + 1)} day of {month.name}, year {year}{era}, {when}"
 
 
@@ -177,8 +220,9 @@ def moment(calendar: Calendar, world_s: int) -> Moment:
 def clock_label(calendar: Calendar, world_s: int, language: Language = EN) -> str:
     """The date and time of day in the world's calendar: "Day 3, dusk", "14 May 1974, 23:10" or
     "3rd day of the Frost Moon, year 412, dusk"; in Spanish "Día 3, atardecer", "14 de mayo de
-    1974, 23:10" or "Día 3 de Luna de Escarcha, año 412, atardecer" (S10). A calendar it can't
-    read falls back to a day count, so a label is never missing."""
+    1974, 23:10" or "Día 3 de Luna de Escarcha, año 412, atardecer", and in Catalan "Dia 3,
+    capvespre", "14 d'abril de 1974, 23:10" or "Dia 3 de Lluna de Gebre, any 412, capvespre"
+    (S10). A calendar it can't read falls back to a day count, so a label is never missing."""
     if calendar.style is CalendarStyle.GREGORIAN:
         label = _gregorian(calendar, world_s, language)
     elif calendar.style is CalendarStyle.CUSTOM:
@@ -195,20 +239,20 @@ _UNITS = (
     (MINUTE, "min"),
     (1, "s"),
 )
-# S10: only the year has its own letter in Spanish ("a" for "año").
-_UNITS_ES = {"y": "a"}
+# S10: only the year has its own letter in Spanish and Catalan ("a" for "año" and "any").
+_YEAR_UNIT = {ES: "a", CA: "a"}
 
 
 def span_label(seconds: int, language: Language = EN) -> str:
     """A span in at most two units: "40 s", "3 min", "1 h 20 min", "2 d 4 h", "3 y 12 d" (in
-    Spanish "3 a 12 d")."""
+    Spanish and Catalan "3 a 12 d")."""
     seconds = max(0, int(seconds))
     if seconds == 0:
         return "0 s"
     parts: list[str] = []
     for size, unit in _UNITS:
-        if language is ES:
-            unit = _UNITS_ES.get(unit, unit)
+        if unit == "y":
+            unit = _YEAR_UNIT.get(language, unit)
         if seconds >= size:
             parts.append(f"{seconds // size} {unit}")
             seconds %= size
@@ -227,66 +271,105 @@ def duration_label(seconds: int, language: Language = EN) -> str:
 
 def personal_label(world_s: int, personal_s: int, language: Language = EN) -> str | None:
     """Both clocks when a time power split them: "World: +0 s. You: +40 s." (W10a), in Spanish
-    "Mundo: +0 s. Tú: +40 s.". None when the user lived the same time as the world."""
+    "Mundo: +0 s. Tú: +40 s.", in Catalan "Món: +0 s. Tu: +40 s.". None when the user lived the
+    same time as the world."""
     if world_s == personal_s:
         return None
-    world, you = ("Mundo", "Tú") if language is ES else ("World", "You")
+    world, you = _CLOCKS[language]
     return (
         f"{world}: {duration_label(world_s, language)}. "
         f"{you}: {duration_label(personal_s, language)}."
     )
 
 
-# S10: each unit's Spanish as one and as many, the one with its article ("un día", "una hora").
-_AMOUNTS_ES = {
-    "minute": ("un minuto", "minutos"),
-    "hour": ("una hora", "horas"),
-    "day": ("un día", "días"),
-    "week": ("una semana", "semanas"),
-    "month": ("un mes", "meses"),
-    "year": ("un año", "años"),
+_CLOCKS = {EN: ("World", "You"), ES: ("Mundo", "Tú"), CA: ("Món", "Tu")}
+
+# S10: each unit's Spanish and Catalan as one and as many, the one with its article ("un día",
+# "una hora").
+_AMOUNTS = {
+    ES: {
+        "minute": ("un minuto", "minutos"),
+        "hour": ("una hora", "horas"),
+        "day": ("un día", "días"),
+        "week": ("una semana", "semanas"),
+        "month": ("un mes", "meses"),
+        "year": ("un año", "años"),
+    },
+    CA: {
+        "minute": ("un minut", "minuts"),
+        "hour": ("una hora", "hores"),
+        "day": ("un dia", "dies"),
+        "week": ("una setmana", "setmanes"),
+        "month": ("un mes", "mesos"),
+        "year": ("un any", "anys"),
+    },
 }
 
 
-def _amount(count: int, unit: str, language: Language) -> str:
-    if language is ES:
-        one, many = _AMOUNTS_ES[unit]
+def amount(count: int, unit: str, language: Language = EN) -> str:
+    """A count of a time unit (`minute`, `hour`, `day`, `week`, `month` or `year`) in words: "an
+    hour", "3 days"; in Spanish "una hora", "3 días"; in Catalan "una hora", "3 dies"."""
+    if language in _AMOUNTS:
+        one, many = _AMOUNTS[language][unit]
         return one if count == 1 else f"{count} {many}"
     if count == 1:
         return f"an {unit}" if unit == "hour" else f"a {unit}"
     return f"{count} {unit}s"
 
 
+def number_label(number: int, language: Language = EN) -> str:
+    """A whole number with its thousands grouped the language's way: 12,500 in English, 12.500 in
+    Spanish and Catalan (S10)."""
+    return f"{number:,}".replace(",", _THOUSANDS[language])
+
+
+_THOUSANDS = {EN: ",", ES: ".", CA: "."}
+
+
 def _rough(seconds: int, language: Language) -> str:
     if seconds < HOUR:
-        return _amount(max(1, seconds // MINUTE), "minute", language)
+        return amount(max(1, seconds // MINUTE), "minute", language)
     if seconds < DAY:
-        return _amount(seconds // HOUR, "hour", language)
+        return amount(seconds // HOUR, "hour", language)
     if seconds < 2 * LABEL_WEEK:
-        return _amount(seconds // DAY, "day", language)
+        return amount(seconds // DAY, "day", language)
     if seconds < 2 * LABEL_MONTH:
-        return _amount(seconds // LABEL_WEEK, "week", language)
+        return amount(seconds // LABEL_WEEK, "week", language)
     if seconds < LABEL_YEAR:
-        return _amount(seconds // LABEL_MONTH, "month", language)
-    return _amount(seconds // LABEL_YEAR, "year", language)
+        return amount(seconds // LABEL_MONTH, "month", language)
+    return amount(seconds // LABEL_YEAR, "year", language)
 
 
 def ago_label(seconds: int, language: Language = EN) -> str:
     """How long ago, in rough words: "moments ago", "2 days ago" (W10, `/status`); in Spanish
-    "hace un momento", "hace 2 días"."""
-    if language is ES:
-        return "hace un momento" if seconds < MINUTE else f"hace {_rough(seconds, language)}"
+    "hace un momento", "hace 2 días"; in Catalan "fa un moment", "fa 2 dies"."""
+    just_now, ago = _AGO[language]
     if seconds < MINUTE:
-        return "moments ago"
-    return f"{_rough(seconds, language)} ago"
+        return just_now
+    return ago.format(_rough(seconds, language))
+
+
+_AGO = {
+    EN: ("moments ago", "{} ago"),
+    ES: ("hace un momento", "hace {}"),
+    CA: ("fa un moment", "fa {}"),
+}
 
 
 def in_label(seconds: int, language: Language = EN) -> str:
     """How long until, in rough words: "in moments", "in 3 hours"; in Spanish "en un momento",
-    "en 3 horas"."""
+    "en 3 horas"; in Catalan "d'aquí a un moment", "d'aquí a 3 hores"."""
+    soon, until = _UNTIL[language]
     if seconds < MINUTE:
-        return "en un momento" if language is ES else "in moments"
-    return f"{'en' if language is ES else 'in'} {_rough(seconds, language)}"
+        return soon
+    return f"{until} {_rough(seconds, language)}"
+
+
+_UNTIL = {
+    EN: ("in moments", "in"),
+    ES: ("en un momento", "en"),
+    CA: ("d'aquí a un moment", "d'aquí a"),
+}
 
 
 class SceneTime(EngineModel):

@@ -23,6 +23,7 @@ class Language(StrEnum):
 
     EN = "en"
     ES = "es"
+    CA = "ca"
 
 
 class Difficulty(StrEnum):

@@ -7,9 +7,9 @@
 > The app shows this policy from "Who we are" on, from a copy in `app/assets/legal/privacy_en.md`.
 > An app test fails when the two differ, so after a change run
 > `awk '/^## Who we are/{p=1} p' docs/PRIVACY.md > app/assets/legal/privacy_en.md`.
-> The app also ships the policy in Spanish, `app/assets/legal/privacy_es.md` (S10), for players
-> whose app is in Spanish. Change it in the same PR: a test fails when its sections, tables and
-> lists stop matching the English ones.
+> The app also ships the policy in Spanish, `app/assets/legal/privacy_es.md`, and in Catalan,
+> `app/assets/legal/privacy_ca.md` (S10), for players whose app is in those languages. Change them in
+> the same PR: a test fails when their sections, tables and lists stop matching the English ones.
 >
 > **Open questions for Miki**
 >

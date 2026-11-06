@@ -232,8 +232,8 @@ first show, when it comes back to the foreground (at most every half hour) and f
 Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
 
-`language` is the app's language, `en` (the default) or `es` (S10): the title, genre, tagline and
-premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
+`language` is the app's language, `en` (the default), `es` or `ca` (S10): the title, genre, tagline
+and premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
 in every language.
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
@@ -264,7 +264,7 @@ BYOK request is free (K6).
 
 ```text
 Draft            {id, premise, premise_id?, rating, title, genre, tone,
-                  language: "en"|"es",       # S10: what it is written in, and its story starts in
+                  language: "en"|"es"|"ca",  # S10: what it is written in, and its story stays in
                   world_lines: [string],       # the one-screen summary in plain words (G1)
                   character_lines: [string],   # the character in the world's words (G2, G16)
                   advanced: DraftAdvanced,
@@ -284,8 +284,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
   `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
   word, in the same model call; one with the id of a drafted rule replaces it. `language` is the
-  app's language, `en` (the default) or `es` (S10): the drafter writes every text the player reads
-  in it, a starter sent by `premise_id` alone takes its premise in that language, and revisions
+  app's language, `en` (the default), `es` or `ca` (S10): the drafter writes every text the player
+  reads in it, a starter sent by `premise_id` alone takes its premise in that language, and revisions
   keep it.
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
@@ -305,8 +305,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   can't overwrite each other either way: the later one answers `409` too, and its model call is
   still charged, since it ran.
 - **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
-  the settings: the draft's `difficulty`, `event_frequency` and `language`, then whatever
-  `settings` sends. A
+  the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends, and
+  the draft's `language`, which `settings` can't change (S10: an older app's is ignored). A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
   returns the same story. The app sends `expected_version` here as with every change; the server
   refuses a stale one with `409 version_conflict` like any other change, so a story never starts
@@ -336,7 +336,7 @@ makes one from an example world.
 | GET | `/v1/stories` | | `[StorySummary]`, only the caller's own (S8) |
 | GET | `/v1/stories/{id}` | `?scenes=20` (0 to 50) | `Story` with the last N scenes, oldest first |
 | GET | `/v1/stories/{id}/scenes` | `?before=<turn>&limit=20` (1 to 50) | `[Scene]`, the `limit` scenes before turn `before`, oldest first, for scrollback |
-| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. |
+| PATCH | `/v1/stories/{id}` | `{title?, settings?: StorySettings}` | `Story` with the last 20 scenes (S6). Only the fields sent change, settings included, and the version doesn't move. A story keeps its `language` (S10): one sent is ignored. |
 | DELETE | `/v1/stories/{id}` | | `204` |
 | POST | `/v1/stories/{id}/turns` | `TurnRequest` | `text/event-stream`, see below |
 | POST | `/v1/stories/{id}/close` | | `Story` with the last 20 scenes, its `ending.closed` true (N6). Only a story at its ending; any other is a `validation_error` of type `not_ended`. Closing a closed story changes nothing, and the version doesn't move. |
@@ -388,13 +388,15 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                event_frequency: "calm"|"normal"|"dramatic",
                images: "off"|"key_moments"|"more",      # M2, default key_moments
                suggestions: bool,                         # S2
-               language: "en"|"es"}                       # S10, default en: new scenes are written
-                                                         # in it; what was told stays as it was.
+               language: "en"|"es"|"ca"}                  # S10, default en: the language the story
+                                                         # started in, for good. Read only: PATCH
+                                                         # and start ignore it.
                                                          # The labels the server writes follow it:
                                                          # the clock, a new scene's time bar, and
                                                          # Memory's and Status's fixed words
 Clock         {world_s, label, timeline_id}              # label such as "Day 3, dusk" or "14 May 1974, 23:10"
-                                                         # ("Día 3, atardecer" in a Spanish story, S10)
+                                                         # ("Día 3, atardecer" in a Spanish story,
+                                                         # "Dia 3, capvespre" in a Catalan one, S10)
 ```
 
 ### Turns (B5, B7, S3, T10, V7)

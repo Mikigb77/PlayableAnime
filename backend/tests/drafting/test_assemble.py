@@ -18,7 +18,7 @@ from graph.drafting.assemble import (
     ACTIVE_FACTIONS,
     ACTIVE_NPCS,
     GROUNDED_RULE_TEXT,
-    GROUNDED_RULE_TEXT_ES,
+    GROUNDED_RULE_TEXTS,
     HUMAN_PEAK,
     PLAYER_FALLBACK_NAME,
     STOP_LASTS_S,
@@ -174,7 +174,7 @@ def test_the_rules_code_writes_come_in_the_draft_s_language():
 
     assert [
         r.text for r in assemble(grounded, samples.naples_character(), spanish).bible.rules
-    ] == [GROUNDED_RULE_TEXT_ES]
+    ] == [GROUNDED_RULE_TEXTS[Language.ES]]
     [rule] = assemble(aura, _character(powers=[]), spanish).bible.rules
     assert rule.text == "Aura: existe, y está en todas partes."
 

@@ -290,6 +290,18 @@ void main() {
       }
     });
 
+    test('a story keeps its language, ignoring one an older app sends (S10)', () async {
+      final story = await stories.get((await library.stories()).single.id);
+      final saved =
+          await api.patch('/v1/stories/${story.id}', {
+                'settings': {'language': 'es', 'suggestions': false},
+              })
+              as JsonMap;
+      final settings = StorySettings.fromJson(saved['settings'] as JsonMap);
+      expect(settings.language, 'en');
+      expect(settings.suggestions, isFalse);
+    });
+
     test('a report with a block hides the scene from then on', () async {
       final story = await stories.get((await library.stories()).single.id);
       await stories.report(story.id, 2, category: 'other', note: 'Not for me', block: false);
@@ -530,6 +542,33 @@ void main() {
       expect((await stories.picture(story.id, scene.turn)).status, 'skipped');
       expect(await balance(), afterTurn);
     });
+  });
+
+  test('a Catalan draft starts a Catalan story, whatever the start sends (S10)', () async {
+    await signIn();
+    final draft =
+        await api.post('/v1/drafts', {
+              'premise': 'A lighthouse keeper finds a door in the sea.',
+              'rating': 'teen',
+              'language': 'ca',
+            })
+            as JsonMap;
+    expect(draft['language'], 'ca');
+    final started =
+        await api.post('/v1/drafts/${draft['id']}/start', {
+              'settings': {'language': 'en'},
+            })
+            as JsonMap;
+    final story = await stories.get(started['story_id'] as String);
+    expect(story.settings.language, 'ca');
+    await expectLater(
+      api.post('/v1/drafts', {
+        'premise': 'A lighthouse keeper finds a door in the sea.',
+        'rating': 'teen',
+        'language': 'fr',
+      }),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.validationError)),
+    );
   });
 
   test('a draft starts a story that opens with its first scene', () async {

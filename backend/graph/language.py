@@ -1,10 +1,10 @@
 """The language a story is written in (S10), for the prompts of the models that write what the
 player reads: the drafter, the narrator, the summarizer and the interpret step's notes.
 
-A story has one language at a time (`StorySettings.language`), and the player can switch it, so
-the story carries on in the new language from the next scene. What was already written stays as
-it was: the prompts say to write in the story's language even when earlier scenes, the world or
-the player's words are in another. Names keep the spelling they were given.
+A story is written in the language it was started in (`StorySettings.language`): English, Spanish
+or Catalan, from the app's language when the player set it up. The prompts say to write in it
+even when the world, the player's words or, in a story switched before stories kept their
+language, earlier scenes are in another. Names keep the spelling they were given.
 """
 
 from engine.context import Language
@@ -12,6 +12,7 @@ from engine.context import Language
 _WRITTEN_IN = {
     Language.EN: "English",
     Language.ES: "Spanish from Spain, speaking to the player as tú",
+    Language.CA: "Catalan, speaking to the player as tu",
 }
 
 

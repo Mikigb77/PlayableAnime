@@ -11,7 +11,6 @@ from engine.context import (
     Difficulty,
     EventFrequency,
     ImageSetting,
-    Language,
     NarrationLength,
     StorySettings,
 )
@@ -92,8 +91,8 @@ class SettingsPatch(BaseModel):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
-    # S10: the story carries on in this language from the next scene. What it told stays.
-    language: Language | None = None
+    # Not the language: a story stays in the one it was set up in (S10, Miki, 2026-11-06). An
+    # older app that still sends it has it ignored.
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:

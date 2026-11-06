@@ -148,9 +148,8 @@ The scene (R1 to R7):
 STYLE says.
 - Language: write the narration, the suggestions and every text in update in STYLE's language \
 (S10), even when earlier scenes, the world, the player's words or other parts of the brief are in \
-another: a story can switch languages partway, and only what comes next changes. Keep every name \
-as it is spelled, and the character's own lines in the words the player gave them. The image \
-prompt is always in English.
+another. Keep every name as it is spelled, and the character's own lines in the words the player \
+gave them. The image prompt is always in English.
 - Start at the exact moment the last scene ended (LAST MOMENT): the same place, the same people, \
 the same positions, the same things in hand. Time moves only by what the action takes (TIME), at \
 the action's own pace: a quick swing is a sentence or two, a night's sleep a few lines, a year a \
@@ -373,8 +372,13 @@ as they appear. Add nothing the scenes don't say. Write the summary in the langu
 TEMPLATE_LINE = {
     Language.EN: "What happened {where} stays off the page. Its consequences won't.",
     Language.ES: "Lo que pasó {where} queda fuera de la página. Sus consecuencias, no.",
+    Language.CA: "El que va passar {where} queda fora de la pàgina. Les conseqüències, no.",
 }
-TEMPLATE_PLACE = {Language.EN: ("in {place}", "there"), Language.ES: ("en {place}", "allí")}
+TEMPLATE_PLACE = {
+    Language.EN: ("in {place}", "there"),
+    Language.ES: ("en {place}", "allí"),
+    Language.CA: ("a {place}", "allà"),
+}
 
 LENGTHS = {
     NarrationLength.SHORT: "60 to 120 words, more only for a montage",

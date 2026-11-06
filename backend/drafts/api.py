@@ -153,7 +153,7 @@ class StartSettingsIn(Schema):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
-    language: Language | None = None
+    # Not the language: the story starts in the draft's (S10).
 
 
 class StartIn(Schema):

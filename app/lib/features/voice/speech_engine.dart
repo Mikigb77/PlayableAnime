@@ -6,11 +6,12 @@ import 'package:speech_to_text/speech_to_text.dart';
 /// What dictation listens for in a box that doesn't say (V4): English, as a BCP-47 tag.
 const storyLanguage = 'en-US';
 
-/// What dictation listens for in a story or draft written in [language] (`en` or `es`, S10), as a
-/// BCP-47 tag. Recognition listens for the story's language rather than the phone's own, so
+/// What dictation listens for in a story or draft written in [language] (`en`, `es` or `ca`, S10),
+/// as a BCP-47 tag. Recognition listens for the story's language rather than the phone's own, so
 /// Spanish spoken into a Spanish story on a phone set to English is heard as Spanish.
 String speechLocale(String language) => switch (language) {
   'es' => 'es-ES',
+  'ca' => 'ca-ES',
   _ => storyLanguage,
 };
 
