@@ -1,9 +1,11 @@
 import asyncio
+import json
 import logging
 from contextlib import aclosing
 from decimal import Decimal
 
 import pytest
+from pydantic import BaseModel
 
 from graph.llm import (
     BadKey,
@@ -160,6 +162,59 @@ def test_an_unusable_answer_is_retried(fake, make_client, telemetry, bad):
 
     assert run(make_client().structured(Node.NARRATOR, PROMPT, Narration)) == SCENE
     assert telemetry.calls[0].retries == 1
+
+
+class Scores(BaseModel):
+    by_name: dict[str, int] = {}
+
+
+def _failures(lines: list[dict]) -> list[dict]:
+    return [line["llm"] for line in lines if line["message"].startswith("Model call failed")]
+
+
+def test_an_answer_that_fails_validation_logs_where_and_how_but_no_value(
+    fake, make_client, log_lines
+):
+    # On 2026-11-05 most drafts failed validation twice, and the log said only "invalid_output".
+    bad = '{"title": "Rosa Bianchi", "narration": 5, "choices": "Rosa Bianchi"}'
+    fake.script(Node.NARRATOR, Reply(text=bad), Reply(text=bad))
+
+    with pytest.raises(LLMUnavailable):
+        run(make_client().structured(Node.NARRATOR, PROMPT, Narration))
+
+    retry, failed = _failures(log_lines())
+    for fields in (retry, failed):
+        assert fields["reason"] == "invalid_output"
+        assert fields["errors"] == ["narration: string_type", "choices: list_type"]
+        assert fields["error_count"] == 2 and fields["output_chars"] == len(bad)
+    assert "Rosa Bianchi" not in json.dumps(log_lines())
+
+
+def test_unparseable_json_and_keys_the_model_wrote_are_logged_without_values(
+    fake, make_client, log_lines
+):
+    fake.script(
+        Node.CHECKER,
+        Reply(text='{"by_name": {"Rosa Bianchi": "many"}}'),
+        Reply(text='{"by_name": {"Rosa'),
+    )
+
+    with pytest.raises(LLMUnavailable):
+        run(make_client().structured(Node.CHECKER, PROMPT, Scores))
+
+    retry, failed = _failures(log_lines())
+    assert retry["errors"] == ["by_name.*: int_parsing"]
+    assert failed["errors"] == ["(answer): json_invalid"]
+    assert "Rosa" not in json.dumps(log_lines())
+
+
+def test_an_answer_cut_off_logs_no_validation_errors(fake, make_client, log_lines):
+    fake.script(Node.NARRATOR, Reply(json=SCENE, finish="max_tokens"), Reply(json=SCENE))
+
+    run(make_client().structured(Node.NARRATOR, PROMPT, Narration))
+
+    [retry] = _failures(log_lines())
+    assert retry["reason"] == "max_tokens" and "errors" not in retry
 
 
 def test_a_fenced_answer_still_parses(fake, make_client):

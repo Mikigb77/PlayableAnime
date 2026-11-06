@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing
@@ -89,11 +90,22 @@ class GeneratedImage:
 
 
 class _BadOutput(Exception):
-    """The model answered, but not usably (cut off, unparseable, empty). Worth one retry."""
+    """The model answered, but not usably (cut off, unparseable, empty). Worth one retry.
 
-    def __init__(self, reason: str):
+    An answer that fails validation keeps where and how it failed, for the log: the place of each
+    error by field names and list positions, and its type, never a value (T6)."""
+
+    def __init__(self, reason: str, error: ValidationError | None = None, chars: int = 0):
         super().__init__(reason)
         self.reason = reason
+        self.errors = _error_places(error) if error is not None else []
+        self.error_count = error.error_count() if error is not None else 0
+        self.chars = chars
+
+    def log_fields(self) -> dict[str, Any]:
+        if not self.error_count:
+            return {}
+        return {"errors": self.errors, "error_count": self.error_count, "output_chars": self.chars}
 
 
 class ModelClient:
@@ -266,19 +278,16 @@ class ModelClient:
                     # The provider's own words, such as which quota ran out. A player's key is
                     # already masked out of them by the backend (T6).
                     detail = failure.detail if isinstance(failure, ProviderError) else ""
+                    fields = trace.log_fields(reason=reason, detail=detail)
+                    if isinstance(failure, _BadOutput):
+                        fields |= failure.log_fields()
                     rate_limited = reason == "transient_429" and not self._byok
                     if attempt >= (RATE_LIMIT_ATTEMPTS if rate_limited else ATTEMPTS):
                         trace.finish("unavailable", reason)
-                        logger.error(
-                            "Model call failed after retrying",
-                            extra={"llm": trace.log_fields(reason=reason, detail=detail)},
-                        )
+                        logger.error("Model call failed after retrying", extra={"llm": fields})
                         raise LLMUnavailable(node=node.value, model=request.model) from None
                     trace.retry_reasons.append(reason)
-                    logger.warning(
-                        "Model call failed, retrying",
-                        extra={"llm": trace.log_fields(reason=reason, detail=detail)},
-                    )
+                    logger.warning("Model call failed, retrying", extra={"llm": fields})
                     if streamed:
                         trace.first_token_ms = None  # the player sees the retry's text first
                         yield StreamRestart()
@@ -363,8 +372,8 @@ class ModelClient:
             return text
         try:
             return schema.model_validate_json(strip_code_fence(text))
-        except ValidationError:
-            raise _BadOutput("invalid_output") from None
+        except ValidationError as error:
+            raise _BadOutput("invalid_output", error, len(text)) from None
 
     def _fatal(self, failure: ProviderError, trace: _Trace) -> LLMError:
         node, model = trace.request.node.value, trace.request.model
@@ -398,6 +407,26 @@ def _json_schema(schema: type[BaseModel]) -> dict[str, Any]:
     """The schema's JSON schema, built once per class. A fresh copy each call, since the SDK
     may rewrite it in place."""
     return json.loads(_schema_text(schema))
+
+
+# How many of an answer's validation errors are logged, and how a place in it is written: field
+# names and list positions only. Any other key, such as one the model wrote in a map, is "*".
+MAX_LOGGED_ERRORS = 12
+_FIELD_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+
+def _error_places(error: ValidationError) -> list[str]:
+    """Each error as "world.npcs.3.parent_ids: list_type", without the value that failed."""
+    places = []
+    for detail in error.errors(include_url=False, include_context=False, include_input=False):
+        where = ".".join(
+            str(part) if isinstance(part, int) or _FIELD_NAME.fullmatch(str(part)) else "*"
+            for part in detail["loc"]
+        )
+        places.append(f"{where or '(answer)'}: {detail['type']}")
+        if len(places) == MAX_LOGGED_ERRORS:
+            break
+    return places
 
 
 def _reason(failure: Exception) -> str:

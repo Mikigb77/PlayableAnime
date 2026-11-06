@@ -686,8 +686,11 @@ every draft failed that way on 2026-11-04. The backend then sends the same call 
 full schema at the end of the system prompt and JSON mode on, before anything has streamed, logs
 `Gemini refused the response schema` once (`reason=schema_refused`), and sends that schema in the
 prompt for the rest of the process. The client validates each answer against the full model
-either way. The deploy's model check sends every format once, so it shows which ones go in the
-prompt ([DEPLOY.md](DEPLOY.md#checking-the-models)).
+either way. An answer that fails is retried like an unparseable one, and its log lines carry
+`errors` (up to 12, each the place by field names and list positions and the error type, such as
+`world.npcs.0.parent_ids: list_type`), `error_count` and `output_chars`, never a value: a key the
+model wrote in a map is `*` (T6). The deploy's model check sends every format once, so it shows
+which ones go in the prompt ([DEPLOY.md](DEPLOY.md#checking-the-models)).
 
 **Streaming the narration (S3, B7).** The narrator returns one JSON object, and
 `stream_structured` streams the decoded text of its `narration` field as it is written, with
@@ -894,6 +897,21 @@ flowchart LR
   them resolve to nothing), a real alias or connection goes, and a player character given a real
   name gets the default name. Each refusal and each cleaning is logged as a `drafter` block
   ([Safety, ratings and reports](#safety-ratings-and-reports)).
+- **Proposals are read leniently** (`graph/drafting/lenient.py`). The draft's schema goes to
+  Gemini in the prompt (B6), where nothing holds the model to it, and from deploy #82 on
+  2026-11-05 four drafts in five failed validation on both tries and answered 503. So every
+  `Proposal` field that fails validation is repaired on its own. Where its meaning is clear it is
+  fitted: a null takes the field's default, a lone value becomes a one-item list, a list's nulls
+  are dropped, a map of records by id becomes a list with those ids, a map of names
+  (`{"mother": "rosa"}`) becomes the list of them, a name stands for a record that needs only a
+  name (a skill, a trait, an item, a cost), a reference written as a record becomes its id, a
+  number becomes text or a whole number, and an enum or literal is read without regard to case,
+  spaces or hyphens. What still fails costs only itself: a list keeps the items that validate,
+  and a field with a default takes it. A required field that fails still fails its record, and a
+  record in a list is then dropped alone; a draft without a usable world or character still fails
+  and is retried. Each repair is logged (`Repaired the drafter's answer`, a null at DEBUG) with
+  the record's type, the field, the repair and the error types, never a value. A valid proposal
+  reads exactly as before.
 - **The model proposes; `assemble` decides.** The proposal schemas are compact and unbounded, and
   code cleans them: unique slug ids with references resolved by id or name and dangling ones
   dropped, the player always `player` with a real name, list and text sizes capped, and every C1
