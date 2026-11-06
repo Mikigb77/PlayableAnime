@@ -57,6 +57,11 @@ PRICES: dict[str, Price] = {
     # Speech to text (V6), the file version: audio in at $2.00 and text out at $12 per million
     # tokens, about $0.005 a minute of speech. Its preview name, `-preview`, matches this entry.
     "gemini-3.5-transcribe": _price("2.00", "12.00"),
+    # Text to speech (V9): text in, audio out at 25 tokens a second of speech. These are the
+    # prices from 2027-01-01 (checked 2026-11-06); until then Google gives half the audio back
+    # as credits ($6 and $9 a million). About 1.8 cents a minute of speech for Flash-Lite TTS.
+    "gemini-3.8-flash-lite-tts": _price("1.00", "12.00"),
+    "gemini-3.8-flash-tts": _price("1.00", "18.00"),
 }
 
 # An unknown model is priced like the dearest models we know of, so estimates never undercount:

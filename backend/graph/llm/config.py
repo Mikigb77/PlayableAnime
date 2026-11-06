@@ -62,6 +62,11 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
     # `global` endpoint and only by this preview name (checked 2026-11-04). The player waits on it
     # with the mic button spinning, so its deadline is short: a minute of speech takes seconds.
     Node.SPEECH: NodeSettings("gemini-3.5-transcribe-preview", CallOptions(timeout_s=20)),
+    # Reading a scene aloud (V9): Gemini 3.8 Flash-Lite TTS, Google's text-to-speech model for
+    # read-aloud features, a third cheaper than Flash TTS. The app reads a scene in parts and
+    # asks for the next while one plays, so a part of a minute's speech must come well inside
+    # its own length.
+    Node.VOICE: NodeSettings("gemini-3.8-flash-lite-tts", CallOptions(timeout_s=40)),
     # The evals' judge (WS17) runs nightly, never for a player, so it uses the strongest model we
     # price and thinks hard: a judge that misreads a scene makes the numbers worthless.
     Node.JUDGE: NodeSettings(

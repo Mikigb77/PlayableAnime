@@ -40,6 +40,7 @@ class Node(StrEnum):
     DRAFTER = "drafter"
     PICTURE = "picture"
     SPEECH = "speech"  # turns a player's dictation into text (V6)
+    VOICE = "voice"  # reads a scene's narration aloud (V9)
     JUDGE = "judge"  # the evals' model judge (T15, T17, T18); never on a player's turn
 
 
@@ -68,7 +69,8 @@ class ImagePart:
 
 @dataclass(frozen=True, repr=False)
 class AudioPart:
-    """A recording sent to the speech model (V6). Held in memory only, never stored (V5)."""
+    """A recording sent to the speech model (V6), held in memory only and never stored (V5), or
+    speech the voice model read aloud (V9)."""
 
     data: bytes
     mime_type: str = "audio/wav"
@@ -96,6 +98,15 @@ class Transcription:
             f"Transcription(languages={list(self.language_codes)!r}, "
             f"vocabulary={len(self.vocabulary)}, smart={self.smart})"
         )
+
+
+@dataclass(frozen=True)
+class Reading:
+    """Asks the voice model to read the prompt's text aloud instead of answering (V9), in one of
+    its prebuilt voices, such as `Sulafat`. The model tells the language from the text, and the
+    text can open with how to read it ("Read this in Spanish, as a storyteller would: ...")."""
+
+    voice: str
 
 
 @dataclass(frozen=True, repr=False)
@@ -193,6 +204,8 @@ class Request:
     # A speech request (V6): the recording, and how to write it down. Its prompt is empty.
     audio: AudioPart | None = None
     transcription: Transcription | None = None
+    # A request to read the prompt's text aloud (V9), with the voice to read it in.
+    reading: Reading | None = None
 
     def __repr__(self) -> str:
         return f"Request(node={self.node.value!r}, model={self.model!r}, prompt={self.prompt!r})"
@@ -237,10 +250,13 @@ class Finish:
 
 @dataclass(frozen=True)
 class Chunk:
-    """One piece of a streamed response. `usage` is this chunk's share; the client sums them."""
+    """One piece of a streamed response. `usage` is this chunk's share; the client sums them.
+    `audio` is speech the voice model read (V9), as Gemini sends it: raw PCM, with the rate in
+    its type, such as `audio/L16;codec=pcm;rate=24000`."""
 
     text: str = ""
     images: tuple[ImagePart, ...] = ()
+    audio: tuple[AudioPart, ...] = ()
     usage: Usage = field(default_factory=Usage)
     finish: Finish | None = None
 
