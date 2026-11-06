@@ -140,6 +140,7 @@ class Draft {
     required this.genre,
     required this.version,
     this.premiseId,
+    this.language = 'en',
     this.tone = '',
     this.worldLines = const [],
     this.characterLines = const [],
@@ -152,6 +153,7 @@ class Draft {
     premise: json['premise'] as String? ?? '',
     premiseId: json['premise_id'] as String?,
     rating: Rating.fromWire(json['rating']),
+    language: json['language'] as String? ?? 'en',
     title: json['title'] as String? ?? '',
     genre: json['genre'] as String? ?? '',
     tone: json['tone'] as String? ?? '',
@@ -168,6 +170,9 @@ class Draft {
   final String premise;
   final String? premiseId;
   final Rating rating;
+
+  /// The language the draft is written in and its story starts in, `en` or `es` (S10).
+  final String language;
   final String title;
   final String genre;
   final String tone;

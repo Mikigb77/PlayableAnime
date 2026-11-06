@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/l10n.dart';
 import '../../core/navigation.dart';
+import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../account/account_repository.dart';
 import '../discover/premises.dart';
@@ -83,6 +84,8 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
       premiseId: starter?.id,
       quote: text,
       rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : form.rating,
+      // A story starts in the app's language; its settings can switch it later (S10).
+      language: ref.read(appLanguageCodeProvider),
       choices: DraftChoices(
         physics: form.physics,
         giftStrength: form.gift,

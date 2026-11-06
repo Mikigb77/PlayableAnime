@@ -24,7 +24,7 @@ from django.utils import timezone
 from accounts import rules
 from billing import meter
 from drafts.models import Draft
-from engine.context import Difficulty, EventFrequency, StorySettings
+from engine.context import Difficulty, EventFrequency, Language, StorySettings
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import starter
@@ -47,6 +47,7 @@ def to_chain(row: Draft) -> chain.Draft:
         physics=PhysicsMode(row.physics),
         gift=GiftStrength(row.gift_strength) if row.gift_strength else None,
         released_rules=frozenset(row.released_rules),
+        language=Language(row.language),
     )
 
 
@@ -60,6 +61,7 @@ def chain_fields(draft: chain.Draft) -> dict[str, Any]:
         "physics": draft.physics.value,
         "gift_strength": draft.gift.value if draft.gift is not None else None,
         "released_rules": sorted(draft.released_rules),
+        "language": draft.language.value,
     }
 
 
@@ -320,9 +322,12 @@ def start_story(
 
 
 def story_settings(row: Draft, overrides: dict[str, Any]) -> dict[str, Any]:
-    """S6: the draft's difficulty and event frequency, then whatever the player set on start."""
+    """S6: the draft's difficulty, event frequency and language (S10), then whatever the player
+    set on start."""
     base = StorySettings(
-        difficulty=Difficulty(row.difficulty), event_frequency=EventFrequency(row.event_frequency)
+        difficulty=Difficulty(row.difficulty),
+        event_frequency=EventFrequency(row.event_frequency),
+        language=Language(row.language),
     )
     return StorySettings.model_validate(base.model_dump() | overrides).model_dump(mode="json")
 

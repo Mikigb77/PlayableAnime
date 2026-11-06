@@ -11,6 +11,7 @@ from engine.context import (
     Difficulty,
     EventFrequency,
     ImageSetting,
+    Language,
     NarrationLength,
     StorySettings,
 )
@@ -91,6 +92,8 @@ class SettingsPatch(BaseModel):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
+    # S10: the story carries on in this language from the next scene. What it told stays.
+    language: Language | None = None
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import json
 
+from engine.context import Language
 from engine.state import GiftStrength, WorldState
 from graph.drafting.catalog import PremiseTemplate
 from graph.drafting.schema import PLAYER_ID, DraftProposal, RuleP
+from graph.language import language_line
 
 SYSTEM = f"""\
 You draft the opening of a story for Lucid Saga, an endless story game where the player can do \
@@ -75,7 +77,7 @@ CONTENT
 Every person and organisation is fictional: a real city or real history can be the backdrop, but \
 no real living person, crime family, party, company or government appears. Peoples and races are \
 fictional, never a stand-in for a real-world ethnic group. There is no sexual content in any \
-rating. Write in English, in plain words, in the world's own voice.\
+rating. Write in plain words, in the world's own voice.\
 """
 
 RATINGS = {
@@ -111,8 +113,10 @@ so keep what they belong to and where they are unless the change removes it.\
 """
 
 
-def system_prompt(rating: str) -> str:
-    return f"{SYSTEM}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
+def system_prompt(rating: str, language: Language = Language.EN) -> str:
+    """The drafter's system text, for the story's rating (F2) and language (S10)."""
+    words = language_line(language, "every text field the player reads")
+    return f"{SYSTEM}\n\n{words}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
 
 
 def template_block(template: PremiseTemplate | None, released: frozenset[str]) -> str:

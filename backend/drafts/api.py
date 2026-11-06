@@ -116,6 +116,8 @@ class CreateDraftIn(Schema):
     premise_id: str | None = Field(default=None, max_length=64)
     rating: Rating
     advanced: AdvancedIn | None = None
+    # S10: the app's language. The drafter writes in it, and the story starts in it.
+    language: Language = Language.EN
 
     @model_validator(mode="after")
     def _premise_given(self) -> Self:
@@ -151,6 +153,7 @@ class StartSettingsIn(Schema):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
+    language: Language | None = None
 
 
 class StartIn(Schema):
@@ -177,6 +180,7 @@ class DraftOut(Schema):
     premise: str
     premise_id: str | None
     rating: Rating
+    language: Language
     title: str
     genre: str
     tone: str
@@ -203,6 +207,7 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "premise": row.premise,
         "premise_id": row.premise_id or None,
         "rating": row.rating,
+        "language": row.language,
         "title": public_text(state, bible.title),
         "genre": public_text(state, bible.genre),
         "tone": public_text(state, bible.tone),
@@ -264,7 +269,8 @@ async def create_draft(request, body: CreateDraftIn):
         found = starter(body.premise_id)
         if found is None:
             raise field_error("premise_id", "No starter premise has this id.", type="unknown")
-    premise = body.premise if body.premise is not None else found.premise
+    # A starter alone is drafted from its own words in the draft's language (S10).
+    premise = body.premise if body.premise is not None else found.text(body.language).premise
     service.check_rating(request.auth, body.rating)
     advanced = body.advanced or AdvancedIn()
     rules = [r.text for r in advanced.rules or []]
@@ -282,6 +288,7 @@ async def create_draft(request, body: CreateDraftIn):
             physics=advanced.physics or PhysicsMode.FUN_FIRST,
             gift=advanced.gift_strength,
             rules=_rule_edits(advanced),
+            language=body.language,
         )
         row = await service.create_row(
             request.auth,

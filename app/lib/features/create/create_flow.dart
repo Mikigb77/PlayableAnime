@@ -63,13 +63,15 @@ class CreateFlow extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Drafts the world and the character. With a [premiseId] and no [premise], the starter's own
-  /// text is the premise; [quote] is what the player sees of it meanwhile.
+  /// Drafts the world and the character, in [language] (S10). With a [premiseId] and no
+  /// [premise], the starter's own text is the premise; [quote] is what the player sees of it
+  /// meanwhile.
   Future<void> create({
     String? premise,
     String? premiseId,
     String? quote,
     required Rating rating,
+    String language = 'en',
     DraftChoices choices = const DraftChoices(),
   }) async {
     if (_stage == CreateStage.drafting) return;
@@ -82,6 +84,7 @@ class CreateFlow extends ChangeNotifier {
         premise: premise,
         premiseId: premiseId,
         rating: rating,
+        language: language,
         choices: choices,
       );
       _stage = CreateStage.review;

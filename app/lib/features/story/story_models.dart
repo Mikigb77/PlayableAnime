@@ -412,6 +412,7 @@ class StorySettings {
     this.eventFrequency = 'normal',
     this.images = 'key_moments',
     this.suggestions = true,
+    this.language = 'en',
   });
 
   factory StorySettings.fromJson(Json? json) => json == null
@@ -426,6 +427,7 @@ class StorySettings {
           eventFrequency: json['event_frequency'] as String? ?? 'normal',
           images: json['images'] as String? ?? 'key_moments',
           suggestions: json['suggestions'] as bool? ?? true,
+          language: json['language'] as String? ?? 'en',
         );
 
   /// short, medium or long.
@@ -446,6 +448,10 @@ class StorySettings {
   /// Whether scenes suggest choices (S2).
   final bool suggestions;
 
+  /// The language new scenes are written in, `en` or `es` (S10). Switching it changes only what
+  /// comes next: what the story has already told stays in the language it was written in.
+  final String language;
+
   Json toJson() => {
     'narration_length': narrationLength,
     // Null clears the tone.
@@ -454,6 +460,7 @@ class StorySettings {
     'event_frequency': eventFrequency,
     'images': images,
     'suggestions': suggestions,
+    'language': language,
   };
 
   /// Only the fields that differ from [base], for a PATCH that leaves the rest as they are on the
@@ -474,6 +481,7 @@ class StorySettings {
     String? eventFrequency,
     String? images,
     bool? suggestions,
+    String? language,
   }) => StorySettings(
     narrationLength: narrationLength ?? this.narrationLength,
     tone: tone == null ? this.tone : (tone.trim().isEmpty ? null : tone.trim()),
@@ -481,6 +489,7 @@ class StorySettings {
     eventFrequency: eventFrequency ?? this.eventFrequency,
     images: images ?? this.images,
     suggestions: suggestions ?? this.suggestions,
+    language: language ?? this.language,
   );
 
   @override
@@ -491,11 +500,12 @@ class StorySettings {
       other.difficulty == difficulty &&
       other.eventFrequency == eventFrequency &&
       other.images == images &&
-      other.suggestions == suggestions;
+      other.suggestions == suggestions &&
+      other.language == language;
 
   @override
   int get hashCode =>
-      Object.hash(narrationLength, tone, difficulty, eventFrequency, images, suggestions);
+      Object.hash(narrationLength, tone, difficulty, eventFrequency, images, suggestions, language);
 }
 
 /// How the player character's story ended (N6, docs/API.md `Ending`). A story at its ending takes

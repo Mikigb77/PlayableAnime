@@ -18,6 +18,7 @@ import '../create/create_story_screen.dart' show StartAgain;
 import '../library/library.dart';
 import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
+import '../voice/speech_engine.dart';
 import 'ending_card.dart';
 import 'play_controller.dart';
 import 'rewind_sheet.dart';
@@ -587,7 +588,11 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   enabled: story.scenes.isNotEmpty && !story.openingDue,
                   busy: _play.busy,
                   onSubmit: _send,
-                  mic: DictationButton(tracker: _mode, storyId: widget.storyId),
+                  mic: DictationButton(
+                    tracker: _mode,
+                    storyId: widget.storyId,
+                    localeId: speechLocale(story.settings.language),
+                  ),
                   commands: [
                     SlashCommand('status', l10n.slashStatus),
                     SlashCommand('end', l10n.slashEnd),
