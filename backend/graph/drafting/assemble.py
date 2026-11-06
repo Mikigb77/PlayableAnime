@@ -11,7 +11,9 @@ decides, and every rule here has a unit test.
 - **G8.** Nobody has a power the world doesn't have: in a world where nothing extraordinary exists,
   or from a kind that doesn't exist, a power is dropped. In such a world nobody goes past what a
   real person could do (A4, G6), so attributes stop at 5. When a starter premise grounds the
-  world, the model's own kinds, the rules tied only to them and any power ladder go too.
+  world, the model's own kinds, the rules tied only to them and any power ladder go too, and the
+  same goes when a starter's kinds are the only ones its world may have, such as implants in a
+  world without magic.
 - **G18.** Ladder rungs map to A8 tiers two apart, lowest first, and a character's rung sets their
   tier on the ladder's axis.
 - **G22.** The gift strength the player picked wins over the premise's and the model's, and `none`
@@ -33,6 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from engine.base import HOUR, MINUTE, TIER_MAX, YEAR
+from engine.context import Language
 from engine.invariants import InvariantError, check_state, is_real_name
 from engine.kin import ancestors
 from engine.state import (
@@ -148,6 +151,8 @@ GROUNDED_KIND = Extraordinary(
 )
 PLAYER_FALLBACK_NAME = "Wanderer"
 GROUNDED_RULE_TEXT = "Grounded: no magic and nothing supernatural, and that won't change."
+# S10: the rules code writes, in a Spanish draft.
+GROUNDED_RULE_TEXT_ES = "Realista: sin magia ni nada sobrenatural, y eso no cambiará."
 
 
 @dataclass(frozen=True)
@@ -159,6 +164,8 @@ class DraftOptions:
     gift: GiftStrength | None = None  # None: the premise's own, then the model's
     template: PremiseTemplate | None = None
     released_rules: frozenset[str] = frozenset()
+    # S10: the language of the rules code writes, such as "Grounded: no magic...".
+    language: Language = Language.EN
 
     def holds(self, rule_id: str) -> bool:
         """Whether a template rule still binds the draft (G7)."""
@@ -493,6 +500,11 @@ class _Assembler:
             for kind in kinds.values():
                 kind.prevalence = Prevalence.NONE
             self.ladders.by_id.clear()
+        elif template.exclusive_rule_id and holds(template.exclusive_rule_id):
+            # G8: the genre's own kinds are the only extraordinary things there are, so the
+            # model's other kinds, their rules and a power ladder go, as in a grounded world.
+            dropped = {k for k in kinds if k not in required_ids}
+            self.ladders.by_id.clear()
         elif any(kinds[k].prevalence is not Prevalence.NONE for k in required_ids):
             # The genre has something extraordinary, so a proposal that called the world
             # grounded is wrong about it.
@@ -553,10 +565,13 @@ class _Assembler:
             if mentioned:
                 links.setdefault(kind_id, []).extend(mentioned)
                 continue
+            spanish = self.options.language is Language.ES
             if kind.prevalence is Prevalence.NONE and len(kinds) == 1:
-                text, rule_id = GROUNDED_RULE_TEXT, self.rules.add("no-supernatural")
+                text = GROUNDED_RULE_TEXT_ES if spanish else GROUNDED_RULE_TEXT
+                rule_id = self.rules.add("no-supernatural")
             else:
-                text, rule_id = _existence_text(kind), self.rules.add(f"{kind_id}-exists")
+                text = _existence_text(kind, self.options.language)
+                rule_id = self.rules.add(f"{kind_id}-exists")
             rule = WorldRule(id=rule_id, text=text, fixed=True, topic=RuleTopic.EXISTENCE)
             rules[rule_id] = rule
             existence.append(rule)
@@ -1147,8 +1162,17 @@ def _is_grounded_kind(kind: Extraordinary) -> bool:
     return " ".join(kind.kind.casefold().split()) == GROUNDED_KIND.kind
 
 
-def _existence_text(kind: Extraordinary) -> str:
-    return f"{_capital(kind.kind)}: {_PREVALENCE_WORDS[kind.prevalence]}."
+_PREVALENCE_WORDS_ES = {
+    Prevalence.NONE: "no existe, y eso no cambiará",
+    Prevalence.HIDDEN: "existe, y casi nadie lo sabe",
+    Prevalence.RARE: "existe, pero es poco común",
+    Prevalence.COMMON: "existe, y está en todas partes",
+}
+
+
+def _existence_text(kind: Extraordinary, language: Language = Language.EN) -> str:
+    words = _PREVALENCE_WORDS_ES if language is Language.ES else _PREVALENCE_WORDS
+    return f"{_capital(kind.kind)}: {words[kind.prevalence]}."
 
 
 def _age(age: int | None) -> int | None:

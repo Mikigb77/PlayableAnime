@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n.dart';
+import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../discover/premises.dart';
 import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
+import '../voice/speech_engine.dart';
 import 'create_flow.dart';
 import 'draft.dart';
 import 'draft_widgets.dart';
@@ -149,7 +151,11 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                         alignment: Alignment.topRight,
                         widthFactor: 1,
                         heightFactor: 1,
-                        child: DictationButton(tracker: _tracker),
+                        // The story will start in the app's language (S10).
+                        child: DictationButton(
+                          tracker: _tracker,
+                          localeId: speechLocale(ref.watch(appLanguageCodeProvider)),
+                        ),
                       ),
                     ),
                   ),

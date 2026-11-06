@@ -176,7 +176,11 @@ async def catch_up(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, An
         if scenes:
             llm = runtime.context.llm
             task = asyncio.create_task(
-                llm.structured(Node.SUMMARIZER, chapter_prompt(scenes), ChapterOutput)
+                llm.structured(
+                    Node.SUMMARIZER,
+                    chapter_prompt(scenes, turn.ctx.settings.language),
+                    ChapterOutput,
+                )
             )
             runtime.context.tasks.append(task)
             update["chapter"] = PendingChapter(first, last, task)
@@ -200,7 +204,7 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     action = turn.action or ""
     try:
         intent = await runtime.context.llm.structured(
-            Node.INTERPRET, interpret_prompt(world, action), Intent
+            Node.INTERPRET, interpret_prompt(world, action, turn.ctx.settings.language), Intent
         )
     except LLMBlocked as block:
         log_block("interpret", list(block.categories), stage=block.stage, source="model")

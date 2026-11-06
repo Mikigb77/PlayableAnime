@@ -98,6 +98,11 @@ flutter test
 CI runs the same three on Flutter 3.44.5, and builds the release APK with `infra/build-apk.sh`
 (debug-signed), as each deploy does with the release key.
 
+`infra/build-apk.sh` passes `--dart-define=SELF_UPDATE=true`, so the APK offers and installs newer
+builds itself (S12, `lib/features/update/`). `flutter run` leaves it off, and so must a Google Play
+build (`SELF_UPDATE=false`, without the two install permissions in `AndroidManifest.xml`), since
+Play updates the app itself.
+
 ## Layout
 
 ```
@@ -111,7 +116,7 @@ lib/
                             SSE parser, turn events, typed errors and their copy
     session/                Session, secure storage, SessionController (sign in, refresh, sign out)
     fake/                   The fake API, one file per area: auth, account, premises, drafts,
-                            stories, turns, pictures, reports
+                            stories, turns, pictures, reports, speech, releases
     l10n.dart               context.l10n
     names.dart              Names from the world as headings ("The inner court")
     byok_store.dart         The player's own Gemini key (S9)
@@ -127,16 +132,21 @@ lib/
     account/                Profile, credits and history, own key, content preferences (F7),
                             privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: online and phone engines, controller, button, input mode (V1–V7)
+    update/                 The app's own updates (S12): check, download, hand to Android's
+                            installer (MainActivity.kt), the banner above the tabs, Account's line
   l10n/app_en.arb           Every string the player sees (S10)
+  l10n/app_es.arb           The same strings in Spanish
 assets/
   fonts/                    Literata and Inter, SIL Open Font License
   fake/                     Placeholder pictures for the fake API
-  legal/                    The privacy policy the app shows, a copy of docs/PRIVACY.md (T12)
+  legal/                    The privacy policy the app shows: privacy_en.md, a copy of docs/PRIVACY.md
+                            (T12), and privacy_es.md, its Spanish
 ```
 
 ## Building on it
 
-- **Screens** use the components in `design/` and the strings in `l10n/app_en.arb`; see DESIGN.md.
+- **Screens** use the components in `design/` and the strings in `l10n/app_en.arb`, each with its
+  Spanish in `l10n/app_es.arb`; see DESIGN.md.
 - **API calls** go through `apiClientProvider`. Errors arrive as `ApiException` with a typed `code`;
   `describeError` turns one into the player's words (T7). A turn is `StoryRepository.takeTurn`, a
   stream of `TurnEvent`s that always ends in `SceneCompleted` or `TurnFailed`.

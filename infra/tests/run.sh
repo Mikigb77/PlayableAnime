@@ -81,6 +81,14 @@ test_bootstrap_dry_run() {
   contains "$out" "--public-access-prevention --soft-delete-duration=0"
   contains "$out" "--member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/storage.objectUser"
   contains "$out" "--role=roles/iam.serviceAccountTokenCreator"
+  contains "$out" "[dry-run] gcloud storage buckets create gs://playable-anime-releases --project=playable-anime --location=europe-west3"
+  contains "$out" "[dry-run] gcloud storage buckets add-iam-policy-binding gs://playable-anime-releases --project=playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/storage.objectUser"
+  contains "$out" "[dry-run] gcloud storage buckets add-iam-policy-binding gs://playable-anime-releases --project=playable-anime --member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/storage.objectViewer"
+  if grep -E "gs://playable-anime-pictures .*github-deployer" "$out" >/dev/null; then
+    bad "the deployer must never reach the players' pictures"
+  else
+    ok
+  fi
   contains "$out" "[dry-run] gcloud iam service-accounts create github-deployer"
   contains "$out" "--role=roles/run.developer"
   contains "$out" "--role=roles/iam.serviceAccountUser"
@@ -139,6 +147,7 @@ test_bootstrap_first_and_second_run() {
   contains "$state/calls.log" "gcloud secrets create database-url-direct "
   contains "$state/calls.log" "gcloud secrets create django-secret-key "
   contains "$state/calls.log" "gcloud storage buckets create gs://playable-anime-pictures"
+  contains "$state/calls.log" "gcloud storage buckets create gs://playable-anime-releases"
   contains "$state/calls.log" "gcloud iam service-accounts create github-deployer"
   lacks "$state/calls.log" "gcloud iam service-accounts create playable-anime-api" \
     "the existing runtime account must not be created again"
@@ -437,6 +446,7 @@ test_deploy_settings() {
   lacks "$INFRA/config.sh" "GOCSPX" "an OAuth client secret must never be committed"
   # The owner's emails (K7) come from the OWNER_EMAILS secret, never from the public repo.
   contains "$state/last-env.yaml" 'OWNER_EMAILS: "owner@example.com"'
+  contains "$state/last-env.yaml" 'RELEASES_BUCKET: "playable-anime-releases"'
   if grep -q '^OWNER_EMAILS:' "$INFRA/cloudrun/env.yaml"; then
     bad "env.yaml sets OWNER_EMAILS; the owner's emails belong in the OWNER_EMAILS secret"
   else ok; fi
@@ -723,7 +733,7 @@ test_build_apk() {
   out="$state/out"
   build_apk "$state" "$out" BUILD_NUMBER=42
   equals "$status" 0 "debug build exit status"
-  contains "$state/flutter.log" "flutter build apk --release --dart-define=API_BASE_URL=https://playable-anime-api-528988811295.europe-west3.run.app --dart-define=GOOGLE_WEB_CLIENT_ID=528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com --build-number=42"
+  contains "$state/flutter.log" "flutter build apk --release --dart-define=API_BASE_URL=https://playable-anime-api-528988811295.europe-west3.run.app --dart-define=GOOGLE_WEB_CLIENT_ID=528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com --dart-define=SELF_UPDATE=true --build-number=42"
   contains "$state/flutter.log" "ANDROID_KEYSTORE_PATH="
   lacks "$state/flutter.log" "ANDROID_KEYSTORE_PATH=/" "a debug build must not be given a keystore"
   if [ -f "$state/dist/lucid-saga.apk" ]; then ok; else bad "no APK at the given path"; fi
@@ -829,6 +839,91 @@ test_publish_apk() {
   if [ "$status" -ne 0 ]; then ok; else bad "a failed release passed"; fi
 }
 
+upload_apk() { # state out build [env...]
+  local state="$1" out="$2" build="$3"
+  shift 3
+  printf 'fake apk %s\n' "$build" >"$state/app-$build.apk"
+  with_fakes "$out" env FAKE_STATE="$state" BUILD_NUMBER="$build" VERSION_NAME=1.0.0 "$@" \
+    "$INFRA/deploy.sh" upload-apk "$state/app-$build.apk"
+}
+
+manifest_field() { # state field
+  python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' \
+    "$1/gcs/playable-anime-releases/android/latest.json" "$2"
+}
+
+test_upload_apk() {
+  local state out folder sha
+  start "deploy.sh upload-apk offers the newest build to the installed apps and keeps three"
+  state="$(new_state upload-apk)"
+  folder="$state/gcs/playable-anime-releases/android"
+  out="$state/out-12"
+  upload_apk "$state" "$out" 12
+  equals "$status" 0 "first upload exit status"
+  contains "$state/calls.log" "gcloud storage cp $state/app-12.apk gs://playable-anime-releases/android/lucid-saga-12.apk --content-type=application/vnd.android.package-archive"
+  contains "$state/composite.log" "gs://playable-anime-releases/android/lucid-saga-12.apk False" \
+    "the APK must go up in one piece"
+  equals "$(cat "$folder/lucid-saga-12.apk")" "fake apk 12" "the APK in the bucket"
+  equals "$(manifest_field "$state" build)" 12 "the manifest's build"
+  equals "$(manifest_field "$state" version)" 1.0.0 "the manifest's version"
+  equals "$(manifest_field "$state" apk)" android/lucid-saga-12.apk "the manifest's APK"
+  equals "$(manifest_field "$state" size)" "$(wc -c <"$state/app-12.apk" | tr -d ' ')" "the manifest's size"
+  sha="$(python3 -I -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$state/app-12.apk")"
+  equals "$(manifest_field "$state" sha256)" "$sha" "the manifest's SHA-256"
+  contains "$state/calls.log" "--content-type=application/json --cache-control=no-store"
+  lacks "$state/calls.log" "storage rm" "deleted a build with only one in the bucket"
+
+  for build in 13 14 15; do upload_apk "$state" "$state/out-$build" "$build"; done
+  equals "$status" 0 "fourth upload exit status"
+  equals "$(manifest_field "$state" build)" 15 "the manifest names the newest build"
+  if [ -e "$folder/lucid-saga-12.apk" ]; then bad "kept a fourth build"; else ok; fi
+  for build in 13 14 15; do
+    if [ -e "$folder/lucid-saga-$build.apk" ]; then ok; else bad "deleted build $build"; fi
+  done
+
+  # A re-run of an older run must not send phones back to an older build.
+  : >"$state/calls.log"
+  out="$state/out-older"
+  upload_apk "$state" "$out" 14
+  equals "$status" 0 "older upload exit status"
+  contains "$out" "already offers build 15, newer than 14"
+  lacks "$state/calls.log" "storage cp" "uploaded an older build"
+  equals "$(manifest_field "$state" build)" 15 "the manifest after an older run"
+
+  # Re-running the same run replaces its APK and its manifest.
+  out="$state/out-same"
+  upload_apk "$state" "$out" 15
+  equals "$status" 0 "same-build upload exit status"
+  contains "$state/calls.log" "android/lucid-saga-15.apk"
+
+  # Before the bootstrap has made the bucket, the run fails and says why, with no manifest.
+  state="$(new_state upload-apk-denied)"
+  out="$state/out"
+  upload_apk "$state" "$out" 16 FAKE_FAIL_UPLOAD=1
+  if [ "$status" -ne 0 ]; then ok; else bad "went on after the upload was refused"; fi
+  contains "$out" "Has infra/bootstrap.sh run since it gained step 6d?"
+  if [ -e "$state/gcs/playable-anime-releases/android/latest.json" ]; then
+    bad "wrote a manifest for an APK that isn't there"
+  else ok; fi
+
+  state="$(new_state upload-apk-bad)"
+  upload_apk "$state" "$state/out-zero" 07
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted BUILD_NUMBER=07"; fi
+  upload_apk "$state" "$state/out-version" 12 VERSION_NAME='1.0 "x"'
+  if [ "$status" -ne 0 ]; then ok; else bad "accepted a version name with a quote in it"; fi
+  if [ -e "$state/calls.log" ]; then
+    lacks "$state/calls.log" "gcloud storage" "called gcloud storage with bad input"
+  else ok; fi
+
+  # A dry run uploads nothing and reads nothing.
+  state="$(new_state upload-apk-dry)"
+  out="$state/out"
+  upload_apk "$state" "$out" 12 DRY_RUN=1
+  equals "$status" 0 "dry-run upload exit status"
+  contains "$out" "[dry-run] gcloud storage cp $state/app-12.apk gs://playable-anime-releases/android/lucid-saga-12.apk"
+  if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
+}
+
 test_ops() {
   local state out
   start "ops.sh runs one gcloud command as written, refuses credentials, and keeps logs inert"
@@ -911,6 +1006,7 @@ test_workflow_matches_scripts() {
   fi
   contains "$wf" "infra/build-apk.sh"
   contains "$wf" "infra/publish-apk.sh"
+  contains "$wf" "infra/deploy.sh upload-apk"
   contains "$ROOT/.github/workflows/ci.yml" "infra/build-apk.sh"
   contains "$ROOT/README.md" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
 }
@@ -948,6 +1044,7 @@ test_rollback
 test_ci_gate
 test_build_apk
 test_publish_apk
+test_upload_apk
 test_workflow_matches_scripts
 test_docs_list_every_command
 

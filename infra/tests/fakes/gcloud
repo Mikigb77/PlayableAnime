@@ -24,7 +24,7 @@ for arg in "$@"; do
   esac
 done
 
-verbs=" login create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value read "
+verbs=" login create create-oidc describe update update-oidc undelete list add enable deploy execute update-traffic set-cleanup-policies add-iam-policy-binding remove-iam-policy-binding get-iam-policy get-value read cp cat ls rm "
 group=''
 verb=''
 resource=''
@@ -140,6 +140,43 @@ case "$group/$verb" in
     "traffic": [$traffic]}
 }
 JSON
+    ;;
+  # Objects in buckets are files under $state/gcs/<bucket>/<key>. FAKE_FAIL_UPLOAD: no write access.
+  "storage/cp")
+    [[ -z "${FAKE_FAIL_UPLOAD:-}" ]] || {
+      echo "ERROR: (fake) HTTPError 403: storage.objects.create denied" >&2
+      exit 1
+    }
+    object="$state/gcs/${positional[3]#gs://}"
+    mkdir -p "$(dirname "$object")"
+    cp "${positional[2]}" "$object"
+    printf '%s %s\n' "${positional[3]}" \
+      "${CLOUDSDK_STORAGE_PARALLEL_COMPOSITE_UPLOAD_ENABLED:-unset}" >>"$state/composite.log"
+    ;;
+  "storage/cat")
+    object="$state/gcs/${positional[2]#gs://}"
+    [[ -f "$object" ]] || {
+      echo "ERROR: (fake) The following URLs matched no objects or files" >&2
+      exit 1
+    }
+    cat "$object"
+    ;;
+  "storage/ls")
+    folder="$state/gcs/${positional[2]#gs://}"
+    found=''
+    for object in "$folder"*; do
+      if [[ -f "$object" ]]; then
+        printf 'gs://%s\n' "${object#"$state/gcs/"}"
+        found=1
+      fi
+    done
+    [[ -n "$found" ]] || {
+      echo "ERROR: (fake) One or more URLs matched no objects." >&2
+      exit 1
+    }
+    ;;
+  "storage/rm")
+    for url in "${positional[@]:2}"; do rm "$state/gcs/${url#gs://}"; done
     ;;
   */create | */create-oidc)
     if exists; then

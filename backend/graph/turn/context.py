@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine.base import DAY
-from engine.context import TurnContext
+from engine.context import Language, TurnContext
 from engine.contracts import (
     BeatResolution,
     BeatVerdict,
@@ -26,6 +26,7 @@ from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent
 from engine.state.world import WorldState, natural_key
+from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
@@ -316,8 +317,9 @@ def _goals_and_threads(state: WorldState) -> dict[str, Any]:
     }
 
 
-def interpret_prompt(state: WorldState, action: str) -> Prompt:
-    """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`."""
+def interpret_prompt(state: WorldState, action: str, language: Language = Language.EN) -> Prompt:
+    """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`,
+    with the story's language for its notes (S10)."""
     frame = state.scene
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
@@ -331,6 +333,7 @@ def interpret_prompt(state: WorldState, action: str) -> Prompt:
             ("NOW", _now_view(state)),
             ("KNOWN", _known_view(state)),
             ("GOALS AND THREADS", _goals_and_threads(state)),
+            ("LANGUAGE", written_in(language)),
             ("ACTION", action.strip()),
         ]
     )
@@ -347,6 +350,8 @@ class NarrationBrief:
     suggestions: int
     # How much of `user` stays the same from turn to turn (`Prompt.stable_chars`).
     stable_chars: int = 0
+    # The story's language, for the template line (S10).
+    language: Language = Language.EN
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
         if cutaway:
@@ -355,8 +360,9 @@ class NarrationBrief:
         return Prompt.build(self.system, self.user, stable_chars=self.stable_chars)
 
     def template_line(self) -> str:
-        where = f"in {self.place}" if self.place else "there"
-        return prompts.TEMPLATE_LINE.format(where=where)
+        here, there = prompts.TEMPLATE_PLACE[self.language]
+        where = here.format(place=self.place) if self.place else there
+        return prompts.TEMPLATE_LINE[self.language].format(where=where)
 
 
 def narration_brief(
@@ -390,6 +396,7 @@ def narration_brief(
         "genre": before.bible.genre,
         "tone": tone,
         "length": prompts.LENGTHS[settings.narration_length],
+        "language": written_in(settings.language),
     }
     content = prompts.content_rules(
         ctx.rating,
@@ -496,6 +503,7 @@ def narration_brief(
         place=place_name(after),
         suggestions=suggestions,
         stable_chars=len(render(stable)),
+        language=settings.language,
     )
 
 
@@ -625,7 +633,10 @@ def _subject_name(state: WorldState, subject_id: str) -> str:
     return subject_id
 
 
-def chapter_prompt(scenes: Sequence[PastScene]) -> Prompt:
-    """C3: the summarizer's prompt for one chapter of scenes."""
+def chapter_prompt(scenes: Sequence[PastScene], language: Language = Language.EN) -> Prompt:
+    """C3: the summarizer's prompt for one chapter of scenes, summarized in the story's language
+    (S10)."""
     body = [{"turn": s.turn, "action": s.player_action, "narration": s.narration} for s in scenes]
-    return Prompt.build(prompts.SUMMARIZER_SYSTEM, render([("SCENES", body)]))
+    return Prompt.build(
+        prompts.SUMMARIZER_SYSTEM, render([("LANGUAGE", written_in(language)), ("SCENES", body)])
+    )

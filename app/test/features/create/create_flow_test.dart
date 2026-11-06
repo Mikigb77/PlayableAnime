@@ -59,7 +59,7 @@ void main() {
     expect(flow.hasUnsavedDraft, isTrue);
     expect(await balance(), before - 3);
     final sent = backend.requests.lastWhere((r) => r.uri.path == '/v1/drafts').json;
-    expect(sent, {'premise_id': 'outer-disciple', 'rating': 'mature'});
+    expect(sent, {'premise_id': 'outer-disciple', 'rating': 'mature', 'language': 'en'});
   });
 
   test('the player\'s own premise and early choices go with the first draft', () async {

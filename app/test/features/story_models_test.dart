@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/features/story/story_models.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
+import 'package:playable_anime/features/voice/speech_engine.dart';
 
 /// The models read both the v1 API (docs/API.md) and today's FastAPI payloads.
 void main() {
@@ -287,12 +288,23 @@ void main() {
         'event_frequency': 'normal',
         'images': 'key_moments',
         'suggestions': true,
+        'language': 'en',
       });
       final cleared = settings.copyWith(tone: '  ');
       expect(cleared.tone, isNull);
       expect(cleared.toJson()['tone'], isNull);
       expect(cleared, isNot(settings));
       expect(settings.copyWith(difficulty: 'brutal').difficulty, 'brutal');
+    });
+
+    test('a story is in English unless its settings say otherwise (S10)', () {
+      expect(StorySettings.fromJson(const {'difficulty': 'story'}).language, 'en');
+      final spanish = StorySettings.fromJson(const {'language': 'es'});
+      expect(spanish.language, 'es');
+      expect(spanish, isNot(const StorySettings()));
+      expect(spanish.changesFrom(const StorySettings()), {'language': 'es'});
+      expect(speechLocale(spanish.language), 'es-ES');
+      expect(speechLocale('en'), 'en-US');
     });
 
     test('a scene saved twice is kept once', () {

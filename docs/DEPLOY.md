@@ -40,6 +40,7 @@ Ubuntu is a PR of its own. Every action is pinned to a commit with its version i
 | Images | Artifact Registry `europe-west3-docker.pkg.dev/playable-anime/playable-anime/api` | The 10 newest are kept, so the last 10 deploys can be rolled back to. |
 | Secrets | Secret Manager `database-url`, `database-url-direct`, `django-secret-key` | Stored in `europe-west3` only, mounted as env vars (T11). |
 | Pictures | Cloud Storage `gs://playable-anime-pictures` in `europe-west3` | Private, served through short-lived signed URLs, no soft delete (M4, T12). |
+| App releases | Cloud Storage `gs://playable-anime-releases` in `europe-west3` | Private. Each deploy's APK and `android/latest.json`, which the installed app updates itself from through a signed URL (S12). The newest 3 builds are kept. |
 | Deploy identity | `github-deployer@playable-anime.iam.gserviceaccount.com` | GitHub Actions signs in as it through Workload Identity Federation. No JSON key (B11). |
 | Budget alert | `playable-anime-monthly` on the billing account | Emails at 50%, 90% and 100% of the month's budget, and when the forecast passes 100% (T9). |
 | Database | Neon `production` branch | Pooled URL for the service, direct URL for migrations (T2, B2). |
@@ -146,6 +147,11 @@ that lets threads [read Google Cloud](#reading-google-cloud) and lets the deploy
 job's logs. Until then the Ops workflow can't sign in, and a failed job only says where its logs
 are.
 
+**Run it again once after 2026-11-06, before the next deploy.** That version adds step 6d, the
+bucket the installed app [updates itself](#updates-in-the-app) from. Until then the deploy still
+publishes the GitHub release, but its last step, which offers the build to installed apps, fails
+and says to run the bootstrap.
+
 `BUDGET_AMOUNT` is the monthly alert threshold in the billing account's currency (25 by default).
 The script shows the account and project, reads the two URLs, asks for confirmation, then runs
 the steps below. Running it again brings everything back in line and changes nothing that is
@@ -160,6 +166,7 @@ already right: secrets that have a value keep it, and the budget's amount is upd
 | 5. Pictures bucket | `gs://playable-anime-pictures` in `europe-west3`: uniform access, public access prevention enforced, soft delete off so a deleted account's pictures are gone at once (T12), and CORS that lets the web build read signed URLs ([`storage-cors.json`](../infra/storage-cors.json)). The runtime account gets `storage.objectUser` on the bucket and `iam.serviceAccountTokenCreator` on itself, which is what [signed URLs without a key](#signed-urls-without-a-key) need. | About $0.02 per GB-month (no free tier in Europe), $0.005 per 1,000 uploads, $0.12 per GB downloaded. 1,000 pictures of about 1.5 MB cost about $0.03 a month to keep and $0.18 to view once. |
 | 6. Deployer and federation | A `github-deployer` account with `run.developer` (deploy services and jobs), a custom role `lucidSagaApiAccess` with only `run.services.getIamPolicy` and `run.services.setIamPolicy` (so the deploy can [decide who may call the API](#who-may-call-the-api)), `run.invoker` (for the post-deploy health check), `logging.viewer` (to print a failed job's logs in the run), `iam.serviceAccountUser` on the runtime account only, and `artifactregistry.writer` on the repository only. A Workload Identity pool `github` with a provider that admits only `.github/workflows/deploy.yml` on `main` of this repository (by its numeric id), run by a push to `main` or started by hand. | Free |
 | 6c. Read-only ops | A `github-ops` account with `viewer` and `logging.viewer`, which read every setting and log but change nothing and read no secret's value or stored picture, and a pool `github-ops` of its own whose provider admits only `.github/workflows/ops.yml` on `main`, started by hand or through the API. Being a separate pool, it can never sign in as the deployer, nor the deploy as it. See [Reading Google Cloud](#reading-google-cloud). | Free |
+| 6d. App releases | A private bucket `gs://playable-anime-releases` in `europe-west3`, with no soft delete and no CORS. The deployer gets `storage.objectUser` and `storage.legacyBucketReader` on it (write and delete builds, read the bucket's settings), and the runtime account `storage.objectViewer` (read them, to sign the download URL). The deployer still gets nothing on the pictures bucket. | About $0.02 per GB-month for the newest 3 APKs (a few cents a year), $0.12 per GB downloaded: about $0.01 per phone per update. |
 | 7. Budget | A monthly budget on the project, measured before credits so free credits can't hide real usage. It alerts by email; it does not stop spending. | Free |
 
 Every command the bootstrap and the deploy run is listed under [Every command](#every-command).
@@ -301,7 +308,9 @@ waiting its turn.
 9. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, in a job of its own
    ([below](#drawing-the-starter-covers)). A failure there doesn't fail the deploy.
 10. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 7,
-    and published only once they pass.
+    and published only once they pass: first as the latest GitHub release, then to the releases
+    bucket (`infra/deploy.sh upload-apk`), where installed apps find it and
+    [update themselves](#updates-in-the-app).
 
 The run's summary shows the image, the new and previous revisions, the URL and the APK's link.
 When the migration, the model check or the covers job fails, the run prints that job's own log
@@ -352,18 +361,20 @@ To check by hand: `gcloud run jobs execute playable-anime-migrate --project=play
 
 ### Drawing the starter covers
 
-Discover's eleven starter premises show a cover once the house has drawn it (S1, M4). Each deploy
-runs `manage.py draw_premise_covers` as the migration job with other arguments, after the health
-check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and the
-direct database URL. It skips every cover that exists, so the first deploy draws all eleven with
-`PICTURE_MODEL`, about $0.034 each and $0.37 in all, paid by the house (the logs show each cover's
-model and cost, `Premise cover ready`, and no player's ledger changes), and later deploys draw
-nothing. Our picture quota answered 429 after three quick drawings, so the covers are drawn 10 s
-apart, and one that runs out of quota is drawn again after a minute, twice at most. A cover that
-still fails, or is blocked, is left out and the covers job is marked failed, without failing the
-deploy; the next deploy tries it again. Until then, and for a premise without a cover,
-Discover shows a glow in the genre's colour. The app shows a new cover the next time it loads the
-premises.
+Discover's twenty-three starter premises show a cover once the house has drawn it (S1, M4). Each
+deploy runs `manage.py draw_premise_covers` as the migration job with other arguments, after the
+health check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and
+the direct database URL. It skips every cover that exists and draws the missing ones with
+`PICTURE_MODEL`, about $0.034 each, paid by the house (the logs show each cover's model and cost,
+`Premise cover ready`, and no player's ledger changes). So only a deploy that adds starter
+premises draws anything: the first drew the first eleven for $0.37, and the one that adds the next
+twelve draws those for about $0.41. Our picture quota answered 429 after three quick drawings, so
+the covers are drawn 10 s apart, and one that runs out of quota is drawn again after a minute,
+twice at most. A cover that still fails, is blocked, or isn't reached before the job's 30 minutes
+run out is left out and the covers job is marked failed, without failing the deploy; the covers
+already drawn are kept, and the next deploy tries the rest again. Until then, and for a premise
+without a cover, Discover shows a glow in the genre's colour. The app shows a new cover the next
+time it loads the premises.
 
 To draw now, or draw one again with `--force`:
 
@@ -517,6 +528,29 @@ A release asset isn't in git and doesn't count against the repository's size.
   to `dev`, so a change that breaks the build fails its PR, not the deploy. Pushes to `main` skip
   it, because the deploy builds that commit's APK itself.
 
+### Updates in the app
+
+Once installed, the APK updates itself (S12): no new download from the README, and it works while
+the repository is private. After publishing the GitHub release, the deploy's last step,
+`infra/deploy.sh upload-apk`, uploads the same APK to `gs://playable-anime-releases` as
+`android/lucid-saga-<build>.apk`, then writes `android/latest.json` with its build, version, size
+and SHA-256 ([`infra/release_manifest.py`](../infra/release_manifest.py)). It keeps the newest 3
+builds, and a re-run of an older run leaves a newer build in place. `GET /v1/app/latest` reads
+that manifest and gives the app a 30-minute signed URL ([API.md](API.md#app-updates-s12)).
+
+The app checks when its tabs first show and whenever it comes back to the foreground, at most every
+half hour, and Account has "Check for updates". Update downloads the APK, checks it, and hands it
+to Android, which asks to confirm (the first time, it also asks to allow installs from Lucid Saga
+in Settings), then closes and replaces the app. The first build with the updater has to be
+installed from the README once; every build after it arrives in the app.
+
+**On Google Play** the store updates the app, and Play's policy forbids any other way. A Play build
+is built with `SELF_UPDATE=false` (`infra/build-apk.sh` reads it; the default is `true`), and drops
+the `REQUEST_INSTALL_PACKAGES` and `UPDATE_PACKAGES_WITHOUT_USER_ACTION` permissions from
+`app/android/app/src/main/AndroidManifest.xml`, for example through a `play` product flavor. The
+plan for then (Miki, 2026-11-06): a production app through Play, and a staging app that keeps
+updating itself from this bucket.
+
 To build a release-signed APK by hand, export `ANDROID_KEYSTORE_BASE64` (or point
 `ANDROID_KEYSTORE_PATH` at the keystore for a plain `flutter build apk`) and the three others, then
 run `infra/build-apk.sh out/lucid-saga.apk`.
@@ -553,6 +587,7 @@ free tiers or a few cents a month.
 | Artifact Registry | 0.5 GiB free, then about $0.10 per GiB-month. Pulls by Cloud Run in the same region are free. | A few cents a month with the cleanup policy. |
 | Secret Manager | $0.06 per active version a month after 6 free, $0.03 per 10,000 reads after 10,000 free. | Free. |
 | Cloud Storage, pictures | About $0.02 per GB-month, $0.005 per 1,000 writes, $0.0004 per 1,000 reads, $0.12 per GB served to the internet. | Cents until there are many players. |
+| Cloud Storage, app releases | The same prices. The newest 3 APKs stay, and each phone downloads each update once. | A few cents a year to keep, about $0.01 per phone per update. |
 | Workload Identity Federation, service accounts, IAM, budgets, enabling APIs | Free | Free |
 | Cloud Logging and Error Reporting | First 50 GiB of logs a month free | Free |
 | GitHub Actions | This private repo's free plan includes 2,000 minutes a month. An Ops run takes about a minute. The APK build takes roughly 10 minutes, once in each CI run on a PR or `dev` and once in each deploy; the rest of a deploy about 10, and the CI gate waits while CI runs. Release assets are stored free. | Free at a few PRs a day; many PRs a day can use up the minutes. |
@@ -655,6 +690,11 @@ gcloud projects add-iam-policy-binding playable-anime --member=serviceAccount:gi
 gcloud iam workload-identity-pools create github-ops --project=playable-anime --location=global '--display-name=GitHub Actions ops' '--description=Keyless read-only sign-in for the Ops workflow'
 gcloud iam workload-identity-pools providers create-oidc playable-anime-ops --project=playable-anime --location=global --workload-identity-pool=github-ops '--display-name=PlayableAnime ops workflow' --issuer-uri=https://token.actions.githubusercontent.com --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name,attribute.workflow_ref=assertion.workflow_ref '--attribute-condition=assertion.repository_id == '\''1444213567'\'' && assertion.repository_owner_id == '\''112938189'\'' && assertion.ref == '\''refs/heads/main'\'' && assertion.event_name == '\''workflow_dispatch'\'' && assertion.workflow_ref == '\''Mikigb77/PlayableAnime/.github/workflows/ops.yml@refs/heads/main'\'''
 gcloud iam service-accounts add-iam-policy-binding github-ops@playable-anime.iam.gserviceaccount.com --project=playable-anime --member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github-ops/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser --format=none
+gcloud storage buckets create gs://playable-anime-releases --project=playable-anime --location=europe-west3 --default-storage-class=STANDARD --uniform-bucket-level-access --public-access-prevention --soft-delete-duration=0
+gcloud storage buckets update gs://playable-anime-releases --project=playable-anime --uniform-bucket-level-access --public-access-prevention --soft-delete-duration=0
+gcloud storage buckets add-iam-policy-binding gs://playable-anime-releases --project=playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/storage.objectUser --format=none
+gcloud storage buckets add-iam-policy-binding gs://playable-anime-releases --project=playable-anime --member=serviceAccount:github-deployer@playable-anime.iam.gserviceaccount.com --role=roles/storage.legacyBucketReader --format=none
+gcloud storage buckets add-iam-policy-binding gs://playable-anime-releases --project=playable-anime --member=serviceAccount:playable-anime-api@playable-anime.iam.gserviceaccount.com --role=roles/storage.objectViewer --format=none
 gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID --billing-project=playable-anime --display-name=playable-anime-monthly --budget-amount=25 --calendar-period=month --filter-projects=projects/playable-anime --credit-types-treatment=exclude-all-credits --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 --threshold-rule=percent=1.0,basis=forecasted-spend
 
 # infra/deploy.sh migrate IMAGE
@@ -674,6 +714,10 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
 # infra/deploy.sh covers
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait
 
+# infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)
+gcloud storage cp APK gs://playable-anime-releases/android/lucid-saga-42.apk --content-type=application/vnd.android.package-archive
+gcloud storage cp MANIFEST gs://playable-anime-releases/android/latest.json --content-type=application/json --cache-control=no-store
+
 # infra/deploy.sh rollback REVISION
 gcloud run services update-traffic playable-anime-api --project=playable-anime --region=europe-west3 --to-revisions=REVISION=100
 
@@ -683,6 +727,7 @@ VERTEX_LOCATION: "global"
 LOG_LEVEL: "INFO"
 GCP_PROJECT: "playable-anime"
 MEDIA_BUCKET: "playable-anime-pictures"
+RELEASES_BUCKET: "playable-anime-releases"
 ALLOWED_HOSTS: "playable-anime-api-528988811295.europe-west3.run.app"
 CSRF_TRUSTED_ORIGINS: "https://playable-anime-api-528988811295.europe-west3.run.app"
 GOOGLE_OAUTH_CLIENT_IDS: "528988811295-lnn9hj7ddlpr84s31ltco5n9eq3i4g18.apps.googleusercontent.com,528988811295-c2t6dchelulruu7hgl4mem4kr733d346.apps.googleusercontent.com"

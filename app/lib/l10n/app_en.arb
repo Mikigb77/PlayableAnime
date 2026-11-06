@@ -109,9 +109,9 @@
     "description": "Section of the flagship premises."
   },
   "discoverMore": "More worlds",
-  "discoverBadge": "Signature",
-  "@discoverBadge": {
-    "description": "Badge on a flagship premise card."
+  "discoverContinue": "Continue your story",
+  "@discoverContinue": {
+    "description": "Section at the top of Discover with the latest story the player can play on."
   },
   "discoverCreateTitle": "Start from your own idea",
   "discoverCreateBody": "One line is enough. The storyteller builds the world around it.",
@@ -352,6 +352,23 @@
   "themeDark": "Dark",
   "themeLight": "Light",
   "themeSystem": "System",
+  "accountLanguage": "Language",
+  "@accountLanguage": {
+    "description": "Account section that picks the app's language (S10)."
+  },
+  "accountLanguageBody": "The app's buttons, menus and settings. What a story has already told stays in the language it was written in.",
+  "languageSystem": "System",
+  "@languageSystem": {
+    "description": "Language option: follow the device's language, English when it isn't one the app has."
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Language option. Always written in English, whatever the app's language."
+  },
+  "languageSpanish": "Español",
+  "@languageSpanish": {
+    "description": "Language option. Always written in Spanish, whatever the app's language."
+  },
   "accountDictation": "Dictation",
   "accountDictationBody": "How the mic turns what you say into text. You always see the words and can fix them before sending.",
   "dictationOnline": "Online",
@@ -871,6 +888,11 @@
   "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
   "settingsSuggestions": "Suggested choices",
   "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
+  "settingsLanguage": "Story language",
+  "@settingsLanguage": {
+    "description": "Story setting: the language new scenes are written in (S10)."
+  },
+  "settingsLanguageHelp": "New scenes are written in it. What the story has already told stays as it is.",
   "settingsNextScene": "Changes apply from the next scene.",
   "settingsSave": "Save",
   "settingsSaved": "Saved. It applies from the next scene.",
@@ -929,5 +951,55 @@
   "errorBirthDateTitle": "One more step",
   "errorBirthDate": "We need your birth date to set your story ratings.",
   "errorSignInUnavailableTitle": "Sign-in is unavailable",
-  "errorSignInUnavailable": "Google sign-in can't be checked right now. Try again later, or use email."
+  "errorSignInUnavailable": "Google sign-in can't be checked right now. Try again later, or use email.",
+  "updateAvailable": "A new version of Lucid Saga is ready",
+  "updateAvailableBody": "Version {version}, build {build}. It downloads here, then Android asks you to install it.",
+  "@updateAvailableBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
+    }
+  },
+  "updateNow": "Update",
+  "updateLater": "Later",
+  "updateDownloading": "Downloading the update, {percent}%",
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "updateInstalling": "Android asks you to install it. Lucid Saga closes while it updates; open it again after.",
+  "updateFailedDownload": "The update didn't download. Check your connection and try again.",
+  "updateFailedCorrupt": "The download was damaged, so it wasn't installed. Try again.",
+  "updateFailedInstall": "Android didn't install the update. Try again, or download it from the link in the README.",
+  "updateTryAgain": "Try again",
+  "accountApp": "App",
+  "accountVersion": "Version {version}, build {build}",
+  "@accountVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
+    }
+  },
+  "accountUpdateCheck": "Check for updates",
+  "accountUpdateChecking": "Checking for updates…",
+  "accountUpToDate": "You have the newest build.",
+  "accountUpdateReady": "Build {build} is ready to install.",
+  "@accountUpdateReady": {
+    "placeholders": {
+      "build": {
+        "type": "int"
+      }
+    }
+  }
 }

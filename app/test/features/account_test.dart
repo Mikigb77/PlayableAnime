@@ -10,7 +10,10 @@ import 'package:playable_anime/core/byok_store.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/core/preferences.dart';
 import 'package:playable_anime/core/session/session.dart';
+import 'package:playable_anime/design/design.dart';
+import 'package:playable_anime/features/account/account_models.dart';
 import 'package:playable_anime/features/account/account_screen.dart';
 import 'package:playable_anime/features/account/credits_format.dart';
 import 'package:playable_anime/features/account/credits_screen.dart';
@@ -217,6 +220,43 @@ void main() {
       expect(prefs.getString('dictation.mode'), 'device');
     });
 
+    testWidgets('the app follows the device until the player picks a language', (tester) async {
+      await openAccount(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
+      expect(container.read(languageProvider), AppLanguage.system);
+
+      await tapVisible(tester, find.text(l10n.languageSpanish));
+
+      expect(container.read(languageProvider), AppLanguage.spanish);
+      final es = await AppLocalizations.delegate.load(const Locale('es'));
+      // The whole app switches, the tabs included, and each language keeps its own name.
+      expect(find.text(es.navAccount), findsWidgets);
+      expect(find.text(es.accountLanguageBody), findsOneWidget);
+      expect(find.text(l10n.navAccount), findsNothing);
+      expect(find.text('English'), findsOneWidget);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('appearance.language'), 'spanish');
+
+      // "System" names the theme's option too.
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('account.language')),
+          matching: find.text(es.languageSystem),
+        ),
+      );
+      expect(find.text(l10n.navAccount), findsWidgets);
+      expect(prefs.getString('appearance.language'), 'system');
+    });
+
+    testWidgets('a saved language applies from the start', (tester) async {
+      SharedPreferences.setMockInitialValues({'appearance.language': 'spanish'});
+      final es = await AppLocalizations.delegate.load(const Locale('es'));
+      await launchApp(tester, backend: backend, store: store);
+      expect(find.text(es.authContinueWithGoogle), findsOneWidget);
+      expect(find.text(l10n.authContinueWithGoogle), findsNothing);
+    });
+
     testWidgets('exports everything as a JSON file', (tester) async {
       final saver = RecordingExportSaver();
       await openAccount(tester, saver: saver);
@@ -292,6 +332,43 @@ void main() {
         expect(tester.takeException(), isNull);
       }
     });
+
+    testWidgets('on a wide screen the settings keep to the reading width', (tester) async {
+      await openAccount(tester);
+      usePhone(tester, size: const Size(1280, 900));
+      await settle(tester);
+      final title = tester.getTopLeft(
+        find.descendant(of: find.byType(PageHeader), matching: find.text(l10n.accountTitle)),
+      );
+      final profile = tester.getRect(find.text('Demo player').first);
+      final card = tester.getRect(
+        find.ancestor(of: find.text('Demo player'), matching: find.byType(Card)).first,
+      );
+      // Under the title, from the same edge, and no wider than a reading column.
+      expect(card.left, title.dx);
+      expect(card.width, lessThanOrEqualTo(Layout.readingWidth - Space.gutter * 2));
+      expect(profile.left, greaterThan(card.left));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the Developer section shows here, in a development build', (tester) async {
+      await openAccount(tester);
+      await tester.scrollUntilVisible(
+        find.text(l10n.accountApi),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(l10n.accountDeveloper.toUpperCase()), findsOneWidget);
+    });
+
+    test('players never see the Developer section; the owner and development builds do', () {
+      const player = AccountUser(id: 'u', email: 'p@x.test', displayName: 'P');
+      const owner = AccountUser(id: 'o', email: 'o@x.test', displayName: 'O', isOwner: true);
+      expect(showsDeveloper(player, devBuild: false), isFalse);
+      expect(showsDeveloper(null, devBuild: false), isFalse);
+      expect(showsDeveloper(owner, devBuild: false), isTrue);
+      expect(showsDeveloper(player, devBuild: true), isTrue);
+    });
   });
 
   group('credits', () {
@@ -334,6 +411,37 @@ void main() {
       expect(find.textContaining(l10n.creditsKindSpeech), findsOneWidget);
       expect(find.text('+50¢'), findsOneWidget);
       expect(find.textContaining(l10n.creditsStoryTurn('The Ninth Peak', 4)), findsNWidgets(2));
+    });
+
+    testWidgets('the history fits twice the text size', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      backend.data.account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'turn',
+        cents: 2.25,
+        now: DateTime.now(),
+        storyId: 'story_ninth_peak',
+        turn: 4,
+      );
+      backend.data.account.charge(
+        FakeAuthState.demoUserId,
+        kind: 'speech',
+        cents: 0.2,
+        now: DateTime.now(),
+      );
+      await openAccount(tester);
+      await tapVisible(tester, find.text(l10n.accountCreditHistory));
+      expect(find.byType(LedgerTile), findsNWidgets(3));
+      for (var i = 0; i < 6; i++) {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+        await settle(tester, frames: 2);
+        expect(tester.takeException(), isNull);
+      }
+      // The amount and the balance after it stay beside what the entry was for.
+      final amount = tester.getRect(find.text('−2.3¢'));
+      final turn = tester.getRect(find.text(l10n.creditsKindTurn));
+      expect(amount.left, greaterThan(turn.right));
     });
   });
 
@@ -441,6 +549,22 @@ void main() {
       // Indented lines continue their list item.
       final bullets = parsePolicy('- one\n  more\n- two').single as PolicyBullets;
       expect(bullets.items, ['one more', 'two']);
+    });
+
+    test('the Spanish policy has the same sections, tables and lists as the English', () {
+      final english = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
+      final spanish = parsePolicy(File('assets/legal/privacy_es.md').readAsStringSync());
+      String shape(PolicyBlock block) => switch (block) {
+        PolicyTable(:final rows) => 'table ${rows.length}',
+        PolicyBullets(:final items) => 'list ${items.length}',
+        _ => block.runtimeType.toString(),
+      };
+      expect(
+        spanish.map(shape).toList(),
+        english.map(shape).toList(),
+        reason: 'Change assets/legal/privacy_es.md with docs/PRIVACY.md (S10)',
+      );
+      expect(spanish.whereType<PolicyHeading>().first.text, 'Quiénes somos');
     });
 
     testWidgets('opens signed out and reads as a page', (tester) async {

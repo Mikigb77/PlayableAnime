@@ -18,6 +18,13 @@ class Rating(StrEnum):
     MATURE = "mature"
 
 
+class Language(StrEnum):
+    """S10. The languages the app speaks, as language codes."""
+
+    EN = "en"
+    ES = "es"
+
+
 class Difficulty(StrEnum):
     """A5. Shifts the odds of rolled steps only, never a certain or ruled-out one (A2)."""
 
@@ -72,6 +79,9 @@ class StorySettings(EngineModel):
     event_frequency: EventFrequency = EventFrequency.NORMAL
     images: ImageSetting = ImageSetting.KEY_MOMENTS
     suggestions: bool = True
+    # S10: the language the story is written in from the next scene on. What it already told
+    # stays in the language it was written in.
+    language: Language = Language.EN
 
 
 class TurnContext(EngineModel):

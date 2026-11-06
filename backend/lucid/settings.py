@@ -143,6 +143,8 @@ TRUSTED_PROXY_HOPS = ENV.trusted_proxy_hops
 MEDIA_BUCKET = ENV.media_bucket
 PICTURE_ROOT = ENV.picture_root or BACKEND_DIR / "media-local"
 PICTURE_URL_TTL_S = ENV.picture_url_ttl_s
+# The app's own updates (S12): the bucket each deploy uploads the Android build to.
+RELEASES_BUCKET = ENV.releases_bucket
 if not DEBUG and LLM_PROVIDER == "vertex" and not MEDIA_BUCKET:
     # A real deployment would keep pictures on one instance's ephemeral disk, where other
     # instances can't serve them and a restart loses them.

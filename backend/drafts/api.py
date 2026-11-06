@@ -19,7 +19,14 @@ from pydantic import model_validator
 
 from drafts import service
 from drafts.models import Draft
-from engine.context import Difficulty, EventFrequency, ImageSetting, NarrationLength, Rating
+from engine.context import (
+    Difficulty,
+    EventFrequency,
+    ImageSetting,
+    Language,
+    NarrationLength,
+    Rating,
+)
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import STARTER_PREMISES, starter
@@ -60,11 +67,11 @@ class PremiseOut(Schema):
 
 
 @premises_router.get("", response=list[PremiseOut])
-async def list_premises(request) -> list[dict]:
-    """Flagship genres first, then the rest (S1), each with a fresh signed URL for its cover
-    once the house has drawn one (`manage.py draw_premise_covers`)."""
+async def list_premises(request, language: Language = Language.EN) -> list[dict]:
+    """Flagship genres first, then the rest (S1), in the app's language (S10), each with a fresh
+    signed URL for its cover once the house has drawn one (`manage.py draw_premise_covers`)."""
     covers = await _cover_urls(request)
-    return [premise.public(covers.get(premise.id)) for premise in STARTER_PREMISES]
+    return [premise.public(covers.get(premise.id), language) for premise in STARTER_PREMISES]
 
 
 async def _cover_urls(request) -> dict[str, str]:
@@ -109,6 +116,8 @@ class CreateDraftIn(Schema):
     premise_id: str | None = Field(default=None, max_length=64)
     rating: Rating
     advanced: AdvancedIn | None = None
+    # S10: the app's language. The drafter writes in it, and the story starts in it.
+    language: Language = Language.EN
 
     @model_validator(mode="after")
     def _premise_given(self) -> Self:
@@ -144,6 +153,7 @@ class StartSettingsIn(Schema):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
+    language: Language | None = None
 
 
 class StartIn(Schema):
@@ -170,6 +180,7 @@ class DraftOut(Schema):
     premise: str
     premise_id: str | None
     rating: Rating
+    language: Language
     title: str
     genre: str
     tone: str
@@ -196,11 +207,13 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "premise": row.premise,
         "premise_id": row.premise_id or None,
         "rating": row.rating,
+        "language": row.language,
         "title": public_text(state, bible.title),
         "genre": public_text(state, bible.genre),
         "tone": public_text(state, bible.tone),
-        "world_lines": world_lines(state),
-        "character_lines": character_lines(state),
+        # S10: the words code adds come in the draft's language.
+        "world_lines": world_lines(state, Language(row.language)),
+        "character_lines": character_lines(state, Language(row.language)),
         "advanced": {
             "physics": bible.physics.value,
             "rules": [{"id": r.id, "text": r.text, "fixed": r.fixed} for r in public_rules(state)],
@@ -257,7 +270,8 @@ async def create_draft(request, body: CreateDraftIn):
         found = starter(body.premise_id)
         if found is None:
             raise field_error("premise_id", "No starter premise has this id.", type="unknown")
-    premise = body.premise if body.premise is not None else found.premise
+    # A starter alone is drafted from its own words in the draft's language (S10).
+    premise = body.premise if body.premise is not None else found.text(body.language).premise
     service.check_rating(request.auth, body.rating)
     advanced = body.advanced or AdvancedIn()
     rules = [r.text for r in advanced.rules or []]
@@ -275,6 +289,7 @@ async def create_draft(request, body: CreateDraftIn):
             physics=advanced.physics or PhysicsMode.FUN_FIRST,
             gift=advanced.gift_strength,
             rules=_rule_edits(advanced),
+            language=body.language,
         )
         row = await service.create_row(
             request.auth,
@@ -307,8 +322,10 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     state = current.state()
     _refuse_real_people(
         [
-            *_new_texts("world_lines", body.world_lines, world_lines(state)),
-            *_new_texts("character_lines", body.character_lines, character_lines(state)),
+            *_new_texts("world_lines", body.world_lines, world_lines(state, current.language)),
+            *_new_texts(
+                "character_lines", body.character_lines, character_lines(state, current.language)
+            ),
             *_new_texts(
                 "advanced.rules",
                 [r.text for r in advanced.rules or []],

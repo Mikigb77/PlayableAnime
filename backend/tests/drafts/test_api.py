@@ -18,6 +18,7 @@ from drafts.models import Draft
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.catalog_es import SPANISH
 from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, WorldChange
 from graph.drafting.view import hidden_texts
 from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
@@ -85,6 +86,26 @@ def test_starter_premises_lead_with_the_flagship_genres(player_client):
     }
     genres = {p["genre"] for p in premises}
     assert {"Cultivation", "Grounded crime", "Science fiction", "Hidden supernatural"} <= genres
+
+
+def test_starter_premises_come_in_the_apps_language(player_client):
+    english = player_client.get("/v1/premises").json()
+    spanish = player_client.get("/v1/premises", {"language": "es"}).json()
+
+    assert [p["id"] for p in spanish] == [p["id"] for p in english]
+    first = spanish[0]
+    assert first["title"] == SPANISH[first["id"]].title
+    assert first["premise"] == SPANISH[first["id"]].premise
+    assert first["flagship"] == english[0]["flagship"]
+    assert first["cover_url"] == english[0]["cover_url"]
+    assert player_client.get("/v1/premises", {"language": "en"}).json() == english
+
+
+def test_a_language_the_app_doesnt_speak_is_refused(player_client):
+    response = player_client.get("/v1/premises", {"language": "fr"})
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 # Creating a draft (G1, G2, S1).
@@ -562,9 +583,43 @@ def test_starting_creates_the_story_with_its_opening_state(player_client, model,
         "event_frequency": "normal",
         "images": "off",
         "suggestions": True,
+        "language": "en",
     }
     assert not story.scenes.exists()
     assert Draft.objects.get(pk=draft["id"]).story_id == story.id
+
+
+def test_a_draft_in_spanish_is_written_and_started_in_spanish(player_client, model):
+    # S10: the drafter writes in the app's language, a starter alone is drafted from its own
+    # Spanish words, and the story starts in the draft's language.
+    draft = _draft(
+        player_client, {"premise_id": "naples-vendetta", "rating": "mature", "language": "es"}
+    )
+
+    assert draft["language"] == "es"
+    assert draft["premise"] == SPANISH["naples-vendetta"].premise
+    # The words code adds to the summary come in Spanish too.
+    assert any(line.startswith("Objetivo: ") for line in draft["character_lines"])
+    assert "Sin poderes, porque en este mundo no existen." in draft["character_lines"]
+    [request] = model.calls(Node.DRAFTER)
+    assert "Spanish from Spain" in request.prompt.system
+    assert SPANISH["naples-vendetta"].premise in request.prompt.messages[0].text
+
+    _revise(player_client, draft["id"], {"target": "world", "instruction": "Más lluvia"})
+    assert "Spanish from Spain" in model.calls(Node.DRAFTER)[-1].prompt.system
+
+    story = Story.objects.get(pk=_start(player_client, draft["id"]).json()["story_id"])
+    assert story.settings["language"] == "es"
+
+
+def test_a_draft_is_in_english_unless_the_app_says_otherwise(player_client, model):
+    draft = _draft(player_client)
+
+    assert draft["language"] == "en"
+    [request] = model.calls(Node.DRAFTER)
+    assert "in English, even where" in request.prompt.system
+    refused = _create(player_client, {"premise": MY_PREMISE, "rating": "teen", "language": "fr"})
+    assert refused.status_code == 400
 
 
 def test_starting_twice_returns_the_same_story(player_client, model):

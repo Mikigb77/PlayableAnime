@@ -22,7 +22,8 @@ polished app on Android, iOS and the web build.
 - BYOK turns free (K6).
 
 **Out of the first version, planned next:** store payments and plans (K3 to K5, which need store
-accounts), retrieval with pgvector (C4), Spanish (S10, though the app is built ready for it), undo
+accounts), retrieval with pgvector (C4), stories written in Spanish (S10: the app's own text, the starters and
+the privacy policy are in Spanish already), undo
 and branching saves (C8, beyond the rewind after a death), editable memory (C7), the model part of
 the world tick (W6, P1), NPC agendas (E3), the remaining slash commands, Gemini transcription (V6,
 P1), and everything P2. A death the player chooses and `/end` already end a story, and the player can carry it on as a random person of

@@ -72,6 +72,13 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
     _use(engine);
   }
 
+  @override
+  void didUpdateWidget(DictationButton old) {
+    super.didUpdateWidget(old);
+    // The story's language changed (S10): the next dictation listens for the new one.
+    _dictation.localeId = widget.localeId;
+  }
+
   void _hidden() {
     final phase = _dictation.phase;
     if (phase == DictationPhase.listening || phase == DictationPhase.starting) _dictation.stop();

@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting.assemble import DraftOptions, assemble, slug
 from graph.drafting.catalog import PremiseTemplate, starter
@@ -45,7 +46,7 @@ Target = Literal["world", "character"]
 @dataclass(frozen=True)
 class Draft:
     """A draft's inputs. `released_rules` are the starter template's rules the player let go of
-    while setting up the story (G7)."""
+    while setting up the story (G7). `language` is what the drafter writes in (S10)."""
 
     premise: str
     proposal: DraftProposal
@@ -54,6 +55,7 @@ class Draft:
     physics: PhysicsMode = PhysicsMode.FUN_FIRST
     gift: GiftStrength | None = None
     released_rules: frozenset[str] = frozenset()
+    language: Language = Language.EN
 
     @property
     def template(self) -> PremiseTemplate | None:
@@ -67,6 +69,7 @@ class Draft:
             gift=self.gift,
             template=self.template,
             released_rules=self.released_rules,
+            language=self.language,
         )
 
     def state(self) -> WorldState:
@@ -108,10 +111,11 @@ async def create(
     physics: PhysicsMode = PhysicsMode.FUN_FIRST,
     gift: GiftStrength | None = None,
     rules: list[RuleEdit] | None = None,
+    language: Language = Language.EN,
 ) -> Draft:
-    """The first draft: the world, then the character in it, in one model call. `rules` are
-    rules the player set before drafting: they join the drafted ones word for word, and one with
-    the id of a drafted rule replaces it."""
+    """The first draft: the world, then the character in it, in one model call, written in
+    `language` (S10). `rules` are rules the player set before drafting: they join the drafted
+    ones word for word, and one with the id of a drafted rule replaces it."""
     draft = Draft(
         premise=premise,
         proposal=DraftProposal(
@@ -122,9 +126,10 @@ async def create(
         premise_id=premise_id,
         physics=physics,
         gift=gift,
+        language=language,
     )
     prompt = Prompt.build(
-        system_prompt(rating),
+        system_prompt(rating, language),
         draft_prompt(
             premise,
             template=draft.template,
@@ -207,12 +212,12 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in shown + hidden]:
             world_asks.append(rules_instruction(forced_rules))
     if edits.world_lines is not None:
-        before = world_lines(state)
+        before = world_lines(state, draft.language)
         after = _clean_lines(edits.world_lines)
         if after != before:
             world_asks.append(lines_instruction("world", before, after))
     if edits.character_lines is not None:
-        before = character_lines(state)
+        before = character_lines(state, draft.language)
         after = _clean_lines(edits.character_lines)
         if after != before:
             character_asks.append(lines_instruction("character", before, after))
@@ -283,7 +288,7 @@ async def _revise_character(llm: ModelClient, draft: Draft, instruction: str) ->
 
 def _revise_prompt(draft: Draft, state: WorldState, target: Target, instruction: str) -> Prompt:
     return Prompt.build(
-        system_prompt(draft.rating),
+        system_prompt(draft.rating, draft.language),
         revise_prompt(
             draft.premise,
             draft.proposal,

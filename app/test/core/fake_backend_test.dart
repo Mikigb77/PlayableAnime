@@ -104,7 +104,7 @@ void main() {
       final premises = [
         for (final p in await api.get('/v1/premises') as List) Premise.fromJson(p as JsonMap),
       ];
-      expect(premises, hasLength(11));
+      expect(premises, hasLength(23));
       expect(premises.take(4).every((p) => p.flagship), isTrue);
       expect(premises.first.coverUrl, startsWith('asset:'));
     });

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../core/json.dart';
+import '../../core/preferences.dart';
 
 /// A starter premise (docs/API.md `Premise`, S1). Each starter's genre fixes some rules (G7), which
 /// every draft from it keeps until the player changes them.
@@ -46,9 +47,12 @@ List<Premise> flagshipFirst(Iterable<Premise> premises) => [
   ...premises.where((p) => !p.flagship),
 ];
 
-/// The starter premises, flagship first.
+/// The starter premises, flagship first, in the app's language (S10). Changing the language
+/// loads them again.
 final premisesProvider = FutureProvider<List<Premise>>((ref) async {
-  final json = await ref.watch(apiClientProvider).get('/v1/premises') as List;
+  final language = ref.watch(appLanguageCodeProvider);
+  final json =
+      await ref.watch(apiClientProvider).get('/v1/premises', query: {'language': language}) as List;
   return flagshipFirst([for (final premise in json) Premise.fromJson(premise as JsonMap)]);
 });
 

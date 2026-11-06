@@ -2,6 +2,7 @@
 
 import pytest
 
+from engine.context import Language
 from engine.state import GiftStrength
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
@@ -74,6 +75,24 @@ def test_a_grounded_character_has_no_powers_in_plain_words():
 
     assert "No powers, since this world has none." in lines
     assert "Skilled: pistol and knife work. Fair: driving." in lines
+
+
+def test_the_words_code_adds_come_in_the_draft_s_language():
+    # S10: the world's own text is whatever the drafter wrote; the words around it are Spanish.
+    es = Language.ES
+    world = world_lines(_cultivation(), es)
+    character = character_lines(_cultivation(), es)
+    naples = character_lines(_naples(), es)
+
+    assert "The ranking tournament: en 2 días." in world
+    assert "Third stage de Qi Condensation." in character
+    assert "Objetivo: Survive the ranking tournament." in character
+    assert any(line.endswith("Nadie lo sabe.") for line in character)
+    assert "Sin poderes, porque en este mundo no existen." in naples
+    assert "Destreza: pistol y knife work. Soltura: driving." in naples
+    assert any(line.startswith("Lleva Beretta pistol y flick knife.") for line in naples)
+    assert any("200.000 lire" in line for line in naples)
+    assert duration(10 * 86400, es) == "10 días" and duration(30, es) == "un momento"
 
 
 @pytest.mark.parametrize("make", [_naples, _cultivation])

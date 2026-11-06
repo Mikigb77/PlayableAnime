@@ -13,11 +13,13 @@ class DraftRepository {
   final ApiClient _api;
 
   /// Drafts a world and a character. With [premiseId] alone the starter's own text is the
-  /// premise; with both, [premise] is the player's text and the starter's genre still holds.
+  /// premise; with both, [premise] is the player's text and the starter's genre still holds. The
+  /// draft is written in [language], and its story starts in it (S10).
   Future<Draft> create({
     String? premise,
     String? premiseId,
     required Rating rating,
+    String language = 'en',
     DraftChoices choices = const DraftChoices(),
   }) async {
     assert(premise != null || premiseId != null, 'A draft needs a premise or a starter');
@@ -25,6 +27,7 @@ class DraftRepository {
       'premise': ?premise,
       'premise_id': ?premiseId,
       'rating': rating.wire,
+      'language': language,
       if (!choices.isEmpty) 'advanced': choices.toJson(),
     });
     return Draft.fromJson(json as JsonMap);

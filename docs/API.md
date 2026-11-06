@@ -197,15 +197,44 @@ sent as an action from here.
   never touches the disk), never stored, and never logged. The log line has the audio's size and type, the number of names sent,
   the outcome, the transcript's length, tokens and cost, never the words (T6).
 
+## App updates (S12)
+
+| Method | Path | Query | Response |
+| --- | --- | --- | --- |
+| GET | `/v1/app/latest` | `platform=android` (the default; anything else is `400 validation_error`) | `AppRelease`, or `404 not_found` until a build is published |
+
+```text
+AppRelease  {platform: "android", build, version, size, sha256, url, expires_at, published_at?}
+```
+
+The newest build the deploy published, for the APK from the GitHub release to update itself. Only a
+build with `SELF_UPDATE=true` asks (never a store build, which its store updates): when its tabs
+first show, when it comes back to the foreground (at most every half hour) and from Account's
+"Check for updates".
+
+- **`build`** is Android's versionCode, which grows with every deploy; the app offers the update
+  when it is above its own. **`version`** is the version name, such as `1.0.0`.
+- **`url`** downloads the APK until `expires_at` (30 minutes, a Cloud Storage signed URL in
+  production, no `Authorization` header). The app asks again right before downloading, so the URL
+  is fresh. The download must be exactly **`size`** bytes with this **`sha256`** (lowercase hex),
+  or the app doesn't install it.
+- The server reads the deploy's manifest at most once a minute per instance, so a new build is
+  offered within a minute of the deploy. A manifest it can't read counts as none (logged as a
+  warning), so the app just offers nothing.
+
 ## Starter premises (S1)
 
 | Method | Path | Response |
 | --- | --- | --- |
-| GET | `/v1/premises` | `[Premise]` |
+| GET | `/v1/premises?language=` | `[Premise]` |
 
 ```text
 Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
+
+`language` is the app's language, `en` (the default) or `es` (S10): the title, genre, tagline and
+premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
+in every language.
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
 then a grounded modern story (the Naples vendetta), science fiction, a modern world with a hidden
@@ -227,7 +256,7 @@ BYOK request is free (K6).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/v1/drafts` | `{premise?, premise_id?, rating, advanced?: DraftAdvancedIn}` | `201 Draft` |
+| POST | `/v1/drafts` | `{premise?, premise_id?, rating, language?, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
 | PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
 | POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires"; the rest stays as it was) |
@@ -235,6 +264,7 @@ BYOK request is free (K6).
 
 ```text
 Draft            {id, premise, premise_id?, rating, title, genre, tone,
+                  language: "en"|"es",       # S10: what it is written in, and its story starts in
                   world_lines: [string],       # the one-screen summary in plain words (G1)
                   character_lines: [string],   # the character in the world's words (G2, G16)
                   advanced: DraftAdvanced,
@@ -253,7 +283,10 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   is the premise; with both, the player's text is the premise and the starter's genre still holds.
   An unknown `premise_id` is a `validation_error` on that field. A teen account can't ask for
   `mature` (`403 forbidden`, F8). Rules sent in `advanced.rules` join the drafted ones word for
-  word, in the same model call; one with the id of a drafted rule replaces it.
+  word, in the same model call; one with the id of a drafted rule replaces it. `language` is the
+  app's language, `en` (the default) or `es` (S10): the drafter writes every text the player reads
+  in it, a starter sent by `premise_id` alone takes its premise in that language, and revisions
+  keep it.
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
   peoples, the factions, deadlines and questions the character knows, and the key people they know.
@@ -272,7 +305,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   can't overwrite each other either way: the later one answers `409` too, and its model call is
   still charged, since it ran.
 - **Starting** creates the story with the drafted world state (`turn` 0, `version` 1, no scenes) and
-  the settings: the draft's `difficulty` and `event_frequency`, then whatever `settings` sends. A
+  the settings: the draft's `difficulty`, `event_frequency` and `language`, then whatever
+  `settings` sends. A
   started draft can't change (`403 forbidden` with `details.story_id`), and starting it again
   returns the same story. The app sends `expected_version` here as with every change; the server
   refuses a stale one with `409 version_conflict` like any other change, so a story never starts
@@ -353,8 +387,14 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                difficulty: "story"|"balanced"|"brutal",
                event_frequency: "calm"|"normal"|"dramatic",
                images: "off"|"key_moments"|"more",      # M2, default key_moments
-               suggestions: bool}                         # S2
+               suggestions: bool,                         # S2
+               language: "en"|"es"}                       # S10, default en: new scenes are written
+                                                         # in it; what was told stays as it was.
+                                                         # The labels the server writes follow it:
+                                                         # the clock, a new scene's time bar, and
+                                                         # Memory's and Status's fixed words
 Clock         {world_s, label, timeline_id}              # label such as "Day 3, dusk" or "14 May 1974, 23:10"
+                                                         # ("Día 3, atardecer" in a Spanish story, S10)
 ```
 
 ### Turns (B5, B7, S3, T10, V7)

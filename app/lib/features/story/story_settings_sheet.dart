@@ -10,9 +10,9 @@ import 'story_models.dart';
 /// when it can't.
 typedef SettingsSaver = Future<void> Function({String? title, Json? settings});
 
-/// The story's settings (S6): its title, how long the narration runs, the tone, difficulty (A5),
-/// how often events arrive (W16), pictures (M2) and suggested choices (S2). Changes apply from the
-/// next scene. Pops with true when something was saved.
+/// The story's settings (S6): its title, how long the narration runs, its language (S10), the
+/// tone, difficulty (A5), how often events arrive (W16), pictures (M2) and suggested choices (S2).
+/// Changes apply from the next scene. Pops with true when something was saved.
 Future<bool?> showStorySettings(
   BuildContext context, {
   required Story story,
@@ -129,6 +129,15 @@ class _StorySettingsFormState extends State<StorySettingsForm> {
             ('long', l10n.settingsLong),
           ],
           (v) => setState(() => _settings = _settings.copyWith(narrationLength: v)),
+        ),
+        gap,
+        // Each language is named in itself, like Account's language setting (S10).
+        choose(
+          l10n.settingsLanguage,
+          _settings.language,
+          [('en', l10n.languageEnglish), ('es', l10n.languageSpanish)],
+          (v) => setState(() => _settings = _settings.copyWith(language: v)),
+          help: l10n.settingsLanguageHelp,
         ),
         gap,
         TextField(

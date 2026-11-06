@@ -13,6 +13,9 @@
 #   ANDROID_KEYSTORE_PASSWORD  the APK is signed for release. With none, it is signed with this
 #   ANDROID_KEY_ALIAS          machine's debug key, which changes from one CI run to the next.
 #   ANDROID_KEY_PASSWORD       With only some, the build stops: one is probably misspelt.
+#   SELF_UPDATE                true (the default) for the APK the deploy publishes, which updates
+#                              itself from the API (S12); false for a build that an app store
+#                              updates, such as a future Google Play build.
 #   APP_DIR                    The Flutter app. Default: app/. For the infra tests.
 #
 # Writes these step outputs in GitHub Actions, or prints them: signing (release or debug), sha1 and
@@ -50,6 +53,11 @@ esac
 web_client_id="$GOOGLE_WEB_CLIENT_ID"
 check_client_id "$web_client_id"
 build_number="${BUILD_NUMBER:-}"
+self_update="${SELF_UPDATE:-true}"
+case "$self_update" in
+  true | false) ;;
+  *) die "SELF_UPDATE must be true or false" ;;
+esac
 case "$build_number" in
   *[!0-9]* | 0*) die "BUILD_NUMBER must be a whole number above 0" ;;
 esac
@@ -87,6 +95,7 @@ if [ -n "$web_client_id" ]; then
 else
   warn "infra/config.sh has no Google web client id, so the app offers email sign-in only."
 fi
+args+=("--dart-define=SELF_UPDATE=$self_update")
 if [ -n "$build_number" ]; then
   args+=("--build-number=$build_number")
 fi

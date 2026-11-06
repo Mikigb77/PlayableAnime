@@ -110,25 +110,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         ),
                       ],
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: Space.xxxl),
-                      itemCount: stories.length + 1,
-                      separatorBuilder: (_, i) => SizedBox(height: i == 0 ? 0 : Space.md),
-                      itemBuilder: (context, i) {
-                        if (i == 0) return header;
-                        final story = stories[i - 1];
-                        return ContentColumn(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                            child: _StoryRow(
+                  : CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(child: header),
+                        _StoryGrid(
+                          count: stories.length,
+                          itemBuilder: (context, i) {
+                            final story = stories[i];
+                            return _StoryRow(
                               story: story,
                               confirm: () => _confirm(story),
                               onDelete: () => _delete(story),
                               onDeleteAsked: () => _confirmAndDelete(story),
-                            ),
-                          ),
-                        );
-                      },
+                            );
+                          },
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: Space.xxxl)),
+                      ],
                     ),
             );
           },
@@ -160,13 +158,6 @@ class _StoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final time = story.worldTimeLabel;
-    final meta = switch ((story.turn, time)) {
-      _ when story.ended => l10n.libraryEnded(story.turn),
-      (0, final time?) => l10n.libraryNotBegun(time),
-      (_, final time?) => l10n.libraryMeta(story.turn, time),
-      _ => l10n.libraryTurn(story.turn),
-    };
     return Dismissible(
       key: ValueKey(story.id),
       direction: DismissDirection.endToStart,
@@ -182,7 +173,7 @@ class _StoryRow extends StatelessWidget {
         title: story.title,
         genre: story.genre,
         imageUrl: story.coverUrl,
-        meta: meta,
+        meta: storyMeta(l10n, story),
         onTap: () => context.push('/story/${Uri.encodeComponent(story.id)}'),
         trailing: PopupMenuButton<String>(
           tooltip: l10n.libraryOptions,
@@ -204,4 +195,59 @@ class _StoryRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where a story stands, under its title: its turn and the in-world time (W10), that it is ready
+/// to begin, or that it ended.
+String storyMeta(AppLocalizations l10n, StorySummary story) =>
+    switch ((story.turn, story.worldTimeLabel)) {
+      _ when story.ended => l10n.libraryEnded(story.turn),
+      (0, final time?) => l10n.libraryNotBegun(time),
+      (_, final time?) => l10n.libraryMeta(story.turn, time),
+      _ => l10n.libraryTurn(story.turn),
+    };
+
+/// The stories in the content column: one under another on a phone, two side by side from
+/// tablet width, so a row is never stretched across a wide screen. Rows side by side share their
+/// height, which grows with the text size.
+class _StoryGrid extends StatelessWidget {
+  const _StoryGrid({required this.count, required this.itemBuilder});
+
+  final int count;
+  final IndexedWidgetBuilder itemBuilder;
+
+  /// The content width (inside the gutters) from which stories go two across.
+  static const _twoColumns = 640.0;
+
+  @override
+  Widget build(BuildContext context) => SliverLayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.crossAxisExtent.clamp(0.0, Layout.contentWidth);
+      final columns = width - Space.gutter * 2 >= _twoColumns ? 2 : 1;
+      final rows = (count + columns - 1) ~/ columns;
+      final side = (constraints.crossAxisExtent - width) / 2 + Space.gutter;
+      return SliverPadding(
+        padding: EdgeInsets.symmetric(horizontal: side),
+        sliver: SliverList.separated(
+          itemCount: rows,
+          separatorBuilder: (_, _) => const SizedBox(height: Space.md),
+          itemBuilder: (context, row) {
+            if (columns == 1) return itemBuilder(context, row);
+            final first = row * columns;
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = first; i < first + columns; i++) ...[
+                    if (i > first) const SizedBox(width: Space.md),
+                    Expanded(child: i < count ? itemBuilder(context, i) : const SizedBox()),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
 }

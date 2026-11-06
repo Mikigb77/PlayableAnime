@@ -37,6 +37,7 @@ class FakeStory {
     'event_frequency': 'normal',
     'images': 'key_moments',
     'suggestions': true,
+    'language': 'en',
   };
   final scenes = <JsonMap>[];
 
@@ -467,6 +468,7 @@ void _checkSettings(JsonMap settings) {
     'difficulty': {'story', 'balanced', 'brutal'},
     'event_frequency': {'calm', 'normal', 'dramatic'},
     'images': {'off', 'key_moments', 'more'},
+    'language': {'en', 'es'},
   };
   for (final MapEntry(:key, :value) in settings.entries) {
     final ok = switch (key) {

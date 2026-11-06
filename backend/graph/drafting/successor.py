@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from engine.context import Language
 from engine.heirs import RELATIONS
 from engine.invariants import is_real_name
 from engine.kin import descendants
@@ -60,6 +61,7 @@ from graph.drafting.schema import (
     TemperamentP,
     TraitP,
 )
+from graph.language import language_line
 from graph.llm import ModelClient, Node, Prompt
 
 SITUATION_LIMIT = 300
@@ -110,7 +112,7 @@ something extraordinary goes past 5, and only for someone strong.
 act on. Nothing that happened to the last player character needs to touch them.
 
 Every person and organisation is fictional, with no real living person. There is no sexual \
-content in any rating. Write in English, in plain words, in the world's own voice.\
+content in any rating. Write in plain words, in the world's own voice.\
 """
 
 STATIONS = {
@@ -123,10 +125,15 @@ STATIONS = {
 
 
 async def propose(
-    llm: ModelClient, state: WorldState, lot: Lot, *, rating: str
+    llm: ModelClient,
+    state: WorldState,
+    lot: Lot,
+    *,
+    rating: str,
+    language: Language = Language.EN,
 ) -> SuccessorProposal:
-    """The drafter's person for the draw."""
-    system = f"{SYSTEM}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
+    """The drafter's person for the draw, written in the story's language (S10)."""
+    system = _system(SYSTEM, rating, language)
     return await llm.structured(
         Node.DRAFTER, Prompt.build(system, successor_prompt(state, lot)), SuccessorProposal
     )
@@ -149,19 +156,30 @@ however strong their parent was.
 They know their family as family does, and the rest of the world only as anyone there would.
 
 Every person and organisation is fictional, with no real living person. There is no sexual \
-content in any rating. Write in English, in plain words, in the world's own voice.\
+content in any rating. Write in plain words, in the world's own voice.\
 """
 
 
 async def propose_heir(
-    llm: ModelClient, state: WorldState, heir: Character, *, years: int, rating: str
+    llm: ModelClient,
+    state: WorldState,
+    heir: Character,
+    *,
+    years: int,
+    rating: str,
+    language: Language = Language.EN,
 ) -> SuccessorProposal:
-    """The drafter's heir, as they are now. `state` is the world now, `years` how long it ran
-    on since the ending."""
-    system = f"{HEIR_SYSTEM}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
+    """The drafter's heir, as they are now, written in the story's language (S10). `state` is
+    the world now, `years` how long it ran on since the ending."""
+    system = _system(HEIR_SYSTEM, rating, language)
     return await llm.structured(
         Node.DRAFTER, Prompt.build(system, heir_prompt(state, heir, years=years)), SuccessorProposal
     )
+
+
+def _system(base: str, rating: str, language: Language) -> str:
+    words = language_line(language, "every text field the player reads")
+    return f"{base}\n\n{words}\n\n{RATINGS.get(rating, RATINGS['teen'])}"
 
 
 def heir_prompt(state: WorldState, heir: Character, *, years: int) -> str:

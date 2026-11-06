@@ -3,10 +3,16 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
-/// The language every story is told in until S10 adds Spanish (V4), as a BCP-47 tag. Recognition
-/// listens for it rather than the phone's own language, so English spoken to a phone set to
-/// Spanish is heard as English.
+/// What dictation listens for in a box that doesn't say (V4): English, as a BCP-47 tag.
 const storyLanguage = 'en-US';
+
+/// What dictation listens for in a story or draft written in [language] (`en` or `es`, S10), as a
+/// BCP-47 tag. Recognition listens for the story's language rather than the phone's own, so
+/// Spanish spoken into a Spanish story on a phone set to English is heard as Spanish.
+String speechLocale(String language) => switch (language) {
+  'es' => 'es-ES',
+  _ => storyLanguage,
+};
 
 /// A recognizer failure, such as `error_no_match` or `error_permission`. Online dictation adds
 /// [offline], [outOfCredits], [limited] and [unclear].
