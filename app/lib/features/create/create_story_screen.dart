@@ -84,7 +84,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
       premiseId: starter?.id,
       quote: text,
       rating: ref.read(maxRatingProvider) == Rating.teen ? Rating.teen : form.rating,
-      // A story starts in the app's language; its settings can switch it later (S10).
+      // A story starts in the app's language and stays in it (S10).
       language: ref.read(appLanguageCodeProvider),
       choices: DraftChoices(
         physics: form.physics,

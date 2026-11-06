@@ -18,6 +18,7 @@ from drafts.models import Draft
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.catalog_ca import CATALAN
 from graph.drafting.catalog_es import SPANISH
 from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, WorldChange
 from graph.drafting.view import hidden_texts
@@ -99,6 +100,8 @@ def test_starter_premises_come_in_the_apps_language(player_client):
     assert first["flagship"] == english[0]["flagship"]
     assert first["cover_url"] == english[0]["cover_url"]
     assert player_client.get("/v1/premises", {"language": "en"}).json() == english
+    catalan = player_client.get("/v1/premises", {"language": "ca"}).json()
+    assert [p["title"] for p in catalan] == [CATALAN[p["id"]].title for p in english]
 
 
 def test_a_language_the_app_doesnt_speak_is_refused(player_client):
@@ -610,6 +613,22 @@ def test_a_draft_in_spanish_is_written_and_started_in_spanish(player_client, mod
 
     story = Story.objects.get(pk=_start(player_client, draft["id"]).json()["story_id"])
     assert story.settings["language"] == "es"
+
+
+def test_a_draft_in_catalan_is_written_and_started_in_catalan(player_client, model):
+    # S10: like Spanish, and the story's settings can't switch it later.
+    draft = _draft(
+        player_client, {"premise_id": "naples-vendetta", "rating": "mature", "language": "ca"}
+    )
+
+    assert draft["language"] == "ca"
+    assert draft["premise"] == CATALAN["naples-vendetta"].premise
+    assert any(line.startswith("Objectiu: ") for line in draft["character_lines"])
+    assert "Catalan, speaking to the player as tu" in model.calls(Node.DRAFTER)[0].prompt.system
+
+    started = _start(player_client, draft["id"], {"settings": {"language": "en"}})
+    story = Story.objects.get(pk=started.json()["story_id"])
+    assert story.settings["language"] == "ca"
 
 
 def test_a_draft_is_in_english_unless_the_app_says_otherwise(player_client, model):

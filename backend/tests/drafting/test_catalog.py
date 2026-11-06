@@ -14,6 +14,7 @@ from engine.state import GiftStrength, Prevalence
 from graph.drafting import samples
 from graph.drafting.assemble import HUMAN_PEAK, DraftOptions, assemble
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.catalog_ca import CATALAN
 from graph.drafting.catalog_es import SPANISH
 from graph.drafting.prompts import template_block
 from graph.drafting.schema import DraftProposal, ExtraordinaryP, RuleP
@@ -220,16 +221,21 @@ def test_a_starter_that_grants_a_gift_sets_its_strength():
         assert gift_strength(state) is strength, premise_id
 
 
-def test_every_starter_has_its_spanish():
+@pytest.mark.parametrize(
+    ("language", "translations"), [(Language.ES, SPANISH), (Language.CA, CATALAN)]
+)
+def test_every_starter_has_its_spanish_and_catalan(language, translations):
     """S10: Discover shows each starter in the app's language, so a new starter needs its Spanish
-    in `graph.drafting.catalog_es`."""
-    shared = {"Mecha", "Cyberpunk"}  # the genre names Spanish borrows as they are
-    assert set(SPANISH) == {premise.id for premise in STARTER_PREMISES}
+    in `graph.drafting.catalog_es` and its Catalan in `graph.drafting.catalog_ca`."""
+    shared = {"Mecha", "Cyberpunk"}  # the genre names both borrow as they are
+    assert set(translations) == {premise.id for premise in STARTER_PREMISES}
     for premise in STARTER_PREMISES:
-        spanish = premise.text(Language.ES)
-        assert spanish == SPANISH[premise.id]
+        translated = premise.text(language)
+        assert translated == translations[premise.id]
         for field in ("title", "genre", "tagline", "premise"):
-            words = getattr(spanish, field)
+            words = getattr(translated, field)
             assert words.strip(), (premise.id, field)
             assert words != getattr(premise, field) or words in shared, (premise.id, field)
+            if language is Language.CA:
+                assert words != getattr(SPANISH[premise.id], field) or words in shared
         assert premise.text(Language.EN).premise == premise.premise

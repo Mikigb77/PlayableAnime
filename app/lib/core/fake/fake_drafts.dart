@@ -64,7 +64,7 @@ void registerDraftRoutes(FakeBackend b) {
     _checkRating(b, r, rating);
     // S10: the draft is written in the app's language, and its story starts in it.
     final language = r.json['language'] as String? ?? 'en';
-    if (!const {'en', 'es'}.contains(language)) {
+    if (!const {'en', 'es', 'ca'}.contains(language)) {
       throw const FakeError.validation('Unsupported language.');
     }
     if (r.json['premise'] case final String own) _refuseRealPeople([('premise', own)]);
@@ -190,8 +190,9 @@ void registerDraftRoutes(FakeBackend b) {
       ...story.settings,
       'difficulty': advanced['difficulty'],
       'event_frequency': advanced['event_frequency'],
-      'language': draft['language'] ?? 'en',
       ...?r.json['settings'] as JsonMap?,
+      // S10: the story starts in the draft's language, whatever an older app sends.
+      'language': draft['language'] ?? 'en',
     };
     story.version = 1;
     draft['story_id'] = story.id;

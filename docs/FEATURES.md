@@ -78,7 +78,7 @@ The first version's state, checked against the code in WS18.
 - [ ] Slash commands: `/status` works; `/thoughts <character>`, `/recap` and `/ooc` are still to come
 - [x] Settings for narration length and tone (S6)
 - [ ] More BYOK providers (OpenAI, Anthropic, OpenRouter)
-- [ ] Spanish and English localisation *(every string is in `app_en.arb`; English only so far)*
+- [x] English, Spanish and Catalan (S10): the app's text, the starters, the privacy policy and stories, each story in the language it started in
 
 ### P2: later
 

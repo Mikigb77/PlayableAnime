@@ -591,3 +591,33 @@ def test_status_in_spanish():
     assert [(s.text, s.ago_label) for s in view.since] == [("Beat Zhao at the well", "hace 2 días")]
     assert {r.name: r.label for r in view.reputation}["the outer court"] == "Respeto"
     assert "200.000 lire" in status_view(grounded_world(), ES).character.lines
+
+
+CA = Language.CA
+
+
+def test_standing_and_attitudes_in_catalan():
+    assert standing_label(Reputation(esteem=30, fear=70), CA) == "Respecte i temor"
+    assert standing_label(Reputation(esteem=-90), CA) == "Menyspreu"
+    labels = [attitude_label(a, CA) for a in (80, 30, 0, -30, -80)]
+    assert labels == ["Cordial", "Afable", "Neutral", "Distant", "Hostil"]
+
+
+def test_memory_and_status_in_catalan():
+    state = grounded_world()
+    own_deed(state, "seen-by-known", witness_ids=["carmine", "bartender"])
+    own_deed(state, "secret")
+    state.world_s = DAY
+    state.leads = {"open": Lead(id="open", text="Meet the priest", expires_s=DAY + 3 * HOUR)}
+
+    memory = memory_view(state, CA)
+
+    labels = {d.id: d.known_label for d in memory.deeds}
+    assert labels == {
+        "seen-by-known": "Et van veure Carmine Russo i 1 persona més",
+        "secret": "Ningú no ho va veure, que tu sàpigues",
+    }
+    assert [le.expires_label for le in memory.leads] == ["Acaba d'aquí a 3 hores"]
+    assert all(p.status_label == "Amb vida" for p in memory.people)
+    lines = status_view(grounded_world(), CA).character.lines
+    assert "200.000 lire" in lines and "Sense ferides" in lines

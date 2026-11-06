@@ -373,8 +373,13 @@ as they appear. Add nothing the scenes don't say. Write the summary in the langu
 TEMPLATE_LINE = {
     Language.EN: "What happened {where} stays off the page. Its consequences won't.",
     Language.ES: "Lo que pasó {where} queda fuera de la página. Sus consecuencias, no.",
+    Language.CA: "El que va passar {where} queda fora de la pàgina. Les conseqüències, no.",
 }
-TEMPLATE_PLACE = {Language.EN: ("in {place}", "there"), Language.ES: ("en {place}", "allí")}
+TEMPLATE_PLACE = {
+    Language.EN: ("in {place}", "there"),
+    Language.ES: ("en {place}", "allí"),
+    Language.CA: ("a {place}", "allà"),
+}
 
 LENGTHS = {
     NarrationLength.SHORT: "60 to 120 words, more only for a montage",

@@ -271,7 +271,11 @@ void registerStoryRoutes(FakeBackend b) {
         throw const FakeError.validation('A title is 1 to 120 characters.');
       }
     }
-    final settings = r.json['settings'];
+    // S10: a story stays in the language it was set up in, so an older app's language is ignored.
+    final settings = switch (r.json['settings']) {
+      final JsonMap settings => {...settings}..remove('language'),
+      final other => other,
+    };
     if (settings != null) {
       if (settings is! JsonMap) throw const FakeError.validation('Settings are an object.');
       _checkSettings(settings);
@@ -468,7 +472,6 @@ void _checkSettings(JsonMap settings) {
     'difficulty': {'story', 'balanced', 'brutal'},
     'event_frequency': {'calm', 'normal', 'dramatic'},
     'images': {'off', 'key_moments', 'more'},
-    'language': {'en', 'es'},
   };
   for (final MapEntry(:key, :value) in settings.entries) {
     final ok = switch (key) {

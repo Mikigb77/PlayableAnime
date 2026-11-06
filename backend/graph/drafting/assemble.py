@@ -151,8 +151,13 @@ GROUNDED_KIND = Extraordinary(
 )
 PLAYER_FALLBACK_NAME = "Wanderer"
 GROUNDED_RULE_TEXT = "Grounded: no magic and nothing supernatural, and that won't change."
-# S10: the rules code writes, in a Spanish draft.
-GROUNDED_RULE_TEXT_ES = "Realista: sin magia ni nada sobrenatural, y eso no cambiará."
+# S10: the rules code writes, in a Spanish or Catalan draft.
+GROUNDED_RULE_TEXTS = {
+    Language.EN: GROUNDED_RULE_TEXT,
+    Language.ES: "Realista: sin magia ni nada sobrenatural, y eso no cambiará.",
+    Language.CA: "Realista: sense màgia ni res de sobrenatural, i això no canviarà.",
+}
+GROUNDED_RULE_TEXT_ES = GROUNDED_RULE_TEXTS[Language.ES]
 
 
 @dataclass(frozen=True)
@@ -565,9 +570,8 @@ class _Assembler:
             if mentioned:
                 links.setdefault(kind_id, []).extend(mentioned)
                 continue
-            spanish = self.options.language is Language.ES
             if kind.prevalence is Prevalence.NONE and len(kinds) == 1:
-                text = GROUNDED_RULE_TEXT_ES if spanish else GROUNDED_RULE_TEXT
+                text = GROUNDED_RULE_TEXTS[self.options.language]
                 rule_id = self.rules.add("no-supernatural")
             else:
                 text = _existence_text(kind, self.options.language)
@@ -1162,16 +1166,25 @@ def _is_grounded_kind(kind: Extraordinary) -> bool:
     return " ".join(kind.kind.casefold().split()) == GROUNDED_KIND.kind
 
 
-_PREVALENCE_WORDS_ES = {
-    Prevalence.NONE: "no existe, y eso no cambiará",
-    Prevalence.HIDDEN: "existe, y casi nadie lo sabe",
-    Prevalence.RARE: "existe, pero es poco común",
-    Prevalence.COMMON: "existe, y está en todas partes",
+_PREVALENCE_BY_LANGUAGE = {
+    Language.EN: _PREVALENCE_WORDS,
+    Language.ES: {
+        Prevalence.NONE: "no existe, y eso no cambiará",
+        Prevalence.HIDDEN: "existe, y casi nadie lo sabe",
+        Prevalence.RARE: "existe, pero es poco común",
+        Prevalence.COMMON: "existe, y está en todas partes",
+    },
+    Language.CA: {
+        Prevalence.NONE: "no existeix, i això no canviarà",
+        Prevalence.HIDDEN: "existeix, i gairebé ningú no ho sap",
+        Prevalence.RARE: "existeix, però és poc comú",
+        Prevalence.COMMON: "existeix, i és a tot arreu",
+    },
 }
 
 
 def _existence_text(kind: Extraordinary, language: Language = Language.EN) -> str:
-    words = _PREVALENCE_WORDS_ES if language is Language.ES else _PREVALENCE_WORDS
+    words = _PREVALENCE_BY_LANGUAGE[language]
     return f"{_capital(kind.kind)}: {words[kind.prevalence]}."
 
 

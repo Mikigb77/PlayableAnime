@@ -48,9 +48,11 @@ from engine.world.telling import cap, tell
 SINCE_LIMIT = 6
 EN = Language.EN
 ES = Language.ES
+CA = Language.CA
 _DESCENDANT_WORDS = {
     EN: {1: "Your child.", 2: "Your grandchild."},
     ES: {1: "Tu hijo o hija.", 2: "Tu nieto o nieta."},
+    CA: {1: "El teu fill o filla.", 2: "El teu nét o néta."},
 }
 
 
@@ -161,11 +163,12 @@ class StatusView(EngineModel):
 # --- words --------------------------------------------------------------------------------
 
 
-# Spanish has no gender-free adjective for most of these, and a character's gender isn't
-# recorded, so the Spanish words are ones that fit anyone: "Cordial", "Con heridas", "Respeto".
+# Spanish and Catalan have no gender-free adjective for most of these, and a character's gender
+# isn't recorded, so their words are ones that fit anyone: "Cordial", "Con heridas", "Respeto".
 _ATTITUDES = {
     EN: ("Warm", "Friendly", "Neutral", "Cold", "Hostile"),
     ES: ("Cordial", "Afable", "Neutral", "Distante", "Hostil"),
+    CA: ("Cordial", "Afable", "Neutral", "Distant", "Hostil"),
 }
 
 
@@ -188,12 +191,13 @@ _STANDING = {
     # admired, respected, disliked, despised, feared, wary, "and", neutral
     EN: ("Admired", "Respected", "Disliked", "Despised", "feared", "wary of you", "and", "Neutral"),
     ES: ("Admiración", "Respeto", "Recelo", "Desprecio", "temor", "cautela", "y", "Neutral"),
+    CA: ("Admiració", "Respecte", "Recel", "Menyspreu", "temor", "cautela", "i", "Neutral"),
 }
 
 
 def standing_label(reputation: Reputation, language: Language = EN) -> str:
     """Esteem and fear in words (W3): "Respected and feared", "Despised", "Neutral"; in Spanish
-    "Respeto y temor", "Desprecio", "Neutral"."""
+    "Respeto y temor", "Desprecio", "Neutral"; in Catalan "Respecte i temor", "Menyspreu"."""
     admired, respected, disliked, despised, feared, wary, and_, neutral = _STANDING[language]
     esteem = reputation.esteem
     if esteem >= 60:
@@ -229,29 +233,109 @@ _HEALTH_WORDS = {
         Health.BADLY_WOUNDED: "Con heridas graves",
         Health.DYING: "Al borde de la muerte",
     },
+    CA: {
+        Health.UNHURT: "Sense ferides",
+        Health.HURT: "Amb ferides lleus",
+        Health.WOUNDED: "Amb ferides",
+        Health.BADLY_WOUNDED: "Amb ferides greus",
+        Health.DYING: "A punt de morir",
+    },
 }
 
-# S10: every status a person, place or faction can show, in Spanish.
-_STATUS_WORDS_ES = {
-    CharacterStatus.ALIVE.value: "Con vida",
-    CharacterStatus.MISSING.value: "En paradero desconocido",
-    CharacterStatus.DEAD.value: "Ha muerto",
-    PlaceStatus.THRIVING.value: "Próspero",
-    PlaceStatus.DAMAGED.value: "Con daños",
-    PlaceStatus.RUINED.value: "En ruinas",
-    PlaceStatus.OCCUPIED.value: "Bajo ocupación",
-    FactionStatus.INTACT.value: "Intacta",
-    FactionStatus.WEAKENED.value: "Ha perdido fuerza",
-    FactionStatus.REBUILDING.value: "Se está reconstruyendo",
-    FactionStatus.DESTROYED.value: "Ya no existe",
+# S10: every status a person, place or faction can show, in Spanish and Catalan, and how a death
+# the player character only believes in reads.
+_STATUS_WORDS = {
+    ES: {
+        CharacterStatus.ALIVE.value: "Con vida",
+        CharacterStatus.MISSING.value: "En paradero desconocido",
+        CharacterStatus.DEAD.value: "Ha muerto",
+        PlaceStatus.THRIVING.value: "Próspero",
+        PlaceStatus.DAMAGED.value: "Con daños",
+        PlaceStatus.RUINED.value: "En ruinas",
+        PlaceStatus.OCCUPIED.value: "Bajo ocupación",
+        FactionStatus.INTACT.value: "Intacta",
+        FactionStatus.WEAKENED.value: "Ha perdido fuerza",
+        FactionStatus.REBUILDING.value: "Se está reconstruyendo",
+        FactionStatus.DESTROYED.value: "Ya no existe",
+        "presumed_dead": "Se cree que ha muerto",
+    },
+    CA: {
+        CharacterStatus.ALIVE.value: "Amb vida",
+        CharacterStatus.MISSING.value: "En parador desconegut",
+        CharacterStatus.DEAD.value: "Ha mort",
+        PlaceStatus.THRIVING.value: "Pròsper",
+        PlaceStatus.DAMAGED.value: "Amb danys",
+        PlaceStatus.RUINED.value: "En ruïnes",
+        PlaceStatus.OCCUPIED.value: "Sota ocupació",
+        FactionStatus.INTACT.value: "Intacta",
+        FactionStatus.WEAKENED.value: "Ha perdut força",
+        FactionStatus.REBUILDING.value: "S'està reconstruint",
+        FactionStatus.DESTROYED.value: "Ja no existeix",
+        "presumed_dead": "Es creu que ha mort",
+    },
+}
+
+# S10: the other fixed words of Memory and Status.
+_WORDS = {
+    EN: {
+        "saw": "You saw it",
+        "heard_of": "You heard of it",
+        "seen": "You were seen",
+        "seen_by": "Seen by {names}",
+        "other": "{count} other",
+        "others": "{count} others",
+        "public": "Done in public",
+        "unseen": "No one saw, as far as you know",
+        "parent": "Your parent.",
+        "not_been": "You haven't been there.",
+        "expecting": "Expecting a child, due {due}",
+        "ready": "ready",
+        "ends": "Ends {when}",
+        "heard": "Heard {when}",
+        "and": " and ",
+    },
+    ES: {
+        "saw": "Lo viste",
+        "heard_of": "Te enteraste",
+        "seen": "Te vieron",
+        "seen_by": "Te vieron {names}",
+        "other": "{count} persona más",
+        "others": "{count} personas más",
+        "public": "A la vista de todos",
+        "unseen": "Nadie lo vio, que tú sepas",
+        "parent": "Tu padre o tu madre.",
+        "not_been": "Aún no has estado allí.",
+        "expecting": "Esperando un bebé, que nacerá {due}",
+        "ready": "disponible",
+        "ends": "Termina {when}",
+        "heard": "Lo oíste {when}",
+        "and": " y ",
+    },
+    CA: {
+        "saw": "Ho vas veure",
+        "heard_of": "Te'n vas assabentar",
+        "seen": "Et van veure",
+        "seen_by": "Et van veure {names}",
+        "other": "{count} persona més",
+        "others": "{count} persones més",
+        "public": "A la vista de tothom",
+        "unseen": "Ningú no ho va veure, que tu sàpigues",
+        "parent": "El teu pare o la teva mare.",
+        "not_been": "Encara no hi has estat.",
+        "expecting": "Esperant un nadó, que naixerà {due}",
+        "ready": "disponible",
+        "ends": "Acaba {when}",
+        "heard": "Ho vas sentir {when}",
+        "and": " i ",
+    },
 }
 
 
 def _status_words(status: str, presumed: bool = False, language: Language = EN) -> str:
-    if language is ES:
+    if words := _STATUS_WORDS.get(language):
         if status == CharacterStatus.DEAD.value and presumed:
-            return "Se cree que ha muerto"
-        return _STATUS_WORDS_ES.get(status) or status.replace("_", " ").capitalize()
+            return words["presumed_dead"]
+        return words.get(status) or status.replace("_", " ").capitalize()
     if status == CharacterStatus.DEAD.value:
         return "Presumed dead" if presumed else "Dead"
     return status.replace("_", " ").capitalize()
@@ -359,11 +443,11 @@ class _Knowledge:
 
     def known_label(self, deed: Deed) -> str:
         """Who saw it, as far as the player character knows (W2, C6)."""
-        es = self.language is ES
+        words = _WORDS[self.language]
         if deed.actor_id != self.player_id:
             if self.player_id in deed.witness_ids:
-                return "Lo viste" if es else "You saw it"
-            return "Te enteraste" if es else "You heard of it"
+                return words["saw"]
+            return words["heard_of"]
         # In stopped time every witness is immune to the stop and unnoticed (W10a), unless the
         # world later reveals them by taking them off `unnoticed_witness_ids`.
         noticed = [
@@ -375,14 +459,13 @@ class _Knowledge:
             names = [n for n in (self.name_of(w) for w in noticed) if n]
             others = len(noticed) - len(names)
             if not names:
-                return "Te vieron" if es else "You were seen"
+                return words["seen"]
             if others:
-                plural = "s" if others > 1 else ""
-                names.append(f"{others} persona{plural} más" if es else f"{others} other{plural}")
-            return ("Te vieron " if es else "Seen by ") + _join(names, self.language)
+                names.append(words["others" if others > 1 else "other"].format(count=others))
+            return words["seen_by"].format(names=_join(names, self.language))
         if deed.visibility is Visibility.PUBLIC and not deed.in_stopped_time:
-            return "A la vista de todos" if es else "Done in public"
-        return "Nadie lo vio, que tú sepas" if es else "No one saw, as far as you know"
+            return words["public"]
+        return words["unseen"]
 
     # --- entries --------------------------------------------------------------------------
 
@@ -414,7 +497,7 @@ class _Knowledge:
     def kin_line(self, c: Character) -> str | None:
         """N6: how someone is family to the player character, if they are."""
         if c.id in self.state.player.parent_ids:
-            return "Tu padre o tu madre." if self.language is ES else "Your parent."
+            return _WORDS[self.language]["parent"]
         return _DESCENDANT_WORDS[self.language].get(self.descendants.get(c.id, 0))
 
     def place(self, p: Place) -> PlaceEntry:
@@ -427,9 +510,7 @@ class _Knowledge:
         if status != PlaceStatus.THRIVING.value:
             lines.append(_status_words(status, language=self.language))
         if self.player_id not in p.visited_by:
-            lines.append(
-                "Aún no has estado allí." if self.language is ES else "You haven't been there."
-            )
+            lines.append(_WORDS[self.language]["not_been"])
         lines += self.facts_about(p.id)
         return PlaceEntry(id=p.id, name=p.name, lines=lines)
 
@@ -480,16 +561,13 @@ class _Knowledge:
         if expecting is not None and player.alive:
             # N6: a child on the way, born when it is due.
             due = in_label(max(0, expecting.due_s - self.now), self.language)
-            if self.language is ES:
-                lines.append(f"Esperando un bebé, que nacerá {due}")
-            else:
-                lines.append(f"Expecting a child, due {due}")
+            lines.append(_WORDS[self.language]["expecting"].format(due=due))
         return lines
 
     def power_lines(self, player: Character) -> list[str]:
         lived = player.personal_s(self.now)
         lines = []
-        ready = "disponible" if self.language is ES else "ready"
+        ready = _WORDS[self.language]["ready"]
         for power in player.sheet.powers:
             ready_at = power.ready_at_personal_s
             if ready_at is not None and ready_at > lived:
@@ -504,7 +582,8 @@ class _Knowledge:
         lines = []
         if resources.money or resources.currency:
             money = f"{resources.money:,}"
-            if self.language is ES:
+            if self.language is not EN:
+                # Spanish and Catalan group thousands with a point: 12.500.
                 money = money.replace(",", ".")
             lines.append(f"{money} {resources.currency}".strip())
         for item in sorted(resources.items, key=lambda i: natural_key(i.id)):
@@ -522,8 +601,7 @@ def _cap(text: str) -> str:
 def _join(names: list[str], language: Language = EN) -> str:
     if len(names) <= 1:
         return "".join(names)
-    and_ = " y " if language is ES else " and "
-    return ", ".join(names[:-1]) + and_ + names[-1]
+    return ", ".join(names[:-1]) + _WORDS[language]["and"] + names[-1]
 
 
 def _sort_name(name: str) -> str:
@@ -562,8 +640,8 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
             continue
         expires = None
         if lead.expires_s is not None:
-            ends = "Termina" if language is ES else "Ends"
-            expires = f"{ends} {in_label(lead.expires_s - k.now, language)}"
+            when = in_label(lead.expires_s - k.now, language)
+            expires = _WORDS[language]["ends"].format(when=when)
         leads.append(LeadEntry(id=lead.id, text=lead.text, expires_label=expires))
     rumors = []
     heard = [
@@ -573,7 +651,7 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     ]
     for rumor in sorted(heard, key=lambda r: (r.heard_at[k.player_id], natural_key(r.id))):
         when = ago_label(k.now - rumor.heard_at[k.player_id], language)
-        label = f"Lo oíste {when}" if language is ES else f"Heard {when}"
+        label = _WORDS[language]["heard"].format(when=when)
         rumors.append(RumorEntry(id=rumor.id, text=rumor.text, heard_label=label))
     deeds = [
         DeedEntry(

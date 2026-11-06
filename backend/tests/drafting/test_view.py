@@ -95,6 +95,22 @@ def test_the_words_code_adds_come_in_the_draft_s_language():
     assert duration(10 * 86400, es) == "10 días" and duration(30, es) == "un momento"
 
 
+def test_the_words_code_adds_come_in_catalan_too():
+    ca = Language.CA
+    world = world_lines(_cultivation(), ca)
+    character = character_lines(_cultivation(), ca)
+    naples = character_lines(_naples(), ca)
+
+    assert "The ranking tournament: d'aquí a 2 dies." in world
+    assert "Third stage de Qi Condensation." in character
+    assert "Objectiu: Survive the ranking tournament." in character
+    assert any(line.endswith("Ningú no ho sap.") for line in character)
+    assert "Sense poders, perquè en aquest món no n'hi ha." in naples
+    assert "Destresa: pistol i knife work. Soltesa: driving." in naples
+    assert any(line.startswith("Porta Beretta pistol i flick knife.") for line in naples)
+    assert duration(10 * 86400, ca) == "10 dies" and duration(30, ca) == "un moment"
+
+
 @pytest.mark.parametrize("make", [_naples, _cultivation])
 def test_nothing_hidden_is_ever_shown(make):
     state = make()

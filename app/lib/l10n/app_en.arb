@@ -356,7 +356,7 @@
   "@accountLanguage": {
     "description": "Account section that picks the app's language (S10)."
   },
-  "accountLanguageBody": "The app's buttons, menus and settings. What a story has already told stays in the language it was written in.",
+  "accountLanguageBody": "The app's buttons, menus and settings. Each story stays in the language it was started in.",
   "languageSystem": "System",
   "@languageSystem": {
     "description": "Language option: follow the device's language, English when it isn't one the app has."
@@ -368,6 +368,10 @@
   "languageSpanish": "Español",
   "@languageSpanish": {
     "description": "Language option. Always written in Spanish, whatever the app's language."
+  },
+  "languageCatalan": "Català",
+  "@languageCatalan": {
+    "description": "Language option. Always written in Catalan, whatever the app's language."
   },
   "accountDictation": "Dictation",
   "accountDictationBody": "How the mic turns what you say into text. You always see the words and can fix them before sending.",
@@ -888,11 +892,6 @@
   "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
   "settingsSuggestions": "Suggested choices",
   "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
-  "settingsLanguage": "Story language",
-  "@settingsLanguage": {
-    "description": "Story setting: the language new scenes are written in (S10)."
-  },
-  "settingsLanguageHelp": "New scenes are written in it. What the story has already told stays as it is.",
   "settingsNextScene": "Changes apply from the next scene.",
   "settingsSave": "Save",
   "settingsSaved": "Saved. It applies from the next scene.",

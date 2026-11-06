@@ -279,7 +279,7 @@ void main() {
       expect(scene.details.isEmpty, isTrue);
     });
 
-    test('settings send every field, and an empty tone clears it', () {
+    test('settings send every field but the language, and an empty tone clears it', () {
       const settings = StorySettings(tone: 'Wry');
       expect(settings.toJson(), {
         'narration_length': 'medium',
@@ -288,7 +288,6 @@ void main() {
         'event_frequency': 'normal',
         'images': 'key_moments',
         'suggestions': true,
-        'language': 'en',
       });
       final cleared = settings.copyWith(tone: '  ');
       expect(cleared.tone, isNull);
@@ -297,13 +296,17 @@ void main() {
       expect(settings.copyWith(difficulty: 'brutal').difficulty, 'brutal');
     });
 
-    test('a story is in English unless its settings say otherwise (S10)', () {
+    test('a story keeps the language it started in, English unless it says otherwise (S10)', () {
       expect(StorySettings.fromJson(const {'difficulty': 'story'}).language, 'en');
       final spanish = StorySettings.fromJson(const {'language': 'es'});
       expect(spanish.language, 'es');
       expect(spanish, isNot(const StorySettings()));
-      expect(spanish.changesFrom(const StorySettings()), {'language': 'es'});
+      // A change never carries the language, so saving settings can't switch it.
+      final calmer = spanish.copyWith(eventFrequency: 'calm');
+      expect(calmer.language, 'es');
+      expect(calmer.changesFrom(spanish), {'event_frequency': 'calm'});
       expect(speechLocale(spanish.language), 'es-ES');
+      expect(speechLocale('ca'), 'ca-ES');
       expect(speechLocale('en'), 'en-US');
     });
 
