@@ -1650,8 +1650,8 @@ app                   shows the narration, then asks for the picture in its own 
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 
-**Drawing the starter covers.** Each deploy draws the covers that are missing, so the first one
-draws Discover's eleven, about $0.37 in all, paid by the house, and later ones draw nothing
+**Drawing the starter covers.** Each deploy draws the covers that are missing, about $0.034
+each, paid by the house, so only a deploy that adds starter premises draws anything
 ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)). To draw by hand:
 
 ```bash

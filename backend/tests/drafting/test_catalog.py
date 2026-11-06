@@ -5,6 +5,8 @@ starter is drafted from the opposite genre's sample, from a bare schema filler, 
 proposal that tries to drop every rule.
 """
 
+import re
+
 import pytest
 
 from engine.state import GiftStrength, Prevalence
@@ -54,6 +56,17 @@ def test_flagship_genres_come_first():
 
     assert flags == sorted(flags, reverse=True)
     assert {p.genre for p in STARTER_PREMISES if p.flagship} == FLAGSHIP_GENRES
+
+
+def test_every_flagship_genre_has_more_than_one_starter():
+    for genre in FLAGSHIP_GENRES:
+        assert sum(p.genre == genre for p in STARTER_PREMISES) >= 2, genre
+
+
+def test_every_starter_speaks_to_the_player_as_you():
+    # The cover's brief says the premise calls the main character "you" (media.premise_covers).
+    for premise in STARTER_PREMISES:
+        assert re.search(r"\byou\b", premise.premise, re.IGNORECASE), premise.id
 
 
 def test_the_catalog_covers_the_genres_beyond_the_flagship():
@@ -141,11 +154,30 @@ def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
         assert world_lines(state), where
 
 
+@pytest.mark.parametrize("premise_id", ["old-net", "war-frame"])
+def test_science_past_human_limits_has_no_magic_and_is_not_grounded(premise_id):
+    # G8: implants or a bonded war-frame go past what a real person could do, so the world isn't
+    # grounded, but magic still doesn't exist in it, whatever a grounded proposal says.
+    template = starter(premise_id).template
+    proposal = samples.naples()
+    state = assemble(proposal.world, proposal.character, DraftOptions(template=template))
+    kinds = {k.id: k.prevalence for k in state.bible.extraordinary}
+
+    assert kinds["supernatural"] is Prevalence.NONE
+    assert [k for k, prevalence in kinds.items() if prevalence is not Prevalence.NONE] == [
+        next(k.id for k in template.extraordinary if k.prevalence is not Prevalence.NONE)
+    ]
+    assert not state.bible.grounded
+    assert template.grounded_rule_id is None
+
+
 def test_a_starter_that_grants_a_gift_sets_its_strength():
     proposal = samples.cultivation()
     for premise_id, strength in (
         ("three-heartbeats", GiftStrength.OVERPOWERED),
         ("demon-lord-accountant", GiftStrength.SMALL),
+        ("seven-day-villainess", GiftStrength.SMALL),
+        ("what-things-remember", GiftStrength.RARE),
     ):
         template = starter(premise_id).template
         state = assemble(proposal.world, proposal.character, DraftOptions(template=template))

@@ -352,18 +352,19 @@ To check by hand: `gcloud run jobs execute playable-anime-migrate --project=play
 
 ### Drawing the starter covers
 
-Discover's eleven starter premises show a cover once the house has drawn it (S1, M4). Each deploy
-runs `manage.py draw_premise_covers` as the migration job with other arguments, after the health
-check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and the
-direct database URL. It skips every cover that exists, so the first deploy draws all eleven with
-`PICTURE_MODEL`, about $0.034 each and $0.37 in all, paid by the house (the logs show each cover's
-model and cost, `Premise cover ready`, and no player's ledger changes), and later deploys draw
-nothing. Our picture quota answered 429 after three quick drawings, so the covers are drawn 10 s
-apart, and one that runs out of quota is drawn again after a minute, twice at most. A cover that
-still fails, or is blocked, is left out and the covers job is marked failed, without failing the
-deploy; the next deploy tries it again. Until then, and for a premise without a cover,
-Discover shows a glow in the genre's colour. The app shows a new cover the next time it loads the
-premises.
+Discover's twenty-three starter premises show a cover once the house has drawn it (S1, M4). Each
+deploy runs `manage.py draw_premise_covers` as the migration job with other arguments, after the
+health check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and
+the direct database URL. It skips every cover that exists and draws the missing ones with
+`PICTURE_MODEL`, about $0.034 each, paid by the house (the logs show each cover's model and cost,
+`Premise cover ready`, and no player's ledger changes). So only a deploy that adds starter
+premises draws anything: the first drew the first eleven for $0.37, and the one that adds the next
+twelve draws those for about $0.41. Our picture quota answered 429 after three quick drawings, so
+the covers are drawn 10 s apart, and one that runs out of quota is drawn again after a minute,
+twice at most. A cover that still fails, or is blocked, is left out and the covers job is marked
+failed, without failing the deploy; the next deploy tries it again. Until then, and for a premise
+without a cover, Discover shows a glow in the genre's colour. The app shows a new cover the next
+time it loads the premises.
 
 To draw now, or draw one again with `--force`:
 

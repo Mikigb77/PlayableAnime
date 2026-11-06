@@ -3,6 +3,7 @@
 
 import io
 import json
+import re
 import time
 from datetime import timedelta
 from decimal import Decimal
@@ -241,7 +242,9 @@ def test_a_dry_run_estimates_the_cost_and_draws_nothing(painters):
     assert painters.drawings == 1
     assert "outer-disciple: kept" in out
     assert f"Would draw {len(IDS) - 1} covers with gemini-" in out
-    assert "about $0.3" in out
+    # About $0.034 a cover (M7).
+    estimate = Decimal(re.search(r"about \$(\d+\.\d\d)\.", out).group(1))
+    assert Decimal("0.03") * (len(IDS) - 1) <= estimate <= Decimal("0.04") * (len(IDS) - 1)
     assert PremiseCover.objects.count() == 1
 
 

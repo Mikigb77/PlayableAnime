@@ -1236,7 +1236,7 @@ What a 100-turn story would cost, as an estimate until T5 gives real numbers:
 
 Pictures add about a third to the cost of a story. The same 20 pictures on Gemini 3 Pro Image, the
 top model, would cost about $2.70, more than the text. The starter premises' covers on Discover are
-drawn once for everyone, about $0.37 for all eleven (M1, M7).
+drawn once for everyone, about $0.034 each and $0.78 for all twenty-three (M1, M7).
 
 | Id | Requirement | Pri |
 | --- | --- | --- |
