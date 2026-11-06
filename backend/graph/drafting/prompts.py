@@ -128,6 +128,8 @@ def template_block(template: PremiseTemplate | None, released: frozenset[str]) -
     if kinds:
         lines.append("- These extraordinary kinds:")
         lines += [f"  - {k.id}: {k.kind}, {k.prevalence.value}" for k in kinds]
+        if template.exclusive_rule_id and template.exclusive_rule_id not in released:
+            lines.append("  and no other extraordinary kinds.")
     if template.ladder is not None:
         rungs = ", ".join(r.name for r in template.ladder.rungs)
         lines.append(f"- The {template.ladder.name} (id {template.ladder.id}): {rungs}.")

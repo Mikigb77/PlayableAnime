@@ -921,8 +921,9 @@ flowchart LR
   dropped, the player always `player` with a real name, list and text sizes capped, and every C1
   invariant checked. G7: a starter's fixed rules and kinds hold, every kind has a fixed existence
   rule, and a proposal that contradicts its genre (a grounded claim in a world of qi, qi in the
-  Naples vendetta) loses that part. G8: no power in a grounded world or from a kind that doesn't
-  exist, and attributes stop at 5 where nothing extraordinary exists. G18: rungs are A8 tiers two
+  Naples vendetta or in the cyberpunk starter, whose implants are its only extraordinary kind)
+  loses that part. G8: no power in a grounded world or from a kind that doesn't exist, and
+  attributes stop at 5 where nothing extraordinary exists. G18: rungs are A8 tiers two
   apart and a rung sets its axis. G22: the player's gift pick beats the premise's, which beats the
   model's, `none` removes the gift, and time stop defaults to three heartbeats with a breath to
   recharge, hitting at relative speed only when overpowered. C6: secrets, agendas, faction plans,
@@ -1651,8 +1652,8 @@ app                   shows the narration, then asks for the picture in its own 
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 
-**Drawing the starter covers.** Each deploy draws the covers that are missing, so the first one
-draws Discover's eleven, about $0.37 in all, paid by the house, and later ones draw nothing
+**Drawing the starter covers.** Each deploy draws the covers that are missing, about $0.034
+each, paid by the house, so only a deploy that adds starter premises draws anything
 ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)). To draw by hand:
 
 ```bash

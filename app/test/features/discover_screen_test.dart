@@ -31,12 +31,13 @@ void main() {
     expect(cards.every((c) => c.badge == null), isTrue);
     expect(cards.first.imageUrl, isNotNull);
 
-    // Then your own idea, then the shelf of the other worlds.
+    // Then your own idea, then the shelf of the other worlds. Small steps, so a scroll never
+    // jumps past the shelf's label while it is built.
     final scroll = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(find.text(l10n.discoverCreateTitle), 300, scrollable: scroll);
+    await tester.scrollUntilVisible(find.text(l10n.discoverCreateTitle), 100, scrollable: scroll);
     await tester.scrollUntilVisible(
       find.text(l10n.discoverMore.toUpperCase()),
-      300,
+      100,
       scrollable: scroll,
     );
     expect(tester.takeException(), isNull);

@@ -2,9 +2,9 @@ import '../json.dart';
 import 'fake_backend.dart';
 import 'fake_data.dart';
 
-/// Fake starter premises (S1), the same eleven as the backend's catalog
-/// (`backend/graph/drafting/catalog.py`): the flagship genres first. A few have no cover, as a
-/// starter can until its cover is drawn. Owned by the discover work (WS15).
+/// Fake starter premises (S1), the same ones as the backend's catalog
+/// (`backend/graph/drafting/catalog.py`), in its order: the flagship genres first. A few have no
+/// cover, as a starter can until its cover is drawn. Owned by the discover work (WS15).
 const fakePremises = <JsonMap>[
   {
     'id': 'outer-disciple',
@@ -68,6 +68,58 @@ const fakePremises = <JsonMap>[
         'fix the books before the heroes arrive.',
     'flagship': true,
     'cover_url': null,
+  },
+  {
+    'id': 'sword-tomb',
+    'title': 'Keeper of the Sword Tomb',
+    'genre': 'Cultivation',
+    'tagline': 'A servant with no qi, three days before the Sword Choosing.',
+    'premise':
+        'You sweep the Sword Tomb of the Heavenly Edge Sect, where ten thousand swords of dead '
+        'masters lie buried, and you have never drawn a strand of qi. Last night one of those '
+        'swords spoke your name. In three days the disciples enter the tomb for the Sword '
+        'Choosing, and the sword says it will choose no one but you.',
+    'flagship': true,
+    'cover_url': FakeAssets.peaks,
+  },
+  {
+    'id': 'river-saint',
+    'title': 'The Saint at the River',
+    'genre': 'Knights and aura',
+    'tagline': 'An enemy sword saint crossed the border alone, and asked for you.',
+    'premise':
+        'You are a knight who can barely draw aura, holding a border fort of eleven soldiers at '
+        'the edge of the kingdom of Aldreth. This morning a sword saint of the Varn Empire crossed '
+        'the frozen river alone and sat down in the snow outside your gate. He asks for you by '
+        'name, and says he will wait three days.',
+    'flagship': true,
+    'cover_url': FakeAssets.castle,
+  },
+  {
+    'id': 'ninth-floor',
+    'title': 'Left on the Ninth Floor',
+    'genre': 'Races and monsters',
+    'tagline': 'Left for dead in the Spire, beside a dragon egg that\'s starting to hatch.',
+    'premise':
+        'The Spire rose out of the desert a year ago, and adventurers of every race climb its '
+        'monster-filled floors for treasure. Your own party left you for dead on the ninth floor. '
+        'You woke in a hidden chamber beside a dragon egg that has started to crack, and you can '
+        'hear your old party coming back for it.',
+    'flagship': true,
+    'cover_url': FakeAssets.forest,
+  },
+  {
+    'id': 'seven-day-villainess',
+    'title': 'The Villainess Has Seven Days',
+    'genre': 'Reincarnation',
+    'tagline': 'Reborn as a novel\'s villainess, a week before her downfall.',
+    'premise':
+        'You died in our world and woke up as the villainess of a romance novel you once read, a '
+        'duke\'s daughter engaged to the crown prince. In seven days, at the spring ball, he '
+        'breaks off the engagement in front of everyone, and in the book she is exiled that night. '
+        'You remember how the story goes, and the heroine is already watching you strangely.',
+    'flagship': true,
+    'cover_url': FakeAssets.castle,
   },
   {
     'id': 'naples-vendetta',
@@ -141,6 +193,110 @@ const fakePremises = <JsonMap>[
         'god.',
     'flagship': false,
     'cover_url': null,
+  },
+  {
+    'id': 'mask-maker',
+    'title': 'The Mask-Maker of Venice',
+    'genre': 'Grounded mystery',
+    'tagline': 'Venice, carnival of 1750. A murderer wore the mask you made.',
+    'premise':
+        'Venice, carnival of 1750. You make masks for the nobility, and three nights ago a '
+        'stranger paid you in gold for a mask of a senator\'s face, down to the scar. This morning '
+        'the senator was found dead in a canal, and the guard has your mask. They will name the '
+        'killer before the carnival ends in five days, and right now that is you.',
+    'flagship': false,
+    'cover_url': FakeAssets.city,
+  },
+  {
+    'id': 'war-frame',
+    'title': 'The Frame That Chose You',
+    'genre': 'Mecha',
+    'tagline': 'The oldest war-frame in the hangar woke up and bonded with its mechanic.',
+    'premise':
+        'In the fortress city of Halcyon, giant war-frames hold back the swarm, and each one bonds '
+        'with a single pilot for life. You are a junior mechanic, and last night the oldest frame '
+        'in the hangar, silent for forty years, bonded with you instead of the commander\'s heir. '
+        'The swarm\'s next wave reaches the walls in five days.',
+    'flagship': false,
+    'cover_url': FakeAssets.nebula,
+  },
+  {
+    'id': 'ashgrove',
+    'title': 'Thirteen Nights at Ashgrove',
+    'genre': 'Gothic horror',
+    'tagline': 'Sleep thirteen nights in the manor to inherit it. Something knows your name.',
+    'premise':
+        'England, 1893. You inherited Ashgrove, a manor on the northern moors, from a great-aunt '
+        'you never met. Her will says it is yours only if you sleep under its roof for thirteen '
+        'nights in a row. On the first night, someone behind the locked door of the east wing '
+        'called you by a childhood nickname nobody alive should know.',
+    'flagship': false,
+    'cover_url': null,
+  },
+  {
+    'id': 'won-at-cards',
+    'title': 'Won at Cards',
+    'genre': 'Pirate fantasy',
+    'tagline': 'You won a pirate ship at cards. The navy is on the horizon.',
+    'premise':
+        'Last night, in a tavern on the Shattered Isles, you won the pirate ship Gilded Gull at '
+        'cards. Now you are its captain, with a crew who think you cheated, an old captain who '
+        'wants his ship back, and a navy frigate on the horizon. Folded into the deed is a chart '
+        'of an island no map has ever named.',
+    'flagship': false,
+    'cover_url': FakeAssets.dawn,
+  },
+  {
+    'id': 'old-net',
+    'title': 'The Girl in the Old Net',
+    'genre': 'Cyberpunk',
+    'tagline': 'Someone lives inside a dead server, and it\'s wiped at midnight tomorrow.',
+    'premise':
+        'Sable City, 2091. You dive the abandoned old net for scrap data, to pay off the clinic '
+        'that fitted your neural jack. Today, in a server untouched for thirty years, you found '
+        'someone living there: a girl who says she was uploaded as a child. The corporation that '
+        'owns the server wipes it at midnight tomorrow.',
+    'flagship': false,
+    'cover_url': FakeAssets.city,
+  },
+  {
+    'id': 'last-lantern',
+    'title': 'A Room for the Dragon',
+    'genre': 'Cozy fantasy',
+    'tagline': 'Your inn is failing, and the only guest is a dragon who pays in riddles.',
+    'premise':
+        'You inherited the Last Lantern, a crumbling inn where the roads of three kingdoms meet, '
+        'along with every one of its debts. The tax collector comes with the first snow, in thirty '
+        'days. Your only guest is an old dragon in human shape who wants a room for the winter, '
+        'and pays in riddles instead of coin.',
+    'flagship': false,
+    'cover_url': FakeAssets.forest,
+  },
+  {
+    'id': 'dry-basin',
+    'title': 'Two Days to the Well',
+    'genre': 'Post-apocalyptic',
+    'tagline': 'A caravan lies dead beside full water barrels, two days from the well.',
+    'premise':
+        'Thirty years after the bombs, water is money. You lead a caravan of six wagons across the '
+        'dry Basin, two days from the next well. This morning you found the caravan that left a '
+        'day ahead of you: every traveller dead, every water barrel full and untouched, and one '
+        'set of boot prints leading north.',
+    'flagship': false,
+    'cover_url': null,
+  },
+  {
+    'id': 'what-things-remember',
+    'title': 'What Things Remember',
+    'genre': 'Superpowers',
+    'tagline': 'Your power woke today: what you hold shows you its memories.',
+    'premise':
+        'In Port Vesper, one teenager in a hundred wakes up with a power at sixteen. Yours came '
+        'this morning: anything you hold shows you what it remembers. The first thing you picked '
+        'up was your missing sister\'s phone, and what it showed you is not what the police were '
+        'told.',
+    'flagship': false,
+    'cover_url': FakeAssets.city,
   },
 ];
 
