@@ -249,6 +249,7 @@ void main() {
       expect(find.text(es.navAccount), findsWidgets);
       expect(find.text(es.accountLanguageBody), findsOneWidget);
       expect(find.text(l10n.navAccount), findsNothing);
+      expect(find.text(es.themeSystem), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(const Key('account.language')),
@@ -294,6 +295,18 @@ void main() {
       expect(container.read(languageProvider), AppLanguage.catalan);
       expect(tester.takeException(), isNull);
     });
+
+    for (final (device, shown) in [('fr', 'en'), ('ca', 'ca'), ('es', 'es')]) {
+      testWidgets('a device in "$device" shows the app in "$shown"', (tester) async {
+        tester.platformDispatcher.localesTestValue = [Locale(device)];
+        addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+        final words = await AppLocalizations.delegate.load(Locale(shown));
+        await launchApp(tester, backend: backend, store: store);
+        expect(find.text(words.authContinueWithGoogle), findsOneWidget);
+        final container = ProviderScope.containerOf(tester.element(find.byType(WelcomeScreen)));
+        expect(container.read(appLanguageCodeProvider), shown);
+      });
+    }
 
     testWidgets('a saved language applies from the start', (tester) async {
       SharedPreferences.setMockInitialValues({'appearance.language': 'spanish'});

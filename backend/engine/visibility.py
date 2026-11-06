@@ -23,7 +23,7 @@ from pydantic import Field
 from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
-from engine.labels import ago_label, clock_label, in_label
+from engine.labels import ago_label, clock_label, in_label, number_label
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -581,10 +581,7 @@ class _Knowledge:
         resources = player.sheet.resources
         lines = []
         if resources.money or resources.currency:
-            money = f"{resources.money:,}"
-            if self.language is not EN:
-                # Spanish and Catalan group thousands with a point: 12.500.
-                money = money.replace(",", ".")
+            money = number_label(resources.money, self.language)
             lines.append(f"{money} {resources.currency}".strip())
         for item in sorted(resources.items, key=lambda i: natural_key(i.id)):
             if item.carried:

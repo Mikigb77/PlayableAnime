@@ -157,7 +157,6 @@ GROUNDED_RULE_TEXTS = {
     Language.ES: "Realista: sin magia ni nada sobrenatural, y eso no cambiará.",
     Language.CA: "Realista: sense màgia ni res de sobrenatural, i això no canviarà.",
 }
-GROUNDED_RULE_TEXT_ES = GROUNDED_RULE_TEXTS[Language.ES]
 
 
 @dataclass(frozen=True)

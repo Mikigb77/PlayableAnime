@@ -117,7 +117,7 @@ void main() {
     // shows.
     final spanish = [
       for (final MapEntry(:key, value: text) in catalan.entries)
-        if (key != 'languageSpanish' && text.contains(RegExp('[ñ¿¡á]'))) key,
+        if (key != 'languageSpanish' && text.contains(RegExp('[ñÑ¿¡áÁ]'))) key,
     ];
     expect(spanish, isEmpty, reason: 'Translate these from Spanish in lib/l10n/app_ca.arb');
   });

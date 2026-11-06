@@ -306,7 +306,9 @@ _AMOUNTS = {
 }
 
 
-def _amount(count: int, unit: str, language: Language) -> str:
+def amount(count: int, unit: str, language: Language = EN) -> str:
+    """A count of a time unit (`minute`, `hour`, `day`, `week`, `month` or `year`) in words: "an
+    hour", "3 days"; in Spanish "una hora", "3 días"; in Catalan "una hora", "3 dies"."""
     if language in _AMOUNTS:
         one, many = _AMOUNTS[language][unit]
         return one if count == 1 else f"{count} {many}"
@@ -315,30 +317,43 @@ def _amount(count: int, unit: str, language: Language) -> str:
     return f"{count} {unit}s"
 
 
+def number_label(number: int, language: Language = EN) -> str:
+    """A whole number with its thousands grouped the language's way: 12,500 in English, 12.500 in
+    Spanish and Catalan (S10)."""
+    return f"{number:,}".replace(",", _THOUSANDS[language])
+
+
+_THOUSANDS = {EN: ",", ES: ".", CA: "."}
+
+
 def _rough(seconds: int, language: Language) -> str:
     if seconds < HOUR:
-        return _amount(max(1, seconds // MINUTE), "minute", language)
+        return amount(max(1, seconds // MINUTE), "minute", language)
     if seconds < DAY:
-        return _amount(seconds // HOUR, "hour", language)
+        return amount(seconds // HOUR, "hour", language)
     if seconds < 2 * LABEL_WEEK:
-        return _amount(seconds // DAY, "day", language)
+        return amount(seconds // DAY, "day", language)
     if seconds < 2 * LABEL_MONTH:
-        return _amount(seconds // LABEL_WEEK, "week", language)
+        return amount(seconds // LABEL_WEEK, "week", language)
     if seconds < LABEL_YEAR:
-        return _amount(seconds // LABEL_MONTH, "month", language)
-    return _amount(seconds // LABEL_YEAR, "year", language)
+        return amount(seconds // LABEL_MONTH, "month", language)
+    return amount(seconds // LABEL_YEAR, "year", language)
 
 
 def ago_label(seconds: int, language: Language = EN) -> str:
     """How long ago, in rough words: "moments ago", "2 days ago" (W10, `/status`); in Spanish
     "hace un momento", "hace 2 días"; in Catalan "fa un moment", "fa 2 dies"."""
-    if language is ES:
-        return "hace un momento" if seconds < MINUTE else f"hace {_rough(seconds, language)}"
-    if language is CA:
-        return "fa un moment" if seconds < MINUTE else f"fa {_rough(seconds, language)}"
+    just_now, ago = _AGO[language]
     if seconds < MINUTE:
-        return "moments ago"
-    return f"{_rough(seconds, language)} ago"
+        return just_now
+    return ago.format(_rough(seconds, language))
+
+
+_AGO = {
+    EN: ("moments ago", "{} ago"),
+    ES: ("hace un momento", "hace {}"),
+    CA: ("fa un moment", "fa {}"),
+}
 
 
 def in_label(seconds: int, language: Language = EN) -> str:

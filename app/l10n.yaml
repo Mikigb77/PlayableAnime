@@ -4,3 +4,6 @@ output-localization-file: app_localizations.dart
 output-dir: lib/l10n/gen
 nullable-getter: false
 format: true
+# English first, so a device language the app doesn't have falls back to English (S10), not to
+# the first file in alphabetical order.
+preferred-supported-locales: [en]

@@ -148,9 +148,8 @@ The scene (R1 to R7):
 STYLE says.
 - Language: write the narration, the suggestions and every text in update in STYLE's language \
 (S10), even when earlier scenes, the world, the player's words or other parts of the brief are in \
-another: a story can switch languages partway, and only what comes next changes. Keep every name \
-as it is spelled, and the character's own lines in the words the player gave them. The image \
-prompt is always in English.
+another. Keep every name as it is spelled, and the character's own lines in the words the player \
+gave them. The image prompt is always in English.
 - Start at the exact moment the last scene ended (LAST MOMENT): the same place, the same people, \
 the same positions, the same things in hand. Time moves only by what the action takes (TIME), at \
 the action's own pace: a quick swing is a sentence or two, a night's sleep a few lines, a year a \

@@ -547,11 +547,13 @@ class _LanguageSection extends ConsumerWidget {
       subtitle: Text(l10n.accountLanguageBody),
       trailing: const Icon(Icons.unfold_more_rounded),
       onTap: () async {
+        // Read before the pop-up: the screen may be gone by the time it closes.
+        final languages = ref.read(languageProvider.notifier);
         final picked = await showDialog<AppLanguage>(
           context: context,
           builder: (context) => _LanguagePicker(current: language),
         );
-        if (picked != null) await ref.read(languageProvider.notifier).set(picked);
+        if (picked != null) await languages.set(picked);
       },
     );
   }

@@ -18,7 +18,7 @@ from collections.abc import Iterable
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import Language
-from engine.labels import of_name
+from engine.labels import amount, number_label, of_name
 from engine.state import (
     Character,
     GiftStrength,
@@ -225,10 +225,7 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
     if owned:
         held.append(_sentence(words["owns"] + _join(owned, language)))
     if resources.money:
-        money = f"{resources.money:,}"
-        if language is not EN:
-            # Spanish and Catalan group thousands with a point: 12.500.
-            money = money.replace(",", ".")
+        money = number_label(resources.money, language)
         held.append(_sentence(f"{money} {resources.currency}".strip()))
     if held:
         lines.append(" ".join(held))
@@ -328,34 +325,12 @@ def _clock_line(name: str, interval_s: int | None, steps: int, language: Languag
 
 
 # S10: each unit in Spanish and Catalan, as one (with its article) and as many.
-_UNITS = {
-    ES: {
-        "year": ("un año", "años"),
-        "day": ("un día", "días"),
-        "hour": ("una hora", "horas"),
-        "minute": ("un minuto", "minutos"),
-    },
-    CA: {
-        "year": ("un any", "anys"),
-        "day": ("un dia", "dies"),
-        "hour": ("una hora", "hores"),
-        "minute": ("un minut", "minuts"),
-    },
-}
-
-
 def duration(seconds: int, language: Language = EN) -> str:
     """A rough span in words: '10 days', 'an hour', 'a year' (in Spanish '10 días', 'una
     hora'; in Catalan '10 dies', 'una hora')."""
     for size, unit in ((YEAR, "year"), (DAY, "day"), (HOUR, "hour"), (MINUTE, "minute")):
         if seconds >= size:
-            count = round(seconds / size)
-            if language in _UNITS:
-                one, many = _UNITS[language][unit]
-                return one if count == 1 else f"{count} {many}"
-            if count == 1:
-                return "an hour" if unit == "hour" else f"a {unit}"
-            return f"{count} {unit}s"
+            return amount(round(seconds / size), unit, language)
     return _WORDS[language]["moments"]
 
 
