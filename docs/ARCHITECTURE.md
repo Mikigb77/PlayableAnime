@@ -897,21 +897,25 @@ flowchart LR
   them resolve to nothing), a real alias or connection goes, and a player character given a real
   name gets the default name. Each refusal and each cleaning is logged as a `drafter` block
   ([Safety, ratings and reports](#safety-ratings-and-reports)).
-- **Proposals are read leniently** (`graph/drafting/lenient.py`). The draft's schema goes to
-  Gemini in the prompt (B6), where nothing holds the model to it, and from deploy #82 on
-  2026-11-05 four drafts in five failed validation on both tries and answered 503. So every
-  `Proposal` field that fails validation is repaired on its own. Where its meaning is clear it is
-  fitted: a null takes the field's default, a lone value becomes a one-item list, a list's nulls
-  are dropped, a map of records by id becomes a list with those ids, a map of names
-  (`{"mother": "rosa"}`) becomes the list of them, a name stands for a record that needs only a
-  name (a skill, a trait, an item, a cost), a reference written as a record becomes its id, a
-  number becomes text or a whole number, and an enum or literal is read without regard to case,
-  spaces or hyphens. What still fails costs only itself: a list keeps the items that validate,
-  and a field with a default takes it. A required field that fails still fails its record, and a
-  record in a list is then dropped alone; a draft without a usable world or character still fails
-  and is retried. Each repair is logged (`Repaired the drafter's answer`, a null at DEBUG) with
-  the record's type, the field, the repair and the error types, never a value. A valid proposal
-  reads exactly as before.
+- **The model's proposals are read leniently** (`graph/drafting/lenient.py`). The draft's schema
+  goes to Gemini in the prompt (B6), where nothing holds the model to it, and from deploy #82 on
+  2026-11-05 four drafts in five failed validation on both tries and answered 503. So in the
+  model's answer every `Proposal` field that fails validation is repaired on its own. Where its
+  meaning is clear it is fitted: a null takes the field's default, a lone value becomes a
+  one-item list, a list's nulls are dropped, a map of records keyed by id or name becomes a list
+  of them, a map of names (`{"mother": "rosa"}`) becomes the list of them, a name stands for a
+  record that needs only a name (a skill, a trait, an item, a cost), a reference written as a
+  record or a list becomes its (first) id, a number becomes text or a whole number (halves round
+  up), and an enum or literal is read without regard to case, spaces or hyphens. What still fails
+  costs only itself: a list keeps the items that validate, and a field with a default takes it. A
+  required field that fails still fails its record, and a record in a list is then dropped alone;
+  a draft without a usable world or character still fails and is retried. The client reads every
+  structured answer with a validation context that marks it as model output (`MODEL_OUTPUT` in
+  `graph/llm/types.py`), and only then is a proposal lenient: one that code builds, such as a
+  sample, a stored draft or a merged change, stays strict, so a bug there still fails. Each
+  repair is noted in the context, and the client logs them once per answer (`Model answer
+  repaired`, with `repairs` such as `NpcP.parent_ids: fitted (list_type)` and `repair_count`),
+  never with a value. A valid proposal reads exactly as before.
 - **The model proposes; `assemble` decides.** The proposal schemas are compact and unbounded, and
   code cleans them: unique slug ids with references resolved by id or name and dangling ones
   dropped, the player always `player` with a real name, list and text sizes capped, and every C1

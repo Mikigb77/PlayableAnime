@@ -7,9 +7,9 @@ ids, tiers, clock times, who knows what, and the rules a world can't break (G7, 
 
 Nothing here is bounded in the schema itself. A model that writes a list one item too long or a
 number out of range would otherwise fail validation and cost a retry, so code trims and clamps
-instead, and the descriptions tell the model the limits. For the same reason every proposal is read
-leniently (`graph.drafting.lenient`): a value of the wrong shape is fitted where its meaning is
-clear, and one that still fails costs only itself, never the draft.
+instead, and the descriptions tell the model the limits. For the same reason the model's answer is
+read leniently (`graph.drafting.lenient`): a value of the wrong shape is fitted where its meaning
+is clear, and one that still fails costs only itself, never the draft.
 """
 
 from typing import Any, Literal, get_args
@@ -47,8 +47,9 @@ PLAYER_ID = "player"
 
 
 class Proposal(BaseModel):
-    """A part of what the drafter proposes. Unknown fields are ignored, and a value that fails
-    validation is repaired or dropped on its own (`lenient.repair`)."""
+    """A part of what the drafter proposes. Unknown fields are ignored. In the model's answer, a
+    value that fails validation is repaired or dropped on its own (`lenient.repair`); a proposal
+    code builds stays strict."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -60,8 +61,9 @@ class Proposal(BaseModel):
         try:
             return handler(value)
         except ValidationError as error:
-            assert info.field_name is not None
-            return lenient.repair(cls, info.field_name, value, handler, error)
+            if not lenient.reading_model_output(info):
+                raise
+            return lenient.repair(cls, info, value, handler, error)
 
 
 # The world (G1, G6, G7, G10, G18, G23, G24, E2, N1, N7).

@@ -30,6 +30,8 @@ from graph.llm.pricing import estimate_cost
 from graph.llm.safety import safety_settings
 from graph.llm.telemetry import CallRecord, CallRecorder, Outcome
 from graph.llm.types import (
+    MODEL_OUTPUT,
+    REPAIRS,
     AudioPart,
     Backend,
     CallOptions,
@@ -370,10 +372,25 @@ class ModelClient:
             raise _BadOutput("empty")
         if schema is None:
             return text
+        context: dict[str, Any] = {MODEL_OUTPUT: True, REPAIRS: []}
         try:
-            return schema.model_validate_json(strip_code_fence(text))
+            value = schema.model_validate_json(strip_code_fence(text), context=context)
         except ValidationError as error:
             raise _BadOutput("invalid_output", error, len(text)) from None
+        if repairs := sorted(set(context[REPAIRS])):
+            # A schema that reads model output leniently noted what it repaired (`types.REPAIRS`).
+            logger.info(
+                "Model answer repaired",
+                extra={
+                    "llm": {
+                        "node": request.node.value,
+                        "model": request.model,
+                        "repairs": repairs[:MAX_LOGGED_REPAIRS],
+                        "repair_count": len(repairs),
+                    }
+                },
+            )
+        return value
 
     def _fatal(self, failure: ProviderError, trace: _Trace) -> LLMError:
         node, model = trace.request.node.value, trace.request.model
@@ -412,6 +429,7 @@ def _json_schema(schema: type[BaseModel]) -> dict[str, Any]:
 # How many of an answer's validation errors are logged, and how a place in it is written: field
 # names and list positions only. Any other key, such as one the model wrote in a map, is "*".
 MAX_LOGGED_ERRORS = 12
+MAX_LOGGED_REPAIRS = 40
 _FIELD_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 
 

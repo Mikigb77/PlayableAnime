@@ -1,8 +1,9 @@
 """Reading the drafter's answer leniently (G1, G2, `graph.drafting.lenient`).
 
 With the draft's schema in the prompt, nothing holds Gemini to it, and from 2026-11-05 most drafts
-failed validation twice and answered 503. A value of the wrong shape is fitted where its meaning
-is clear, and one that still fails costs only itself, never the draft.
+failed validation twice and answered 503. A value of the wrong shape in the model's answer is
+fitted where its meaning is clear, and one that still fails costs only itself, never the draft.
+What code builds stays strict.
 """
 
 import asyncio
@@ -12,7 +13,7 @@ import logging
 import pytest
 from pydantic import ValidationError
 
-from graph.drafting import chain, samples
+from graph.drafting import chain, lenient, samples
 from graph.drafting.schema import (
     CalendarP,
     CharacterProposal,
@@ -23,12 +24,18 @@ from graph.drafting.schema import (
 )
 from graph.drafting.successor import SuccessorProposal
 from graph.llm import FakeBackend, ModelClient, ModelConfig, Node, Reply, TurnTelemetry
+from graph.llm.types import REPAIRS
 
 SECRET_NAME = "Rosa Bianchi"
 
 
+def _read(model, data, context=None):
+    """`data` read as the client reads a model's answer."""
+    return model.model_validate(data, context=context or lenient.model_output())
+
+
 def _npc(**fields) -> NpcP:
-    return NpcP.model_validate({"id": "rosa", "name": SECRET_NAME, **fields})
+    return _read(NpcP, {"id": "rosa", "name": SECRET_NAME, **fields})
 
 
 def _sloppy_naples() -> dict:
@@ -50,9 +57,13 @@ def _sloppy_naples() -> dict:
     return draft
 
 
-def test_a_draft_written_loosely_still_drafts():
+def _drafting_client() -> tuple[FakeBackend, ModelClient]:
     fake = FakeBackend()
-    llm = ModelClient(fake, ModelConfig(), rating="teen", recorder=TurnTelemetry())
+    return fake, ModelClient(fake, ModelConfig(), rating="teen", recorder=TurnTelemetry())
+
+
+def test_a_draft_written_loosely_still_drafts():
+    fake, llm = _drafting_client()
     fake.script(Node.DRAFTER, Reply(text=json.dumps(_sloppy_naples())))
 
     draft = asyncio.run(
@@ -72,11 +83,42 @@ def test_a_draft_written_loosely_still_drafts():
     assert state.characters["bartender"].parent_ids == ["carmine"]
 
 
+def test_the_repairs_are_logged_once_per_answer_with_no_value(log_lines):
+    fake, llm = _drafting_client()
+    draft = _sloppy_naples()
+    draft["world"]["npcs"][1]["parent_ids"] = {"id": SECRET_NAME}
+    draft["world"]["npcs"].append({"id": "nameless", "description": SECRET_NAME})
+    fake.script(Node.DRAFTER, Reply(text=json.dumps(draft)))
+
+    asyncio.run(chain.create(llm, samples.NAPLES_PREMISE, rating="teen"))
+
+    [line] = [line for line in log_lines() if line["message"] == "Model answer repaired"]
+    fields = line["llm"]
+    assert fields["node"] == "drafter" and fields["repair_count"] == len(fields["repairs"])
+    assert "NpcP.parent_ids: fitted (list_type)" in fields["repairs"]
+    assert "NpcP.temperament: null (model_type)" in fields["repairs"]
+    assert "WorldProposal.npcs: dropped 1 (missing)" in fields["repairs"]
+    assert len(set(fields["repairs"])) == len(fields["repairs"])
+    assert SECRET_NAME not in json.dumps(log_lines())
+
+
 def test_a_valid_proposal_reads_exactly_as_before(caplog):
     for proposal in (samples.naples(), samples.cultivation()):
-        with caplog.at_level(logging.DEBUG, logger="graph.drafting"):
-            assert DraftProposal.model_validate_json(proposal.model_dump_json()) == proposal
+        context = lenient.model_output()
+        with caplog.at_level(logging.DEBUG):
+            read = DraftProposal.model_validate_json(proposal.model_dump_json(), context=context)
+        assert read == proposal
+        assert context[REPAIRS] == []
     assert not caplog.records
+
+
+def test_a_proposal_code_builds_stays_strict():
+    with pytest.raises(ValidationError):
+        NpcP.model_validate({"id": "rosa", "name": "Rosa", "parent_ids": None})
+    with pytest.raises(ValidationError):
+        NpcP(id="rosa", name="Rosa", skills=["knives"])
+    with pytest.raises(ValidationError):
+        DraftProposal.model_validate_json(json.dumps(_sloppy_naples()))
 
 
 @pytest.mark.parametrize(
@@ -91,8 +133,11 @@ def test_a_valid_proposal_reads_exactly_as_before(caplog):
         ({"description": None, "age": None}, {"description": "", "age": None}),
         ({"age": 41.6}, {"age": 42}),
         ({"age": "41.6"}, {"age": 42}),
+        ({"age": "40.5"}, {"age": 41}),
         ({"location_id": {"id": "bar", "name": "Bar Sport"}}, {"location_id": "bar"}),
+        ({"location_id": ["bar", "club"]}, {"location_id": "bar"}),
         ({"description": ["Tall.", "Scarred."]}, {"description": "Tall. Scarred."}),
+        ({"appearance": ["tall", "scarred"]}, {"appearance": "tall, scarred"}),
         ({"aliases": "the Widow"}, {"aliases": ["the Widow"]}),
         ({"people_id": 7}, {"people_id": "7"}),
         ({"player_knows": "Heard-of"}, {"player_knows": "heard_of"}),
@@ -121,29 +166,40 @@ def test_a_name_stands_for_a_record_that_needs_only_a_name():
     assert [c.text for c in npc.powers[0].costs] == ["a night's sleep"]
 
 
-def test_records_written_as_a_map_by_id_become_a_list():
-    world = WorldProposal.model_validate(
+def test_records_written_as_a_map_by_id_or_name_become_a_list():
+    world = _read(
+        WorldProposal,
         {
             "title": "t",
             "genre": "g",
             "tone": "noir",
             "era": "now",
             "npcs": {"rosa": {"name": SECRET_NAME}, "ugo": {"id": "ugo-2", "name": "Ugo"}},
-        }
+        },
     )
+    by_name = _npc(skills={"knives": {"level": "skilled"}}, traits={"a limp": "flaw"})
 
     assert [(npc.id, npc.name) for npc in world.npcs] == [("rosa", SECRET_NAME), ("ugo-2", "Ugo")]
+    assert [(s.name, s.level) for s in by_name.skills] == [("knives", "skilled")]
+    assert [t.name for t in by_name.traits] == ["a limp"]
+
+
+def test_a_reference_written_as_a_list_is_its_first_id():
+    power = _read(PowerP, {"id": "ward", "name": "Ward", "kind_id": ["magic", "qi"]})
+
+    assert power.kind_id == "magic"
 
 
 def test_what_still_fails_costs_only_itself():
     world = samples.naples_world().model_dump(mode="json")
     world["npcs"].append({"id": "nameless"})  # no name: this one is dropped
+    world["npcs"].append({"id": "blank", "name": ["", " "]})  # a blank name is no name
     world["npcs"][0]["skills"].append({"name": "luck", "level": "legendary"})
     world["threads"].append({"id": "plot", "title": "A plot", "kind": "conspiracy"})
     world["calendar"] = "the old calendar"
     world["places"][0]["routes"] = [{"to_id": "club", "travel_hours": "a while"}]
 
-    proposal = WorldProposal.model_validate(world)
+    proposal = _read(WorldProposal, world)
 
     assert [npc.id for npc in proposal.npcs] == ["carmine", "bartender"]
     assert proposal.npcs[0].skills[-1].level == "fair"  # the field's default
@@ -174,39 +230,39 @@ def test_a_required_part_that_fails_still_fails_the_answer():
     character = samples.naples_character().model_dump(mode="json")
 
     with pytest.raises(ValidationError):
-        DraftProposal.model_validate({"character": character})
+        _read(DraftProposal, {"character": character})
     with pytest.raises(ValidationError):
-        DraftProposal.model_validate({"world": None, "character": character})
+        _read(DraftProposal, {"world": None, "character": character})
     with pytest.raises(ValidationError):
-        PowerP.model_validate({"id": "ward", "name": "Ward"})  # no kind
+        _read(PowerP, {"id": "ward", "name": "Ward"})  # no kind
 
 
 def test_every_proposal_reads_leniently():
-    character = CharacterProposal.model_validate({"name": "Luca", "goals": "Find the killer."})
-    successor = SuccessorProposal.model_validate(
-        {"name": "Ada", "situation": "Ada mends a net.", "traits": None}
+    character = _read(CharacterProposal, {"name": "Luca", "goals": "Find the killer."})
+    successor = _read(
+        SuccessorProposal, {"name": "Ada", "situation": "Ada mends a net.", "traits": None}
     )
 
     assert character.goals == ["Find the killer."]
     assert successor.traits == []
 
 
-def test_a_repair_is_logged_with_where_and_what_but_never_the_value(log_lines):
-    _npc(parent_ids={"id": SECRET_NAME}, skills=[{"name": SECRET_NAME, "level": SECRET_NAME}])
+def test_each_repair_is_noted_with_where_and_what_but_never_the_value():
+    context = lenient.model_output()
 
-    repairs = [line["proposal"] for line in log_lines() if "proposal" in line]
-    assert {"record": "NpcP", "field": "parent_ids", "repair": "fitted"} | {
-        "errors": ["list_type"]
-    } in repairs
-    assert {"record": "SkillP", "field": "level", "repair": "default"} | {
-        "errors": ["enum"]
-    } in repairs
-    assert SECRET_NAME not in json.dumps(log_lines())
+    _read(
+        NpcP,
+        {
+            "id": "rosa",
+            "name": SECRET_NAME,
+            "parent_ids": {"id": SECRET_NAME},
+            "skills": [{"name": SECRET_NAME, "level": SECRET_NAME}, {"level": "master"}, 3],
+        },
+        context,
+    )
 
-
-def test_dropped_items_are_counted(log_lines):
-    _npc(skills=[{"name": "knives"}, {"level": "master"}, 3])
-
-    [repair] = [line["proposal"] for line in log_lines() if "proposal" in line]
-    assert repair["field"] == "skills" and repair["repair"] == "dropped_items"
-    assert repair["dropped"] == 2
+    assert set(context[REPAIRS]) == {
+        "NpcP.parent_ids: fitted (list_type)",
+        "SkillP.level: default (enum)",
+        "NpcP.skills: dropped 2 (missing, model_type)",
+    }
