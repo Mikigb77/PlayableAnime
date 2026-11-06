@@ -1,7 +1,8 @@
 # PlayableAnime
 
 **[Download the Android app (lucid-saga.apk)](https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk)**
-· the newest build, published by every deploy ([how](docs/DEPLOY.md#the-android-app))
+· the newest build, published by every deploy ([how](docs/DEPLOY.md#the-android-app)). Once
+installed, it offers each newer build itself.
 
 > Working name **Lucid Saga**. Requirements for all work: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 

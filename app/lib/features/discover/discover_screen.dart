@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n.dart';
 import '../../design/design.dart';
 import '../../router.dart';
+import '../library/library.dart';
+import '../library/library_screen.dart' show storyMeta;
 import 'premises.dart';
 
-/// Starter premises, the flagship worlds first and large (S1), a way to start from your own idea,
-/// then the other worlds as a shelf of covers.
+/// The way back into the latest story, when there is one to play on; then the starter premises,
+/// the flagship worlds first and large (S1), a way to start from your own idea, and the other
+/// worlds as a shelf of covers.
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
@@ -18,11 +21,16 @@ class DiscoverScreen extends ConsumerWidget {
     final header = ContentColumn(
       child: PageHeader(title: l10n.discoverTitle, subtitle: l10n.discoverSubtitle),
     );
+    // The first load waits for the stories too, so the story to continue doesn't push the worlds
+    // down once they show. A failed or retried load of them never holds Discover up.
+    final premises = ref.watch(premisesProvider);
+    final stories = ref.watch(storiesProvider);
+    final storiesFirstLoad = stories.isLoading && !stories.hasValue && !stories.hasError;
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: AsyncValueView(
-          value: ref.watch(premisesProvider),
+          value: storiesFirstLoad ? const AsyncLoading<List<Premise>>() : premises,
           onRetry: () => ref.invalidate(premisesProvider),
           loading: (_) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -32,13 +40,18 @@ class DiscoverScreen extends ConsumerWidget {
             ],
           ),
           builder: (premises) {
+            final continuing = stories.value ?? const <StorySummary>[];
             final signature = premises.where((p) => p.flagship).toList();
             final more = premises.where((p) => !p.flagship).toList();
             return RefreshIndicator(
-              onRefresh: () => ref.refresh(premisesProvider.future),
+              onRefresh: () {
+                ref.invalidate(storiesProvider);
+                return ref.refresh(premisesProvider.future);
+              },
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(child: header),
+                  SliverToBoxAdapter(child: _ContinueStory(stories: continuing)),
                   if (premises.isEmpty)
                     SliverToBoxAdapter(
                       child: EmptyState(
@@ -53,7 +66,7 @@ class DiscoverScreen extends ConsumerWidget {
                     SliverToBoxAdapter(
                       child: ContentColumn(child: SectionLabel(l10n.discoverSignature)),
                     ),
-                    _PremiseGrid(premises: signature, badge: l10n.discoverBadge),
+                    _PremiseGrid(premises: signature),
                   ],
                   if (premises.isNotEmpty)
                     const SliverToBoxAdapter(child: ContentColumn(child: _CreateYourOwn())),
@@ -74,16 +87,18 @@ class DiscoverScreen extends ConsumerWidget {
   }
 }
 
+/// The width inside the gutters from which the signature worlds go two across.
+const _twoAcross = 600.0;
+
 void _open(BuildContext context, Premise premise) =>
     context.push(Routes.createFrom(premise.id), extra: premise);
 
-/// Large cards, one column on phones and two from tablet width; or, [compact], a shelf of covers
-/// in their own 3:4 shape, two to four across.
+/// Large cards: on a phone a row to swipe through, with the next card peeking in, and two columns
+/// from tablet width; or, [compact], a shelf of covers in their own 3:4 shape, two to four across.
 class _PremiseGrid extends StatelessWidget {
-  const _PremiseGrid({required this.premises, this.badge, this.compact = false});
+  const _PremiseGrid({required this.premises, this.compact = false});
 
   final List<Premise> premises;
-  final String? badge;
   final bool compact;
 
   @override
@@ -101,8 +116,13 @@ class _PremiseGrid extends StatelessWidget {
                   : inner >= 520
                   ? 3
                   : 2)
-            : (inner >= 600 ? 2 : 1);
+            : (inner >= _twoAcross ? 2 : 1);
         final side = (constraints.crossAxisExtent - width) / 2 + Space.gutter;
+        if (columns == 1) {
+          return SliverToBoxAdapter(
+            child: _SignatureRow(premises: premises, side: side, inner: inner, height: 260 * grow),
+          );
+        }
         final tile = (inner - Space.lg * (columns - 1)) / columns;
         return SliverPadding(
           padding: EdgeInsets.symmetric(horizontal: side),
@@ -119,20 +139,107 @@ class _PremiseGrid extends StatelessWidget {
               if (compact) {
                 return _CompactCover(premise: premise, onTap: () => _open(context, premise));
               }
-              return CoverCard(
-                title: premise.title,
-                genre: premise.genre,
-                subtitle: premise.tagline ?? premise.premise,
-                imageUrl: premise.coverUrl,
-                badge: badge,
-                onTap: () => _open(context, premise),
-              );
+              return _SignatureCard(premise: premise);
             },
           ),
         );
       },
     );
   }
+}
+
+/// A signature world as a large card with its cover, genre, title and tagline.
+class _SignatureCard extends StatelessWidget {
+  const _SignatureCard({required this.premise});
+
+  final Premise premise;
+
+  @override
+  Widget build(BuildContext context) => CoverCard(
+    title: premise.title,
+    genre: premise.genre,
+    subtitle: premise.tagline ?? premise.premise,
+    imageUrl: premise.coverUrl,
+    onTap: () => _open(context, premise),
+  );
+}
+
+/// The signature worlds on a phone: one large card at a time, lined up with the page's gutter,
+/// with the next one peeking in so the row reads as one to swipe. A swipe settles on a card.
+class _SignatureRow extends StatelessWidget {
+  const _SignatureRow({
+    required this.premises,
+    required this.side,
+    required this.inner,
+    required this.height,
+  });
+
+  final List<Premise> premises;
+
+  /// The page's gutter, where the first card starts.
+  final double side;
+
+  /// The width inside the gutters.
+  final double inner;
+  final double height;
+
+  /// How much of the column a card takes when more follow, leaving room for the next to peek in.
+  static const _share = 0.86;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = premises.length == 1 ? inner : inner * _share;
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: side),
+        physics: _CardSnap(extent: card + Space.md),
+        itemCount: premises.length,
+        separatorBuilder: (_, _) => const SizedBox(width: Space.md),
+        itemBuilder: (context, i) => SizedBox(
+          width: card,
+          child: _SignatureCard(premise: premises[i]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Settles a swipe on a card's start, like a page view whose pages are [extent] wide, one card and
+/// the gap after it. The row's last card settles at the end of the row instead.
+class _CardSnap extends ScrollPhysics {
+  const _CardSnap({required this.extent, super.parent});
+
+  final double extent;
+
+  @override
+  _CardSnap applyTo(ScrollPhysics? ancestor) =>
+      _CardSnap(extent: extent, parent: buildParent(ancestor));
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    if ((velocity <= 0 && position.pixels <= position.minScrollExtent) ||
+        (velocity >= 0 && position.pixels >= position.maxScrollExtent)) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+    final tolerance = toleranceFor(position);
+    var card = position.pixels / extent;
+    if (velocity < -tolerance.velocity) {
+      card -= 0.5;
+    } else if (velocity > tolerance.velocity) {
+      card += 0.5;
+    }
+    final target = (card.roundToDouble() * extent).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((target - position.pixels).abs() < tolerance.distance) return null;
+    return ScrollSpringSimulation(spring, position.pixels, target, velocity, tolerance: tolerance);
+  }
+
+  @override
+  bool get allowImplicitScrolling => false;
 }
 
 /// A premise as a book on a shelf: its cover in its own 3:4 shape, the genre and title over the
@@ -288,6 +395,55 @@ class _CreateYourOwn extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The latest story the player can play on, as its Library row, so coming back to the app is one
+/// tap from where they left off. Nothing while the stories load, when they fail to, or when none
+/// is left to play.
+class _ContinueStory extends StatelessWidget {
+  const _ContinueStory({required this.stories});
+
+  /// The player's stories, as loaded so far.
+  final List<StorySummary> stories;
+
+  @override
+  Widget build(BuildContext context) {
+    // The server sends the most recently played first.
+    final story = stories.where((s) => !s.ended).firstOrNull;
+    if (story == null) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    return ContentColumn(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionLabel(l10n.discoverContinue),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+            // As wide as a signature card below it: a row stretched across a wide screen reads
+            // as a banner, not a story.
+            child: LayoutBuilder(
+              builder: (context, constraints) => Align(
+                alignment: AlignmentDirectional.topStart,
+                child: SizedBox(
+                  width: constraints.maxWidth >= _twoAcross
+                      ? (constraints.maxWidth - Space.lg) / 2
+                      : constraints.maxWidth,
+                  child: StoryTile(
+                    key: const Key('discover.continue'),
+                    title: story.title,
+                    genre: story.genre,
+                    imageUrl: story.coverUrl,
+                    meta: storyMeta(l10n, story),
+                    onTap: () => context.push('/story/${Uri.encodeComponent(story.id)}'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

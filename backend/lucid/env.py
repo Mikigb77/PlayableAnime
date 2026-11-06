@@ -69,6 +69,9 @@ class Env(BaseSettings):
     picture_root: str = ""
     # How long a picture's signed URL works. The app asks for a fresh one after that.
     picture_url_ttl_s: int = Field(default=3600, ge=60, le=7 * 24 * 3600)
+    # The app's own updates (S12): the private bucket the deploy uploads each Android build to.
+    # Without one, releases are local files under `picture_root`/releases/ (development, tests).
+    releases_bucket: str = ""
 
     # Credits, quotas and rate limits (K1, K2, T9). The rest of the billing settings are in
     # settings.py's BILLING.

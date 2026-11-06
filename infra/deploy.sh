@@ -28,10 +28,12 @@ Usage: infra/deploy.sh <command> [argument]
   access           Make the API public, or private with API_ACCESS=private.
   models           Call each model the app uses once, as the migration job (check_models).
   covers           Draw the starter premises' missing covers, as the migration job.
+  upload-apk APK   Upload the Android app for its own updater and point android/latest.json at it.
   rollback REV     Send all traffic back to revision REV.
 
 IMAGE is a full image reference, best pinned by digest. DRY_RUN=1 prints instead of running.
 API_ACCESS=private keeps the API private (docs/DEPLOY.md#who-may-call-the-api).
+upload-apk reads BUILD_NUMBER and VERSION_NAME, as infra/build-apk.sh reports them.
 EOF
 }
 
@@ -136,7 +138,7 @@ owner_emails() {
 # Writes the env vars file for a deploy: infra/cloudrun/env.yaml plus the values this script owns.
 render_env() {
   local hosts="$1" out="$TMP_DIR/env-$RANDOM.yaml" origins client_ids owners
-  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|GOOGLE_OAUTH_CLIENT_IDS|OWNER_EMAILS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
+  if grep -Eq '^(GCP_PROJECT|MEDIA_BUCKET|RELEASES_BUCKET|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|GOOGLE_OAUTH_CLIENT_IDS|OWNER_EMAILS|DATABASE_URL|DJANGO_SECRET_KEY):' "$ENV_FILE"; then
     die "$ENV_FILE sets a variable that deploy.sh owns; remove it from the file"
   fi
   origins="$(printf '%s' "$hosts" | sed 's#\([^,][^,]*\)#https://\1#g')"
@@ -148,6 +150,7 @@ render_env() {
     printf '\n# Added by infra/deploy.sh\n'
     printf 'GCP_PROJECT: "%s"\n' "$PROJECT_ID"
     printf 'MEDIA_BUCKET: "%s"\n' "$MEDIA_BUCKET"
+    printf 'RELEASES_BUCKET: "%s"\n' "$RELEASES_BUCKET"
     printf 'ALLOWED_HOSTS: "%s"\n' "$hosts"
     printf 'CSRF_TRUSTED_ORIGINS: "%s"\n' "$origins"
     if [ -n "$client_ids" ]; then
@@ -391,6 +394,80 @@ cmd_models() {
   fi
 }
 
+# Prints the build number in the release manifest on stdin, or 0 when there is none to read.
+manifest_build() {
+  python3 -I -c '
+import json
+import sys
+
+try:
+    build = json.load(sys.stdin).get("build")
+except (ValueError, AttributeError):
+    build = None
+print(build if type(build) is int and build > 0 else 0)
+'
+}
+
+# Prints the URLs of the builds in a listing of the bucket's android/ folder (stdin) that go: all
+# but the newest $1, and never build $2, the one just published.
+old_builds() {
+  python3 -I -c '
+import re
+import sys
+
+keep, newest = int(sys.argv[1]), int(sys.argv[2])
+builds = {}
+for line in sys.stdin:
+    match = re.fullmatch(r"gs://[^/]+/android/lucid-saga-([1-9][0-9]*)\.apk", line.strip())
+    if match:
+        builds[int(match.group(1))] = line.strip()
+kept = sorted(builds, reverse=True)[:keep]
+for build in sorted(builds):
+    if build not in kept and build != newest:
+        print(builds[build])
+' "$1" "$2"
+}
+
+# The Android app for its own updater (S12): uploads the APK to the releases bucket as
+# android/lucid-saga-<build>.apk, then points android/latest.json at it, last, so the manifest
+# never names a missing APK. The API then offers it to every installed app that is older. A
+# re-run of an older run leaves a newer build in place, since phones can't install an older build
+# over it. Keeps the newest RELEASES_KEEP builds.
+cmd_upload_apk() {
+  local apk="$1" build="${BUILD_NUMBER:-}" version="${VERSION_NAME:-}" bucket="gs://$RELEASES_BUCKET"
+  local key current manifest="$TMP_DIR/latest.json" old
+  need_arg "$apk" APK
+  [ -f "$apk" ] || die "no APK at $apk"
+  case "$build" in
+    '' | *[!0-9]* | 0*) die "BUILD_NUMBER must be a whole number above 0" ;;
+  esac
+  [[ "$version" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$ ]] ||
+    die "VERSION_NAME must be a version name such as 1.0.0"
+  key="android/lucid-saga-$build.apk"
+  step "App updates: $bucket/$key (S12)"
+  current="$(read_value gcloud storage cat "$bucket/android/latest.json" | manifest_build)"
+  if [ "${current:-0}" -gt "$build" ]; then
+    warn "the bucket already offers build $current, newer than $build, so it stays the app's update."
+    return 0
+  fi
+  # A single upload: a parallel composite one would need more than the deployer's object rights.
+  if ! CLOUDSDK_STORAGE_PARALLEL_COMPOSITE_UPLOAD_ENABLED=False run gcloud storage cp "$apk" \
+    "$bucket/$key" --content-type=application/vnd.android.package-archive; then
+    die "the APK couldn't be uploaded to $bucket. Has infra/bootstrap.sh run since it gained" \
+      "step 6d? (docs/DEPLOY.md#3-run-the-bootstrap-from-dev)"
+  fi
+  python3 -I "$HERE/release_manifest.py" "$manifest" "$apk" "$key" "$build" "$version"
+  run gcloud storage cp "$manifest" "$bucket/android/latest.json" --content-type=application/json \
+    --cache-control=no-store
+  say "The app's updater now offers build $build ($version)."
+  # The listing is a read, so a dry run lists nothing and deletes nothing.
+  old="$(read_value gcloud storage ls "$bucket/android/" | old_builds "$RELEASES_KEEP" "$build")"
+  # shellcheck disable=SC2086 # One URL per line, none with spaces.
+  if [ -n "$old" ] && ! run gcloud storage rm $old; then
+    warn "older builds couldn't be deleted from $bucket; the next deploy tries again."
+  fi
+}
+
 cmd_rollback() {
   local revision="$1"
   need_arg "$revision" REVISION
@@ -417,6 +494,7 @@ main() {
     access) cmd_access ;;
     models) cmd_models ;;
     covers) cmd_covers ;;
+    upload-apk) cmd_upload_apk "${1:-}" ;;
     rollback) cmd_rollback "${1:-}" ;;
     -h | --help | help) usage ;;
     *)

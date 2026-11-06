@@ -86,7 +86,16 @@ and `**bold**`; a blank line starts a paragraph with a short gap.
 - **Radii:** 8 (small), 12 (pictures), 16 (cards, fields), 24 (sheets, the composer), and pills for
   chips.
 - **Layout:** phones get a bottom navigation bar; from 840 px wide the tabs move into a side rail.
-  Lists and forms stay within 920 px, and reading within 680 px.
+  Lists and forms stay within 920 px, and reading within 680 px. A row of its own never stretches
+  across a wide screen: Library's stories go two across from 640 px inside the gutters, and
+  Account's settings keep to 680 px under the page title.
+- **Discover** opens on the latest story the player can still play on (Continue your story), then
+  the signature worlds, starting from your own idea, and the shelf of more worlds. On a phone the
+  signature worlds are a row to swipe, one large card at a time with the next peeking in, and a
+  swipe settles on a card; from 600 px inside the gutters they are two across, and the story to
+  continue is as wide as one of them. The section heading names them, so the cards carry no
+  badge. The first load waits for the player's stories as well as the worlds, so the story to
+  continue never pushes the worlds down once they show.
 - **Touch targets** are at least 48 px.
 
 ## Motion
@@ -111,7 +120,7 @@ All in `lib/design/components/`, exported from `design/design.dart`.
 | `PortraitAvatar`, `PortraitStack` | A character's portrait, or initials until one exists; a stack shows three and counts the rest |
 | `TimeChip` | How long a scene took and when it ended (W10); the accent tint when the player's clock ran apart from the world's (W10a) |
 | `EventBadge` | An event, louder from personal to local to world (W16) |
-| `CoverCard`, `StoryTile` | A premise or story with its cover, genre and line; a compact library row |
+| `CoverCard`, `StoryTile` | A premise or story with its cover, genre and line; a compact story row, in the Library and as Discover's story to continue |
 | `showAppSheet` | A bottom sheet with a handle, a serif title and a width limit on large screens |
 | `SkeletonText`, `SkeletonList`, `Shimmer` | Loading placeholders in the shape of what is coming |
 | `EmptyState`, `ErrorState` | Nothing here yet, or a load that failed, in plain words with one action; errors use the typed API codes (T7) |
@@ -245,7 +254,11 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 - **The birth-date step is neutral** (F8): the date starts empty and in typed entry, the copy says
   why we ask, and a refusal never names the minimum age, so nobody learns which date to type.
 - **Credits** read as cents below a dollar (`44.6¢`) and as dollars from one (`$1.20`), with a real
-  minus sign; the owner sees "Unlimited" and still sees each cost in the history.
+  minus sign; the owner sees "Unlimited" and still sees each cost in the history. Each line of the
+  history keeps its amount and the balance after it beside the entry, wrapping within their share
+  of the row at large text sizes rather than overflowing.
+- **The Developer section** (which server the app talks to, and the gallery) shows only in
+  development builds and to the owner, never to players.
 - **Destructive steps** say exactly what goes, offer the export first, and ask the player to type a
   word before the red button works.
 - Problems the server finds on a form show under their field once the player has tried to submit,

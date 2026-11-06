@@ -33,6 +33,12 @@ echo
 echo "# infra/deploy.sh covers"
 "$INFRA/deploy.sh" covers 2>&1 | commands
 echo
+echo "# infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)"
+printf 'apk\n' >"$ROOT/lucid-saga.apk.print-commands"
+BUILD_NUMBER=42 VERSION_NAME=1.0.0 "$INFRA/deploy.sh" upload-apk "$ROOT/lucid-saga.apk.print-commands" 2>&1 |
+  commands | sed 's#lucid-saga.apk.print-commands#APK#; s#/[^ ]*/latest.json gs://#MANIFEST gs://#'
+rm -f "$ROOT/lucid-saga.apk.print-commands"
+echo
 echo "# infra/deploy.sh rollback REVISION"
 "$INFRA/deploy.sh" rollback REVISION 2>&1 | commands
 echo

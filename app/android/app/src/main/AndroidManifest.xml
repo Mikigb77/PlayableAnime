@@ -3,6 +3,10 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Dictation (V1, V5): the mic is on only while the dictation button shows it is listening. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- The app's own updates (S12): hands a newer APK from our API to Android's installer, which
+         asks the player first. A Google Play build must drop both, since Play updates it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>
     <application
         android:label="Lucid Saga"
         android:name="${applicationName}"
