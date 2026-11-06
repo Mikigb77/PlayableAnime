@@ -7,7 +7,7 @@
     state = draft.state()                     # the opening WorldState, hidden parts included
     view.world_lines(state), view.character_lines(state)   # what the player sees
 
-The model proposes a `schema.DraftProposal`; `assemble` decides the world state in code;
-`view` writes what the player sees from its public parts only; `catalog` holds the starter
-premises and the rules each genre keeps. Nothing here imports Django (B4).
+The model proposes a `schema.DraftProposal`, read leniently (`lenient`); `assemble` decides the
+world state in code; `view` writes what the player sees from its public parts only; `catalog`
+holds the starter premises and the rules each genre keeps. Nothing here imports Django (B4).
 """

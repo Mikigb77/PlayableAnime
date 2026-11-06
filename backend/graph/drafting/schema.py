@@ -7,12 +7,22 @@ ids, tiers, clock times, who knows what, and the rules a world can't break (G7, 
 
 Nothing here is bounded in the schema itself. A model that writes a list one item too long or a
 number out of range would otherwise fail validation and cost a retry, so code trims and clamps
-instead, and the descriptions tell the model the limits.
+instead, and the descriptions tell the model the limits. For the same reason the model's answer is
+read leniently (`graph.drafting.lenient`): a value of the wrong shape is fitted where its meaning
+is clear, and one that still fails costs only itself, never the draft.
 """
 
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 
 from engine.state import (
     CalendarStyle,
@@ -30,13 +40,30 @@ from engine.state import (
     TraitKind,
     Zeal,
 )
+from graph.drafting import lenient
 
 PLAYER_ID = "player"
 """The player character's id, in every proposal and every drafted state."""
 
 
 class Proposal(BaseModel):
+    """A part of what the drafter proposes. Unknown fields are ignored. In the model's answer, a
+    value that fails validation is repaired or dropped on its own (`lenient.repair`); a proposal
+    code builds stays strict."""
+
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("*", mode="wrap")
+    @classmethod
+    def _lenient(
+        cls, value: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> Any:
+        try:
+            return handler(value)
+        except ValidationError as error:
+            if not lenient.reading_model_output(info):
+                raise
+            return lenient.repair(cls, info, value, handler, error)
 
 
 # The world (G1, G6, G7, G10, G18, G23, G24, E2, N1, N7).
@@ -336,8 +363,9 @@ class NpcP(Proposal):
     parent_ids: list[str] = Field(
         default_factory=list,
         description="N6: their mother and father among the key characters, by id, or the "
-        "player character's id for the player character's own child. Two at most. Only family "
-        "the player character knows of when they are part of it; a hidden parentage is a secret.",
+        "player character's id for the player character's own child. Two at most, and an empty "
+        "list when neither is a key character. Only family the player character knows of when "
+        "they are part of it; a hidden parentage is a secret.",
     )
     temperament: TemperamentP = Field(default_factory=TemperamentP)
     attributes: AttributesP = Field(default_factory=AttributesP)
@@ -571,7 +599,8 @@ class CharacterProposal(Proposal):
     parent_ids: list[str] = Field(
         default_factory=list,
         description="N6: the character's mother and father among the key characters, by id, as "
-        "the character knows them. Two at most; a hidden parentage is someone's secret.",
+        "the character knows them. Two at most, and an empty list when neither is a key "
+        "character; a hidden parentage is someone's secret.",
     )
     memberships: list[MembershipP] = Field(default_factory=list)
     ladders: list[LadderPositionP] = Field(default_factory=list)
