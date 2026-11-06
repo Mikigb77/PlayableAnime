@@ -37,10 +37,10 @@ enum GenreAccent {
     (orchid, RegExp(r'supernatural|occult|urban|vampire|horror|ghost|hidden|witch')),
     (violet, RegExp(r'reincarnat|isekai|rebirth|regress|transmigrat|reborn')),
     (jade, RegExp(r'cultivat|xianxia|wuxia|murim|martial|immortal')),
-    (azure, RegExp(r'knight|aura|chivalr|paladin')),
+    (azure, RegExp(r'knight|aura|chivalr|paladin|superpower|superhero')),
     (cyan, RegExp(r'\bsci|space|cyber|\bstar|mecha|future|android|robot')),
     (crimson, RegExp(r'crime|mafia|noir|thriller|vendetta|modern|grounded|detective|mob\b')),
-    (ember, RegExp(r'monster|races|dungeon|fantasy|magic|dragon|sorcer|beast')),
+    (ember, RegExp(r'monster|races|dungeon|fantasy|magic|dragon|sorcer|beast|apocalyp|wasteland')),
   ];
 }
 

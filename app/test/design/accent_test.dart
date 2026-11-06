@@ -13,6 +13,17 @@ void main() {
     expect(GenreAccent.forGenre('Supernatural in a hidden world'), GenreAccent.orchid);
   });
 
+  test('every starter genre beyond the flagship gets an accent', () {
+    expect(GenreAccent.forGenre('Grounded mystery'), GenreAccent.crimson);
+    expect(GenreAccent.forGenre('Mecha'), GenreAccent.cyan);
+    expect(GenreAccent.forGenre('Cyberpunk'), GenreAccent.cyan);
+    expect(GenreAccent.forGenre('Gothic horror'), GenreAccent.orchid);
+    expect(GenreAccent.forGenre('Pirate fantasy'), GenreAccent.ember);
+    expect(GenreAccent.forGenre('Cozy fantasy'), GenreAccent.ember);
+    expect(GenreAccent.forGenre('Post-apocalyptic'), GenreAccent.ember);
+    expect(GenreAccent.forGenre('Superpowers'), GenreAccent.azure);
+  });
+
   test('a more specific genre wins over a broad one', () {
     expect(GenreAccent.forGenre('Urban fantasy'), GenreAccent.orchid);
     expect(GenreAccent.forGenre('Isekai fantasy'), GenreAccent.violet);
