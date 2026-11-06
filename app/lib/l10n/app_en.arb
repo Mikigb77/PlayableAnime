@@ -929,5 +929,55 @@
   "errorBirthDateTitle": "One more step",
   "errorBirthDate": "We need your birth date to set your story ratings.",
   "errorSignInUnavailableTitle": "Sign-in is unavailable",
-  "errorSignInUnavailable": "Google sign-in can't be checked right now. Try again later, or use email."
+  "errorSignInUnavailable": "Google sign-in can't be checked right now. Try again later, or use email.",
+  "updateAvailable": "A new version of Lucid Saga is ready",
+  "updateAvailableBody": "Version {version}, build {build}. It downloads here, then Android asks you to install it.",
+  "@updateAvailableBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
+    }
+  },
+  "updateNow": "Update",
+  "updateLater": "Later",
+  "updateDownloading": "Downloading the update, {percent}%",
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "updateInstalling": "Android asks you to install it. Lucid Saga closes while it updates; open it again after.",
+  "updateFailedDownload": "The update didn't download. Check your connection and try again.",
+  "updateFailedCorrupt": "The download was damaged, so it wasn't installed. Try again.",
+  "updateFailedInstall": "Android didn't install the update. Try again, or download it from the link in the README.",
+  "updateTryAgain": "Try again",
+  "accountApp": "App",
+  "accountVersion": "Version {version}, build {build}",
+  "@accountVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "int"
+      }
+    }
+  },
+  "accountUpdateCheck": "Check for updates",
+  "accountUpdateChecking": "Checking for updates…",
+  "accountUpToDate": "You have the newest build.",
+  "accountUpdateReady": "Build {build} is ready to install.",
+  "@accountUpdateReady": {
+    "placeholders": {
+      "build": {
+        "type": "int"
+      }
+    }
+  }
 }

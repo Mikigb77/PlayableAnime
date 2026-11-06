@@ -35,6 +35,9 @@ export OWNER_EMAILS=owner@example.com
 mkdir -p "$CLOUDSDK_CONFIG"
 
 image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000"
+apk="$WORK/lucid-saga.apk"
+printf 'apk\n' >"$apk"
+export BUILD_NUMBER=42 VERSION_NAME=1.0.0
 {
   DRY_RUN=1 "$INFRA/bootstrap.sh" --dry-run
   DRY_RUN=1 "$INFRA/deploy.sh" migrate "$image"
@@ -42,6 +45,7 @@ image="europe-west3-docker.pkg.dev/playable-anime/playable-anime/api@sha256:0000
   DRY_RUN=1 "$INFRA/deploy.sh" access
   DRY_RUN=1 "$INFRA/deploy.sh" models
   DRY_RUN=1 "$INFRA/deploy.sh" covers
+  DRY_RUN=1 "$INFRA/deploy.sh" upload-apk "$apk"
   DRY_RUN=1 "$INFRA/deploy.sh" rollback playable-anime-api-00001-abc
 } 2>&1 | sed -n 's/^\[dry-run\] \(gcloud .*\)$/\1/p' >"$WORK/dry-run-commands"
 
@@ -66,6 +70,8 @@ fake env API_ACCESS=private "$INFRA/deploy.sh" access
 fake "$INFRA/deploy.sh" covers
 fake env FAKE_FAIL_COVERS=1 "$INFRA/deploy.sh" covers || true # its logs are read
 fake "$INFRA/deploy.sh" models
+# Four builds, so the oldest is deleted and the bucket is listed and read.
+for build in 1 2 3 4; do fake env BUILD_NUMBER="$build" "$INFRA/deploy.sh" upload-apk "$apk"; done
 fake env OPS_COMMAND="" "$INFRA/ops.sh" run
 fake env OPS_COMMAND="run jobs executions list --job=playable-anime-migrate --region=europe-west3" \
   "$INFRA/ops.sh" run

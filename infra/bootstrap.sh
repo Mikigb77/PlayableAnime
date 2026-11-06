@@ -15,6 +15,7 @@
 #   6. a deployer service account for GitHub Actions, with Workload Identity Federation (B11),
 #      and a custom role that lets it decide who may call the API
 #   6c. a read-only account for the Ops workflow, which lets threads read logs and settings
+#   6d. a private bucket for the app's own updates, which the deploy uploads each build to (S12)
 #   7. a monthly budget alert on the project (T9)
 #
 # Run it with --dry-run first to see every command without changing anything.
@@ -365,6 +366,35 @@ setup_bucket() {
     roles/iam.serviceAccountTokenCreator
 }
 
+# The app's own updates (S12): the deploy uploads each Android build here, and the API gives the
+# app a short-lived signed URL for the newest, as it does for pictures. Private, without CORS (the
+# web build never updates itself) and without soft delete, since the deploy deletes old builds.
+# After the deployer, which it grants access to.
+setup_releases_bucket() {
+  step "6d. App releases bucket gs://$RELEASES_BUCKET"
+  if probe gcloud storage buckets describe "gs://$RELEASES_BUCKET" --project="$PROJECT_ID"; then
+    say "Bucket gs://$RELEASES_BUCKET exists."
+  else
+    run gcloud storage buckets create "gs://$RELEASES_BUCKET" --project="$PROJECT_ID" \
+      --location="$REGION" --default-storage-class=STANDARD --uniform-bucket-level-access \
+      --public-access-prevention --soft-delete-duration=0
+  fi
+  run gcloud storage buckets update "gs://$RELEASES_BUCKET" --project="$PROJECT_ID" \
+    --uniform-bucket-level-access --public-access-prevention --soft-delete-duration=0
+  # The deploy writes builds and deletes old ones. The legacy reader role adds only reading the
+  # bucket's own settings, which gcloud may do while uploading.
+  run_retry gcloud storage buckets add-iam-policy-binding "gs://$RELEASES_BUCKET" \
+    --project="$PROJECT_ID" --member="serviceAccount:$DEPLOYER_SA" \
+    --role=roles/storage.objectUser --format=none
+  run_retry gcloud storage buckets add-iam-policy-binding "gs://$RELEASES_BUCKET" \
+    --project="$PROJECT_ID" --member="serviceAccount:$DEPLOYER_SA" \
+    --role=roles/storage.legacyBucketReader --format=none
+  # The API only reads them, to sign the download URL as itself (B11).
+  run_retry gcloud storage buckets add-iam-policy-binding "gs://$RELEASES_BUCKET" \
+    --project="$PROJECT_ID" --member="serviceAccount:$RUNTIME_SA" \
+    --role=roles/storage.objectViewer --format=none
+}
+
 # The custom role the deploy uses to add or remove allUsers as the API's invoker: only the
 # permissions to read and set Cloud Run services' IAM policies. Granted on the project, because the
 # service may not exist yet. A role deleted in the last 7 days can't be created again, only
@@ -522,6 +552,7 @@ Google Cloud is ready for the deploy workflow:
   Ops (read-only) account     $OPS_SA, through $OPS_WIF_PROVIDER_RESOURCE
   Image repository            $IMAGE
   Pictures bucket             gs://$MEDIA_BUCKET
+  App releases bucket         gs://$RELEASES_BUCKET
 
 Next: in GitHub, run Actions > Deploy on main with "dry run" ticked. It signs in, checks this setup
 and builds the image without deploying anything. After that, merging dev into main deploys
@@ -542,6 +573,7 @@ main() {
   setup_deployer
   setup_workload_identity
   setup_ops
+  setup_releases_bucket
   setup_budget
   summary
 }

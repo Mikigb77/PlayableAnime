@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import 'core/l10n.dart';
 import 'design/design.dart';
+import 'features/update/update_banner.dart';
 
-/// The frame around the tabs: a bottom bar on phones, a side rail on wide screens.
+/// The frame around the tabs: a bottom bar on phones, a side rail on wide screens, with the app's
+/// update offer just above the bottom bar or at the bottom of the page (S12).
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.shell});
 
@@ -46,25 +48,42 @@ class HomeShell extends StatelessWidget {
               ],
             ),
             VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(child: shell),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: shell),
+                  const SafeArea(top: false, child: UpdateBanner()),
+                ],
+              ),
+            ),
           ],
         ),
       );
     }
     return Scaffold(
       body: shell,
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
-        ),
-        child: NavigationBar(
-          selectedIndex: shell.currentIndex,
-          onDestinationSelected: _go,
-          destinations: [
-            for (final (icon, selected, label) in destinations)
-              NavigationDestination(icon: Icon(icon), selectedIcon: Icon(selected), label: label),
-          ],
-        ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const UpdateBanner(),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+            ),
+            child: NavigationBar(
+              selectedIndex: shell.currentIndex,
+              onDestinationSelected: _go,
+              destinations: [
+                for (final (icon, selected, label) in destinations)
+                  NavigationDestination(
+                    icon: Icon(icon),
+                    selectedIcon: Icon(selected),
+                    label: label,
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
