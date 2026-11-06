@@ -29,6 +29,30 @@ void main() {
     });
   }
 
+  // Spanish runs longer than English (S10): the main screens on a phone set to Spanish, at twice
+  // the text size.
+  for (final location in [
+    '/discover',
+    '/library',
+    '/create?premise=outer-disciple',
+    '/account',
+    '/credits',
+    '/privacy',
+    '/story/story_ninth_peak',
+  ]) {
+    testWidgets('$location in Spanish at 2× text', (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('es', 'ES')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await AppHarness().launch(tester, location: location, textScale: 2);
+      expect(
+        Localizations.localeOf(tester.element(find.byType(Scaffold).first)).languageCode,
+        'es',
+      );
+      await scrollThrough(tester);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('the review and its sheets at 2× text', (tester) async {
     await AppHarness().launch(tester, location: '/create?premise=outer-disciple', textScale: 2);
     final draft = find.text(l10n.createDraftAction);

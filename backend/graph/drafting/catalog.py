@@ -12,6 +12,7 @@ Every person and organisation here is fictional (G12). Real cities and history a
 from dataclasses import dataclass, field
 from typing import Any
 
+from engine.context import Language
 from engine.state import (
     Extraordinary,
     GiftStrength,
@@ -23,6 +24,7 @@ from engine.state import (
     Rung,
     WorldRule,
 )
+from graph.drafting.catalog_es import SPANISH, PremiseText
 
 
 @dataclass(frozen=True)
@@ -65,15 +67,27 @@ class StarterPremise:
     flagship: bool
     template: PremiseTemplate = field(default_factory=PremiseTemplate)
 
-    def public(self, cover_url: str | None = None) -> dict[str, Any]:
-        """The `Premise` shape from docs/API.md. `cover_url` is the cover's signed URL, when the
-        house has drawn one (`media.premise_covers`)."""
+    def text(self, language: Language = Language.EN) -> PremiseText:
+        """The words the player reads, in `language` (S10): English, or the starter's Spanish
+        from `graph.drafting.catalog_es`."""
+        if language is Language.ES and (spanish := SPANISH.get(self.id)):
+            return spanish
+        return PremiseText(
+            title=self.title, genre=self.genre, tagline=self.tagline, premise=self.premise
+        )
+
+    def public(
+        self, cover_url: str | None = None, language: Language = Language.EN
+    ) -> dict[str, Any]:
+        """The `Premise` shape from docs/API.md, in `language`. `cover_url` is the cover's signed
+        URL, when the house has drawn one (`media.premise_covers`)."""
+        text = self.text(language)
         return {
             "id": self.id,
-            "title": self.title,
-            "genre": self.genre,
-            "tagline": self.tagline,
-            "premise": self.premise,
+            "title": text.title,
+            "genre": text.genre,
+            "tagline": text.tagline,
+            "premise": text.premise,
             "flagship": self.flagship,
             "cover_url": cover_url,
         }

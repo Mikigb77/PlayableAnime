@@ -21,8 +21,8 @@ import 'export_saver.dart';
 import 'own_key_editor.dart';
 
 /// Account: who you are and your rating limit (F8), credits (K1, K2), your own key (S9), story
-/// content (F7), appearance, dictation (V6), privacy, export and delete (T12), the app's version
-/// and updates (S12), and sign out.
+/// content (F7), appearance, language (S10), dictation (V6), privacy, export and delete (T12),
+/// the app's version and updates (S12), and sign out.
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -190,6 +190,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                 ref.read(themeModeProvider.notifier).set(s.single),
                           ),
                         ),
+                        SectionLabel(l10n.accountLanguage),
+                        const _LanguageSection(),
                         SectionLabel(l10n.accountDictation),
                         const _DictationSection(),
                         SectionLabel(l10n.accountPrivacy),
@@ -524,6 +526,46 @@ class _NameEditorState extends ConsumerState<_NameEditor> {
           child: Text(l10n.cancel),
         ),
       ],
+    );
+  }
+}
+
+/// The app's language (S10), kept on this device: the device's own, English or Spanish. Each
+/// language is named in itself, so a player who can't read the current one still finds theirs.
+class _LanguageSection extends ConsumerWidget {
+  const _LanguageSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final language = ref.watch(languageProvider);
+    final secondary = Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.accountLanguageBody, style: secondary),
+          const SizedBox(height: Space.lg),
+          SegmentedButton<AppLanguage>(
+            key: const Key('account.language'),
+            segments: [
+              ButtonSegment(
+                value: AppLanguage.system,
+                label: Text(l10n.languageSystem),
+                icon: const Icon(Icons.translate_rounded),
+              ),
+              ButtonSegment(value: AppLanguage.english, label: Text(l10n.languageEnglish)),
+              ButtonSegment(value: AppLanguage.spanish, label: Text(l10n.languageSpanish)),
+            ],
+            selected: {language},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => ref.read(languageProvider.notifier).set(s.single),
+          ),
+        ],
+      ),
     );
   }
 }

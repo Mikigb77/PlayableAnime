@@ -10,6 +10,7 @@ import 'package:playable_anime/core/byok_store.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/core/preferences.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/account_models.dart';
@@ -217,6 +218,43 @@ void main() {
       expect(find.text(l10n.dictationDeviceBody), findsOneWidget);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('dictation.mode'), 'device');
+    });
+
+    testWidgets('the app follows the device until the player picks a language', (tester) async {
+      await openAccount(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(AccountScreen)));
+      expect(container.read(languageProvider), AppLanguage.system);
+
+      await tapVisible(tester, find.text(l10n.languageSpanish));
+
+      expect(container.read(languageProvider), AppLanguage.spanish);
+      final es = await AppLocalizations.delegate.load(const Locale('es'));
+      // The whole app switches, the tabs included, and each language keeps its own name.
+      expect(find.text(es.navAccount), findsWidgets);
+      expect(find.text(es.accountLanguageBody), findsOneWidget);
+      expect(find.text(l10n.navAccount), findsNothing);
+      expect(find.text('English'), findsOneWidget);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('appearance.language'), 'spanish');
+
+      // "System" names the theme's option too.
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('account.language')),
+          matching: find.text(es.languageSystem),
+        ),
+      );
+      expect(find.text(l10n.navAccount), findsWidgets);
+      expect(prefs.getString('appearance.language'), 'system');
+    });
+
+    testWidgets('a saved language applies from the start', (tester) async {
+      SharedPreferences.setMockInitialValues({'appearance.language': 'spanish'});
+      final es = await AppLocalizations.delegate.load(const Locale('es'));
+      await launchApp(tester, backend: backend, store: store);
+      expect(find.text(es.authContinueWithGoogle), findsOneWidget);
+      expect(find.text(l10n.authContinueWithGoogle), findsNothing);
     });
 
     testWidgets('exports everything as a JSON file', (tester) async {
@@ -511,6 +549,22 @@ void main() {
       // Indented lines continue their list item.
       final bullets = parsePolicy('- one\n  more\n- two').single as PolicyBullets;
       expect(bullets.items, ['one more', 'two']);
+    });
+
+    test('the Spanish policy has the same sections, tables and lists as the English', () {
+      final english = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
+      final spanish = parsePolicy(File('assets/legal/privacy_es.md').readAsStringSync());
+      String shape(PolicyBlock block) => switch (block) {
+        PolicyTable(:final rows) => 'table ${rows.length}',
+        PolicyBullets(:final items) => 'list ${items.length}',
+        _ => block.runtimeType.toString(),
+      };
+      expect(
+        spanish.map(shape).toList(),
+        english.map(shape).toList(),
+        reason: 'Change assets/legal/privacy_es.md with docs/PRIVACY.md (S10)',
+      );
+      expect(spanish.whereType<PolicyHeading>().first.text, 'Quiénes somos');
     });
 
     testWidgets('opens signed out and reads as a page', (tester) async {

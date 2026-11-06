@@ -19,7 +19,14 @@ from pydantic import model_validator
 
 from drafts import service
 from drafts.models import Draft
-from engine.context import Difficulty, EventFrequency, ImageSetting, NarrationLength, Rating
+from engine.context import (
+    Difficulty,
+    EventFrequency,
+    ImageSetting,
+    Language,
+    NarrationLength,
+    Rating,
+)
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import STARTER_PREMISES, starter
@@ -60,11 +67,11 @@ class PremiseOut(Schema):
 
 
 @premises_router.get("", response=list[PremiseOut])
-async def list_premises(request) -> list[dict]:
-    """Flagship genres first, then the rest (S1), each with a fresh signed URL for its cover
-    once the house has drawn one (`manage.py draw_premise_covers`)."""
+async def list_premises(request, language: Language = Language.EN) -> list[dict]:
+    """Flagship genres first, then the rest (S1), in the app's language (S10), each with a fresh
+    signed URL for its cover once the house has drawn one (`manage.py draw_premise_covers`)."""
     covers = await _cover_urls(request)
-    return [premise.public(covers.get(premise.id)) for premise in STARTER_PREMISES]
+    return [premise.public(covers.get(premise.id), language) for premise in STARTER_PREMISES]
 
 
 async def _cover_urls(request) -> dict[str, str]:

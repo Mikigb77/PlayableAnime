@@ -19,6 +19,8 @@ class App extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(themeModeProvider),
       themeAnimationDuration: Motion.slow,
+      // Null follows the device's language, falling back to English (S10).
+      locale: ref.watch(languageProvider).locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

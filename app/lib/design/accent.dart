@@ -20,9 +20,9 @@ enum GenreAccent {
   /// The accent as tuned for the dark theme. The light theme darkens it (see [accentFor]).
   final Color seed;
 
-  /// Picks the accent for a genre label such as "cultivation" or "a modern city with hidden
-  /// vampires". Unknown genres get the app's own accent. Nothing in the app depends on a genre
-  /// beyond this tint (G5).
+  /// Picks the accent for a genre label such as "cultivation", "a modern city with hidden
+  /// vampires" or, in Spanish (S10), "Reencarnación". Unknown genres get the app's own accent.
+  /// Nothing in the app depends on a genre beyond this tint (G5).
   static GenreAccent forGenre(String? genre) {
     final g = (genre ?? '').toLowerCase();
     if (g.isEmpty) return lucid;
@@ -32,15 +32,37 @@ enum GenreAccent {
     return lucid;
   }
 
-  // Order matters: "urban fantasy" is supernatural before it is fantasy.
+  // Order matters: "urban fantasy" is supernatural before it is fantasy. Each rule matches the
+  // English and the Spanish words, since a genre label comes in the language it was written in.
   static final _rules = <(GenreAccent, RegExp)>[
-    (orchid, RegExp(r'supernatural|occult|urban|vampire|horror|ghost|hidden|witch')),
-    (violet, RegExp(r'reincarnat|isekai|rebirth|regress|transmigrat|reborn')),
-    (jade, RegExp(r'cultivat|xianxia|wuxia|murim|martial|immortal')),
-    (azure, RegExp(r'knight|aura|chivalr|paladin|superpower|superhero')),
-    (cyan, RegExp(r'\bsci|space|cyber|\bstar|mecha|future|android|robot')),
-    (crimson, RegExp(r'crime|mafia|noir|thriller|vendetta|modern|grounded|detective|mob\b')),
-    (ember, RegExp(r'monster|races|dungeon|fantasy|magic|dragon|sorcer|beast|apocalyp|wasteland')),
+    (
+      orchid,
+      RegExp(
+        r'supernatural|occult|urban|vampire|horror|ghost|hidden|witch'
+        r'|sobrenatural|ocult|vampir|terror|fantasma|bruj',
+      ),
+    ),
+    (violet, RegExp(r'reincarnat|isekai|rebirth|regress|transmigrat|reborn|reencarna|renac')),
+    (jade, RegExp(r'cultivat|xianxia|wuxia|murim|martial|immortal|cultivo|marcial|inmortal')),
+    (azure, RegExp(r'knight|aura|chivalr|paladin|superpower|superhero|caballer|superpoder|superh')),
+    (
+      cyan,
+      RegExp(r'\bsci|space|cyber|\bstar|mecha|future|android|robot|ciencia|espacio|ciber|futur'),
+    ),
+    (
+      crimson,
+      RegExp(
+        r'crime|mafia|noir|thriller|vendetta|modern|grounded|detective|mob\b'
+        r'|crimen|realista|mafios|polic',
+      ),
+    ),
+    (
+      ember,
+      RegExp(
+        r'monster|races|dungeon|fantasy|magic|dragon|sorcer|beast|apocalyp|wasteland'
+        r'|monstruo|razas|mazmorra|fantas|magia|drag|hechic|bestia|apocal|yermo',
+      ),
+    ),
   ];
 }
 
