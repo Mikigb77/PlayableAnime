@@ -109,9 +109,9 @@
     "description": "Section of the flagship premises."
   },
   "discoverMore": "More worlds",
-  "discoverBadge": "Signature",
-  "@discoverBadge": {
-    "description": "Badge on a flagship premise card."
+  "discoverContinue": "Continue your story",
+  "@discoverContinue": {
+    "description": "Section at the top of Discover with the latest story the player can play on."
   },
   "discoverCreateTitle": "Start from your own idea",
   "discoverCreateBody": "One line is enough. The storyteller builds the world around it.",

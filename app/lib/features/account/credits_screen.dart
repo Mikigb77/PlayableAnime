@@ -193,31 +193,62 @@ class LedgerTile extends StatelessWidget {
     };
     final when = DateFormat.yMMMd(locale).add_jm().format(entry.createdAt);
     final amount = entry.amountCents;
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 20,
-        backgroundColor: theme.colorScheme.surfaceContainerHigh,
-        child: Icon(iconFor(entry.kind), size: 20, color: colors.textSecondary),
-      ),
-      title: Text(kind),
-      subtitle: Text(where == null ? when : '$where\n$when'),
-      isThreeLine: where != null,
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            amount == 0 ? l10n.creditsFree : formatCredits(context, amount, signed: true),
-            style: theme.textTheme.titleMedium!.copyWith(
-              color: amount > 0 ? colors.success : colors.textPrimary,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+    // Laid out by hand rather than as a ListTile, whose trailing slot is capped at 56 px: the
+    // amount and the balance after it stay beside the entry, grow with the text size, and wrap
+    // within their share of the row rather than squeezing what the entry was for.
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.gutter, vertical: Space.md),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: theme.colorScheme.surfaceContainerHigh,
+                child: Icon(iconFor(entry.kind), size: 20, color: colors.textSecondary),
+              ),
+              const SizedBox(width: Space.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kind,
+                      style: theme.textTheme.bodyLarge!.copyWith(color: colors.textPrimary),
+                    ),
+                    Text(
+                      where == null ? when : '$where\n$when',
+                      style: theme.textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Space.md),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      amount == 0 ? l10n.creditsFree : formatCredits(context, amount, signed: true),
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.titleMedium!.copyWith(
+                        color: amount > 0 ? colors.success : colors.textPrimary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    Text(
+                      l10n.creditsBalanceAfter(formatCredits(context, entry.balanceAfterCents)),
+                      textAlign: TextAlign.end,
+                      style: context.lucidText.meta,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Text(
-            l10n.creditsBalanceAfter(formatCredits(context, entry.balanceAfterCents)),
-            style: context.lucidText.meta,
-          ),
-        ],
+        ),
       ),
     );
   }

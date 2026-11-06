@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/api/api_providers.dart';
@@ -96,6 +97,85 @@ void main() {
     await settle(tester, frames: 10);
     expect(find.byType(StoryTile), findsOneWidget);
     expect(find.textContaining(l10n.libraryDeleteFailed('The Ninth Peak', '')), findsOneWidget);
+  });
+
+  testWidgets('each row says where its story stands', (tester) async {
+    StorySummary story(String id, int turn, {String? time, bool ended = false}) =>
+        StorySummary(id: id, title: id, turn: turn, worldTimeLabel: time, ended: ended);
+    final stories = [
+      story('Playing', 3, time: 'Day 1, dawn'),
+      story('Fresh', 0, time: 'Day 1, dawn'),
+      story('Timeless', 5),
+      story('Done', 12, time: 'Day 9, dusk', ended: true),
+    ];
+    final app = AppHarness();
+    await app.launch(
+      tester,
+      location: '/library',
+      overrides: [storiesProvider.overrideWith((ref) async => stories)],
+    );
+    final metas = [for (final t in tester.widgetList<StoryTile>(find.byType(StoryTile))) t.meta];
+    expect(metas, [
+      l10n.libraryMeta(3, 'Day 1, dawn'),
+      l10n.libraryNotBegun('Day 1, dawn'),
+      l10n.libraryTurn(5),
+      l10n.libraryEnded(12),
+    ]);
+  });
+
+  testWidgets('a wide screen shows the stories two across, never stretched', (tester) async {
+    final stories = [
+      for (final title in ['One', 'Two', 'Three'])
+        StorySummary(id: title, title: title, turn: 2, worldTimeLabel: 'Day 1, dawn'),
+    ];
+    final app = AppHarness();
+    await app.launch(
+      tester,
+      location: '/library',
+      overrides: [storiesProvider.overrideWith((ref) async => stories)],
+    );
+    // One under another on a phone.
+    Rect rect(String title) => tester.getRect(find.widgetWithText(StoryTile, title));
+    expect(rect('Two').top, greaterThan(rect('One').bottom));
+    expect(rect('One').width, 390 - Space.gutter * 2);
+
+    usePhone(tester, size: const Size(1280, 900));
+    await settle(tester);
+    expect(rect('Two').top, rect('One').top);
+    expect(rect('Two').height, rect('One').height);
+    expect(rect('Two').left, greaterThan(rect('One').right));
+    expect(rect('One').width, lessThan(Layout.contentWidth / 2));
+    // An odd one out starts the next row, at the same width.
+    expect(rect('Three').left, rect('One').left);
+    expect(rect('Three').top, greaterThan(rect('One').bottom));
+    expect(rect('Three').width, rect('One').width);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('two across still fits twice the text size', (tester) async {
+    final stories = [
+      for (final title in ['A story with a long name that wraps', 'Short'])
+        StorySummary(
+          id: title,
+          title: title,
+          genre: 'Many races and monsters',
+          turn: 2,
+          worldTimeLabel: 'Day 1, dawn',
+        ),
+    ];
+    final app = AppHarness();
+    await app.launch(
+      tester,
+      location: '/library',
+      textScale: 2,
+      overrides: [storiesProvider.overrideWith((ref) async => stories)],
+    );
+    usePhone(tester, size: const Size(1280, 900));
+    await settle(tester);
+    Rect rect(String title) => tester.getRect(find.widgetWithText(StoryTile, title));
+    expect(rect('Short').top, rect('A story with a long name that wraps').top);
+    expect(rect('Short').height, rect('A story with a long name that wraps').height);
+    expect(tester.takeException(), isNull);
   });
 
   test('a story not yet begun says so', () {

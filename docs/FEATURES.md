@@ -44,7 +44,8 @@ Notes from public coverage of OOC (launched in North America in April 2026):
 
 The first version's state, checked against the code in WS18.
 
-- [x] Discover feed of starter premises, the signature worlds first (S1)
+- [x] Discover feed of starter premises, the signature worlds first (S1), under the latest story
+      to continue
 - [x] Create a story from your own premise: a drafted world and character to review and change (G1, G2)
 - [x] Play screen: streamed narration, suggested choices, Wait and Observe, free-text action (S2, S3)
 - [x] Memory engine: characters (alive, dead, missing, attitudes), factions, places, goals, leads,
