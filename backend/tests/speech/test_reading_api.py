@@ -10,6 +10,7 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.models import Role
+from billing import meter
 from billing.models import CreditHold, EntryKind, LedgerEntry
 from engine.context import StorySettings
 from engine.samples import cultivation_world
@@ -195,6 +196,55 @@ def test_a_model_failing_twice_is_unavailable_free_and_tried_again_later(
     assert not SceneAudio.objects.exists()
     assert not CreditHold.objects.filter(user=player).exists()
     assert read(client, story).json()["status"] == "ready"
+
+
+def voice_files(settings, story) -> list[str]:
+    folder = settings.PICTURE_ROOT / "stories" / str(story.id) / "voice"
+    return sorted(p.name for p in folder.iterdir()) if folder.exists() else []
+
+
+def test_a_part_another_request_finished_first_is_theirs_and_free(
+    client, model, story, player, monkeypatch, settings
+):
+    """A request whose claim ran out finishes after another one already kept the part: the first
+    to finish wins, and the later one charges nothing and leaves no file behind."""
+    keep = reading_api._keep
+
+    def finished_first(pk, *args):
+        get_storage().save(f"stories/{story.id}/voice/theirs.mp3", b"ID3", "audio/mpeg")
+        SceneAudio.objects.filter(pk=pk).update(
+            status=AudioStatus.READY,
+            storage_key=f"stories/{story.id}/voice/theirs.mp3",
+            mime_type="audio/mpeg",
+            duration_ms=1500,
+        )
+        return keep(pk, *args)
+
+    monkeypatch.setattr(reading_api, "_keep", finished_first)
+
+    body = read(client, story).json()
+
+    assert body["status"] == "ready" and body["duration_ms"] == 1500
+    assert "theirs.mp3" in body["url"]
+    assert not entries(player).exists()
+    assert voice_files(settings, story) == ["theirs.mp3"]
+
+
+def test_a_part_whose_charge_fails_is_not_kept(client, model, story, player, monkeypatch, settings):
+    """The part and its charge are saved together: a charge that fails keeps nothing, so the
+    next request reads it again and charges it then."""
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("the ledger is locked")
+
+    monkeypatch.setattr(meter, "charge", broken)
+
+    assert read(client, story).status_code == 500
+
+    assert not SceneAudio.objects.exists()
+    assert voice_files(settings, story) == []
+    assert not entries(player).exists()
+    assert not CreditHold.objects.filter(user=player).exists()
 
 
 def test_speech_that_cant_be_read_is_unavailable_and_free(client, model, story, player):

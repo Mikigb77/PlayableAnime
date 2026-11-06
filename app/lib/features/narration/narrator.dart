@@ -68,7 +68,12 @@ class Narrator extends ChangeNotifier {
     required this._player,
     required this._phone,
     required this._settings,
+    this.prefetchLead = const Duration(seconds: 20),
   });
+
+  /// How long before a part ends the next is asked for: enough for the model to read it, late
+  /// enough that a player who stops early isn't charged for a part they never hear (V10).
+  final Duration prefetchLead;
 
   final StudioVoiceApi Function() _studio;
   final AudioPlayback Function() _player;
@@ -154,9 +159,14 @@ class Narrator extends ChangeNotifier {
     required StudioVoice voice,
   }) async {
     final studio = _studio();
-    Future<_Fetched> fetch(int part) => studio
-        .part(storyId, turn, part, voice: voice.wire)
-        .then<_Fetched>(_Fetched.new, onError: (Object error) => _Fetched.failed(error));
+    Future<_Fetched> fetch(int part, {Duration after = Duration.zero}) async {
+      if (after > Duration.zero) await Future<void>.delayed(after);
+      // Stopped or replaced meanwhile: nothing more is read for it.
+      if (session != _session) return const _Fetched.failed(_Stopped());
+      return studio
+          .part(storyId, turn, part, voice: voice.wire)
+          .then<_Fetched>(_Fetched.new, onError: (Object error) => _Fetched.failed(error));
+    }
 
     // Where the next part starts in the spoken text: the phone's voice reads from there if the
     // studio voice stops.
@@ -173,8 +183,9 @@ class Narrator extends ChangeNotifier {
         return;
       }
       final last = part.part + 1 >= part.parts;
-      // The next part is read while this one plays.
-      if (!last) next = fetch(part.part + 1);
+      // The next part is read while this one plays, in time for its end.
+      final plays = part.status == StudioPartStatus.ready ? part.duration : null;
+      if (!last) next = fetch(part.part + 1, after: _lead(plays));
       final at = spoken.indexOf(part.text, offset);
       final end = at < 0 ? offset : at + part.text.length;
       if (part.status == StudioPartStatus.ready && part.url != null) {
@@ -210,6 +221,13 @@ class Narrator extends ChangeNotifier {
     } on Object {
       if (session == _session) _notify(NoPhoneVoice(storyId));
     }
+  }
+
+  /// How long into a part of [length] to ask for the next one.
+  Duration _lead(Duration? length) {
+    if (length == null) return Duration.zero;
+    final wait = length - prefetchLead;
+    return wait.isNegative ? Duration.zero : wait;
   }
 
   static StudioFallback _fallbackFor(Object? error) => switch (error) {
@@ -251,6 +269,11 @@ class Narrator extends ChangeNotifier {
     unawaited(_notices.close());
     super.dispose();
   }
+}
+
+/// The read was stopped before the part was asked for.
+class _Stopped {
+  const _Stopped();
 }
 
 /// A part, or why it couldn't be had.

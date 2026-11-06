@@ -330,6 +330,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final scenes = _play.story?.scenes ?? const <Scene>[];
     final count = await showRewindSheet(context, most: most, scenes: scenes);
     if (count == null || !mounted) return;
+    // The scenes being rewound go, and their reading with them.
+    _quiet();
     if (await _play.rewind(count) && mounted) {
       ref.invalidate(storiesProvider);
       _following = true;
@@ -433,6 +435,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
               _play.report(scene.turn, category: category, note: note, block: block),
         );
         if (hid != null && mounted) {
+          // A blocked scene is never read (F6, V8).
+          if (hid && _narrator.phaseOf(widget.storyId, scene.turn) != NarrationPhase.idle) {
+            _quiet();
+          }
           _snack(hid ? context.l10n.reportSentHidden : context.l10n.reportSent);
         }
     }

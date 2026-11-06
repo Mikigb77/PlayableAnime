@@ -16,13 +16,16 @@ The log line has sizes and numbers, never the words (T6).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Literal
 
 from asgiref.sync import sync_to_async
+from django.db import transaction
 from django.http import HttpRequest
 from django.utils import timezone
 from ninja import Field, Query, Router, Schema
@@ -32,9 +35,9 @@ from graph.llm import LLMBlocked, LLMUnavailable, Node, Reading, TurnTelemetry, 
 from lucid import logs
 from lucid.errors import ApiError, ErrorCode, field_error
 from media.api import absolute_url
-from media.storage import get_storage, signed_url
+from media.storage import delete_quietly, get_storage, signed_url
 from moderation.models import Report
-from speech.audio import to_mp3
+from speech.audio import Encoded, to_mp3
 from speech.models import AudioStatus, SceneAudio
 from speech.reading import reading_parts, reading_prompt
 from speech.voices import DEFAULT_VOICE, VOICES
@@ -46,8 +49,9 @@ logger = logging.getLogger("speech")
 reading_router = Router(tags=["speech"])
 
 # A part still `pending` after this was left by a request that died: the next request reads it
-# again. Longer than the voice model's deadline and one retry.
-STALE_AFTER_S = 120
+# again. Well past the longest read: the voice model's 40-second deadline three times over with
+# its backoff, then encoding and storing.
+STALE_AFTER_S = 300
 
 UNAVAILABLE_MESSAGE = "The studio voice isn't available right now. Try again in a moment."
 
@@ -114,15 +118,15 @@ async def scene_audio(
         text = parts[query.part]
         record.chars = len(text)
         row = await _claim(scene, query.voice, query.part, len(text))
-        if row.status == AudioStatus.PENDING and not row.claimed:
+        if row.status == AudioStatus.PENDING and row.token is None:
             record.outcome = "pending"
-            return _out(request, row, parts)
+            return await _out(request, row, parts)
         if row.status != AudioStatus.PENDING:
             record.outcome = "kept" if row.status == AudioStatus.READY else str(row.status)
             record.duration_ms = row.duration_ms
-            return _out(request, row, parts)
+            return await _out(request, row, parts)
         await _read(request, story, scene, row, text, telemetry, record)
-        return _out(request, row, parts)
+        return await _out(request, row, parts)
     except ApiError as exc:
         if record.outcome in ("ok", "pending"):
             record.outcome = str(exc.code)
@@ -140,10 +144,10 @@ async def _blocked(scene: Scene) -> bool:
 
 @dataclass
 class _Row:
-    """A part's row, and whether this request claimed it to read it."""
+    """A part's row, and this request's claim when it is the one to read it."""
 
     audio: SceneAudio
-    claimed: bool
+    token: uuid.UUID | None
 
     @property
     def status(self) -> str:
@@ -157,22 +161,23 @@ class _Row:
 async def _claim(scene: Scene, voice: str, part: int, chars: int) -> _Row:
     """The part's row: one already read or refused, one another request is reading, or one this
     request claims to read, new or left behind by a request that died (`STALE_AFTER_S`)."""
+    token = uuid.uuid4()
     # In a savepoint, so a request that loses the race to create it finds the winner's row.
     audio, created = await SceneAudio.objects.aget_or_create(
         scene=scene,
         voice=voice,
         part=part,
-        defaults={"status": AudioStatus.PENDING, "chars": chars},
+        defaults={"status": AudioStatus.PENDING, "chars": chars, "claim": token},
     )
     if created:
-        return _Row(audio, claimed=True)
+        return _Row(audio, token)
     if audio.status != AudioStatus.PENDING:
-        return _Row(audio, claimed=False)
+        return _Row(audio, None)
     cutoff = timezone.now() - timedelta(seconds=STALE_AFTER_S)
     taken = await SceneAudio.objects.filter(
         pk=audio.pk, status=AudioStatus.PENDING, updated_at__lt=cutoff
-    ).aupdate(updated_at=timezone.now())
-    return _Row(audio, claimed=taken == 1)
+    ).aupdate(claim=token, updated_at=timezone.now())
+    return _Row(audio, token if taken == 1 else None)
 
 
 def model_backend():
@@ -193,14 +198,17 @@ async def _read(
     """Meters, reads, stores and charges one part. The meter refuses it first when the player is
     over the rate limit or the daily quota, or out of credits (T9, K2). A part that fails is
     never charged, and its row goes, so the next request tries again; a refused part stays
-    refused, at no charge."""
+    refused, at no charge. The part is kept and charged together, or not at all."""
     audio = row.audio
+    # This request's row, while it is still this request's to read.
+    mine = SceneAudio.objects.filter(pk=audio.pk, status=AudioStatus.PENDING, claim=row.token)
     try:
         ticket = await meter.astart(request.auth, meter.VOICE, byok=False)
     except ApiError:
-        await audio.adelete()
+        await mine.adelete()
         raise
     client = None
+    key = None
     try:
         client = await sync_to_async(_client, thread_sensitive=False)(story.rating, telemetry)
         record.read = True
@@ -213,37 +221,45 @@ async def _read(
             )
         except LLMBlocked:
             record.outcome = "blocked"
-            audio.status = AudioStatus.BLOCKED
-            await audio.asave(update_fields=["status", "updated_at"])
+            if await mine.aupdate(
+                status=AudioStatus.BLOCKED, claim=None, updated_at=timezone.now()
+            ):
+                audio.status = AudioStatus.BLOCKED
+            else:
+                await _lost(row)
             return
         except LLMUnavailable as exc:
             record.outcome = "unavailable"
-            await audio.adelete()
+            await mine.adelete()
             raise ApiError(ErrorCode.LLM_UNAVAILABLE, UNAVAILABLE_MESSAGE) from exc
         except ValueError as exc:
             # Speech in a form we can't read: worth a retry later, like a failed call.
             record.outcome = "unreadable_audio"
-            await audio.adelete()
+            await mine.adelete()
             raise ApiError(ErrorCode.LLM_UNAVAILABLE, UNAVAILABLE_MESSAGE) from exc
-        key = f"stories/{scene.story_id}/voice/{audio.id}.mp3"
-        await sync_to_async(get_storage().save, thread_sensitive=False)(
-            key, encoded.data, encoded.mime_type
+        # Named by the claim, so two requests reading the same part never share a file.
+        key = f"stories/{scene.story_id}/voice/{row.token}.mp3"
+        await asyncio.to_thread(get_storage().save, key, encoded.data, encoded.mime_type)
+        kept = await sync_to_async(_keep)(
+            audio.pk, key, encoded, ticket, telemetry.calls, scene.story_id, scene.turn
         )
-        audio.storage_key = key
-        audio.mime_type = encoded.mime_type
-        audio.duration_ms = encoded.duration_ms
-        audio.status = AudioStatus.READY
-        await audio.asave(
-            update_fields=["storage_key", "mime_type", "duration_ms", "status", "updated_at"]
-        )
+        if kept is None:
+            # Another request finished it first, or the story is gone: this file is no one's.
+            record.outcome = "lost"
+            await asyncio.to_thread(delete_quietly, key)
+            key = None
+            await _lost(row)
+            return
+        key = None  # it is the part's file now
+        row.audio = kept
         record.audio_bytes = len(encoded.data)
         record.duration_ms = encoded.duration_ms
-        # Charged once the file is kept, so a part the player paid for is always there.
-        await meter.acharge(ticket, telemetry.calls, story_id=scene.story_id, turn=scene.turn)
     except BaseException:
-        if audio.status == AudioStatus.PENDING and audio.pk is not None:
-            # Anything else that went wrong (storage, a cancelled request): let the next one try.
-            await SceneAudio.objects.filter(pk=audio.pk, status=AudioStatus.PENDING).adelete()
+        # Anything else that went wrong (storage, the charge, a cancelled request): let the next
+        # request try again, and leave no file behind.
+        await mine.adelete()
+        if key is not None:
+            await asyncio.to_thread(delete_quietly, key)
         raise
     finally:
         await meter.arelease(ticket)  # gives back the hold; nothing is held after a charge
@@ -251,16 +267,53 @@ async def _read(
             await client.aclose()
 
 
+def _keep(
+    pk: uuid.UUID,
+    key: str,
+    encoded: Encoded,
+    ticket: meter.Ticket,
+    calls: list,
+    story_id: uuid.UUID,
+    turn: int,
+) -> SceneAudio | None:
+    """Marks the part ready and charges it, together. The first request to finish a part wins,
+    even one whose claim ran out meanwhile: a finished reading is never thrown away for one still
+    in progress. A later finisher gets None and charges nothing."""
+    with transaction.atomic():
+        audio = SceneAudio.objects.select_for_update().filter(pk=pk).first()
+        if audio is None or audio.status != AudioStatus.PENDING:
+            return None
+        audio.storage_key = key
+        audio.mime_type = encoded.mime_type
+        audio.duration_ms = encoded.duration_ms
+        audio.status = AudioStatus.READY
+        audio.claim = None
+        audio.save()
+        # Charged with the file kept, so a part the player paid for is always there.
+        meter.charge(ticket, calls, story_id=story_id, turn=turn)
+        return audio
+
+
+async def _lost(row: _Row) -> None:
+    """The part as another request left it, once this one lost its claim. Gone with its story or
+    scene: not found."""
+    current = await SceneAudio.objects.filter(pk=row.audio.pk).afirst()
+    if current is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "Scene not found.")
+    row.audio = current
+
+
 def _client(rating: str, telemetry: TurnTelemetry):
     """Built off the event loop: the first real client imports the model SDK (B10)."""
     return build_client(rating=rating, recorder=telemetry, backend=model_backend())
 
 
-def _out(request: HttpRequest, row: _Row, parts: list[str]) -> AudioOut:
+async def _out(request: HttpRequest, row: _Row, parts: list[str]) -> AudioOut:
     audio = row.audio
     out = AudioOut(status=audio.status, part=audio.part, parts=len(parts), text=parts[audio.part])
     if audio.status == AudioStatus.READY:
-        url = signed_url(audio.storage_key)
+        # Signing in Cloud Storage is a call to IAM: off the event loop.
+        url = await asyncio.to_thread(signed_url, audio.storage_key)
         out.url = absolute_url(request, url.url)
         out.expires_at = url.expires_at
         out.duration_ms = audio.duration_ms
@@ -288,7 +341,7 @@ def _log(record: _Reading, telemetry: TurnTelemetry) -> None:
         "billable_cost_usd": summary["billable_cost_usd"],
         "retries": summary["retries"],
     }
-    quiet = record.outcome in ("ok", "kept", "pending", "blocked")
+    quiet = record.outcome in ("ok", "kept", "pending", "blocked", "lost")
     logger.log(
         logging.INFO if quiet else logging.WARNING,
         "Reading aloud %s",

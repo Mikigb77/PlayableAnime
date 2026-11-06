@@ -78,7 +78,13 @@ def test_the_same_narration_always_splits_the_same_way():
 def test_a_pathological_text_has_a_bounded_number_of_parts():
     narration = "\n\n".join([" ".join([SENTENCE] * 9)] * 40)
 
-    assert len(reading_parts(narration)) == MAX_PARTS
+    parts = reading_parts(narration)
+
+    assert len(parts) == MAX_PARTS
+    # Each part, the merged last one too, is a slice of the spoken text.
+    text = spoken_text(narration)
+    assert parts[-1].count("\n\n") > 0 and parts[-1] in text
+    assert text.endswith(parts[-1])
 
 
 def test_the_voice_gets_directions_then_the_passage():

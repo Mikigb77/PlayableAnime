@@ -51,9 +51,10 @@ def spoken_text(narration: str) -> str:
 
 def reading_parts(narration: str) -> list[str]:
     """The scene's spoken text in parts, in reading order. Empty when there is nothing to read."""
+    text = spoken_text(narration)
     parts: list[str] = []
     current = ""
-    for piece in _pieces(spoken_text(narration)):
+    for piece in _pieces(text):
         limit = FIRST_PART_CHARS if not parts else PART_CHARS
         if current and len(current) + 2 + len(piece.text) > limit:
             parts.append(current)
@@ -64,7 +65,12 @@ def reading_parts(narration: str) -> list[str]:
     if current:
         parts.append(current)
     if len(parts) > MAX_PARTS:
-        parts[MAX_PARTS - 1 :] = [" ".join(parts[MAX_PARTS - 1 :])]
+        # The rest of the text is the last part, paragraph breaks and all: each part is a slice
+        # of the spoken text, which the app reads from where a part starts.
+        end = 0
+        for part in parts[: MAX_PARTS - 1]:
+            end = text.index(part, end) + len(part)
+        parts[MAX_PARTS - 1 :] = [text[end:].strip()]
     return parts
 
 

@@ -36,6 +36,9 @@ class SceneAudio(models.Model):
     duration_ms = models.PositiveIntegerField(default=0)
     # How long the part's text was, to tell a narration that changed (it never does today).
     chars = models.PositiveIntegerField(default=0)
+    # The request reading it while `pending`: a request that lost its claim to a later one
+    # (`STALE_AFTER_S`) never deletes that one's row.
+    claim = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

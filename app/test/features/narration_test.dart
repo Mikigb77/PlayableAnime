@@ -275,6 +275,42 @@ void main() {
       await reading;
     });
 
+    test('the next part is asked for near the end of a long one, and not after a stop', () async {
+      narrator.dispose();
+      narrator = Narrator(
+        studio: () => studio,
+        player: () => player,
+        phone: () => phone,
+        settings: () async => settings,
+        prefetchLead: const Duration(milliseconds: 100),
+      );
+      for (final i in [0, 1]) {
+        studio.answers[i] = StudioPart(
+          status: StudioPartStatus.ready,
+          part: i,
+          parts: 3,
+          text: _parts[i],
+          url: 'https://audio.test/$i.mp3',
+          duration: const Duration(milliseconds: 300),
+        );
+      }
+      final reading = read();
+      await pumpEventQueue();
+      expect(studio.asked.map((a) => a.part), [0]);
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(studio.asked.map((a) => a.part), [0, 1]);
+
+      player.finish();
+      await pumpEventQueue();
+      expect(player.played.last, 'https://audio.test/1.mp3');
+      // Stopped while part 1 plays, before part 2 is due: it is never asked for.
+      await narrator.stop();
+      await reading;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(studio.asked.map((a) => a.part), [0, 1]);
+    });
+
     test('stop silences it at once and plays nothing more', () async {
       final reading = read();
       await pumpEventQueue();

@@ -1532,7 +1532,7 @@ rest are up to 700 characters (about 45 seconds) of whole paragraphs, split betw
 then words only when a paragraph is too long. The split depends only on the text, so a part's audio
 can be kept. `POST /v1/stories/{id}/scenes/{turn}/audio?part=&voice=` (`speech/reading_api.py`,
 [API.md](API.md#reading-aloud-v8-to-v10)) claims the part's `SceneAudio` row (unique per scene,
-voice and part; a row left `pending` for two minutes by a request that died is taken over), meters
+voice and part; a row left `pending` for five minutes by a request that died is taken over), meters
 it (`meter.VOICE`: 3 cents held, 30 parts a minute, 1,000 a day on our key), and calls the model
 layer's `ModelClient.read_aloud` on the `voice` node with the directions (`READING_STYLE`, which
 names no language) and the part. `GeminiBackend` sends it to `generate_content` with
@@ -1540,10 +1540,12 @@ names no language) and the part. `GeminiBackend` sends it to `generate_content` 
 studio voice always runs on our account), and returns Gemini's 24 kHz 16-bit PCM. `speech/audio.py`
 encodes it as 48 kbps mono MP3 with `lameenc` (LAME, about 350 KB a minute, playable on Android,
 iOS and every browser), and the file goes to the pictures' private bucket under
-`stories/{story_id}/voice/`, served by the same signed URLs. The part is charged once it is kept,
-with the real cost plus the margin, as a `voice` ledger entry. A refusal marks the part `blocked`
-for good, at no charge, and a failure (the model twice, or audio that can't be encoded) deletes the
-row so the next request tries again. Safety settings are left off, as for dictation: the player has
+`stories/{story_id}/voice/`, named by the request's claim, and served by the same signed URLs. The
+part is marked ready and charged in one transaction, with the real cost plus the margin, as a
+`voice` ledger entry: the first request to finish a part wins, and a later one (whose claim ran
+out) deletes its own file and charges nothing. A refusal marks the part `blocked` for good, at no
+charge, and a failure (the model twice, audio that can't be encoded, storage or the charge)
+deletes the row and the file, so the next request tries again. Safety settings are left off, as for dictation: the player has
 already read the scene under the story's rating (F5). A `post_delete` hook removes the file when
 its row goes with its story or account. The node has a 40-second deadline and one retry, and the
 deploy's `check_models` reads a sentence, transcribes the MP3 back with the speech model, and
@@ -1552,8 +1554,9 @@ fails if it heard the directions.
 **The app.** `app/lib/features/narration/` has one app-wide `Narrator` (a `ChangeNotifier` behind
 `narratorProvider`), so one scene is read at a time. Its studio voice asks the API for part 0,
 plays it with [`just_audio`](https://pub.dev/packages/just_audio) (ExoPlayer, AVPlayer, or an audio
-element on the web), and asks for the next part while one plays, asking again after a second while
-a part is `pending`. The device's voice uses [`flutter_tts`](https://pub.dev/packages/flutter_tts),
+element on the web), and asks for the next part about 20 seconds before the one playing ends (at
+once after a short part), so a part is rarely read and charged for a player who stopped, asking
+again after a second while a part is `pending`. The device's voice uses [`flutter_tts`](https://pub.dev/packages/flutter_tts),
 with the story's language (`en-US`, `es-ES`, `ca-ES`), the device's highest-quality voice for it,
 and the text in paragraphs (Android's engines take at most 4,000 characters at once). Every part
 answer carries its text: a `blocked` part is read in the device's voice, and when the studio voice
