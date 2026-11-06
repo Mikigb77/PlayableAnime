@@ -533,8 +533,9 @@ class _NameEditorState extends ConsumerState<_NameEditor> {
   }
 }
 
-/// The app's language (S10), kept on this device: the device's own, English or Spanish. Each
-/// language is named in itself, so a player who can't read the current one still finds theirs.
+/// The app's language (S10), kept on this device: the device's own or one the app has. The current
+/// choice opens a pop-up list that scrolls as languages are added. Each language is named in
+/// itself, so a player who can't read the current one still finds theirs.
 class _LanguageSection extends ConsumerWidget {
   const _LanguageSection();
 
@@ -542,33 +543,68 @@ class _LanguageSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final language = ref.watch(languageProvider);
-    final secondary = Theme.of(
-      context,
-    ).textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l10n.accountLanguageBody, style: secondary),
-          const SizedBox(height: Space.lg),
-          SegmentedButton<AppLanguage>(
-            key: const Key('account.language'),
-            segments: [
-              ButtonSegment(
-                value: AppLanguage.system,
-                label: Text(l10n.languageSystem),
-                icon: const Icon(Icons.translate_rounded),
-              ),
-              ButtonSegment(value: AppLanguage.english, label: Text(l10n.languageEnglish)),
-              ButtonSegment(value: AppLanguage.spanish, label: Text(l10n.languageSpanish)),
+    return ListTile(
+      key: const Key('account.language'),
+      leading: const Icon(Icons.translate_rounded),
+      title: Text(_languageName(l10n, language)),
+      subtitle: Text(l10n.accountLanguageBody),
+      trailing: const Icon(Icons.unfold_more_rounded),
+      onTap: () async {
+        // Read before the pop-up: the screen may be gone by the time it closes.
+        final languages = ref.read(languageProvider.notifier);
+        final picked = await showDialog<AppLanguage>(
+          context: context,
+          builder: (context) => _LanguagePicker(current: language),
+        );
+        if (picked != null) await languages.set(picked);
+      },
+    );
+  }
+}
+
+/// What a language choice is called: System in the app's language, each language in itself.
+String _languageName(AppLocalizations l10n, AppLanguage language) => switch (language) {
+  AppLanguage.system => l10n.languageSystem,
+  AppLanguage.english => l10n.languageEnglish,
+  AppLanguage.spanish => l10n.languageSpanish,
+  AppLanguage.catalan => l10n.languageCatalan,
+};
+
+/// The pop-up list of languages. Picking one closes it; the list scrolls when it is taller than
+/// the screen.
+class _LanguagePicker extends StatelessWidget {
+  const _LanguagePicker({required this.current});
+
+  final AppLanguage current;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      key: const Key('account.language.picker'),
+      title: Text(l10n.accountLanguage),
+      contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: RadioGroup<AppLanguage>(
+          groupValue: current,
+          onChanged: (picked) => Navigator.of(context).pop(picked),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final language in AppLanguage.values)
+                RadioListTile<AppLanguage>(
+                  value: language,
+                  title: Text(_languageName(l10n, language)),
+                  secondary: language == AppLanguage.system
+                      ? const Icon(Icons.smartphone_outlined)
+                      : null,
+                ),
             ],
-            selected: {language},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) => ref.read(languageProvider.notifier).set(s.single),
           ),
-        ],
+        ),
       ),
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel))],
     );
   }
 }

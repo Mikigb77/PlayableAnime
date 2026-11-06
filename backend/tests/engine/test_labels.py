@@ -227,3 +227,39 @@ def test_the_scene_time_bar_in_spanish():
 
     assert (bar.label, bar.duration_label) == ("14 de mayo de 1974, 21:00", "+0 s")
     assert bar.personal_label == "Mundo: +0 s. Tú: +40 s."
+
+
+CA = Language.CA
+
+
+def test_the_world_s_dates_in_catalan():
+    # S10: a Catalan story's clock, with "d'" before a vowel sound.
+    sect = cultivation_world().bible.calendar
+    naples = grounded_world().bible.calendar
+    winter = Calendar(
+        style=CalendarStyle.CUSTOM,
+        months=[Month(name="Hivern", days=30)],
+        start_year=412,
+        start_second_of_day=17 * HOUR,
+    )
+    frost = winter.model_copy(update={"months": [Month(name="Lluna de Gebre", days=30)]})
+    april = naples.model_copy(update={"epoch": "1974-04-14T21:00:00"})
+
+    assert clock_label(sect, 2 * DAY + 10 * HOUR, CA) == "Dia 3, capvespre"
+    assert clock_label(sect, 17 * HOUR, CA) == "Dia 2, nit"
+    assert clock_label(naples, 2 * HOUR + 10 * MINUTE, CA) == "14 de maig de 1974, 23:10"
+    assert clock_label(april, 2 * HOUR + 10 * MINUTE, CA) == "14 d'abril de 1974, 23:10"
+    assert clock_label(frost, 2 * DAY, CA) == "Dia 3 de Lluna de Gebre, any 412, capvespre"
+    assert clock_label(winter, 2 * DAY, CA) == "Dia 3 d'Hivern, any 412, capvespre"
+
+
+def test_spans_and_rough_times_in_catalan():
+    assert span_label(400 * DAY, CA) == "1 a 35 d"
+    assert personal_label(0, 40, CA) == "Món: +0 s. Tu: +40 s."
+    assert ago_label(30, CA) == "fa un moment"
+    assert ago_label(HOUR, CA) == "fa una hora"
+    assert ago_label(2 * DAY, CA) == "fa 2 dies"
+    assert ago_label(90 * DAY, CA) == "fa 3 mesos"
+    assert in_label(10, CA) == "d'aquí a un moment"
+    assert in_label(3 * HOUR, CA) == "d'aquí a 3 hores"
+    assert in_label(800 * DAY, CA) == "d'aquí a 2 anys"

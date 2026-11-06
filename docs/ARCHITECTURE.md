@@ -1326,10 +1326,12 @@ object, and the raw world state as memory.
   screen (`/welcome?to=…`) and opens after sign-in.
 - **Fake API** (`--dart-define=API_MODE=fake`): an `http.Client` inside the app that speaks API.md,
   with one file per area, so the app runs and is tested end to end without a server.
-- **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb`, generated at
-  `flutter pub get` (S10). A story's own language is `StorySettings.language`, separate from the
-  app's: `backend/graph/language.py` puts it in the prompts of every model that writes what the
-  player reads.
+- **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb` and their
+  Catalan in `app_ca.arb`, generated at `flutter pub get` (S10). A story's own language is
+  `StorySettings.language`, separate from the app's: a new story takes the app's when it is set up
+  and keeps it for good. `backend/graph/language.py` puts it in the prompts of every model that
+  writes what the player reads, and `engine.labels`, `engine.visibility` and
+  `graph/drafting/view.py` hold the fixed words the server writes in it.
 
 ## Bring your own key
 
@@ -1486,8 +1488,8 @@ Channels or a small ASGI WebSocket route, and a single action rarely runs long e
 **This device: the phone's own recognizer.** The app uses
 [`speech_to_text`](https://pub.dev/packages/speech_to_text) (7.5.0, September 2026, for Android,
 iOS, macOS and web) over the platform recognizers. Audio never reaches our backend: the app puts
-the transcript in the box as the player speaks. It listens for the story's language (`en-US` or
-`es-ES`, V4, S10), not the phone's, so English spoken to a phone set to Spanish is heard as
+the transcript in the box as the player speaks. It listens for the story's language (`en-US`,
+`es-ES` or `ca-ES`, V4, S10), not the phone's, so English spoken to a phone set to Spanish is heard as
 English.
 
 - **iOS:** `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are in

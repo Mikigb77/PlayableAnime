@@ -168,34 +168,37 @@ void main() {
     expect(find.textContaining('Lin Feng'), findsOneWidget);
   });
 
-  testWidgets('a draft is written, dictated and started in the app\'s language (S10)', (
-    tester,
-  ) async {
-    tester.platformDispatcher.localesTestValue = const [Locale('es', 'ES')];
-    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
-    final app = AppHarness();
-    await app.launch(tester, location: '/create?premise=outer-disciple');
-    final es = await AppLocalizations.delegate.load(const Locale('es'));
+  for (final (language, heard) in [('es', 'es-ES'), ('ca', 'ca-ES')]) {
+    testWidgets(
+      'a draft is written, dictated and started in the app\'s language: $language (S10)',
+      (tester) async {
+        tester.platformDispatcher.localesTestValue = [Locale(language, 'ES')];
+        addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+        final app = AppHarness();
+        await app.launch(tester, location: '/create?premise=outer-disciple');
+        final words = await AppLocalizations.delegate.load(Locale(language));
 
-    await tester.tap(find.byType(MicButton).first);
-    await tester.pump();
-    expect(app.speech.listens.last.localeId, 'es-ES');
-    await tester.tap(find.byTooltip(es.micStop));
-    await tester.pump();
+        await tester.tap(find.byType(MicButton).first);
+        await tester.pump();
+        expect(app.speech.listens.last.localeId, heard);
+        await tester.tap(find.byTooltip(words.micStop));
+        await tester.pump();
 
-    await scrollTo(tester, find.text(es.createDraftAction));
-    await tapAndSettle(tester, find.text(es.createDraftAction), frames: 12);
-    expect(app.sent('POST', (p) => p == '/v1/drafts').single.json['language'], 'es');
+        await scrollTo(tester, find.text(words.createDraftAction));
+        await tapAndSettle(tester, find.text(words.createDraftAction), frames: 12);
+        expect(app.sent('POST', (p) => p == '/v1/drafts').single.json['language'], language);
 
-    await scrollTo(tester, find.text(es.reviewStart));
-    await tapAndSettle(tester, find.text(es.reviewStart), frames: 12);
-    expect(find.byType(StoryScreen), findsOneWidget);
-    final id = Uri.decodeComponent(app.location(tester).split('/').last);
-    final story = app.backend.data.stories
-        .ownedBy(FakeAuthState.demoUserId)
-        .where((s) => s.id == id);
-    expect(story.single.settings['language'], 'es');
-  });
+        await scrollTo(tester, find.text(words.reviewStart));
+        await tapAndSettle(tester, find.text(words.reviewStart), frames: 12);
+        expect(find.byType(StoryScreen), findsOneWidget);
+        final id = Uri.decodeComponent(app.location(tester).split('/').last);
+        final story = app.backend.data.stories
+            .ownedBy(FakeAuthState.demoUserId)
+            .where((s) => s.id == id);
+        expect(story.single.settings['language'], language);
+      },
+    );
+  }
 
   testWidgets('a teen account cannot pick Mature (F8)', (tester) async {
     final app = AppHarness()..maxRating = 'teen';

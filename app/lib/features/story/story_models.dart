@@ -448,8 +448,8 @@ class StorySettings {
   /// Whether scenes suggest choices (S2).
   final bool suggestions;
 
-  /// The language new scenes are written in, `en` or `es` (S10). Switching it changes only what
-  /// comes next: what the story has already told stays in the language it was written in.
+  /// The language the story is written in, `en`, `es` or `ca` (S10): the one it started in. It
+  /// never changes, so the settings don't offer it and a PATCH never sends it.
   final String language;
 
   Json toJson() => {
@@ -460,7 +460,6 @@ class StorySettings {
     'event_frequency': eventFrequency,
     'images': images,
     'suggestions': suggestions,
-    'language': language,
   };
 
   /// Only the fields that differ from [base], for a PATCH that leaves the rest as they are on the
@@ -481,7 +480,6 @@ class StorySettings {
     String? eventFrequency,
     String? images,
     bool? suggestions,
-    String? language,
   }) => StorySettings(
     narrationLength: narrationLength ?? this.narrationLength,
     tone: tone == null ? this.tone : (tone.trim().isEmpty ? null : tone.trim()),
@@ -489,7 +487,7 @@ class StorySettings {
     eventFrequency: eventFrequency ?? this.eventFrequency,
     images: images ?? this.images,
     suggestions: suggestions ?? this.suggestions,
-    language: language ?? this.language,
+    language: language,
   );
 
   @override
