@@ -21,6 +21,13 @@ Thinking = Literal["minimal", "low", "medium", "high"]
 
 Provider = Literal["vertex", "gemini_api", "fake"]
 
+# The validation context the client reads a model's structured answer with (`ModelClient`). A
+# schema may read model output leniently only when MODEL_OUTPUT is set, so what code builds stays
+# strict, and it notes each repair it makes in the context's REPAIRS list, as text with no value
+# in it (T6). The client logs the repairs once per answer, with the call.
+MODEL_OUTPUT = "model_output"
+REPAIRS = "repairs"
+
 
 class Node(StrEnum):
     """The model roles, each with its own model in config (B6)."""
