@@ -79,6 +79,9 @@ class StorySettings(EngineModel):
     event_frequency: EventFrequency = EventFrequency.NORMAL
     images: ImageSetting = ImageSetting.KEY_MOMENTS
     suggestions: bool = True
+    # S10: the language the story is written in from the next scene on. What it already told
+    # stays in the language it was written in.
+    language: Language = Language.EN
 
 
 class TurnContext(EngineModel):

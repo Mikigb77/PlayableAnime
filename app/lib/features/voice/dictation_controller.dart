@@ -42,8 +42,9 @@ class DictationController extends ChangeNotifier {
   /// Writes into the box and records that the words were dictated (V7).
   final InputModeTracker tracker;
 
-  /// The story's language for recognition (V4).
-  final String? localeId;
+  /// The BCP-47 tag to listen for, such as [storyLanguage]. A story can switch languages (S10),
+  /// and the next dictation listens for the new one.
+  String? localeId;
 
   /// The story or draft the words are for, whose names online dictation listens for (C6).
   final SpeechContext context;

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
 import 'package:playable_anime/features/create/draft_widgets.dart';
@@ -69,6 +70,7 @@ void main() {
     expect(app.sent('POST', (p) => p == '/v1/drafts').single.json, {
       'premise': 'A lighthouse keeper finds a door in the sea.',
       'rating': 'mature',
+      'language': 'en',
     });
 
     // The review: title, both parts, and the settings.
@@ -161,8 +163,38 @@ void main() {
     expect(app.sent('POST', (p) => p == '/v1/drafts').single.json, {
       'premise_id': 'outer-disciple',
       'rating': 'teen',
+      'language': 'en',
     });
     expect(find.textContaining('Lin Feng'), findsOneWidget);
+  });
+
+  testWidgets('a draft is written, dictated and started in the app\'s language (S10)', (
+    tester,
+  ) async {
+    tester.platformDispatcher.localesTestValue = const [Locale('es', 'ES')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    final app = AppHarness();
+    await app.launch(tester, location: '/create?premise=outer-disciple');
+    final es = await AppLocalizations.delegate.load(const Locale('es'));
+
+    await tester.tap(find.byType(MicButton).first);
+    await tester.pump();
+    expect(app.speech.listens.last.localeId, 'es-ES');
+    await tester.tap(find.byTooltip(es.micStop));
+    await tester.pump();
+
+    await scrollTo(tester, find.text(es.createDraftAction));
+    await tapAndSettle(tester, find.text(es.createDraftAction), frames: 12);
+    expect(app.sent('POST', (p) => p == '/v1/drafts').single.json['language'], 'es');
+
+    await scrollTo(tester, find.text(es.reviewStart));
+    await tapAndSettle(tester, find.text(es.reviewStart), frames: 12);
+    expect(find.byType(StoryScreen), findsOneWidget);
+    final id = Uri.decodeComponent(app.location(tester).split('/').last);
+    final story = app.backend.data.stories
+        .ownedBy(FakeAuthState.demoUserId)
+        .where((s) => s.id == id);
+    expect(story.single.settings['language'], 'es');
   });
 
   testWidgets('a teen account cannot pick Mature (F8)', (tester) async {

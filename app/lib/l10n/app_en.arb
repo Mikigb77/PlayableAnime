@@ -888,6 +888,11 @@
   "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
   "settingsSuggestions": "Suggested choices",
   "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
+  "settingsLanguage": "Story language",
+  "@settingsLanguage": {
+    "description": "Story setting: the language new scenes are written in (S10)."
+  },
+  "settingsLanguageHelp": "New scenes are written in it. What the story has already told stays as it is.",
   "settingsNextScene": "Changes apply from the next scene.",
   "settingsSave": "Save",
   "settingsSaved": "Saved. It applies from the next scene.",

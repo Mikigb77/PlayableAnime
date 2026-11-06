@@ -12,7 +12,7 @@ from enum import StrEnum
 from django.conf import settings as django_settings
 from django.db import models
 
-from engine.context import Difficulty, EventFrequency
+from engine.context import Difficulty, EventFrequency, Language
 from engine.state import GiftStrength, PhysicsMode
 from stories.models import Rating, Story
 
@@ -51,6 +51,9 @@ class Draft(models.Model):
     event_frequency = models.CharField(
         max_length=16, choices=_choices(EventFrequency), default=EventFrequency.NORMAL.value
     )
+    # S10: the language the drafter writes in, from the app's language when the draft was made.
+    # The story starts in it.
+    language = models.CharField(max_length=8, choices=_choices(Language), default=Language.EN.value)
     # Set when the player starts the story; a started draft can't change. Deleting the story
     # deletes its draft, which holds the story's hidden truth.
     story = models.OneToOneField(

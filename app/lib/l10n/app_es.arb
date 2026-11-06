@@ -489,6 +489,8 @@
   "settingsPicturesHelp": "Las imágenes usan créditos. Siempre puedes ilustrar cualquier escena.",
   "settingsSuggestions": "Opciones sugeridas",
   "settingsSuggestionsHelp": "Algunas ideas después de cada escena. Esperar y Observar siempre están.",
+  "settingsLanguage": "Idioma de la historia",
+  "settingsLanguageHelp": "Las escenas nuevas se escriben en él. Lo que la historia ya ha contado se queda como está.",
   "settingsNextScene": "Los cambios se aplican desde la próxima escena.",
   "settingsSave": "Guardar",
   "settingsSaved": "Guardado. Se aplica desde la próxima escena.",

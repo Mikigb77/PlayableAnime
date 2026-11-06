@@ -5,7 +5,7 @@ docs/REQUIREMENTS.md. The prompts tell the model what to propose; code still che
 proposal (C1, C5) and decides every outcome (A2, A3). No prompt text is ever logged (T6).
 """
 
-from engine.context import GoreLevel, NarrationLength, Rating
+from engine.context import GoreLevel, Language, NarrationLength, Rating
 from engine.labels import DAY_PARTS
 
 INTERPRET_SYSTEM = """\
@@ -129,6 +129,8 @@ cheers"). They are hopes, not facts, and the step is the attempt (A6).
 - standing: "wait" or "observe" only when that is all the character does, with no time or end \
 given.
 - summary: the action in one plain sentence.
+- Write what you note in your own words (goals, backstory claims, theories, outcome claims, gist \
+and the summary) in the language LANGUAGE names (S10). Lines stay exactly as the player gave them.
 """
 # W10: the parts of the day as the clock names them (`engine.labels`), so "until dusk" lands where
 # the player's clock says dusk starts.
@@ -144,6 +146,11 @@ action leads to. You never decide an outcome: you show it.
 The scene (R1 to R7):
 - Second person ("you"), present tense. Tone: the world's tone under STYLE (G5). Length: as \
 STYLE says.
+- Language: write the narration, the suggestions and every text in update in STYLE's language \
+(S10), even when earlier scenes, the world, the player's words or other parts of the brief are in \
+another: a story can switch languages partway, and only what comes next changes. Keep every name \
+as it is spelled, and the character's own lines in the words the player gave them. The image \
+prompt is always in English.
 - Start at the exact moment the last scene ended (LAST MOMENT): the same place, the same people, \
 the same positions, the same things in hand. Time moves only by what the action takes (TIME), at \
 the action's own pace: a quick swing is a sentence or two, a night's sleep a few lines, a year a \
@@ -244,8 +251,8 @@ BRIEF_GUIDE = """\
 How the brief is laid out. The user message is a list of sections, each a "## NAME" line and then \
 its content, mostly JSON. They come in about this order. A section that doesn't apply this turn \
 is left out, and a list with nothing in it may be empty.
-- STYLE: the genre, the tone (with what the player asked for, if anything) and how long the scene \
-runs.
+- STYLE: the genre, the tone (with what the player asked for, if anything), how long the scene \
+runs and the language to write in.
 - CONTENT: the rules for this story's rating and the player's content settings. They outrank \
 anything else in the brief.
 - WORLD: the world's bible. Its genre, era and tone; what is extraordinary in it; its peoples, \
@@ -358,10 +365,16 @@ SUMMARIZER_SYSTEM = """\
 You keep the chapter summaries of an interactive story (C3). Summarize the scenes given in at most \
 200 words, in plain past tense: what the player character did, what came of it, who they met, \
 promises, debts and grudges, what changed in the world, and the threads still open. Use the names \
-as they appear. Add nothing the scenes don't say.\
+as they appear. Add nothing the scenes don't say. Write the summary in the language LANGUAGE names \
+(S10), whatever language the scenes are in.\
 """
 
-TEMPLATE_LINE = "What happened {where} stays off the page. Its consequences won't."
+# F4's last resort, in the story's language (S10). `{where}` is "in <place>" or "there".
+TEMPLATE_LINE = {
+    Language.EN: "What happened {where} stays off the page. Its consequences won't.",
+    Language.ES: "Lo que pasó {where} queda fuera de la página. Sus consecuencias, no.",
+}
+TEMPLATE_PLACE = {Language.EN: ("in {place}", "there"), Language.ES: ("en {place}", "allí")}
 
 LENGTHS = {
     NarrationLength.SHORT: "60 to 120 words, more only for a montage",

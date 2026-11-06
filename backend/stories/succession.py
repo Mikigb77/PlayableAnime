@@ -31,7 +31,7 @@ from engine.succession import STANDING, Lot, Station
 from graph.drafting import successor as drafting
 from graph.drafting.view import character_lines, public_text
 from lucid.errors import field_error, version_conflict
-from stories import endings, rewind
+from stories import endings, responses, rewind
 from stories.models import Story
 
 
@@ -168,18 +168,26 @@ async def draw(request: HttpRequest, story: Story, heir_id: str | None = None) -
         # new.
         seed = f"story={story.pk}/ending={ending.turn or state.turn}/successor={count}"
         lot = succession.draw(state, SeededRng(seed))
+    language = responses.settings_of(story).language
     async with model_call(
         request, rating=story.rating, action="successor", premise_id=None
     ) as call:
         if heir is not None:
             proposal = await drafting.propose_heir(
-                call.client, now, character, years=heir.years, rating=story.rating
+                call.client,
+                now,
+                character,
+                years=heir.years,
+                rating=story.rating,
+                language=language,
             )
             character, situation = drafting.build_heir(
                 now, character, proposal, grown=heir.jump_s > 0
             )
         else:
-            proposal = await drafting.propose(call.client, state, lot, rating=story.rating)
+            proposal = await drafting.propose(
+                call.client, state, lot, rating=story.rating, language=language
+            )
             character, situation = drafting.build(state, lot, proposal)
         # Read as they will be once they carry the story on, so the old player character's goals
         # and what they knew aren't theirs.

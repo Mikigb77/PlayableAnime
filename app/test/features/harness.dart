@@ -28,6 +28,9 @@ class AppHarness {
   final FakeBackend backend;
   final store = MemorySessionStore();
 
+  /// The recognizer every mic in the app uses.
+  final speech = FakeSpeechEngine();
+
   /// Makes the demo account an adult's or a teen's (F8), before sign-in: the limit follows the
   /// birth date, as on the server.
   set maxRating(String rating) {
@@ -72,7 +75,7 @@ class AppHarness {
           httpClientProvider.overrideWithValue(backend),
           apiBaseUrlProvider.overrideWithValue(FakeBackend.baseUrl),
           sessionStoreProvider.overrideWithValue(store),
-          speechEngineProvider.overrideWithValue(FakeSpeechEngine()),
+          speechEngineProvider.overrideWithValue(speech),
           ...overrides,
         ],
         child: const App(),
