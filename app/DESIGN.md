@@ -52,11 +52,11 @@ genre touches the interface.
 | --- | --- | --- |
 | lucid | `#E3B66B` | The app outside stories, and any genre not listed |
 | jade | `#5CC9A7` | Cultivation, xianxia, wuxia, martial |
-| azure | `#84A9F5` | Knights and aura, chivalry |
-| ember | `#F08A5D` | Many races and monsters, fantasy, dungeons |
+| azure | `#84A9F5` | Knights and aura, chivalry, superpowers |
+| ember | `#F08A5D` | Many races and monsters, fantasy, dungeons, post-apocalyptic |
 | violet | `#B08CFA` | Reincarnation, isekai, regression |
 | crimson | `#EF7A82` | Grounded modern, crime, mafia, noir |
-| cyan | `#4FCFE0` | Science fiction, space, cyber |
+| cyan | `#4FCFE0` | Science fiction, space, cyberpunk, mecha |
 | orchid | `#DD8BE8` | Supernatural, urban fantasy, horror |
 
 Wrap a story's screens in `StoryTheme(genre: …)`. It animates the accent when the story loads.

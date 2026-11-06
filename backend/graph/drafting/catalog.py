@@ -33,6 +33,8 @@ class PremiseTemplate:
     - `extraordinary`: kinds that must exist at this prevalence, or must not (`none`).
     - `grounded_rule_id`: while this rule holds, nothing extraordinary exists at all and nobody
       has a power (G8).
+    - `exclusive_rule_id`: while this rule holds, the template's own kinds are the only
+      extraordinary things there are (G8), such as implants in a world without magic.
     - `ladder`: the genre's power ladder, used when the model proposes none (G18).
     - `peoples`: races the world must have (G23).
     - `gift`: the gift strength the premise grants unless the player picks another (G22).
@@ -42,6 +44,7 @@ class PremiseTemplate:
     rules: tuple[WorldRule, ...] = ()
     extraordinary: tuple[Extraordinary, ...] = ()
     grounded_rule_id: str | None = None
+    exclusive_rule_id: str | None = None
     ladder: PowerLadder | None = None
     peoples: tuple[People, ...] = ()
     gift: GiftStrength | None = None
@@ -136,6 +139,9 @@ _QI = _kind(
     "Realms from Qi Condensation to Nascent Soul and beyond.",
 )
 
+_HUMANS = People(id="humans", name="humans")
+_ELVES = People(id="elves", name="elves", lifespan_years=600)
+_DWARVES = People(id="dwarves", name="dwarves", lifespan_years=300)
 _AURA_RANKS = _ladder(
     "aura-ranks",
     "aura ranks",
@@ -147,7 +153,8 @@ _AURA_RULE = _rule(
 )
 _AURA = _kind("aura", "aura", Prevalence.COMMON, "aura-exists", "From squire to saint.")
 # Science fiction with something beyond what a real person could do, such as implants or giant
-# war machines, is not grounded (G8), but it still has no magic.
+# war machines, is not grounded (G8), but it still has no magic: its template's kinds are the only
+# extraordinary things in it (`exclusive_rule_id`).
 _NO_MAGIC_RULE = _rule(
     "no-supernatural", "No magic and nothing supernatural: only science, and that won't change."
 )
@@ -224,12 +231,7 @@ STARTER_PREMISES: tuple[StarterPremise, ...] = (
                 ["Iron", "Bronze", "Silver", "Gold", "Mithril"],
                 sensing=False,
             ),
-            peoples=(
-                People(id="humans", name="humans"),
-                People(id="elves", name="elves", lifespan_years=600),
-                People(id="dwarves", name="dwarves", lifespan_years=300),
-                People(id="beastkin", name="beastkin"),
-            ),
+            peoples=(_HUMANS, _ELVES, _DWARVES, People(id="beastkin", name="beastkin")),
             notes="The beast tide comes every ten years, and this one is early.",
         ),
     ),
@@ -361,12 +363,7 @@ STARTER_PREMISES: tuple[StarterPremise, ...] = (
                 ["D-rank", "C-rank", "B-rank", "A-rank", "S-rank"],
                 sensing=False,
             ),
-            peoples=(
-                People(id="humans", name="humans"),
-                People(id="elves", name="elves", lifespan_years=600),
-                People(id="dwarves", name="dwarves", lifespan_years=300),
-                People(id="lizardfolk", name="lizardfolk"),
-            ),
+            peoples=(_HUMANS, _ELVES, _DWARVES, People(id="lizardfolk", name="lizardfolk")),
             notes=(
                 "The dragon egg is hatching, and the party that betrayed the character is coming "
                 "back for it. Why they did it is a mystery."
@@ -565,6 +562,7 @@ STARTER_PREMISES: tuple[StarterPremise, ...] = (
                     "A frame stands as tall as a tower and answers only its pilot.",
                 ),
             ),
+            exclusive_rule_id="no-supernatural",
             notes=(
                 "The swarm's next wave reaches the walls in five days. Why the old frame woke "
                 "for the character is a mystery."
@@ -646,6 +644,7 @@ STARTER_PREMISES: tuple[StarterPremise, ...] = (
                     "Implants push a body past its limits, at a price.",
                 ),
             ),
+            exclusive_rule_id="no-supernatural",
             notes=(
                 "The server is wiped at midnight tomorrow. Who the girl was, and whether she is "
                 "still a person, is a mystery."

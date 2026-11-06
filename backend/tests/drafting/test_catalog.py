@@ -13,6 +13,7 @@ from engine.state import GiftStrength, Prevalence
 from graph.drafting import samples
 from graph.drafting.assemble import HUMAN_PEAK, DraftOptions, assemble
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.prompts import template_block
 from graph.drafting.schema import DraftProposal, ExtraordinaryP, RuleP
 from graph.drafting.view import gift_strength, world_lines
 from graph.llm import fill_schema
@@ -44,6 +45,7 @@ def _rebel(grounded: bool) -> DraftProposal:
 
 
 def _proposals(grounded: bool) -> dict[str, DraftProposal]:
+    """`grounded`: the genre has no magic, so the opposite sample and the rebel bring qi."""
     return {
         "opposite sample": samples.cultivation() if grounded else samples.naples(),
         "filler": _filler(),
@@ -112,7 +114,8 @@ def test_template_rules_are_fixed_and_their_kinds_point_at_them():
 def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
     template = premise.template
     grounded = template.grounded_rule_id is not None
-    for name, proposal in _proposals(grounded).items():
+    exclusive = template.exclusive_rule_id is not None
+    for name, proposal in _proposals(grounded or exclusive).items():
         state = assemble(
             proposal.world,
             proposal.character,
@@ -144,6 +147,12 @@ def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
         elif any(k.prevalence is not Prevalence.NONE for k in template.extraordinary):
             assert not bible.grounded, where
             assert not any("Grounded" in r.text for r in bible.rules), where
+        # G8: where the genre's kinds are the only ones, the model's own kinds, their powers and
+        # any power ladder of theirs go.
+        if exclusive:
+            assert set(kinds) == {k.id for k in template.extraordinary}, where
+            if template.ladder is None:
+                assert bible.ladders == [], where
         # G18: the genre's ladder when the proposal brings none.
         if template.ladder is not None and not proposal.world.ladders:
             assert [ladder.id for ladder in bible.ladders] == [template.ladder.id], where
@@ -155,20 +164,45 @@ def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
 
 
 @pytest.mark.parametrize("premise_id", ["old-net", "war-frame"])
-def test_science_past_human_limits_has_no_magic_and_is_not_grounded(premise_id):
+@pytest.mark.parametrize("sample", ["naples", "cultivation"])
+def test_science_past_human_limits_has_no_magic_and_is_not_grounded(premise_id, sample):
     # G8: implants or a bonded war-frame go past what a real person could do, so the world isn't
-    # grounded, but magic still doesn't exist in it, whatever a grounded proposal says.
+    # grounded, but nothing else extraordinary exists in it, whether the proposal is grounded or
+    # brings qi cultivation, realms and a time power.
     template = starter(premise_id).template
-    proposal = samples.naples()
+    proposal = getattr(samples, sample)()
     state = assemble(proposal.world, proposal.character, DraftOptions(template=template))
     kinds = {k.id: k.prevalence for k in state.bible.extraordinary}
+    own = next(k.id for k in template.extraordinary if k.prevalence is not Prevalence.NONE)
 
-    assert kinds["supernatural"] is Prevalence.NONE
-    assert [k for k, prevalence in kinds.items() if prevalence is not Prevalence.NONE] == [
-        next(k.id for k in template.extraordinary if k.prevalence is not Prevalence.NONE)
-    ]
+    assert kinds == {"supernatural": Prevalence.NONE, own: kinds[own]}
+    assert kinds[own] is not Prevalence.NONE
     assert not state.bible.grounded
-    assert template.grounded_rule_id is None
+    assert state.bible.ladders == []
+    # The sample's time stop came from a kind that doesn't exist here.
+    assert state.characters["player"].sheet.powers == []
+    assert not any("Qi" in rule.text for rule in state.bible.rules)
+
+
+def test_letting_the_no_magic_rule_go_lets_other_kinds_in():
+    # G7: once the player lets the rule go, the genre no longer limits what exists.
+    template = starter("old-net").template
+    proposal = samples.cultivation()
+    options = DraftOptions(template=template, released_rules=frozenset({"no-supernatural"}))
+    state = assemble(proposal.world, proposal.character, options)
+
+    kinds = {k.id: k.prevalence for k in state.bible.extraordinary}
+    assert kinds["qi"] is Prevalence.COMMON and kinds["cybernetics"] is Prevalence.COMMON
+    assert "supernatural" not in kinds
+
+
+def test_the_prompt_says_a_genres_kinds_are_the_only_ones():
+    old_net = starter("old-net").template
+    assert "and no other extraordinary kinds." in template_block(old_net, frozenset())
+    released = template_block(old_net, frozenset({"no-supernatural"}))
+    assert "no other extraordinary kinds" not in released
+    beast_tide = starter("beast-tide").template
+    assert "no other extraordinary kinds" not in template_block(beast_tide, frozenset())
 
 
 def test_a_starter_that_grants_a_gift_sets_its_strength():

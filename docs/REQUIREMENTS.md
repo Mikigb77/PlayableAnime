@@ -256,7 +256,8 @@ change a fixed rule, as a logged retcon (C7).
 what it really is. In a grounded story, "I throw a fireball" is a man thrusting his palm at someone,
 and the people around him react to that (A7). The scene's details give the reason ("there is no
 magic in this world", A8), and the narrator never lectures. The same goes for NPCs: nobody in a
-grounded world gets a power the world doesn't have.
+grounded world gets a power the world doesn't have, and in a world whose only extraordinary thing
+is, say, cybernetics, nobody cultivates qi or casts spells.
 
 **G9 Events and consequences take the world's own form (P0).** The same kinds of event (E4) and
 faction response (W5) happen in every genre, in the shape the world gives them. In a mafia story, an

@@ -11,7 +11,9 @@ decides, and every rule here has a unit test.
 - **G8.** Nobody has a power the world doesn't have: in a world where nothing extraordinary exists,
   or from a kind that doesn't exist, a power is dropped. In such a world nobody goes past what a
   real person could do (A4, G6), so attributes stop at 5. When a starter premise grounds the
-  world, the model's own kinds, the rules tied only to them and any power ladder go too.
+  world, the model's own kinds, the rules tied only to them and any power ladder go too, and the
+  same goes when a starter's kinds are the only ones its world may have, such as implants in a
+  world without magic.
 - **G18.** Ladder rungs map to A8 tiers two apart, lowest first, and a character's rung sets their
   tier on the ladder's axis.
 - **G22.** The gift strength the player picked wins over the premise's and the model's, and `none`
@@ -492,6 +494,11 @@ class _Assembler:
             dropped = {k for k in kinds if k not in required_ids}
             for kind in kinds.values():
                 kind.prevalence = Prevalence.NONE
+            self.ladders.by_id.clear()
+        elif template.exclusive_rule_id and holds(template.exclusive_rule_id):
+            # G8: the genre's own kinds are the only extraordinary things there are, so the
+            # model's other kinds, their rules and a power ladder go, as in a grounded world.
+            dropped = {k for k in kinds if k not in required_ids}
             self.ladders.by_id.clear()
         elif any(kinds[k].prevalence is not Prevalence.NONE for k in required_ids):
             # The genre has something extraordinary, so a proposal that called the world

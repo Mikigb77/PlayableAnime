@@ -361,8 +361,9 @@ the direct database URL. It skips every cover that exists and draws the missing 
 premises draws anything: the first drew the first eleven for $0.37, and the one that adds the next
 twelve draws those for about $0.41. Our picture quota answered 429 after three quick drawings, so
 the covers are drawn 10 s apart, and one that runs out of quota is drawn again after a minute,
-twice at most. A cover that still fails, or is blocked, is left out and the covers job is marked
-failed, without failing the deploy; the next deploy tries it again. Until then, and for a premise
+twice at most. A cover that still fails, is blocked, or isn't reached before the job's 30 minutes
+run out is left out and the covers job is marked failed, without failing the deploy; the covers
+already drawn are kept, and the next deploy tries the rest again. Until then, and for a premise
 without a cover, Discover shows a glow in the genre's colour. The app shows a new cover the next
 time it loads the premises.
 
