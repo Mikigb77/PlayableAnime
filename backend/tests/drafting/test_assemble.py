@@ -3,6 +3,7 @@ G18, G22, C6, W15). The model proposes; these rules decide."""
 
 import pytest
 
+from engine.context import Language
 from engine.invariants import check_state
 from engine.state import (
     Activity,
@@ -17,6 +18,7 @@ from graph.drafting.assemble import (
     ACTIVE_FACTIONS,
     ACTIVE_NPCS,
     GROUNDED_RULE_TEXT,
+    GROUNDED_RULE_TEXT_ES,
     HUMAN_PEAK,
     PLAYER_FALLBACK_NAME,
     STOP_LASTS_S,
@@ -160,6 +162,21 @@ def test_a_world_with_no_kinds_is_grounded_with_a_fixed_rule():
 
     assert state.bible.grounded
     assert [(r.text, r.fixed) for r in state.bible.rules] == [(GROUNDED_RULE_TEXT, True)]
+
+
+def test_the_rules_code_writes_come_in_the_draft_s_language():
+    # S10: a Spanish draft gets its code-written rules in Spanish.
+    spanish = DraftOptions(language=Language.ES)
+    grounded = samples.naples_world().model_copy(update={"extraordinary": [], "rules": []})
+    aura = _world(
+        rules=[], extraordinary=[ExtraordinaryP(id="aura", kind="aura", prevalence="common")]
+    )
+
+    assert [
+        r.text for r in assemble(grounded, samples.naples_character(), spanish).bible.rules
+    ] == [GROUNDED_RULE_TEXT_ES]
+    [rule] = assemble(aura, _character(powers=[]), spanish).bible.rules
+    assert rule.text == "Aura: existe, y está en todas partes."
 
 
 def test_a_released_template_rule_no_longer_holds():

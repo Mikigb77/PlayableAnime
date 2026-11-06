@@ -123,7 +123,7 @@ def story_out(
         version=story.version,
         turn=story.turn,
         settings=settings_of(story),
-        clock=clock_view(state),
+        clock=clock_view(state, settings_of(story).language),
         scenes=scenes_out(story, scenes, request=request),
         cover_url=cover.url if cover else None,
         premise=story.premise,
@@ -158,7 +158,9 @@ def library(stories: Iterable[Story], *, request: HttpRequest | None) -> list[St
                 genre=story.genre,
                 rating=story.rating,
                 turn=story.turn,
-                world_time_label=clock_label(calendar, int(story.world_s or 0)),
+                world_time_label=clock_label(
+                    calendar, int(story.world_s or 0), settings_of(story).language
+                ),
                 cover_url=cover.url if cover else None,
                 ending=endings.of_story(story.ending),
                 updated_at=story.updated_at,
@@ -179,7 +181,7 @@ def with_clock(stories):
 def memory_out(story: Story, *, request: HttpRequest | None) -> MemoryView:
     """The Memory screen (C6) with the pictures the player has seen (M4)."""
     state = WorldState.model_validate(story.state)
-    view = memory_view(state)
+    view = memory_view(state, settings_of(story).language)
     portraits = portrait_urls(
         story, [state.player_id, *(person.id for person in view.people)], request=request
     )
@@ -198,7 +200,7 @@ def status_out(story: Story, *, request: HttpRequest | None = None) -> StatusVie
     """The `/status` screen (A8, G16) with the player character's portrait once it is drawn, the
     same one Memory shows (M4)."""
     state = WorldState.model_validate(story.state)
-    view = status_view(state)
+    view = status_view(state, settings_of(story).language)
     portraits = portrait_urls(story, [state.player_id], request=request)
     view.character.portrait_url = _url(portraits, state.player_id)
     return view

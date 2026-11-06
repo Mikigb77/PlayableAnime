@@ -598,6 +598,9 @@ def test_a_draft_in_spanish_is_written_and_started_in_spanish(player_client, mod
 
     assert draft["language"] == "es"
     assert draft["premise"] == SPANISH["naples-vendetta"].premise
+    # The words code adds to the summary come in Spanish too.
+    assert any(line.startswith("Objetivo: ") for line in draft["character_lines"])
+    assert "Sin poderes, porque en este mundo no existen." in draft["character_lines"]
     [request] = model.calls(Node.DRAFTER)
     assert "Spanish from Spain" in request.prompt.system
     assert SPANISH["naples-vendetta"].premise in request.prompt.messages[0].text

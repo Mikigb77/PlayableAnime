@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from engine.base import HOUR, MINUTE, TIER_MAX, YEAR
+from engine.context import Language
 from engine.invariants import InvariantError, check_state, is_real_name
 from engine.kin import ancestors
 from engine.state import (
@@ -150,6 +151,8 @@ GROUNDED_KIND = Extraordinary(
 )
 PLAYER_FALLBACK_NAME = "Wanderer"
 GROUNDED_RULE_TEXT = "Grounded: no magic and nothing supernatural, and that won't change."
+# S10: the rules code writes, in a Spanish draft.
+GROUNDED_RULE_TEXT_ES = "Realista: sin magia ni nada sobrenatural, y eso no cambiará."
 
 
 @dataclass(frozen=True)
@@ -161,6 +164,8 @@ class DraftOptions:
     gift: GiftStrength | None = None  # None: the premise's own, then the model's
     template: PremiseTemplate | None = None
     released_rules: frozenset[str] = frozenset()
+    # S10: the language of the rules code writes, such as "Grounded: no magic...".
+    language: Language = Language.EN
 
     def holds(self, rule_id: str) -> bool:
         """Whether a template rule still binds the draft (G7)."""
@@ -560,10 +565,13 @@ class _Assembler:
             if mentioned:
                 links.setdefault(kind_id, []).extend(mentioned)
                 continue
+            spanish = self.options.language is Language.ES
             if kind.prevalence is Prevalence.NONE and len(kinds) == 1:
-                text, rule_id = GROUNDED_RULE_TEXT, self.rules.add("no-supernatural")
+                text = GROUNDED_RULE_TEXT_ES if spanish else GROUNDED_RULE_TEXT
+                rule_id = self.rules.add("no-supernatural")
             else:
-                text, rule_id = _existence_text(kind), self.rules.add(f"{kind_id}-exists")
+                text = _existence_text(kind, self.options.language)
+                rule_id = self.rules.add(f"{kind_id}-exists")
             rule = WorldRule(id=rule_id, text=text, fixed=True, topic=RuleTopic.EXISTENCE)
             rules[rule_id] = rule
             existence.append(rule)
@@ -1154,8 +1162,17 @@ def _is_grounded_kind(kind: Extraordinary) -> bool:
     return " ".join(kind.kind.casefold().split()) == GROUNDED_KIND.kind
 
 
-def _existence_text(kind: Extraordinary) -> str:
-    return f"{_capital(kind.kind)}: {_PREVALENCE_WORDS[kind.prevalence]}."
+_PREVALENCE_WORDS_ES = {
+    Prevalence.NONE: "no existe, y eso no cambiará",
+    Prevalence.HIDDEN: "existe, y casi nadie lo sabe",
+    Prevalence.RARE: "existe, pero es poco común",
+    Prevalence.COMMON: "existe, y está en todas partes",
+}
+
+
+def _existence_text(kind: Extraordinary, language: Language = Language.EN) -> str:
+    words = _PREVALENCE_WORDS_ES if language is Language.ES else _PREVALENCE_WORDS
+    return f"{_capital(kind.kind)}: {words[kind.prevalence]}."
 
 
 def _age(age: int | None) -> int | None:
