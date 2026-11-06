@@ -6,7 +6,8 @@ import 'story_models.dart';
 
 /// One saved scene in the feed: what the player did, how long it took and when it ended (W10,
 /// W10a), any event (W16), the narration, its picture once painted (M3), the characters present
-/// (M4) and a footer that opens the details (A8) and the scene menu (F6, M2).
+/// (M4) and a footer that opens the details (A8), reads the scene aloud (V8) and opens the scene
+/// menu (F6, M2).
 class SceneView extends StatelessWidget {
   const SceneView({
     super.key,
@@ -16,6 +17,7 @@ class SceneView extends StatelessWidget {
     this.ornament = true,
     this.narrationKey,
     this.onDetails,
+    this.listen,
     this.onMore,
     this.onPictureError,
   });
@@ -32,6 +34,9 @@ class SceneView extends StatelessWidget {
   /// Marks the narration, so the screen can keep it in place when the scene lands.
   final Key? narrationKey;
   final VoidCallback? onDetails;
+
+  /// The listen button (V8), for a scene that can be read aloud.
+  final Widget? listen;
   final VoidCallback? onMore;
 
   final VoidCallback? onPictureError;
@@ -68,6 +73,7 @@ class SceneView extends StatelessWidget {
       narration: KeyedSubtree(key: narrationKey, child: NarrationText(scene.narration)),
       portraits: scene.portraits.isEmpty ? null : ScenePortraits(portraits: scene.portraits),
       onDetails: scene.details.isEmpty ? null : onDetails,
+      listen: listen,
       onMore: onMore,
     );
   }

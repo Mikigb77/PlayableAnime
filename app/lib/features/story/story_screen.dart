@@ -16,6 +16,9 @@ import '../account/account_repository.dart';
 import '../account/out_of_credits_sheet.dart';
 import '../create/create_story_screen.dart' show StartAgain;
 import '../library/library.dart';
+import '../narration/narration_settings.dart';
+import '../narration/narration_widgets.dart';
+import '../narration/narrator.dart';
 import '../voice/dictation_button.dart';
 import '../voice/input_mode.dart';
 import '../voice/speech_engine.dart';
@@ -34,8 +37,9 @@ import 'turn_error_card.dart';
 /// written with a calm reveal, older scenes loading as the player scrolls back, the suggested
 /// choices and the standing actions, and the composer with dictation (V1) and slash commands (S5).
 ///
-/// Every scene has its details (A8) and a menu to illustrate (M2) or report it (F6); the app bar
-/// opens `/status`, Memory and the story's settings (S6). A story that has no scenes yet, just
+/// Every scene has its details (A8), a listen button that reads it aloud (V8), and a menu to
+/// illustrate (M2) or report it (F6); the app bar opens `/status`, Memory and the story's settings
+/// (S6). A story that has no scenes yet, just
 /// started from a draft, plays its opening turn as soon as it opens, and so does a story someone
 /// new carries on after its ending (N6).
 class StoryScreen extends ConsumerStatefulWidget {
@@ -53,6 +57,8 @@ class StoryScreen extends ConsumerStatefulWidget {
 class _StoryScreenState extends ConsumerState<StoryScreen> {
   late final PlayController _play;
   late final StreamSubscription<PlayNotice> _notices;
+  late final Narrator _narrator;
+  late final StreamSubscription<NarrationNotice> _narration;
   final _action = TextEditingController();
   late final _mode = InputModeTracker(_action);
   final _focus = FocusNode();
@@ -82,12 +88,18 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       initialStory: widget.initialStory,
     )..addListener(_changed);
     _notices = _play.notices.listen(_onNotice);
+    _narrator = ref.read(narratorProvider)..addListener(_narrationChanged);
+    _narration = _narrator.notices.listen(_onNarration);
     unawaited(_play.start());
   }
 
   @override
   void dispose() {
     unawaited(_notices.cancel());
+    unawaited(_narration.cancel());
+    // Leaving the story ends its reading.
+    _narrator.removeListener(_narrationChanged);
+    unawaited(_narrator.stopStory(widget.storyId));
     _play
       ..removeListener(_changed)
       ..dispose();
@@ -111,6 +123,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final l10n = context.l10n;
     switch (notice) {
       case SceneSaved(:final turn):
+        unawaited(_readNew(turn));
         // The saved scene takes the streaming one's place, with its time and event above the
         // words: keep the words where the player is reading them.
         final before = _topOf(_pendingNarrationKey);
@@ -179,6 +192,62 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     }
   }
 
+  // ---- Reading aloud ------------------------------------------------------------------------
+
+  void _narrationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Reads [scene] aloud (V8), in the voice the player chose (V9).
+  void _listen(Scene scene) {
+    unawaited(
+      _narrator.read(
+        storyId: widget.storyId,
+        turn: scene.turn,
+        narration: scene.narration,
+        language: _play.story?.settings.language ?? 'en',
+      ),
+    );
+  }
+
+  /// A new scene, read as it lands when the player asked for that.
+  Future<void> _readNew(int turn) async {
+    final settings = await ref.read(narrationSettingsProvider.notifier).loaded();
+    if (!mounted || !settings.readNewScenes) return;
+    final scene = _play.story?.scenes.where((s) => s.turn == turn).firstOrNull;
+    if (scene != null && !_play.isBlocked(scene)) _listen(scene);
+  }
+
+  /// The player acted: the scene being read gives way to the next.
+  void _quiet() => unawaited(_narrator.stopStory(widget.storyId));
+
+  void _onNarration(NarrationNotice notice) {
+    if (!mounted || notice.storyId != widget.storyId) return;
+    final l10n = context.l10n;
+    switch (notice) {
+      case ReadOnPhone(reason: StudioFallback.outOfCredits):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(l10n.narrationOutOfCredits),
+              action: SnackBarAction(
+                label: l10n.accountCredits,
+                onPressed: () => unawaited(context.push(Routes.credits)),
+              ),
+            ),
+          );
+      case ReadOnPhone(reason: StudioFallback.quota):
+        _snack(l10n.narrationQuota);
+      case ReadOnPhone(reason: StudioFallback.unavailable):
+        _snack(l10n.narrationUnavailable);
+      case NoPhoneVoice():
+        _snack(l10n.narrationNoDeviceVoice);
+      case StudioCreditsSpent():
+        if (ref.exists(meProvider)) ref.read(meProvider.notifier).refreshQuietly();
+    }
+  }
+
   void _snack(String text) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -200,6 +269,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     }
     final mode = _mode.mode.wire;
     _following = true;
+    _quiet();
     final started = await _play.act(text, inputMode: mode);
     // The turn is under way: empty the box, unless the player has started writing the next one.
     if (started && mounted && _action.text.trim() == text) _action.clear();
@@ -244,6 +314,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     );
     if (!(sure ?? false) || !mounted) return;
     _following = true;
+    _quiet();
     final sent = _action.text.trim();
     final started = await _play.end(note: note, inputMode: mode, label: note ?? l10n.endLabel);
     if (started && mounted && _action.text.trim() == sent) _action.clear();
@@ -288,11 +359,13 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   void _choose(Choice choice) {
     _following = true;
+    _quiet();
     unawaited(_play.choose(choice));
   }
 
   void _stand(StandingAction action) {
     _following = true;
+    _quiet();
     unawaited(_play.stand(action.wire, label: action.label(context.l10n)));
   }
 
@@ -580,6 +653,14 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   ],
                 ),
               ),
+              if (_narrator.isReading(widget.storyId))
+                ReadingBar(
+                  deviceVoice: _narrator.voice == NarrationVoice.device,
+                  readNewScenes: ref.watch(narrationSettingsProvider).readNewScenes,
+                  onReadNewScenes: (on) =>
+                      ref.read(narrationSettingsProvider.notifier).setReadNewScenes(on),
+                  onStop: () => unawaited(_narrator.stop()),
+                ),
               // A story at its ending takes no more turns (N6): its card says what's next.
               if (story.ending == null)
                 Composer(
@@ -630,6 +711,15 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         ornament: scene != last || pending != null,
         narrationKey: _narrationKeys.putIfAbsent(scene.turn, GlobalKey.new),
         onDetails: () => showSceneDetails(context, scene),
+        // A scene the player blocked (F6) is never read.
+        listen: _play.isBlocked(scene) || scene.narration.trim().isEmpty
+            ? null
+            : ListenButton(
+                key: ValueKey('scene.listen.${scene.turn}'),
+                phase: _narrator.phaseOf(widget.storyId, scene.turn),
+                onListen: () => _listen(scene),
+                onStop: () => unawaited(_narrator.stop()),
+              ),
         onMore: () => _sceneMenu(scene),
         onPictureError: () => _play.pictureFailed(scene.turn),
       ),

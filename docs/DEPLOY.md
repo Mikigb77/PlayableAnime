@@ -321,9 +321,10 @@ lines, so the reason is in GitHub without opening the Cloud console.
 The first deploy put the API online with every call to Gemini failing, and only players found out:
 "The storyteller is unavailable", and no covers. Each deploy now calls each model the app uses
 once, before anyone else does. Only the models in use are called, each once whichever nodes share
-it: today the interpret, narrator and checker models, the picture model and the speech model
-(Gemini 3.5 Transcribe, sent a second of silence, V6), about 4 cents in all, most of it one small
-picture. The evals' judge is never called here. Each line of the output says
+it: today the interpret, narrator and checker models, the picture model, the speech model
+(Gemini 3.5 Transcribe, sent a second of silence, V6) and the voice model (Gemini 3.8 Flash-Lite
+TTS, which reads a sentence that the speech model then writes down: the check fails if the voice
+read its directions aloud, V9), about 4 cents in all, most of it one small picture. The evals' judge is never called here. Each line of the output says
 which model answered, or Vertex AI's reason it didn't, such as a model name that doesn't exist, a
 missing permission or no quota:
 

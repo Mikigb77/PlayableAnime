@@ -114,6 +114,9 @@ enum LedgerKind {
 
   /// A dictation written down online (V6).
   speech,
+
+  /// A part of a scene read aloud in the studio voice (V10).
+  voice,
   topup,
   adjustment;
 

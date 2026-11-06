@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,8 @@ import 'package:playable_anime/core/api/api_client.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/design/design.dart';
+import 'package:playable_anime/features/narration/phone_voice.dart';
+import 'package:playable_anime/features/narration/studio_voice.dart';
 import 'package:playable_anime/features/voice/speech_engine.dart';
 
 /// Wraps [child] in the app's theme and strings, inside a scaffold, for widget tests.
@@ -169,3 +173,72 @@ Future<void> settle(WidgetTester tester, {int frames = 6}) async {
 
 /// Collects a stream without letting a test hang on it.
 Future<List<T>> collect<T>(Stream<T> stream) => stream.toList().timeout(const Duration(seconds: 5));
+
+/// The studio voice's player (V9), played by hand: each part plays until the test [finish]es it.
+class FakePlayback implements AudioPlayback {
+  /// Every URL asked to play, in order.
+  final played = <String>[];
+  int stops = 0;
+
+  /// Thrown by the next [play], as a file that can't be played.
+  Object? failNext;
+  Completer<void>? _part;
+
+  bool get playing => _part != null && !_part!.isCompleted;
+
+  /// Ends the part playing, as if it had played to the end.
+  void finish() => _part?.complete();
+
+  @override
+  Future<void> play(String url) {
+    played.add(url);
+    if (failNext case final error?) {
+      failNext = null;
+      return Future.error(error);
+    }
+    return (_part = Completer<void>()).future;
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    final part = _part;
+    if (part != null && !part.isCompleted) part.complete();
+  }
+
+  @override
+  void dispose() {}
+}
+
+/// The phone's own voice (V9), read by hand: each text reads until the test [finish]es it.
+class FakePhoneVoice implements PhoneVoice {
+  /// Every text read, with its language.
+  final spoken = <({String text, String language})>[];
+  int stops = 0;
+
+  /// False for a phone with no voice for the language.
+  bool available = true;
+  Completer<void>? _text;
+
+  bool get speaking => _text != null && !_text!.isCompleted;
+
+  /// Ends the text being read.
+  void finish() => _text?.complete();
+
+  @override
+  Future<void> speak(String text, {required String language}) {
+    if (!available) return Future.error(const PhoneVoiceUnavailable('no voice'));
+    spoken.add((text: text, language: language));
+    return (_text = Completer<void>()).future;
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    final text = _text;
+    if (text != null && !text.isCompleted) text.complete();
+  }
+
+  @override
+  void dispose() {}
+}
