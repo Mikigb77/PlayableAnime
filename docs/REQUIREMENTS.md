@@ -1192,7 +1192,7 @@ These are the parts of the product the player sees, most of them already listed 
 | S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. See the images section (M1 to M8). | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. | P0 |
 | S9 | Bring your own key (Gemini now, more providers later) alongside paid credits for everyone else. | P0 / P1 |
-| S10 | Spanish and English. | P1 |
+| S10 | **Spanish and English.** The player picks the app's language in Account: the device's own by default (English when the device's is neither), English or Spanish, kept on the device. Only fixed text is translated (Miki, 2026-11-06): the app's buttons, menus, settings and messages, the starter premises on Discover (`GET /v1/premises?language=es`) and the privacy policy. What a story has already told is never translated, since that would mean a model call for every page: a story written in English stays in English when the app switches to Spanish. Each story has a language of its own, which a new story takes from the app, and the player can switch a story to the other language in its settings, so it carries on in that language from the next scene. Done so far: the app's text, the language setting, the starters and the privacy policy; stories written in their own language are next. | P1 |
 | S11 | Sharing, remixing and creator tools. | P2 |
 
 ## Voice input

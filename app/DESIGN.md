@@ -253,8 +253,15 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 
 ## Words
 
-- Every string the player sees is in `lib/l10n/app_en.arb`, ready for Spanish (S10). Read them with
-  `context.l10n`. Only the developer gallery uses literal English.
+- Every string the player sees is in `lib/l10n/app_en.arb`, with its Spanish in `app_es.arb` (S10).
+  Read them with `context.l10n`. A new or changed string goes in both files in the same change
+  (Spanish from Spain, with "tú"), and `test/l10n_test.dart` fails when one is missing, loses a
+  placeholder or is left in English. Spanish runs about a fifth longer than English, so check a new
+  screen in Spanish at twice the text size too (`test/features/large_text_test.dart`). Only the
+  developer gallery uses literal English.
+- The player picks the language in Account (S10): the device's own by default, English when the
+  device's isn't one the app has. Only the app's fixed text follows it. What the server writes in
+  the app's language, such as the starter premises, is asked for with `appLanguageCodeProvider`.
 - Sentence case, plain words, full sentences. Say what happened and what to do next: "You're
   offline. Check your connection and try again."
 - Errors never show a status code or a stack trace (T7).

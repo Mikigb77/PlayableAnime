@@ -7,10 +7,12 @@ proposal that tries to drop every rule.
 
 import pytest
 
+from engine.context import Language
 from engine.state import GiftStrength, Prevalence
 from graph.drafting import samples
 from graph.drafting.assemble import HUMAN_PEAK, DraftOptions, assemble
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.catalog_es import SPANISH
 from graph.drafting.schema import DraftProposal, ExtraordinaryP, RuleP
 from graph.drafting.view import gift_strength, world_lines
 from graph.llm import fill_schema
@@ -150,3 +152,16 @@ def test_a_starter_that_grants_a_gift_sets_its_strength():
         template = starter(premise_id).template
         state = assemble(proposal.world, proposal.character, DraftOptions(template=template))
         assert gift_strength(state) is strength, premise_id
+
+
+def test_every_starter_has_its_spanish():
+    """S10: Discover shows each starter in the app's language, so a new starter needs its Spanish
+    in `graph.drafting.catalog_es`."""
+    assert set(SPANISH) == {premise.id for premise in STARTER_PREMISES}
+    for premise in STARTER_PREMISES:
+        spanish = premise.text(Language.ES)
+        assert spanish == SPANISH[premise.id]
+        for field in ("title", "genre", "tagline", "premise"):
+            words = getattr(spanish, field)
+            assert words.strip() and words != getattr(premise, field), (premise.id, field)
+        assert premise.text(Language.EN).premise == premise.premise

@@ -18,6 +18,13 @@ class Rating(StrEnum):
     MATURE = "mature"
 
 
+class Language(StrEnum):
+    """S10. The languages the app speaks, as language codes."""
+
+    EN = "en"
+    ES = "es"
+
+
 class Difficulty(StrEnum):
     """A5. Shifts the odds of rolled steps only, never a certain or ruled-out one (A2)."""
 

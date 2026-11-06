@@ -201,11 +201,15 @@ sent as an action from here.
 
 | Method | Path | Response |
 | --- | --- | --- |
-| GET | `/v1/premises` | `[Premise]` |
+| GET | `/v1/premises?language=` | `[Premise]` |
 
 ```text
 Premise {id, title, genre, tagline, premise, flagship: bool, cover_url?}
 ```
+
+`language` is the app's language, `en` (the default) or `es` (S10): the title, genre, tagline and
+premise come in it. Any other value is a `validation_error`. The ids, order and covers are the same
+in every language.
 
 Flagship genres come first (cultivation, knights and aura, many races and monsters, reincarnation),
 then a grounded modern story (the Naples vendetta), science fiction, a modern world with a hidden

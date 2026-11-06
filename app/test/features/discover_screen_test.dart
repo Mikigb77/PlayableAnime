@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/core/preferences.dart';
 import 'package:playable_anime/core/fake/fake_premises.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
@@ -31,6 +34,23 @@ void main() {
       scrollable: scroll,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the worlds come in the app\'s language, and again when it changes', (tester) async {
+    final app = AppHarness();
+    await app.launch(tester);
+    bool asked(String language) => app
+        .sent('GET', (path) => path == '/v1/premises')
+        .any((r) => r.uri.queryParameters['language'] == language);
+    expect(asked('en'), isTrue);
+
+    final container = ProviderScope.containerOf(tester.element(find.byType(CoverCard).first));
+    await container.read(languageProvider.notifier).set(AppLanguage.spanish);
+    await settle(tester, frames: 10);
+
+    expect(asked('es'), isTrue);
+    final es = await AppLocalizations.delegate.load(const Locale('es'));
+    expect(find.text(es.discoverSignature.toUpperCase()), findsOneWidget);
   });
 
   testWidgets('a world opens its create page with its premise ready', (tester) async {

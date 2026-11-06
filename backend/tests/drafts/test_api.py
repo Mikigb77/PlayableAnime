@@ -18,6 +18,7 @@ from drafts.models import Draft
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.catalog_es import SPANISH
 from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, WorldChange
 from graph.drafting.view import hidden_texts
 from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
@@ -85,6 +86,26 @@ def test_starter_premises_lead_with_the_flagship_genres(player_client):
     }
     genres = {p["genre"] for p in premises}
     assert {"Cultivation", "Grounded crime", "Science fiction", "Hidden supernatural"} <= genres
+
+
+def test_starter_premises_come_in_the_apps_language(player_client):
+    english = player_client.get("/v1/premises").json()
+    spanish = player_client.get("/v1/premises", {"language": "es"}).json()
+
+    assert [p["id"] for p in spanish] == [p["id"] for p in english]
+    first = spanish[0]
+    assert first["title"] == SPANISH[first["id"]].title
+    assert first["premise"] == SPANISH[first["id"]].premise
+    assert first["flagship"] == english[0]["flagship"]
+    assert first["cover_url"] == english[0]["cover_url"]
+    assert player_client.get("/v1/premises", {"language": "en"}).json() == english
+
+
+def test_a_language_the_app_doesnt_speak_is_refused(player_client):
+    response = player_client.get("/v1/premises", {"language": "fr"})
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 # Creating a draft (G1, G2, S1).
