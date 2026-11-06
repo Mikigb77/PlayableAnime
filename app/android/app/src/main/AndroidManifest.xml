@@ -53,5 +53,10 @@
         <intent>
             <action android:name="android.speech.RecognitionService"/>
         </intent>
+        <!-- Lets the app find the device's text-to-speech engine on Android 11 and later, for the
+             phone's own narrator voice (V9). -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
     </queries>
 </manifest>

@@ -100,8 +100,12 @@ class ApiClient {
       _json('GET', path, query: query);
 
   /// Set [authenticated] to false for the `/v1/auth/*` calls, which run without a session.
-  Future<Object?> post(String path, Object? body, {bool authenticated = true}) =>
-      _json('POST', path, body: body, authenticated: authenticated);
+  Future<Object?> post(
+    String path,
+    Object? body, {
+    bool authenticated = true,
+    Map<String, String>? query,
+  }) => _json('POST', path, body: body, query: query, authenticated: authenticated);
 
   Future<Object?> patch(String path, Object? body) => _json('PATCH', path, body: body);
 
@@ -222,12 +226,19 @@ class ApiClient {
   static bool _callsModel(String method, String path) => switch (method) {
     'POST' =>
       (path.startsWith('/v1/drafts') || path.startsWith('/v1/stories')) &&
-          !path.endsWith('/report'),
+          !path.endsWith('/report') &&
+          !_readsAloud(method, path),
     'PATCH' => path.startsWith('/v1/drafts'),
     _ => false,
   };
 
-  Duration _timeoutFor(String method, String path) => _callsModel(method, path)
+  /// A scene read aloud (V9) waits on a model like a turn, but always runs on our account, so
+  /// the player's own key never goes with it.
+  static bool _readsAloud(String method, String path) =>
+      method == 'POST' && path.startsWith('/v1/stories') && path.endsWith('/audio');
+
+  Duration _timeoutFor(String method, String path) =>
+      _callsModel(method, path) || _readsAloud(method, path)
       ? modelTimeout
       : path.startsWith('/v1/transcriptions')
       ? speechTimeout

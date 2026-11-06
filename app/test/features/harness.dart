@@ -12,6 +12,7 @@ import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/json.dart';
 import 'package:playable_anime/core/session/session.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
+import 'package:playable_anime/features/narration/narrator.dart';
 import 'package:playable_anime/features/voice/dictation_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,6 +31,10 @@ class AppHarness {
 
   /// The recognizer every mic in the app uses.
   final speech = FakeSpeechEngine();
+
+  /// The studio voice's player and the phone's voice, for reading aloud (V9).
+  final player = FakePlayback();
+  final phoneVoice = FakePhoneVoice();
 
   /// Makes the demo account an adult's or a teen's (F8), before sign-in: the limit follows the
   /// birth date, as on the server.
@@ -76,6 +81,8 @@ class AppHarness {
           apiBaseUrlProvider.overrideWithValue(FakeBackend.baseUrl),
           sessionStoreProvider.overrideWithValue(store),
           speechEngineProvider.overrideWithValue(speech),
+          audioPlaybackProvider.overrideWithValue(player),
+          phoneVoiceProvider.overrideWithValue(phoneVoice),
           ...overrides,
         ],
         child: const App(),

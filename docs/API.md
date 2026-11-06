@@ -29,7 +29,7 @@ PR and tells the orchestrator thread. Django Ninja also serves the live OpenAPI 
   | 400 | `validation_error` | The body, query or a header is invalid. `details.fields` lists the problems as `{field, source, message, type}`, where `source` is `body`, `query`, `path` or `header`. |
   | 400 | `birth_date_required` | A new Google account signs in without `birth_date` (F8). |
   | 401 | `unauthenticated` | Missing, expired or invalid access token. The app refreshes once, then signs out. |
-  | 402 | `out_of_credits` | Not enough credits for a turn, a draft, an Illustrate or a dictation (K2, M2, V6). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
+  | 402 | `out_of_credits` | Not enough credits for a turn, a draft, an Illustrate, a dictation or a part read aloud (K2, M2, V6, V10). `details.balance_cents` and `details.available_cents`. A planned picture is never refused: it is `skipped` (M7). |
   | 403 | `forbidden` | The resource belongs to someone else, or the rating is above the account's limit (F8). |
   | 404 | `not_found` | |
   | 405 | `method_not_allowed` | The path exists but not with this method. The `Allow` header lists the ones it takes. |
@@ -90,14 +90,15 @@ shows as free. A turn, draft or picture on the player's own key (K6) uses no cre
 entry.
 
 **Credits, rate limits and quotas (K2, K6, T9).** Every request that calls a model (a turn, a
-draft or revision, a picture, a dictation) is checked before it starts, in this order:
+draft or revision, a picture, a dictation, a part read aloud) is checked before it starts, in this order:
 
 1. A per-user rate limit per minute, on any key, BYOK and the owner included: `429 rate_limited`
-   with `details.retry_after_s`. Turns, drafts, pictures and dictations each have their own limit.
+   with `details.retry_after_s`. Turns, drafts, pictures, dictations and parts read aloud each have
+   their own limit.
 2. A per-user daily quota on our key, per UTC day: `429 quota_exceeded` with `details.resets_at`
    (ISO 8601, the next midnight UTC). BYOK requests don't count, and the owner (K7) has none.
 3. Credits, on our key: the request needs its estimated cost available (about 5 cents for a turn
-   or a draft, 6 for a picture, 1 for a dictation), or it gets `402 out_of_credits` with `details.balance_cents` and
+   or a draft, 6 for a picture, 1 for a dictation, 3 for a part read aloud), or it gets `402 out_of_credits` with `details.balance_cents` and
    `details.available_cents` (less than the balance while another request of the same player is
    running). A planned picture that can't be paid for is `skipped` instead (M7); Illustrate, which
    the player asks for, answers the `402`. A first picture the house pays for (K1) needs no
@@ -535,6 +536,42 @@ Picture {status: "ready"|"pending"|"skipped",
   one still skipped. On a scene that had none, the picture Illustrate planned stays: `skipped`
   after a `402`, so nothing draws it until the player asks again, and planned after a `429`, for
   the app to ask again.
+
+### Reading aloud (V8 to V10)
+
+| Method | Path | Query | Response |
+| --- | --- | --- | --- |
+| POST | `/v1/stories/{id}/scenes/{turn}/audio` | `part` (0 to 99, default 0), `voice` (default `Sulafat`) | `SceneAudio` |
+
+```text
+SceneAudio {status: "ready"|"pending"|"blocked", part, parts, text,
+            url?, expires_at?, duration_ms?}   # url, expires_at and duration_ms only when ready
+```
+
+One part of the scene read aloud in the studio voice (Gemini 3.8 Flash-Lite TTS, V9). Ask for part
+0, play it as soon as it comes, and ask for the next part while it plays, until `parts`.
+
+- **`voice`** is one of `Sulafat` (warm), `Gacrux` (mature), `Charon` (deep) or `Algieba`
+  (smooth). Anything else is `400 validation_error` with the field `voice` (`unknown_voice`), and a
+  part past the end is one with the field `part` (`out_of_range`), both with `source: "query"`.
+- **`text`** is the words the part reads: the narration without emphasis marks, with its
+  whitespace collapsed and a blank line between paragraphs. The parts depend only on the
+  narration, so they never change for a scene.
+- **Safe to repeat.** Each part is read and charged at most once per voice and kept, so asking again
+  answers the same file at no charge (V10). A repeat while the part is being read answers
+  `pending`: ask again after a second. `blocked` means the voice model refused the part, for good
+  and at no charge: read `text` in the device's own voice.
+- `url` is a signed URL to an MP3 (48 kbps mono) that works until `expires_at`, about an hour.
+- **Billing (K2, T9).** Always on our key, even with `X-LLM-Api-Key`, which the app doesn't send
+  here. The checks above apply, with their own rate limit (30 parts a minute) and daily quota
+  (1,000 parts), and a part needs 3 cents available. The real cost, up to about 2 cents for a long
+  part, is charged as a `voice` ledger entry with the story and turn. A part that fails costs
+  nothing.
+- **Errors:** `404 not_found` for an unknown story or scene, or a scene the player blocked (F6),
+  `403 forbidden` for another player's story or one above the account's rating limit (F8), `402
+  out_of_credits`, `429 rate_limited` or `429 quota_exceeded` from the meter, and `503
+  llm_unavailable` after one retry. After any of them the app reads the rest of the scene in the
+  device's voice.
 
 ### Memory and status (C6, G16)
 

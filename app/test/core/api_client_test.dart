@@ -274,6 +274,8 @@ void main() {
     await api.get('/v1/drafts/d1');
     await api.post('/v1/stories/s1/scenes/3/image', null);
     await api.post('/v1/stories/s1/scenes/3/report', {});
+    // Reading aloud always runs on our account (V9).
+    await api.post('/v1/stories/s1/scenes/3/audio', null, query: {'part': '0'});
     await api.patch('/v1/me', {});
     await api.patch('/v1/stories/s1', {});
     await api.post('/v1/auth/login', {}, authenticated: false);

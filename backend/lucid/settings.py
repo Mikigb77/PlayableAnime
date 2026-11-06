@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "billing",
     "drafts",
     "moderation",
+    "speech",
 ]
 
 MIDDLEWARE = [
@@ -162,14 +163,28 @@ BILLING = {
     # Held before a model call starts, so concurrent calls can't spend the same credits: about
     # 1.5 times a typical charge (a turn is about 2 cents of model cost, a picture 3.4 cents).
     # A call can't start with less than this available. A dictation is a fraction of a cent: a
-    # full minute of speech, the app's longest, charges about 0.9 (V6).
-    "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6, "speech": 1},
+    # full minute of speech, the app's longest, charges about 0.9 (V6). A part read aloud is up
+    # to about 45 seconds of speech, which charges about 2 (V10).
+    "RESERVE_CENTS": {"turn": 5, "draft": 5, "image": 6, "speech": 1, "voice": 3},
     # A hold left by a request that died is ignored after this. Longer than Cloud Run's timeout.
     "HOLD_TTL_S": 600,
     # Per user per minute, on any key (T9, K6).
-    "PER_MINUTE": {"turn": ENV.turn_rate_per_minute, "draft": 6, "image": 20, "speech": 20},
-    # Per user per UTC day, on our key only (T9). Dictation allows two for each turn a day.
-    "PER_DAY": {"turn": ENV.daily_turn_quota, "draft": 30, "image": 60, "speech": 600},
+    "PER_MINUTE": {
+        "turn": ENV.turn_rate_per_minute,
+        "draft": 6,
+        "image": 20,
+        "speech": 20,
+        "voice": 30,
+    },
+    # Per user per UTC day, on our key only (T9). Dictation allows two for each turn a day, and
+    # reading aloud about three parts for each, around eight hours of listening.
+    "PER_DAY": {
+        "turn": ENV.daily_turn_quota,
+        "draft": 30,
+        "image": 60,
+        "speech": 600,
+        "voice": 1000,
+    },
 }
 
 # JSON lines on stdout, which Cloud Run sends to Cloud Logging (T4 to T6, B3).

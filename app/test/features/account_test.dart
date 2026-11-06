@@ -212,7 +212,14 @@ void main() {
       await tester.ensureVisible(find.text(l10n.dictationOnlineBody));
       expect(find.text(l10n.dictationOnlineBody), findsOneWidget);
 
-      await tapVisible(tester, find.text(l10n.dictationDevice));
+      // Reading aloud has a "This device" too (V9).
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byType(SegmentedButton<DictationMode>),
+          matching: find.text(l10n.dictationDevice),
+        ),
+      );
 
       expect(container.read(dictationModeProvider), DictationMode.device);
       expect(find.text(l10n.dictationDeviceBody), findsOneWidget);

@@ -60,6 +60,7 @@ class EntryKind(models.TextChoices):
     DRAFT = "draft", "Draft"
     IMAGE = "image", "Picture"
     SPEECH = "speech", "Speech"
+    VOICE = "voice", "Read aloud"
     TOPUP = "topup", "Top-up"
     ADJUSTMENT = "adjustment", "Adjustment"
 

@@ -44,6 +44,7 @@ from langchain_google_genai.chat_models import (
 
 from graph.llm.cache import Made, PromptCache
 from graph.llm.types import (
+    AudioPart,
     Chunk,
     Finish,
     FinishReason,
@@ -150,6 +151,11 @@ class GeminiBackend:
                 async for chunk in chunks:
                     yield chunk
             return
+        if request.reading is not None:
+            async with aclosing(self._read_aloud(request)) as chunks:
+                async for chunk in chunks:
+                    yield chunk
+            return
         key = _schema_key(request)
         in_prompt = key is not None and key in _REFUSED_SCHEMAS
         streamed = False
@@ -238,6 +244,25 @@ class GeminiBackend:
         except Exception as error:
             raise classify(error, byok=False) from error
         yield transcription_chunk(response)
+
+    async def _read_aloud(self, request: Request) -> AsyncIterator[Chunk]:
+        """One text-to-speech attempt (V9), straight through google-genai: LangChain has no way
+        to ask for audio in a prebuilt voice. It shares the models' client and connections.
+
+        Only on our Vertex account, like dictation: reading aloud is paid in credits whatever
+        key the player has (V10), so no player key ever reaches this."""
+        if self._secret is not None:
+            raise ProviderError("invalid", "Reading aloud runs only on our Vertex AI account.")
+        try:
+            aio = self._model(request.model).async_client
+            response = await aio.models.generate_content(
+                model=request.model,
+                contents=to_reading_contents(request),
+                config=reading_config(request),
+            )
+        except Exception as error:
+            raise classify(error, byok=False) from error
+        yield reading_chunk(response)
 
     def _cache_refused(self, request: Request, cache: str, failure: ProviderError) -> None:
         """A call naming a cache was refused before it started, such as for a cache that
@@ -369,11 +394,90 @@ def transcription_config(request: Request) -> genai_types.GenerateContentConfig:
     return config
 
 
+def to_reading_contents(request: Request) -> str:
+    """The text to read, with any directions on how to read it at its start (V9)."""
+    if request.reading is None:
+        raise ValueError("Not a reading request")
+    return request.prompt.messages[-1].text
+
+
+def reading_config(request: Request) -> genai_types.GenerateContentConfig:
+    """Gemini TTS's settings (V9): audio only, in the prebuilt voice asked for. No safety
+    settings: see `ModelClient.read_aloud`."""
+    spec = request.reading
+    if spec is None:
+        raise ValueError("Not a reading request")
+    voice = genai_types.VoiceConfig(
+        prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(voice_name=spec.voice)
+    )
+    config = genai_types.GenerateContentConfig(
+        response_modalities=["AUDIO"],
+        speech_config=genai_types.SpeechConfig(voice_config=voice),
+    )
+    if request.options.temperature is not None:
+        config.temperature = request.options.temperature
+    return config
+
+
+# What Gemini's TTS models send when a part doesn't say: 24 kHz, 16-bit, mono PCM.
+GEMINI_SPEECH_TYPE = "audio/L16;codec=pcm;rate=24000"
+
+
+def reading_chunk(response: Any) -> Chunk:
+    """The speech, usage and finish of a text-to-speech response: each part's inline audio, in
+    order, with its type. Thoughts are skipped."""
+    candidate = _first_candidate(response)
+    sound = []
+    for part in getattr(getattr(candidate, "content", None), "parts", None) or []:
+        if getattr(part, "thought", False):
+            continue
+        blob = getattr(part, "inline_data", None)
+        data = getattr(blob, "data", None)
+        if data:
+            sound.append(AudioPart(data, getattr(blob, "mime_type", None) or GEMINI_SPEECH_TYPE))
+    return Chunk(
+        audio=tuple(sound),
+        usage=_response_usage(response),
+        finish=_response_finish(response, candidate),
+    )
+
+
+def _first_candidate(response: Any) -> Any:
+    candidates = getattr(response, "candidates", None) or []
+    return candidates[0] if candidates else None
+
+
+def _response_usage(response: Any) -> Usage:
+    """A google-genai response's usage, in ours: thinking counts as output, as Gemini bills it."""
+    usage = getattr(response, "usage_metadata", None)
+    thinking = _count(usage, "thoughts_token_count")
+    return Usage(
+        _count(usage, "prompt_token_count"),
+        _count(usage, "candidates_token_count") + thinking,
+        thinking,
+        _count(usage, "cached_content_token_count"),
+    )
+
+
+def _response_finish(response: Any, candidate: Any) -> Finish:
+    """How a google-genai response ended, a prompt block included. A response that doesn't say
+    ended normally."""
+    feedback = getattr(response, "prompt_feedback", None)
+    metadata = {
+        "prompt_feedback": {
+            "block_reason": getattr(feedback, "block_reason", None),
+            "safety_ratings": _dumped(getattr(feedback, "safety_ratings", None)),
+        },
+        "finish_reason": getattr(candidate, "finish_reason", None),
+        "safety_ratings": _dumped(getattr(candidate, "safety_ratings", None)),
+    }
+    return _finish(metadata) or Finish("stop")
+
+
 def transcription_chunk(response: Any) -> Chunk:
     """The transcript, usage and finish of a speech response. A part carries its words as text,
     or in `audio_transcription` (Vertex AI's samples read both); thoughts are skipped."""
-    candidates = getattr(response, "candidates", None) or []
-    candidate = candidates[0] if candidates else None
+    candidate = _first_candidate(response)
     pieces = []
     content = getattr(candidate, "content", None)
     for part in getattr(content, "parts", None) or []:
@@ -384,26 +488,10 @@ def transcription_chunk(response: Any) -> Chunk:
             words = getattr(getattr(part, "audio_transcription", None), "text", None)
         if words and words.strip():
             pieces.append(words.strip())
-    usage = getattr(response, "usage_metadata", None)
-    thinking = _count(usage, "thoughts_token_count")
-    feedback = getattr(response, "prompt_feedback", None)
-    metadata = {
-        "prompt_feedback": {
-            "block_reason": getattr(feedback, "block_reason", None),
-            "safety_ratings": _dumped(getattr(feedback, "safety_ratings", None)),
-        },
-        "finish_reason": getattr(candidate, "finish_reason", None),
-        "safety_ratings": _dumped(getattr(candidate, "safety_ratings", None)),
-    }
     return Chunk(
         text=" ".join(pieces),
-        usage=Usage(
-            _count(usage, "prompt_token_count"),
-            _count(usage, "candidates_token_count") + thinking,
-            thinking,
-            _count(usage, "cached_content_token_count"),
-        ),
-        finish=_finish(metadata) or Finish("stop"),
+        usage=_response_usage(response),
+        finish=_response_finish(response, candidate),
     )
 
 

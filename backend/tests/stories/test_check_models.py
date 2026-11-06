@@ -11,14 +11,23 @@ from django.core.management import CommandError, call_command
 from graph.llm import Fail, FakeBackend, ModelClient, ModelConfig, Node, Reply, fill_schema
 from graph.llm.cache import Made, PromptCache
 from graph.llm.config import DEFAULT_NODES
+from graph.llm.fake import offline_speech
 from graph.llm.types import ProviderError, Usage
+from speech.reading import READING_STYLE
+from speech.voices import DEFAULT_VOICE
 from stories.management.commands import check_models
 
 VERTEX = ModelConfig(provider="vertex")
+HEARD = "The lighthouse keeper waved to the last ship of the season."
 
 
 def _format_reply(request):
-    """Response formats answer by default; a plain call must be scripted."""
+    """Response formats answer by default, the voice model reads, and the speech model hears it
+    say its sentence; any other plain call must be scripted."""
+    if request.reading is not None:
+        return Reply(audio=offline_speech(request.prompt.messages[-1].text))
+    if request.audio is not None and request.audio.mime_type == "audio/mpeg":
+        return Reply(text=HEARD)
     if request.json_schema is None:
         raise AssertionError(f"unscripted plain call for {request.node.value}")
     return Reply(json=fill_schema(request.json_schema))
@@ -75,9 +84,13 @@ def test_each_model_in_use_is_called_once_and_the_judge_never(backend, capsys):
 
     call_command("check_models")
 
-    nodes = (*check_models.TEXT_NODES, Node.SPEECH, Node.PICTURE)
+    nodes = (*check_models.TEXT_NODES, Node.SPEECH, Node.VOICE, Node.PICTURE)
     in_use = {DEFAULT_NODES[node].model for node in nodes}
-    assert sorted(models_called(backend)) == sorted(in_use)
+    called = models_called(backend)
+    assert sorted(set(called)) == sorted(in_use)
+    # Each once, but the speech model twice: a second of silence, then what the voice said.
+    speech = DEFAULT_NODES[Node.SPEECH].model
+    assert len(called) == len(in_use) + 1 and called.count(speech) == 2
     assert DEFAULT_NODES[Node.JUDGE].model not in models_called(backend)
     [picture] = [request for request in backend.requests if request.image is not None]
     assert picture.node is Node.PICTURE
@@ -92,7 +105,7 @@ def test_the_speech_model_gets_a_recording_with_dictations_settings(backend):
 
     call_command("check_models")
 
-    [speech] = backend.calls(Node.SPEECH)
+    speech = backend.calls(Node.SPEECH)[0]
     assert speech.model == DEFAULT_NODES[Node.SPEECH].model == "gemini-3.5-transcribe-preview"
     assert speech.audio is not None and speech.audio.mime_type == "audio/wav"
     with wave.open(io.BytesIO(speech.audio.data)) as clip:  # a real WAV, as the app sends
@@ -106,11 +119,46 @@ def test_the_speech_model_gets_a_recording_with_dictations_settings(backend):
 def test_a_speech_model_vertex_refuses_fails_the_check(backend, capsys):
     script_models(backend, speech=Fail(kind="invalid", status=404))
 
-    with pytest.raises(CommandError, match="1 of 5 models didn't answer"):
+    with pytest.raises(CommandError, match="1 of 6 models didn't answer"):
         call_command("check_models")
 
     speech = DEFAULT_NODES[Node.SPEECH].model
     assert f"{speech} (speech): FAILED (invalid): fake invalid failure" in capsys.readouterr().out
+
+
+def test_the_voice_model_reads_as_scenes_are_read_and_is_heard_back(backend, capsys):
+    script_models(backend)
+
+    call_command("check_models")
+
+    [voice] = backend.calls(Node.VOICE)
+    assert voice.model == DEFAULT_NODES[Node.VOICE].model == "gemini-3.8-flash-lite-tts"
+    assert voice.reading.voice == DEFAULT_VOICE
+    assert voice.prompt.messages[-1].text.startswith(READING_STYLE)
+    [_silence, heard] = backend.calls(Node.SPEECH)
+    assert heard.audio.mime_type == "audio/mpeg"  # the MP3 the app plays
+    out = capsys.readouterr().out
+    assert "(voice): ok in" in out and f'and it said "{HEARD}"' in out
+
+
+def test_a_voice_that_reads_its_directions_aloud_fails_the_check(backend, capsys):
+    script_models(backend)
+    backend.script(Node.SPEECH, Reply(text="Read as an audiobook narrator..."))
+
+    with pytest.raises(CommandError, match="1 of 6 models didn't answer"):
+        call_command("check_models")
+
+    assert "(voice): FAILED (read_directions)" in capsys.readouterr().out
+
+
+def test_speech_in_a_form_the_app_cant_get_fails_the_check(backend, capsys):
+    script_models(backend)
+    backend.script(Node.VOICE, Reply(audio=b"\x00" * 10, audio_type="audio/ogg"))
+
+    with pytest.raises(CommandError):
+        call_command("check_models")
+
+    assert "(voice): FAILED (unreadable_audio)" in capsys.readouterr().out
 
 
 def test_each_response_format_is_sent_as_its_node_asks_for_it(backend, capsys):
@@ -221,14 +269,14 @@ def test_a_model_vertex_refuses_fails_with_vertex_ais_reason(backend, capsys):
 
     narrator = DEFAULT_NODES[Node.NARRATOR].model
     picture = DEFAULT_NODES[Node.PICTURE].model
-    assert str(failed.value).startswith("2 of 5 models didn't answer")
+    assert str(failed.value).startswith("2 of 6 models didn't answer")
     assert "response formats" not in str(failed.value)
     assert narrator in str(failed.value) and picture in str(failed.value)
     out = capsys.readouterr().out
     assert f"{narrator} (narrator, drafter): FAILED (invalid): fake invalid failure" in out
     assert f"{picture} (picture): FAILED (transient_503): fake transient failure" in out
     # Every model is still checked after the first failure.
-    assert len(set(models_called(backend))) == 5
+    assert len(set(models_called(backend))) == 6
 
 
 def test_a_node_moved_to_another_model_is_checked_through_it(backend, monkeypatch):
@@ -304,7 +352,7 @@ def test_a_prompt_cache_is_made_on_the_narrators_model_read_once_and_deleted(mon
     assert call.prompt.stable_split() == (check_models.CACHE_START, check_models.CACHE_PROMPT)
     out = capsys.readouterr().out
     assert f"{narrator} (narrator) prompt cache: Gemini read 6,000 of 6,100 prompt tokens" in out
-    assert "All 5 models answered, and Gemini took all 6 response formats." in out
+    assert "All 6 models answered, and Gemini took all 6 response formats." in out
 
 
 def test_a_prompt_cache_that_doesnt_work_is_reported_without_failing_the_check(monkeypatch, capsys):

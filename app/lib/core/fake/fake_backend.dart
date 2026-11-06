@@ -9,6 +9,7 @@ import 'fake_account.dart';
 import 'fake_auth.dart';
 import 'fake_data.dart';
 import 'fake_drafts.dart';
+import 'fake_narration.dart';
 import 'fake_pictures.dart';
 import 'fake_premises.dart';
 import 'fake_releases.dart';
@@ -159,6 +160,7 @@ class FakeBackend extends http.BaseClient {
     registerPictureRoutes(backend);
     registerReportRoutes(backend);
     registerSpeechRoutes(backend);
+    registerNarrationRoutes(backend);
     registerReleaseRoutes(backend);
     return backend;
   }

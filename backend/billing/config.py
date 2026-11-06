@@ -19,6 +19,8 @@ class Use(StrEnum):
     IMAGE = "image"
     # Turning a dictation into text on our account (V6). Always our key: see `speech.api`.
     SPEECH = "speech"
+    # Reading a scene aloud in the studio voice (V9, V10), a part at a time. Always our key.
+    VOICE = "voice"
 
 
 class StarterPolicy(StrEnum):

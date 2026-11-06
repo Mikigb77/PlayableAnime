@@ -10,6 +10,7 @@ import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../../router.dart';
 import '../auth/auth_repository.dart';
+import '../narration/narration_widgets.dart';
 import '../update/app_update.dart';
 import '../update/update_tile.dart';
 import '../voice/dictation_mode.dart';
@@ -194,6 +195,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         const _LanguageSection(),
                         SectionLabel(l10n.accountDictation),
                         const _DictationSection(),
+                        SectionLabel(l10n.accountReadingAloud),
+                        const NarrationSection(),
                         SectionLabel(l10n.accountPrivacy),
                         ListTile(
                           leading: const Icon(Icons.policy_outlined),

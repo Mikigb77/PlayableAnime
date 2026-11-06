@@ -27,6 +27,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from graph.llm.types import (
+    AudioPart,
     Chunk,
     Finish,
     FinishReason,
@@ -88,6 +89,9 @@ class Reply:
     json: Any = None
     text: str | None = None
     images: tuple[bytes, ...] = ()
+    # Speech read aloud (V9), as Gemini sends it: raw PCM, with its rate in `audio_type`.
+    audio: bytes = b""
+    audio_type: str = "audio/L16;codec=pcm;rate=24000"
     usage: Usage | None = None  # default: about four characters per token
     finish: FinishReason = "stop"  # "max_tokens" or "recitation" to test a bad answer
 
@@ -172,10 +176,12 @@ class FakeBackend:
         pieces = self._pieces(text)
         for piece in pieces[:-1]:
             yield Chunk(text=piece)
+        output_tokens = _tokens(text) + 1120 * len(step.images) + speech_tokens(step.audio)
         yield Chunk(
             text=pieces[-1] if pieces else "",
             images=tuple(ImagePart(data) for data in step.images),
-            usage=step.usage or Usage(input_tokens, _tokens(text) + 1120 * len(step.images)),
+            audio=(AudioPart(step.audio, step.audio_type),) if step.audio else (),
+            usage=step.usage or Usage(input_tokens, output_tokens),
             finish=Finish(step.finish),
         )
 
@@ -212,16 +218,34 @@ def audio_tokens(data: bytes) -> int:
     return len(data) // 1000
 
 
+def speech_tokens(pcm: bytes, rate: int = 24_000) -> int:
+    """What Gemini bills for speech it reads (V9): 25 tokens a second of 16-bit mono PCM."""
+    return round(len(pcm) / (2 * rate) * 25)
+
+
+def offline_speech(text: str, rate: int = 24_000) -> bytes:
+    """What the offline model "reads" for any text (V9): a soft tone, then quiet, about a second
+    for every 40 characters and at most 15, so reading aloud works end to end locally and costs
+    tests little time."""
+    seconds = min(15.0, max(0.5, len(text) / 40))
+    frames = round(seconds * rate)
+    tone = min(frames, rate // 5)
+    samples = [round(1200 * math.sin(2 * math.pi * 440 * n / rate)) for n in range(tone)]
+    return struct.pack(f"<{tone}h", *samples) + bytes(2 * (frames - tone))
+
+
 OFFLINE_TEXT = "(Offline model: set LLM_PROVIDER=vertex or add your own API key for real stories.)"
 # What the offline model "hears" in any recording, so dictation works end to end locally (V6).
 OFFLINE_TRANSCRIPT = "I look around slowly and listen."
 
 
 def offline_reply(request: Request) -> Reply:
-    """The offline model: a minimal valid answer for any schema, a note, a plain picture, or a
-    fixed transcript for any recording."""
+    """The offline model: a minimal valid answer for any schema, a note, a plain picture, a
+    fixed transcript for any recording, or a tone for any text to read aloud."""
     if request.transcription is not None:
         return Reply(text=OFFLINE_TRANSCRIPT)
+    if request.reading is not None:
+        return Reply(audio=offline_speech(request.prompt.messages[-1].text))
     if request.image is not None:
         return Reply(images=(offline_picture(request.image.aspect_ratio),))
     if request.json_schema is not None:

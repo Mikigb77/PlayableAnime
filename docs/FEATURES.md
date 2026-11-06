@@ -72,6 +72,8 @@ The first version's state, checked against the code in WS18.
       drawn again when a face or place changes for good (M1 to M8)
 - [x] Online dictation with Gemini 3.5 Transcribe that knows the story's names, the default, with
       the phone's own recognizer as an option in Account (V6)
+- [x] Reading scenes aloud: Gemini's studio voice by default, each part kept and paid once, with
+      the device's own voice as a free option in Account (V8 to V10)
 - [ ] Edit, pin or forget memories; undo the last turn; branch a save
 - [ ] Optional RPG layer per story: HP, inventory, skills, dice checks
 - [ ] Relationship meters, endings and achievements
@@ -84,7 +86,6 @@ The first version's state, checked against the code in WS18.
 
 - [ ] Publish, share and remix stories; likes and follows
 - [ ] Creator tools: world-bible editor, NPC sheets, lorebook
-- [ ] Voice narration (TTS)
 - [ ] Hands-free voice mode that sends after a pause (V2)
 - [ ] Monetisation for players without their own key *(credits, quotas and the starter credit
       are built (K1 to K8); top-ups are not)*
