@@ -14,6 +14,7 @@ from drafts.api import drafts_router, premises_router
 from lucid import errors
 from media.api import media_router
 from moderation.api import reports_router
+from releases.api import app_router
 from speech.api import transcriptions_router
 from stories.api import stories_router
 
@@ -36,3 +37,4 @@ api.add_router("/stories", media_router)
 api.add_router("/stories", reports_router)
 api.add_router("/me/credits", credits_router)
 api.add_router("/transcriptions", transcriptions_router)
+api.add_router("/app", app_router)

@@ -10,6 +10,8 @@ import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../../router.dart';
 import '../auth/auth_repository.dart';
+import '../update/app_update.dart';
+import '../update/update_tile.dart';
 import '../voice/dictation_mode.dart';
 import 'account_models.dart';
 import 'account_repository.dart';
@@ -19,8 +21,8 @@ import 'export_saver.dart';
 import 'own_key_editor.dart';
 
 /// Account: who you are and your rating limit (F8), credits (K1, K2), your own key (S9), story
-/// content (F7), appearance, language (S10), dictation (V6), privacy, export and delete (T12), and
-/// sign out.
+/// content (F7), appearance, language (S10), dictation (V6), privacy, export and delete (T12),
+/// the app's version and updates (S12), and sign out.
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -224,6 +226,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         onTap: () => _delete(tile),
                       ),
                     ),
+                    if (ref.watch(appUpdateProvider).phase != UpdatePhase.off) ...[
+                      SectionLabel(l10n.accountApp),
+                      const AppUpdateTile(),
+                    ],
                     SectionLabel(l10n.accountDeveloper),
                     ListTile(
                       leading: const Icon(Icons.dns_outlined),

@@ -197,6 +197,31 @@ sent as an action from here.
   never touches the disk), never stored, and never logged. The log line has the audio's size and type, the number of names sent,
   the outcome, the transcript's length, tokens and cost, never the words (T6).
 
+## App updates (S12)
+
+| Method | Path | Query | Response |
+| --- | --- | --- | --- |
+| GET | `/v1/app/latest` | `platform=android` (the default; anything else is `400 validation_error`) | `AppRelease`, or `404 not_found` until a build is published |
+
+```text
+AppRelease  {platform: "android", build, version, size, sha256, url, expires_at, published_at?}
+```
+
+The newest build the deploy published, for the APK from the GitHub release to update itself. Only a
+build with `SELF_UPDATE=true` asks (never a store build, which its store updates): when its tabs
+first show, when it comes back to the foreground (at most every half hour) and from Account's
+"Check for updates".
+
+- **`build`** is Android's versionCode, which grows with every deploy; the app offers the update
+  when it is above its own. **`version`** is the version name, such as `1.0.0`.
+- **`url`** downloads the APK until `expires_at` (30 minutes, a Cloud Storage signed URL in
+  production, no `Authorization` header). The app asks again right before downloading, so the URL
+  is fresh. The download must be exactly **`size`** bytes with this **`sha256`** (lowercase hex),
+  or the app doesn't install it.
+- The server reads the deploy's manifest at most once a minute per instance, so a new build is
+  offered within a minute of the deploy. A manifest it can't read counts as none (logged as a
+  warning), so the app just offers nothing.
+
 ## Starter premises (S1)
 
 | Method | Path | Response |

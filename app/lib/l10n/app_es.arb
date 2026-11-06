@@ -540,5 +540,21 @@
   "errorBirthDateTitle": "Un paso más",
   "errorBirthDate": "Necesitamos tu fecha de nacimiento para fijar las clasificaciones de tus historias.",
   "errorSignInUnavailableTitle": "No se puede iniciar sesión",
-  "errorSignInUnavailable": "Ahora mismo no se puede comprobar el inicio de sesión con Google. Inténtalo más tarde o usa tu email."
+  "errorSignInUnavailable": "Ahora mismo no se puede comprobar el inicio de sesión con Google. Inténtalo más tarde o usa tu email.",
+  "updateAvailable": "Hay una nueva versión de Lucid Saga",
+  "updateAvailableBody": "Versión {version}, compilación {build}. Se descarga aquí y luego Android te pide que la instales.",
+  "updateNow": "Actualizar",
+  "updateLater": "Más tarde",
+  "updateDownloading": "Descargando la actualización, {percent} %",
+  "updateInstalling": "Android te pide que la instales. Lucid Saga se cierra mientras se actualiza; ábrela de nuevo después.",
+  "updateFailedDownload": "La actualización no se descargó. Comprueba tu conexión e inténtalo de nuevo.",
+  "updateFailedCorrupt": "La descarga estaba dañada, así que no se instaló. Inténtalo de nuevo.",
+  "updateFailedInstall": "Android no instaló la actualización. Inténtalo de nuevo o descárgala desde el enlace del README.",
+  "updateTryAgain": "Reintentar",
+  "accountApp": "Aplicación",
+  "accountVersion": "Versión {version}, compilación {build}",
+  "accountUpdateCheck": "Buscar actualizaciones",
+  "accountUpdateChecking": "Buscando actualizaciones…",
+  "accountUpToDate": "Tienes la compilación más reciente.",
+  "accountUpdateReady": "La compilación {build} está lista para instalar."
 }
