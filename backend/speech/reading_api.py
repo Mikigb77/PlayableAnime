@@ -39,7 +39,7 @@ from media.storage import delete_quietly, get_storage, signed_url
 from moderation.models import Report
 from speech.audio import Encoded, to_mp3
 from speech.models import AudioStatus, SceneAudio
-from speech.reading import reading_parts, reading_prompt
+from speech.reading import reading_parts
 from speech.voices import DEFAULT_VOICE, VOICES
 from stories.access import owned_story
 from stories.models import Scene
@@ -213,9 +213,7 @@ async def _read(
         client = await sync_to_async(_client, thread_sensitive=False)(story.rating, telemetry)
         record.read = True
         try:
-            spoken = await client.read_aloud(
-                Node.VOICE, reading_prompt(text), Reading(voice=audio.voice)
-            )
+            spoken = await client.read_aloud(Node.VOICE, text, Reading(voice=audio.voice))
             encoded = await sync_to_async(to_mp3, thread_sensitive=False)(
                 spoken.data, spoken.mime_type
             )

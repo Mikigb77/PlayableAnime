@@ -11,11 +11,11 @@ finding out from "The storyteller is unavailable".
 Only the models the app uses are called, each once, whichever nodes share it: today three text
 models, the picture model, the speech model and the voice model, for about 4 cents in all, most of
 it the picture. The speech model is sent a second of silence with the settings dictation uses
-(V6), so a name or setting Vertex AI refuses shows here. The voice model reads a sentence with the
-directions scenes are read with (V9), its speech is made into the MP3 the app plays, and the
-speech model writes down what it said: a voice that reads its directions aloud fails the check,
-since every player would hear them. The evals' judge is left out, since it never serves a player.
-With the offline model (`LLM_PROVIDER=fake`) it checks nothing and says so.
+(V6), so a name or setting Vertex AI refuses shows here. The voice model reads a short passage
+sent as scenes are, with nothing but its words (V9), its speech is made into the MP3 the app plays,
+and the speech model writes down what it said: a voice that says more than the passage fails the
+check, since every player would hear it. The evals' judge is left out, since it never serves a
+player. With the offline model (`LLM_PROVIDER=fake`) it checks nothing and says so.
 
 Then each response format a node asks for (its JSON schema) is sent once as that node sends it,
 with room for only a few words: Gemini refuses a schema outside what it takes with a bare 400
@@ -63,7 +63,6 @@ from graph.llm import (
 )
 from graph.llm.types import ProviderError, Request
 from speech.audio import MP3, to_mp3
-from speech.reading import reading_prompt
 from speech.voices import DEFAULT_VOICE
 
 # The nodes a player's turn, draft or picture calls, in the order they are checked.
@@ -81,10 +80,14 @@ PICTURE_SYSTEM = "You draw one simple picture."
 PICTURE_PROMPT = "A single red apple on a plain wooden table, in soft daylight."
 # Dictation's settings (V6): the story's language, a name to listen for, and smart mode.
 SPEECH_SPEC = Transcription(language_codes=("en-US",), vocabulary=("Lucid Saga",))
-# What the voice model reads, with the directions every scene is read with (V9), and words of
-# those directions that a voice reading them aloud would say.
-VOICE_SENTENCE = "The lighthouse keeper waved to the last ship of the season."
-DIRECTION_WORDS = ("audiobook", "narrator", "passage", "overacting")
+# What the voice model reads, sent as a scene's part is (V9): narration and a line of dialogue.
+# A voice that says more words than this, give or take what the speech model hears differently,
+# added words of its own, such as directions (V9: Miki heard them on 2026-11-07).
+VOICE_PASSAGE = (
+    'The lighthouse keeper waved to the last ship of the season. "Safe home," she called into '
+    "the wind."
+)
+VOICE_EXTRA_WORDS = 5
 # Room for the thinking a node keeps on, so a one-word answer is never cut off.
 TEXT_OPTIONS = CallOptions(max_output_tokens=1024)
 # Vertex AI's reasons can be long; the start says what went wrong.
@@ -238,11 +241,9 @@ async def _check(
 async def _check_voice(
     client: ModelClient, model: str, names: tuple[str, ...], started: float
 ) -> Check:
-    """Reads a sentence as scenes are read (V9), makes it the MP3 the app plays, and has the
+    """Reads a passage as scenes are read (V9), makes it the MP3 the app plays, and has the
     speech model write down what was said. Raises `LLMError` when the voice model fails."""
-    spoken = await client.read_aloud(
-        Node.VOICE, reading_prompt(VOICE_SENTENCE), Reading(voice=DEFAULT_VOICE)
-    )
+    spoken = await client.read_aloud(Node.VOICE, VOICE_PASSAGE, Reading(voice=DEFAULT_VOICE))
     try:
         encoded = to_mp3(spoken.data, spoken.mime_type)
     except ValueError as error:
@@ -261,14 +262,14 @@ async def _check_voice(
         )
     except LLMError:
         heard = ""  # the speech model's own check says why
-    if any(word in heard.lower() for word in DIRECTION_WORDS):
+    if len(heard.split()) > len(VOICE_PASSAGE.split()) + VOICE_EXTRA_WORDS:
         return Check(
             model,
             names,
             ok=False,
             seconds=seconds,
-            reason="read_directions",
-            detail=f'it read its directions aloud: "{heard[:DETAIL_CHARS]}"',
+            reason="said_more",
+            detail=f'it said more than the passage: "{heard[:DETAIL_CHARS]}"',
         )
     return Check(model, names, ok=True, seconds=seconds, heard=heard)
 

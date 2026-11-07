@@ -24,14 +24,10 @@ PART_CHARS = 700
 # this only bounds a pathological text.
 MAX_PARTS = 24
 
-# Directions the voice model reads its text with (V9). Gemini's TTS models take them before the
-# text, ending in a colon, and read only what follows. The language isn't named: a story can
-# switch language (S10), so a scene is read in whatever language it was written in.
-READING_STYLE = (
-    "Read the following passage from a story aloud, as a skilled audiobook narrator would: "
-    "warm, clear and immersive, at an unhurried pace, following the mood of each moment and "
-    "giving the characters' lines a little life, without overacting. Read only the passage"
-)
+# The voice model is sent a part's words and nothing else (V9). Gemini's TTS models take style
+# directions before the text, but on 2026-11-07 Miki heard the studio voice read them aloud before
+# a scene, so none are sent: the voice reads exactly the scene's words, in whatever language they
+# are written in, and its tone comes from the voice and the words.
 
 _EMPHASIS = re.compile(r"\*+")
 _PARAGRAPH = re.compile(r"\n\s*\n")
@@ -72,11 +68,6 @@ def reading_parts(narration: str) -> list[str]:
             end = text.index(part, end) + len(part)
         parts[MAX_PARTS - 1 :] = [text[end:].strip()]
     return parts
-
-
-def reading_prompt(part: str) -> str:
-    """What the voice model is sent for one part: the directions, then the text."""
-    return f"{READING_STYLE}:\n\n{part}"
 
 
 class _Piece:
