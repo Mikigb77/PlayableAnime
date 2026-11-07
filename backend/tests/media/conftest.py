@@ -32,6 +32,9 @@ class FakePictureModel:
         self.byok = byok
         self.model = model
         self.requests: list[drawing.DrawRequest] = []
+        # The note step (`media.notes`): each scripted note or exception in turn, then none.
+        self.notes: deque = deque()
+        self.note_prompts: list = []
         self.closed = 0
         self.gate: threading.Event | None = None
         self.started = threading.Event()
@@ -39,6 +42,17 @@ class FakePictureModel:
     def script(self, *outcomes) -> "FakePictureModel":
         self.outcomes.extend(outcomes)
         return self
+
+    def script_notes(self, *notes) -> "FakePictureModel":
+        self.notes.extend(notes)
+        return self
+
+    async def note(self, prompt):
+        self.note_prompts.append(prompt)
+        outcome = self.notes.popleft() if self.notes else None
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
 
     async def draw(self, request: drawing.DrawRequest) -> Drawn:
         self.requests.append(request)

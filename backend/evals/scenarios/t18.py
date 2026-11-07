@@ -31,7 +31,7 @@ from engine.contracts import (
 from engine.state import SkillLevel, StepResult
 from evals import worlds
 from evals.judge import PICTURE_INSTRUCTIONS, Rubric
-from evals.pictures import Picture, scene_brief
+from evals.pictures import Picture, ending, scene_brief
 from evals.runner import Eval
 from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import act, attack, plan, step
@@ -682,11 +682,11 @@ async def mild_pictures(ev: Eval) -> None:
         await ev.judge_mild(f"{case.id}: the picture is mild", picture)
 
 
-# --- The moment as told (M5, C10) --------------------------------------------------------------
+# --- The moment as told (M5, C10), and the cover as the story's poster (M1) -------------------
 
 LEAP = "I leap from branch to branch up the old pines, to see over the outer wall"
 # Places and a weapon that are in the story's premise but not in the scene, as a premise often
-# has them. None of them may reach the picture.
+# has them. None of them may reach a scene's picture; a cover may show the ruins and the river.
 LEAP_PREMISE = (
     "You are Lin Feng, an orphan and an outer disciple of the Azure Cloud Sect. Across the great "
     "river below the mountain stand the ruins of the castle where your clan once ruled, and your "
@@ -694,20 +694,88 @@ LEAP_PREMISE = (
 )
 
 
+def _leap(ev: Eval, seed: str, *, cover: bool):
+    """Lin's leap through the pines, in a story whose cover is still to come, or was drawn."""
+    story = ev.story(worlds.among_the_pines(), seed=seed, premise=LEAP_PREMISE, under_way=True)
+    if not cover:
+        # The cover and the well were pictured earlier, so this scene is one the player
+        # illustrates, drawn from its own text.
+        story.change(lambda s: s.director.pictured.extend(["cover", "place:well", "place:well:v1"]))
+    return story
+
+
 @scenario(
     "t18.moment-as-told",
     suite="T18",
     title="The moment as told",
-    requirements=("M5", "M1", "C10", "T18"),
+    requirements=("M5", "C10", "T18"),
     passes_when=(
-        "The picture a scene shows, the story's cover included, shows what that scene tells: the "
-        "player character doing what they did, where they did it, with only the things they "
-        "have, and nothing from the premise that the scene doesn't have (M5, C10)"
+        "A scene's picture shows what that scene tells: the player character doing what they "
+        "did, where they did it, with only the things they have, and nothing from the premise "
+        "that the scene doesn't have (M5, C10)"
     ),
 )
 async def moment_as_told(ev: Eval) -> None:
     for seed in ev.seeds(1, live=1):
-        story = ev.story(worlds.among_the_pines(), seed=seed, premise=LEAP_PREMISE, under_way=True)
+        story = _leap(ev, seed, cover=False)
+        played = await story.act(
+            LEAP, act(LEAP.removeprefix("I ").split(",")[0], "leap", ActionKind.MOVE, 60)
+        )
+        if played.result is None:
+            continue
+        ev.check(
+            "the leap plans no picture of its own, so it is illustrated from its text (M2)",
+            played.scene.picture is None,
+            f"{seed}: {played.scene.picture}",
+            live=False,
+        )
+        prompt = build_prompt("scene", scene_brief(played.state, ending(played.narration))).user
+        ev.check(
+            "the scene is told Lin carries nothing, so it gives him no weapon (C10)",
+            "Lin Feng carries no weapon" in prompt,
+            f"{seed}: {prompt}",
+            live=False,  # a live scene may hand him something on the way up
+        )
+        told = prompt.replace(FRAMING["scene"], "").casefold()  # what this picture is told
+        ev.check(
+            "and never sees the premise, whose ruins and dagger aren't in the scene (M5)",
+            not any(word in told for word in ("castle", "ruins", "dagger")),
+            f"{seed}: {prompt}",
+        )
+        ev.check("and is lit for the scene's time of day (W10)", "Time of day:" in prompt)
+        picture = await ev.draw_scene(story, played, name="scene")
+        if isinstance(picture, Picture):
+            await ev.judge_pictures(
+                "the picture shows the scene as told",
+                Rubric(
+                    must=(
+                        "The picture shows the moment the scene below tells: Lin up in the pine "
+                        "branches, leaping or climbing from one to the next, not standing or "
+                        "crouching on a roof, a wall or the ground",
+                        "Lin holds and wears no weapon: no sword, dagger or knife",
+                        "Nothing the scene doesn't have: no castle, ruins, river or town",
+                    ),
+                    instructions=PICTURE_INSTRUCTIONS,
+                ),
+                [("the picture", picture)],
+                context=f"The scene, as the player read it:\n{played.narration}",
+            )
+
+
+@scenario(
+    "t18.cover-as-poster",
+    suite="T18",
+    title="The cover as the story's poster",
+    requirements=("M1", "M5", "C10", "T18"),
+    passes_when=(
+        "The story's cover, planned in its second scene, is its poster: the main character in "
+        "the story's world, premise included, dramatic rather than one scene's moment, with only "
+        "the things they have (M1, C10)"
+    ),
+)
+async def cover_as_poster(ev: Eval) -> None:
+    for seed in ev.seeds(1, live=1):
+        story = _leap(ev, seed, cover=True)
         played = await story.act(
             LEAP, act(LEAP.removeprefix("I ").split(",")[0], "leap", ActionKind.MOVE, 60)
         )
@@ -721,34 +789,39 @@ async def moment_as_told(ev: Eval) -> None:
         )
         if planned is None:
             continue
-        prompt = build_prompt("cover", scene_brief(played.state, planned.prompt)).user
-        told = prompt.replace(FRAMING["cover"], "").casefold()  # what this cover is told
+        brief = scene_brief(played.state, planned.prompt, cover=True, premise=LEAP_PREMISE)
+        prompt = build_prompt("cover", brief).user
         ev.check(
-            "the cover is told Lin carries nothing, so it gives him no weapon (C10)",
+            "the cover is drawn with the premise, the story's world (M1)",
+            "ruins of the castle where your clan once ruled" in prompt,
+            f"{seed}: {prompt}",
+        )
+        ev.check(
+            "as a poster, with no one scene's hour",
+            FRAMING["cover"] in prompt and "Time of day:" not in prompt,
+            f"{seed}: {prompt}",
+        )
+        ev.check(
+            "and Lin still carries nothing, so it gives him no weapon (C10)",
             "Lin Feng carries no weapon" in prompt,
             f"{seed}: {prompt}",
             live=False,  # a live scene may hand him something on the way up
         )
-        ev.check(
-            "and never sees the premise, whose ruins and dagger aren't in the scene (M5)",
-            not any(word in told for word in ("castle", "ruins", "dagger")),
-            f"{seed}: {prompt}",
-        )
-        ev.check("and is lit for the scene's time of day (W10)", "Time of day:" in prompt)
         picture = await ev.draw_scene(story, played, name="cover")
         if isinstance(picture, Picture):
             await ev.judge_pictures(
-                "the cover shows the scene it is shown in",
+                "the cover is the story's poster",
                 Rubric(
                     must=(
-                        "The picture shows the moment the scene below tells: Lin up in the pine "
-                        "branches, leaping or climbing from one to the next, not standing or "
-                        "crouching on a roof, a wall or the ground",
+                        "The picture works as the story's cover: a dramatic, iconic composition "
+                        "around Lin in a world of cultivation sects, not a plain record of one "
+                        "moment",
+                        "It sums up the story below, and may show the castle ruins across the "
+                        "river from its premise",
                         "Lin holds and wears no weapon: no sword, dagger or knife",
-                        "Nothing the scene doesn't have: no castle, ruins, river or town",
                     ),
                     instructions=PICTURE_INSTRUCTIONS,
                 ),
                 [("the cover", picture)],
-                context=f"The scene, as the player read it:\n{played.narration}",
+                context=f"The story's premise:\n{LEAP_PREMISE}",
             )

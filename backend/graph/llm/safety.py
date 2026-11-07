@@ -103,9 +103,11 @@ def safety_settings(
         return dict(_PICTURES)
     if node == Node.INTERPRET:
         return dict(_INTERPRET[rating])
-    if node == Node.SUMMARIZER:
+    if node in (Node.SUMMARIZER, Node.PICTURE_NOTE):
         # C3: a chapter only retells what was already told, and a block would ask for it again
-        # every turn; code checks it for instructions before it is kept (F3).
+        # every turn; code checks it for instructions before it is kept (F3). M5: a picture's
+        # description only retells, mildly, a scene the player has read, and the picture's own
+        # settings and rules (M6) stand behind it.
         return {**_TEXT[rating], "dangerous_content": "off"}
     if rating == "mature" and node in _TELLS_STORY:
         return {**_TEXT[rating], "dangerous_content": "off"}

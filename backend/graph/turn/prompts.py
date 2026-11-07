@@ -265,15 +265,15 @@ thread. A "thread" choice follows the thread SUGGESTIONS names, when it names on
 suggest waiting or observing: those are always offered.
 
 image_prompt (M1, M5): null unless PICTURE is given. Then one to three sentences that let an \
-illustrator who never read the scene draw it as you told it. For a scene or a cover, the moment \
-PICTURE's why names (a cover is this scene's most striking moment, posed for a cover, never a \
-poster of the world): what each person in it is doing, exactly where they are, as the narration \
-has the place and its surroundings, and the light. Only what this scene has: no place, building, \
-ruin, river, creature, person or thing it doesn't tell, from the world, the premise or earlier \
-scenes. The player character ("you") has only what PLAYER CHARACTER's resources list or this \
-scene puts in their hands: never give them a weapon or gear they don't have. For a portrait, the \
-person's face and expression now; for a place, the place as it looks now. True to everyone's \
-appearance.
+illustrator who never read the scene draw it. For a scene, the moment PICTURE's why names, as \
+you told it: who does what, exactly where, as the narration has the place, and the light; no \
+place, building, ruin, river, creature, person or thing it doesn't tell, from the world, the \
+premise or earlier scenes. For a cover, the story as a whole, as on a book or film poster, never \
+just this scene's moment: its main character in the story's world, with its telling places or \
+threats behind them. Either way, the player character ("you") has only what PLAYER CHARACTER's \
+resources list or the scene puts in their hands: never give them a weapon or gear they don't \
+have. For a portrait, the face and expression now; for a place, how it looks now. True to \
+everyone's appearance.
 
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \

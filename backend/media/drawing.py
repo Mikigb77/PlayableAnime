@@ -3,7 +3,9 @@ knows about Gemini.
 
 `GraphPictureModel` draws through the model layer (`graph.llm`): the `picture` node's model from
 config (`PICTURE_MODEL`, B6), Vertex AI with Application Default Credentials or the player's own
-key (S9), the picture safety settings (M6, F5), one retry and the per-call telemetry (T5).
+key (S9), the picture safety settings (M6, F5), one retry and the per-call telemetry (T5). On the
+same account it writes a scene picture's description from the finished scene first (`note`, the
+`picture_note` node, `media.notes`), so whoever pays for the picture pays for its note too.
 """
 
 from __future__ import annotations
@@ -11,6 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Protocol
+
+from media.notes import NotePrompt, PictureNote
 
 
 @dataclass(frozen=True, repr=False)
@@ -76,6 +80,11 @@ class DrawBlocked(DrawError):
         self.categories = categories
 
 
+class NoteFailed(Exception):
+    """The note step failed or was blocked; the picture is drawn from the narrator's description
+    (`media.notes`)."""
+
+
 class KeyCannotDraw(DrawError):
     """The player's own key can't make pictures: rejected, or on the free tier, which has no
     image models (M7). The picture falls back to credits."""
@@ -84,6 +93,11 @@ class KeyCannotDraw(DrawError):
 class PictureModel(Protocol):
     model: str
     byok: bool
+
+    async def note(self, prompt: NotePrompt) -> PictureNote | None:
+        """A scene picture's description from the finished scene (`media.notes`), or None from
+        a model that writes none. Raises `NoteFailed`."""
+        ...
 
     async def draw(self, request: DrawRequest) -> Drawn: ...
 
@@ -98,6 +112,18 @@ class GraphPictureModel:
         self.model = model
         self.byok = client.byok
         self.telemetry = telemetry
+        # The calls this model makes, its note's included, are the ones its picture is billed for.
+        self._since = len(telemetry.calls)
+
+    async def note(self, prompt: NotePrompt) -> PictureNote:
+        from graph.llm import LLMError, Node, Prompt
+
+        try:
+            return await self._client.structured(
+                Node.PICTURE_NOTE, Prompt.build(prompt.system, prompt.user), PictureNote
+            )
+        except LLMError as exc:
+            raise NoteFailed(exc.code) from exc
 
     async def draw(self, request: DrawRequest) -> Drawn:
         from graph.llm import ImagePart, ImageSpec, LLMBlocked, LLMError, Node, Prompt
@@ -121,9 +147,9 @@ class GraphPictureModel:
             if _rate_limited(calls):
                 raise DrawRateLimited(exc.code) from exc
             raise DrawFailed(exc.code) from exc
-        calls = self.telemetry.calls[before:]
+        model = self.telemetry.calls[-1].model if len(self.telemetry.calls) > before else self.model
+        calls = self.telemetry.calls[self._since :]
         cost = sum((call.cost_usd for call in calls), Decimal(0))
-        model = calls[-1].model if calls else self.model
         return Drawn(picture.data, picture.mime_type, model, cost, tuple(calls))
 
     async def aclose(self) -> None:

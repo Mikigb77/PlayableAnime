@@ -73,6 +73,7 @@ TEXT_NODES = (
     Node.TICK,
     Node.SUMMARIZER,
     Node.DRAFTER,
+    Node.PICTURE_NOTE,
 )
 SYSTEM = "You answer a health check. Reply with exactly one word."
 PROMPT = "Reply with the word ok."
@@ -117,6 +118,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
     """Each node's structured output, as it asks for it. The judge's is left out with it."""
     from graph.drafting.chain import CharacterProposal, DraftProposal, WorldChange
     from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
+    from media.notes import PictureNote
 
     return (
         (Node.INTERPRET, Intent),
@@ -125,6 +127,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
         (Node.DRAFTER, DraftProposal),
         (Node.DRAFTER, WorldChange),
         (Node.DRAFTER, CharacterProposal),
+        (Node.PICTURE_NOTE, PictureNote),
     )
 
 

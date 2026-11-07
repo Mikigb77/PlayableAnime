@@ -1,5 +1,6 @@
 """The picture model on the model layer: the `picture` node, reference images, the picture
-safety settings, typed failures and the call records billing charges from (M5, M6, M8, T5)."""
+safety settings, typed failures and the call records billing charges from (M5, M6, M8, T5), and the
+note written from the finished scene before a scene picture (`picture_note`, M5)."""
 
 import asyncio
 from decimal import Decimal
@@ -14,9 +15,11 @@ from media.drawing import (
     DrawRequest,
     GraphPictureModel,
     KeyCannotDraw,
+    NoteFailed,
     Reference,
     build_picture_model,
 )
+from media.notes import NotePrompt, PictureNote
 from tests.media.conftest import PNG
 
 REQUEST = DrawRequest(
@@ -136,3 +139,51 @@ def test_the_offline_model_draws_a_placeholder(settings):
 def test_requests_never_print_their_prompt():
     assert "the duel" not in repr(REQUEST)
     assert "rosa-portrait" not in repr(REQUEST.references[0])
+
+
+NOTE = NotePrompt(system="note rules", user="SCENE:\nLin leaps between the pines.")
+NOTED = {"description": "Lin Feng leaps between pine branches at dusk.", "people": ["Lin Feng"]}
+
+
+def test_a_note_is_written_by_the_note_node_and_billed_with_its_picture():
+    """M5: the description written from the finished scene is a cheap text call on the same
+    account, and the picture's cost and call records, which billing charges, include it."""
+    fake = (
+        FakeBackend()
+        .script(Node.PICTURE_NOTE, Reply(json=NOTED))
+        .script(Node.PICTURE, Reply(images=(PNG,)))
+    )
+    model = _model(fake)
+
+    note = asyncio.run(model.note(NOTE))
+    drawn = asyncio.run(model.draw(REQUEST))
+
+    assert note == PictureNote(**NOTED)
+    [request] = fake.calls(Node.PICTURE_NOTE)
+    assert request.model == ModelConfig().node(Node.PICTURE_NOTE).model == "gemini-3.1-flash-lite"
+    assert request.prompt.system == "note rules" and request.json_schema is not None
+    # The picture's model is the picture node's, and its cost is both calls'.
+    assert drawn.model == "gemini-3.1-flash-lite-image"
+    assert [call.images for call in drawn.calls] == [0, 1]
+    assert drawn.cost_usd == sum(call.cost_usd for call in drawn.calls)
+    assert Decimal(0) < drawn.calls[0].cost_usd < Decimal("0.002")
+
+
+def test_a_note_that_fails_says_so_without_failing_anything_else():
+    fake = FakeBackend().script(Node.PICTURE_NOTE, Fail(), Fail())
+
+    with pytest.raises(NoteFailed):
+        asyncio.run(_model(fake).note(NOTE))
+
+
+def test_a_blank_note_is_a_failed_note():
+    fake = FakeBackend().script(
+        Node.PICTURE_NOTE, Reply(json={"description": " ", "people": []}), Reply(json={})
+    )
+
+    with pytest.raises(NoteFailed):
+        asyncio.run(_model(fake).note(NOTE))
+
+
+def test_a_note_prompt_never_prints_its_text():
+    assert "pines" not in repr(NOTE)

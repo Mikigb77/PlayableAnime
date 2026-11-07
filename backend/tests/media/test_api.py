@@ -44,22 +44,24 @@ def _planned_scene(story, turn: int = 2, **brief):
     return scene
 
 
-def test_a_cover_planned_with_the_premise_is_drawn_without_it(client, painters, meter):
-    """M5: a story's pictures never see its premise, even a cover planned before that held, whose
-    brief kept the premise as its setting (ruins and a river a leap through the trees never had,
-    Miki 2026-11-07)."""
+def test_a_scene_picture_is_drawn_without_the_premise(client, painters, meter):
+    """M5: a scene picture never sees the story's premise, even from a brief that kept it as the
+    setting (ruins and a river a leap through the trees never had, Miki 2026-11-07); only the
+    cover, the story's poster, is drawn with it (M1)."""
     story = make_story()
-    scene = make_scene(story, 2)
     premise = "Across the great river stand the ruins of your clan's castle."
-    old = Brief(description="You leap between pine branches.", look=WorldLook(setting=premise))
-    plan_picture(scene, kind="cover", trigger="cover", brief=old)
+    brief = Brief(description="You leap between pine branches.", look=WorldLook(setting=premise))
+    plan_picture(make_scene(story, 2), kind="scene", trigger="fight_start", brief=brief)
+    plan_picture(make_scene(story, 3), kind="cover", trigger="cover", brief=brief)
 
     assert _image(client, story, 2).json()["status"] == "ready"
+    assert _image(client, story, 3).json()["status"] == "ready"
 
-    request = painters.ours.requests[0]
-    assert "You leap between pine branches." in request.prompt
-    assert "ruins of your clan" not in request.prompt
-    assert request.aspect_ratio == "3:4"
+    drawn_scene, cover = painters.ours.requests
+    assert "You leap between pine branches." in drawn_scene.prompt
+    assert "ruins of your clan" not in drawn_scene.prompt
+    assert "ruins of your clan" in cover.prompt
+    assert (drawn_scene.aspect_ratio, cover.aspect_ratio) == ("16:9", "3:4")
 
 
 def test_a_planned_picture_is_drawn_stored_and_served(client, painters, meter, log_lines):

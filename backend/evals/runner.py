@@ -82,6 +82,7 @@ from graph.turn import (
     run_turn,
 )
 from media.briefs import THREAD_SUBJECTS
+from media.notes import SceneText
 
 # How many failures a check keeps the details of. The count covers them all.
 KEPT_DETAILS = 5
@@ -784,8 +785,10 @@ class Eval:
         references: Sequence[tuple[str, Picture]] = (),
     ) -> Picture | NotDrawn | None:
         """The scene's picture, from the narrator's image prompt when code planned one, else
-        from the end of its narration, with reference portraits (M5). A scene that code planned
-        the story's cover for draws the cover, as the picture endpoint does. Live mode only."""
+        from the end of its narration, rewritten from the finished scene by the note step, with
+        reference portraits (M5). A scene that code planned the story's cover for draws the
+        cover, the story's poster, with its premise, as the picture endpoint does (M1). Live mode
+        only."""
         if not self.live or played.result is None:
             return None
         picture = played.scene.picture
@@ -794,14 +797,22 @@ class Eval:
         subject = decision.subject_id if decision is not None else None
         if decision is not None and decision.trigger in THREAD_SUBJECTS:
             subject = None  # a thread, not a person, as `stories.turns.brief` leaves it out
-        brief = scene_brief(played.state, description, people=people, subject_id=subject)
         cover = picture is not None and picture.kind is PictureKind.COVER
+        brief = scene_brief(
+            played.state,
+            description,
+            people=people,
+            subject_id=subject,
+            cover=cover,
+            premise=story.premise,
+        )
         drawn = await draw(
             self.picture_model(story),
             name or f"{'cover' if cover else 'scene'}-{played.turn}",
             "cover" if cover else "scene",
             brief,
             references,
+            scene=SceneText(played.narration, played.action or ""),
         )
         self.pictures.append(drawn)
         return drawn

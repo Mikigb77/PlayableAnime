@@ -17,6 +17,7 @@ from media.prompts import (
 LOOK = WorldLook(
     genre="crime", era="Naples, 1974: suits, Fiat 124s, smoke", tone="tense", setting="A family"
 )
+LIN_EMPTY = Figure("lin", "Lin", "lean", carries=())
 
 
 @pytest.mark.parametrize("kind", ["portrait", "place", "scene", "cover"])
@@ -85,7 +86,8 @@ def test_the_moment_comes_before_the_people_and_the_world():
 
 
 def test_only_a_cover_carries_the_premise():
-    """The premise tells how the story began, not the scene a picture shows."""
+    """The premise tells how the story began, not the scene a picture shows; a cover is the
+    story's poster, drawn with it (M1)."""
     for kind in ("portrait", "place", "scene"):
         assert "A family" not in build_prompt(kind, Brief(look=LOOK)).user
     assert "setting: A family" in build_prompt("cover", Brief(look=LOOK)).user
@@ -95,8 +97,8 @@ def test_a_scene_is_lit_for_its_time_of_day():
     brief = Brief(description="The don's funeral.", time="dusk")
 
     assert "Time of day: dusk." in build_prompt("scene", brief).user
-    # A story's cover shows the scene it is planned in, at that scene's hour (M5).
-    assert "Time of day: dusk." in build_prompt("cover", brief).user
+    # A story's cover is its poster, not one scene's hour (M1).
+    assert "Time of day" not in build_prompt("cover", brief).user
     # A portrait or place is reused at any hour, so it keeps the house light.
     assert "Time of day" not in build_prompt("place", brief).user
     assert "low-key" not in HOUSE_STYLE and "time of day" in HOUSE_STYLE
@@ -134,16 +136,21 @@ def test_a_scene_shows_what_its_description_says_and_nothing_more():
     assert "doing what it says, where it says" in FRAMING["scene"]
 
 
-def test_a_cover_shows_the_moment_it_is_told_not_a_poster_of_the_world():
-    """M5 (Miki, 2026-11-07): a story's cover is shown in the scene it is planned in, so it
-    shows that scene's moment. Drawn as "its world and its main character", it put a leap through
-    the trees on a rooftop, among ruins and a river the scene never had."""
+def test_a_cover_is_the_storys_poster_not_one_moment():
+    """M1 (Miki, 2026-11-07): the cover is the story's thumbnail in the Library, so it should be
+    "more dramatic or representative" of the whole story than the scene it is planned in, with a
+    castle in the background welcome; it still arms the player character with nothing they don't
+    carry (C10)."""
     cover = FRAMING["cover"]
 
-    assert "its world" not in cover
-    assert "doing what it says, where it says" in cover
-    assert "no extra people, creatures or props" in cover
+    assert "like a book or film poster" in cover and "not one moment of it" in cover
+    assert "setting may rise behind them" in cover
+    assert "no extra people" not in cover and "doing what it says" not in cover
     assert "lower third" in cover  # still room for the title
+    brief = Brief(description="Lin stands above the valley.", look=LOOK, figures=(LIN_EMPTY,))
+    user = build_prompt("cover", brief).user
+    assert "setting: A family" in user
+    assert "Lin carries no weapon, tool or gear" in user
 
 
 def test_the_player_character_has_only_what_they_carry():
@@ -224,6 +231,10 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
         ),
         you="Rosa",
         time="dusk",
+        turn=7,
+        place_id="inn",
+        place_name="The Inn",
+        place_look="Two storeys",
     )
 
     assert Brief.from_json(brief.to_json()) == brief
@@ -234,15 +245,46 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
         None,
     ]
     assert Brief.from_json(None) == Brief()
-    # A brief stored before "you", the time of day and belongings existed still reads.
-    older = {k: v for k, v in brief.to_json().items() if k not in ("you", "time")}
+    # A brief stored before "you", the time of day, belongings, its turn and place existed still
+    # reads.
+    added = ("you", "time", "turn", "place_id", "place_name", "place_look")
+    older = {k: v for k, v in brief.to_json().items() if k not in added}
     older["figures"] = [{"id": "rosa", "name": "Rosa", "appearance": "curls"}]
     assert Brief.from_json(older) == Brief(
         description="d", look=LOOK, subject_name="Rosa", subject_appearance="curls",
         figures=(Figure("rosa", "Rosa", "curls"),),
     )  # fmt: skip
-    junk = {"look": {"era": None, "extra": 1}, "figures": [{}, {"name": "X"}]}
+    junk = {"look": {"era": None, "extra": 1}, "figures": [{}, {"name": "X"}], "turn": "x"}
     assert Brief.from_json(junk) == Brief(figures=(Figure("", "X", ""),))
+    assert Brief.from_json({"turn": -3}).turn == 0
+
+
+def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():
+    """M5: a place looks the same from scene to scene, the moment's own framing and light."""
+    brief = Brief(description="Rosa waits at the bar.", place_name="The Inn")
+
+    prompt = build_prompt("scene", brief, references=["Rosa"], place=True)
+
+    assert prompt.labels == (
+        "Image 1: the portrait of Rosa.",
+        "Image 2: The Inn, the place where this happens.",
+    )
+    assert "The image labelled as the place is where this happens. Draw the same place" in (
+        prompt.user
+    )
+    assert "what that image shows counts as named" in prompt.user
+    assert "only for that person's face" in prompt.user
+    alone = build_prompt("scene", brief, place=True)
+    assert alone.labels == ("Image 1: The Inn, the place where this happens.",)
+    assert "portrait of the person its label names" not in alone.user
+
+
+@pytest.mark.parametrize("kind", ["portrait", "place", "cover"])
+def test_only_a_scene_or_cover_takes_its_places_picture(kind):
+    prompt = build_prompt(kind, Brief(subject_name="X", place_name="The Inn"), place=True)
+
+    assert prompt.labels == ()
+    assert "labelled as the place" not in prompt.user
 
 
 def test_unknown_kinds_are_refused_and_prompts_never_print():

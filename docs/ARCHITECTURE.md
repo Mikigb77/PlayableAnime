@@ -646,6 +646,7 @@ environment, `backend/.env` and the repo-root `.env.local`:
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
 | `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
 | `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+| `picture_note` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | A scene picture's description, written from the finished scene in the picture's own request (M5): about 1,500 tokens in and 300 out, well under a tenth of a cent, billed with the picture. |
 | `judge` | `gemini-3.1-pro-preview`, thinking `high` | $2.00 / $12.00 | The story evals' judge ([Story evals](#story-evals)), never in a turn. A judge that misreads a scene makes the scores worthless, so it gets a stronger model than the nodes it judges. |
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
@@ -1652,7 +1653,8 @@ turn (WS3)            the director decides a scene gets a picture (M1, WS11)
   └─ media.plans.plan_picture(scene, kind, subject_id, trigger, brief, version)   in the turn's transaction
 app                   shows the narration, then asks for the picture in its own request (M3, B8)
   └─ POST /v1/stories/{id}/scenes/{turn}/image  →  media.service.scene_picture
-       claim (row lock) → hold credits → draw on graph.llm → store → mark ready + charge (one txn)
+       claim (row lock) → hold credits → note from the finished scene (a scene picture) → draw
+       on graph.llm → store → mark ready + charge (one txn)
 ```
 
 - **One `Image` per subject and look (M4).** `media.Image` is keyed by story, kind (portrait,
@@ -1667,25 +1669,27 @@ app                   shows the narration, then asks for the picture in its own 
   thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
   again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
-  prompt, the world's genre, era and tone (never the story's premise, which is not the scene a
-  picture shows), the people in the picture with the appearance from their entry (C9), who "you" is,
-  and for a scene or the cover the time of day on the story's clock. The cover is planned in the
-  story's second scene and shown there, so it is drawn as that scene's moment, posed for a cover.
+  prompt, the world's genre, era, tone and the story's premise as the setting (which only a cover
+  is drawn with), the people in the picture with the appearance from their entry (C9), who "you"
+  is, the scene's turn, and for a scene picture the time of day on the story's clock and the place
+  it ends in (`media.briefs.scene_place`). The cover is planned in the story's second scene and
+  shown there, but it is the story's poster in the Library (M1): the narrator writes it as the
+  whole story around its main character, and it is drawn with the premise, as a book or film
+  poster, with no one scene's hour.
   `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those the
   image prompt names, with the director's subject first even when they just died or the player
   hasn't met them, and the player character when the prompt says "you" or names them, or names no
   one else; a prompt that names no one falls back to the subject, the player character and the
-  people the player knows there. A story's pictures never get its premise, and the picture endpoint
-  clears a setting a brief planned before that kept. The player character goes in with what they
-  carry from their sheet (`Figure.carries`, C10), money, property and what they keep elsewhere left
+  people the player knows there. A scene picture never gets the premise. The player character
+  goes in with what they carry from their sheet (`Figure.carries`, C10), money, property and what they keep elsewhere left
   out, or with nothing to carry; an NPC's record is partial, so theirs is left out, and so is the
   player character's for Illustrate on an earlier scene. `media/prompts.py` turns the brief into the
   prompt, the moment first, then how the people look and what the player character carries ("no
   other weapon, tool or gear, even one their look above names, unless the description puts it in
   their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
-  look, lit for the moment's time of day), the world's own era (a setting only on a starter
-  premise's cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
-  scenes 16:9), where a scene and a cover show only who and what the description has, and the
+  look, lit for the moment's time of day), the world's own era (the premise as the setting only on
+  a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
+  scenes 16:9), where a scene shows only who and what the description has, and the
   mild-in-every-rating rules. Ready portraits of up to three of the
   people go along as reference images, each set right after a label saying whose it is
   (`ImagePart.label`) and used only for the face, hair and build. A portrait takes only its
@@ -1694,6 +1698,22 @@ app                   shows the narration, then asks for the picture in its own 
   prompt for (Illustrate on any scene) is described by the end of its narration, which the same
   rules keep mild, with the people it names from the cast saved with the scene, that scene's
   player character as "you" (N6), their portraits and the scene's time of day.
+- **The note and the place (M5).** The narrator writes its image prompt while the scene is still
+  being written, so a scene picture is drawn from a description written from the
+  finished scene (`media/notes.py`, plain Python, shared with the picture evals). Right before
+  drawing, on the same account and so billed with the picture, the `picture_note` node reads the
+  scene's narration and the player's action (the scene of the brief's turn, else the scene asking),
+  with the narrator's prompt as a draft, the brief's people and looks, what the player character
+  carries, the place, the time of day and the world's genre and era, and answers a `PictureNote`:
+  one to three sentences of what can be seen, and who from the brief's people is in it. The brief
+  keeps only those people (or those the description names, or the player character when it says
+  "you"), so only their looks and portraits go along. A note that fails on a player's own key is
+  written again on ours if ours draws; one that fails on ours leaves the narrator's prompt, and a
+  failed note never fails the picture. Covers, portraits and places get no note. A scene
+  picture also gets the latest ready picture of the brief's place, last among the
+  references, labelled as the place and used for how it looks, never for the framing, people or
+  light. Illustrate on an earlier scene gets no place, since the record holds where the player
+  character is now. The T5 line says whether a picture was noted and had its place.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls

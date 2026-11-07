@@ -394,7 +394,8 @@ screens.
   - **WS3 (turn endpoint):** when `DirectorPlan.picture` is set, call
     `media.plans.plan_picture(scene, kind=, subject_id=, trigger=, brief=Brief(description=<the
     narrator's image prompt>, look=WorldLook(<bible genre, era, tone>),
-    subject_name=, subject_appearance=, figures=(Figure(id, name, appearance, carries), ...)),
+    subject_name=, subject_appearance=, figures=(Figure(id, name, appearance, carries), ...),
+    you=, time=, turn=<the scene's turn>, place_id=, place_name=, place_look=),
     version=<PictureDecision.version>)` after saving the scene, in the turn's transaction. Build `Scene.image`,
     `Scene.portraits` and `StorySummary.cover_url` with `media.lookups.scene_images`,
     `portrait_urls` and `cover_urls`, and fill the memory and status views' picture URLs

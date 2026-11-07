@@ -259,6 +259,52 @@ def test_a_scene_is_described_as_the_picture_endpoint_describes_it():
     assert brief.figures == briefs.scene_figures(state, "You lift the bucket.")
     assert brief.you == state.player.name
     assert brief.time == briefs.time_of_day(state.bible.calendar, state.world_s)
+    assert (brief.turn, brief.place_id) == (state.turn, briefs.scene_place(state)[0])
+
+
+def test_a_scene_picture_is_drawn_from_its_note_as_the_endpoint_draws_it():
+    """M5: the eval's pictures go through the note step, with the portraits of only the people
+    it keeps."""
+    from decimal import Decimal
+
+    from evals.pictures import Picture, draw, scene_brief
+    from media.drawing import Drawn
+    from media.notes import PictureNote, SceneText
+
+    state = worlds.farm()
+    player = state.player.name
+
+    class Painter:
+        model, byok = "fake-image", False
+
+        def __init__(self):
+            self.notes, self.drawn = [], []
+
+        async def note(self, prompt):
+            self.notes.append(prompt)
+            return PictureNote(description=f"{player} lifts the bucket.", people=[player])
+
+        async def draw(self, request):
+            self.drawn.append(request)
+            return Drawn(TINY_PNG, "image/png", self.model, Decimal("0.034"))
+
+    painter = Painter()
+    brief = scene_brief(state, "You lift the bucket.")
+    portrait = Picture("p", "portrait", TINY_PNG, "image/png", "fake-image", Decimal(0))
+    others = [("Someone Else", portrait), (player, portrait)]
+
+    drawn = asyncio.run(
+        draw(painter, "s", "scene", brief, others, scene=SceneText("You lift it.", "lift"))
+    )
+
+    assert isinstance(drawn, Picture)
+    assert painter.notes[0].user.endswith("SCENE:\nYou lift it.")
+    [request] = painter.drawn
+    assert f"What it shows: {player} lifts the bucket." in request.prompt
+    assert [ref.name for ref in request.references] == [player]
+    # A portrait gets no note.
+    asyncio.run(draw(painter, "p", "portrait", brief, scene=SceneText("x")))
+    assert len(painter.notes) == 1
 
 
 # --- results -----------------------------------------------------------------------------------
