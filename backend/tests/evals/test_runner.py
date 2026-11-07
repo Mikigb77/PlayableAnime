@@ -3,6 +3,7 @@ line."""
 
 import asyncio
 import json
+import logging
 from datetime import UTC, datetime
 
 import pytest
@@ -10,7 +11,7 @@ import pytest
 from engine.base import HOUR
 from engine.contracts import ActionKind
 from evals import worlds
-from evals.__main__ import main
+from evals.__main__ import CallFormatter, main
 from evals.judge import (
     JudgeOutput,
     Rubric,
@@ -86,6 +87,39 @@ def test_a_script_that_checks_nothing_or_raises_is_an_error_not_a_pass():
     assert play(nothing).status == "error"
     broken = play(raises)
     assert broken.status == "error" and "KeyError" in broken.error
+
+
+def test_an_error_shows_its_own_line_not_the_task_it_came_from():
+    async def raises(ev: Eval) -> None:
+        error = RuntimeError("the model is unavailable")
+        error.add_note("During task with name 'narrate' and id 'x'")
+        raise error
+
+    broken = play(raises)
+    assert broken.failures() == ["error: RuntimeError: the model is unavailable"]
+    assert "During task with name 'narrate'" in broken.error
+
+
+def test_a_failed_model_call_is_logged_with_why():
+    def line(**extra):
+        record = logging.makeLogRecord(
+            {"name": "graph.llm", "levelname": "ERROR", "msg": "Model call failed", **extra}
+        )
+        return CallFormatter(logging.BASIC_FORMAT).format(record)
+
+    call = {
+        "node": "picture",
+        "model": "gemini-3.1-flash-lite-image",
+        "attempt": 3,
+        "reason": "transient_429",
+        "detail": "429 RESOURCE_EXHAUSTED",
+        "byok": False,
+    }
+    assert line(llm=call) == (
+        "ERROR:graph.llm:Model call failed (node=picture, model=gemini-3.1-flash-lite-image,"
+        " attempt=3, reason=transient_429, detail=429 RESOURCE_EXHAUSTED)"
+    )
+    assert line() == "ERROR:graph.llm:Model call failed"
 
 
 def test_a_live_only_scenario_is_skipped_in_deterministic_mode():

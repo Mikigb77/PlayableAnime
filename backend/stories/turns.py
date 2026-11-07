@@ -56,7 +56,14 @@ from graph.turn import (
     turn_graph,
 )
 from lucid.errors import ApiError, ErrorCode, envelope, field_error, version_conflict
-from media.briefs import THREAD_SUBJECTS, known_cast, scene_figures, scene_place, time_of_day
+from media.briefs import (
+    THREAD_SUBJECTS,
+    cover_brief,
+    known_cast,
+    scene_figures,
+    scene_place,
+    time_of_day,
+)
 from media.plans import look_for_story, plan_picture
 from media.prompts import Brief
 from stories import endings, pending, responses, rewind
@@ -382,7 +389,10 @@ def save(
             personal_label=times.personal_label or "",
             timeline_id=draft.timeline_id,
             cast=cast(state),
-            image_prompt=draft.picture.prompt if draft.picture else None,
+            # The cover is the story's, not this scene's (M1): Illustrate draws the scene itself.
+            image_prompt=draft.picture.prompt
+            if draft.picture and draft.picture.kind is not PictureKind.COVER
+            else None,
         )
         pending.write_back(story, prepared.input.state, state)
         rewind.keep(story, state.turn, data)
@@ -442,13 +452,16 @@ def brief(
     picture: ScenePicture,
     trigger: PictureTrigger | None = None,
 ) -> Brief:
-    """What to draw: the prompt, the world's look (S7), and the subject, or for a scene or cover
-    the people in it with the appearance kept in their entries (C9, M5) and what the player
-    character has on them (C10), chosen by `media.briefs.scene_figures`, and the scene's turn. A
-    scene picture also gets the time of day, to be lit for, and the place the scene ends in,
-    whose picture goes along (M5); its description is written again from the finished scene
-    (`media.notes`). The cover, the story's poster, is drawn with the premise instead (M1)."""
+    """What to draw: the prompt, the world's look (S7), and the subject, or for a scene the people
+    in it with the appearance kept in their entries (C9, M5) and what the player character has on
+    them (C10), chosen by `media.briefs.scene_figures`, and the scene's turn. A scene picture also
+    gets the time of day, to be lit for, and the place the scene ends in, whose picture goes along
+    (M5); its description is written again from the finished scene (`media.notes`). The cover,
+    the story's poster, is drawn from the premise instead, around the main character, never from
+    the scene it is planned in (M1, `media.briefs.cover_brief`)."""
     look = look_for_story(story)
+    if picture.kind is PictureKind.COVER:
+        return cover_brief(state, look)
     subject_id = picture.subject_id
     if picture.kind is PictureKind.PORTRAIT and subject_id in state.characters:
         character = state.characters[subject_id]
@@ -476,7 +489,7 @@ def brief(
         turn=state.turn,
     )
     if picture.kind is not PictureKind.SCENE:
-        return brief  # the cover, the story's poster (M1): no one scene's hour or place
+        return brief  # a portrait or place whose subject is no longer on record
     place_id, place_name, place_look = scene_place(state)
     return replace(
         brief,

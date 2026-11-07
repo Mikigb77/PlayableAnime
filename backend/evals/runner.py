@@ -870,6 +870,16 @@ class Eval:
         )
 
 
+def _traceback(error: BaseException) -> str:
+    """The traceback, ending on the error's own line, which `ScenarioResult.failures()` shows.
+    Notes such as LangGraph's "During task with name ..." are printed after that line, so they
+    go first instead."""
+    shown = traceback.TracebackException.from_exception(error, limit=8)
+    notes = shown.__notes__ or []
+    shown.__notes__ = None
+    return "".join([*(f"{note}\n" for note in notes), *shown.format()])
+
+
 async def run_scenario(
     scenario: Scenario, mode: Mode, models: Models | None = None
 ) -> ScenarioResult:
@@ -897,10 +907,10 @@ async def run_scenario(
         raise
     except NotAsScripted as error:
         if not ev.live:
-            return ev.result("error", time.perf_counter() - started, traceback.format_exc(limit=8))
+            return ev.result("error", time.perf_counter() - started, _traceback(error))
         ev.check("the live turns take the shape the script reads", False, str(error))
-    except Exception:
-        return ev.result("error", time.perf_counter() - started, traceback.format_exc(limit=8))
+    except Exception as error:
+        return ev.result("error", time.perf_counter() - started, _traceback(error))
     tallies = [t for t in ev.tallies.values() if not (ev.live and not t.live)]
     failed = any(not t.ok for t in tallies) or any(not j.passed for j in ev.judged)
     if not tallies and not ev.judged:
