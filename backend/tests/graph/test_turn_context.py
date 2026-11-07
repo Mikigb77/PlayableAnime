@@ -497,3 +497,16 @@ def test_the_narrators_guide_names_every_section_the_brief_writes():
     missing = [name for name in sorted(written) if f"- {name}: " not in prompts.BRIEF_GUIDE]
     assert missing == []
     assert prompts.NARRATOR_SYSTEM.endswith(prompts.BRIEF_GUIDE)
+
+
+def test_ability_costs_come_from_the_sheet_and_the_world_never_from_the_narrator():
+    # G13, A1: a keen-observation gift once played as a crushing headache nothing called for.
+    # The narrator shows only the costs OUTCOME lists, and the drafter gives a power only the
+    # costs its world or premise gives it.
+    from graph.drafting import prompts as drafting
+
+    assert "a power shows its cost" not in prompts.NARRATOR_SYSTEM
+    assert "costs only what OUTCOME's costs say" in prompts.NARRATOR_SYSTEM
+    assert "never a drawback of your own" in prompts.NARRATOR_SYSTEM
+    assert "Never invent pain, sickness or harm as a cost" in drafting.SYSTEM
+    assert "facts.challenge, always" in prompts.INTERPRET_SYSTEM

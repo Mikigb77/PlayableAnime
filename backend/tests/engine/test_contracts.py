@@ -289,3 +289,11 @@ def test_the_interpret_model_must_always_answer_with_steps():
     # played every action as a five-second nothing. Code may still leave them out.
     assert {"summary", "steps"} <= set(Intent.model_json_schema()["required"])
     assert Intent(standing=StandingAction.WAIT).steps == []
+
+
+def test_the_interpret_model_must_always_judge_each_steps_challenge():
+    # A2, A3: a step with no judged challenge fell back to even odds whoever the character was.
+    schema = Intent.model_json_schema()
+    assert "facts" in schema["$defs"]["IntentStep"]["required"]
+    assert "challenge" in schema["$defs"]["StepFacts"]["required"]
+    assert StepFacts().challenge is None  # code may still leave it out

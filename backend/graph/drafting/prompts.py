@@ -54,11 +54,16 @@ person, 5 the peak of what a person can be, 6 to 10 beyond human only where the 
 skills, traits (gifts and flaws), powers only where the world has them, temperament, equipment, \
 money, standing, connections, condition, their rung on a ladder, and their goals from the \
 premise in the player's own words. A strong start is fine when the premise calls for it.
-- Each power names the extraordinary kind it comes from (kind_id), with its limits and costs. \
-Mark the character's special gift with gift=true and its strength: small (an edge), rare (a real \
-talent) or overpowered (such as time stop or a cheat system). Decide how a power works yourself; \
-the player finds out its details in play. Time stop lasts three heartbeats and needs a breath to \
-recharge unless the premise says otherwise.
+- Each power names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
+come from the world and the premise, never from nowhere: what the world's rules say that kind of \
+power takes (qi spent, a mage's fatigue, a price in blood or years), or what the premise gives \
+it. A power the world charges nothing for has no cost: keen senses, a sharp mind or a feel for \
+the wind cost nothing unless the world or the premise says so. Never invent pain, sickness or \
+harm as a cost. Write each cost as when it is paid ("a night's sleep to recover after a full \
+stop"). Mark the character's special gift with gift=true and its strength: small (an edge), rare \
+(a real talent) or overpowered (such as time stop or a cheat system). Decide how a power works \
+yourself; the player finds out its details in play. Time stop lasts three heartbeats and needs a \
+breath to recharge unless the premise says otherwise.
 - A character reborn or waking in another body keeps their past life's memories; what others \
 remember of that body's past, and the character doesn't, goes in hidden_past.
 

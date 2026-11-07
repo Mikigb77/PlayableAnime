@@ -204,3 +204,21 @@ def test_a_title_that_quotes_a_secret_is_not_shown():
 
     assert public_text(state, state.bible.title) == ""
     assert public_text(state, state.bible.tone) == "noir"
+
+
+def test_a_powers_cost_is_shown_so_the_player_can_change_it():
+    # G2, G13: a drafted cost the review never showed was a drawback the player first met in
+    # play, such as a perception gift that suddenly hurt.
+    lines = character_lines(_cultivation())
+
+    stop = next(line for line in lines if line.startswith("Time stop:"))
+    assert "(three heartbeats per use; a breath to recharge). Cost: Leaves him drained." in stop
+
+
+def test_a_power_with_no_cost_shows_none():
+    character = samples.cultivation_character()
+    for power in character.powers:
+        power.costs = []
+    lines = character_lines(_cultivation(character=character))
+
+    assert not any("Cost:" in line for line in lines)

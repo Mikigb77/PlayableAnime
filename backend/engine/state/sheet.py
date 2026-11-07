@@ -184,6 +184,11 @@ class Power(EngineModel):
         default=None, description="Cooldown: usable again at this personal-clock second (W10a)."
     )
 
+    @property
+    def costs_text(self) -> str:
+        """G13. What using it costs, in one line ("a night's sleep; a drop of blood"), or ""."""
+        return "; ".join(c.text.strip().rstrip(".") for c in self.costs if c.text.strip())
+
 
 class Technique(EngineModel):
     """G25. A named technique from a style, with its effect, cost and requirements."""
