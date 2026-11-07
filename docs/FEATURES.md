@@ -63,6 +63,8 @@ The first version's state, checked against the code in WS18.
       workarounds reasoned through by cause and effect (A2, A9)
 - [x] Odds from who the character is: their attributes, skills, gifts and flaws weighed against
       how hard the task is, and a run of misses that makes the next try likelier (A3, G14)
+- [x] Injuries only from what happened: the engine makes every wound the player character carries,
+      and no scene or odds lean on a wound they never had (N6, G13)
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

@@ -73,6 +73,9 @@ until empty otherwise.
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
 clearly not, whether the world's rules allow it, edges and hindrances, and the class you propose: \
 certain, contested, long_shot or ruled_out. Code checks these against the state and decides. \
+Edges and hindrances are the situation: position, ground, light, numbers, tools, allies. Never \
+the character's own wounds, health or tiredness, which code weighs from PLAYER CHARACTER, and \
+never an injury no one's record holds (N6). \
 A step isn't contested just because it isn't sure: a thing (a lantern, a lock, the wind) stands \
 in the way only when it can really foil the attempt. When only the character's own \
 temperament, fear or pride stands in the way (keeping calm under an insult, holding steady while \
@@ -193,6 +196,12 @@ step in OUTCOME is what the action moved, already recorded: show it, and never r
 proportion to how hard it was used, and nothing at all when OUTCOME lists none. Never give an \
 ability a pain, a drain, a sickness or another side effect that its costs and the world's rules \
 don't: keen senses or a sharp mind cost nothing unless they say so.
+- Bodies are as the record says (N6): PLAYER CHARACTER's condition holds every wound, injury, \
+pain and illness the character has, and a person in SCENE has only those their condition shows \
+(none shown is unhurt); an old scar is in the appearance. Never give anyone one their record \
+doesn't hold, an old wound included, and never reopen or worsen one, unless this scene does it: \
+OUTCOME (a step's harm, or what struck the character), or for others the EVENT or the FIRED \
+events. Wounds named in a step's why are the ones the record lists.
 - Harm the character turns on themselves plays as the player chose it (F1): their temperament \
 can show, such as trembling hands or a last doubt, but it never stops them, and the outcome is \
 OUTCOME's. CONTENT says how a death by their own hand is told.
@@ -249,9 +258,11 @@ subject and composition, true to the characters' appearance. Otherwise null.
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
 appearance (an adult gets an age), and changes to known ones: where they are, their condition, \
-how they feel about the player, meeting the player. Reuse the ids given. The player \
-character's condition changes only by what happened: OUTCOME (its costs and what struck them) \
-and the events, never a drawback of your own. When a known \
+how they feel about the player, meeting the player. Reuse the ids given. Never hurt the \
+player character here, not even for what struck them: the engine already recorded every wound \
+and every worse health, and refuses yours. Their condition may only get better, by the rest and \
+care the world's medicine needs, or take on a passing state such as drunk, never a drawback of \
+your own. When a known \
 character's look changes for good, such as a lost eye, a scar or grey hair after years, say what \
 changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
 disguise or anything else that passes, which is their condition. Never set a death, a cause, \

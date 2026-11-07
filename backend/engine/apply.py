@@ -8,16 +8,18 @@ can't break the world (A7), and the rest of the delta still applies.
 Who may change what:
 
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
-  locations, small attitude nudges, condition, memberships, facts, leads, non-terminal status
-  changes, the scene's end and the summary, and what changes hands, money included, which
-  `engine.possessions` moves from giver to receiver so nobody gives what they don't have (C10).
-  A lasting change to how a known character looks (`look_change`) moves their `look_version` on
-  (M5, `engine.looks`).
+  locations, small attitude nudges, condition (except harm to the player character: worse health,
+  a wound or a passing state that names an injury, `engine.injuries`), memberships, facts, leads,
+  non-terminal status changes, the scene's end and the summary, and what changes hands, money
+  included, which `engine.possessions` moves from giver to receiver so nobody gives what they
+  don't have (C10). A lasting change to how a known character looks (`look_change`) moves their
+  `look_version` on (M5, `engine.looks`).
 - **Engine only:** deaths, destroyed factions and ruined places (resolve records the outcome
   before narration, F4); anything that undoes one, which also needs a recorded `Cause`; faction
-  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7); and
-  the state of powers (cooldowns and settled details, never changed once set), skills,
-  techniques, ladders, practice and time effects (A4, G19, G20, W10a).
+  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7);
+  wounds that last, and any harm to the player character (N6); and the state of powers
+  (cooldowns and settled details, never changed once set), skills, techniques, ladders,
+  practice and time effects (A4, G19, G20, W10a).
 """
 
 from dataclasses import dataclass, field
@@ -47,6 +49,7 @@ from engine.contracts.delta import (
     RuleChange,
     StateDelta,
 )
+from engine.injuries import names_injury
 from engine.invariants import (
     ancestry,
     cause_problem,
@@ -84,6 +87,7 @@ from engine.state.sheet import (
     Attitude,
     BackstoryClaim,
     Grudge,
+    Health,
     LadderPosition,
     PassingState,
     Wound,
@@ -94,6 +98,8 @@ from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
+# Health from best to worst, so a change can tell harm from healing (N6).
+_HEALTH = list(Health)
 
 
 class DeltaSource(StrEnum):
@@ -615,17 +621,31 @@ class _Applier:
         return total - used
 
     def condition(self, character: Character, change: CharacterChange) -> None:
+        """Health, wounds and passing states. Only the engine harms the player character (N6,
+        `engine.injuries`): the narrator may show them heal, never hurt them, since every blow,
+        fall and cost that can is settled before the scene is told."""
+        subject = f"character {character.id}"
         condition = character.sheet.condition
         update = change.condition
+        guarded = not self.engine and character.id == self.state.player_id
         if update.health is not None:
-            condition.health = update.health
-        condition.wounds.extend(Wound(text=w) for w in update.wounds)
-        if update.lasting_wounds and self.engine_only(f"character {character.id}", "lasting wound"):
+            if guarded and _HEALTH.index(update.health) > _HEALTH.index(condition.health):
+                self.reject(subject, "harm", "only the engine harms the player character (N6)")
+            else:
+                condition.set_health(update.health)
+        if update.wounds:
+            if guarded:
+                self.reject(subject, "wound", "only the engine wounds the player character (N6)")
+            else:
+                condition.wounds.extend(Wound(text=w) for w in update.wounds)
+        if update.lasting_wounds and self.engine_only(subject, "lasting wound"):
             condition.wounds.extend(Wound(text=w, lasting=True) for w in update.lasting_wounds)
         cleared = {s.casefold() for s in update.cleared_states}
         condition.states = [s for s in condition.states if s.name.casefold() not in cleared]
         for state_name in update.states:
-            if is_real_name(state_name) and not any(
+            if guarded and names_injury(state_name):
+                self.reject(subject, "injury", "only the engine hurts the player character (N6)")
+            elif is_real_name(state_name) and not any(
                 s.name.casefold() == state_name.casefold() for s in condition.states
             ):
                 condition.states.append(PassingState(name=state_name))

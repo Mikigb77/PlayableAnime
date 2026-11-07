@@ -5,7 +5,7 @@ the narrator starts. Each check returns a repaired copy and the issues it found;
 raises for a bad proposal, and nothing here calls a model. Model nodes propose; code decides
 (CLAUDE.md rule 2).
 
-- `check_intent`: the interpret step's proposal against the state (V3, B5, W10).
+- `check_intent`: the interpret step's proposal against the state (V3, B5, W10, N6).
 - `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
@@ -14,7 +14,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from engine import limits, possessions
+from engine import injuries, limits, possessions
 from engine.context import ImageSetting, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -46,6 +46,8 @@ FALLBACK_DURATION_S = 5
 LAST_PICTURES = (PictureTrigger.DEATH, PictureTrigger.DECISIVE_BLOW)
 # G12: the issue code for a real person or organisation left out of the narrator's update.
 REAL_ENTITY = "real_entity"
+# N6, A8: an edge or hindrance about an injury the record doesn't hold, left out.
+UNRECORDED_HARM = "unrecorded_harm"
 
 
 @dataclass(frozen=True)
@@ -61,7 +63,8 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     The actor is always the player character: the player plays their own character and can't
     make anyone else act (A6), so words that have someone else act are the character's order or
     hope. The interpret step never refuses (B5), so an intent with no step and no standing action
-    becomes one step that carries the player's words as they are.
+    becomes one step that carries the player's words as they are. An edge or hindrance that
+    leans on an injury the record doesn't hold is left out (N6, `engine.injuries`).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -89,6 +92,11 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_opposition", "kept as words", ", ".join(unknown)))
             facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
+        # N6, A8: an edge or hindrance that leans on an injury the record doesn't hold, such as
+        # an "old wound" the character never had, is left out of the odds and the scene.
+        step.facts, dropped = injuries.unrecorded_harm(state, state.player, step)
+        if dropped:
+            issues.append(Issue(UNRECORDED_HARM, f"{dropped} left out", str(step.text)))
 
     # W16, N1, N2: only open threads the player knows and leads still on offer can be taken up.
     taken_up = []
