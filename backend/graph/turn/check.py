@@ -12,15 +12,17 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 - `check_told`: whether a scene the player acted in told their action before its outcome (R1).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from engine import limits
+from engine import limits, possessions
 from engine.context import ImageSetting, TurnContext
 from engine.contracts import (
     ActionKind,
     DirectorPlan,
     Intent,
     IntentStep,
+    ItemChange,
     OutcomeClass,
     PictureTrigger,
     Resolution,
@@ -31,7 +33,7 @@ from engine.contracts import (
 )
 from engine.director.themes import allowed_themes, fits
 from engine.state.cast import CharacterStatus
-from engine.state.records import LeadStatus, RollRecord, StepResult
+from engine.state.records import LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
 from engine.timekeeping import parse_clock
 from graph.turn.outputs import NarratorOutput
@@ -229,16 +231,24 @@ def _stop_reason(step: StepResolution) -> StopReason:
     return StopReason.FAILED
 
 
-def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list[Issue]]:
+def check_update(
+    delta: StateDelta, state: WorldState, moved: Sequence[Transfer] = ()
+) -> tuple[StateDelta, list[Issue]]:
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
     A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
     dead can't be present (C1), and the rolling summary is never blanked. A new character or
     faction named after a real person or organisation is left out, and a known one keeps its
-    name (G12).
+    name (G12). What the engine already moved this turn (`moved`, the transfers its steps and
+    events made, C10) is left out, so a payment told in the scene is never made twice.
     """
     delta, hits = limits.strip_real_entities(delta, state)
     issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
+    if moved and delta.items:
+        kept = [change for change in delta.items if not _already_moved(change, moved)]
+        if len(kept) < len(delta.items):
+            issues.append(Issue("move_recorded", "the step already moved it"))
+            delta = delta.model_copy(update={"items": kept})
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()
@@ -271,6 +281,27 @@ def check_told(told: NarratorOutput, intent: Intent | None) -> list[Issue]:
     if intent is None or told.action.strip():
         return []
     return [Issue(ACTION_UNTOLD, "the scene opened on the outcome, not the action")]
+
+
+def _already_moved(change: ItemChange, moved: Sequence[Transfer]) -> bool:
+    """Whether the narrator's change retells one the engine made: the same sides, however the
+    world is spelled, no more of it, and money for money or the same thing."""
+    sides = (possessions.side(change.from_id), possessions.side(change.to_id))
+    amount = possessions.count(change.name, change.quantity)
+    for done in moved:
+        if sides != (done.from_id, done.to_id) or amount > done.quantity:
+            continue
+        if done.money:
+            if change.money or possessions.is_money(change.name, done.currency):
+                return True
+            continue
+        if change.money:
+            continue
+        if change.item_id and change.item_id == done.item_id:
+            return True
+        if possessions.same_thing(change.name, done.name):
+            return True
+    return False
 
 
 def check_plan(

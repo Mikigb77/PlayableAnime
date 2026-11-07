@@ -32,6 +32,7 @@ from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
 from engine.pipeline import PlayOut
 from engine.rng import SeededRng
+from engine.state.records import OriginKind
 from engine.state.world import Chapter, WorldState
 from graph.llm import (
     Completed,
@@ -98,14 +99,18 @@ def turn_rng(turn: TurnInput) -> SeededRng:
 
 
 def _rejected(code: str, rejection: Any) -> Issue:
-    return Issue(code, rejection.reason, f"{rejection.subject}: {rejection.change}")
+    # What kind of change it was, such as "character.item", which holds no story text (T6).
+    area = ".".join(part.split()[0] for part in (rejection.subject, rejection.change) if part)
+    return Issue(code, rejection.reason, f"{rejection.subject}: {rejection.change}", area)
 
 
 def _issues(state: TurnState, new: list[Issue]) -> list[Issue]:
     """Adds what a check found to the turn's issues and logs it. Details and subjects can hold
-    story text, so only the code is logged above DEBUG (T6)."""
+    story text, so only the code, and for a refused change its kind, is logged above DEBUG
+    (T6)."""
     for issue in new:
-        logger.info("turn check: %s", issue.code, extra={"turn_issue": {"code": issue.code}})
+        logged = {"code": issue.code} | ({"area": issue.area} if issue.area else {})
+        logger.info("turn check: %s", issue.code, extra={"turn_issue": logged})
         logger.debug(
             "turn check detail: %s",
             issue.code,
@@ -404,7 +409,11 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     issues: list[Issue] = []
     if mode != "template":
         issues += check.check_told(narration, state.get("intent"))
-        delta, found = check.check_update(narration.update, world)
+        # C10: what the engine moved this turn, so the scene doesn't move it again.
+        moved = [
+            t for t in world.transfers if t.turn == turn.ctx.turn and t.origin is OriginKind.ENGINE
+        ]
+        delta, found = check.check_update(narration.update, world, moved)
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(
                 "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"

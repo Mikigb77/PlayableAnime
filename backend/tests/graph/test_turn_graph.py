@@ -785,6 +785,49 @@ def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines)
     assert not any("the-hidden-killer" in str(line) for line in above_debug)
 
 
+def test_a_payment_is_made_once_and_only_with_what_the_purse_holds(fake, make_client, log_lines):
+    """C10: the step moves the coins before the scene is told, the scene telling the payment
+    again moves nothing, and a scene that hands over something the player character doesn't
+    hold is refused. The log says only what kind of change was refused (T6)."""
+    state = cultivation_world()
+    purse = state.player.sheet.resources
+    purse.money, purse.currency = 12, "copper coins"
+    pay = {
+        "text": "pay Zhao five copper coins",
+        "verb": "pay",
+        "kind": "instant",
+        "proposed_duration_s": 3,
+        "exchanges": [
+            {
+                "kind": "give",
+                "thing": "5 copper coins",
+                "money": True,
+                "amount": 5,
+                "with_id": "zhao",
+            }
+        ],
+    }
+    told = [
+        {"name": "copper coins", "money": True, "quantity": 5, "from_id": "lin", "to_id": "zhao"},
+        {"name": "a jade token", "from_id": "lin", "to_id": "zhao"},
+    ]
+    fake.script(Node.INTERPRET, Reply(json={"summary": "Lin pays Zhao.", "steps": [pay]}))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": SCENE["update"] | {"items": told}}))
+
+    _, result = play(make_client(), turn_input(state, action="I pay Zhao five copper coins"))
+
+    assert result.state.player.sheet.resources.money == 7
+    assert result.state.characters["zhao"].sheet.resources.money == 5
+    assert [t.how for t in result.state.transfers] == ["pay"]
+    codes = [i.code for i in result.issues]
+    assert "move_recorded" in codes and "rejected" in codes
+    above_debug = [line for line in log_lines() if line["severity"] != "DEBUG"]
+    assert {"code": "rejected", "area": "character.item"} in [
+        line.get("turn_issue") for line in above_debug
+    ]
+    assert not any("jade token" in str(line) for line in above_debug)
+
+
 def test_turn_inputs_are_checked():
     state = grounded_world()
     good = TurnContext(story_id="s", turn=1)

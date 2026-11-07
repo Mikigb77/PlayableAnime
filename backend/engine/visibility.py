@@ -20,6 +20,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from engine import possessions
 from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
@@ -39,6 +40,7 @@ from engine.state.records import (
     LeadStatus,
     StatusChange,
     ThreadStatus,
+    Transfer,
     Visibility,
 )
 from engine.state.sheet import Health
@@ -46,6 +48,8 @@ from engine.state.world import WorldState, natural_key
 from engine.world.telling import cap, tell
 
 SINCE_LIMIT = 6
+# C10: how many of the player character's latest gains and losses `/status` weighs among them.
+SINCE_TRANSFERS = 3
 EN = Language.EN
 ES = Language.ES
 CA = Language.CA
@@ -294,6 +298,11 @@ _WORDS = {
         "ends": "Ends {when}",
         "heard": "Heard {when}",
         "and": " and ",
+        "to": "To {who}: {what}",
+        "from": "From {who}: {what}",
+        "gained": "Gained: {what}",
+        "lost": "Lost: {what}",
+        "someone": "someone",
     },
     ES: {
         "saw": "Lo viste",
@@ -312,6 +321,11 @@ _WORDS = {
         "ends": "Termina {when}",
         "heard": "Lo oíste {when}",
         "and": " y ",
+        "to": "Para {who}: {what}",
+        "from": "De {who}: {what}",
+        "gained": "Ganancia: {what}",
+        "lost": "Pérdida: {what}",
+        "someone": "alguien",
     },
     CA: {
         "saw": "Ho vas veure",
@@ -330,6 +344,11 @@ _WORDS = {
         "ends": "Acaba {when}",
         "heard": "Ho vas sentir {when}",
         "and": " i ",
+        "to": "Per a {who}: {what}",
+        "from": "De {who}: {what}",
+        "gained": "Guany: {what}",
+        "lost": "Pèrdua: {what}",
+        "someone": "algú",
     },
 }
 
@@ -427,6 +446,25 @@ class _Knowledge:
 
     def facts_about(self, subject_id: str) -> list[str]:
         return list(self.facts_by_subject.get(subject_id, []))
+
+    def transfer_text(self, transfer: Transfer) -> str:
+        """C10. Something the player character gained or lost, in the story's language, naming
+        the other side only if they know who it was: "To Milo: 12 copper coins". How it went
+        (stolen, paid) is the model's word, in English, so it is left to the models' record."""
+        words = _WORDS[self.language]
+        what = transfer.name
+        if transfer.money or transfer.quantity > 1:
+            what = f"{number_label(transfer.quantity, self.language)} {transfer.name}"
+        you = self.player_id
+        if transfer.from_id == you:
+            key, other = ("to", transfer.to_id) if transfer.to_id else ("lost", None)
+        else:
+            key, other = ("from", transfer.from_id) if transfer.from_id else ("gained", None)
+        who = (self.name_of(other) or words["someone"]) if other else ""
+        text = words[key].format(who=who, what=what)
+        if key == "from" and self.language is CA and who[:1].casefold() in "aeiouhàèéíòóú":
+            text = f"D'{who}: {what}"  # Catalan elides "de" before a vowel
+        return _cap(text)
 
     def deed_text(self, deed: Deed) -> str:
         """A deed in the world's words (G16), naming only whom the player character knows and
@@ -758,6 +796,9 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
         for f in state.facts.values()
         if k.knows(f) and f.importance >= 4 and f.timeline_id == k.timeline
     ]
+    # C10: what the player character gained and lost lately, and to whom.
+    mine = possessions.involving(state, k.player_id)[-SINCE_TRANSFERS:]
+    moments += [(t.world_s, f"transfer-{n}", k.transfer_text(t)) for n, t in enumerate(mine)]
     moments.sort(key=lambda m: (m[0], natural_key(m[1])), reverse=True)
     since = [
         SinceEntry(text=text, ago_label=ago_label(k.now - when, language))

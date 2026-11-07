@@ -203,7 +203,7 @@ def test_a_cause_and_effect_chain_round_trips():
         StateDelta(
             characters=[CharacterChange(id="gennaro-cousin", name="Tonino", meets_player=True)],
             facts=[NewFact(text="The bartender saw Luca's face.", known_to_player=False)],
-            items=[ItemChange(name="bullet", quantity=-2)],
+            items=[ItemChange(name="bullet", quantity=2, from_id="luca", to_id="world")],
             scene_end=SceneEnd(ended_on="Headlights turn the corner behind him."),
             summary="Luca shot Carmine and ran.",
         ),

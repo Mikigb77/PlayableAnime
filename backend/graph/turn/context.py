@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from engine import possessions
 from engine.base import DAY
 from engine.context import Language, TurnContext
 from engine.contracts import (
@@ -20,6 +21,7 @@ from engine.contracts import (
     DirectorPlan,
     EventSource,
     Intent,
+    ItemChange,
     Resolution,
 )
 from engine.labels import ago_label, in_label, moment, span_label
@@ -99,6 +101,13 @@ def _player_view(state: WorldState) -> dict[str, Any]:
     view = {"id": state.player_id} | _dump(
         state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
     )
+    # C10: what they have is exactly what this lists, so their money shows even when it is none.
+    resources = state.player.sheet.resources
+    held = view.setdefault("sheet", {}).setdefault("resources", {})
+    held.pop("currency", None)  # shown beside the amount
+    held["money"] = resources.money
+    if resources.currency:
+        held["currency"] = resources.currency
     # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
 
@@ -295,6 +304,12 @@ def _past(state: WorldState, scenes: Sequence[PastScene]) -> dict[str, Any]:
     }
 
 
+def _changed_hands(state: WorldState) -> list[str]:
+    """C10. The player character's latest gains and losses, and who has what they lost, so no
+    model forgets that the coins are gone (`engine.possessions`)."""
+    return possessions.prompt_lines(state) or ["(nothing yet)"]
+
+
 def _goals_and_threads(state: WorldState) -> dict[str, Any]:
     """The player's goals, the open threads they know of and the leads on offer (N1, N2)."""
     you = state.player_id
@@ -328,6 +343,7 @@ def interpret_prompt(state: WorldState, action: str, language: Language = Langua
         [
             world,
             ("PLAYER CHARACTER", _player_view(state)),
+            ("CHANGED HANDS", _changed_hands(state)),
             ("SCENE", _scene_view(state)),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
             ("NOW", _now_view(state)),
@@ -421,6 +437,7 @@ def narration_brief(
         ("CONTINUITY", _continuity(after) or ["(nothing yet)"]),
         ("GOALS AND THREADS", _goals_and_threads(before)),
         ("PLAYER CHARACTER", _player_view(after)),
+        ("CHANGED HANDS", _changed_hands(after)),
         ("KNOWN", _known_view(after)),
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
@@ -531,6 +548,10 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             view["odds"] = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
         if step.costs:
             view["costs"] = [c.text for c in step.costs]
+        if step.effects.items and not step.interrupted:
+            # C10: what the step moved, already recorded; the narrator shows it, never again. A
+            # step an event cut short moved nothing.
+            view["changed_hands"] = [_moved(change) for change in step.effects.items]
         if any(beat.verdict is not BeatVerdict.HOLDS for beat in step.beats):
             # R2: the beats as checked, in order, when one found something new or came up empty.
             # A step stops at its empty beat, so the beats after it never happen.
@@ -576,6 +597,18 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             {"claim": c.text, "recorded": c.accepted, "why": c.reason} for c in resolution.claims
         ]
     return outcome
+
+
+def _moved(change: ItemChange) -> dict[str, Any]:
+    view: dict[str, Any] = {
+        "what": change.name,
+        "amount": change.quantity,
+        "from": change.from_id,
+        "to": change.to_id,
+    }
+    if change.money:
+        view["money"] = True
+    return view
 
 
 def _beat_view(beat: BeatResolution) -> dict[str, Any]:

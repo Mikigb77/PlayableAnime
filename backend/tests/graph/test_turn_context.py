@@ -557,3 +557,73 @@ def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
     for blank in ({"narration": "  "}, {"action": " ", "narration": ""}):
         with pytest.raises(ValidationError):
             NarratorOutput.model_validate(blank)
+
+
+def _robbed():
+    """C10: Milo has taken all twelve of Luca's copper coins (Miki, 2026-11-07)."""
+    from engine.apply import DeltaSource, apply_delta
+    from engine.contracts import ItemChange, StateDelta
+
+    state = grounded_world()
+    purse = state.player.sheet.resources
+    purse.money, purse.currency = 12, "copper coins"
+    state.characters["milo"] = Character(
+        id="milo",
+        name="Milo",
+        description="A quick-fingered street kid.",
+        age=19,
+        location_id="bar",
+        known_by=["luca"],
+        met_by=["luca"],
+    )
+    state.scene.present_ids.append("milo")
+    theft = ItemChange(name="12 copper coins", from_id="luca", to_id="milo", how="stolen")
+    applied = apply_delta(state, StateDelta(items=[theft]), ctx(), source=DeltaSource.NARRATOR)
+    assert not applied.rejected
+    return applied.state
+
+
+def test_both_models_read_an_empty_purse_and_where_the_coins_went():
+    # C10: the narrator once let the player pay Milo with coins Milo had already stolen, since
+    # an empty purse never showed and nothing said where the coins went.
+    state = _robbed()
+    went = (
+        '## CHANGED HANDS\n["12 copper coins went from you to Milo (milo), stolen, moments ago."]'
+    )
+
+    interpret = interpret_prompt(state, "I tell Milo to keep the coins").messages[-1].text
+    narrator = brief(state).user
+
+    for text in (interpret, narrator):
+        assert '"money":0,"currency":"copper coins"' in text
+        assert went in text
+    assert '## CHANGED HANDS\n["(nothing yet)"]' in brief().user
+    assert "- CHANGED HANDS: " in prompts.BRIEF_GUIDE
+    assert "never count as theirs money or a thing they don't hold" in prompts.INTERPRET_SYSTEM
+    assert '("keep the coins as my payment")' in prompts.INTERPRET_SYSTEM
+    assert "Never show them paying, handing over or using money" in prompts.NARRATOR_SYSTEM
+
+
+def test_the_outcome_says_what_a_step_moved_unless_an_event_cut_it_short():
+    from engine.contracts import ItemChange, StateDelta
+
+    paid = ItemChange(
+        name="5 copper coins", money=True, quantity=5, from_id="luca", to_id="milo", how="pay"
+    )
+
+    def outcome(interrupted: bool) -> str:
+        step = StepResolution(
+            index=0,
+            text="pay Milo",
+            outcome_class=OutcomeClass.CERTAIN,
+            reason="Done.",
+            result=StepResult.SUCCESS,
+            effects=StateDelta(items=[paid]),
+            duration_s=3,
+            interrupted=interrupted,
+        )
+        return brief(_robbed(), resolution=Resolution(steps=[step])).user
+
+    moved = '"changed_hands":[{"what":"5 copper coins","amount":5,"from":"luca","to":"milo"'
+    assert moved + ',"money":true}]' in outcome(False)
+    assert "changed_hands" not in outcome(True).split("## OUTCOME")[1]

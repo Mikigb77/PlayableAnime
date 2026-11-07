@@ -593,7 +593,8 @@ StatusView {character: {name, lines: [string], portrait_url?},   # portrait once
                                           # lines include a child on the way (N6)
             reputation: [{name, label}],
             clock: Clock,
-            since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10)
+            since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10), and the
+                                          # latest gains and losses: "To Milo: 12 copper coins" (C10)
 ```
 
 ### Reports (F6)

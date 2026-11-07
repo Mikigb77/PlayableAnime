@@ -209,6 +209,26 @@ class Fact(EngineModel):
     origin: Origin | None = None
 
 
+class Transfer(EngineModel):
+    """C10. One thing that changed hands, or came from the world or left it, with who had it and
+    who has it now: the record behind what everyone holds, so a loss is never forgotten. `None`
+    on a side is the world: found or made, used up or lost. Money is counted in `currency`."""
+
+    name: str
+    quantity: int = Field(ge=1)
+    money: bool = False
+    currency: str = ""
+    item_id: str | None = None
+    from_id: str | None = None
+    to_id: str | None = None
+    how: str = ""
+    known_by: list[str] = Field(default_factory=list)
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+    timeline_id: str = MAIN_TIMELINE
+    origin: OriginKind = OriginKind.NARRATOR
+
+
 class GoalStatus(StrEnum):
     ACTIVE = "active"
     ACHIEVED = "achieved"
