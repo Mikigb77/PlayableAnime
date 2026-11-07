@@ -301,15 +301,15 @@ def _add_item(
             description=source.description if source is not None else "",
             history=source.history if source is not None else "",
             quantity=0,
-            carried=kind not in _WHERE_IT_STANDS,
+            carried=kind not in WHERE_IT_STANDS,
         )
         items.append(same)
     same.quantity += amount
     _describe(same, change)
 
 
-# Things used where they stand, never carried (G14).
-_WHERE_IT_STANDS = (ItemKind.VEHICLE, ItemKind.PROPERTY)
+# Things used where they stand, never carried (G14), nor drawn on anyone (M5).
+WHERE_IT_STANDS = (ItemKind.VEHICLE, ItemKind.PROPERTY)
 
 
 def _held_ids(state: WorldState) -> set[str]:

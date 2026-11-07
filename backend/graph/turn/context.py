@@ -101,13 +101,17 @@ def _player_view(state: WorldState) -> dict[str, Any]:
     view = {"id": state.player_id} | _dump(
         state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
     )
-    # C10: what they have is exactly what this lists, so their money shows even when it is none.
+    # C10: what they have is exactly what this lists, so their money and their things show even
+    # when they have none.
     resources = state.player.sheet.resources
     held = view.setdefault("sheet", {}).setdefault("resources", {})
     held.pop("currency", None)  # shown beside the amount
     held["money"] = resources.money
     if resources.currency:
         held["currency"] = resources.currency
+    # So "nothing" reads as nothing, never as a list left out, and no scene or picture prompt
+    # hands them a weapon the premise or the genre suggests (C10, M5).
+    held.setdefault("items", [])
     # N6: their body is exactly what this lists, so their health shows even when they are unhurt,
     # and a scene never finds a wound on them that isn't here.
     condition = view["sheet"].setdefault("condition", {})

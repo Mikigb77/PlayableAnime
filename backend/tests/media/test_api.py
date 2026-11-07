@@ -15,7 +15,7 @@ from media.drawing import DrawBlocked, DrawFailed, KeyCannotDraw
 from media.lookups import place_url, portrait_urls
 from media.models import Image, ImageStatus, Payer, SkipReason
 from media.plans import plan_picture
-from media.prompts import Brief, Figure
+from media.prompts import Brief, Figure, WorldLook
 from media.service import LEASE, MAX_ATTEMPTS
 from media.storage import get_storage
 from tests.conftest import auth_headers
@@ -42,6 +42,24 @@ def _planned_scene(story, turn: int = 2, **brief):
     scene = make_scene(story, turn)
     plan_picture(scene, kind="scene", trigger="fight_start", brief=Brief(**brief))
     return scene
+
+
+def test_a_cover_planned_with_the_premise_is_drawn_without_it(client, painters, meter):
+    """M5: a story's pictures never see its premise, even a cover planned before that held, whose
+    brief kept the premise as its setting (ruins and a river a leap through the trees never had,
+    Miki 2026-11-07)."""
+    story = make_story()
+    scene = make_scene(story, 2)
+    premise = "Across the great river stand the ruins of your clan's castle."
+    old = Brief(description="You leap between pine branches.", look=WorldLook(setting=premise))
+    plan_picture(scene, kind="cover", trigger="cover", brief=old)
+
+    assert _image(client, story, 2).json()["status"] == "ready"
+
+    request = painters.ours.requests[0]
+    assert "You leap between pine branches." in request.prompt
+    assert "ruins of your clan" not in request.prompt
+    assert request.aspect_ratio == "3:4"
 
 
 def test_a_planned_picture_is_drawn_stored_and_served(client, painters, meter, log_lines):

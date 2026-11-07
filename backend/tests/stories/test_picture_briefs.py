@@ -5,6 +5,7 @@ from engine.contracts import PictureKind, PictureTrigger
 from engine.samples import grounded_world
 from engine.state.cast import Character, Prominence
 from graph.turn import ScenePicture
+from media.prompts import build_prompt
 from stories.models import Story
 from stories.turns import brief
 
@@ -22,7 +23,10 @@ def test_a_scene_picture_shows_the_people_its_prompt_names_at_the_hour():
 
     assert [f.id for f in planned.figures] == ["luca", "carmine"]
     assert (planned.you, planned.time) == ("Luca Esposito", "evening")
-    assert planned.look.setting == STORY.premise  # stored, but only a cover shows it
+    # What Luca has on him, so the picture arms him with nothing else (C10).
+    assert planned.figures[0].carries == ("Beretta pistol", "flick knife")
+    # The premise tells how the story began, not this scene (M5).
+    assert planned.look.setting == ""
 
 
 def test_the_subject_of_a_fight_leads_even_when_the_player_never_met_them():
@@ -51,11 +55,16 @@ def test_an_arc_ending_or_an_event_has_no_person_as_its_subject():
         assert [f.id for f in planned.figures] == ["carmine"]
 
 
-def test_a_cover_shows_who_you_are_but_keeps_its_own_light():
+def test_a_cover_shows_the_scene_it_is_planned_in_never_the_premise():
+    """M5 (Miki, 2026-11-07): the cover is shown in the scene it is planned in, so it is drawn
+    as that scene, at its hour, with what the player character has on them, and the premise,
+    whose places and things the scene may not have, stays out of it."""
     state = grounded_world()
     cover = ScenePicture(kind=PictureKind.COVER, prompt="You stand alone in the rain.")
 
     planned = brief(STORY, state, cover, PictureTrigger.COVER)
 
     assert [f.id for f in planned.figures] == ["luca"]
-    assert (planned.you, planned.time) == ("Luca Esposito", "")
+    assert (planned.you, planned.time) == ("Luca Esposito", "evening")
+    assert planned.figures[0].carries == ("Beretta pistol", "flick knife")
+    assert STORY.premise not in build_prompt("cover", planned).user
