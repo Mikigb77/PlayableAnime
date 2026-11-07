@@ -210,7 +210,7 @@ def _npc_move(w: World, npc: Character) -> None:
     move = stream.choice(moves)
     if move == "heal":
         health = npc.sheet.condition.health
-        npc.sheet.condition.health = _HEALING[_HEALING.index(health) + 1]
+        npc.sheet.condition.set_health(_HEALING[_HEALING.index(health) + 1])
         _record(w, npc.id, f"{npc.name}'s wounds mend.", [npc.id])
     elif move == "travel":
         place_id, _ = stream.choice(news_neighbours(state, npc.location_id))

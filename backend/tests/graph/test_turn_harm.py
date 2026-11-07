@@ -11,6 +11,7 @@ from engine.resolve import strangers
 from engine.samples import grounded_world
 from engine.state import StepResult
 from engine.state.cast import CharacterStatus
+from engine.state.sheet import Health
 from graph.llm import Node, Reply
 from graph.turn import TurnCompleted, TurnInput, TurnKind, run_turn
 from graph.turn.context import narration_brief
@@ -118,3 +119,77 @@ def test_the_narrator_is_told_who_a_step_made_real():
     )
     # Who they were comes from the change that made them, not the one that killed them.
     assert '"met"' in brief.user and "stranger-1-0" in brief.user and "a dockhand" in brief.user
+
+
+def test_a_fight_never_reopens_a_wound_the_character_never_had(fake, make_client):
+    # 2026-11-07: Miki's character, unhurt all story, "reopened an old wound" with broken ribs in
+    # a small fight. The interpret step leaned on an injury nobody had, and the narrator's update
+    # tried to keep it: code leaves both out, so the odds, the scene and the record stay true (N6).
+    state = grounded_world()
+    shove = {
+        "summary": "shove past Carmine",
+        "steps": [
+            {
+                "text": "shove past Carmine to the door",
+                "verb": "shove",
+                "kind": "exchange",
+                "proposed_duration_s": 3,
+                "target_ids": ["carmine"],
+                "facts": {
+                    "challenge": "hard",
+                    "opposition": "Carmine blocking the door",
+                    "opposition_ids": ["carmine"],
+                    "can_respond": True,
+                    "foes_mean": "none",
+                    "hindrances": ["the old wound in your ribs reopening", "the crowded bar"],
+                },
+            }
+        ],
+    }
+    update = {
+        "characters": [
+            {"id": "luca", "condition": {"health": "hurt", "wounds": ["broken ribs, reopened"]}}
+        ]
+    }
+    fake.script(Node.INTERPRET, Reply(json=shove))
+    fake.script(Node.NARRATOR, Reply(json={"narration": "You shoulder past.", "update": update}))
+
+    result = play(make_client(), turn_input(state, "I shove past Carmine"))
+
+    condition = result.state.player.sheet.condition
+    assert condition.health is Health.UNHURT and condition.wounds == []
+    codes = [issue.code for issue in result.issues]
+    assert "unrecorded_harm" in codes and "rejected" in codes
+    (step,) = result.resolution.steps
+    # The odds name what is really against them, and nothing the record doesn't hold.
+    assert step.outcome_class == "contested" and "the crowded bar against you" in step.reason
+    assert "wound" not in step.reason and "ribs" not in step.reason
+    [request] = fake.calls(Node.NARRATOR)
+    brief = request.prompt.messages[-1].text
+    assert "old wound" not in brief
+    assert '"condition":{"health":"unhurt","wounds":[]}' in brief
+
+
+def test_the_first_opening_records_a_wound_the_premise_starts_with(fake, make_client):
+    # N6: the premise is the player's own words, so "you wake up wounded" is recorded on the
+    # first opening. Any later scene would be refused (see the test above).
+    state = grounded_world()
+    update = {
+        "characters": [
+            {"id": "luca", "condition": {"health": "wounded", "wounds": ["a knife wound"]}}
+        ]
+    }
+    fake.script(Node.NARRATOR, Reply(json={"narration": "You wake in a ditch.", "update": update}))
+    ctx = TurnContext(story_id="story-1", turn=1)
+    turn = TurnInput(
+        state=state,
+        ctx=ctx,
+        kind=TurnKind.OPENING,
+        premise="I wake up in a ditch with a knife wound.",
+    )
+
+    result = play(make_client(), turn)
+
+    condition = result.state.player.sheet.condition
+    assert condition.health is Health.WOUNDED
+    assert [w.text for w in condition.wounds] == ["a knife wound"]

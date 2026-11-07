@@ -502,6 +502,17 @@ def test_the_narrators_guide_names_every_section_the_brief_writes():
     assert prompts.NARRATOR_SYSTEM.endswith(prompts.BRIEF_GUIDE)
 
 
+def test_bodies_are_as_the_record_says():
+    # N6, 2026-11-07: a fight "reopened an old wound" the character never had. The narrator
+    # gives nobody an injury their record doesn't hold and never hurts the player character in
+    # its update, and the interpret step keeps wounds out of edges and hindrances: code weighs
+    # them (A8, `engine.injuries`).
+    assert "Bodies are as the record says" in prompts.NARRATOR_SYSTEM
+    assert "an old wound included, and never reopen or worsen one" in prompts.NARRATOR_SYSTEM
+    assert "Never hurt the player character here" in prompts.NARRATOR_SYSTEM
+    assert "never an injury no one's record holds" in prompts.INTERPRET_SYSTEM
+
+
 def test_ability_costs_come_from_the_sheet_and_the_world_never_from_the_narrator():
     # G13, A1: a keen-observation gift once played as a crushing headache nothing called for.
     # The narrator shows only the costs OUTCOME lists, and the drafter gives a power only the

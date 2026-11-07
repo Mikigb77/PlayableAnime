@@ -108,6 +108,11 @@ def _player_view(state: WorldState) -> dict[str, Any]:
     held["money"] = resources.money
     if resources.currency:
         held["currency"] = resources.currency
+    # N6: their body is exactly what this lists, so their health shows even when they are unhurt,
+    # and a scene never finds a wound on them that isn't here.
+    condition = view["sheet"].setdefault("condition", {})
+    condition["health"] = state.player.sheet.condition.health.value
+    condition.setdefault("wounds", [])
     # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
 
