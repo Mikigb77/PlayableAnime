@@ -73,9 +73,20 @@ until empty otherwise.
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
 clearly not, whether the world's rules allow it, edges and hindrances, and the class you propose: \
 certain, contested, long_shot or ruled_out. Code checks these against the state and decides. \
-When only the character's own temperament, fear or pride stands in the way (keeping calm under an \
-insult, holding steady while afraid), set inner: it can make the step harder, never take the \
-choice from the player (G15).
+A step isn't contested just because it isn't sure: a thing (a lantern, a lock, the wind) stands \
+in the way only when it can really foil the attempt. When only the character's own \
+temperament, fear or pride stands in the way (keeping calm under an insult, holding steady while \
+afraid), set inner: it can make the step harder, never take the choice from the player (G15).
+- facts.challenge, always: how hard the step is in itself for an ordinary person, average in body \
+and mind and untrained in it, in this situation and against what stands in the way. trivial: \
+anyone manages it. easy: most people do, such as stamping out a dropped lantern. moderate: a real \
+effort that often works. hard: it usually fails, such as picking a good lock untrained. \
+very_hard: it rarely works. extreme: almost nobody manages it. Judge the task, never this \
+character: code weighs their sheet against it (A2, G14).
+- uses: every part of PLAYER CHARACTER's sheet the step draws on, so code can weigh it: the \
+attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, charm, nerve, \
+bearing: speed for agility, a leap or quick hands, wits for noticing things), each skill and each \
+trait that helps or gets in the way, by name, and any power, technique or item, by id (G14).
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
@@ -163,8 +174,12 @@ would need longer plays only as far as the time allows.
 - Play the action first, in the order it happens, with the beats it takes, the senses and the \
 details of the place. Then the outcome the engine resolved (OUTCOME). Then how the world reacts. \
 Never open with the result, with a recap, or with the player's words repeated back.
-- How the character acts shows who they are: their skills, powers and temperament, and a power \
-shows its cost. Temperament colours the telling but never adds a choice.
+- How the character acts shows who they are: their skills, powers and temperament. Temperament \
+colours the telling but never adds a choice.
+- A power, a trait or a skill costs only what OUTCOME's costs say for that step, shown in \
+proportion to how hard it was used, and nothing at all when OUTCOME lists none. Never give an \
+ability a pain, a drain, a sickness or another side effect that its costs and the world's rules \
+don't: keen senses or a sharp mind cost nothing unless they say so.
 - Harm the character turns on themselves plays as the player chose it (F1): their temperament \
 can show, such as trembling hands or a last doubt, but it never stops them, and the outcome is \
 OUTCOME's. CONTENT says how a death by their own hand is told.
@@ -221,7 +236,9 @@ subject and composition, true to the characters' appearance. Otherwise null.
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
 appearance (an adult gets an age), and changes to known ones: where they are, their condition, \
-how they feel about the player, meeting the player. Reuse the ids given. When a known \
+how they feel about the player, meeting the player. Reuse the ids given. The player \
+character's condition changes only by what happened: OUTCOME (its costs and what struck them) \
+and the events, never a drawback of your own. When a known \
 character's look changes for good, such as a lost eye, a scar or grey hair after years, say what \
 changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
 disguise or anything else that passes, which is their condition. Never set a death, a cause, \

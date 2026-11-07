@@ -49,6 +49,7 @@ _WORDS = {
         "quirks": "Quirks",
         "wants": "Wants ",
         "secret": " Nobody knows.",
+        "costs": "Cost: ",
         "no_powers": "No powers, since this world has none.",
         "carries": "Carries ",
         "owns": "Owns ",
@@ -66,6 +67,7 @@ _WORDS = {
         "quirks": "Manías",
         "wants": "Quiere ",
         "secret": " Nadie lo sabe.",
+        "costs": "Coste: ",
         "no_powers": "Sin poderes, porque en este mundo no existen.",
         "carries": "Lleva ",
         "owns": "Posee ",
@@ -84,6 +86,7 @@ _WORDS = {
         "quirks": "Manies",
         "wants": "Vol ",
         "secret": " Ningú no ho sap.",
+        "costs": "Cost: ",
         "no_powers": "Sense poders, perquè en aquest món no n'hi ha.",
         "carries": "Porta ",
         "owns": "Té ",
@@ -210,9 +213,12 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
         for power in sheet.powers[:3]:
             detail = power.description or power.name
             limits = f" ({'; '.join(power.limits)})" if power.limits else ""
+            # G2, G13: what it costs is shown, so the player can change a cost they don't want.
+            costs = power.costs_text
+            cost = f" {_sentence(words['costs'] + _capital(costs))}" if costs else ""
             secret = words["secret"] if power.secret else ""
             lines.append(
-                _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + secret
+                _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + cost + secret
             )
     elif state.bible.grounded:
         lines.append(words["no_powers"])

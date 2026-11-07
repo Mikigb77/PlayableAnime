@@ -19,10 +19,17 @@ For each step, in order:
    certain. When nothing can push back, only the means count, and a code check caps them by how
    tough the target's body is: clearly enough is certain, clearly not is ruled out, and a close
    call is rolled. A blow that lands is rolled between doing harm and doing full harm, never
-   bouncing off harmlessly; anything else can simply fail. A plan that goes around the strength
-   is settled link by link instead (A9).
+   bouncing off harmlessly; anything else can simply fail. Where nobody can be measured against
+   the actor (only things in the way, a faction, a close call), the challenge the interpret step
+   judged for an ordinary person, weighed against the actor's attributes, skills, traits, powers
+   and condition, decides: a step they are sure to manage is certain where only things stand in
+   the way, one they rarely would is a long shot, and the rest are contested (G14,
+   `engine.resolve.capability`). A plan that goes around the strength is settled link by link
+   instead (A9).
 5. **The roll** (A3, A5), only for contested and long-shot steps and close calls, with odds held
-   inside the class's band whatever the edges, skills and difficulty do.
+   inside the class's band whatever the edges, skills, the story's difficulty and a run of misses
+   do. Each miss in a row since the player character's last clean success makes their next roll
+   likelier, so bad luck doesn't pile up on what they're good at.
 
 Powers (`engine.resolve.powers`, WS9b) come into it at each stage. The player's theories about
 their powers are ruled on first, once, so every step follows the answer (A9), and backstory
@@ -72,6 +79,7 @@ from engine.contracts.resolution import (
     StopReason,
     TrainingSoFar,
 )
+from engine.resolve import capability
 from engine.resolve import odds as odds_mod
 from engine.resolve import perils as perils_mod
 from engine.resolve import strangers as strangers_mod
@@ -94,7 +102,7 @@ from engine.resolve.powers import claims as claims_mod
 from engine.resolve.powers import growth, sensing
 from engine.resolve.powers import theories as theories_mod
 from engine.resolve.powers import time_stop as stop
-from engine.resolve.words import cap, is_are, mentions, name, names, possessive, stems
+from engine.resolve.words import cap, is_are, name, names, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, PlaceStatus
 from engine.state.records import RollRecord, StepResult, Trace, TraceKind
@@ -106,9 +114,7 @@ from engine.state.sheet import (
     PowerAxis,
     Ruling,
     RulingSource,
-    SkillLevel,
     TimeEffect,
-    TraitKind,
 )
 from engine.state.world import ActiveTimeEffect, WorldState
 from engine.timekeeping import bound_duration, effect_over, in_time_stop
@@ -116,16 +122,6 @@ from engine.timekeeping import bound_duration, effect_over, in_time_stop
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 NOTHING_IN_THE_WAY = "Nothing stands in the way."
 FROZEN = "frozen in stopped time"
-
-# Shifts to the log-odds of a rolled step (A2: a clever approach shifts the odds within bounds).
-EDGE_SHIFT = 0.35  # each edge or hindrance the interpret step proposed
-MAX_EDGES = 3  # how many of each count
-SKILL_SHIFT = 0.25  # each rank of skill above or below fair
-TECHNIQUE_SHIFT = 0.6  # G25: technique matters most within a gap
-TRAIT_SHIFT = 0.3  # a gift used, or a flaw that gets in the way
-MAX_TRAITS = 2
-ATTITUDE_SHIFT = 1.2  # A3: at full devotion or full hatred, on the influence axis
-INTIMIDATION = ("intimidate", "threaten", "menace", "scare", "frighten", "coerce", "bully")
 
 _MEANS_ORDER = [MeansVerdict.CLEARLY_NOT, MeansVerdict.CLOSE_CALL, MeansVerdict.CLEARLY_ENOUGH]
 _HARDER = [OutcomeClass.CERTAIN, OutcomeClass.CONTESTED, OutcomeClass.LONG_SHOT]
@@ -164,6 +160,9 @@ class _Frame:
     alert: set[str] = field(default_factory=set)  # hidden masters among them, who see it coming
     fighting: list[str] = field(default_factory=list)  # foes this plan fought (N6)
     out: set[str] = field(default_factory=set)  # foes it killed, subdued or got away from (N6)
+    # A3: the player character's rolled steps that missed in a row so far, within this plan;
+    # `engine.pipeline.play_out` keeps the count from the steps that played, for the next turn.
+    misses: int = 0
 
 
 @dataclass
@@ -175,6 +174,7 @@ class _Opposition:
     targets: list[Character] = field(default_factory=list)  # whom the aim lands on
     answering: list[Character] = field(default_factory=list)  # who can still answer a chain (A9)
     unmeasured: bool = False  # something that pushes back with no sheet: a faction, a storm
+    factions: bool = False  # a faction is named in the way, who could still answer
     unmeasured_frozen: bool = False
 
     @property
@@ -306,6 +306,7 @@ def _frame(state: WorldState, actor: Character) -> _Frame:
         stop_left_s=_stop_left(state, actor),
         personal_s=lived,
         world_s=state.world_s,
+        misses=state.misses_in_a_row if actor.id == state.player_id else 0,
     )
     # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
     # turn can't be started afresh once it runs out partway through this plan.
@@ -437,19 +438,30 @@ def _settle_step(
                     OutcomeClass.RULED_OUT, StepResult.FAILURE, _sentence(hit.blocked)
                 )
     own_choice = False
+    player = actor.id == state.player_id
+    # A3. A run of misses makes the player character's next roll likelier.
+    misses = frame.misses if player else 0
     if settled is None:
         assert opposition is not None
         if step.chain:
-            settled, outcome = _with_chain(state, actor, step, opposition, drawn, ctx, rng)
+            settled, outcome = _with_chain(
+                state, actor, step, opposition, drawn, ctx, rng, misses=misses
+            )
             if outcome is not None:
                 chain, stopped_at_link, chain_s = outcome.links, outcome.stopped_at, outcome.takes_s
         elif _inner(state, actor, step, opposition):
             own_choice = True
-            settled = _own_choice(state, actor, step, opposition, drawn, ctx, rng)
+            settled = _own_choice(state, actor, step, opposition, drawn, ctx, rng, misses=misses)
         elif opposition.can_push_back:
-            settled = _contested(state, actor, step, opposition, drawn, ctx, rng, hit)
+            settled = _contested(
+                state, actor, step, opposition, drawn, ctx, rng, hit, misses=misses
+            )
         else:
-            settled = _unopposed(state, actor, step, opposition, drawn, ctx, rng, hit)
+            settled = _unopposed(
+                state, actor, step, opposition, drawn, ctx, rng, hit, misses=misses
+            )
+    if player:
+        frame.misses = capability.misses_after(frame.misses, settled.roll, settled.result)
 
     # W10, A3. An uncertain duration on a rolled step is the second draw of that roll's own seed,
     # so the one recorded seed replays both the outcome and the time; otherwise it has its own.
@@ -1032,7 +1044,7 @@ def _opposition(
 
     says_cannot = facts.can_respond is False
     refuted = says_cannot and claims_frozen_in_time(facts.why_not) and not frozen
-    found = _Opposition()
+    found = _Opposition(factions=factions)
     for person in people:
         on_sheet = helpless_state(person)
         why = FROZEN if frozen and not stop.immune(person) else on_sheet
@@ -1079,9 +1091,14 @@ def _contested(
     ctx: TurnContext,
     rng: SeededRng,
     hit: stop.StoppedHit | None = None,
+    *,
+    misses: int = 0,
 ) -> Settled:
     """Someone or something can push back. The power gap decides the class where both sides can
-    be measured; otherwise it is contested, or harder if the interpret step judged it so."""
+    be measured, and what each brings to the step tilts the odds (G14). Otherwise the challenge
+    the interpret step judged, weighed against what the actor brings, decides it: certain where
+    only things stand in the way and the actor is sure to manage, a long shot where they rarely
+    would, contested between (`engine.resolve.capability`)."""
     axis = _axis(step)
     difficulty = ctx.settings.difficulty
     # A harmful aim still has to get through the body of each target it doesn't meet head-on:
@@ -1102,7 +1119,6 @@ def _contested(
         if gap >= odds_mod.RULED_OUT_AT:
             reason = f"{_beyond_harm(state, toughest)}."
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
-    shift = _shift(state, actor, step, drawn, opposition, axis)
     if axis is not None and opposition.responsive:
         menace = axis is PowerAxis.INFLUENCE and _backed_by_force(state, actor, step)
         if menace:
@@ -1134,6 +1150,11 @@ def _contested(
             OutcomeClass.LONG_SHOT if gap >= odds_mod.LONG_SHOT_AT else OutcomeClass.CONTESTED
         )
         base = odds_mod.gap_logit(gap)
+        rivals = [s.character for s in theirs]
+        weighed = capability.weigh(
+            state, actor, step, drawn, rivals=rivals, axis=axis, measured=True
+        ).with_misses(misses)
+        detail = weighed.words(state, actor).removeprefix(", ")
     else:
         proposed = step.facts.proposed_class
         what = step.facts.opposition.strip() or "Something"
@@ -1141,14 +1162,30 @@ def _contested(
             return Settled(
                 OutcomeClass.RULED_OUT, StepResult.FAILURE, f"{cap(what)}: there is no way past."
             )
-        outcome_class = (
-            OutcomeClass.LONG_SHOT if proposed is OutcomeClass.LONG_SHOT else OutcomeClass.CONTESTED
+        weighed = capability.weigh(
+            state, actor, step, drawn, rivals=opposition.responsive, axis=axis, measured=False
         )
-        base = odds_mod.logit(odds_mod.UNMEASURED_ODDS[outcome_class])
+        # A2. Only things in the way (a lantern, a locked door, the wind), never someone or a
+        # faction who could still answer, can leave a step certain. (Here nobody is targeted but
+        # the actor, so no body stands to be hurt.)
+        things_only = not (opposition.responsive or opposition.factions)
+        outcome_class, base = _from_challenge(step, weighed, proposed, may_be_certain=things_only)
+        if outcome_class is OutcomeClass.CERTAIN:
+            stopper = "Nothing" if what == "Something" else cap(what)
+            lead = f"{stopper} can't stop {name(state, actor.id)}"
+            return Settled(
+                OutcomeClass.CERTAIN,
+                StepResult.SUCCESS,
+                _said(lead, _detail(step, weighed, state, actor)),
+            )
+        weighed = weighed.with_misses(misses)
+        detail = _detail(step, weighed, state, actor)
         lead = f"{cap(what)} can push back"
         if opposition.responsive:
             lead = f"{cap(names(state, opposition.responsive))} can push back"
-    odds = odds_mod.settle(base, shift, odds_mod.BANDS[outcome_class], difficulty)
+    odds = odds_mod.settle(
+        base, weighed.shift + weighed.luck, odds_mod.BANDS[outcome_class], difficulty
+    )
     roll = odds_mod.roll(
         rng.child("outcome"),
         odds,
@@ -1159,7 +1196,42 @@ def _contested(
     words = roll.odds_label
     if outcome_class is OutcomeClass.LONG_SHOT:
         words = f"a long shot, {words}"
+    if detail:
+        words = f"{detail}, {words}"
     return Settled(outcome_class, roll.result, f"{lead}: {words}.", roll)
+
+
+def _from_challenge(
+    step: IntentStep,
+    weighed: capability.Weighed,
+    proposed: OutcomeClass | None,
+    *,
+    may_be_certain: bool,
+) -> tuple[OutcomeClass, float]:
+    """A2. The class and base log-odds of a step nobody is measured against. An ordinary
+    person's odds at the challenge, shifted by what the actor brings, decide the class, before
+    the story's difficulty and any run of misses: at `CERTAIN_ODDS` or more it is certain where
+    `may_be_certain`, below `LONG_SHOT_BELOW` a long shot, and contested between."""
+    base = capability.base_logit(step.facts.challenge, proposed)
+    chance = odds_mod.sigmoid(base + weighed.shift)
+    if may_be_certain and chance >= odds_mod.CERTAIN_ODDS:
+        return OutcomeClass.CERTAIN, base
+    if chance < odds_mod.LONG_SHOT_BELOW:
+        return OutcomeClass.LONG_SHOT, base
+    return OutcomeClass.CONTESTED, base
+
+
+def _detail(step: IntentStep, weighed: capability.Weighed, state: WorldState, actor: Character):
+    """The challenge and what the actor brings to it, in words: "an easy task, your speed and
+    your Agile in your favour", or only what they bring when no challenge was judged (A8)."""
+    task = capability.challenge_words(step.facts.challenge)
+    factors = weighed.words(state, actor)
+    return f"{task}{factors}" if task else factors.removeprefix(", ")
+
+
+def _said(lead: str, detail: str) -> str:
+    """ "Lead: detail.", or "Lead." when there is nothing to add."""
+    return f"{lead}: {detail}." if detail else f"{lead}."
 
 
 def _unopposed(
@@ -1171,11 +1243,15 @@ def _unopposed(
     ctx: TurnContext,
     rng: SeededRng,
     hit: stop.StoppedHit | None = None,
+    *,
+    misses: int = 0,
 ) -> Settled:
     """A2. When nothing can push back, the only question is whether the means are enough. The
     interpret step proposes the verdict; where the target has a body to measure, code caps it by
     how far that body stands above the actor's might, so no proposal makes a kitchen knife bite an
-    ancient dragon.
+    ancient dragon. A close call is weighed like any task nobody is measured against: the
+    challenge against what the actor brings, so one they are sure to manage is certain after all,
+    unless a body tougher than their might caps it (`engine.resolve.capability`).
 
     A hit that lands at relative speed in stopped time is measured by its own force instead, and
     code decides it alone, whatever the interpret step thought a pebble could do (W10a, A9): it
@@ -1227,26 +1303,42 @@ def _unopposed(
         return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
 
     difficulty = ctx.settings.difficulty
-    shift = _shift(state, actor, step, drawn, opposition, None)
+    weighed = capability.weigh(
+        state, actor, step, drawn, rivals=[], axis=_axis(step), measured=False
+    )
     # A2. A blow that lands on someone who can't respond does harm either way; the close call is
     # only how much. Anything else can still simply fail.
     harm_lands = step.aim.harmful and bool(opposition.targets)
     allowed = odds_mod.HARM_DONE if harm_lands else odds_mod.ALL_RESULTS
-    if long_shot:
-        outcome_class, band = OutcomeClass.LONG_SHOT, odds_mod.LONG_SHOT_BAND
-        base = odds_mod.logit(odds_mod.UNMEASURED_ODDS[OutcomeClass.LONG_SHOT])
+    proposed = OutcomeClass.LONG_SHOT if long_shot else OutcomeClass.CONTESTED
+    may_be_certain = ceiling in (None, MeansVerdict.CLEARLY_ENOUGH)
+    outcome_class, base = _from_challenge(step, weighed, proposed, may_be_certain=may_be_certain)
+    if outcome_class is OutcomeClass.CERTAIN:
+        sure = ", ".join(filter(None, [_detail(step, weighed, state, actor), "no real doubt"]))
+        reason = f"{lead}: {sure}." if lead else f"{cap(sure)}."
+        return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason)
+    if outcome_class is OutcomeClass.LONG_SHOT:
+        band = odds_mod.LONG_SHOT_BAND
+    elif harm_lands or step.facts.challenge is None:
+        band = odds_mod.CLOSE_CALL_BAND
     else:
-        outcome_class, band, base = OutcomeClass.CONTESTED, odds_mod.CLOSE_CALL_BAND, 0.0
-    odds = odds_mod.settle(base, shift, band, difficulty)
+        band = odds_mod.CONTESTED_BAND  # a judged task, weighed in full
+    weighed = weighed.with_misses(misses)
+    odds = odds_mod.settle(base, weighed.shift + weighed.luck, band, difficulty)
     roll = odds_mod.roll(
         rng.child("outcome"), odds, label=step.text, allowed=allowed, difficulty=difficulty
     )
-    if long_shot:
+    if outcome_class is OutcomeClass.LONG_SHOT:
         close = f"a long shot, {roll.odds_label}"
     elif harm_lands:
         close = f"a close call, {roll.odds_label} it goes all the way"
+    elif step.facts.challenge is not None:
+        close = roll.odds_label
     else:
         close = f"a close call, {roll.odds_label}"
+    detail = _detail(step, weighed, state, actor)
+    if detail:
+        close = f"{detail}, {close}"
     reason = f"{lead}, but it's {close}." if lead else f"{cap(close)}."
     return Settled(outcome_class, roll.result, reason, roll)
 
@@ -1300,12 +1392,15 @@ def _own_choice(
     drawn: Drawn,
     ctx: TurnContext,
     rng: SeededRng,
+    *,
+    misses: int = 0,
 ) -> Settled:
     """G15. Only the actor's own nature stands in the way, so the step happens: the player chose
-    it, and temperament never takes the choice away. A step the interpret step judged easy is
-    certain. Otherwise it is rolled, with a flaw such as a hot temper making it harder, and the
-    roll only decides how hard it was: done cleanly, or done with the strain showing. It never
-    fails, and the hardest it gets is a long shot, never ruled out."""
+    it, and temperament never takes the choice away. A step the interpret step judged easy, or
+    one the actor's sheet makes sure, is certain. Otherwise it is rolled, with a flaw such as a
+    hot temper making it harder, and the roll only decides how hard it was: done cleanly, or done
+    with the strain showing. It never fails, and the hardest it gets is a long shot, never ruled
+    out."""
     facts = step.facts
     player = actor.id == state.player_id
     what = facts.opposition.strip() or f"{possessive(state, actor.id)} own nature"
@@ -1316,16 +1411,17 @@ def _own_choice(
     easy = proposed is OutcomeClass.CERTAIN or (
         proposed is None and facts.means is MeansVerdict.CLEARLY_ENOUGH
     )
-    if easy:
-        return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, f"{lead}: {who} {does} it.")
+    weighed = capability.weigh(state, actor, step, drawn, rivals=[], axis=step.axis, measured=False)
     hard = proposed in (OutcomeClass.LONG_SHOT, OutcomeClass.RULED_OUT)
-    outcome_class = OutcomeClass.LONG_SHOT if hard else OutcomeClass.CONTESTED
+    judged = OutcomeClass.LONG_SHOT if hard else OutcomeClass.CONTESTED
+    outcome_class, base = _from_challenge(step, weighed, judged, may_be_certain=True)
+    if easy or outcome_class is OutcomeClass.CERTAIN:
+        return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, f"{lead}: {who} {does} it.")
+    hard = outcome_class is OutcomeClass.LONG_SHOT
     difficulty = ctx.settings.difficulty
+    weighed = weighed.with_misses(misses)
     odds = odds_mod.settle(
-        odds_mod.logit(odds_mod.UNMEASURED_ODDS[outcome_class]),
-        _shift(state, actor, step, drawn, opposition, None),
-        odds_mod.BANDS[outcome_class],
-        difficulty,
+        base, weighed.shift + weighed.luck, odds_mod.BANDS[outcome_class], difficulty
     )
     roll = odds_mod.roll(
         rng.child("outcome"),
@@ -1349,10 +1445,13 @@ def _with_chain(
     drawn: Drawn,
     ctx: TurnContext,
     rng: SeededRng,
+    *,
+    misses: int = 0,
 ):
     """A9. A plan that goes around the strength instead of meeting it. Whoever can see it coming
-    may answer first, so the setup is rolled against anyone who can respond; then the chain
-    settles link by link against everyone who can still answer."""
+    may answer first, so the setup is rolled against anyone who can respond, at the challenge the
+    interpret step judged and with what the actor brings to it (`engine.resolve.capability`);
+    then the chain settles link by link against everyone who can still answer."""
     difficulty = ctx.settings.difficulty
     setup: RollRecord | None = None
     setup_class = OutcomeClass.CERTAIN
@@ -1366,14 +1465,24 @@ def _with_chain(
         if proposed is OutcomeClass.RULED_OUT:
             reason = f"{cap(who)} will see it coming and answer first."
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason), None
-        setup_class = (
+        judged = (
             OutcomeClass.LONG_SHOT if proposed is OutcomeClass.LONG_SHOT else OutcomeClass.CONTESTED
         )
+        weighed = capability.weigh(
+            state,
+            actor,
+            step,
+            drawn,
+            rivals=opposition.responsive,
+            axis=step.axis,
+            measured=False,
+        )
+        # Someone or something can answer, so the setup is never certain; the weighed odds
+        # decide whether it's a long shot, as for any step nobody is measured against.
+        setup_class, base = _from_challenge(step, weighed, judged, may_be_certain=False)
+        weighed = weighed.with_misses(misses)
         odds = odds_mod.settle(
-            odds_mod.logit(odds_mod.UNMEASURED_ODDS[setup_class]),
-            _shift(state, actor, step, drawn, opposition, None),
-            odds_mod.BANDS[setup_class],
-            difficulty,
+            base, weighed.shift + weighed.luck, odds_mod.BANDS[setup_class], difficulty
         )
         setup = odds_mod.roll(
             rng.child("outcome"),
@@ -1437,52 +1546,6 @@ def _means_from_class(proposed: OutcomeClass | None) -> MeansVerdict:
     return MeansVerdict.CLEARLY_ENOUGH
 
 
-def _shift(
-    state: WorldState,
-    actor: Character,
-    step: IntentStep,
-    drawn: Drawn,
-    opposition: _Opposition,
-    axis: PowerAxis | None,
-) -> float:
-    """The log-odds shifts from what the step brings: edges and hindrances (A2, A8), skill and
-    technique (G14, G25), traits used (G13), and the target's attitude for a social step (A3)."""
-    facts = step.facts
-    edges = sum(1 for e in facts.edges if e.strip())
-    hindrances = sum(1 for h in facts.hindrances if h.strip())
-    shift = EDGE_SHIFT * (min(MAX_EDGES, edges) - min(MAX_EDGES, hindrances))
-
-    fair = SkillLevel.FAIR.rank
-    if drawn.skills:
-        mine = [actor.sheet.skill(s) for s in drawn.skills]
-        best = max((s.level.rank for s in mine if s is not None), default=0)
-        shift += SKILL_SHIFT * (best - fair)
-        if opposition.responsive:
-            rival = opposition.responsive[0]
-            theirs = [rival.sheet.skill(s) for s in drawn.skills]
-            known = [s.level.rank for s in theirs if s is not None]
-            if known:
-                shift -= SKILL_SHIFT * (max(known) - fair)
-    if drawn.techniques:
-        shift += TECHNIQUE_SHIFT
-    traits = [t for t in actor.sheet.traits if any(mentions(t.name, ref) for ref in drawn.traits)]
-    gifts = sum(1 for t in traits if t.kind is TraitKind.GIFT)
-    flaws = sum(1 for t in traits if t.kind is TraitKind.FLAW)
-    shift += TRAIT_SHIFT * (min(MAX_TRAITS, gifts) - min(MAX_TRAITS, flaws))
-
-    if axis is PowerAxis.INFLUENCE and opposition.responsive:
-        attitude = opposition.responsive[0].attitude_toward(actor.id)
-        if _intimidates(step):
-            shift += ATTITUDE_SHIFT * attitude.fear / 100
-        else:
-            shift += ATTITUDE_SHIFT * (attitude.affinity + attitude.trust) / 200
-    return shift
-
-
-def _intimidates(step: IntentStep) -> bool:
-    return any(mentions(step.verb, word) for word in INTIMIDATION)
-
-
 def _known_might(state: WorldState, character: Character) -> int:
     """W5, A8: the might the world can measure them by, before their condition: the rung they
     stand on (G18), hidden strength as what it shows (G20), and any power it knows of (a
@@ -1494,7 +1557,7 @@ def _known_might(state: WorldState, character: Character) -> int:
 def _backed_by_force(state: WorldState, actor: Character, step: IntentStep) -> bool:
     """Whether a threat rests on what the actor can do rather than on who they are: an
     intimidation from someone whose known might is above their standing (W5)."""
-    if not _intimidates(step):
+    if not capability.intimidates(step):
         return False
     return _known_might(state, actor) > base_tier(state, actor, PowerAxis.INFLUENCE)
 

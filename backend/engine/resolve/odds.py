@@ -33,8 +33,16 @@ CLOSE_CALL_BAND = (0.2, 0.8)
 FIND_BAND = (0.2, 0.8)
 BANDS = {OutcomeClass.CONTESTED: CONTESTED_BAND, OutcomeClass.LONG_SHOT: LONG_SHOT_BAND}
 
-# The default odds when the opposition can't be measured on an axis.
+# The default odds when the opposition can't be measured on an axis and the interpret step judged
+# no challenge (`engine.resolve.capability`).
 UNMEASURED_ODDS = {OutcomeClass.CONTESTED: 0.5, OutcomeClass.LONG_SHOT: 0.1}
+
+# A2. Where nobody can be measured against the actor, code decides the class from the odds their
+# sheet gives them against the challenge, before the story's difficulty and any run of misses:
+# this sure is certain, with no roll, where only things stand in the way, and below the top of
+# a long shot's band is a long shot.
+CERTAIN_ODDS = 0.95
+LONG_SHOT_BELOW = LONG_SHOT_BAND[1]
 
 # A5. Shifts the odds of rolled steps only.
 DIFFICULTY_SHIFT = {Difficulty.STORY: 0.8, Difficulty.BALANCED: 0.0, Difficulty.BRUTAL: -0.6}

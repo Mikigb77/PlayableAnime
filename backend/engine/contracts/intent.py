@@ -54,6 +54,21 @@ class MeansVerdict(StrEnum):
     CLEARLY_NOT = "clearly_not"
 
 
+class Challenge(StrEnum):
+    """A2, A3, G14. How hard a step is in itself for an ordinary person: average in body and
+    mind, with no training in it, in the same situation and against the same things in the way.
+    The interpret step judges the task; code weighs the character's own sheet against it
+    (`engine.resolve.capability`), so a nimble thief and a clumsy scholar stamping out the same
+    lantern get different odds."""
+
+    TRIVIAL = "trivial"  # anyone manages it
+    EASY = "easy"  # most people manage it
+    MODERATE = "moderate"  # a real effort that often works
+    HARD = "hard"  # it usually fails
+    VERY_HARD = "very_hard"  # it rarely works
+    EXTREME = "extreme"  # almost nobody manages it
+
+
 class Aim(StrEnum):
     """F4, A2. What a step does to the characters it targets if it works, so code records the
     outcome before anything is narrated and a blocked narration never blocks the deed. A partial
@@ -253,9 +268,18 @@ class ShowStrength(EngineModel):
     )
 
 
+def _challenge_required(schema: dict[str, Any]) -> None:
+    """A2, A3. The interpret model must always judge how hard a step is, since Gemini leaves out
+    what a schema doesn't require as often as not, and a step with no judgement fell back to even
+    odds whoever the character was. Code may still leave it out."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "challenge"]))
+
+
 class StepFacts(EngineModel):
     """A2, A8. The facts the interpret step proposes for one step. Code checks them against the
     state wherever the state can tell."""
+
+    model_config = ConfigDict(json_schema_extra=_challenge_required)
 
     opposition_ids: list[str] = Field(default_factory=list)
     opposition: str = Field(default="", description="What stands in the way, in words.")
@@ -271,6 +295,15 @@ class StepFacts(EngineModel):
     )
     hindrances: list[str] = Field(default_factory=list)
     proposed_class: OutcomeClass | None = None
+    challenge: Challenge | None = Field(
+        default=None,
+        description=(
+            "A2, A3: how hard the step is for an ordinary person, average in body and mind and"
+            " untrained in it, in this situation and against what stands in the way: trivial,"
+            " easy, moderate, hard, very_hard or extreme. Judge the task, never this character:"
+            " code weighs their sheet."
+        ),
+    )
     inner: bool = Field(
         default=False,
         description=(
@@ -308,9 +341,16 @@ class StepFacts(EngineModel):
     )
 
 
+def _facts_required(schema: dict[str, Any]) -> None:
+    """A2. Every step the interpret model writes carries its facts, so its challenge is judged."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "facts"]))
+
+
 class IntentStep(EngineModel):
     """One step of what the player does. A chained plan ("I throw the stone, then run for the
     tunnel") has several, resolved in order (R6)."""
+
+    model_config = ConfigDict(json_schema_extra=_facts_required)
 
     text: str = Field(description="The step in plain words.")
     verb: str = Field(description="Free-form: attack, persuade, search, stop time, flee.")
@@ -326,7 +366,15 @@ class IntentStep(EngineModel):
         ),
     )
     axis: PowerAxis | None = None
-    uses: list[SheetUse] = Field(default_factory=list)
+    uses: list[SheetUse] = Field(
+        default_factory=list,
+        description=(
+            "G14: every part of the character's sheet the step draws on, so code can weigh it:"
+            " the attributes it tests by name (strength, speed, toughness, wits, knowledge,"
+            " willpower, charm, nerve, bearing), each skill and trait that helps or gets in the"
+            " way by name, and powers, techniques and items by id."
+        ),
+    )
     beats: list[Beat] = Field(default_factory=list)
     chain: list[ChainLink] = Field(default_factory=list)
     facts: StepFacts = Field(default_factory=StepFacts)
