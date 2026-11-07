@@ -27,6 +27,22 @@ from evals.scenario import Mode, Scenario
 from evals.scenarios import all_scenarios
 
 
+class CallFormatter(logging.Formatter):
+    """The plain log line, with what a failed model call says of itself (`graph.llm`): its node,
+    model, attempt, reason and the provider's own words, such as which quota ran out, so a live
+    run's log shows why. Never its prompt (T6)."""
+
+    FIELDS = ("node", "model", "attempt", "reason", "detail")
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        call = getattr(record, "llm", None)
+        if not isinstance(call, dict):
+            return line
+        said = ", ".join(f"{k}={call[k]}" for k in self.FIELDS if call.get(k) not in (None, ""))
+        return f"{line} ({said[:500]})" if said else line
+
+
 def chosen(only: Sequence[str], suites: Sequence[str]) -> list[Scenario]:
     picked = []
     for scenario in all_scenarios():
@@ -72,7 +88,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     # Engine and graph warnings (a blocked step, a rejected update) are expected in a run; keep
     # them out of the scenario lines.
-    logging.basicConfig(level=logging.ERROR, stream=sys.stderr)
+    errors = logging.StreamHandler(sys.stderr)
+    errors.setFormatter(CallFormatter(logging.BASIC_FORMAT))
+    logging.basicConfig(level=logging.ERROR, handlers=[errors])
 
     if args.command == "list":
         for scenario in chosen([], args.suite):
