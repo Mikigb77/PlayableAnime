@@ -235,19 +235,22 @@ class ModelClient:
         prompt: Prompt,
         schema: type[T],
         *,
-        field: str,
+        field: str | tuple[str, ...],
         options: CallOptions | None = None,
     ) -> AsyncIterator[StreamEvent[T]]:
-        """One structured-output call that streams the text of one string field as it arrives.
+        """One structured-output call that streams the text of a string field as it arrives,
+        or of several, one after the other with a paragraph break between (`JsonFieldStreamer`).
 
         Yields `TextDelta`s, a `StreamRestart` if a retry follows streamed text, and finally
         `Completed` with the validated result. Wrap the iteration in `contextlib.aclosing`.
         Raises the typed errors like the other calls; `LLMBlocked.streamed` says whether text
         had already been shown.
         """
-        if field not in schema.model_fields:
-            raise ValueError(f"{schema.__name__} has no field {field!r}")
-        return self._run(node, prompt, schema=schema, stream_field=field, options=options)
+        fields = (field,) if isinstance(field, str) else field
+        for name in fields:
+            if name not in schema.model_fields:
+                raise ValueError(f"{schema.__name__} has no field {name!r}")
+        return self._run(node, prompt, schema=schema, stream_fields=fields, options=options)
 
     async def _complete(self, node: Node, prompt: Prompt, **kwargs: Any) -> object:
         async with aclosing(self._run(node, prompt, **kwargs)) as events:
@@ -262,7 +265,7 @@ class ModelClient:
         prompt: Prompt,
         *,
         schema: type[BaseModel] | None = None,
-        stream_field: str | None = None,
+        stream_fields: tuple[str, ...] = (),
         image: ImageSpec | None = None,
         audio: AudioPart | None = None,
         transcription: Transcription | None = None,
@@ -289,7 +292,7 @@ class ModelClient:
         try:
             for attempt in range(1, RATE_LIMIT_ATTEMPTS + 1):
                 trace.attempts = attempt
-                streamer = JsonFieldStreamer(stream_field) if stream_field else None
+                streamer = JsonFieldStreamer(*stream_fields) if stream_fields else None
                 streamed = False
                 parts: list[str] = []
                 images: list[ImagePart] = []

@@ -392,6 +392,7 @@ def narration_brief(
     fired: Sequence[PendingEvent],
     scenes: Sequence[PastScene],
     premise: str = "",
+    words: str | None = None,
     ending: Ending | None = None,
     wish: str | None = None,
     left_out: Sequence[str] = (),
@@ -400,9 +401,11 @@ def narration_brief(
 
     `before` is the state the turn started from, so the scene picks up where the last one ended
     (R3). `after` is the state once the steps played out, with the time that passed and every
-    consequence the engine recorded. `ending` is set when this scene ends the player character's
-    story (N6), with `wish`, the player's note on how, for an ending they chose, or `left_out`,
-    the parts of it the world refused when the player ended without them.
+    consequence the engine recorded. `words` are the player's own words for the action, so the
+    scene can tell it with their gestures and manner before what comes of it (R1). `ending` is
+    set when this scene ends the player character's story (N6), with `wish`, the player's note
+    on how, for an ending they chose, or `left_out`, the parts of it the world refused when the
+    player ended without them.
     """
     settings = ctx.settings
     tone = before.bible.tone or "the genre's own voice"
@@ -455,7 +458,7 @@ def narration_brief(
         sections.append(("TASK", opening))
     else:
         if intent is not None:
-            sections.append(("ACTION", _action_view(intent)))
+            sections.append(("ACTION", _action_view(intent, words)))
         sections.append(("OUTCOME", _outcome_view(resolution)))
         sections.append(("TIME", _time_view(before, after)))
     # The director tells its own events, and the world's events it made the scene's event or a
@@ -524,8 +527,12 @@ def narration_brief(
     )
 
 
-def _action_view(intent: Intent) -> dict[str, Any]:
-    return _dump(intent, exclude={"actor_id"})
+def _action_view(intent: Intent, words: str | None) -> dict[str, Any]:
+    """The player's own words first, then what the interpret step read in them (R1, R7)."""
+    view = _dump(intent, exclude={"actor_id"})
+    if words and words.strip():
+        return {"words": words.strip(), **view}
+    return view
 
 
 def _outcome_view(resolution: Resolution) -> dict[str, Any]:

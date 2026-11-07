@@ -134,6 +134,86 @@ async def stone_and_troll(ev: Eval) -> None:
         )
 
 
+# --- The action told first (R1, R7) -------------------------------------------------------------
+
+# Miki, 2026-11-07: the player wrote it like a story, and the scene opened on the merchant taking
+# the coin. Every scene tells the character doing it first, in the story's own prose.
+PAYING = (
+    "I look at him firmly, hold out a gold tael between two fingers and say: I want this potion."
+)
+PAY_LINE = "I want this potion."
+
+
+def pay_for_the_draught() -> Intent:
+    tael = BeatUse(source=UseSource.CARRIED, thing="a gold tael", ref="gold-tael")
+    return plan(
+        step(
+            "pay Old Hu a gold tael for the healing draught",
+            ActionKind.CONVERSATION,
+            10,
+            verb="buy",
+            target_ids=["old-hu"],
+            beats=[
+                Beat(text="look Old Hu firmly in the eye"),
+                Beat(text="hold out a gold tael between two fingers", uses=[tael]),
+                Beat(text="say he wants the potion"),
+            ],
+            lines=[PAY_LINE],
+        )
+    )
+
+
+@scenario(
+    "t18.action-told-first",
+    suite="T18",
+    title="The action told first",
+    requirements=("R1", "R7", "T18"),
+    passes_when=(
+        "Even when the player writes the action like a story, the scene first tells Lin doing it "
+        "in its own prose (the firm look, the tael held out, the line), and only then Old Hu's "
+        "answer (R1)"
+    ),
+)
+async def action_told_first(ev: Eval) -> None:
+    for seed in ev.seeds(3, live=3):
+        story = ev.story(worlds.potion_stall(), seed=seed, under_way=True)
+        played = await story.act(PAYING, pay_for_the_draught())
+        prompt = story.prompt(Node.NARRATOR)
+        ev.check(
+            "the narrator gets the player's own words, gestures and manner included (R1)",
+            PAYING in prompt,
+            seed,
+            live=False,
+        )
+        if ev.live:
+            issues = [i.code for i in played.result.issues] if played.result is not None else []
+            ev.check(
+                "the scene tells the action in its own part before what comes of it",
+                "action_untold" not in issues,
+                f"{seed}: {issues}",
+            )
+            ev.check(
+                "Lin says the line word for word (R7)",
+                words(PAY_LINE) in words(played.narration),
+                seed,
+            )
+        await ev.judge(
+            "the payment told before the answer",
+            Rubric(
+                must=(
+                    "The scene opens on Lin doing what the player said: the firm look, the gold "
+                    "tael held out and the line, before Old Hu takes the coin or answers",
+                    "It tells that in the story's own prose, with more than the player wrote",
+                ),
+                must_not=(
+                    "It opens on Old Hu taking the coin, answering or handing over the potion",
+                    "It copies the player's sentence as written",
+                ),
+            ),
+            played,
+        )
+
+
 # --- Result as action (R1, R5, A6) -------------------------------------------------------------
 
 

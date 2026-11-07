@@ -180,9 +180,20 @@ anything else that shows the hour match it, and the scene ends at TIME's now. Ne
 fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
 later"), and never take the character further than that time could carry them. An action that \
 would need longer plays only as far as the time allows.
-- Play the action first, in the order it happens, with the beats it takes, the senses and the \
-details of the place. Then the outcome the engine resolved (OUTCOME). Then how the world reacts. \
-Never open with the result, with a recap, or with the player's words repeated back.
+- Open on the player's action, in action (R1): the character doing what the player said they \
+do, told the way a good book would tell it, before anything comes of it. Every action gets this, \
+however small (a coin held out, a word, a look), and so does one the player already wrote like \
+a story: tell it again in your own, better prose, and never skip it or start from what it leads \
+to. Keep the gestures, manner and lines that ACTION's words give the character, in their order, \
+and add the beats it takes, the senses and the details of the place, without copying the \
+player's sentences as written. Stop where the outcome begins. For a plan of several steps, \
+action tells the first; each later one that plays is shown being done before what comes of it. \
+ACTION's words are what the player wrote, not what happened: play only the steps OUTCOME \
+settled, as it settled them, and what the words claim of others or of the outcome stays a hope.
+- Then narration carries straight on from where action stops: the outcome the engine resolved \
+(OUTCOME), then how the world reacts. Never open with the result or with a recap, and never \
+tell the action twice. With no ACTION in the brief (an opening, or an ending told from things \
+as they stand), leave action empty and write the whole scene in narration.
 - How the character acts shows who they are: their skills, powers and temperament. Temperament \
 colours the telling but never adds a choice.
 - The player character has exactly what PLAYER CHARACTER's resources list, money included, and \
@@ -217,9 +228,9 @@ that isn't there: play the reach for it, and the step stops at that beat (R2).
 physics lecture and never a question to the player about how the power should work (A9). A \
 backstory claim that wasn't recorded plays as something the character says or believes (N4).
 - Add no decision the player didn't make: no extra attack, no change of target, no retreat, no \
-line they didn't give. Use the character's lines exactly as given; when the player gave only the \
-gist, phrase it in the character's voice. Outcome claims in the action are hopes: others react as \
-they would.
+line they didn't give. Use the character's lines exactly as the steps give them; when the player \
+gave only the gist, phrase it in the character's voice. Outcome claims in the action are hopes: \
+others react as they would.
 - Dead characters never act or speak, except in a memory clearly framed as one. Characters know \
 only what they have seen or been told. toward_you is how a character really feels about the \
 player character; when apparent_affinity is given, that is what they let show.
@@ -327,9 +338,11 @@ that matter (props); and the fight, chase, duel of words or negotiation under wa
 - ENDED: on the opening of someone new, how long ago the last player character's story ended.
 - TASK: what this scene must do when it isn't an ordinary turn. An opening's, or the opening of \
 someone new, comes here; a death's or an epilogue's comes last, after ENDING.
-- ACTION: what the player meant, read from their words: a summary, the steps in order with what \
-each aims at and any words to speak, theories about how their powers work, backstory claims, new \
-goals, what they respond to, and outcome claims, which are hopes.
+- ACTION: the player's own words for this turn (words), typed or dictated, so their gestures \
+and manner reach the scene; then what they meant, read from those words: a summary, the steps in \
+order with what each aims at and any lines to speak (the character's words, cleaned of dictation \
+filler), theories about how their powers work, backstory claims, new goals, what they respond \
+to, and outcome claims, which are hopes.
 - OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
 odds when a roll decided it, costs, changed_hands (what the step moved, from whom to whom), \
 beats, chain (the links of cause and effect it weighed, each with whether it holds), \
@@ -399,7 +412,8 @@ CUTAWAY_SYSTEM = """
 
 This scene was blocked by a content filter. Retell it as a cut-away (F4): show the moment just \
 before, cut away from the part that was blocked, and pick up just after, with its consequences \
-in full view. The outcome stays exactly as OUTCOME says. Nothing explicit, nothing lingered on.\
+in full view. action still shows the character setting about what the player said, up to the \
+cut (R1). The outcome stays exactly as OUTCOME says. Nothing explicit, nothing lingered on.\
 """
 
 SUMMARIZER_SYSTEM = """\
