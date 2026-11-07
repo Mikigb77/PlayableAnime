@@ -199,16 +199,40 @@ class NewFact(EngineModel):
     known_to_player: bool = True
 
 
-class ItemChange(EngineModel):
-    """Something gained, used up or lost. `quantity` is a delta: 1 gains one, -1 loses one."""
+# C10: the id that stands for the world in an `ItemChange`, for what comes from it (found, made)
+# or leaves it (used up, eaten, lost).
+WORLD = "world"
 
-    owner_id: str | None = Field(default=None, description="None means the player character.")
-    item_id: str | None = None
-    name: Name
+
+class ItemChange(EngineModel):
+    """C10, C2. Something that changes hands, money included: paid, given, sold, stolen, found,
+    used up or lost. One entry per thing that moves, so it is never in two places at once:
+    `from_id` loses it and `to_id` gains it, each a character id (the player character's
+    included) or `world`, for what the world gives (found, made) or takes (used up, eaten,
+    broken, lost). The same id on both sides changes how the thing is described or whether it is
+    on them, and moves nothing. `engine.possessions` applies it: nobody gives what they don't
+    have."""
+
+    name: Name = Field(description="What it is, in plain words: 'copper coins', 'the Beretta'.")
+    from_id: str = Field(
+        description="Who had it: a character id, the player character's included, or 'world' "
+        "when the world gives it (found, made, picked up)."
+    )
+    to_id: str = Field(
+        description="Who has it now: a character id, the player character's included, or "
+        "'world' when it is gone (used up, eaten, broken, lost, spent where nobody keeps it)."
+    )
+    money: bool = Field(default=False, description="It is money, counted in quantity.")
+    quantity: int = Field(default=1, description="How many, or how much money.")
+    item_id: str | None = Field(default=None, description="A known item's id.")
+    how: str = Field(
+        default="", description="How, in a word or two: stolen, paid, given, found, eaten."
+    )
     kind: ItemKind | None = None
     description: str | None = None
-    quantity: int = 1
-    carried: bool | None = None
+    carried: bool | None = Field(
+        default=None, description="Whether the one who has it now carries it on them."
+    )
 
 
 class NewLead(EngineModel):

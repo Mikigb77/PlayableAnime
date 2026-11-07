@@ -19,6 +19,7 @@ from engine.state.records import (
     PendingEvent,
     Rumor,
     Thread,
+    Transfer,
 )
 from engine.state.scene import SceneFrame
 from engine.state.sheet import TimeEffect
@@ -104,7 +105,8 @@ class Chapter(EngineModel):
 
 class WorldState(EngineModel):
     """C2. Characters, factions, places, the player sheet, deeds, rumors, facts, goals and leads,
-    threads, clocks and pending events, the world clock and timeline, and a rolling summary.
+    threads, clocks and pending events, what changed hands (C10), the world clock and timeline,
+    and a rolling summary.
 
     Collections are keyed by id, and each record's `id` must match its key. Never rely on their
     order: Postgres JSONB reorders object keys, so sort by id or time where order matters. The
@@ -130,6 +132,11 @@ class WorldState(EngineModel):
     threads: dict[str, Thread] = Field(default_factory=dict)
     clocks: dict[str, Clock] = Field(default_factory=dict)
     pending_events: dict[str, PendingEvent] = Field(default_factory=dict)
+    transfers: list[Transfer] = Field(
+        default_factory=list,
+        description="C10: what changed hands, oldest first, the latest "
+        "`engine.possessions.TRANSFERS_KEPT` of them.",
+    )
     time_effects: list[ActiveTimeEffect] = Field(default_factory=list)
     scene: SceneFrame = Field(default_factory=SceneFrame)
     director: DirectorState = Field(default_factory=DirectorState)

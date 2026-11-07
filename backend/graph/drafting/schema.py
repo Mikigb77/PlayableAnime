@@ -590,8 +590,10 @@ class CharacterProposal(Proposal):
     techniques: list[TechniqueP] = Field(default_factory=list)
     temperament: TemperamentP = Field(default_factory=TemperamentP)
     items: list[ItemP] = Field(default_factory=list)
-    money: int = 0
-    currency: str = ""
+    money: int = Field(default=0, description="The money they have, as an amount (C10).")
+    currency: str = Field(
+        default="", description="What the money is counted in: 'copper coins', 'lire'."
+    )
     title: str = ""
     rank: str = Field(default="", description="Standing in the world's own ranks.")
     family_name: str = ""

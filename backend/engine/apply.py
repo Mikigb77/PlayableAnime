@@ -8,9 +8,11 @@ can't break the world (A7), and the rest of the delta still applies.
 Who may change what:
 
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
-  locations, small attitude nudges, condition, memberships, facts, items, leads, non-terminal
-  status changes, the scene's end and the summary. A lasting change to how a known character
-  looks (`look_change`) moves their `look_version` on (M5, `engine.looks`).
+  locations, small attitude nudges, condition, memberships, facts, leads, non-terminal status
+  changes, the scene's end and the summary, and what changes hands, money included, which
+  `engine.possessions` moves from giver to receiver so nobody gives what they don't have (C10).
+  A lasting change to how a known character looks (`look_change`) moves their `look_version` on
+  (M5, `engine.looks`).
 - **Engine only:** deaths, destroyed factions and ruined places (resolve records the outcome
   before narration, F4); anything that undoes one, which also needs a recorded `Cause`; faction
   reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7); and
@@ -21,6 +23,7 @@ Who may change what:
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from engine import possessions
 from engine.base import (
     AFFINITY_MAX,
     AFFINITY_MIN,
@@ -33,6 +36,7 @@ from engine.base import (
 )
 from engine.context import TurnContext
 from engine.contracts.delta import (
+    WORLD,
     AttitudeShift,
     CharacterChange,
     Expecting,
@@ -80,8 +84,6 @@ from engine.state.sheet import (
     Attitude,
     BackstoryClaim,
     Grudge,
-    Item,
-    ItemKind,
     LadderPosition,
     PassingState,
     Wound,
@@ -776,43 +778,12 @@ class _Applier:
         self.state.facts[fact.id] = fact
 
     def item(self, change: ItemChange) -> None:
-        owner_id = change.owner_id or self.state.player_id
-        owner = self.state.characters.get(owner_id)
-        subject = f"character {owner_id}"
-        if owner is None:
-            self.reject(subject, f"item {change.name}", "no such character")
-            return
-        items = owner.sheet.resources.items
-        wanted = change.name.casefold()
-        found = next(
-            (
-                i
-                for i in items
-                if (change.item_id and i.id == change.item_id)
-                or (not change.item_id and i.name.casefold() == wanted)
-            ),
-            None,
-        )
-        if found is None:
-            if change.quantity <= 0:
-                self.reject(subject, f"item {change.name}", "they don't have it")
-                return
-            found = Item(
-                id=change.item_id or self.state.new_id("item"),
-                name=change.name,
-                kind=change.kind or ItemKind.OTHER,
-                quantity=0,
-            )
-            items.append(found)
-        found.quantity += change.quantity
-        if change.description is not None:
-            found.description = change.description
-        if change.kind is not None:
-            found.kind = change.kind
-        if change.carried is not None:
-            found.carried = change.carried
-        if found.quantity <= 0:
-            items.remove(found)
+        """C10. One thing changing hands, by `engine.possessions`: nobody gives what they don't
+        have, and what leaves the giver reaches the receiver."""
+        reason = possessions.move(self.state, change, turn=self.turn, origin=self.origin.kind)
+        if reason is not None:
+            sides = f"{change.from_id or WORLD} to {change.to_id or WORLD}"
+            self.reject(f"character {sides}", f"item {change.name}", reason)
 
     def lead(self, change) -> None:
         now = self.state.world_s

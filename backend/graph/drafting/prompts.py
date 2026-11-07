@@ -53,7 +53,9 @@ THE CHARACTER
 person, 5 the peak of what a person can be, 6 to 10 beyond human only where the world allows it), \
 skills, traits (gifts and flaws), powers only where the world has them, temperament, equipment, \
 money, standing, connections, condition, their rung on a ladder, and their goals from the \
-premise in the player's own words. A strong start is fine when the premise calls for it.
+premise in the player's own words. A strong start is fine when the premise calls for it. \
+Their money is money and currency, such as 12 and "copper coins", never an item, so the engine \
+can count what they pay and lose (C10).
 - Each power names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
 come from the world and the premise, never from nowhere: what the world's rules say that kind of \
 power takes (qi spent, a mage's fatigue, a price in blood or years), or what the premise gives \
