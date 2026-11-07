@@ -420,13 +420,14 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final story = _play.story;
     if (story == null) return;
     final saved = await showStorySettings(context, story: story, save: _play.save);
-    if (!(saved ?? false) || !mounted) return;
+    if (saved == null || !mounted) return;
     // The Library shows the new title and color too.
     ref.invalidate(storiesProvider);
-    // A title or a color shows at once (S13); the other settings apply from the next scene.
-    final now = _play.story?.settings.withAccent(null);
-    final later = now != null && now != story.settings.withAccent(null);
-    _snack(later ? context.l10n.settingsSaved : context.l10n.settingsSavedNow);
+    _snack(switch (saved) {
+      // A title or a color shows at once (S13).
+      SettingsSaved.now => context.l10n.settingsSavedNow,
+      SettingsSaved.nextScene => context.l10n.settingsSaved,
+    });
   }
 
   Future<void> _sceneMenu(Scene scene) async {

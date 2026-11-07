@@ -481,6 +481,8 @@ class StorySettings {
     };
   }
 
+  /// The settings with these changed. [accent] is a getter so that it can go back to null, the
+  /// genre's color (S13).
   StorySettings copyWith({
     String? narrationLength,
     String? tone,
@@ -488,6 +490,7 @@ class StorySettings {
     String? eventFrequency,
     String? images,
     bool? suggestions,
+    String? Function()? accent,
   }) => StorySettings(
     narrationLength: narrationLength ?? this.narrationLength,
     tone: tone == null ? this.tone : (tone.trim().isEmpty ? null : tone.trim()),
@@ -496,19 +499,7 @@ class StorySettings {
     images: images ?? this.images,
     suggestions: suggestions ?? this.suggestions,
     language: language,
-    accent: accent,
-  );
-
-  /// The settings with the color [accent], or the genre's when null (S13).
-  StorySettings withAccent(String? accent) => StorySettings(
-    narrationLength: narrationLength,
-    tone: tone,
-    difficulty: difficulty,
-    eventFrequency: eventFrequency,
-    images: images,
-    suggestions: suggestions,
-    language: language,
-    accent: accent,
+    accent: accent == null ? this.accent : accent(),
   );
 
   @override

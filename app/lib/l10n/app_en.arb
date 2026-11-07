@@ -936,7 +936,7 @@
   "settingsPicturesHelp": "Pictures use credits. You can still illustrate any scene.",
   "settingsSuggestions": "Suggested choices",
   "settingsSuggestionsHelp": "A few ideas after each scene. Wait and Observe are always there.",
-  "settingsNextScene": "Changes apply from the next scene.",
+  "settingsNextScene": "The title and color change at once. The rest applies from the next scene.",
   "settingsSave": "Save",
   "settingsSaved": "Saved. It applies from the next scene.",
   "settingsSavedNow": "Saved.",

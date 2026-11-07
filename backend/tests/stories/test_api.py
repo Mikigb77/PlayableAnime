@@ -384,6 +384,11 @@ def test_a_story_takes_the_color_the_player_picks_and_can_go_back_to_its_genres(
     )
     assert (unknown.status_code, unknown.json()["error"]["code"]) == (400, "validation_error")
 
+    # A color stored by a newer server, as after rolling a deploy back, reads as the genre's.
+    Story.objects.filter(pk=story.pk).update(settings={"accent": "teal", "tone": "wry"})
+    assert client.get(f"/v1/stories/{story.pk}").json()["settings"]["accent"] is None
+    assert client.get("/v1/stories").json()[0]["accent"] is None
+
 
 def test_patch_refuses_null_settings_except_tone(client, player, make_story):
     story = make_story(player, settings={"tone": "wry"})

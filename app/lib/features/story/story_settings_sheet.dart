@@ -13,16 +13,25 @@ typedef SettingsSaver = Future<void> Function({String? title, Json? settings});
 /// The story's settings (S6): its title, its color (S13), how long the narration runs, the tone,
 /// difficulty (A5), how often events arrive (W16), pictures (M2) and suggested choices (S2). The
 /// title and color show at once, the rest applies from the next scene. A story's language isn't
-/// here: it stays the one it started in (S10). Pops with true when something was saved.
-Future<bool?> showStorySettings(
+/// here: it stays the one it started in (S10). Pops with what was saved, or null for nothing.
+Future<SettingsSaved?> showStorySettings(
   BuildContext context, {
   required Story story,
   required SettingsSaver save,
-}) => showAppSheet<bool>(
+}) => showAppSheet<SettingsSaved>(
   context: context,
   title: context.l10n.settingsTitle,
   builder: (_) => StorySettingsForm(story: story, save: save),
 );
+
+/// When what the player saved takes effect.
+enum SettingsSaved {
+  /// Only the title or the color (S13), which show at once.
+  now,
+
+  /// Something the storyteller reads, which applies from the next scene.
+  nextScene,
+}
 
 class StorySettingsForm extends StatefulWidget {
   const StorySettingsForm({super.key, required this.story, required this.save});
@@ -76,7 +85,8 @@ class _StorySettingsFormState extends State<StorySettingsForm> {
     final settings = changes.isEmpty ? null : changes;
     try {
       await widget.save(title: title, settings: settings);
-      if (mounted) Navigator.of(context).pop(true);
+      final later = changes.keys.any((key) => key != 'accent');
+      if (mounted) Navigator.of(context).pop(later ? SettingsSaved.nextScene : SettingsSaved.now);
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
@@ -131,7 +141,7 @@ class _StorySettingsFormState extends State<StorySettingsForm> {
           _AccentPicker(
             genre: widget.story.genre,
             chosen: _settings.accent,
-            onChanged: (v) => setState(() => _settings = _settings.withAccent(v)),
+            onChanged: (v) => setState(() => _settings = _settings.copyWith(accent: () => v)),
           ),
           const SizedBox(height: Space.xs),
           Text(l10n.settingsColorHelp, style: hint),
@@ -311,6 +321,8 @@ class _Swatch extends StatelessWidget {
       selected: selected,
       inMutuallyExclusiveGroup: true,
       label: label,
+      // The tap below is left out with the rest of the swatch's own semantics, so it goes here.
+      onTap: onTap,
       excludeSemantics: true,
       child: Tooltip(
         message: label,

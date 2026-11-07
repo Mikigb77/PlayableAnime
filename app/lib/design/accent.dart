@@ -46,7 +46,9 @@ enum GenreAccent {
   static GenreAccent of({String? genre, String? chosen}) => byNameOrNull(chosen) ?? forGenre(genre);
 
   /// The accent called [name], or null when there is none.
-  static GenreAccent? byNameOrNull(String? name) => values.where((a) => a.name == name).firstOrNull;
+  static GenreAccent? byNameOrNull(String? name) => name == null ? null : _byName[name];
+
+  static final _byName = values.asNameMap();
 
   /// Picks the accent for a genre label such as "cultivation", "a modern city with hidden
   /// vampires" or, in Spanish (S10), "Reencarnación". Unknown genres get the app's own accent.

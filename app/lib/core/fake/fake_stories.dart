@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../design/accent.dart';
 import '../json.dart';
 import 'fake_backend.dart';
 import 'fake_data.dart';
@@ -475,20 +476,8 @@ void _checkSettings(JsonMap settings) {
     'event_frequency': {'calm', 'normal', 'dramatic'},
     'images': {'off', 'key_moments', 'more'},
   };
-  // The server's `Accent` (backend/engine/context.py).
-  const accents = {
-    'lucid',
-    'jade',
-    'azure',
-    'ember',
-    'violet',
-    'crimson',
-    'cyan',
-    'orchid',
-    'lime',
-    'rose',
-    'silver',
-  };
+  // The server's `Accent` (backend/engine/context.py) has the app's accents.
+  final accents = {for (final accent in GenreAccent.values) accent.name};
   for (final MapEntry(:key, :value) in settings.entries) {
     final ok = switch (key) {
       'tone' => value == null || (value is String && value.length <= 200),

@@ -6,7 +6,7 @@ graph passes them in with every call instead of copying them into `WorldState`.
 
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from engine.base import EngineModel
 
@@ -102,6 +102,14 @@ class StorySettings(EngineModel):
     language: Language = Language.EN
     # S13: the color the player chose for the story, or None for its genre's.
     accent: Accent | None = None
+
+    @field_validator("accent", mode="before")
+    @classmethod
+    def _known_accent(cls, value: object) -> object:
+        """A stored color this server doesn't know, say after rolling back a deploy that added it,
+        reads as the genre's instead of making the story unreadable. A PATCH still refuses one
+        (`stories.schemas.SettingsPatch`)."""
+        return value if value is None or value in set(Accent) else None
 
 
 class TurnContext(EngineModel):

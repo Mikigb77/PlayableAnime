@@ -403,7 +403,9 @@ Clock         {world_s, label, timeline_id}              # label such as "Day 3,
                                                          # "Dia 3, capvespre" in a Catalan one, S10)
 Accent        "lucid"|"jade"|"azure"|"ember"|"violet"|"crimson"|"cyan"|"orchid"|"lime"|"rose"|"silver"
                                                          # the app's accents by name (S13); only
-                                                         # the app reads it, never a prompt (G5)
+                                                         # the app reads it, never a prompt (G5).
+                                                         # PATCH refuses another name; one stored
+                                                         # before a rollback reads as null
 ```
 
 ### Turns (B5, B7, S3, T10, V7)

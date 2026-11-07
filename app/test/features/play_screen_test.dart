@@ -480,7 +480,10 @@ void main() {
     await settle(tester);
     // The sheet wears the color before it is saved.
     expect(primary(save), rose);
-    expect(tester.widget<Semantics>(semanticsOf('settings.color.rose')).properties.selected, true);
+    final pink = tester.widget<Semantics>(semanticsOf('settings.color.rose')).properties;
+    expect((pink.selected, pink.label), (true, l10n.colorRose));
+    // A screen reader can pick it too.
+    expect(pink.onTap, isNotNull);
     await tester.ensureVisible(save);
     await tester.tap(save);
     await settle(tester, frames: 10);

@@ -315,14 +315,14 @@ void main() {
       final rose = StorySettings.fromJson(const {'accent': 'rose', 'difficulty': 'story'});
       expect(rose.accent, 'rose');
       expect(const StorySettings().accent, isNull);
-      expect(rose, isNot(rose.withAccent(null)));
+      expect(rose, isNot(rose.copyWith(accent: () => null)));
       // Other changes keep the color, and a change of color sends only the color.
       final calmer = rose.copyWith(eventFrequency: 'calm');
       expect(calmer.accent, 'rose');
       expect(calmer.changesFrom(rose), {'event_frequency': 'calm'});
-      expect(rose.withAccent('jade').changesFrom(rose), {'accent': 'jade'});
-      expect(rose.withAccent(null).changesFrom(rose), {'accent': null});
-      expect(rose.withAccent(null).difficulty, 'story');
+      expect(rose.copyWith(accent: () => 'jade').changesFrom(rose), {'accent': 'jade'});
+      expect(rose.copyWith(accent: () => null).changesFrom(rose), {'accent': null});
+      expect(rose.copyWith(accent: () => null).difficulty, 'story');
       final story = Story.fromJson(const {
         'id': 's',
         'title': 'T',
