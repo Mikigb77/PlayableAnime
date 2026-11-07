@@ -259,6 +259,52 @@ def test_a_scene_is_described_as_the_picture_endpoint_describes_it():
     assert brief.figures == briefs.scene_figures(state, "You lift the bucket.")
     assert brief.you == state.player.name
     assert brief.time == briefs.time_of_day(state.bible.calendar, state.world_s)
+    assert (brief.turn, brief.place_id) == (state.turn, briefs.scene_place(state)[0])
+
+
+def test_a_scene_picture_is_drawn_from_its_note_as_the_endpoint_draws_it():
+    """M5: the eval's pictures go through the note step, with the portraits of only the people
+    it keeps."""
+    from decimal import Decimal
+
+    from evals.pictures import Picture, draw, scene_brief
+    from media.drawing import Drawn
+    from media.notes import PictureNote, SceneText
+
+    state = worlds.farm()
+    player = state.player.name
+
+    class Painter:
+        model, byok = "fake-image", False
+
+        def __init__(self):
+            self.notes, self.drawn = [], []
+
+        async def note(self, prompt):
+            self.notes.append(prompt)
+            return PictureNote(description=f"{player} lifts the bucket.", people=[player])
+
+        async def draw(self, request):
+            self.drawn.append(request)
+            return Drawn(TINY_PNG, "image/png", self.model, Decimal("0.034"))
+
+    painter = Painter()
+    brief = scene_brief(state, "You lift the bucket.")
+    portrait = Picture("p", "portrait", TINY_PNG, "image/png", "fake-image", Decimal(0))
+    others = [("Someone Else", portrait), (player, portrait)]
+
+    drawn = asyncio.run(
+        draw(painter, "s", "scene", brief, others, scene=SceneText("You lift it.", "lift"))
+    )
+
+    assert isinstance(drawn, Picture)
+    assert painter.notes[0].user.endswith("SCENE:\nYou lift it.")
+    [request] = painter.drawn
+    assert f"What it shows: {player} lifts the bucket." in request.prompt
+    assert [ref.name for ref in request.references] == [player]
+    # A portrait gets no note.
+    asyncio.run(draw(painter, "p", "portrait", brief, scene=SceneText("x")))
+    assert len(painter.notes) == 1
 
 
 # --- results -----------------------------------------------------------------------------------
@@ -304,6 +350,27 @@ def test_the_summary_leaves_out_skipped_scenarios(tmp_path):
     )
     text = summary(run)
     assert "| t18.x | pending |" in text and "no model spend" in text
+
+
+def test_a_live_summary_says_what_its_pictures_came_to(tmp_path):
+    """M8, T18: two runs of the picture evals, one per picture model, are weighed side by side."""
+    from decimal import Decimal
+
+    from evals.pictures import NotDrawn, Picture
+
+    run = a_run(tmp_path)
+    run.mode = Mode.LIVE
+    run.models = {"picture": "gemini-nano-banana-2.1"}
+    run.results[0].pictures = [
+        Picture("a", "scene", b"x", "image/png", "gemini-nano-banana-2.1", Decimal("0.0340")),
+        Picture("b", "cover", b"x", "image/png", "gemini-nano-banana-2.1", Decimal("0.0372")),
+        NotDrawn("c", "blocked"),
+    ]
+
+    text = summary(run)
+
+    assert "Pictures by gemini-nano-banana-2.1: 2 drawn for $0.07, 1 not drawn (1 blocked)." in text
+    assert "Pictures by" not in summary(a_run(tmp_path))  # a run with none says nothing
 
 
 # --- the command line --------------------------------------------------------------------------

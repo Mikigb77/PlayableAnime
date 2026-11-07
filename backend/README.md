@@ -72,6 +72,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
 | `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
 | `PICTURE_MODEL` | `gemini-3.1-flash-lite-image` | The picture model (M8), read by `graph/llm/config.py`. |
+| `PICTURE_NOTE_MODEL` | `gemini-3.1-flash-lite` | Writes a scene picture's description from the finished scene (M5). |
 | `MEDIA_BUCKET` | none | The private Cloud Storage bucket for pictures (M4). Unset, pictures are stored on local disk. |
 | `PICTURE_ROOT` | `backend/media-local/` | Where pictures go without a bucket, served at `/media/` behind signed URLs. |
 | `PICTURE_URL_TTL_S` | `3600` | How long a picture's signed URL works. |

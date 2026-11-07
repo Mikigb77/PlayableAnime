@@ -4,12 +4,14 @@ Every picture shares one house style that matches the app's look (`app/DESIGN.md
 dressed in the world's own era and look, so a 1970s crime family wears suits and a cultivation
 sect wears robes (S7). The prompt leads with the moment the picture shows, then how the people in
 it look and what the player character has on them, then the world, so the picture follows the
-narration rather than the world in general. A scene picture, and a story's cover, which shows the
-scene it is planned in, is lit for the time of day the story clock shows. The player character is
-drawn with only the things the record says they carry (C10), so a picture never hands them a
-weapon they don't have. The portraits of the people in it go along as reference images, each
-labelled with whose it is and used only for that person's face, hair and build, so a face stays
-the same without the portrait's pose or background (M5).
+narration rather than the world in general. A scene picture is lit for the time of day the story
+clock shows, and gets the picture of the place it happens in as a reference. A story's cover is
+the exception: it is the story's poster in the Library (M1), so it sums up the whole story in its
+world, its premise included as the setting, rather than the moment of the scene it is planned in.
+The player character is drawn with only the things the record says they carry (C10), on a cover
+too, so a picture never hands them a weapon they don't have. The portraits of the people in it go
+along as reference images, each labelled with whose it is and used only for that person's face,
+hair and build, so a face stays the same without the portrait's pose or background (M5).
 
 Pictures stay mild in every rating (M6): the text carries the graphic detail, the picture never
 does. The rules say so to the model, and the picture safety settings in `graph.llm.safety` back
@@ -63,14 +65,14 @@ FRAMING = {
         "the description describes, and no one else: no extra people, creatures or props, and no "
         "buildings, ruins, water or landmarks it doesn't name."
     ),
-    # A story's cover is planned in one of its scenes and shown there, so it shows that scene's
-    # moment (M1, M5); a starter premise's cover shows the situation its premise tells.
+    # A story's cover is its poster in the Library: the whole story in its world, not one scene's
+    # moment (M1, Miki 2026-11-07); a starter premise's cover shows the situation its premise
+    # tells.
     "cover": (
-        "A cover image for the story, showing the moment or situation the description tells as "
-        "an evocative, iconic composition around its main character, doing what it says, where it "
-        "says, with calm, darker space in the lower third, where the title is set. Show who and "
-        "what the description describes, and no one else: no extra people, creatures or props, "
-        "and no buildings, ruins, water or landmarks that neither it nor the world's setting names."
+        "A cover image for the story, like a book or film poster: a dramatic, iconic composition "
+        "that sums up the story around its main character, not one moment of it. The world's "
+        "setting may rise behind them, with its telling places, landmarks or threats. Keep calm, "
+        "darker space in the lower third, where the title is set."
     ),
 }
 
@@ -84,7 +86,8 @@ MAX_FIGURES = 4
 # What the player character has on them, as the picture is told it (C10).
 MAX_CARRIED = 8
 MAX_CARRIED_CHARS = 300
-# Reference portraits sent with one picture (M5). Each costs about 1,120 input tokens.
+# Reference portraits sent with one picture (M5), and the place's own picture on top of them for
+# a scene picture. Each image costs about 1,120 input tokens.
 MAX_REFERENCES = 3
 
 # The second person the narration is told in, so a description that says "you" can be told who
@@ -99,8 +102,9 @@ class WorldLook:
     genre: str = ""
     era: str = ""
     tone: str = ""
-    # A starter premise's tagline, for its cover on Discover. A story's own pictures leave it
-    # empty, since its premise is not the scene they show (M5).
+    # The premise, which only a cover is drawn with: a story's cover in the Library, its poster
+    # (M1), or a starter premise's on Discover. A scene picture never sees it, since a premise is
+    # not the scene a picture shows (M5).
     setting: str = ""
 
 
@@ -151,9 +155,15 @@ class Brief:
     figures: tuple[Figure, ...] = ()
     # Who the description means by "you": the player character, as the narration calls them.
     you: str = ""
-    # The time of day at the scene, such as "dusk", which a scene picture or a story's cover is
-    # lit for (W10).
+    # The time of day at the scene, such as "dusk", which a scene picture is lit for (W10).
     time: str = ""
+    # The scene a scene picture shows, or a cover was planned in, whose finished text a scene
+    # picture's description is written from (`media.notes`), and where a scene picture happens,
+    # whose own picture goes along as a reference (M5). 0 and empty for an older brief.
+    turn: int = 0
+    place_id: str = ""
+    place_name: str = ""
+    place_look: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -164,6 +174,10 @@ class Brief:
             "figures": [figure.to_json() for figure in self.figures],
             "you": self.you,
             "time": self.time,
+            "turn": self.turn,
+            "place_id": self.place_id,
+            "place_name": self.place_name,
+            "place_look": self.place_look,
         }
 
     @classmethod
@@ -182,7 +196,18 @@ class Brief:
             ),
             you=str(data.get("you") or ""),
             time=str(data.get("time") or ""),
+            turn=_turn(data.get("turn")),
+            place_id=str(data.get("place_id") or ""),
+            place_name=str(data.get("place_name") or ""),
+            place_look=str(data.get("place_look") or ""),
         )
+
+
+def _turn(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 @dataclass(frozen=True, repr=False)
@@ -204,17 +229,18 @@ def build_prompt(
     *,
     references: Sequence[str] = (),
     redraw: bool = False,
+    place: bool = False,
 ) -> PicturePrompt:
     """The prompt for one picture of `kind`. `references` names the people whose reference
     portraits go with it, in the order the images are attached. `redraw` asks for the same
     character as the attached earlier portrait, as they look now (M5), or for a place, the same
-    place as it is now (M1).
+    place as it is now (M1). `place`: one more image goes last, the picture of the place a scene
+    picture happens in (`brief.place_name`), so a place looks the same from scene to scene (M5).
 
     The moment comes first, then how the people in it look and what the player character has on
-    them, then the world, so the picture shows what the narration tells. The look's `setting`
-    goes only into a cover, and only a starter premise's cover has one (`media.premise_covers`):
-    a story's premise describes how the story began, not the scene a picture shows, so a story's
-    pictures, its cover included, never see it."""
+    them, then the world, so the picture shows what the narration tells. The look's `setting`, a
+    premise, goes only into a cover, the story's poster (M1): a premise describes how the story
+    began, not the scene a picture shows, so a scene picture never sees it."""
     if kind not in FRAMING:
         raise ValueError(f"Unknown picture kind {kind!r}")
     system = "\n\n".join(
@@ -245,7 +271,7 @@ def build_prompt(
         lines.append(f"What it shows: {description}")
     if brief.you and kind in ("scene", "cover") and SAYS_YOU.search(description):
         lines.append(f'"You" in the description is {_clip(brief.you, 80)}.')
-    if brief.time and kind in ("scene", "cover"):
+    if brief.time and kind == "scene":
         lines.append(
             f"Time of day: {_clip(brief.time, 40)}. Wherever the sky or daylight shows, light it "
             "for that time."
@@ -287,11 +313,23 @@ def build_prompt(
             "person; take their pose, the framing, the background and the light from this "
             "picture, not from the portrait."
         )
+    place = place and not redraw and kind == "scene"
+    if place:
+        lines.append(
+            "The image labelled as the place is where this happens. Draw the same place, with "
+            "its ground, buildings, plants, materials and colours, from whatever viewpoint the "
+            "moment needs; what that image shows counts as named. Take the framing, the people "
+            "and the light from this picture, not from that image."
+        )
+    labels = _labels(kind, references, redraw)
+    if place:
+        name = _clip(brief.place_name, 80) or "the scene"
+        labels += (f"Image {len(labels) + 1}: {name}, the place where this happens.",)
     return PicturePrompt(
         system=system,
         user="\n".join(lines),
         aspect_ratio=ASPECT_RATIOS[kind],
-        labels=_labels(kind, references, redraw),
+        labels=labels,
     )
 
 

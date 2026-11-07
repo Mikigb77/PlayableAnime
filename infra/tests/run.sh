@@ -126,6 +126,23 @@ test_bootstrap_dry_run() {
   else
     ok
   fi
+  contains "$out" "[dry-run] gcloud iam service-accounts create github-evals"
+  contains "$out" "--member=serviceAccount:github-evals@playable-anime.iam.gserviceaccount.com --role=roles/aiplatform.user"
+  contains "$out" "[dry-run] gcloud iam workload-identity-pools create github-evals"
+  contains "$out" "providers create-oidc playable-anime-evals --project=playable-anime --location=global --workload-identity-pool=github-evals"
+  contains "$out" "(assertion.event_name == '\\''schedule'\\'' || assertion.event_name == '\\''workflow_dispatch'\\'') && assertion.workflow_ref == '\\''Mikigb77/PlayableAnime/.github/workflows/evals.yml@refs/heads/main'\\''"
+  contains "$out" "--member=principalSet://iam.googleapis.com/projects/528988811295/locations/global/workloadIdentityPools/github-evals/attribute.repository_id/1444213567 --role=roles/iam.workloadIdentityUser"
+  if grep -E -e "--member=serviceAccount:github-evals@" "$out" | grep -v -e "--role=roles/aiplatform.user" >/dev/null; then
+    bad "the evals account may only call Vertex AI"
+  else
+    ok
+  fi
+  if grep -E "add-iam-policy-binding github-(deployer|ops)@.*workloadIdentityPools/github-evals/|add-iam-policy-binding github-evals@.*workloadIdentityPools/github(-ops)?/" "$out" >/dev/null; then
+    bad "the evals pool and the others must never reach each other's accounts"
+  else
+    ok
+  fi
+  lacks "$out" "EVALS_ENABLED" "the nightly run's cost stays Miki's call"
   contains "$out" "[dry-run] gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID"
   contains "$out" "--budget-amount=25"
   lacks "$out" "allUsers" "bootstrap must never make anything public"

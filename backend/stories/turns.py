@@ -21,7 +21,7 @@ import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from asgiref.sync import sync_to_async
@@ -56,7 +56,7 @@ from graph.turn import (
     turn_graph,
 )
 from lucid.errors import ApiError, ErrorCode, envelope, field_error, version_conflict
-from media.briefs import THREAD_SUBJECTS, known_cast, scene_figures, time_of_day
+from media.briefs import THREAD_SUBJECTS, known_cast, scene_figures, scene_place, time_of_day
 from media.plans import look_for_story, plan_picture
 from media.prompts import Brief
 from stories import endings, pending, responses, rewind
@@ -444,8 +444,10 @@ def brief(
 ) -> Brief:
     """What to draw: the prompt, the world's look (S7), and the subject, or for a scene or cover
     the people in it with the appearance kept in their entries (C9, M5) and what the player
-    character has on them (C10), chosen by `media.briefs.scene_figures`. A scene picture and the
-    cover, which shows the scene it is planned in, also get the time of day, to be lit for."""
+    character has on them (C10), chosen by `media.briefs.scene_figures`, and the scene's turn. A
+    scene picture also gets the time of day, to be lit for, and the place the scene ends in,
+    whose picture goes along (M5); its description is written again from the finished scene
+    (`media.notes`). The cover, the story's poster, is drawn with the premise instead (M1)."""
     look = look_for_story(story)
     subject_id = picture.subject_id
     if picture.kind is PictureKind.PORTRAIT and subject_id in state.characters:
@@ -466,12 +468,22 @@ def brief(
         )
     if trigger in THREAD_SUBJECTS:
         subject_id = None
-    return Brief(
+    brief = Brief(
         description=picture.prompt,
         look=look,
         figures=scene_figures(state, picture.prompt, subject_id=subject_id),
         you=state.player.name,
+        turn=state.turn,
+    )
+    if picture.kind is not PictureKind.SCENE:
+        return brief  # the cover, the story's poster (M1): no one scene's hour or place
+    place_id, place_name, place_look = scene_place(state)
+    return replace(
+        brief,
         time=time_of_day(state.bible.calendar, state.world_s),
+        place_id=place_id,
+        place_name=place_name,
+        place_look=place_look,
     )
 
 

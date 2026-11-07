@@ -651,6 +651,7 @@ environment, `backend/.env` and the repo-root `.env.local`:
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
 | `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
 | `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
+| `picture_note` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | A scene picture's description, written from the finished scene in the picture's own request (M5): about 1,500 tokens in and 300 out, well under a tenth of a cent, billed with the picture. |
 | `judge` | `gemini-3.1-pro-preview`, thinking `high` | $2.00 / $12.00 | The story evals' judge ([Story evals](#story-evals)), never in a turn. A judge that misreads a scene makes the scores worthless, so it gets a stronger model than the nodes it judges. |
 
 Prices are Vertex AI's standard prices on the `global` endpoint, checked 2026-11-03, and live in
@@ -1296,40 +1297,34 @@ script runs to the end.) The `evals` job runs every deterministic scenario and p
 
 ### Switching on the nightly live run
 
-`.github/workflows/evals.yml` runs every night at 03:17 UTC and by hand (Actions, Evals, Run
-workflow, optionally with scenario ids or prefixes) from `main`, only when the repository variable
-`EVALS_ENABLED` is `true`. It signs in through Workload Identity Federation, with no key (B11), as
-a service account that can call Vertex AI and nothing else, in its own identity pool so it can
-never act as the deployer. The run's files are uploaded as an artifact for 90 days, and the history
-travels from run to run in the Actions cache, with a copy in each artifact.
+`.github/workflows/evals.yml` runs from `main` by hand (Actions, Evals, Run workflow, optionally
+with scenario ids or prefixes and a picture model), and every night at 03:17 UTC once the
+repository variable `EVALS_ENABLED` is `true`. It signs in through Workload Identity Federation,
+with no key (B11), as `github-evals`, a service account that can call Vertex AI and nothing else,
+in its own identity pool so it can never act as the deployer. `infra/bootstrap.sh` sets both up
+([DEPLOY.md](DEPLOY.md), step 6e), so Miki only signs in and runs it once. The run's files are
+uploaded as an artifact for 90 days, its summary goes on the run's page and into its log, and the
+history travels from run to run in the Actions cache, with a copy in each artifact.
 
 A full live run plays about 700 turns, a hundred-odd judge calls and about twenty pictures:
 roughly $10 to $20 at today's defaults, so $300 to $600 a month if it runs every night. Running it
 by hand before a model or prompt change (T15), or nightly for a few weeks after launch, costs less.
-
-Once, as the project's owner (each command is safe to repeat; an "already exists" error is fine):
+Switching the nightly run on is Miki's call, for that cost:
 
 ```bash
-P=playable-anime; N=528988811295; REPO_ID=1444213567; OWNER_ID=112938189
-gcloud iam service-accounts create github-evals --project=$P --display-name='GitHub nightly evals'
-gcloud projects add-iam-policy-binding $P --condition=None --format=none \
-  --member=serviceAccount:github-evals@$P.iam.gserviceaccount.com --role=roles/aiplatform.user
-gcloud iam workload-identity-pools create github-evals --project=$P --location=global \
-  --display-name='GitHub evals'
-gcloud iam workload-identity-pools providers create-oidc playable-anime-evals --project=$P \
-  --location=global --workload-identity-pool=github-evals --display-name='PlayableAnime evals' \
-  --issuer-uri=https://token.actions.githubusercontent.com \
-  --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.workflow_ref=assertion.workflow_ref \
-  --attribute-condition="assertion.repository_id == '$REPO_ID' && assertion.repository_owner_id == '$OWNER_ID' && assertion.workflow_ref == 'Mikigb77/PlayableAnime/.github/workflows/evals.yml@refs/heads/main'"
-gcloud iam service-accounts add-iam-policy-binding github-evals@$P.iam.gserviceaccount.com \
-  --project=$P --role=roles/iam.workloadIdentityUser --format=none \
-  --member=principalSet://iam.googleapis.com/projects/$N/locations/global/workloadIdentityPools/github-evals/attribute.repository_id/$REPO_ID
 gh variable set EVALS_ENABLED --body true --repo Mikigb77/PlayableAnime
 ```
 
-The workflow uses these names by default; the repository variables `EVALS_WIF_PROVIDER`,
-`EVALS_SERVICE_ACCOUNT` and `EVALS_GCP_PROJECT` override them. Setting `EVALS_ENABLED` to anything
-else switches the run off again.
+Setting it to anything else switches the nightly run off again; runs by hand go on either way.
+The workflow uses the bootstrap's names by default; the repository variables `EVALS_WIF_PROVIDER`,
+`EVALS_SERVICE_ACCOUNT` and `EVALS_GCP_PROJECT` override them.
+
+**Weighing a picture model (M8).** A run by hand takes `picture_model`, such as
+`gemini-nano-banana-2.1`, and draws every picture with it instead of the configured one
+(`PICTURE_MODEL`). Run the picture evals (`t18.same-face t18.mild-pictures t18.moment-as-told
+t18.cover-as-poster`, about $2) once with the default and once with the candidate, before any
+switch. Each summary says which model drew the pictures, how many, for how much and how many
+weren't drawn and why, next to each scenario's judged score; the pictures are in the artifact.
 
 ## App
 
@@ -1657,7 +1652,8 @@ turn (WS3)            the director decides a scene gets a picture (M1, WS11)
   └─ media.plans.plan_picture(scene, kind, subject_id, trigger, brief, version)   in the turn's transaction
 app                   shows the narration, then asks for the picture in its own request (M3, B8)
   └─ POST /v1/stories/{id}/scenes/{turn}/image  →  media.service.scene_picture
-       claim (row lock) → hold credits → draw on graph.llm → store → mark ready + charge (one txn)
+       claim (row lock) → hold credits → note from the finished scene (a scene picture) → draw
+       on graph.llm → store → mark ready + charge (one txn)
 ```
 
 - **One `Image` per subject and look (M4).** `media.Image` is keyed by story, kind (portrait,
@@ -1672,25 +1668,27 @@ app                   shows the narration, then asks for the picture in its own 
   thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
   again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
-  prompt, the world's genre, era and tone (never the story's premise, which is not the scene a
-  picture shows), the people in the picture with the appearance from their entry (C9), who "you" is,
-  and for a scene or the cover the time of day on the story's clock. The cover is planned in the
-  story's second scene and shown there, so it is drawn as that scene's moment, posed for a cover.
+  prompt, the world's genre, era, tone and the story's premise as the setting (which only a cover
+  is drawn with), the people in the picture with the appearance from their entry (C9), who "you"
+  is, the scene's turn, and for a scene picture the time of day on the story's clock and the place
+  it ends in (`media.briefs.scene_place`). The cover is planned in the story's second scene and
+  shown there, but it is the story's poster in the Library (M1): the narrator writes it as the
+  whole story around its main character, and it is drawn with the premise, as a book or film
+  poster, with no one scene's hour.
   `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those the
   image prompt names, with the director's subject first even when they just died or the player
   hasn't met them, and the player character when the prompt says "you" or names them, or names no
   one else; a prompt that names no one falls back to the subject, the player character and the
-  people the player knows there. A story's pictures never get its premise, and the picture endpoint
-  clears a setting a brief planned before that kept. The player character goes in with what they
-  carry from their sheet (`Figure.carries`, C10), money, property and what they keep elsewhere left
+  people the player knows there. A scene picture never gets the premise. The player character
+  goes in with what they carry from their sheet (`Figure.carries`, C10), money, property and what they keep elsewhere left
   out, or with nothing to carry; an NPC's record is partial, so theirs is left out, and so is the
   player character's for Illustrate on an earlier scene. `media/prompts.py` turns the brief into the
   prompt, the moment first, then how the people look and what the player character carries ("no
   other weapon, tool or gear, even one their look above names, unless the description puts it in
   their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
-  look, lit for the moment's time of day), the world's own era (a setting only on a starter
-  premise's cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
-  scenes 16:9), where a scene and a cover show only who and what the description has, and the
+  look, lit for the moment's time of day), the world's own era (the premise as the setting only on
+  a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
+  scenes 16:9), where a scene shows only who and what the description has, and the
   mild-in-every-rating rules. Ready portraits of up to three of the
   people go along as reference images, each set right after a label saying whose it is
   (`ImagePart.label`) and used only for the face, hair and build. A portrait takes only its
@@ -1699,6 +1697,22 @@ app                   shows the narration, then asks for the picture in its own 
   prompt for (Illustrate on any scene) is described by the end of its narration, which the same
   rules keep mild, with the people it names from the cast saved with the scene, that scene's
   player character as "you" (N6), their portraits and the scene's time of day.
+- **The note and the place (M5).** The narrator writes its image prompt while the scene is still
+  being written, so a scene picture is drawn from a description written from the
+  finished scene (`media/notes.py`, plain Python, shared with the picture evals). Right before
+  drawing, on the same account and so billed with the picture, the `picture_note` node reads the
+  scene's narration and the player's action (the scene of the brief's turn, else the scene asking),
+  with the narrator's prompt as a draft, the brief's people and looks, what the player character
+  carries, the place, the time of day and the world's genre and era, and answers a `PictureNote`:
+  one to three sentences of what can be seen, and who from the brief's people is in it. The brief
+  keeps only those people (or those the description names, or the player character when it says
+  "you"), so only their looks and portraits go along. A note that fails on a player's own key is
+  written again on ours if ours draws; one that fails on ours leaves the narrator's prompt, and a
+  failed note never fails the picture. Covers, portraits and places get no note. A scene
+  picture also gets the latest ready picture of the brief's place, last among the
+  references, labelled as the place and used for how it looks, never for the framing, people or
+  light. Illustrate on an earlier scene gets no place, since the record holds where the player
+  character is now. The T5 line says whether a picture was noted and had its place.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls
@@ -1782,7 +1796,7 @@ app                   shows the narration, then asks for the picture in its own 
 | Deploys | `.github/workflows/deploy.yml`, run by each merge of `dev` into `main` (or by hand on `main`), signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11), checks each model in use (`manage.py check_models`), and publishes the Android APK as the latest release's `lucid-saga.apk` and to the releases bucket |
 | Reading Google Cloud | `.github/workflows/ops.yml` on `main`, started by hand or through the API, runs one read-only gcloud command as `github-ops@playable-anime.iam.gserviceaccount.com` (viewer and logging viewer, its own Workload Identity pool `github-ops`) and prints the output, so threads read logs and settings themselves ([DEPLOY.md](DEPLOY.md#reading-google-cloud)) |
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
-| Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
+| Evals | `.github/workflows/evals.yml`, by hand, and nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 

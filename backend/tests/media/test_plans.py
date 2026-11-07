@@ -211,14 +211,16 @@ def test_planning_marks_the_scene_row():
     )
 
 
-def test_a_storys_own_look_comes_from_its_bible_never_its_premise():
-    """M5: the premise tells how the story began, so its places and things would reach a picture
-    of a scene that has none of them, as a castle and ruins reached a cover of a leap through the
-    trees (Miki, 2026-11-07)."""
+def test_a_storys_own_look_comes_from_its_bible_with_its_premise_for_the_cover():
+    """M1, M5: the premise goes along as the setting, which only the cover, the story's poster,
+    is drawn with; a scene picture never sees it (`media.prompts`)."""
     story = make_story(genre="cultivation")
 
     assert look_for_story(story) == WorldLook(
-        genre="cultivation", era="an ancient empire of sects", tone="grim and grand"
+        genre="cultivation",
+        era="an ancient empire of sects",
+        tone="grim and grand",
+        setting="A sect disciple with a forbidden technique.",
     )
     story.state = ["not", "a", "dict"]
     assert look_for_story(story).era == ""
@@ -253,8 +255,10 @@ def test_an_illustrated_scene_knows_its_people_who_you_are_and_the_time():
     assert [f.id for f in brief.figures] == ["luca", "carmine"]
     assert brief.figures[1].appearance == "Fifties, broad, grey moustache, gold rings."
     assert (brief.you, brief.time) == ("Luca Esposito", "night")
-    # The story's latest scene: what Luca has on him now is what he had then (C10).
+    # The story's latest scene: what Luca has on him now is what he had then (C10), and where
+    # he is now is where it ended, so the bar's picture can go along (M5).
     assert brief.figures[0].carries == ("Beretta pistol", "flick knife")
+    assert (brief.turn, brief.place_id, brief.place_name) == (2, "bar", "Carmine's bar")
 
 
 def test_an_illustrated_past_scene_is_not_told_what_the_player_carries_now():
@@ -268,8 +272,10 @@ def test_an_illustrated_past_scene_is_not_told_what_the_player_carries_now():
         cast=[{"character_id": "carmine", "name": "Carmine Russo"}],
     )  # fmt: skip
 
-    figures = brief_for_scene(story, scene).figures
-    assert [(f.id, f.carries) for f in figures] == [("luca", None), ("carmine", None)]
+    brief = brief_for_scene(story, scene)
+    assert [(f.id, f.carries) for f in brief.figures] == [("luca", None), ("carmine", None)]
+    # Nor where Luca is now, which needn't be where that scene happened (M5).
+    assert (brief.turn, brief.place_id, brief.place_name) == (2, "", "")
 
 
 def test_an_illustrated_last_scene_of_a_fallen_player_character_leaves_their_things_out():
@@ -296,7 +302,7 @@ def test_an_illustrated_scene_without_a_world_is_its_text_alone():
     scene = make_scene(story, 2, narration="The rain stops.")
 
     assert brief_for_scene(story, scene) == Brief(
-        description="The rain stops.", look=look_for_story(story)
+        description="The rain stops.", look=look_for_story(story), turn=2
     )
 
 

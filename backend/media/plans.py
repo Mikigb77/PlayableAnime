@@ -14,7 +14,7 @@ from engine.contracts import FIRST_PICTURES
 from engine.looks import place_version
 from engine.state.world import WorldState
 from lucid.errors import ApiError, ErrorCode
-from media.briefs import player_at, scene_figures, time_of_day
+from media.briefs import player_at, scene_figures, scene_place, time_of_day
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
 from stories.models import ImageKind, Scene, Story
@@ -173,37 +173,43 @@ def _look_now(state: WorldState, kind: str, subject: str) -> int:
 
 def look_for_story(story: Story) -> WorldLook:
     """The world's look from the story itself: the bible's genre, era and tone when the story
-    has one. Never its premise, which tells how the story began, not the scene a picture shows,
-    and would bring its places and things into a picture that has none of them (M5)."""
+    has one, and its premise as the setting, which only its cover is drawn with, as the story's
+    poster (M1). A scene picture never sees the premise, which tells how the story began, not the
+    scene, and would bring its places and things into a picture that has none of them (M5)."""
     state = story.state if isinstance(story.state, dict) else {}
     bible = state.get("bible") if isinstance(state.get("bible"), dict) else {}
     return WorldLook(
         genre=str(bible.get("genre") or story.genre or ""),
         era=str(bible.get("era") or ""),
         tone=str(bible.get("tone") or ""),
+        setting=story.premise or "",
     )
 
 
 def brief_for_scene(story: Story, scene: Scene) -> Brief:
     """What to draw for a scene nobody planned a picture for, such as Illustrate on any scene: the
     scene's own text, which the picture rules keep mild (M6), with the people it names as they
-    look and their reference portraits (M5), who "you" is, and the time of day, as a planned
-    scene picture has them. The people are the scene's player character and the cast saved with
-    the scene, drawn with the look they have now. What the player character has on them goes
-    along only for the story's latest scene, since the record holds what they have now, not what
-    they had then (C10)."""
+    look and their reference portraits (M5), who "you" is, the time of day and the scene's turn,
+    as a planned scene picture has them. The people are the scene's player character and the cast
+    saved with the scene, drawn with the look they have now. What the player character has on
+    them, and the place whose picture goes along, are known only for the story's latest scene,
+    since the record holds what they have and where they are now, not then (C10, M5)."""
     description = scene.image_prompt or _ending(scene.narration)
     look = look_for_story(story)
     try:
         state = WorldState.model_validate(story.state)
     except ValueError:
-        return Brief(description=description, look=look)
+        return Brief(description=description, look=look, turn=scene.turn)
     player = player_at(state, scene.turn)
     present = [
         str(entry.get("character_id") or "")
         for entry in scene.cast or ()
         if isinstance(entry, dict)
     ]
+    # The record holds what the latest scene ended with: what the player character has on them,
+    # unless they fell in it and someone else carries the story on (N6), and where it ended.
+    latest = scene.turn >= state.turn
+    place_id, place_name, place_look = scene_place(state) if latest else ("", "", "")
     return Brief(
         description=description,
         look=look,
@@ -212,12 +218,14 @@ def brief_for_scene(story: Story, scene: Scene) -> Brief:
             description,
             player_id=player,
             present=present,
-            # What the record holds now is what the latest scene ended with, unless its player
-            # character fell in it and someone else carries the story on (N6).
-            carried=scene.turn >= state.turn and player == state.player_id,
+            carried=latest and player == state.player_id,
         ),
         you=state.characters[player].name,
         time=time_of_day(state.bible.calendar, scene.world_end_s),
+        turn=scene.turn,
+        place_id=place_id,
+        place_name=place_name,
+        place_look=place_look,
     )
 
 

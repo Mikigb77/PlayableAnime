@@ -85,6 +85,10 @@ WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locatio
 # gets the read-only account. Its pool is its own, so it can never act as the deployer.
 OPS_WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && assertion.event_name == 'workflow_dispatch' && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${OPS_WORKFLOW}@refs/heads/main'"
 OPS_WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${OPS_WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
+# Only the Evals workflow on main, nightly or started by hand, gets the evals account. Its pool is
+# its own too, so it can never act as the deployer or the ops account, nor they as it.
+EVALS_WIF_CONDITION="assertion.repository_id == '${GITHUB_REPOSITORY_ID}' && assertion.repository_owner_id == '${GITHUB_OWNER_ID}' && assertion.ref == 'refs/heads/main' && (assertion.event_name == 'schedule' || assertion.event_name == 'workflow_dispatch') && assertion.workflow_ref == '${GITHUB_REPOSITORY_NAME}/${EVALS_WORKFLOW}@refs/heads/main'"
+EVALS_WIF_MEMBER="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${EVALS_WIF_POOL}/attribute.repository_id/${GITHUB_REPOSITORY_ID}"
 
 BUDGET_AMOUNT="${BUDGET_AMOUNT:-$BUDGET_DEFAULT_AMOUNT}"
 DATABASE_URL_VALUE=""
@@ -505,6 +509,23 @@ setup_ops() {
   grant_service_account_role "$OPS_SA" "$OPS_WIF_MEMBER" roles/iam.workloadIdentityUser
 }
 
+# Lets the Evals workflow play the live story evals on the real models (T15, T17, T18, M8), by hand
+# from main. Vertex AI user calls models and nothing else. The nightly run stays off until the
+# repository variable EVALS_ENABLED is true, since a full run costs $10 to $20.
+setup_evals() {
+  local role
+  step "6e. Live evals: $EVALS_SA"
+  ensure_service_account "$EVALS_SA_NAME" "GitHub Actions live evals"
+  for role in $EVALS_ROLES; do
+    grant_project_role "serviceAccount:$EVALS_SA" "$role"
+  done
+  ensure_wif_pool "$EVALS_WIF_POOL" "GitHub Actions evals" \
+    "Keyless sign-in for the live evals workflow"
+  ensure_wif_provider "$EVALS_WIF_POOL" "$EVALS_WIF_PROVIDER" "PlayableAnime evals workflow" \
+    "$EVALS_WIF_CONDITION"
+  grant_service_account_role "$EVALS_SA" "$EVALS_WIF_MEMBER" roles/iam.workloadIdentityUser
+}
+
 setup_budget() {
   local billing account existing
   step "7. Budget alert $BUDGET_NAME"
@@ -550,6 +571,7 @@ Google Cloud is ready for the deploy workflow:
   Workload identity provider  $WIF_PROVIDER_RESOURCE
   Deployer service account    $DEPLOYER_SA
   Ops (read-only) account     $OPS_SA, through $OPS_WIF_PROVIDER_RESOURCE
+  Live evals account          $EVALS_SA, through $EVALS_WIF_PROVIDER_RESOURCE
   Image repository            $IMAGE
   Pictures bucket             gs://$MEDIA_BUCKET
   App releases bucket         gs://$RELEASES_BUCKET
@@ -574,6 +596,7 @@ main() {
   setup_workload_identity
   setup_ops
   setup_releases_bucket
+  setup_evals
   setup_budget
   summary
 }

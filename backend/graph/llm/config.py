@@ -58,6 +58,12 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
         "gemini-3.5-flash", CallOptions(max_output_tokens=16384, timeout_s=120)
     ),
     Node.PICTURE: NodeSettings("gemini-3.1-flash-lite-image", CallOptions(timeout_s=60)),
+    # M5: a scene picture's description, written from the finished scene in the picture's own
+    # request, so the story never waits for it. The cheapest model: it only retells what the
+    # scene told, in about 100 words, for well under a tenth of a cent.
+    Node.PICTURE_NOTE: NodeSettings(
+        "gemini-3.1-flash-lite", CallOptions(thinking="low", max_output_tokens=2048, timeout_s=20)
+    ),
     # Dictation (V6): Gemini 3.5 Transcribe, the file version, which Vertex AI serves only on the
     # `global` endpoint and only by this preview name (checked 2026-11-04). The player waits on it
     # with the mic button spinning, so its deadline is short: a minute of speech takes seconds.
