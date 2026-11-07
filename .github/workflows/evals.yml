@@ -1,15 +1,17 @@
 # The live story evals (WS17; T15, T17, T18): the real models on Vertex AI play every scenario and
-# a model judge scores the scenes against written rubrics. Nightly, and by hand from main.
+# a model judge scores the scenes against written rubrics. By hand from main, and nightly once the
+# repository variable EVALS_ENABLED is "true" (a full run costs $10 to $20). It signs in through
+# Workload Identity Federation with no key (B11), as a service account that can call Vertex AI and
+# nothing else, which infra/bootstrap.sh sets up (docs/ARCHITECTURE.md, "Story evals").
 #
-# Switched off until Miki sets up access: the job runs only when the repository variable
-# EVALS_ENABLED is "true". The one-time setup is in docs/ARCHITECTURE.md, "Story evals". It signs
-# in through Workload Identity Federation with no key (B11), as a service account that can call
-# Vertex AI and nothing else.
+# A run by hand can draw its pictures with another model, to weigh it against today's on T18's
+# picture evals before any switch (M8): run the same scenarios once with each and compare.
 #
 # Each run uploads its results (run.json, summary.md, transcripts, pictures) and appends a line to
 # history.jsonl, which is carried from run to run in the Actions cache and shown as a trend.
 
 name: Evals
+run-name: "Evals${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}"
 
 on:
   schedule:
@@ -18,6 +20,10 @@ on:
     inputs:
       only:
         description: Scenario ids or id prefixes, separated by spaces (blank runs them all)
+        type: string
+        default: ""
+      picture_model:
+        description: The picture model to draw with, such as gemini-nano-banana-2.1 (blank is the default, M8)
         type: string
         default: ""
 
@@ -30,7 +36,7 @@ concurrency:
 jobs:
   live:
     name: Live evals
-    if: ${{ vars.EVALS_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.EVALS_ENABLED == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     permissions:
@@ -67,6 +73,8 @@ jobs:
       - name: Run the evals
         env:
           ONLY: ${{ inputs.only }}
+          # Blank keeps the configured picture model (graph.llm.config).
+          PICTURE_MODEL: ${{ inputs.picture_model }}
         run: |
           args=()
           for scenario in $ONLY; do args+=(--only "$scenario"); done
@@ -76,7 +84,8 @@ jobs:
       - name: Summary and trend
         if: ${{ !cancelled() }}
         run: |
-          if [ -f evals-out/summary.md ]; then cat evals-out/summary.md >>"$GITHUB_STEP_SUMMARY"; fi
+          # In the log too, where a thread reads it. Eval stories are made up: no player's data.
+          if [ -f evals-out/summary.md ]; then tee -a "$GITHUB_STEP_SUMMARY" <evals-out/summary.md; fi
           if [ -f evals-history/history.jsonl ]; then
             cp evals-history/history.jsonl evals-out/
             {

@@ -352,6 +352,27 @@ def test_the_summary_leaves_out_skipped_scenarios(tmp_path):
     assert "| t18.x | pending |" in text and "no model spend" in text
 
 
+def test_a_live_summary_says_what_its_pictures_came_to(tmp_path):
+    """M8, T18: two runs of the picture evals, one per picture model, are weighed side by side."""
+    from decimal import Decimal
+
+    from evals.pictures import NotDrawn, Picture
+
+    run = a_run(tmp_path)
+    run.mode = Mode.LIVE
+    run.models = {"picture": "gemini-nano-banana-2.1"}
+    run.results[0].pictures = [
+        Picture("a", "scene", b"x", "image/png", "gemini-nano-banana-2.1", Decimal("0.0340")),
+        Picture("b", "cover", b"x", "image/png", "gemini-nano-banana-2.1", Decimal("0.0372")),
+        NotDrawn("c", "blocked"),
+    ]
+
+    text = summary(run)
+
+    assert "Pictures by gemini-nano-banana-2.1: 2 drawn for $0.07, 1 not drawn (1 blocked)." in text
+    assert "Pictures by" not in summary(a_run(tmp_path))  # a run with none says nothing
+
+
 # --- the command line --------------------------------------------------------------------------
 
 

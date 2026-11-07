@@ -1297,40 +1297,34 @@ script runs to the end.) The `evals` job runs every deterministic scenario and p
 
 ### Switching on the nightly live run
 
-`.github/workflows/evals.yml` runs every night at 03:17 UTC and by hand (Actions, Evals, Run
-workflow, optionally with scenario ids or prefixes) from `main`, only when the repository variable
-`EVALS_ENABLED` is `true`. It signs in through Workload Identity Federation, with no key (B11), as
-a service account that can call Vertex AI and nothing else, in its own identity pool so it can
-never act as the deployer. The run's files are uploaded as an artifact for 90 days, and the history
-travels from run to run in the Actions cache, with a copy in each artifact.
+`.github/workflows/evals.yml` runs from `main` by hand (Actions, Evals, Run workflow, optionally
+with scenario ids or prefixes and a picture model), and every night at 03:17 UTC once the
+repository variable `EVALS_ENABLED` is `true`. It signs in through Workload Identity Federation,
+with no key (B11), as `github-evals`, a service account that can call Vertex AI and nothing else,
+in its own identity pool so it can never act as the deployer. `infra/bootstrap.sh` sets both up
+([DEPLOY.md](DEPLOY.md), step 6e), so Miki only signs in and runs it once. The run's files are
+uploaded as an artifact for 90 days, its summary goes on the run's page and into its log, and the
+history travels from run to run in the Actions cache, with a copy in each artifact.
 
 A full live run plays about 700 turns, a hundred-odd judge calls and about twenty pictures:
 roughly $10 to $20 at today's defaults, so $300 to $600 a month if it runs every night. Running it
 by hand before a model or prompt change (T15), or nightly for a few weeks after launch, costs less.
-
-Once, as the project's owner (each command is safe to repeat; an "already exists" error is fine):
+Switching the nightly run on is Miki's call, for that cost:
 
 ```bash
-P=playable-anime; N=528988811295; REPO_ID=1444213567; OWNER_ID=112938189
-gcloud iam service-accounts create github-evals --project=$P --display-name='GitHub nightly evals'
-gcloud projects add-iam-policy-binding $P --condition=None --format=none \
-  --member=serviceAccount:github-evals@$P.iam.gserviceaccount.com --role=roles/aiplatform.user
-gcloud iam workload-identity-pools create github-evals --project=$P --location=global \
-  --display-name='GitHub evals'
-gcloud iam workload-identity-pools providers create-oidc playable-anime-evals --project=$P \
-  --location=global --workload-identity-pool=github-evals --display-name='PlayableAnime evals' \
-  --issuer-uri=https://token.actions.githubusercontent.com \
-  --attribute-mapping=google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.workflow_ref=assertion.workflow_ref \
-  --attribute-condition="assertion.repository_id == '$REPO_ID' && assertion.repository_owner_id == '$OWNER_ID' && assertion.workflow_ref == 'Mikigb77/PlayableAnime/.github/workflows/evals.yml@refs/heads/main'"
-gcloud iam service-accounts add-iam-policy-binding github-evals@$P.iam.gserviceaccount.com \
-  --project=$P --role=roles/iam.workloadIdentityUser --format=none \
-  --member=principalSet://iam.googleapis.com/projects/$N/locations/global/workloadIdentityPools/github-evals/attribute.repository_id/$REPO_ID
 gh variable set EVALS_ENABLED --body true --repo Mikigb77/PlayableAnime
 ```
 
-The workflow uses these names by default; the repository variables `EVALS_WIF_PROVIDER`,
-`EVALS_SERVICE_ACCOUNT` and `EVALS_GCP_PROJECT` override them. Setting `EVALS_ENABLED` to anything
-else switches the run off again.
+Setting it to anything else switches the nightly run off again; runs by hand go on either way.
+The workflow uses the bootstrap's names by default; the repository variables `EVALS_WIF_PROVIDER`,
+`EVALS_SERVICE_ACCOUNT` and `EVALS_GCP_PROJECT` override them.
+
+**Weighing a picture model (M8).** A run by hand takes `picture_model`, such as
+`gemini-nano-banana-2.1`, and draws every picture with it instead of the configured one
+(`PICTURE_MODEL`). Run the picture evals (`t18.same-face t18.mild-pictures t18.moment-as-told
+t18.cover-as-poster`, about $2) once with the default and once with the candidate, before any
+switch. Each summary says which model drew the pictures, how many, for how much and how many
+weren't drawn and why, next to each scenario's judged score; the pictures are in the artifact.
 
 ## App
 
@@ -1802,7 +1796,7 @@ app                   shows the narration, then asks for the picture in its own 
 | Deploys | `.github/workflows/deploy.yml`, run by each merge of `dev` into `main` (or by hand on `main`), signs in as `github-deployer@playable-anime.iam.gserviceaccount.com` through Workload Identity Federation, with no key (B11), checks each model in use (`manage.py check_models`), and publishes the Android APK as the latest release's `lucid-saga.apk` and to the releases bucket |
 | Reading Google Cloud | `.github/workflows/ops.yml` on `main`, started by hand or through the API, runs one read-only gcloud command as `github-ops@playable-anime.iam.gserviceaccount.com` (viewer and logging viewer, its own Workload Identity pool `github-ops`) and prints the output, so threads read logs and settings themselves ([DEPLOY.md](DEPLOY.md#reading-google-cloud)) |
 | Budget | `playable-anime-monthly`, an email alert on the project's monthly spend (T9) |
-| Evals | `.github/workflows/evals.yml`, nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
+| Evals | `.github/workflows/evals.yml`, by hand, and nightly once switched on, signs in as `github-evals@playable-anime.iam.gserviceaccount.com` (Vertex AI only) through its own Workload Identity pool `github-evals` ([Story evals](#switching-on-the-nightly-live-run)) |
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 

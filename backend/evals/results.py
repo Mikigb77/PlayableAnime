@@ -19,6 +19,7 @@ import json
 import mimetypes
 import os
 import subprocess
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -26,7 +27,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from evals.pictures import Picture
+from evals.pictures import NotDrawn, Picture
 from evals.runner import ScenarioResult
 from evals.scenario import Mode
 
@@ -160,6 +161,7 @@ def summary(run: Run) -> str:
         f"## Story evals: {run.mode.value} run {run.id}",
         "",
         f"{head}. Average score {_pct(run.score)}, {cost}.",
+        *_pictures(run),
         "",
         "| Scenario | Status | Score | Turns | Seconds | Notes |",
         "| --- | --- | --- | --- | --- | --- |",
@@ -180,6 +182,24 @@ def summary(run: Run) -> str:
         lines += ["", "### Known gaps still open", ""]
         lines += [f"- **{scenario}**: {_cell(gap)}" for scenario, gap in gaps]
     return "\n".join(lines) + "\n"
+
+
+def _pictures(run: Run) -> list[str]:
+    """What a live run's pictures came to: by which model, how many, for how much, and how many
+    weren't drawn and why, so two runs of the picture evals with different picture models can be
+    weighed side by side (M8, T18)."""
+    pictures = [p for r in run.results for p in r.pictures]
+    if not pictures:
+        return []
+    drawn = [p for p in pictures if isinstance(p, Picture)]
+    missed = Counter(p.reason for p in pictures if isinstance(p, NotDrawn))
+    models = sorted({p.model for p in drawn}) or [run.models.get("picture") or "the picture model"]
+    cost = sum((p.cost_usd for p in drawn), Decimal(0))
+    line = f"Pictures by {', '.join(models)}: {len(drawn)} drawn for ${cost:.2f}"
+    if missed:
+        reasons = ", ".join(f"{n} {reason}" for reason, n in missed.most_common())
+        line += f", {missed.total()} not drawn ({reasons})"
+    return ["", f"{line}."]
 
 
 def _pct(score: float | None) -> str:

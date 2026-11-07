@@ -54,6 +54,9 @@ PRICES: dict[str, Price] = {
     "gemini-3.1-pro-preview": _price("2.00", "12.00", cached="0.20"),
     # A 1K picture is 1,120 output tokens at $30 per million: $0.034 (M8). Bigger sizes bill more.
     "gemini-3.1-flash-lite-image": _price("0.25", "1.50", "30.00", cached="0.025"),
+    # Nano Banana 2.1, the same $0.034 at 1K with dearer input, so a reference portrait adds about
+    # $0.002 (M8). Text out at $7.50 per million (checked 2026-11-07).
+    "gemini-nano-banana-2.1": _price("1.50", "7.50", "30.00", cached="0.15"),
     # Speech to text (V6), the file version: audio in at $2.00 and text out at $12 per million
     # tokens, about $0.005 a minute of speech. Its preview name, `-preview`, matches this entry.
     "gemini-3.5-transcribe": _price("2.00", "12.00"),
