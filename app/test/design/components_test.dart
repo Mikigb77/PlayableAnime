@@ -215,6 +215,28 @@ void main() {
       expect(sent, ['I run']);
     });
 
+    testWidgets('with the mic on, a box past the limit still cannot be sent', (tester) async {
+      final dictating = ValueNotifier(true);
+      addTearDown(dictating.dispose);
+      var finishes = 0;
+      await tester.pumpWidget(
+        composer(
+          onSubmit: (_) {},
+          max: 20,
+          dictating: dictating,
+          onFinishDictation: () async {
+            finishes++;
+            return true;
+          },
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'x' * 21);
+      await tester.pump();
+      await tester.tap(find.byTooltip((await english()).composerSend));
+      await tester.pump();
+      expect(finishes, 0);
+    });
+
     testWidgets('shows slash hints for a leading slash and fills the tapped one', (tester) async {
       await tester.pumpWidget(composer(onSubmit: (_) {}));
       await tester.enterText(find.byType(TextField), '/re');

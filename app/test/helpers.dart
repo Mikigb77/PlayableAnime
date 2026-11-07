@@ -103,6 +103,9 @@ class FakeSpeechEngine implements SpeechEngine {
   /// What [hasPermission] answers after a failed initialize.
   bool permission;
 
+  /// While set, [listen] waits for it: the recognizer is still starting.
+  Completer<void>? starting;
+
   int initializations = 0;
   int stops = 0;
   int cancels = 0;
@@ -157,6 +160,7 @@ class FakeSpeechEngine implements SpeechEngine {
     _onStopped = onStopped;
     _onError = onError;
     _onLevel = onLevel;
+    if (starting case final started?) await started.future;
   }
 
   @override

@@ -79,9 +79,12 @@ class DictationController extends ChangeNotifier implements BoxMic {
   bool _finishing = false;
   String _prefix = '';
 
-  /// Each dictation's number: what a dictation hears after it was finished for sending, or after
-  /// the next one started, never lands in the box.
+  /// Each dictation's number: what a dictation hears after the next one started never lands in
+  /// the box.
   int _session = 0;
+
+  /// The dictation finished for sending: nothing it hears later lands in the box.
+  int? _sealed;
 
   /// Done once the box holds everything the mic heard: online, when the words are written down;
   /// with the phone's recognizer, when its last words come after it stops, or [lastWords] passes.
@@ -95,6 +98,10 @@ class DictationController extends ChangeNotifier implements BoxMic {
 
   bool get _isOn => _phase == DictationPhase.listening || _phase == DictationPhase.starting;
 
+  /// Sending is waiting for this dictation's words ([finish]): the mic can't be turned on again
+  /// until they land.
+  bool get finishing => _finishing;
+
   /// Turns the mic off and waits until what it heard is in the box, as sending does (V2). While
   /// it waits, the mic can't be turned on again. False when the words couldn't be written down:
   /// the button says why, and the words so far stay in the box to send once the player has seen
@@ -103,6 +110,7 @@ class DictationController extends ChangeNotifier implements BoxMic {
   Future<bool> finish() async {
     if (!dictating) return true;
     _finishing = true;
+    notifyListeners();
     try {
       if (_isOn) await stop();
     } on Object catch (e) {
@@ -111,8 +119,10 @@ class DictationController extends ChangeNotifier implements BoxMic {
     if (_phase == DictationPhase.transcribing) _landing ??= Completer<void>();
     await _landing?.future;
     _finishing = false;
-    _session++;
-    return !_disposed && _failure == null;
+    _sealed = _session;
+    if (_disposed) return false;
+    notifyListeners();
+    return _failure == null;
   }
 
   Future<void> toggle() async {
@@ -156,7 +166,7 @@ class DictationController extends ChangeNotifier implements BoxMic {
 
   Future<void> _listen() async {
     final session = _session;
-    bool live() => !_disposed && session == _session;
+    bool live() => !_disposed && session == _session && session != _sealed;
     try {
       await engine.listen(
         onResult: (words, isFinal) {
@@ -180,9 +190,15 @@ class DictationController extends ChangeNotifier implements BoxMic {
         context: context,
         onDevice: _onDevice,
       );
-      if (live() && _phase == DictationPhase.starting) _set(DictationPhase.listening);
+      if (live() && _phase == DictationPhase.starting) {
+        _set(DictationPhase.listening);
+      } else if (engine.onPhone && session == _session && (_disposed || !_isOn)) {
+        // Turned off while the phone's recognizer was starting, which may have started anyway:
+        // the mic is on only while the button shows it (V5). Online dictation sees to this itself.
+        await (_disposed ? engine.cancel() : engine.stop());
+      }
     } on Object {
-      _set(DictationPhase.idle);
+      if (session == _session) _set(DictationPhase.idle);
     }
   }
 

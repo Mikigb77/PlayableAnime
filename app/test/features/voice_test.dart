@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -434,6 +436,31 @@ void main() {
       expect(text.text, 'I wait then I run');
     });
 
+    test(
+      'on the phone, a recognizer turned off while starting is stopped once it starts',
+      () async {
+        final engine = FakeSpeechEngine();
+        final dictation = mic(engine);
+        await dictation.start();
+        await dictation.stop();
+        engine.starting = Completer<void>();
+        final starting = dictation.start();
+        await pumpEventQueue();
+        expect(dictation.phase, DictationPhase.starting);
+
+        expect(await tracker.finishDictation(), isTrue);
+        expect(engine.stops, 2);
+        engine.starting!.complete();
+        await starting;
+        expect(
+          engine.stops,
+          3,
+          reason: 'it may have started anyway: the mic is on only while shown',
+        );
+        expect(dictation.phase, DictationPhase.idle);
+      },
+    );
+
     test('on the phone, an error once the mic is off never turns it on again', () async {
       final engine = FakeSpeechEngine();
       final dictation = mic(engine);
@@ -560,6 +587,26 @@ void main() {
       await tester.pump();
       expect(find.text('Open the door'), findsOneWidget);
       expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.idle);
+    });
+
+    testWidgets('while sending waits for the words, it spins and stays off', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pump();
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      engine.hear('I draw');
+
+      final finishing = tracker.finishDictation();
+      await tester.pump();
+      final mic = tester.widget<MicButton>(find.byType(MicButton));
+      expect(mic.visual, MicVisual.transcribing);
+      expect(mic.onPressed, isNull);
+
+      engine.hear('I draw my blade', isFinal: true);
+      expect(await finishing, isTrue);
+      await tester.pump();
+      expect(tester.widget<MicButton>(find.byType(MicButton)).visual, MicVisual.idle);
+      expect(text.text, 'I draw my blade');
     });
 
     testWidgets('leaving the app turns the mic off', (tester) async {

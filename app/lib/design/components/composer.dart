@@ -66,8 +66,9 @@ class Composer extends StatefulWidget {
   final ValueListenable<bool>? dictating;
 
   /// Turns [mic] off and waits until what it heard is in the box. Sending while [dictating] calls
-  /// it first, then sends the box as it is by then; false (the words couldn't be written down)
-  /// sends nothing, leaving the box to the player.
+  /// it first, then sends the box as it is by then, even if the owner showed [busy] while it
+  /// waited; false (the words couldn't be written down, or the owner won't send now) sends
+  /// nothing, leaving the box to the player.
   final Future<bool> Function()? onFinishDictation;
 
   /// The API's limit on an action (docs/API.md: 1 to 2000 characters).
@@ -116,10 +117,12 @@ class _ComposerState extends State<Composer> {
 
   bool get _open => widget.enabled && !widget.busy && !_finishing;
 
-  bool get _sendable => _text.isNotEmpty && _text.length <= widget.maxLength;
+  bool get _fits => _text.length <= widget.maxLength;
+
+  bool get _sendable => _text.isNotEmpty && _fits;
 
   /// With the mic on, send is open even with an empty box: the words are on their way.
-  bool get _canSend => _open && (_sendable || _dictating);
+  bool get _canSend => _open && (_sendable || (_dictating && _fits));
 
   List<SlashCommand> get _matches {
     final text = widget.controller.text;
@@ -141,7 +144,7 @@ class _ComposerState extends State<Composer> {
       } finally {
         if (mounted) setState(() => _finishing = false);
       }
-      if (!mounted || !landed || !_open || !_sendable) return;
+      if (!mounted || !landed || !widget.enabled || !_sendable) return;
     }
     widget.onSubmit(_text);
   }

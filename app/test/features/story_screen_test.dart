@@ -228,6 +228,7 @@ void main() {
       await tester.pump();
       expect(mic.stops, 1);
       expect(turns.requests, isEmpty, reason: 'half of what was said never goes');
+      expect(find.text('Climb'), findsNothing, reason: 'no other turn can start meanwhile');
 
       mic
         ..hear('I bow.')

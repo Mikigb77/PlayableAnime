@@ -1548,10 +1548,13 @@ English.
 `finishDictation()` turns the mic off and waits until they land: online, until the last part is
 written down; with the phone's recognizer, until its final result comes or two seconds pass. Then
 the dictation's late callbacks are dropped, so nothing lands in a box that was sent, and the mic
-can't be turned on again while a turn waits for it. The play screen's `Composer` takes both: send
-stays open while the mic is on, spins while it waits, then sends the whole box, or nothing if the
-words couldn't be written down. A suggestion, a standing action, a retry and ending without what
-was refused wait the same way before their turn starts, and leave what was said in the box.
+spins and can't be turned on again while a turn waits for it. A phone recognizer turned off while
+it was still starting is stopped again once it starts, since the plugin may start it anyway (V5).
+The play screen's `Composer` takes both, through the screen's one wait for the mic (`_micOff`):
+send stays open while the mic is on, spins while it waits, then sends the whole box, or nothing if
+the words couldn't be written down. Every other turn the player starts (a suggestion, a standing
+action, a retry, ending without what was refused) waits the same way and leaves what was said in
+the box. While one waits, the suggestions hide and the composer is busy, so no second turn starts.
 
 **Turn API.** The turn request gains an `input_mode` field, one of `typed`, `voice`, `voice_edited`
 or `choice` (V7).

@@ -183,6 +183,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final outcome = await showOutOfCreditsSheet(context, error: error, retriesItself: true);
     if (!mounted || outcome != OutOfCreditsOutcome.keyAdded) return;
     if (turn != null) {
+      if (await _micOff() == null) return;
       _following = true;
       final started = await _play.again(turn);
       // The refused turn left its words in the box; now it is under way.
@@ -324,8 +325,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   }
 
   Future<void> _endWithoutRefused() async {
+    if (await _micOff() == null) return;
     _following = true;
-    if (await _micOff()) await _play.endWithoutRefused();
+    await _play.endWithoutRefused();
   }
 
   /// Rewinding a few scenes after a death (C8): how far back, then the feed from there.
@@ -362,37 +364,44 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     unawaited(context.push(Routes.create, extra: StartAgain(premise ?? '')));
   }
 
-  /// No turn starts while the mic is on or its words are on their way (V2): a suggestion, a
-  /// standing action, a retry or an ending first turns it off and waits, and what it heard stays
-  /// in the box for the next turn. Sending the box waits the same way, in the [Composer]. False
-  /// once the screen is gone, or while another turn is already waiting.
-  Future<bool> _micOff() async {
+  /// No turn starts while the mic is on or its words are on their way (V2): every turn the player
+  /// starts here first turns it off and waits, with the composer busy and the suggestions hidden.
+  /// True once what was said is in the box, false when it couldn't be written down: sending the
+  /// box goes only on true, and any other turn goes either way, leaving the words in the box for
+  /// the next one. Null once the screen is gone, or while another turn already waits: then no
+  /// turn starts, so the first the player asked for is the one that plays.
+  Future<bool?> _micOff() async {
     if (!_mode.dictating.value) return true;
-    if (_waitingForMic) return false;
+    if (_waitingForMic) return null;
     setState(() => _waitingForMic = true);
-    await _mode.finishDictation();
-    if (!mounted) return false;
+    final landed = await _mode.finishDictation();
+    if (!mounted) return null;
     setState(() => _waitingForMic = false);
-    return true;
+    return landed;
   }
 
+  /// The composer's send, with the mic on.
+  Future<bool> _micOffToSend() async => await _micOff() ?? false;
+
   Future<void> _choose(Choice choice) async {
+    if (await _micOff() == null) return;
     _following = true;
     _quiet();
-    if (await _micOff()) await _play.choose(choice);
+    await _play.choose(choice);
   }
 
   Future<void> _stand(StandingAction action) async {
+    final label = action.label(context.l10n);
+    if (await _micOff() == null) return;
     _following = true;
     _quiet();
-    final label = action.label(context.l10n);
-    if (await _micOff()) await _play.stand(action.wire, label: label);
+    await _play.stand(action.wire, label: label);
   }
 
   Future<void> _retry() async {
-    _following = true;
     final action = _play.pending?.input.action;
-    if (!await _micOff()) return;
+    if (await _micOff() == null) return;
+    _following = true;
     final started = await _play.retry();
     // A turn refused before it started left its words in the box; now it is under way.
     if (started && mounted && action != null && _action.text.trim() == action.trim()) {
@@ -709,7 +718,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   busy: _play.busy || _waitingForMic,
                   onSubmit: _send,
                   dictating: _mode.dictating,
-                  onFinishDictation: _mode.finishDictation,
+                  onFinishDictation: _micOffToSend,
                   mic: DictationButton(
                     tracker: _mode,
                     storyId: widget.storyId,
