@@ -81,8 +81,9 @@ Runtime contract that WS1 provides and WS5 deploys:
 1. **Own your PR end to end** (CLAUDE.md rule 9): branch from `dev`, open the PR against `dev`,
    self-review with the code-review skill, fix, green CI, squash-merge into `dev`. A workstream can
    land several PRs; land a first useful one early when others wait on it. Never open a PR into
-   `main`: merging `dev` into `main` deploys, needs Miki's go-ahead (given for the first one on
-   2026-11-04) and uses a merge commit ([DEPLOY.md](DEPLOY.md#how-changes-reach-production)). CI
+   `main` from a feature branch: merging `dev` into `main` deploys, which a thread does itself
+   once its work is ready, without asking Miki (2026-11-07), with a merge commit
+   ([DEPLOY.md](DEPLOY.md#how-changes-reach-production)). CI
    runs on every PR and on pushes to `dev` and `main`.
 2. **Stay inside the paths your workstream owns.** Shared files (`pyproject.toml`, `uv.lock`,
    `lucid/settings.py`, the Ninja router registration, `ci.yml`, `pubspec.yaml`, `router.dart`) get

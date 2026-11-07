@@ -53,10 +53,12 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
 9. **Each thread owns its PR from start to merge into `dev`, with no review from Miki needed.** Open
    the PR against `dev`, review your own diff as a demanding outsider would (or run the code-review
    skill), fix what you find, wait for green CI, then squash-merge it into `dev` yourself. Never
-   merge with red CI or unresolved review comments. A `dev` to `main` PR is the deploy: it needs
-   Miki's go-ahead (given for the first one on 2026-11-04) and is merged with a merge commit, never
-   squashed. Ask Miki only for decisions that change the product's goals, or for irreversible
-   production actions (a deploy, a production migration that drops data, deleting data).
+   merge with red CI or unresolved review comments. A `dev` to `main` PR is the deploy: **when
+   your work is in `dev` and ready, deploy it yourself without asking Miki** (Miki, 2026-11-07):
+   open the PR into `main`, wait for green CI, merge it with a merge commit, never squashed, and
+   watch the deploy land. Ask Miki only for decisions that change the product's goals, or for
+   other irreversible production actions (a production migration that drops data, deleting
+   data).
 10. **Read Google Cloud yourself; never ask Miki for logs or settings.** Dispatch the read-only
     Ops workflow (`.github/workflows/ops.yml` on `main`) with a gcloud command, or none for the
     last 3 hours of the API's warnings and errors, and read its run's log

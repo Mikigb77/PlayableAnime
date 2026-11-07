@@ -1307,7 +1307,7 @@ LangGraph graph that calls models on Vertex AI (decided 2026-11-03).
 | T10 | **Concurrency:** a story row carries a version number. Two turns at the same time can't overwrite each other, and the loser gets a 409. | P0 |
 | T11 | **Secrets:** Secret Manager only (`database-url` and others), mounted as env vars. Private settings that aren't credentials, such as the owner's email (K7), come from GitHub secrets at deploy time, so they stay out of the public repo and its logs. | P0 |
 | T12 | **Privacy (EU users):** delete my account and data (pictures included, M4), export my stories, and a privacy policy that also says where speech goes (V5). Neon point-in-time restore is our backup. | P0 |
-| T13 | **Deploy:** CI (lint and tests for both halves) must be green on the commit. Every PR goes into `dev`, and merging `dev` into `main` (with Miki's go-ahead) deploys: the push to `main` runs a GitHub Actions workflow that waits for CI, builds one image, pushes it to Artifact Registry, runs the migrations as a Cloud Run job, then deploys the service and rolls back if its health check fails, lets the app reach the API, calls each model the app uses once and sends each response format a node asks for once, and fails the run with Vertex AI's reason if one doesn't answer, draws missing starter covers (spaced out, and drawn again after a wait when the picture quota runs out), and publishes the signed Android APK as the latest GitHub release's `lucid-saga.apk`, linked at the top of the README, and to the private releases bucket the installed app updates itself from (S12) ([DEPLOY.md](DEPLOY.md)). It can also be started by hand on `main`. A job that fails prints its own logs in the run, and threads read any log or setting through the read-only Ops workflow, keyless, so diagnosing production never needs Miki's laptop. | P1 |
+| T13 | **Deploy:** CI (lint and tests for both halves) must be green on the commit. Every PR goes into `dev`, and merging `dev` into `main` (by the thread whose work is ready, without asking Miki) deploys: the push to `main` runs a GitHub Actions workflow that waits for CI, builds one image, pushes it to Artifact Registry, runs the migrations as a Cloud Run job, then deploys the service and rolls back if its health check fails, lets the app reach the API, calls each model the app uses once and sends each response format a node asks for once, and fails the run with Vertex AI's reason if one doesn't answer, draws missing starter covers (spaced out, and drawn again after a wait when the picture quota runs out), and publishes the signed Android APK as the latest GitHub release's `lucid-saga.apk`, linked at the top of the README, and to the private releases bucket the installed app updates itself from (S12) ([DEPLOY.md](DEPLOY.md)). It can also be started by hand on `main`. A job that fails prints its own logs in the run, and threads read any log or setting through the read-only Ops workflow, keyless, so diagnosing production never needs Miki's laptop. | P1 |
 | T14 | **Cost target:** a cost-per-turn ceiling for the default model, set once T5 gives us real numbers. | P1 |
 
 **T15 Narrative evals (P0).** A fixed set of scripted scenarios runs nightly and before each model or
@@ -1445,9 +1445,11 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
 9. **Each thread owns its PR from start to merge, with no review from Miki needed** (Miki's rule,
    2026-11-03). Work on your own branch, open the PR, review your own diff as a demanding outsider
    would (or run the code-review skill), fix what you find, wait for CI to go green, then merge it
-   yourself (squash). Never merge with red CI or unresolved review comments. Ask Miki only for
-   decisions that change the product's goals, or for irreversible production actions (a deploy, a
-   production migration that drops data, deleting data).
+   yourself (squash). Never merge with red CI or unresolved review comments. Then deploy it
+   yourself, without asking (Miki, 2026-11-07): `dev` into `main` with a merge commit, after green
+   CI ([DEPLOY.md](DEPLOY.md)). Ask Miki only for decisions that change the product's goals, or
+   for other irreversible production actions (a production migration that drops data, deleting
+   data).
 
 ## Open decisions
 
