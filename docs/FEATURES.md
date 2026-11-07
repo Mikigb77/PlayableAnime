@@ -61,6 +61,8 @@ The first version's state, checked against the code in WS18.
       before its outcome (R1 to R7)
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
       workarounds reasoned through by cause and effect (A2, A9)
+- [x] Odds from who the character is: their attributes, skills, gifts and flaws weighed against
+      how hard the task is, and a run of misses that makes the next try likelier (A3, G14)
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

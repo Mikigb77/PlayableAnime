@@ -321,6 +321,16 @@ def test_status_shows_the_sheet_the_clock_and_how_long_ago():
     assert {r.name: r.label for r in view.reputation}["the outer court"] == "Respected"
 
 
+def test_status_shows_what_each_power_costs_as_the_sheet_says():
+    # G13: an ability's drawback is never a surprise: it is the sheet's, and Status shows it.
+    lines = status_view(cultivation_world()).character.lines
+
+    assert "Time stop, cost: Leaves him drained" in lines
+    free = cultivation_world()
+    free.player.sheet.powers[0].costs = []
+    assert not any("cost:" in line for line in status_view(free).character.lines)
+
+
 def test_status_shows_money_and_what_is_carried():
     lines = status_view(grounded_world()).character.lines
 

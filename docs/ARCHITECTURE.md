@@ -436,13 +436,18 @@ it (W10a), a helpless state on the sheet
    proposal gets a kitchen knife through a sleeping dragon. A step proposed as a long shot with no
    verdict on the means is rolled as one. A harmful aim always meets that body check for every
    target it doesn't meet head-on, whatever axis the step names and whoever else stands awake
-   beside them. Where nothing can be measured (a
-   faction, a storm), the step is contested, or harder if the interpret step judged it so; a
-   proposed class can lower the outcome there but never raise it. A step that only the actor's own
+   beside them. Where nobody can be measured against the actor (things in the way such as a
+   lantern or the wind, a faction, a storm, someone pushing back on no axis, or a close call),
+   the class comes from the odds the character's sheet gives them against the challenge the
+   interpret step judged (`capability.py`, below): at 95% or more it is certain with no roll where
+   only things stand in the way (never against someone or a faction, and never on a blow a
+   tougher body caps), under 15% a long shot, and contested between. A proposed ruled-out step
+   stays ruled out. A step that only the actor's own
    temperament, fear or pride stands in the way of (`StepFacts.inner`, the actor named as the
    opposition, or words that name only an inner state, such as "his temper" or "Lin's own pride",
    with no one else, no faction, no harm aimed and means not clearly short; words naming anything
-   else outweigh the flag) is the player's choice (G15): certain when the interpret step judged it easy, otherwise rolled with
+   else outweigh the flag) is the player's choice (G15): certain when the interpret step judged it
+   easy or the actor's sheet makes it sure, otherwise rolled with
    only success or partial allowed (contested, or a long shot at the hardest, never ruled out), so
    a hot temper makes it harder and the strain can show, but it is done, and the plan carries on
    past it.
@@ -456,15 +461,33 @@ it (W10a), a helpless state on the sheet
    stops at the first link that breaks, and each link's time is added to the step (W10). The
    step's roll is the one that decided it: the roll of the link it broke on, or, when every link
    held, the hardest roll it took (the setup or an open link).
-6. **The roll** (`odds.py`; A3, A5). Only contested and long-shot steps, close calls, uncertain
-   finds and open links are rolled, each from its own seeded stream under
-   `rng.child("resolve", "step", i)`. Odds start from the gap (even at no gap; a long shot starts
-   at 1 in 10 one step up and falls toward 1 in 33), then edges, hindrances, skill, technique,
-   traits and, for social steps, the target's real attitude (A3, not the one they show) shift them
-   in log-odds. Each class keeps its odds in a band whatever the shifts and the difficulty do:
-   contested 5 to 95%, long shot 2 to 15%, close call 20 to 80%. Difficulty shifts only those odds,
-   never a certain or ruled-out step. Below the odds is a success; a quarter of the rest is a
-   partial success where the facts allow one.
+6. **The roll** (`odds.py`, `capability.py`; A3, A5, G14). Only contested and long-shot steps,
+   close calls, uncertain finds and open links are rolled, each from its own seeded stream under
+   `rng.child("resolve", "step", i)`. Against someone measured on the step's axis, odds start from
+   the gap (even at no gap; a long shot starts at 1 in 10 one step up and falls toward 1 in 33).
+   Otherwise they start from how an ordinary person fares at the challenge the interpret step
+   judged (`StepFacts.challenge`, always asked for: trivial 97%, easy 85%, moderate 60%, hard 35%,
+   very hard 15%, extreme 5%; with none, the proposed class: certain as trivial, a long shot at 1
+   in 10, otherwise even). Then what the character brings shifts them in log-odds
+   (`capability.weigh`): the attributes the step tests (`SheetPart.ATTRIBUTE`, found by words such
+   as "agility" for speed or "perception" for wits, or by the axis when it names none), 0.45 a
+   level against an average person's 3, or against the opponent's own where measured; skills, 0.5
+   a rank against someone untrained where the challenge was judged, otherwise against a fair hand
+   or the opponent's own; a technique (0.6); gifts and flaws used (0.5 each, two at most); and
+   where nobody is measured against them, a power the step uses (0.5 to 1.4 by the gift's
+   strength) and their wounds and exhaustion, which measured tiers already carry. Edges and
+   hindrances (0.35 each, three at most) and, for social steps, the target's real attitude (A3,
+   not the one they show) shift them too. Last, a run of misses: each rolled step of the player
+   character that missed since their last clean success adds 0.6, up to three
+   (`WorldState.misses_in_a_row`, moved on by `play_out` with the rolls that played; a roll that
+   couldn't fail, a roll only of time and a step with no roll leave it as it is). It never counts
+   toward the class, and an NPC's roll never gets it. The reason names what tipped the odds ("The
+   lantern's flame can push back: a real effort, your speed and your Agile in your favour,
+   likely."). Each class keeps its odds in a band whatever the shifts and the difficulty do:
+   contested 5 to 95%, long shot 2 to 15%, close call 20 to 80% (a blow that lands, or a close call
+   with no challenge judged; a judged task with nothing in the way keeps the contested band).
+   Difficulty shifts only those odds, never a certain or ruled-out step. Below the odds is a
+   success; a quarter of the rest is a partial success where the facts allow one.
 7. **Time** (`durations.py`; W10). Durations are bounded by the kind of action. A step timed by the
    clock ("until nightfall") names a time of day, and `until_time` counts the seconds to it from
    where the plan has got to, on the world's calendar, never rolled and held past the kind's
@@ -480,7 +503,10 @@ it (W10a), a helpless state on the sheet
    the state, so claimed outcomes (A6) and injected text (A7) change nothing. Any step against
    someone proposes a deed, even a failed or ruled-out one, so the god notices the swing (A8). The
    targets it harmed are the deed's victims and everyone else who stood in the way its targets;
-   `record_consequences` weighs its severity and witnesses (W12). Powers used list their costs.
+   `record_consequences` weighs its severity and witnesses (W12). Powers used list the costs
+   their sheet gives them, and nothing else: the narrator shows only those (G13). The drafter
+   gives a power only the costs its world's rules or the premise give it, and the draft summary
+   and Status show them, so the player can change one before playing.
 9. **What strikes back** (`perils.py`; N6, A2, A5). After each step the player character takes,
    `strike_back` settles what answers it, as `StepResolution.perils`, with its harm in the step's
    `effects`. First the foes still in the fight: those of the scene's fight, those this plan

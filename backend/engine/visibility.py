@@ -290,6 +290,7 @@ _WORDS = {
         "not_been": "You haven't been there.",
         "expecting": "Expecting a child, due {due}",
         "ready": "ready",
+        "cost": "{power}, cost: {costs}",
         "ends": "Ends {when}",
         "heard": "Heard {when}",
         "and": " and ",
@@ -307,6 +308,7 @@ _WORDS = {
         "not_been": "Aún no has estado allí.",
         "expecting": "Esperando un bebé, que nacerá {due}",
         "ready": "disponible",
+        "cost": "{power}, coste: {costs}",
         "ends": "Termina {when}",
         "heard": "Lo oíste {when}",
         "and": " y ",
@@ -324,6 +326,7 @@ _WORDS = {
         "not_been": "Encara no hi has estat.",
         "expecting": "Esperant un nadó, que naixerà {due}",
         "ready": "disponible",
+        "cost": "{power}, cost: {costs}",
         "ends": "Acaba {when}",
         "heard": "Ho vas sentir {when}",
         "and": " i ",
@@ -575,6 +578,11 @@ class _Knowledge:
                 lines.append(_cap(f"{power.name}: {ready} {when}"))
             else:
                 lines.append(_cap(f"{power.name}: {ready}"))
+            # G13: what using it costs, as the sheet says, so nothing about it is a surprise.
+            costs = "; ".join(c.text.strip().rstrip(".") for c in power.costs if c.text.strip())
+            if costs:
+                cost = _WORDS[self.language]["cost"].format(power=power.name, costs=costs)
+                lines.append(_cap(cost))
         return lines
 
     def resource_lines(self, player: Character) -> list[str]:

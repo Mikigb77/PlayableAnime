@@ -144,6 +144,13 @@ class WorldState(EngineModel):
         description="N6: someone new carries the story on, and their first scene is still to "
         "be told as an opening.",
     )
+    misses_in_a_row: int = Field(
+        default=0,
+        ge=0,
+        description="A3: the player character's rolled steps that missed in a row since their "
+        "last one that came off cleanly, which makes their next roll likelier "
+        "(`engine.resolve.capability.streak_shift`).",
+    )
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> "WorldState":

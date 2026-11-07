@@ -38,7 +38,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
-from engine.resolve import resolve_intent
+from engine.resolve import capability, resolve_intent
 from engine.resolve.powers import growth
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
@@ -155,7 +155,8 @@ def play_out(
 
     Rulings are recorded on the actor's sheet once, never flipped (A9), and then the plan's own
     `effects` apply (settled details of powers, accepted backstory). Time effects that ran out
-    on their user's clock are cleared at the end.
+    on their user's clock are cleared at the end, and the player character's run of misses
+    moves on with the rolls that played (A3, `engine.resolve.capability`).
 
     Code starts and ends the scene's encounter as the steps play (W10, `engine.encounters`): a
     long stretch that isn't part of it ends it before the stretch's events are rolled, each step
@@ -241,6 +242,14 @@ def play_out(
         rejected.extend(applied.rejected)
     prune_time_effects(current)
     encounters.settle(current)
+    if actor_id == current.player_id:
+        # A3. The run of misses the player character's next roll is weighed with: every step
+        # that played counts, and one an event cut short didn't happen.
+        for step in played:
+            if not step.interrupted:
+                current.misses_in_a_row = capability.misses_after(
+                    current.misses_in_a_row, step.roll, step.result
+                )
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]
