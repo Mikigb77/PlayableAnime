@@ -42,6 +42,11 @@ void main() {
   setUpAll(() async => l10n = await english());
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
+  /// The Semantics that carries a color swatch's name and whether it is picked.
+  Finder semanticsOf(String key) => find
+      .descendant(of: find.byKey(Key(key)), matching: find.byType(Semantics), matchRoot: true)
+      .first;
+
   /// A signed-in fake backend whose clock is the test's.
   Future<void> serve(WidgetTester tester, {FakePace pace = FakePace.instant}) async {
     backend = FakeBackend.standard(pace: pace, clock: () => tester.binding.clock.now());
@@ -84,8 +89,10 @@ void main() {
           routes: [
             GoRoute(
               path: 'status',
-              builder: (_, state) =>
-                  StatusScreen(storyId: state.pathParameters['id']!, genre: state.extra as String?),
+              builder: (_, state) => StatusScreen(
+                storyId: state.pathParameters['id']!,
+                accent: state.extra as GenreAccent?,
+              ),
             ),
             GoRoute(
               path: 'memory',
@@ -452,6 +459,61 @@ void main() {
     expect(patch.json.containsKey('title'), isFalse);
     expect(patch.json['settings'], {'narration_length': 'short'});
     expect(find.text(l10n.settingsSaved), findsOneWidget);
+  });
+
+  testWidgets('the player can change a story\'s color, and go back to its genre\'s (S13)', (
+    tester,
+  ) async {
+    await serve(tester);
+    await open(tester);
+    Color primary(Finder finder) => Theme.of(tester.element(finder)).colorScheme.primary;
+    final jade = accentFor(GenreAccent.jade, Brightness.dark);
+    final rose = accentFor(GenreAccent.rose, Brightness.dark);
+    // The demo story is cultivation, so it opens in jade.
+    expect(primary(find.byType(AppBar)), jade);
+
+    await tester.tap(find.byTooltip(l10n.storySettings));
+    await settle(tester);
+    final save = find.widgetWithText(FilledButton, l10n.settingsSave);
+    expect(tester.widget<Semantics>(semanticsOf('settings.color.auto')).properties.selected, true);
+    await tester.tap(find.byKey(const Key('settings.color.rose')));
+    await settle(tester);
+    // The sheet wears the color before it is saved.
+    expect(primary(save), rose);
+    final pink = tester.widget<Semantics>(semanticsOf('settings.color.rose')).properties;
+    expect((pink.selected, pink.label), (true, l10n.colorRose));
+    // A screen reader can pick it too.
+    expect(pink.onTap, isNotNull);
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await settle(tester, frames: 10);
+    final patch = backend.requests.lastWhere((r) => r.method == 'PATCH');
+    expect(patch.json['settings'], {'accent': 'rose'});
+    // It shows at once, so the message doesn't wait for the next scene.
+    expect(find.text(l10n.settingsSavedNow), findsOneWidget);
+    expect(primary(find.byType(AppBar)), rose);
+
+    // The pages above the story take it too.
+    await tester.tap(find.byTooltip(l10n.storyStatus));
+    await settle(tester, frames: 10);
+    expect(
+      primary(find.descendant(of: find.byType(StatusScreen), matching: find.byType(AppBar))),
+      rose,
+    );
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await settle(tester, frames: 10);
+
+    await tester.tap(find.byTooltip(l10n.storySettings));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('settings.color.auto')));
+    await settle(tester);
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await settle(tester, frames: 10);
+    expect(backend.requests.lastWhere((r) => r.method == 'PATCH').json['settings'], {
+      'accent': null,
+    });
+    expect(primary(find.byType(AppBar)), jade);
   });
 
   group('turn errors', () {

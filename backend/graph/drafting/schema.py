@@ -45,6 +45,13 @@ from graph.drafting import lenient
 PLAYER_ID = "player"
 """The player character's id, in every proposal and every drafted state."""
 
+# C9, M5: an appearance is drawn in every picture of its character, so a weapon written into it
+# would be drawn in hand whether they have it or not (C10).
+APPEARANCE = (
+    "For portraits: face, build, hair and usual clothes. Never what they carry, such as a weapon "
+    "or a bag: those are items."
+)
+
 
 class Proposal(BaseModel):
     """A part of what the drafter proposes. Unknown fields are ignored. In the model's answer, a
@@ -355,7 +362,7 @@ class NpcP(Proposal):
     description: str = Field(
         default="", description="How they come across to anyone who meets them. No secrets."
     )
-    appearance: str = Field(default="", description="For portraits.")
+    appearance: str = Field(default="", description=APPEARANCE)
     age: int | None = Field(default=None, description="In years. Every adult needs one.")
     people_id: str = ""
     location_id: str = ""
@@ -581,7 +588,7 @@ class CharacterProposal(Proposal):
     age: int | None = None
     people_id: str = ""
     description: str = Field(default="", description="How they come across.")
-    appearance: str = Field(default="", description="For portraits.")
+    appearance: str = Field(default="", description=APPEARANCE)
     location_id: str = ""
     attributes: AttributesP = Field(default_factory=AttributesP)
     skills: list[SkillP] = Field(default_factory=list)

@@ -35,6 +35,7 @@ from engine.context import (
 from engine.contracts import (
     DirectorPlan,
     Intent,
+    PictureKind,
     PlannedEvent,
     Resolution,
     StandingAction,
@@ -766,7 +767,7 @@ class Eval:
         """A character's portrait (M1, M5), as the picture endpoint draws one. Live mode only."""
         if not self.live:
             return None
-        brief = portrait_brief(story.state, character_id, premise=story.premise)
+        brief = portrait_brief(story.state, character_id)
         drawn = await draw(
             self.picture_model(story), name or f"portrait-{character_id}", "portrait", brief
         )
@@ -783,7 +784,8 @@ class Eval:
         references: Sequence[tuple[str, Picture]] = (),
     ) -> Picture | NotDrawn | None:
         """The scene's picture, from the narrator's image prompt when code planned one, else
-        from the end of its narration, with reference portraits (M5). Live mode only."""
+        from the end of its narration, with reference portraits (M5). A scene that code planned
+        the story's cover for draws the cover, as the picture endpoint does. Live mode only."""
         if not self.live or played.result is None:
             return None
         picture = played.scene.picture
@@ -792,13 +794,12 @@ class Eval:
         subject = decision.subject_id if decision is not None else None
         if decision is not None and decision.trigger in THREAD_SUBJECTS:
             subject = None  # a thread, not a person, as `stories.turns.brief` leaves it out
-        brief = scene_brief(
-            played.state, description, premise=story.premise, people=people, subject_id=subject
-        )
+        brief = scene_brief(played.state, description, people=people, subject_id=subject)
+        cover = picture is not None and picture.kind is PictureKind.COVER
         drawn = await draw(
             self.picture_model(story),
-            name or f"scene-{played.turn}",
-            "scene",
+            name or f"{'cover' if cover else 'scene'}-{played.turn}",
+            "cover" if cover else "scene",
             brief,
             references,
         )

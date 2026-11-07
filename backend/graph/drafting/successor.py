@@ -54,6 +54,7 @@ from graph.drafting.assemble import (
 )
 from graph.drafting.prompts import RATINGS
 from graph.drafting.schema import (
+    APPEARANCE,
     AttributesP,
     ItemP,
     Proposal,
@@ -75,7 +76,7 @@ class SuccessorProposal(Proposal):
     name: str
     aliases: list[str] = Field(default_factory=list)
     description: str = Field(default="", description="How they come across to anyone who meets.")
-    appearance: str = Field(default="", description="For portraits.")
+    appearance: str = Field(default="", description=APPEARANCE)
     attributes: AttributesP = Field(default_factory=AttributesP)
     skills: list[SkillP] = Field(default_factory=list, description="Up to eight.")
     traits: list[TraitP] = Field(default_factory=list, description="Up to four.")

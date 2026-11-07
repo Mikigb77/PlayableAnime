@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/api/api_providers.dart';
@@ -120,6 +120,27 @@ void main() {
       l10n.libraryNotBegun('Day 1, dawn'),
       l10n.libraryTurn(5),
       l10n.libraryEnded(12),
+    ]);
+  });
+
+  testWidgets('a story shows the color the player picked for it, else its genre\'s (S13)', (
+    tester,
+  ) async {
+    const stories = [
+      StorySummary(id: 'a', title: 'Picked', turn: 2, genre: 'Cultivation', accent: 'rose'),
+      StorySummary(id: 'b', title: 'Genre', turn: 2, genre: 'Cultivation'),
+    ];
+    final app = AppHarness();
+    await app.launch(
+      tester,
+      location: '/library',
+      overrides: [storiesProvider.overrideWith((ref) async => stories)],
+    );
+    final brightness = Theme.of(tester.element(find.byType(StoryTile).first)).brightness;
+    final genres = tester.widgetList<Text>(find.text('CULTIVATION')).toList();
+    expect(genres.map((t) => t.style?.color), [
+      accentFor(GenreAccent.rose, brightness),
+      accentFor(GenreAccent.jade, brightness),
     ]);
   });
 

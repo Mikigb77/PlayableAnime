@@ -81,8 +81,9 @@ Runtime contract that WS1 provides and WS5 deploys:
 1. **Own your PR end to end** (CLAUDE.md rule 9): branch from `dev`, open the PR against `dev`,
    self-review with the code-review skill, fix, green CI, squash-merge into `dev`. A workstream can
    land several PRs; land a first useful one early when others wait on it. Never open a PR into
-   `main`: merging `dev` into `main` deploys, needs Miki's go-ahead (given for the first one on
-   2026-11-04) and uses a merge commit ([DEPLOY.md](DEPLOY.md#how-changes-reach-production)). CI
+   `main` from a feature branch: merging `dev` into `main` deploys, which a thread does itself
+   once its work is ready, without asking Miki (2026-11-07), with a merge commit
+   ([DEPLOY.md](DEPLOY.md#how-changes-reach-production)). CI
    runs on every PR and on pushes to `dev` and `main`.
 2. **Stay inside the paths your workstream owns.** Shared files (`pyproject.toml`, `uv.lock`,
    `lucid/settings.py`, the Ninja router registration, `ci.yml`, `pubspec.yaml`, `router.dart`) get
@@ -392,8 +393,8 @@ screens.
   other workstreams call:
   - **WS3 (turn endpoint):** when `DirectorPlan.picture` is set, call
     `media.plans.plan_picture(scene, kind=, subject_id=, trigger=, brief=Brief(description=<the
-    narrator's image prompt>, look=WorldLook(<bible genre, era, tone, setting>),
-    subject_name=, subject_appearance=, figures=(Figure(id, name, appearance), ...)),
+    narrator's image prompt>, look=WorldLook(<bible genre, era, tone>),
+    subject_name=, subject_appearance=, figures=(Figure(id, name, appearance, carries), ...)),
     version=<PictureDecision.version>)` after saving the scene, in the turn's transaction. Build `Scene.image`,
     `Scene.portraits` and `StorySummary.cover_url` with `media.lookups.scene_images`,
     `portrait_urls` and `cover_urls`, and fill the memory and status views' picture URLs

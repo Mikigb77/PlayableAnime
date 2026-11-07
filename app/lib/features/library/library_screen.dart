@@ -172,6 +172,7 @@ class _StoryRow extends StatelessWidget {
       child: StoryTile(
         title: story.title,
         genre: story.genre,
+        accent: story.accent,
         imageUrl: story.coverUrl,
         meta: storyMeta(l10n, story),
         onTap: () => context.push('/story/${Uri.encodeComponent(story.id)}'),

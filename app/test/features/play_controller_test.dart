@@ -28,6 +28,19 @@ class _Scripted extends StoryRepository {
   /// The next Illustrate fails with this, once.
   ApiException? illustrateError;
 
+  /// The next fetch of the story reads it, then waits for this before answering, once.
+  Completer<void>? getGate;
+
+  @override
+  Future<Story> get(String id, {int scenes = 20}) async {
+    final story = await super.get(id, scenes: scenes);
+    if (getGate case final gate?) {
+      getGate = null;
+      await gate.future;
+    }
+    return story;
+  }
+
   @override
   Future<Stream<TurnEvent>> takeTurn(String id, TurnInput input, {required int expectedVersion}) {
     if (turnError case final error?) {
@@ -122,6 +135,30 @@ void main() {
 
   Iterable<FakeRequest> turnRequests() =>
       backend.requests.where((r) => r.method == 'POST' && r.uri.path.endsWith('/turns'));
+
+  test('a copy fetched before a save never takes back the color it saved (S13)', () async {
+    final (:play, notices: _, texts: _) = control();
+    await play.start();
+    final gate = Completer<void>();
+    repository.getGate = gate;
+    final reload = play.reload();
+    await pumpEventQueue();
+
+    await play.save(title: 'Rose Peak', settings: {'accent': 'rose'});
+    expect(play.story!.settings.accent, 'rose');
+    gate.complete();
+    await reload;
+    // The copy was read before the save: what the save wrote stands.
+    expect(play.story!.settings.accent, 'rose');
+    expect(play.story!.title, 'Rose Peak');
+
+    // A copy fetched after it takes what the server says, such as another device's change.
+    await api.patch('/v1/stories/$_demo', {
+      'settings': {'accent': 'lime'},
+    });
+    await play.reload();
+    expect(play.story!.settings.accent, 'lime');
+  });
 
   group('loading', () {
     test('opens at the newest scenes and paints a picture still planned', () async {

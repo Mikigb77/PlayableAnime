@@ -38,7 +38,7 @@ class Story(models.Model):
     genre = models.CharField(max_length=80, blank=True)
     rating = models.CharField(max_length=16, choices=Rating.choices, default=Rating.TEEN)
     # StorySettings from docs/API.md: narration length, tone, difficulty, event frequency,
-    # pictures and suggestions (S6).
+    # pictures and suggestions (S6), and the color the player chose (S13).
     settings = models.JSONField(default=dict, blank=True)
     engine = models.CharField(max_length=16, choices=Engine.choices, default=Engine.GRAPH)
     # The whole world state as one document (C2), written only by a turn (B12).

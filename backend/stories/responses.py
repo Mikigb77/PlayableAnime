@@ -151,6 +151,7 @@ def library(stories: Iterable[Story], *, request: HttpRequest | None) -> list[St
     for story in stories:
         calendar = Calendar.model_validate(story.calendar or {})
         cover = covers.get(str(story.pk))
+        settings = settings_of(story)
         summaries.append(
             StorySummaryOut(
                 id=str(story.pk),
@@ -158,11 +159,10 @@ def library(stories: Iterable[Story], *, request: HttpRequest | None) -> list[St
                 genre=story.genre,
                 rating=story.rating,
                 turn=story.turn,
-                world_time_label=clock_label(
-                    calendar, int(story.world_s or 0), settings_of(story).language
-                ),
+                world_time_label=clock_label(calendar, int(story.world_s or 0), settings.language),
                 cover_url=cover.url if cover else None,
                 ending=endings.of_story(story.ending),
+                accent=settings.accent,
                 updated_at=story.updated_at,
             )
         )

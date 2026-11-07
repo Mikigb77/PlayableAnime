@@ -3,7 +3,9 @@
 from engine.samples import grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Prominence
 from engine.state.records import Deed, Fallen
+from engine.state.sheet import Item, ItemKind
 from media.briefs import (
+    belongings,
     figure,
     known_cast,
     names,
@@ -161,3 +163,42 @@ def test_a_figure_falls_back_on_the_description():
     gennaro = grounded_world().characters["bartender"]
 
     assert figure(gennaro).appearance == gennaro.description
+
+
+def test_the_player_character_goes_in_with_what_they_carry():
+    """C10: what Luca has on him, from the record, and nothing he keeps elsewhere, such as his
+    car. Carmine's belongings are on record only as far as the story told them, so the picture
+    isn't told his."""
+    state = grounded_world()
+
+    shown = scene_figures(state, "Carmine leans in close to you, smiling.")
+
+    assert [(f.id, f.carries) for f in shown] == [
+        ("luca", ("Beretta pistol", "flick knife")),
+        ("carmine", None),
+    ]
+    # A past scene, which the record of now can't speak for (Illustrate).
+    past = scene_figures(
+        state, "Carmine leans in close to you.", present=["carmine"], carried=False
+    )
+    assert [f.carries for f in past] == [None, None]
+
+
+def test_belongings_are_what_is_on_them_with_how_many():
+    state = grounded_world()
+    luca = state.player
+    luca.sheet.resources.items = [
+        Item(id="knives", name="throwing knives", kind=ItemKind.WEAPON, quantity=3),
+        Item(id="coins", name="12 copper coins", kind=ItemKind.TREASURE, quantity=12),
+        # Named for the count it started with: the count on record is what goes.
+        Item(id="arrows", name="3 arrows", kind=ItemKind.WEAPON, quantity=20),
+        Item(id="spent", name="smoke bomb", kind=ItemKind.CONSUMABLE, quantity=0),
+        Item(id="robe", name="spare robe", carried=False),
+        Item(id="house", name="the old house", kind=ItemKind.PROPERTY),
+        Item(id="horse", name="grey mare", kind=ItemKind.VEHICLE),
+    ]
+
+    assert belongings(luca) == ("3 throwing knives", "12 copper coins", "20 arrows")
+    luca.sheet.resources.items = []
+    assert belongings(luca) == ()
+    assert figure(luca).carries is None  # only a picture's player character is told

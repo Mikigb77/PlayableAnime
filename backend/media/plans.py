@@ -172,15 +172,15 @@ def _look_now(state: WorldState, kind: str, subject: str) -> int:
 
 
 def look_for_story(story: Story) -> WorldLook:
-    """The world's look from the story itself, for a picture nobody planned with a brief, such
-    as Illustrate on any scene. Reads the bible's genre, era and tone when the story has one."""
+    """The world's look from the story itself: the bible's genre, era and tone when the story
+    has one. Never its premise, which tells how the story began, not the scene a picture shows,
+    and would bring its places and things into a picture that has none of them (M5)."""
     state = story.state if isinstance(story.state, dict) else {}
     bible = state.get("bible") if isinstance(state.get("bible"), dict) else {}
     return WorldLook(
         genre=str(bible.get("genre") or story.genre or ""),
         era=str(bible.get("era") or ""),
         tone=str(bible.get("tone") or ""),
-        setting=story.premise,
     )
 
 
@@ -189,7 +189,9 @@ def brief_for_scene(story: Story, scene: Scene) -> Brief:
     scene's own text, which the picture rules keep mild (M6), with the people it names as they
     look and their reference portraits (M5), who "you" is, and the time of day, as a planned
     scene picture has them. The people are the scene's player character and the cast saved with
-    the scene, drawn with the look they have now."""
+    the scene, drawn with the look they have now. What the player character has on them goes
+    along only for the story's latest scene, since the record holds what they have now, not what
+    they had then (C10)."""
     description = scene.image_prompt or _ending(scene.narration)
     look = look_for_story(story)
     try:
@@ -205,7 +207,15 @@ def brief_for_scene(story: Story, scene: Scene) -> Brief:
     return Brief(
         description=description,
         look=look,
-        figures=scene_figures(state, description, player_id=player, present=present),
+        figures=scene_figures(
+            state,
+            description,
+            player_id=player,
+            present=present,
+            # What the record holds now is what the latest scene ended with, unless its player
+            # character fell in it and someone else carries the story on (N6).
+            carried=scene.turn >= state.turn and player == state.player_id,
+        ),
         you=state.characters[player].name,
         time=time_of_day(state.bible.calendar, scene.world_end_s),
     )

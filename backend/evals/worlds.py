@@ -430,6 +430,21 @@ def elder_at_the_well() -> WorldState:
     return state
 
 
+def among_the_pines() -> WorldState:
+    """Lin alone at dawn under the old pines behind the well, with nothing on him: no sword, no
+    knife (T18's moment as told, M5, C10)."""
+    state = cultivation_world()
+    state.characters["zhao"].location_id = "inner-court"
+    state.scene = SceneFrame(
+        place_id="well",
+        present_ids=["lin"],
+        positions=["Lin at the foot of the old pines behind the well"],
+        props=["old pines with low, thick branches", "the outer wall beyond them"],
+        ended_on="Mist hangs in the old pines behind the well, and the outer wall rises past them.",
+    )
+    return state
+
+
 # --- changes between turns ---------------------------------------------------------------------
 
 

@@ -11,11 +11,12 @@ T9, T11, T13, B10, B11 and M4 in [REQUIREMENTS.md](REQUIREMENTS.md). The scripts
 Every PR goes into the `dev` branch. Threads open their PRs against `dev`, review them, wait for
 green CI and merge them themselves (CLAUDE.md). **Merging `dev` into `main` is the deploy:** the
 push to `main` starts the deploy workflow, which deploys the whole backend and publishes the APK.
-A `dev` to `main` PR needs Miki's go-ahead (given for the first one on 2026-11-04), and is merged
-with **Create a merge commit**, never squashed, so `dev` and `main` keep one history.
+A thread deploys its own work once it is in `dev` and ready, without asking Miki (Miki,
+2026-11-07): it opens the `dev` to `main` PR, waits for green CI and merges it with **Create a
+merge commit**, never squashed, so `dev` and `main` keep one history, then watches the deploy.
 
 ```text
-feature branch --PR, self-reviewed, green CI--> dev --PR, Miki's go-ahead, merge commit--> main --> deploy
+feature branch --PR, self-reviewed, green CI--> dev --PR, green CI, merge commit--> main --> deploy
 ```
 
 CI runs on every PR and on every push to `dev` and `main`. A PR into `main` from any branch but

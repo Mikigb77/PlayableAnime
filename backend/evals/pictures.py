@@ -54,9 +54,11 @@ def ending(text: str, limit: int = 1000) -> str:
     return tail[cut + 2 :] if 0 <= cut < limit // 2 else tail
 
 
-def look(state: WorldState, premise: str = "") -> WorldLook:
+def look(state: WorldState) -> WorldLook:
+    """The world's look, as `media.plans.look_for_story` reads it: never the story's premise,
+    which is not the scene a picture shows (M5)."""
     bible = state.bible
-    return WorldLook(genre=bible.genre, era=bible.era, tone=bible.tone, setting=premise)
+    return WorldLook(genre=bible.genre, era=bible.era, tone=bible.tone)
 
 
 def known_cast(state: WorldState) -> list[str]:
@@ -65,24 +67,27 @@ def known_cast(state: WorldState) -> list[str]:
 
 
 def figures(state: WorldState, ids: Sequence[str] = ()) -> tuple[Figure, ...]:
-    """The player and the named people (or the scene's known cast), with their appearances."""
+    """The player and the named people (or the scene's known cast), with their appearances and
+    what the player has on them (C10)."""
     people = [state.player_id, *(ids or known_cast(state))]
     chosen = [state.characters[i] for i in dict.fromkeys(people) if i in state.characters]
-    return tuple(briefs.figure(c) for c in chosen[:MAX_FIGURES])
+    return tuple(
+        briefs.figure(c, carries=briefs.belongings(c) if c.id == state.player_id else None)
+        for c in chosen[:MAX_FIGURES]
+    )
 
 
 def scene_brief(
     state: WorldState,
     description: str,
     *,
-    premise: str = "",
     people: Sequence[str] = (),
     subject_id: str | None = None,
 ) -> Brief:
-    """A scene picture, from the narrator's image prompt as written, or `ending()` of the
-    scene's narration when it wrote none, as `stories.turns.brief` builds it: the people the
-    description names, the subject first (`media.briefs`), unless the eval names the `people`,
-    who "you" is, and the time of day."""
+    """A scene picture or the story's cover, from the narrator's image prompt as written, or
+    `ending()` of the scene's narration when it wrote none, as `stories.turns.brief` builds it:
+    the people the description names, the subject first, with what the player character has on
+    them (`media.briefs`), unless the eval names the `people`, who "you" is, and the time of day."""
     chosen = (
         figures(state, people)
         if people
@@ -90,18 +95,18 @@ def scene_brief(
     )
     return Brief(
         description=description,
-        look=look(state, premise),
+        look=look(state),
         figures=chosen,
         you=state.player.name,
         time=briefs.time_of_day(state.bible.calendar, state.world_s),
     )
 
 
-def portrait_brief(state: WorldState, character_id: str, *, premise: str = "") -> Brief:
+def portrait_brief(state: WorldState, character_id: str) -> Brief:
     character = state.characters[character_id]
     return Brief(
         description=f"Portrait of {character.name}.",
-        look=look(state, premise),
+        look=look(state),
         subject_name=character.name,
         subject_appearance=character.appearance or character.description,
     )
