@@ -73,6 +73,17 @@ OPS_WIF_POOL="github-ops"
 OPS_WIF_PROVIDER="playable-anime-ops"
 OPS_WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${OPS_WIF_POOL}/providers/${OPS_WIF_PROVIDER}"
 
+# The live story evals (T15, T17, T18; docs/ARCHITECTURE.md#switching-on-the-nightly-live-run): the
+# Evals workflow on main, nightly or started by hand, signs in as its own account through its own
+# pool. That account can call Vertex AI and nothing else: no deploy, no data, no secret.
+EVALS_WORKFLOW=".github/workflows/evals.yml"
+EVALS_SA_NAME="github-evals"
+EVALS_SA="${EVALS_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+EVALS_ROLES="roles/aiplatform.user"
+EVALS_WIF_POOL="github-evals"
+EVALS_WIF_PROVIDER="playable-anime-evals"
+EVALS_WIF_PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${EVALS_WIF_POOL}/providers/${EVALS_WIF_PROVIDER}"
+
 # The budget alert on the project (T9). The amount is in the billing account's currency.
 BUDGET_NAME="playable-anime-monthly"
 BUDGET_DEFAULT_AMOUNT="25"

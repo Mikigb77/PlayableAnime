@@ -151,6 +151,16 @@ def test_a_1k_picture_costs_about_three_cents_and_bigger_ones_more():
     assert four_k > one_k
 
 
+def test_nano_banana_2_1_costs_the_same_at_1k_with_dearer_references():
+    """M8: the model T18's side-by-side weighs against today's, priced so its runs are known."""
+    lite, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(2240, 1120), images=1)
+    banana, known = estimate_cost("gemini-nano-banana-2.1", Usage(2240, 1120), images=1)
+
+    assert known
+    assert banana == Decimal("0.00336") + Decimal("0.0336")  # a reference portrait in, 1K out
+    assert banana - lite < Decimal("0.003")
+
+
 def test_a_picture_never_costs_less_than_1k_even_without_usage():
     cost, _ = estimate_cost("gemini-3.1-flash-lite-image", Usage(), images=2)
 
