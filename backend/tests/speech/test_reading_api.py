@@ -20,7 +20,7 @@ from media.storage import get_storage
 from moderation.models import Report
 from speech import reading_api
 from speech.models import AudioStatus, SceneAudio
-from speech.reading import READING_STYLE, reading_parts
+from speech.reading import reading_parts
 from speech.voices import DEFAULT_VOICE
 from stories.models import Engine, Scene, SceneKind, Story
 from tests.conftest import auth_headers
@@ -106,9 +106,9 @@ def test_the_first_part_comes_back_as_an_mp3_with_how_many_parts_there_are(
     assert body["url"].split("?")[0].endswith(".mp3") and body["expires_at"]
     [request] = model.calls(Node.VOICE)
     assert request.reading.voice == DEFAULT_VOICE
-    text = request.prompt.messages[-1].text
-    assert text.startswith(READING_STYLE) and text.endswith(parts[0])
-    assert "*" not in text
+    # The part's words and nothing else: directions sent with them were read aloud (V9).
+    assert request.prompt.messages[-1].text == parts[0]
+    assert request.prompt.system == ""
     assert request.safety == {}  # the player already read it under the story's rating (F5)
     [audio] = SceneAudio.objects.all()
     assert get_storage().load(audio.storage_key)[:1] in (b"I", b"\xff")

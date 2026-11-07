@@ -395,7 +395,7 @@ def transcription_config(request: Request) -> genai_types.GenerateContentConfig:
 
 
 def to_reading_contents(request: Request) -> str:
-    """The text to read, with any directions on how to read it at its start (V9)."""
+    """The words to read, sent as they are: no style directions (V9, `speech.reading`)."""
     if request.reading is None:
         raise ValueError("Not a reading request")
     return request.prompt.messages[-1].text
