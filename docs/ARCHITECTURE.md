@@ -1333,7 +1333,8 @@ interim shapes the backend serves until the turn graph lands (WS3): a turn answe
 object, and the raw world state as memory.
 
 - **Design system** (`app/lib/design/`): tokens, a dark and a light theme, a per-story accent picked
-  from the genre, bundled fonts, motion, and the shared components, all on show at `/gallery`.
+  from the genre or by the player in the story's settings (S13), bundled fonts, motion, and the
+  shared components, all on show at `/gallery`.
   The rules are in [app/DESIGN.md](../app/DESIGN.md), and the picture house style in
   `backend/media/prompts.py` follows its "Pictures" section.
 - **API client** (`app/lib/core/api/`): JSON over `http` with the session's bearer token. On a 401

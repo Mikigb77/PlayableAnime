@@ -211,6 +211,7 @@ class _SuccessorScreenState extends ConsumerState<SuccessorScreen> {
     final drawn = _drawn;
     return StoryTheme(
       genre: story?.genre ?? widget.story?.genre,
+      chosen: (story ?? widget.story)?.settings.accent,
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.successorTitle)),
         body: switch ((story, drawn)) {

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-/// The accent family a story is tinted with, picked from its genre.
+/// The accent family a story is tinted with: picked from its genre, unless the player chose
+/// another for the story in its settings (S13).
 enum GenreAccent {
   lucid(Palette.lucidGold),
   jade(Color(0xFF5CC9A7)),
@@ -13,12 +14,39 @@ enum GenreAccent {
   violet(Color(0xFFB08CFA)),
   crimson(Color(0xFFEF7A82)),
   cyan(Color(0xFF4FCFE0)),
-  orchid(Color(0xFFDD8BE8));
+  orchid(Color(0xFFDD8BE8)),
+  // No genre picks these: they are there for the player to choose (S13).
+  lime(Color(0xFFA8D46F)),
+  rose(Color(0xFFF390B8)),
+  silver(Color(0xFFB7BFCC));
 
   const GenreAccent(this.seed);
 
   /// The accent as tuned for the dark theme. The light theme darkens it (see [accentFor]).
   final Color seed;
+
+  /// Every accent in the order a story's settings offer them (S13): around the color wheel from
+  /// red, then silver.
+  static const palette = [
+    crimson,
+    ember,
+    lucid,
+    lime,
+    jade,
+    cyan,
+    azure,
+    violet,
+    orchid,
+    rose,
+    silver,
+  ];
+
+  /// A story's accent: the one the player chose for it ([chosen], an accent's name), or else its
+  /// genre's. A name this app doesn't know, say from a newer app, counts as no choice.
+  static GenreAccent of({String? genre, String? chosen}) => byNameOrNull(chosen) ?? forGenre(genre);
+
+  /// The accent called [name], or null when there is none.
+  static GenreAccent? byNameOrNull(String? name) => values.where((a) => a.name == name).firstOrNull;
 
   /// Picks the accent for a genre label such as "cultivation", "a modern city with hidden
   /// vampires" or, in Spanish (S10), "Reencarnación". Unknown genres get the app's own accent.

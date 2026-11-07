@@ -11,12 +11,13 @@ import 'memory.dart';
 /// and who saw them, and the story's threads (N1). The server sends only what the character
 /// knows, so nothing here can spoil the story.
 class MemoryScreen extends ConsumerStatefulWidget {
-  const MemoryScreen({super.key, required this.storyId, this.genre});
+  const MemoryScreen({super.key, required this.storyId, this.accent});
 
   final String storyId;
 
-  /// The story's genre, for its accent, when the play screen opened this page.
-  final String? genre;
+  /// The story's accent (its genre's, or the one the player chose, S13) when the play screen
+  /// opened this page. The app's own otherwise.
+  final GenreAccent? accent;
 
   @override
   ConsumerState<MemoryScreen> createState() => _MemoryScreenState();
@@ -30,8 +31,8 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final memory = memoryProvider(widget.storyId);
-    return StoryTheme(
-      genre: widget.genre,
+    return StoryTheme.accent(
+      accent: widget.accent ?? GenreAccent.lucid,
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.memoryTitle)),
         body: AsyncValueView(

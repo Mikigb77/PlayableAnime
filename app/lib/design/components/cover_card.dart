@@ -203,6 +203,7 @@ class StoryTile extends StatelessWidget {
     required this.title,
     required this.genre,
     required this.meta,
+    this.accent,
     this.imageUrl,
     this.onTap,
     this.trailing,
@@ -210,6 +211,9 @@ class StoryTile extends StatelessWidget {
 
   final String title;
   final String genre;
+
+  /// The color the player chose for the story (S13), an accent's name, or null for its genre's.
+  final String? accent;
 
   /// Such as "Turn 12 · Day 3, dusk".
   final String meta;
@@ -221,7 +225,10 @@ class StoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.lucid;
-    final accent = accentFor(GenreAccent.forGenre(genre), theme.brightness);
+    final family = GenreAccent.of(genre: genre, chosen: this.accent);
+    final accent = accentFor(family, theme.brightness);
+    // The thumbnail's stand-in sits on dark ink in both themes, like a cover's.
+    final fallback = _Fallback(accent: accentFor(family, Brightness.dark));
     final url = imageUrl;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return Card(
@@ -238,14 +245,12 @@ class StoryTile extends StatelessWidget {
                   width: 64,
                   height: 80,
                   child: url == null
-                      ? _Fallback(accent: accentFor(GenreAccent.forGenre(genre), Brightness.dark))
+                      ? fallback
                       : Image(
                           image: appImage(url, cacheWidth: (64 * dpr).round()),
                           fit: BoxFit.cover,
                           excludeFromSemantics: true,
-                          errorBuilder: (_, _, _) => _Fallback(
-                            accent: accentFor(GenreAccent.forGenre(genre), Brightness.dark),
-                          ),
+                          errorBuilder: (_, _, _) => fallback,
                         ),
                 ),
               ),

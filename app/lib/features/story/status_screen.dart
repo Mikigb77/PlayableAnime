@@ -10,18 +10,19 @@ import 'story_repository.dart';
 /// `/status` (S5): the character sheet in the world's words (G16), where they stand with people
 /// and factions (A8, W3), the world's date and time, and how long ago key events happened (W10).
 class StatusScreen extends ConsumerWidget {
-  const StatusScreen({super.key, required this.storyId, this.genre});
+  const StatusScreen({super.key, required this.storyId, this.accent});
 
   final String storyId;
 
-  /// The story's genre, for its accent, when the play screen opened this page.
-  final String? genre;
+  /// The story's accent (its genre's, or the one the player chose, S13) when the play screen
+  /// opened this page. The app's own otherwise.
+  final GenreAccent? accent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    return StoryTheme(
-      genre: genre,
+    return StoryTheme.accent(
+      accent: accent ?? GenreAccent.lucid,
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.statusTitle)),
         body: AsyncValueView(

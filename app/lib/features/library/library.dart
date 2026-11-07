@@ -16,6 +16,7 @@ class StorySummary {
     this.coverUrl,
     this.updatedAt,
     this.ended = false,
+    this.accent,
   });
 
   factory StorySummary.fromJson(JsonMap json) => StorySummary(
@@ -28,6 +29,7 @@ class StorySummary {
     coverUrl: json['cover_url'] as String?,
     updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
     ended: json['ending'] != null,
+    accent: json['accent'] as String?,
   );
 
   final String id;
@@ -47,6 +49,9 @@ class StorySummary {
 
   /// The story reached its ending (N6): it can be read, not played.
   final bool ended;
+
+  /// The color the player chose for the story (S13), or null for its genre's.
+  final String? accent;
 }
 
 class LibraryRepository {

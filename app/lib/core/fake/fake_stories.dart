@@ -89,6 +89,7 @@ class FakeStory {
     'world_time_label': fakeWorldLabel(worldS),
     'cover_url': coverUrl,
     'ending': ending,
+    'accent': settings['accent'],
     'updated_at': updatedAt.toUtc().toIso8601String(),
   };
 
@@ -465,7 +466,8 @@ void registerStoryRoutes(FakeBackend b) {
 int _count(String? text, {required int fallback, required int min}) =>
     (int.tryParse(text ?? '') ?? fallback).clamp(min, 50);
 
-/// The checks of the real endpoint: each setting takes one of its values, and a null tone clears it.
+/// The checks of the real endpoint: each setting takes one of its values, and a null tone or
+/// color clears it (the color goes back to the genre's, S13).
 void _checkSettings(JsonMap settings) {
   const choices = {
     'narration_length': {'short', 'medium', 'long'},
@@ -473,9 +475,24 @@ void _checkSettings(JsonMap settings) {
     'event_frequency': {'calm', 'normal', 'dramatic'},
     'images': {'off', 'key_moments', 'more'},
   };
+  // The server's `Accent` (backend/engine/context.py).
+  const accents = {
+    'lucid',
+    'jade',
+    'azure',
+    'ember',
+    'violet',
+    'crimson',
+    'cyan',
+    'orchid',
+    'lime',
+    'rose',
+    'silver',
+  };
   for (final MapEntry(:key, :value) in settings.entries) {
     final ok = switch (key) {
       'tone' => value == null || (value is String && value.length <= 200),
+      'accent' => value == null || accents.contains(value),
       'suggestions' => value is bool,
       _ => choices[key]?.contains(value) ?? false,
     };

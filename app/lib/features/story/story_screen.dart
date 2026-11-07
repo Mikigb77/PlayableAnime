@@ -406,15 +406,27 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     if (failed.input.action case final action?) _giveBack(action);
   }
 
-  void _openStatus() => context.push(Routes.status(widget.storyId), extra: _play.story?.genre);
+  /// The story's accent, for the pages above it (S13).
+  GenreAccent? get _accent => switch (_play.story) {
+    final story? => GenreAccent.of(genre: story.genre, chosen: story.settings.accent),
+    null => null,
+  };
 
-  void _openMemory() => context.push(Routes.memory(widget.storyId), extra: _play.story?.genre);
+  void _openStatus() => context.push(Routes.status(widget.storyId), extra: _accent);
+
+  void _openMemory() => context.push(Routes.memory(widget.storyId), extra: _accent);
 
   Future<void> _openSettings() async {
     final story = _play.story;
     if (story == null) return;
     final saved = await showStorySettings(context, story: story, save: _play.save);
-    if ((saved ?? false) && mounted) _snack(context.l10n.settingsSaved);
+    if (!(saved ?? false) || !mounted) return;
+    // The Library shows the new title and color too.
+    ref.invalidate(storiesProvider);
+    // A title or a color shows at once (S13); the other settings apply from the next scene.
+    final now = _play.story?.settings.withAccent(null);
+    final later = now != null && now != story.settings.withAccent(null);
+    _snack(later ? context.l10n.settingsSaved : context.l10n.settingsSavedNow);
   }
 
   Future<void> _sceneMenu(Scene scene) async {
@@ -605,6 +617,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final story = _play.story;
     return StoryTheme(
       genre: story?.genre,
+      chosen: story?.settings.accent,
       child: Scaffold(
         appBar: AppBar(
           leading: backOr(context, Routes.library),

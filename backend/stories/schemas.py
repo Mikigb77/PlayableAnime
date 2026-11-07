@@ -8,6 +8,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from engine.context import (
+    Accent,
     Difficulty,
     EventFrequency,
     ImageSetting,
@@ -91,14 +92,18 @@ class SettingsPatch(BaseModel):
     event_frequency: EventFrequency | None = None
     images: ImageSetting | None = None
     suggestions: bool | None = None
+    # S13: null goes back to the genre's color.
+    accent: Accent | None = None
     # Not the language: a story stays in the one it was set up in (S10, Miki, 2026-11-06). An
     # older app that still sends it has it ignored.
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:
-        """Leave a field out to keep it. Only `tone` can be cleared, with null."""
+        """Leave a field out to keep it. Only `tone` and `accent` can be cleared, with null."""
         cleared = [
-            name for name in self.model_fields_set if name != "tone" and getattr(self, name) is None
+            name
+            for name in self.model_fields_set
+            if name not in ("tone", "accent") and getattr(self, name) is None
         ]
         if cleared:
             raise ValueError(f"{', '.join(sorted(cleared))} can't be null: leave it out instead.")
@@ -182,6 +187,8 @@ class StorySummaryOut(BaseModel):
     cover_url: str | None = None
     # N6: set once the story has reached its ending.
     ending: EndingOut | None = None
+    # S13: the color the player chose for the story, or None for its genre's.
+    accent: Accent | None = None
     updated_at: datetime
 
 

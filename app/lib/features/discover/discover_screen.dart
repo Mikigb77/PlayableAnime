@@ -435,6 +435,7 @@ class _ContinueStory extends StatelessWidget {
                     key: const Key('discover.continue'),
                     title: story.title,
                     genre: story.genre,
+                    accent: story.accent,
                     imageUrl: story.coverUrl,
                     meta: storyMeta(l10n, story),
                     onTap: () => context.push('/story/${Uri.encodeComponent(story.id)}'),

@@ -50,6 +50,23 @@ class ImageSetting(StrEnum):
     MORE = "more"
 
 
+class Accent(StrEnum):
+    """S13. The color the player chose for a story's titles and buttons, by the app's names for
+    its accents. Only the app reads it: nothing in the engine or the prompts does (G5)."""
+
+    LUCID = "lucid"
+    JADE = "jade"
+    AZURE = "azure"
+    EMBER = "ember"
+    VIOLET = "violet"
+    CRIMSON = "crimson"
+    CYAN = "cyan"
+    ORCHID = "orchid"
+    LIME = "lime"
+    ROSE = "rose"
+    SILVER = "silver"
+
+
 class NarrationLength(StrEnum):
     SHORT = "short"
     MEDIUM = "medium"
@@ -83,6 +100,8 @@ class StorySettings(EngineModel):
     # S10: the language the story is written in from the next scene on. What it already told
     # stays in the language it was written in.
     language: Language = Language.EN
+    # S13: the color the player chose for the story, or None for its genre's.
+    accent: Accent | None = None
 
 
 class TurnContext(EngineModel):

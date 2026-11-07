@@ -403,7 +403,7 @@ class Scene {
   );
 }
 
-/// A story's settings (S6, M2, S2), changed with `PATCH /v1/stories/{id}`.
+/// A story's settings (S6, M2, S2, S13), changed with `PATCH /v1/stories/{id}`.
 class StorySettings {
   const StorySettings({
     this.narrationLength = 'medium',
@@ -413,6 +413,7 @@ class StorySettings {
     this.images = 'key_moments',
     this.suggestions = true,
     this.language = 'en',
+    this.accent,
   });
 
   factory StorySettings.fromJson(Json? json) => json == null
@@ -428,6 +429,7 @@ class StorySettings {
           images: json['images'] as String? ?? 'key_moments',
           suggestions: json['suggestions'] as bool? ?? true,
           language: json['language'] as String? ?? 'en',
+          accent: json['accent'] as String?,
         );
 
   /// short, medium or long.
@@ -452,6 +454,10 @@ class StorySettings {
   /// never changes, so the settings don't offer it and a PATCH never sends it.
   final String language;
 
+  /// The color the player chose for the story, an accent's name such as `jade` (S13), or null
+  /// for its genre's.
+  final String? accent;
+
   Json toJson() => {
     'narration_length': narrationLength,
     // Null clears the tone.
@@ -460,6 +466,8 @@ class StorySettings {
     'event_frequency': eventFrequency,
     'images': images,
     'suggestions': suggestions,
+    // Null goes back to the genre's color.
+    'accent': accent,
   };
 
   /// Only the fields that differ from [base], for a PATCH that leaves the rest as they are on the
@@ -488,6 +496,19 @@ class StorySettings {
     images: images ?? this.images,
     suggestions: suggestions ?? this.suggestions,
     language: language,
+    accent: accent,
+  );
+
+  /// The settings with the color [accent], or the genre's when null (S13).
+  StorySettings withAccent(String? accent) => StorySettings(
+    narrationLength: narrationLength,
+    tone: tone,
+    difficulty: difficulty,
+    eventFrequency: eventFrequency,
+    images: images,
+    suggestions: suggestions,
+    language: language,
+    accent: accent,
   );
 
   @override
@@ -499,11 +520,20 @@ class StorySettings {
       other.eventFrequency == eventFrequency &&
       other.images == images &&
       other.suggestions == suggestions &&
-      other.language == language;
+      other.language == language &&
+      other.accent == accent;
 
   @override
-  int get hashCode =>
-      Object.hash(narrationLength, tone, difficulty, eventFrequency, images, suggestions, language);
+  int get hashCode => Object.hash(
+    narrationLength,
+    tone,
+    difficulty,
+    eventFrequency,
+    images,
+    suggestions,
+    language,
+    accent,
+  );
 }
 
 /// How the player character's story ended (N6, docs/API.md `Ending`). A story at its ending takes

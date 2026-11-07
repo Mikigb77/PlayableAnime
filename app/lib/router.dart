@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/config.dart';
 import 'core/session/session_controller.dart';
+import 'design/accent.dart';
 import 'design/gallery/gallery_screen.dart';
 import 'features/account/account_screen.dart';
 import 'features/account/credits_screen.dart';
@@ -122,13 +123,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'memory',
-            builder: (_, state) =>
-                MemoryScreen(storyId: state.pathParameters['id']!, genre: _extra<String>(state)),
+            builder: (_, state) => MemoryScreen(
+              storyId: state.pathParameters['id']!,
+              accent: _extra<GenreAccent>(state),
+            ),
           ),
           GoRoute(
             path: 'status',
-            builder: (_, state) =>
-                StatusScreen(storyId: state.pathParameters['id']!, genre: _extra<String>(state)),
+            builder: (_, state) => StatusScreen(
+              storyId: state.pathParameters['id']!,
+              accent: _extra<GenreAccent>(state),
+            ),
           ),
           GoRoute(
             path: 'successor',

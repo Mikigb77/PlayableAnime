@@ -73,6 +73,7 @@ void main() {
       'accountGore',
       'accountRomance',
       'choiceKindPersonal',
+      'colorJade',
       'composerCount',
       'difficultyBrutal',
       'eventsNormal',
@@ -80,6 +81,7 @@ void main() {
       'languageSpanish',
       'languageCatalan',
       'settingsBrutal',
+      'settingsColor',
       'settingsNormal',
     };
     final spanish = translations['es']!.$2;
@@ -97,6 +99,7 @@ void main() {
       'accountApi',
       'accountGore',
       'choiceKindPersonal',
+      'colorJade',
       'composerCount',
       'difficultyBrutal',
       'eventsNormal',
@@ -105,6 +108,7 @@ void main() {
       'languageCatalan',
       'memoryRumors',
       'settingsBrutal',
+      'settingsColor',
       'settingsNormal',
     };
     final catalan = translations['ca']!.$2;

@@ -18,7 +18,7 @@ painting beside it, not like a chat log or a game HUD.
   buttons, chips and lists are in Inter. Headlines use Literata's display cut.
 - **One accent at a time.** Outside a story the accent is *lucid gold*. Inside a story the accent
   follows its genre (see below), so each world has its own tint without any genre-specific layout
-  (G5).
+  (G5), unless the player picked another color for the story (S13).
 - **Chrome recedes.** Few borders, soft layers instead of shadows, generous space, and no more than
   one filled button on a screen.
 - **Pictures are events.** They arrive at key moments (M1), edge to edge on a phone, faded into the
@@ -58,8 +58,21 @@ genre touches the interface.
 | crimson | `#EF7A82` | Grounded modern, crime, mafia, noir |
 | cyan | `#4FCFE0` | Science fiction, space, cyberpunk, mecha |
 | orchid | `#DD8BE8` | Supernatural, urban fantasy, horror |
+| lime | `#A8D46F` | None: only when the player picks it |
+| rose | `#F390B8` | None: only when the player picks it |
+| silver | `#B7BFCC` | None: only when the player picks it, for a quiet, nearly colorless story |
 
-Wrap a story's screens in `StoryTheme(genre: …)`. It animates the accent when the story loads.
+**The player can pick a story's color** (S13). The story's settings offer Automatic, the genre's
+accent, then every accent in `GenreAccent.palette`, around the color wheel from red to pink, then
+silver. Each swatch is 48 dp across, with its name in a tooltip and for screen readers, and a ring on
+the one picked. The sheet wears the color being picked, so the player sees it before saving. The
+choice is `StorySettings.accent` on the server, so the Library's tiles (`StoryTile(accent: …)`) and
+every device show it. `GenreAccent.of(genre:, chosen:)` resolves a story's accent: the chosen one,
+or its genre's when there is none or the name is one this app doesn't know.
+
+Wrap a story's screens in `StoryTheme(genre: …, chosen: …)`, or `StoryTheme.accent(accent: …)` for
+an accent already resolved, such as the one the play screen hands Memory and Status. It animates
+the accent when the story loads and when the player changes it.
 
 ## Type
 
