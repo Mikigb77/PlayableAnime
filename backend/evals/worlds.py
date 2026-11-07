@@ -685,6 +685,28 @@ def troll_lunges() -> WorldState:
     return state
 
 
+def potion_stall() -> WorldState:
+    """Old Hu the herbalist by the well, a healing draught on his board, and a gold tael in Lin's
+    purse: an action as small as paying, which the scene still tells before Hu answers (R1)."""
+    state = give(
+        sect(),
+        "lin",
+        Item(id="gold-tael", name="gold tael", kind=ItemKind.TREASURE, description="In his purse."),
+    )
+    herbalist = Character(
+        id="old-hu",
+        name="Old Hu",
+        description="A stooped herbalist who sells pills and draughts from a board by the well.",
+        location_id="well",
+        sheet=CharacterSheet(axes=PowerAxes(might=1)),
+    )
+    state.scene.props.append("a stoppered green healing draught on Old Hu's board")
+    state.scene.ended_on = (
+        "Old Hu taps the green draught on his board. 'Mends any wound by morning, young master.'"
+    )
+    return add(state, herbalist)
+
+
 def sword_stroke(level: SkillLevel) -> WorldState:
     """Lin before a falling leaf with his sword, at `level` with the blade (R4)."""
     state = sect()

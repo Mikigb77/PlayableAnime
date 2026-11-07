@@ -14,8 +14,8 @@ TRICKY = [
 ]
 
 
-def _stream(text: str, field: str, sizes: list[int]) -> str:
-    streamer = JsonFieldStreamer(field)
+def _stream(text: str, field: str | tuple[str, ...], sizes: list[int]) -> str:
+    streamer = JsonFieldStreamer(*((field,) if isinstance(field, str) else field))
     out, pos, index = [], 0, 0
     while pos < len(text):
         size = sizes[index % len(sizes)]
@@ -88,6 +88,74 @@ def test_only_the_first_occurrence_streams():
 
 def test_text_before_the_object_is_ignored():
     assert _stream('```json\n{"narration": "hi"}\n```', "narration", [5]) == "hi"
+
+
+# R1: the narrator's action, then its narration, streamed as one scene.
+SCENE = ("action", "narration")
+
+
+@pytest.mark.parametrize("action", [t for t in TRICKY if t])
+@pytest.mark.parametrize("narration", [t for t in TRICKY if t])
+def test_two_fields_stream_one_after_the_other_with_a_paragraph_between(action, narration):
+    document = {
+        "action": action,
+        "nested": {"narration": "not this one"},
+        "narration": narration,
+        "suggestions": [{"label": "Run", "kind": "side"}],
+    }
+    text = json.dumps(document, ensure_ascii=False)
+    rng = random.Random(11)
+    for _ in range(20):
+        sizes = [rng.randint(1, 9) for _ in range(8)]
+        assert _stream(text, SCENE, sizes) == f"{action}\n\n{narration}"
+    assert _stream(text, SCENE, [1]) == f"{action}\n\n{narration}"
+
+
+def test_an_empty_first_field_adds_no_break():
+    """An opening has no action: its narration streams alone, as it always did."""
+    assert _stream('{"action": "", "narration": "You wake."}', SCENE, [3]) == "You wake."
+    assert _stream('{"narration": "You wake."}', SCENE, [3]) == "You wake."
+
+
+@pytest.mark.parametrize(
+    ("action", "narration"),
+    [
+        ("You reach out.", "\n  The merchant  nods. "),
+        ("\n You pay. ", "Hu nods."),
+        ("  ", "Hu nods."),
+        ("You wait.", "  "),
+        ("", ""),
+        ("A  gap,\n\nthen more.  ", "\tAnd\u00a0on."),
+    ],
+)
+def test_the_stream_reads_as_the_saved_scene(action, narration):
+    """Spaces at each field's edges are held back, so what streams is what is saved (R1)."""
+    text = json.dumps({"action": action, "narration": narration, "suggestions": []})
+    saved = "\n\n".join(part for part in (action.strip(), narration.strip()) if part)
+    for size in (1, 2, 7, len(text)):
+        assert _stream(text, SCENE, [size]) == saved
+
+
+def test_a_field_that_comes_after_a_later_one_is_left_to_the_final_parse():
+    """The stream never shows the outcome before the action: the saved scene puts it first."""
+    text = '{"narration": "He takes it.", "action": "You hold out a coin."}'
+    assert _stream(text, SCENE, [3]) == "He takes it."
+
+
+def test_fields_stream_in_order_and_done_waits_for_the_last():
+    streamer = JsonFieldStreamer(*SCENE)
+
+    assert streamer.feed('{"action": "You hold out') == "You hold out"
+    assert streamer.feed(' a coin.", "narr') == " a coin."
+    assert not streamer.done
+    assert streamer.feed('ation": "He takes it."') == "\n\nHe takes it."
+    assert streamer.done
+    assert streamer.feed(', "action": "again"}') == ""
+
+
+def test_a_streamer_needs_a_field():
+    with pytest.raises(ValueError):
+        JsonFieldStreamer()
 
 
 def test_strip_code_fence():
