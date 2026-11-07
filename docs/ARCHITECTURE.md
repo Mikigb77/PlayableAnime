@@ -1304,7 +1304,9 @@ with no key (B11), as `github-evals`, a service account that can call Vertex AI 
 in its own identity pool so it can never act as the deployer. `infra/bootstrap.sh` sets both up
 ([DEPLOY.md](DEPLOY.md), step 6e), so Miki only signs in and runs it once. The run's files are
 uploaded as an artifact for 90 days, its summary goes on the run's page and into its log, and the
-history travels from run to run in the Actions cache, with a copy in each artifact.
+history travels from run to run in the Actions cache, with a copy in each artifact. The log also
+says why each model call failed after its retries (its node, model, reason and the provider's
+words, such as a 429, never the prompt), and a scenario that errors shows the error's own line.
 
 A full live run plays about 700 turns, a hundred-odd judge calls and about twenty pictures:
 roughly $10 to $20 at today's defaults, so $300 to $600 a month if it runs every night. Running it
