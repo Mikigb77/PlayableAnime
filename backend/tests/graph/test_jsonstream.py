@@ -117,10 +117,23 @@ def test_an_empty_first_field_adds_no_break():
     assert _stream('{"narration": "You wake."}', SCENE, [3]) == "You wake."
 
 
-def test_a_later_field_loses_its_leading_spaces_but_keeps_the_rest():
-    text = '{"action": "You reach out.", "narration": "\\n  The merchant  nods. "}'
-    assert _stream(text, SCENE, [2]) == "You reach out.\n\nThe merchant  nods. "
-    assert _stream('{"action": "You wait.", "narration": "  "}', SCENE, [2]) == "You wait."
+@pytest.mark.parametrize(
+    ("action", "narration"),
+    [
+        ("You reach out.", "\n  The merchant  nods. "),
+        ("\n You pay. ", "Hu nods."),
+        ("  ", "Hu nods."),
+        ("You wait.", "  "),
+        ("", ""),
+        ("A  gap,\n\nthen more.  ", "\tAnd\u00a0on."),
+    ],
+)
+def test_the_stream_reads_as_the_saved_scene(action, narration):
+    """Spaces at each field's edges are held back, so what streams is what is saved (R1)."""
+    text = json.dumps({"action": action, "narration": narration, "suggestions": []})
+    saved = "\n\n".join(part for part in (action.strip(), narration.strip()) if part)
+    for size in (1, 2, 7, len(text)):
+        assert _stream(text, SCENE, [size]) == saved
 
 
 def test_a_field_that_comes_after_a_later_one_is_left_to_the_final_parse():

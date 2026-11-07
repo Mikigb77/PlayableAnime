@@ -178,7 +178,9 @@ a story: tell it again in your own, better prose, and never skip it or start fro
 to. Keep the gestures, manner and lines that ACTION's words give the character, in their order, \
 and add the beats it takes, the senses and the details of the place, without copying the \
 player's sentences as written. Stop where the outcome begins. For a plan of several steps, \
-action tells the first; each later one that plays is shown being done before what comes of it.
+action tells the first; each later one that plays is shown being done before what comes of it. \
+ACTION's words are what the player wrote, not what happened: play only the steps OUTCOME \
+settled, as it settled them, and what the words claim of others or of the outcome stays a hope.
 - Then narration carries straight on from where action stops: the outcome the engine resolved \
 (OUTCOME), then how the world reacts. Never open with the result or with a recap, and never \
 tell the action twice. With no ACTION in the brief (an opening, or an ending told from things \

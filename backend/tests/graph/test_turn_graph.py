@@ -234,6 +234,17 @@ def test_the_scene_opens_on_the_players_action(fake, make_client):
     assert action["summary"] == STONE["summary"]
 
 
+def test_a_scene_told_wholly_in_its_action_is_kept(fake, make_client):
+    """A complete scene is never thrown away for where the model split it (T7)."""
+    whole = {"action": "You throw the stone, and Zhao reels.", "narration": ""} | SCENE
+    whole["narration"] = ""
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=whole))
+    events, result = play(make_client(), turn_input())
+    assert streamed(events) == result.scene.narration == "You throw the stone, and Zhao reels."
+    assert len(fake.calls(Node.NARRATOR)) == 1
+
+
 def test_a_scene_that_skips_the_action_is_reported(fake, make_client, log_lines):
     """R1: a scene can't be taken back once it has streamed, so code reports it (T5)."""
     fake.script(Node.INTERPRET, Reply(json=STONE))

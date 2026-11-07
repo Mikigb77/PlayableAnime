@@ -2,6 +2,9 @@
 
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
@@ -548,3 +551,9 @@ def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
     assert NarratorOutput(narration=" You wake. ").text == "You wake."
     told = NarratorOutput(action=" You hold out the coin. ", narration="\nHe takes it.")
     assert told.text == "You hold out the coin.\n\nHe takes it."
+    # A scene written wholly in action is still a scene; only a blank one is refused (T7).
+    whole = NarratorOutput.model_validate({"action": "You pay, and he nods.", "narration": ""})
+    assert whole.text == "You pay, and he nods."
+    for blank in ({"narration": "  "}, {"action": " ", "narration": ""}):
+        with pytest.raises(ValidationError):
+            NarratorOutput.model_validate(blank)

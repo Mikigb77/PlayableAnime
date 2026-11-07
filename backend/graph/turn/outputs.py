@@ -6,11 +6,12 @@ still being written (S3). `action` is its own field so that every scene tells th
 what the player said before anything comes of it (R1), and code can see when one didn't.
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from engine.contracts import ChoiceKind, StateDelta
+from graph.llm.jsonstream import PARAGRAPH
 
 # A blank answer is a failed answer: the model layer retries it once, then gives up (T7).
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -21,10 +22,6 @@ class SuggestionOut(BaseModel):
 
     label: str = Field(description="A short action, at most 12 words.")
     kind: ChoiceKind
-
-
-# R1: how the scene's two parts are joined, as they stream and as the scene is saved.
-PARAGRAPH = "\n\n"
 
 
 def _action_required(schema: dict[str, Any]) -> None:
@@ -51,7 +48,9 @@ class NarratorOutput(BaseModel):
             " has no ACTION."
         ),
     )
-    narration: Text = Field(
+    # Required, but it may be blank when `action` holds the whole scene: a told scene is never
+    # thrown away for where the model split it. `_told` refuses only a blank scene.
+    narration: str = Field(
         description=(
             "The rest of the scene, as the player reads it, picking up where action stops: the"
             " outcome, how the world reacts, and an ending the player can act on. With no"
@@ -69,9 +68,17 @@ class NarratorOutput(BaseModel):
         description="What the scene changed, for the engine to check and apply (C1).",
     )
 
+    @model_validator(mode="after")
+    def _told(self) -> Self:
+        """A blank scene is a failed answer: the model layer retries it once, then gives up (T7)."""
+        if not self.text:
+            raise ValueError("the scene is blank")
+        return self
+
     @property
     def text(self) -> str:
-        """The whole scene: the action, a paragraph break, then the narration (R1)."""
+        """The whole scene, as it streamed (`JsonFieldStreamer`): the action, a paragraph break,
+        then the narration, each without the spaces around it (R1)."""
         parts = (self.action.strip(), self.narration.strip())
         return PARAGRAPH.join(part for part in parts if part)
 

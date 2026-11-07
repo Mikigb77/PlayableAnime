@@ -24,6 +24,9 @@ _SIMPLE_ESCAPES = {
 
 _Role = Literal["key", "target", "skip"]
 
+# What goes between one streamed field's text and the next: a paragraph break (R1).
+PARAGRAPH = "\n\n"
+
 
 class JsonFieldStreamer:
     """Feed it JSON text in any chunk sizes; it returns the new text of `fields` each time.
@@ -32,20 +35,22 @@ class JsonFieldStreamer:
     decodes escapes, including `\\uXXXX` surrogate pairs split across chunks. Only the first
     occurrence of each field is streamed, and only in the order `fields` gives: once one has
     started, an earlier one that comes after it is left to the final parse, so the stream never
-    shows the scene's parts out of order. A field that follows streamed text starts with
-    `joiner`, once its own text starts, without its leading spaces, so an empty field adds
-    nothing.
+    shows the scene's parts out of order. Each field's text goes out without the spaces at its
+    start and end, like `str.strip`, and one that follows streamed text starts with `joiner`, so
+    a blank field adds nothing and the stream reads as the fields stripped and joined.
     """
 
-    def __init__(self, *fields: str, joiner: str = "\n\n"):
+    def __init__(self, *fields: str, joiner: str = PARAGRAPH):
         if not fields:
             raise ValueError("JsonFieldStreamer needs at least one field")
         self._fields = fields
         self._joiner = joiner
         self._at = -1  # the place in `fields` of the field that started last
-        # Whether any field's text went out, and whether the current one's has yet.
+        # Whether any field's text went out, whether the current one's has yet, and the spaces
+        # held back until the current field's text goes on (dropped if it ends instead).
         self._wrote = False
         self._field_wrote = False
+        self._spaces: list[str] = []
         self._depth = 0
         self._expect: Literal["key", "colon", "value", "comma"] = "key"
         self._in_string = False
@@ -55,7 +60,7 @@ class JsonFieldStreamer:
         self._key: list[str] = []
         self._last_key: str | None = None
         self._out: list[str] = []
-        self.done = False  # every field was streamed
+        self.done = False  # the last field has ended, so nothing more can stream
 
     def feed(self, text: str) -> str:
         for ch in text:
@@ -99,6 +104,7 @@ class JsonFieldStreamer:
             self._role = "target"
             self._at = self._fields.index(self._last_key)
             self._field_wrote = False
+            self._spaces = []
         else:
             self._role = "skip"
 
@@ -157,17 +163,23 @@ class JsonFieldStreamer:
 
     def _put(self, text: str) -> None:
         if self._role == "target":
-            if not self._field_wrote and self._wrote:
-                # A later field: its leading spaces dropped, then the break before it.
-                text = text.lstrip()
-                if not text:
-                    return
-                self._out.append(self._joiner)
-            self._field_wrote = True
-            self._wrote = True
-            self._out.append(text)
+            for ch in text:
+                self._put_target(ch)
         elif self._role == "key":
             self._key.append(text)
+
+    def _put_target(self, ch: str) -> None:
+        if ch.isspace():
+            if self._field_wrote:  # leading spaces are dropped, later ones wait for more text
+                self._spaces.append(ch)
+            return
+        if not self._field_wrote:
+            if self._wrote:
+                self._out.append(self._joiner)
+            self._field_wrote = self._wrote = True
+        self._out.extend(self._spaces)
+        self._spaces.clear()
+        self._out.append(ch)
 
 
 def strip_code_fence(text: str) -> str:
