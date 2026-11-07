@@ -117,6 +117,11 @@ class FakeSpeechEngine implements SpeechEngine {
   bool get listening => _onResult != null;
 
   void hear(String words, {bool isFinal = false}) => _onResult!(words, isFinal);
+
+  /// Words that come late, to the [listen]th dictation (from 0) rather than the newest.
+  void hearLate(int listen, String words, {bool isFinal = true}) =>
+      _results[listen](words, isFinal);
+  final _results = <void Function(String words, bool isFinal)>[];
   void level(double value) => _onLevel?.call(value);
   void fail(String code) => _onError!(SpeechFailure(code));
   void stopped() => _onStopped!();
@@ -146,6 +151,7 @@ class FakeSpeechEngine implements SpeechEngine {
     bool onDevice = true,
   }) async {
     listens.add((localeId: localeId, onDevice: onDevice, context: context));
+    _results.add(onResult);
     _onTranscribing = onTranscribing;
     _onResult = onResult;
     _onStopped = onStopped;

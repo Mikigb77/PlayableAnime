@@ -79,6 +79,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   bool _following = false;
   bool _showLatest = false;
 
+  /// A turn the player started is waiting for the mic to turn off (V2).
+  bool _waitingForMic = false;
+
   @override
   void initState() {
     super.initState();
@@ -320,9 +323,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     if (started && mounted && _action.text.trim() == sent) _action.clear();
   }
 
-  void _endWithoutRefused() {
+  Future<void> _endWithoutRefused() async {
     _following = true;
-    unawaited(_play.endWithoutRefused());
+    if (await _micOff()) await _play.endWithoutRefused();
   }
 
   /// Rewinding a few scenes after a death (C8): how far back, then the feed from there.
@@ -359,21 +362,37 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     unawaited(context.push(Routes.create, extra: StartAgain(premise ?? '')));
   }
 
-  void _choose(Choice choice) {
-    _following = true;
-    _quiet();
-    unawaited(_play.choose(choice));
+  /// No turn starts while the mic is on or its words are on their way (V2): a suggestion, a
+  /// standing action, a retry or an ending first turns it off and waits, and what it heard stays
+  /// in the box for the next turn. Sending the box waits the same way, in the [Composer]. False
+  /// once the screen is gone, or while another turn is already waiting.
+  Future<bool> _micOff() async {
+    if (!_mode.dictating.value) return true;
+    if (_waitingForMic) return false;
+    setState(() => _waitingForMic = true);
+    await _mode.finishDictation();
+    if (!mounted) return false;
+    setState(() => _waitingForMic = false);
+    return true;
   }
 
-  void _stand(StandingAction action) {
+  Future<void> _choose(Choice choice) async {
     _following = true;
     _quiet();
-    unawaited(_play.stand(action.wire, label: action.label(context.l10n)));
+    if (await _micOff()) await _play.choose(choice);
+  }
+
+  Future<void> _stand(StandingAction action) async {
+    _following = true;
+    _quiet();
+    final label = action.label(context.l10n);
+    if (await _micOff()) await _play.stand(action.wire, label: label);
   }
 
   Future<void> _retry() async {
     _following = true;
     final action = _play.pending?.input.action;
+    if (!await _micOff()) return;
     final started = await _play.retry();
     // A turn refused before it started left its words in the box; now it is under way.
     if (started && mounted && action != null && _action.text.trim() == action.trim()) {
@@ -687,8 +706,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   controller: _action,
                   focusNode: _focus,
                   enabled: story.scenes.isNotEmpty && !story.openingDue,
-                  busy: _play.busy,
+                  busy: _play.busy || _waitingForMic,
                   onSubmit: _send,
+                  dictating: _mode.dictating,
+                  onFinishDictation: _mode.finishDictation,
                   mic: DictationButton(
                     tracker: _mode,
                     storyId: widget.storyId,
@@ -791,7 +812,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                     child: EndingRefusedCard(
                       parts: refusal.parts,
                       onPlayOn: _play.playOn,
-                      onEndWithout: _endWithoutRefused,
+                      onEndWithout: () => unawaited(_endWithoutRefused()),
                     ),
                   ),
                 ),
@@ -806,7 +827,11 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                     onStartAgain: (story.premise ?? '').trim().isEmpty ? null : _startAgain,
                   ),
                 ),
-              if (last != null && !_play.busy && story.ending == null && !story.openingDue)
+              if (last != null &&
+                  !_play.busy &&
+                  !_waitingForMic &&
+                  story.ending == null &&
+                  !story.openingDue)
                 ContentColumn.reading(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(Space.gutter, Space.lg, Space.gutter, 0),
@@ -826,13 +851,15 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                         for (final s in last.standingActions)
                           ?StandingAction.values.where((a) => a.wire == s).firstOrNull,
                       ],
-                      onChoice: (choice) => _choose(
-                        last.choices.firstWhere(
-                          (c) => c.id == choice.id,
-                          orElse: () => Choice(id: choice.id, label: choice.label),
+                      onChoice: (choice) => unawaited(
+                        _choose(
+                          last.choices.firstWhere(
+                            (c) => c.id == choice.id,
+                            orElse: () => Choice(id: choice.id, label: choice.label),
+                          ),
                         ),
                       ),
-                      onStanding: _stand,
+                      onStanding: (action) => unawaited(_stand(action)),
                     ),
                   ),
                 ),

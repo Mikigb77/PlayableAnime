@@ -248,6 +248,205 @@ void main() {
     });
   });
 
+  group('finishing a dictation before sending (V2)', () {
+    late TextEditingController text;
+    late InputModeTracker tracker;
+
+    setUp(() {
+      text = TextEditingController();
+      tracker = InputModeTracker(text);
+    });
+    tearDown(() {
+      tracker.dispose();
+      text.dispose();
+    });
+
+    DictationController mic(FakeSpeechEngine engine, {Duration? lastWords}) {
+      final dictation = DictationController(
+        engine: engine,
+        tracker: tracker,
+        lastWords: lastWords ?? const Duration(seconds: 2),
+      );
+      addTearDown(dictation.dispose);
+      return dictation;
+    }
+
+    test('a box with no mic, or with the mic off, sends at once', () async {
+      expect(tracker.dictating.value, isFalse);
+      expect(await tracker.finishDictation(), isTrue);
+
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = DictationController(engine: engine, tracker: tracker);
+      expect(await tracker.finishDictation(), isTrue);
+      expect(engine.stops, 0);
+
+      await dictation.start();
+      expect(tracker.dictating.value, isTrue);
+      dictation.dispose(); // the box's mic is gone
+      expect(tracker.dictating.value, isFalse);
+      expect(await tracker.finishDictation(), isTrue);
+    });
+
+    test('online, it turns the mic off and waits for the words after the typed ones', () async {
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = mic(engine);
+      await dictation.start();
+      expect(tracker.dictating.value, isTrue);
+      text.text = 'Quietly,';
+
+      var landed = false;
+      final finishing = tracker.finishDictation().then((ok) => landed = ok);
+      await pumpEventQueue();
+      expect(engine.stops, 1);
+      expect(dictation.phase, DictationPhase.transcribing);
+      expect(landed, isFalse, reason: 'the words are still on their way');
+      expect(tracker.dictating.value, isTrue);
+
+      // The mic can't come back on while the box waits to be sent.
+      await dictation.start();
+      expect(engine.listens, hasLength(1));
+
+      engine
+        ..hear('I bow.')
+        ..stopped();
+      await finishing;
+      expect(landed, isTrue);
+      expect(text.text, 'Quietly, I bow.');
+      expect(tracker.dictating.value, isFalse);
+      expect(tracker.mode, InputMode.voiceEdited);
+    });
+
+    test('online, it waits for words already being written down', () async {
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = mic(engine);
+      await dictation.start();
+      await dictation.stop();
+      expect(dictation.phase, DictationPhase.transcribing);
+
+      final finishing = tracker.finishDictation();
+      engine
+        ..hear('I wait.')
+        ..stopped();
+      expect(await finishing, isTrue);
+      expect(engine.stops, 1, reason: 'the mic was already off');
+      expect(text.text, 'I wait.');
+    });
+
+    test('online, words that cannot be written down are not sent', () async {
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = mic(engine);
+      await dictation.start();
+      text.text = 'I run';
+      final finishing = tracker.finishDictation();
+      await pumpEventQueue();
+      engine.fail(SpeechFailure.offline);
+      expect(await finishing, isFalse);
+      expect(dictation.failure?.code, SpeechFailure.offline);
+      expect(text.text, 'I run', reason: 'what was there stays to send');
+      expect(tracker.dictating.value, isFalse);
+    });
+
+    test('online, silence sends what was typed', () async {
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = mic(engine);
+      await dictation.start();
+      final finishing = tracker.finishDictation();
+      await pumpEventQueue();
+      engine.fail('error_speech_timeout');
+      expect(await finishing, isTrue);
+      expect(dictation.phase, DictationPhase.idle);
+    });
+
+    test('a mic still starting just stops: nothing was heard', () async {
+      final engine = FakeSpeechEngine(onPhone: false);
+      final dictation = mic(engine);
+      final starting = dictation.start();
+      expect(dictation.phase, DictationPhase.starting);
+      expect(await tracker.finishDictation(), isTrue);
+      await starting;
+      expect(dictation.phase, DictationPhase.idle);
+      expect(tracker.dictating.value, isFalse);
+    });
+
+    test('on the phone, it waits for the last words, and later ones never land', () async {
+      final engine = FakeSpeechEngine();
+      final dictation = mic(engine);
+      await dictation.start();
+      engine.hear('I draw my');
+
+      var done = false;
+      final finishing = tracker.finishDictation().then((ok) => done = ok);
+      await pumpEventQueue();
+      expect(engine.stops, 1);
+      expect(dictation.phase, DictationPhase.idle);
+      expect(done, isFalse, reason: 'the last words are still to come');
+      expect(tracker.dictating.value, isTrue);
+
+      engine.hear('I draw my blade', isFinal: true);
+      await finishing;
+      expect(done, isTrue);
+      expect(text.text, 'I draw my blade');
+      expect(tracker.dictating.value, isFalse);
+
+      text.clear(); // sent
+      engine.hear('I draw my blade', isFinal: true);
+      expect(text.text, isEmpty);
+    });
+
+    test('on the phone, it sends what is there if the last words never come', () async {
+      final engine = FakeSpeechEngine();
+      final dictation = mic(engine, lastWords: const Duration(milliseconds: 20));
+      await dictation.start();
+      engine.hear('I draw my');
+      expect(await tracker.finishDictation(), isTrue);
+      expect(text.text, 'I draw my');
+      expect(tracker.dictating.value, isFalse);
+    });
+
+    test('on the phone, a recognizer that stopped by itself still gives its last words', () async {
+      final engine = FakeSpeechEngine();
+      final dictation = mic(engine);
+      await dictation.start();
+      engine
+        ..hear('I wait')
+        ..stopped(); // a pause long enough for the phone to stop
+      expect(dictation.phase, DictationPhase.idle);
+      expect(tracker.dictating.value, isTrue, reason: 'its last words are still to come');
+
+      final finishing = tracker.finishDictation();
+      engine.hear('I wait here', isFinal: true);
+      expect(await finishing, isTrue);
+      expect(text.text, 'I wait here');
+      expect(tracker.dictating.value, isFalse);
+      expect(engine.stops, 0, reason: 'it was already off');
+    });
+
+    test('on the phone, a new dictation never gets the last one\'s late words', () async {
+      final engine = FakeSpeechEngine();
+      final dictation = mic(engine);
+      await dictation.start();
+      engine.hear('I wait');
+      await dictation.stop();
+      await dictation.start(); // before the first one's last words came
+      engine.hearLate(0, 'I wait here');
+      expect(text.text, 'I wait');
+      engine.hear('then I run');
+      expect(text.text, 'I wait then I run');
+    });
+
+    test('on the phone, an error once the mic is off never turns it on again', () async {
+      final engine = FakeSpeechEngine();
+      final dictation = mic(engine);
+      await dictation.start();
+      final finishing = tracker.finishDictation();
+      await pumpEventQueue();
+      engine.fail('error_language_unavailable');
+      expect(await finishing, isFalse);
+      expect(engine.listens, hasLength(1));
+      expect(dictation.phase, DictationPhase.idle);
+    });
+  });
+
   group('DictationModeController', () {
     test('is online until the player picks this device, which is remembered', () async {
       SharedPreferences.setMockInitialValues({});

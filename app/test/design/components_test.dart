@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_error.dart';
@@ -93,22 +95,29 @@ void main() {
     setUp(() => controller = TextEditingController());
     tearDown(() => controller.dispose());
 
-    Widget composer({required ValueChanged<String> onSubmit, bool busy = false, int max = 2000}) =>
-        wrap(
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Composer(
-              controller: controller,
-              onSubmit: onSubmit,
-              busy: busy,
-              maxLength: max,
-              commands: const [
-                SlashCommand('status', 'Your sheet'),
-                SlashCommand('recap', 'The story so far'),
-              ],
-            ),
-          ),
-        );
+    Widget composer({
+      required ValueChanged<String> onSubmit,
+      bool busy = false,
+      int max = 2000,
+      ValueNotifier<bool>? dictating,
+      Future<bool> Function()? onFinishDictation,
+    }) => wrap(
+      Align(
+        alignment: Alignment.bottomCenter,
+        child: Composer(
+          controller: controller,
+          onSubmit: onSubmit,
+          busy: busy,
+          maxLength: max,
+          dictating: dictating,
+          onFinishDictation: onFinishDictation,
+          commands: const [
+            SlashCommand('status', 'Your sheet'),
+            SlashCommand('recap', 'The story so far'),
+          ],
+        ),
+      ),
+    );
 
     testWidgets('sends the trimmed text, and not when empty or busy', (tester) async {
       final sent = <String>[];
@@ -129,6 +138,81 @@ void main() {
       expect(find.byTooltip(l10n.composerSend), findsNothing);
       await tester.testTextInput.receiveAction(TextInputAction.send);
       expect(sent, ['I wait.']);
+    });
+
+    testWidgets('with the mic on, send waits for the words and sends the whole box (V2)', (
+      tester,
+    ) async {
+      final dictating = ValueNotifier(true);
+      addTearDown(dictating.dispose);
+      final sent = <String>[];
+      var finishes = 0;
+      final landing = Completer<bool>();
+      await tester.pumpWidget(
+        composer(
+          onSubmit: sent.add,
+          dictating: dictating,
+          onFinishDictation: () {
+            finishes++;
+            return landing.future;
+          },
+        ),
+      );
+      final l10n = await english();
+
+      // Nothing in the box yet, but the words are on their way: send is open.
+      await tester.tap(find.byTooltip(l10n.composerSend));
+      await tester.pump();
+      expect(finishes, 1);
+      expect(sent, isEmpty, reason: 'nothing goes until the words are in');
+      expect(find.byTooltip(l10n.composerSend), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // Typing on meanwhile, or the keyboard's send, doesn't send half of it.
+      await tester.enterText(find.byType(TextField), 'Quietly,');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
+      expect(finishes, 1);
+      expect(sent, isEmpty);
+
+      controller.text = 'Quietly, I bow.';
+      dictating.value = false;
+      landing.complete(true);
+      await tester.pump();
+      expect(sent, ['Quietly, I bow.']);
+      expect(find.byTooltip(l10n.composerSend), findsOneWidget);
+    });
+
+    testWidgets('with the mic on, words that could not be written down are not sent', (
+      tester,
+    ) async {
+      final dictating = ValueNotifier(true);
+      addTearDown(dictating.dispose);
+      final sent = <String>[];
+      await tester.pumpWidget(
+        composer(
+          onSubmit: sent.add,
+          dictating: dictating,
+          onFinishDictation: () async {
+            dictating.value = false;
+            return false;
+          },
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'I run');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
+      expect(sent, isEmpty);
+      expect(
+        controller.text,
+        'I run',
+        reason: 'the box stays, to send once the player has seen it',
+      );
+
+      // Sent again, with the mic off, it goes at once.
+      await tester.tap(find.byTooltip((await english()).composerSend));
+      await tester.pump();
+      expect(sent, ['I run']);
     });
 
     testWidgets('shows slash hints for a leading slash and fills the tapped one', (tester) async {
