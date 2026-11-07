@@ -18,6 +18,7 @@ from engine.contracts.intent import (
     UseSource,
 )
 from engine.contracts.resolution import BeatResolution, BeatVerdict
+from engine.possessions import gone_to, is_money
 from engine.resolve import odds as odds_mod
 from engine.resolve.words import any_mentions, cap, is_are, mentions, name, possessive
 from engine.rng import SeededRng
@@ -101,8 +102,8 @@ def sheet_check(
     state: WorldState, actor: Character, step: IntentStep, drawn: Drawn
 ) -> Settled | None:
     """G14, A1. A power or technique the step names must be the actor's own, and ready; an item
-    must be theirs and on them, unless it is a vehicle or a property, used where it stands. Skills
-    and traits the actor lacks simply don't help."""
+    must be theirs and on them, unless it is a vehicle or a property, used where it stands, and
+    money must be in their purse (C10). Skills and traits the actor lacks simply don't help."""
     sheet = actor.sheet
     who = name(state, actor.id)
     for use in step.uses:
@@ -133,6 +134,12 @@ def sheet_check(
             _add(drawn.techniques, technique)
         elif use.part is SheetPart.ITEM:
             item = sheet.item(use.ref) or _owned_item(actor, use.ref)
+            if item is None and is_money(use.ref, sheet.resources.currency):
+                # C10. Money is the purse, not an item.
+                if sheet.resources.money > 0:
+                    continue
+                reason = _no_money(state, actor, use.ref)
+                return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
             missing = _item_missing(state, actor, item, use.ref)
             if missing:
                 return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, missing)
@@ -189,6 +196,13 @@ def _item_missing(state: WorldState, actor: Character, item: Item | None, words:
     if not item.carried and item.kind.value not in ("vehicle", "property"):
         return f"{cap(possessive(state, actor.id))} {item.name} isn't on {_them(state, actor)}."
     return ""
+
+
+def _no_money(state: WorldState, actor: Character, thing: str) -> str:
+    currency = actor.sheet.resources.currency or _bare(thing)
+    who = f"{cap(name(state, actor.id))} {_have(state, actor)}"
+    went = gone_to(state, actor, thing, money=True)
+    return " ".join(filter(None, [f"{who} no {currency} left.", went]))
 
 
 def _them(state: WorldState, actor: Character) -> str:
@@ -277,6 +291,11 @@ def _check_use(
         return verdict(BeatVerdict.HOLDS)
     if use.source is UseSource.CARRIED:
         item = (actor.sheet.item(use.ref) if use.ref else None) or _owned_item(actor, use.thing)
+        if item is None and is_money(use.thing, actor.sheet.resources.currency):
+            # C10. Money is the purse, not an item: there is some, or there is none left.
+            if actor.sheet.resources.money > 0:
+                return verdict(BeatVerdict.HOLDS)
+            return verdict(BeatVerdict.EMPTY, _no_money(state, actor, use.thing))
         missing = _item_missing(state, actor, item, use.thing)
         if missing:
             return verdict(BeatVerdict.EMPTY, missing)
