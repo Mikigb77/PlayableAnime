@@ -294,6 +294,6 @@ def test_the_interpret_model_must_always_answer_with_steps():
 def test_the_interpret_model_must_always_judge_each_steps_challenge():
     # A2, A3: a step with no judged challenge fell back to even odds whoever the character was.
     schema = Intent.model_json_schema()
-    assert "facts" in schema["$defs"]["IntentStep"]["required"]
+    assert {"facts", "uses"} <= set(schema["$defs"]["IntentStep"]["required"])
     assert "challenge" in schema["$defs"]["StepFacts"]["required"]
     assert StepFacts().challenge is None  # code may still leave it out

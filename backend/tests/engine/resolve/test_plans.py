@@ -437,7 +437,8 @@ def test_a_long_shot_with_nothing_in_the_way_stays_a_long_shot():
 
     assert {s.outcome_class for s in steps} == {OutcomeClass.LONG_SHOT}
     assert all(s.roll.odds <= odds_mod.LONG_SHOT_BAND[1] for s in steps)
-    assert steps[0].reason.startswith("A long shot, about 1 in")
+    # A leap tests speed even unnamed (G14), and Luca's quick feet still leave it a long shot.
+    assert steps[0].reason.startswith("Your speed in your favour, a long shot, about 1 in")
 
 
 def test_one_recorded_seed_replays_both_the_outcome_and_the_time_it_took():

@@ -371,16 +371,18 @@ class StepFacts(EngineModel):
     )
 
 
-def _facts_required(schema: dict[str, Any]) -> None:
-    """A2. Every step the interpret model writes carries its facts, so its challenge is judged."""
-    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "facts"]))
+def _step_required(schema: dict[str, Any]) -> None:
+    """A2, G14. Every step the interpret model writes carries its facts, so its challenge is
+    judged, and what it uses from the sheet, so the character counts: Gemini left `uses` out as
+    often as not, and a nimble climber then rolled like anyone."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "facts", "uses"]))
 
 
 class IntentStep(EngineModel):
     """One step of what the player does. A chained plan ("I throw the stone, then run for the
     tunnel") has several, resolved in order (R6)."""
 
-    model_config = ConfigDict(json_schema_extra=_facts_required)
+    model_config = ConfigDict(json_schema_extra=_step_required)
 
     text: str = Field(description="The step in plain words.")
     verb: str = Field(description="Free-form: attack, persuade, search, stop time, flee.")

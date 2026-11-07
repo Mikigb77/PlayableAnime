@@ -225,6 +225,97 @@ def test_attributes_are_found_by_the_words_a_step_names_them_by(ref, names):
     assert capability.attribute_names(ref) == names
 
 
+# --- what the step draws on when the interpret step does not say (G14) -------------------------
+
+
+def tree_runner(**attributes) -> WorldState:
+    """Tomas, as a forest child who spent years leaping from tree to tree."""
+    state = farm(**attributes)
+    sheet = state.player.sheet
+    sheet.skills.append(Skill(name="Climbing", level=SkillLevel.EXPERT))
+    sheet.traits.append(
+        Trait(
+            name="Tree-runner",
+            kind=TraitKind.GIFT,
+            description="Spent years leaping from tree to tree in the deep forest.",
+        )
+    )
+    return state
+
+
+def climb(challenge: Challenge, *uses: SheetUse) -> IntentStep:
+    return step(
+        "leap onto the nearest tree and climb it",
+        ActionKind.MOVE,
+        25,
+        verb="climb",
+        uses=list(uses),
+        facts=StepFacts(challenge=challenge, opposition="the trunk"),
+    )
+
+
+def test_a_nimble_climber_scales_a_tree_even_when_the_step_names_nothing_it_uses():
+    # Miki's forest runner failed to climb a tree: the interpret step had named nothing from
+    # the sheet, so the climb rolled like anyone's.
+    settled = resolve(tree_runner(speed=5), plan(climb(Challenge.MODERATE))).steps[0]
+    assert settled.outcome_class is OutcomeClass.CERTAIN and settled.roll is None
+    assert settled.reason == (
+        "The trunk can't stop you: a real effort, your speed, your climbing (expert) and your "
+        "Tree-runner in your favour."
+    )
+
+
+def test_a_hard_climb_stays_rolled_but_is_rarely_missed_by_a_nimble_climber():
+    settled = resolve(tree_runner(speed=5), plan(climb(Challenge.HARD))).steps[0]
+    assert settled.outcome_class is OutcomeClass.CONTESTED
+    assert settled.roll.odds > 0.85
+    anyone = resolve(farm(), plan(climb(Challenge.HARD))).steps[0]
+    assert anyone.roll.odds == pytest.approx(capability.CHALLENGE_ODDS[Challenge.HARD])
+
+
+def test_skills_and_traits_are_found_by_their_words_either_way():
+    state = farm()
+    state.player.sheet.skills.append(Skill(name="Tree climbing", level=SkillLevel.MASTER))
+    state.player.sheet.traits.append(Trait(name="Nimble", kind=TraitKind.GIFT))
+    named = climb(Challenge.HARD, skill("climbing"), trait("a nimble tree-runner"))
+    settled = resolve(state, plan(named)).steps[0]
+    assert "your tree climbing (master)" in settled.reason
+    assert "your Nimble" in settled.reason
+
+
+def test_what_the_step_names_wins_over_what_its_words_suggest():
+    # The interpret step named the trait it uses, so the unnamed gift stays out of it.
+    state = gift(tree_runner(), "steady hands")
+    settled = resolve(state, plan(climb(Challenge.HARD, trait("steady hands")))).steps[0]
+    assert "Tree-runner" not in settled.reason and "your steady hands" in settled.reason
+
+
+def test_a_trait_sharing_one_word_with_the_step_doesnt_count():
+    state = farm()
+    state.player.sheet.traits.append(
+        Trait(name="Afraid of heights", kind=TraitKind.FLAW, description="Ladders make him sweat.")
+    )
+    state.player.sheet.traits.append(
+        Trait(name="Tree-whisperer", kind=TraitKind.GIFT, description="Talks to old oaks.")
+    )
+    settled = resolve(state, plan(climb(Challenge.HARD))).steps[0]
+    assert "Afraid" not in settled.reason and "whisperer" not in settled.reason
+
+
+@pytest.mark.parametrize(
+    ("text", "verb", "names"),
+    [
+        ("leap onto the nearest tree and climb it", "climb", ("speed",)),
+        ("search the room for the letter", "search", ("wits",)),
+        ("pry the crate open", "pry", ("strength",)),
+        ("talk her into lending the horse", "persuade", ("charm",)),
+        ("wait by the fire", "wait", ()),
+    ],
+)
+def test_a_steps_own_words_say_what_it_tests_when_it_names_no_attribute(text, verb, names):
+    assert capability.attributes_used(step(text, verb=verb), None) == names
+
+
 # --- what can and can't make a step certain -----------------------------------------------------
 
 
