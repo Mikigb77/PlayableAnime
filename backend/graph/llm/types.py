@@ -39,6 +39,7 @@ class Node(StrEnum):
     SUMMARIZER = "summarizer"
     DRAFTER = "drafter"
     PICTURE = "picture"
+    PICTURE_NOTE = "picture_note"  # a scene picture's description, from the finished scene (M5)
     SPEECH = "speech"  # turns a player's dictation into text (V6)
     VOICE = "voice"  # reads a scene's narration aloud (V9)
     JUDGE = "judge"  # the evals' model judge (T15, T17, T18); never on a player's turn

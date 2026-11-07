@@ -14,6 +14,11 @@ while Illustrate, which the player asked and pays for, answers `402 out_of_credi
 scene as it was (M2). A failed or blocked picture is skipped too, its hold released, and the
 scene is complete without it (M3).
 
+A scene picture is drawn from a description written from the finished scene first
+(`media.notes`), on the account that draws it, and goes with the portraits of the people it shows
+and the picture of the place it happens in (M5). When the note fails, the narrator's description
+stands. A story's cover, its poster (M1), goes with the portraits of the people it shows.
+
 Each picture drawn or skipped writes one T5 log line with its model, cost and outcome, and never
 its prompt (T6).
 """
@@ -34,8 +39,18 @@ from django.utils import timezone
 
 from lucid.errors import ApiError
 from media import billing, drawing
-from media.drawing import DrawBlocked, DrawError, Drawn, DrawRequest, KeyCannotDraw, Reference
+from media.drawing import (
+    DrawBlocked,
+    DrawError,
+    Drawn,
+    DrawRequest,
+    KeyCannotDraw,
+    NoteFailed,
+    PictureModel,
+    Reference,
+)
 from media.models import Image, ImageStatus, Payer, ScenePicture, SkipReason
+from media.notes import NOTED, SceneText, apply_note, note_prompt
 from media.plans import ILLUSTRATE, SCENE_FLAG, brief_for_scene, plan_again, plan_picture
 from media.prompts import MAX_REFERENCES, Brief, build_prompt
 from media.storage import SignedUrl, delete_quietly, get_storage, signed_url, storage_key
@@ -68,6 +83,9 @@ class _Attempt:
     byok: bool = False
     byok_fell_back: bool = False
     references: int = 0
+    # Whether the place's picture went along, and whether the description came from a note.
+    place_reference: bool = False
+    noted: bool = False
     categories: tuple[str, ...] = ()
     # The credit hold until it is charged or released, and a stored file not yet the picture's.
     ticket: billing.Ticket | None = None
@@ -258,12 +276,11 @@ async def _draw_claimed(
     when the player can't pay for it (M2). Without it a picture the credits can't cover is
     skipped, and the turn goes on (M7)."""
     try:
-        request = await _draw_request(story, image)
-        attempt.references = len(request.references)
+        plan = await _plan(story, scene, image)
         drawn: Drawn | None = None
         if byok_key:
             attempt.byok = True
-            drawn = await _draw_once(story, request, attempt, byok_provider, byok_key)
+            drawn = await _draw_once(story, plan, attempt, byok_provider, byok_key)
             if drawn is None:
                 attempt.byok_fell_back = True
         if drawn is None:
@@ -276,7 +293,7 @@ async def _draw_claimed(
                 first_picture=image.first_picture,
             )
             attempt.payer = attempt.ticket.payer
-            drawn = await _draw_once(story, request, attempt, None, None)
+            drawn = await _draw_once(story, plan, attempt, None, None)
             if drawn is None:
                 raise drawing.DrawFailed("no picture")
         else:
@@ -349,17 +366,22 @@ async def _abandon(
 
 async def _draw_once(
     story: Story,
-    request: DrawRequest,
+    plan: _Plan,
     attempt: _Attempt,
     byok_provider: str | None,
     byok_key: str | None,
 ) -> Drawn | None:
-    """One drawing, on the player's key or ours. None when the player's key can't draw (M7)."""
+    """One drawing, on the player's key or ours, its note first. None when the player's key
+    can't draw (M7)."""
     model = drawing.build_picture_model(
         rating=story.rating, byok_provider=byok_provider, byok_key=byok_key
     )
     attempt.model = model.model
     try:
+        await _note(plan, model, attempt)
+        request = plan.request()
+        attempt.references = len(request.references)
+        attempt.place_reference = plan.with_place
         return await model.draw(request)
     except KeyCannotDraw:
         return None
@@ -367,12 +389,107 @@ async def _draw_once(
         await model.aclose()
 
 
-@sync_to_async
-def _references(story: Story, image: Image) -> tuple[list[tuple[str, Image]], bool]:
-    """The pictures to send with a picture (M5): the earlier picture of a character or place
-    drawn again because it changed for good, or the ready portraits of the known characters in a
-    scene or cover."""
+@dataclass
+class _Plan:
+    """What one picture is drawn from: its brief, which its note may rewrite, and the reference
+    images read for it. A scene picture's `portraits` are those of everyone its brief may show,
+    so the people its note keeps still have theirs (M5)."""
+
+    kind: str
+    brief: Brief
+    portraits: list[tuple[str, Reference]] = field(default_factory=list)
+    place: Reference | None = None
+    redraw: bool = False
+    # The finished scene a scene picture shows, for its note, until one is written.
+    scene: SceneText | None = None
+
+    @property
+    def with_place(self) -> bool:
+        return self.place is not None and not self.redraw
+
+    def request(self) -> DrawRequest:
+        if self.redraw:
+            references = [ref for _, ref in self.portraits]
+        else:
+            shown = {f.id for f in self.brief.figures if f.id}
+            references = [ref for i, ref in self.portraits if i in shown][:MAX_REFERENCES]
+        prompt = build_prompt(
+            self.kind,
+            self.brief,
+            references=[ref.name for ref in references],
+            redraw=self.redraw and bool(references),
+            place=self.with_place,
+        )
+        if self.place is not None and self.with_place:
+            references.append(self.place)
+        return DrawRequest(
+            kind=self.kind,
+            system=prompt.system,
+            prompt=prompt.user,
+            aspect_ratio=prompt.aspect_ratio,
+            references=tuple(
+                replace(ref, label=label)
+                for ref, label in zip(references, prompt.labels, strict=True)
+            ),
+        )
+
+
+async def _note(plan: _Plan, model: PictureModel, attempt: _Attempt) -> None:
+    """Writes the picture's description from the finished scene, once (`media.notes`). A note
+    that fails on the player's key is tried again on ours, if ours draws the picture; one that
+    fails on ours leaves the narrator's description."""
+    if plan.scene is None:
+        return
+    try:
+        note = await model.note(note_prompt(plan.kind, plan.brief, plan.scene))
+    except Exception as error:
+        reason = str(error) if isinstance(error, NoteFailed) else "error"
+        logger.warning(
+            "A picture's note failed, so the narrator's description stands",
+            exc_info=not isinstance(error, NoteFailed),
+            extra={"note": {"reason": reason, "byok": model.byok}},
+        )
+        if not model.byok:
+            plan.scene = None
+        return
+    plan.scene = None
+    if note is not None:
+        plan.brief = apply_note(plan.brief, note)
+        attempt.noted = True
+
+
+async def _plan(story: Story, scene: Scene, image: Image) -> _Plan:
     brief = Brief.from_json(image.brief)
+    chosen, place, redraw, told = await _sources(story, scene, image, brief)
+    portraits = []
+    for key, name, picture in chosen:
+        reference = await _load(name, picture)
+        if reference is not None:
+            portraits.append((key, reference))
+    place_reference = None
+    if place is not None:
+        place_reference = await _load(brief.place_name or place.subject, place)
+    return _Plan(image.kind, brief, portraits, place_reference, redraw, told)
+
+
+async def _load(name: str, picture: Image) -> Reference | None:
+    try:
+        data = await asyncio.to_thread(get_storage().load, picture.storage_key)
+    except Exception:
+        logger.warning("A reference picture couldn't be read", exc_info=True)
+        return None
+    return Reference(name, data, picture.mime_type or "image/png")
+
+
+@sync_to_async
+def _sources(
+    story: Story, scene: Scene, image: Image, brief: Brief
+) -> tuple[list[tuple[str, str, Image]], Image | None, bool, SceneText | None]:
+    """What a picture is drawn from besides its brief (M5): for a character or place drawn again
+    because it changed for good, its earlier picture; for a scene or cover, the ready portraits
+    of the people its brief may show, and for a scene picture also the ready picture of the place
+    it happens in and the finished scene, for its note. Returns the portraits as (figure id, name,
+    picture), the place's picture, whether this is a redraw, and the scene."""
     ready = Image.objects.filter(story=story, status=ImageStatus.READY).exclude(storage_key="")
     if image.kind in (ImageKind.PORTRAIT, ImageKind.PLACE):
         earlier = (
@@ -381,48 +498,42 @@ def _references(story: Story, image: Image) -> tuple[list[tuple[str, Image]], bo
             .first()
         )
         if earlier is None:
-            return [], False
-        return [(brief.subject_name or image.subject, earlier)], True
+            return [], None, False, None
+        return [("", brief.subject_name or image.subject, earlier)], None, True, None
     if image.kind not in (ImageKind.SCENE, ImageKind.COVER):
-        return [], False
-    portraits = ready.filter(kind=ImageKind.PORTRAIT)
+        return [], None, False, None
     ids = [figure.id for figure in brief.figures if figure.id]
     latest: dict[str, Image] = {}
-    for portrait in portraits.filter(subject__in=ids).order_by("subject", "-version"):
+    portraits = ready.filter(kind=ImageKind.PORTRAIT, subject__in=ids)
+    for portrait in portraits.order_by("subject", "-version"):
         latest.setdefault(portrait.subject, portrait)
-    chosen = [(f.name or f.id, latest[f.id]) for f in brief.figures if f.id in latest]
-    return chosen[:MAX_REFERENCES], False
+    chosen = [(f.id, f.name or f.id, latest[f.id]) for f in brief.figures if f.id in latest]
+    if image.kind not in NOTED:
+        # A cover is the story's poster (M1): no one scene's place or text.
+        return chosen, None, False, None
+    place = None
+    if brief.place_id:
+        place = (
+            ready.filter(kind=ImageKind.PLACE, subject=brief.place_id).order_by("-version").first()
+        )
+    return chosen, place, False, _told(story, scene, brief)
 
 
-async def _draw_request(story: Story, image: Image) -> DrawRequest:
-    chosen, redraw = await _references(story, image)
-    references = []
-    for name, portrait in chosen:
-        try:
-            data = await asyncio.to_thread(get_storage().load, portrait.storage_key)
-        except Exception:
-            logger.warning("A reference portrait couldn't be read", exc_info=True)
-            continue
-        references.append(Reference(name, data, portrait.mime_type or "image/png"))
-    brief = Brief.from_json(image.brief)
-    # A story's pictures never see its premise (M5), even one planned before that held, whose
-    # brief kept it as the setting.
-    brief = replace(brief, look=replace(brief.look, setting=""))
-    prompt = build_prompt(
-        image.kind,
-        brief,
-        references=[ref.name for ref in references],
-        redraw=redraw and bool(references),
-    )
-    return DrawRequest(
-        kind=image.kind,
-        system=prompt.system,
-        prompt=prompt.user,
-        aspect_ratio=prompt.aspect_ratio,
-        references=tuple(
-            replace(ref, label=label) for ref, label in zip(references, prompt.labels, strict=True)
-        ),
-    )
+def _told(story: Story, scene: Scene, brief: Brief) -> SceneText | None:
+    """The finished scene the picture shows: the one its brief was planned in, else the scene
+    asking for it."""
+    if brief.turn and brief.turn != scene.turn:
+        found = (
+            Scene.objects.live()
+            .filter(story=story, turn=brief.turn)
+            .only("narration", "player_action")
+            .first()
+        )
+        if found is not None:
+            scene = found
+    if not (scene.narration or "").strip():
+        return None
+    return SceneText(scene.narration, scene.player_action or "")
 
 
 @sync_to_async
@@ -545,6 +656,8 @@ def _log(image: Image, status: str, reason: str, attempt: _Attempt, trigger: str
         "byok": attempt.byok,
         "byok_fell_back": attempt.byok_fell_back,
         "references": attempt.references,
+        "place_reference": attempt.place_reference,
+        "noted": attempt.noted,
         "block_categories": list(attempt.categories),
         "latency_ms": int((time.monotonic() - attempt.started) * 1000),
         "size_bytes": image.size_bytes if status == "ready" else None,

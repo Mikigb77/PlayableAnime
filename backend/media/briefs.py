@@ -23,6 +23,7 @@ from collections.abc import Sequence
 
 from engine.contracts import PictureTrigger
 from engine.labels import part_of_day, second_of_day
+from engine.looks import place_looks
 from engine.possessions import WHERE_IT_STANDS, bare
 from engine.state.bible import Calendar
 from engine.state.cast import Character
@@ -123,15 +124,29 @@ def scene_figures(
 def names(text: str, character: Character) -> bool:
     """Whether `text` names `character`: their name or an alias in full, in any case, or a word of
     their name written with a capital, such as "Rosa" for "Rosa Esposito"."""
-    for name in (character.name, *character.aliases):
-        name = " ".join(name.split())
-        if len(name) >= 2 and re.search(_whole(name), text, re.IGNORECASE):
+    return mentions(text, character.name, character.aliases)
+
+
+def mentions(text: str, name: str, aliases: Sequence[str] = ()) -> bool:
+    """Whether `text` names someone called `name`, as `names()` reads it."""
+    for full in (name, *aliases):
+        full = " ".join(full.split())
+        if len(full) >= 2 and re.search(_whole(full), text, re.IGNORECASE):
             return True
-    for word in character.name.split():
+    for word in name.split():
         if len(word) >= 3 and word[0].isupper() and word.casefold() not in _PARTICLES:
             if re.search(_whole(word), text):
                 return True
     return False
+
+
+def scene_place(state: WorldState) -> tuple[str, str, str]:
+    """Where the scene ended (R3): the place's id, name and how it looks now (`place_looks`), for
+    a scene picture's description and its reference (M5). Empty when the place isn't on record."""
+    place = state.places.get(state.scene.place_id or "")
+    if place is None:
+        return "", "", ""
+    return place.id, place.name, place_looks(place)
 
 
 def time_of_day(calendar: Calendar, world_s: int) -> str:

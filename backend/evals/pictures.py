@@ -1,23 +1,25 @@
 """Drawing pictures in live mode the way the picture endpoint does (M1, M5, M6, S7, T18).
 
-The prompt builder, the choice of who is in a picture, reference portraits and picture model are
-the product's own (`media.prompts`, `media.briefs`, `media.drawing`), so a picture eval judges what
-a player would see. The briefs are put together from the story's state as `stories.turns.brief`
-and `media.plans.brief_for_scene` do; those need Django, so the few lines are repeated here and a
-test keeps them alike. A portrait the eval asks for outside the director's plan is described as
-"Portrait of <name>.". Only the storage is left out: the eval keeps the bytes and writes them next
-to its results for staff to spot-check.
+The prompt builder, the choice of who is in a picture, the note written from the finished scene,
+reference portraits and picture model are the product's own (`media.prompts`, `media.briefs`,
+`media.notes`, `media.drawing`), so a picture eval judges what a player would see. The briefs are
+put together from the story's state as `stories.turns.brief` and `media.plans.brief_for_scene`
+do; those need Django, so the few lines are repeated here and a test keeps them alike. A portrait
+the eval asks for outside the director's plan is described as "Portrait of <name>.". Only the
+storage is left out, and with it the place's picture, which an eval doesn't draw: the eval keeps
+the bytes and writes them next to its results for staff to spot-check.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 from engine.state.world import WorldState
 from media import briefs
-from media.drawing import DrawError, DrawRequest, PictureModel, Reference
+from media.drawing import DrawError, DrawRequest, NoteFailed, PictureModel, Reference
+from media.notes import NOTED, SceneText, apply_note, note_prompt
 from media.prompts import MAX_FIGURES, MAX_REFERENCES, Brief, Figure, WorldLook, build_prompt
 
 
@@ -54,11 +56,11 @@ def ending(text: str, limit: int = 1000) -> str:
     return tail[cut + 2 :] if 0 <= cut < limit // 2 else tail
 
 
-def look(state: WorldState) -> WorldLook:
-    """The world's look, as `media.plans.look_for_story` reads it: never the story's premise,
-    which is not the scene a picture shows (M5)."""
+def look(state: WorldState, premise: str = "") -> WorldLook:
+    """The world's look, as `media.plans.look_for_story` reads it, with the story's premise as
+    the setting, which only a cover is drawn with (M1, M5)."""
     bible = state.bible
-    return WorldLook(genre=bible.genre, era=bible.era, tone=bible.tone)
+    return WorldLook(genre=bible.genre, era=bible.era, tone=bible.tone, setting=premise)
 
 
 def known_cast(state: WorldState) -> list[str]:
@@ -83,22 +85,36 @@ def scene_brief(
     *,
     people: Sequence[str] = (),
     subject_id: str | None = None,
+    cover: bool = False,
+    premise: str = "",
 ) -> Brief:
     """A scene picture or the story's cover, from the narrator's image prompt as written, or
     `ending()` of the scene's narration when it wrote none, as `stories.turns.brief` builds it:
     the people the description names, the subject first, with what the player character has on
-    them (`media.briefs`), unless the eval names the `people`, who "you" is, and the time of day."""
+    them (`media.briefs`), unless the eval names the `people`, who "you" is and the scene's turn.
+    A scene picture also gets the time of day and the place it ends in; a `cover`, the story's
+    poster (M1), gets neither, and is drawn with the story's `premise` instead."""
     chosen = (
         figures(state, people)
         if people
         else briefs.scene_figures(state, description, subject_id=subject_id)
     )
-    return Brief(
+    brief = Brief(
         description=description,
-        look=look(state),
+        look=look(state, premise),
         figures=chosen,
         you=state.player.name,
+        turn=state.turn,
+    )
+    if cover:
+        return brief
+    place_id, place_name, place_look = briefs.scene_place(state)
+    return replace(
+        brief,
         time=briefs.time_of_day(state.bible.calendar, state.world_s),
+        place_id=place_id,
+        place_name=place_name,
+        place_look=place_look,
     )
 
 
@@ -118,8 +134,22 @@ async def draw(
     kind: str,
     brief: Brief,
     references: Sequence[tuple[str, Picture]] = (),
+    *,
+    scene: SceneText | None = None,
 ) -> Picture | NotDrawn:
-    """One picture, with up to `MAX_REFERENCES` reference portraits as the endpoint sends (M5)."""
+    """One picture, with up to `MAX_REFERENCES` reference portraits as the endpoint sends (M5).
+    A scene picture of `scene` is drawn from the note written from it, as the endpoint draws it
+    (`media.notes`), with the portraits of only the people the note keeps; when the note fails,
+    from the brief as it was. A cover, the story's poster (M1), gets no note."""
+    if scene is not None and kind in NOTED:
+        try:
+            note = await model.note(note_prompt(kind, brief, scene))
+        except NoteFailed:
+            note = None
+        if note is not None:
+            brief = apply_note(brief, note)
+            kept = {f.name for f in brief.figures}
+            references = [(who, p) for who, p in references if who in kept]
     chosen = list(references)[:MAX_REFERENCES]
     prompt = build_prompt(kind, brief, references=[name for name, _ in chosen])
     request = DrawRequest(

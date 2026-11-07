@@ -12,7 +12,8 @@ The triggers come from what the engine already records, at most one picture a sc
 7. An arc ending: a premise thread, a clocked thread or one the player took up, closing (N1).
 8. The start of a fight with a key NPC or a strong monster.
 9. A local or world event arriving (W16).
-10. The Library cover, once, from the second scene. It shows the scene it is planned in (M5).
+10. The Library cover, once, from the second scene. It is the story's poster: the whole story
+    in its world, around its main character, not the moment of the scene it is planned in (M1).
 11. The player's place when it has changed for good since its picture, such as ruined, occupied
     or rebuilt (W7), or on the first visit to a place that is already ruined or occupied.
 12. A key NPC's portrait the first time they are in a scene (W15).
@@ -267,7 +268,7 @@ def candidates(
                 PictureTrigger.COVER,
                 PictureKind.COVER,
                 None,
-                "The Library cover, showing this scene.",
+                "The Library cover: the whole story at a glance, around its main character.",
                 ONCE,
                 ("cover",),
             )
