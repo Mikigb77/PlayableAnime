@@ -1543,6 +1543,19 @@ English.
 - The plugin is built for short phrases, not long dictation. That fits a single action, and V2 lets
   the player add to the box with another tap.
 
+**Sending waits for the mic (V2).** Each box's `InputModeTracker` knows whether its mic (the
+`DictationController`, a `BoxMic`) is on or its words are on their way (`dictating`), and
+`finishDictation()` turns the mic off and waits until they land: online, until the last part is
+written down; with the phone's recognizer, until its final result comes or two seconds pass. Then
+the dictation's late callbacks are dropped, so nothing lands in a box that was sent, and the mic
+spins and can't be turned on again while a turn waits for it. A phone recognizer turned off while
+it was still starting is stopped again once it starts, since the plugin may start it anyway (V5).
+The play screen's `Composer` takes both, through the screen's one wait for the mic (`_micOff`):
+send stays open while the mic is on, spins while it waits, then sends the whole box, or nothing if
+the words couldn't be written down. Every other turn the player starts (a suggestion, a standing
+action, a retry, ending without what was refused) waits the same way and leaves what was said in
+the box. While one waits, the suggestions hide and the composer is busy, so no second turn starts.
+
 **Turn API.** The turn request gains an `input_mode` field, one of `typed`, `voice`, `voice_edited`
 or `choice` (V7).
 

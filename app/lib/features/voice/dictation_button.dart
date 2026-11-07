@@ -146,8 +146,11 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
       return const SizedBox.shrink();
     }
     final phase = _dictation.phase;
+    // Sending waits for the words: the mic spins until they land, and can't come back on.
+    final finishing = _dictation.finishing;
     return MicButton(
       visual: switch (phase) {
+        _ when finishing => MicVisual.transcribing,
         DictationPhase.idle || DictationPhase.unavailable => MicVisual.idle,
         DictationPhase.starting => MicVisual.starting,
         DictationPhase.listening => MicVisual.listening,
@@ -156,6 +159,7 @@ class _DictationButtonState extends ConsumerState<DictationButton> {
       },
       level: _dictation.level,
       onPressed: switch (phase) {
+        _ when finishing => null,
         DictationPhase.denied => _retryOrExplain,
         DictationPhase.transcribing => null, // the words are on their way
         _ => _dictation.toggle,
