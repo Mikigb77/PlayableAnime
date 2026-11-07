@@ -1536,8 +1536,8 @@ can be kept. `POST /v1/stories/{id}/scenes/{turn}/audio?part=&voice=` (`speech/r
 [API.md](API.md#reading-aloud-v8-to-v10)) claims the part's `SceneAudio` row (unique per scene,
 voice and part; a row left `pending` for five minutes by a request that died is taken over), meters
 it (`meter.VOICE`: 3 cents held, 30 parts a minute, 1,000 a day on our key), and calls the model
-layer's `ModelClient.read_aloud` on the `voice` node with the directions (`READING_STYLE`, which
-names no language) and the part. `GeminiBackend` sends it to `generate_content` with
+layer's `ModelClient.read_aloud` on the `voice` node with the part's words alone: no style
+directions, since the voice read them aloud (V9). `GeminiBackend` sends it to `generate_content` with
 `response_modalities=["AUDIO"]` and the chosen prebuilt voice, refuses a player's own key (the
 studio voice always runs on our account), and returns Gemini's 24 kHz 16-bit PCM. `speech/audio.py`
 encodes it as 48 kbps mono MP3 with `lameenc` (LAME, about 350 KB a minute, playable on Android,

@@ -217,8 +217,8 @@ class ModelClient:
         *,
         options: CallOptions | None = None,
     ) -> GeneratedAudio:
-        """`text` read aloud in `reading`'s voice (V9). Style directions go in the text itself,
-        before what is read, as Gemini's TTS models take them.
+        """`text` read aloud in `reading`'s voice (V9), word for word. Scenes are sent with no
+        style directions, since Gemini's TTS models have read them aloud (`speech.reading`).
 
         The rating's safety settings aren't sent, as for dictation: the text is narration the
         player has already read, written under the story's rating (F5), and a filter here would

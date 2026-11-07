@@ -13,12 +13,14 @@ from graph.llm.cache import Made, PromptCache
 from graph.llm.config import DEFAULT_NODES
 from graph.llm.fake import offline_speech
 from graph.llm.types import ProviderError, Usage
-from speech.reading import READING_STYLE
 from speech.voices import DEFAULT_VOICE
 from stories.management.commands import check_models
 
 VERTEX = ModelConfig(provider="vertex")
-HEARD = "The lighthouse keeper waved to the last ship of the season."
+HEARD = (
+    "The lighthouse keeper waved to the last ship of the season. "
+    "Safe home, she called into the wind."
+)
 
 
 def _format_reply(request):
@@ -134,21 +136,38 @@ def test_the_voice_model_reads_as_scenes_are_read_and_is_heard_back(backend, cap
     [voice] = backend.calls(Node.VOICE)
     assert voice.model == DEFAULT_NODES[Node.VOICE].model == "gemini-3.8-flash-lite-tts"
     assert voice.reading.voice == DEFAULT_VOICE
-    assert voice.prompt.messages[-1].text.startswith(READING_STYLE)
+    # The passage alone, as a scene's part is sent: no directions it could read aloud (V9).
+    assert voice.prompt.messages[-1].text == check_models.VOICE_PASSAGE
     [_silence, heard] = backend.calls(Node.SPEECH)
     assert heard.audio.mime_type == "audio/mpeg"  # the MP3 the app plays
     out = capsys.readouterr().out
     assert "(voice): ok in" in out and f'and it said "{HEARD}"' in out
 
 
-def test_a_voice_that_reads_its_directions_aloud_fails_the_check(backend, capsys):
+def test_a_voice_that_says_more_than_the_passage_fails_the_check(backend, capsys):
     script_models(backend)
-    backend.script(Node.SPEECH, Reply(text="Read as an audiobook narrator..."))
+    backend.script(
+        Node.SPEECH,
+        Reply(text=f"Read the following passage aloud as a warm audiobook narrator would. {HEARD}"),
+    )
 
     with pytest.raises(CommandError, match="1 of 6 models didn't answer"):
         call_command("check_models")
 
-    assert "(voice): FAILED (read_directions)" in capsys.readouterr().out
+    assert "(voice): FAILED (said_more)" in capsys.readouterr().out
+
+
+def test_a_voice_heard_a_little_differently_still_passes(backend, capsys):
+    """The speech model may split or spell a word its own way: only added words fail."""
+    script_models(backend)
+    backend.script(
+        Node.SPEECH,
+        Reply(text="The light house keeper waved to the last ship of the season. Safe home!"),
+    )
+
+    call_command("check_models")
+
+    assert "(voice): ok in" in capsys.readouterr().out
 
 
 def test_speech_in_a_form_the_app_cant_get_fails_the_check(backend, capsys):

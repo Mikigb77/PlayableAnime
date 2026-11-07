@@ -12,9 +12,7 @@ from speech.reading import (
     FIRST_PART_CHARS,
     MAX_PARTS,
     PART_CHARS,
-    READING_STYLE,
     reading_parts,
-    reading_prompt,
     spoken_text,
 )
 
@@ -85,13 +83,6 @@ def test_a_pathological_text_has_a_bounded_number_of_parts():
     text = spoken_text(narration)
     assert parts[-1].count("\n\n") > 0 and parts[-1] in text
     assert text.endswith(parts[-1])
-
-
-def test_the_voice_gets_directions_then_the_passage():
-    prompt = reading_prompt("Rain on the roof.")
-
-    assert prompt == f"{READING_STYLE}:\n\nRain on the roof."
-    assert "Spanish" not in READING_STYLE and "English" not in READING_STYLE  # any language
 
 
 def test_geminis_pcm_becomes_mp3_with_its_length():
