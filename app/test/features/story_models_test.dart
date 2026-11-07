@@ -288,6 +288,7 @@ void main() {
         'event_frequency': 'normal',
         'images': 'key_moments',
         'suggestions': true,
+        'accent': null,
       });
       final cleared = settings.copyWith(tone: '  ');
       expect(cleared.tone, isNull);
@@ -308,6 +309,28 @@ void main() {
       expect(speechLocale(spanish.language), 'es-ES');
       expect(speechLocale('ca'), 'ca-ES');
       expect(speechLocale('en'), 'en-US');
+    });
+
+    test('a story keeps the color the player picked, and null goes back to the genre (S13)', () {
+      final rose = StorySettings.fromJson(const {'accent': 'rose', 'difficulty': 'story'});
+      expect(rose.accent, 'rose');
+      expect(const StorySettings().accent, isNull);
+      expect(rose, isNot(rose.copyWith(accent: () => null)));
+      // Other changes keep the color, and a change of color sends only the color.
+      final calmer = rose.copyWith(eventFrequency: 'calm');
+      expect(calmer.accent, 'rose');
+      expect(calmer.changesFrom(rose), {'event_frequency': 'calm'});
+      expect(rose.copyWith(accent: () => 'jade').changesFrom(rose), {'accent': 'jade'});
+      expect(rose.copyWith(accent: () => null).changesFrom(rose), {'accent': null});
+      expect(rose.copyWith(accent: () => null).difficulty, 'story');
+      final story = Story.fromJson(const {
+        'id': 's',
+        'title': 'T',
+        'genre': 'Cultivation',
+        'settings': {'accent': 'silver'},
+      });
+      expect(story.settings.accent, 'silver');
+      expect(story.copyWith(title: 'U').settings.accent, 'silver');
     });
 
     test('a scene saved twice is kept once', () {

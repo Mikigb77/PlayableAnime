@@ -44,6 +44,7 @@ def test_the_library_lists_your_own_stories_most_recently_played_first(
         "world_time_label",
         "cover_url",
         "ending",
+        "accent",
         "updated_at",
     }
     assert (first["id"], first["genre"], first["rating"], first["turn"]) == (
@@ -78,6 +79,7 @@ def test_a_story_comes_with_its_last_scenes_settings_and_clock(client, player, m
         "images": "key_moments",
         "suggestions": True,
         "language": "en",
+        "accent": None,
     }
     assert set(loaded["clock"]) == {"world_s", "label", "timeline_id"}
     assert [s["turn"] for s in last["scenes"]] == [2, 3]
@@ -341,6 +343,51 @@ def test_every_story_endpoint_needs_a_signed_in_player(player, make_story):
         assert response.status_code == 401, (method, path)
         assert response.json()["error"]["code"] == "unauthenticated"
     assert Story.objects.filter(pk=story.pk).exists()
+
+
+def test_a_story_takes_the_color_the_player_picks_and_can_go_back_to_its_genres(
+    client, player, make_story
+):
+    # S13 (Miki, 2026-11-07): the player can swap the color a story got from its genre. It is kept
+    # with the story, so the Library and every device show it, and null goes back to the genre's.
+    story = make_story(player, settings={"tone": "wry"})
+
+    picked = client.patch(
+        f"/v1/stories/{story.pk}", {"settings": {"accent": "rose"}}, content_type="application/json"
+    )
+    listed = client.get("/v1/stories").json()
+
+    assert picked.status_code == 200, picked.content
+    assert picked.json()["settings"]["accent"] == "rose"
+    assert picked.json()["settings"]["tone"] == "wry"
+    assert picked.json()["version"] == story.version
+    assert [s["accent"] for s in listed] == ["rose"]
+
+    other = client.patch(
+        f"/v1/stories/{story.pk}", {"settings": {"images": "off"}}, content_type="application/json"
+    )
+    assert other.json()["settings"]["accent"] == "rose"
+
+    automatic = client.patch(
+        f"/v1/stories/{story.pk}", {"settings": {"accent": None}}, content_type="application/json"
+    )
+    assert automatic.status_code == 200, automatic.content
+    assert automatic.json()["settings"]["accent"] is None
+    assert client.get("/v1/stories").json()[0]["accent"] is None
+    story.refresh_from_db()
+    assert story.settings["accent"] is None
+
+    unknown = client.patch(
+        f"/v1/stories/{story.pk}",
+        {"settings": {"accent": "plaid"}},
+        content_type="application/json",
+    )
+    assert (unknown.status_code, unknown.json()["error"]["code"]) == (400, "validation_error")
+
+    # A color stored by a newer server, as after rolling a deploy back, reads as the genre's.
+    Story.objects.filter(pk=story.pk).update(settings={"accent": "teal", "tone": "wry"})
+    assert client.get(f"/v1/stories/{story.pk}").json()["settings"]["accent"] is None
+    assert client.get("/v1/stories").json()[0]["accent"] is None
 
 
 def test_patch_refuses_null_settings_except_tone(client, player, make_story):

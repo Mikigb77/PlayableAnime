@@ -66,6 +66,21 @@ void main() {
     expect(GenreAccent.forGenre('Your own'), GenreAccent.lucid);
   });
 
+  test('the color a player picks for a story wins over its genre (S13)', () {
+    expect(GenreAccent.of(genre: 'Cultivation'), GenreAccent.jade);
+    expect(GenreAccent.of(genre: 'Cultivation', chosen: 'rose'), GenreAccent.rose);
+    expect(GenreAccent.of(genre: null, chosen: 'lime'), GenreAccent.lime);
+    expect(GenreAccent.of(genre: 'Cultivation', chosen: 'lucid'), GenreAccent.lucid);
+    // A name from a newer app, or none, keeps the genre's.
+    expect(GenreAccent.of(genre: 'Cultivation', chosen: 'plaid'), GenreAccent.jade);
+    expect(GenreAccent.of(genre: 'Your own', chosen: null), GenreAccent.lucid);
+  });
+
+  test('the palette offers every accent once', () {
+    expect(GenreAccent.palette.toSet(), GenreAccent.values.toSet());
+    expect(GenreAccent.palette, hasLength(GenreAccent.values.length));
+  });
+
   test('a story theme takes its genre accent', () {
     final jade = AppTheme.build(Brightness.dark, GenreAccent.jade);
     final lucid = AppTheme.build(Brightness.dark, GenreAccent.lucid);

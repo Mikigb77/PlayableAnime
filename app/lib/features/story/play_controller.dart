@@ -169,6 +169,12 @@ class PlayController extends ChangeNotifier {
   Story? get story => _story;
   Story? _story;
 
+  /// Moves when a save of the title or settings starts and when it ends. A copy of the story
+  /// fetched while this moved may carry what was there before the save, since a save doesn't move
+  /// the version (S6), so it keeps the title and settings this screen has (S13: a color shows at
+  /// once, so going back to the old one would show).
+  int _saves = 0;
+
   /// Why the story couldn't load, while there is no story to show.
   Object? get loadError => _loadError;
   Object? _loadError;
@@ -255,13 +261,14 @@ class PlayController extends ChangeNotifier {
     if (_story == null) _loadError = null;
     _changed();
     try {
+      final saves = _saves;
       final fresh = await repository.get(storyId, scenes: pageSize);
       if (_disposed) return;
       _loadError = null;
       if (_story == null) {
         _replace(fresh);
       } else {
-        _merge(fresh);
+        _merge(fresh, saves: saves);
       }
     } on Object catch (e) {
       if (_disposed) return;
@@ -294,8 +301,12 @@ class PlayController extends ChangeNotifier {
   /// Folds a fresh copy of the story into what is loaded. When the fresh scenes don't join up
   /// with the loaded ones (many turns played elsewhere), or the story was rewound elsewhere (C8),
   /// the loaded ones are dropped, so the feed never has a gap or a scene taken back.
-  void _merge(Story fresh) {
+  void _merge(Story fresh, {int? saves}) {
     final current = _story!;
+    // Fetched across a save: what the save wrote is newer than what the copy says.
+    if (saves != null && saves != _saves) {
+      fresh = fresh.copyWith(title: current.title, settings: current.settings);
+    }
     final loaded = current.scenes;
     final latest = fresh.scenes.lastOrNull?.turn ?? 0;
     final rewound =
@@ -668,13 +679,14 @@ class PlayController extends ChangeNotifier {
     final input = _pending?.input;
     final expected = _startedTurn ?? (_story?.scenes.lastOrNull?.turn ?? 0) + 1;
     try {
+      final saves = _saves;
       final fresh = await repository.get(storyId, scenes: pageSize);
       if (_disposed) return;
       if (fresh.version > sentVersion) {
         final mine = fresh.scenes.where((s) => s.turn == expected).firstOrNull;
         final landed = mine != null && input != null && _isTurn(mine, input);
         if (landed) _notice(SceneSaved(mine.turn));
-        _merge(fresh);
+        _merge(fresh, saves: saves);
         _pending = null;
         _changed();
         if (!landed) _notice(StoryMovedOn(action: input?.action));
@@ -870,7 +882,13 @@ class PlayController extends ChangeNotifier {
   /// Saves the story's title and the settings that changed (S6). Throws [ApiException] for the
   /// sheet to show.
   Future<void> save({String? title, Json? settings}) async {
-    final saved = await repository.update(storyId, title: title, settings: settings);
+    _saves++;
+    final Story saved;
+    try {
+      saved = await repository.update(storyId, title: title, settings: settings);
+    } finally {
+      _saves++;
+    }
     if (_disposed) return;
     final story = _story;
     if (story == null) return;

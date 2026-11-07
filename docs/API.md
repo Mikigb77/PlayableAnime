@@ -349,7 +349,7 @@ makes one from an example world.
 
 ```text
 StorySummary  {id, title, genre, rating, turn, world_time_label, cover_url?,
-               ending?: Ending, updated_at}
+               ending?: Ending, accent?: Accent, updated_at}  # accent: the story's color (S13)
 Story         {id, title, genre, rating, version, turn,      # turn 0: play the opening
                settings: StorySettings, clock: Clock, scenes: [Scene], cover_url?,
                premise: string,                          # what it started from, to start again (N6)
@@ -389,6 +389,9 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
                event_frequency: "calm"|"normal"|"dramatic",
                images: "off"|"key_moments"|"more",      # M2, default key_moments
                suggestions: bool,                         # S2
+               accent?: Accent,                           # S13: the color the player picked;
+                                                         # null (the default) for the genre's.
+                                                         # PATCH null to go back to it
                language: "en"|"es"|"ca"}                  # S10, default en: the language the story
                                                          # started in, for good. Read only: PATCH
                                                          # and start ignore it.
@@ -398,6 +401,11 @@ StorySettings {narration_length: "short"|"medium"|"long", tone?: string,
 Clock         {world_s, label, timeline_id}              # label such as "Day 3, dusk" or "14 May 1974, 23:10"
                                                          # ("Día 3, atardecer" in a Spanish story,
                                                          # "Dia 3, capvespre" in a Catalan one, S10)
+Accent        "lucid"|"jade"|"azure"|"ember"|"violet"|"crimson"|"cyan"|"orchid"|"lime"|"rose"|"silver"
+                                                         # the app's accents by name (S13); only
+                                                         # the app reads it, never a prompt (G5).
+                                                         # PATCH refuses another name; one stored
+                                                         # before a rollback reads as null
 ```
 
 ### Turns (B5, B7, S3, T10, V7)

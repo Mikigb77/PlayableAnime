@@ -587,6 +587,7 @@ def test_starting_creates_the_story_with_its_opening_state(player_client, model,
         "images": "off",
         "suggestions": True,
         "language": "en",
+        "accent": None,
     }
     assert not story.scenes.exists()
     assert Draft.objects.get(pk=draft["id"]).story_id == story.id
