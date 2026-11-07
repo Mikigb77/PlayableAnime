@@ -479,10 +479,15 @@ it (W10a), a helpless state on the sheet
    very hard 15%, extreme 5%; with none, the proposed class: certain as trivial, a long shot at 1
    in 10, otherwise even). Then what the character brings shifts them in log-odds
    (`capability.weigh`): the attributes the step tests (`SheetPart.ATTRIBUTE`, found by words such
-   as "agility" for speed or "perception" for wits, or by the axis when it names none), 0.45 a
-   level against an average person's 3, or against the opponent's own where measured; skills, 0.5
-   a rank against someone untrained where the challenge was judged, otherwise against a fair hand
-   or the opponent's own; a technique (0.6); gifts and flaws used (0.5 each, two at most); and
+   as "agility" for speed or "perception" for wits; when it names none, by the activity in the
+   step's own words, "climb" or "leap" for speed and "search" for wits, and failing that by the
+   axis), 0.45 a level against an average person's 3, or against the opponent's own where
+   measured; skills, 0.5 a rank against someone untrained where the challenge was judged,
+   otherwise against a fair hand or the opponent's own; a technique (0.6); gifts and flaws used
+   (0.5 each, two at most). Skills and traits match by name either way ("climbing" finds Tree
+   climbing). `uses` is required of the interpret model, and where it still names no skill or
+   trait, code takes the character's own whose name the step's words hold, or whose name and
+   notes or description share two words with it (`skills_for`, `traits_for`); and
    where nobody is measured against them, a power the step uses (0.5 to 1.4 by the gift's
    strength) and their wounds and exhaustion, which measured tiers already carry. Edges and
    hindrances (0.35 each, three at most; `check_intent` has already left out any that lean on an
