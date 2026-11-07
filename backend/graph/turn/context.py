@@ -22,6 +22,7 @@ from engine.contracts import (
     EventSource,
     Intent,
     ItemChange,
+    PictureKind,
     Resolution,
 )
 from engine.labels import ago_label, in_label, moment, span_label
@@ -505,7 +506,9 @@ def narration_brief(
     if suggestions and current is not None and "thread" in kinds:
         asked["thread"] = {"id": current.id, "title": current.title}  # what thread choices follow
     sections.append(("SUGGESTIONS", asked))
-    if plan.picture is not None:
+    # The cover, the story's poster, is drawn from its premise, never from this scene, so the
+    # narrator writes it no image prompt (M1, Miki 2026-11-07, `media.briefs.cover_brief`).
+    if plan.picture is not None and plan.picture.kind is not PictureKind.COVER:
         subject = plan.picture.subject_id
         sections.append(
             (

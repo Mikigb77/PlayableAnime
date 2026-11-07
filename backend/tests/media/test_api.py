@@ -176,6 +176,20 @@ def test_a_scene_marked_planned_by_hand_gets_its_own_picture(client, painters, m
     assert "an ancient empire of sects" in painters.ours.requests[0].prompt  # the story's look
 
 
+def test_a_scene_marked_for_the_cover_by_hand_gets_the_storys_poster(client, painters, meter):
+    """M1: the cover is drawn from the premise, never from the scene it is marked on."""
+    story = make_story()
+    make_scene(story, 2, image_planned=True, image_kind="cover", image_prompt="A duel at dawn.")
+
+    body = _image(client, story, 2).json()
+
+    image = Image.objects.get(pk=body["image_id"])
+    assert (body["status"], image.kind, image.subject) == ("ready", "cover", "cover")
+    prompt = painters.ours.requests[0].prompt
+    assert story.premise in prompt
+    assert "duel" not in prompt and "raises his sword" not in prompt
+
+
 def test_pictures_turned_off_are_skipped_but_illustrate_still_draws(client, painters, meter):
     story = make_story(settings={"images": "off"})
     _planned_scene(story)

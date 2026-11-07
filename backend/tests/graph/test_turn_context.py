@@ -654,12 +654,17 @@ def test_a_player_character_with_nothing_on_them_reads_as_carrying_nothing():
     assert "from the world, the premise or earlier" in prompts.NARRATOR_SYSTEM
 
 
-def test_a_cover_is_asked_for_as_the_storys_poster_and_a_scene_as_told():
-    """M1, M5: the Library cover sums up the story in its world (Miki, 2026-11-07: "more
-    dramatic or representative" than one scene), while a scene picture shows only its scene."""
+def test_a_scene_picture_is_asked_for_as_told_and_a_cover_not_at_all():
+    """M1, M5: a scene picture shows only its scene. The Library cover is the story's poster,
+    drawn from its premise, never from the scene it comes with (Miki, 2026-11-07: "not just a
+    random scene"), so the narrator isn't asked to describe it."""
     rules = prompts.NARRATOR_SYSTEM.split("image_prompt (M1, M5):", 1)[1].split("\n\n", 1)[0]
 
-    assert "For a cover, the story as a whole, as on a book or film poster" in rules
-    assert "never just this scene's moment" in rules
     assert "For a scene, the moment PICTURE's why names, as you told it" in rules
-    assert "Either way, the player character" in rules
+    assert "cover" not in rules
+    cover = brief(
+        plan=DirectorPlan(
+            picture=PictureDecision(kind=PictureKind.COVER, trigger=PictureTrigger.COVER)
+        )
+    )
+    assert "## PICTURE" not in cover.user

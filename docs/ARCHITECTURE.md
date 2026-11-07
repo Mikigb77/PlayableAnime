@@ -1674,9 +1674,11 @@ app                   shows the narration, then asks for the picture in its own 
   is drawn with), the people in the picture with the appearance from their entry (C9), who "you"
   is, the scene's turn, and for a scene picture the time of day on the story's clock and the place
   it ends in (`media.briefs.scene_place`). The cover is planned in the story's second scene and
-  shown there, but it is the story's poster in the Library (M1): the narrator writes it as the
-  whole story around its main character, and it is drawn with the premise, as a book or film
-  poster, with no one scene's hour.
+  shown there, but it is the story's poster in the Library (M1): the narrator isn't asked for an
+  image prompt for it, and `media.briefs.cover_brief` describes it from the premise instead,
+  around the main character, the player character, with the people the premise names, as a book
+  or film poster, with no one scene's hour or text (Miki, 2026-11-07: "a proper cover, not just a
+  random scene"). The premise goes in once, as what it shows.
   `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those the
   image prompt names, with the director's subject first even when they just died or the player
   hasn't met them, and the player character when the prompt says "you" or names them, or names no
@@ -1688,8 +1690,8 @@ app                   shows the narration, then asks for the picture in its own 
   prompt, the moment first, then how the people look and what the player character carries ("no
   other weapon, tool or gear, even one their look above names, unless the description puts it in
   their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
-  look, lit for the moment's time of day), the world's own era (the premise as the setting only on
-  a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
+  look, lit for the moment's time of day), the world's own era (a starter's tagline as the setting
+  only on its cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
   scenes 16:9), where a scene shows only who and what the description has, and the
   mild-in-every-rating rules. Ready portraits of up to three of the
   people go along as reference images, each set right after a label saying whose it is
