@@ -56,7 +56,7 @@ def scene_draft(
         turn=turn.ctx.turn,
         kind=turn.kind,
         player_action=_player_action(turn),
-        narration=narration.narration.strip(),
+        narration=narration.text,
         choices=choices(narration, plan.suggestions.count) if mode != "template" else [],
         details=details(resolution),
         event=SceneEvent(size=plan.event.size, title=plan.event.title) if plan.event else None,

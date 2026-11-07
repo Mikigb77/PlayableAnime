@@ -145,6 +145,26 @@ def test_a_recipe_is_stopped_before_the_piece_that_completes_it(fake, make_clien
     assert result.narration_mode == "cutaway" and result.scene.narration == told
 
 
+def test_a_recipe_in_the_action_part_is_caught_too(fake, make_client):
+    """F3 holds across the whole scene, the action told first included (R1)."""
+    recipe = (
+        "You crush 500 grams of pseudoephedrine, dissolve it in 200 ml of solvent, add red "
+        "phosphorus and heat it to 80°C."
+    )
+    told = "By dawn the trays glitter."
+    fake.script(Node.INTERPRET, Reply(json=intent("cook a batch of meth")))
+    fake.script(
+        Node.NARRATOR,
+        Reply(json={"action": recipe, "narration": "The trailer reeks."}),
+        Reply(json={"narration": told}),
+    )
+
+    events, result = play(make_client(), turn_input(grounded_world(), "I cook a batch"))
+
+    assert NarrationReset("cutaway") in events
+    assert result.narration_mode == "cutaway" and result.scene.narration == told
+
+
 def test_a_model_block_is_logged_with_its_category(fake, make_client, log_lines):
     fake.script(Node.INTERPRET, Reply(json=intent("look around")))
     fake.script(

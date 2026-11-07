@@ -30,12 +30,15 @@ from engine.state.cast import CharacterStatus, DeathCertainty
 from engine.state.records import Lead, LeadStatus, RollRecord, StepResult, ThreadStatus
 from engine.state.world import EventSize
 from graph.turn.check import (
+    ACTION_UNTOLD,
     MAX_STEPS,
     check_intent,
     check_plan,
     check_resolution,
+    check_told,
     check_update,
 )
+from graph.turn.outputs import NarratorOutput
 
 
 def ctx(**settings) -> TurnContext:
@@ -467,3 +470,15 @@ def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
     assert checked.summary is None
     assert [i.code for i in issues] == ["blank_scene_end", "dead_present"]
     assert delta.scene_end.present_ids == ["luca", "bartender", "new_guard"]  # never mutated
+
+
+def test_a_scene_the_player_acted_in_must_tell_the_action():
+    """R1: reported, never repaired, since the scene has already streamed (S3)."""
+    paid = Intent(summary="pay the herbalist")
+    skipped = NarratorOutput(narration="Old Hu snatches the coin.")
+    told = NarratorOutput(action="You hold out the coin.", narration="Old Hu snatches it.")
+    assert [i.code for i in check_told(skipped, paid)] == [ACTION_UNTOLD]
+    assert check_told(NarratorOutput(action="  ", narration="x"), paid)[0].code == ACTION_UNTOLD
+    assert check_told(told, paid) == []
+    # An opening, or an ending told from things as they stand, has no action to tell.
+    assert check_told(skipped, None) == []

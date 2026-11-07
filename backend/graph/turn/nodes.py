@@ -293,6 +293,9 @@ async def build_context(state: TurnState) -> dict[str, Any]:
         fired=fired,
         scenes=turn.scenes,
         premise=turn.premise,
+        # R1: the player's own words, so the scene tells the action as they gave it. An ending's
+        # note goes as its wish instead, and only when the world kept all of it (N6).
+        words=turn.action if turn.kind in (TurnKind.ACTION, TurnKind.CHOICE) else None,
         ending=state.get("ending"),
         # The player's own words on how it ends, unless the world refused some of them: then the
         # narrator gets only what was kept, and what was left out, so it is never granted (N6).
@@ -328,8 +331,12 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
 
     async def tell(cutaway: bool) -> NarratorOutput:
         nonlocal shown
+        # R1: the action, then what comes of it, streamed as one text (`NarratorOutput.text`).
         stream = llm.stream_structured(
-            Node.NARRATOR, brief.prompt(cutaway=cutaway), NarratorOutput, field="narration"
+            Node.NARRATOR,
+            brief.prompt(cutaway=cutaway),
+            NarratorOutput,
+            field=("action", "narration"),
         )
         told = ""
         async with aclosing(stream) as events:
@@ -349,7 +356,7 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
                         emit(NarrationReset("retry"))
                         shown = False
                 elif isinstance(event, Completed):
-                    if block := recipe(event.value.narration):
+                    if block := recipe(event.value.text):
                         raise block
                     return event.value
         raise LLMUnavailable(node=Node.NARRATOR.value)
@@ -396,6 +403,7 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     world = state["world"]
     issues: list[Issue] = []
     if mode != "template":
+        issues += check.check_told(narration, state.get("intent"))
         delta, found = check.check_update(narration.update, world)
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(

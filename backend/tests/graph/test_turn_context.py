@@ -510,3 +510,41 @@ def test_ability_costs_come_from_the_sheet_and_the_world_never_from_the_narrator
     assert "never a drawback of your own" in prompts.NARRATOR_SYSTEM
     assert "Never invent pain, sickness or harm as a cost" in drafting.SYSTEM
     assert "facts.challenge, always" in prompts.INTERPRET_SYSTEM
+
+
+def test_the_narrator_gets_the_players_own_words_before_what_they_meant():
+    # R1 (Miki, 2026-11-07): the scene tells the gestures and manner the player gave, so the
+    # narrator reads their words, not only the interpret step's reading of them.
+    said = "I look at him firmly, hold out a gold coin and say: I want this potion."
+    intent = Intent(summary="buy the potion with a gold coin")
+    action = brief(intent=intent, resolution=stopped_plan(), words=f"  {said}\n").user
+    view = json.loads(action.split("## ACTION\n", 1)[1].split("\n## ", 1)[0])
+    assert list(view) == ["words", "summary"]
+    assert view["words"] == said
+    # No words, or blank ones, leave ACTION as the interpret step read it.
+    for words in (None, "  "):
+        quiet = brief(intent=intent, resolution=stopped_plan(), words=words).user
+        assert '"words"' not in quiet.split("## ACTION\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_narrator_tells_the_action_first_in_its_own_part():
+    # R1: the scene opens on the action in `action`, even one the player wrote like a story, and
+    # never skips it; "the player's words repeated back" once read as "leave the action out".
+    system = prompts.NARRATOR_SYSTEM
+    assert "Open on the player's action, in action (R1)" in system
+    assert "so does one the player already wrote like a story" in system
+    assert "never skip it or start from what it leads to" in system
+    assert "never tell the action twice" in system
+    assert "repeated back" not in system
+    assert "leave action empty" in system
+    assert "action still shows the character setting about" in prompts.CUTAWAY_SYSTEM
+    assert "- ACTION: the player's own words for this turn (words)" in prompts.BRIEF_GUIDE
+
+
+def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
+    schema = NarratorOutput.model_json_schema()
+    assert list(schema["properties"])[:2] == ["action", "narration"]
+    assert schema["required"] == ["action", "narration"]
+    assert NarratorOutput(narration=" You wake. ").text == "You wake."
+    told = NarratorOutput(action=" You hold out the coin. ", narration="\nHe takes it.")
+    assert told.text == "You hold out the coin.\n\nHe takes it."

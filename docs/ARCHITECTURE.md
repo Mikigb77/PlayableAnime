@@ -619,7 +619,7 @@ llm = build_client(rating=story.rating, byok=parse_byok(provider_header, key_hea
                    recorder=telemetry)
 intent = await llm.structured(Node.INTERPRET, Prompt.build(system, action), Intent)
 async with aclosing(llm.stream_structured(Node.NARRATOR, prompt, NarratorOutput,
-                                          field="narration")) as events:
+                                          field=("action", "narration"))) as events:
     async for event in events:  # TextDelta, StreamRestart, then Completed(value)
         ...
 picture = await llm.image(Node.PICTURE, Prompt.build(style, scene, images=portraits))
@@ -719,8 +719,11 @@ model wrote in a map is `*` (T6). The deploy's model check sends every format on
 which ones go in the prompt ([DEPLOY.md](DEPLOY.md#checking-the-models)).
 
 **Streaming the narration (S3, B7).** The narrator returns one JSON object, and
-`stream_structured` streams the decoded text of its `narration` field as it is written, with
-`graph/llm/jsonstream.py`. The full JSON is still validated at the end. If an attempt fails after
+`stream_structured` streams the decoded text of its `action` field (the character doing what the
+player said, R1) and then its `narration` field (what comes of it) as they are written, a
+paragraph apart, with `graph/llm/jsonstream.py`. The scene is saved the same way
+(`NarratorOutput.text`), and a turn whose `action` came back empty though the player acted logs
+the issue `action_untold` on its T5 line. The full JSON is still validated at the end. If an attempt fails after
 text was shown, the client yields `StreamRestart` before retrying, which the turn endpoint sends as
 `narration.reset` with reason `retry` ([API.md](API.md)).
 

@@ -388,9 +388,28 @@ def test_a_stream_the_caller_abandons_is_still_recorded(fake, make_client, telem
     assert record.attempts == 1
 
 
-def test_streaming_an_unknown_field_is_a_programming_error(make_client):
+def test_streaming_two_fields_shows_one_then_the_other(fake, make_client):
+    """R1: the narrator's action and narration stream as one scene, a paragraph apart."""
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    events = run(
+        collect(
+            make_client().stream_structured(
+                Node.NARRATOR, PROMPT, Narration, field=("title", "narration")
+            )
+        )
+    )
+
+    assert "".join(e.text for e in events if isinstance(e, TextDelta)) == (
+        f"{SCENE.title}\n\n{SCENE.narration}"
+    )
+    assert events[-1] == Completed(SCENE)
+
+
+@pytest.mark.parametrize("field", ["prose", ("narration", "prose")])
+def test_streaming_an_unknown_field_is_a_programming_error(make_client, field):
     with pytest.raises(ValueError):
-        make_client().stream_structured(Node.NARRATOR, PROMPT, Narration, field="prose")
+        make_client().stream_structured(Node.NARRATOR, PROMPT, Narration, field=field)
 
 
 def test_a_picture_call_returns_the_image_and_bills_per_image(fake, make_client, telemetry):

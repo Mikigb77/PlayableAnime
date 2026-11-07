@@ -9,6 +9,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 - `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
+- `check_told`: whether a scene the player acted in told their action before its outcome (R1).
 """
 
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ from engine.state.cast import CharacterStatus
 from engine.state.records import LeadStatus, RollRecord, StepResult
 from engine.state.world import WorldState
 from engine.timekeeping import parse_clock
+from graph.turn.outputs import NarratorOutput
 from graph.turn.types import Issue
 
 # R6: a chained plan this long is already more than one scene can play. The steps past it are
@@ -256,6 +258,19 @@ def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list
     if delta.summary is not None and not delta.summary.strip():
         delta.summary = None
     return delta, issues
+
+
+# R1: the issue code for a scene that skipped the player's action and opened on what came of it.
+ACTION_UNTOLD = "action_untold"
+
+
+def check_told(told: NarratorOutput, intent: Intent | None) -> list[Issue]:
+    """R1. A scene the player acted in opens on the character doing it, in its own field, so
+    code can see one that skipped straight to what came of it. The scene has already streamed
+    (S3), so this only reports it, for the logs and the evals (T5, T18)."""
+    if intent is None or told.action.strip():
+        return []
+    return [Issue(ACTION_UNTOLD, "the scene opened on the outcome, not the action")]
 
 
 def check_plan(

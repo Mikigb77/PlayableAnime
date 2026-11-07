@@ -1,9 +1,10 @@
-"""Streams one string field out of a JSON object while the model is still writing it.
+"""Streams string fields out of a JSON object while the model is still writing it.
 
 The narrator answers in one structured-output call (B5 step 5), but the player must see the
 narration as it is written (S3, B7). This reads the raw JSON chunks and hands back the decoded
-text of one top-level string field, such as `narration`, as soon as each character arrives. The
-complete JSON is still parsed and validated at the end; the streamed text is for display only.
+text of top-level string fields, such as `action` and then `narration` (R1), as soon as each
+character arrives, with a paragraph break between one field's text and the next. The complete
+JSON is still parsed and validated at the end; the streamed text is for display only.
 """
 
 from __future__ import annotations
@@ -25,15 +26,26 @@ _Role = Literal["key", "target", "skip"]
 
 
 class JsonFieldStreamer:
-    """Feed it JSON text in any chunk sizes; it returns the new text of `field` each time.
+    """Feed it JSON text in any chunk sizes; it returns the new text of `fields` each time.
 
     It tracks just enough of the grammar to know where top-level keys and values are, and
     decodes escapes, including `\\uXXXX` surrogate pairs split across chunks. Only the first
-    occurrence of the field is streamed.
+    occurrence of each field is streamed, and only in the order `fields` gives: once one has
+    started, an earlier one that comes after it is left to the final parse, so the stream never
+    shows the scene's parts out of order. A field that follows streamed text starts with
+    `joiner`, once its own text starts, without its leading spaces, so an empty field adds
+    nothing.
     """
 
-    def __init__(self, field: str):
-        self._field = field
+    def __init__(self, *fields: str, joiner: str = "\n\n"):
+        if not fields:
+            raise ValueError("JsonFieldStreamer needs at least one field")
+        self._fields = fields
+        self._joiner = joiner
+        self._at = -1  # the place in `fields` of the field that started last
+        # Whether any field's text went out, and whether the current one's has yet.
+        self._wrote = False
+        self._field_wrote = False
         self._depth = 0
         self._expect: Literal["key", "colon", "value", "comma"] = "key"
         self._in_string = False
@@ -43,7 +55,7 @@ class JsonFieldStreamer:
         self._key: list[str] = []
         self._last_key: str | None = None
         self._out: list[str] = []
-        self.done = False
+        self.done = False  # every field was streamed
 
     def feed(self, text: str) -> str:
         for ch in text:
@@ -81,10 +93,12 @@ class JsonFieldStreamer:
         elif (
             self._depth == 1
             and self._expect == "value"
-            and self._last_key == self._field
-            and not self.done
+            and self._last_key in self._fields
+            and self._fields.index(self._last_key) > self._at
         ):
             self._role = "target"
+            self._at = self._fields.index(self._last_key)
+            self._field_wrote = False
         else:
             self._role = "skip"
 
@@ -116,7 +130,7 @@ class JsonFieldStreamer:
             self._last_key = "".join(self._key)
             self._expect = "colon"
         else:
-            if self._role == "target":
+            if self._role == "target" and self._at == len(self._fields) - 1:
                 self.done = True
             self._expect = "comma"
 
@@ -143,6 +157,14 @@ class JsonFieldStreamer:
 
     def _put(self, text: str) -> None:
         if self._role == "target":
+            if not self._field_wrote and self._wrote:
+                # A later field: its leading spaces dropped, then the break before it.
+                text = text.lstrip()
+                if not text:
+                    return
+                self._out.append(self._joiner)
+            self._field_wrote = True
+            self._wrote = True
             self._out.append(text)
         elif self._role == "key":
             self._key.append(text)

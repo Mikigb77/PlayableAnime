@@ -4,6 +4,7 @@ The fake sits under the real model client, so these turns go through the same st
 block and telemetry code a live turn does.
 """
 
+import json
 import subprocess
 import sys
 from contextlib import aclosing
@@ -196,6 +197,77 @@ def test_the_interpret_step_reads_the_players_words(fake, make_client):
     )
     [narration] = fake.calls(Node.NARRATOR)
     assert "## OUTCOME" in narration.prompt.messages[-1].text
+
+
+# R1: the scene with the player's action told in its own part, before what came of it.
+ACTED = (
+    {"action": "You meet Zhao's sneer, stoop and close your fingers on a stone. You let it fly."}
+    | SCENE
+    | {"narration": "It cracks against his brow, and you are already running for the gate."}
+)
+
+
+def section(text: str, name: str) -> str:
+    return text.split(f"## {name}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_scene_opens_on_the_players_action(fake, make_client):
+    """R1: the action, then what came of it, streamed and saved as one scene, a paragraph apart."""
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=ACTED))
+    turn = turn_input()
+
+    events, result = play(make_client(), turn)
+
+    told = f"{ACTED['action']}\n\n{ACTED['narration']}"
+    assert streamed(events) == told
+    assert result.scene.narration == told
+    assert "action_untold" not in [i.code for i in result.issues]
+    # The narrator is always asked for the action first, with the player's own words in the
+    # brief, so it can tell their gestures and manner before anything comes of them.
+    [request] = fake.calls(Node.NARRATOR)
+    assert list(request.json_schema["properties"])[:2] == ["action", "narration"]
+    assert request.json_schema["required"][0] == "action"
+    action = json.loads(section(request.prompt.messages[-1].text, "ACTION"))
+    assert next(iter(action)) == "words"
+    assert action["words"] == turn.action
+    assert action["summary"] == STONE["summary"]
+
+
+def test_a_scene_that_skips_the_action_is_reported(fake, make_client, log_lines):
+    """R1: a scene can't be taken back once it has streamed, so code reports it (T5)."""
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    _, result = play(make_client(), turn_input())
+    assert "action_untold" in [i.code for i in result.issues]
+    assert result.scene.narration == SCENE["narration"]
+    assert any(line.get("turn_issue") == {"code": "action_untold"} for line in log_lines())
+
+
+def test_a_picked_suggestion_reaches_the_narrator_as_the_players_words(fake, make_client):
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=ACTED))
+    play(make_client(), turn_input(kind=TurnKind.CHOICE, action="Taunt Zhao"))
+    [request] = fake.calls(Node.NARRATOR)
+    assert json.loads(section(request.prompt.messages[-1].text, "ACTION"))["words"] == "Taunt Zhao"
+
+
+def test_scenes_with_no_action_have_none_to_tell(fake, make_client):
+    """An opening has no ACTION, so its whole scene is narration, and nothing is missing."""
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"image_prompt": None}))
+    _, result = play(make_client(), turn_input(kind=TurnKind.OPENING))
+    assert "action_untold" not in [i.code for i in result.issues]
+    [request] = fake.calls(Node.NARRATOR)
+    assert "## ACTION" not in request.prompt.messages[-1].text
+
+
+def test_a_standing_action_is_told_but_has_no_words(fake, make_client):
+    fake.script(Node.NARRATOR, Reply(json={"action": "You lean on the well and wait."} | SCENE))
+    turn = turn_input(kind=TurnKind.STANDING, standing=StandingAction.WAIT)
+    _, result = play(make_client(), turn)
+    assert result.scene.narration.startswith("You lean on the well and wait.\n\n")
+    [request] = fake.calls(Node.NARRATOR)
+    assert "words" not in json.loads(section(request.prompt.messages[-1].text, "ACTION"))
 
 
 def test_a_standing_action_needs_no_interpret_call(fake, make_client, telemetry):

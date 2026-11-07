@@ -1,12 +1,14 @@
 """What the model nodes return (structured output). Code checks every field before it counts.
 
-The interpret node returns `engine.contracts.Intent` as it is. The narrator's object puts
-`narration` first, so its text streams to the player while the rest is still being written (S3).
+The interpret node returns `engine.contracts.Intent` as it is. The narrator's object puts its
+text first, `action` and then `narration`, so the scene streams to the player while the rest is
+still being written (S3). `action` is its own field so that every scene tells the character doing
+what the player said before anything comes of it (R1), and code can see when one didn't.
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from engine.contracts import ChoiceKind, StateDelta
 
@@ -21,10 +23,41 @@ class SuggestionOut(BaseModel):
     kind: ChoiceKind
 
 
-class NarratorOutput(BaseModel):
-    """B5 step 5. The scene, its suggestions, the picture prompt and the proposed state update."""
+# R1: how the scene's two parts are joined, as they stream and as the scene is saved.
+PARAGRAPH = "\n\n"
 
-    narration: Text = Field(description="The scene, as the player reads it.")
+
+def _action_required(schema: dict[str, Any]) -> None:
+    """R1. Gemini answers only what a schema requires as often as not (see `Intent`), so the
+    model is always asked for `action`, though code may leave it empty (an opening, a template
+    line)."""
+    schema["required"] = list(dict.fromkeys(["action", *schema.get("required", [])]))
+
+
+class NarratorOutput(BaseModel):
+    """B5 step 5. The scene, its suggestions, the picture prompt and the proposed state update.
+
+    The scene is `action`, the character doing what the player said, then `narration`, what
+    comes of it: `text` joins them, as the player reads it (R1).
+    """
+
+    model_config = ConfigDict(json_schema_extra=_action_required)
+
+    action: str = Field(
+        default="",
+        description=(
+            "R1: the scene's opening, the player character doing what the player said they do,"
+            " told in the story's prose before anything comes of it. Empty only when the brief"
+            " has no ACTION."
+        ),
+    )
+    narration: Text = Field(
+        description=(
+            "The rest of the scene, as the player reads it, picking up where action stops: the"
+            " outcome, how the world reacts, and an ending the player can act on. With no"
+            " action, the whole scene."
+        )
+    )
     suggestions: list[SuggestionOut] = Field(
         default_factory=list, description="As many as asked for, 0 to 4 (S2)."
     )
@@ -35,6 +68,12 @@ class NarratorOutput(BaseModel):
         default_factory=StateDelta,
         description="What the scene changed, for the engine to check and apply (C1).",
     )
+
+    @property
+    def text(self) -> str:
+        """The whole scene: the action, a paragraph break, then the narration (R1)."""
+        parts = (self.action.strip(), self.narration.strip())
+        return PARAGRAPH.join(part for part in parts if part)
 
 
 class ChapterOutput(BaseModel):
