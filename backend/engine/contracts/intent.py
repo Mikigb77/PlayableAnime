@@ -317,7 +317,13 @@ class StepFacts(EngineModel):
     edges: list[str] = Field(
         default_factory=list, description="Preparation, allies, items or position in their favour."
     )
-    hindrances: list[str] = Field(default_factory=list)
+    hindrances: list[str] = Field(
+        default_factory=list,
+        description=(
+            "What in the situation works against them: position, ground, light, numbers, missing"
+            " tools. Never their own wounds, health or tiredness: code weighs those (N6, A8)."
+        ),
+    )
     proposed_class: OutcomeClass | None = None
     challenge: Challenge | None = Field(
         default=None,

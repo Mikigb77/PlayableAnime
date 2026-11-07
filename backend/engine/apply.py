@@ -8,16 +8,19 @@ can't break the world (A7), and the rest of the delta still applies.
 Who may change what:
 
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
-  locations, small attitude nudges, condition, memberships, facts, leads, non-terminal status
-  changes, the scene's end and the summary, and what changes hands, money included, which
-  `engine.possessions` moves from giver to receiver so nobody gives what they don't have (C10).
-  A lasting change to how a known character looks (`look_change`) moves their `look_version` on
-  (M5, `engine.looks`).
+  locations, small attitude nudges, condition (except harm to the player character that nothing
+  recorded this turn caused: worse health, a wound or a passing state that names an injury,
+  `engine.injuries`), memberships, facts, leads,
+  non-terminal status changes, the scene's end and the summary, and what changes hands, money
+  included, which `engine.possessions` moves from giver to receiver so nobody gives what they
+  don't have (C10). A lasting change to how a known character looks (`look_change`) moves their
+  `look_version` on (M5, `engine.looks`).
 - **Engine only:** deaths, destroyed factions and ruined places (resolve records the outcome
   before narration, F4); anything that undoes one, which also needs a recorded `Cause`; faction
-  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7); and
-  the state of powers (cooldowns and settled details, never changed once set), skills,
-  techniques, ladders, practice and time effects (A4, G19, G20, W10a).
+  reputation (W3); rulings (A9), gains (A4), accepted backstory (N4) and rule changes (G7);
+  wounds that last, and any harm to the player character (N6); and the state of powers
+  (cooldowns and settled details, never changed once set), skills, techniques, ladders,
+  practice and time effects (A4, G19, G20, W10a).
 """
 
 from dataclasses import dataclass, field
@@ -47,6 +50,7 @@ from engine.contracts.delta import (
     RuleChange,
     StateDelta,
 )
+from engine.injuries import names_injury
 from engine.invariants import (
     ancestry,
     cause_problem,
@@ -84,6 +88,7 @@ from engine.state.sheet import (
     Attitude,
     BackstoryClaim,
     Grudge,
+    Health,
     LadderPosition,
     PassingState,
     Wound,
@@ -120,24 +125,37 @@ class Applied:
 
 
 def apply_delta(
-    state: WorldState, delta: StateDelta, ctx: TurnContext, *, source: DeltaSource
+    state: WorldState,
+    delta: StateDelta,
+    ctx: TurnContext,
+    *,
+    source: DeltaSource,
+    may_hurt_player: bool = False,
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
     come back in `Applied.rejected`, and the rest still applies. It doesn't touch `state.turn`.
 
     Places and factions go first, so characters in the same delta can refer to them, and family
-    ties after every character.
+    ties after every character. The narrator hurts the player character only with
+    `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`).
     """
-    return apply_in_place(state.model_copy(deep=True), delta, ctx, source=source)
+    return apply_in_place(
+        state.model_copy(deep=True), delta, ctx, source=source, may_hurt_player=may_hurt_player
+    )
 
 
 def apply_in_place(
-    state: WorldState, delta: StateDelta, ctx: TurnContext, *, source: DeltaSource
+    state: WorldState,
+    delta: StateDelta,
+    ctx: TurnContext,
+    *,
+    source: DeltaSource,
+    may_hurt_player: bool = False,
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
-    applier = _Applier(state, source, ctx.turn)
+    applier = _Applier(state, source, ctx.turn, may_hurt_player=may_hurt_player)
     for change in delta.places:
         applier.place(change)
     for change in delta.factions:
@@ -212,10 +230,13 @@ def _clamp(value: int, low: int, high: int) -> int:
 
 
 class _Applier:
-    def __init__(self, state: WorldState, source: DeltaSource, turn: int) -> None:
+    def __init__(
+        self, state: WorldState, source: DeltaSource, turn: int, *, may_hurt_player: bool = False
+    ) -> None:
         self.state = state
         self.source = source
         self.turn = turn
+        self.may_hurt_player = may_hurt_player
         self.rejected: list[Rejection] = []
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
@@ -615,17 +636,36 @@ class _Applier:
         return total - used
 
     def condition(self, character: Character, change: CharacterChange) -> None:
+        """Health, wounds and passing states. Only the engine harms the player character (N6,
+        `engine.injuries`): every blow and fall that can is settled before the scene is told, so
+        the narrator may show them heal but never hurt them, unless `may_hurt_player` says
+        something recorded this turn did. A new wound on an unhurt body leaves it hurt."""
+        subject = f"character {character.id}"
         condition = character.sheet.condition
         update = change.condition
+        guarded = (
+            not self.engine and not self.may_hurt_player and character.id == self.state.player_id
+        )
         if update.health is not None:
-            condition.health = update.health
-        condition.wounds.extend(Wound(text=w) for w in update.wounds)
-        if update.lasting_wounds and self.engine_only(f"character {character.id}", "lasting wound"):
+            if guarded and update.health.worse_than(condition.health):
+                self.reject(subject, "harm", "only the engine harms the player character (N6)")
+            else:
+                condition.set_health(update.health)
+        if update.wounds:
+            if guarded:
+                self.reject(subject, "wound", "only the engine wounds the player character (N6)")
+            else:
+                condition.wounds.extend(Wound(text=w) for w in update.wounds)
+                if condition.health is Health.UNHURT:
+                    condition.set_health(Health.HURT)
+        if update.lasting_wounds and self.engine_only(subject, "lasting wound"):
             condition.wounds.extend(Wound(text=w, lasting=True) for w in update.lasting_wounds)
         cleared = {s.casefold() for s in update.cleared_states}
         condition.states = [s for s in condition.states if s.name.casefold() not in cleared]
         for state_name in update.states:
-            if is_real_name(state_name) and not any(
+            if guarded and names_injury(state_name):
+                self.reject(subject, "injury", "only the engine hurts the player character (N6)")
+            elif is_real_name(state_name) and not any(
                 s.name.casefold() == state_name.casefold() for s in condition.states
             ):
                 condition.states.append(PassingState(name=state_name))

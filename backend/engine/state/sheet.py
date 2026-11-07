@@ -7,7 +7,7 @@ the world has one.
 
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from engine.base import (
     Affinity,
@@ -314,6 +314,10 @@ class Health(StrEnum):
     BADLY_WOUNDED = "badly_wounded"
     DYING = "dying"
 
+    def worse_than(self, other: "Health") -> bool:
+        order = list(Health)
+        return order.index(self) > order.index(other)
+
 
 class Wound(EngineModel):
     text: str
@@ -352,6 +356,22 @@ class Condition(EngineModel):
     states: list[PassingState] = Field(default_factory=list)
     reserves: list[Reserve] = Field(default_factory=list)
     weakened_tiers: Tier = 0
+
+    @model_validator(mode="after")
+    def _healed_wounds_gone(self) -> "Condition":
+        """A state saved before healed wounds were cleared loads without them."""
+        self._heal_if_unhurt()
+        return self
+
+    def set_health(self, health: Health) -> None:
+        """Health as it is now. A body back to unhurt has healed every wound that doesn't last,
+        so none lingers in the record to be "reopened" (`engine.injuries`)."""
+        self.health = health
+        self._heal_if_unhurt()
+
+    def _heal_if_unhurt(self) -> None:
+        if self.health is Health.UNHURT and any(not w.lasting for w in self.wounds):
+            self.wounds = [w for w in self.wounds if w.lasting]
 
 
 class LadderPosition(EngineModel):
