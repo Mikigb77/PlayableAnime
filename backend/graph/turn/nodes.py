@@ -98,14 +98,18 @@ def turn_rng(turn: TurnInput) -> SeededRng:
 
 
 def _rejected(code: str, rejection: Any) -> Issue:
-    return Issue(code, rejection.reason, f"{rejection.subject}: {rejection.change}")
+    # What kind of change it was, such as "character.item", which holds no story text (T6).
+    area = ".".join(part.split()[0] for part in (rejection.subject, rejection.change) if part)
+    return Issue(code, rejection.reason, f"{rejection.subject}: {rejection.change}", area)
 
 
 def _issues(state: TurnState, new: list[Issue]) -> list[Issue]:
     """Adds what a check found to the turn's issues and logs it. Details and subjects can hold
-    story text, so only the code is logged above DEBUG (T6)."""
+    story text, so only the code, and for a refused change its kind, is logged above DEBUG
+    (T6)."""
     for issue in new:
-        logger.info("turn check: %s", issue.code, extra={"turn_issue": {"code": issue.code}})
+        logged = {"code": issue.code} | ({"area": issue.area} if issue.area else {})
+        logger.info("turn check: %s", issue.code, extra={"turn_issue": logged})
         logger.debug(
             "turn check detail: %s",
             issue.code,
@@ -396,7 +400,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     world = state["world"]
     issues: list[Issue] = []
     if mode != "template":
-        delta, found = check.check_update(narration.update, world)
+        # C10: what the steps that played already moved, so the scene doesn't move it again.
+        resolution: Resolution = state["resolution"]
+        moved = [c for s in resolution.steps if not s.interrupted for c in s.effects.items]
+        delta, found = check.check_update(narration.update, world, moved)
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(
                 "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"

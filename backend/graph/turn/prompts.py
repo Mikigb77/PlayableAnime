@@ -87,6 +87,15 @@ character: code weighs their sheet against it (A2, G14).
 attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, charm, nerve, \
 bearing: speed for agility, a leap or quick hands, wits for noticing things), each skill and each \
 trait that helps or gets in the way, by name, and any power, technique or item, by id (G14).
+- exchanges (C10): whatever the step pays, gives, hands over, sells, spends, uses up or takes \
+from someone if it works, money included. give: to with_id, who gets it. spend: used up, eaten, \
+drunk, thrown away, or paid where nobody keeps it. take: from with_id, such as a theft or a \
+purchase. thing in plain words; money true for money, with amount in the character's currency; \
+item_id for an item on the sheet; amount 0 for all of it. Buying is a give of the price and a \
+take of the thing. The character has only what PLAYER CHARACTER's resources list, and CHANGED \
+HANDS says where the rest went: never count as theirs money or a thing they don't hold. Letting \
+someone keep what they already hold, such as coins they took ("keep the coins as my payment"), \
+moves nothing: no exchange.
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
@@ -176,6 +185,10 @@ details of the place. Then the outcome the engine resolved (OUTCOME). Then how t
 Never open with the result, with a recap, or with the player's words repeated back.
 - How the character acts shows who they are: their skills, powers and temperament. Temperament \
 colours the telling but never adds a choice.
+- The player character has exactly what PLAYER CHARACTER's resources list, money included, and \
+CHANGED HANDS says where the rest went (C10). Never show them paying, handing over or using money \
+or a thing they don't have, nor anyone giving back what they still keep. changed_hands under a \
+step in OUTCOME is what the action moved, already recorded: show it, and never record it again.
 - A power, a trait or a skill costs only what OUTCOME's costs say for that step, shown in \
 proportion to how hard it was used, and nothing at all when OUTCOME lists none. Never give an \
 ability a pain, a drain, a sickness or another side effect that its costs and the world's rules \
@@ -251,7 +264,13 @@ adults have children. Never make up the player character's parents or children: 
 their story, and family marked unknown_to_you is kin they haven't learned of yet. A newborn the \
 world brought keeps a placeholder name such as "Mira's child" until someone names them: give \
 their name then, under their id.
-- places, factions, facts, items and leads that this scene established or changed. Never mark a \
+- items (C10): everything that changed hands in this scene beyond OUTCOME's changed_hands, money \
+included, one entry each: from_id who had it and to_id who has it now, by character id (the \
+player character's id is under PLAYER CHARACTER), or 'world' for what the world gives (found, \
+made) or takes (used up, eaten, broken, lost). A theft from the player character goes from their \
+id to the thief's. money true for money, with quantity the amount; how in a word or two (stolen, \
+paid, given, found). Nobody gives what they don't have: the engine refuses it.
+- places, factions, facts and leads that this scene established or changed. Never mark a \
 place ruined or a faction destroyed: the engine does that.
 - scene_end: the exact moment this scene stops on, where, who is present and where they stand, \
 and the things in hand or in the scene that matter next.
@@ -288,8 +307,12 @@ their stakes, and the leads on offer.
 - PLAYER CHARACTER: the player character's record: who they are, how they look and their age, \
 where they are and what they are doing, the groups they belong to, their family by name, and \
 their sheet: attributes, skills, traits, powers and techniques with their costs, disposition, \
-resources, condition, and the ladders they climb. rulings and growth record what was settled \
+resources (their money, shown even when it is none, and what they own), condition, and the \
+ladders they climb. rulings and growth record what was settled \
 about their powers and how they grew; backstory is what was recorded of their past.
+- CHANGED HANDS: the player character's latest gains and losses, oldest first: what came to \
+them, what left them and who it went to, with how and how long ago. What they hold now is \
+PLAYER CHARACTER's resources, money included.
 - KNOWN: the people, places and factions the player character knows of who aren't in the scene, \
 with aliases, and a status when it isn't the usual one, such as dead or ruined. Use these names \
 as spelled.
@@ -307,8 +330,9 @@ someone new, comes here; a death's or an epilogue's comes last, after ENDING.
 each aims at and any words to speak, theories about how their powers work, backstory claims, new \
 goals, what they respond to, and outcome claims, which are hopes.
 - OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
-odds when a roll decided it, costs, beats, chain (the links of cause and effect it weighed, each \
-with whether it holds), interrupted, met and struck. Then stopped_at_step, stop_reason and \
+odds when a roll decided it, costs, changed_hands (what the step moved, from whom to whom), \
+beats, chain (the links of cause and effect it weighed, each with whether it holds), \
+interrupted, met and struck. Then stopped_at_step, stop_reason and \
 unplayed when the plan stopped early, now_canon for what became true, rulings, and backstory with \
 whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \

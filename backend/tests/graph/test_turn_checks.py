@@ -10,6 +10,7 @@ from engine.contracts import (
     Harm,
     Intent,
     IntentStep,
+    ItemChange,
     OutcomeClass,
     Peril,
     PictureDecision,
@@ -467,3 +468,21 @@ def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
     assert checked.summary is None
     assert [i.code for i in issues] == ["blank_scene_end", "dead_present"]
     assert delta.scene_end.present_ids == ["luca", "bartender", "new_guard"]  # never mutated
+
+
+def test_a_payment_a_step_already_made_is_never_made_again_by_the_scene():
+    # C10: the step moved the coins before narration; the narrator telling it again would pay
+    # twice. What else changed hands in the scene still applies.
+    paid = ItemChange(name="5 coins", money=True, quantity=5, from_id="luca", to_id="carmine")
+    told = ItemChange(
+        name="five copper coins", money=True, quantity=5, from_id="luca", to_id="carmine"
+    )
+    key = ItemChange(name="a brass key", from_id="carmine", to_id="luca")
+    knife = ItemChange(name="the flick knife", item_id="knife", from_id="luca", to_id="world")
+    delta = StateDelta(items=[told, key, knife])
+
+    checked, issues = check_update(delta, grounded_world(), [paid, knife])
+
+    assert checked.items == [key]
+    assert [i.code for i in issues] == ["move_recorded"]
+    assert check_update(delta, grounded_world())[0].items == [told, key, knife]

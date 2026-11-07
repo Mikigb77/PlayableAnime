@@ -8,6 +8,7 @@
 """
 
 from engine.contracts.delta import (
+    WORLD,
     AttitudeShift,
     CharacterChange,
     ConditionChange,
@@ -47,6 +48,8 @@ from engine.contracts.intent import (
     Challenge,
     Contact,
     EffectScale,
+    Exchange,
+    ExchangeKind,
     GrowthKind,
     Intent,
     IntentStep,
@@ -105,6 +108,8 @@ __all__ = [
     "DirectorPlan",
     "DirectorUpdates",
     "EffectScale",
+    "Exchange",
+    "ExchangeKind",
     "EventKind",
     "EventSource",
     "FactionChange",
@@ -112,6 +117,7 @@ __all__ = [
     "Intent",
     "IntentStep",
     "ItemChange",
+    "WORLD",
     "LinkResolution",
     "MeansVerdict",
     "NewFact",

@@ -631,3 +631,31 @@ def test_memory_and_status_in_catalan():
     assert all(p.status_label == "Amb vida" for p in memory.people)
     lines = status_view(grounded_world(), CA).character.lines
     assert "200.000 lire" in lines and "Sense ferides" in lines
+
+
+def test_status_tells_what_the_player_character_gained_and_lost_in_every_language():
+    # C10: who has what they lost, named only if they know who it was (C6).
+    from engine.contracts import ItemChange
+
+    stranger = CharacterChange(id="stranger", name="Enzo", description="A man in a hat.")
+    moves = [
+        ItemChange(name="lire", money=True, quantity=50, from_id="luca", to_id="carmine"),
+        ItemChange(name="a brass key", from_id="stranger", to_id="luca"),
+        ItemChange(name="the flick knife", item_id="knife", from_id="luca", to_id="world"),
+    ]
+    state = engine(grounded_world(), characters=[stranger], items=moves)
+
+    def since(language: Language) -> list[str]:
+        return [s.text for s in status_view(state, language).since][:3]
+
+    assert since(Language.EN) == [
+        "Lost: flick knife",
+        "From someone: brass key",
+        "To Carmine Russo: 50 lire",
+    ]
+    assert since(ES) == [
+        "Pérdida: flick knife",
+        "De alguien: brass key",
+        "Para Carmine Russo: 50 lire",
+    ]
+    assert since(CA) == ["Pèrdua: flick knife", "D'algú: brass key", "Per a Carmine Russo: 50 lire"]

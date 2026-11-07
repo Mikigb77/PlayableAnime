@@ -142,6 +142,30 @@ class Beat(EngineModel):
     uses: list[BeatUse] = Field(default_factory=list)
 
 
+class ExchangeKind(StrEnum):
+    """C10. Which way something moves in a step, between the character and someone else."""
+
+    GIVE = "give"  # hands it over, pays, sells, lends or bribes: to `with_id`
+    SPEND = "spend"  # used up, eaten, drunk, burned, broken, thrown away or left behind
+    TAKE = "take"  # takes it from `with_id`: steals, snatches, accepts, buys
+
+
+class Exchange(EngineModel):
+    """C10, R2. Something the step moves if it works: a payment, a gift, a bribe, a theft, or
+    something used up. Code checks that the character holds what they give or spend before the
+    step is tried, and records the move itself, so the narrator can't contradict it. What
+    someone else already holds is never given again: letting them keep it moves nothing."""
+
+    kind: ExchangeKind
+    thing: str = Field(description="What moves, in plain words: '12 copper coins', 'the dagger'.")
+    money: bool = Field(default=False, description="It is money, counted in amount.")
+    amount: int = Field(default=1, description="How many, or how much money; 0 for all of it.")
+    item_id: str | None = Field(default=None, description="The item's id, when it has one.")
+    with_id: str | None = Field(
+        default=None, description="Who gets it, or whom it is taken from, by id. Empty to spend."
+    )
+
+
 class Stranger(EngineModel):
     """F1, W1, W2. Someone a harmful step aims at whom the scene hasn't named: "a random guy",
     "the nearest passer-by". Code makes them real when the place holds them, with strength
@@ -376,6 +400,13 @@ class IntentStep(EngineModel):
         ),
     )
     beats: list[Beat] = Field(default_factory=list)
+    exchanges: list[Exchange] = Field(
+        default_factory=list,
+        description=(
+            "C10: what the step pays, gives, spends, uses up or takes from someone if it works,"
+            " money included. Nothing for what someone already holds."
+        ),
+    )
     chain: list[ChainLink] = Field(default_factory=list)
     facts: StepFacts = Field(default_factory=StepFacts)
     lines: list[str] = Field(

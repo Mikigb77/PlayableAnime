@@ -535,9 +535,13 @@ def test_facts_record_who_knows_them():
 def test_items_are_gained_used_up_and_never_conjured_away():
     state = grounded_world()
 
-    gained = apply(state, items=[ItemChange(name="bullets", quantity=6)]).state
-    used = apply(gained, items=[ItemChange(name="Bullets", quantity=-6)]).state
-    missing = apply(state, items=[ItemChange(name="grenade", quantity=-1)])
+    gained = apply(
+        state, items=[ItemChange(name="bullets", quantity=6, from_id="world", to_id="luca")]
+    ).state
+    used = apply(
+        gained, items=[ItemChange(name="Bullets", quantity=6, from_id="luca", to_id="world")]
+    ).state
+    missing = apply(state, items=[ItemChange(name="grenade", from_id="luca", to_id="world")])
 
     def names(s):
         return [i.name for i in s.player.sheet.resources.items]

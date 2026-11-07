@@ -2,9 +2,11 @@
 
 For each step, in order:
 
-1. **The world and the sheet** (G8, G14). A step the world's rules forbid, a power the character
-   doesn't have or hasn't recovered, a technique they never learned or an item that isn't on them
-   is settled at once, with no roll.
+1. **The world and the sheet** (G8, G14, C10). A step the world's rules forbid, a power the
+   character doesn't have or hasn't recovered, a technique they never learned, an item that isn't
+   on them, or a payment, gift or use of something they don't hold is settled at once, with no
+   roll. What a step pays, gives, spends or takes moves as the engine's own change when it works
+   (`engine.resolve.exchanges`).
 2. **The beats** (R2). Everything a beat uses must be the body, a power, something carried,
    something the scene holds or something this turn made canon. Something new is canon if the
    place plausibly holds it, rolled for if that's uncertain, and an empty search if it can't.
@@ -54,6 +56,7 @@ from dataclasses import dataclass, field
 from engine.context import TurnContext
 from engine.contracts.delta import (
     CharacterChange,
+    ItemChange,
     PlaceChange,
     PowerChange,
     PowerSetting,
@@ -79,7 +82,7 @@ from engine.contracts.resolution import (
     StopReason,
     TrainingSoFar,
 )
-from engine.resolve import capability
+from engine.resolve import capability, exchanges
 from engine.resolve import odds as odds_mod
 from engine.resolve import perils as perils_mod
 from engine.resolve import strangers as strangers_mod
@@ -163,6 +166,7 @@ class _Frame:
     # A3: the player character's rolled steps that missed in a row so far, within this plan;
     # `engine.pipeline.play_out` keeps the count from the steps that played, for the next turn.
     misses: int = 0
+    moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
 
 
 @dataclass
@@ -371,7 +375,11 @@ def _settle_step(
     if gone:
         settled = Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, frame.gone)
     else:
-        settled = world_check(state, actor, step) or sheet_check(state, actor, step, drawn)
+        settled = (
+            world_check(state, actor, step)
+            or sheet_check(state, actor, step, drawn)
+            or exchanges.check(state, actor, step, frame.moved)
+        )
     attempted = settled is None
     if settled is None:
         found = beat_check(state, actor, step, frame.canon, drawn, ctx, rng)
@@ -549,6 +557,13 @@ def _settle_step(
             effects = _known_to_player(effects, {p.id for p in met.people})
         effects = _merge(met.effects, effects)  # they're real before anything happens to them
     effects = _merge(effects, extra)
+    if attempted:
+        # C10. What the step pays, gives, spends or takes moves now, before anything is told.
+        moves = exchanges.changes(
+            state, actor, step, settled.outcome_class, settled.result, frame.moved
+        )
+        frame.moved.extend(moves)
+        effects = _merge(effects, StateDelta(items=moves))
     reason = settled.reason
     # W10a. A stopped-time hit that was made lands however the target fares: a throw that a
     # target's body takes, or that misses, still lets its blast loose where it strikes.

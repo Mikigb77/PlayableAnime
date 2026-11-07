@@ -241,6 +241,9 @@ class Issue:
     code: str
     detail: str
     subject: str | None = None
+    # For a refused change, what kind it was ("character.item"), the only part logged with the
+    # code, since detail and subject can hold story text (T6).
+    area: str | None = None
 
 
 EndingKind = Literal["death", "chosen"]

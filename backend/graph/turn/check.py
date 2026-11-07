@@ -11,6 +11,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from engine import limits
@@ -20,6 +21,7 @@ from engine.contracts import (
     DirectorPlan,
     Intent,
     IntentStep,
+    ItemChange,
     OutcomeClass,
     PictureTrigger,
     Resolution,
@@ -29,6 +31,7 @@ from engine.contracts import (
     SuggestionPlan,
 )
 from engine.director.themes import allowed_themes, fits
+from engine.possessions import bare
 from engine.state.cast import CharacterStatus
 from engine.state.records import LeadStatus, RollRecord, StepResult
 from engine.state.world import WorldState
@@ -227,16 +230,24 @@ def _stop_reason(step: StepResolution) -> StopReason:
     return StopReason.FAILED
 
 
-def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list[Issue]]:
+def check_update(
+    delta: StateDelta, state: WorldState, moved: Sequence[ItemChange] = ()
+) -> tuple[StateDelta, list[Issue]]:
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
     A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
     dead can't be present (C1), and the rolling summary is never blanked. A new character or
     faction named after a real person or organisation is left out, and a known one keeps its
-    name (G12).
+    name (G12). What the player's steps already moved (`moved`, C10) is left out, so a payment
+    told in the scene is never made twice.
     """
     delta, hits = limits.strip_real_entities(delta, state)
     issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
+    if moved and delta.items:
+        kept = [change for change in delta.items if not _already_moved(change, moved)]
+        if len(kept) < len(delta.items):
+            issues.append(Issue("move_recorded", "the step already moved it"))
+            delta = delta.model_copy(update={"items": kept})
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()
@@ -256,6 +267,23 @@ def check_update(delta: StateDelta, state: WorldState) -> tuple[StateDelta, list
     if delta.summary is not None and not delta.summary.strip():
         delta.summary = None
     return delta, issues
+
+
+def _already_moved(change: ItemChange, moved: Sequence[ItemChange]) -> bool:
+    """Whether the narrator's change is one a step already made: the same sides, and money for
+    money or the same thing."""
+    for done in moved:
+        if (change.from_id, change.to_id) != (done.from_id, done.to_id):
+            continue
+        if change.money or done.money:
+            if change.money and done.money:
+                return True
+            continue
+        if change.item_id and change.item_id == done.item_id:
+            return True
+        if bare(change.name).casefold() == bare(done.name).casefold():
+            return True
+    return False
 
 
 def check_plan(
