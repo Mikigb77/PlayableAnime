@@ -18,6 +18,7 @@ import 'package:playable_anime/features/story/story_models.dart';
 import 'package:playable_anime/features/story/story_repository.dart';
 import 'package:playable_anime/features/story/story_screen.dart';
 import 'package:playable_anime/features/voice/dictation_mode.dart';
+import 'package:playable_anime/features/voice/speech_engine.dart';
 
 import '../helpers.dart';
 
@@ -140,7 +141,7 @@ void main() {
 
   setUp(() => turns = _Turns());
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {FakeSpeechEngine? speech}) async {
     usePhone(tester);
     router = GoRouter(
       initialLocation: '/story/s1',
@@ -165,7 +166,7 @@ void main() {
       ProviderScope(
         overrides: [
           storyRepositoryProvider.overrideWithValue(turns),
-          speechEngineProvider.overrideWithValue(FakeSpeechEngine(supported: false)),
+          speechEngineProvider.overrideWithValue(speech ?? FakeSpeechEngine(supported: false)),
         ],
         child: MaterialApp.router(
           theme: AppTheme.build(Brightness.dark, GenreAccent.lucid),
@@ -206,6 +207,95 @@ void main() {
     turns.pending!.complete(_completes(3, 'The valley is gone.'));
     await settle(tester);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+  });
+
+  String box(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField)).controller!.text;
+
+  group('with the mic on (V2)', () {
+    testWidgets('send turns it off and waits for the words, then sends the whole box', (
+      tester,
+    ) async {
+      final mic = FakeSpeechEngine(onPhone: false);
+      await open(tester, speech: mic);
+      final l10n = await english();
+      await tester.enterText(find.byType(TextField), 'Quietly,');
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      expect(mic.listens, hasLength(1));
+
+      await tester.tap(find.byTooltip(l10n.composerSend));
+      await tester.pump();
+      expect(mic.stops, 1);
+      expect(turns.requests, isEmpty, reason: 'half of what was said never goes');
+      expect(find.text('Climb'), findsNothing, reason: 'no other turn can start meanwhile');
+
+      mic
+        ..hear('I bow.')
+        ..stopped();
+      await tester.pump();
+      final sent = turns.requests.single;
+      expect(sent.action, 'Quietly, I bow.');
+      expect(sent.inputMode, 'voice_edited');
+
+      turns.pending!.complete(_completes(2, 'The elder nods.'));
+      await settle(tester);
+      expect(box(tester), isEmpty);
+    });
+
+    testWidgets('send with an empty box sends what was said', (tester) async {
+      final mic = FakeSpeechEngine(onPhone: false);
+      await open(tester, speech: mic);
+      final l10n = await english();
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      await tester.tap(find.byTooltip(l10n.composerSend));
+      await tester.pump();
+      mic
+        ..hear('I climb.')
+        ..stopped();
+      await tester.pump();
+      expect(turns.requests.single.action, 'I climb.');
+      expect(turns.requests.single.inputMode, 'voice');
+    });
+
+    testWidgets('words that cannot be written down are not sent', (tester) async {
+      final mic = FakeSpeechEngine(onPhone: false);
+      await open(tester, speech: mic);
+      final l10n = await english();
+      await tester.enterText(find.byType(TextField), 'I climb');
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      await tester.tap(find.byTooltip(l10n.composerSend));
+      await tester.pump();
+      mic.fail(SpeechFailure.offline);
+      await tester.pump();
+      expect(turns.requests, isEmpty);
+      expect(find.text(l10n.micOffline), findsOneWidget);
+      expect(box(tester), 'I climb');
+    });
+
+    testWidgets('a suggestion waits for it too, and what was said stays in the box', (
+      tester,
+    ) async {
+      final mic = FakeSpeechEngine(onPhone: false);
+      await open(tester, speech: mic);
+      await tester.tap(find.byType(MicButton));
+      await tester.pump();
+      await tester.ensureVisible(find.text('Climb'));
+      await tester.tap(find.text('Climb'));
+      await tester.pump();
+      expect(mic.stops, 1);
+      expect(turns.requests, isEmpty);
+      expect(tester.widget<Composer>(find.byType(Composer)).busy, isTrue);
+
+      mic
+        ..hear('I look around.')
+        ..stopped();
+      await tester.pump();
+      expect(turns.requests.single.choiceId, 'c1');
+      expect(box(tester), 'I look around.');
+    });
   });
 
   testWidgets('a retry of a turn refused before it started empties the box', (tester) async {

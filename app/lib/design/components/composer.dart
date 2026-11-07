@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/l10n.dart';
@@ -24,7 +27,9 @@ class SlashCommand {
 /// (V1), and send. Typing `/` lists the slash commands that match.
 ///
 /// The composer never sends on its own: dictated words land in [controller] and wait for the
-/// player (V2).
+/// player (V2). Nor does it send while the mic is on or its words are on their way ([dictating]):
+/// send then turns the mic off, waits for the words to land after what was typed, and sends the
+/// whole box, as Claude's app does (Miki, 2026-11-07).
 class Composer extends StatefulWidget {
   const Composer({
     super.key,
@@ -36,6 +41,8 @@ class Composer extends StatefulWidget {
     this.hintText,
     this.commands = const [],
     this.mic,
+    this.dictating,
+    this.onFinishDictation,
     this.maxLength = 2000,
   });
 
@@ -54,6 +61,16 @@ class Composer extends StatefulWidget {
   /// The dictation button, from features/voice.
   final Widget? mic;
 
+  /// Whether [mic] is on, or what it heard is still on its way to the box. Send stays open then,
+  /// even with nothing in the box yet.
+  final ValueListenable<bool>? dictating;
+
+  /// Turns [mic] off and waits until what it heard is in the box. Sending while [dictating] calls
+  /// it first, then sends the box as it is by then, even if the owner showed [busy] while it
+  /// waited; false (the words couldn't be written down, or the owner won't send now) sends
+  /// nothing, leaving the box to the player.
+  final Future<bool> Function()? onFinishDictation;
+
   /// The API's limit on an action (docs/API.md: 1 to 2000 characters).
   final int maxLength;
 
@@ -62,10 +79,14 @@ class Composer extends StatefulWidget {
 }
 
 class _ComposerState extends State<Composer> {
+  /// Send was tapped while the mic was on: the words are on their way, and then the box goes.
+  bool _finishing = false;
+
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_changed);
+    widget.dictating?.addListener(_changed);
   }
 
   @override
@@ -75,11 +96,16 @@ class _ComposerState extends State<Composer> {
       old.controller.removeListener(_changed);
       widget.controller.addListener(_changed);
     }
+    if (old.dictating != widget.dictating) {
+      old.dictating?.removeListener(_changed);
+      widget.dictating?.addListener(_changed);
+    }
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_changed);
+    widget.dictating?.removeListener(_changed);
     super.dispose();
   }
 
@@ -87,8 +113,16 @@ class _ComposerState extends State<Composer> {
 
   String get _text => widget.controller.text.trim();
 
-  bool get _canSend =>
-      widget.enabled && !widget.busy && _text.isNotEmpty && _text.length <= widget.maxLength;
+  bool get _dictating => widget.dictating?.value ?? false;
+
+  bool get _open => widget.enabled && !widget.busy && !_finishing;
+
+  bool get _fits => _text.length <= widget.maxLength;
+
+  bool get _sendable => _text.isNotEmpty && _fits;
+
+  /// With the mic on, send is open even with an empty box: the words are on their way.
+  bool get _canSend => _open && (_sendable || (_dictating && _fits));
 
   List<SlashCommand> get _matches {
     final text = widget.controller.text;
@@ -100,8 +134,18 @@ class _ComposerState extends State<Composer> {
     ];
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_canSend) return;
+    if (_dictating) {
+      setState(() => _finishing = true);
+      var landed = false;
+      try {
+        landed = await (widget.onFinishDictation?.call() ?? Future.value(true));
+      } finally {
+        if (mounted) setState(() => _finishing = false);
+      }
+      if (!mounted || !landed || !widget.enabled || !_sendable) return;
+    }
     widget.onSubmit(_text);
   }
 
@@ -171,7 +215,7 @@ class _ComposerState extends State<Composer> {
                                 maxLines: 5,
                                 textCapitalization: TextCapitalization.sentences,
                                 textInputAction: TextInputAction.send,
-                                onSubmitted: (_) => _submit(),
+                                onSubmitted: (_) => unawaited(_submit()),
                                 style: theme.textTheme.bodyLarge,
                                 decoration: InputDecoration(
                                   hintText: widget.hintText ?? l10n.composerHint,
@@ -191,8 +235,8 @@ class _ComposerState extends State<Composer> {
                             padding: const EdgeInsets.only(bottom: 4, top: 4),
                             child: _SendButton(
                               enabled: _canSend,
-                              busy: widget.busy,
-                              onPressed: _submit,
+                              busy: widget.busy || _finishing,
+                              onPressed: () => unawaited(_submit()),
                             ),
                           ),
                         ],
