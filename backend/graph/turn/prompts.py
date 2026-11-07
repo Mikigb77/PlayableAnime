@@ -269,9 +269,7 @@ image_prompt (M1, M5): null unless PICTURE is given. Then one to three sentences
 illustrator who never read the scene draw it. For a scene, the moment PICTURE's why names, as \
 you told it: who does what, exactly where, as the narration has the place, and the light; no \
 place, building, ruin, river, creature, person or thing it doesn't tell, from the world, the \
-premise or earlier scenes. For a cover, the story as a whole, as on a book or film poster, never \
-just this scene's moment: its main character in the story's world, with its telling places or \
-threats behind them. Either way, the player character ("you") has only what PLAYER CHARACTER's \
+premise or earlier scenes. The player character ("you") has only what PLAYER CHARACTER's \
 resources list or the scene puts in their hands: never give them a weapon or gear they don't \
 have. For a portrait, the face and expression now; for a place, how it looks now. True to \
 everyone's appearance.

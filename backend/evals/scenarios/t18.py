@@ -768,9 +768,9 @@ async def moment_as_told(ev: Eval) -> None:
     title="The cover as the story's poster",
     requirements=("M1", "M5", "C10", "T18"),
     passes_when=(
-        "The story's cover, planned in its second scene, is its poster: the main character in "
-        "the story's world, premise included, dramatic rather than one scene's moment, with only "
-        "the things they have (M1, C10)"
+        "The story's cover, planned in its second scene, is its poster: drawn from the premise "
+        "around the main character, dramatic, and never that scene's moment, with only the "
+        "things they have (M1, C10)"
     ),
 )
 async def cover_as_poster(ev: Eval) -> None:
@@ -802,6 +802,12 @@ async def cover_as_poster(ev: Eval) -> None:
             f"{seed}: {prompt}",
         )
         ev.check(
+            "and nothing of the scene it comes with, whose leap through the pines isn't the "
+            "story (M1, Miki 2026-11-07)",
+            not any(word in prompt.casefold() for word in ("pine", "branch", "leap", "wall")),
+            f"{seed}: {prompt}",
+        )
+        ev.check(
             "and Lin still carries nothing, so it gives him no weapon (C10)",
             "Lin Feng carries no weapon" in prompt,
             f"{seed}: {prompt}",
@@ -816,12 +822,17 @@ async def cover_as_poster(ev: Eval) -> None:
                         "The picture works as the story's cover: a dramatic, iconic composition "
                         "around Lin in a world of cultivation sects, not a plain record of one "
                         "moment",
-                        "It sums up the story below, and may show the castle ruins across the "
-                        "river from its premise",
+                        "It sums up the story's premise below, and may show the castle ruins "
+                        "across the river from it",
+                        "It is not the second scene's moment: Lin is not leaping or climbing "
+                        "from branch to branch up the pines",
                         "Lin holds and wears no weapon: no sword, dagger or knife",
                     ),
                     instructions=PICTURE_INSTRUCTIONS,
                 ),
                 [("the cover", picture)],
-                context=f"The story's premise:\n{LEAP_PREMISE}",
+                context=(
+                    f"The story's premise:\n{LEAP_PREMISE}\n\nThe second scene, which the cover "
+                    f"comes with but is not a picture of:\n{played.narration}"
+                ),
             )

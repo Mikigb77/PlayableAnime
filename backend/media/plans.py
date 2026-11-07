@@ -14,7 +14,7 @@ from engine.contracts import FIRST_PICTURES
 from engine.looks import place_version
 from engine.state.world import WorldState
 from lucid.errors import ApiError, ErrorCode
-from media.briefs import player_at, scene_figures, scene_place, time_of_day
+from media.briefs import cover_brief, player_at, scene_figures, scene_place, time_of_day
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.prompts import Brief, WorldLook
 from stories.models import ImageKind, Scene, Story
@@ -227,6 +227,20 @@ def brief_for_scene(story: Story, scene: Scene) -> Brief:
         place_name=place_name,
         place_look=place_look,
     )
+
+
+def brief_for_cover(story: Story) -> Brief:
+    """The story's cover, its poster, for a scene marked for one without a plan: drawn from the
+    premise as a planned cover is, never from that scene (M1, `media.briefs.cover_brief`)."""
+    look = look_for_story(story)
+    try:
+        state = WorldState.model_validate(story.state)
+    except ValueError:
+        return Brief(
+            description=look.setting,
+            look=WorldLook(genre=look.genre, era=look.era, tone=look.tone),
+        )
+    return cover_brief(state, look)
 
 
 def _ending(text: str, limit: int = 1000) -> str:

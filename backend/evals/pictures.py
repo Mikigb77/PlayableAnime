@@ -92,8 +92,11 @@ def scene_brief(
     `ending()` of the scene's narration when it wrote none, as `stories.turns.brief` builds it:
     the people the description names, the subject first, with what the player character has on
     them (`media.briefs`), unless the eval names the `people`, who "you" is and the scene's turn.
-    A scene picture also gets the time of day and the place it ends in; a `cover`, the story's
-    poster (M1), gets neither, and is drawn with the story's `premise` instead."""
+    A scene picture also gets the time of day and the place it ends in. A `cover`, the story's
+    poster (M1), is drawn from the story's `premise` alone, never from the scene's description
+    (`media.briefs.cover_brief`)."""
+    if cover:
+        return briefs.cover_brief(state, look(state, premise))
     chosen = (
         figures(state, people)
         if people
@@ -106,8 +109,6 @@ def scene_brief(
         you=state.player.name,
         turn=state.turn,
     )
-    if cover:
-        return brief
     place_id, place_name, place_look = briefs.scene_place(state)
     return replace(
         brief,

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from dataclasses import replace
 
 from engine.contracts import PictureTrigger
 from engine.labels import part_of_day, second_of_day
@@ -28,7 +29,7 @@ from engine.possessions import WHERE_IT_STANDS, bare
 from engine.state.bible import Calendar
 from engine.state.cast import Character
 from engine.state.world import WorldState
-from media.prompts import MAX_FIGURES, SAYS_YOU, Figure
+from media.prompts import MAX_FIGURES, SAYS_YOU, Brief, Figure, WorldLook
 
 # Words in a name that say nothing about who is meant on their own, such as "the" in "Mei of the
 # Willows". A name's other words count on their own when written with a capital, as in the
@@ -37,6 +38,9 @@ _PARTICLES = frozenset({"the", "of", "and", "von", "van", "der", "de", "del", "d
 
 # Pictures whose subject is a thread, not a person (`engine.director.pictures`).
 THREAD_SUBJECTS = frozenset({PictureTrigger.ARC_END, PictureTrigger.EVENT})
+# The living people a cover shows besides its main character, the first its premise names, so the
+# poster stays theirs even when a family name in it names a whole family (M1).
+COVER_OTHERS = 2
 
 
 def figure(character: Character, *, carries: tuple[str, ...] | None = None) -> Figure:
@@ -118,6 +122,31 @@ def scene_figures(
     return tuple(
         figure(c, carries=belongings(c) if carried and c.id == player else None)
         for c in chosen[:MAX_FIGURES]
+    )
+
+
+def cover_brief(state: WorldState, look: WorldLook) -> Brief:
+    """A story's cover, its poster in the Library (M1): drawn from the story's premise, the look's
+    `setting`, as a starter premise's cover is (`media.premise_covers`), never from the scene it
+    is planned in, so it sums up the story instead of retelling one moment of it (Miki,
+    2026-11-07). It is drawn around the main character, the player character, with what they have
+    on them (C10), and up to `COVER_OTHERS` living people the premise names, as they look now (C9,
+    M5). The premise goes in once, as what the cover shows."""
+    player = state.player
+    premise = " ".join(look.setting.split())
+    named = [
+        c for c in state.characters.values() if c.id != player.id and c.alive and names(premise, c)
+    ]
+    main = f"The story's main character, {player.name}"
+    return Brief(
+        description=f"{main}, in the world its premise tells: {premise}" if premise else main,
+        look=replace(look, setting=""),
+        figures=tuple(
+            figure(c, carries=belongings(c) if c.id == player.id else None)
+            for c in [player, *named[:COVER_OTHERS]][:MAX_FIGURES]
+        ),
+        you=player.name,
+        turn=state.turn,
     )
 
 

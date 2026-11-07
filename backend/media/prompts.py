@@ -102,9 +102,9 @@ class WorldLook:
     genre: str = ""
     era: str = ""
     tone: str = ""
-    # The premise, which only a cover is drawn with: a story's cover in the Library, its poster
-    # (M1), or a starter premise's on Discover. A scene picture never sees it, since a premise is
-    # not the scene a picture shows (M5).
+    # What only a cover is drawn with: a starter premise's tagline on Discover, or a story's
+    # premise, which `media.briefs.cover_brief` makes what its cover, its poster, shows (M1). A
+    # scene picture never sees it, since a premise is not the scene a picture shows (M5).
     setting: str = ""
 
 

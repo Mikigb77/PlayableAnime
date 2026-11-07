@@ -51,7 +51,14 @@ from media.drawing import (
 )
 from media.models import Image, ImageStatus, Payer, ScenePicture, SkipReason
 from media.notes import NOTED, SceneText, apply_note, note_prompt
-from media.plans import ILLUSTRATE, SCENE_FLAG, brief_for_scene, plan_again, plan_picture
+from media.plans import (
+    ILLUSTRATE,
+    SCENE_FLAG,
+    brief_for_cover,
+    brief_for_scene,
+    plan_again,
+    plan_picture,
+)
 from media.prompts import MAX_REFERENCES, Brief, build_prompt
 from media.storage import SignedUrl, delete_quietly, get_storage, signed_url, storage_key
 from stories.models import ImageKind, Scene, Story
@@ -169,11 +176,14 @@ def _link(story: Story, scene: Scene, illustrate: bool) -> tuple[ScenePicture, b
     link = ScenePicture.objects.select_related("image").filter(scene=scene).first()
     if link is not None:
         return link, False
+    if scene.image_planned and scene.image_kind == ImageKind.COVER:
+        # Marked for the cover without a plan: the story's poster, from its premise (M1).
+        cover = brief_for_cover(story)
+        return plan_picture(scene, kind=ImageKind.COVER, trigger=SCENE_FLAG, brief=cover), False
     brief = brief_for_scene(story, scene)
     if scene.image_planned:
-        # Marked planned without a plan: draw the scene itself, or the cover.
-        kind = scene.image_kind if scene.image_kind == ImageKind.COVER else ImageKind.SCENE
-        return plan_picture(scene, kind=kind, trigger=SCENE_FLAG, brief=brief), False
+        # Marked planned without a plan: draw the scene itself.
+        return plan_picture(scene, kind=ImageKind.SCENE, trigger=SCENE_FLAG, brief=brief), False
     if illustrate:
         link = plan_picture(
             scene, kind=ImageKind.SCENE, trigger=ILLUSTRATE, brief=brief, planned=False
