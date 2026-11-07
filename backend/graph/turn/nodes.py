@@ -26,7 +26,7 @@ from dataclasses import dataclass, replace
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from engine import limits, pipeline
+from engine import injuries, limits, pipeline
 from engine.apply import DeltaSource, apply_delta
 from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
@@ -411,7 +411,13 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
                 "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"
             )
         issues += found
-        applied = apply_delta(world, delta, turn.ctx, source=DeltaSource.NARRATOR)
+        # N6: the narrator records harm to the player character only where something recorded
+        # this turn caused it: a power's toll in health or blood, or the first opening's premise.
+        first_opening = turn.kind is TurnKind.OPENING and not turn.state.opening_due
+        hurts = first_opening or injuries.pays_in_body(state["resolution"])
+        applied = apply_delta(
+            world, delta, turn.ctx, source=DeltaSource.NARRATOR, may_hurt_player=hurts
+        )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.

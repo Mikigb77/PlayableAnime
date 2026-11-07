@@ -314,6 +314,10 @@ class Health(StrEnum):
     BADLY_WOUNDED = "badly_wounded"
     DYING = "dying"
 
+    def worse_than(self, other: "Health") -> bool:
+        order = list(Health)
+        return order.index(self) > order.index(other)
+
 
 class Wound(EngineModel):
     text: str
@@ -355,17 +359,18 @@ class Condition(EngineModel):
 
     @model_validator(mode="after")
     def _healed_wounds_gone(self) -> "Condition":
-        """An unhurt body carries only the wounds that last, so a state saved with a healed wound
-        still listed loads without it (`engine.injuries`)."""
-        if self.health is Health.UNHURT and any(not w.lasting for w in self.wounds):
-            self.wounds = [w for w in self.wounds if w.lasting]
+        """A state saved before healed wounds were cleared loads without them."""
+        self._heal_if_unhurt()
         return self
 
     def set_health(self, health: Health) -> None:
         """Health as it is now. A body back to unhurt has healed every wound that doesn't last,
         so none lingers in the record to be "reopened" (`engine.injuries`)."""
         self.health = health
-        if health is Health.UNHURT:
+        self._heal_if_unhurt()
+
+    def _heal_if_unhurt(self) -> None:
+        if self.health is Health.UNHURT and any(not w.lasting for w in self.wounds):
             self.wounds = [w for w in self.wounds if w.lasting]
 
 

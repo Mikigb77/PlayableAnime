@@ -1069,14 +1069,19 @@ back, how it was settled and what it did (A8).
 
 Only the engine hurts the player character (Miki, 2026-11-07, after a small fight "reopened an old
 wound" and found broken ribs the character never had). Every wound they carry was settled before
-the scene was told: a blow or a danger that struck them, a breakthrough gone wrong, a blast. The
-narrator's update can show them heal, but never adds a wound, a worse health or a passing state
-that names an injury, and code refuses it. The odds lean on no injury the record doesn't hold: an
-edge or hindrance the interpret step proposes that speaks of one is left out, unless it names a
-flaw or passing state on the sheet, a wound that lasts, or, for an edge, someone the step faces
-who is hurt on the record, since the character's own wounds are weighed from their condition
-(A3). The narrator shows nobody an injury their record doesn't hold. A body back to unhurt has
-healed every wound but those that last.
+the scene was told: a blow or a danger that struck them, a breakthrough gone wrong, a blast. No
+event hurts them by itself: what it does to them is settled when they act. The narrator's update
+can show them heal, but never adds a wound, a worse health or a passing state that names an
+injury, and code refuses it, except for two harms something recorded caused: a power's toll in
+health or blood that the step's costs list (A1, G13), shown in proportion to how hard it was used,
+and on the first opening a premise that has them start hurt. The odds lean on no injury the
+record doesn't hold: an edge or hindrance the interpret step proposes that speaks of one is left
+out unless the record holds it. One about the character's own body stands only when it names a
+flaw or passing state on their sheet or a wound that lasts, since their wounds and health are
+weighed from their condition (A3); one about someone else stands only when that person is hurt on
+the record, and never names a part of them the record says is whole. The narrator shows nobody an
+injury their record doesn't hold. A body back to unhurt has healed every wound but those that
+last, and a new wound on an unhurt body leaves it hurt.
 
 A death others or the world caused can be rewound (C8, Miki 2026-11-05): up to 5 scenes on Story, 1
 on Balanced and none on Brutal, by the difficulty the fatal scene was played on, so changing it

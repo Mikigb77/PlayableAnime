@@ -233,7 +233,8 @@ they would.
 only what they have seen or been told. toward_you is how a character really feels about the \
 player character; when apparent_affinity is given, that is what they let show.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
-ends. When it needs no decision, it is something that already played out: tell it as done. Weave \
+ends. When it needs no decision, it is something that already played out: tell it as done. No \
+event hurts the player character by itself: what it does to them is settled when they act. Weave \
 in the CALLBACKS naturally. Show what the FIRED events made happen, and tell the HAPPENINGS \
 briefly as things that came to pass in the time that went by.
 - End on something the player can act on. A quiet ending is fine; the story never ends by \
@@ -260,9 +261,11 @@ update: what this scene changed, for the engine to check and apply (C1):
 appearance (an adult gets an age), and changes to known ones: where they are, their condition, \
 how they feel about the player, meeting the player. Reuse the ids given. Never hurt the \
 player character here, not even for what struck them: the engine already recorded every wound \
-and every worse health, and refuses yours. Their condition may only get better, by the rest and \
-care the world's medicine needs, or take on a passing state such as drunk, never a drawback of \
-your own. When a known \
+and every worse health, and refuses yours. Only two harms are yours to record, as the scene \
+shows them: a health or blood cost under OUTCOME's costs, and on the first opening a PREMISE \
+that has them start hurt. Otherwise their condition may only get better, by the rest and care \
+the world's medicine needs, or take on a passing state such as drunk, never a drawback of your \
+own. When a known \
 character's look changes for good, such as a lost eye, a scar or grey hair after years, say what \
 changed in look_change and write their whole appearance again with it. Never for mud, blood, a \
 disguise or anything else that passes, which is their condition. Never set a death, a cause, \

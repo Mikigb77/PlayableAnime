@@ -8,8 +8,9 @@ can't break the world (A7), and the rest of the delta still applies.
 Who may change what:
 
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
-  locations, small attitude nudges, condition (except harm to the player character: worse health,
-  a wound or a passing state that names an injury, `engine.injuries`), memberships, facts, leads,
+  locations, small attitude nudges, condition (except harm to the player character that nothing
+  recorded this turn caused: worse health, a wound or a passing state that names an injury,
+  `engine.injuries`), memberships, facts, leads,
   non-terminal status changes, the scene's end and the summary, and what changes hands, money
   included, which `engine.possessions` moves from giver to receiver so nobody gives what they
   don't have (C10). A lasting change to how a known character looks (`look_change`) moves their
@@ -98,8 +99,6 @@ from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
-# Health from best to worst, so a change can tell harm from healing (N6).
-_HEALTH = list(Health)
 
 
 class DeltaSource(StrEnum):
@@ -126,24 +125,37 @@ class Applied:
 
 
 def apply_delta(
-    state: WorldState, delta: StateDelta, ctx: TurnContext, *, source: DeltaSource
+    state: WorldState,
+    delta: StateDelta,
+    ctx: TurnContext,
+    *,
+    source: DeltaSource,
+    may_hurt_player: bool = False,
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
     come back in `Applied.rejected`, and the rest still applies. It doesn't touch `state.turn`.
 
     Places and factions go first, so characters in the same delta can refer to them, and family
-    ties after every character.
+    ties after every character. The narrator hurts the player character only with
+    `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`).
     """
-    return apply_in_place(state.model_copy(deep=True), delta, ctx, source=source)
+    return apply_in_place(
+        state.model_copy(deep=True), delta, ctx, source=source, may_hurt_player=may_hurt_player
+    )
 
 
 def apply_in_place(
-    state: WorldState, delta: StateDelta, ctx: TurnContext, *, source: DeltaSource
+    state: WorldState,
+    delta: StateDelta,
+    ctx: TurnContext,
+    *,
+    source: DeltaSource,
+    may_hurt_player: bool = False,
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
-    applier = _Applier(state, source, ctx.turn)
+    applier = _Applier(state, source, ctx.turn, may_hurt_player=may_hurt_player)
     for change in delta.places:
         applier.place(change)
     for change in delta.factions:
@@ -218,10 +230,13 @@ def _clamp(value: int, low: int, high: int) -> int:
 
 
 class _Applier:
-    def __init__(self, state: WorldState, source: DeltaSource, turn: int) -> None:
+    def __init__(
+        self, state: WorldState, source: DeltaSource, turn: int, *, may_hurt_player: bool = False
+    ) -> None:
         self.state = state
         self.source = source
         self.turn = turn
+        self.may_hurt_player = may_hurt_player
         self.rejected: list[Rejection] = []
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
@@ -622,14 +637,17 @@ class _Applier:
 
     def condition(self, character: Character, change: CharacterChange) -> None:
         """Health, wounds and passing states. Only the engine harms the player character (N6,
-        `engine.injuries`): the narrator may show them heal, never hurt them, since every blow,
-        fall and cost that can is settled before the scene is told."""
+        `engine.injuries`): every blow and fall that can is settled before the scene is told, so
+        the narrator may show them heal but never hurt them, unless `may_hurt_player` says
+        something recorded this turn did. A new wound on an unhurt body leaves it hurt."""
         subject = f"character {character.id}"
         condition = character.sheet.condition
         update = change.condition
-        guarded = not self.engine and character.id == self.state.player_id
+        guarded = (
+            not self.engine and not self.may_hurt_player and character.id == self.state.player_id
+        )
         if update.health is not None:
-            if guarded and _HEALTH.index(update.health) > _HEALTH.index(condition.health):
+            if guarded and update.health.worse_than(condition.health):
                 self.reject(subject, "harm", "only the engine harms the player character (N6)")
             else:
                 condition.set_health(update.health)
@@ -638,6 +656,8 @@ class _Applier:
                 self.reject(subject, "wound", "only the engine wounds the player character (N6)")
             else:
                 condition.wounds.extend(Wound(text=w) for w in update.wounds)
+                if condition.health is Health.UNHURT:
+                    condition.set_health(Health.HURT)
         if update.lasting_wounds and self.engine_only(subject, "lasting wound"):
             condition.wounds.extend(Wound(text=w, lasting=True) for w in update.lasting_wounds)
         cleared = {s.casefold() for s in update.cleared_states}

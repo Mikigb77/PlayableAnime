@@ -168,3 +168,28 @@ def test_a_fight_never_reopens_a_wound_the_character_never_had(fake, make_client
     brief = request.prompt.messages[-1].text
     assert "old wound" not in brief
     assert '"condition":{"health":"unhurt","wounds":[]}' in brief
+
+
+def test_the_first_opening_records_a_wound_the_premise_starts_with(fake, make_client):
+    # N6: the premise is the player's own words, so "you wake up wounded" is recorded on the
+    # first opening. Any later scene would be refused (see the test above).
+    state = grounded_world()
+    update = {
+        "characters": [
+            {"id": "luca", "condition": {"health": "wounded", "wounds": ["a knife wound"]}}
+        ]
+    }
+    fake.script(Node.NARRATOR, Reply(json={"narration": "You wake in a ditch.", "update": update}))
+    ctx = TurnContext(story_id="story-1", turn=1)
+    turn = TurnInput(
+        state=state,
+        ctx=ctx,
+        kind=TurnKind.OPENING,
+        premise="I wake up in a ditch with a knife wound.",
+    )
+
+    result = play(make_client(), turn)
+
+    condition = result.state.player.sheet.condition
+    assert condition.health is Health.WOUNDED
+    assert [w.text for w in condition.wounds] == ["a knife wound"]
