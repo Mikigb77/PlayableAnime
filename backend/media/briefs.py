@@ -9,6 +9,11 @@ moment is theirs. The player character is in it when the description says "you" 
 or when it names no one else. A description that names no one falls back to the subject, the
 player and the people the player knows there, as before. Each person's portrait then goes along
 as a reference image (M5), in this order, the first `MAX_REFERENCES` of them.
+
+The player character goes in with what they have on them (C10): their belongings are the complete
+record, so the picture gives them nothing else, such as a dagger they never had. Another
+character's belongings are on record only as far as the story told them, so theirs are left to
+the description.
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ from collections.abc import Sequence
 
 from engine.contracts import PictureTrigger
 from engine.labels import part_of_day, second_of_day
+from engine.possessions import WHERE_IT_STANDS, bare
 from engine.state.bible import Calendar
 from engine.state.cast import Character
 from engine.state.world import WorldState
@@ -32,13 +38,29 @@ _PARTICLES = frozenset({"the", "of", "and", "von", "van", "der", "de", "del", "d
 THREAD_SUBJECTS = frozenset({PictureTrigger.ARC_END, PictureTrigger.EVENT})
 
 
-def figure(character: Character) -> Figure:
-    """A person in a picture, with the appearance kept in their entry (C9)."""
+def figure(character: Character, *, carries: tuple[str, ...] | None = None) -> Figure:
+    """A person in a picture, with the appearance kept in their entry (C9) and, for the player
+    character, what they have on them (`belongings`)."""
     return Figure(
         id=character.id,
         name=character.name,
         appearance=character.appearance or character.description,
+        carries=carries,
     )
+
+
+def belongings(character: Character) -> tuple[str, ...]:
+    """What `character` has on them now, from their sheet (C10): the things they carry, with how
+    many when there are several ("20 arrows", even for an item still named "3 arrows"). The
+    money in their purse is left out, and so is what they keep elsewhere or use where it stands,
+    such as a house or a cart."""
+    found = []
+    for item in character.sheet.resources.items:
+        if not item.carried or item.quantity <= 0 or item.kind in WHERE_IT_STANDS:
+            continue
+        name = " ".join(item.name.split())
+        found.append(f"{item.quantity} {bare(name)}" if item.quantity > 1 else name)
+    return tuple(found)
 
 
 def known_cast(
@@ -64,11 +86,14 @@ def scene_figures(
     subject_id: str | None = None,
     player_id: str | None = None,
     present: Sequence[str] | None = None,
+    carried: bool = True,
 ) -> tuple[Figure, ...]:
     """The people a scene picture or cover shows, the subject first, then the player character,
     then the others the description names. `subject_id` is the character or deed the director
     chose the picture for (M1). `present` is who is there: the scene's end by default, or a past
-    scene's saved cast for Illustrate, with that scene's `player_id`."""
+    scene's saved cast for Illustrate, with that scene's `player_id`. `carried` gives the player
+    character what they have on them now (C10): false for a past scene, which the record of now
+    can't speak for."""
     player = player_id or state.player_id
     subjects, involved = _subjects(state, subject_id)
     there = list(state.scene.present_ids if present is None else present)
@@ -89,7 +114,10 @@ def scene_figures(
     else:
         people = [*subjects, player, *there]
     chosen = [state.characters[i] for i in dict.fromkeys(people) if i in state.characters]
-    return tuple(figure(character) for character in chosen[:MAX_FIGURES])
+    return tuple(
+        figure(c, carries=belongings(c) if carried and c.id == player else None)
+        for c in chosen[:MAX_FIGURES]
+    )
 
 
 def names(text: str, character: Character) -> bool:

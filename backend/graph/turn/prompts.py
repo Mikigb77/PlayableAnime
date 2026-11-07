@@ -264,12 +264,21 @@ action of at most 12 words, meaningfully different, with at least one away from 
 thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. Never \
 suggest waiting or observing: those are always offered.
 
-image_prompt (M1): only when PICTURE is given, one or two sentences describing the picture's \
-subject and composition, true to the characters' appearance. Otherwise null.
+image_prompt (M1, M5): null unless PICTURE is given. Then one to three sentences that let an \
+illustrator who never read the scene draw it as you told it. For a scene or a cover, the moment \
+PICTURE's why names (a cover is this scene's most striking moment, posed for a cover, never a \
+poster of the world): what each person in it is doing, exactly where they are, as the narration \
+has the place and its surroundings, and the light. Only what this scene has: no place, building, \
+ruin, river, creature, person or thing it doesn't tell, from the world, the premise or earlier \
+scenes. The player character ("you") has only what PLAYER CHARACTER's resources list or this \
+scene puts in their hands: never give them a weapon or gear they don't have. For a portrait, the \
+person's face and expression now; for a place, the place as it looks now. True to everyone's \
+appearance.
 
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
-appearance (an adult gets an age), and changes to known ones: where they are, their condition, \
+appearance (an adult gets an age; their looks and usual clothes, never what they carry, which \
+are items), and changes to known ones: where they are, their condition, \
 how they feel about the player, meeting the player. Reuse the ids given. Never hurt the \
 player character here, not even for what struck them: the engine already recorded every wound \
 and every worse health, and refuses yours. Only two harms are yours to record, as the scene \

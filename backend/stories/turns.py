@@ -443,8 +443,9 @@ def brief(
     trigger: PictureTrigger | None = None,
 ) -> Brief:
     """What to draw: the prompt, the world's look (S7), and the subject, or for a scene or cover
-    the people in it with the appearance kept in their entries (C9, M5), chosen by
-    `media.briefs.scene_figures`. A scene picture also gets the time of day, to be lit for."""
+    the people in it with the appearance kept in their entries (C9, M5) and what the player
+    character has on them (C10), chosen by `media.briefs.scene_figures`. A scene picture and the
+    cover, which shows the scene it is planned in, also get the time of day, to be lit for."""
     look = look_for_story(story)
     subject_id = picture.subject_id
     if picture.kind is PictureKind.PORTRAIT and subject_id in state.characters:
@@ -465,13 +466,12 @@ def brief(
         )
     if trigger in THREAD_SUBJECTS:
         subject_id = None
-    scene = picture.kind is PictureKind.SCENE
     return Brief(
         description=picture.prompt,
         look=look,
         figures=scene_figures(state, picture.prompt, subject_id=subject_id),
         you=state.player.name,
-        time=time_of_day(state.bible.calendar, state.world_s) if scene else "",
+        time=time_of_day(state.bible.calendar, state.world_s),
     )
 
 

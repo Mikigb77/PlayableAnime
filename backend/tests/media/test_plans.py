@@ -4,6 +4,8 @@ character changes for good (M1, M5)."""
 import pytest
 
 from engine.samples import grounded_world
+from engine.state.cast import Character
+from engine.state.records import Fallen
 from media.models import Image, ImageStatus, ScenePicture, SkipReason
 from media.plans import brief_for_scene, look_for_story, plan_picture
 from media.prompts import Brief, Figure, WorldLook
@@ -209,14 +211,14 @@ def test_planning_marks_the_scene_row():
     )
 
 
-def test_a_storys_own_look_comes_from_its_bible():
+def test_a_storys_own_look_comes_from_its_bible_never_its_premise():
+    """M5: the premise tells how the story began, so its places and things would reach a picture
+    of a scene that has none of them, as a castle and ruins reached a cover of a leap through the
+    trees (Miki, 2026-11-07)."""
     story = make_story(genre="cultivation")
 
     assert look_for_story(story) == WorldLook(
-        genre="cultivation",
-        era="an ancient empire of sects",
-        tone="grim and grand",
-        setting="A sect disciple with a forbidden technique.",
+        genre="cultivation", era="an ancient empire of sects", tone="grim and grand"
     )
     story.state = ["not", "a", "dict"]
     assert look_for_story(story).era == ""
@@ -251,6 +253,42 @@ def test_an_illustrated_scene_knows_its_people_who_you_are_and_the_time():
     assert [f.id for f in brief.figures] == ["luca", "carmine"]
     assert brief.figures[1].appearance == "Fifties, broad, grey moustache, gold rings."
     assert (brief.you, brief.time) == ("Luca Esposito", "night")
+    # The story's latest scene: what Luca has on him now is what he had then (C10).
+    assert brief.figures[0].carries == ("Beretta pistol", "flick knife")
+
+
+def test_an_illustrated_past_scene_is_not_told_what_the_player_carries_now():
+    """C10: the record holds what the player character has now, which an earlier scene's picture
+    can't go by: a sword won later must not appear in it, nor a knife lost since be ruled out."""
+    state = grounded_world().model_copy(update={"turn": 5})
+    story = make_story(state=state.model_dump(mode="json"))
+    scene = make_scene(
+        story, 2,
+        narration="Carmine pours you a glass.",
+        cast=[{"character_id": "carmine", "name": "Carmine Russo"}],
+    )  # fmt: skip
+
+    figures = brief_for_scene(story, scene).figures
+    assert [(f.id, f.carries) for f in figures] == [("luca", None), ("carmine", None)]
+
+
+def test_an_illustrated_last_scene_of_a_fallen_player_character_leaves_their_things_out():
+    """N6, C10: Luca fell in the latest scene and Sal carries the story on, so what the record
+    holds now is not what Luca had in that scene."""
+    state = grounded_world().model_copy(update={"turn": 2})
+    state.characters["sal"] = Character(id="sal", name="Sal")
+    state.fallen = [
+        Fallen(
+            character_id="luca", name="Luca Esposito", ending="death", turn=2, world_s=100,
+            successor_id="sal",
+        )
+    ]  # fmt: skip
+    state.player_id = "sal"
+    story = make_story(state=state.model_dump(mode="json"))
+    scene = make_scene(story, 2, narration="You fall.")
+
+    figures = brief_for_scene(story, scene).figures
+    assert [(f.id, f.carries) for f in figures] == [("luca", None)]
 
 
 def test_an_illustrated_scene_without_a_world_is_its_text_alone():

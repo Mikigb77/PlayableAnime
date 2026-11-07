@@ -1653,17 +1653,26 @@ app                   shows the narration, then asks for the picture in its own 
   thriving ("It is ruined now."). A portrait or place that failed or wasn't affordable is planned
   again the next time it comes up; a blocked one only through Illustrate.
 - **What to draw (S7, M5, M6).** The turn stores a `Brief` with the plan: the narrator's image
-  prompt, the world's genre, era, tone and the story's premise, the people in the picture with the
-  appearance from their entry (C9), who "you" is, and for a scene the time of day on the story's
-  clock. `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those
-  the image prompt names, with the director's subject first even when they just died or the
-  player hasn't met them, and the player character when the prompt says "you" or names them, or
-  names no one else; a prompt that names no one falls back to the subject, the player character
-  and the people the player knows there. `media/prompts.py` turns the brief into the prompt, the
-  moment first, then how the people look, then the world: one house style for every picture (the
-  app's cinematic, dark-first look, lit for the moment's time of day), the world's own era (the
-  premise only on a cover), the framing and aspect ratio per kind (portraits and covers 3:4, places
-  and scenes 16:9), and the mild-in-every-rating rules. Ready portraits of up to three of the
+  prompt, the world's genre, era and tone (never the story's premise, which is not the scene a
+  picture shows), the people in the picture with the appearance from their entry (C9), who "you" is,
+  and for a scene or the cover the time of day on the story's clock. The cover is planned in the
+  story's second scene and shown there, so it is drawn as that scene's moment, posed for a cover.
+  `media/briefs.py` (plain Python, shared with the picture evals) chooses the people: those the
+  image prompt names, with the director's subject first even when they just died or the player
+  hasn't met them, and the player character when the prompt says "you" or names them, or names no
+  one else; a prompt that names no one falls back to the subject, the player character and the
+  people the player knows there. A story's pictures never get its premise, and the picture endpoint
+  clears a setting a brief planned before that kept. The player character goes in with what they
+  carry from their sheet (`Figure.carries`, C10), money, property and what they keep elsewhere left
+  out, or with nothing to carry; an NPC's record is partial, so theirs is left out, and so is the
+  player character's for Illustrate on an earlier scene. `media/prompts.py` turns the brief into the
+  prompt, the moment first, then how the people look and what the player character carries ("no
+  other weapon, tool or gear, even one their look above names, unless the description puts it in
+  their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
+  look, lit for the moment's time of day), the world's own era (a setting only on a starter
+  premise's cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
+  scenes 16:9), where a scene and a cover show only who and what the description has, and the
+  mild-in-every-rating rules. Ready portraits of up to three of the
   people go along as reference images, each set right after a label saying whose it is
   (`ImagePart.label`) and used only for the face, hair and build. A portrait takes only its
   expression from the moment, since it is every later picture's reference. The picture safety

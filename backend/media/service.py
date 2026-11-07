@@ -404,9 +404,13 @@ async def _draw_request(story: Story, image: Image) -> DrawRequest:
             logger.warning("A reference portrait couldn't be read", exc_info=True)
             continue
         references.append(Reference(name, data, portrait.mime_type or "image/png"))
+    brief = Brief.from_json(image.brief)
+    # A story's pictures never see its premise (M5), even one planned before that held, whose
+    # brief kept it as the setting.
+    brief = replace(brief, look=replace(brief.look, setting=""))
     prompt = build_prompt(
         image.kind,
-        Brief.from_json(image.brief),
+        brief,
         references=[ref.name for ref in references],
         redraw=redraw and bool(references),
     )

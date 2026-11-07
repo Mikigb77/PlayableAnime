@@ -638,3 +638,18 @@ def test_the_outcome_says_what_a_step_moved_unless_an_event_cut_it_short():
     moved = '"changed_hands":[{"what":"5 copper coins","amount":5,"from":"luca","to":"milo"'
     assert moved + ',"money":true}]' in outcome(False)
     assert "changed_hands" not in outcome(True).split("## OUTCOME")[1]
+
+
+def test_a_player_character_with_nothing_on_them_reads_as_carrying_nothing():
+    """C10, M5: an empty list of things is shown, not left out, so neither the scene nor its
+    picture prompt hands the character a weapon the premise or the genre suggests (Miki,
+    2026-11-07: a leap through the trees came out with a dagger the character never had)."""
+    state = cultivation_world()  # Lin has nothing on him
+    assert not state.player.sheet.resources.items
+
+    text = brief(state).user
+
+    assert '"items":[]' in text
+    assert "never give them a weapon or gear they don't have" in prompts.NARRATOR_SYSTEM
+    assert "poster of the world" in prompts.NARRATOR_SYSTEM
+    assert "from the world, the premise or earlier" in prompts.NARRATOR_SYSTEM

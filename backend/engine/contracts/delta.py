@@ -100,7 +100,11 @@ class CharacterChange(EngineModel):
     aliases: list[str] = Field(default_factory=list)
     prominence: Prominence | None = None
     description: str | None = None
-    appearance: str | None = None
+    appearance: str | None = Field(
+        default=None,
+        description="C9: looks and usual clothes, for every picture of them. Never what they "
+        "carry, such as a weapon: those are items (C10).",
+    )
     look_change: str | None = Field(
         default=None,
         description="M5, G17: a lasting change to how a known character looks, in a few words, "

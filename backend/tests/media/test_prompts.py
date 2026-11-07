@@ -95,6 +95,8 @@ def test_a_scene_is_lit_for_its_time_of_day():
     brief = Brief(description="The don's funeral.", time="dusk")
 
     assert "Time of day: dusk." in build_prompt("scene", brief).user
+    # A story's cover shows the scene it is planned in, at that scene's hour (M5).
+    assert "Time of day: dusk." in build_prompt("cover", brief).user
     # A portrait or place is reused at any hour, so it keeps the house light.
     assert "Time of day" not in build_prompt("place", brief).user
     assert "low-key" not in HOUSE_STYLE and "time of day" in HOUSE_STYLE
@@ -129,6 +131,55 @@ def test_a_portrait_takes_only_its_expression_from_the_moment():
 def test_a_scene_shows_what_its_description_says_and_nothing_more():
     assert "no extra people, creatures or props" in FRAMING["scene"]
     assert "highest tension" not in FRAMING["scene"]
+    assert "doing what it says, where it says" in FRAMING["scene"]
+
+
+def test_a_cover_shows_the_moment_it_is_told_not_a_poster_of_the_world():
+    """M5 (Miki, 2026-11-07): a story's cover is shown in the scene it is planned in, so it
+    shows that scene's moment. Drawn as "its world and its main character", it put a leap through
+    the trees on a rooftop, among ruins and a river the scene never had."""
+    cover = FRAMING["cover"]
+
+    assert "its world" not in cover
+    assert "doing what it says, where it says" in cover
+    assert "no extra people, creatures or props" in cover
+    assert "lower third" in cover  # still room for the title
+
+
+def test_the_player_character_has_only_what_they_carry():
+    """C10: the player character's belongings are the complete record, so a picture gives them
+    nothing else, such as a dagger they never had."""
+    armed = Figure("luca", "Luca", "lean", carries=("Beretta pistol", "flick knife"))
+    empty = Figure("lin", "Lin Feng", "slight", carries=())
+    unknown = Figure("carmine", "Carmine", "broad")
+
+    def told(kind, *figures):
+        return build_prompt(kind, Brief(description="A chase.", figures=figures)).user
+
+    user = told("scene", armed, unknown)
+    assert "Luca carries only this: Beretta pistol, flick knife." in user
+    assert "Draw no other weapon, tool or gear on them" in user
+    # The record wins over a look that names a weapon, but not over the moment itself.
+    assert "even one their look above names" in user
+    assert "unless the description puts it in their hands" in user
+    # An NPC's belongings are on record only as far as the story told them, so nothing is said.
+    assert "Carmine carries" not in user
+    assert "Lin Feng carries no weapon, tool or gear" in told("cover", empty)
+    # The people come first, then what the player character has on them, then the world.
+    assert user.index("How the people") < user.index("Luca carries")
+    # A portrait or a place shows no belongings.
+    for kind in ("portrait", "place"):
+        assert "carries" not in told(kind, armed, empty)
+
+
+def test_a_long_list_of_belongings_is_cut():
+    many = Figure("lin", "Lin", carries=tuple(f"pouch number {n} of herbs" for n in range(20)))
+
+    user = build_prompt("scene", Brief(figures=(many,))).user
+
+    assert "pouch number 7 of herbs" in user
+    assert "pouch number 8 of herbs" not in user
+    assert len(user.split("carries only this: ", 1)[1].split(". Draw", 1)[0]) <= 300
 
 
 def test_a_redraw_asks_for_the_same_person_as_they_look_now():
@@ -166,15 +217,26 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
         look=LOOK,
         subject_name="Rosa",
         subject_appearance="curls",
-        figures=(Figure("rosa", "Rosa", "curls"),),
+        figures=(
+            Figure("rosa", "Rosa", "curls", carries=("a flick knife",)),
+            Figure("lin", "Lin", carries=()),
+            Figure("tonio", "Tonio"),
+        ),
         you="Rosa",
         time="dusk",
     )
 
     assert Brief.from_json(brief.to_json()) == brief
+    # Carrying nothing is kept apart from a record that can't say.
+    assert [f.carries for f in Brief.from_json(brief.to_json()).figures] == [
+        ("a flick knife",),
+        (),
+        None,
+    ]
     assert Brief.from_json(None) == Brief()
-    # A brief stored before "you" and the time of day existed still reads.
+    # A brief stored before "you", the time of day and belongings existed still reads.
     older = {k: v for k, v in brief.to_json().items() if k not in ("you", "time")}
+    older["figures"] = [{"id": "rosa", "name": "Rosa", "appearance": "curls"}]
     assert Brief.from_json(older) == Brief(
         description="d", look=LOOK, subject_name="Rosa", subject_appearance="curls",
         figures=(Figure("rosa", "Rosa", "curls"),),
