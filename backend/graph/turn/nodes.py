@@ -32,6 +32,7 @@ from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
 from engine.pipeline import PlayOut
 from engine.rng import SeededRng
+from engine.state.records import OriginKind
 from engine.state.world import Chapter, WorldState
 from graph.llm import (
     Completed,
@@ -400,9 +401,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     world = state["world"]
     issues: list[Issue] = []
     if mode != "template":
-        # C10: what the steps that played already moved, so the scene doesn't move it again.
-        resolution: Resolution = state["resolution"]
-        moved = [c for s in resolution.steps if not s.interrupted for c in s.effects.items]
+        # C10: what the engine moved this turn, so the scene doesn't move it again.
+        moved = [
+            t for t in world.transfers if t.turn == turn.ctx.turn and t.origin is OriginKind.ENGINE
+        ]
         delta, found = check.check_update(narration.update, world, moved)
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(

@@ -311,8 +311,9 @@ resources (their money, shown even when it is none, and what they own), conditio
 ladders they climb. rulings and growth record what was settled \
 about their powers and how they grew; backstory is what was recorded of their past.
 - CHANGED HANDS: the player character's latest gains and losses, oldest first: what came to \
-them, what left them and who it went to, with how and how long ago. What they hold now is \
-PLAYER CHARACTER's resources, money included.
+them, what left them and who it went to, with how and how long ago. Someone marked unknown \
+to you is a stranger to them: never name them. What they hold now is PLAYER CHARACTER's \
+resources, money included.
 - KNOWN: the people, places and factions the player character knows of who aren't in the scene, \
 with aliases, and a status when it isn't the usual one, such as dead or ruined. Use these names \
 as spelled.

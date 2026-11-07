@@ -261,3 +261,45 @@ def test_coins_kept_as_an_item_are_used_when_the_purse_is_empty():
     assert not paid.rejected
     assert "copper coins" not in names(paid.state, "luca")
     assert names(paid.state, "milo") == {"copper coins": 7}
+
+
+def test_coins_in_the_receivers_currency_reach_the_purse_from_anyone():
+    given = move(street(money=0), ItemChange(name="5 copper coins", from_id="milo", to_id="luca"))
+
+    assert purse(given.state, "luca") == (5, "copper coins")
+    assert "copper coins" not in names(given.state, "luca")
+
+
+def test_a_decimal_is_never_read_as_a_count():
+    assert possessions.count("1.5 liters of water", 1) == 1
+    assert possessions.count("0.5 kg rice", 1) == 1
+    assert possessions.count("1.000 liras", 1) == 1000
+
+
+def test_what_is_kept_elsewhere_stays_there_and_a_house_is_never_carried():
+    state = street()
+    state.player.sheet.resources.items.append(
+        Item(id="arrows", name="arrows", kind=ItemKind.WEAPON, quantity=20, carried=False)
+    )
+
+    got = move(
+        state,
+        ItemChange(name="3 arrows", from_id="milo", to_id="luca"),
+        ItemChange(name="the old house", kind=ItemKind.PROPERTY, from_id="milo", to_id="luca"),
+    )
+
+    arrows = got.state.player.sheet.item("arrows")
+    assert (arrows.quantity, arrows.carried) == (23, False)
+    house = next(i for i in got.state.player.sheet.resources.items if i.name == "old house")
+    assert house.carried is False
+
+
+def test_the_models_know_when_the_player_never_learned_who_it_was():
+    state = street()
+    state.characters["milo"].known_by, state.characters["milo"].met_by = [], []
+
+    stolen = move(state, ItemChange(name="12 copper coins", from_id="luca", to_id="milo"))
+
+    assert possessions.prompt_lines(stolen.state) == [
+        "12 copper coins went from you to Milo (milo, unknown to you), moments ago."
+    ]

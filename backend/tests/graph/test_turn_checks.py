@@ -28,7 +28,14 @@ from engine.contracts import (
 )
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
-from engine.state.records import Lead, LeadStatus, RollRecord, StepResult, ThreadStatus
+from engine.state.records import (
+    Lead,
+    LeadStatus,
+    RollRecord,
+    StepResult,
+    ThreadStatus,
+    Transfer,
+)
 from engine.state.world import EventSize
 from graph.turn.check import (
     MAX_STEPS,
@@ -473,16 +480,26 @@ def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
 def test_a_payment_a_step_already_made_is_never_made_again_by_the_scene():
     # C10: the step moved the coins before narration; the narrator telling it again would pay
     # twice. What else changed hands in the scene still applies.
-    paid = ItemChange(name="5 coins", money=True, quantity=5, from_id="luca", to_id="carmine")
-    told = ItemChange(
-        name="five copper coins", money=True, quantity=5, from_id="luca", to_id="carmine"
+    paid = Transfer(
+        name="copper coins",
+        quantity=5,
+        money=True,
+        currency="copper coins",
+        from_id="luca",
+        to_id="carmine",
+        turn=1,
     )
+    thrown = Transfer(
+        name="flick knife", quantity=1, item_id="knife", from_id="luca", to_id=None, turn=1
+    )
+    told = ItemChange(name="5 copper coins", from_id="luca", to_id="carmine")
+    knife = ItemChange(name="the knife", from_id="luca", to_id="World")
     key = ItemChange(name="a brass key", from_id="carmine", to_id="luca")
-    knife = ItemChange(name="the flick knife", item_id="knife", from_id="luca", to_id="world")
-    delta = StateDelta(items=[told, key, knife])
+    more = ItemChange(name="coins", money=True, quantity=9, from_id="luca", to_id="carmine")
+    delta = StateDelta(items=[told, knife, key, more])
 
-    checked, issues = check_update(delta, grounded_world(), [paid, knife])
+    checked, issues = check_update(delta, grounded_world(), [paid, thrown])
 
-    assert checked.items == [key]
+    assert checked.items == [key, more]
     assert [i.code for i in issues] == ["move_recorded"]
-    assert check_update(delta, grounded_world())[0].items == [told, key, knife]
+    assert check_update(delta, grounded_world())[0].items == [told, knife, key, more]

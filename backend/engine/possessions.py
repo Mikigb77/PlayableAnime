@@ -41,7 +41,9 @@ PROMPT_TRANSFERS = 8
 # Words for money in general, in every language a story can be told in (S10), so "coins" or
 # "dinero" counts as the holder's money whatever their currency is called.
 _MONEY_WORDS = stems("money coin coins cash dinero moneda monedas diners monedes")
-_COUNT = re.compile(r"^(\d[\d,.]*)\s")
+# A whole number, with thousands grouped by "," or "." ("1,000 lire", "1.000 liras"), never a
+# decimal: "1.5 liters" counts as given.
+_COUNT = re.compile(r"^(\d{1,3}(?:[,.]\d{3})+|\d+)\s")
 _LEADING = re.compile(r"^(?:(?:\d[\d,.]*|a|an|the|some|my|your|his|her|their)\s+)+", re.IGNORECASE)
 
 
@@ -79,6 +81,15 @@ def same_currency(a: str, b: str) -> bool:
     return a.strip().casefold() == b.strip().casefold() or (
         bool(_words(a)) and _words(a) == _words(b)
     )
+
+
+def same_thing(name: str, other: str) -> bool:
+    """Whether a name means the thing another names: the same words, counts and articles aside,
+    or every word of it in the other ('the knife' is the 'flick knife')."""
+    if bare(name).casefold() == bare(other).casefold():
+        return True
+    words = _words(name)
+    return bool(words) and words <= _words(other)
 
 
 def find_item(character: Character, name: str, item_id: str | None = None) -> Item | None:
@@ -135,7 +146,7 @@ def holder_of(state: WorldState, item_id: str) -> Character | None:
 def move(state: WorldState, change: ItemChange, *, turn: int, origin: OriginKind) -> str | None:
     """C10. Moves what `change` names from its giver to its receiver, in place, and records the
     transfer. Returns why it was refused, or None when it applied."""
-    giver_id, receiver_id = _side(change.from_id), _side(change.to_id)
+    giver_id, receiver_id = side(change.from_id), side(change.to_id)
     giver = state.characters.get(giver_id) if giver_id else None
     receiver = state.characters.get(receiver_id) if receiver_id else None
     if (giver_id and giver is None) or (receiver_id and receiver is None):
@@ -148,9 +159,7 @@ def move(state: WorldState, change: ItemChange, *, turn: int, origin: OriginKind
     if wanted == 0:
         return "nothing changes hands"
 
-    source = giver or receiver
-    assert source is not None
-    as_money = _counts_as_money(change, source)
+    as_money = _counts_as_money(change, giver, receiver)
     moved, item = wanted, None
     if giver is not None:
         held = holding(giver, change.name, money=as_money, item_id=change.item_id)
@@ -195,16 +204,19 @@ def move(state: WorldState, change: ItemChange, *, turn: int, origin: OriginKind
     return None
 
 
-def _side(character_id: str | None) -> str | None:
+def side(character_id: str | None) -> str | None:
     """A side of a change as a character id, or None for the world."""
     text = (character_id or "").strip()
     return None if not text or text.casefold() == WORLD else text
 
 
-def _counts_as_money(change: ItemChange, character: Character) -> bool:
-    if change.item_id and character.sheet.item(change.item_id) is not None:
+def _counts_as_money(change: ItemChange, *sides: Character | None) -> bool:
+    """Money is money, and so are coins named in either side's currency; an item on record by
+    its id is the item."""
+    present = [c for c in sides if c is not None]
+    if change.item_id and any(c.sheet.item(change.item_id) is not None for c in present):
         return False
-    return change.money or is_money(change.name, character.sheet.resources.currency)
+    return change.money or any(is_money(change.name, c.sheet.resources.currency) for c in present)
 
 
 def _restyle(character: Character, change: ItemChange) -> str | None:
@@ -257,7 +269,9 @@ def _add_money(state: WorldState, receiver: Character, amount: int, unit: str) -
         None,
     )
     if coins is None:
-        coins = Item(id=_fresh_id(state), name=unit, kind=ItemKind.TREASURE, quantity=0)
+        coins = Item(
+            id=_fresh_id(state, _held_ids(state)), name=unit, kind=ItemKind.TREASURE, quantity=0
+        )
         resources.items.append(coins)
     coins.quantity += amount
 
@@ -270,37 +284,39 @@ def _add_item(
     source: Item | None,
     change: ItemChange,
 ) -> None:
+    """What the receiver gets is on them, unless it stands where it is (a car, a house), or it
+    joins a stack of the same thing that they keep elsewhere."""
     items = receiver.sheet.resources.items
     wanted = bare(name).casefold()
-    same = next(
-        (
-            i
-            for i in items
-            if (source is not None and i.id == source.id and bare(i.name).casefold() == wanted)
-            or bare(i.name).casefold() == wanted
-        ),
-        None,
-    )
+    same = next((i for i in items if bare(i.name).casefold() == wanted), None)
     if same is None:
-        held_ids = {i.id for c in state.characters.values() for i in c.sheet.resources.items}
+        held_ids = _held_ids(state)
         ids = [source.id if source is not None else None, change.item_id]
-        item_id = next((i for i in ids if i and i not in held_ids), None) or _fresh_id(state)
+        item_id = next((i for i in ids if i and i not in held_ids), None)
+        kind = source.kind if source is not None else (change.kind or ItemKind.OTHER)
         same = Item(
-            id=item_id,
+            id=item_id or _fresh_id(state, held_ids),
             name=name,
-            kind=source.kind if source is not None else ItemKind.OTHER,
+            kind=kind,
             description=source.description if source is not None else "",
             history=source.history if source is not None else "",
             quantity=0,
+            carried=kind not in _WHERE_IT_STANDS,
         )
         items.append(same)
     same.quantity += amount
-    same.carried = True
     _describe(same, change)
 
 
-def _fresh_id(state: WorldState) -> str:
-    held = {i.id for c in state.characters.values() for i in c.sheet.resources.items}
+# Things used where they stand, never carried (G14).
+_WHERE_IT_STANDS = (ItemKind.VEHICLE, ItemKind.PROPERTY)
+
+
+def _held_ids(state: WorldState) -> set[str]:
+    return {i.id for c in state.characters.values() for i in c.sheet.resources.items}
+
+
+def _fresh_id(state: WorldState, held: set[str]) -> str:
     while True:
         item_id = state.new_id("item")
         if item_id not in held:
@@ -352,8 +368,14 @@ def prompt_lines(state: WorldState, limit: int = PROMPT_TRANSFERS) -> list[str]:
 
 
 def _who(state: WorldState, character_id: str) -> str:
+    """Who the other side was, for the models, marked when the player character doesn't know them
+    (C6), so the telling never names them."""
     character = state.characters.get(character_id)
-    return f"{character.name} ({character_id})" if character is not None else character_id
+    if character is None:
+        return character_id
+    you = state.player_id
+    known = you in character.known_by or you in character.met_by
+    return f"{character.name} ({character_id}{'' if known else ', unknown to you'})"
 
 
 def gone_to(state: WorldState, actor: Character, name: str, *, money: bool) -> str:
@@ -388,13 +410,13 @@ def _known_name(state: WorldState, character_id: str) -> str:
 
 def already_given(
     state: WorldState, actor: Character, name: str, to_id: str, *, money: bool
-) -> bool:
-    """Whether the last time something like this left the actor, it went to `to_id`: letting
-    someone keep what they already took moves nothing (C10)."""
+) -> int:
+    """How much of it went to `to_id` the last time something like this left the actor, or 0
+    when it went elsewhere: letting someone keep what they already took moves nothing (C10)."""
     words = _words(name)
     for t in reversed(involving(state, actor.id)):
         if t.from_id != actor.id:
             continue
         if (money and t.money) or (words and words <= _words(t.name)):
-            return t.to_id == to_id
-    return False
+            return t.quantity if t.to_id == to_id else 0
+    return 0

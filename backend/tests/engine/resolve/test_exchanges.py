@@ -219,3 +219,31 @@ def test_money_named_as_an_item_on_the_step_is_the_purse():
     assert held.outcome_class is not OutcomeClass.RULED_OUT
     assert gone.outcome_class is OutcomeClass.RULED_OUT
     assert gone.reason == "You have no copper coins left. They went to Milo."
+
+
+def test_an_old_payment_never_covers_a_new_one_the_purse_cant():
+    state = street(money=20)
+    first = apply_delta(
+        state,
+        StateDelta(
+            items=[ItemChange(name="coins", money=True, quantity=3, from_id="luca", to_id="milo")]
+        ),
+        ctx(),
+        source=DeltaSource.NARRATOR,
+    ).state
+
+    (settled,) = resolve(first, Intent(steps=[paying(pay(1000))])).steps
+
+    assert settled.outcome_class is OutcomeClass.RULED_OUT
+    assert settled.reason == "You have only 17 copper coins."
+
+
+def test_two_payments_in_one_step_must_both_fit_the_purse():
+    both = paying(pay(5), pay(5, to="carmine"), text="pay Milo and Carmine five each")
+
+    (short,) = resolve(street(money=6), Intent(steps=[both])).steps
+    (paid,) = resolve(street(money=10), Intent(steps=[both])).steps
+
+    assert short.outcome_class is OutcomeClass.RULED_OUT
+    assert short.reason == "You have only one of your copper coins left."
+    assert [(m.to_id, m.quantity) for m in paid.effects.items] == [("milo", 5), ("carmine", 5)]
