@@ -41,6 +41,7 @@ from engine.state.sheet import (
     PowerAxis,
     Skill,
     SkillLevel,
+    Trait,
     TraitKind,
 )
 from engine.state.world import WorldState
@@ -112,7 +113,26 @@ _GROUPS = {
     ("wits", "knowledge", "willpower"): stems("mind minds mental"),
     ("charm", "nerve", "bearing"): stems("presence"),
 }
-# What a step on an axis tests when the interpret step named no attribute (A8).
+# What a step's own words test when the interpret step named no attribute: the activity, in any
+# genre ("climb", "leap" and "dodge" are speed; "lift" and "pry" strength; "search" wits).
+_ACTIVITY_WORDS = {
+    "speed": """climb clamber leap jump vault hop dodge duck evade run sprint dash race flee
+        scramble balance tumble flip swing catch snatch grab sneak tiptoe acrobatics parkour""",
+    "strength": "lift heave haul carry push shove pull drag break smash shatter pry wrench wrestle",
+    "toughness": "endure withstand survive march",
+    "wits": """notice spot search look listen hear track sense scan watch examine inspect perceive
+        observe find""",
+    "knowledge": """recall remember identify recognise recognize decipher translate study research
+        analyse analyze""",
+    "willpower": "concentrate meditate",
+    "charm": "persuade convince charm flatter seduce negotiate bargain haggle befriend flirt plead",
+    "bearing": "command rally inspire",
+}
+_ACTIVITY_STEMS = {key: stems(words) for key, words in _ACTIVITY_WORDS.items()}
+# How many words a skill's or trait's name and description must share with a step that didn't
+# name it, for it to count.
+RELEVANT_WORDS = 2
+# What a step on an axis tests when neither the interpret step nor its words name an attribute.
 _BY_AXIS = {
     PowerAxis.MIGHT: ("strength", "speed"),
     PowerAxis.STEALTH: ("speed", "wits"),
@@ -212,13 +232,15 @@ def weigh(
         elif gap <= -1:
             hinders.append(said)
 
-    # Skills (G14, G25).
-    if drawn.skills:
-        best = _best_skill(actor, drawn.skills)
+    # Skills (G14, G25): those the step names, or, where it names none, those of the actor's
+    # own that the step plainly is (`skills_for`).
+    skill_refs = drawn.skills or skills_for(actor, step)
+    if skill_refs:
+        best = _best_skill(actor, skill_refs)
         rank = best.level.rank if best is not None else SkillLevel.UNTRAINED.rank
         if measured and rival is not None:
             # Head to head, each side as their sheet has them: untrained where it lacks the skill.
-            theirs = _best_skill(rival, drawn.skills)
+            theirs = _best_skill(rival, skill_refs)
             mark = theirs.level.rank if theirs is not None else SkillLevel.UNTRAINED.rank
         elif facts.challenge is not None:
             mark = SkillLevel.UNTRAINED.rank  # the ordinary person the challenge was judged for
@@ -228,13 +250,13 @@ def weigh(
         if best is not None and rank > mark:
             helps.append(f"{whose} {best.name.lower()} ({best.level.value})")
         elif rank < mark:
-            skill = best.name.lower() if best is not None else drawn.skills[0]
+            skill = best.name.lower() if best is not None else skill_refs[0]
             level = best.level.value if best is not None else "untrained"
             hinders.append(f"{whose} {skill} ({level})")
         if not measured and rival is not None:
             # Someone who can answer but isn't measured against the actor (a guard a chain must
             # slip past): their own skill above or below a fair hand's makes it harder or easier.
-            theirs = _best_skill(rival, drawn.skills)
+            theirs = _best_skill(rival, skill_refs)
             if theirs is not None:
                 edge = theirs.level.rank - SkillLevel.FAIR.rank
                 shift -= SKILL_SHIFT * edge
@@ -248,8 +270,9 @@ def weigh(
         shift += TECHNIQUE_SHIFT
         helps.append(f"{whose} {drawn.techniques[0].name}")
 
-    # Traits (G13): gifts used help, flaws that get in the way hurt.
-    traits = [t for t in actor.sheet.traits if any(mentions(t.name, ref) for ref in drawn.traits)]
+    # Traits (G13): gifts used help, flaws that get in the way hurt. Those the step names, or,
+    # where it names none, those the step plainly draws on (`traits_for`).
+    traits = traits_for(actor, step, drawn.traits)
     gifts = [t for t in traits if t.kind is TraitKind.GIFT][:MAX_TRAITS]
     flaws = [t for t in traits if t.kind is TraitKind.FLAW][:MAX_TRAITS]
     shift += TRAIT_SHIFT * (len(gifts) - len(flaws))
@@ -290,7 +313,8 @@ def attributes_used(
     step: IntentStep, axis: PowerAxis | None, *, named_only: bool = False
 ) -> tuple[str, ...]:
     """The attributes a step tests: those it names (by attribute, by a word for one, or by body,
-    mind or presence), else, unless `named_only`, those its axis calls on."""
+    mind or presence), else, unless `named_only`, those its own words call on ("climb the tree"
+    is speed, "search the room" wits), else those its axis calls on."""
     found: list[str] = []
     for use in step.uses:
         if use.part is SheetPart.ATTRIBUTE:
@@ -299,7 +323,46 @@ def attributes_used(
         return tuple(dict.fromkeys(found))
     if axis is PowerAxis.INFLUENCE and intimidates(step):
         return _MENACE
+    words = step_words(step)
+    by_words = tuple(key for key, found in _ACTIVITY_STEMS.items() if found & words)
+    if by_words:
+        return by_words
     return _BY_AXIS.get(axis, ()) if axis is not None else ()
+
+
+def step_words(step: IntentStep) -> frozenset[str]:
+    """The meaningful word stems of what the step does: its words, its verb and its method."""
+    return stems(f"{step.text} {step.verb} {step.method}")
+
+
+def skills_for(actor: Character, step: IntentStep) -> list[str]:
+    """G14. The actor's own skills a step plainly is, for when the interpret step named none:
+    one its words name ("climb" for Climbing), or one whose name and notes share two words
+    with it."""
+    words = step_words(step)
+    return [s.name for s in actor.sheet.skills if _relevant(s.name, s.notes, words)]
+
+
+def traits_for(actor: Character, step: IntentStep, refs: list[str]) -> list[Trait]:
+    """G13. The actor's traits a step draws on: those it names, matched either way ("nimble" or
+    "a nimble tree-runner" both find Nimble), or, where it names none, those its words name or
+    whose name and description share two words with it ("leap onto a tree" and a gift for years
+    of leaping from tree to tree)."""
+    if refs:
+        return [
+            t
+            for t in actor.sheet.traits
+            if any(mentions(t.name, ref) or mentions(ref, t.name) for ref in refs)
+        ]
+    words = step_words(step)
+    return [t for t in actor.sheet.traits if _relevant(t.name, t.description, words)]
+
+
+def _relevant(name: str, more: str, words: frozenset[str]) -> bool:
+    named = stems(name)
+    if named and named <= words:
+        return True
+    return len((named | stems(more)) & words) >= RELEVANT_WORDS
 
 
 def attribute_names(ref: str) -> tuple[str, ...]:
@@ -345,7 +408,16 @@ def misses_after(misses: int, roll: RollRecord | None, result: StepResult) -> in
 
 
 def _best_skill(character: Character, refs: list[str]) -> Skill | None:
-    found = [s for s in (character.sheet.skill(ref) for ref in refs) if s is not None]
+    """Their best skill among `refs`, by name, or by its words either way ("climbing" finds
+    Tree climbing, "free-running and climbing" finds Climbing)."""
+    found = [
+        s
+        for s in character.sheet.skills
+        if any(
+            s.name.casefold() == ref.casefold() or mentions(s.name, ref) or mentions(ref, s.name)
+            for ref in refs
+        )
+    ]
     return max(found, key=lambda s: s.level.rank, default=None)
 
 

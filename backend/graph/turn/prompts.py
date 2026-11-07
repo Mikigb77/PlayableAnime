@@ -86,10 +86,11 @@ anyone manages it. easy: most people do, such as stamping out a dropped lantern.
 effort that often works. hard: it usually fails, such as picking a good lock untrained. \
 very_hard: it rarely works. extreme: almost nobody manages it. Judge the task, never this \
 character: code weighs their sheet against it (A2, G14).
-- uses: every part of PLAYER CHARACTER's sheet the step draws on, so code can weigh it: the \
-attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, charm, nerve, \
-bearing: speed for agility, a leap or quick hands, wits for noticing things), each skill and each \
-trait that helps or gets in the way, by name, and any power, technique or item, by id (G14).
+- uses, always: every part of PLAYER CHARACTER's sheet the step draws on, so code can weigh \
+it: the attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, \
+charm, nerve, bearing: speed for agility, a climb, a leap or quick hands, wits for noticing \
+things), each skill and each trait that helps or gets in the way, by its name on the sheet, and \
+any power, technique or item, by id (G14).
 - exchanges (C10): whatever the step pays, gives, hands over, sells, spends, uses up or takes \
 from someone if it works, money included. give: to with_id, who gets it. spend: used up, eaten, \
 drunk, thrown away, or paid where nobody keeps it. take: from with_id, such as a theft or a \

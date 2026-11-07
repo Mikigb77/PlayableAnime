@@ -338,6 +338,10 @@ and A8 weigh what the character brings to that action against what stands in the
 weighs shooting, nerve, the gun and the cover. A negotiation weighs charm, influence and the debts
 held. A fireball weighs the power and what it costs. The reasons the player sees use the world's own
 ranks and words (A8): "you're a made man and he's the boss's bodyguard: an outside chance".
+Decided 2026-11-07 (Miki): a character's sheet counts even when the interpret step forgets to say
+what a step uses. A forest runner who spent years leaping from tree to tree scales a tree: code
+finds the attribute the step's own words test (a climb or a leap is speed), and the character's
+own skills and gifts the step plainly draws on.
 
 **G15 Disposition shapes characters but never takes control from the player (P0).** NPCs act from
 their temperament, attitudes and agendas (E3): a greedy capo can be bought and a loyal one can't,
