@@ -7,8 +7,10 @@ fumbles it, and a clumsy scholar might. What counts:
 
 - **Attributes** the step tests, such as speed for a leap or wits for spotting a trap, against an
   average person's, or against the opponent's where the step is measured against someone (G13).
-- **Skills** it draws on, by rank: against someone untrained when the challenge was judged for an
-  ordinary person, otherwise against a fair hand or the opponent's own skill (G14, G25).
+- **Skills** it draws on, by rank: against the opponent's own where the step is measured against
+  someone, else against someone untrained when the challenge was judged for an ordinary person, or
+  a fair hand when it wasn't; someone who can answer but isn't measured against them makes it
+  harder by their own skill (G14, G25).
 - **Traits**: a gift used helps and a flaw that gets in the way hurts (G13).
 - **A power or a technique** it uses (G22, G25). A power's weight on an axis is already in its
   user's tier, so it counts here only where nobody is measured against them.
@@ -22,6 +24,7 @@ character doesn't fail the same easy thing five times running. Like every shift,
 the class's band and never makes a roll certain (A2).
 """
 
+import re
 from dataclasses import dataclass, replace
 from statistics import mean
 
@@ -31,7 +34,15 @@ from engine.resolve.checks import Drawn
 from engine.resolve.words import mentions, possessive, stems
 from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
-from engine.state.sheet import Attributes, GiftStrength, Health, PowerAxis, SkillLevel, TraitKind
+from engine.state.sheet import (
+    Attributes,
+    GiftStrength,
+    Health,
+    PowerAxis,
+    Skill,
+    SkillLevel,
+    TraitKind,
+)
 from engine.state.world import WorldState
 
 # How an ordinary person fares at each challenge: average in body and mind, untrained in it.
@@ -92,13 +103,14 @@ _ATTRIBUTE_WORDS = {
     "willpower": "willpower will resolve determination discipline composure focus",
     "charm": "charm charming charisma charismatic persuasion likeable allure beauty appeal",
     "nerve": "nerve nerves courage brave bravery guts daring steady steadiness",
-    "bearing": "bearing presence poise authority dignity demeanour demeanor",
+    "bearing": "bearing poise authority dignity demeanour demeanor",
 }
 _ATTRIBUTE_STEMS = {key: stems(words) for key, words in _ATTRIBUTE_WORDS.items()}
+# The three groups of attributes, by the words that name a whole group.
 _GROUPS = {
-    "body": ("strength", "speed", "toughness"),
-    "mind": ("wits", "knowledge", "willpower"),
-    "presence": ("charm", "nerve", "bearing"),
+    ("strength", "speed", "toughness"): stems("body bodies bodily physical physique"),
+    ("wits", "knowledge", "willpower"): stems("mind minds mental"),
+    ("charm", "nerve", "bearing"): stems("presence"),
 }
 # What a step on an axis tests when the interpret step named no attribute (A8).
 _BY_AXIS = {
@@ -175,7 +187,8 @@ def weigh(
     skills are weighed against the strongest rival's, and powers and condition, which their tiers
     already carry, don't count again. Otherwise they are weighed against an ordinary person's:
     one untrained in the skill where the interpret step judged the challenge for them, a fair hand
-    where it didn't."""
+    where it didn't, and a rival who can still answer makes it harder by their own skill above a
+    fair hand's."""
     facts = step.facts
     helps: list[str] = []
     hinders: list[str] = []
@@ -201,17 +214,16 @@ def weigh(
 
     # Skills (G14, G25).
     if drawn.skills:
-        found = [actor.sheet.skill(s) for s in drawn.skills]
-        known = [s for s in found if s is not None]
-        best = max(known, key=lambda s: s.level.rank, default=None)
+        best = _best_skill(actor, drawn.skills)
         rank = best.level.rank if best is not None else SkillLevel.UNTRAINED.rank
-        untrained_mark = facts.challenge is not None and not measured
-        mark = SkillLevel.UNTRAINED.rank if untrained_mark else SkillLevel.FAIR.rank
         if measured and rival is not None:
-            theirs = [rival.sheet.skill(s) for s in drawn.skills]
-            ranks = [s.level.rank for s in theirs if s is not None]
-            if ranks:
-                mark = max(ranks)
+            # Head to head, each side as their sheet has them: untrained where it lacks the skill.
+            theirs = _best_skill(rival, drawn.skills)
+            mark = theirs.level.rank if theirs is not None else SkillLevel.UNTRAINED.rank
+        elif facts.challenge is not None:
+            mark = SkillLevel.UNTRAINED.rank  # the ordinary person the challenge was judged for
+        else:
+            mark = SkillLevel.FAIR.rank
         shift += SKILL_SHIFT * (rank - mark)
         if best is not None and rank > mark:
             helps.append(f"{whose} {best.name.lower()} ({best.level.value})")
@@ -219,6 +231,18 @@ def weigh(
             skill = best.name.lower() if best is not None else drawn.skills[0]
             level = best.level.value if best is not None else "untrained"
             hinders.append(f"{whose} {skill} ({level})")
+        if not measured and rival is not None:
+            # Someone who can answer but isn't measured against the actor (a guard a chain must
+            # slip past): their own skill above or below a fair hand's makes it harder or easier.
+            theirs = _best_skill(rival, drawn.skills)
+            if theirs is not None:
+                edge = theirs.level.rank - SkillLevel.FAIR.rank
+                shift -= SKILL_SHIFT * edge
+                said = f"{possessive(state, rival.id)} {theirs.name.lower()} ({theirs.level.value})"
+                if edge > 0:
+                    hinders.append(said)
+                elif edge < 0:
+                    helps.append(said)
 
     if drawn.techniques:
         shift += TECHNIQUE_SHIFT
@@ -281,9 +305,11 @@ def attributes_used(
 def attribute_names(ref: str) -> tuple[str, ...]:
     """The attributes a word names: "agility" is speed, "mind" is wits, knowledge and willpower."""
     words = stems(ref)
-    for group, members in _GROUPS.items():
-        if group in words:
+    for members, named_by in _GROUPS.items():
+        if named_by & words:
             return members
+    if "will" in re.findall(r"[a-z]+", ref.casefold()):
+        return ("willpower",)  # "will" or "force of will": a stopword `stems` drops
     return tuple(key for key, found in _ATTRIBUTE_STEMS.items() if found & words)
 
 
@@ -316,6 +342,11 @@ def misses_after(misses: int, roll: RollRecord | None, result: StepResult) -> in
     if StepResult.FAILURE in roll.allowed:
         return misses + 1
     return misses
+
+
+def _best_skill(character: Character, refs: list[str]) -> Skill | None:
+    found = [s for s in (character.sheet.skill(ref) for ref in refs) if s is not None]
+    return max(found, key=lambda s: s.level.rank, default=None)
 
 
 def _level(attributes: Attributes, names: tuple[str, ...]) -> float:

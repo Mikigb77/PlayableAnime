@@ -579,7 +579,7 @@ class _Knowledge:
             else:
                 lines.append(_cap(f"{power.name}: {ready}"))
             # G13: what using it costs, as the sheet says, so nothing about it is a surprise.
-            costs = "; ".join(c.text.strip().rstrip(".") for c in power.costs if c.text.strip())
+            costs = power.costs_text
             if costs:
                 cost = _WORDS[self.language]["cost"].format(power=power.name, costs=costs)
                 lines.append(_cap(cost))

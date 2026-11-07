@@ -160,7 +160,9 @@ class _Frame:
     alert: set[str] = field(default_factory=set)  # hidden masters among them, who see it coming
     fighting: list[str] = field(default_factory=list)  # foes this plan fought (N6)
     out: set[str] = field(default_factory=set)  # foes it killed, subdued or got away from (N6)
-    misses: int = 0  # A3: the player character's rolled steps that missed in a row so far
+    # A3: the player character's rolled steps that missed in a row so far, within this plan;
+    # `engine.pipeline.play_out` keeps the count from the steps that played, for the next turn.
+    misses: int = 0
 
 
 @dataclass
@@ -172,6 +174,7 @@ class _Opposition:
     targets: list[Character] = field(default_factory=list)  # whom the aim lands on
     answering: list[Character] = field(default_factory=list)  # who can still answer a chain (A9)
     unmeasured: bool = False  # something that pushes back with no sheet: a faction, a storm
+    factions: bool = False  # a faction is named in the way, who could still answer
     unmeasured_frozen: bool = False
 
     @property
@@ -1041,7 +1044,7 @@ def _opposition(
 
     says_cannot = facts.can_respond is False
     refuted = says_cannot and claims_frozen_in_time(facts.why_not) and not frozen
-    found = _Opposition()
+    found = _Opposition(factions=factions)
     for person in people:
         on_sheet = helpless_state(person)
         why = FROZEN if frozen and not stop.immune(person) else on_sheet
@@ -1106,20 +1109,16 @@ def _contested(
         for t in opposition.targets
         if axis is not PowerAxis.MIGHT or t not in opposition.responsive
     ]
-    # A body near or above what the blow can hurt keeps it rolled, however sure the hand (A2).
-    tough_body = False
     if step.aim.harmful and unmet and hit is not None and hit.force_tier is not None:
         # W10a. A relative-speed hit is measured by its own force, not the user's arm.
         margin, body = stop.force_ceiling_margin(state, unmet, hit.force_tier)
         if margin >= stop.TAKES_IT_MARGIN:
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, _takes_it(state, body))
-        tough_body = margin > -stop.TAKES_IT_MARGIN
     elif step.aim.harmful and unmet:
         gap, toughest = _body(state, actor, unmet)
         if gap >= odds_mod.RULED_OUT_AT:
             reason = f"{_beyond_harm(state, toughest)}."
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
-        tough_body = gap >= odds_mod.LONG_SHOT_AT
     if axis is not None and opposition.responsive:
         menace = axis is PowerAxis.INFLUENCE and _backed_by_force(state, actor, step)
         if menace:
@@ -1167,15 +1166,18 @@ def _contested(
             state, actor, step, drawn, rivals=opposition.responsive, axis=axis, measured=False
         )
         # A2. Only things in the way (a lantern, a locked door, the wind), never someone or a
-        # faction who could still answer, or a body the blow may not get through, can leave a
-        # step certain.
-        things_only = not (opposition.responsive or _factions_in_way(state, step) or tough_body)
+        # faction who could still answer, can leave a step certain. (Here nobody is targeted but
+        # the actor, so no body stands to be hurt.)
+        things_only = not (opposition.responsive or opposition.factions)
         outcome_class, base = _from_challenge(step, weighed, proposed, may_be_certain=things_only)
-        detail = _detail(step, weighed, state, actor)
         if outcome_class is OutcomeClass.CERTAIN:
             stopper = "Nothing" if what == "Something" else cap(what)
             lead = f"{stopper} can't stop {name(state, actor.id)}"
-            return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, f"{lead}: {detail}.")
+            return Settled(
+                OutcomeClass.CERTAIN,
+                StepResult.SUCCESS,
+                _said(lead, _detail(step, weighed, state, actor)),
+            )
         weighed = weighed.with_misses(misses)
         detail = _detail(step, weighed, state, actor)
         lead = f"{cap(what)} can push back"
@@ -1197,10 +1199,6 @@ def _contested(
     if detail:
         words = f"{detail}, {words}"
     return Settled(outcome_class, roll.result, f"{lead}: {words}.", roll)
-
-
-def _factions_in_way(state: WorldState, step: IntentStep) -> bool:
-    return any(i in state.factions for i in step.facts.opposition_ids)
 
 
 def _from_challenge(
@@ -1229,6 +1227,11 @@ def _detail(step: IntentStep, weighed: capability.Weighed, state: WorldState, ac
     task = capability.challenge_words(step.facts.challenge)
     factors = weighed.words(state, actor)
     return f"{task}{factors}" if task else factors.removeprefix(", ")
+
+
+def _said(lead: str, detail: str) -> str:
+    """ "Lead: detail.", or "Lead." when there is nothing to add."""
+    return f"{lead}: {detail}." if detail else f"{lead}."
 
 
 def _unopposed(
@@ -1311,7 +1314,7 @@ def _unopposed(
     may_be_certain = ceiling in (None, MeansVerdict.CLEARLY_ENOUGH)
     outcome_class, base = _from_challenge(step, weighed, proposed, may_be_certain=may_be_certain)
     if outcome_class is OutcomeClass.CERTAIN:
-        sure = f"{_detail(step, weighed, state, actor)}, no real doubt"
+        sure = ", ".join(filter(None, [_detail(step, weighed, state, actor), "no real doubt"]))
         reason = f"{lead}: {sure}." if lead else f"{cap(sure)}."
         return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason)
     if outcome_class is OutcomeClass.LONG_SHOT:
@@ -1462,7 +1465,7 @@ def _with_chain(
         if proposed is OutcomeClass.RULED_OUT:
             reason = f"{cap(who)} will see it coming and answer first."
             return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason), None
-        setup_class = (
+        judged = (
             OutcomeClass.LONG_SHOT if proposed is OutcomeClass.LONG_SHOT else OutcomeClass.CONTESTED
         )
         weighed = capability.weigh(
@@ -1473,12 +1476,13 @@ def _with_chain(
             rivals=opposition.responsive,
             axis=step.axis,
             measured=False,
-        ).with_misses(misses)
+        )
+        # Someone or something can answer, so the setup is never certain; the weighed odds
+        # decide whether it's a long shot, as for any step nobody is measured against.
+        setup_class, base = _from_challenge(step, weighed, judged, may_be_certain=False)
+        weighed = weighed.with_misses(misses)
         odds = odds_mod.settle(
-            capability.base_logit(step.facts.challenge, setup_class),
-            weighed.shift + weighed.luck,
-            odds_mod.BANDS[setup_class],
-            difficulty,
+            base, weighed.shift + weighed.luck, odds_mod.BANDS[setup_class], difficulty
         )
         setup = odds_mod.roll(
             rng.child("outcome"),

@@ -46,11 +46,14 @@ from tests.engine.resolve.worlds import (
     MANY_SEEDS,
     SEEDS,
     add,
+    burn_the_hall,
     ctx,
     disciple,
+    facts,
     resolve,
     rng,
     sect,
+    shielded_mage,
     step,
 )
 
@@ -211,6 +214,10 @@ def test_a_power_the_step_uses_helps_where_nobody_is_measured_against_it():
         ("raw strength", ("strength",)),
         ("mind", ("wits", "knowledge", "willpower")),
         ("body", ("strength", "speed", "toughness")),
+        ("bodies", ("strength", "speed", "toughness")),
+        ("presence", ("charm", "nerve", "bearing")),
+        ("will", ("willpower",)),
+        ("force of will", ("willpower",)),
         ("luck", ()),
     ],
 )
@@ -238,6 +245,7 @@ def test_a_step_the_interpret_step_called_certain_is_not_tossed_at_even_odds():
     # It named a thing in the way and judged no challenge; that is no reason for a coin toss.
     settled = resolve(farm(), plan(stamp(None, proposed_class=OutcomeClass.CERTAIN))).steps[0]
     assert settled.outcome_class is OutcomeClass.CERTAIN and settled.roll is None
+    assert settled.reason == "The lantern's flame can't stop you."  # nothing more to say (A8)
 
 
 def test_with_no_challenge_judged_an_average_character_still_rolls_at_even_odds():
@@ -347,6 +355,52 @@ def test_against_someone_measured_the_attributes_are_weighed_against_theirs():
     assert slower.roll.odds < even.roll.odds < quicker.roll.odds
     assert even.roll.odds == pytest.approx(0.5)  # the gap sets the base, not the challenge
     assert "your speed in your favour" in quicker.reason
+
+
+def test_head_to_head_two_people_untrained_in_a_skill_are_even_in_it():
+    untrained = resolve(add(farm(speed=4), rival(4)), plan(grab(skill("knife-fighting")))).steps[0]
+    assert untrained.roll.odds == pytest.approx(0.5)
+    assert "knife-fighting" not in untrained.reason
+
+    trained = add(farm(speed=4), rival(4))
+    trained.player.sheet.skills.append(Skill(name="Knife-fighting", level=SkillLevel.FAIR))
+    settled = resolve(trained, plan(grab(skill("knife-fighting")))).steps[0]
+    assert settled.roll.odds > untrained.roll.odds
+    assert "your knife-fighting (fair) in your favour" in settled.reason
+
+
+# --- a plan that goes around the strength (A9) --------------------------------------------------
+
+
+def _guard(level: SkillLevel | None) -> WorldState:
+    state = shielded_mage()
+    if level is not None:
+        state.characters["su-yan"].sheet.skills.append(Skill(name="Perception", level=level))
+    return state
+
+
+def _sneak(challenge: Challenge, proposed: OutcomeClass = OutcomeClass.CONTESTED) -> Intent:
+    aware = facts(
+        opposition_ids=["su-yan"],
+        can_respond=True,
+        challenge=challenge,
+        proposed_class=proposed,
+    )
+    return Intent(steps=[burn_the_hall(facts=aware, uses=[skill("perception")])])
+
+
+def test_a_chain_setup_is_harder_to_slip_past_a_watchful_rival():
+    novice = resolve(_guard(SkillLevel.NOVICE), _sneak(Challenge.MODERATE)).steps[0]
+    master = resolve(_guard(SkillLevel.MASTER), _sneak(Challenge.MODERATE)).steps[0]
+    assert master.roll.odds < novice.roll.odds
+
+
+def test_a_chain_setup_takes_its_class_from_the_weighed_odds_not_the_proposal():
+    # An easy setup the model called a long shot isn't held to the long-shot band.
+    easy = resolve(_guard(None), _sneak(Challenge.EASY, OutcomeClass.LONG_SHOT)).steps[0]
+    assert easy.roll.odds > odds_mod.LONG_SHOT_BAND[1]
+    extreme = resolve(_guard(None), _sneak(Challenge.EXTREME)).steps[0]
+    assert extreme.roll.odds <= odds_mod.LONG_SHOT_BAND[1]
 
 
 # --- a run of misses ----------------------------------------------------------------------------

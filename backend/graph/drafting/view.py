@@ -214,7 +214,7 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
             detail = power.description or power.name
             limits = f" ({'; '.join(power.limits)})" if power.limits else ""
             # G2, G13: what it costs is shown, so the player can change a cost they don't want.
-            costs = "; ".join(c.text.strip().rstrip(".") for c in power.costs if c.text.strip())
+            costs = power.costs_text
             cost = f" {_sentence(words['costs'] + _capital(costs))}" if costs else ""
             secret = words["secret"] if power.secret else ""
             lines.append(
