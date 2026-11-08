@@ -1306,7 +1306,9 @@ in its own identity pool so it can never act as the deployer. `infra/bootstrap.s
 uploaded as an artifact for 90 days, its summary goes on the run's page and into its log, and the
 history travels from run to run in the Actions cache, with a copy in each artifact. The log also
 says why each model call failed after its retries (its node, model, reason and the provider's
-words, such as a 429, never the prompt), and a scenario that errors shows the error's own line.
+words, such as a 429, never the prompt), a scenario that errors shows the error's own line, and
+each criterion the judge failed gets a line with the judge's own reason, so a thread that can't
+download the artifact still reads what the judge saw.
 
 A full live run plays about 700 turns, a hundred-odd judge calls and about twenty pictures:
 roughly $10 to $20 at today's defaults, so $300 to $600 a month if it runs every night. Running it

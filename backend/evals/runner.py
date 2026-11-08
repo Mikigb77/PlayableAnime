@@ -84,6 +84,8 @@ from graph.turn import (
 from media.briefs import THREAD_SUBJECTS
 from media.notes import SceneText
 
+# How much of a missed criterion a failure line repeats before the judge's reason.
+CRITERION_CHARS = 80
 # How many failures a check keeps the details of. The count covers them all.
 KEPT_DETAILS = 5
 
@@ -559,9 +561,19 @@ class ScenarioResult:
             total = tally.passed + tally.failed
             lines.append(f"{tally.name}: {tally.failed} failed of {total}: {shown}")
         for judgement in self.judged:
-            if not judgement.passed:
-                missed = [f"{v.id} {v.criterion}" for v in judgement.verdicts if not v.passed]
-                lines.append(f"judge {judgement.name}: {judgement.error or '; '.join(missed)}")
+            if judgement.passed:
+                continue
+            if judgement.error or not judgement.verdicts:
+                lines.append(f"judge {judgement.name}: {judgement.error or 'nothing judged'}")
+                continue
+            # One line per criterion missed, with the judge's own reason, so a run's log says
+            # what the judge saw without its artifact (T18).
+            for v in judgement.verdicts:
+                if not v.passed:
+                    lines.append(
+                        f"judge {judgement.name}: {v.id} ({_clip(v.criterion, CRITERION_CHARS)}) "
+                        f"failed: {' '.join(v.reason.split()) or 'no reason given'}"
+                    )
         return lines
 
     def gaps(self) -> list[str]:
@@ -926,3 +938,8 @@ async def run_scenario(
     if not tallies and not ev.judged:
         return ev.result("error", time.perf_counter() - started, "the scenario checked nothing")
     return ev.result("failed" if failed else "passed", time.perf_counter() - started)
+
+
+def _clip(text: str, limit: int) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
