@@ -6,12 +6,12 @@ lists hold the player character (`known_by`, `met_by`, `heard_at`, a status chan
 and never read hidden truth: whether a rumor or fact is true, how accurate a rumor is, secrets,
 agendas, real attitudes behind an apparent one, trust (W4), faction plans (W6), witnesses the
 player didn't notice, or anything on another timeline. The one exception is what the player
-character knows for themselves: a rumor of something they did, suffered, saw or were there for is
-confirmed, or false, rather than unconfirmed. A spoiler view after an arc ends is a separate
-projection (P1).
+character knows for themselves: a rumor of something they did, saw, were told by someone close or
+were there for is confirmed, or false, rather than unconfirmed. A spoiler view after an arc ends is
+a separate projection (P1).
 
 The same words heard or done more than once show once: a fight of four blows is one rumor and one
-deed, not four.
+deed on the screen, not four, though the world keeps each blow.
 
 URLs for portraits and pictures are left empty here; the API fills them from the scene images.
 
@@ -29,6 +29,7 @@ from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, in_label, number_label
+from engine.limits import normalize
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -42,6 +43,7 @@ from engine.state.records import (
     Deed,
     GoalStatus,
     LeadStatus,
+    Rumor,
     StatusChange,
     ThreadStatus,
     Transfer,
@@ -489,41 +491,51 @@ class _Knowledge:
         deeds.sort(key=lambda d: (d.world_s, natural_key(d.id)))
         return deeds
 
+    def told_deeds(self) -> list[tuple[Deed, str, str, str]]:
+        """The deeds the player character knows, in time order, each with its telling, when it
+        was and who saw it. Deeds that would read the same in all three show once: a fight of
+        four blows is one entry, not four."""
+        told = []
+        seen: set[tuple[str, str, str]] = set()
+        for deed in self.deeds():
+            text = self.deed_text(deed)
+            when = clock_label(self.state.bible.calendar, deed.world_s, self.language)
+            known = self.known_label(deed)
+            if (mark := (normalize(text), when, known)) not in seen:
+                seen.add(mark)
+                told.append((deed, text, when, known))
+        return told
+
     def rumors(self) -> list[RumorEntry]:
-        """The rumors the player character heard, each said once however many deeds or tellers
-        it came from, by when they last heard it (W2, C6). One they know firsthand is confirmed,
-        or false, rather than unconfirmed: what they lived needs no confirming."""
-        heard = [
-            r
-            for r in self.state.rumors.values()
-            if self.player_id in r.heard_at and r.timeline_id == self.timeline
-        ]
-        said: dict[str, list] = {}
-        for rumor in heard:
-            said.setdefault(_said(rumor.text), []).append(rumor)
-        entries = []
-        for same in said.values():
-            same.sort(key=lambda r: (r.heard_at[self.player_id], natural_key(r.id)))
-            latest = same[-1]
-            known = {certainty(self.state, self.player_id, r) for r in same}
-            # What they lived settles it; one telling they can't check keeps it open.
-            sure = next(
-                (c for c in (Certainty.CONFIRMED, Certainty.UNCONFIRMED) if c in known),
-                Certainty.FALSE,
-            )
-            entries.append((latest.heard_at[self.player_id], latest, sure))
-        entries.sort(key=lambda e: (e[0], natural_key(e[1].id)))
+        """The rumors the player character heard, by when they last heard them (W2, C6). The same
+        words show once, however many deeds or tellers they came from, dated by the latest
+        hearing; words they know for sure and words they only heard stay apart. One they know
+        firsthand is confirmed, or false, rather than unconfirmed: what they lived needs no
+        confirming."""
+        said: dict[tuple[str, Certainty], Rumor] = {}
+        for rumor in self.state.rumors.values():
+            if self.player_id not in rumor.heard_at or rumor.timeline_id != self.timeline:
+                continue
+            mark = (normalize(rumor.text), certainty(self.state, self.player_id, rumor))
+            kept = said.get(mark)
+            if kept is None or self._heard(rumor) > self._heard(kept):
+                said[mark] = rumor
         words = _WORDS[self.language]
         return [
             RumorEntry(
                 id=rumor.id,
                 text=rumor.text,
-                heard_label=words["heard"].format(when=ago_label(self.now - when, self.language)),
+                heard_label=words["heard"].format(
+                    when=ago_label(self.now - rumor.heard_at[self.player_id], self.language)
+                ),
                 certainty=sure,
                 unconfirmed=sure is Certainty.UNCONFIRMED,
             )
-            for when, rumor, sure in entries
+            for (_, sure), rumor in sorted(said.items(), key=lambda item: self._heard(item[1]))
         ]
+
+    def _heard(self, rumor: Rumor) -> tuple[int, tuple]:
+        return rumor.heard_at[self.player_id], natural_key(rumor.id)
 
     def known_label(self, deed: Deed) -> str:
         """Who saw it, as far as the player character knows (W2, C6)."""
@@ -703,29 +715,11 @@ def _by_name(records):
     return sorted(records, key=lambda r: (_sort_name(r.name), natural_key(r.id)))
 
 
-def _said(text: str) -> str:
-    """Words as said, for telling the same words apart from new ones: case, spacing and the
-    closing stop don't count."""
-    return " ".join(text.casefold().split()).rstrip(".")
-
-
-def _once(entries: list, *, key) -> list:
-    """Each entry once, where it first comes: the same words at the same time say nothing new."""
-    seen: set = set()
-    kept = []
-    for entry in entries:
-        if (mark := key(entry)) not in seen:
-            seen.add(mark)
-            kept.append(entry)
-    return kept
-
-
 def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     """The Memory screen (C6): only what the player character knows, with its fixed words in the
     story's language (S10)."""
     k = _Knowledge(state, language)
     player = state.player
-    calendar = state.bible.calendar
 
     people = [k.person(c) for c in _by_name(state.npcs()) if k.knows(c)]
     places = [k.place(p) for p in _by_name(state.places.values()) if k.knows(p)]
@@ -747,18 +741,10 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
             expires = _WORDS[language]["ends"].format(when=when)
         leads.append(LeadEntry(id=lead.id, text=lead.text, expires_label=expires))
     rumors = k.rumors()
-    deeds = _once(
-        [
-            DeedEntry(
-                id=d.id,
-                text=k.deed_text(d),
-                when_label=clock_label(calendar, d.world_s, language),
-                known_label=k.known_label(d),
-            )
-            for d in k.deeds()
-        ],
-        key=lambda e: (_said(e.text), e.when_label, e.known_label),
-    )
+    deeds = [
+        DeedEntry(id=d.id, text=text, when_label=when, known_label=known)
+        for d, text, when, known in k.told_deeds()
+    ]
     threads = [
         ThreadEntry(id=t.id, title=t.title, status=t.status)
         for t in sorted(state.threads.values(), key=lambda t: (t.opened_turn, natural_key(t.id)))
@@ -841,8 +827,8 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
         if k.knows(f)
     ]
     moments: list[tuple[int, str, str]] = [
-        (d.world_s, d.id, k.deed_text(d))
-        for d in k.deeds()
+        (d.world_s, d.id, text)
+        for d, text, _, _ in k.told_deeds()
         if d.actor_id == k.player_id or d.severity >= 3
     ]
     moments += [
@@ -854,13 +840,10 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
     mine = possessions.involving(state, k.player_id)[-SINCE_TRANSFERS:]
     moments += [(t.world_s, f"transfer-{n}", k.transfer_text(t)) for n, t in enumerate(mine)]
     moments.sort(key=lambda m: (m[0], natural_key(m[1])), reverse=True)
-    since = _once(
-        [
-            SinceEntry(text=text, ago_label=ago_label(k.now - when, language))
-            for when, _, text in moments
-        ],
-        key=lambda e: (_said(e.text), e.ago_label),
-    )[:SINCE_LIMIT]
+    since = [
+        SinceEntry(text=text, ago_label=ago_label(k.now - when, language))
+        for when, _, text in moments[:SINCE_LIMIT]
+    ]
     return StatusView(
         character=StatusCharacter(name=player.name, lines=lines),
         reputation=reputation,

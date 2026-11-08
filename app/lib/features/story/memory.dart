@@ -116,7 +116,7 @@ class MemoryFaction {
 
 /// What the character knows of a rumor they heard (C6): only that people say it, that it is so,
 /// or that it isn't. The server says it is so or isn't only where the character knows for
-/// themselves: they did, suffered or saw what it tells, or were there when it happened.
+/// themselves: they did or saw what it tells, or were there when it happened.
 enum RumorCertainty {
   unconfirmed('unconfirmed'),
   confirmed('confirmed'),

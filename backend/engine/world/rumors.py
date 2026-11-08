@@ -7,14 +7,15 @@ the doer. Everyone at a place hears it when it arrives, but beasts don't follow 
 (G24). Those who believe it react (W4), factions there learn of it (W3, W5), and the player hears
 it too if they are there (C6). Rumors are told in the world's words (G16).
 
-Whoever knows for themselves what a rumor tells, because they did it, suffered it, saw it or were
-there when it happened, knows whether it is so (`certainty`): they believe it if it is and not if
-it isn't, and the player's Memory screen marks it confirmed or false instead of unconfirmed (C6).
+Whoever knows for themselves what a rumor tells, because they did it, saw it, were told it by
+someone close or were there when it happened, knows whether it is so (`certainty`): they believe
+it if it is and not if it isn't, and the player's Memory screen marks it confirmed or false
+instead of unconfirmed (C6).
 """
 
 from enum import StrEnum
 
-from engine.state.records import Deed, EventStatus, PendingEvent, Rumor
+from engine.state.records import GARBLED_LEAD, Deed, EventStatus, PendingEvent, Rumor
 from engine.state.world import WorldState
 from engine.world.geography import characters_at, news_neighbours, region_of
 from engine.world.knowledge import (
@@ -107,9 +108,10 @@ def knows_doer(state: WorldState, character_id: str, deed: Deed) -> bool:
 
 
 def knows_firsthand(state: WorldState, character_id: str, rumor: Rumor) -> bool:
-    """Whether someone knows for themselves what a rumor tells, not by hearsay: they did the deed
-    it tells, suffered or saw it, or heard it from someone close (W4), or they were there when
-    what it tells happened."""
+    """Whether someone knows for themselves what a rumor tells, not by hearsay: the deed it tells
+    is theirs, they saw it (a victim who saw it happen among them), or someone close told them
+    who did it (W4), which is all a deed's `known_by` holds; or they were there when what it
+    tells happened."""
     deed = state.deeds.get(rumor.deed_id) if rumor.deed_id else None
     if deed is not None:
         return character_id == deed.actor_id or character_id in deed.known_by
@@ -185,7 +187,7 @@ def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     so. One per rumor, reused as it spreads."""
     state = w.state
     told = account(state, deed, doer="someone") if deed is not None else rumor.text
-    text = f"A garbled account goes round: {told}"
+    text = f"{GARBLED_LEAD}{told}"
     about = [i for i in rumor.about_ids if deed is None or i != deed.actor_id]
     for other in by_id(state.rumors.values()):
         if other.deed_id == rumor.deed_id and other.text == text and other.id != rumor.id:

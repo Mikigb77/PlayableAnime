@@ -12,6 +12,7 @@ from engine.invariants import check_transition
 from engine.rng import SeededRng
 from engine.samples import grounded_world
 from engine.state import Deed, Rumor, StepResult, Visibility, WorldState
+from engine.state.records import GARBLED_LEAD
 from engine.state.sheet import Attitude
 from engine.visibility import memory_view, status_view
 from engine.world.clocks import on_clock_end
@@ -260,3 +261,58 @@ def test_the_wire_carries_certainty_whatever_the_story_language():
     assert dumped["rumors"][0]["certainty"] == "confirmed"
     assert dumped["rumors"][0]["unconfirmed"] is False
     assert dumped["rumors"][0]["heard_label"].startswith("Lo oíste")
+
+
+def test_the_same_words_known_and_only_heard_stay_apart():
+    state = grounded_world()
+    seen = player_deed(state, id="deed-1", actor_id="carmine", known_by=["carmine", "luca"])
+    unseen = player_deed(state, id="deed-2", actor_id="carmine", known_by=["carmine"])
+    for i, deed in enumerate((seen, unseen)):
+        state.rumors[f"r{i}"] = Rumor(
+            id=f"r{i}",
+            text="Carmine killed the bartender.",
+            is_true=True,
+            deed_id=deed.id,
+            about_ids=["carmine", "bartender"],
+            heard_at={"luca": i * HOUR},
+        )
+    state.world_s = 2 * HOUR
+
+    view = memory_view(state)
+
+    assert [(r.id, r.certainty, r.heard_label) for r in view.rumors] == [
+        ("r0", Certainty.CONFIRMED, "Heard 2 hours ago"),
+        ("r1", Certainty.UNCONFIRMED, "Heard an hour ago"),
+    ]
+
+
+def test_a_garbled_retelling_saved_before_it_kept_its_truth_loads_true():
+    saved = {
+        "id": "r1",
+        "text": f"{GARBLED_LEAD}someone attacked Luca Esposito at Carmine's bar.",
+        "is_true": False,
+        "deed_id": "deed-1",
+    }
+
+    assert Rumor.model_validate(saved).is_true
+    # A wrong rumor that only looks alike stays wrong.
+    assert not Rumor.model_validate(saved | {"text": "An accident, people say."}).is_true
+
+
+def test_a_clock_that_ends_with_the_player_is_seen_wherever_they_stand_in_it():
+    state = grounded_world()
+    w = at(state)
+    # The council ends in Naples as a whole; Luca is in the bar inside it.
+    end = schedule(
+        w,
+        Kind.CLOCK_END,
+        w.at_s,
+        title="The end",
+        place_id="naples",
+        payload={"clock_id": "council"},
+    )
+    on_clock_end(w, end)
+
+    (rumor,) = state.rumors.values()
+    assert "luca" in rumor.seen_by and "luca" in rumor.heard_at
+    assert memory_view(state).rumors[0].certainty is Certainty.CONFIRMED

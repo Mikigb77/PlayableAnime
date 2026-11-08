@@ -159,6 +159,10 @@ class Deed(EngineModel):
         return [*self.victim_ids, *self.target_ids]
 
 
+# How a retelling that lost the doer's name begins (W2), in the world's words.
+GARBLED_LEAD = "A garbled account goes round: "
+
+
 class Rumor(EngineModel):
     """W2, W13. What people say. It may be wrong; `is_true` is hidden truth (C6): whether what it
     says is so, even where it is vague ("nobody knows who did it"). It spreads over in-world time
@@ -187,6 +191,14 @@ class Rumor(EngineModel):
             " `known_by` instead."
         ),
     )
+
+    @model_validator(mode="after")
+    def _garbled_is_vague_not_wrong(self) -> "Rumor":
+        """A garbled retelling saved before it kept its truth loads true: it only ever came from a
+        true rumor that named the doer, and losing the name makes it vaguer, not wrong (W2)."""
+        if not self.is_true and self.deed_id is not None and self.text.startswith(GARBLED_LEAD):
+            self.is_true = True
+        return self
 
     @property
     def heard_by(self) -> list[str]:

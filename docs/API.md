@@ -595,10 +595,11 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             leads:    [{id, text, expires_label?}],
             rumors:   [{id, text, heard_label, certainty, unconfirmed}],
                                           # certainty: "unconfirmed", or "confirmed" / "false"
-                                          # where the character knows for themselves (they did,
-                                          # suffered or saw it, or were there); unconfirmed is
+                                          # where the character knows for themselves (they did
+                                          # or saw it, or were there); unconfirmed is
                                           # certainty == "unconfirmed", for older apps. The
-                                          # same words show once, by when last heard.
+                                          # same words show once per certainty, by when last
+                                          # heard.
             deeds:    [{id, text, when_label, known_label}],
             threads:  [{id, title, status}]}
 
