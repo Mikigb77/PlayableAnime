@@ -193,6 +193,16 @@ class PlaceStatus(StrEnum):
     OCCUPIED = "occupied"
 
 
+class PlaceSetting(StrEnum):
+    """R8, W7. Whether a place is under the open sky, so the scenes and pictures there never put
+    a sky over a crypt or a ceiling over a clearing."""
+
+    OUTDOORS = "outdoors"  # under the open sky: a street, a field, a clearing, a courtyard
+    INDOORS = "indoors"  # under a roof or a hull, above the ground: a hall, a room, a ship
+    UNDERGROUND = "underground"  # below the ground: a cave, a tunnel, a crypt, a buried temple
+    UNDERWATER = "underwater"  # beneath water: a sunken city, the sea floor
+
+
 class Route(EngineModel):
     """W7, W10. A rough travel time to a neighbouring place."""
 
@@ -209,7 +219,11 @@ class Place(EngineModel):
     name: Name
     kind: str = Field(default="", description="region, city, village, building, room, wilds")
     description: str = ""
-    parent_id: str | None = None
+    parent_id: str | None = Field(default=None, description="The place it lies within.")
+    setting: PlaceSetting | None = Field(
+        default=None,
+        description="R8: outdoors, indoors, underground or underwater; None while untold.",
+    )
     status: PlaceStatus = PlaceStatus.THRIVING
     status_history: list[StatusChange] = Field(default_factory=list)
     controller_id: str | None = None

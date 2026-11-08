@@ -29,6 +29,7 @@ from engine.state import (
     PendingEvent,
     People,
     Place,
+    PlaceSetting,
     Power,
     PowerAxes,
     Prevalence,
@@ -753,6 +754,42 @@ def throne_room() -> WorldState:
         place_id="throne-hall",
         present_ids=["lin", "elder-mo"],
         ended_on="Elder Mo looks down at Lin from the dais of the marble throne hall.",
+    )
+    return state
+
+
+def buried_temple() -> WorldState:
+    """Lin at the foot of the stairs out of a temple buried under the Whispering Wood, grey
+    daylight far above (R8; Miki, 2026-11-08: a scene took the character from a temple under the
+    earth to "un claro", and the next had them still inside it)."""
+    state = sect()
+    state.places["wood"] = Place(
+        id="wood",
+        name="the Whispering Wood",
+        kind="wilds",
+        setting=PlaceSetting.OUTDOORS,
+        description="Old pines and ferns on the slopes below Azure Peak.",
+        parent_id="azure-peak",
+        known_by=["lin"],
+        visited_by=["lin"],
+    )
+    state.places["temple"] = Place(
+        id="temple",
+        name="the Sunken Temple",
+        kind="building",
+        setting=PlaceSetting.UNDERGROUND,
+        description="Carved halls under the earth, lit by blue runes on the pillars.",
+        parent_id="wood",
+        known_by=["lin"],
+        visited_by=["lin"],
+    )
+    state.characters["lin"].location_id = "temple"
+    state.characters["zhao"].location_id = "well"
+    state.scene = SceneFrame(
+        place_id="temple",
+        present_ids=["lin"],
+        positions=["Lin at the foot of the worn stairs"],
+        ended_on="Lin stands at the foot of the worn stairs; far above, a thin grey daylight.",
     )
     return state
 

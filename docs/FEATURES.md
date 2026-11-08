@@ -59,6 +59,8 @@ The first version's state, checked against the code in WS18.
 - [x] Streaming narration (SSE) so text appears as it's written (S3)
 - [x] Narration that plays out the player's action step by step, from where the last scene ended,
       before its outcome (R1 to R7)
+- [x] Whereabouts that stay clear: every scene records the place it ends in, places know whether
+      they are outdoors, indoors, underground or underwater, and a way out is told, never guessed (R8)
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
       workarounds reasoned through by cause and effect (A2, A9)
 - [x] Odds from who the character is: their attributes, skills, gifts and flaws weighed against

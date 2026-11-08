@@ -18,10 +18,17 @@ more, and every later scene reuses that picture until it changes again.
 
 import re
 
-from engine.state.cast import Character, Place, PlaceStatus
+from engine.state.cast import Character, Place, PlaceSetting, PlaceStatus
 from engine.state.records import StatusChange
 
 LASTING_PLACE_STATUSES = frozenset({PlaceStatus.RUINED, PlaceStatus.OCCUPIED})
+# R8, M5: a place's setting in a picture's words, so a crypt is never drawn under the sky.
+SETTING_LOOKS = {
+    PlaceSetting.OUTDOORS: "Outdoors, under the open sky.",
+    PlaceSetting.INDOORS: "Indoors, under a roof.",
+    PlaceSetting.UNDERGROUND: "Underground, with no sky above.",
+    PlaceSetting.UNDERWATER: "Underwater.",
+}
 _LASTING = frozenset(status.value for status in LASTING_PLACE_STATUSES)
 
 # Words that change how an appearance reads but not what it shows.
@@ -69,8 +76,12 @@ def look_after(
 
 
 def place_looks(place: Place) -> str:
-    """How a place looks for its picture: its description, and its state when it is ruined or
-    occupied, so it is drawn as it is now (M1, W7). Damage mends, so a picture doesn't keep it."""
-    if place.status not in LASTING_PLACE_STATUSES:
-        return place.description
-    return f"{place.description} It is {place.status.value} now.".strip()
+    """How a place looks for its picture: its description, whether it is under the sky (R8), and
+    its state when it is ruined or occupied, so it is drawn as it is now (M1, W7). Damage mends,
+    so a picture doesn't keep it."""
+    parts = [place.description.strip()]
+    if place.setting is not None:
+        parts.append(SETTING_LOOKS[place.setting])
+    if place.status in LASTING_PLACE_STATUSES:
+        parts.append(f"It is {place.status.value} now.")
+    return " ".join(part for part in parts if part)
