@@ -55,6 +55,15 @@ def test_the_house_style_is_made_for_grown_ups_not_young_children():
     assert HOUSE_STYLE_VERSION >= 2
 
 
+def test_the_house_style_asks_for_high_detail_with_a_clear_focal_point():
+    """Miki picked the grown-up look in higher detail (S7, 2026-11-08), with the focal point kept
+    clear, and moving the version on redraws the pictures so far in it (M4)."""
+    assert "Everything rendered in high detail" in HOUSE_STYLE
+    assert "crisp small details, while the focal point stays clear" in HOUSE_STYLE
+    assert HOUSE_STYLE.index("high detail") < HOUSE_STYLE.index("A clear focal point")
+    assert HOUSE_STYLE_VERSION >= 3
+
+
 def test_everyone_is_drawn_at_the_age_the_story_gives_them():
     """S7 (Miki, 2026-11-08): a 15-year-old is drawn as a 15-year-old and a grown-up as one, so
     the age goes with each person, and the rules say to draw it."""

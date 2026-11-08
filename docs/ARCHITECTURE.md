@@ -1366,7 +1366,8 @@ round needs no code change: the `candidates` input (`--candidates`) takes a JSON
 each with an `id`, a `name`, and either a `look` of its own, which gets the grown-up clause and the
 composition, or a `tweak` to today's look, which keeps the rest of it, and draws them next to
 today's house style. The style Miki picks goes into `media.prompts.HOUSE_STYLE` in its own PR, with `HOUSE_STYLE_VERSION`
-moved on, which redraws the pictures so far (M4).
+moved on, which redraws the pictures so far (M4). Two rounds on 2026-11-08 compared eight looks, then
+seven tweaks of today's, and Miki picked the higher-detail tweak (`HOUSE_STYLE_VERSION` 3).
 
 ## App
 
@@ -1739,7 +1740,7 @@ app                   shows the narration, then asks for the picture in its own 
   prompt, the moment first, then how the people look and what the player character carries ("no
   other weapon, tool or gear, even one their look above names, unless the description puts it in
   their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
-  look, grown-up and grounded rather than a children's storybook, lit for the moment's time of
+  look, grown-up and grounded rather than a children's storybook, in high detail, lit for the moment's time of
   day, with each person drawn at the age on their entry, S7), the world's own era (a starter's tagline as the setting
   only on its cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
   scenes 16:9), where a scene shows only who and what the description has, and the
