@@ -217,7 +217,18 @@ a new one.
   people, places and factions with real names, nudge an attitude by up to 10 points per scene,
   record facts, items and leads, and end the scene. Ending the scene at a known place moves the
   player character there, with everyone in the scene who was with them and isn't already somewhere
-  inside it, so the world and the director find people where the story left them (R3, C2). Naming
+  inside it, so the world and the director find people where the story left them (R3, C2). That
+  exact spot is kept only while the scene stays where the last one was: a scene that ends
+  somewhere else has moved everyone who came with the player, even out to the place around the
+  one they were in (out of a temple into the forest it lies in), so nobody stays recorded inside
+  (R8). The player character knows and has been to the place their scene ends in (C6). The
+  narrator's schema always asks for the scene end and its `place_id` (R8): the place is read by its
+  exact id, or by its id or name however it is spelled among the places the character knows of,
+  the scene names or they are in (`engine.world.geography.find_place`), and failing that the one
+  place the delta marks `visited` stands for it; a place on no record is refused (`scene.place` on
+  the turn's log line) and the scene stays where it was. The narrator's `setting` is read in any
+  case, and a word that is none of the four is left untold. A place's `setting` (outdoors,
+  indoors, underground, underwater) is set once, and only the engine changes it. Naming
   someone far off, missing or dead as present moves no one. A death, destruction or ruin is undone only by
   a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,
   no earlier than the change it undoes, by a mechanism the world bible allows (resurrection, a
@@ -795,7 +806,7 @@ async with aclosing(run_turn(turn, llm)) as events:
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
 | 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, leaves out edges and hindrances that lean on an injury the record doesn't hold (`engine.injuries`, issue `unrecorded_harm`, N6), and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. |
 | 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). An end turn's note is first held to what the world allows (`graph/turn/ending.py`'s `earned`, N6): it resolves the note, drops every step ruled out or left to a long shot, and resolves the rest again until nothing is dropped, so every refused part is found at once although a plan stops at its first (R6); the note's outcome claims are refused too (A6). Unless the player asked to end without them, refused parts end the turn with `EndingRefused` before anything plays. Ending without them keeps the rest of the note without its claims, with its summary made from the kept steps, and the brief gets `left_out` instead of the note's words. After `play_out`, `ending_of` reads the turn's ending: a death when the player character was alive before it and is dead after (self-inflicted when the last step played, the one that killed them, aimed harm at their own id), or a chosen ending for an end turn. A turn with an ending plans no event, picture or suggestions. The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
-| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the people present, the sheet with the purse even when it is empty and the health and wounds even when unhurt (N6), `CHANGED HANDS` with the player character's latest gains and losses and who has what they lost (C10, also in the interpret prompt), the outcome with any unplayed steps and what each step moved (`changed_hands`), the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
+| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the scene's place with its setting and the places it lies within (R8, also in the interpret prompt), the people present, the sheet with the purse even when it is empty and the health and wounds even when unhurt (N6), `CHANGED HANDS` with the player character's latest gains and losses and who has what they lost (C10, also in the interpret prompt), the outcome with any unplayed steps and what each step moved (`changed_hands`), the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene, leaves out any new character or faction named after a real person or organisation (G12) and any item change the engine already made this turn, as a step's exchange or an event (C10, `move_recorded`), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, refusing harm to the player character unless a power's toll in health or blood or the first opening's premise caused it (N6), the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
 | 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
@@ -821,7 +832,7 @@ running is cancelled, so nothing outlives the response (B8).
 `character.item`); the details can hold story text, so they are logged at DEBUG (T6).
 
 **Prompts** live in `graph/turn/prompts.py` with the requirement behind each rule: the interpret
-prompt (V3, R2, R6, R7, A6, A9, N2, N4, W10, C10) and the narrator's (R1 to R7, S2, S4, F1 to F3, F7,
+prompt (V3, R2, R6, R7, A6, A9, N2, N4, W10, C10) and the narrator's (R1 to R8, S2, S4, F1 to F3, F7,
 G5, M1, C1, C10), whose content rules follow the ratings table above.
 
 **Tests** in `tests/graph/test_turn_*.py` run whole turns on the scripted fake: the stream, a
@@ -1331,6 +1342,19 @@ The workflow uses the bootstrap's names by default; the repository variables `EV
 t18.cover-as-poster t18.grown-up-look`, about $2) once with the default and once with the
 candidate, before any switch. Each summary says which model drew the pictures, how many, for how much and how many
 weren't drawn and why, next to each scenario's judged score; the pictures are in the artifact.
+
+**Picking a house style (S7).** A run by hand with `styles` plays no scenario. It draws the same
+scenes from the sample stories once in each candidate house style (`backend/evals/styles.py`,
+`python -m evals styles`): today's house style word for word, and seven others, some anime-like,
+all grown-up and all with the composition the app needs (the focal point high, a calm, darker
+bottom edge, no border, no writing). Only the house style line of the prompt changes; the scene,
+the people with their ages, the rules and the picture model are the product's own, and no
+reference portrait goes along, so no picture in an older style pulls a candidate back. Two scenes
+in eight styles cost about $0.55. The pictures, `styles.json` (each style's full text, model, cost
+and status) and the summary are in the artifact, and a second job pushes them to the branch
+`style-samples/<run id>` for a thread that can't download artifacts; delete it once read. The
+style Miki picks goes into `media.prompts.HOUSE_STYLE` in its own PR, with `HOUSE_STYLE_VERSION`
+moved on, which redraws the pictures so far (M4).
 
 ## App
 

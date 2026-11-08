@@ -34,6 +34,7 @@ from engine.state import (
     Encounter,
     EncounterKind,
     PassingState,
+    Place,
     PowerAxes,
     PowerAxis,
     Prominence,
@@ -515,12 +516,35 @@ def test_the_scene_ending_somewhere_moves_the_player_and_those_with_them():
 
 def test_the_scene_ending_in_a_wider_place_keeps_the_exact_spot_and_an_unknown_place_moves_no_one():
     state = cultivation_world()
+    state.scene.place_id = "azure-peak"  # the last scene was on the peak, Lin at its well
     wide = SceneEnd(ended_on="Still at the well.", place_id="azure-peak", present_ids=["zhao"])
     after = apply_delta(state, StateDelta(scene_end=wide), ctx(), source=DeltaSource.NARRATOR).state
     assert after.player.location_id == "well" and after.characters["zhao"].location_id == "well"
     nowhere = SceneEnd(ended_on="Somewhere.", place_id="atlantis", present_ids=["zhao"])
     after = apply_delta(state, StateDelta(scene_end=nowhere), ctx(), source=DeltaSource.NARRATOR)
     assert after.state.player.location_id == "well"
+
+
+def test_leaving_the_scenes_place_for_the_one_around_it_takes_everyone_along():
+    """R8: the last scene was at the well, and this one ends on the peak around it, so Lin and
+    those with him have left the well, and Mei, who joined them from the terrace, is with them
+    (Miki, 2026-11-08: out of a temple into the forest it lies in, the record kept them in the
+    temple). Elder Mo, named but far off, stays where he is."""
+    state = cultivation_world()
+    state.places["terrace"] = Place(id="terrace", name="the terrace", parent_id="azure-peak")
+    state.characters["mei"] = Character(id="mei", name="Mei", location_id="terrace")
+    state.scene.present_ids.append("mei")
+    out = SceneEnd(
+        ended_on="Up the path, the peak around them.",
+        place_id="azure-peak",
+        present_ids=["zhao", "mei", "elder-mo"],
+    )
+    after = apply_delta(state, StateDelta(scene_end=out), ctx(), source=DeltaSource.NARRATOR).state
+    assert after.scene.place_id == "azure-peak"
+    assert after.player.location_id == "azure-peak"
+    assert after.characters["zhao"].location_id == after.characters["mei"].location_id
+    assert after.characters["mei"].location_id == "azure-peak"
+    assert after.characters["elder-mo"].location_id == "inner-court"
 
 
 def test_naming_someone_far_off_or_missing_as_present_moves_no_one_but_the_player():

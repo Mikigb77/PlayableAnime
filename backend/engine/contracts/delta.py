@@ -15,14 +15,16 @@ Number fields on changes are deltas, clamped to their bounds when applied. `None
 """
 
 from enum import StrEnum
+from typing import Any
 
-from pydantic import Field
+from pydantic import ConfigDict, Field, field_validator
 
 from engine.base import EngineModel, Importance, Name
 from engine.state.cast import (
     CharacterStatus,
     DeathCertainty,
     FactionStatus,
+    PlaceSetting,
     PlaceStatus,
     Prominence,
     Route,
@@ -185,12 +187,32 @@ class PlaceChange(EngineModel):
     name: Name | None = None
     kind: str | None = None
     description: str | None = None
-    parent_id: str | None = None
+    parent_id: str | None = Field(
+        default=None,
+        description="R8: the place it lies within, such as the temple a chamber is in, or the "
+        "forest outside it for a clearing.",
+    )
+    setting: PlaceSetting | None = Field(
+        default=None,
+        description="R8: outdoors (open sky), indoors (under a roof), underground or "
+        "underwater. Set once: a place's setting doesn't change.",
+    )
     status: PlaceStatus | None = None
     cause: Cause | None = Field(default=None, description="Engine only (C1).")
     controller_id: str | None = None
     mood: str | None = None
     routes: list[Route] = Field(default_factory=list, description="Added or updated travel times.")
+
+    @field_validator("setting", mode="before")
+    @classmethod
+    def _setting_or_untold(cls, value: object) -> object:
+        """R8: a setting written in another case is read, and one that is none of the four is
+        left untold, so a stray word never costs the narrator's whole answer."""
+        if isinstance(value, str):
+            word = value.strip().casefold()
+            return word if word in PlaceSetting._value2member_map_ else None
+        return value
+
     visited: bool = Field(default=False, description="The player character is there.")
     known_to_player: bool = False
 
@@ -278,17 +300,41 @@ class RuleChange(EngineModel):
     cause: Cause
 
 
+def _place_required(schema: dict[str, Any]) -> None:
+    """R8. Gemini answers only what a schema requires as often as not (see `Intent`), and a scene
+    end without its place left the character in the last one, wherever the scene took them. So
+    the model is always asked for the place's id, though code may leave it out."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "place_id"]))
+    place = schema["properties"]["place_id"]
+    schema["properties"]["place_id"] = {"type": "string", "description": place["description"]}
+
+
 class SceneEnd(EngineModel):
-    """R3. The moment this scene stops on, which the next scene starts from."""
+    """R3, R8. The moment this scene stops on, which the next scene starts from."""
+
+    model_config = ConfigDict(json_schema_extra=_place_required)
 
     ended_on: str
-    place_id: str | None = None
+    place_id: str | None = Field(
+        default=None,
+        description="R8: the id of the place the scene ends in: SCENE's place while the "
+        "character is still there, else a known place or one this update adds under places.",
+    )
     present_ids: list[str] = Field(default_factory=list)
     positions: list[str] = Field(default_factory=list)
     props: list[str] = Field(default_factory=list)
 
 
+def _scene_end_required(schema: dict[str, Any]) -> None:
+    """R3, R8. The narrator always says what moment its scene stops on, and where (`SceneEnd`),
+    so the next scene starts there. Code may still leave it out, as the engine's own deltas and
+    the offline model's minimal answer do."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "scene_end"]))
+
+
 class StateDelta(EngineModel):
+    model_config = ConfigDict(json_schema_extra=_scene_end_required)
+
     characters: list[CharacterChange] = Field(default_factory=list)
     factions: list[FactionChange] = Field(default_factory=list)
     places: list[PlaceChange] = Field(default_factory=list)
@@ -301,7 +347,9 @@ class StateDelta(EngineModel):
         default_factory=list,
         description="Engine only: a time power taking hold, such as a stop that outlasts the turn.",
     )
-    scene_end: SceneEnd | None = None
+    scene_end: SceneEnd | None = Field(
+        default=None, description="R3, R8: the moment this scene stops on, and where."
+    )
     summary: str | None = Field(default=None, description="The rolling summary, if it changed.")
 
     @property

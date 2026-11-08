@@ -68,6 +68,30 @@ def test_the_samples_assemble_into_states_that_pass_every_invariant(proposal):
     assert state.scene.place_id in state.places
 
 
+def test_drafted_places_say_whether_they_are_under_the_sky():
+    """R8: a drafted place keeps its setting, so the first scene in a buried temple is told
+    underground. One the drafter leaves out stays untold, and a value it gets wrong costs only
+    itself (G1)."""
+    from engine.state import PlaceSetting
+    from graph.drafting import lenient
+    from graph.drafting.schema import PlaceP
+
+    draft = samples.naples()
+    state = assemble(draft.world, draft.character)
+    assert state.places["bar"].setting is PlaceSetting.INDOORS
+    assert state.places["naples"].setting is None
+
+    context = lenient.model_output()
+    crypt = PlaceP.model_validate(
+        {"id": "crypt", "name": "the crypt", "setting": "Underground"}, context=context
+    )
+    odd = PlaceP.model_validate(
+        {"id": "deck", "name": "the deck", "setting": "on a ship"}, context=context
+    )
+    assert crypt.setting is PlaceSetting.UNDERGROUND
+    assert odd.setting is None
+
+
 # Ids.
 
 

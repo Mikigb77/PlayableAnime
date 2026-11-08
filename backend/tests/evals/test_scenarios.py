@@ -71,6 +71,7 @@ def test_only_whats_waiting_on_other_work_is_pending():
         "t17.controlled-throw",
         "t18.broken-plan",
         "t18.same-face",
+        "t18.out-of-the-temple",
     ],
 )
 def test_a_deterministic_scenario_passes_through_the_turn_graph(scenario_id):

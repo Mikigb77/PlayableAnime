@@ -8,9 +8,12 @@ close each is to "the kingdom". A route between two places is what the trip betw
 """
 
 import heapq
+import re
+import unicodedata
+from collections.abc import Iterable
 
 from engine.invariants import ancestry
-from engine.state.cast import Character, Faction
+from engine.state.cast import Character, Faction, Place
 from engine.state.world import WorldState, natural_key
 from engine.world.scheduling import by_id
 from engine.world.tuning import LOCAL_LINK_S, REGION_KINDS
@@ -24,6 +27,43 @@ def ancestors(state: WorldState, place_id: str | None) -> list[str]:
 def is_within(state: WorldState, place_id: str | None, area_id: str | None) -> bool:
     """Whether `place_id` is `area_id` or somewhere inside it."""
     return area_id is not None and area_id in ancestors(state, place_id)
+
+
+# Latin accents, which `_slug` drops, unlike other scripts' marks (a kana's dakuten makes another
+# letter). `engine.limits.normalize` keeps only ASCII, which would drop non-Latin names whole.
+_ACCENTS = re.compile("[\u0300-\u036f]")
+
+
+def _slug(text: str) -> str:
+    """A place's id or name without case, accents or the marks between words, so "Templo
+    Subterráneo", "templo-subterraneo" and "templo_subterraneo" read the same."""
+    bare = unicodedata.normalize("NFC", _ACCENTS.sub("", unicodedata.normalize("NFKD", text)))
+    return re.sub(r"[\W_]+", "_", bare.casefold()).strip("_")
+
+
+def find_place(
+    places: dict[str, Place], ref: str | None, among: Iterable[str] | None = None
+) -> str | None:
+    """R8. The id of the one place `ref` names: by its exact id, or else by its id or its name
+    however it is spelled, among the places `among` lists (all of them by default), so a name
+    never reaches a place the story hasn't brought near. None when it names none, or more than
+    one."""
+    ref = (ref or "").strip()
+    if not ref:
+        return None
+    if ref in places:
+        return ref
+    wanted = _slug(ref)
+    if not wanted:
+        return None
+    pool = [places[i] for i in dict.fromkeys(among) if i in places] if among is not None else None
+    for key in (lambda p: p.id, lambda p: p.name):
+        found = [
+            p.id for p in (places.values() if pool is None else pool) if _slug(key(p)) == wanted
+        ]
+        if found:
+            return found[0] if len(found) == 1 else None
+    return None
 
 
 def region_of(state: WorldState, place_id: str | None) -> str | None:

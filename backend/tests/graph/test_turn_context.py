@@ -578,7 +578,7 @@ def test_the_narrator_tells_the_action_first_in_its_own_part():
 def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
     schema = NarratorOutput.model_json_schema()
     assert list(schema["properties"])[:2] == ["action", "narration"]
-    assert schema["required"] == ["action", "narration"]
+    assert schema["required"] == ["action", "narration", "update"]
     assert NarratorOutput(narration=" You wake. ").text == "You wake."
     told = NarratorOutput(action=" You hold out the coin. ", narration="\nHe takes it.")
     assert told.text == "You hold out the coin.\n\nHe takes it."
@@ -688,3 +688,85 @@ def test_a_scene_picture_is_asked_for_as_told_and_a_cover_not_at_all():
         )
     )
     assert "## PICTURE" not in cover.user
+
+
+def _section(text: str, name: str):
+    return json.loads(text.split(f"## {name}\n", 1)[1].split("\n\n## ", 1)[0])
+
+
+def test_both_models_read_where_the_scene_is_and_what_it_lies_within():
+    """R8: the scene's place comes with the places it lies within and whether each is under the
+    sky, so a chamber of a buried temple is never told as out in the forest, nor a clearing in
+    the forest as still in the temple (Miki, 2026-11-08)."""
+    from engine.state.cast import Place, PlaceSetting
+
+    state = cultivation_world()
+    state.places["bosque"] = Place(
+        id="bosque",
+        name="El Bosque de los Susurros",
+        kind="wilds",
+        setting=PlaceSetting.OUTDOORS,
+        parent_id="azure-peak",
+        known_by=["lin"],
+    )
+    state.places["templo"] = Place(
+        id="templo",
+        name="el Templo Subterráneo",
+        kind="building",
+        setting=PlaceSetting.UNDERGROUND,
+        parent_id="bosque",
+        known_by=["lin"],
+    )
+    state.places["camara"] = Place(
+        id="camara", name="la cámara de las runas", kind="room", parent_id="templo"
+    )
+    state.scene.place_id = "camara"
+
+    for text in (
+        brief(state).user,
+        interpret_prompt(state, "I climb the stairs").messages[-1].text,
+    ):
+        place = _section(text, "SCENE")["place"]
+        assert (place["id"], place["parent_id"]) == ("camara", "templo")
+        assert "setting" not in place  # not told yet
+        assert place["within"] == [
+            {
+                "id": "templo",
+                "name": "el Templo Subterráneo",
+                "kind": "building",
+                "setting": "underground",
+            },
+            {
+                "id": "bosque",
+                "name": "El Bosque de los Susurros",
+                "kind": "wilds",
+                "setting": "outdoors",
+            },
+            {"id": "azure-peak", "name": "Azure Peak", "kind": "region"},
+        ]
+        known = {p["id"]: p for p in _section(text, "KNOWN")["places"]}
+        assert known["templo"] == {
+            "id": "templo",
+            "name": "el Templo Subterráneo",
+            "within": "bosque",
+            "setting": "underground",
+        }
+        assert known["azure-peak"] == {"id": "azure-peak", "name": "Azure Peak"}
+
+    state.scene.place_id = "azure-peak"  # a place within nothing has no within
+    assert "within" not in _section(brief(state).user, "SCENE")["place"]
+
+
+def test_the_narrator_tells_where_the_character_is_and_records_every_move():
+    """R8: the scene keeps to its place, tells a way out as the crossing itself, names places so
+    they can't be taken for another kind, and always says where it ends."""
+    system = prompts.NARRATOR_SYSTEM
+    assert "Keep to where the character is (R8)" in system
+    assert "below the ground there is no sky" in system
+    assert "leaving a place is told as the crossing itself" in system
+    assert "never a word that means a clearing, a square or a field under the sky" in system
+    assert "a clearing outside it within the forest, never within the temple" in system
+    assert "a setting already given never changes" in system
+    assert "a move the scene tells but place_id doesn't name never happened" in system
+    assert "- SCENE: the place, with its setting and the places it lies within" in system
+    assert "the place each place lies within (within) and its setting" in system

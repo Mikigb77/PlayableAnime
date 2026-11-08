@@ -25,10 +25,10 @@ class SuggestionOut(BaseModel):
 
 
 def _action_required(schema: dict[str, Any]) -> None:
-    """R1. Gemini answers only what a schema requires as often as not (see `Intent`), so the
+    """R1, R8. Gemini answers only what a schema requires as often as not (see `Intent`), so the
     model is always asked for `action`, though code may leave it empty (an opening, a template
-    line)."""
-    schema["required"] = list(dict.fromkeys(["action", *schema.get("required", [])]))
+    line), and for `update`, whose scene end says where the next scene starts (R3, R8)."""
+    schema["required"] = list(dict.fromkeys(["action", *schema.get("required", []), "update"]))
 
 
 class NarratorOutput(BaseModel):
