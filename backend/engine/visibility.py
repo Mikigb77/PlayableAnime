@@ -304,6 +304,7 @@ _WORDS = {
         "expecting": "Expecting a child, due {due}",
         "ready": "ready",
         "cost": "{power}, cost: {costs}",
+        "technique": "{name} (technique)",
         "ends": "Ends {when}",
         "heard": "Heard {when}",
         "and": " and ",
@@ -327,6 +328,7 @@ _WORDS = {
         "expecting": "Esperando un bebé, que nacerá {due}",
         "ready": "disponible",
         "cost": "{power}, coste: {costs}",
+        "technique": "{name} (técnica)",
         "ends": "Termina {when}",
         "heard": "Lo oíste {when}",
         "and": " y ",
@@ -350,6 +352,7 @@ _WORDS = {
         "expecting": "Esperant un nadó, que naixerà {due}",
         "ready": "disponible",
         "cost": "{power}, cost: {costs}",
+        "technique": "{name} (tècnica)",
         "ends": "Acaba {when}",
         "heard": "Ho vas sentir {when}",
         "and": " i ",
@@ -676,6 +679,9 @@ class _Knowledge:
             if costs:
                 cost = _WORDS[self.language]["cost"].format(power=power.name, costs=costs)
                 lines.append(_cap(cost))
+        # G25, A4: the techniques they know, those they made their own in play included.
+        word = _WORDS[self.language]["technique"]
+        lines += [_cap(word.format(name=t.name)) for t in player.sheet.techniques]
         return lines
 
     def resource_lines(self, player: Character) -> list[str]:

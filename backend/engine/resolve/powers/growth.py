@@ -16,6 +16,12 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   time stop, it is how its throws land: released gradually, a stone merges back into time carrying
   its motion, or lands exactly as hard as its user chooses. It goes on the sheet as a technique,
   with a ruling of its own, and never flips the power's first ruling (A9).
+- **A move pulled off in play** (A4, G25). A move the character makes with a power of theirs,
+  such as an aura blade made with their aura, is that power at work even before it is learned
+  (`engine.resolve.checks.Move`). The first time it comes off cleanly, it goes on the sheet as a
+  technique of their own, learned by doing it: from then on it counts like any technique and is
+  never "never learned" again. A technique someone else in the world knows is their school's, and
+  is learned from them, not picked up by improvising something like it.
 - **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
   guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
   attempt is rolled: success climbs a rung, a partial result shakes the character and a failure
@@ -39,7 +45,7 @@ from engine.contracts.delta import (
 from engine.contracts.intent import GrowthKind, IntentStep, OutcomeClass, PowerGrant, Teacher
 from engine.contracts.resolution import ProposedDeed
 from engine.resolve import odds as odds_mod
-from engine.resolve.checks import Settled
+from engine.resolve.checks import Move, Settled
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, mentions, name, possessive, stems
 from engine.rng import SeededRng
@@ -687,3 +693,56 @@ def _grant_made(
 
 def _find(state: WorldState, actor: Character) -> str:
     return "find" if actor.id == state.player_id else "finds"
+
+
+# --- moves pulled off in play (A4, G25) -----------------------------------------------------
+
+LEARNED_BY_DOING = "their own use"
+
+
+def proven(
+    state: WorldState, actor: Character, step: IntentStep, moves: list[Move]
+) -> tuple[str, StateDelta]:
+    """A4, G25. The moves a step pulled off cleanly with the actor's own powers become techniques
+    of their own, so the next use finds them on the sheet and counts them like any technique.
+    A move whose name a technique on their sheet already holds, either way round, is that
+    technique, and one someone else knows is that person's school's (G25): neither is recorded.
+    The reason, in the world's words, and the engine's change."""
+    known = [t.name for t in actor.sheet.techniques]
+    taught = [
+        t.name for c in state.characters.values() if c.id != actor.id for t in c.sheet.techniques
+    ]
+    ids = {t.id for t in actor.sheet.techniques}
+    techniques: list[Technique] = []
+    gains: list[Gain] = []
+    for move in moves:
+        if any(mentions(t, move.name) or mentions(move.name, t) for t in known):
+            continue
+        if any(mentions(t, move.name) or mentions(move.name, t) for t in taught):
+            continue
+        base = f"technique-{slug(move.name)}"
+        technique_id, n = base, 2
+        while technique_id in ids:
+            technique_id, n = f"{base}-{n}", n + 1
+        ids.add(technique_id)
+        known.append(move.name)
+        techniques.append(
+            Technique(
+                id=technique_id,
+                name=move.name,
+                style=move.power.name,
+                learned_from=LEARNED_BY_DOING,
+                power_id=move.power.id,
+            )
+        )
+        gains.append(
+            Gain(what=move.name, change="learned", source="pulled off in play", reason=step.text)
+        )
+    if not techniques:
+        return "", StateDelta()
+    whose = "yours" if actor.id == state.player_id else possessive(state, actor.id)
+    learned = " and ".join(t.name for t in techniques)
+    which = "techniques" if len(techniques) > 1 else "a technique"
+    reason = f"{learned} {'are' if len(techniques) > 1 else 'is'} {which} of {whose} now."
+    change = CharacterChange(id=actor.id, techniques=techniques, gains=gains)
+    return reason, StateDelta(characters=[change])

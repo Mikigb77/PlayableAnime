@@ -136,6 +136,12 @@ class StepResolution(EngineModel):
     roll: RollRecord | None = None
     result: StepResult
     costs: list[Cost] = Field(default_factory=list)
+    drew_on: list[str] = Field(
+        default_factory=list,
+        description="R1, A3: the actor's own powers, techniques and moves the step used, by "
+        "name, once past the sheet check. They work as the actor knows them to: a step that "
+        "fails meets what stood in the way, unless its reason names the ability.",
+    )
     duration_s: int = Field(ge=0, description="World seconds it took (W10).")
     personal_s: int | None = Field(
         default=None, ge=0, description="The actor's lived seconds, when they differ (W10a)."

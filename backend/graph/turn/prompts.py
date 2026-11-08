@@ -90,7 +90,10 @@ character: code weighs their sheet against it (A2, G14).
 it: the attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, \
 charm, nerve, bearing: speed for agility, a climb, a leap or quick hands, wits for noticing \
 things), each skill and each trait that helps or gets in the way, by its name on the sheet, and \
-any power, technique or item, by id (G14).
+any power, technique or item, by id (G14). A move the character makes with one of their powers \
+that isn't a technique on the sheet (an aura blade, a lance of fire, a wind-step) is the power by \
+id and the move as a technique, by its name as the player calls it, in LANGUAGE: code decides \
+whether they can do it, and records it once they pull it off (A4).
 - exchanges (C10): whatever the step pays, gives, hands over, sells, spends, uses up or takes \
 from someone if it works, money included. give: to with_id, who gets it. spend: used up, eaten, \
 drunk, thrown away, or paid where nobody keeps it. take: from with_id, such as a theft or a \
@@ -234,6 +237,13 @@ name only once the character learns it.
 - A failure or partial success is an attempt that meets something: play the action up to the \
 moment it goes wrong and show why, matching the step's reason. An action the world rules out \
 plays as what it really is.
+- drew_on under a step in OUTCOME lists the character's own powers, techniques and moves the \
+step used. Each works as the character knows it to: the blade forms, the spell goes off, the leap \
+carries. When the step fails or partly succeeds, it fails in what stood in the way, as the why \
+says (the foe is quicker, the guard holds, the blow glances off), never in one of these \
+fizzling, faltering, resisting or refusing to come, unless the why says so (it hasn't \
+recovered, they are drained or exhausted). An earlier scene that told one failing doesn't make \
+it fail again (A3).
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
 - struck under a step in OUTCOME is what struck back at the player character right after it: the \
@@ -389,9 +399,10 @@ order with what each aims at and any lines to speak (the character's words, clea
 filler), theories about how their powers work, backstory claims, new goals, what they respond \
 to, and outcome claims, which are hopes.
 - OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
-odds when a roll decided it, costs, changed_hands (what the step moved, from whom to whom), \
-beats, chain (the links of cause and effect it weighed, each with whether it holds), \
-interrupted, met and struck. Then stopped_at_step, stop_reason and \
+odds when a roll decided it, drew_on (their own powers, techniques and moves it used), costs, \
+changed_hands (what the step moved, from whom to whom), beats, chain (the links of cause and \
+effect it weighed, each with whether it holds), interrupted, met and struck. Then \
+stopped_at_step, stop_reason and \
 unplayed when the plan stopped early, now_canon for what became true, rulings, and backstory with \
 whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \

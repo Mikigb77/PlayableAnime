@@ -9,6 +9,10 @@ the bar, and a trait called "Fire" doesn't answer "put out the fire". A word the
 is never a match, so models give ids where they can and words are the fallback. It is deliberately
 simple and genre-free (G5), and depends on nothing else in the engine, so any part of it can use
 it (`engine.resolve.words`, `engine.possessions`).
+
+A story's sheet and the models' words are in its language (S10), so Spanish and Catalan articles
+and prepositions count for nothing either, and accented letters stay part of their word: "la
+cuchilla de aura" finds "Cuchilla del Aura", and "técnica" is one word, not "t" and "cnica".
 """
 
 import re
@@ -19,6 +23,14 @@ _STOPWORDS = frozenset(
     is are be was were been has have had can could would should will shall do does did not no
     any some all just very one own so as if then than there here who whom which what when""".split()
 )
+# S10. The same small words in Spanish and Catalan: articles, prepositions and possessives. Only
+# words that are no English word a story would match on, so "sin", "son" and "al" stay.
+_STOPWORDS_ES_CA = frozenset(
+    """el la los las lo un una unos unas de del en con por para su sus tu tus mi mis se le les
+    que es y o els uns unes dels amb per seu seva seus seves teu teva teus teves meu meva meus
+    meves""".split()
+)
+_STOPWORDS = _STOPWORDS | _STOPWORDS_ES_CA
 _SUFFIXES = ("ation", "ing", "ed", "es", "s")
 _VOWELS_AND_DOUBLES = set("aeioulsz")
 
@@ -38,7 +50,7 @@ def _stem(word: str) -> str:
 
 def stems(text: str) -> frozenset[str]:
     """The meaningful word stems of a text."""
-    words = re.findall(r"[a-z0-9]+", text.casefold())
+    words = re.findall(r"[^\W_]+", text.casefold())
     return frozenset(_stem(w) for w in words if w not in _STOPWORDS and len(w) > 1)
 
 
