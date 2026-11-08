@@ -5,8 +5,10 @@ For each step, in order:
 1. **The world and the sheet** (G8, G14, C10). A step the world's rules forbid, a power the
    character doesn't have or hasn't recovered, a technique they never learned, an item that isn't
    on them, or a payment, gift or use of something they don't hold is settled at once, with no
-   roll. What a step pays, gives, spends or takes moves as the engine's own change when it works
-   (`engine.resolve.exchanges`).
+   roll. A move they make with a power of theirs, such as an aura blade from their aura, is that
+   power at work, never a technique they never learned, and the first time it comes off cleanly it
+   becomes a technique of their own (A4, G25). What a step pays, gives, spends or takes moves as
+   the engine's own change when it works (`engine.resolve.exchanges`).
 2. **The beats** (R2). Everything a beat uses must be the body, a power, something carried,
    something the scene holds or something this turn made canon. Something new is canon if the
    place plausibly holds it, rolled for if that's uncertain, and an empty search if it can't.
@@ -117,6 +119,7 @@ from engine.state.sheet import (
     PowerAxis,
     Ruling,
     RulingSource,
+    Technique,
     TimeEffect,
 )
 from engine.state.world import ActiveTimeEffect, WorldState
@@ -167,6 +170,7 @@ class _Frame:
     # `engine.pipeline.play_out` keeps the count from the steps that played, for the next turn.
     misses: int = 0
     moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
+    learned: list[Technique] = field(default_factory=list)  # A4: moves this plan made theirs
 
 
 @dataclass
@@ -599,6 +603,14 @@ def _settle_step(
         effects = _merge(effects, places)
         if deed is not None:
             deeds.append(deed)
+    clean = happened and settled.result is StepResult.SUCCESS and frame.gone is None
+    if drawn.moves and clean and not (growing or showing):
+        # A4, G25. A move made with their own power that came off cleanly is theirs now.
+        why, learned, change = growth.proven(state, actor, step, drawn.moves, frame.learned)
+        if why:
+            after.append(why)
+            effects = _merge(effects, change)
+            frame.learned.extend(learned)
     reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
 
     if actor.id == state.player_id and frame.gone is None:
@@ -651,6 +663,12 @@ def _settle_step(
         or (hit is not None and hit.blast is not None)
     )
     used = [p for p in drawn.powers if p is new_stop or p is new_tempo or not _time_power(p)]
+    # R1, A3. What of their own the step used, once past the sheet: it works as they know it
+    # to, so a miss comes from what stood in the way. A power not yet recovered didn't work.
+    unready = settled.outcome_class is OutcomeClass.RULED_OUT and settled.reason.endswith(
+        _NOT_RECOVERED
+    )
+    drew_on = drawn.names if attempted and not unready else []
     encounter, opponent_ids = _engagement(step, opposition, actor.id)
     resolution = StepResolution(
         index=index,
@@ -660,6 +678,7 @@ def _settle_step(
         roll=roll,
         result=settled.result,
         costs=power_costs(used) if attempted else [],
+        drew_on=drew_on,
         duration_s=duration,
         personal_s=personal,
         beats=beats,

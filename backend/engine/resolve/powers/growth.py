@@ -16,6 +16,13 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   time stop, it is how its throws land: released gradually, a stone merges back into time carrying
   its motion, or lands exactly as hard as its user chooses. It goes on the sheet as a technique,
   with a ruling of its own, and never flips the power's first ruling (A9).
+- **A move pulled off in play** (A4, G25). A move the character makes with a power of theirs,
+  such as an aura blade made with their aura, is that power at work even before it is learned
+  (`engine.resolve.checks.Move`). The first time it comes off cleanly, it goes on the sheet as a
+  technique of their own, learned by doing it, once however many steps of the plan use it: from
+  then on it counts like any technique and is never "never learned" again. A technique someone
+  else in the world knows is their school's, and is learned from them, not picked up by
+  improvising something like it.
 - **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
   guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
   attempt is rolled: success climbs a rung, a partial result shakes the character and a failure
@@ -26,6 +33,7 @@ A world with nothing extraordinary never grows a power (G6, G8).
 """
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from engine.base import HOUR
@@ -39,7 +47,7 @@ from engine.contracts.delta import (
 from engine.contracts.intent import GrowthKind, IntentStep, OutcomeClass, PowerGrant, Teacher
 from engine.contracts.resolution import ProposedDeed
 from engine.resolve import odds as odds_mod
-from engine.resolve.checks import Settled
+from engine.resolve.checks import Move, Settled
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, mentions, name, possessive, stems
 from engine.rng import SeededRng
@@ -116,6 +124,19 @@ GRANT_SETTINGS = {
 
 def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-") or "technique"
+
+
+def technique_id(name: str, taken: set[str]) -> str:
+    """A new technique's id from its name, in any language ("Puño de fuego" is
+    technique-puno-de-fuego, accents folded, other scripts kept), unique among `taken`."""
+    folded = unicodedata.normalize("NFKD", name.casefold())
+    plain = "".join(c for c in folded if not unicodedata.combining(c))
+    words = re.sub(r"[\W_]+", "-", plain).strip("-") or "technique"
+    base = f"technique-{words}"
+    found, n = base, 2
+    while found in taken:
+        found, n = f"{base}-{n}", n + 1
+    return found
 
 
 def practice_key(step: IntentStep) -> str:
@@ -594,11 +615,7 @@ def _article(level: str) -> str:
 def _technique(actor: Character, step: IntentStep, power_id: str | None) -> Technique:
     training = step.training
     assert training is not None
-    base = f"technique-{slug(training.what)}"
-    ids = {t.id for t in actor.sheet.techniques}
-    technique_id, n = base, 2
-    while technique_id in ids:
-        technique_id, n = f"{base}-{n}", n + 1
+    new_id = technique_id(training.what, {t.id for t in actor.sheet.techniques})
     effect = training.effect.strip()
     if not effect and training.grants is not PowerGrant.NONE:
         effect = GRANT_WORDS[training.grants]
@@ -606,7 +623,7 @@ def _technique(actor: Character, step: IntentStep, power_id: str | None) -> Tech
     if training.teacher_id:
         learned = training.teacher_id
     return Technique(
-        id=technique_id,
+        id=new_id,
         name=training.what.strip(),
         effect=effect,
         learned_from=learned,
@@ -687,3 +704,51 @@ def _grant_made(
 
 def _find(state: WorldState, actor: Character) -> str:
     return "find" if actor.id == state.player_id else "finds"
+
+
+# --- moves pulled off in play (A4, G25) -----------------------------------------------------
+
+
+def proven(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    moves: list[Move],
+    earlier: list[Technique],
+) -> tuple[str, list[Technique], StateDelta]:
+    """A4, G25. The moves a step pulled off cleanly with the actor's own powers become techniques
+    of their own, so the next use finds them on the sheet and counts them like any technique.
+    One a technique of theirs already names, on the sheet or learned `earlier` in this plan, is
+    that technique, and one that names a technique someone else knows is that person's school's
+    (G25): neither is recorded. The reason in the world's words, the new techniques, and the
+    engine's change."""
+    known = [*actor.sheet.techniques, *earlier]
+    taught = [t for c in state.characters.values() if c.id != actor.id for t in c.sheet.techniques]
+    taken = {t.id for t in known}
+    techniques: list[Technique] = []
+    gains: list[Gain] = []
+    for move in moves:
+        if any(mentions(t.name, move.name) for t in [*known, *techniques, *taught]):
+            continue
+        new_id = technique_id(move.name, taken)
+        taken.add(new_id)
+        techniques.append(
+            Technique(
+                id=new_id,
+                name=move.name,
+                style=move.power.name,
+                learned_from="their own",
+                power_id=move.power.id,
+            )
+        )
+        gains.append(
+            Gain(what=move.name, change="learned", source="pulled off in play", reason=step.text)
+        )
+    if not techniques:
+        return "", [], StateDelta()
+    whose = "yours" if actor.id == state.player_id else possessive(state, actor.id)
+    learned = " and ".join(t.name for t in techniques)
+    which = "techniques" if len(techniques) > 1 else "a technique"
+    reason = f"{learned} {'are' if len(techniques) > 1 else 'is'} {which} of {whose} now."
+    change = CharacterChange(id=actor.id, techniques=techniques, gains=gains)
+    return reason, techniques, StateDelta(characters=[change])

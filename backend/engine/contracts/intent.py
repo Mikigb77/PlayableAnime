@@ -102,7 +102,12 @@ class SheetPart(StrEnum):
 
 class SheetUse(EngineModel):
     part: SheetPart
-    ref: str = Field(description="The power, item or technique id, or the skill or trait name.")
+    ref: str = Field(
+        description=(
+            "The power, item or technique id, a move's name (one made with a power that isn't a"
+            " technique on the sheet yet), or the skill or trait name."
+        )
+    )
 
 
 class UseSource(StrEnum):
