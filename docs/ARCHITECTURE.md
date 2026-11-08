@@ -1332,6 +1332,19 @@ t18.cover-as-poster t18.grown-up-look`, about $2) once with the default and once
 candidate, before any switch. Each summary says which model drew the pictures, how many, for how much and how many
 weren't drawn and why, next to each scenario's judged score; the pictures are in the artifact.
 
+**Picking a house style (S7).** A run by hand with `styles` plays no scenario. It draws the same
+scenes from the sample stories once in each candidate house style (`backend/evals/styles.py`,
+`python -m evals styles`): today's house style word for word, and seven others, some anime-like,
+all grown-up and all with the composition the app needs (the focal point high, a calm, darker
+bottom edge, no border, no writing). Only the house style line of the prompt changes; the scene,
+the people with their ages, the rules and the picture model are the product's own, and no
+reference portrait goes along, so no picture in an older style pulls a candidate back. Two scenes
+in eight styles cost about $0.55. The pictures, `styles.json` (each style's full text, model, cost
+and status) and the summary are in the artifact, and a second job pushes them to the branch
+`style-samples/<run id>` for a thread that can't download artifacts; delete it once read. The
+style Miki picks goes into `media.prompts.HOUSE_STYLE` in its own PR, with `HOUSE_STYLE_VERSION`
+moved on, which redraws the pictures so far (M4).
+
 ## App
 
 The Flutter app (`app/`) is written against the v1 API in [API.md](API.md), and also reads the
