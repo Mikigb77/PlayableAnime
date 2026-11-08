@@ -9,7 +9,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from engine.base import EngineModel, WorldSeconds
-from engine.state.records import Goal, Lead, PendingEvent, Thread, ThreadStatus
+from engine.state.records import Goal, GoalStatus, Lead, PendingEvent, Thread, ThreadStatus
 from engine.state.world import DirectorState, EventSize
 
 
@@ -190,6 +190,13 @@ class DirectorUpdates(EngineModel):
     taken_lead_ids: list[str] = Field(default_factory=list)
     new_goals: list[Goal] = Field(
         default_factory=list, description="N2: only goals the player stated or accepted."
+    )
+    closed_goals: dict[str, GoalStatus] = Field(
+        default_factory=dict,
+        description=(
+            "N2: goals that are over, by id: the ones the player dropped (abandoned) and the ones "
+            "whose lead's thread closed."
+        ),
     )
 
 

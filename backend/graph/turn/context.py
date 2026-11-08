@@ -320,13 +320,17 @@ def _changed_hands(state: WorldState) -> list[str]:
     return possessions.prompt_lines(state) or ["(nothing yet)"]
 
 
-def _goals_and_threads(state: WorldState) -> dict[str, Any]:
-    """The player's goals, the open threads they know of and the leads on offer (N1, N2)."""
+def _goals_and_threads(state: WorldState, goals: WorldState | None = None) -> dict[str, Any]:
+    """The player's active goals with their ids, so a model can name one that is over or that
+    the player drops, the open threads they know of and the leads on offer (N1, N2). `goals` is
+    the state to take the goals from, when it isn't `state`."""
     you = state.player_id
     return {
         "goals": [
-            g.text
-            for g in sorted(state.goals.values(), key=lambda g: g.id)
+            {"id": g.id, "text": g.text}
+            for g in sorted(
+                (state if goals is None else goals).goals.values(), key=lambda g: natural_key(g.id)
+            )
             if g.status is GoalStatus.ACTIVE
         ],
         "threads": [
@@ -445,7 +449,9 @@ def narration_brief(
         *([("PREMISE", premise)] if premise and ctx.turn <= 1 else []),
         ("STORY SO FAR", _past(before, scenes)),
         ("CONTINUITY", _continuity(after) or ["(nothing yet)"]),
-        ("GOALS AND THREADS", _goals_and_threads(before)),
+        # The goals as the director left them, with any the player stated or took up this turn,
+        # so the scene can close one it achieves at once (N2).
+        ("GOALS AND THREADS", _goals_and_threads(before, goals=after)),
         ("PLAYER CHARACTER", _player_view(after)),
         ("CHANGED HANDS", _changed_hands(after)),
         ("KNOWN", _known_view(after)),

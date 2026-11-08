@@ -24,7 +24,7 @@ from engine.contracts import (
 from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
 from engine.samples import cultivation_world, grounded_world
-from engine.state.records import StepResult
+from engine.state.records import Goal, GoalStatus, StepResult
 from engine.state.world import Chapter
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
@@ -770,6 +770,33 @@ def test_a_blank_scene_end_keeps_the_last_moment(fake, make_client):
     _, result = play(make_client(), turn)
     assert result.state.scene.ended_on == turn.state.scene.ended_on
     assert "blank_scene_end" in [i.code for i in result.issues]
+
+
+def two_goals():
+    state = cultivation_world()
+    state.goals = {
+        "goal-1": Goal(id="goal-1", text="Pass the outer-sect exam"),
+        "goal-2": Goal(id="goal-2", text="Make Zhao pay", set_turn=1),
+    }
+    return state
+
+
+def test_a_scene_closes_the_goals_it_is_over_for_but_never_an_opening(fake, make_client):
+    """N2: the narrator names goals that are over; code closes them only when the player acted."""
+    over = [{"goal_id": "goal-2", "how": "achieved"}, {"goal_id": "goal-1", "how": "failed"}]
+    told = SCENE | {"update": SCENE["update"] | {"goals_over": over}}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=told))
+    _, result = play(make_client(), turn_input(two_goals()))
+    statuses = {g.id: g.status for g in result.state.goals.values()}
+    assert statuses == {"goal-1": GoalStatus.FAILED, "goal-2": GoalStatus.ACHIEVED}
+
+    fake.script(Node.NARRATOR, Reply(json=told | {"image_prompt": None}))
+    turn = turn_input(two_goals(), kind=TurnKind.OPENING, premise="A weak disciple.")
+    _, result = play(make_client(), turn)
+    assert {g.status for g in result.state.goals.values()} == {GoalStatus.ACTIVE}
+    refused = [i.detail for i in result.issues if i.code == "rejected"]
+    assert refused.count("the player didn't act this turn") == 2
 
 
 def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines):

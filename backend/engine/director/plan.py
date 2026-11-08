@@ -35,7 +35,7 @@ from engine.director.due import (
     unreached_rolls,
     world_event,
 )
-from engine.director.goals import expired_leads, player_goals
+from engine.director.goals import closed_goals, expired_leads, player_goals
 from engine.director.ids import IdProbe
 from engine.director.pictures import decide_picture
 from engine.director.pressure import in_control, measure, next_drift
@@ -282,6 +282,7 @@ def direct(
 
     # 7. Goals and leads (N2).
     updates.new_goals, updates.taken_lead_ids = player_goals(state, ctx, intent, facts, ids)
+    updates.closed_goals = closed_goals(state, intent, changes)
     updates.expired_lead_ids = expired_leads(state, updates.taken_lead_ids)
 
     return DirectorPlan(

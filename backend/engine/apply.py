@@ -10,8 +10,9 @@ Who may change what:
 - **Narrator and engine:** new characters, factions and places (with real names), descriptions,
   locations, small attitude nudges, condition (except harm to the player character that nothing
   recorded this turn caused: worse health, a wound or a passing state that names an injury,
-  `engine.injuries`), memberships, facts, leads,
-  non-terminal status changes, the scene's end and the summary, and what changes hands, money
+  `engine.injuries`), memberships, facts, leads, the player's goals that are over (closed,
+  never rewritten: one that repeats another closes into the older, N2), non-terminal status
+  changes, the scene's end and the summary, and what changes hands, money
   included, which `engine.possessions` moves from giver to receiver so nobody gives what they
   don't have (C10). A lasting change to how a known character looks (`look_change`) moves their
   `look_version` on (M5, `engine.looks`).
@@ -44,6 +45,8 @@ from engine.contracts.delta import (
     CharacterChange,
     Expecting,
     FactionChange,
+    GoalEnd,
+    GoalOver,
     ItemChange,
     PlaceChange,
     PowerChange,
@@ -78,6 +81,7 @@ from engine.state.records import (
     Cause,
     CauseMechanism,
     Fact,
+    GoalStatus,
     Lead,
     Origin,
     OriginKind,
@@ -93,7 +97,7 @@ from engine.state.sheet import (
     PassingState,
     Wound,
 )
-from engine.state.world import ActiveTimeEffect, WorldState
+from engine.state.world import ActiveTimeEffect, WorldState, natural_key
 from engine.timekeeping import effect_over
 from engine.world.tuning import GESTATION_S
 
@@ -131,6 +135,7 @@ def apply_delta(
     *,
     source: DeltaSource,
     may_hurt_player: bool = False,
+    player_acted: bool = False,
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
@@ -138,10 +143,16 @@ def apply_delta(
 
     Places and factions go first, so characters in the same delta can refer to them, and family
     ties after every character. The narrator hurts the player character only with
-    `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`).
+    `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`). A goal
+    closes only with `player_acted`, on a turn the player acted (N2).
     """
     return apply_in_place(
-        state.model_copy(deep=True), delta, ctx, source=source, may_hurt_player=may_hurt_player
+        state.model_copy(deep=True),
+        delta,
+        ctx,
+        source=source,
+        may_hurt_player=may_hurt_player,
+        player_acted=player_acted,
     )
 
 
@@ -152,10 +163,13 @@ def apply_in_place(
     *,
     source: DeltaSource,
     may_hurt_player: bool = False,
+    player_acted: bool = False,
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
-    applier = _Applier(state, source, ctx.turn, may_hurt_player=may_hurt_player)
+    applier = _Applier(
+        state, source, ctx.turn, may_hurt_player=may_hurt_player, player_acted=player_acted
+    )
     for change in delta.places:
         applier.place(change)
     for change in delta.factions:
@@ -170,6 +184,8 @@ def apply_in_place(
         applier.item(item)
     for lead in delta.leads:
         applier.lead(lead)
+    for over in delta.goals_over:
+        applier.goal_over(over)
     for rule in delta.rule_changes:
         applier.rule(rule)
     for effect in delta.time_effects:
@@ -231,12 +247,19 @@ def _clamp(value: int, low: int, high: int) -> int:
 
 class _Applier:
     def __init__(
-        self, state: WorldState, source: DeltaSource, turn: int, *, may_hurt_player: bool = False
+        self,
+        state: WorldState,
+        source: DeltaSource,
+        turn: int,
+        *,
+        may_hurt_player: bool = False,
+        player_acted: bool = False,
     ) -> None:
         self.state = state
         self.source = source
         self.turn = turn
         self.may_hurt_player = may_hurt_player
+        self.player_acted = player_acted
         self.rejected: list[Rejection] = []
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
@@ -838,6 +861,32 @@ class _Applier:
             expires_s=now + change.expires_in_s if change.expires_in_s else None,
         )
         self.state.leads[lead.id] = lead
+
+    def goal_over(self, change: GoalOver) -> None:
+        """N2: a goal that is over closes, on a turn the player acted. One that repeats another
+        closes into the older of the two, so the words the player set first stay. Nothing
+        rewrites a goal."""
+        subject = f"goal {change.goal_id}"
+        if not self.player_acted:
+            self.reject(subject, change.how.value, "the player didn't act this turn")
+            return
+        goal = self.state.goals.get(change.goal_id)
+        if goal is None or goal.status is not GoalStatus.ACTIVE:
+            self.reject(subject, change.how.value, "not an active goal")
+            return
+        if change.how is not GoalEnd.REPEATS:
+            achieved = change.how is GoalEnd.ACHIEVED
+            goal.status = GoalStatus.ACHIEVED if achieved else GoalStatus.FAILED
+            goal.closed_turn = self.turn
+            return
+        other = self.state.goals.get(change.same_as or "")
+        if other is None or other.id == goal.id or other.status is not GoalStatus.ACTIVE:
+            self.reject(subject, change.how.value, "it repeats no other active goal")
+            return
+        older, later = sorted((goal, other), key=lambda g: (g.set_turn, natural_key(g.id)))
+        later.status = GoalStatus.MERGED
+        later.merged_into = older.id
+        later.closed_turn = self.turn
 
     def rule(self, change: RuleChange) -> None:
         subject = f"rule {change.rule_id}"
