@@ -49,6 +49,10 @@ narration's "you", has only what CARRIES lists, plus what this scene itself puts
 never give them any other weapon, tool or gear. The others hold only what the scene gives them. \
 Call everyone by name, the player character included, never "you".
 
+The people in the picture are those from PEOPLE the moment shows, each once. Anyone else the \
+scene tells of, such as a crowd, travellers or guards, is at most a small, unnamed part of the \
+background, never a figure of their own beside them.
+
 Keep it mild, whatever the story's rating: no nudity, nothing sexual, no gore. Show danger, \
 fights and wounds through pose, motion, light and expression.
 
