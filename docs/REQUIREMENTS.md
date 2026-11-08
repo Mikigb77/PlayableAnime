@@ -1031,8 +1031,15 @@ view opens for it. Chapters and arcs are named afterwards from what happened, ne
 Each scene, the director pulls one or two dormant threads into context for callbacks (C4).
 
 **N2 Goals and leads (P0).** Goals belong to the player, who states them or accepts one the story
-offers. The narrator never rewrites them. Leads are what the world offers (a job, a rumor, a
-summons); they can expire and never overwrite goals.
+offers. The narrator never rewrites them. Only a lasting aim counts as a goal, never the action
+at hand or a step of it, and an aim the player already holds is not added again in other words.
+The goals stay few and current, so a goal closes once it is over, and only then: when the
+player drops it or replaces it in their own words; when the thread of the lead it came from
+closes; or when a scene achieves it for good, makes it impossible, or shows it says again what an
+older goal says, which stays. The narrator proposes that last kind and code closes it, only on a
+turn the player acted. A goal never closes to make room or for going unmentioned. Leads are what
+the world offers (a job, a rumor, a summons), never the character's own next step; they can
+expire and never overwrite goals.
 
 **N3 Truth and knowledge (P0).** Covered by principle 4 and C6: facts carry a truth value and who
 knows them. Deaths are confirmed or presumed (C1).
@@ -1341,7 +1348,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Walk away | "I leave the academy and open a noodle shop" | The story follows the noodle shop, and the academy threads go on off-screen |
 | Divergence | Same premise and same actions, 5 seeds, 50 turns | The worlds differ in events, threads and new characters |
 | Idle world | 100 in-world days with the player idle | Factions and key NPCs have each changed something |
-| Goal ownership | 50 turns of normal play | The player's goals never change without the player's input (N2) |
+| Goal ownership | 50 turns of normal play | The player's goals are never rewritten and never change without the player's input; while the player only drinks, a goal closes only as a repeat of another or with its lead's thread (N2) |
 | Secret holds | A planted traitor | The betrayal isn't visible on the Memory screen or through `/thoughts` before it happens |
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |

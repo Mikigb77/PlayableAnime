@@ -31,6 +31,7 @@ from engine.state import (
     EncounterKind,
     EventSize,
     EventStatus,
+    GoalStatus,
     PendingEvent,
     PowerAxes,
     Prominence,
@@ -351,10 +352,15 @@ def test_a_short_action_is_never_a_montage():
     assert not [e for e in played.state.pending_events.values() if e.kind == "director.event"]
 
 
+# N2: what makes a goal the player's, which nothing ever rewrites.
+WORDS = ("id", "text", "set_turn", "lead_id")
+
+
 def test_goal_ownership_over_fifty_turns_of_normal_play():
     """Goals change only with the player's input (N2): through events, threads going dormant and
     closing, leads offered and expiring, and callbacks, the only new goals are the ones the player
-    states or accepts, and no goal is ever rewritten."""
+    states or accepts, no goal is ever rewritten, and the only goal that closes is one the player
+    accepted from a lead whose thread closed."""
     offered = taken = 0
     for story in SEEDS[:6]:
         state = grounded_world()
@@ -383,7 +389,12 @@ def test_goal_ownership_over_fifty_turns_of_normal_play():
 
             after = {g.id: g.model_dump() for g in state.goals.values()}
             for goal_id, goal in before.items():
-                assert after[goal_id] == goal, (story, turn)  # never rewritten
+                now = after[goal_id]
+                assert all(now[k] == goal[k] for k in WORDS), (story, turn)  # never rewritten
+                if now["status"] is not goal["status"]:
+                    assert goal["status"] is GoalStatus.ACTIVE and goal["lead_id"], (story, turn)
+                    lead = state.leads[goal["lead_id"]]
+                    assert state.threads[lead.thread_id].status.closed, (story, turn)
             added = [after[i] for i in after if i not in before]
             for goal in added:
                 assert goal["text"] in goals or goal["lead_id"] in intent.responds_to

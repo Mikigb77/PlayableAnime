@@ -234,17 +234,24 @@ class GoalStatus(StrEnum):
     ACHIEVED = "achieved"
     FAILED = "failed"
     ABANDONED = "abandoned"
+    MERGED = "merged"  # it said again what an older goal says (`merged_into`)
 
 
 class Goal(EngineModel):
     """N2. Goals belong to the player, who states them or accepts one the story offers. The
-    narrator never rewrites them."""
+    narrator never rewrites them. A goal closes once it is over: play achieved it or made it
+    impossible, the thread of the lead it came from closed, it repeated an older goal, or the
+    player dropped it."""
 
     id: str
     text: str
     status: GoalStatus = GoalStatus.ACTIVE
     set_turn: int = Field(default=0, ge=0)
     lead_id: str | None = Field(default=None, description="Set when the player accepted a lead.")
+    closed_turn: int | None = Field(default=None, ge=0)
+    merged_into: str | None = Field(
+        default=None, description="For a merged goal: the older goal that says the same."
+    )
 
 
 class Fallen(EngineModel):

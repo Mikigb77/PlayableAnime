@@ -8,6 +8,8 @@ from engine.contracts import (
     AttitudeShift,
     CharacterChange,
     FactionChange,
+    GoalEnd,
+    GoalOver,
     ItemChange,
     NewFact,
     NewLead,
@@ -27,6 +29,8 @@ from engine.state import (
     Deed,
     EventStatus,
     FactionStatus,
+    Goal,
+    GoalStatus,
     PendingEvent,
     PlaceStatus,
     Resurrection,
@@ -558,6 +562,72 @@ def test_leads_expire_on_in_world_time():
 
     (lead,) = applied.state.leads.values()
     assert (lead.offered_s, lead.expires_s, lead.offered_turn) == (100, 3700, 3)
+
+
+def close(state: WorldState, *over: GoalOver, player_acted: bool = True):
+    return apply_delta(
+        state, StateDelta(goals_over=list(over)), ctx(3), source=NARRATOR, player_acted=player_acted
+    )
+
+
+def with_goals() -> WorldState:
+    state = grounded_world()  # find-killer, set on turn 0
+    state.goals["goal-2"] = Goal(id="goal-2", text="Get out of Naples alive", set_turn=2)
+    state.goals["goal-3"] = Goal(id="goal-3", text="Leave Naples and stay alive", set_turn=5)
+    state.goals["goal-4"] = Goal(id="goal-4", text="Save Rosa", set_turn=6)
+    return state
+
+
+def test_a_goal_that_is_over_closes_and_is_never_rewritten():
+    state = with_goals()
+    applied = close(
+        state,
+        GoalOver(goal_id="find-killer", how=GoalEnd.ACHIEVED),
+        GoalOver(goal_id="goal-4", how=GoalEnd.FAILED),
+    )
+
+    goals = applied.state.goals
+    assert not applied.rejected
+    assert (goals["find-killer"].status, goals["find-killer"].closed_turn) == (
+        GoalStatus.ACHIEVED,
+        3,
+    )
+    assert goals["goal-4"].status is GoalStatus.FAILED
+    assert [g.text for g in goals.values()] == [g.text for g in state.goals.values()]
+    assert goals["goal-2"].status is GoalStatus.ACTIVE
+
+
+@pytest.mark.parametrize("named, same_as", [("goal-3", "goal-2"), ("goal-2", "goal-3")])
+def test_a_goal_said_again_closes_into_the_older_one(named, same_as):
+    applied = close(with_goals(), GoalOver(goal_id=named, how=GoalEnd.REPEATS, same_as=same_as))
+
+    goals = applied.state.goals
+    assert not applied.rejected
+    assert goals["goal-2"].status is GoalStatus.ACTIVE  # the words the player set first stay
+    assert (goals["goal-3"].status, goals["goal-3"].merged_into) == (GoalStatus.MERGED, "goal-2")
+
+
+def test_only_an_active_goal_closes_and_a_repeat_needs_another_active_goal():
+    state = with_goals()
+    state.goals["goal-4"].status = GoalStatus.ABANDONED
+    applied = close(
+        state,
+        GoalOver(goal_id="ghost", how=GoalEnd.ACHIEVED),
+        GoalOver(goal_id="goal-4", how=GoalEnd.ACHIEVED),
+        GoalOver(goal_id="goal-2", how=GoalEnd.REPEATS),
+        GoalOver(goal_id="goal-2", how=GoalEnd.REPEATS, same_as="goal-2"),
+        GoalOver(goal_id="goal-3", how=GoalEnd.REPEATS, same_as="goal-4"),
+    )
+
+    assert reasons(applied) == ["not an active goal"] * 2 + ["it repeats no other active goal"] * 3
+    assert applied.state.goals == state.goals
+
+
+def test_no_goal_closes_on_a_turn_the_player_didnt_act():
+    state = with_goals()
+    applied = close(state, GoalOver(goal_id="goal-2", how=GoalEnd.ACHIEVED), player_acted=False)
+    assert reasons(applied) == ["the player didn't act this turn"]
+    assert applied.state.goals == state.goals
 
 
 def test_the_scene_end_keeps_only_real_people_and_places():

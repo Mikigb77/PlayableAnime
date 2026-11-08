@@ -28,12 +28,14 @@ from engine.contracts import (
 )
 from engine.director import rules
 from engine.director.deck import CARDS
+from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
 from engine.labels import clock_time, second_of_day
 from engine.state import (
     CharacterStatus,
     ClockStatus,
     EventStatus,
+    GoalStatus,
     Health,
     PassingState,
     PowerAxis,
@@ -592,12 +594,30 @@ async def time_skip(ev: Eval) -> None:
 # --- Goal ownership (N2) -----------------------------------------------------------------------
 
 
+# N2: what makes a goal the player's, which nothing ever rewrites.
+WORDS = ("id", "text", "set_turn", "lead_id")
+
+
+def _closed_rightly(state, goal_id: str) -> bool:
+    """N2: while the player only drinks, a goal closes only as a repeat of another, or with the
+    thread of its lead or of a goal merged into it."""
+    goal = state.goals[goal_id]
+    if goal.status is GoalStatus.MERGED:
+        return True
+    carried = [g for g in state.goals.values() if g.id == goal_id or g.merged_into == goal_id]
+    return any((t := lead_thread(state, g)) is not None and t.status.closed for g in carried)
+
+
 @scenario(
     "t17.goal-ownership",
     suite="T17",
     title="Goal ownership",
     requirements=("N2", "N1", "W16", "T17"),
-    passes_when="The player's goals never change without the player's input (N2)",
+    passes_when=(
+        "The player's goals are never rewritten and never change without the player's input; "
+        "while the player only drinks, a goal closes only as a repeat of another or with its "
+        "lead's thread (N2)"
+    ),
 )
 async def goal_ownership(ev: Eval) -> None:
     offered = taken = 0
@@ -630,8 +650,14 @@ async def goal_ownership(ev: Eval) -> None:
             after = {g.id: g.model_dump() for g in story.state.goals.values()}
             ev.check(
                 "no goal is ever rewritten",
-                all(after.get(i) == g for i, g in before.items()),
+                all(all(after.get(i, {}).get(k) == g[k] for k in WORDS) for i, g in before.items()),
                 f"{seed} turn {n}",
+            )
+            closed = [i for i, g in before.items() if after.get(i, g)["status"] is not g["status"]]
+            ev.check(
+                "while the player only drinks, a goal closes only as a repeat or with its thread",
+                all(_closed_rightly(story.state, i) for i in closed),
+                f"{seed} turn {n}: {[before[i]['text'] for i in closed]}",
             )
             added = [after[i] for i in after if i not in before]
             ev.check(

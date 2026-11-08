@@ -144,7 +144,9 @@ on it.
 - backstory: each claim the player makes about the character's own past or inner life, flagging \
 one that would give the sheet a power, item, rank or ally it lacks, one about how others feel, \
 one that contradicts a known fact or person (their ids), and world rules it breaks (N4).
-- goals: goals the player states for their character (N2).
+- goals: a lasting aim the player states for their character ("I'll find my sister"), never the \
+action itself, a step of it, or an aim a goal in GOALS AND THREADS already holds in any words (N2).
+- dropped_goals: the ids of goals in GOALS AND THREADS that the player gives up or replaces here.
 - responds_to: the ids, from GOALS AND THREADS, of the threads or leads this action takes up \
 (answering a summons, helping the friend who came for help, chasing a lead). Leave it empty when \
 the action leaves them alone: ignoring an event is the player's choice (W16).
@@ -303,8 +305,12 @@ player character's id is under PLAYER CHARACTER), or 'world' for what the world 
 made) or takes (used up, eaten, broken, lost). A theft from the player character goes from their \
 id to the thief's. money true for money, with quantity the amount; how in a word or two (stolen, \
 paid, given, found). Nobody gives what they don't have: the engine refuses it.
-- places, factions, facts and leads that this scene established or changed. Never mark a \
+- places, factions, facts and leads that this scene established or changed; a lead is an offer \
+from the world (a job, a summons, a rumor), never the character's own next step. Never mark a \
 place ruined or a faction destroyed: the engine does that.
+- goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
+not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
+same: its id as same_as). Never close one for progress or for going unmentioned.
 - scene_end: the exact moment this scene stops on, where, who is present and where they stand, \
 and the things in hand or in the scene that matter next.
 - summary: the whole story so far in at most 150 words.
@@ -386,7 +392,7 @@ suggestion follows.
 - ENDING: this scene ends the player character's story: how (kind), and the player's wish for it \
 or what the world left out of it. Its TASK follows.
 
-Ids: every person, place, faction, item, thread and lead has a stable snake_case id. Ids are for \
+Ids: every person, place, faction, item, thread, lead and goal has a stable id. Ids are for \
 update; the narration, the suggestions and the image prompt use names. Times are the world's \
 calendar dates and hours, as given; seconds are only for reckoning.
 """

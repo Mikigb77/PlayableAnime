@@ -204,6 +204,7 @@ def carry_on(
     for goal in new.goals.values():
         if goal.status is GoalStatus.ACTIVE:
             goal.status = GoalStatus.ABANDONED
+            goal.closed_turn = turn
     for lead in new.leads.values():
         if lead.status is LeadStatus.OPEN:
             lead.status = LeadStatus.EXPIRED
