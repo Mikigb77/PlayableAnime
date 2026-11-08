@@ -1612,10 +1612,12 @@ assistants, without big charges per use. The options compared on 2026-11-06:
 | Gemini 3.8 Flash TTS on Vertex AI | A little richer | About 2.7¢ | Same call, `VOICE_MODEL` |
 | Cloud Text-to-Speech, Chirp 3 HD voices | Natural, not directable | About 2.7¢ (at $30 per million characters) | Another API to enable and bill |
 
-The studio voice is Flash-Lite TTS (Miki's choice, with the device's voice as the option). It
-detects the language from the text (English and Spanish among its main languages, and Catalan,
-`ca-ES`, in preview in Google's list on 2026-11-06), takes a style direction before the text, and
-costs $1 a million tokens of text in and $12 a million tokens of audio out, at 25 tokens a second
+The studio voice is Flash-Lite TTS (Miki's choice, with the device's voice as the option). Each of
+its voices reads any language. Left to itself it detects the language from the text, but it can
+guess the accent wrong, so each part is sent with the story's language and accent as the speech
+config's `language_code` (`es-ES`, `en-US` or `ca-ES`; Spanish and English among Google's main
+languages, Catalan in preview in its list on 2026-11-06). It takes a style direction before the
+text, and costs $1 a million tokens of text in and $12 a million tokens of audio out, at 25 tokens a second
 of speech. Until the end of 2026 Google gives half the audio back as credits;
 `graph/llm/pricing.py` records the 2027 prices so estimates never undercount.
 
@@ -1626,11 +1628,13 @@ rest are up to 700 characters (about 45 seconds) of whole paragraphs, split betw
 then words only when a paragraph is too long. The split depends only on the text, so a part's audio
 can be kept. `POST /v1/stories/{id}/scenes/{turn}/audio?part=&voice=` (`speech/reading_api.py`,
 [API.md](API.md#reading-aloud-v8-to-v10)) claims the part's `SceneAudio` row (unique per scene,
-voice and part; a row left `pending` for five minutes by a request that died is taken over), meters
-it (`meter.VOICE`: 3 cents held, 30 parts a minute, 1,000 a day on our key), and calls the model
-layer's `ModelClient.read_aloud` on the `voice` node with the part's words alone: no style
-directions, since the voice read them aloud (V9). `GeminiBackend` sends it to `generate_content` with
-`response_modalities=["AUDIO"]` and the chosen prebuilt voice, refuses a player's own key (the
+voice, language and part; a row left `pending` for five minutes by a request that died is taken
+over), meters it (`meter.VOICE`: 3 cents held, 30 parts a minute, 1,000 a day on our key), and calls
+the model layer's `ModelClient.read_aloud` on the `voice` node with the part's words alone: no style
+directions, since the voice read them aloud (V9). The `Reading` names the voice and the story's
+language and accent (`speech/voices.py`, `READING_LOCALES`: Spain's Spanish, never Latin
+American). `GeminiBackend` sends it to `generate_content` with `response_modalities=["AUDIO"]`, the
+chosen prebuilt voice and the `language_code`, refuses a player's own key (the
 studio voice always runs on our account), and returns Gemini's 24 kHz 16-bit PCM. `speech/audio.py`
 encodes it as 48 kbps mono MP3 with `lameenc` (LAME, about 350 KB a minute, playable on Android,
 iOS and every browser), and the file goes to the pictures' private bucket under
@@ -1642,8 +1646,9 @@ charge, and a failure (the model twice, audio that can't be encoded, storage or 
 deletes the row and the file, so the next request tries again. Safety settings are left off, as for dictation: the player has
 already read the scene under the story's rating (F5). A `post_delete` hook removes the file when
 its row goes with its story or account. The node has a 40-second deadline and one retry, and the
-deploy's `check_models` reads a sentence, transcribes the MP3 back with the speech model, and
-fails if it heard the directions.
+deploy's `check_models` reads a sentence in each story language with its `language_code`,
+transcribes each MP3 back with the speech model, and fails if Vertex AI won't read a language or
+the voice said more than the sentence.
 
 **The app.** `app/lib/features/narration/` has one app-wide `Narrator` (a `ChangeNotifier` behind
 `narratorProvider`), so one scene is read at a time. Its studio voice asks the API for part 0,
@@ -1651,11 +1656,15 @@ plays it with [`just_audio`](https://pub.dev/packages/just_audio) (ExoPlayer, AV
 element on the web), and asks for the next part about 20 seconds before the one playing ends (at
 once after a short part), so a part is rarely read and charged for a player who stopped, asking
 again after a second while a part is `pending`. The device's voice uses [`flutter_tts`](https://pub.dev/packages/flutter_tts),
-with the story's language (`en-US`, `es-ES`, `ca-ES`), the device's highest-quality voice for it,
-and the text in paragraphs (Android's engines take at most 4,000 characters at once). Every part
+with the story's language (`en-US`, `es-ES`, `ca-ES`), the device's highest-quality voice made for
+it (`phone_voice.dart`, `readsNatively`: for Spanish only a voice from Spain, never a Latin American
+one; any English voice for English, the American first; any Catalan voice for Catalan), and the
+text in paragraphs (Android's engines take at most 4,000 characters at once). Every part
 answer carries its text: a `blocked` part is read in the device's voice, and when the studio voice
 fails (no credits, a limit, the network) the device's voice reads the rest of the scene from the
-part that failed, found in the app's own copy of the spoken text, and the play screen says why. The
+part that failed, found in the app's own copy of the spoken text, and the play screen says why. A device
+with no voice made for the story's language doesn't read it in another, say Spanish in an English
+or a Mexican voice: the play screen says which voice it needs, to add in the device's settings. The
 voice settings (`narrationSettingsProvider`) are kept in shared preferences. Android 11 and later
 need the `TTS_SERVICE` intent in the manifest's `<queries>` to find the phone's engine.
 

@@ -358,7 +358,7 @@
   "narrationOutOfCredits": "No et queden crèdits per a la veu d'estudi, així que llegeix la veu del dispositiu.",
   "narrationQuota": "La lectura amb veu d'estudi d'avui s'ha esgotat, així que llegeix la veu del dispositiu.",
   "narrationUnavailable": "La veu d'estudi no està disponible ara mateix, així que llegeix la veu del dispositiu.",
-  "narrationNoDeviceVoice": "Aquest dispositiu no té cap veu per llegir en veu alta.",
+  "narrationNoDeviceVoice": "Aquest dispositiu no té cap veu en {language, select, es{castellà} ca{català} other{anglès}} per llegir aquesta història en veu alta. En pots afegir una a la configuració de text a veu.",
   "youDid": "Tu: {action}",
   "narrationWriting": "S'està escrivint la història",
   "picturePending": "S'està pintant una imatge",

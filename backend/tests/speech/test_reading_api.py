@@ -1,5 +1,6 @@
 """`POST /v1/stories/{id}/scenes/{turn}/audio` (V8 to V10, docs/API.md): a scene read aloud in the
-studio voice, a part at a time, each part read and charged once per voice and kept."""
+studio voice, in the story's language and accent, a part at a time, each part read and charged
+once per voice and kept."""
 
 import json
 from datetime import timedelta
@@ -12,7 +13,7 @@ from django.utils import timezone
 from accounts.models import Role
 from billing import meter
 from billing.models import CreditHold, EntryKind, LedgerEntry
-from engine.context import StorySettings
+from engine.context import Language, StorySettings
 from engine.samples import cultivation_world
 from graph.llm import Block, Fail, FakeBackend, Node, Reply
 from graph.llm.fake import offline_speech
@@ -106,6 +107,7 @@ def test_the_first_part_comes_back_as_an_mp3_with_how_many_parts_there_are(
     assert body["url"].split("?")[0].endswith(".mp3") and body["expires_at"]
     [request] = model.calls(Node.VOICE)
     assert request.reading.voice == DEFAULT_VOICE
+    assert request.reading.language == "en-US"  # an English story, read in native English
     # The part's words and nothing else: directions sent with them were read aloud (V9).
     assert request.prompt.messages[-1].text == parts[0]
     assert request.prompt.system == ""
@@ -123,6 +125,48 @@ def test_each_part_and_voice_is_read_once_and_kept(client, model, story, player)
     assert other_voice["url"].split("?")[0] != first["url"].split("?")[0]
     assert [r.reading.voice for r in model.calls(Node.VOICE)] == [DEFAULT_VOICE, "Charon"]
     assert entries(player).count() == 2  # hearing a part again costs nothing (V10)
+
+
+@pytest.mark.parametrize(
+    ("language", "locale"),
+    [(Language.ES, "es-ES"), (Language.CA, "ca-ES"), (Language.EN, "en-US")],
+)
+def test_a_story_is_read_in_its_own_language_and_accent(
+    client, model, story, language, locale, log_lines
+):
+    """Spanish is read as Spain speaks it, never with a Latin American accent or an English
+    voice's pronunciation (Miki, 2026-11-08): the voice model is told the language, not left to
+    guess it."""
+    story.settings = StorySettings(language=language).model_dump(mode="json")
+    story.save(update_fields=["settings"])
+
+    assert read(client, story).json()["status"] == "ready"
+    assert read(client, story).json()["status"] == "ready"
+
+    [request] = model.calls(Node.VOICE)
+    assert request.reading.language == locale
+    [audio] = SceneAudio.objects.all()
+    assert audio.language == locale
+    assert [line["voice"]["language"] for line in log_lines() if line.get("voice")] == [locale] * 2
+
+
+def test_a_part_kept_in_another_accent_is_read_again_in_the_storys(client, model, story, player):
+    """A part kept in an accent the story is no longer read in, such as one an older server read
+    while a deploy rolled out, is never served: the part is read again in the story's accent."""
+    scene = Scene.objects.get(story=story, turn=1)
+    SceneAudio.objects.create(
+        scene=scene,
+        voice=DEFAULT_VOICE,
+        part=0,
+        status=AudioStatus.READY,
+        storage_key=f"stories/{story.id}/voice/old.mp3",
+        duration_ms=1000,
+    )
+
+    body = read(client, story).json()
+
+    assert body["status"] == "ready" and "old.mp3" not in body["url"]
+    assert len(model.calls(Node.VOICE)) == 1 and entries(player).count() == 1
 
 
 def test_a_part_is_charged_like_any_model_call(client, model, story, player):
@@ -149,7 +193,9 @@ def test_the_owner_listens_free_with_the_cost_recorded(model, story, make_user):
 
 def test_a_part_another_request_is_reading_answers_pending(client, model, story):
     scene = Scene.objects.get(story=story, turn=1)
-    SceneAudio.objects.create(scene=scene, voice=DEFAULT_VOICE, part=0, status=AudioStatus.PENDING)
+    SceneAudio.objects.create(
+        scene=scene, voice=DEFAULT_VOICE, language="en-US", part=0, status=AudioStatus.PENDING
+    )
 
     body = read(client, story).json()
 
@@ -160,7 +206,7 @@ def test_a_part_another_request_is_reading_answers_pending(client, model, story)
 def test_a_part_left_pending_by_a_request_that_died_is_read_again(client, model, story):
     scene = Scene.objects.get(story=story, turn=1)
     stale = SceneAudio.objects.create(
-        scene=scene, voice=DEFAULT_VOICE, part=0, status=AudioStatus.PENDING
+        scene=scene, voice=DEFAULT_VOICE, language="en-US", part=0, status=AudioStatus.PENDING
     )
     SceneAudio.objects.filter(pk=stale.pk).update(
         updated_at=timezone.now() - timedelta(seconds=reading_api.STALE_AFTER_S + 1)

@@ -89,6 +89,92 @@ void main() {
     );
   });
 
+  group("the phone's voice reads a story only in a voice made for its language", () {
+    test('Spanish only from Spain, however good a Latin American voice is', () {
+      final voices = [
+        {'name': 'es-us-x-sfb', 'locale': 'es-US', 'quality': 'very high'},
+        {'name': 'Paulina', 'locale': 'es-MX', 'quality': 'premium'},
+        {'name': 'Google español de Latinoamérica', 'locale': 'es-419'},
+        {'name': 'Mónica', 'locale': 'es_ES', 'quality': 'default'},
+      ];
+
+      expect(bestVoice(voices, language: 'es', locale: 'es-ES'), {
+        'name': 'Mónica',
+        'locale': 'es_ES',
+      });
+      expect(bestVoice(voices.take(3).toList(), language: 'es', locale: 'es-ES'), isNull);
+    });
+
+    test('which voices read each language natively', () {
+      expect(readsNatively('es-ES', 'es'), isTrue);
+      expect(readsNatively('es_es', 'es'), isTrue);
+      expect(readsNatively('es-Latn-ES', 'es'), isTrue);
+      for (final latin in ['es-US', 'es-MX', 'es-AR', 'es-419', 'es']) {
+        expect(readsNatively(latin, 'es'), isFalse, reason: latin);
+      }
+      for (final english in ['en-US', 'en-GB', 'en_AU', 'en']) {
+        expect(readsNatively(english, 'en'), isTrue, reason: english);
+      }
+      for (final catalan in ['ca-ES', 'ca-ES-valencia', 'ca-AD', 'ca']) {
+        expect(readsNatively(catalan, 'ca'), isTrue, reason: catalan);
+      }
+      // An English voice never reads Spanish, nor a Spanish one English.
+      expect(readsNatively('en-US', 'es'), isFalse);
+      expect(readsNatively('es-ES', 'en'), isFalse);
+      expect(readsNatively('es-ES', 'ca'), isFalse);
+    });
+
+    test('English prefers an American voice, then any native English one', () {
+      final voices = [
+        {'name': 'Daniel', 'locale': 'en-GB', 'quality': 'enhanced'},
+        {'name': 'Samantha', 'locale': 'en-US', 'quality': 'enhanced'},
+        {'name': 'Mónica', 'locale': 'es-ES', 'quality': 'premium'},
+      ];
+
+      expect(bestVoice(voices, language: 'en', locale: 'en-US')!['name'], 'Samantha');
+      expect(
+        bestVoice(voices.take(1).toList(), language: 'en', locale: 'en-US')!['name'],
+        'Daniel',
+      );
+    });
+
+    test('a phone without one says so rather than read in another', () {
+      final englishOnly = [
+        {'name': 'Samantha', 'locale': 'en-US'},
+      ];
+      final latinOnly = [
+        {'name': 'Paulina', 'locale': 'es-MX'},
+      ];
+
+      for (final voices in [englishOnly, latinOnly]) {
+        expect(
+          () => phoneVoiceFor(voices, language: 'es', languageSet: true, web: false),
+          throwsA(isA<PhoneVoiceUnavailable>()),
+        );
+      }
+      expect(phoneVoiceFor(englishOnly, language: 'en', languageSet: true, web: false), {
+        'name': 'Samantha',
+        'locale': 'en-US',
+      });
+    });
+
+    test(
+      "an engine that lists no voices reads in its own voice for the language, if it has one",
+      () {
+        expect(phoneVoiceFor(const [], language: 'es', languageSet: true, web: false), isNull);
+        expect(
+          () => phoneVoiceFor(const [], language: 'es', languageSet: false, web: false),
+          throwsA(isA<PhoneVoiceUnavailable>()),
+        );
+        // A browser takes any language and reads it in its default voice, often an English one.
+        expect(
+          () => phoneVoiceFor(const [], language: 'es', languageSet: true, web: true),
+          throwsA(isA<PhoneVoiceUnavailable>()),
+        );
+      },
+    );
+  });
+
   group('the studio voice API', () {
     test('asks again while another request reads the part', () async {
       final asked = <Uri>[];
@@ -366,7 +452,7 @@ void main() {
       await read();
       await pumpEventQueue();
 
-      expect(notices.single, isA<NoPhoneVoice>());
+      expect(notices.single, isA<NoPhoneVoice>().having((n) => n.language, 'language', 'es'));
       expect(narrator.isReading('s1'), isFalse);
     });
   });

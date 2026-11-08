@@ -7,6 +7,7 @@ import pytest
 from google.genai import errors as genai_errors
 from google.genai import types as gt
 
+from engine.context import Language
 from graph.llm import (
     Block,
     Fail,
@@ -26,11 +27,12 @@ from graph.llm.fake import offline_speech, speech_tokens
 from graph.llm.gemini import GEMINI_SPEECH_TYPE, GeminiBackend, reading_chunk
 from graph.llm.pricing import estimate_cost, price_for
 from graph.llm.types import Usage
+from speech.voices import reading_locale
 from tests.graph.conftest import run
 from tests.graph.test_speech import Calls, _gemini_client, _response
 
 PCM = b"\x01\x00" * 24_000  # a second at 24 kHz
-READING = Reading(voice="Sulafat")
+READING = Reading(voice="Sulafat", language="es-ES")
 TEXT = "Read this aloud as a storyteller would:\n\nThe bell rings once."
 
 
@@ -69,10 +71,30 @@ def test_a_text_goes_to_gemini_with_the_voice_and_audio_out():
     config = request["config"]
     assert config.response_modalities == ["AUDIO"]
     assert config.speech_config.voice_config.prebuilt_voice_config.voice_name == "Sulafat"
+    # The language and accent are named, so Spanish is read as Spain speaks it (Miki, 2026-11-08).
+    assert config.speech_config.language_code == "es-ES"
     assert config.safety_settings is None  # the player already read it (F5)
     [record] = telemetry.calls
     assert (record.node, record.input_tokens, record.output_tokens) == ("voice", 40, 25)
     assert record.cost_usd > 0 and record.price_known
+
+
+def test_without_a_language_the_model_guesses_it():
+    calls = Calls(_response(_speech()))
+
+    run(_gemini_client(calls).read_aloud(Node.VOICE, TEXT, Reading(voice="Charon")))
+
+    [request] = calls.requests
+    assert request["config"].speech_config.language_code is None
+
+
+def test_every_story_language_is_read_in_a_named_accent():
+    """Spanish from Spain, never Latin American; English as dictation hears it (V4); Catalan."""
+    assert {language: reading_locale(language) for language in Language} == {
+        Language.EN: "en-US",
+        Language.ES: "es-ES",
+        Language.CA: "ca-ES",
+    }
 
 
 def test_speech_in_several_parts_is_joined_in_order():

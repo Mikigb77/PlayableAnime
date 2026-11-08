@@ -245,8 +245,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         _snack(l10n.narrationQuota);
       case ReadOnPhone(reason: StudioFallback.unavailable):
         _snack(l10n.narrationUnavailable);
-      case NoPhoneVoice():
-        _snack(l10n.narrationNoDeviceVoice);
+      case NoPhoneVoice(:final language):
+        _snack(l10n.narrationNoDeviceVoice(language));
       case StudioCreditsSpent():
         if (ref.exists(meProvider)) ref.read(meProvider.notifier).refreshQuietly();
     }
