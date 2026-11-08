@@ -19,7 +19,7 @@ LEAP = (
     "You grip the rough bark and swing up. Branch to branch you climb the old pines, needles "
     "raining down, until the outer wall drops below you and the whole valley opens at dusk."
 )
-LIN = Figure("lin", "Lin Feng", "a lean youth in a patched grey robe", carries=())
+LIN = Figure("lin", "Lin Feng", "a lean youth in a patched grey robe", carries=(), age=16)
 ZHAO = Figure("zhao", "Zhao Yun", "a broad senior disciple")
 BRIEF = Brief(
     description="You crouch on a moonlit rooftop, your father's dagger drawn.",
@@ -47,9 +47,10 @@ def test_the_note_reads_the_finished_scene_with_the_record_around_it():
         "crouch on a moonlit rooftop, your father's dagger drawn."
     ) in user
     assert 'PLAYER CHARACTER (the narration\'s "you"): Lin Feng' in user
+    # S7: with the age the story gives them, so the description never makes them younger.
     assert (
-        "PEOPLE (who may be in the picture, as they look): Lin Feng: a lean youth in a patched "
-        "grey robe; Zhao Yun: a broad senior disciple"
+        "PEOPLE (who may be in the picture, with their age and how they look): Lin Feng, aged "
+        "16: a lean youth in a patched grey robe; Zhao Yun: a broad senior disciple"
     ) in user
     # C10: the player character's belongings are the whole record, so "nothing" is said.
     assert "Lin Feng CARRIES: nothing" in user

@@ -31,7 +31,7 @@ from engine.contracts import (
 from engine.state import SkillLevel, StepResult
 from evals import worlds
 from evals.judge import PICTURE_INSTRUCTIONS, Rubric
-from evals.pictures import Picture, ending, scene_brief
+from evals.pictures import Picture, ending, portrait_brief, scene_brief
 from evals.runner import Eval
 from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import act, attack, plan, step
@@ -835,4 +835,65 @@ async def cover_as_poster(ev: Eval) -> None:
                     f"The story's premise:\n{LEAP_PREMISE}\n\nThe second scene, which the cover "
                     f"comes with but is not a picture of:\n{played.narration}"
                 ),
+            )
+
+
+# --- A grown-up look (S7) ----------------------------------------------------------------------
+
+# Who is drawn, and the age the story gives each (`engine.samples`): a teenager, an old man and a
+# young man, in a cultivation sect and in 1970s Naples.
+GROWN_UP_PORTRAITS = (("sect", "lin", 16), ("sect", "mage", 60), ("crime", "luca", 24))
+
+
+@scenario(
+    "t18.grown-up-look",
+    suite="T18",
+    title="A grown-up look",
+    requirements=("S7", "M5", "M6", "T18"),
+    passes_when=(
+        "Every picture looks made for teens and adults, serious and grounded, never a children's "
+        "storybook, and each person looks the age the story gives them: Lin 16, the grey mage "
+        "sixty, Luca Esposito 24 (S7, Miki 2026-11-08)"
+    ),
+)
+async def grown_up_look(ev: Eval) -> None:
+    for seed in ev.seeds(1, live=1):
+        stories = {
+            "sect": ev.story(worlds.mage_fight(), seed=seed, premise=LEAP_PREMISE),
+            "crime": ev.story(worlds.grounded_world(), seed=seed),
+        }
+        pictures: list[tuple[str, Picture]] = []
+        for world, character_id, age in GROWN_UP_PORTRAITS:
+            story = stories[world]
+            character = story.state.characters[character_id]
+            prompt = build_prompt("portrait", portrait_brief(story.state, character_id)).user
+            ev.check(
+                f"{character.name}'s portrait is told their age, {age}",
+                character.age == age and f"Subject: {character.name}, aged {age}" in prompt,
+                f"{seed}: {prompt}",
+            )
+            drawn = await ev.draw_portrait(story, character_id, f"portrait-{character_id}")
+            if drawn is not None:
+                pictures.append((f"the portrait of {character.name}, aged {age}", drawn))
+        cover = await ev.draw_cover(stories["sect"], "cover-lin")
+        if isinstance(cover, Picture):
+            pictures.append(("the cover of Lin Feng's story, Lin aged 16", cover))
+        if pictures:
+            await ev.judge_pictures(
+                "a grown-up look, with everyone their own age",
+                Rubric(
+                    must=(
+                        "Every picture looks made for teen and adult readers: a serious, grounded "
+                        "mood, semi-realistic proportions and detailed rendering, like an anime "
+                        "film or graphic novel for grown-ups",
+                        "No picture looks like a children's book, a fairy tale, a cartoon or "
+                        "chibi art: no oversized eyes or baby faces, no soft toy-like shapes, no "
+                        "candy or pastel colours",
+                        "Each person looks the age their caption gives: Lin Feng a teenager of "
+                        "about 16, neither a child nor a grown man; the grey mage a man of about "
+                        "sixty; Luca Esposito a man in his mid twenties",
+                    ),
+                    instructions=PICTURE_INSTRUCTIONS,
+                ),
+                pictures,
             )

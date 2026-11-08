@@ -19,7 +19,7 @@ from graph.drafting.catalog import STARTER_PREMISES, starter
 from media import lookups, premise_covers
 from media.drawing import DrawBlocked, DrawFailed, DrawRateLimited
 from media.models import PremiseCover
-from media.prompts import FRAMING, HOUSE_STYLE, MILD_RULES
+from media.prompts import FRAMING, HOUSE_STYLE, HOUSE_STYLE_VERSION, MILD_RULES
 from media.storage import get_storage
 from tests.media.conftest import PNG
 
@@ -96,6 +96,7 @@ def test_a_cover_is_drawn_in_the_house_style_with_room_for_the_title(painters):
     assert (cover.mime_type, cover.size_bytes, cover.model) == ("image/png", len(PNG), "fake-image")
     assert cover.cost_usd == Decimal("0.034")
     assert cover.offline is False
+    assert cover.style == HOUSE_STYLE_VERSION
     assert get_storage().load(cover.storage_key) == PNG
 
 
@@ -255,6 +256,7 @@ def test_a_cover_from_older_premise_text_is_kept_and_reported(painters):
         mime_type="image/png",
         size_bytes=10,
         brief={"description": "An older premise."},
+        style=HOUSE_STYLE_VERSION,
         drawn_at=timezone.now(),
     )
 
@@ -274,12 +276,86 @@ def test_a_cover_whose_brief_was_stored_before_a_field_was_added_is_not_stale(pa
         mime_type="image/png",
         size_bytes=10,
         brief=stored,
+        style=HOUSE_STYLE_VERSION,
         drawn_at=timezone.now(),
     )
 
     out = draw("hollowmere")
 
     assert "hollowmere: kept" in out and "older premise text" not in out
+
+
+def test_a_cover_in_an_older_house_style_is_drawn_again_once_without_force(
+    painters, django_capture_on_commit_callbacks
+):
+    """The house style moved on (S7, Miki 2026-11-08: pictures that looked made for children), so
+    the next run draws each cover from before once more, and Discover shows the current look."""
+    draw("hollowmere", "beast-tide")
+    PremiseCover.objects.filter(pk="hollowmere").update(style=HOUSE_STYLE_VERSION - 1)
+    old = PremiseCover.objects.get(pk="hollowmere")
+
+    with django_capture_on_commit_callbacks(execute=True):
+        out = draw("hollowmere", "beast-tide")
+
+    assert len(painters.ours.requests) == 3
+    assert "beast-tide: kept" in out and "hollowmere: drawn" in out
+    redrawn = PremiseCover.objects.get(pk="hollowmere")
+    assert redrawn.style == HOUSE_STYLE_VERSION
+    assert redrawn.storage_key != old.storage_key
+    assert not get_storage().exists(old.storage_key)
+
+    assert "Every cover is drawn" in draw("hollowmere", "beast-tide")
+    assert len(painters.ours.requests) == 3
+
+
+def test_a_cover_stored_before_styles_were_kept_counts_as_the_first_style(painters):
+    """A cover drawn before the style was kept with it has the first style, so it is redrawn."""
+    PremiseCover.objects.create(
+        premise_id="hollowmere",
+        storage_key="premises/hollowmere/old.png",
+        mime_type="image/png",
+        size_bytes=10,
+        brief=premise_covers.cover_brief(starter("hollowmere")).to_json(),
+        drawn_at=timezone.now(),
+    )
+
+    assert PremiseCover.objects.get(pk="hollowmere").style == 1
+    out = draw("hollowmere", "--dry-run")
+
+    assert "hollowmere: would draw" in out
+    assert painters.drawings == 0
+
+
+def test_a_cover_in_an_older_style_beats_another_runs_only_when_that_one_is_older_too(
+    painters, django_capture_on_commit_callbacks
+):
+    """Two runs at once: a cover another run stored in today's style wins over this run's
+    drawing, but one in an older style is replaced by it."""
+    draw("beast-tide")
+    first = PremiseCover.objects.get(pk="beast-tide")
+    PremiseCover.objects.filter(pk="beast-tide").update(style=HOUSE_STYLE_VERSION - 1)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        outcome = async_to_sync(premise_covers.draw_cover)(
+            starter("beast-tide"), force=False, offline=False
+        )
+
+    assert outcome.status == "drawn"
+    cover = PremiseCover.objects.get(pk="beast-tide")
+    assert cover.storage_key != first.storage_key
+    assert cover.style == HOUSE_STYLE_VERSION
+
+
+def test_the_offline_model_never_redraws_a_cover_for_its_style(painters, monkeypatch):
+    """Placeholders have no style, so the offline model leaves an older real cover alone."""
+    draw("hollowmere")
+    PremiseCover.objects.filter(pk="hollowmere").update(style=HOUSE_STYLE_VERSION - 1)
+    monkeypatch.setattr(premise_covers, "offline_model", lambda: True)
+
+    out = draw("hollowmere")
+
+    assert "hollowmere: kept" in out
+    assert painters.drawings == 1
 
 
 # The offline model (LLM_PROVIDER=fake), for local development.

@@ -165,6 +165,17 @@ def test_a_figure_falls_back_on_the_description():
     assert figure(gennaro).appearance == gennaro.description
 
 
+def test_a_figure_has_the_age_the_story_gives_them():
+    """S7: everyone is drawn as old as they are now, so the age goes with them, or none."""
+    state = grounded_world()
+    luca = state.characters[state.player_id]
+    luca.age = 25
+
+    assert figure(luca).age == 25
+    state.characters["bartender"].age = None
+    assert figure(state.characters["bartender"]).age is None
+
+
 def test_the_player_character_goes_in_with_what_they_carry():
     """C10: what Luca has on him, from the record, and nothing he keeps elsewhere, such as his
     car. Carmine's belongings are on record only as far as the story told them, so the picture

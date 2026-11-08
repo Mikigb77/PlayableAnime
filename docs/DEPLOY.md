@@ -307,7 +307,8 @@ waiting its turn.
    `manage.py check_models`, which calls each model the app uses once, on the service's settings
    and account ([below](#checking-the-models)). If Vertex AI refuses one, the run fails with its
    reason, and the new revision keeps serving: rolling back wouldn't make the model answer.
-9. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, in a job of its own
+9. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, or drawn in an older
+   house style, in a job of its own
    ([below](#drawing-the-starter-covers)). A failure there doesn't fail the deploy.
 10. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 7,
     and published only once they pass: first as the latest GitHub release, then to the releases
@@ -367,11 +368,13 @@ To check by hand: `gcloud run jobs execute playable-anime-migrate --project=play
 Discover's twenty-three starter premises show a cover once the house has drawn it (S1, M4). Each
 deploy runs `manage.py draw_premise_covers` as the migration job with other arguments, after the
 health check. The job already has the runtime account, the Vertex AI settings, `MEDIA_BUCKET` and
-the direct database URL. It skips every cover that exists and draws the missing ones with
-`PICTURE_MODEL`, about $0.034 each, paid by the house (the logs show each cover's model and cost,
-`Premise cover ready`, and no player's ledger changes). So only a deploy that adds starter
-premises draws anything: the first drew the first eleven for $0.37, and the one that adds the next
-twelve draws those for about $0.41. Our picture quota answered 429 after three quick drawings, so
+the direct database URL. It skips every cover that exists in today's house style and draws the
+missing ones, and those drawn in an older style (`HOUSE_STYLE_VERSION` in `media/prompts.py`,
+S7), with `PICTURE_MODEL`, about $0.034 each, paid by the house (the logs show each cover's model
+and cost, `Premise cover ready`, and no player's ledger changes). So only a deploy that adds
+starter premises or changes the house style draws anything: the first drew the first eleven for
+$0.37, the one that added the next twelve drew those for about $0.41, and the grown-up house style
+(2026-11-08) draws all twenty-three once more for about $0.80. Our picture quota answered 429 after three quick drawings, so
 the covers are drawn 10 s apart, and one that runs out of quota is drawn again after a minute,
 twice at most. A cover that still fails, is blocked, or isn't reached before the job's 30 minutes
 run out is left out and the covers job is marked failed, without failing the deploy; the covers

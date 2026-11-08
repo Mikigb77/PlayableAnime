@@ -100,7 +100,7 @@ def test_a_cover_is_the_storys_poster_with_no_note_and_no_place(client, painters
     request = painters.ours.requests[1]
     assert "ruins of your clan's castle" in request.prompt
     assert "Lin Feng carries no weapon" in request.prompt
-    assert "like a book or film poster" in request.prompt
+    assert "like the poster of a film or the cover of a novel" in request.prompt
     assert request.references == () and request.aspect_ratio == "3:4"
 
 

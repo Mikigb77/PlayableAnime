@@ -1324,8 +1324,8 @@ The workflow uses the bootstrap's names by default; the repository variables `EV
 **Weighing a picture model (M8).** A run by hand takes `picture_model`, such as
 `gemini-nano-banana-2.1`, and draws every picture with it instead of the configured one
 (`PICTURE_MODEL`). Run the picture evals (`t18.same-face t18.mild-pictures t18.moment-as-told
-t18.cover-as-poster`, about $2) once with the default and once with the candidate, before any
-switch. Each summary says which model drew the pictures, how many, for how much and how many
+t18.cover-as-poster t18.grown-up-look`, about $2) once with the default and once with the
+candidate, before any switch. Each summary says which model drew the pictures, how many, for how much and how many
 weren't drawn and why, next to each scenario's judged score; the pictures are in the artifact.
 
 ## App
@@ -1690,7 +1690,8 @@ app                   shows the narration, then asks for the picture in its own 
   prompt, the moment first, then how the people look and what the player character carries ("no
   other weapon, tool or gear, even one their look above names, unless the description puts it in
   their hands"), then the world: one house style for every picture (the app's cinematic, dark-first
-  look, lit for the moment's time of day), the world's own era (a starter's tagline as the setting
+  look, grown-up and grounded rather than a children's storybook, lit for the moment's time of
+  day, with each person drawn at the age on their entry, S7), the world's own era (a starter's tagline as the setting
   only on its cover), the framing and aspect ratio per kind (portraits and covers 3:4, places and
   scenes 16:9), where a scene shows only who and what the description has, and the
   mild-in-every-rating rules. Ready portraits of up to three of the
@@ -1764,8 +1765,9 @@ app                   shows the narration, then asks for the picture in its own 
   endpoints `Scene.image`, portrait, place and cover URLs in one query each, and the export list.
 - **The starter premises' covers (S1).** They belong to no story, so they are `media.PremiseCover`
   rows, one per premise id, drawn by `manage.py draw_premise_covers` (`media/premise_covers.py`),
-  never by a request. It draws each premise without a cover once, on our account under the Teen
-  rating, from the premise's public text (its genre, tagline and premise, never its title, which
+  never by a request. It draws each premise without a cover once, and once more when the house
+  style moves on (`media.prompts.HOUSE_STYLE_VERSION`, kept as the cover's `style`), on our
+  account under the Teen rating, from the premise's public text (its genre, tagline and premise, never its title, which
   the app sets over the picture), with the cover framing that keeps the lower third calm (S7, M6).
   Files are `premises/<premise id>/<random>.png`, a new name for every drawing, so a cached URL
   never shows an older cover; `--force` draws again and removes the old file once the new one is
@@ -1804,8 +1806,9 @@ app                   shows the narration, then asks for the picture in its own 
 
 Setup, deploys, costs and rollback are in [DEPLOY.md](DEPLOY.md); the scripts are in `infra/`.
 
-**Drawing the starter covers.** Each deploy draws the covers that are missing, about $0.034
-each, paid by the house, so only a deploy that adds starter premises draws anything
+**Drawing the starter covers.** Each deploy draws the covers that are missing, or drawn in an
+older house style, about $0.034 each, paid by the house, so only a deploy that adds starter
+premises or changes the house style draws anything
 ([DEPLOY.md](DEPLOY.md#drawing-the-starter-covers)). To draw by hand:
 
 ```bash
