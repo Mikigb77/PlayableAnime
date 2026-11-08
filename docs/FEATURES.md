@@ -65,6 +65,9 @@ The first version's state, checked against the code in WS18.
       workarounds reasoned through by cause and effect (A2, A9)
 - [x] Odds from who the character is: their attributes, skills, gifts and flaws weighed against
       how hard the task is, and a run of misses that makes the next try likelier (A3, G14)
+- [x] Proven abilities stay reliable: a move made with the character's own power is that power at
+      work, the first clean success makes it a technique of theirs (listed in Status), and a miss
+      is told as what stood in the way, never the ability fizzling (A3, A4, G14, G25)
 - [x] Injuries only from what happened: the engine makes every wound the player character carries,
       and no scene or odds lean on a wound they never had (N6, G13)
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending

@@ -660,6 +660,35 @@ def test_the_outcome_says_what_a_step_moved_unless_an_event_cut_it_short():
     assert "changed_hands" not in outcome(True).split("## OUTCOME")[1]
 
 
+def test_the_outcome_names_the_abilities_a_step_used_so_a_miss_is_the_foes_doing():
+    """A3, R1 (Miki, 2026-11-08): an aura blade used several times kept "fizzling" in the
+    telling when a fight went against the player. The narrator is told which of the character's
+    own powers, techniques and moves worked, and that a miss comes from what stood in the way."""
+    missed = StepResolution(
+        index=0,
+        text="cut the thief's hand with an aura blade",
+        outcome_class=OutcomeClass.CONTESTED,
+        reason="The thief can push back: even odds.",
+        result=StepResult.FAILURE,
+        drew_on=["Aura del despertar", "Cuchilla de aura"],
+        duration_s=2,
+    )
+    plain = missed.model_copy(update={"drew_on": []})
+
+    used = brief(resolution=Resolution(steps=[missed])).user.split("## OUTCOME")[1]
+    nothing = brief(resolution=Resolution(steps=[plain])).user.split("## OUTCOME")[1]
+
+    assert '"drew_on":["Aura del despertar","Cuchilla de aura"]' in used
+    assert "drew_on" not in nothing
+    assert "fizzling, faltering, resisting or refusing to come" in prompts.NARRATOR_SYSTEM
+    assert "doesn't make it fail again" in prompts.NARRATOR_SYSTEM
+    assert "drew_on (their own powers, techniques and moves it used)" in prompts.NARRATOR_SYSTEM
+    # The interpret step names a move made with a power, so code can find and record it (A4).
+    assert "the move as a technique, by its name as the player calls it" in (
+        prompts.INTERPRET_SYSTEM
+    )
+
+
 def test_a_player_character_with_nothing_on_them_reads_as_carrying_nothing():
     """C10, M5: an empty list of things is shown, not left out, so neither the scene nor its
     picture prompt hands the character a weapon the premise or the genre suggests (Miki,

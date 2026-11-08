@@ -21,6 +21,7 @@ from engine.state import (
     Reputation,
     Rumor,
     StatusChange,
+    Technique,
     Visibility,
     WorldState,
 )
@@ -329,6 +330,19 @@ def test_status_shows_what_each_power_costs_as_the_sheet_says():
     free = cultivation_world()
     free.player.sheet.powers[0].costs = []
     assert not any("cost:" in line for line in status_view(free).character.lines)
+
+
+def test_status_shows_the_techniques_they_know_in_the_storys_language():
+    # A4, G25: a move made their own in play shows, so the player can see it is theirs.
+    state = cultivation_world()
+    state.player.sheet.techniques.append(
+        Technique(id="technique-cuchilla-de-aura", name="Cuchilla de aura")
+    )
+
+    assert "Cuchilla de aura (technique)" in status_view(state).character.lines
+    assert "Cuchilla de aura (técnica)" in status_view(state, ES).character.lines
+    assert "Cuchilla de aura (tècnica)" in status_view(state, CA).character.lines
+    assert not any("technique" in line for line in status_view(cultivation_world()).character.lines)
 
 
 def test_status_shows_money_and_what_is_carried():

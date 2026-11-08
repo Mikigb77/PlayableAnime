@@ -596,6 +596,10 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
         }
         if step.roll is not None:
             view["odds"] = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
+        if step.drew_on:
+            # R1, A3: their own powers and techniques the step used, which work as they know
+            # them to, so a miss is told in what stood in the way.
+            view["drew_on"] = step.drew_on
         if step.costs:
             view["costs"] = [c.text for c in step.costs]
         if step.effects.items and not step.interrupted:

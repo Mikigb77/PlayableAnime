@@ -4,8 +4,14 @@ draws on from their sheet (G14), and every beat's means (R2).
 Each check either lets the step go on or settles it on the spot with no roll: the world rules it
 out, the character has no such power, or the thing they reach for isn't there. An uncertain find
 is the one roll here (R2, A3).
+
+A power is found by its id or its name. A move the character makes with a power of theirs, such
+as an aura blade from their aura, is that power at work, not a technique they never learned
+(`Move`): the power must be ready, and the contest decides, never the sheet check. Pulled off
+cleanly, the move becomes a technique of their own (A4, `engine.resolve.core`).
 """
 
+import re
 from dataclasses import dataclass, field
 
 from engine.context import TurnContext
@@ -20,11 +26,11 @@ from engine.contracts.intent import (
 from engine.contracts.resolution import BeatResolution, BeatVerdict
 from engine.possessions import gone_to, is_money
 from engine.resolve import odds as odds_mod
-from engine.resolve.words import any_mentions, cap, is_are, mentions, name, possessive
+from engine.resolve.words import any_mentions, cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
-from engine.state.sheet import Item, Power, Technique
+from engine.state.sheet import CharacterSheet, Item, Power, Technique
 from engine.state.world import WorldState
 from engine.timekeeping import effect_over
 
@@ -54,16 +60,34 @@ class Settled:
     roll: RollRecord | None = None
 
 
+@dataclass(frozen=True)
+class Move:
+    """A4, G14. A move the character makes with a power of theirs that isn't a technique they
+    learned, such as an aura blade made with their aura: that power at work, named in the
+    interpret step's words."""
+
+    name: str
+    power: Power
+
+
 @dataclass
 class Drawn:
     """What the step draws on from the sheet, once checked: the powers, techniques and items it
-    really has, and the skills and traits it names."""
+    really has, the moves it makes with those powers, and the skills and traits it names."""
 
     powers: list[Power] = field(default_factory=list)
     techniques: list[Technique] = field(default_factory=list)
     items: list[Item] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
     traits: list[str] = field(default_factory=list)
+    moves: list[Move] = field(default_factory=list)
+
+    @property
+    def names(self) -> list[str]:
+        """The powers, techniques and moves it draws on, by name (R1, A3)."""
+        found = [p.name for p in self.powers] + [t.name for t in self.techniques]
+        found += [m.name for m in self.moves]
+        return list(dict.fromkeys(found))
 
 
 def world_check(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
@@ -106,9 +130,17 @@ def sheet_check(
     money must be in their purse (C10). Skills and traits the actor lacks simply don't help."""
     sheet = actor.sheet
     who = name(state, actor.id)
+    # The powers the step names outright, so a move it makes is made with one of them.
+    named = [
+        p
+        for p in (find_power(sheet, u.ref) for u in step.uses if u.part is SheetPart.POWER)
+        if p is not None
+    ]
     for use in step.uses:
         if use.part is SheetPart.POWER:
-            power = sheet.power(use.ref)
+            # A power named by a word of its own name, such as "aura_blade" for their Aura, is
+            # that power; nothing looser, so a power they lack is still one they lack.
+            power = find_power(sheet, use.ref) or named_by_word(sheet, use.ref)
             if power is None:
                 return Settled(
                     OutcomeClass.RULED_OUT,
@@ -125,13 +157,32 @@ def sheet_check(
                 (t for t in sheet.techniques if t.id == use.ref or mentions(t.name, use.ref)),
                 None,
             )
-            if technique is None:
+            if technique is not None:
+                _add(drawn.techniques, technique)
+                # G25. A technique of a power is that power at work: it must be ready, and it
+                # counts and costs like the power. A power over time starts only where named.
+                power = sheet.power(technique.power_id) if technique.power_id else None
+                if power is not None and power.time is None:
+                    if not _ready(state, actor, power):
+                        reason = _not_recovered(state, actor, power)
+                        return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
+                    _add(drawn.powers, power)
+                continue
+            # A4, G14. No technique they learned: a move made with a power of theirs is that
+            # power at work.
+            power = find_power(sheet, use.ref) or made_with(sheet, use.ref, named)
+            if power is None:
                 return Settled(
                     OutcomeClass.RULED_OUT,
                     StepResult.FAILURE,
                     f"{cap(who)} never learned that technique.",
                 )
-            _add(drawn.techniques, technique)
+            if not _ready(state, actor, power):
+                return Settled(
+                    OutcomeClass.RULED_OUT, StepResult.FAILURE, _not_recovered(state, actor, power)
+                )
+            _add(drawn.powers, power)
+            _add_move(drawn, use.ref, power)
         elif use.part is SheetPart.ITEM:
             item = sheet.item(use.ref) or _owned_item(actor, use.ref)
             if item is None and is_money(use.ref, sheet.resources.currency):
@@ -149,6 +200,82 @@ def sheet_check(
         elif use.part is SheetPart.TRAIT:
             drawn.traits.append(use.ref)
     return None
+
+
+def find_power(sheet: CharacterSheet, ref: str) -> Power | None:
+    """G14. The power a use names: by its id, else by its name ("aura" finds "Aura")."""
+    if not ref.strip():
+        return None
+    return sheet.power(ref) or next((p for p in sheet.powers if mentions(p.name, ref)), None)
+
+
+def named_by_word(sheet: CharacterSheet, words: str) -> Power | None:
+    """G14. A power whose own name shares a word with `words` ("aura_blade" and their Aura), the
+    one sharing most. A power over time is found only by its id or its whole name, so "travel
+    back in time" never stops the world (W10a)."""
+    return _sharing([p for p in sheet.powers if p.time is None], words, description=False)
+
+
+def made_with(sheet: CharacterSheet, words: str, named: list[Power]) -> Power | None:
+    """A4, G14. The power of the character's that a move is made with ("an aura blade" and their
+    aura): the one whose name and description share the most words with the move, among those
+    the step names, else among all of theirs but powers over time, which are found only where
+    named (W10a); else the one power the step names, if it names just one. None when no power of
+    theirs makes it."""
+    return (
+        _sharing(named, words, description=True)
+        or _sharing([p for p in sheet.powers if p.time is None], words, description=True)
+        or (named[0] if len(named) == 1 else None)
+    )
+
+
+def _sharing(powers: list[Power], words: str, *, description: bool) -> Power | None:
+    """The power whose name, and description when asked, shares the most words with `words`,
+    if any shares one."""
+    wanted = stems(words)
+    scored = [
+        (len(wanted & stems(f"{p.name} {p.description}" if description else p.name)), p)
+        for p in powers
+    ]
+    best = max(scored, key=lambda pair: pair[0], default=None)
+    return best[1] if best is not None and best[0] > 0 else None
+
+
+# A move's name is a name, not a description: longer than this, it plays as the power at work and
+# is never recorded (`Technique.name` holds 200 characters).
+MAX_MOVE_NAME = 80
+
+
+def _add_move(drawn: Drawn, ref: str, power: Power) -> None:
+    """A move made with `power` that can become a technique of the actor's own (A4): one whose
+    words share something with the power, so "an aura blade" with their aura, but neither a move
+    that only says what the power is or does ("teleport" for a power that teleports), which is
+    the power itself, nor one that has nothing to do with it, which plays as the power but isn't
+    learned from it. A power over time grows its own ways instead (A4, W10a)."""
+    words = move_name(ref)
+    if not words or len(words) > MAX_MOVE_NAME or power.time is not None or power.id == ref:
+        return
+    what = f"{power.name} {power.description}"
+    if mentions(what, words) or not stems(words) & stems(what):
+        return
+    if all(m.name.casefold() != words.casefold() for m in drawn.moves):
+        drawn.moves.append(Move(name=words, power=power))
+
+
+# What a move's name starts with that isn't its name: an article or a possessive, in English,
+# Spanish or Catalan (S10), or the word technique.
+_LEADING = re.compile(
+    r"^(?:(?:a|an|the|my|your|his|her|their|el|la|los|las|un|una|mi|tu|su|els|les|"
+    r"technique|t[eé]cnica|t[eè]cnica)\s+|l')+",
+    re.IGNORECASE,
+)
+
+
+def move_name(ref: str) -> str:
+    """A move's name from the interpret step's words: "the aura_blade" is "Aura blade", and "la
+    cuchilla de aura" is "Cuchilla de aura"."""
+    words = re.sub(r"[\s_\-]+", " ", ref).strip()
+    return cap(_LEADING.sub("", words).strip())
 
 
 def _have(state: WorldState, actor: Character) -> str:
@@ -277,8 +404,13 @@ def _check_use(
         )
 
     if use.source is UseSource.POWER:
-        power = (actor.sheet.power(use.ref) if use.ref else None) or next(
-            (p for p in actor.sheet.powers if mentions(p.name, use.thing)), None
+        # A move made with a power the step draws on, such as an aura blade, is that power.
+        words = f"{use.ref or ''} {use.thing}"
+        power = (
+            find_power(actor.sheet, use.ref or "")
+            or find_power(actor.sheet, use.thing)
+            or _sharing(drawn.powers, words, description=True)
+            or named_by_word(actor.sheet, words)
         )
         if power is None:
             return verdict(

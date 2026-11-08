@@ -24,3 +24,14 @@ def test_odds_read_as_words():
     assert odds_label(0.03) == "about 1 in 33"
     assert odds_label(0.5) == "even odds"
     assert odds_label(0.9) == "very likely"
+
+
+def test_spanish_and_catalan_small_words_and_accents_match_like_english_ones():
+    # S10: a Spanish story's sheet and the models' words are in Spanish.
+    assert mentions("Cuchilla del Aura", "la cuchilla de aura")
+    assert mentions("L'espasa de llum", "espasa de la llum")
+    assert stems("técnica") == {"técnica"}
+    assert mentions("Técnica secreta", "técnica")
+    assert not mentions("Técnica secreta", "tecnica prohibida")
+    # English words that happen to be Spanish ones still count.
+    assert mentions("a sin against the gods", "sin")
