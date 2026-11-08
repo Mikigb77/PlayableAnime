@@ -153,7 +153,7 @@ def own_deed(state: WorldState, deed_id: str, **kwargs) -> None:
     fields = {
         "actor_id": state.player_id,
         "kind": "shoot",
-        "text": "Shot at Carmine",
+        "text": f"Shot at Carmine ({deed_id})",  # each its own, so none folds into another
         "turn": 3,
         "world_s": 0,
     }

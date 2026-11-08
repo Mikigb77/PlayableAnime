@@ -38,13 +38,20 @@ void main() {
     await tester.scrollUntilVisible(find.text('Master Hu'), 200, scrollable: memoryList());
     expect(find.text('PRESUMED DEAD'), findsOneWidget);
 
-    // A rumor is marked unconfirmed, and a closed thread says how it ended.
+    // A rumor is marked unconfirmed, one the character lived confirmed, and a closed thread
+    // says how it ended.
     await tester.scrollUntilVisible(
       find.text('Elder Wen once studied forbidden arts'),
       300,
       scrollable: memoryList(),
     );
     expect(find.text(l10n.memoryUnconfirmed.toUpperCase()), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Shen Yu lost the outer court ranking in the first round'),
+      300,
+      scrollable: memoryList(),
+    );
+    expect(find.text(l10n.memoryConfirmed.toUpperCase()), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('The ranking of the outer court'),
       300,
@@ -112,6 +119,30 @@ void main() {
       expect(view.threads.first.status, ThreadStatus.resolvedWithoutPlayer);
       expect(view.threads.first.status.isClosed, isTrue);
       expect(view.threads.last.status, ThreadStatus.open);
+    });
+
+    test('says what the character knows of each rumor, unconfirmed from an older server', () {
+      final view = MemoryView.fromJson(const {
+        'rumors': [
+          {'id': 'r1', 'text': 'A', 'heard_label': 'Heard today', 'certainty': 'confirmed'},
+          {'id': 'r2', 'text': 'B', 'heard_label': 'Heard today', 'certainty': 'false'},
+          {'id': 'r3', 'text': 'C', 'heard_label': 'Heard today', 'unconfirmed': true},
+          {'id': 'r4', 'text': 'D', 'heard_label': 'Heard today', 'certainty': 'new_kind'},
+        ],
+        'goals': [
+          {'id': 'g1', 'text': 'Get home'},
+        ],
+      });
+      expect(
+        [for (final r in view.rumors) r.certainty],
+        [
+          RumorCertainty.confirmed,
+          RumorCertainty.wrong,
+          RumorCertainty.unconfirmed,
+          RumorCertainty.unconfirmed,
+        ],
+      );
+      expect(view.goals.single.certainty, isNull);
     });
 
     test('a character without a name is left out', () {

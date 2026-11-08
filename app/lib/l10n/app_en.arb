@@ -328,6 +328,8 @@
   "memoryDeeds": "Deeds",
   "memoryThreads": "Threads",
   "memoryUnconfirmed": "Unconfirmed",
+  "memoryConfirmed": "Confirmed",
+  "memoryFalse": "False",
   "memoryEmptyTitle": "Nothing to remember yet",
   "memoryEmptyBody": "People, places and deeds appear here as your character meets and does them.",
   "threadOpen": "Open",

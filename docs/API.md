@@ -593,7 +593,13 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             factions: [{id, name, lines: [string], standing_label}],    # esteem and fear in words (W3)
             goals:    [{id, text}],
             leads:    [{id, text, expires_label?}],
-            rumors:   [{id, text, heard_label, unconfirmed: true}],
+            rumors:   [{id, text, heard_label, certainty, unconfirmed}],
+                                          # certainty: "unconfirmed", or "confirmed" / "false"
+                                          # where the character knows for themselves (they did
+                                          # or saw it, or were there); unconfirmed is
+                                          # certainty == "unconfirmed", for older apps. The
+                                          # same words show once per certainty, by when last
+                                          # heard.
             deeds:    [{id, text, when_label, known_label}],
             threads:  [{id, title, status}]}
 
