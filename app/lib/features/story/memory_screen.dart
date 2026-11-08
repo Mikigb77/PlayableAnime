@@ -7,7 +7,8 @@ import '../../design/design.dart';
 import 'memory.dart';
 
 /// What the character knows, in the world's words (C6, G16): who they are, the people, places
-/// and factions they have met, their goals and leads, rumors marked unconfirmed, their own deeds
+/// and factions they have met, their goals and leads, rumors marked unconfirmed unless the character
+/// knows for themselves whether they are so, their own deeds
 /// and who saw them, and the story's threads (N1). The server sends only what the character
 /// knows, so nothing here can spoil the story.
 class MemoryScreen extends ConsumerStatefulWidget {
@@ -231,8 +232,7 @@ class _Section extends StatelessWidget {
           _NoteEntry(note: lead, icon: Icons.explore_outlined, kind: l10n.memoryLead),
       ],
       MemorySection.rumors => [
-        for (final rumor in view.rumors)
-          _NoteEntry(note: rumor, icon: Icons.hearing_outlined, unconfirmed: true),
+        for (final rumor in view.rumors) _NoteEntry(note: rumor, icon: Icons.hearing_outlined),
       ],
       MemorySection.deeds => [
         for (final deed in view.deeds) _NoteEntry(note: deed, icon: Icons.history_edu_outlined),
@@ -433,7 +433,7 @@ class _FactionEntry extends StatelessWidget {
 }
 
 class _NoteEntry extends StatelessWidget {
-  const _NoteEntry({required this.note, required this.icon, this.kind, this.unconfirmed = false});
+  const _NoteEntry({required this.note, required this.icon, this.kind});
 
   final MemoryNote note;
   final IconData icon;
@@ -441,17 +441,22 @@ class _NoteEntry extends StatelessWidget {
   /// Goal or lead, where both share a group.
   final String? kind;
 
-  /// Rumors are never confirmed here (C6): the character only heard them.
-  final bool unconfirmed;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.lucid;
+    final l10n = context.l10n;
+    // A rumor is talk, set like a quote, with what the character knows of it (C6).
+    final certainty = switch (note.certainty) {
+      RumorCertainty.unconfirmed => _Tag(l10n.memoryUnconfirmed, color: colors.caution),
+      RumorCertainty.confirmed => _Tag(l10n.memoryConfirmed, color: colors.success),
+      RumorCertainty.wrong => _Tag(l10n.memoryFalse, color: colors.danger),
+      null => null,
+    };
     return _Entry(
       leading: _Mark(icon, size: 36),
       title: note.text,
-      titleStyle: unconfirmed
+      titleStyle: note.certainty != null
           ? context.lucidText.playerAction.copyWith(color: colors.textPrimary)
           : theme.textTheme.bodyLarge,
       tag: kind,
@@ -463,7 +468,7 @@ class _NoteEntry extends StatelessWidget {
           runSpacing: Space.xxs,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (unconfirmed) _Tag(context.l10n.memoryUnconfirmed, color: colors.caution),
+            ?certainty,
             if (note.labels.isNotEmpty)
               Text(
                 note.labels.join(' · '),

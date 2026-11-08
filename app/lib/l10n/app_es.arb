@@ -216,6 +216,8 @@
   "memoryDeeds": "Actos",
   "memoryThreads": "Tramas",
   "memoryUnconfirmed": "Sin confirmar",
+  "memoryConfirmed": "Confirmado",
+  "memoryFalse": "Falso",
   "memoryEmptyTitle": "Aún no hay nada que recordar",
   "memoryEmptyBody": "Las personas, los lugares y los actos aparecen aquí a medida que tu personaje los conoce y los hace.",
   "threadOpen": "Abierta",

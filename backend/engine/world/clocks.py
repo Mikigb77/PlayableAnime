@@ -197,6 +197,11 @@ def on_clock_end(w: World, event: PendingEvent) -> bool:
         if thread is not None and not thread.status.closed and thread.kind in ENDS_WITHOUT_PLAYER:
             thread.status = ThreadStatus.RESOLVED_WITHOUT_PLAYER
             thread.closed_turn = w.ctx.turn
+    # Those there see it happen, and so does the player whenever it happens with them: for them it
+    # is no rumor but what they saw (C6).
+    present = [c.id for c in characters_at(state, where)]
+    if with_player and state.player_id not in present:
+        present.append(state.player_id)
     start_rumor(
         w,
         text=f"{clock.name}: {clock.steps[-1]}",
@@ -205,6 +210,7 @@ def on_clock_end(w: World, event: PendingEvent) -> bool:
         hops=NEWS_HOPS,
         about_ids=[clock.owner_id] if clock.owner_id else [],
         accuracy=95,
-        heard_by=[c.id for c in characters_at(state, where)],
+        heard_by=present,
+        seen_by=present,
     )
     return with_player

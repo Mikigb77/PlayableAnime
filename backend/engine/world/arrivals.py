@@ -135,7 +135,9 @@ def _look_closer(w: World, deed) -> None:
 def _off_screen(w: World, event, answer, faction, target, insiders, text) -> None:
     state = w.state
     if answer is Answer.BOUNTY and faction is not None:
-        where = faction_seat(state, faction) or target.location_id
+        seat = faction_seat(state, faction)
+        where = seat or target.location_id
+        present = [c.id for c in characters_at(state, where)]
         start_rumor(
             w,
             text=text,
@@ -144,7 +146,9 @@ def _off_screen(w: World, event, answer, faction, target, insiders, text) -> Non
             hops=4,
             about_ids=[target.id, faction.id],
             accuracy=90,
-            heard_by=[c.id for c in characters_at(state, where)],
+            heard_by=present,
+            # Those at the seat when the price is set know it is so (C6); elsewhere it is talk.
+            seen_by=present if seat else [],
         )
     elif answer is Answer.COALITION and faction is not None:
         for other in by_id(state.factions.values()):

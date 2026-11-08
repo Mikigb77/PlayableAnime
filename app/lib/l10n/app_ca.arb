@@ -216,6 +216,8 @@
   "memoryDeeds": "Actes",
   "memoryThreads": "Trames",
   "memoryUnconfirmed": "Sense confirmar",
+  "memoryConfirmed": "Confirmat",
+  "memoryFalse": "Fals",
   "memoryEmptyTitle": "Encara no hi ha res per recordar",
   "memoryEmptyBody": "Les persones, els llocs i els actes apareixen aquí a mesura que el teu personatge els coneix i els fa.",
   "threadOpen": "Oberta",

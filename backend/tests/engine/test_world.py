@@ -259,9 +259,11 @@ def test_a_retelling_that_strays_far_enough_no_longer_names_the_doer():
 
     after, _ = idle(state, 3 * HOUR)
 
-    garbled = [r for r in after.rumors.values() if not r.is_true]
+    garbled = [r for r in after.rumors.values() if r.text.startswith("A garbled account")]
     assert garbled and all("luca" not in r.about_ids for r in garbled)
     assert all(r.deed_id == deed.id for r in garbled)
+    # Vaguer, not wrong: it no longer says who did it, but what it still says is so.
+    assert all(r.is_true for r in garbled)
 
 
 # --- Reputation (W3, W9) ---------------------------------------------------------------------
