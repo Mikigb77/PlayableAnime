@@ -164,7 +164,9 @@ assets/
 - **The account** is `meProvider` (`GET /v1/me`, refreshed when the Account tab shows) and
   `creditsHistoryProvider`; `formatCredits` writes an amount the way the app shows it (50¢, $1.20).
 - **The privacy policy** is `app/assets/legal/privacy_en.md`, everything in `docs/PRIVACY.md` from
-  "Who we are" on. A test fails when the two differ, so a change to the policy copies it over.
+  "At a glance" on, with the website's words. A test fails when the two differ, so a change to the
+  policy copies it over, and another when a language's copy states a sign-up age that isn't
+  `FakeAuthState.minSignupAge` (the backend's `MIN_SIGNUP_AGE`).
 - **Voice:** put `DictationButton(tracker: InputModeTracker(controller), storyId: …)` (or
   `draftId:`) next to any text box and send `tracker.mode.wire` as the turn's `input_mode` (V7).
   The id lets online dictation listen for that story's names (V6). `speechEngineProvider` is the

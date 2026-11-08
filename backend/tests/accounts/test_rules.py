@@ -1,12 +1,17 @@
 """The age gate, rating limit, content preferences and owner list, enforced in code (F7, F8, K7)."""
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from accounts import rules
 from lucid.env import Env
 from lucid.errors import ApiError
+
+REPO = Path(__file__).resolve().parents[3]
+PRIVACY_POLICY = REPO / "docs" / "PRIVACY.md"
+CLOUD_RUN_ENV = REPO / "infra" / "cloudrun" / "env.yaml"
 
 
 def test_age_counts_whole_years_and_turns_on_the_birthday():
@@ -63,6 +68,16 @@ def test_the_youngest_age_that_can_sign_up_is_a_setting(settings):
     settings.MIN_SIGNUP_AGE = 14
     with pytest.raises(ApiError):
         rules.check_birth_date(date(2013, 11, 3), on=date(2026, 11, 3))
+
+
+def test_production_signs_up_from_the_age_the_privacy_policy_states():
+    """F8: Cloud Run sets no MIN_SIGNUP_AGE, so the default is the age players are promised."""
+    age = Env.model_fields["min_signup_age"].default
+    policy = " ".join(PRIVACY_POLICY.read_text().split())
+
+    assert "MIN_SIGNUP_AGE" not in CLOUD_RUN_ENV.read_text()
+    assert age == 16
+    assert f"You must be {age} or older to sign up" in policy
 
 
 def test_content_preferences_fill_in_defaults_and_drop_junk():

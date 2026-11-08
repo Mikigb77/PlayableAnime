@@ -109,11 +109,19 @@ void main() {
       );
     });
 
+    test('sign-up starts at 16, as the privacy policy says (F8)', () async {
+      final now = DateTime.now();
+      await expectLater(
+        post('/v1/auth/register', register(birthDate: '${now.year - 15}-01-01')),
+        throwsA(fieldProblem('birth_date', 'too_young')),
+      );
+    });
+
     test('a teen account is limited to Teen until their 17th birthday', () async {
       final now = DateTime.now();
       final session = await post(
         '/v1/auth/register',
-        register(birthDate: '${now.year - 15}-01-01'),
+        register(birthDate: '${now.year - 16}-01-01'),
       );
       expect((session['user'] as JsonMap)['max_rating'], 'teen');
     });
