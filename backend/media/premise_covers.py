@@ -200,22 +200,22 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
         name = model.model
         drawn = await model.draw(cover_request(premise))
     except DrawBlocked as exc:
-        cost = _spent(model)
+        cost = spent_by(model)
         _log(premise.id, "skipped", "blocked", name, cost, offline, started, exc.categories)
         return Outcome(premise.id, "blocked", model=name, cost_usd=cost, offline=offline)
     except DrawRateLimited:
-        cost = _spent(model)
+        cost = spent_by(model)
         _log(premise.id, "skipped", "rate_limited", name, cost, offline, started)
         return Outcome(
             premise.id, "failed", model=name, cost_usd=cost, offline=offline, rate_limited=True
         )
     except DrawError:
-        cost = _spent(model)
+        cost = spent_by(model)
         _log(premise.id, "skipped", "failed", name, cost, offline, started)
         return Outcome(premise.id, "failed", model=name, cost_usd=cost, offline=offline)
     except Exception:
         logger.exception("Drawing a premise cover failed", extra={"premise_id": premise.id})
-        cost = _spent(model)
+        cost = spent_by(model)
         _log(premise.id, "skipped", "failed", name, cost, offline, started)
         return Outcome(premise.id, "failed", model=name, cost_usd=cost, offline=offline)
     finally:
@@ -283,7 +283,7 @@ def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offl
     return False
 
 
-def _spent(model) -> Decimal | None:
+def spent_by(model) -> Decimal | None:
     """What a drawing that failed or was blocked still cost, from the model layer's call records
     when the model keeps them (T5)."""
     telemetry = getattr(model, "telemetry", None)

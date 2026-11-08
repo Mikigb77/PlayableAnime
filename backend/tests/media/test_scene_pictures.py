@@ -142,7 +142,7 @@ def test_a_note_that_fails_on_the_players_key_is_written_again_on_ours(client, p
     assert "Lin Feng leaps between high pine branches." in painters.ours.requests[0].prompt
 
 
-def test_a_note_written_on_the_players_key_is_not_written_again(client, painters, meter):
+def test_a_note_written_on_the_players_key_is_not_written_again(client, painters, meter, log_lines):
     story = make_story()
     _leap(story)
     painters.byok.script_notes(NOTE).script(KeyCannotDraw("free_tier"))
@@ -151,6 +151,8 @@ def test_a_note_written_on_the_players_key_is_not_written_again(client, painters
 
     assert painters.ours.note_prompts == []
     assert "Lin Feng leaps between high pine branches." in painters.ours.requests[0].prompt
+    line = next(line for line in log_lines() if line.get("picture"))
+    assert line["picture"]["noted"] is True  # the player's key wrote it
 
 
 def test_the_note_keeps_only_the_portraits_of_the_people_it_shows(client, painters, meter):

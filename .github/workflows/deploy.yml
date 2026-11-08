@@ -14,6 +14,7 @@
 #    refuses fails the run with its reason, without rolling back: the code isn't at fault.
 # 9. Draw the starter covers that are missing, in a job of its own whose failure doesn't fail the
 #    deploy.
+# 10. Draw the story pictures from an older house style again, the same way.
 # A failed job prints its own logs here, so the reason shows in GitHub.
 # Meanwhile the Android app is built, and once the API is up it is published as the latest
 # GitHub release's lucid-saga.apk, which the README links, and uploaded to the releases bucket,
@@ -236,6 +237,40 @@ jobs:
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       - run: infra/deploy.sh covers
+
+  # Draws the story pictures from an older house style again (S7): about $0.034 each, at most $5
+  # a run, then nothing until the style changes again. After the covers, so the two never share
+  # the picture quota, whether or not the covers all drew; like them, a failure here doesn't fail
+  # the deploy, and a picture that wasn't drawn again keeps its old drawing.
+  redraw:
+    name: Redraw story pictures
+    needs: [models, covers]
+    if: ${{ !cancelled() && needs.models.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: infra/deploy.sh redraw
 
   # Runs alongside CI and the deploy. Nothing is published unless both pass.
   apk:

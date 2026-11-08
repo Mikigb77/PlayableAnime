@@ -28,6 +28,7 @@ Usage: infra/deploy.sh <command> [argument]
   access           Make the API public, or private with API_ACCESS=private.
   models           Call each model the app uses once, as the migration job (check_models).
   covers           Draw the starter premises' missing covers, as the migration job.
+  redraw           Draw story pictures from an older house style again, as the migration job.
   upload-apk APK   Upload the Android app for its own updater and point android/latest.json at it.
   rollback REV     Send all traffic back to revision REV.
 
@@ -381,6 +382,20 @@ cmd_covers() {
   fi
 }
 
+# Draws the story pictures drawn in an older house style again in the current one (S7, M4), as the
+# migration job with other arguments. Once all are current, this costs only the job's start. A run
+# spends at most $5 and starts no drawing after 45 minutes; the next deploy draws the rest.
+cmd_redraw() {
+  local since
+  step "Story pictures: job $MIGRATE_JOB runs redraw_pictures"
+  since="$(now_utc)"
+  if ! execute_job manage.py,redraw_pictures 60m; then
+    say "Some pictures weren't drawn again; they keep their old drawing until the next deploy."
+    job_logs "$since"
+    exit 1
+  fi
+}
+
 # Calls each model the app uses once, on the service's settings and account (B6, T13), so a model
 # Vertex AI refuses fails the deploy run with its reason instead of failing players' turns.
 cmd_models() {
@@ -494,6 +509,7 @@ main() {
     access) cmd_access ;;
     models) cmd_models ;;
     covers) cmd_covers ;;
+    redraw) cmd_redraw ;;
     upload-apk) cmd_upload_apk "${1:-}" ;;
     rollback) cmd_rollback "${1:-}" ;;
     -h | --help | help) usage ;;

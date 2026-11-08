@@ -1781,6 +1781,20 @@ app                   shows the narration, then asks for the picture in its own 
   one round of signing, for 12 hours (never less than `PICTURE_URL_TTL_S`), since the app loads the
   premises once per session; if the lookup or signing fails, Discover gets the premises without
   covers and the error is logged for Error Reporting.
+- **A new house style (S7, M4).** Each picture records the `style` it was drawn in
+  (`media.prompts.HOUSE_STYLE_VERSION`). `manage.py redraw_pictures` (`media/redraw.py`), run by
+  each deploy after the covers, draws every ready picture from an older style again, never a
+  request: portraits and places first, by look version, then scenes and covers, each through the
+  same plan as a first drawing (`media.service.plan_drawing` and `write_note`: references, place
+  picture, a scene picture's note), on our account under the story's rating. The new drawing goes
+  to a file of its own (`stories/<story id>/<image id>-<random>.png`), becomes the picture only if
+  the row is still the ready picture with the old file, and the old file is removed once that
+  commits; otherwise the new file goes. `model`, the file and `style` change; `payer` and
+  `cost_usd` stay what the first drawing cost the player. The house pays: one `Redrawn picture`
+  line per drawing with `payer: "house"`, trigger `redraw_pictures`, model and cost, and no meter
+  or ledger. Rewound pictures and legacy stories are left out, a failed or blocked picture keeps
+  its drawing until the next run, and a run stops starting drawings at $5 or 45 minutes. The
+  drawings are 10 s apart, and one out of quota is drawn again after a minute, as for the covers.
 - **Logs (T5, T6).** Each picture drawn or skipped writes one `media.pictures` line with a
   `picture` object: image id, kind, version, status, skip reason, trigger, model, cost, payer, BYOK
   and fallback, references, block categories, latency and size. The prompt and the key never
@@ -1817,6 +1831,11 @@ premises or changes the house style draws anything
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
   --args=manage.py,draw_premise_covers --task-timeout=30m --wait
 ```
+
+**Redrawing story pictures.** Then each deploy draws the stories' pictures from an older house
+style again, the same way, at most $5 a run, so only a deploy that changes the house style draws
+anything ([DEPLOY.md](DEPLOY.md#redrawing-story-pictures)).
+
 **Don't deploy publicly before rate limits and quotas (T9) exist alongside sign-in (T8):** an open
 endpoint lets anyone spend our Vertex budget.
 

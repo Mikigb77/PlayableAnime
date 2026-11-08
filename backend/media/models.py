@@ -7,6 +7,9 @@ look version too (`engine.looks`): when a character or a place changes for good,
 more as that `version` of the same subject, and the latest one ready is shown from then on (M1,
 M5). Earlier versions stay, for the scenes that showed them and the export (T12).
 
+A picture drawn in an older house style is drawn again in the current one, once, by the house
+(`media.redraw`, S7).
+
 A `ScenePicture` says which picture a scene shows, and whether code planned it (M1) or the player
 asked for it with Illustrate (M2). The file itself lives in storage under `storage_key`.
 
@@ -76,7 +79,9 @@ class Image(models.Model):
     # built from it each time and never logged (T6).
     brief = models.JSONField(default=dict, blank=True)
 
-    # Filled once it is drawn (M7, T5).
+    # Filled once it is drawn (M7, T5). `model` and the file are the drawing shown now, while
+    # `cost_usd` and `payer` stay what the first drawing cost and who paid for it: a drawing
+    # again in a newer house style is the house's (`media.redraw`).
     model = models.CharField(max_length=80, blank=True)
     cost_usd = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     # Charged once, by the request that finished it, in the transaction that made it ready (M3).
@@ -84,6 +89,10 @@ class Image(models.Model):
     storage_key = models.CharField(max_length=512, blank=True)
     mime_type = models.CharField(max_length=40, blank=True)
     size_bytes = models.PositiveIntegerField(null=True, blank=True)
+    # The house style it was drawn in (`media.prompts.HOUSE_STYLE_VERSION`). A ready picture in an
+    # older style is drawn again by `manage.py redraw_pictures`, so every story shows the app's
+    # current look (S7).
+    style = models.PositiveSmallIntegerField(default=1, db_default=1)
 
     # The request drawing it holds `claim` until it finishes. A claim older than the lease (a
     # request that died) can be taken over, at most `MAX_ATTEMPTS` times (`media.service`).
