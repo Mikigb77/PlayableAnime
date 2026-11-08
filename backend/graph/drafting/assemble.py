@@ -694,6 +694,7 @@ class _Assembler:
                 kind=_text(proposed.kind, 80),
                 description=_text(proposed.description),
                 parent_id=self.places.get(proposed.parent_id),
+                setting=proposed.setting,
                 controller_id=self.factions.get(proposed.controller_id)
                 or self.chars.get(proposed.controller_id),
                 mood=_text(proposed.mood, 200),

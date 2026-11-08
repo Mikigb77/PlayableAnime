@@ -51,6 +51,7 @@ from engine.contracts.delta import (
     PlaceChange,
     PowerChange,
     RuleChange,
+    SceneEnd,
     StateDelta,
 )
 from engine.injuries import names_injury
@@ -99,6 +100,7 @@ from engine.state.sheet import (
 )
 from engine.state.world import ActiveTimeEffect, WorldState, natural_key
 from engine.timekeeping import effect_over
+from engine.world.geography import find_place
 from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
@@ -194,16 +196,21 @@ def apply_in_place(
         end = delta.scene_end
         new = applier.state
         with_player = _with_player(new)
+        place_id = applier.scene_place(end, delta.places)
+        left = new.scene.place_id
         new.scene = SceneFrame(
-            place_id=end.place_id if end.place_id in new.places else new.scene.place_id,
+            place_id=place_id or new.scene.place_id,
             present_ids=[i for i in end.present_ids if i in new.characters],
             positions=end.positions,
             props=end.props,
             ended_on=end.ended_on,
             encounter=new.scene.encounter,
         )
-        if end.place_id in new.places:
-            _gather(new, end.place_id, with_player)
+        if place_id is not None:
+            _gather(new, place_id, with_player, left=left)
+            # C6, R8: the player character knows the place their scene ends in, and has been there.
+            _add(new.places[place_id].visited_by, new.player_id)
+            _add(new.places[place_id].known_by, new.player_id)
     if delta.summary:
         applier.state.summary = delta.summary
     return Applied(applier.state, tuple(applier.rejected))
@@ -223,12 +230,18 @@ def _with_player(state: WorldState) -> set[str]:
     return near
 
 
-def _gather(state: WorldState, place_id: str, with_player: set[str]) -> None:
-    """R3, C2. The scene ends at `place_id`, so the player character is there, and so is everyone
-    living in the scene who came with them: the world places witnesses and events where people
-    are (W2, W16). Someone already somewhere inside that place, such as at the well in the
-    courtyard the scene names, stays where they are. The narrator naming someone far off, or
-    missing, as present doesn't move them: only the engine's own record does."""
+def _gather(
+    state: WorldState, place_id: str, with_player: set[str], *, left: str | None = None
+) -> None:
+    """R3, R8, C2. The scene ends at `place_id`, so the player character is there, and so is
+    everyone living in the scene who came with them: the world places witnesses and events where
+    people are (W2, W16). A scene that stays where the last one was (`left`) keeps anyone at a
+    more exact spot inside it there, such as at the well in the courtyard both scenes name. A
+    scene that ends somewhere else has moved them, even out to the place around the one they
+    were in: out of the temple into the forest it lies in, nobody stays inside the temple (R8).
+    The narrator naming someone far off, or missing, as present doesn't move them: only the
+    engine's own record does."""
+    moved = left is not None and left != place_id
     for character_id in dict.fromkeys([state.player_id, *state.scene.present_ids]):
         character = state.characters.get(character_id)
         if character is None or not character.alive:
@@ -237,7 +250,7 @@ def _gather(state: WorldState, place_id: str, with_player: set[str]) -> None:
             character.status is not CharacterStatus.ALIVE or character_id not in with_player
         ):
             continue
-        if place_id not in ancestry(state.places, character.location_id):
+        if moved or place_id not in ancestry(state.places, character.location_id):
             character.location_id = place_id
 
 
@@ -326,6 +339,13 @@ class _Applier:
             value = getattr(change, attr)
             if value is not None:
                 setattr(place, attr, value)
+        if change.setting is not None and change.setting is not place.setting:
+            # R8: a crypt doesn't come out under the sky because a scene told it so. Only the
+            # engine changes a setting once it is told, such as a roof that falls in.
+            if place.setting is None or self.engine:
+                place.setting = change.setting
+            else:
+                self.reject(subject, "setting", f"it is {place.setting.value}")
         if change.parent_id is not None:
             if change.parent_id not in self.state.places:
                 self.reject(subject, "parent", f"no place {change.parent_id!r}")
@@ -354,6 +374,35 @@ class _Applier:
             _add(place.known_by, player)
         if change.known_to_player:
             _add(place.known_by, player)
+
+    def scene_place(self, end: SceneEnd, changes: list[PlaceChange]) -> str | None:
+        """R3, R8. The place the scene ends in, once this delta's places are on record, or None
+        to keep the last one. The place is named by its id, or by its name however it is
+        spelled; failing that, the one place the delta says the player character is now at
+        (`PlaceChange.visited`) stands for it. A place on no record is refused, so the next scene
+        starts where the record has the character, never somewhere it can't name."""
+        state = self.state
+        places = state.places
+        here = state.scene.place_id
+        player = state.player_id
+        # C6: a name reaches only a place the character knows of, one this scene names, or one
+        # they are in, never a namesake in a city they have never heard of.
+        near = [
+            *(p.id for p in places.values() if player in p.known_by or player in p.visited_by),
+            *(c.id for c in changes),
+            *ancestry(places, here),
+            *ancestry(places, state.player.location_id),
+        ]
+        found = find_place(places, end.place_id, among=near)
+        if found is not None:
+            return found
+        visited = {c.id for c in changes if c.visited and c.id in places and c.id != here}
+        if len(visited) == 1:
+            return visited.pop()
+        named = (end.place_id or "").strip()
+        if named:
+            self.reject("scene", "place", f"no place {named!r}, so it stays at the last one")
+        return None
 
     def place_status(self, place: Place, change: PlaceChange, cause: Cause | None) -> None:
         subject = f"place {place.id}"

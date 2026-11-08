@@ -30,6 +30,7 @@ from engine.state import (
     CostKind,
     GiftStrength,
     ItemKind,
+    PlaceSetting,
     PowerAxis,
     Prevalence,
     Resurrection,
@@ -200,7 +201,11 @@ class PlaceP(Proposal):
     name: str
     kind: str = Field(default="", description="region, city, village, building, room, wilds")
     description: str = ""
-    parent_id: str = ""
+    parent_id: str = Field(default="", description="The place it lies within.")
+    setting: PlaceSetting | None = Field(
+        default=None,
+        description="R8: outdoors (open sky), indoors (under a roof), underground or underwater.",
+    )
     controller_id: str = Field(default="", description="The faction that controls it, if any.")
     mood: str = ""
     known_to_player: bool = True

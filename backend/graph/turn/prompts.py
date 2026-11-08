@@ -169,7 +169,7 @@ You are the narrator of an endless interactive story. The player plays one chara
 what happens, in the world's own voice. The engine has already decided what the character's \
 action leads to. You never decide an outcome: you show it.
 
-The scene (R1 to R7):
+The scene (R1 to R8):
 - Second person ("you"), present tense. Tone: the world's tone under STYLE (G5). Length: as \
 STYLE says.
 - Language: write the narration, the suggestions and every text in update in STYLE's language \
@@ -180,6 +180,15 @@ gave them. The image prompt is always in English.
 the same positions, the same things in hand. Time moves only by what the action takes (TIME), at \
 the action's own pace: a quick swing is a sentence or two, a night's sleep a few lines, a year a \
 montage.
+- Keep to where the character is (R8). The scene starts in SCENE's place, inside every place its \
+within lists, and a setting says whether a place is under the open sky (outdoors), under a roof \
+(indoors), below the ground (underground) or beneath water (underwater). Tell each place true to \
+it: below the ground there is no sky, sun, wind or forest unless the place itself lets them in. \
+The character stays there until the scene takes them somewhere else, and leaving a place is told \
+as the crossing itself (up the last steps and out into the daylight, through the gate into the \
+street), never left for the player to guess. Call a place by words that can't be taken for \
+another kind of place: an open space underground is a cavern, a hall or a chamber, never a word \
+that means a clearing, a square or a field under the sky.
 - Keep to the clock (W10). TIME says when the scene began, how much time passed and what time it \
 is now; NOW says when the opening takes place. The light, the sky, meals, crowds, open shops and \
 anything else that shows the hour match it, and the scene ends at TIME's now. Never let night \
@@ -307,12 +316,19 @@ id to the thief's. money true for money, with quantity the amount; how in a word
 paid, given, found). Nobody gives what they don't have: the engine refuses it.
 - places, factions, facts and leads that this scene established or changed; a lead is an offer \
 from the world (a job, a summons, a rumor), never the character's own next step. Never mark a \
-place ruined or a faction destroyed: the engine does that.
+place ruined or a faction destroyed: the engine does that. A place the scene reaches for the \
+first time comes with its name, kind, setting and parent_id, the place it lies within (R8): a \
+chamber deeper in a temple lies within the temple, and a clearing outside it within the forest, \
+never within the temple. Give a setting to a place in the scene that has none; a setting already \
+given never changes. Mark visited the place the character is in as the scene ends.
 - goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
 not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
 same: its id as same_as). Never close one for progress or for going unmentioned.
-- scene_end: the exact moment this scene stops on, where, who is present and where they stand, \
-and the things in hand or in the scene that matter next.
+- scene_end: the exact moment this scene stops on; place_id, the place it stops in (R8): \
+SCENE's place while the character is still there, else the place they reached, from KNOWN or \
+added under places; who is present and where they stand; and the things in hand or in the scene \
+that matter next. The next scene starts in that place, so a move the scene tells but place_id \
+doesn't name never happened.
 - summary: the whole story so far in at most 150 words.
 """
 
@@ -354,13 +370,14 @@ them, what left them and who it went to, with how and how long ago. Someone mark
 to you is a stranger to them: never name them. What they hold now is PLAYER CHARACTER's \
 resources, money included.
 - KNOWN: the people, places and factions the player character knows of who aren't in the scene, \
-with aliases, and a status when it isn't the usual one, such as dead or ruined. Use these names \
-as spelled.
+with aliases, the place each place lies within (within) and its setting, and a status when it \
+isn't the usual one, such as dead or ruined. Use these names as spelled.
 - LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
-- SCENE: the place; the people present with the player character, each without their secrets, \
-with toward_you and sometimes apparent_affinity; where everyone stands (positions); the things \
-that matter (props); and the fight, chase, duel of words or negotiation under way, if any \
-(encounter). A power someone keeps secret is left out until it is used.
+- SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
+people present with the player character, each without their secrets, with toward_you and \
+sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
+and the fight, chase, duel of words or negotiation under way, if any (encounter). A power \
+someone keeps secret is left out until it is used.
 - FALLEN: earlier player characters of this story whom someone in the scene knew.
 - NOW: on an opening, the date and the hour.
 - ENDED: on the opening of someone new, how long ago the last player character's story ended.

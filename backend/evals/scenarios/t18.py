@@ -12,6 +12,7 @@ import math
 import re
 
 from engine.base import MINUTE
+from engine.context import Language, StorySettings
 from engine.contracts import (
     ActionKind,
     Aim,
@@ -24,11 +25,14 @@ from engine.contracts import (
     OutcomeClass,
     PictureKind,
     PictureTrigger,
+    PlaceChange,
     Plausibility,
+    SceneEnd,
     StateDelta,
     UseSource,
 )
-from engine.state import SkillLevel, StepResult
+from engine.state import PlaceSetting, SkillLevel, StepResult
+from engine.world.geography import is_within
 from evals import worlds
 from evals.judge import PICTURE_INSTRUCTIONS, Rubric
 from evals.pictures import Picture, ending, portrait_brief, scene_brief
@@ -213,6 +217,134 @@ async def action_told_first(ev: Eval) -> None:
                 ),
             ),
             played,
+        )
+
+
+# --- Where the character is (R8) ----------------------------------------------------------------
+
+# Miki, 2026-11-08: a Spanish story took the character from a temple under the earth to "un claro",
+# and the next scene had them still inside the temple.
+CLIMB_OUT = "Subo los últimos escalones y salgo del templo al bosque"
+LOOK_AROUND = "Miro a mi alrededor"
+
+
+def climb_out() -> Intent:
+    return plan(
+        step(
+            "climb the last steps and walk out of the temple into the wood",
+            ActionKind.MOVE,
+            60,
+            verb="climb",
+            beats=[Beat(text="climb the last worn steps"), Beat(text="step out into the wood")],
+        )
+    )
+
+
+def out_in_a_clearing() -> dict:
+    """The scripted scene: out of the temple into a clearing it adds within the wood, named at
+    its end by its name rather than its id, as a model may write it."""
+    update = StateDelta(
+        places=[
+            PlaceChange(
+                id="fern-clearing",
+                name="the fern clearing",
+                kind="clearing",
+                setting=PlaceSetting.OUTDOORS,
+                parent_id="wood",
+                visited=True,
+            )
+        ],
+        scene_end=SceneEnd(
+            ended_on="Lin stands among the ferns, the temple's stairwell a dark mouth behind him.",
+            place_id="The Fern Clearing",
+            present_ids=["lin"],
+        ),
+    )
+    return {
+        "action": "(scripted) Lin climbs the last worn steps and comes out of the temple.",
+        "narration": "(scripted) Grey daylight through the pines, and a clearing of ferns.",
+        "suggestions": [],
+        "update": update.model_dump(mode="json"),
+    }
+
+
+@scenario(
+    "t18.out-of-the-temple",
+    suite="T18",
+    title="Out of the temple",
+    requirements=("R8", "R3", "W7", "T18"),
+    passes_when=(
+        "Climbing out of a temple under the earth is told as the crossing into the open air, the "
+        "scene ends in a place outside the temple, and the next scene starts there, under the "
+        "sky (R8)"
+    ),
+)
+async def out_of_the_temple(ev: Eval) -> None:
+    look = act("look around", "look", ActionKind.OBSERVE, 30)
+    for seed in ev.seeds(1, live=2):
+        story = ev.story(
+            worlds.buried_temple(),
+            seed=seed,
+            under_way=True,
+            settings=StorySettings(language=Language.ES),
+        )
+        out = await story.act(
+            CLIMB_OUT, climb_out(), narration=None if ev.live else out_in_a_clearing()
+        )
+        brief = story.prompt(Node.NARRATOR)
+        ev.check(
+            "the narrator reads the temple as underground, within the wood (R8)",
+            '"setting":"underground"' in brief and '"within":[{"id":"wood"' in brief,
+            seed,
+            live=False,
+        )
+        state = out.state
+        here = state.scene.place_id
+        ev.check(
+            "the scene that leaves the temple ends in a place outside it (R8)",
+            here is not None and not is_within(state, here, "temple"),
+            f"{seed}: {here}",
+        )
+        ev.check(
+            "the record has the player character where the scene ended (R8, C2)",
+            state.player.location_id is not None
+            and not is_within(state, state.player.location_id, "temple"),
+            f"{seed}: {state.player.location_id}",
+        )
+        await ev.judge(
+            "the way out told as the crossing",
+            Rubric(
+                must=(
+                    "The scene shows Lin climbing the last steps and coming out of the temple "
+                    "into the open air: the crossing itself is told",
+                    "Once out, it is plainly outdoors, in the wood: sky, daylight, wind or trees "
+                    "overhead",
+                ),
+                must_not=(
+                    "It leaves it unclear whether Lin is still inside the temple",
+                    "It calls a space inside the temple by a word for an open-air place, such as "
+                    "a clearing ('claro')",
+                ),
+            ),
+            out,
+        )
+        after = await story.act(LOOK_AROUND, look)
+        ev.check(
+            "the next scene starts where the last one ended (R3, R8)",
+            '"id":"fern-clearing"' in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        await ev.judge(
+            "the next scene outside",
+            Rubric(
+                must=("The scene happens outdoors, in the wood where the last scene left Lin",),
+                must_not=(
+                    "It puts Lin back inside the temple: under its ceiling, among its pillars "
+                    "or its walls",
+                ),
+            ),
+            after,
         )
 
 
