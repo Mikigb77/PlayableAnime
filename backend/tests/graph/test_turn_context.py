@@ -15,11 +15,13 @@ from engine.context import (
     TurnContext,
 )
 from engine.contracts import (
+    ActionKind,
     ChoiceKind,
     DirectorPlan,
     EventKind,
     EventSource,
     Intent,
+    IntentStep,
     OutcomeClass,
     PictureDecision,
     PictureKind,
@@ -33,7 +35,7 @@ from engine.contracts import (
 from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
-from engine.state.records import EventStatus, PendingEvent, StepResult
+from engine.state.records import EventStatus, Goal, GoalStatus, PendingEvent, StepResult
 from engine.state.sheet import Power
 from engine.state.world import EventSize
 from graph.turn import prompts
@@ -114,6 +116,24 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     assert "Zhao grins and draws back his foot" in text  # the last moment (R3)
     assert '"aliases":["Senior Brother Zhao"]' in text  # misheard names map to ids (V3)
     assert '"tournament"' in text  # open threads, for what the action takes up
+
+
+def test_both_models_see_the_players_active_goals_by_id():
+    """N2: the interpret step names the goals the player drops, and the narrator the goals that
+    are over, by id. The narrator sees the goals as the director left them this turn."""
+    state = grounded_world()
+    state.goals["goal-2"] = Goal(id="goal-2", text="Leave Naples", status=GoalStatus.ABANDONED)
+    after = state.model_copy(deep=True)
+    after.goals["goal-3"] = Goal(id="goal-3", text="Win back the bar at cards", set_turn=2)
+    goal = '{"id":"find-killer","text":"Find out who killed my father."}'
+    taken = '{"id":"goal-3","text":"Win back the bar at cards"}'
+
+    text = interpret_prompt(state, "I drink").messages[-1].text
+    assert goal in text and "Leave Naples" not in text
+    step = IntentStep(text="drink", verb="drink", kind=ActionKind.TASK, proposed_duration_s=60)
+    action = Intent(steps=[step])
+    text = brief(state, after=after, intent=action).user
+    assert goal in text and taken in text and "Leave Naples" not in text
 
 
 def test_the_interpret_prompt_reads_the_clock_and_how_people_travel():

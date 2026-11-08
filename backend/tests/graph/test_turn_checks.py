@@ -29,6 +29,8 @@ from engine.contracts import (
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
 from engine.state.records import (
+    Goal,
+    GoalStatus,
     Lead,
     LeadStatus,
     RollRecord,
@@ -302,6 +304,16 @@ def test_only_open_threads_the_player_knows_and_open_leads_can_be_taken_up():
     assert checked.intent.responds_to == ["revenge", "lead-1"]
     dropped = [i.subject for i in checked.issues if i.code == "unknown_response"]
     assert dropped == ["lead-2", "secret", "over", "ghost"]
+
+
+def test_only_the_characters_active_goals_can_be_dropped():
+    """N2: the goals the player drops are checked against the state."""
+    state = grounded_world()
+    state.goals["goal-2"] = Goal(id="goal-2", text="Leave", status=GoalStatus.ACHIEVED)
+    proposed = Intent(steps=[step()], dropped_goals=["find-killer", "goal-2", "find-killer", "x"])
+    checked = check_intent(proposed, state, "x")
+    assert checked.intent.dropped_goals == ["find-killer"]
+    assert [i.subject for i in checked.issues if i.code == "unknown_goal"] == ["goal-2", "x"]
 
 
 # check_plan

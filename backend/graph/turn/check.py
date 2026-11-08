@@ -5,7 +5,7 @@ the narrator starts. Each check returns a repaired copy and the issues it found;
 raises for a bad proposal, and nothing here calls a model. Model nodes propose; code decides
 (CLAUDE.md rule 2).
 
-- `check_intent`: the interpret step's proposal against the state (V3, B5, W10, N6).
+- `check_intent`: the interpret step's proposal against the state (V3, B5, W10, N2, N6).
 - `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
@@ -33,7 +33,7 @@ from engine.contracts import (
 )
 from engine.director.themes import allowed_themes, fits
 from engine.state.cast import CharacterStatus
-from engine.state.records import LeadStatus, RollRecord, StepResult, Transfer
+from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
 from engine.timekeeping import parse_clock
 from graph.turn.outputs import NarratorOutput
@@ -111,6 +111,16 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
         else:
             issues.append(Issue("unknown_response", "not an open thread or lead", ref))
     intent.responds_to = taken_up
+
+    # N2: only the character's active goals can be dropped.
+    dropped = []
+    for ref in dict.fromkeys(intent.dropped_goals):
+        goal = state.goals.get(ref)
+        if goal is not None and goal.status is GoalStatus.ACTIVE:
+            dropped.append(ref)
+        else:
+            issues.append(Issue("unknown_goal", "not an active goal", ref))
+    intent.dropped_goals = dropped
 
     overflow: list[str] = []
     if len(intent.steps) > MAX_STEPS:

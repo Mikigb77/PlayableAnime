@@ -566,7 +566,15 @@ class Intent(EngineModel):
         default_factory=list, description="N4: claims about the character's own past."
     )
     goals: list[str] = Field(
-        default_factory=list, description="N2: goals the player states for their character."
+        default_factory=list,
+        description="N2: lasting aims the player states for their character, not already held.",
+    )
+    dropped_goals: list[str] = Field(
+        default_factory=list,
+        description=(
+            "N2: ids of the character's goals that the player gives up or replaces in these "
+            "words. Code checks each id against the state."
+        ),
     )
     responds_to: list[str] = Field(
         default_factory=list,

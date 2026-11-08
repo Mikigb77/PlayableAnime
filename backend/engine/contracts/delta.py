@@ -14,6 +14,8 @@ Number fields on changes are deltas, clamped to their bounds when applied. `None
 "unchanged".
 """
 
+from enum import StrEnum
+
 from pydantic import Field
 
 from engine.base import EngineModel, Importance, Name
@@ -249,6 +251,24 @@ class NewLead(EngineModel):
     expires_in_s: int | None = Field(default=None, gt=0)
 
 
+class GoalEnd(StrEnum):
+    ACHIEVED = "achieved"
+    FAILED = "failed"
+    REPEATS = "repeats"
+
+
+class GoalOver(EngineModel):
+    """N2. One of the player character's goals that is over: play achieved it for good, it can
+    no longer happen, or it only says again what another of their goals says. The engine closes
+    it on a turn the player acted; it never rewrites one."""
+
+    goal_id: str
+    how: GoalEnd
+    same_as: str | None = Field(
+        default=None, description="For repeats: the id of the goal it says again."
+    )
+
+
 class RuleChange(EngineModel):
     """G7. Engine only: an open rule changed by a discovery, for everyone. Fixed rules never
     change."""
@@ -275,6 +295,7 @@ class StateDelta(EngineModel):
     facts: list[NewFact] = Field(default_factory=list)
     items: list[ItemChange] = Field(default_factory=list)
     leads: list[NewLead] = Field(default_factory=list)
+    goals_over: list[GoalOver] = Field(default_factory=list)
     rule_changes: list[RuleChange] = Field(default_factory=list, description="Engine only (G7).")
     time_effects: list[ActiveTimeEffect] = Field(
         default_factory=list,

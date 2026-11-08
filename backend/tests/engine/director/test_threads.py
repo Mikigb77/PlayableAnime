@@ -1,9 +1,9 @@
 """N1, N2: thread lifecycle, callbacks, goals that only the player sets, and leads that expire."""
 
 from engine.base import DAY, HOUR
-from engine.contracts import Theme
+from engine.contracts import Theme, ThreadChange
 from engine.director import rules
-from engine.director.goals import expired_leads, player_goals
+from engine.director.goals import closed_goals, expired_leads, player_goals
 from engine.director.ids import IdProbe
 from engine.director.threads import callbacks, current_thread, lifecycle
 from engine.director.turn import TurnFacts
@@ -12,6 +12,7 @@ from engine.samples import farm_world, grounded_world
 from engine.state import (
     CharacterStatus,
     ClockStatus,
+    Goal,
     GoalStatus,
     Lead,
     LeadStatus,
@@ -159,6 +160,75 @@ def test_goals_come_only_from_the_player_stating_them_or_taking_a_lead():
     ]
     assert len({g.id for g in new}) == 2
     assert player_goals(state, ctx(4), None, facts(4), IdProbe(state)) == ([], [])
+
+
+def test_a_goal_said_again_with_other_case_accents_or_punctuation_is_not_added():
+    state = grounded_world()
+    state.goals["goal-2"] = Goal(id="goal-2", text="Salir de Nápoles con vida.")
+    said = ["¡find out who killed my father!", "salir de napoles con vida", "...", "Keep the bar"]
+    intent = farming(goals=said)
+    new, _ = player_goals(state, ctx(4), intent, facts(4), IdProbe(state))
+    assert [g.text for g in new] == ["Keep the bar"]
+
+
+def test_the_player_drops_a_goal_or_replaces_it_in_their_own_words():
+    state = grounded_world()
+    state.goals["goal-2"] = Goal(id="goal-2", text="Take over the family")
+    intent = farming(dropped_goals=["goal-2"], goals=["Take over the family", "Leave Naples"])
+    new, _ = player_goals(state, ctx(4), intent, facts(4), IdProbe(state))
+    # A goal the player drops and states again in the same words starts again as theirs.
+    assert [g.text for g in new] == ["Take over the family", "Leave Naples"]
+    assert closed_goals(state, intent, []) == {"goal-2": GoalStatus.ABANDONED}
+    assert closed_goals(state, None, []) == {}
+
+
+def test_a_goal_from_a_lead_closes_with_the_leads_thread():
+    state = grounded_world()
+    for name in ("a", "b", "c", "d"):
+        state.threads[name] = thread(name)
+        state.leads[f"lead-{name}"] = Lead(id=f"lead-{name}", text=name, thread_id=name)
+        state.goals[f"goal-{name}"] = Goal(id=f"goal-{name}", text=name, lead_id=f"lead-{name}")
+    state.threads["b"].status = ThreadStatus.RESOLVED_WITHOUT_PLAYER  # closed by a clock
+    state.threads["c"].status = ThreadStatus.DORMANT
+    state.goals["goal-d"].status = GoalStatus.ACHIEVED
+    changes = [
+        ThreadChange(thread_id="a", status=ThreadStatus.RESOLVED),
+        ThreadChange(thread_id="d", status=ThreadStatus.FAILED),
+        ThreadChange(thread_id="revenge", status=ThreadStatus.RESOLVED),  # find-killer: no lead
+    ]
+    assert closed_goals(state, farming(), changes) == {
+        "goal-a": GoalStatus.ACHIEVED,
+        "goal-b": GoalStatus.FAILED,
+    }
+
+
+def test_a_goal_merged_into_another_passes_its_leads_thread_on():
+    state = grounded_world()
+    state.threads["mill"] = thread("mill", status=ThreadStatus.RESOLVED)
+    state.leads["lead-mill"] = Lead(id="lead-mill", text="Who burned the mill", thread_id="mill")
+    state.goals["goal-2"] = Goal(id="goal-2", text="Find who burned the mill", set_turn=1)
+    state.goals["goal-3"] = Goal(
+        id="goal-3",
+        text="Who burned the mill",
+        lead_id="lead-mill",
+        status=GoalStatus.MERGED,
+        merged_into="goal-2",
+    )
+    assert closed_goals(state, farming(), []) == {"goal-2": GoalStatus.ACHIEVED}
+    state.goals["goal-2"].status = GoalStatus.ABANDONED
+    assert closed_goals(state, farming(), []) == {}
+
+
+def test_recording_closes_the_goals_that_are_over_and_leaves_the_rest():
+    state = grounded_world()
+    state.goals["goal-2"] = Goal(id="goal-2", text="Take over the family", set_turn=1)
+    intent = act("Have a drink", "drink", "task", HOUR, dropped_goals=["goal-2"])
+    after = play_turn(state, 2, intent).state
+    assert (after.goals["goal-2"].status, after.goals["goal-2"].closed_turn) == (
+        GoalStatus.ABANDONED,
+        2,
+    )
+    assert after.goals["find-killer"] == state.goals["find-killer"]
 
 
 def test_leads_expire_on_in_world_time_and_never_touch_goals():

@@ -424,7 +424,13 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         first_opening = turn.kind is TurnKind.OPENING and not turn.state.opening_due
         hurts = first_opening or injuries.pays_in_body(state["resolution"])
         applied = apply_delta(
-            world, delta, turn.ctx, source=DeltaSource.NARRATOR, may_hurt_player=hurts
+            world,
+            delta,
+            turn.ctx,
+            source=DeltaSource.NARRATOR,
+            may_hurt_player=hurts,
+            # N2: a goal closes only on a turn the player acted, never on an opening.
+            player_acted=state.get("intent") is not None,
         )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]

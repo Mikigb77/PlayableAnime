@@ -12,7 +12,7 @@ import re
 from engine.context import TurnContext
 from engine.contracts.direction import DirectorPlan
 from engine.director.due import is_director_event
-from engine.state.records import EventStatus, LeadStatus, ThreadStatus
+from engine.state.records import EventStatus, GoalStatus, LeadStatus, ThreadStatus
 from engine.state.world import _KEYED_COLLECTIONS, WorldState
 
 _NUMBERED = re.compile(r"^(?P<prefix>.+)-(?P<number>\d+)$")
@@ -114,6 +114,11 @@ def record(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> WorldStat
         if lead is not None and lead.status is LeadStatus.OPEN:
             lead.status = LeadStatus.TAKEN
 
+    for goal_id, status in updates.closed_goals.items():
+        goal = new.goals.get(goal_id)
+        if goal is not None and goal.status is GoalStatus.ACTIVE:
+            goal.status = status
+            goal.closed_turn = ctx.turn
     for goal in updates.new_goals:
         goal = goal.model_copy(deep=True)
         goal.id = _claim(new, goal.id, remap)
