@@ -525,23 +525,26 @@ def test_the_scene_ending_in_a_wider_place_keeps_the_exact_spot_and_an_unknown_p
     assert after.state.player.location_id == "well"
 
 
-def test_leaving_the_scenes_place_for_the_one_around_it_takes_everyone_in_it_along():
+def test_leaving_the_scenes_place_for_the_one_around_it_takes_everyone_along():
     """R8: the last scene was at the well, and this one ends on the peak around it, so Lin and
-    Zhao have left the well; Mei, on the terrace elsewhere on the peak, stays there (Miki,
-    2026-11-08: out of a temple into the forest it lies in, the record kept them in the temple)."""
+    those with him have left the well, and Mei, who joined them from the terrace, is with them
+    (Miki, 2026-11-08: out of a temple into the forest it lies in, the record kept them in the
+    temple). Elder Mo, named but far off, stays where he is."""
     state = cultivation_world()
     state.places["terrace"] = Place(id="terrace", name="the terrace", parent_id="azure-peak")
     state.characters["mei"] = Character(id="mei", name="Mei", location_id="terrace")
-    state.scene.present_ids.append("mei")  # she joined them from the terrace
+    state.scene.present_ids.append("mei")
     out = SceneEnd(
         ended_on="Up the path, the peak around them.",
         place_id="azure-peak",
-        present_ids=["zhao", "mei"],
+        present_ids=["zhao", "mei", "elder-mo"],
     )
     after = apply_delta(state, StateDelta(scene_end=out), ctx(), source=DeltaSource.NARRATOR).state
     assert after.scene.place_id == "azure-peak"
-    assert after.player.location_id == after.characters["zhao"].location_id == "azure-peak"
-    assert after.characters["mei"].location_id == "terrace"
+    assert after.player.location_id == "azure-peak"
+    assert after.characters["zhao"].location_id == after.characters["mei"].location_id
+    assert after.characters["mei"].location_id == "azure-peak"
+    assert after.characters["elder-mo"].location_id == "inner-court"
 
 
 def test_naming_someone_far_off_or_missing_as_present_moves_no_one_but_the_player():

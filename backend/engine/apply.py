@@ -235,12 +235,13 @@ def _gather(
 ) -> None:
     """R3, R8, C2. The scene ends at `place_id`, so the player character is there, and so is
     everyone living in the scene who came with them: the world places witnesses and events where
-    people are (W2, W16). Someone already somewhere inside that place, such as at the well in the
-    courtyard the scene names, stays where they are, unless the scene left the place they are in
-    (`left`, the last scene's place) for the one around it: out of the temple into the forest it
-    lies in, everyone who was in the temple comes out (R8). The narrator naming someone far off,
-    or missing, as present doesn't move them: only the engine's own record does."""
-    came_out = left is not None and left != place_id and place_id in ancestry(state.places, left)
+    people are (W2, W16). A scene that stays where the last one was (`left`) keeps anyone at a
+    more exact spot inside it there, such as at the well in the courtyard both scenes name. A
+    scene that ends somewhere else has moved them, even out to the place around the one they
+    were in: out of the temple into the forest it lies in, nobody stays inside the temple (R8).
+    The narrator naming someone far off, or missing, as present doesn't move them: only the
+    engine's own record does."""
+    moved = left is not None and left != place_id
     for character_id in dict.fromkeys([state.player_id, *state.scene.present_ids]):
         character = state.characters.get(character_id)
         if character is None or not character.alive:
@@ -249,8 +250,7 @@ def _gather(
             character.status is not CharacterStatus.ALIVE or character_id not in with_player
         ):
             continue
-        where = ancestry(state.places, character.location_id)
-        if place_id not in where or (came_out and left in where):
+        if moved or place_id not in ancestry(state.places, character.location_id):
             character.location_id = place_id
 
 
@@ -378,18 +378,28 @@ class _Applier:
     def scene_place(self, end: SceneEnd, changes: list[PlaceChange]) -> str | None:
         """R3, R8. The place the scene ends in, once this delta's places are on record, or None
         to keep the last one. The place is named by its id, or by its name however it is
-        spelled; failing that, the place the delta says the player character is now at
+        spelled; failing that, the one place the delta says the player character is now at
         (`PlaceChange.visited`) stands for it. A place on no record is refused, so the next scene
         starts where the record has the character, never somewhere it can't name."""
-        places = self.state.places
-        named = (end.place_id or "").strip()
-        found = find_place(places, named)
+        state = self.state
+        places = state.places
+        here = state.scene.place_id
+        player = state.player_id
+        # C6: a name reaches only a place the character knows of, one this scene names, or one
+        # they are in, never a namesake in a city they have never heard of.
+        near = [
+            *(p.id for p in places.values() if player in p.known_by or player in p.visited_by),
+            *(c.id for c in changes),
+            *ancestry(places, here),
+            *ancestry(places, state.player.location_id),
+        ]
+        found = find_place(places, end.place_id, among=near)
         if found is not None:
             return found
-        here = self.state.scene.place_id
-        visited = [c.id for c in changes if c.visited and c.id in places and c.id != here]
-        if visited:
-            return visited[-1]
+        visited = {c.id for c in changes if c.visited and c.id in places and c.id != here}
+        if len(visited) == 1:
+            return visited.pop()
+        named = (end.place_id or "").strip()
         if named:
             self.reject("scene", "place", f"no place {named!r}, so it stays at the last one")
         return None

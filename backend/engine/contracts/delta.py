@@ -17,7 +17,7 @@ Number fields on changes are deltas, clamped to their bounds when applied. `None
 from enum import StrEnum
 from typing import Any
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from engine.base import EngineModel, Importance, Name
 from engine.state.cast import (
@@ -202,6 +202,17 @@ class PlaceChange(EngineModel):
     controller_id: str | None = None
     mood: str | None = None
     routes: list[Route] = Field(default_factory=list, description="Added or updated travel times.")
+
+    @field_validator("setting", mode="before")
+    @classmethod
+    def _setting_or_untold(cls, value: object) -> object:
+        """R8: a setting written in another case is read, and one that is none of the four is
+        left untold, so a stray word never costs the narrator's whole answer."""
+        if isinstance(value, str):
+            word = value.strip().casefold()
+            return word if word in PlaceSetting._value2member_map_ else None
+        return value
+
     visited: bool = Field(default=False, description="The player character is there.")
     known_to_player: bool = False
 

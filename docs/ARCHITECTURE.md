@@ -217,14 +217,17 @@ a new one.
   people, places and factions with real names, nudge an attitude by up to 10 points per scene,
   record facts, items and leads, and end the scene. Ending the scene at a known place moves the
   player character there, with everyone in the scene who was with them and isn't already somewhere
-  inside it, so the world and the director find people where the story left them (R3, C2). A scene
-  that leaves the last scene's place for the one around it (out of a temple into the forest it lies
-  in) takes everyone who was in the place it left along, so nobody stays recorded inside, and the
-  player character knows and has been to the place their scene ends in (C6). The
+  inside it, so the world and the director find people where the story left them (R3, C2). That
+  exact spot is kept only while the scene stays where the last one was: a scene that ends
+  somewhere else has moved everyone who came with the player, even out to the place around the
+  one they were in (out of a temple into the forest it lies in), so nobody stays recorded inside
+  (R8). The player character knows and has been to the place their scene ends in (C6). The
   narrator's schema always asks for the scene end and its `place_id` (R8): the place is read by its
-  id, or by its name however it is spelled (`engine.world.geography.find_place`), and failing that
-  the place the delta marks `visited` stands for it; a place on no record is refused (`scene.place`
-  on the turn's log line) and the scene stays where it was. A place's `setting` (outdoors,
+  exact id, or by its id or name however it is spelled among the places the character knows of,
+  the scene names or they are in (`engine.world.geography.find_place`), and failing that the one
+  place the delta marks `visited` stands for it; a place on no record is refused (`scene.place` on
+  the turn's log line) and the scene stays where it was. The narrator's `setting` is read in any
+  case, and a word that is none of the four is left untold. A place's `setting` (outdoors,
   indoors, underground, underwater) is set once, and only the engine changes it. Naming
   someone far off, missing or dead as present moves no one. A death, destruction or ruin is undone only by
   a `Cause` that points at a recorded deed or a fired event naming the subject, on this timeline,

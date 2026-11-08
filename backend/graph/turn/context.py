@@ -223,9 +223,15 @@ def _told_of_death(state: WorldState, character: Character) -> set[str]:
     return told
 
 
+def _knows_place(state: WorldState, place: Place) -> bool:
+    you = state.player_id
+    return you in place.known_by or you in place.visited_by
+
+
 def _place_view(state: WorldState, place: Place) -> dict[str, Any]:
-    """R8: the scene's place, with the places it lies within, outermost last, so a chamber of a
-    buried temple is never told as if it were out in the forest around it."""
+    """R8: the scene's place, with the places it lies within that the character knows of (C6),
+    outermost last, so a chamber of a buried temple is never told as if it were out in the
+    forest around it."""
     view = {"id": place.id} | _dump(place, exclude=_RECORD_NOISE)
     within = [
         {
@@ -235,6 +241,7 @@ def _place_view(state: WorldState, place: Place) -> dict[str, Any]:
             **({"setting": outer.setting.value} if outer.setting else {}),
         }
         for outer in (state.places[i] for i in ancestry(state.places, place.id)[1:])
+        if _knows_place(state, outer)
     ]
     if within:
         view["within"] = within
@@ -272,12 +279,16 @@ def _known_view(state: WorldState) -> dict[str, Any]:
         {
             "id": p.id,
             "name": p.name,
-            **({"within": p.parent_id} if p.parent_id in state.places else {}),
+            **(
+                {"within": p.parent_id}
+                if p.parent_id in state.places and _knows_place(state, state.places[p.parent_id])
+                else {}
+            ),
             **({"setting": p.setting.value} if p.setting else {}),
             **({"status": p.status.value} if p.status is not PlaceStatus.THRIVING else {}),
         }
         for p in sorted(state.places.values(), key=lambda p: p.id)
-        if you in p.known_by or you in p.visited_by
+        if _knows_place(state, p)
     ]
     factions = [
         {"id": f.id, "name": f.name, "status": f.status.value}

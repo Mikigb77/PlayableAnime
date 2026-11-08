@@ -207,3 +207,67 @@ def test_the_narrator_is_always_asked_where_its_scene_ends():
     # Code may still leave them out: the engine's own deltas have no scene end.
     assert StateDelta().scene_end is None
     assert SceneEnd(ended_on="x").place_id is None
+
+
+def test_a_scene_that_was_wider_than_the_spot_still_takes_the_character_out():
+    # The last scene was named for the whole peak while Lin stood in the temple; this one ends in
+    # the forest, so he has come out, not stayed in the temple within it.
+    state = buried_temple()
+    state.scene.place_id = "azure-peak"
+    applied = apply(state, scene_end=end("bosque"))
+    assert applied.state.player.location_id == "bosque"
+
+
+def test_a_name_never_reaches_a_place_the_character_doesnt_know():
+    """C6: a namesake in a city Lin has never heard of is no place for the scene to end in."""
+    state = buried_temple()
+    state.places["far-market"] = Place(id="far-market", name="The Market", kind="square")
+    applied = apply(state, scene_end=end("the market"))
+
+    assert applied.state.scene.place_id == "templo"
+    assert applied.state.player.location_id == "templo"
+    assert "lin" not in applied.state.places["far-market"].known_by
+    assert [(r.subject, r.change) for r in applied.rejected] == [("scene", "place")]
+    # The scene that adds it, or a market Lin knows, is found by the same words.
+    known = state.model_copy(deep=True)
+    known.places["far-market"].known_by.append("lin")
+    assert apply(known, scene_end=end("the market")).state.scene.place_id == "far-market"
+    added = PlaceChange(id="market", name="the Market", parent_id="bosque")
+    assert apply(state, places=[added], scene_end=end("The market")).state.scene.place_id == (
+        "market"
+    )
+
+
+def test_the_place_marked_visited_stands_for_the_scene_end_only_when_it_is_the_only_one():
+    state = buried_temple()
+    path = PlaceChange(id="sendero", name="el sendero", parent_id="bosque", visited=True)
+    for ref in (None, "somewhere"):
+        applied = apply(state, places=[path, CLEARING], scene_end=end(ref))
+        assert applied.state.scene.place_id == "templo", ref
+        assert [(r.subject, r.change) for r in applied.rejected] == (
+            [("scene", "place")] if ref else []
+        ), ref
+
+
+def test_a_setting_written_another_way_is_read_or_left_untold():
+    assert PlaceChange(id="x", setting=" Outdoors ").setting is OUTDOORS
+    assert PlaceChange(id="x", setting="open air").setting is None
+    assert PlaceChange(id="x", setting=UNDERGROUND).setting is UNDERGROUND
+
+
+def test_names_in_other_scripts_keep_their_marks():
+    places = {
+        "haka": Place(id="haka", name="はか"),
+        "baka": Place(id="baka", name="ばか"),
+    }
+    assert find_place(places, "ばか") == "baka"
+    assert find_place(places, "はか") == "haka"
+
+
+def test_the_places_it_lies_within_show_only_those_the_character_knows():
+    from graph.turn.context import _scene_view
+
+    state = buried_temple()
+    state.places["bosque"].known_by = []  # Lin doesn't know the forest's name
+    within = _scene_view(state)["place"]["within"]
+    assert [p["id"] for p in within] == ["azure-peak"]
