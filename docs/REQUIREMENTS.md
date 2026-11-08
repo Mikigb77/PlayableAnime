@@ -345,10 +345,11 @@ own skills and gifts the step plainly draws on.
 Decided 2026-11-08 (Miki): an ability the character has proven works as they know it to. A move
 they make with a power of theirs (an aura blade made with their aura) is that power at work: it
 needs the power ready, and the contest decides it, never "you never learned that technique". A
-power is found by its id or its name, and a move by the words it shares with one of the
-character's powers, so a Spanish or Catalan sheet matches the same way (S10). A power over time is
-found only where the step names it. A technique of a power uses that power: it must be ready, and
-it costs what the power costs.
+power is found by its id, its name or a word of its name, and a move by the words it shares with
+one of the character's powers or as the one power the step names, so a Spanish or Catalan sheet
+matches the same way (S10). A power the character lacks is still one they lack: another power's
+description never stands in for it, and a power over time is found only by its id or its whole
+name. A technique of a power uses that power: it must be ready, and it costs what the power costs.
 
 **G15 Disposition shapes characters but never takes control from the player (P0).** NPCs act from
 their temperament, attitudes and agendas (E3): a greedy capo can be bought and a loyal one can't,
@@ -505,9 +506,12 @@ ladder.
   a weapon).
 - **Moves become techniques by doing them** (decided 2026-11-08, Miki). The first time a move the
   character makes with their own power comes off cleanly, it goes on the sheet as a technique of
-  their own, learned by doing it (A4), and Status lists it. From then on it counts like any
-  technique. A technique someone else in the world knows is their school's: improvising something
-  like it with one's own power works as that power, but only learning it from them makes it yours.
+  their own, learned by doing it (A4), once, and Status lists it. From then on it counts like any
+  technique. A move that only says what the power does ("teleport" for a power that teleports)
+  is the power itself, and one that shares nothing with the power plays as the power but isn't
+  learned from it. A technique someone else in the world knows is their school's: improvising
+  something like it with one's own power works as that power, but only learning it from them
+  makes it yours.
 - **Technique matters most within a gap.** Between characters on the same rung or one apart, skill,
   style, knowing the opponent and the right technique shift the odds a lot (A3, A8). Across a large
   gap, technique alone doesn't close it (G18), but a perfect counter can buy time or an escape. A plan

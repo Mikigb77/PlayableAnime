@@ -24,11 +24,11 @@ _STOPWORDS = frozenset(
     any some all just very one own so as if then than there here who whom which what when""".split()
 )
 # S10. The same small words in Spanish and Catalan: articles, prepositions and possessives. Only
-# words that are no English word a story would match on, so "sin", "son" and "al" stay.
+# words that are no English word a story would match on, so "sin", "son", "con", "mi" and "al"
+# stay.
 _STOPWORDS_ES_CA = frozenset(
-    """el la los las lo un una unos unas de del en con por para su sus tu tus mi mis se le les
-    que es y o els uns unes dels amb per seu seva seus seves teu teva teus teves meu meva meus
-    meves""".split()
+    """el la los las lo un una unos unas de del en por para su sus tu tus mis se le les que es
+    els uns unes dels amb per seu seva seus seves teu teva teus teves meu meva meus meves""".split()
 )
 _STOPWORDS = _STOPWORDS | _STOPWORDS_ES_CA
 _SUFFIXES = ("ation", "ing", "ed", "es", "s")

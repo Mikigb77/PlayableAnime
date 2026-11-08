@@ -138,9 +138,9 @@ def sheet_check(
     ]
     for use in step.uses:
         if use.part is SheetPart.POWER:
-            # A power named by a word of its own, such as "aura_blade" for their aura, is that
-            # power; never another power the step names (no single-power fallback here).
-            power = find_power(sheet, use.ref) or made_with(sheet, use.ref, [])
+            # A power named by a word of its own name, such as "aura_blade" for their Aura, is
+            # that power; nothing looser, so a power they lack is still one they lack.
+            power = find_power(sheet, use.ref) or named_by_word(sheet, use.ref)
             if power is None:
                 return Settled(
                     OutcomeClass.RULED_OUT,
@@ -209,30 +209,54 @@ def find_power(sheet: CharacterSheet, ref: str) -> Power | None:
     return sheet.power(ref) or next((p for p in sheet.powers if mentions(p.name, ref)), None)
 
 
+def named_by_word(sheet: CharacterSheet, words: str) -> Power | None:
+    """G14. A power whose own name shares a word with `words` ("aura_blade" and their Aura), the
+    one sharing most. A power over time is found only by its id or its whole name, so "travel
+    back in time" never stops the world (W10a)."""
+    return _sharing([p for p in sheet.powers if p.time is None], words, description=False)
+
+
 def made_with(sheet: CharacterSheet, words: str, named: list[Power]) -> Power | None:
     """A4, G14. The power of the character's that a move is made with ("an aura blade" and their
-    aura): among those the step names, else among all of theirs, the one whose name and
-    description share the most words with the move; with none in common, the one power the step
-    names, if it names just one. None when no power of theirs makes it. A power over time is
-    found only where the step names it, so "travel back in time" never stops the world (W10a)."""
+    aura): the one whose name and description share the most words with the move, among those
+    the step names, else among all of theirs but powers over time, which are found only where
+    named (W10a); else the one power the step names, if it names just one. None when no power of
+    theirs makes it."""
+    return (
+        _sharing(named, words, description=True)
+        or _sharing([p for p in sheet.powers if p.time is None], words, description=True)
+        or (named[0] if len(named) == 1 else None)
+    )
+
+
+def _sharing(powers: list[Power], words: str, *, description: bool) -> Power | None:
+    """The power whose name, and description when asked, shares the most words with `words`,
+    if any shares one."""
     wanted = stems(words)
-    if not wanted:
-        return None
-    for pool in (named, [p for p in sheet.powers if p.time is None]):
-        scored = [(len(wanted & stems(f"{p.name} {p.description}")), p) for p in pool]
-        best = max(scored, key=lambda pair: pair[0], default=None)
-        if best is not None and best[0] > 0:
-            return best[1]
-    return named[0] if len(named) == 1 else None
+    scored = [
+        (len(wanted & stems(f"{p.name} {p.description}" if description else p.name)), p)
+        for p in powers
+    ]
+    best = max(scored, key=lambda pair: pair[0], default=None)
+    return best[1] if best is not None and best[0] > 0 else None
+
+
+# A move's name is a name, not a description: longer than this, it plays as the power at work and
+# is never recorded (`Technique.name` holds 200 characters).
+MAX_MOVE_NAME = 80
 
 
 def _add_move(drawn: Drawn, ref: str, power: Power) -> None:
-    """A move made with `power`, unless its words only say what the power is or does
-    ("teleport" for a power that teleports): that is the power itself. A power over time grows
-    its own ways instead (A4, W10a)."""
+    """A move made with `power` that can become a technique of the actor's own (A4): one whose
+    words share something with the power, so "an aura blade" with their aura, but neither a move
+    that only says what the power is or does ("teleport" for a power that teleports), which is
+    the power itself, nor one that has nothing to do with it, which plays as the power but isn't
+    learned from it. A power over time grows its own ways instead (A4, W10a)."""
     words = move_name(ref)
-    itself = mentions(f"{power.name} {power.description}", words)
-    if not words or power.time is not None or power.id == ref or itself:
+    if not words or len(words) > MAX_MOVE_NAME or power.time is not None or power.id == ref:
+        return
+    what = f"{power.name} {power.description}"
+    if mentions(what, words) or not stems(words) & stems(what):
         return
     if all(m.name.casefold() != words.casefold() for m in drawn.moves):
         drawn.moves.append(Move(name=words, power=power))
@@ -381,10 +405,12 @@ def _check_use(
 
     if use.source is UseSource.POWER:
         # A move made with a power the step draws on, such as an aura blade, is that power.
+        words = f"{use.ref or ''} {use.thing}"
         power = (
             find_power(actor.sheet, use.ref or "")
             or find_power(actor.sheet, use.thing)
-            or made_with(actor.sheet, f"{use.ref or ''} {use.thing}", drawn.powers)
+            or _sharing(drawn.powers, words, description=True)
+            or named_by_word(actor.sheet, words)
         )
         if power is None:
             return verdict(

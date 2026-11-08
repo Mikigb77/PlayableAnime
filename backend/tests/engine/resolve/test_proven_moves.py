@@ -5,11 +5,15 @@ it is theirs for good (A4, G14, G25), so a technique proven in play never fails 
 
 from engine.contracts import (
     Aim,
+    Beat,
+    BeatUse,
+    BeatVerdict,
     Challenge,
     Intent,
     OutcomeClass,
     SheetPart,
     SheetUse,
+    UseSource,
 )
 from engine.samples import cultivation_world
 from engine.state import (
@@ -145,7 +149,7 @@ def test_a_clean_success_makes_the_move_a_technique_of_their_own():
         "Cuchilla de aura",
         "aura",
     )
-    assert learned.learned_from == "their own use"
+    assert learned.learned_from == "their own"
     assert (lin.sheet.growth[-1].what, lin.sheet.growth[-1].change) == (
         "Cuchilla de aura",
         "learned",
@@ -238,3 +242,94 @@ def test_a_power_the_step_claims_is_never_taken_for_another_it_names():
     (settled,) = resolve(state, Intent(steps=[move])).steps
 
     assert settled.reason == "You have no power like that."
+
+
+def test_a_move_learned_in_one_step_is_learned_once_in_the_plan():
+    state = awakened()
+    twice = Intent(
+        steps=[cut_the_rope(technique(BLADE)), cut_the_rope(technique("cuchilla de aura"))]
+    )
+
+    played = play(state, twice)
+
+    first, second = played.resolution.steps
+    assert first.reason.endswith("Cuchilla de aura is a technique of yours now.")
+    assert "technique of yours" not in second.reason
+    lin = played.state.player
+    assert [t.name for t in lin.sheet.techniques] == ["Cuchilla de aura"]
+    assert [g.what for g in lin.sheet.growth] == ["Cuchilla de aura"]
+
+
+def test_a_new_technique_id_folds_accents_and_keeps_other_scripts():
+    state = awakened()
+    moves = Intent(
+        steps=[cut_the_rope(technique("Puño de aura")), cut_the_rope(technique("клинок ауры"))]
+    )
+    state.player.sheet.powers[-1].description += " Аура: ауры."
+
+    played = play(state, moves)
+
+    ids = [t.id for t in played.state.player.sheet.techniques]
+    assert ids == ["technique-puno-de-aura", "technique-клинок-ауры"]
+
+
+def test_only_a_technique_the_move_names_blocks_learning_it():
+    """Someone who knows "Strike" doesn't make "Aura strike" theirs to teach."""
+    state = awakened()
+    state.characters["ladron"].sheet.techniques.append(Technique(id="strike", name="Strike"))
+
+    (settled,) = resolve(state, Intent(steps=[cut_the_rope(technique("aura strike"))])).steps
+
+    assert settled.reason.endswith("Aura strike is a technique of yours now.")
+
+
+def test_a_move_unlike_the_power_plays_as_the_power_but_is_never_learned_from_it():
+    """The step makes "Nine Suns Sword" with their aura: the contest decides, but nothing about
+    the aura makes it a technique of theirs."""
+    state = awakened()
+    move = cut_the_rope(power("aura"), technique("Nine Suns Sword"))
+
+    (settled,) = resolve(state, Intent(steps=[move])).steps
+
+    assert settled.result is StepResult.SUCCESS
+    assert settled.drew_on == ["Aura del despertar"]
+    assert not any(c.techniques for c in settled.effects.characters)
+
+
+def test_a_description_is_no_moves_name():
+    state = awakened()
+    words = "una cuchilla de aura que " + "brilla y corta " * 10
+
+    (settled,) = resolve(state, Intent(steps=[cut_the_rope(technique(words))])).steps
+
+    assert settled.result is StepResult.SUCCESS
+    assert not any(c.techniques for c in settled.effects.characters)
+
+
+def test_a_power_they_lack_is_not_found_in_another_ones_description():
+    """Water that puts out any fire is no fire immunity: only a power's own name counts."""
+    state = awakened()
+    state.player.sheet.powers.append(
+        Power(id="water", name="Water", description="Can put out any fire.")
+    )
+
+    (settled,) = resolve(state, Intent(steps=[cut_the_rope(power("fire_immunity"))])).steps
+
+    assert settled.reason == "You have no power like that."
+
+
+def test_a_beat_made_with_a_power_shares_words_with_it():
+    state = awakened()
+
+    def beat_step(thing: str):
+        beat = Beat(
+            text=f"form {thing}", uses=[BeatUse(source=UseSource.POWER, thing=thing, ref="")]
+        )
+        return cut_the_rope(power("aura")).model_copy(update={"beats": [beat]})
+
+    (blade,) = resolve(state, Intent(steps=[beat_step("una cuchilla de aura")])).steps
+    (flame,) = resolve(state, Intent(steps=[beat_step("a wall of flame")])).steps
+
+    assert blade.beats[0].verdict is BeatVerdict.HOLDS
+    assert flame.beats[0].verdict is BeatVerdict.EMPTY
+    assert flame.reason == "You have no power like that."

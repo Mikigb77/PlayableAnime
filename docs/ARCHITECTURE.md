@@ -408,12 +408,14 @@ order, and the first one that settles it ends the step:
    interpret step proposed, for NPCs too. A power the actor doesn't have or hasn't recovered, a
    technique they never learned and an item that isn't on them (vehicles and property are used
    where they stand) are ruled out too. Money named as an item is the purse. A power is found by
-   its id or its name, and a move made with one of the actor's powers (`checks.Move`: "an aura
-   blade" and their aura, by the words they share, or the one power the step names) is that power
-   at work, not an unlearned technique; a power over time is found only where the step names it.
-   A learned technique of a power uses that power too. When a step with a move comes off
-   cleanly, the move becomes a technique of the actor's own (`growth.proven`, A4, G25), unless
-   someone else's sheet already holds it. `StepResolution.drew_on` names what the step used once
+   its id, its name or a word of its name (`find_power`, `named_by_word`), and a move made with
+   one of the actor's powers (`checks.Move`: "an aura blade" and their aura, by the words the
+   move shares with the power's name and description, or the one power the step names) is that
+   power at work, not an unlearned technique (`made_with`); a power over time is found only by
+   its id or whole name. A learned technique of a power uses that power too. When a step with a
+   move that shares words with its power comes off cleanly, the move becomes a technique of the
+   actor's own, once per plan (`growth.proven`, A4, G25), unless a technique on their sheet or
+   someone else's already has that name. `StepResolution.drew_on` names what the step used once
    past this check, so the narrator tells a miss in what stood in the way (A3).
    **Exchanges** (`exchanges.py`; C10) come next: whatever the step gives or spends must be the
    actor's, counting what earlier steps of the plan moved, or the step is ruled out with no roll

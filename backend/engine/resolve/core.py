@@ -119,6 +119,7 @@ from engine.state.sheet import (
     PowerAxis,
     Ruling,
     RulingSource,
+    Technique,
     TimeEffect,
 )
 from engine.state.world import ActiveTimeEffect, WorldState
@@ -169,6 +170,7 @@ class _Frame:
     # `engine.pipeline.play_out` keeps the count from the steps that played, for the next turn.
     misses: int = 0
     moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
+    learned: list[Technique] = field(default_factory=list)  # A4: moves this plan made theirs
 
 
 @dataclass
@@ -604,10 +606,11 @@ def _settle_step(
     clean = happened and settled.result is StepResult.SUCCESS and frame.gone is None
     if drawn.moves and clean and not (growing or showing):
         # A4, G25. A move made with their own power that came off cleanly is theirs now.
-        why, learned = growth.proven(state, actor, step, drawn.moves)
+        why, learned, change = growth.proven(state, actor, step, drawn.moves, frame.learned)
         if why:
             after.append(why)
-            effects = _merge(effects, learned)
+            effects = _merge(effects, change)
+            frame.learned.extend(learned)
     reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
 
     if actor.id == state.player_id and frame.gone is None:
