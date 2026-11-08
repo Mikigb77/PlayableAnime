@@ -100,10 +100,13 @@ jobs:
 
       - name: Summary and trend
         if: ${{ !cancelled() }}
+        env:
+          STYLES: ${{ inputs.styles }}
         run: |
           # In the log too, where a thread reads it. Eval stories are made up: no player's data.
           if [ -f evals-out/summary.md ]; then tee -a "$GITHUB_STEP_SUMMARY" <evals-out/summary.md; fi
-          if [ -f evals-history/history.jsonl ]; then
+          # A styles run plays no scenario, so it has no trend to show.
+          if [ -f evals-history/history.jsonl ] && [ "$STYLES" != "true" ]; then
             cp evals-history/history.jsonl evals-out/
             {
               echo
@@ -116,7 +119,7 @@ jobs:
           fi
 
       - name: Keep the history
-        if: ${{ !cancelled() && hashFiles('backend/evals-history/history.jsonl') != '' }}
+        if: ${{ !cancelled() && !inputs.styles && hashFiles('backend/evals-history/history.jsonl') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: backend/evals-history
@@ -158,6 +161,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "House style candidates from Evals run $GITHUB_RUN_ID"
-          git push -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+          # Forced, so a re-run of the same run replaces its own earlier push.
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/$BRANCH"
           echo "Pushed to $BRANCH"

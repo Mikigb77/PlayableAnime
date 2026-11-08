@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import mimetypes
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -40,7 +41,9 @@ from media.drawing import (
     DrawRequest,
     PictureModel,
 )
-from media.prompts import HOUSE_STYLE, build_prompt
+from media.prompts import HOUSE_STYLE, PicturePrompt, build_prompt
+
+logger = logging.getLogger("evals.styles")
 
 # Where today's house style turns from the look to the composition the app needs (app/DESIGN.md,
 # "Pictures"), which every candidate keeps.
@@ -185,10 +188,15 @@ SCENES: tuple[Scene, ...] = (
 )
 
 
-def request(scene: Scene, style: Style) -> DrawRequest:
-    """The scene's picture as the picture endpoint asks for it, in `style`."""
+def scene_prompt(scene: Scene) -> PicturePrompt:
+    """The scene's picture in today's house style, as the picture endpoint asks for it."""
     brief = scene_brief(scene.world(), scene.description, people=scene.people)
-    prompt = build_prompt("scene", brief)
+    return build_prompt("scene", brief)
+
+
+def request(scene: Scene, style: Style, prompt: PicturePrompt | None = None) -> DrawRequest:
+    """The scene's picture in `style`: its `prompt` with only the house style line swapped."""
+    prompt = prompt or scene_prompt(scene)
     house = f"House style: {HOUSE_STYLE}"
     if house not in prompt.system:
         raise ValueError("The picture prompt no longer carries the house style as one line")
@@ -204,13 +212,14 @@ def request(scene: Scene, style: Style) -> DrawRequest:
 class Sample:
     scene: str
     style: str
-    # "drawn", "blocked" or "failed".
+    # "drawn", "blocked" or "failed", and "rate_limited" for an attempt a wait may fix.
     status: str
     file: str = ""
     model: str = ""
     cost_usd: Decimal = Decimal(0)
 
 
+RATE_LIMITED = "rate_limited"
 # Our picture quota answered 429 after three quick drawings (`media.premise_covers`), and refills
 # within a minute: draw a little apart, and wait a minute before drawing one that ran out again.
 PAUSE_S = 10.0
@@ -228,53 +237,78 @@ async def draw_all(
     say: Callable[[str], None] = print,
 ) -> list[Sample]:
     """Draws every scene in every style with a fresh model from `new_model`, so each picture's
-    cost is its own, and writes them under `out/styles/<scene>/`, `PAUSE_S` apart."""
+    cost is its own, and writes them under `out/styles/<scene>/`, `PAUSE_S` apart. Pictures are
+    drawn under one rating: their safety settings are the same in every rating (M6)."""
     wait = wait or asyncio.sleep
-    samples = []
-    first = True
+    # Every request first, so a house style this can no longer swap stops before any spending.
+    planned = []
     for scene in scenes:
+        prompt = scene_prompt(scene)
         for n, style in enumerate(styles, start=1):
             # Numbered as in the catalog, so a style's file is named the same in every run.
             number = STYLES.index(style) + 1 if style in STYLES else n
-            if not first:
-                await wait(PAUSE_S)
-            first = False
-            sample = None
-            for attempt in range(RATE_LIMIT_RETRIES + 1):
-                if attempt:
-                    say(f"  quota ran out; drawing {style.id} again in {RATE_LIMIT_WAIT_S:.0f}s")
-                    await wait(RATE_LIMIT_WAIT_S)
-                sample = await _draw(new_model, out, scene, style, number)
-                if sample is not None:
-                    break
-            sample = sample or Sample(scene.id, style.id, "failed")
-            samples.append(sample)
-            say(f"{sample.status:>7}  {scene.id} / {style.id} ${sample.cost_usd:.4f}")
+            planned.append((scene, style, number, request(scene, style, prompt)))
+    samples = []
+    for index, (scene, style, number, asked) in enumerate(planned):
+        if index:
+            await wait(PAUSE_S)
+        spent = Decimal(0)
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            if attempt:
+                say(f"  quota ran out; drawing {style.id} again in {RATE_LIMIT_WAIT_S:.0f}s")
+                await wait(RATE_LIMIT_WAIT_S)
+            sample = await _draw(new_model, out, scene, style, number, asked)
+            spent += sample.cost_usd
+            if sample.status != RATE_LIMITED:
+                break
+        status = "failed" if sample.status == RATE_LIMITED else sample.status
+        sample = replace(sample, status=status, cost_usd=spent)
+        samples.append(sample)
+        say(f"{sample.status:>7}  {scene.id} / {style.id} ${sample.cost_usd:.4f}")
     return samples
 
 
 async def _draw(
-    new_model: Callable[[], PictureModel], out: Path, scene: Scene, style: Style, number: int
-) -> Sample | None:
-    """One picture, or None when the quota ran out, which a wait may fix."""
-    model = new_model()
+    new_model: Callable[[], PictureModel],
+    out: Path,
+    scene: Scene,
+    style: Style,
+    number: int,
+    asked: DrawRequest,
+) -> Sample:
+    """One picture. Whatever goes wrong loses that picture, never the others or the results."""
+    model = None
     try:
-        drawn = await model.draw(request(scene, style))
-    except DrawRateLimited:
-        return None
-    except DrawBlocked:
-        return Sample(scene.id, style.id, "blocked", model=model.model, cost_usd=_spent(model))
-    except DrawError:
-        return Sample(scene.id, style.id, "failed", model=model.model, cost_usd=_spent(model))
+        model = new_model()
+        drawn = await model.draw(asked)
+        name = f"{number:02d}-{style.id}{_extension(drawn.mime_type)}"
+        path = Path("styles") / scene.id / name
+        (out / path).parent.mkdir(parents=True, exist_ok=True)
+        (out / path).write_bytes(drawn.data)
+        return Sample(scene.id, style.id, "drawn", path.as_posix(), drawn.model, drawn.cost_usd)
+    except Exception as error:
+        status = (
+            RATE_LIMITED
+            if isinstance(error, DrawRateLimited)
+            else "blocked"
+            if isinstance(error, DrawBlocked)
+            else "failed"
+        )
+        if not isinstance(error, DrawError):
+            logger.exception("Drawing %s in %s failed", scene.id, style.id)
+        return Sample(
+            scene.id,
+            style.id,
+            status,
+            model=getattr(model, "model", ""),
+            cost_usd=_spent(model),
+        )
     finally:
-        await model.aclose()
-    path = Path("styles") / scene.id / f"{number:02d}-{style.id}{_extension(drawn.mime_type)}"
-    (out / path).parent.mkdir(parents=True, exist_ok=True)
-    (out / path).write_bytes(drawn.data)
-    return Sample(scene.id, style.id, "drawn", path.as_posix(), drawn.model, drawn.cost_usd)
+        if model is not None:
+            await model.aclose()
 
 
-def _spent(model: PictureModel) -> Decimal:
+def _spent(model: PictureModel | None) -> Decimal:
     """What a model's calls cost, so a picture blocked after it was drawn still counts (T5)."""
     calls = getattr(getattr(model, "telemetry", None), "calls", ())
     return sum((call.cost_usd for call in calls), Decimal(0))

@@ -98,6 +98,7 @@ def test_each_picture_is_written_with_its_cost_and_a_spent_quota_is_waited_out(t
         Decimal("0.035"),
         DrawBlocked(("sexual",)),
         DrawFailed("timeout"),
+        RuntimeError("anything else"),
     ]
     closed: list = []
     waits: list[float] = []
@@ -106,7 +107,7 @@ def test_each_picture_is_written_with_its_cost_and_a_spent_quota_is_waited_out(t
         waits.append(seconds)
 
     scene = styles.SCENES[0]
-    chosen = styles.STYLES[:4]
+    chosen = styles.STYLES[:5]
     samples = asyncio.run(
         styles.draw_all(
             lambda: ScriptedModel(outcomes, closed),
@@ -117,10 +118,10 @@ def test_each_picture_is_written_with_its_cost_and_a_spent_quota_is_waited_out(t
             say=lambda line: None,
         )
     )
-    assert [s.status for s in samples] == ["drawn", "drawn", "blocked", "failed"]
+    assert [s.status for s in samples] == ["drawn", "drawn", "blocked", "failed", "failed"]
     pause, spent = styles.PAUSE_S, styles.RATE_LIMIT_WAIT_S
-    assert waits == [pause, spent, pause, pause]
-    assert len(closed) == 5  # every model is closed, the spent one included
+    assert waits == [pause, spent, pause, pause, pause]
+    assert len(closed) == 6  # every model is closed, the spent one included
     assert samples[1].file == "styles/well-at-dusk/02-anime-film.png"
     assert (tmp_path / samples[1].file).read_bytes() == TINY_PNG
 
@@ -139,7 +140,7 @@ def test_each_picture_is_written_with_its_cost_and_a_spent_quota_is_waited_out(t
         "cost_usd": "0",
     }
     summary = (tmp_path / "summary.md").read_text()
-    assert "2 of 4 pictures drawn by fake-image, for $0.07." in summary
+    assert "2 of 5 pictures drawn by fake-image, for $0.07." in summary
     assert "| Black-and-white seinen manga | failed | $0.0000 |" in summary
 
 
@@ -161,6 +162,51 @@ def test_a_quota_that_stays_spent_gives_the_picture_up(tmp_path):
     )
     assert [s.status for s in samples] == ["failed"]
     assert outcomes == []
+
+
+def test_a_model_that_cannot_even_start_loses_only_its_picture(tmp_path):
+    async def wait(seconds: float) -> None:
+        return None
+
+    made: list = []
+
+    def new_model():
+        made.append(True)
+        if len(made) == 1:
+            raise RuntimeError("no client")
+        return ScriptedModel([Decimal("0.034")], [])
+
+    samples = asyncio.run(
+        styles.draw_all(
+            new_model,
+            tmp_path,
+            styles.SCENES[:1],
+            styles.STYLES[:2],
+            wait=wait,
+            say=lambda line: None,
+        )
+    )
+    assert [(s.status, s.cost_usd) for s in samples] == [
+        ("failed", Decimal(0)),
+        ("drawn", Decimal("0.034")),
+    ]
+
+
+def test_a_spent_quota_is_drawn_again_through_the_picture_model(tmp_path, monkeypatch):
+    """Two 429s in a row (the model's own retry included) end the attempt, and the picture is
+    drawn again after the wait."""
+    from graph.llm import Fail
+
+    monkeypatch.setattr(styles, "PAUSE_S", 0)
+    monkeypatch.setattr(styles, "RATE_LIMIT_WAIT_S", 0)
+    backend = FakeBackend(default=offline_reply).script(
+        Node.PICTURE, *[Fail("transient_429", status=429)] * 2
+    )
+    code = draw_styles(tmp_path, ["well-at-dusk"], ["current"], Models(backend=backend))
+    assert code == 0
+    (picture,) = json.loads((tmp_path / "styles.json").read_text())["pictures"]
+    assert picture["status"] == "drawn"
+    assert len(backend.calls(Node.PICTURE)) >= 3
 
 
 def test_the_command_draws_every_scene_in_every_style_through_the_picture_model(
