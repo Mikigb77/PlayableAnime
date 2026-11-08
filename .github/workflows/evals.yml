@@ -9,9 +9,14 @@
 #
 # Each run uploads its results (run.json, summary.md, transcripts, pictures) and appends a line to
 # history.jsonl, which is carried from run to run in the Actions cache and shown as a trend.
+#
+# A run by hand with `styles` plays no scenario: it draws the same scenes once in each candidate
+# house style (backend/evals/styles.py, S7), for Miki to pick the look from, about $0.55, and also
+# pushes the pictures to a branch of their own, style-samples/<run id>, for a thread that can't
+# download the artifact. Delete that branch once the pictures are read.
 
 name: Evals
-run-name: "Evals${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}"
+run-name: "Evals${{ inputs.styles && ', house style candidates' || '' }}${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}"
 
 on:
   schedule:
@@ -26,6 +31,10 @@ on:
         description: The picture model to draw with, such as gemini-nano-banana-2.1 (blank is the default, M8)
         type: string
         default: ""
+      styles:
+        description: Draw one scene in each candidate house style instead of the scenarios (S7)
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -71,6 +80,7 @@ jobs:
           restore-keys: evals-history-
 
       - name: Run the evals
+        if: ${{ !inputs.styles }}
         env:
           ONLY: ${{ inputs.only }}
           # Blank keeps the configured picture model (graph.llm.config).
@@ -81,12 +91,22 @@ jobs:
           uv run python -m evals run --mode live --out evals-out \
             --history evals-history/history.jsonl "${args[@]}"
 
+      - name: Draw the house style candidates
+        if: ${{ inputs.styles }}
+        env:
+          # Blank keeps the configured picture model (graph.llm.config).
+          PICTURE_MODEL: ${{ inputs.picture_model }}
+        run: uv run python -m evals styles --out evals-out
+
       - name: Summary and trend
         if: ${{ !cancelled() }}
+        env:
+          STYLES: ${{ inputs.styles }}
         run: |
           # In the log too, where a thread reads it. Eval stories are made up: no player's data.
           if [ -f evals-out/summary.md ]; then tee -a "$GITHUB_STEP_SUMMARY" <evals-out/summary.md; fi
-          if [ -f evals-history/history.jsonl ]; then
+          # A styles run plays no scenario, so it has no trend to show.
+          if [ -f evals-history/history.jsonl ] && [ "$STYLES" != "true" ]; then
             cp evals-history/history.jsonl evals-out/
             {
               echo
@@ -99,7 +119,7 @@ jobs:
           fi
 
       - name: Keep the history
-        if: ${{ !cancelled() && hashFiles('backend/evals-history/history.jsonl') != '' }}
+        if: ${{ !cancelled() && !inputs.styles && hashFiles('backend/evals-history/history.jsonl') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: backend/evals-history
@@ -113,3 +133,35 @@ jobs:
           path: backend/evals-out
           if-no-files-found: ignore
           retention-days: 90
+
+  # A styles run's pictures on a branch of their own, so a thread that can't download the artifact
+  # reads them with git. Eval stories are made up: no player's data.
+  style-samples:
+    name: Push the style samples to a branch
+    needs: live
+    if: ${{ inputs.styles }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: evals-live-${{ github.run_id }}
+          path: samples
+
+      - name: Push them
+        working-directory: samples
+        env:
+          BRANCH: style-samples/${{ github.run_id }}
+          TOKEN: ${{ github.token }}
+        run: |
+          git init -q -b "$BRANCH"
+          git add styles styles.json summary.md
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "House style candidates from Evals run $GITHUB_RUN_ID"
+          # Forced, so a re-run of the same run replaces its own earlier push.
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/$BRANCH"
+          echo "Pushed to $BRANCH"

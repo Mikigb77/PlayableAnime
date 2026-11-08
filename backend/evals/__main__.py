@@ -5,10 +5,12 @@
     uv run python -m evals run --mode live --out evals-out --history evals-out/history.jsonl
     uv run python -m evals run --only t17.time-stop --only t18.
     uv run python -m evals report --history evals-out/history.jsonl
+    uv run python -m evals styles --out evals-out     # one scene in each candidate house style
 
-`run` exits 1 when a scenario fails or errors, and 2 when live mode has no model access. Live
-mode needs `LLM_PROVIDER=vertex`, `GCP_PROJECT` and Application Default Credentials, never a key
-(B11).
+`run` exits 1 when a scenario fails or errors, and 2 when live mode has no model access.
+`styles` draws each scene of `evals.styles` in each candidate house style for Miki to pick from
+(S7), and exits 1 when it drew nothing. Live mode and `styles` need `LLM_PROVIDER=vertex`,
+`GCP_PROJECT` and Application Default Credentials, never a key (B11).
 """
 
 from __future__ import annotations
@@ -66,6 +68,34 @@ async def run(scenarios: Sequence[Scenario], mode: Mode, models: Models) -> list
     return results
 
 
+def draw_styles(
+    out: Path, scene_ids: Sequence[str], style_ids: Sequence[str], models: Models
+) -> int:
+    """`styles`: each chosen scene in each chosen candidate house style (S7, `evals.styles`)."""
+    from evals import styles
+    from graph.llm import Node, TurnTelemetry
+    from media.drawing import GraphPictureModel
+
+    try:
+        scenes = styles.pick(styles.SCENES, scene_ids)
+        chosen_styles = styles.pick(styles.STYLES, style_ids)
+        models.require_live()
+    except (ValueError, LiveUnavailable) as error:
+        print(error, file=sys.stderr)
+        return 2
+    model_name = models.resolved().node(Node.PICTURE).model
+
+    def new_model() -> GraphPictureModel:
+        telemetry = TurnTelemetry()
+        return GraphPictureModel(models.client("teen", telemetry), telemetry, model_name)
+
+    samples = asyncio.run(styles.draw_all(new_model, out, scenes, chosen_styles))
+    total = styles.write(samples, out, scenes, chosen_styles)
+    drawn = sum(sample.status == "drawn" for sample in samples)
+    print(f"\n{drawn} of {len(samples)} pictures drawn for ${total:.2f}. Results in {out}")
+    return 0 if drawn else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m evals", description=__doc__.split("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -85,6 +115,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     report.add_argument("--mode", choices=[m.value for m in Mode])
     report.add_argument("--last", type=int, default=10)
 
+    styling = commands.add_parser("styles", help="draw one scene in each candidate house style")
+    styling.add_argument("--out", type=Path, required=True, help="write the pictures here")
+    styling.add_argument("--scene", action="append", default=[], help="a scene id (all if none)")
+    styling.add_argument("--style", action="append", default=[], help="a style id (all if none)")
+
     args = parser.parse_args(argv)
     # Engine and graph warnings (a blocked step, a rejected update) are expected in a run; keep
     # them out of the scenario lines.
@@ -101,6 +136,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "report":
         print(trend(read_history(args.history), mode=args.mode, last=args.last), end="")
         return 0
+
+    if args.command == "styles":
+        return draw_styles(args.out, args.scene, args.style, Models())
 
     mode = Mode(args.mode)
     scenarios = chosen(args.only, args.suite)
