@@ -45,15 +45,18 @@ HOUSE_STYLE = (
     "mood, with strong contrast between light and deep shadow, atmospheric depth, and a muted, "
     "naturalistic palette with one strong accent colour. Nothing cute, whimsical or childish: no "
     "chibi or cartoon proportions, no oversized eyes or baby faces on grown-ups, no soft, rounded, "
-    "toy-like shapes, no bright candy or pastel colours, and no storybook or fairy-tale look. A "
+    "toy-like shapes, no bright candy or pastel colours, and no storybook or fairy-tale look. "
+    "Everything rendered in high detail: intricate textures of cloth, skin, stone and metal, fine "
+    "highlights and crisp small details, while the focal point stays clear. A "
     "clear focal point that reads on a phone screen, kept in the upper two thirds of the frame; "
     "the bottom edge stays calm and darker, because it fades into a dark page. One single, "
     "uninterrupted image that fills the frame edge to edge with no border or vignette of its own, "
     "with no writing anywhere in it."
 )
 # The house style's version, kept with each starter cover, so a deploy draws the covers drawn in
-# an older style once more. 2: the grown-up look (Miki, 2026-11-08).
-HOUSE_STYLE_VERSION = 2
+# an older style once more. 2: the grown-up look (Miki, 2026-11-08). 3: the grown-up look in
+# higher detail, picked from the style comparison (`evals.styles`, Miki, 2026-11-08).
+HOUSE_STYLE_VERSION = 3
 
 # M6, F3 and G12, in every rating, Mature included. Mild is about what a picture shows, never its
 # tone: "suitable for every audience" drew the pictures as if for young children (Miki,

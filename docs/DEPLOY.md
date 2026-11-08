@@ -405,7 +405,8 @@ scene picture's note adds a fraction of a cent), paid by the house: the logs sho
 and cost (`Redrawn picture ready`), and no player's ledger changes. Portraits and places go first,
 so the scenes and covers are drawn with the new faces. The old drawing stays on screen until the
 new one is stored, then its file is deleted; the app shows the new one the next time it loads the
-story. The grown-up house style (2026-11-08) redraws the 49 pictures drawn so far for about $1.70.
+story. The grown-up house style (2026-11-08) redraws the 49 pictures drawn so far for about $1.70,
+and its higher-detail version (3, the same day) redraws everything drawn before it once more.
 
 The drawings are 10 s apart, and one that runs out of quota is drawn again after a minute, twice
 at most. A run spends at most $5 and starts no drawing after 45 minutes (the job has 60), so a big

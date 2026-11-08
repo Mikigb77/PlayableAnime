@@ -169,7 +169,8 @@ together.
 - **The house style (S7, M5)** suits the dark page and the app's readers, teens and adults: a
   grown-up look, like a frame from an anime film or a graphic novel made for adults (Miki,
   2026-11-08: the pictures looked like a fairy tale for children). Semi-realistic proportions,
-  faces that show each person's true age and character, detailed textures, a serious, grounded
+  faces that show each person's true age and character, high detail (intricate textures, fine
+  highlights and crisp small details, with the focal point kept clear), a serious, grounded
   mood, dramatic painterly light true to the moment's time of day with strong contrast and deep
   shadows, atmospheric depth and a muted, naturalistic palette with one strong accent, in the
   world's own era and look. Nothing cute or childish: no chibi or cartoon proportions, no
