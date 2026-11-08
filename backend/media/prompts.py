@@ -100,6 +100,12 @@ FRAMING = {
     ),
 }
 
+# The people a scene or cover lists are its only figures, each drawn once (M5).
+ONLY_THEM = (
+    "Draw each of them once, and no one else in front: anyone else the description mentions "
+    "stays a small, unnamed part of the background."
+)
+
 # Portraits and covers are tall, places and scenes wide. The app sizes the picture slot from the
 # kind before the picture arrives (docs/API.md).
 ASPECT_RATIOS = {"portrait": "3:4", "place": "16:9", "scene": "16:9", "cover": "3:4"}
@@ -323,6 +329,10 @@ def build_prompt(
     if figures:
         people = "; ".join(person(f) for f in figures)
         lines.append(f"How the people in it look: {people.rstrip('.')}.")
+        if kind in ("scene", "cover"):
+            # Miki, 2026-11-08: a scene of two came out with a third person, someone the scene
+            # only mentioned, and a referenced person can come out twice.
+            lines.append(ONLY_THEM)
     if kind in ("scene", "cover"):
         lines.extend(_carried(f) for f in figures if f.carries is not None)
     look = brief.look

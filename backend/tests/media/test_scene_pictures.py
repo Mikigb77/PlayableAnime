@@ -173,6 +173,30 @@ def test_the_note_keeps_only_the_portraits_of_the_people_it_shows(client, painte
     assert painters.ours.requests[3].references == ()
 
 
+def test_a_picture_keeps_what_it_was_drawn_from_for_staff(client, painters, meter, log_lines):
+    """Miki, 2026-11-08: a picture that looks wrong can be traced. The note's description, the
+    people it shows and the images that went along stay with the picture (T16), next to the brief
+    as planned, which a later drawing still starts from, and none of it is logged (T6)."""
+    story = make_story()
+    _ready(client, story, 1, "zhao", "portrait")
+    _leap(story)
+    painters.ours.script_notes(
+        PictureNote(description="Zhao Yun hauls Lin Feng onto a pine branch.", people=["Zhao Yun"])
+    )
+
+    assert _image(client, story, 2).json()["status"] == "ready"
+
+    image = Image.objects.get(story=story, subject="turn-2")
+    assert image.brief["drawn_from"] == {
+        "description": "Zhao Yun hauls Lin Feng onto a pine branch.",
+        "people": ["Lin Feng", "Zhao Yun"],
+        "references": ["Image 1: the portrait of Zhao Yun."],
+        "noted": True,
+    }
+    assert image.brief["description"] == "You crouch on a rooftop, dagger drawn."
+    assert "hauls" not in str(log_lines())
+
+
 def test_the_place_picture_goes_along_with_a_scene_that_happens_there(
     client, painters, meter, log_lines
 ):

@@ -1767,6 +1767,12 @@ app                   shows the narration, then asks for the picture in its own 
   references, labelled as the place and used for how it looks, never for the framing, people or
   light. Illustrate on an earlier scene gets no place, since the record holds where the player
   character is now. The T5 line says whether a picture was noted and had its place.
+  The people a scene or cover lists are its only figures, each drawn once (`ONLY_THEM`): anyone
+  else its scene mentions, such as a crowd or the guards at a feast, stays a small, unnamed part
+  of the background, and the note is told the same (Miki, 2026-11-08). A ready picture keeps
+  what it was drawn from in its brief, under `drawn_from`: the description (the note's, or the
+  plan's), the people and the labels of the images that went along. Staff can read it in the
+  admin (T16). It is never logged (T6), and a later drawing still starts from the planned brief.
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls

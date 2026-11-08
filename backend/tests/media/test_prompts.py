@@ -9,6 +9,7 @@ from media.prompts import (
     HOUSE_STYLE_VERSION,
     MAX_DESCRIPTION_CHARS,
     MILD_RULES,
+    ONLY_THEM,
     Brief,
     Figure,
     WorldLook,
@@ -114,6 +115,19 @@ def test_known_characters_go_along_with_their_appearance_and_reference_portraits
     assert "not from the portrait" in prompt.user
     # A portrait drawn in an older house style doesn't pull the picture back to it (S7).
     assert "the drawing style from this picture and the house style" in prompt.user
+
+
+@pytest.mark.parametrize("kind", ["scene", "cover"])
+def test_the_people_listed_are_the_only_figures_each_drawn_once(kind):
+    """Miki, 2026-11-08: a scene of two came out with a third person, someone the scene only
+    mentioned; and a person whose portrait goes along can come out twice."""
+    brief = Brief(description="Rosa confronts Tonio.", figures=(Figure("rosa", "Rosa", "curls"),))
+
+    user = build_prompt(kind, brief, references=["Rosa"]).user
+
+    assert ONLY_THEM in user
+    assert user.index("How the people in it look:") < user.index(ONLY_THEM)
+    assert ONLY_THEM not in build_prompt(kind, Brief(description="An empty hall.")).user
 
 
 def test_the_moment_comes_before_the_people_and_the_world():

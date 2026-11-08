@@ -32,6 +32,7 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.db import transaction
@@ -68,6 +69,8 @@ logger = logging.getLogger("media.pictures")
 # Longer than a Cloud Run request can live (T1), so a live request never loses its claim.
 LEASE = timedelta(seconds=300)
 MAX_ATTEMPTS = 3
+# Where a ready picture's brief keeps what it was drawn from (`drawn_from`), for staff (T16).
+DRAWN_FROM = "drawn_from"
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,8 @@ class _Attempt:
     place_reference: bool = False
     noted: bool = False
     categories: tuple[str, ...] = ()
+    # What the picture was drawn from, kept with it for staff (T16), never logged (T6).
+    drawn_from: dict[str, Any] | None = None
     # The credit hold until it is charged or released, and a stored file not yet the picture's.
     ticket: billing.Ticket | None = None
     saved_key: str | None = None
@@ -394,11 +399,24 @@ async def _draw_once(
         request = plan.request()
         attempt.references = len(request.references)
         attempt.place_reference = plan.with_place
+        attempt.drawn_from = drawn_from(plan.brief, request, noted=attempt.noted)
         return await model.draw(request)
     except KeyCannotDraw:
         return None
     finally:
         await model.aclose()
+
+
+def drawn_from(brief: Brief, request: DrawRequest, *, noted: bool) -> dict[str, Any]:
+    """What a picture was drawn from, kept with it so a picture that looks wrong can be traced
+    (Miki, 2026-11-08): the description, written by the note or as planned, the people it
+    shows and the images that went along, by their labels."""
+    return {
+        "description": brief.description,
+        "people": [f.name for f in brief.figures if f.name],
+        "references": [ref.label for ref in request.references],
+        "noted": noted,
+    }
 
 
 @dataclass
@@ -590,6 +608,8 @@ def _finish(
         image.claim = None
         image.style = HOUSE_STYLE_VERSION
         image.ready_at = timezone.now()
+        if attempt.drawn_from is not None:
+            image.brief = {**(image.brief or {}), DRAWN_FROM: attempt.drawn_from}
         image.save()
         image.sync_scenes()
         return image, True
