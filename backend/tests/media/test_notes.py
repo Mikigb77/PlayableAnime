@@ -99,6 +99,14 @@ def test_the_rules_keep_the_note_to_what_the_scene_tells():
     assert "Write in English, whatever language the scene is in" in NOTE_SYSTEM
 
 
+def test_the_note_keeps_anyone_the_scene_only_mentions_in_the_background():
+    """Miki, 2026-11-08: a scene of the player character and one other came out with a third
+    person, one of the scouts the scene only said had joined the feast."""
+    assert "each once" in NOTE_SYSTEM
+    assert "a small, unnamed part of the background" in NOTE_SYSTEM
+    assert "never a figure of their own" in NOTE_SYSTEM
+
+
 def test_the_note_becomes_the_description_with_only_the_people_it_shows():
     note = PictureNote(
         description="Lin Feng leaps between high pine branches.", people=["lin feng"]
