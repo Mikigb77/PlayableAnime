@@ -293,6 +293,8 @@ def test_a_new_look_from_json_is_kept_grown_up():
         "{}",
         "[]",
         '[{"id": "a", "name": "A"}]',
+        '[{"id": "a", "name": "A", "look": "   "}]',
+        '[{"id": "a", "name": "A", "tweak": 5}]',
         '[{"id": "a", "name": "A", "look": "x", "tweak": "y"}]',
         '[{"id": "Bad Id", "name": "A", "look": "x"}]',
         '[{"id": "current", "name": "A", "look": "x"}]',

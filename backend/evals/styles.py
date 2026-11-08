@@ -413,6 +413,8 @@ def candidates(text: str) -> list[Style]:
             raise ValueError(f"A candidate has an id, a name and a look or a tweak: {entry!r}")
         style_id, name = entry.get("id"), entry.get("name")
         look, tweak = entry.get("look") or "", entry.get("tweak") or ""
+        look = look.strip() if isinstance(look, str) else look
+        tweak = tweak.strip() if isinstance(tweak, str) else tweak
         if not isinstance(style_id, str) or not CANDIDATE_ID.match(style_id):
             raise ValueError(f"A candidate's id is lowercase letters, digits and -: {style_id!r}")
         if style_id in {style.id for style in styles}:
@@ -423,5 +425,5 @@ def candidates(text: str) -> list[Style]:
             raise ValueError(f"The candidate {style_id!r} has either a look or a tweak")
         if len(look or tweak) > MAX_CANDIDATE_CHARS:
             raise ValueError(f"The candidate {style_id!r} is over {MAX_CANDIDATE_CHARS} characters")
-        styles.append(Style(style_id, name.strip(), look=look.strip(), tweak=tweak.strip()))
+        styles.append(Style(style_id, name.strip(), look=look, tweak=tweak))
     return styles
