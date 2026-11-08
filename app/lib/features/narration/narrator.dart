@@ -45,9 +45,13 @@ class ReadOnPhone extends NarrationNotice {
   final StudioFallback reason;
 }
 
-/// The phone has no voice to read with.
+/// The phone has no voice that reads the story's [language] natively (a Spanish story needs one
+/// from Spain), or none at all.
 class NoPhoneVoice extends NarrationNotice {
-  const NoPhoneVoice(super.storyId);
+  const NoPhoneVoice(super.storyId, this.language);
+
+  /// The story's language: `en`, `es` or `ca`.
+  final String language;
 }
 
 /// The studio voice read a part, which may have cost credits: the balance shown is out of date.
@@ -219,7 +223,7 @@ class Narrator extends ChangeNotifier {
     try {
       await _phone().speak(text.trim(), language: language);
     } on Object {
-      if (session == _session) _notify(NoPhoneVoice(storyId));
+      if (session == _session) _notify(NoPhoneVoice(storyId, language));
     }
   }
 

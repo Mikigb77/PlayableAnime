@@ -2,10 +2,12 @@
 
 The app reads a scene in parts (`speech.reading`): it asks for part 0, plays it as soon as it
 comes, and asks for the next while it plays. Gemini's TTS model on Vertex AI reads each part in
-the voice the player picked, and the MP3 is kept in the pictures' private bucket, so asking again
-answers the same file at no charge (V10). Asking is always safe: a part is read and charged at
-most once per voice, a repeat while it is read answers `pending`, and a part the voice model
-refused answers `blocked`, which the app reads in the phone's own voice.
+the voice the player picked, in the story's language and accent (`speech.voices.READING_LOCALES`:
+Spanish from Spain, never Latin American), and the MP3 is kept in the pictures' private bucket,
+so asking again answers the same file at no charge (V10). Asking is always safe: a part is read
+and charged at most once per voice and language, a repeat while it is read answers `pending`,
+and a part the voice model refused answers `blocked`, which the app reads in the phone's own
+voice.
 
 A part is billed like any model call (K2): the meter checks the rate limit, the daily quota and
 the credits first, then charges the real cost plus the margin, about two cents for a long part.
@@ -40,9 +42,10 @@ from moderation.models import Report
 from speech.audio import Encoded, to_mp3
 from speech.models import AudioStatus, SceneAudio
 from speech.reading import reading_parts
-from speech.voices import DEFAULT_VOICE, VOICES
+from speech.voices import DEFAULT_VOICE, VOICES, reading_locale
 from stories.access import owned_story
 from stories.models import Scene
+from stories.responses import settings_of
 
 logger = logging.getLogger("speech")
 
@@ -82,6 +85,7 @@ class _Reading:
 
     voice: str
     part: int
+    language: str = ""
     parts: int = 0
     chars: int = 0
     outcome: str = "ok"
@@ -105,6 +109,8 @@ async def scene_audio(
             )
         story = await owned_story(request, story_id)
         logs.bind(story_id=str(story.id))
+        language = reading_locale(settings_of(story).language)
+        record.language = language
         scene = await Scene.objects.live().filter(story=story, turn=turn).afirst()
         if scene is None or await _blocked(scene):
             # A scene the player blocked (F6) is never read: its text stays out of sight.
@@ -117,7 +123,7 @@ async def scene_audio(
             )
         text = parts[query.part]
         record.chars = len(text)
-        row = await _claim(scene, query.voice, query.part, len(text))
+        row = await _claim(scene, query.voice, language, query.part, len(text))
         if row.status == AudioStatus.PENDING and row.token is None:
             record.outcome = "pending"
             return await _out(request, row, parts)
@@ -158,7 +164,7 @@ class _Row:
         return self.audio.duration_ms
 
 
-async def _claim(scene: Scene, voice: str, part: int, chars: int) -> _Row:
+async def _claim(scene: Scene, voice: str, language: str, part: int, chars: int) -> _Row:
     """The part's row: one already read or refused, one another request is reading, or one this
     request claims to read, new or left behind by a request that died (`STALE_AFTER_S`)."""
     token = uuid.uuid4()
@@ -166,6 +172,7 @@ async def _claim(scene: Scene, voice: str, part: int, chars: int) -> _Row:
     audio, created = await SceneAudio.objects.aget_or_create(
         scene=scene,
         voice=voice,
+        language=language,
         part=part,
         defaults={"status": AudioStatus.PENDING, "chars": chars, "claim": token},
     )
@@ -213,7 +220,9 @@ async def _read(
         client = await sync_to_async(_client, thread_sensitive=False)(story.rating, telemetry)
         record.read = True
         try:
-            spoken = await client.read_aloud(Node.VOICE, text, Reading(voice=audio.voice))
+            spoken = await client.read_aloud(
+                Node.VOICE, text, Reading(voice=audio.voice, language=audio.language)
+            )
             encoded = await sync_to_async(to_mp3, thread_sensitive=False)(
                 spoken.data, spoken.mime_type
             )
@@ -324,6 +333,7 @@ def _log(record: _Reading, telemetry: TurnTelemetry) -> None:
     fields = {
         "outcome": record.outcome,
         "voice": record.voice,
+        "language": record.language,
         "part": record.part,
         "parts": record.parts,
         "chars": record.chars,

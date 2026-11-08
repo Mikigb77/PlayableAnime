@@ -562,7 +562,15 @@
   "narrationOutOfCredits": "You're out of credits for the studio voice, so this device's voice is reading.",
   "narrationQuota": "Today's studio voice reading is used up, so this device's voice is reading.",
   "narrationUnavailable": "The studio voice isn't available right now, so this device's voice is reading.",
-  "narrationNoDeviceVoice": "This device has no voice to read aloud with.",
+  "narrationNoDeviceVoice": "This device has no {language, select, es{Spanish (Spain)} ca{Catalan} other{English}} voice to read this story aloud. You can add one in its text-to-speech settings.",
+  "@narrationNoDeviceVoice": {
+    "description": "The device's own voice can't read the story: it has no voice for the story's language, as a native speaker reads it (Spanish only from Spain). {language} is the story's language code.",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
   "youDid": "You: {action}",
   "@youDid": {
     "description": "Screen-reader label for the player's action above a scene.",

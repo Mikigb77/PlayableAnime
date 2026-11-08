@@ -358,7 +358,7 @@
   "narrationOutOfCredits": "No te quedan créditos para la voz de estudio, así que lee la voz del dispositivo.",
   "narrationQuota": "La lectura con voz de estudio de hoy se ha agotado, así que lee la voz del dispositivo.",
   "narrationUnavailable": "La voz de estudio no está disponible ahora, así que lee la voz del dispositivo.",
-  "narrationNoDeviceVoice": "Este dispositivo no tiene una voz para leer en voz alta.",
+  "narrationNoDeviceVoice": "Este dispositivo no tiene una voz en {language, select, es{español de España} ca{catalán} other{inglés}} para leer esta historia en voz alta. Puedes añadir una en sus ajustes de texto a voz.",
   "youDid": "Tú: {action}",
   "narrationWriting": "Se está escribiendo la historia",
   "picturePending": "Se está pintando una imagen",
