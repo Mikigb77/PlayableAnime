@@ -4,6 +4,8 @@ what's the style that I would prefer").
 
     uv run python -m evals styles --out evals-out
     uv run python -m evals styles --out evals-out --scene well-at-dusk --style current
+    uv run python -m evals styles --out evals-out --candidates '[{"id": "warmer", "name":
+        "Warmer light", "tweak": "Light it warmer, with golden highlights."}]'
 
 Each picture goes through the product's own prompt builder, rules and picture model, with only the
 house style swapped (`media.prompts.HOUSE_STYLE`), so a candidate looks as it would in play. Every
@@ -11,6 +13,11 @@ candidate stays grown-up (S7), and keeps the composition the app needs: the foca
 calm, darker bottom edge that fades into the page, no border and no writing. The scenes come from
 the evals' sample stories, with each person's kept look and age, and are drawn without reference
 portraits, so no picture in an older style pulls a candidate back toward it.
+
+A later round needs no code change: `--candidates` (the Evals workflow's `candidates` input) takes
+a JSON list of candidates, each with an `id`, a `name`, and either a `look` of its own or a
+`tweak` to today's look (Miki, 2026-11-08: "Are there any more styles to test?"), drawn next to
+today's house style.
 
 Nothing here changes the house style: the one Miki picks goes into `media.prompts` in its own PR,
 with `HOUSE_STYLE_VERSION` moved on. Live only, run by hand from the Evals workflow (`styles`).
@@ -24,6 +31,7 @@ import asyncio
 import json
 import logging
 import mimetypes
+import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -58,12 +66,21 @@ GROWN_UP = (
 )
 
 
-def composition() -> str:
-    """The composition the app needs, as today's house style words it."""
+def _composition_start() -> int:
     start = HOUSE_STYLE.find(COMPOSITION_STARTS)
     if start < 0:
         raise ValueError(f"The house style no longer says {COMPOSITION_STARTS!r}")
-    return HOUSE_STYLE[start:]
+    return start
+
+
+def composition() -> str:
+    """The composition the app needs, as today's house style words it."""
+    return HOUSE_STYLE[_composition_start() :]
+
+
+def todays_look() -> str:
+    """Today's house style before its composition: what a `tweak` changes."""
+    return HOUSE_STYLE[: _composition_start()].rstrip()
 
 
 @dataclass(frozen=True)
@@ -72,9 +89,13 @@ class Style:
     name: str
     # How it looks, before what every candidate keeps; empty for today's house style.
     look: str = ""
+    # Or a change to today's look, which keeps the rest of it, its grown-up lines included.
+    tweak: str = ""
 
     def text(self) -> str:
         """The house style a picture in this style is drawn with."""
+        if self.tweak:
+            return f"{todays_look()} {self.tweak} {composition()}"
         if not self.look:
             return HOUSE_STYLE
         return f"{self.look} {GROWN_UP} {composition()}"
@@ -370,3 +391,37 @@ def pick[T: (Scene, Style)](catalog: Sequence[T], ids: Sequence[str]) -> list[T]
     if unknown:
         raise ValueError(f"Unknown: {', '.join(sorted(unknown))}")
     return [entry for entry in catalog if not ids or entry.id in ids]
+
+
+MAX_CANDIDATES = 11
+MAX_CANDIDATE_CHARS = 1500
+CANDIDATE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+
+
+def candidates(text: str) -> list[Style]:
+    """Today's house style, then the candidates `text` lists as JSON: each with an `id`, a
+    `name`, and either a `look` of its own or a `tweak` to today's look. Raises ValueError."""
+    try:
+        entries = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"The candidates aren't JSON: {error}") from error
+    if not isinstance(entries, list) or not 1 <= len(entries) <= MAX_CANDIDATES:
+        raise ValueError(f"The candidates are a list of 1 to {MAX_CANDIDATES} styles")
+    styles = [STYLES[0]]
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) - {"id", "name", "look", "tweak"}:
+            raise ValueError(f"A candidate has an id, a name and a look or a tweak: {entry!r}")
+        style_id, name = entry.get("id"), entry.get("name")
+        look, tweak = entry.get("look") or "", entry.get("tweak") or ""
+        if not isinstance(style_id, str) or not CANDIDATE_ID.match(style_id):
+            raise ValueError(f"A candidate's id is lowercase letters, digits and -: {style_id!r}")
+        if style_id in {style.id for style in styles}:
+            raise ValueError(f"Two candidates are called {style_id!r}")
+        if not isinstance(name, str) or not 0 < len(name.strip()) <= 80:
+            raise ValueError(f"The candidate {style_id!r} needs a name of up to 80 characters")
+        if not isinstance(look, str) or not isinstance(tweak, str) or bool(look) == bool(tweak):
+            raise ValueError(f"The candidate {style_id!r} has either a look or a tweak")
+        if len(look or tweak) > MAX_CANDIDATE_CHARS:
+            raise ValueError(f"The candidate {style_id!r} is over {MAX_CANDIDATE_CHARS} characters")
+        styles.append(Style(style_id, name.strip(), look=look.strip(), tweak=tweak.strip()))
+    return styles

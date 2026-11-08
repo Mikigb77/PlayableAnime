@@ -1361,8 +1361,11 @@ the people with their ages, the rules and the picture model are the product's ow
 reference portrait goes along, so no picture in an older style pulls a candidate back. Two scenes
 in eight styles cost about $0.55. The pictures, `styles.json` (each style's full text, model, cost
 and status) and the summary are in the artifact, and a second job pushes them to the branch
-`style-samples/<run id>` for a thread that can't download artifacts; delete it once read. The
-style Miki picks goes into `media.prompts.HOUSE_STYLE` in its own PR, with `HOUSE_STYLE_VERSION`
+`style-samples/<run id>` for a thread that can't download artifacts; delete it once read. A later
+round needs no code change: the `candidates` input (`--candidates`) takes a JSON list of styles,
+each with an `id`, a `name`, and either a `look` of its own, which gets the grown-up clause and the
+composition, or a `tweak` to today's look, which keeps the rest of it, and draws them next to
+today's house style. The style Miki picks goes into `media.prompts.HOUSE_STYLE` in its own PR, with `HOUSE_STYLE_VERSION`
 moved on, which redraws the pictures so far (M4).
 
 ## App

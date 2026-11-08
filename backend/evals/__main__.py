@@ -69,16 +69,22 @@ async def run(scenarios: Sequence[Scenario], mode: Mode, models: Models) -> list
 
 
 def draw_styles(
-    out: Path, scene_ids: Sequence[str], style_ids: Sequence[str], models: Models
+    out: Path,
+    scene_ids: Sequence[str],
+    style_ids: Sequence[str],
+    models: Models,
+    candidates: str = "",
 ) -> int:
-    """`styles`: each chosen scene in each chosen candidate house style (S7, `evals.styles`)."""
+    """`styles`: each chosen scene in each chosen candidate house style (S7, `evals.styles`):
+    the built-in candidates, or today's style and the ones `candidates` lists as JSON."""
     from evals import styles
     from graph.llm import Node, TurnTelemetry
     from media.drawing import GraphPictureModel
 
     try:
         scenes = styles.pick(styles.SCENES, scene_ids)
-        chosen_styles = styles.pick(styles.STYLES, style_ids)
+        catalog = styles.candidates(candidates) if candidates.strip() else styles.STYLES
+        chosen_styles = styles.pick(catalog, style_ids)
         models.require_live()
     except (ValueError, LiveUnavailable) as error:
         print(error, file=sys.stderr)
@@ -119,6 +125,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     styling.add_argument("--out", type=Path, required=True, help="write the pictures here")
     styling.add_argument("--scene", action="append", default=[], help="a scene id (all if none)")
     styling.add_argument("--style", action="append", default=[], help="a style id (all if none)")
+    styling.add_argument(
+        "--candidates", default="", help="a JSON list of candidates to draw next to today's style"
+    )
 
     args = parser.parse_args(argv)
     # Engine and graph warnings (a blocked step, a rejected update) are expected in a run; keep
@@ -138,7 +147,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "styles":
-        return draw_styles(args.out, args.scene, args.style, Models())
+        return draw_styles(args.out, args.scene, args.style, Models(), args.candidates)
 
     mode = Mode(args.mode)
     scenarios = chosen(args.only, args.suite)
