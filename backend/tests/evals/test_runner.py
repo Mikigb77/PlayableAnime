@@ -435,3 +435,39 @@ def test_live_mode_without_vertex_exits_2(monkeypatch, capsys):
     monkeypatch.setenv("LLM_PROVIDER", "fake")
     assert main(["run", "--mode", "live", "--only", "t18.same-face"]) == 2
     assert "LLM_PROVIDER=vertex" in capsys.readouterr().err
+
+
+def test_a_missed_criterion_is_reported_with_the_judges_reason():
+    """T18: a live run's log says what the judge saw for each criterion it failed, since the run's
+    artifact can be out of reach."""
+    from evals.judge import Judgement, Verdict
+
+    async def script(ev: Eval) -> None:
+        ev.check("drawn", True)
+        ev.judged.append(
+            Judgement(
+                "the look",
+                (
+                    Verdict("M1", "must", "Every picture looks made for grown-ups " * 5, True),
+                    Verdict(
+                        "M2",
+                        "must",
+                        "No picture looks like a children's book",
+                        False,
+                        reason="The cover has  pastel colours\nand big round eyes.",
+                    ),
+                    Verdict("M3", "must", "Each person looks their age", False),
+                ),
+            )
+        )
+        ev.judged.append(Judgement("broken", error="the judge answered nothing"))
+
+    result = play(script)
+
+    assert result.status == "failed"
+    assert result.failures() == [
+        "judge the look: M2 (No picture looks like a children's book) failed: The cover has "
+        "pastel colours and big round eyes.",
+        "judge the look: M3 (Each person looks their age) failed: no reason given",
+        "judge broken: the judge answered nothing",
+    ]
