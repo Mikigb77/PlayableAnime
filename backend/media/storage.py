@@ -17,6 +17,7 @@ import logging
 import re
 import threading
 import time
+import uuid
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -237,9 +238,12 @@ def signed_urls(keys: Iterable[str], ttl_s: int | None = None) -> dict[str, Sign
 _SIGNING_THREADS = 8
 
 
-def storage_key(story_id: object, image_id: object, mime_type: str) -> str:
-    """Files are grouped by story, so a story's pictures can be found and deleted together."""
-    return f"stories/{story_id}/{image_id}{extension_for(mime_type)}"
+def storage_key(story_id: object, image_id: object, mime_type: str, *, fresh: bool = False) -> str:
+    """Files are grouped by story, so a story's pictures can be found and deleted together.
+    `fresh` gives a picture drawn again a new file of its own, so a URL signed for the old one
+    never shows the new drawing, nor a cached old one the new URL."""
+    suffix = f"-{uuid.uuid4().hex[:12]}" if fresh else ""
+    return f"stories/{story_id}/{image_id}{suffix}{extension_for(mime_type)}"
 
 
 def extension_for(mime_type: str) -> str:

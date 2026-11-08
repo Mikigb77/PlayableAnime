@@ -59,7 +59,7 @@ from media.plans import (
     plan_again,
     plan_picture,
 )
-from media.prompts import MAX_REFERENCES, Brief, build_prompt
+from media.prompts import HOUSE_STYLE_VERSION, MAX_REFERENCES, Brief, build_prompt
 from media.storage import SignedUrl, delete_quietly, get_storage, signed_url, storage_key
 from stories.models import ImageKind, Scene, Story
 
@@ -286,7 +286,7 @@ async def _draw_claimed(
     when the player can't pay for it (M2). Without it a picture the credits can't cover is
     skipped, and the turn goes on (M7)."""
     try:
-        plan = await _plan(story, scene, image)
+        plan = await plan_drawing(story, scene, image)
         drawn: Drawn | None = None
         if byok_key:
             attempt.byok = True
@@ -388,7 +388,9 @@ async def _draw_once(
     )
     attempt.model = model.model
     try:
-        await _note(plan, model, attempt)
+        if await write_note(plan, model):
+            # Kept when the player's key wrote the note and ours draws the picture.
+            attempt.noted = True
         request = plan.request()
         attempt.references = len(request.references)
         attempt.place_reference = plan.with_place
@@ -444,12 +446,12 @@ class _Plan:
         )
 
 
-async def _note(plan: _Plan, model: PictureModel, attempt: _Attempt) -> None:
-    """Writes the picture's description from the finished scene, once (`media.notes`). A note
-    that fails on the player's key is tried again on ours, if ours draws the picture; one that
-    fails on ours leaves the narrator's description."""
+async def write_note(plan: _Plan, model: PictureModel) -> bool:
+    """Writes the picture's description from the finished scene, once (`media.notes`), and says
+    whether it did. A note that fails on the player's key is tried again on ours, if ours draws
+    the picture; one that fails on ours leaves the narrator's description."""
     if plan.scene is None:
-        return
+        return False
     try:
         note = await model.note(note_prompt(plan.kind, plan.brief, plan.scene))
     except Exception as error:
@@ -461,14 +463,18 @@ async def _note(plan: _Plan, model: PictureModel, attempt: _Attempt) -> None:
         )
         if not model.byok:
             plan.scene = None
-        return
+        return False
     plan.scene = None
-    if note is not None:
-        plan.brief = apply_note(plan.brief, note)
-        attempt.noted = True
+    if note is None:
+        return False
+    plan.brief = apply_note(plan.brief, note)
+    return True
 
 
-async def _plan(story: Story, scene: Scene, image: Image) -> _Plan:
+async def plan_drawing(story: Story, scene: Scene | None, image: Image) -> _Plan:
+    """What `image` is drawn from (M5): its brief and the reference pictures it goes with, and
+    for a scene picture the finished scene for its note. `scene` is the scene asking for it; a
+    portrait, place or cover needs none."""
     brief = Brief.from_json(image.brief)
     chosen, place, redraw, told = await _sources(story, scene, image, brief)
     portraits = []
@@ -493,7 +499,7 @@ async def _load(name: str, picture: Image) -> Reference | None:
 
 @sync_to_async
 def _sources(
-    story: Story, scene: Scene, image: Image, brief: Brief
+    story: Story, scene: Scene | None, image: Image, brief: Brief
 ) -> tuple[list[tuple[str, str, Image]], Image | None, bool, SceneText | None]:
     """What a picture is drawn from besides its brief (M5): for a character or place drawn again
     because it changed for good, its earlier picture; for a scene or cover, the ready portraits
@@ -529,10 +535,10 @@ def _sources(
     return chosen, place, False, _told(story, scene, brief)
 
 
-def _told(story: Story, scene: Scene, brief: Brief) -> SceneText | None:
+def _told(story: Story, scene: Scene | None, brief: Brief) -> SceneText | None:
     """The finished scene the picture shows: the one its brief was planned in, else the scene
     asking for it."""
-    if brief.turn and brief.turn != scene.turn:
+    if brief.turn and (scene is None or brief.turn != scene.turn):
         found = (
             Scene.objects.live()
             .filter(story=story, turn=brief.turn)
@@ -541,7 +547,7 @@ def _told(story: Story, scene: Scene, brief: Brief) -> SceneText | None:
         )
         if found is not None:
             scene = found
-    if not (scene.narration or "").strip():
+    if scene is None or not (scene.narration or "").strip():
         return None
     return SceneText(scene.narration, scene.player_action or "")
 
@@ -582,6 +588,7 @@ def _finish(
         image.cost_usd = drawn.cost_usd
         image.payer = payer
         image.claim = None
+        image.style = HOUSE_STYLE_VERSION
         image.ready_at = timezone.now()
         image.save()
         image.sync_scenes()
