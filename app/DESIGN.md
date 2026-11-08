@@ -166,12 +166,19 @@ together.
   not drawn yet, or still loading, shows a glow in the genre's accent, and the cover fades in over
   it (`CoverImage`). The starter premises' covers are drawn once for everyone by the backend's
   `draw_premise_covers` command, with the same framing.
-- **The house style (S7, M5)** suits the dark page: stylised and cinematic with an anime influence,
-  painterly light true to the moment's time of day and mood, rich shadows, atmospheric depth and a
-  restrained palette with one strong accent, in the world's own era and look. A scene is lit for
-  the hour on the story's clock, while its bottom edge stays calm and darker for the fade. One
-  uninterrupted image, like a still from an animated film, with no border or vignette of its own
-  and no writing in it: no text, logos or panels. Mild in every rating (M6).
+- **The house style (S7, M5)** suits the dark page and the app's readers, teens and adults: a
+  grown-up look, like a frame from an anime film or a graphic novel made for adults (Miki,
+  2026-11-08: the pictures looked like a fairy tale for children). Semi-realistic proportions,
+  faces that show each person's true age and character, detailed textures, a serious, grounded
+  mood, dramatic painterly light true to the moment's time of day with strong contrast and deep
+  shadows, atmospheric depth and a muted, naturalistic palette with one strong accent, in the
+  world's own era and look. Nothing cute or childish: no chibi or cartoon proportions, no
+  oversized eyes or baby faces on grown-ups, no candy or pastel colours, no storybook look.
+  Everyone is drawn at the age the story gives them. A scene is lit for the hour on the story's
+  clock, while its bottom edge stays calm and darker for the fade. One uninterrupted image with no
+  border or vignette of its own and no writing in it: no text, logos or panels. Mild in what it
+  shows in every rating, never in its mood (M6). A change of style moves `HOUSE_STYLE_VERSION` on,
+  so the next deploy draws the starter covers again.
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
 ## App icon

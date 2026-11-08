@@ -470,6 +470,7 @@ def brief(
             look=look,
             subject_name=character.name,
             subject_appearance=character.appearance or character.description,
+            subject_age=character.age,
         )
     if picture.kind is PictureKind.PLACE and subject_id in state.places:
         place = state.places[subject_id]

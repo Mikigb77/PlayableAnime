@@ -817,6 +817,16 @@ class Eval:
         self.pictures.append(drawn)
         return drawn
 
+    async def draw_cover(self, story: Story, name: str = "cover") -> Picture | NotDrawn | None:
+        """The story's cover, its poster, from its premise around the main character, as the
+        picture endpoint draws a planned cover (M1). Live mode only."""
+        if not self.live:
+            return None
+        brief = scene_brief(story.state, "", cover=True, premise=story.premise)
+        drawn = await draw(self.picture_model(story), name, "cover", brief)
+        self.pictures.append(drawn)
+        return drawn
+
     # Drafting a world from a premise (G1), for a case whose world isn't a sample.
 
     async def drafted(

@@ -23,7 +23,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints
 
 from media.briefs import mentions
-from media.prompts import MAX_APPEARANCE_CHARS, SAYS_YOU, Brief, _clip
+from media.prompts import MAX_APPEARANCE_CHARS, SAYS_YOU, Brief, _clip, person
 
 # The kinds of picture that show a scene's moment, and so get a note.
 NOTED = ("scene",)
@@ -115,13 +115,8 @@ def note_prompt(kind: str, brief: Brief, scene: SceneText) -> NotePrompt:
     people = [f for f in brief.figures if f.name]
     if people:
         lines.append(
-            "PEOPLE (who may be in the picture, as they look): "
-            + "; ".join(
-                f"{_clip(f.name, 80)}: {_clip(f.appearance, MAX_APPEARANCE_CHARS)}"
-                if f.appearance
-                else _clip(f.name, 80)
-                for f in people
-            )
+            "PEOPLE (who may be in the picture, with their age and how they look): "
+            + "; ".join(person(f) for f in people)
         )
     for figure in people:
         if figure.carries is not None:

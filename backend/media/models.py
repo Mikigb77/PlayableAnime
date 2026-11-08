@@ -139,8 +139,9 @@ class PremiseCover(models.Model):
     """A starter premise's cover (S1, M4), keyed by the premise's id in `graph.drafting.catalog`.
 
     The house draws it once (`media.premise_covers`) and pays for it: its cost is logged (T5),
-    and no player's ledger is charged. Drawn again only when asked (`--force`), or when the one
-    kept is the offline model's placeholder and a real model is configured.
+    and no player's ledger is charged. Drawn again only when asked (`--force`), or, once a real
+    model is configured, when the one kept is the offline model's placeholder or was drawn in an
+    older house style (`style`, S7).
     """
 
     premise_id = models.CharField(max_length=64, primary_key=True)
@@ -151,6 +152,9 @@ class PremiseCover(models.Model):
     cost_usd = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     # Drawn by the offline model (`LLM_PROVIDER=fake`): a placeholder for development.
     offline = models.BooleanField(default=False)
+    # The house style it was drawn in (`media.prompts.HOUSE_STYLE_VERSION`). A cover from an older
+    # style is drawn again by the next run, so Discover shows the app's current look (S7).
+    style = models.PositiveSmallIntegerField(default=1, db_default=1)
     # What was drawn (`media.prompts.Brief`), from the premise's public text. A premise whose text
     # has changed since is reported by the command, and redrawn with `--force`.
     brief = models.JSONField(default=dict, blank=True)

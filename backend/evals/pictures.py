@@ -126,6 +126,7 @@ def portrait_brief(state: WorldState, character_id: str) -> Brief:
         look=look(state),
         subject_name=character.name,
         subject_appearance=character.appearance or character.description,
+        subject_age=character.age,
     )
 
 

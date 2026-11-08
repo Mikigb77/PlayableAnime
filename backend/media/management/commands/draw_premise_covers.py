@@ -6,8 +6,9 @@
 
 It uses the configured picture model (`PICTURE_MODEL`, B6) and storage (`MEDIA_BUCKET`). On Cloud
 Run it runs as the migration job with other arguments (docs/DEPLOY.md, "Drawing the starter
-covers"). With the offline model (`LLM_PROVIDER=fake`) it draws plain placeholders, for local
-development only: a real model replaces them later without `--force`.
+covers"). A cover drawn in an older house style (`media.prompts.HOUSE_STYLE_VERSION`) is drawn
+again without `--force`, once. With the offline model (`LLM_PROVIDER=fake`) it draws plain
+placeholders, for local development only: a real model replaces them later without `--force`.
 """
 
 from decimal import Decimal
