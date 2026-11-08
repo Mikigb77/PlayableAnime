@@ -44,13 +44,15 @@ COVER_OTHERS = 2
 
 
 def figure(character: Character, *, carries: tuple[str, ...] | None = None) -> Figure:
-    """A person in a picture, with the appearance kept in their entry (C9) and, for the player
-    character, what they have on them (`belongings`)."""
+    """A person in a picture, with the appearance kept in their entry (C9), their age, so they
+    are drawn as old as they are now (S7), and, for the player character, what they have on them
+    (`belongings`)."""
     return Figure(
         id=character.id,
         name=character.name,
         appearance=character.appearance or character.description,
         carries=carries,
+        age=character.age,
     )
 
 

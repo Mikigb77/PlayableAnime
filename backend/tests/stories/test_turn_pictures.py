@@ -164,5 +164,7 @@ def test_a_scene_that_scars_the_person_it_pictures_draws_the_new_look_once(
         2,
     )
     assert met.brief["subject_appearance"] == "19, broad, a fresh scar across his jaw."
+    # S7: drawn at the age the story gives him.
+    assert met.brief["subject_age"] == 19
     assert picture_of(act(player, story, model, narrated())) is None
     assert Image.objects.filter(story=story, subject="zhao").count() == 1

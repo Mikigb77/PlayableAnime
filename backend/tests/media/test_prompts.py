@@ -6,6 +6,7 @@ from media.prompts import (
     ASPECT_RATIOS,
     FRAMING,
     HOUSE_STYLE,
+    HOUSE_STYLE_VERSION,
     MAX_DESCRIPTION_CHARS,
     MILD_RULES,
     Brief,
@@ -34,8 +35,53 @@ def test_the_rules_keep_pictures_mild_whatever_the_rating():
     """M6: no rating in the prompt at all, so a Mature story's picture is as mild as a Teen's."""
     assert "no nudity" in MILD_RULES
     assert "no gore" in MILD_RULES
-    assert "child is never shown in a romantic or suggestive way" in MILD_RULES
+    assert "No one under 18 is ever shown in a romantic or suggestive way" in MILD_RULES
     assert "No real people" in MILD_RULES
+
+
+def test_the_house_style_is_made_for_grown_ups_not_young_children():
+    """S7 (Miki, 2026-11-08): the pictures looked like a fairy tale for kids. Mild is about what a
+    picture shows, never its tone, so nothing asks for a picture fit for every audience, and the
+    style is a grown-up one that names the childish looks to stay away from."""
+    prompt = build_prompt("scene", Brief(description="A shootout in a bar.", look=LOOK))
+    told = f"{prompt.system}\n{prompt.user}".casefold()
+
+    assert "every audience" not in told and "animated film" not in told
+    assert "teens and adults" in prompt.system
+    assert "for grown-ups" in HOUSE_STYLE and "serious, grounded mood" in HOUSE_STYLE
+    assert "no storybook or fairy-tale look" in HOUSE_STYLE
+    assert "no chibi or cartoon proportions" in HOUSE_STYLE
+    assert "without softening the story's mood" in MILD_RULES
+    assert HOUSE_STYLE_VERSION >= 2
+
+
+def test_everyone_is_drawn_at_the_age_the_story_gives_them():
+    """S7 (Miki, 2026-11-08): a 15-year-old is drawn as a 15-year-old and a grown-up as one, so
+    the age goes with each person, and the rules say to draw it."""
+    brief = Brief(
+        description="Mei faces her uncle across the table.",
+        figures=(
+            Figure("mei", "Mei", "a thin girl in a school blazer", age=15),
+            Figure("uncle", "Uncle Bao", "grey stubble", age=52),
+            Figure("guard", "the guard"),
+        ),
+    )
+
+    user = build_prompt("scene", brief).user
+
+    assert (
+        "How the people in it look: Mei, aged 15: a thin girl in a school blazer; Uncle Bao, "
+        "aged 52: grey stubble; the guard."
+    ) in user
+    assert "Draw each person at the age given for them" in MILD_RULES
+    assert "a teenager as a teenager, a grown-up as a grown-up" in MILD_RULES
+    assert "Anyone whose age isn't given is clearly an adult" in MILD_RULES
+    portrait = build_prompt(
+        "portrait", Brief(subject_name="Mei", subject_appearance="a thin girl", subject_age=15)
+    )
+    assert "Subject: Mei, aged 15: a thin girl" in portrait.user
+    unnamed = build_prompt("portrait", Brief(subject_appearance="a thin girl", subject_age=15))
+    assert "Subject: Aged 15: a thin girl" in unnamed.user
 
 
 def test_pictures_are_drawn_in_the_worlds_era_and_look():
@@ -66,6 +112,8 @@ def test_known_characters_go_along_with_their_appearance_and_reference_portraits
     assert prompt.labels == ("Image 1: the portrait of Rosa.", "Image 2: the portrait of Tonio.")
     assert "only for that person's face, hair, build and colouring" in prompt.user
     assert "not from the portrait" in prompt.user
+    # A portrait drawn in an older house style doesn't pull the picture back to it (S7).
+    assert "the drawing style from this picture and the house style" in prompt.user
 
 
 def test_the_moment_comes_before_the_people_and_the_world():
@@ -143,7 +191,8 @@ def test_a_cover_is_the_storys_poster_not_one_moment():
     carry (C10)."""
     cover = FRAMING["cover"]
 
-    assert "like a book or film poster" in cover and "not one moment of it" in cover
+    assert "like the poster of a film" in cover and "not one moment of it" in cover
+    assert "for grown-up readers" in cover
     assert "setting may rise behind them" in cover
     assert "no extra people" not in cover and "doing what it says" not in cover
     assert "lower third" in cover  # still room for the title
@@ -196,6 +245,7 @@ def test_a_redraw_asks_for_the_same_person_as_they_look_now():
 
     assert "Subject: Rosa: an eyepatch over her left eye" in prompt.user
     assert "earlier portrait. Draw the same person" in prompt.user
+    assert "in the house style even where the portrait's style differs" in prompt.user
     assert prompt.labels == ("Image 1: the earlier portrait of Rosa.",)
 
 
@@ -206,6 +256,7 @@ def test_a_changed_place_is_asked_for_as_the_same_place_as_it_is_now():
 
     assert "Subject: The Inn: Two storeys. It is ruined now." in prompt.user
     assert "this place's earlier picture. Draw the same place" in prompt.user
+    assert "in the house style even where that picture's style differs" in prompt.user
     assert "same person" not in prompt.user
     assert prompt.labels == ("Image 1: the earlier picture of The Inn.",)
 
@@ -224,9 +275,10 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
         look=LOOK,
         subject_name="Rosa",
         subject_appearance="curls",
+        subject_age=31,
         figures=(
-            Figure("rosa", "Rosa", "curls", carries=("a flick knife",)),
-            Figure("lin", "Lin", carries=()),
+            Figure("rosa", "Rosa", "curls", carries=("a flick knife",), age=31),
+            Figure("lin", "Lin", carries=(), age=0),
             Figure("tonio", "Tonio"),
         ),
         you="Rosa",
@@ -245,9 +297,9 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
         None,
     ]
     assert Brief.from_json(None) == Brief()
-    # A brief stored before "you", the time of day, belongings, its turn and place existed still
-    # reads.
-    added = ("you", "time", "turn", "place_id", "place_name", "place_look")
+    # A brief stored before "you", the time of day, belongings, its turn, place and ages existed
+    # still reads.
+    added = ("you", "time", "turn", "place_id", "place_name", "place_look", "subject_age")
     older = {k: v for k, v in brief.to_json().items() if k not in added}
     older["figures"] = [{"id": "rosa", "name": "Rosa", "appearance": "curls"}]
     assert Brief.from_json(older) == Brief(
@@ -257,6 +309,10 @@ def test_a_brief_round_trips_through_json_and_tolerates_junk():
     junk = {"look": {"era": None, "extra": 1}, "figures": [{}, {"name": "X"}], "turn": "x"}
     assert Brief.from_json(junk) == Brief(figures=(Figure("", "X", ""),))
     assert Brief.from_json({"turn": -3}).turn == 0
+    for age in ("x", -4, True, None, [3]):
+        assert Brief.from_json({"subject_age": age}).subject_age is None
+        assert Brief.from_json({"figures": [{"name": "X", "age": age}]}).figures[0].age is None
+    assert Brief.from_json({"subject_age": "15"}).subject_age == 15
 
 
 def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():

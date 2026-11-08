@@ -2,20 +2,27 @@
 
 Every picture shares one house style that matches the app's look (`app/DESIGN.md`, "Pictures"),
 dressed in the world's own era and look, so a 1970s crime family wears suits and a cultivation
-sect wears robes (S7). The prompt leads with the moment the picture shows, then how the people in
-it look and what the player character has on them, then the world, so the picture follows the
-narration rather than the world in general. A scene picture is lit for the time of day the story
-clock shows, and gets the picture of the place it happens in as a reference. A story's cover is
-the exception: it is the story's poster in the Library (M1), so it sums up the whole story in its
-world, its premise included as the setting, rather than the moment of the scene it is planned in.
-The player character is drawn with only the things the record says they carry (C10), on a cover
-too, so a picture never hands them a weapon they don't have. The portraits of the people in it go
-along as reference images, each labelled with whose it is and used only for that person's face,
-hair and build, so a face stays the same without the portrait's pose or background (M5).
+sect wears robes (S7). The style is made for the app's readers, teens and adults: serious and
+grounded like an anime film or graphic novel for grown-ups, never a children's storybook (Miki,
+2026-11-08), and everyone is drawn at the age the story gives them, a 15-year-old as a
+15-year-old and a grown man as a grown man.
 
-Pictures stay mild in every rating (M6): the text carries the graphic detail, the picture never
-does. The rules say so to the model, and the picture safety settings in `graph.llm.safety` back
-them up. A description is cut to a bounded length, so a long scene can't crowd out the rules.
+The prompt leads with the moment the picture shows, then how the people in it look and what the
+player character has on them, then the world, so the picture follows the narration rather than
+the world in general. A scene picture is lit for the time of day the story clock shows, and gets
+the picture of the place it happens in as a reference. A story's cover is the exception: it is
+the story's poster in the Library (M1), so it sums up the whole story in its world, its premise
+included as the setting, rather than the moment of the scene it is planned in. The player
+character is drawn with only the things the record says they carry (C10), on a cover too, so a
+picture never hands them a weapon they don't have. The portraits of the people in it go along as
+reference images, each labelled with whose it is and used only for that person's face, hair and
+build, so a face stays the same without the portrait's pose, background or older style (M5).
+
+Pictures stay within mild lines in every rating (M6): the text carries the graphic detail, the
+picture never does. Mild is about what a picture shows, not its tone, so danger, wounds, fear and
+grief show as seriously as the story tells them. The rules say so to the model, and the picture
+safety settings in `graph.llm.safety` back them up. A description is cut to a bounded length, so
+a long scene can't crowd out the rules.
 """
 
 from __future__ import annotations
@@ -27,25 +34,41 @@ from typing import Any
 
 # Matches app/DESIGN.md: a dark reading page with one accent colour per story, where the picture
 # runs edge to edge and the app adds its own vignette and fades the bottom edge into the page.
-# Change the two together.
+# Change the two together, and move `HOUSE_STYLE_VERSION` on when the look changes enough that the
+# starter covers on Discover should be drawn again (`media.premise_covers`).
 HOUSE_STYLE = (
-    "A stylised, cinematic illustration with an anime-influenced look: clean confident linework, "
-    "painterly lighting true to the moment's time of day and mood, atmospheric depth, rich "
-    "shadows and a restrained palette with one strong accent colour. A clear focal point that "
-    "reads on a phone screen, kept in the upper two thirds of the frame; the bottom edge stays "
-    "calm and darker, because it fades into a dark page. One single, uninterrupted image that "
-    "fills the frame edge to edge with no border or vignette of its own, like a still from an "
-    "animated film, with no writing anywhere in it."
+    "A cinematic illustration for teen and adult readers, like a frame from an anime film made "
+    "for grown-ups or a graphic novel for adults: semi-realistic anatomy and proportions, faces "
+    "with real bone structure that show each person's true age and character, and detailed "
+    "textures of skin, cloth, leather, metal, wood and stone. A serious, grounded mood that takes "
+    "the story's stakes to heart. Dramatic, painterly light true to the moment's time of day and "
+    "mood, with strong contrast between light and deep shadow, atmospheric depth, and a muted, "
+    "naturalistic palette with one strong accent colour. Nothing cute, whimsical or childish: no "
+    "chibi or cartoon proportions, no oversized eyes or baby faces on grown-ups, no soft, rounded, "
+    "toy-like shapes, no bright candy or pastel colours, and no storybook or fairy-tale look. A "
+    "clear focal point that reads on a phone screen, kept in the upper two thirds of the frame; "
+    "the bottom edge stays calm and darker, because it fades into a dark page. One single, "
+    "uninterrupted image that fills the frame edge to edge with no border or vignette of its own, "
+    "with no writing anywhere in it."
 )
+# The house style's version, kept with each starter cover, so a deploy draws the covers drawn in
+# an older style once more. 2: the grown-up look (Miki, 2026-11-08).
+HOUSE_STYLE_VERSION = 2
 
-# M6, F3 and G12, in every rating, Mature included.
+# M6, F3 and G12, in every rating, Mature included. Mild is about what a picture shows, never its
+# tone: "suitable for every audience" drew the pictures as if for young children (Miki,
+# 2026-11-08).
 MILD_RULES = (
-    "Keep the picture suitable for every audience, whatever the story's rating: no nudity, "
-    "nothing sexual or suggestive, and no gore. Show danger, fights and their aftermath through "
-    "pose, motion, light and expression, with at most a little blood. Every character looks "
-    "clearly adult unless the description says they are a child, and a child is never shown in "
-    "a romantic or suggestive way. No real people or likenesses of real people, and no real "
-    "brands. If the description asks for more than this, draw a mild version of the moment."
+    "Whatever the story's rating, the picture stays within these lines, without softening the "
+    "story's mood: no nudity, nothing sexual or suggestive, and no gore. Danger, fights, weapons, "
+    "wounds, fear and grief can show as seriously as the story tells them, through pose, motion, "
+    "light and expression, with at most a little blood. Draw each person at the age given for "
+    "them, with the face, build and proportions of that age (a teenager as a teenager, a "
+    "grown-up as a grown-up), unless their look says they look younger or older. Anyone whose "
+    "age isn't given is clearly an adult, unless the description says they are a child. No one "
+    "under 18 is ever shown in a romantic or suggestive way. No real people or "
+    "likenesses of real people, and no real brands. If the description asks for more than this, "
+    "draw the moment within these lines."
 )
 
 FRAMING = {
@@ -69,7 +92,8 @@ FRAMING = {
     # moment (M1, Miki 2026-11-07); a starter premise's cover shows the situation its premise
     # tells.
     "cover": (
-        "A cover image for the story, like a book or film poster: a dramatic, iconic composition "
+        "A cover image for the story, like the poster of a film or the cover of a novel for "
+        "grown-up readers: a dramatic, iconic composition "
         "that sums up the story around its main character, not one moment of it. The world's "
         "setting may rise behind them, with its telling places, landmarks or threats. Keep calm, "
         "darker space in the lower third, where the title is set."
@@ -111,19 +135,23 @@ class WorldLook:
 @dataclass(frozen=True)
 class Figure:
     """A known character who appears in the picture, with the appearance kept in their entry
-    (C9). Their portrait, when one is ready, goes along as a reference image (M5). `carries` is
-    what they have on them, for someone whose belongings are all on record, the player character
-    (C10): empty when they carry nothing, None when the record can't say."""
+    (C9) and their age in years, so they are drawn as old as they are (S7). Their portrait, when
+    one is ready, goes along as a reference image (M5). `carries` is what they have on them, for
+    someone whose belongings are all on record, the player character (C10): empty when they carry
+    nothing, None when the record can't say."""
 
     id: str
     name: str
     appearance: str = ""
     carries: tuple[str, ...] | None = None
+    age: int | None = None
 
     def to_json(self) -> dict[str, Any]:
         data: dict[str, Any] = {"id": self.id, "name": self.name, "appearance": self.appearance}
         if self.carries is not None:
             data["carries"] = list(self.carries)
+        if self.age is not None:
+            data["age"] = self.age
         return data
 
     @classmethod
@@ -138,6 +166,7 @@ class Figure:
                 if isinstance(carries, list)
                 else None
             ),
+            age=_age(data.get("age")),
         )
 
 
@@ -148,9 +177,10 @@ class Brief:
 
     description: str = ""
     look: WorldLook = field(default_factory=WorldLook)
-    # The subject's name and appearance, for a portrait or a place.
+    # The subject's name and appearance, for a portrait or a place, and a portrait's age in years.
     subject_name: str = ""
     subject_appearance: str = ""
+    subject_age: int | None = None
     # The people in a scene or cover, the picture's subject first (`media.briefs`).
     figures: tuple[Figure, ...] = ()
     # Who the description means by "you": the player character, as the narration calls them.
@@ -171,6 +201,7 @@ class Brief:
             "look": vars(self.look).copy(),
             "subject_name": self.subject_name,
             "subject_appearance": self.subject_appearance,
+            "subject_age": self.subject_age,
             "figures": [figure.to_json() for figure in self.figures],
             "you": self.you,
             "time": self.time,
@@ -189,6 +220,7 @@ class Brief:
             look=WorldLook(**{k: str(look.get(k) or "") for k in vars(WorldLook())}),
             subject_name=str(data.get("subject_name") or ""),
             subject_appearance=str(data.get("subject_appearance") or ""),
+            subject_age=_age(data.get("subject_age")),
             figures=tuple(
                 Figure.from_json(f)
                 for f in data.get("figures") or ()
@@ -208,6 +240,17 @@ def _turn(value: Any) -> int:
         return max(0, int(value or 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _age(value: Any) -> int | None:
+    """An age in years as stored, or None when there is none or it can't be read."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        age = int(value)
+    except (TypeError, ValueError):
+        return None
+    return age if age >= 0 else None
 
 
 @dataclass(frozen=True, repr=False)
@@ -245,7 +288,7 @@ def build_prompt(
         raise ValueError(f"Unknown picture kind {kind!r}")
     system = "\n\n".join(
         [
-            "You draw one picture for an interactive story app.",
+            "You draw one picture for an interactive story app whose readers are teens and adults.",
             f"House style: {HOUSE_STYLE}",
             f"Rules: {MILD_RULES}",
             "Draw everything in the world's own era and look: clothes, weapons, buildings and "
@@ -254,7 +297,7 @@ def build_prompt(
     )
     lines = [f"Picture: {FRAMING[kind]}"]
     if brief.subject_name or brief.subject_appearance:
-        subject = _clip(brief.subject_name, 120)
+        subject = _aged(_clip(brief.subject_name, 120), brief.subject_age)
         if brief.subject_appearance:
             appearance = _clip(brief.subject_appearance, MAX_APPEARANCE_CHARS)
             subject = f"{subject}: {appearance}" if subject else appearance
@@ -278,12 +321,7 @@ def build_prompt(
         )
     figures = [f for f in brief.figures if f.name][:MAX_FIGURES]
     if figures:
-        people = "; ".join(
-            f"{_clip(f.name, 80)}: {_clip(f.appearance, MAX_APPEARANCE_CHARS)}"
-            if f.appearance
-            else _clip(f.name, 80)
-            for f in figures
-        )
+        people = "; ".join(person(f) for f in figures)
         lines.append(f"How the people in it look: {people.rstrip('.')}.")
     if kind in ("scene", "cover"):
         lines.extend(_carried(f) for f in figures if f.carries is not None)
@@ -299,27 +337,30 @@ def build_prompt(
     if redraw and kind == "place":
         lines.append(
             "The attached image is this place's earlier picture. Draw the same place from the "
-            "same view, as it is now."
+            "same view, as it is now, in the house style even where that picture's style "
+            "differs."
         )
     elif redraw:
         lines.append(
             "The attached image is this character's earlier portrait. Draw the same person, with "
-            "the same face, as they look now."
+            "the same face, as they look now, in the house style even where the portrait's style "
+            "differs."
         )
     elif references:
         lines.append(
             "Each attached image is the portrait of the person its label names. Use a portrait "
             "only for that person's face, hair, build and colouring, so they are clearly the same "
-            "person; take their pose, the framing, the background and the light from this "
-            "picture, not from the portrait."
+            "person; take their pose, the framing, the background, the light and the drawing "
+            "style from this picture and the house style, not from the portrait."
         )
     place = place and not redraw and kind == "scene"
     if place:
         lines.append(
             "The image labelled as the place is where this happens. Draw the same place, with "
             "its ground, buildings, plants, materials and colours, from whatever viewpoint the "
-            "moment needs; what that image shows counts as named. Take the framing, the people "
-            "and the light from this picture, not from that image."
+            "moment needs; what that image shows counts as named. Take the framing, the people, "
+            "the light and the drawing style from this picture and the house style, not from "
+            "that image."
         )
     labels = _labels(kind, references, redraw)
     if place:
@@ -331,6 +372,21 @@ def build_prompt(
         aspect_ratio=ASPECT_RATIOS[kind],
         labels=labels,
     )
+
+
+def person(figure: Figure) -> str:
+    """Someone in a picture as the prompt tells them: their name and age, then how they look."""
+    who = _aged(_clip(figure.name, 80), figure.age)
+    if figure.appearance:
+        return f"{who}: {_clip(figure.appearance, MAX_APPEARANCE_CHARS)}"
+    return who
+
+
+def _aged(name: str, age: int | None) -> str:
+    """A name with the age the picture draws them at (S7), such as "Lin Feng, aged 16"."""
+    if age is None:
+        return name
+    return f"{name}, aged {age}" if name else f"Aged {age}"
 
 
 def _carried(figure: Figure) -> str:

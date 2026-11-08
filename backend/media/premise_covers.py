@@ -7,7 +7,9 @@ drawn cover with a fresh signed URL (`media.lookups.premise_cover_urls`).
 
 The house pays, once: every drawing is logged with its model and cost (T5), and no player's
 ledger is charged, since the cover belongs to no one's story. A cover is kept until it is drawn
-again with `--force`, except a placeholder from the offline model, which a real model replaces.
+again with `--force`, except a placeholder from the offline model, and a cover drawn in an older
+house style (`HOUSE_STYLE_VERSION`), which a real model replaces once, so Discover shows the app's
+current look (S7, Miki 2026-11-08).
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from graph.drafting.catalog import StarterPremise
 from media import drawing
 from media.drawing import DrawBlocked, DrawError, Drawn, DrawRateLimited, DrawRequest
 from media.models import PremiseCover
-from media.prompts import Brief, WorldLook, build_prompt
+from media.prompts import HOUSE_STYLE_VERSION, Brief, WorldLook, build_prompt
 from media.storage import check_key, delete_quietly, extension_for, get_storage
 from stories.models import ImageKind
 
@@ -118,7 +120,8 @@ def to_draw(
     """The premises whose cover to draw, and the covers kept as they are.
 
     A premise without a cover is drawn, and with `force` every one is. A placeholder from the
-    offline model counts as no cover once a real model is configured.
+    offline model, or a cover drawn in an older house style, counts as no cover once a real model
+    is configured (`outdated`).
     """
     premises = list(premises)
     covers = PremiseCover.objects.in_bulk([premise.id for premise in premises])
@@ -126,7 +129,7 @@ def to_draw(
     kept: list[Outcome] = []
     for premise in premises:
         cover = covers.get(premise.id)
-        if force or cover is None or (cover.offline and not offline):
+        if force or cover is None or outdated(cover, offline=offline):
             todo.append(premise)
             continue
         kept.append(
@@ -140,6 +143,15 @@ def to_draw(
             )
         )
     return todo, kept
+
+
+def outdated(cover: PremiseCover, *, offline: bool) -> bool:
+    """Whether a real model's drawing replaces `cover` without `--force`: the offline model's
+    placeholder, or a cover drawn in an older house style (S7). The offline model replaces
+    neither, since its placeholders have no style."""
+    if offline:
+        return False
+    return cover.offline or cover.style < HOUSE_STYLE_VERSION
 
 
 async def draw_covers(
@@ -233,7 +245,8 @@ async def draw_cover(premise: StarterPremise, *, force: bool, offline: bool) -> 
 def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offline: bool) -> bool:
     """Makes the new file the premise's cover and removes the one it replaces once that commits.
     False when another run stored a cover meanwhile that this one doesn't replace (it isn't
-    forced, and that cover is no placeholder this real drawing beats): the new file goes."""
+    forced, and that cover is neither a placeholder nor one in an older style, which this real
+    drawing beats): the new file goes."""
     fields = {
         "storage_key": key,
         "mime_type": drawn.mime_type,
@@ -241,6 +254,7 @@ def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offl
         "model": drawn.model,
         "cost_usd": drawn.cost_usd,
         "offline": offline,
+        "style": HOUSE_STYLE_VERSION,
         "brief": cover_brief(premise).to_json(),
         "drawn_at": timezone.now(),
     }
@@ -251,7 +265,7 @@ def _store(premise: StarterPremise, key: str, drawn: Drawn, *, force: bool, offl
                 if cover is None:
                     PremiseCover.objects.create(premise_id=premise.id, **fields)
                     return True
-                if not force and not (cover.offline and not offline):
+                if not force and not outdated(cover, offline=offline):
                     transaction.on_commit(functools.partial(delete_quietly, key))
                     return False
                 old = cover.storage_key
