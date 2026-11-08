@@ -724,7 +724,15 @@ const _seedMemory = <String, Object?>{
       'id': 'r1',
       'text': 'Elder Wen once studied forbidden arts',
       'heard_label': 'Heard from a kitchen servant',
+      'certainty': 'unconfirmed',
       'unconfirmed': true,
+    },
+    {
+      'id': 'r2',
+      'text': 'Shen Yu lost the outer court ranking in the first round',
+      'heard_label': 'Heard an hour ago',
+      'certainty': 'confirmed',
+      'unconfirmed': false,
     },
   ],
   'deeds': [

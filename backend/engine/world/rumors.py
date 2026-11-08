@@ -2,12 +2,17 @@
 
 A rumor starts where something happened and moves along the map at the pace news really travels
 (W10): with people on foot or by car, faster where the world has phones (G6). Each hop loses some
-accuracy; a retelling that strays far enough becomes its own version, which may be wrong, and no
-longer names the doer. Everyone at a place hears it when it arrives, but beasts don't follow
-people's talk (G24). Those who believe it react (W4), factions there learn of it (W3, W5), and
-the player hears it too if they are there, marked unconfirmed (C6). Rumors are told in the
-world's words (G16).
+accuracy; a retelling that strays far enough becomes its own, vaguer version that no longer names
+the doer. Everyone at a place hears it when it arrives, but beasts don't follow people's talk
+(G24). Those who believe it react (W4), factions there learn of it (W3, W5), and the player hears
+it too if they are there (C6). Rumors are told in the world's words (G16).
+
+Whoever knows for themselves what a rumor tells, because they did it, suffered it, saw it or were
+there when it happened, knows whether it is so (`certainty`): they believe it if it is and not if
+it isn't, and the player's Memory screen marks it confirmed or false instead of unconfirmed (C6).
 """
+
+from enum import StrEnum
 
 from engine.state.records import Deed, EventStatus, PendingEvent, Rumor
 from engine.state.world import WorldState
@@ -33,6 +38,14 @@ from engine.world.tuning import (
 )
 
 
+class Certainty(StrEnum):
+    """What someone knows of a rumor they heard (C6)."""
+
+    UNCONFIRMED = "unconfirmed"  # they only heard it
+    CONFIRMED = "confirmed"  # they know it is so
+    FALSE = "false"  # they know it isn't
+
+
 def start_rumor(
     w: World,
     *,
@@ -44,8 +57,11 @@ def start_rumor(
     about_ids: list[str] | None = None,
     accuracy: int = 90,
     heard_by: list[str] | None = None,
+    seen_by: list[str] | None = None,
 ) -> Rumor:
-    """A rumor starts at a place, heard by those given, and sets off to spread (W2)."""
+    """A rumor starts at a place, heard by those given, and sets off to spread (W2). `seen_by`
+    are those who were there when what it tells happened, for a rumor that tells no deed: they
+    know it is so (C6). A deed's rumor goes by who knows the deed."""
     state = w.state
     rumor = Rumor(
         id=state.new_id("rumor"),
@@ -58,6 +74,7 @@ def start_rumor(
         reached_place_ids=[place_id] if place_id else [],
         started_s=w.at_s,
         timeline_id=state.timeline_id,
+        seen_by=list(dict.fromkeys(seen_by or [])),
     )
     state.rumors[rumor.id] = rumor
     for character_id in dict.fromkeys(heard_by or []):
@@ -89,9 +106,30 @@ def knows_doer(state: WorldState, character_id: str, deed: Deed) -> bool:
     )
 
 
+def knows_firsthand(state: WorldState, character_id: str, rumor: Rumor) -> bool:
+    """Whether someone knows for themselves what a rumor tells, not by hearsay: they did the deed
+    it tells, suffered or saw it, or heard it from someone close (W4), or they were there when
+    what it tells happened."""
+    deed = state.deeds.get(rumor.deed_id) if rumor.deed_id else None
+    if deed is not None:
+        return character_id == deed.actor_id or character_id in deed.known_by
+    return character_id in rumor.seen_by
+
+
+def certainty(state: WorldState, character_id: str, rumor: Rumor) -> Certainty:
+    """What someone knows of a rumor (C6): whoever knows firsthand what it tells knows whether it
+    is so; anyone else only heard it, however many others know the truth."""
+    if not knows_firsthand(state, character_id, rumor):
+        return Certainty.UNCONFIRMED
+    return Certainty.CONFIRMED if rumor.is_true else Certainty.FALSE
+
+
 def believes(state: WorldState, character_id: str, rumor: Rumor, accuracy: int) -> bool:
     """A hearer believes a rumor that is accurate enough, unless it accuses someone they are
-    devoted to."""
+    devoted to. Whoever knows firsthand what it tells believes it only if it is so."""
+    known = certainty(state, character_id, rumor)
+    if known is not Certainty.UNCONFIRMED:
+        return known is Certainty.CONFIRMED
     if accuracy < BELIEVED_FROM:
         return False
     character = state.characters.get(character_id)
@@ -143,7 +181,8 @@ def spread(
 
 def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     """The version a retelling turns into once it strays far from what happened (W2): it no
-    longer names the doer, so it is no longer true. One per rumor, reused as it spreads."""
+    longer names the doer, so it no longer tells anyone who did it, though what it still says is
+    so. One per rumor, reused as it spreads."""
     state = w.state
     told = account(state, deed, doer="someone") if deed is not None else rumor.text
     text = f"A garbled account goes round: {told}"
@@ -154,7 +193,7 @@ def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     variant = Rumor(
         id=state.new_id("rumor"),
         text=text,
-        is_true=False,
+        is_true=rumor.is_true,
         accuracy=accuracy,
         deed_id=rumor.deed_id,
         about_ids=about,

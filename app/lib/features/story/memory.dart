@@ -114,15 +114,35 @@ class MemoryFaction {
   final String standingLabel;
 }
 
+/// What the character knows of a rumor they heard (C6): only that people say it, that it is so,
+/// or that it isn't. The server says it is so or isn't only where the character knows for
+/// themselves: they did, suffered or saw what it tells, or were there when it happened.
+enum RumorCertainty {
+  unconfirmed('unconfirmed'),
+  confirmed('confirmed'),
+  wrong('false');
+
+  const RumorCertainty(this.wire);
+
+  final String wire;
+
+  /// A server older than `certainty` sends only `unconfirmed`, always true.
+  static RumorCertainty fromJson(JsonMap json) =>
+      values.where((c) => c.wire == json['certainty']).firstOrNull ?? unconfirmed;
+}
+
 /// A goal, lead, rumor or deed: one line of text and what the character knows about it.
 class MemoryNote {
-  const MemoryNote({required this.id, required this.text, this.labels = const []});
+  const MemoryNote({required this.id, required this.text, this.labels = const [], this.certainty});
 
   final String id;
   final String text;
 
   /// When it was heard or done, who saw it, when it expires.
   final List<String> labels;
+
+  /// Set for a rumor only: whether the character knows it is so.
+  final RumorCertainty? certainty;
 
   static MemoryNote goal(JsonMap json) =>
       MemoryNote(id: json['id'] as String? ?? '', text: json['text'] as String? ?? '');
@@ -137,6 +157,7 @@ class MemoryNote {
     id: json['id'] as String? ?? '',
     text: json['text'] as String? ?? '',
     labels: [?json['heard_label'] as String?],
+    certainty: RumorCertainty.fromJson(json),
   );
 
   static MemoryNote deed(JsonMap json) => MemoryNote(
@@ -218,7 +239,8 @@ class MemoryView {
   final List<MemoryNote> goals;
   final List<MemoryNote> leads;
 
-  /// Always unconfirmed: the character heard them and can't tell if they are true (W13, C6).
+  /// What people say that reached the character, each said once: unconfirmed unless they know
+  /// for themselves (W2, W13, C6).
   final List<MemoryNote> rumors;
   final List<MemoryNote> deeds;
   final List<MemoryThread> threads;

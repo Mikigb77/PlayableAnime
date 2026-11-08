@@ -206,7 +206,9 @@ a new one.
   list of character ids, plus `met_by` on characters, `visited_by` on places and `heard_at` on
   rumors. The Memory screen shows only records whose lists hold the player character (C6). Hidden
   truth lives in fields the projection never shows: `is_true` on rumors and facts, secrets, mystery
-  answers, real attitudes behind an `apparent_affinity`.
+  answers, real attitudes behind an `apparent_affinity`. The one way `is_true` reaches the screen is
+  through what the character knows for themselves: a rumor of a deed in their `known_by`, or one
+  whose `seen_by` holds them, shows confirmed or false (`engine.world.rumors.certainty`).
 - **Proposals versus decisions.** `StateDelta` serves the narrator and the engine. Fields marked
   engine only (terminal changes such as deaths, anything that needs a C1 `Cause`, faction
   reputation, rulings, gains, accepted backstory, rule changes) are rejected when the narrator

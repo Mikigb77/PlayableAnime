@@ -160,8 +160,9 @@ class Deed(EngineModel):
 
 
 class Rumor(EngineModel):
-    """W2, W13. What people say. It may be wrong; `is_true` is hidden truth (C6). It spreads over
-    in-world time along places' travel times and can lose accuracy as it goes."""
+    """W2, W13. What people say. It may be wrong; `is_true` is hidden truth (C6): whether what it
+    says is so, even where it is vague ("nobody knows who did it"). It spreads over in-world time
+    along places' travel times and can lose accuracy as it goes."""
 
     id: str
     text: str
@@ -177,6 +178,14 @@ class Rumor(EngineModel):
     heard_at: dict[str, WorldSeconds] = Field(
         default_factory=dict,
         description="Who has heard it, by character id, and the world second they first did.",
+    )
+    seen_by: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Who was there when what it tells happened, such as a clock's end, so they know it"
+            " is so rather than heard it (C6). A rumor of a deed goes by the deed's own"
+            " `known_by` instead."
+        ),
     )
 
     @property
