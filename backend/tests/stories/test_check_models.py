@@ -21,15 +21,24 @@ HEARD = (
     "The lighthouse keeper waved to the last ship of the season. "
     "Safe home, she called into the wind."
 )
+# What the speech model hears the voice say in each language it reads.
+HEARD_IN = {
+    "en-US": HEARD,
+    "es-ES": "La farera despidió con la mano al último barco de la temporada. Buen viaje, gritó al "
+    "viento.",
+    "ca-ES": "La farera va acomiadar amb la mà l'últim vaixell de la temporada. Bon viatge, va "
+    "cridar al vent.",
+}
 
 
 def _format_reply(request):
     """Response formats answer by default, the voice model reads, and the speech model hears it
-    say its sentence; any other plain call must be scripted."""
+    say its sentence in the language it read; any other plain call must be scripted."""
     if request.reading is not None:
         return Reply(audio=offline_speech(request.prompt.messages[-1].text))
     if request.audio is not None and request.audio.mime_type == "audio/mpeg":
-        return Reply(text=HEARD)
+        [language] = request.transcription.language_codes
+        return Reply(text=HEARD_IN[language])
     if request.json_schema is None:
         raise AssertionError(f"unscripted plain call for {request.node.value}")
     return Reply(json=fill_schema(request.json_schema))
@@ -90,9 +99,12 @@ def test_each_model_in_use_is_called_once_and_the_judge_never(backend, capsys):
     in_use = {DEFAULT_NODES[node].model for node in nodes}
     called = models_called(backend)
     assert sorted(set(called)) == sorted(in_use)
-    # Each once, but the speech model twice: a second of silence, then what the voice said.
+    # Each once, but the voice model once for each story language, and the speech model for a
+    # second of silence and then for what the voice said in each.
     speech = DEFAULT_NODES[Node.SPEECH].model
-    assert len(called) == len(in_use) + 1 and called.count(speech) == 2
+    voice = DEFAULT_NODES[Node.VOICE].model
+    assert called.count(voice) == 3 and called.count(speech) == 4
+    assert len(called) == len(in_use) + 5
     assert DEFAULT_NODES[Node.JUDGE].model not in models_called(backend)
     [picture] = [request for request in backend.requests if request.image is not None]
     assert picture.node is Node.PICTURE
@@ -128,20 +140,45 @@ def test_a_speech_model_vertex_refuses_fails_the_check(backend, capsys):
     assert f"{speech} (speech): FAILED (invalid): fake invalid failure" in capsys.readouterr().out
 
 
-def test_the_voice_model_reads_as_scenes_are_read_and_is_heard_back(backend, capsys):
+def test_the_voice_model_reads_each_language_as_scenes_are_read_and_is_heard_back(backend, capsys):
     script_models(backend)
 
     call_command("check_models")
 
-    [voice] = backend.calls(Node.VOICE)
-    assert voice.model == DEFAULT_NODES[Node.VOICE].model == "gemini-3.8-flash-lite-tts"
-    assert voice.reading.voice == DEFAULT_VOICE
+    voices = backend.calls(Node.VOICE)
+    assert {voice.model for voice in voices} == {DEFAULT_NODES[Node.VOICE].model}
+    assert DEFAULT_NODES[Node.VOICE].model == "gemini-3.8-flash-lite-tts"
+    assert {voice.reading.voice for voice in voices} == {DEFAULT_VOICE}
+    # Each story language in its own accent: Spanish from Spain, never Latin American.
+    assert [voice.reading.language for voice in voices] == ["en-US", "es-ES", "ca-ES"]
     # The passage alone, as a scene's part is sent: no directions it could read aloud (V9).
-    assert voice.prompt.messages[-1].text == check_models.VOICE_PASSAGE
-    [_silence, heard] = backend.calls(Node.SPEECH)
-    assert heard.audio.mime_type == "audio/mpeg"  # the MP3 the app plays
+    assert [voice.prompt.messages[-1].text for voice in voices] == list(
+        check_models.VOICE_PASSAGES.values()
+    )
+    [_silence, *heard] = backend.calls(Node.SPEECH)
+    assert {speech.audio.mime_type for speech in heard} == {"audio/mpeg"}  # the MP3 the app plays
+    assert [speech.transcription.language_codes for speech in heard] == [
+        ("en-US",),
+        ("es-ES",),
+        ("ca-ES",),
+    ]
     out = capsys.readouterr().out
-    assert "(voice): ok in" in out and f'and it said "{HEARD}"' in out
+    assert "(voice): ok in" in out
+    assert f'and it said in en-US "{HEARD}", in es-ES "{HEARD_IN["es-ES"]}", in ca-ES' in out
+
+
+def test_a_language_the_voice_model_wont_read_fails_the_check_and_is_named(backend, capsys):
+    script_models(backend)
+    backend.script(
+        Node.VOICE,
+        Reply(audio=offline_speech("English")),
+        Fail(kind="invalid", status=400),
+    )
+
+    with pytest.raises(CommandError, match="1 of 6 models didn't answer"):
+        call_command("check_models")
+
+    assert "(voice): FAILED (invalid): es-ES: fake invalid failure" in capsys.readouterr().out
 
 
 def test_a_voice_that_says_more_than_the_passage_fails_the_check(backend, capsys):
@@ -154,7 +191,7 @@ def test_a_voice_that_says_more_than_the_passage_fails_the_check(backend, capsys
     with pytest.raises(CommandError, match="1 of 6 models didn't answer"):
         call_command("check_models")
 
-    assert "(voice): FAILED (said_more)" in capsys.readouterr().out
+    assert "(voice): FAILED (said_more): en-US: it said more" in capsys.readouterr().out
 
 
 def test_a_voice_heard_a_little_differently_still_passes(backend, capsys):

@@ -82,7 +82,8 @@ The first version's state, checked against the code in WS18.
 - [x] Online dictation with Gemini 3.5 Transcribe that knows the story's names, the default, with
       the phone's own recognizer as an option in Account (V6)
 - [x] Reading scenes aloud: Gemini's studio voice by default, each part kept and paid once, with
-      the device's own voice as a free option in Account (V8 to V10)
+      the device's own voice as a free option in Account, both in the story's own accent: Spanish
+      from Spain, never Latin American, and English in a native English voice (V8 to V10)
 - [ ] Edit, pin or forget memories; undo the last turn; branch a save
 - [ ] Optional RPG layer per story: HP, inventory, skills, dice checks
 - [ ] Relationship meters, endings and achievements

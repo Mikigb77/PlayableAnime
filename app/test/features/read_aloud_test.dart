@@ -160,6 +160,22 @@ void main() {
     expect(app.phoneVoice.speaking, isFalse);
   });
 
+  testWidgets("a device with no voice for the story's language says which it needs", (
+    tester,
+  ) async {
+    final app = AppHarness();
+    SharedPreferences.setMockInitialValues({'narration.voice': 'device'});
+    await app.launch(tester, location: _story);
+    app.phoneVoice.available = false;
+
+    await tapListen(tester, 3);
+
+    expect(find.text(l10n.narrationNoDeviceVoice('en')), findsOneWidget);
+    expect(l10n.narrationNoDeviceVoice('en'), contains('English voice'));
+    expect(l10n.narrationNoDeviceVoice('es'), contains('Spanish (Spain) voice'));
+    expect(find.byType(ReadingBar), findsNothing);
+  });
+
   testWidgets('leaving the story stops its reading', (tester) async {
     final app = AppHarness();
     await app.launch(tester, location: _story);

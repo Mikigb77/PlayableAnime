@@ -556,8 +556,10 @@ SceneAudio {status: "ready"|"pending"|"blocked", part, parts, text,
             url?, expires_at?, duration_ms?}   # url, expires_at and duration_ms only when ready
 ```
 
-One part of the scene read aloud in the studio voice (Gemini 3.8 Flash-Lite TTS, V9). Ask for part
-0, play it as soon as it comes, and ask for the next part while it plays, until `parts`.
+One part of the scene read aloud in the studio voice (Gemini 3.8 Flash-Lite TTS, V9), in the story's
+language and accent: Spanish from Spain (`es-ES`), English (`en-US`) or Catalan (`ca-ES`), from
+the story's settings, so the app never sends one. Ask for part 0, play it as soon as it comes, and
+ask for the next part while it plays, until `parts`.
 
 - **`voice`** is one of `Sulafat` (warm), `Gacrux` (mature), `Charon` (deep) or `Algieba`
   (smooth). Anything else is `400 validation_error` with the field `voice` (`unknown_voice`), and a

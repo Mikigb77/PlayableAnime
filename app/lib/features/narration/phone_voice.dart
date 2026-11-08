@@ -88,21 +88,31 @@ class FlutterPhoneVoice implements PhoneVoice {
   Future<void> _setUp(FlutterTts tts, String language) async {
     final locale = phoneLocale(language);
     await tts.awaitSpeakCompletion(false);
-    // Android answers 0 when it has no voice for the locale itself, say only Mexican Spanish.
+    // Android answers 0 when it has no voice for the language at all.
     final set = await tts.setLanguage(locale);
     // The engines' normal pace: Android and iOS count 0.5 as normal, browsers 1.0.
     await tts.setSpeechRate(kIsWeb ? 1.0 : 0.5);
-    Map<String, String>? best;
-    try {
-      final voices = await tts.getVoices;
-      if (voices is List) best = bestVoice(voices, language: language, locale: locale);
-    } on Object {
-      // The engine's default voice for the language still reads.
-    }
-    if (best != null) {
-      await tts.setVoice(best);
-    } else if (set == 0) {
-      throw PhoneVoiceUnavailable('no voice for $language');
+    final voice = phoneVoiceFor(
+      await _listVoices(tts),
+      language: language,
+      languageSet: set != 0,
+      web: kIsWeb,
+    );
+    if (voice != null) await tts.setVoice(voice);
+  }
+
+  /// The voices the engine lists, or none when it won't say. A browser loads its voices a moment
+  /// after the page, and lists none until then, so it is asked again a few times.
+  static Future<List<Object?>> _listVoices(FlutterTts tts) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        final voices = await tts.getVoices;
+        if (voices is List && voices.isNotEmpty) return voices;
+      } on Object {
+        return const [];
+      }
+      if (attempt >= 3) return const [];
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
   }
 
@@ -123,7 +133,7 @@ class FlutterPhoneVoice implements PhoneVoice {
 }
 
 /// The locale the phone's voice reads [language] in: a story's language code, such as `es`, or
-/// `ca` for Catalan.
+/// `ca` for Catalan. Spanish is Spain's, as the story is written (S10).
 String phoneLocale(String language) => switch (language) {
   'en' => 'en-US',
   'es' => 'es-ES',
@@ -131,9 +141,26 @@ String phoneLocale(String language) => switch (language) {
   _ => language,
 };
 
-/// The most natural of the phone's voices for [language], as `setVoice` takes it: a voice in the
-/// language, the highest quality first, then one for [locale] itself, then one that works
-/// offline. Null when the phone lists none.
+/// Whether a voice for [tag] (a locale such as `es-ES`, `es_US` or `en`) reads [language] as a
+/// native speaker would. Spanish only in Spain's own accent, never a Latin American one (Miki,
+/// 2026-11-08); English and Catalan in any accent of their own. A voice for another language
+/// never reads the story, so an English voice never reads Spanish.
+@visibleForTesting
+bool readsNatively(String tag, String language) {
+  final subtags = tag.replaceAll('_', '-').toLowerCase().split('-');
+  if (subtags.first != language) return false;
+  if (language != 'es') return true;
+  // The region: two letters or three digits (`419`, Latin America), after any script.
+  final region = subtags
+      .skip(1)
+      .where((s) => s.length == 2 || RegExp(r'^\d{3}$').hasMatch(s))
+      .firstOrNull;
+  return region == 'es';
+}
+
+/// The most natural of the phone's voices that read [language] natively ([readsNatively]), as
+/// `setVoice` takes it: the highest quality first, then one for [locale] itself, then one that
+/// works offline. Null when the phone lists none.
 @visibleForTesting
 Map<String, String>? bestVoice(
   List<Object?> voices, {
@@ -153,7 +180,7 @@ Map<String, String>? bestVoice(
     if (voice is! Map) continue;
     final name = voice['name'];
     final tag = '${voice['locale'] ?? ''}'.replaceAll('_', '-');
-    if (name is! String || tag.split('-').first.toLowerCase() != language) continue;
+    if (name is! String || !readsNatively(tag, language)) continue;
     final double score =
         quality(voice['quality']) +
         (tag.toLowerCase() == locale.toLowerCase() ? 0.5 : 0) +
@@ -163,5 +190,27 @@ Map<String, String>? bestVoice(
       best = {'name': name, 'locale': '${voice['locale']}'};
     }
   }
+  return best;
+}
+
+/// The voice the phone reads [language] in, from the [voices] its engine lists: the best that
+/// reads it natively ([bestVoice]). Null when the engine lists no voices at all and has its own
+/// voice for the language ([languageSet]), which then reads; a browser that lists none may have
+/// no voice for it, so it doesn't read. Throws [PhoneVoiceUnavailable] when no voice reads the
+/// language natively, rather than read Spanish in a Latin American or an English voice.
+@visibleForTesting
+Map<String, String>? phoneVoiceFor(
+  List<Object?> voices, {
+  required String language,
+  required bool languageSet,
+  required bool web,
+}) {
+  final locale = phoneLocale(language);
+  if (voices.isEmpty) {
+    if (languageSet && !web) return null;
+    throw PhoneVoiceUnavailable('no voice for $locale');
+  }
+  final best = bestVoice(voices, language: language, locale: locale);
+  if (best == null) throw PhoneVoiceUnavailable('no voice for $locale');
   return best;
 }

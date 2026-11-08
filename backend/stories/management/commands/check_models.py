@@ -8,12 +8,14 @@ finding out from "The storyteller is unavailable".
     uv run python manage.py check_models               # each model in use, pictures included
     uv run python manage.py check_models --no-picture  # every model but the picture model
 
-Only the models the app uses are called, each once, whichever nodes share it: today three text
-models, the picture model, the speech model and the voice model, for about 4 cents in all, most of
-it the picture. The speech model is sent a second of silence with the settings dictation uses
-(V6), so a name or setting Vertex AI refuses shows here. The voice model reads a short passage
-sent as scenes are, with nothing but its words (V9), its speech is made into the MP3 the app plays,
-and the speech model writes down what it said: a voice that says more than the passage fails the
+Only the models the app uses are called, each once, whichever nodes share it, but the voice model
+once for each story language: today three text models, the picture model, the speech model and
+the voice model, for about 4 cents in all, most of it the picture. The speech model is sent a
+second of silence with the settings dictation uses (V6), so a name or setting Vertex AI refuses
+shows here. The voice model reads a short passage in each story language (S10), sent as scenes
+are, with nothing but its words and the language and accent it is read in (V9), such as `es-ES`,
+so a language Vertex AI won't read shows here. Its speech is made into the MP3 the app plays, and
+the speech model writes down what it said: a voice that says more than the passage fails the
 check, since every player would hear it. The evals' judge is left out, since it never serves a
 player. With the offline model (`LLM_PROVIDER=fake`) it checks nothing and says so.
 
@@ -45,6 +47,7 @@ from asgiref.sync import async_to_sync
 from django.core.management.base import BaseCommand, CommandError
 from pydantic import BaseModel
 
+from engine.context import Language
 from graph.llm import (
     AudioPart,
     CallOptions,
@@ -63,7 +66,7 @@ from graph.llm import (
 )
 from graph.llm.types import ProviderError, Request
 from speech.audio import MP3, to_mp3
-from speech.voices import DEFAULT_VOICE
+from speech.voices import DEFAULT_VOICE, reading_locale
 
 # The nodes a player's turn, draft or picture calls, in the order they are checked.
 TEXT_NODES = (
@@ -81,13 +84,24 @@ PICTURE_SYSTEM = "You draw one simple picture."
 PICTURE_PROMPT = "A single red apple on a plain wooden table, in soft daylight."
 # Dictation's settings (V6): the story's language, a name to listen for, and smart mode.
 SPEECH_SPEC = Transcription(language_codes=("en-US",), vocabulary=("Lucid Saga",))
-# What the voice model reads, sent as a scene's part is (V9): narration and a line of dialogue.
-# A voice that says more words than this, give or take what the speech model hears differently,
-# added words of its own, such as directions (V9: Miki heard them on 2026-11-07).
-VOICE_PASSAGE = (
-    'The lighthouse keeper waved to the last ship of the season. "Safe home," she called into '
-    "the wind."
-)
+# What the voice model reads in each story language, sent as a scene's part is (V9): narration
+# and a line of dialogue, with the language and accent the story is read in. A voice that says
+# more words than this, give or take what the speech model hears differently, added words of its
+# own, such as directions (V9: Miki heard them on 2026-11-07).
+VOICE_PASSAGES = {
+    Language.EN: (
+        'The lighthouse keeper waved to the last ship of the season. "Safe home," she called '
+        "into the wind."
+    ),
+    Language.ES: (
+        "La farera despidió con la mano al último barco de la temporada. «Buen viaje», gritó al "
+        "viento."
+    ),
+    Language.CA: (
+        "La farera va acomiadar amb la mà l'últim vaixell de la temporada. «Bon viatge», va "
+        "cridar al vent."
+    ),
+}
 VOICE_EXTRA_WORDS = 5
 # Room for the thinking a node keeps on, so a one-word answer is never cut off.
 TEXT_OPTIONS = CallOptions(max_output_tokens=1024)
@@ -148,8 +162,8 @@ class Check:
     cache: bool = False
     input_tokens: int = 0
     cached_tokens: int = 0
-    # For the voice model: what the speech model heard it say.
-    heard: str = ""
+    # For the voice model: what the speech model heard it say, in each language it read.
+    heard: tuple[tuple[str, str], ...] = ()
 
 
 def silence(seconds: float = 1.0, rate: int = 16_000) -> bytes:
@@ -217,7 +231,7 @@ async def _check(
     started = time.monotonic()
     try:
         if nodes[0] is Node.VOICE:
-            return await _check_voice(client, model, names, started)
+            return await _check_voice(client, failures, model, names, started)
         if nodes[0] is Node.SPEECH:
             await client.transcribe(Node.SPEECH, AudioPart(silence(), "audio/wav"), SPEECH_SPEC)
         elif nodes[0] is Node.PICTURE:
@@ -242,39 +256,53 @@ async def _check(
 
 
 async def _check_voice(
-    client: ModelClient, model: str, names: tuple[str, ...], started: float
+    client: ModelClient,
+    failures: _LastFailure,
+    model: str,
+    names: tuple[str, ...],
+    started: float,
 ) -> Check:
-    """Reads a passage as scenes are read (V9), makes it the MP3 the app plays, and has the
-    speech model write down what was said. Raises `LLMError` when the voice model fails."""
-    spoken = await client.read_aloud(Node.VOICE, VOICE_PASSAGE, Reading(voice=DEFAULT_VOICE))
-    try:
-        encoded = to_mp3(spoken.data, spoken.mime_type)
-    except ValueError as error:
-        return Check(
-            model,
-            names,
-            ok=False,
-            seconds=time.monotonic() - started,
-            reason="unreadable_audio",
-            detail=f"{error} ({spoken.mime_type})",
-        )
-    seconds = time.monotonic() - started
-    try:
-        heard = await client.transcribe(
-            Node.SPEECH, AudioPart(encoded.data, MP3), Transcription(language_codes=("en-US",))
-        )
-    except LLMError:
-        heard = ""  # the speech model's own check says why
-    if len(heard.split()) > len(VOICE_PASSAGE.split()) + VOICE_EXTRA_WORDS:
-        return Check(
-            model,
-            names,
-            ok=False,
-            seconds=seconds,
-            reason="said_more",
-            detail=f'it said more than the passage: "{heard[:DETAIL_CHARS]}"',
-        )
-    return Check(model, names, ok=True, seconds=seconds, heard=heard)
+    """Reads a passage in each story language as scenes are read (V9), makes each the MP3 the
+    app plays, and has the speech model write down what was said. The first language that fails
+    fails the check, named in its detail."""
+    heard: list[tuple[str, str]] = []
+    reading = 0.0
+    for language, passage in VOICE_PASSAGES.items():
+        locale = reading_locale(language)
+        begun = time.monotonic()
+
+        def failed(reason: str, detail: str, locale: str = locale) -> Check:
+            return Check(
+                model,
+                names,
+                ok=False,
+                seconds=time.monotonic() - started,
+                reason=reason,
+                detail=f"{locale}: {detail}"[:DETAIL_CHARS],
+            )
+
+        failures.fields = {}
+        try:
+            spoken = await client.read_aloud(
+                Node.VOICE, passage, Reading(voice=DEFAULT_VOICE, language=locale)
+            )
+        except LLMError as error:
+            return failed(str(failures.fields.get("reason") or error.code), _detail(failures))
+        try:
+            encoded = to_mp3(spoken.data, spoken.mime_type)
+        except ValueError as error:
+            return failed("unreadable_audio", f"{error} ({spoken.mime_type})")
+        reading += time.monotonic() - begun
+        try:
+            words = await client.transcribe(
+                Node.SPEECH, AudioPart(encoded.data, MP3), Transcription(language_codes=(locale,))
+            )
+        except LLMError:
+            words = ""  # the speech model's own check says why
+        if len(words.split()) > len(passage.split()) + VOICE_EXTRA_WORDS:
+            return failed("said_more", f'it said more than the passage: "{words}"')
+        heard.append((locale, words))
+    return Check(model, names, ok=True, seconds=reading, heard=tuple(heard))
 
 
 async def _check_format(
@@ -404,7 +432,8 @@ def describe(check: Check) -> str:
     if check.ok:
         line = f"{line}ok in {check.seconds:.1f} s"
         if check.heard:
-            line = f'{line}, and it said "{check.heard}"'
+            said = ", ".join(f'in {locale} "{words}"' for locale, words in check.heard)
+            line = f"{line}, and it said {said}"
         if check.in_prompt:
             line = f"{line}, though Gemini refused it as a schema, so it goes in the prompt"
         return line

@@ -402,8 +402,9 @@ def to_reading_contents(request: Request) -> str:
 
 
 def reading_config(request: Request) -> genai_types.GenerateContentConfig:
-    """Gemini TTS's settings (V9): audio only, in the prebuilt voice asked for. No safety
-    settings: see `ModelClient.read_aloud`."""
+    """Gemini TTS's settings (V9): audio only, in the prebuilt voice asked for, and in the
+    language and accent asked for, such as `es-ES`, so Spanish is read as Spain speaks it rather
+    than as the model guesses. No safety settings: see `ModelClient.read_aloud`."""
     spec = request.reading
     if spec is None:
         raise ValueError("Not a reading request")
@@ -412,7 +413,7 @@ def reading_config(request: Request) -> genai_types.GenerateContentConfig:
     )
     config = genai_types.GenerateContentConfig(
         response_modalities=["AUDIO"],
-        speech_config=genai_types.SpeechConfig(voice_config=voice),
+        speech_config=genai_types.SpeechConfig(voice_config=voice, language_code=spec.language),
     )
     if request.options.temperature is not None:
         config.temperature = request.options.temperature

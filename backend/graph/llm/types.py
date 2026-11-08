@@ -104,10 +104,12 @@ class Transcription:
 @dataclass(frozen=True)
 class Reading:
     """Asks the voice model to read the prompt's text aloud instead of answering (V9), in one of
-    its prebuilt voices, such as `Sulafat`. The model tells the language from the text, and the
-    text can open with how to read it ("Read this in Spanish, as a storyteller would: ...")."""
+    its prebuilt voices, such as `Sulafat`. `language` is the BCP-47 code of the language and
+    accent to read in, such as `es-ES` for Spanish from Spain (`speech.voices.READING_LOCALES`);
+    without one the model guesses the language from the text, accent and all."""
 
     voice: str
+    language: str | None = None
 
 
 @dataclass(frozen=True, repr=False)
