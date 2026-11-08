@@ -13,7 +13,8 @@
 # A run by hand with `styles` plays no scenario: it draws the same scenes once in each candidate
 # house style (backend/evals/styles.py, S7), for Miki to pick the look from, about $0.55, and also
 # pushes the pictures to a branch of their own, style-samples/<run id>, for a thread that can't
-# download the artifact. Delete that branch once the pictures are read.
+# download the artifact. Delete that branch once the pictures are read. `candidates` draws a new
+# round, today's style next to the JSON list it gives, with no code change.
 
 name: Evals
 run-name: "Evals${{ inputs.styles && ', house style candidates' || '' }}${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}"
@@ -35,6 +36,10 @@ on:
         description: Draw one scene in each candidate house style instead of the scenarios (S7)
         type: boolean
         default: false
+      candidates:
+        description: With styles, a JSON list of candidates ({id, name, look or tweak}) to draw next to today's style (blank draws the built-in ones)
+        type: string
+        default: ""
 
 permissions: {}
 
@@ -96,7 +101,11 @@ jobs:
         env:
           # Blank keeps the configured picture model (graph.llm.config).
           PICTURE_MODEL: ${{ inputs.picture_model }}
-        run: uv run python -m evals styles --out evals-out
+          CANDIDATES: ${{ inputs.candidates }}
+        run: |
+          args=()
+          if [ -n "$CANDIDATES" ]; then args+=(--candidates "$CANDIDATES"); fi
+          uv run python -m evals styles --out evals-out "${args[@]}"
 
       - name: Summary and trend
         if: ${{ !cancelled() }}
