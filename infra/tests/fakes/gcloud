@@ -88,6 +88,8 @@ case "$group/$verb" in
   "run jobs/execute")
     if [[ " $* " == *" --args=manage.py,draw_premise_covers "* ]]; then
       [[ -z "${FAKE_FAIL_COVERS:-}" ]]
+    elif [[ " $* " == *" --args=manage.py,redraw_pictures "* ]]; then
+      [[ -z "${FAKE_FAIL_REDRAW:-}" ]]
     elif [[ " $* " == *" --args=manage.py,check_models "* ]]; then
       [[ -z "${FAKE_FAIL_MODELS:-}" ]]
     else

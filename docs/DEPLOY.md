@@ -25,10 +25,10 @@ and the Workload Identity condition all work from it.
 
 The CI jobs are separate checks of the same commit (backend tests, evals, the image, the app, the
 Android build, the deploy scripts), so they run side by side. The deploy's jobs are a chain
-instead: the CI gate, then the deploy, then the model checks and the covers, while the APK builds
-alongside and is published after the deploy. Every job runs on `ubuntu-24.04` rather than
-`ubuntu-latest`, so a new runner image never arrives in the middle of a deploy; moving to a newer
-Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
+instead: the CI gate, then the deploy, then the model checks, the covers and the story pictures,
+while the APK builds alongside and is published after the deploy. Every job runs on
+`ubuntu-24.04` rather than `ubuntu-latest`, so a new runner image never arrives in the middle of a
+deploy; moving to a newer Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
 
 ## What runs where
 
@@ -310,14 +310,17 @@ waiting its turn.
 9. **Draw the starter covers** (`infra/deploy.sh covers`) that are missing, or drawn in an older
    house style, in a job of its own
    ([below](#drawing-the-starter-covers)). A failure there doesn't fail the deploy.
-10. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 7,
+10. **Redraw story pictures** (`infra/deploy.sh redraw`) drawn in an older house style, in a job
+    of its own after the covers ([below](#redrawing-story-pictures)). A failure there doesn't fail
+    the deploy either.
+11. **Publish the Android app** ([below](#the-android-app)). It is built alongside steps 1 to 7,
     and published only once they pass: first as the latest GitHub release, then to the releases
     bucket (`infra/deploy.sh upload-apk`), where installed apps find it and
     [update themselves](#updates-in-the-app).
 
 The run's summary shows the image, the new and previous revisions, the URL and the APK's link.
-When the migration, the model check or the covers job fails, the run prints that job's own log
-lines, so the reason is in GitHub without opening the Cloud console.
+When the migration, the model check, the covers or the redraw job fails, the run prints that
+job's own log lines, so the reason is in GitHub without opening the Cloud console.
 
 ### Checking the models
 
@@ -389,6 +392,33 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
   --args=manage.py,draw_premise_covers --task-timeout=30m --wait
 # One cover again:   --args=manage.py,draw_premise_covers,naples-vendetta,--force
 # What it would draw and cost, without drawing:   --args=manage.py,draw_premise_covers,--dry-run
+```
+
+### Redrawing story pictures
+
+When the house style changes (`HOUSE_STYLE_VERSION`, S7), the pictures already in players' stories
+are drawn once more in it too (M4). Each deploy runs `manage.py redraw_pictures` as the migration
+job, after the covers, whether or not they all drew. It finds every ready portrait, place, scene
+and cover drawn in an older style and draws it again with `PICTURE_MODEL`, about $0.034 each (a
+scene picture's note adds a fraction of a cent), paid by the house: the logs show each one's model
+and cost (`Redrawn picture ready`), and no player's ledger changes. Portraits and places go first,
+so the scenes and covers are drawn with the new faces. The old drawing stays on screen until the
+new one is stored, then its file is deleted; the app shows the new one the next time it loads the
+story. The grown-up house style (2026-11-08) redraws the 49 pictures drawn so far for about $1.70.
+
+The drawings are 10 s apart, and one that runs out of quota is drawn again after a minute, twice
+at most. A run spends at most $5 and starts no drawing after 45 minutes (the job has 60), so a big
+redraw takes a few deploys. A picture that fails or is blocked keeps its old drawing, and the job
+is marked failed without failing the deploy; the next deploy tries again. Once every picture is in
+the current style, the job only starts and stops.
+
+To draw now, or count first:
+
+```bash
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 \
+  --args=manage.py,redraw_pictures --task-timeout=60m --wait
+# What it would draw and cost, without drawing:   --args=manage.py,redraw_pictures,--dry-run
+# A bigger run:   --args=manage.py,redraw_pictures,--max-usd=20
 ```
 
 ### Service settings
@@ -724,6 +754,9 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
 
 # infra/deploy.sh covers
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait
+
+# infra/deploy.sh redraw
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,redraw_pictures --task-timeout=60m --wait
 
 # infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)
 gcloud storage cp APK gs://playable-anime-releases/android/lucid-saga-42.apk --content-type=application/vnd.android.package-archive

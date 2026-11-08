@@ -449,6 +449,12 @@ test_deploy_dry_run() {
   equals "$status" 0 "covers exit status"
   contains "$out" "[dry-run] gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,draw_premise_covers --task-timeout=30m --wait"
   if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
+
+  out="$state/out-redraw"
+  with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 "$INFRA/deploy.sh" redraw
+  equals "$status" 0 "redraw exit status"
+  contains "$out" "[dry-run] gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,redraw_pictures --task-timeout=60m --wait"
+  if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
 }
 
 test_deploy_settings() {
@@ -585,6 +591,23 @@ test_covers() {
   if [ "$status" -ne 0 ]; then ok; else bad "failed covers passed"; fi
   contains "$out" "the deployer needs roles/logging.viewer"
   contains "$out" "Read them with: gcloud logging read"
+}
+
+test_redraw() {
+  local state out
+  start "deploy.sh redraw runs redraw_pictures as the migration job and prints its logs on failure"
+  state="$(new_state redraw)"
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" "$INFRA/deploy.sh" redraw
+  equals "$status" 0 "redraw exit status"
+  contains "$state/calls.log" "gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py\\,redraw_pictures --task-timeout=60m --wait"
+  lacks "$state/calls.log" "gcloud logging read" "logs are read only after a failure"
+
+  out="$state/out-fail"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_REDRAW=1 "$INFRA/deploy.sh" redraw
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed redraw passed"; fi
+  contains "$out" "keep their old drawing until the next deploy"
+  contains "$out" "fake-log-line Model call rejected" "a failed redraw prints the job's logs"
 }
 
 test_models() {
@@ -1053,6 +1076,7 @@ test_preflight
 test_deploy_service
 test_access
 test_covers
+test_redraw
 test_models
 test_ops
 test_migration_failure

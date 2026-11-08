@@ -178,7 +178,7 @@ together.
   clock, while its bottom edge stays calm and darker for the fade. One uninterrupted image with no
   border or vignette of its own and no writing in it: no text, logos or panels. Mild in what it
   shows in every rating, never in its mood (M6). A change of style moves `HOUSE_STYLE_VERSION` on,
-  so the next deploy draws the starter covers again.
+  so the next deploy draws the starter covers and every story's pictures again (M4).
 - The placeholder art in `assets/fake/` is procedural and only stands in for the fake API.
 
 ## App icon
