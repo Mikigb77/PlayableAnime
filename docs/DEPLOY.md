@@ -579,8 +579,10 @@ that manifest and gives the app a 30-minute signed URL ([API.md](API.md#app-upda
 The app checks when its tabs first show and whenever it comes back to the foreground, at most every
 half hour, and Account has "Check for updates". Update downloads the APK, checks it, and hands it
 to Android, which asks to confirm (the first time, it also asks to allow installs from Lucid Saga
-in Settings). As soon as Android starts installing, the app closes itself, and Android replaces
-it; the player opens it again on the new build. The first build with the updater has to be
+in Settings). As soon as Android starts installing, the app covers every screen with "Updating
+Lucid Saga" and stays in front, since Android and Play Protect may still check the build or ask
+the player; Android then replaces it, which closes the old app, and the player opens it again on
+the new build. The first build with the updater has to be
 installed from the README once; every build after it arrives in the app.
 
 **On Google Play** the store updates the app, and Play's policy forbids any other way. A Play build
