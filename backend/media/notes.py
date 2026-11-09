@@ -2,13 +2,13 @@
 
 The narrator writes a scene picture's description in the same answer as the scene, while the
 scene is still being written, so the description can miss what the scene ends up telling: where
-everyone is, what they are doing, what they hold. A small model step (`Node.PICTURE_NOTE`, the
-cheapest text model) reads the scene as the player read it, with the record of who may be in the
-picture and how they look, what the player character carries (C10) and where the scene happens,
-and writes the description the picture is drawn from, and who can be seen in it. It runs in the
-picture's own request, after the narration is shown (M3), so the story never waits for it, and on
-the account that draws the picture, which pays for both. When it fails, the narrator's description
-stands, and the picture is drawn from that.
+everyone is and what they stand on, what they are doing, what they hold. A small model step
+(`Node.PICTURE_NOTE`, the cheapest text model) reads the scene as the player read it, with the
+record of who may be in the picture and how they look, what the player character carries (C10)
+and where the scene happens, and writes the description the picture is drawn from, and who can be
+seen in it. It runs in the picture's own request, after the narration is shown (M3), so the story
+never waits for it, and on the account that draws the picture, which pays for both. When it fails,
+the narrator's description stands, and the picture is drawn from that.
 
 Only a scene picture gets a note. A story's cover is its poster (M1), the whole story rather than
 the moment of the scene it is planned in, portraits and places are drawn from their records, and a
@@ -37,14 +37,18 @@ the story draws the picture from your brief alone.
 
 Read SCENE, the scene as the player read it, and write one to three plain sentences that show \
 the moment PICTURE asks for, at one instant:
-- who can be seen, and exactly what each of them is doing: their pose, and where each one is \
-(up on a branch, behind the bar, halfway down the stairs);
-- where it happens, as the scene tells it;
+- who can be seen, and exactly what each of them is doing: their pose, where each one is and \
+what they stand, sit or lean on (up on a branch, on top of the broken wall, behind the bar, \
+halfway down the stairs);
+- where it happens, as the scene tells it, and when they look down on or out over something, \
+such as a camp below or a distant city, how far below or away it is from where they stand;
 - what anyone holds or wears that matters, and the light and the weather.
 
 Only what the scene tells. Never add a place, building, ruin, river, creature, person or thing it \
-doesn't mention, even one the world, PLACE or the narrator's note would make likely. PLACE says \
-where the scene happens: use it to name the place, not to add to it. The player character, the \
+doesn't mention, even one the world, PLACE or the narrator's note would make likely. The ground \
+or floor under someone is never an addition: when the scene doesn't say what they stand on, \
+they stand on the plain ground or floor of where they are. PLACE says where the scene happens: \
+use it to name the place, not to add to it. The player character, the \
 narration's "you", has only what CARRIES lists, plus what this scene itself puts in their hands: \
 never give them any other weapon, tool or gear. The others hold only what the scene gives them. \
 Call everyone by name, the player character included, never "you".
@@ -72,7 +76,10 @@ class PictureNote(BaseModel):
     """What the note step answers: the picture's description, and who can be seen in it."""
 
     description: Note = Field(
-        description="One to three sentences: the moment, who does what where, and the light."
+        description=(
+            "One to three sentences: the moment, who does what where and what they stand on, and "
+            "the light."
+        )
     )
     people: list[str] = Field(
         default_factory=list,

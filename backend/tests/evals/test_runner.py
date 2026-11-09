@@ -341,6 +341,53 @@ def test_a_scene_picture_is_drawn_from_its_note_as_the_endpoint_draws_it():
     assert len(painter.notes) == 1
 
 
+def test_a_scene_picture_gets_the_places_picture_last_as_the_endpoint_sends_it():
+    """M5: an eval that drew the place hands its picture to a scene drawn there, labelled as the
+    place, after the portraits; a cover gets none. The place is described as the turn describes a
+    planned one."""
+    from decimal import Decimal
+
+    from engine.looks import place_looks
+    from evals.pictures import Picture, draw, place_brief, scene_brief
+    from media.drawing import Drawn
+    from media.prompts import GROUNDED
+
+    state = worlds.above_the_camp()
+
+    class Painter:
+        model, byok = "fake-image", False
+
+        def __init__(self):
+            self.drawn = []
+
+        async def draw(self, request):
+            self.drawn.append(request)
+            return Drawn(TINY_PNG, "image/png", self.model, Decimal("0.034"))
+
+    painter = Painter()
+    brief = scene_brief(state, "You and Zhao Kun stand on the wall.")
+    portrait = Picture("p", "portrait", TINY_PNG, "image/png", "fake-image", Decimal(0))
+    place = Picture("place-arches", "place", TINY_PNG, "image/png", "fake-image", Decimal(0))
+
+    asyncio.run(draw(painter, "s", "scene", brief, [("Lin Feng", portrait)], place=place))
+    asyncio.run(draw(painter, "c", "cover", brief, [("Lin Feng", portrait)], place=place))
+
+    scene, cover = painter.drawn
+    assert [ref.label for ref in scene.references] == [
+        "Image 1: the portrait of Lin Feng.",
+        "Image 2: the Broken Arches, the place where this happens.",
+    ]
+    assert "Draw it again around the people" in scene.prompt and GROUNDED in scene.prompt
+    assert [ref.name for ref in cover.references] == ["Lin Feng"]
+    assert brief.time == "dusk"
+    described = place_brief(state, "arches")
+    assert (described.subject_name, described.subject_appearance) == (
+        "the Broken Arches",
+        place_looks(state.places["arches"]),
+    )
+    assert described.description == "A wide view of the Broken Arches."
+
+
 # --- results -----------------------------------------------------------------------------------
 
 
