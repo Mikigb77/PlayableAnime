@@ -133,8 +133,8 @@ lib/
                             privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: online and phone engines, controller, button, input mode (V1–V7)
     update/                 The app's own updates (S12): check, download, hand to Android's
-                            installer (MainActivity.kt) and close while it installs, the banner
-                            above the tabs, Account's line
+                            installer (MainActivity.kt), the cover over every screen while it
+                            installs, the banner above the tabs, Account's line
   l10n/app_en.arb           Every string the player sees (S10)
   l10n/app_es.arb           The same strings in Spanish
   l10n/app_ca.arb           The same strings in Catalan

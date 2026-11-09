@@ -47,13 +47,17 @@ class _UpdateBannerState extends ConsumerState<UpdateBanner> with WidgetsBinding
           UpdatePhase.downloading || UpdatePhase.installing || UpdatePhase.replacing => true,
           _ => false,
         };
+    final card = visible
+        ? _Card(update: update, release: release)
+        : const SizedBox(width: double.infinity);
+    // With reduce motion it simply changes: an AnimatedSize with no time to animate trips over
+    // its own layout.
+    if (Motion.reduced(context)) return card;
     return AnimatedSize(
-      duration: Motion.of(context, Motion.base),
+      duration: Motion.base,
       curve: Motion.standard,
       alignment: Alignment.topCenter,
-      child: visible
-          ? _Card(update: update, release: release)
-          : const SizedBox(width: double.infinity),
+      child: card,
     );
   }
 }
