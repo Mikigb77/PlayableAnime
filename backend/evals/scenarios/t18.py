@@ -1111,9 +1111,9 @@ async def feet_on_the_ground(ev: Eval) -> None:
             Rubric(
                 must=(
                     "In every picture, Lin (arms crossed) and Zhao (leaning over the edge) both "
-                    "stand on solid footing the picture shows, the top of the wall or the ground "
-                    "beside it, with their feet on it: no one floats or hovers in the air, or "
-                    "stands on nothing in front of the camp",
+                    "stand on solid footing the picture shows, such as the top of the wall, with "
+                    "their feet on it: no one floats or hovers in the air, or stands on nothing "
+                    "in front of the camp",
                     "In every picture, the two of them are side by side on the same footing, at "
                     "about the same size, and the camp's tents, fires and people are small and "
                     "clearly far below them",

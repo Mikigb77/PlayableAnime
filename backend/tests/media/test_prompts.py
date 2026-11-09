@@ -385,8 +385,8 @@ def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():
         prompt.user
     )
     assert "what that image shows counts as named" in prompt.user
-    # Miki, 2026-11-09: the place's picture came back as a backdrop, with the player character
-    # standing in front of it in mid-air.
+    # Miki, 2026-11-09: the player character stood in mid-air in front of the place, as if it
+    # were a backdrop.
     assert "Draw it again around the people, so they stand on its own ground at its own scale" in (
         prompt.user
     )
