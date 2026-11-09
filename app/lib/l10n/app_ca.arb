@@ -589,6 +589,7 @@
   "updateLater": "Més tard",
   "updateDownloading": "S'està baixant l'actualització, {percent} %",
   "updateInstalling": "Android et demana que la instal·lis. Lucid Saga es tanca mentre s'actualitza; torna-la a obrir després.",
+  "updateReplacing": "Android l'està instal·lant. Lucid Saga es tanca fins que acabi; torna-la a obrir d'aquí a un moment.",
   "updateFailedDownload": "L'actualització no s'ha baixat. Comprova la connexió i torna-ho a provar.",
   "updateFailedCorrupt": "La baixada estava malmesa, així que no s'ha instal·lat. Torna-ho a provar.",
   "updateFailedInstall": "Android no ha instal·lat l'actualització. Torna-ho a provar o baixa-la des de l'enllaç del README.",

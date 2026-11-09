@@ -58,8 +58,9 @@ class Env(BaseSettings):
     # No default, so no address is in the public repo: production sets it from the OWNER_EMAILS
     # GitHub secret (docs/DEPLOY.md).
     owner_emails: str = ""
-    # The youngest age that can sign up. Under 17 gets Teen only (F8).
-    min_signup_age: int = 13
+    # The youngest age that can sign up (F8): 16, as the privacy policy says (docs/PRIVACY.md),
+    # so no EU country asks for a parent's consent. Under 17 gets Teen only.
+    min_signup_age: int = 16
     # How many proxies append to X-Forwarded-For before the request reaches us: 1 on Cloud Run
     # (Google's front end). Raise it if a load balancer goes in front.
     trusted_proxy_hops: int = 1

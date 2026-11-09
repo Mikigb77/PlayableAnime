@@ -5,6 +5,7 @@ import pytest
 from media.prompts import (
     ASPECT_RATIOS,
     FRAMING,
+    GROUNDED,
     HOUSE_STYLE,
     HOUSE_STYLE_VERSION,
     MAX_DESCRIPTION_CHARS,
@@ -137,6 +138,38 @@ def test_the_people_listed_are_the_only_figures_each_drawn_once(kind):
     assert ONLY_THEM in user
     assert user.index("How the people in it look:") < user.index(ONLY_THEM)
     assert ONLY_THEM not in build_prompt(kind, Brief(description="An empty hall.")).user
+
+
+@pytest.mark.parametrize("kind", ["scene", "cover"])
+def test_everyone_stands_on_something_at_the_size_where_they_are_gives_them(kind):
+    """Miki, 2026-11-09: the player character stood in mid-air, life-size, over a camp far below,
+    beside a companion who leant over the edge of a wall. Every scene and cover asks for one
+    perspective, a footing under everyone, which a scene may draw though its description doesn't
+    name it, and a size that fits each one's distance, unless the moment has them in the air."""
+    brief = Brief(
+        description="Rosa and Tonio look down at the camp from the wall.",
+        figures=(Figure("rosa", "Rosa", "curls"), Figure("tonio", "Tonio", "grey suit")),
+    )
+
+    user = build_prompt(kind, brief, references=["Rosa"]).user
+
+    assert GROUNDED in user
+    assert user.index("How the people in it look:") < user.index(ONLY_THEM) < user.index(GROUNDED)
+    assert "in one consistent perspective" in GROUNDED
+    assert "rests on something solid that the picture shows under them" in GROUNDED
+    assert "with their feet planted on it and a shadow where they touch it" in GROUNDED
+    assert "unless the description has them fly, float, fall, leap, climb, swim or hang" in GROUNDED
+    assert "Draw that footing even where the description doesn't name it" in GROUNDED
+    assert "how far they are from the viewer" in GROUNDED
+    assert "people side by side share the same footing" in GROUNDED
+    assert "No one hovers in mid-air unless the description says so" in GROUNDED
+    # People the scene doesn't list, such as bandits or a crowd, stand on something too.
+    assert GROUNDED in build_prompt(kind, Brief(description="Three bandits block the road.")).user
+
+
+@pytest.mark.parametrize("kind", ["portrait", "place"])
+def test_a_portrait_or_place_keeps_its_own_framing(kind):
+    assert GROUNDED not in build_prompt(kind, Brief(subject_name="X", description="d")).user
 
 
 def test_the_moment_comes_before_the_people_and_the_world():
@@ -287,7 +320,7 @@ def test_a_changed_place_is_asked_for_as_the_same_place_as_it_is_now():
 def test_long_descriptions_are_cut_so_the_rules_stay_in_charge():
     prompt = build_prompt("scene", Brief(description="word " * 2000))
 
-    described = prompt.user.split("What it shows: ", 1)[1]
+    described = prompt.user.split("What it shows: ", 1)[1].split("\n", 1)[0]
     assert len(described) <= MAX_DESCRIPTION_CHARS
     assert described.endswith("…")
 
@@ -352,6 +385,12 @@ def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():
         prompt.user
     )
     assert "what that image shows counts as named" in prompt.user
+    # Miki, 2026-11-09: the player character stood in mid-air in front of the place, as if it
+    # were a backdrop.
+    assert "Draw it again around the people, so they stand on its own ground at its own scale" in (
+        prompt.user
+    )
+    assert "never in front of a copy of that image used as a backdrop" in prompt.user
     assert "only for that person's face" in prompt.user
     alone = build_prompt("scene", brief, place=True)
     assert alone.labels == ("Image 1: The Inn, the place where this happens.",)

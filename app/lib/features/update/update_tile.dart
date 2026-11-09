@@ -23,6 +23,7 @@ class AppUpdateTile extends ConsumerWidget {
       UpdatePhase.available when release != null => l10n.accountUpdateReady(release.build),
       UpdatePhase.downloading => l10n.updateDownloading(((update.progress ?? 0) * 100).floor()),
       UpdatePhase.installing => l10n.updateInstalling,
+      UpdatePhase.replacing => l10n.updateReplacing,
       UpdatePhase.failed => switch (update.problem) {
         UpdateProblem.corrupt => l10n.updateFailedCorrupt,
         UpdateProblem.install => l10n.updateFailedInstall,
@@ -32,7 +33,10 @@ class AppUpdateTile extends ConsumerWidget {
     };
     final canUpdate = release != null && update.hasUpdate;
     final busy = switch (update.phase) {
-      UpdatePhase.checking || UpdatePhase.downloading || UpdatePhase.installing => true,
+      UpdatePhase.checking ||
+      UpdatePhase.downloading ||
+      UpdatePhase.installing ||
+      UpdatePhase.replacing => true,
       _ => false,
     };
     return ListTile(

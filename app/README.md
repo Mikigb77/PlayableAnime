@@ -133,7 +133,8 @@ lib/
                             privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: online and phone engines, controller, button, input mode (V1–V7)
     update/                 The app's own updates (S12): check, download, hand to Android's
-                            installer (MainActivity.kt), the banner above the tabs, Account's line
+                            installer (MainActivity.kt) and close while it installs, the banner
+                            above the tabs, Account's line
   l10n/app_en.arb           Every string the player sees (S10)
   l10n/app_es.arb           The same strings in Spanish
   l10n/app_ca.arb           The same strings in Catalan
@@ -164,7 +165,9 @@ assets/
 - **The account** is `meProvider` (`GET /v1/me`, refreshed when the Account tab shows) and
   `creditsHistoryProvider`; `formatCredits` writes an amount the way the app shows it (50¢, $1.20).
 - **The privacy policy** is `app/assets/legal/privacy_en.md`, everything in `docs/PRIVACY.md` from
-  "Who we are" on. A test fails when the two differ, so a change to the policy copies it over.
+  "At a glance" on, with the website's words. A test fails when the two differ, so a change to the
+  policy copies it over, and another when a language's copy states a sign-up age that isn't
+  `FakeAuthState.minSignupAge` (the backend's `MIN_SIGNUP_AGE`).
 - **Voice:** put `DictationButton(tracker: InputModeTracker(controller), storyId: …)` (or
   `draftId:`) next to any text box and send `tracker.mode.wire` as the turn's `input_mode` (V7).
   The id lets online dictation listen for that story's names (V6). `speechEngineProvider` is the

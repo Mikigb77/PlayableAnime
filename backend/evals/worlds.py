@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from engine.base import DAY, MINUTE
+from engine.base import DAY, HOUR, MINUTE
 from engine.samples import cultivation_world, farm_world, grounded_world
 from engine.state import (
     Attitude,
@@ -442,6 +442,36 @@ def among_the_pines() -> WorldState:
         positions=["Lin at the foot of the old pines behind the well"],
         props=["old pines with low, thick branches", "the outer wall beyond them"],
         ended_on="Mist hangs in the old pines behind the well, and the outer wall rises past them.",
+    )
+    return state
+
+
+def above_the_camp() -> WorldState:
+    """Lin and Zhao on top of the old wall of the Broken Arches at dusk, with travelling clans
+    camped far below among the arches (T18's feet on the ground, M5)."""
+    state = cultivation_world()
+    state.places["arches"] = Place(
+        id="arches",
+        name="the Broken Arches",
+        kind="ruins",
+        description=(
+            "Colossal broken stone arches and an old wall along a snowy ridge, the ruin of an "
+            "ancient gate, above a hollow where travelling clans camp among the arches."
+        ),
+        parent_id="azure-peak",
+        setting=PlaceSetting.OUTDOORS,
+        known_by=["lin"],
+        visited_by=["lin"],
+    )
+    for character_id in ("lin", "zhao"):
+        state.characters[character_id].location_id = "arches"
+    state.world_s = 10 * HOUR + 30 * MINUTE  # 17:30 on a day that starts at 7: dusk
+    state.scene = SceneFrame(
+        place_id="arches",
+        present_ids=["lin", "zhao"],
+        positions=["Lin and Zhao on top of the old wall, above the camp"],
+        props=["the broken top of the old wall", "tents and bonfires far below among the arches"],
+        ended_on="Lin and Zhao stand on the old wall as dusk falls over the camp below.",
     )
     return state
 

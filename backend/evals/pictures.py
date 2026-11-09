@@ -5,9 +5,10 @@ reference portraits and picture model are the product's own (`media.prompts`, `m
 `media.notes`, `media.drawing`), so a picture eval judges what a player would see. The briefs are
 put together from the story's state as `stories.turns.brief` and `media.plans.brief_for_scene`
 do; those need Django, so the few lines are repeated here and a test keeps them alike. A portrait
-the eval asks for outside the director's plan is described as "Portrait of <name>.". Only the
-storage is left out, and with it the place's picture, which an eval doesn't draw: the eval keeps
-the bytes and writes them next to its results for staff to spot-check.
+the eval asks for outside the director's plan is described as "Portrait of <name>.", and a place
+as "A wide view of <name>.". Only the storage is left out: the eval keeps the bytes and writes
+them next to its results for staff to spot-check, and a scene picture gets the place's picture as
+a reference only when the eval drew one and hands it over.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from engine.looks import place_looks
 from engine.state.world import WorldState
 from media import briefs
 from media.drawing import DrawError, DrawRequest, NoteFailed, PictureModel, Reference
@@ -130,6 +132,18 @@ def portrait_brief(state: WorldState, character_id: str) -> Brief:
     )
 
 
+def place_brief(state: WorldState, place_id: str) -> Brief:
+    """A place's picture, as `stories.turns.brief` describes a planned one, with the place's look
+    as it is now (`engine.looks.place_looks`, M1, R8)."""
+    place = state.places[place_id]
+    return Brief(
+        description=f"A wide view of {place.name}.",
+        look=look(state),
+        subject_name=place.name,
+        subject_appearance=place_looks(place),
+    )
+
+
 async def draw(
     model: PictureModel,
     name: str,
@@ -138,11 +152,14 @@ async def draw(
     references: Sequence[tuple[str, Picture]] = (),
     *,
     scene: SceneText | None = None,
+    place: Picture | None = None,
 ) -> Picture | NotDrawn:
     """One picture, with up to `MAX_REFERENCES` reference portraits as the endpoint sends (M5).
     A scene picture of `scene` is drawn from the note written from it, as the endpoint draws it
     (`media.notes`), with the portraits of only the people the note keeps; when the note fails,
-    from the brief as it was. A cover, the story's poster (M1), gets no note."""
+    from the brief as it was. A scene picture also gets `place`, the picture of the place it
+    happens in, last, labelled as the place (M5). A cover, the story's poster (M1), gets no note
+    and no place."""
     if scene is not None and kind in NOTED:
         try:
             note = await model.note(note_prompt(kind, brief, scene))
@@ -153,7 +170,9 @@ async def draw(
             kept = {f.name for f in brief.figures}
             references = [(who, p) for who, p in references if who in kept]
     chosen = list(references)[:MAX_REFERENCES]
-    prompt = build_prompt(kind, brief, references=[name for name, _ in chosen])
+    where = [(brief.place_name or place.name, place)] if place and kind == "scene" else []
+    prompt = build_prompt(kind, brief, references=[n for n, _ in chosen], place=bool(where))
+    chosen += where
     request = DrawRequest(
         kind=kind,
         system=prompt.system,
