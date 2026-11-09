@@ -62,7 +62,11 @@ void main() {
 
   List<FakeRequest> checks() => harness.sent('GET', (p) => p == '/v1/app/latest');
 
-  Future<ProviderContainer> signedIn({bool selfUpdate = true, http.Client? client}) async {
+  Future<ProviderContainer> signedIn({
+    bool selfUpdate = true,
+    http.Client? client,
+    Duration? giveUpAfter,
+  }) async {
     await harness.signIn();
     final container = ProviderContainer(
       overrides: [
@@ -71,6 +75,7 @@ void main() {
         sessionStoreProvider.overrideWithValue(harness.store),
         selfUpdateProvider.overrideWithValue(selfUpdate),
         appInstallerProvider.overrideWithValue(installer),
+        if (giveUpAfter != null) installGiveUpProvider.overrideWithValue(giveUpAfter),
       ],
     );
     addTearDown(container.dispose);
@@ -285,6 +290,40 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
+    });
+
+    test('Android starting a build it asked about before stops the one on its way', () async {
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      await controller.update();
+
+      final again = controller.update(); // the player asks again
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.downloading);
+      installer.finish(InstallOutcome.started); // and says yes to the first question
+      await again;
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
+      expect(installer.installs, hasLength(1));
+      expect(installer.closes, 1);
+    });
+
+    test('takes an install it never heard the end of as failed, after a while', () async {
+      publish(13);
+      final c = await signedIn(giveUpAfter: Duration.zero);
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      await controller.update();
+      installer.finish(InstallOutcome.started);
+      await Future<void>.delayed(Duration.zero);
+
+      await controller.check(); // coming back, still running
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.failed);
+      expect(c.read(appUpdateProvider).problem, UpdateProblem.install);
+      await controller.update();
+      expect(installer.installs, hasLength(2));
     });
 
     test('Android refusing it after the app closed is there to see on coming back', () async {

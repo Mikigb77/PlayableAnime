@@ -90,7 +90,7 @@ abstract interface class AppInstaller {
 
   /// Takes the app off the screen while Android installs the update, so the old build isn't left
   /// open while the new one comes in. Android ends it once the new build is in place; if Android
-  /// refuses the build, the player finds out why on coming back.
+  /// refuses the build instead, the player comes back to the old build and can try again.
   Future<void> close();
 }
 
@@ -219,6 +219,11 @@ final selfUpdateProvider = Provider<bool>((ref) => AppConfig.selfUpdate);
 
 final appInstallerProvider = Provider<AppInstaller>((ref) => PlatformAppInstaller());
 
+/// How long after Android started installing the app takes the install as failed, when it comes
+/// back and is still running: Android ends it when the install works, so by then it missed
+/// hearing that the install failed. Tests override it.
+final installGiveUpProvider = Provider<Duration>((ref) => const Duration(minutes: 2));
+
 final appUpdateProvider = NotifierProvider<AppUpdateController, UpdateState>(
   AppUpdateController.new,
 );
@@ -230,6 +235,7 @@ class AppUpdateController extends Notifier<UpdateState> {
   static const checkEvery = Duration(minutes: 30);
 
   DateTime? _lastCheck;
+  DateTime? _replacingSince;
   StreamSubscription<InstallOutcome>? _outcomes;
 
   @override
@@ -264,6 +270,13 @@ class AppUpdateController extends Notifier<UpdateState> {
   /// [checkEvery], quietly: a failed check changes nothing. [now] checks at once and shows the
   /// result, for the player's "Check for updates".
   Future<void> check({bool now = false}) async {
+    if (state.phase == UpdatePhase.replacing) {
+      final since = _replacingSince;
+      if (since != null && DateTime.now().difference(since) >= ref.read(installGiveUpProvider)) {
+        state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
+      }
+      return;
+    }
     if (_busyForCheck) return;
     final last = _lastCheck;
     if (!now && last != null && DateTime.now().difference(last) < checkEvery) return;
@@ -313,9 +326,13 @@ class AppUpdateController extends Notifier<UpdateState> {
     if (_busyForUpdate || installed == null || !state.hasUpdate) return;
     // The player asked for it, so the banner shows how it goes even after a Later.
     state = state.copyWith(phase: UpdatePhase.downloading, progress: 0, dismissed: false);
+    // Android can start installing a build the player was asked about before, while this one is
+    // on its way; then that install goes on, and this one stops.
+    bool overtaken() => !ref.mounted || state.phase == UpdatePhase.replacing;
     try {
       // A fresh URL: the one from the check may have expired while the banner waited.
       final release = await _latest();
+      if (overtaken()) return;
       if (release == null || release.build <= installed.build) {
         state = UpdateState(UpdatePhase.upToDate, installed: installed);
         return;
@@ -328,17 +345,17 @@ class AppUpdateController extends Notifier<UpdateState> {
         folder: installed.updatesDir,
         name: 'lucid-saga-${release.build}.apk',
         onProgress: (done) {
-          if (ref.mounted) {
+          if (ref.mounted && state.phase == UpdatePhase.downloading) {
             state = state.copyWith(phase: UpdatePhase.downloading, progress: done);
           }
         },
       );
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       _outcomes ??= _installer.outcomes.listen(_onOutcome);
       state = state.copyWith(phase: UpdatePhase.installing);
       await _installer.install(path, release.sha256);
     } on Object catch (e) {
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       final problem = e is UpdateProblem ? e : UpdateProblem.download;
       state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
     }
@@ -346,19 +363,23 @@ class AppUpdateController extends Notifier<UpdateState> {
 
   void _onOutcome(InstallOutcome outcome) {
     final phase = state.phase;
-    if (phase != UpdatePhase.installing && phase != UpdatePhase.replacing) return;
+    final waiting = phase == UpdatePhase.installing || phase == UpdatePhase.replacing;
     switch (outcome) {
-      case InstallOutcome.started:
-        if (phase == UpdatePhase.replacing) return;
+      // Whatever else was on its way, Android is now replacing the app, so the app closes.
+      case InstallOutcome.started when state.hasUpdate && phase != UpdatePhase.replacing:
+        _replacingSince = DateTime.now();
         state = state.copyWith(phase: UpdatePhase.replacing);
         unawaited(_installer.close());
-      case InstallOutcome.installed:
+      case InstallOutcome.installed when waiting:
         state = UpdateState(UpdatePhase.upToDate, installed: state.installed);
-      case InstallOutcome.cancelled:
-        // Once one install has started, a no can only be to a question the player asked again.
-        if (phase == UpdatePhase.installing) state = state.copyWith(phase: UpdatePhase.available);
-      case InstallOutcome.failed:
+      // A no counts only while Android asks: once an install has started, the Android side
+      // drops any other question it asked.
+      case InstallOutcome.cancelled when phase == UpdatePhase.installing:
+        state = state.copyWith(phase: UpdatePhase.available);
+      case InstallOutcome.failed when waiting:
         state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
+      case _:
+        break;
     }
   }
 

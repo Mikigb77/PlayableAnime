@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -34,13 +35,12 @@ class MainActivity : FlutterActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    // Only status intents carrying this came from our own PendingIntent, through the installer.
-    private val token = UUID.randomUUID().toString()
     private var receiver: BroadcastReceiver? = null
-
-    // Our sessions that Android hasn't started installing yet; the callback watches them.
-    private val waiting = ConcurrentHashMap.newKeySet<Int>()
     private var watcher: PackageInstaller.SessionCallback? = null
+
+    // Whether this screen is the one in front, and when Dart asked to close while it wasn't.
+    private var resumed = false
+    private var closeAskedAt = 0L
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -53,13 +53,39 @@ class MainActivity : FlutterActivity() {
                         call.argument<String>("sha256"),
                         result,
                     )
-                    // Off the screen, not finished: Android ends the app when the new build is
-                    // in place, and if it refuses the build the player comes back to the reason.
-                    "close" -> result.success(moveTaskToBack(true))
+                    "close" -> result.success(close())
                     else -> result.notImplemented()
                 }
             }
         }
+        // A screen rebuilt while Android asks the player still hears how it ends.
+        if (waiting.isNotEmpty() || installing != NONE) listenForStatus()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        resumed = true
+        val asked = closeAskedAt
+        closeAskedAt = 0L
+        // The install started while Android's question was still on its way out.
+        if (asked != 0L && SystemClock.uptimeMillis() - asked < CLOSE_WINDOW_MS) moveTaskToBack(true)
+    }
+
+    override fun onPause() {
+        resumed = false
+        super.onPause()
+    }
+
+    /**
+     * Takes the app off the screen without finishing it: Android ends it once the new build is in
+     * place, and if Android refuses the build, the player comes back to the app. Only our own
+     * screen is moved. While another is in front, such as Android's question closing after the
+     * player said yes, it waits briefly for ours, so a question is never sent away with the app.
+     */
+    private fun close(): Boolean {
+        if (resumed) return moveTaskToBack(true)
+        closeAskedAt = SystemClock.uptimeMillis()
+        return false
     }
 
     override fun onDestroy() {
@@ -98,6 +124,8 @@ class MainActivity : FlutterActivity() {
             result.error("failed", "path and sha256 are required", null)
             return
         }
+        // Dart asks again only once no install is going on, or after one failed unheard.
+        installing = NONE
         listenForStatus()
         worker.execute {
             try {
@@ -180,6 +208,12 @@ class MainActivity : FlutterActivity() {
         if (intent.getStringExtra(EXTRA_TOKEN) != token) return
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                if (installing != NONE) {
+                    // Android is already installing a build the player said yes to: no need to
+                    // ask about the same one again.
+                    abandonQuietly(intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, NONE))
+                    return
+                }
                 val confirm = if (Build.VERSION.SDK_INT >= 33) {
                     intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
                 } else {
@@ -216,11 +250,25 @@ class MainActivity : FlutterActivity() {
         override fun onActiveChanged(sessionId: Int, active: Boolean) = Unit
 
         override fun onProgressChanged(sessionId: Int, progress: Float) {
-            if (progress > INSTALLING && waiting.remove(sessionId)) report("started")
+            if (progress <= PAST_COPY || !waiting.remove(sessionId)) return
+            installing = sessionId
+            // A question the player asked again would install the same build a second time.
+            waiting.toList().forEach { abandonQuietly(it) }
+            report("started")
         }
 
         override fun onFinished(sessionId: Int, success: Boolean) {
             waiting.remove(sessionId)
+            if (sessionId == installing) installing = NONE
+        }
+    }
+
+    private fun abandonQuietly(sessionId: Int) {
+        waiting.remove(sessionId)
+        try {
+            packageManager.packageInstaller.abandonSession(sessionId)
+        } catch (e: Exception) {
+            // Already finished, so nothing is left to abandon.
         }
     }
 
@@ -230,8 +278,24 @@ class MainActivity : FlutterActivity() {
         const val CHANNEL = "lucid_saga/app_update"
         const val ACTION_STATUS = "com.lucid.saga.UPDATE_STATUS"
         const val EXTRA_TOKEN = "com.lucid.saga.UPDATE_TOKEN"
+        const val NONE = -1
 
         // Just past the 0.8 that a committed session reports while it waits for the player.
-        const val INSTALLING = 0.85f
+        const val PAST_COPY = 0.85f
+
+        // How long a close asked for behind another screen waits for ours to come back.
+        const val CLOSE_WINDOW_MS = 3_000L
+
+        // These belong to the process, not the screen, which Android may rebuild while it asks
+        // the player.
+
+        // Only status intents carrying this came from our own PendingIntent, through the installer.
+        val token: String = UUID.randomUUID().toString()
+
+        // Our sessions that Android hasn't started installing yet.
+        val waiting: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+        // The session Android is installing, or NONE.
+        @Volatile var installing = NONE
     }
 }
