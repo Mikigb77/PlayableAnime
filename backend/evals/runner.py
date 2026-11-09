@@ -54,7 +54,15 @@ from evals.judge import (
     judge_pictures,
     judge_scenes,
 )
-from evals.pictures import NotDrawn, Picture, draw, ending, portrait_brief, scene_brief
+from evals.pictures import (
+    NotDrawn,
+    Picture,
+    draw,
+    ending,
+    place_brief,
+    portrait_brief,
+    scene_brief,
+)
 from evals.scenario import Mode, Scenario
 from evals.scripted import Line, Narration, ScriptedModel
 from graph.llm import (
@@ -786,6 +794,42 @@ class Eval:
         )
         self.pictures.append(drawn)
         return drawn if isinstance(drawn, Picture) else None
+
+    async def draw_place(self, story: Story, place_id: str, name: str = "") -> Picture | None:
+        """A place's picture (M1), as the picture endpoint draws one. Live mode only."""
+        if not self.live:
+            return None
+        brief = place_brief(story.state, place_id)
+        drawn = await draw(self.picture_model(story), name or f"place-{place_id}", "place", brief)
+        self.pictures.append(drawn)
+        return drawn if isinstance(drawn, Picture) else None
+
+    async def draw_told(
+        self,
+        story: Story,
+        narration: str,
+        *,
+        name: str,
+        references: Sequence[tuple[str, Picture]] = (),
+        place: Picture | None = None,
+    ) -> Picture | NotDrawn | None:
+        """The picture of a scene the eval writes rather than plays, ending in the story's state
+        as it is, drawn as the endpoint draws a scene the player illustrates (M2): from the end
+        of its narration, rewritten by the note step, with reference portraits and the picture of
+        the place it happens in (M5). Live mode only."""
+        if not self.live:
+            return None
+        drawn = await draw(
+            self.picture_model(story),
+            name,
+            "scene",
+            scene_brief(story.state, ending(narration)),
+            references,
+            scene=SceneText(narration),
+            place=place,
+        )
+        self.pictures.append(drawn)
+        return drawn
 
     async def draw_scene(
         self,

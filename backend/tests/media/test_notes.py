@@ -107,6 +107,19 @@ def test_the_note_keeps_anyone_the_scene_only_mentions_in_the_background():
     assert "never a figure of their own" in NOTE_SYSTEM
 
 
+def test_the_note_says_what_everyone_stands_on():
+    """Miki, 2026-11-09: the player character came out standing in mid-air over a camp below,
+    beside a companion on a wall. The note says what each person stands, sits or leans on, how far
+    below what they look down on is, and gives anyone the scene leaves it unsaid for the plain
+    ground, which is never an addition."""
+    assert "what they stand, sit or lean on" in NOTE_SYSTEM
+    assert "on top of the broken wall" in NOTE_SYSTEM
+    assert "how far below or away it is from where they stand" in NOTE_SYSTEM
+    assert "The ground or floor under someone is never an addition" in NOTE_SYSTEM
+    assert "they stand on the plain ground or floor of where they are" in NOTE_SYSTEM
+    assert "what they stand on" in PictureNote.model_fields["description"].description
+
+
 def test_the_note_becomes_the_description_with_only_the_people_it_shows():
     note = PictureNote(
         description="Lin Feng leaps between high pine branches.", people=["lin feng"]

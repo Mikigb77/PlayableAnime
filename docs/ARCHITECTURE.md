@@ -1291,7 +1291,9 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   reason for every criterion. A criterion it skips fails, and a judge that errors never passes.
   Picture evals (same face with a mid-story maiming, mild pictures) draw with the product's own
   briefs, prompts, reference portraits and picture model (`evals/pictures.py`) and send the
-  pictures to the judge as images. Transcripts and pictures are kept for staff to spot-check.
+  pictures to the judge as images; one that draws a place first hands its picture to the scene
+  pictures drawn there, as the endpoint does (feet on the ground). Transcripts and pictures are
+  kept for staff to spot-check.
 
 **Statuses.** `passed`; `failed` when a check failed; `error` when the script crashed or checked
 nothing; `pending` when the scenario waits for unbuilt work (the time loop waits for local
@@ -1774,6 +1776,13 @@ app                   shows the narration, then asks for the picture in its own 
   what it was drawn from in its brief, under `drawn_from`: the description (the note's, or the
   plan's), the people and the labels of the images that went along. Staff can read it in the
   admin (T16). It is never logged (T6), and a later drawing still starts from the planned brief.
+  Everyone in a scene or cover stands on something the picture shows (`GROUNDED`): one
+  perspective, a footing under each person, drawn even when the description doesn't name it,
+  feet planted on it, a size that fits their distance and people side by side on the same
+  footing, unless the moment has them fly, float, fall, leap, climb, swim or hang. The place's
+  picture is drawn again around the people, never used as a backdrop behind them, and the note
+  says what each person stands, sits or leans on (Miki, 2026-11-09: the player character stood in
+  mid-air over a camp far below).
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls

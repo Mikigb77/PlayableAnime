@@ -17,6 +17,9 @@ character is drawn with only the things the record says they carry (C10), on a c
 picture never hands them a weapon they don't have. The portraits of the people in it go along as
 reference images, each labelled with whose it is and used only for that person's face, hair and
 build, so a face stays the same without the portrait's pose, background or older style (M5).
+Everyone in a scene or cover stands on something the picture shows, in one perspective and at the
+size their distance gives them, and the place's picture is drawn again around the people, never
+used as a backdrop behind them (M5).
 
 Pictures stay within mild lines in every rating (M6): the text carries the graphic detail, the
 picture never does. Mild is about what a picture shows, not its tone, so danger, wounds, fear and
@@ -107,6 +110,21 @@ FRAMING = {
 ONLY_THEM = (
     "Draw each of them once, and no one else in front: anyone else the description mentions "
     "stays a small, unnamed part of the background."
+)
+
+# Everyone in a scene or cover stands on something the picture shows, at the size their place in
+# it gives them (M5). Miki, 2026-11-09: the player character stood in mid-air, life-size, over a
+# camp far below, beside a companion who leant over the edge of a wall. The footing may be drawn
+# though the description doesn't name it, which a scene's framing would otherwise rule out.
+GROUNDED = (
+    "Set everyone inside the picture's own space, in one consistent perspective: every person or "
+    "creature rests on something solid that the picture shows under them, such as the ground, a "
+    "floor, a ledge, steps, rocks or a branch, with their feet planted on it and a shadow where "
+    "they touch it, unless the description has them fly, float, fall, leap, climb, swim or hang. "
+    "Draw that footing even where the description doesn't name it. Each one's size fits how far "
+    "they are from the viewer and the things around them, and people side by side share the same "
+    "footing. No one hovers in mid-air unless the description says so, and no one stands pasted "
+    "over the background like a cut-out."
 )
 
 # Portraits and covers are tall, places and scenes wide. The app sizes the picture slot from the
@@ -337,6 +355,8 @@ def build_prompt(
             # only mentioned, and a referenced person can come out twice.
             lines.append(ONLY_THEM)
     if kind in ("scene", "cover"):
+        # Unlisted people, such as bandits or a crowd, stand on something too.
+        lines.append(GROUNDED)
         lines.extend(_carried(f) for f in figures if f.carries is not None)
     look = brief.look
     world = [
@@ -368,12 +388,15 @@ def build_prompt(
         )
     place = place and not redraw and kind == "scene"
     if place:
+        # Miki, 2026-11-09: the player character stood in mid-air in front of the place, as if it
+        # were a backdrop.
         lines.append(
             "The image labelled as the place is where this happens. Draw the same place, with "
             "its ground, buildings, plants, materials and colours, from whatever viewpoint the "
-            "moment needs; what that image shows counts as named. Take the framing, the people, "
-            "the light and the drawing style from this picture and the house style, not from "
-            "that image."
+            "moment needs; what that image shows counts as named. Draw it again around the "
+            "people, so they stand on its own ground at its own scale, never in front of a copy "
+            "of that image used as a backdrop. Take the framing, the people, the light and the "
+            "drawing style from this picture and the house style, not from that image."
         )
     labels = _labels(kind, references, redraw)
     if place:

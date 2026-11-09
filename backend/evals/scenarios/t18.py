@@ -40,7 +40,8 @@ from evals.runner import Eval
 from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import act, attack, plan, step
 from graph.llm import Node
-from media.prompts import FRAMING, build_prompt
+from media.notes import SceneText, note_prompt
+from media.prompts import FRAMING, GROUNDED, build_prompt
 from moderation.evals import build_world, load_cases
 
 scenario = REGISTRY.scenario
@@ -933,10 +934,11 @@ async def cover_as_poster(ev: Eval) -> None:
             FRAMING["cover"] in prompt and "Time of day:" not in prompt,
             f"{seed}: {prompt}",
         )
+        told = prompt.replace(GROUNDED, "").casefold()  # the rule's own examples aside
         ev.check(
             "and nothing of the scene it comes with, whose leap through the pines isn't the "
             "story (M1, Miki 2026-11-07)",
-            not any(word in prompt.casefold() for word in ("pine", "branch", "leap", "wall")),
+            not any(word in told for word in ("pine", "branch", "leap", "wall")),
             f"{seed}: {prompt}",
         )
         ev.check(
@@ -1029,3 +1031,96 @@ async def grown_up_look(ev: Eval) -> None:
                 ),
                 pictures,
             )
+
+
+# --- Feet on the ground (M5) -------------------------------------------------------------------
+
+# Miki, 2026-11-09: a scene picture had the player character standing life-size in mid-air over
+# a camp far below, beside a companion who leant over the edge of a wall. The same moment, written
+# for the eval, drawn as the endpoint draws it: with both portraits and the place's picture.
+ON_THE_WALL = (
+    "You and Zhao Kun climb the last broken steps onto the old wall at the top of the ridge. Far "
+    "below, among the colossal stone arches, travelling clans have pitched their tents in the "
+    "snow, and their bonfires stain the mist orange. Zhao leans over the edge with his hands on "
+    "his knees, grinning, while you stand beside him with your arms crossed, watching the camp as "
+    "the light fades."
+)
+
+
+@scenario(
+    "t18.feet-on-the-ground",
+    suite="T18",
+    title="Feet on the ground",
+    requirements=("M5", "T18"),
+    passes_when=(
+        "Lin and Zhao both stand on the wall, side by side at a size that fits it, with the camp "
+        "small and far below them, and nobody floats in the air; code tells the picture that "
+        "everyone stands on something, and to draw the place again around them, never as a "
+        "backdrop (M5, Miki 2026-11-09)"
+    ),
+)
+async def feet_on_the_ground(ev: Eval) -> None:
+    story = ev.story(worlds.above_the_camp(), under_way=True)
+    brief = scene_brief(story.state, ending(ON_THE_WALL))
+    names = [f.name for f in brief.figures]
+    ev.check(
+        "the picture shows Lin and Zhao, the player first",
+        [f.id for f in brief.figures] == ["lin", "zhao"],
+        f"{names}",
+    )
+    prompt = build_prompt("scene", brief, references=names, place=True)
+    ev.check(
+        "it is told everyone stands on something, at the size where they are gives them (M5)",
+        GROUNDED in prompt.user,
+        prompt.user,
+    )
+    ev.check(
+        "and to draw the place again around them, never as a backdrop (M5)",
+        "never in front of a copy of that image used as a backdrop" in prompt.user,
+        prompt.user,
+    )
+    ev.check(
+        "the place's picture goes along last, labelled as the place (M5)",
+        prompt.labels[-1] == "Image 3: the Broken Arches, the place where this happens.",
+        f"{prompt.labels}",
+    )
+    ev.check("and it is lit for dusk (W10)", "Time of day: dusk." in prompt.user, prompt.user)
+    note = note_prompt("scene", brief, SceneText(ON_THE_WALL))
+    ev.check(
+        "the note is asked what each of them stands on (M5)",
+        "what they stand, sit or lean on" in note.system
+        and "PLACE: the Broken Arches" in note.user,
+        note.user,
+    )
+    place = await ev.draw_place(story, "arches")
+    portraits = []
+    for character_id in ("lin", "zhao"):
+        drawn = await ev.draw_portrait(story, character_id)
+        if drawn is not None:
+            portraits.append((story.state.characters[character_id].name, drawn))
+    pictures: list[tuple[str, Picture]] = []
+    for n in range(2):
+        picture = await ev.draw_told(
+            story, ON_THE_WALL, name=f"scene-{n + 1}", references=portraits, place=place
+        )
+        if isinstance(picture, Picture):
+            pictures.append((f"picture {n + 1}", picture))
+    if pictures:
+        await ev.judge_pictures(
+            "everyone stands on something",
+            Rubric(
+                must=(
+                    "In every picture, Lin (arms crossed) and Zhao (leaning over the edge) both "
+                    "stand on solid footing the picture shows, the top of the wall or the ground "
+                    "beside it, with their feet on it: no one floats or hovers in the air, or "
+                    "stands on nothing in front of the camp",
+                    "In every picture, the two of them are side by side on the same footing, at "
+                    "about the same size, and the camp's tents, fires and people are small and "
+                    "clearly far below them",
+                    "In every picture, each of them appears once",
+                ),
+                instructions=PICTURE_INSTRUCTIONS,
+            ),
+            pictures,
+            context=f"The scene, as the player read it:\n{ON_THE_WALL}",
+        )
