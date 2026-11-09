@@ -11,7 +11,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,8 +25,10 @@ import java.util.concurrent.Executors
  * The app's own updates (S12, lib/features/update/app_update.dart). Dart downloads the newer APK
  * into the cache; this hands it to Android through a PackageInstaller session, so the file is
  * never shared with another app. Android asks the player to confirm (and, the first time, to allow
- * installs from Lucid Saga), then replaces the app. Once Android starts installing, Dart closes the
- * app (`close`), so the old build isn't left on screen while the new one comes in. Only the APK
+ * installs from Lucid Saga), then replaces the app. Once Android starts installing, Dart covers the
+ * app with "Updating Lucid Saga" and keeps it in front: Android and Google Play Protect may still
+ * check the build or ask the player before the new build is in place, and an app that leaves the
+ * screen then can leave the install stalled. Android ends the app when it replaces it. Only the APK
  * from the GitHub release calls this: a Google Play build leaves updates to Play.
  */
 class MainActivity : FlutterActivity() {
@@ -38,9 +39,8 @@ class MainActivity : FlutterActivity() {
     private var receiver: BroadcastReceiver? = null
     private var watcher: PackageInstaller.SessionCallback? = null
 
-    // Whether this screen is the one in front, and when Dart asked to close while it wasn't.
-    private var resumed = false
-    private var closeAskedAt = 0L
+    // Whether this screen can be seen, so Android lets it open the installer's question.
+    private var visible = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -53,7 +53,6 @@ class MainActivity : FlutterActivity() {
                         call.argument<String>("sha256"),
                         result,
                     )
-                    "close" -> result.success(close())
                     else -> result.notImplemented()
                 }
             }
@@ -62,30 +61,24 @@ class MainActivity : FlutterActivity() {
         if (waiting.isNotEmpty() || installing != NONE) listenForStatus()
     }
 
+    override fun onStart() {
+        super.onStart()
+        visible = true
+    }
+
+    // The question came from the system's installer, with our token (onStatus).
+    @SuppressLint("UnsafeIntentLaunch")
     override fun onResume() {
         super.onResume()
-        resumed = true
-        val asked = closeAskedAt
-        closeAskedAt = 0L
-        // The install started while Android's question was still on its way out.
-        if (asked != 0L && SystemClock.uptimeMillis() - asked < CLOSE_WINDOW_MS) moveTaskToBack(true)
+        // A question that came while the app was out of sight shows now, unless it was dropped.
+        val (sessionId, confirm) = question ?: return
+        question = null
+        if (sessionId in waiting) startActivity(confirm)
     }
 
-    override fun onPause() {
-        resumed = false
-        super.onPause()
-    }
-
-    /**
-     * Takes the app off the screen without finishing it: Android ends it once the new build is in
-     * place, and if Android refuses the build, the player comes back to the app. Only our own
-     * screen is moved. While another is in front, such as Android's question closing after the
-     * player said yes, it waits briefly for ours, so a question is never sent away with the app.
-     */
-    private fun close(): Boolean {
-        if (resumed) return moveTaskToBack(true)
-        closeAskedAt = SystemClock.uptimeMillis()
-        return false
+    override fun onStop() {
+        visible = false
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -208,10 +201,11 @@ class MainActivity : FlutterActivity() {
         if (intent.getStringExtra(EXTRA_TOKEN) != token) return
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                if (installing != NONE) {
+                val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, NONE)
+                if (installing != NONE && sessionId != installing) {
                     // Android is already installing a build the player said yes to: no need to
-                    // ask about the same one again.
-                    abandonQuietly(intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, NONE))
+                    // ask about the same one again. The one installing is never dropped.
+                    abandonQuietly(sessionId)
                     return
                 }
                 val confirm = if (Build.VERSION.SDK_INT >= 33) {
@@ -220,10 +214,14 @@ class MainActivity : FlutterActivity() {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                 }
-                if (confirm == null) {
-                    report("failed")
-                } else {
-                    startActivity(confirm)
+                when {
+                    confirm == null -> report("failed")
+                    // Android opens it only from an app that can be seen; otherwise it waits.
+                    visible -> {
+                        question = null
+                        startActivity(confirm)
+                    }
+                    else -> question = sessionId to confirm
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> report("installed")
@@ -265,6 +263,7 @@ class MainActivity : FlutterActivity() {
 
     private fun abandonQuietly(sessionId: Int) {
         waiting.remove(sessionId)
+        if (question?.first == sessionId) question = null
         try {
             packageManager.packageInstaller.abandonSession(sessionId)
         } catch (e: Exception) {
@@ -283,9 +282,6 @@ class MainActivity : FlutterActivity() {
         // Just past the 0.8 that a committed session reports while it waits for the player.
         const val PAST_COPY = 0.85f
 
-        // How long a close asked for behind another screen waits for ours to come back.
-        const val CLOSE_WINDOW_MS = 3_000L
-
         // These belong to the process, not the screen, which Android may rebuild while it asks
         // the player.
 
@@ -297,5 +293,8 @@ class MainActivity : FlutterActivity() {
 
         // The session Android is installing, or NONE.
         @Volatile var installing = NONE
+
+        // Android's question for a session, kept while the app was out of sight.
+        @Volatile var question: Pair<Int, Intent>? = null
     }
 }

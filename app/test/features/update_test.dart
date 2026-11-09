@@ -17,8 +17,7 @@ import 'package:playable_anime/features/update/app_update.dart';
 import '../helpers.dart';
 import 'harness.dart';
 
-/// Stands in for Android: this install is build 12, and it records what it was asked to install
-/// and how often the app was closed.
+/// Stands in for Android: this install is build 12, and it records what it was asked to install.
 class FakeInstaller implements AppInstaller {
   FakeInstaller(this.updatesDir, {this.build = 12, this.failInstall});
 
@@ -26,7 +25,6 @@ class FakeInstaller implements AppInstaller {
   final int build;
   final UpdateProblem? failInstall;
   final installs = <(String path, String sha256)>[];
-  var closes = 0;
   final _outcomes = StreamController<InstallOutcome>.broadcast();
 
   void finish(InstallOutcome outcome) => _outcomes.add(outcome);
@@ -43,9 +41,6 @@ class FakeInstaller implements AppInstaller {
 
   @override
   Stream<InstallOutcome> get outcomes => _outcomes.stream;
-
-  @override
-  Future<void> close() async => closes++;
 }
 
 void main() {
@@ -251,20 +246,19 @@ void main() {
       expect(c.read(appUpdateProvider).dismissed, isFalse);
     });
 
-    test('the app closes once Android starts installing, and leaves the install alone', () async {
+    test('the app waits for Android once it starts installing, and leaves it alone', () async {
       publish(13);
       final c = await signedIn();
       final controller = c.read(appUpdateProvider.notifier);
       await controller.check();
       await controller.update();
-      expect(installer.closes, 0); // not while Android asks
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
 
       installer.finish(InstallOutcome.started);
       await Future<void>.delayed(Duration.zero);
 
       expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
       expect(c.read(appUpdateProvider).hasUpdate, isTrue);
-      expect(installer.closes, 1);
 
       // Coming back while Android installs it starts nothing new.
       await controller.check(now: true);
@@ -274,7 +268,6 @@ void main() {
       expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
       expect(installer.installs, hasLength(1));
       expect(checks(), hasLength(2));
-      expect(installer.closes, 1);
     });
 
     test('a no to a question asked again leaves the started install alone', () async {
@@ -306,19 +299,19 @@ void main() {
 
       expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
       expect(installer.installs, hasLength(1));
-      expect(installer.closes, 1);
     });
 
     test('takes an install it never heard the end of as failed, after a while', () async {
       publish(13);
-      final c = await signedIn(giveUpAfter: Duration.zero);
+      final c = await signedIn(giveUpAfter: const Duration(milliseconds: 20));
       final controller = c.read(appUpdateProvider.notifier);
       await controller.check();
       await controller.update();
       installer.finish(InstallOutcome.started);
       await Future<void>.delayed(Duration.zero);
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
 
-      await controller.check(); // coming back, still running
+      await Future<void>.delayed(const Duration(milliseconds: 40)); // still running
 
       expect(c.read(appUpdateProvider).phase, UpdatePhase.failed);
       expect(c.read(appUpdateProvider).problem, UpdateProblem.install);
@@ -326,7 +319,7 @@ void main() {
       expect(installer.installs, hasLength(2));
     });
 
-    test('Android refusing it after the app closed is there to see on coming back', () async {
+    test('Android refusing it once it started installing can be tried again', () async {
       publish(13);
       final c = await signedIn();
       final controller = c.read(appUpdateProvider.notifier);
@@ -340,7 +333,6 @@ void main() {
       final state = c.read(appUpdateProvider);
       expect(state.phase, UpdatePhase.failed);
       expect(state.problem, UpdateProblem.install);
-      expect(installer.closes, 1);
       await controller.update();
       expect(installer.installs, hasLength(2));
     });
@@ -385,15 +377,8 @@ void main() {
           (_) {},
         );
 
-    test('says when Android starts installing, and closes the app when asked', () async {
+    test('says when Android starts installing, and how it ends', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
-      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      final asked = <String>[];
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        asked.add(call.method);
-        return true;
-      });
-      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       final android = PlatformAppInstaller();
       final outcomes = <InstallOutcome>[];
       android.outcomes.listen(outcomes.add);
@@ -401,7 +386,6 @@ void main() {
       for (final status in ['started', 'cancelled', 'installed', 'something new']) {
         await androidSays(status);
       }
-      await android.close();
       await Future<void>.delayed(Duration.zero);
 
       expect(outcomes, [
@@ -410,16 +394,24 @@ void main() {
         InstallOutcome.installed,
         InstallOutcome.failed,
       ]);
-      expect(asked, ['close']);
     });
 
-    test('closing quietly leaves the app open when Android can not', () async {
+    test('a failed hand-over is an install problem, and a damaged file says so', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      messenger.setMockMethodCallHandler(channel, (_) async => throw PlatformException(code: 'x'));
+      var code = 'failed';
+      messenger.setMockMethodCallHandler(channel, (_) async => throw PlatformException(code: code));
       addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-      await expectLater(PlatformAppInstaller().close(), completes);
+      await expectLater(
+        PlatformAppInstaller().install('/updates/a.apk', 'ab'),
+        throwsA(UpdateProblem.install),
+      );
+      code = 'checksum';
+      await expectLater(
+        PlatformAppInstaller().install('/updates/a.apk', 'ab'),
+        throwsA(UpdateProblem.corrupt),
+      );
     });
   });
 
@@ -493,16 +485,68 @@ void main() {
       expect(installer.installs, hasLength(1));
       expect(find.text(l10n.updateInstalling), findsOneWidget);
 
+      expect(find.byKey(const Key('update.cover')), findsNothing);
+
       await tester.runAsync(() async {
         installer.finish(InstallOutcome.started);
         await Future<void>.delayed(Duration.zero);
       });
       await settle(tester);
 
-      expect(installer.closes, 1);
-      expect(find.text(l10n.updateReplacing), findsOneWidget);
+      // The whole app is covered until Android replaces it, and nothing under it can be pressed.
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+      expect(find.text(l10n.updateCoverTitle), findsOneWidget);
+      expect(find.text(l10n.updateCoverBody), findsOneWidget);
       expect(find.byKey(const Key('update.now')), findsNothing);
       expect(find.text(l10n.updateLater), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      await tester.tap(find.text(l10n.navAccount), warnIfMissed: false);
+      await settle(tester);
+      expect(find.byKey(const Key('account.update')), findsNothing);
+
+      // Android refusing it takes the cover away, and the banner offers it again.
+      await tester.runAsync(() async {
+        installer.finish(InstallOutcome.failed);
+        await Future<void>.delayed(Duration.zero);
+      });
+      await settle(tester);
+
+      expect(find.byKey(const Key('update.cover')), findsNothing);
+      expect(find.text(l10n.updateFailedInstall), findsOneWidget);
+      expect(find.text(l10n.updateTryAgain), findsOneWidget);
+    });
+
+    testWidgets('the cover covers any screen, and stays still with reduce motion', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      publish(13);
+      await launch(tester, location: '/account');
+      final l10n = await english();
+      final tile = find.byKey(const Key('account.update'));
+      await tester.ensureVisible(tile);
+      await settle(tester);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.descendant(of: tile, matching: find.text(l10n.updateNow)));
+        for (var i = 0; i < 50 && installer.installs.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        installer.finish(InstallOutcome.started);
+        await Future<void>.delayed(Duration.zero);
+      });
+      await settle(tester);
+
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+      expect(find.text(l10n.updateCoverTitle), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('update.cover')),
+          matching: find.byType(LinearProgressIndicator),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('shows nothing on the newest build', (tester) async {

@@ -1028,8 +1028,10 @@
       }
     }
   },
-  "updateInstalling": "Android asks you to install it. Lucid Saga closes while it updates; open it again after.",
-  "updateReplacing": "Android is installing it. Lucid Saga closes until it's done; open it again in a moment.",
+  "updateInstalling": "Android asks you to install it. Once it's in, Lucid Saga closes by itself; open it again then.",
+  "updateReplacing": "Android is installing it. Lucid Saga closes by itself once it's done; then open it again.",
+  "updateCoverTitle": "Updating Lucid Saga",
+  "updateCoverBody": "Android is installing the new version. Lucid Saga closes by itself as soon as it's in; then open it again. If your phone asks you anything, answer it so the update can go on.",
   "updateFailedDownload": "The update didn't download. Check your connection and try again.",
   "updateFailedCorrupt": "The download was damaged, so it wasn't installed. Try again.",
   "updateFailedInstall": "Android didn't install the update. Try again, or download it from the link in the README.",

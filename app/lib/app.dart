@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/l10n.dart';
 import 'core/preferences.dart';
 import 'design/design.dart';
+import 'features/update/update_cover.dart';
 import 'router.dart';
 
 class App extends ConsumerWidget {
@@ -29,6 +30,8 @@ class App extends ConsumerWidget {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(routerProvider),
+      // While Android installs the app's update, it covers every screen (S12).
+      builder: (context, child) => UpdateCover(child: child ?? const SizedBox.shrink()),
     );
   }
 }
