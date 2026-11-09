@@ -216,7 +216,7 @@ def test_the_place_picture_goes_along_with_a_scene_that_happens_there(
     ]
     assert [ref.label for ref in request.references] == [
         "Image 1: the portrait of Lin Feng.",
-        "Image 2: The Old Pines, the place where this happens.",
+        "Image 2: The Old Pines, the place where this happens, to draw again around the people.",
     ]
     assert "The image labelled as the place is where this happens." in request.prompt
     line = [line for line in log_lines() if line.get("picture")][-1]

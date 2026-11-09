@@ -1081,7 +1081,9 @@ async def feet_on_the_ground(ev: Eval) -> None:
     )
     ev.check(
         "the place's picture goes along last, labelled as the place (M5)",
-        prompt.labels[-1] == "Image 3: the Broken Arches, the place where this happens.",
+        prompt.labels[-1]
+        == "Image 3: the Broken Arches, the place where this happens, to draw again around the "
+        "people.",
         f"{prompt.labels}",
     )
     ev.check("and it is lit for dusk (W10)", "Time of day: dusk." in prompt.user, prompt.user)
@@ -1099,7 +1101,7 @@ async def feet_on_the_ground(ev: Eval) -> None:
         if drawn is not None:
             portraits.append((story.state.characters[character_id].name, drawn))
     pictures: list[tuple[str, Picture]] = []
-    for n in range(2):
+    for n in range(3):  # the first live run floated someone in one picture of two
         picture = await ev.draw_told(
             story, ON_THE_WALL, name=f"scene-{n + 1}", references=portraits, place=place
         )
