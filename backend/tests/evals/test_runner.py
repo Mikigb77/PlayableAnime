@@ -375,7 +375,8 @@ def test_a_scene_picture_gets_the_places_picture_last_as_the_endpoint_sends_it()
     scene, cover = painter.drawn
     assert [ref.label for ref in scene.references] == [
         "Image 1: the portrait of Lin Feng.",
-        "Image 2: the Broken Arches, the place where this happens.",
+        "Image 2: the Broken Arches, the place where this happens, to draw again around the "
+        "people.",
     ]
     assert "Draw it again around the people" in scene.prompt and GROUNDED in scene.prompt
     assert [ref.name for ref in cover.references] == ["Lin Feng"]

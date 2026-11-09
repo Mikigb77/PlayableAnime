@@ -163,6 +163,15 @@ def test_everyone_stands_on_something_at_the_size_where_they_are_gives_them(kind
     assert "how far they are from the viewer" in GROUNDED
     assert "people side by side share the same footing" in GROUNDED
     assert "No one hovers in mid-air unless the description says so" in GROUNDED
+    # The first live run still floated the companion in front of the wall in one picture of two,
+    # so the rule picks a viewpoint that keeps the footing in frame, from up there with people up
+    # high.
+    assert "a viewpoint that keeps the footing under every standing person inside the frame" in (
+        GROUNDED
+    )
+    assert "When people stand up high, on a wall, a cliff, a roof or a balcony" in GROUNDED
+    assert "view them from up there, from behind or beside them" in GROUNDED
+    assert "never leave open air between them and the viewer" in GROUNDED
     # People the scene doesn't list, such as bandits or a crowd, stand on something too.
     assert GROUNDED in build_prompt(kind, Brief(description="Three bandits block the road.")).user
 
@@ -237,7 +246,9 @@ def test_a_portrait_takes_only_its_expression_from_the_moment():
 def test_a_scene_shows_what_its_description_says_and_nothing_more():
     assert "no extra people, creatures or props" in FRAMING["scene"]
     assert "highest tension" not in FRAMING["scene"]
-    assert "doing what it says, where it says" in FRAMING["scene"]
+    assert (
+        "doing what it says, where it says, each on footing the picture shows" in (FRAMING["scene"])
+    )
 
 
 def test_a_cover_is_the_storys_poster_not_one_moment():
@@ -379,7 +390,7 @@ def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():
 
     assert prompt.labels == (
         "Image 1: the portrait of Rosa.",
-        "Image 2: The Inn, the place where this happens.",
+        "Image 2: The Inn, the place where this happens, to draw again around the people.",
     )
     assert "The image labelled as the place is where this happens. Draw the same place" in (
         prompt.user
@@ -393,7 +404,9 @@ def test_the_place_a_scene_happens_in_goes_along_last_as_the_same_place():
     assert "never in front of a copy of that image used as a backdrop" in prompt.user
     assert "only for that person's face" in prompt.user
     alone = build_prompt("scene", brief, place=True)
-    assert alone.labels == ("Image 1: The Inn, the place where this happens.",)
+    assert alone.labels == (
+        "Image 1: The Inn, the place where this happens, to draw again around the people.",
+    )
     assert "portrait of the person its label names" not in alone.user
 
 
