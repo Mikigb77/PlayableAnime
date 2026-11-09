@@ -589,6 +589,7 @@
   "updateLater": "Más tarde",
   "updateDownloading": "Descargando la actualización, {percent} %",
   "updateInstalling": "Android te pide que la instales. Lucid Saga se cierra mientras se actualiza; ábrela de nuevo después.",
+  "updateReplacing": "Android la está instalando. Lucid Saga se cierra hasta que termine; ábrela de nuevo en un momento.",
   "updateFailedDownload": "La actualización no se descargó. Comprueba tu conexión e inténtalo de nuevo.",
   "updateFailedCorrupt": "La descarga estaba dañada, así que no se instaló. Inténtalo de nuevo.",
   "updateFailedInstall": "Android no instaló la actualización. Inténtalo de nuevo o descárgala desde el enlace del README.",

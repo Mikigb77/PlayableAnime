@@ -60,9 +60,20 @@ class InstalledApp {
   final String updatesDir;
 }
 
-/// How a handed-over update ended, when Android tells the app (the app is replaced on success,
-/// so success is rarely heard).
-enum InstallOutcome { installed, cancelled, failed }
+/// What Android says about a handed-over update after [AppInstaller.install] returned.
+enum InstallOutcome {
+  /// Android is installing it: the player said yes, or nothing needed asking.
+  started,
+
+  /// Rarely heard, since Android ends the app when it replaces it.
+  installed,
+
+  /// The player said no.
+  cancelled,
+
+  /// Android refused it.
+  failed,
+}
 
 /// Android's side of updating: what is installed, and handing a downloaded APK to its installer.
 abstract interface class AppInstaller {
@@ -73,8 +84,14 @@ abstract interface class AppInstaller {
   /// SHA-256 must be [sha256]. Throws [UpdateProblem] when it can't start.
   Future<void> install(String path, String sha256);
 
-  /// Outcomes that arrive after [install] returned: the player said no, or Android refused.
+  /// What happens after [install] returned: Android starts installing, the player says no, or
+  /// Android refuses it.
   Stream<InstallOutcome> get outcomes;
+
+  /// Takes the app off the screen while Android installs the update, so the old build isn't left
+  /// open while the new one comes in. Android ends it once the new build is in place; if Android
+  /// refuses the build, the player finds out why on coming back.
+  Future<void> close();
 }
 
 /// The Kotlin side is `MainActivity.kt`: a PackageInstaller session, so no file is shared with
@@ -85,6 +102,7 @@ class PlatformAppInstaller implements AppInstaller {
       if (call.method != 'installStatus') return;
       final status = (call.arguments as Map?)?['status'];
       _outcomes.add(switch (status) {
+        'started' => InstallOutcome.started,
         'installed' => InstallOutcome.installed,
         'cancelled' => InstallOutcome.cancelled,
         _ => InstallOutcome.failed,
@@ -118,6 +136,15 @@ class PlatformAppInstaller implements AppInstaller {
 
   @override
   Stream<InstallOutcome> get outcomes => _outcomes.stream;
+
+  @override
+  Future<void> close() async {
+    try {
+      await _channel.invokeMethod<bool>('close');
+    } on Exception {
+      // Then the app stays open until Android replaces it, which ends it anyway.
+    }
+  }
 }
 
 enum UpdatePhase {
@@ -133,6 +160,9 @@ enum UpdatePhase {
 
   /// Handed to Android, which asks the player to confirm.
   installing,
+
+  /// Android is installing it, so the app has closed until the new build replaces it.
+  replacing,
   failed,
 }
 
@@ -217,12 +247,16 @@ class AppUpdateController extends Notifier<UpdateState> {
     UpdatePhase.off ||
     UpdatePhase.checking ||
     UpdatePhase.downloading ||
-    UpdatePhase.installing => true,
+    UpdatePhase.installing ||
+    UpdatePhase.replacing => true,
     _ => false,
   };
 
   bool get _busyForUpdate => switch (state.phase) {
-    UpdatePhase.off || UpdatePhase.checking || UpdatePhase.downloading => true,
+    UpdatePhase.off ||
+    UpdatePhase.checking ||
+    UpdatePhase.downloading ||
+    UpdatePhase.replacing => true,
     _ => false,
   };
 
@@ -272,8 +306,8 @@ class AppUpdateController extends Notifier<UpdateState> {
     dismissed: true,
   );
 
-  /// Downloads the newer build and hands it to Android, which asks the player to confirm. The
-  /// app closes when Android replaces it, and opens on the new build.
+  /// Downloads the newer build and hands it to Android, which asks the player to confirm. Once
+  /// Android starts installing, the app closes, and the player opens it again on the new build.
   Future<void> update() async {
     final installed = state.installed;
     if (_busyForUpdate || installed == null || !state.hasUpdate) return;
@@ -311,15 +345,21 @@ class AppUpdateController extends Notifier<UpdateState> {
   }
 
   void _onOutcome(InstallOutcome outcome) {
-    if (state.phase != UpdatePhase.installing) return;
-    state = switch (outcome) {
-      InstallOutcome.installed => UpdateState(UpdatePhase.upToDate, installed: state.installed),
-      InstallOutcome.cancelled => state.copyWith(phase: UpdatePhase.available),
-      InstallOutcome.failed => state.copyWith(
-        phase: UpdatePhase.failed,
-        problem: UpdateProblem.install,
-      ),
-    };
+    final phase = state.phase;
+    if (phase != UpdatePhase.installing && phase != UpdatePhase.replacing) return;
+    switch (outcome) {
+      case InstallOutcome.started:
+        if (phase == UpdatePhase.replacing) return;
+        state = state.copyWith(phase: UpdatePhase.replacing);
+        unawaited(_installer.close());
+      case InstallOutcome.installed:
+        state = UpdateState(UpdatePhase.upToDate, installed: state.installed);
+      case InstallOutcome.cancelled:
+        // Once one install has started, a no can only be to a question the player asked again.
+        if (phase == UpdatePhase.installing) state = state.copyWith(phase: UpdatePhase.available);
+      case InstallOutcome.failed:
+        state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
+    }
   }
 
   /// The newest build, or null when none is published (404).
