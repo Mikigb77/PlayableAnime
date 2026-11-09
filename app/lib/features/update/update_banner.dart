@@ -44,7 +44,7 @@ class _UpdateBannerState extends ConsumerState<UpdateBanner> with WidgetsBinding
         release != null &&
         switch (update.phase) {
           UpdatePhase.available || UpdatePhase.failed => !update.dismissed,
-          UpdatePhase.downloading || UpdatePhase.installing => true,
+          UpdatePhase.downloading || UpdatePhase.installing || UpdatePhase.replacing => true,
           _ => false,
         };
     return AnimatedSize(
@@ -75,6 +75,7 @@ class _Card extends ConsumerWidget {
     final (String title, String? body) = switch (update.phase) {
       UpdatePhase.downloading => (l10n.updateDownloading((progress * 100).floor()), null),
       UpdatePhase.installing => (l10n.updateAvailable, l10n.updateInstalling),
+      UpdatePhase.replacing => (l10n.updateAvailable, l10n.updateReplacing),
       UpdatePhase.failed => (
         l10n.updateAvailable,
         switch (update.problem) {
@@ -120,7 +121,8 @@ class _Card extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: Space.sm, bottom: Space.sm, right: Space.sm),
                 child: LinearProgressIndicator(value: progress),
               ),
-            if (update.phase != UpdatePhase.downloading)
+            // Nothing to press while it downloads, or once Android is installing it.
+            if (update.phase != UpdatePhase.downloading && update.phase != UpdatePhase.replacing)
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: Wrap(

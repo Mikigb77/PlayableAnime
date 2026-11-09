@@ -60,9 +60,20 @@ class InstalledApp {
   final String updatesDir;
 }
 
-/// How a handed-over update ended, when Android tells the app (the app is replaced on success,
-/// so success is rarely heard).
-enum InstallOutcome { installed, cancelled, failed }
+/// What Android says about a handed-over update after [AppInstaller.install] returned.
+enum InstallOutcome {
+  /// Android is installing it: the player said yes, or nothing needed asking.
+  started,
+
+  /// Rarely heard, since Android ends the app when it replaces it.
+  installed,
+
+  /// The player said no.
+  cancelled,
+
+  /// Android refused it.
+  failed,
+}
 
 /// Android's side of updating: what is installed, and handing a downloaded APK to its installer.
 abstract interface class AppInstaller {
@@ -73,8 +84,14 @@ abstract interface class AppInstaller {
   /// SHA-256 must be [sha256]. Throws [UpdateProblem] when it can't start.
   Future<void> install(String path, String sha256);
 
-  /// Outcomes that arrive after [install] returned: the player said no, or Android refused.
+  /// What happens after [install] returned: Android starts installing, the player says no, or
+  /// Android refuses it.
   Stream<InstallOutcome> get outcomes;
+
+  /// Takes the app off the screen while Android installs the update, so the old build isn't left
+  /// open while the new one comes in. Android ends it once the new build is in place; if Android
+  /// refuses the build instead, the player comes back to the old build and can try again.
+  Future<void> close();
 }
 
 /// The Kotlin side is `MainActivity.kt`: a PackageInstaller session, so no file is shared with
@@ -85,6 +102,7 @@ class PlatformAppInstaller implements AppInstaller {
       if (call.method != 'installStatus') return;
       final status = (call.arguments as Map?)?['status'];
       _outcomes.add(switch (status) {
+        'started' => InstallOutcome.started,
         'installed' => InstallOutcome.installed,
         'cancelled' => InstallOutcome.cancelled,
         _ => InstallOutcome.failed,
@@ -118,6 +136,15 @@ class PlatformAppInstaller implements AppInstaller {
 
   @override
   Stream<InstallOutcome> get outcomes => _outcomes.stream;
+
+  @override
+  Future<void> close() async {
+    try {
+      await _channel.invokeMethod<bool>('close');
+    } on Exception {
+      // Then the app stays open until Android replaces it, which ends it anyway.
+    }
+  }
 }
 
 enum UpdatePhase {
@@ -133,6 +160,9 @@ enum UpdatePhase {
 
   /// Handed to Android, which asks the player to confirm.
   installing,
+
+  /// Android is installing it, so the app has closed until the new build replaces it.
+  replacing,
   failed,
 }
 
@@ -189,6 +219,11 @@ final selfUpdateProvider = Provider<bool>((ref) => AppConfig.selfUpdate);
 
 final appInstallerProvider = Provider<AppInstaller>((ref) => PlatformAppInstaller());
 
+/// How long after Android started installing the app takes the install as failed, when it comes
+/// back and is still running: Android ends it when the install works, so by then it missed
+/// hearing that the install failed. Tests override it.
+final installGiveUpProvider = Provider<Duration>((ref) => const Duration(minutes: 2));
+
 final appUpdateProvider = NotifierProvider<AppUpdateController, UpdateState>(
   AppUpdateController.new,
 );
@@ -200,6 +235,7 @@ class AppUpdateController extends Notifier<UpdateState> {
   static const checkEvery = Duration(minutes: 30);
 
   DateTime? _lastCheck;
+  DateTime? _replacingSince;
   StreamSubscription<InstallOutcome>? _outcomes;
 
   @override
@@ -217,12 +253,16 @@ class AppUpdateController extends Notifier<UpdateState> {
     UpdatePhase.off ||
     UpdatePhase.checking ||
     UpdatePhase.downloading ||
-    UpdatePhase.installing => true,
+    UpdatePhase.installing ||
+    UpdatePhase.replacing => true,
     _ => false,
   };
 
   bool get _busyForUpdate => switch (state.phase) {
-    UpdatePhase.off || UpdatePhase.checking || UpdatePhase.downloading => true,
+    UpdatePhase.off ||
+    UpdatePhase.checking ||
+    UpdatePhase.downloading ||
+    UpdatePhase.replacing => true,
     _ => false,
   };
 
@@ -230,6 +270,13 @@ class AppUpdateController extends Notifier<UpdateState> {
   /// [checkEvery], quietly: a failed check changes nothing. [now] checks at once and shows the
   /// result, for the player's "Check for updates".
   Future<void> check({bool now = false}) async {
+    if (state.phase == UpdatePhase.replacing) {
+      final since = _replacingSince;
+      if (since != null && DateTime.now().difference(since) >= ref.read(installGiveUpProvider)) {
+        state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
+      }
+      return;
+    }
     if (_busyForCheck) return;
     final last = _lastCheck;
     if (!now && last != null && DateTime.now().difference(last) < checkEvery) return;
@@ -272,16 +319,20 @@ class AppUpdateController extends Notifier<UpdateState> {
     dismissed: true,
   );
 
-  /// Downloads the newer build and hands it to Android, which asks the player to confirm. The
-  /// app closes when Android replaces it, and opens on the new build.
+  /// Downloads the newer build and hands it to Android, which asks the player to confirm. Once
+  /// Android starts installing, the app closes, and the player opens it again on the new build.
   Future<void> update() async {
     final installed = state.installed;
     if (_busyForUpdate || installed == null || !state.hasUpdate) return;
     // The player asked for it, so the banner shows how it goes even after a Later.
     state = state.copyWith(phase: UpdatePhase.downloading, progress: 0, dismissed: false);
+    // Android can start installing a build the player was asked about before, while this one is
+    // on its way; then that install goes on, and this one stops.
+    bool overtaken() => !ref.mounted || state.phase == UpdatePhase.replacing;
     try {
       // A fresh URL: the one from the check may have expired while the banner waited.
       final release = await _latest();
+      if (overtaken()) return;
       if (release == null || release.build <= installed.build) {
         state = UpdateState(UpdatePhase.upToDate, installed: installed);
         return;
@@ -294,32 +345,42 @@ class AppUpdateController extends Notifier<UpdateState> {
         folder: installed.updatesDir,
         name: 'lucid-saga-${release.build}.apk',
         onProgress: (done) {
-          if (ref.mounted) {
+          if (ref.mounted && state.phase == UpdatePhase.downloading) {
             state = state.copyWith(phase: UpdatePhase.downloading, progress: done);
           }
         },
       );
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       _outcomes ??= _installer.outcomes.listen(_onOutcome);
       state = state.copyWith(phase: UpdatePhase.installing);
       await _installer.install(path, release.sha256);
     } on Object catch (e) {
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       final problem = e is UpdateProblem ? e : UpdateProblem.download;
       state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
     }
   }
 
   void _onOutcome(InstallOutcome outcome) {
-    if (state.phase != UpdatePhase.installing) return;
-    state = switch (outcome) {
-      InstallOutcome.installed => UpdateState(UpdatePhase.upToDate, installed: state.installed),
-      InstallOutcome.cancelled => state.copyWith(phase: UpdatePhase.available),
-      InstallOutcome.failed => state.copyWith(
-        phase: UpdatePhase.failed,
-        problem: UpdateProblem.install,
-      ),
-    };
+    final phase = state.phase;
+    final waiting = phase == UpdatePhase.installing || phase == UpdatePhase.replacing;
+    switch (outcome) {
+      // Whatever else was on its way, Android is now replacing the app, so the app closes.
+      case InstallOutcome.started when state.hasUpdate && phase != UpdatePhase.replacing:
+        _replacingSince = DateTime.now();
+        state = state.copyWith(phase: UpdatePhase.replacing);
+        unawaited(_installer.close());
+      case InstallOutcome.installed when waiting:
+        state = UpdateState(UpdatePhase.upToDate, installed: state.installed);
+      // A no counts only while Android asks: once an install has started, the Android side
+      // drops any other question it asked.
+      case InstallOutcome.cancelled when phase == UpdatePhase.installing:
+        state = state.copyWith(phase: UpdatePhase.available);
+      case InstallOutcome.failed when waiting:
+        state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
+      case _:
+        break;
+    }
   }
 
   /// The newest build, or null when none is published (404).
