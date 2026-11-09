@@ -601,25 +601,65 @@ void main() {
     test('the app ships the policy in docs/PRIVACY.md, word for word', () {
       final docs = File('../docs/PRIVACY.md').readAsStringSync();
       final shipped = File('assets/legal/privacy_en.md').readAsStringSync();
-      expect(docs.endsWith(shipped), isTrue, reason: 'Copy docs/PRIVACY.md from "## Who we are"');
-      expect(shipped, startsWith('## Who we are'));
+      expect(docs.endsWith(shipped), isTrue, reason: 'Copy docs/PRIVACY.md from "## At a glance"');
+      expect(shipped, startsWith('## At a glance'));
     });
 
     test('the policy parses into headings, lists and tables', () {
       final blocks = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
-      expect(blocks.whereType<PolicyHeading>().map((h) => h.text), contains('Your rights'));
-      final table = blocks.whereType<PolicyTable>().first;
-      expect(table.header, ['What', 'Why', 'Legal basis']);
-      expect(table.rows.length, greaterThan(4));
-      expect(blocks.whereType<PolicyBullets>(), isNotEmpty);
+      expect(blocks.whereType<PolicyHeading>().map((h) => h.text), contains('10. Your rights'));
+      expect(blocks.whereType<PolicyBullets>().length, greaterThan(4));
+      expect(blocks.whereType<PolicyParagraph>(), isNotEmpty);
       // Indented lines continue their list item.
       final bullets = parsePolicy('- one\n  more\n- two').single as PolicyBullets;
       expect(bullets.items, ['one more', 'two']);
+      // The row under the header is the separator.
+      final table = parsePolicy(
+        '| What | Why |\n| --- | --- |\n| **Account** | To sign in |',
+      ).single;
+      expect(table, isA<PolicyTable>());
+      expect((table as PolicyTable).header, ['What', 'Why']);
+      expect(table.rows, [
+        ['**Account**', 'To sign in'],
+      ]);
     });
 
+    // F8: the age the policy promises is the one sign-up enforces (`MIN_SIGNUP_AGE`), in every
+    // language, and the operator and contacts are the website's (docs/PRIVACY.md).
+    for (final (locale, minimumAge, teenOnly) in [
+      (
+        'en',
+        'You must be ${FakeAuthState.minSignupAge} or older to sign up',
+        'under 17 get only Teen',
+      ),
+      (
+        'es',
+        'Debes tener al menos ${FakeAuthState.minSignupAge} años',
+        'menos de 17 años solo recibe historias Teen',
+      ),
+      (
+        'ca',
+        'Has de tenir com a mínim ${FakeAuthState.minSignupAge} anys',
+        'menys de 17 anys només rep històries Teen',
+      ),
+    ]) {
+      test('the $locale policy states the sign-up age and who runs Lucid Saga', () {
+        final text = File(
+          'assets/legal/privacy_$locale.md',
+        ).readAsStringSync().split(RegExp(r'\s+')).join(' ');
+        expect(text, contains(minimumAge));
+        expect(text, contains(teenOnly));
+        expect(text, contains('GARBAR, IN-TEC, S.L.'));
+        expect(text, contains('B56760374'));
+        expect(text, contains('lucidsaga@garbar.tech'));
+        expect(text, contains('lucidsaga.support@garbar.tech'));
+        expect(text, isNot(contains('[')), reason: 'no placeholder is left');
+      });
+    }
+
     for (final (locale, name, firstHeading) in [
-      ('es', 'Spanish', 'Quiénes somos'),
-      ('ca', 'Catalan', 'Qui som'),
+      ('es', 'Spanish', 'De un vistazo'),
+      ('ca', 'Catalan', 'D’un cop d’ull'),
     ]) {
       test('the $name policy has the same sections, tables and lists as the English', () {
         final english = parsePolicy(File('assets/legal/privacy_en.md').readAsStringSync());
@@ -644,7 +684,7 @@ void main() {
       await tester.tapOnText(find.textRange.ofSubstring(l10n.authPolicyLink));
       await settle(tester);
       expect(find.byType(PrivacyScreen), findsOneWidget);
-      expect(find.text('Who we are'), findsOneWidget);
+      expect(find.text('At a glance'), findsOneWidget);
       await tester.tap(find.byType(BackButton));
       await settle(tester);
       expect(find.byType(WelcomeScreen), findsOneWidget);

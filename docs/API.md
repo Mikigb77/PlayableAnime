@@ -128,7 +128,7 @@ costs nothing. The turn endpoint and pictures run these checks, and drafting doe
   for a wrong password and an unknown email. After 10 failures for one email in 15 minutes, or 100
   from one address, login answers `429 rate_limited` until the window ends; so does register after
   10 new accounts from one address in an hour (attempts that fail validation don't count).
-- **Ages (F8).** The youngest age that can sign up is the `MIN_SIGNUP_AGE` setting (13). Under 17,
+- **Ages (F8).** The youngest age that can sign up is the `MIN_SIGNUP_AGE` setting (16). Under 17,
   `max_rating` is `teen`, and it becomes `mature` on the 17th birthday with nothing to update. A
   story whose rating is above the account's `max_rating` answers `403 forbidden`.
 - **Owner (K7).** `role` is `owner` only for a Google sign-in whose verified email is in

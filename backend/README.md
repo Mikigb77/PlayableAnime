@@ -69,7 +69,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
 | `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |
 | `OWNER_EMAILS` | none | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). Set it to your own Google email locally; production gets it from the `OWNER_EMAILS` GitHub secret, so no address is in the repo. |
-| `MIN_SIGNUP_AGE` | `13` | The youngest age that can sign up. Under 17 is Teen only (F8). |
+| `MIN_SIGNUP_AGE` | `16` | The youngest age that can sign up, as the privacy policy says. Under 17 is Teen only (F8). |
 | `TRUSTED_PROXY_HOPS` | `1` | Proxies that append to `X-Forwarded-For` (Google's front end on Cloud Run), for sign-in throttling. |
 | `PICTURE_MODEL` | `gemini-3.1-flash-lite-image` | The picture model (M8), read by `graph/llm/config.py`. |
 | `PICTURE_NOTE_MODEL` | `gemini-3.1-flash-lite` | Writes a scene picture's description from the finished scene (M5). |

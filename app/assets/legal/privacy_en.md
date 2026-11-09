@@ -1,111 +1,214 @@
-## Who we are
+## At a glance
 
-Lucid Saga is an AI story game made by [controller name], [address]. For anything about your data,
-write to [privacy contact email]. We answer within one month.
+- We don’t sell your data, show you ads or use your stories to train AI.
+- Your story goes to Google’s AI to write what happens next, draw its pictures and read it aloud.
+  Your voice goes there only when you dictate online.
+- You can download everything or delete your account in the app, whenever you want.
 
-## What we collect and why
+## 1. Who is responsible
 
-| What | Why | Legal basis |
-| --- | --- | --- |
-| **Account:** email, display name, birth date, and either a password (stored only as a salted hash) or your Google account's ID | To sign you in, keep your stories yours, and apply the age rules: Teen stories only under 17 | Contract |
-| **Story settings and content preferences:** gore level, romance and dark themes on or off | To shape the stories you get | Contract |
-| **Your stories:** the premise, the actions you type or dictate, the choices you pick, and what the narrator writes back | This is the game: each turn sends the story so far to the AI model to write what happens next | Contract |
-| **Pictures** made for your stories | Shown in your stories, made at key moments | Contract |
-| **Scenes read aloud:** the audio the studio voice made of your scenes | So a scene you hear again plays at once and costs nothing | Contract |
-| **Credits:** your balance and what each turn, picture, dictation or scene read aloud cost | To charge fairly and show you your spending | Contract |
-| **Signed-in devices:** when each one signed in and was last used | To keep you signed in and let you sign a device out | Contract |
-| **Technical logs:** request ids, your account id, the story id, errors, timings, costs per turn, and when a scene was blocked by our safety rules and under which category (never the story's text) | To keep the service running, fix bugs and control costs | Legitimate interest |
-| **Reports:** the scene you reported, the reason you picked, any note you wrote, whether you blocked the scene, and what our staff decided | To review scenes that may break our content rules, fix the narrator, and keep a scene you blocked hidden | Legitimate interest |
-| **Sign-in protection:** short-lived counts of failed sign-ins per email and per network address, stored only as one-way keys, never the email or address itself | To stop password guessing and fake sign-ups | Legitimate interest |
+- **Operator:** GARBAR, IN-TEC, S.L.
+- **Tax number (NIF):** B56760374
+- **Registered address:** Carrer Sant Antoni Mª Claret, 24, 3ª planta, 08037 Barcelona, España
+- **Mercantile Registry:** Registered in the Barcelona Mercantile Registry, volume 49105, folio 130,
+  sheet 607875, entry 1
+- **General enquiries:** lucidsaga@garbar.tech
+- **Support, privacy and deletion:** lucidsaga.support@garbar.tech
 
-We never sell your data, show you ads, or use your stories to train AI models.
+GARBAR, IN-TEC, S.L. operates Lucid Saga and is the controller of the personal data described here.
+Lucid Saga is the product’s name, not a separate company. This policy covers the Lucid Saga app, its
+account and game servers, and our website.
 
-## Speech
+This policy explains how we use data; it doesn’t ask for blanket consent. Where a feature needs a
+permission or your consent, the app asks at the time.
 
-When you tap the microphone, what you say becomes text in the box, for you to check before you
-send it (V5). In Account, under Dictation, you choose what writes it down:
+Write to lucidsaga@garbar.tech for general enquiries, and to lucidsaga.support@garbar.tech for
+support, privacy requests and account deletion. Both reach our company mailbox. You don’t need a
+particular form or subject to exercise your rights.
 
-- **Online (the default).** The app records while the mic is on and sends the recording to our
-  server, which has Gemini on Google Cloud's Vertex AI write it down, listening for the names your
-  character knows in that story. The recording is used for that request only: we never store it or
-  log it, and Google doesn't use it to train its models. We keep only its length and its cost, as
-  an entry in your credit history.
-- **This device.** Your phone's own speech recognizer writes it down, and the audio never reaches
-  our servers. Android uses Google's speech recognition service on your phone; recent phones
-  recognize speech on the device itself. iOS uses Apple's speech recognition: where your iPhone
-  supports on-device recognition for your language, the audio stays on the phone; otherwise Apple
-  processes it on its servers.
+## 2. What we collect
 
-The text is part of your story like anything you type. The app asks for microphone permission the
-first time you tap the mic, the mic is on only while it shows it is listening, and typing always
-works.
+- Account: your email address, a display name, your birth date, and either a password, stored only
+  as a salted hash that can’t be read back, or your Google account’s identifier when you sign in
+  with Google. We never receive your Google password.
+- Story settings: the content preferences you choose (gore level, romance and dark themes on or
+  off), your dictation and reading-aloud choices, and the language of each story.
+- Your stories: the world or premise you start from, the actions you type or dictate, the choices
+  you pick and what the narrator writes back, with the story’s state: its characters, places and the
+  facts its world remembers.
+- Pictures and audio: the pictures drawn for your stories, and the audio of scenes read aloud in the
+  studio voice, kept so a scene you hear again plays at once and costs nothing.
+- Credits: your balance, and what each turn, picture, dictation or scene read aloud cost.
+- Signed-in devices: when each one signed in and was last used, so you stay signed in and can sign a
+  device out.
+- Reports: a scene you report, the reason you pick, any note you write, whether you blocked it, and
+  what our staff decided.
+- Technical records: request identifiers, your account and story identifiers, errors, timings,
+  costs, your network address and app version, and, when our safety rules block a scene, its
+  category, never the story’s text. Short-lived counts of failed sign-ins per email and per network
+  address are kept only as one-way keys.
+- Messages you send us, and what we need to answer them.
 
-When you press play on a scene, it is read aloud. In Account, under Reading aloud, you choose the
-voice (V9):
+## 3. Why we use it, and our legal bases
 
-- **Studio voice (the default).** Our server sends the scene's text to Gemini on Google Cloud's
-  Vertex AI, which reads it aloud, and keeps the audio with your story, so hearing the scene again
-  is free. Google doesn't use the text to train its models. The audio is deleted with the story or
-  your account.
-- **This device.** Your device's own text to speech reads the scene, and nothing reaches our
-  servers. Some engines, such as Google's on Android, may use online voices for a language the
-  phone hasn't downloaded.
+- To provide the game you ask for (GDPR Article 6(1)(b), contract): your account, writing your
+  story, drawing its pictures, reading it aloud, dictation, credits, export, deletion and support.
+  Your birth date is needed to apply the age rules.
+- Our legitimate interests (Article 6(1)(f)): keeping the service secure, stopping password
+  guessing, fake sign-ups and abuse, controlling costs, fixing faults, and reviewing reported scenes
+  so the narrator keeps to our content rules. You can object where this is the basis.
+- Legal obligations (Article 6(1)(c)): accounting and tax records once there are purchases,
+  answering lawful requests from authorities, and handling your data-protection rights.
+- Consent (Article 6(1)(a)), only where the app asks for it separately, such as the microphone
+  permission. You can withdraw it at any time, without affecting what was done before.
 
-## Who processes your data for us
+We don’t sell personal data, show ads, use advertising trackers or train AI models on your stories.
+The AI writes fiction for your story; it doesn’t make decisions about you with legal or similarly
+significant effects.
 
-| Service | What it does | Where |
-| --- | --- | --- |
-| Google Cloud: Cloud Run, Cloud Storage, Cloud Logging, Secret Manager | Runs the game server, stores pictures, the audio of scenes read aloud, and logs | EU: Frankfurt |
-| Google Cloud: Vertex AI (Gemini) | Writes the story, draws the pictures, writes down online dictation and reads scenes aloud in the studio voice. Google doesn't use this data to train its models. The part of a story's prompts that stays the same from turn to turn (its style, content settings and world) is kept in a Vertex AI cache until 15 minutes after your last turn, so it costs less | [Global endpoint, possibly outside the EU, or an EU region: see open question 3] |
-| Neon | Hosts the database | Frankfurt (AWS eu-central-1) |
-| Google Sign-In | Confirms who you are when you sign in with Google | Google |
+## 4. The AI, your voice and reading aloud
 
-Where data leaves the EU, it does so under the European Commission's standard contractual clauses
-or the EU-US Data Privacy Framework.
+Lucid Saga is written by AI. On each turn, our server sends Google’s Gemini models, on Google
+Cloud’s Vertex AI, what the story needs to go on: the story so far, its world and characters, your
+action and your content settings. The same service draws the pictures for key moments. The part of a
+story’s instructions that stays the same from turn to turn may be kept in a Vertex AI cache until 15
+minutes after your last turn, so it costs less.
 
-**Your own API key.** If you add your own Gemini API key, your turns go to Google's Gemini API
-under your own account and Google's terms for it. Online dictation and the studio voice still run on our account. On Gemini's free tier, Google may use what you
-send to improve its products. The app keeps the key on your device and sends it with each request;
-our server uses it for that request only and never stores or logs it.
+Dictation: by default, the app records while the mic is on and sends the recording to our server,
+which has Gemini write it down, listening for the names your character knows in that story. The
+recording is used for that request only: we don’t store it or log it, and keep only its length and
+cost in your credit history. If you choose This device in Account, under Dictation, your phone’s own
+speech recognition writes it down and the audio never reaches our servers, though Android’s and
+Apple’s recognizers may use their makers’ servers when the phone can’t do it alone.
 
-## How long we keep it
+Reading aloud: by default, the studio voice sends the scene’s text to Gemini, which reads it aloud,
+and we keep the audio with your story. If you choose your device’s voice, your phone reads it and
+nothing reaches our servers.
 
-- **Your account, stories, pictures and the audio of scenes read aloud:** until you delete them.
-- **Reports:** until you delete the story or your account.
-- **Deleting your account** (Account, Delete account) removes your account, every story, every
-  picture and every signed-in device from the live database and storage at once. Copies in the
-  database's restore history disappear when they age out of it, within [N] days.
-- **Logs:** [30] days.
+Under Google Cloud’s terms, Google doesn’t use what we send to Vertex AI to train its models without
+our permission. Google may keep some data for a limited time for caching, safety and abuse
+monitoring, and may process it outside the EU. We don’t promise zero retention or EU-only
+processing.
 
-## Your rights
+Your own API key: if you add your own Gemini API key in the app, your turns go to Google’s Gemini
+API under your own account and Google’s terms for it, and on its free tier Google may use what you
+send to improve its products. The key stays on your device and is sent only with the requests that
+need it; our server never stores or logs it. Dictation and the studio voice still run on our
+account.
 
-You can, at any time:
+Stories are fiction. Don’t put real people’s private details, health records, passwords or other
+sensitive information into a story.
 
-- **Download everything** we hold about you as a file (Account, Export my data).
-- **Delete your account** and everything in it (Account, Delete account).
-- **Correct** your display name and preferences in Account, or ask us to correct anything else.
-- **Object** to processing based on legitimate interest, or ask us to restrict it.
-- **Complain** to a data protection authority, such as [the authority for the controller's
-  country, for example Spain's AEPD].
+- Google Cloud service terms, including Vertex AI: https://cloud.google.com/terms/service-terms
+- Google Cloud data processing terms: https://cloud.google.com/terms/data-processing-addendum
 
-## Children
+## 5. Who sees your data
 
-You must be at least [13] to sign up, and we ask your birth date when you do. Players under 17 only
-get Teen stories, whatever the store age rating says. If we learn that someone under the minimum
-age signed up, we delete the account.
+Your stories are private to your account: Lucid Saga has no public sharing. In our team, only the
+owner and the staff who handle reports can read a story’s text, and they read it to review reports.
+Staff who help with accounts and credits see a story’s title, rating and numbers, never what is
+written in it.
 
-## Security
+Our providers receive what they need for their job, as processors under our instructions, or, for
+their own legal, security or payment duties, as independent controllers under their own notices.
 
-All traffic is encrypted. Passwords are stored only as salted hashes, sign-in tokens as one-way
-hashes, and our own keys and passwords live in Google Secret Manager. Signing out on a device ends
-its sign-in at once, and repeated wrong passwords are slowed down.
+- Google Cloud (Cloud Run, Cloud Storage, Cloud Logging, Secret Manager): runs the game server and
+  our website, stores pictures and audio, and keeps logs. The game server and its storage are in
+  Frankfurt, Germany, and our website in Belgium.
+- Google Cloud Vertex AI (Gemini): writes the stories, draws the pictures, writes down online
+  dictation and reads scenes in the studio voice.
+- Neon: hosts the database of accounts and stories, in Frankfurt, Germany.
+- Google Sign-In: confirms who you are when you sign in with Google.
+- Google Workspace (Gmail): receives and answers your emails to us, with whatever you choose to
+  send.
+- Google Play: distributes the app and, once purchases are offered, takes payments. We never receive
+  your full card details.
+- Professional advisers or authorities, only where a legal obligation or a legal claim requires it.
 
-In our admin tools, only the owner and the staff who handle reports can read story text, and they
-read it to review reports. Other staff, who help with accounts and credits, see a story's title,
-rating and numbers, never what is written in it.
+- Neon privacy notice: https://neon.com/privacy-policy
+- Google privacy notice: https://policies.google.com/privacy
 
-## Changes
+## 6. Processing outside the EU
 
-If this policy changes in a way that matters, we'll tell you in the app before it takes effect.
+Our database and servers are in the EU, but some processing can happen elsewhere: Vertex AI runs on
+Google’s global endpoint, and our providers’ support and security teams may work from outside the
+European Economic Area.
 
-*Last updated: [date].*
+Such transfers follow Chapter V of the GDPR: a European Commission adequacy decision, such as the
+EU–US Data Privacy Framework for certified recipients, or the Commission’s Standard Contractual
+Clauses with any measures needed. Write to lucidsaga.support@garbar.tech for the mechanism that
+applies to your data and a copy of the safeguards.
+
+## 7. How long we keep it
+
+- Your account, stories, pictures, audio and credits: as long as you keep them. Deleting a story
+  deletes its scenes, pictures and audio. Deleting your account deletes everything in it, at once.
+- Reports: until you delete the reported story or your account.
+- Dictation recordings: not kept. Each is used for its one request.
+- Logs: 30 days. Sign-in protection counts expire on their own after a short time.
+- Your emails to us: while we handle your request and, where needed, for as long as a complaint or
+  legal claim about it could be brought.
+- Purchases, once offered: the records the law requires, such as six years for Spanish commercial
+  records and generally four for tax, with restricted access.
+
+Our database’s restore history keeps deleted data for our provider’s restore window, and then it’s
+gone; backups aren’t edited when you delete something. Copies you exported yourself are yours to
+remove. You can ask us which periods apply to your data.
+
+## 8. Our website and cookies
+
+Our website has no accounts, analytics, advertising or tracking. It opens in your browser’s language
+when that is English, Spanish or Catalan, and in English otherwise; it never uses your location for
+this.
+
+If you pick a language in the language switch, a cookie named lang remembers it for up to a year, so
+the site opens in that language next time. It’s a preference you asked for, used for nothing else.
+You can delete it in your browser at any time.
+
+Our hosting keeps request logs, with the time, the page, your browser and your network address, for
+30 days, to keep the site running and secure.
+
+## 9. Permissions and security
+
+The app asks for the microphone the first time you tap the mic, and listens only while it shows it
+is listening; typing always works. You can change permissions in your phone’s settings.
+
+All traffic is encrypted. Passwords are stored only as salted hashes and sign-in tokens as one-way
+hashes, our own keys live in Google Secret Manager, signing out ends a device’s sign-in at once, and
+repeated wrong passwords are slowed down. Lucid Saga isn’t end-to-end encrypted: our servers and
+providers process your stories in order to write them.
+
+## 10. Your rights
+
+In the app you can download everything we hold about you (Account → Privacy and data → Export my
+data), delete your account and everything in it (Account → Privacy and data → Delete account), and
+correct your name and preferences in Account.
+
+You can also ask us for access, correction, erasure, restriction or portability of your data, and
+object to processing based on our legitimate interests. Where we rely on your consent, you can
+withdraw it.
+
+Write to lucidsaga.support@garbar.tech saying which account and which right. We check that the
+account is yours in a proportionate way, and never ask for your password or card number. We answer
+within one month; for complex or numerous requests we may take up to two more months, and we’ll tell
+you why within the first. Requests are free.
+
+You can complain to the Spanish Data Protection Agency (AEPD), or the authority where you live,
+without contacting us first.
+
+- Delete your account: https://lucid-saga-web-528988811295.europe-west1.run.app/en/delete-account
+- AEPD: your rights and how to complain: https://www.aepd.es/derechos-y-deberes/conoce-tus-derechos
+
+## 11. Age and changes
+
+You must be 16 or older to sign up, and the app asks your birth date. Players under 17 get only Teen
+stories. If we learn that someone under 16 has signed up, we delete the account. If you think a
+younger person has one, write to us.
+
+We’ll update this policy when the game or its use of data changes, show the date each version takes
+effect, and tell you in the app before a change that matters takes effect.
+
+You can also read this policy on our website:
+https://lucid-saga-web-528988811295.europe-west1.run.app/en/privacy
+
+*In force since 8 November 2026.*

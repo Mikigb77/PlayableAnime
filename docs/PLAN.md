@@ -698,7 +698,7 @@ These don't block the code. They block real sign-in, live model checks and the d
    secrets, used only as a BYOK key in tests, and a Neon API key so threads can use one Neon branch
    per feature instead of a local Postgres.
 4. **Later:** an email provider for password reset and verification, an Apple developer account for
-   Sign in with Apple and the App Store, Play Console, and a review of the privacy policy draft.
+   Sign in with Apple and the App Store, Play Console, and a lawyer's review of the privacy policy.
 
 ## Risks
 

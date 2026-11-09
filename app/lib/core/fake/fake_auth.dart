@@ -34,7 +34,7 @@ class FakeAuthState {
   static const ownerUserId = 'user_owner';
 
   /// Under this age nobody can sign up (`MIN_SIGNUP_AGE` on the backend, F8).
-  static const minSignupAge = 13;
+  static const minSignupAge = 16;
 
   static const defaultPrefs = {'gore': 'medium', 'romance': true, 'dark_themes': true};
 
