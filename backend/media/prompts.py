@@ -90,7 +90,8 @@ FRAMING = {
     ),
     "scene": (
         "One moment of the story, framed like a film still at the instant the description names, "
-        "with the people in it recognisable, doing what it says, where it says. Show who and what "
+        "with the people in it recognisable, doing what it says, where it says, each on footing "
+        "the picture shows. Show who and what "
         "the description describes, and no one else: no extra people, creatures or props, and no "
         "buildings, ruins, water or landmarks it doesn't name."
     ),
@@ -115,16 +116,24 @@ ONLY_THEM = (
 # Everyone in a scene or cover stands on something the picture shows, at the size their place in
 # it gives them (M5). Miki, 2026-11-09: the player character stood in mid-air, life-size, over a
 # camp far below, beside a companion who leant over the edge of a wall. The footing may be drawn
-# though the description doesn't name it, which a scene's framing would otherwise rule out.
+# though the description doesn't name it, which a scene's framing would otherwise rule out. The
+# first live run drew the companion floating in front of the wall in one picture of two, so the
+# rule also picks the viewpoint: one that keeps everyone's footing in the frame, and for people up
+# high, a view from up there with them, never one that leaves open air between them and the
+# viewer.
 GROUNDED = (
-    "Set everyone inside the picture's own space, in one consistent perspective: every person or "
-    "creature rests on something solid that the picture shows under them, such as the ground, a "
-    "floor, a ledge, steps, rocks or a branch, with their feet planted on it and a shadow where "
+    "Set everyone inside the picture's own space, in one consistent perspective, seen from a "
+    "viewpoint that keeps the footing under every standing person inside the frame: every person "
+    "or creature rests on something solid that the picture shows under them, such as the ground, "
+    "a floor, a ledge, steps, rocks or a branch, with their feet planted on it and a shadow where "
     "they touch it, unless the description has them fly, float, fall, leap, climb, swim or hang. "
-    "Draw that footing even where the description doesn't name it. Each one's size fits how far "
-    "they are from the viewer and the things around them, and people side by side share the same "
-    "footing. No one hovers in mid-air unless the description says so, and no one stands pasted "
-    "over the background like a cut-out."
+    "Draw that footing even where the description doesn't name it. When people stand up high, on "
+    "a wall, a cliff, a roof or a balcony, looking down or out at something, view them from up "
+    "there, from behind or beside them, with the top they stand on running under their feet "
+    "across the foreground and what lies below small and far beyond it; never leave open air "
+    "between them and the viewer. Each one's size fits how far they are from the viewer and the "
+    "things around them, and people side by side share the same footing. No one hovers in mid-air "
+    "unless the description says so, and no one stands pasted over the background like a cut-out."
 )
 
 # Portraits and covers are tall, places and scenes wide. The app sizes the picture slot from the
@@ -401,7 +410,10 @@ def build_prompt(
     labels = _labels(kind, references, redraw)
     if place:
         name = _clip(brief.place_name, 80) or "the scene"
-        labels += (f"Image {len(labels) + 1}: {name}, the place where this happens.",)
+        labels += (
+            f"Image {len(labels) + 1}: {name}, the place where this happens, to draw again "
+            "around the people.",
+        )
     return PicturePrompt(
         system=system,
         user="\n".join(lines),

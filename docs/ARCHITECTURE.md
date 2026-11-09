@@ -1779,10 +1779,12 @@ app                   shows the narration, then asks for the picture in its own 
   Everyone in a scene or cover stands on something the picture shows (`GROUNDED`): one
   perspective, a footing under each person, drawn even when the description doesn't name it,
   feet planted on it, a size that fits their distance and people side by side on the same
-  footing, unless the moment has them fly, float, fall, leap, climb, swim or hang. The place's
-  picture is drawn again around the people, never used as a backdrop behind them, and the note
-  says what each person stands, sits or leans on (Miki, 2026-11-09: the player character stood in
-  mid-air over a camp far below).
+  footing, unless the moment has them fly, float, fall, leap, climb, swim or hang. It picks a
+  viewpoint that keeps everyone's footing in the frame, and sees people up high from up there with
+  them, the top they stand on under their feet, never with open air between them and the viewer.
+  The place's picture is drawn again around the people, never used as a backdrop behind them (its
+  label says so too), and the note says what each person stands, sits or leans on (Miki,
+  2026-11-09: the player character stood in mid-air over a camp far below).
 - **Drawing (M8, B6).** `media.drawing` draws through the model layer's `picture` node
   (`PICTURE_MODEL`, default `gemini-3.1-flash-lite-image` at 1K), with its one retry, typed
   failures and call records. A player's own key draws for free (K6). A key that can't draw falls
