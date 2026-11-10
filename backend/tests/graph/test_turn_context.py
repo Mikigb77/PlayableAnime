@@ -306,6 +306,15 @@ def test_the_narrator_is_told_how_the_dice_fell_and_never_the_dice():
     assert step["throw"] == {"fell": "passed", "against": "Zhao can answer."}
 
 
+def test_the_narrator_tells_a_throw_by_the_hand_that_threw_it():
+    """R4, A3: how the dice fell is what happened, never how skilled the character is. Found in
+    a live run on 2026-11-10: a novice whose stroke came off was told as a master's."""
+    assert "never how good the hand is: a beginner who passes gets there clumsily or by luck" in (
+        prompts.NARRATOR_SYSTEM
+    )
+    assert "a master who misses is still plainly a master (R4)" in prompts.NARRATOR_SYSTEM
+
+
 def test_the_narrator_is_told_the_one_extra_effect_of_a_throw_over_the_top():
     extra = "Over the top: Zhao is staggered and has no answer. Those who saw it will remember."
     won = cut(roll=thrown(Mark.OVER_THE_TOP), extra=extra, opening_ids=["zhao"])
