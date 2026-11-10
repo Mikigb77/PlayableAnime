@@ -18,7 +18,7 @@ from engine.visibility import MemoryView, StatusView, clock_view, memory_view, s
 from media.lookups import cover_urls, place_urls, portrait_urls, scene_images
 from media.storage import SignedUrl
 from moderation.models import Report
-from stories import endings
+from stories import endings, unfinished
 from stories.models import Scene, Story
 from stories.schemas import (
     ChoiceOut,
@@ -29,6 +29,7 @@ from stories.schemas import (
     StoryOut,
     StorySettings,
     StorySummaryOut,
+    UnfinishedTurnOut,
 )
 from stories.succession import drawn_of, heirs_of, successor_out
 
@@ -135,7 +136,15 @@ def story_out(
         ),
         heirs=heirs_of(story, state, ending) if ending and not ending.closed else [],
         opening_due=state.opening_due,
+        unfinished_turn=_unfinished_out(story, state) if ending is None else None,
     )
+
+
+def _unfinished_out(story: Story, state: WorldState) -> UnfinishedTurnOut | None:
+    owed = unfinished.of_story(story, state)
+    if owed is None:
+        return None
+    return UnfinishedTurnOut(turn=owed.turn, kind=owed.kind, action=owed.player_action)
 
 
 def settings_of(story: Story) -> StorySettings:

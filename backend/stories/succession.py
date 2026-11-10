@@ -302,6 +302,7 @@ def _carry_on(story: Story, expected_version: int, ahead: WorldState | None) -> 
             state=carried.model_dump(mode="json"),
             ending=None,
             successor=None,
+            unfinished_turn=None,
             version=F("version") + 1,
             updated_at=timezone.now(),
         )

@@ -26,7 +26,7 @@ from engine.contracts import (
     StandingAction,
 )
 from engine.pipeline import PlayOut, TimePassage
-from engine.state.records import PendingEvent, StepResult
+from engine.state.records import DieKind, Mark, PendingEvent, StepResult
 from engine.state.world import EventSize, WorldState
 
 if TYPE_CHECKING:
@@ -54,6 +54,16 @@ class TurnKind(StrEnum):
     # N6: the player ends the story with `/end`, with or without a note on how. Its scene is the
     # epilogue.
     END = "end"
+
+
+@dataclass(frozen=True)
+class Reading:
+    """A3. How a turn that was decided and shown was read: the interpret step's `Intent` as
+    code checked it, and the steps it handed back as too many for one scene (R6). The dice of a
+    turn come from its seed, so the same reading on the same world decides the same steps again."""
+
+    intent: Intent
+    overflow: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -87,6 +97,8 @@ class TurnInput:
     # N6, an end turn only: tell the epilogue without what the world refused of the note,
     # instead of handing the refusal back.
     drop_refused: bool = False
+    # A3: this turn was already decided and shown, so it is played out as it was read then.
+    reading: Reading | None = None
 
     def __post_init__(self) -> None:
         if self.ctx.turn != self.state.turn + 1:
@@ -147,10 +159,47 @@ class Choice(_ApiModel):
     kind: ChoiceKind
 
 
+class DieDetail(_ApiModel):
+    """One die of a throw as it fell. `sprung` marks one thrown because the die before it
+    showed a 20."""
+
+    kind: DieKind
+    face: int
+    sprung: bool = False
+
+
+class NumberPartDetail(_ApiModel):
+    text: str
+    points: int
+
+
+class ThrowDetail(_ApiModel):
+    """API.md's `Throw`: the dice that decided a step, in the order thrown, with everything the
+    app needs to show the throw and replay it (A3). The app never rolls: it shows these."""
+
+    dice: list[DieDetail]
+    hand: int
+    hand_why: str = ""
+    greens: list[str] = Field(default_factory=list)
+    number: int
+    made_of: list[NumberPartDetail] = Field(default_factory=list)
+    total: int
+    most: int
+    mark: Mark
+    against: str = ""
+    deadly: bool = False
+    miss_costs: str = ""
+    insight: bool = False
+    # The face of the violet die that shows an insight: 18, or 16 when two talents cover it.
+    insight_at: int = 18
+
+
 class RollDetail(_ApiModel):
     odds_label: str
     result: StepResult
     seed: str
+    # The dice, for a step dice decided. A scene saved before the dice travelled has none.
+    throw: ThrowDetail | None = None
 
 
 class BeatDetail(_ApiModel):
@@ -281,13 +330,33 @@ class TurnResult:
 
 
 @dataclass(frozen=True)
+class StepsDecided:
+    """`steps.decided`: what the engine decided, before the narrator writes a word (A3, B7).
+    `details` is what the finished scene will carry. `reading` is how the turn was read, for the
+    endpoint to keep before it shows them, so the turn is played out as it was decided."""
+
+    details: SceneDetails
+    reading: Reading
+
+    @property
+    def throws(self) -> list[ThrowDetail]:
+        """Every throw of dice among the steps, their beats and what struck back."""
+        rolls = []
+        for step in self.details.steps:
+            rolls.append(step.roll)
+            rolls += [beat.roll for beat in step.beats or []]
+            rolls += [struck.roll for struck in step.struck or []]
+        return [roll.throw for roll in rolls if roll is not None and roll.throw is not None]
+
+
+@dataclass(frozen=True)
 class TurnCompleted:
     """The last event of a turn that finished."""
 
     result: TurnResult
 
 
-type TurnEvent = NarrationDelta | NarrationReset | TurnCompleted
+type TurnEvent = NarrationDelta | NarrationReset | StepsDecided | TurnCompleted
 
 
 class TurnState(TypedDict, total=False):

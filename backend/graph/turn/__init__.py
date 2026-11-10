@@ -4,8 +4,8 @@
 
     turn = TurnInput(state=state, ctx=ctx, kind=TurnKind.ACTION, action="I throw the stone")
     async with aclosing(run_turn(turn, llm)) as events:
-        async for event in events:  # NarrationDelta, NarrationReset, then TurnCompleted
-            ...
+        async for event in events:  # StepsDecided, NarrationDelta, NarrationReset,
+            ...                     # then TurnCompleted
 
 Importing this package doesn't load LangGraph; the first turn does (B10).
 """
@@ -24,10 +24,12 @@ from graph.turn.types import (
     NarrationMode,
     NarrationReset,
     PastScene,
+    Reading,
     SceneDetails,
     SceneDraft,
     SceneEvent,
     ScenePicture,
+    StepsDecided,
     TurnCompleted,
     TurnDeps,
     TurnEvent,
@@ -40,6 +42,7 @@ __all__ = [
     "CHAPTER_TURNS",
     "MAX_CHAPTER_TURNS",
     "RECENT_SCENES",
+    "Reading",
     "ChapterOutput",
     "Choice",
     "Ending",
@@ -55,6 +58,7 @@ __all__ = [
     "SceneDraft",
     "SceneEvent",
     "ScenePicture",
+    "StepsDecided",
     "SuggestionOut",
     "TurnCompleted",
     "TurnDeps",

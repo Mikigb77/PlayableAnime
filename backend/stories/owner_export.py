@@ -67,6 +67,8 @@ def _story(story: Story) -> dict[str, Any]:
         "version": story.version,
         "ending": story.ending,
         "successor": story.successor,
+        # A3: a turn that was decided and shown, and whose scene isn't saved yet, as kept.
+        "unfinished_turn": story.unfinished_turn,
         "created_at": story.created_at.isoformat(),
         "updated_at": story.updated_at.isoformat(),
         "state": story.state,

@@ -1,8 +1,8 @@
 """Running one turn: the LangGraph graph of B5, streamed (B7).
 
     async with aclosing(run_turn(turn, llm)) as events:
-        async for event in events:  # NarrationDelta, NarrationReset, then TurnCompleted
-            ...
+        async for event in events:  # StepsDecided, NarrationDelta, NarrationReset,
+            ...                     # then TurnCompleted
 
 The graph has no checkpointer: story state lives in our own tables (B9), so a turn that fails
 partway is simply run again. Everything finishes before `TurnCompleted`, so nothing relies on
@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 from graph.turn.types import (
     NarrationDelta,
     NarrationReset,
+    StepsDecided,
     TurnCompleted,
     TurnDeps,
     TurnEvent,
@@ -66,7 +67,8 @@ async def _settle(tasks: list[asyncio.Task[Any]]) -> None:
 
 
 async def run_turn(turn: TurnInput, llm: ModelClient) -> AsyncIterator[TurnEvent]:
-    """Plays one turn, yielding the narration as it is written and then the finished turn.
+    """Plays one turn, yielding the steps the engine decided, the narration as it is written
+    and then the finished turn.
 
     Raises `UnreadableAction` when the action can't be read (F4), and the model layer's
     `LLMUnavailable` or `BadKey` when the narration can't be written (T7). Nothing is saved here:
@@ -80,7 +82,7 @@ async def run_turn(turn: TurnInput, llm: ModelClient) -> AsyncIterator[TurnEvent
         async with aclosing(stream) as chunks:
             async for mode, chunk in chunks:
                 if mode == "custom":
-                    if isinstance(chunk, NarrationDelta | NarrationReset):
+                    if isinstance(chunk, NarrationDelta | NarrationReset | StepsDecided):
                         yield chunk
                 elif mode == "values":
                     final = chunk

@@ -15,15 +15,17 @@ from engine.contracts import (
     StepResolution,
 )
 from engine.looks import place_looks
-from engine.state.records import RollRecord
+from engine.state.records import RollRecord, Throw
 from engine.state.world import WorldState
 from engine.world.telling import account
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import (
     BeatDetail,
     Choice,
+    DieDetail,
     LinkDetail,
     NarrationMode,
+    NumberPartDetail,
     RollDetail,
     SceneDetails,
     SceneDraft,
@@ -31,6 +33,7 @@ from graph.turn.types import (
     ScenePicture,
     StepDetail,
     StruckDetail,
+    ThrowDetail,
     TurnInput,
     TurnKind,
 )
@@ -144,7 +147,32 @@ def _roll_detail(roll: RollRecord | None) -> RollDetail | None:
     if roll is None:
         return None
     odds_label = roll.odds_label or f"{round(roll.odds * 100)}%"
-    return RollDetail(odds_label=odds_label, result=roll.result, seed=roll.seed)
+    return RollDetail(
+        odds_label=odds_label,
+        result=roll.result,
+        seed=roll.seed,
+        throw=_throw_detail(roll.throw) if roll.throw is not None else None,
+    )
+
+
+def _throw_detail(throw: Throw) -> ThrowDetail:
+    """A3. The dice as they fell, for the app to show: it never rolls its own."""
+    return ThrowDetail(
+        dice=[DieDetail(kind=d.kind, face=d.face, sprung=d.sprung) for d in throw.dice],
+        hand=throw.hand,
+        hand_why=throw.hand_why,
+        greens=list(throw.greens),
+        number=throw.number,
+        made_of=[NumberPartDetail(text=p.text, points=p.points) for p in throw.made_of],
+        total=throw.total,
+        most=throw.most,
+        mark=throw.mark,
+        against=throw.against,
+        deadly=throw.deadly,
+        miss_costs=throw.miss_costs,
+        insight=throw.insight,
+        insight_at=throw.insight_at,
+    )
 
 
 def picture(

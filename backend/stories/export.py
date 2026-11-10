@@ -1,12 +1,14 @@
 """A player's stories as plain data, for the account export (T12).
 
 Everything the player has seen: each story's premise and settings, and every scene with the
-action, narration, choices, the reasoning shown in scene details and in-world time. The world
-state stays out, because it holds hidden truths the player hasn't learned (C6, N7).
+action, narration, choices, the reasoning shown in scene details and in-world time, and what they
+sent for a turn that was decided and shown but whose scene isn't saved yet (A3). The world state
+stays out, because it holds hidden truths the player hasn't learned (C6, N7).
 """
 
 from django.db.models import Prefetch
 
+from stories import unfinished
 from stories.models import Scene, Story
 
 
@@ -49,6 +51,7 @@ def story_data(story: Story) -> dict:
         "settings": story.settings,
         "turn": story.turn,
         "version": story.version,
+        "unfinished_turn": unfinished.sent(story),
         "created_at": story.created_at.isoformat(),
         "updated_at": story.updated_at.isoformat(),
         "scenes": [scene_data(scene) for scene in story.scenes.all()],
