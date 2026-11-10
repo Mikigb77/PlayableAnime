@@ -581,8 +581,13 @@ class _Applier:
                 self.power(character, power_change)
         if change.techniques and self.engine_only(subject, "techniques"):
             for technique in change.techniques:
-                if character.sheet.technique(technique.id) is None:
+                known = character.sheet.technique(technique.id)
+                if known is None:
                     character.sheet.techniques.append(technique.model_copy(deep=True))
+                else:
+                    # A4. A technique they have keeps what it is: only how well they have it
+                    # moves, with use and practice.
+                    known.mastery, known.uses = technique.mastery, technique.uses
         if change.ladders and self.engine_only(subject, "ladders"):
             for position in change.ladders:
                 self.ladder(character, position)

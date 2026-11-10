@@ -607,7 +607,10 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             threads:  [{id, title, status}]}
 
 StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
-                                          # lines include a child on the way (N6)
+                                          # lines include a child on the way (N6), and each
+                                          # technique with its mastery and its count toward
+                                          # the next: "Aura blade (technique, learning, 2 of
+                                          # 6 uses)" (A4)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10), and the

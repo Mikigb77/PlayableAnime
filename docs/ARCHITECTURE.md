@@ -159,6 +159,7 @@ these functions and saves the result.
 | `engine/contracts/` | What flows between the turn's steps (B5): `Intent` (interpret), `Resolution` (resolve), `DirectorPlan` (director) and `StateDelta` (what the narrator or the engine proposes to change). |
 | `engine/context.py` | `TurnContext`: the story id, the turn number, story settings (S6), rating (F2) and content preferences (F7), which live outside the world state. |
 | `engine/rng.py` | `SeededRng`, the seeded random numbers behind every roll (A3). |
+| `engine/levels.py` | One scale of levels for moves, skills, bodies and things (A3, A4, G14, G18), which the dice will be built on: the dice a move throws by its mastery, a step by its skill and a raw feat by its attribute, the level of each of the six challenge words, the number a level sets (ten for each level less three), and how mastery grows: `grown` (6 uses, then 15, then 30, divided by the pace talent sets), `starting_mastery` (two steps under the skill, or practiced for the gifted) and what a plain and a resisted use count for. Nothing here rolls, and nothing is decided by it yet. |
 | `engine/timekeeping.py` | How long each kind of action may take, the seconds until a time of day ("until nightfall"), and `advance_clock`, which moves the world clock through pending events in time order and stops at the first that needs the player (W10, W10a). |
 | `engine/apply.py` | `apply_delta`: a proposed `StateDelta` applied with the C1 invariants, on behalf of the narrator or the engine, returning the new state and what it refused. Each item change goes through `engine.possessions`. The narrator never hurts the player character: a worse health, a wound or a passing state that names an injury is refused (N6), unless `may_hurt_player` says something recorded this turn caused it (a power's toll in health or blood, `injuries.pays_in_body`, or the first opening's premise). Healing still applies, and a new wound on an unhurt body leaves it hurt. A goal the narrator names in `goals_over` closes as achieved or failed, or, when it repeats another active goal, the later of the two closes as merged into the older (N2), and only with `player_acted`, which the turn graph sets when the player acted this turn. |
 | `engine/injuries.py` | Hurt bodies come only from the record (N6, G13): `names_injury` spots a wound, an injury, pain or an illness in a model's words (English, Spanish and Catalan; "broken" or "twisted" only beside a body part, so a broken lock is no injury), `is_hurt` reads it off a character's condition, and `unrecorded_harm` leaves out of a step's facts every edge and hindrance that leans on an injury the record doesn't hold: words naming someone in the scene or someone the step faces stand only when that person is hurt on the record (and the words name no part the record says is whole), a hindrance naming nobody else is the actor's and stands only for one of their flaws, passing states or wounds that last (the odds already weigh their health), and an edge naming nobody stands when someone the step faces holds it. `pays_in_body` says whether a step that played paid a power's toll in health or blood. `Condition.set_health` heals every wound that doesn't last once a body is back to unhurt, and loading a state does the same. |
@@ -425,10 +426,19 @@ order, and the first one that settles it ends the step:
    actor's powers (`checks.Move`: "an aura blade" and their aura, by the words the move shares with
    the power's name and description, or the one power the step names) is that power at work, not an
    unlearned technique (`made_with`); a power over time is found only by its id or whole name. A
-   learned technique of a power uses that power too. When a step with a move that shares words with
-   its power comes off cleanly, the move becomes a technique of the actor's own, once per plan
-   (`growth.proven`, A4, G25), unless a technique on their sheet or someone else's already has that
-   name. `StepResolution.drew_on` names what the step used once past this check, so the narrator
+   learned technique of a power uses that power too. A technique is found by its id or its name,
+   said in fewer words or in more (`same_way`). When a step with a move of the actor's own comes
+   off cleanly, the move becomes a technique of theirs, once per plan (`growth.proven`, A4, G25),
+   unless a technique on their sheet already is that move or someone else's has that name. A move
+   of their own is one that shares words with its power, one made of the world's energy they hold
+   (never the energy alone), or a technique they were still learning, which is then theirs in its
+   teacher's name with its practice cleared; a new way to use a power is never learned by doing
+   it (A9). It starts at the mastery their skill gives a new move (`levels.starting_mastery`).
+   Each technique a step used counts toward its mastery (`growth.used`: once, or twice where a
+   roll decided the step, and once a turn at its best step), and a training step on a technique
+   they know is practice that counts an hour for a use (`growth.practised`, and `practice_cut`
+   from `pipeline` when an event cuts it short). A rise is a `Gain` and a sentence in the step's
+   reason. `StepResolution.drew_on` names what the step used once past this check, so the narrator
    tells a miss in what stood in the way (A3).
    **Exchanges** (`exchanges.py`; C10) come next: whatever the step gives or spends must be the
    actor's, counting what earlier steps of the plan moved, or the step is ruled out with no roll
@@ -601,7 +611,7 @@ each figure is a named constant at the top of its module, rough as A9 asks.
 | `time_stop.py` | W10a's time stop: who is immune, which hit mode a stop uses (`default_hit_mode`, `throw_mode`, `controlled`), the conventions (`drop_convention_hindrances`), `stopped_hit` for a blow or throw at a frozen target, `blast_outcome` once time restarts, `witnesses` and `stopped_traces` for its secret deeds, and `might_with_powers`, the measure the world answers (W5). |
 | `force.py` | Raw force (A9): energy at 0.9c, tiers on the bible's `ForceScale`, blast reach, and the lift each strength allows, with the words reasons use ("about three megatons", "7 km"). |
 | `theories.py` | `rule_on_theories`: the player's theories ruled once (A9, G22). Refuses nonsense, a new power or a fixed rule, never strength; a modest power that gains relative-speed hits or city reach pays a heavier drain. |
-| `growth.py` | A4 and G19: `check`, `progress` and `breakthrough`. Effort, teachers, gifts, flaws and the world's ceilings turn training into practice, then a skill rank, a technique or a new way of using a power. |
+| `growth.py` | A4 and G19: `check`, `progress` and `breakthrough`. Effort, teachers, gifts, flaws and the world's ceilings turn training into practice, then a skill rank, a technique or a new way of using a power. `proven` makes a move that came off a technique of theirs, and `used`, `practised` and `practice_cut` grow a technique's mastery with use and practice (`engine/levels.py`), at the pace `talent` reads from the sheet's gifts and flaws for learning, in three languages. |
 | `sensing.py` | G20: hiding and revealing strength, and the rung others sense (`perceived_rung`, `apparent_tier`). |
 | `claims.py` | N4: `judge_claims` on backstory the player states. |
 
@@ -660,6 +670,13 @@ once and its recharge), `techniques`, `ladders`, `practice` and `skills`, and
 `StateDelta.time_effects` starts a stop or haste. In state: `Rung.needs` and `loud`,
 `WorldBible.force`, `Technique.power_id`, `LadderPosition.shown_rung` and `CharacterSheet.practice`.
 A user's death ends their time effects (`timekeeping`). Local reversal (W10a) is deferred.
+
+Mastery (A4, decided 2026-11-10) added `Technique.mastery` and `uses`, which only the engine
+changes: applying a technique the character already has moves those two fields and nothing else.
+A technique saved before them reads as practiced with no uses, so no saved story needs a
+migration. `TrainingSoFar.practising` marks practice of a known technique, and
+`PowerLadder.rung_levels` and `shrugs_off` hold the two facts a ladder states for the dice (G18),
+which nothing reads to decide yet.
 
 ## Model layer
 

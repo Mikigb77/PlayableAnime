@@ -17,11 +17,14 @@ from engine.state import (
     FactionStatus,
     Lead,
     LeadStatus,
+    Mastery,
     PlaceStatus,
     Reputation,
     Rumor,
     StatusChange,
     Technique,
+    Trait,
+    TraitKind,
     Visibility,
     WorldState,
 )
@@ -339,10 +342,53 @@ def test_status_shows_the_techniques_they_know_in_the_storys_language():
         Technique(id="technique-cuchilla-de-aura", name="Cuchilla de aura")
     )
 
-    assert "Cuchilla de aura (technique)" in status_view(state).character.lines
-    assert "Cuchilla de aura (técnica)" in status_view(state, ES).character.lines
-    assert "Cuchilla de aura (tècnica)" in status_view(state, CA).character.lines
-    assert not any("technique" in line for line in status_view(cultivation_world()).character.lines)
+    # A technique saved before mastery was kept is practiced, with nothing counted yet.
+    assert "Cuchilla de aura (technique, practiced, 0 of 15 uses)" in lines_of(state)
+    assert "Cuchilla de aura (técnica, practicada, 0 de 15 usos)" in lines_of(state, ES)
+    assert "Cuchilla de aura (tècnica, practicada, 0 de 15 usos)" in lines_of(state, CA)
+    assert not any("technique" in line for line in lines_of(cultivation_world()))
+
+
+def lines_of(state, language=Language.EN) -> list[str]:
+    return status_view(state, language).character.lines
+
+
+def test_status_shows_how_well_they_have_each_technique_and_the_uses_counted():
+    # A4: mastery grows with use, with a count the player can see.
+    state = cultivation_world()
+    blade = Technique(id="blade", name="Aura blade", mastery=Mastery.LEARNING, uses=2)
+    state.player.sheet.techniques.append(blade)
+
+    assert "Aura blade (technique, learning, 2 of 6 uses)" in lines_of(state)
+    assert "Aura blade (técnica, aprendiendo, 2 de 6 usos)" in lines_of(state, ES)
+    assert "Aura blade (tècnica, aprenent, 2 de 6 usos)" in lines_of(state, CA)
+
+    blade.mastery, blade.uses = Mastery.SKILLED, 29
+    assert "Aura blade (technique, skilled, 29 of 30 uses)" in lines_of(state)
+    assert "Aura blade (técnica, dominada, 29 de 30 usos)" in lines_of(state, ES)
+    assert "Aura blade (tècnica, dominada, 29 de 30 usos)" in lines_of(state, CA)
+
+    # Use alone takes a move no further than second nature, so no count is shown from there.
+    blade.mastery, blade.uses = Mastery.SECOND_NATURE, 40
+    assert "Aura blade (technique, second nature)" in lines_of(state)
+    assert "Aura blade (técnica, segunda naturaleza)" in lines_of(state, ES)
+    assert "Aura blade (tècnica, segona naturalesa)" in lines_of(state, CA)
+    blade.mastery = Mastery.OWN
+    assert "Aura blade (technique, made your own)" in lines_of(state)
+    assert "Aura blade (técnica, hecha tuya)" in lines_of(state, ES)
+    assert "Aura blade (tècnica, feta teva)" in lines_of(state, CA)
+
+
+def test_status_counts_a_geniuss_uses_at_their_own_pace():
+    # A4: a gift for learning takes a quarter of the uses, and Status says how many are left.
+    state = cultivation_world()
+    state.player.sheet.traits.append(Trait(name="Genius", kind=TraitKind.GIFT))
+    blade = Technique(id="blade", name="Aura blade", mastery=Mastery.LEARNING, uses=1)
+    state.player.sheet.techniques.append(blade)
+
+    assert "Aura blade (technique, learning, 1 of 2 uses)" in lines_of(state)
+    blade.mastery = Mastery.SKILLED
+    assert "Aura blade (technique, skilled, 1 of 8 uses)" in lines_of(state)
 
 
 def test_status_shows_money_and_what_is_carried():

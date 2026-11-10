@@ -77,12 +77,17 @@ def in_a_beat(state: WorldState, source: UseSource, thing: str, ref: str | None 
 def test_a_move_of_an_energy_they_have_trained_is_theirs_to_try():
     state = squire()
 
-    for use in (power("aura"), technique("aura leap"), power("combat aura")):
+    for use in (power("aura"), power("combat aura")):
         settled = attempt(state, use)
         assert settled.result is StepResult.SUCCESS, use
-        # Nothing of the sheet is added to it, and trying it once teaches nothing.
+        # The energy alone is no move: nothing of the sheet is added, and nothing is learned.
         assert settled.drew_on == []
         assert not any(c.techniques for c in settled.effects.characters)
+
+    # A move made of it is theirs, and the narrator is told it worked as they know it to (R1).
+    leap = attempt(state, technique("aura leap"))
+    assert leap.result is StepResult.SUCCESS
+    assert leap.drew_on == ["Aura leap"]
 
     fist = in_a_beat(state, UseSource.POWER, "aura around my fist")
     assert fist.beats[0].verdict is BeatVerdict.HOLDS
@@ -122,7 +127,8 @@ def test_a_way_they_are_still_learning_is_theirs_by_its_name():
     part = attempt(state, power("the palm"))
 
     assert (whole.result, part.result) == (StepResult.SUCCESS, StepResult.SUCCESS)
-    assert whole.drew_on == []
+    # It is used under its own name, whatever words the step found for it.
+    assert whole.drew_on == part.drew_on == ["Rising Palm"]
 
 
 def test_one_shared_word_makes_nothing_theirs():

@@ -236,11 +236,11 @@ def weigh(
     # own that the step plainly is (`skills_for`).
     skill_refs = drawn.skills or skills_for(actor, step)
     if skill_refs:
-        best = _best_skill(actor, skill_refs)
+        best = best_skill(actor, skill_refs)
         rank = best.level.rank if best is not None else SkillLevel.UNTRAINED.rank
         if measured and rival is not None:
             # Head to head, each side as their sheet has them: untrained where it lacks the skill.
-            theirs = _best_skill(rival, skill_refs)
+            theirs = best_skill(rival, skill_refs)
             mark = theirs.level.rank if theirs is not None else SkillLevel.UNTRAINED.rank
         elif facts.challenge is not None:
             mark = SkillLevel.UNTRAINED.rank  # the ordinary person the challenge was judged for
@@ -256,7 +256,7 @@ def weigh(
         if not measured and rival is not None:
             # Someone who can answer but isn't measured against the actor (a guard a chain must
             # slip past): their own skill above or below a fair hand's makes it harder or easier.
-            theirs = _best_skill(rival, skill_refs)
+            theirs = best_skill(rival, skill_refs)
             if theirs is not None:
                 edge = theirs.level.rank - SkillLevel.FAIR.rank
                 shift -= SKILL_SHIFT * edge
@@ -407,7 +407,7 @@ def misses_after(misses: int, roll: RollRecord | None, result: StepResult) -> in
     return misses
 
 
-def _best_skill(character: Character, refs: list[str]) -> Skill | None:
+def best_skill(character: Character, refs: list[str]) -> Skill | None:
     """Their best skill among `refs`, by name, or by its words either way ("climbing" finds
     Tree climbing, "free-running and climbing" finds Climbing)."""
     found = [

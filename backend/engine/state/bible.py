@@ -112,6 +112,20 @@ class PowerLadder(EngineModel):
     sensing: bool = Field(
         default=False, description="Whether characters sense strength up to their own rung (G20)."
     )
+    rung_levels: int = Field(
+        default=1,
+        ge=1,
+        le=2,
+        description="G18, A3: how many levels one rung counts for where a move meets that "
+        "power head-on (`engine.levels`): one, or two where the world says its rungs lie that "
+        "far apart.",
+    )
+    shrugs_off: int = Field(
+        default=3,
+        ge=1,
+        description="G18, A2: from how many rungs below harm can't get through by ordinary "
+        "means, which is the one thing a gap alone rules out.",
+    )
 
 
 class ForceScale(EngineModel):

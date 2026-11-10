@@ -55,6 +55,7 @@ what code settles from it (A7).
 
 from dataclasses import dataclass, field
 
+from engine import levels
 from engine.context import TurnContext
 from engine.contracts.delta import (
     CharacterChange,
@@ -115,6 +116,7 @@ from engine.state.scene import EncounterKind
 from engine.state.sheet import (
     Health,
     HitMode,
+    Mastery,
     Power,
     PowerAxis,
     Ruling,
@@ -171,6 +173,7 @@ class _Frame:
     misses: int = 0
     moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
     learned: list[Technique] = field(default_factory=list)  # A4: moves this plan made theirs
+    moves: growth.Moves = field(default_factory=growth.Moves)  # A4: their mastery as it grows
 
 
 @dataclass
@@ -385,10 +388,12 @@ def _settle_step(
             or exchanges.check(state, actor, step, frame.moved)
         )
     attempted = settled is None
+    reached = attempted  # whether the step got as far as what it draws on
     if settled is None:
         found = beat_check(state, actor, step, frame.canon, drawn, ctx, rng)
         beats = found.checks
         frame.canon.extend(found.canon)
+        reached = found.settled is None  # a reach that came up empty stops the step there (R2)
         settled = found.settled or _recovered(state, actor, drawn, frame)
     if attempted and not (settled is not None and settled.reason.endswith(_NOT_RECOVERED)):
         # W10a. A time stop the step uses, named on the step or in a beat, freezes the world;
@@ -412,13 +417,17 @@ def _settle_step(
         step = _in_the_stop(step)
 
     growing = showing = False
+    practising: Technique | None = None  # a technique they know that this step practises
     if settled is None and step.training is not None:
         growing = True
         settled = growth.check(state, actor, step, frame.canon)
-        practice = growth.already_known(state, actor, step) if settled is None else None
+        practice = None
+        if settled is None:
+            practice = growth.already_known(state, actor, step, frame.learned)
         if practice is not None:
-            # A4. Practising what they already know happens, and teaches nothing new.
-            settled, growing = practice, False
+            # A4. Practising what they already know happens, and teaches nothing new: it counts
+            # toward the technique's mastery.
+            (settled, practising), growing = practice, False
         elif settled is None and step.training.kind is GrowthKind.BREAKTHROUGH:
             settled = growth.breakthrough(state, actor, step, rng, ctx.settings.difficulty)
         elif settled is None:
@@ -591,7 +600,8 @@ def _settle_step(
         frame.gone = f"{cap(name(state, actor.id))} {is_are(state, actor.id)} dead."
     frame.training = None
     if growing and happened:
-        why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration)
+        start = _start(actor, step, drawn)
+        why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration, start)
         reason = f"{reason} {why}".strip()
         effects = _merge(effects, grown)
         if deed is not None:
@@ -609,13 +619,30 @@ def _settle_step(
             deeds.append(deed)
     clean = happened and settled.result is StepResult.SUCCESS and frame.gone is None
     if drawn.moves and clean and not (growing or showing):
-        # A4, G25. A move made with their own power that came off cleanly is theirs now.
-        why, learned, change = growth.proven(state, actor, step, drawn.moves, frame.learned)
+        # A4, G25. A move of their own that came off cleanly is a technique of theirs now,
+        # starting where their skill at it puts a new move.
+        start = _start(actor, step, drawn)
+        why, learned, change = growth.proven(state, actor, step, drawn.moves, frame.learned, start)
         if why:
             after.append(why)
             effects = _merge(effects, change)
-            frame.learned.extend(learned)
-    reason = " ".join([reason, *(_sentence(a) for a in after)]).strip()
+            _theirs_now(frame, learned)
+    if practising is not None:
+        # A4. An hour of practice counts as a use, more with a teacher.
+        lived = personal if personal is not None else duration
+        why, change, frame.training = growth.practised(
+            state, actor, step, practising, lived, frame.moves
+        )
+        after.append(why)
+        effects = _merge(effects, change)
+    elif reached and happened and frame.gone is None and not (growing or showing):
+        # A4. Using a move is how it grows, twice as fast where a roll decided the step.
+        techniques = growth.used_in(actor, drawn.techniques, drawn.moves, frame.learned)
+        rolled = settled.roll is not None
+        why, change = growth.used(state, actor, step, techniques, rolled, frame.moves)
+        after.append(why)
+        effects = _merge(effects, change)
+    reason = " ".join([reason, *(_sentence(a) for a in after if a)]).strip()
 
     if actor.id == state.player_id and frame.gone is None:
         # N6. The foes still in the fight answer, and a danger the step faced strikes.
@@ -889,6 +916,21 @@ def _stopped_deed(
     )
 
 
+def _start(actor: Character, step: IntentStep, drawn: Drawn) -> Mastery:
+    """A4. Where a new move of the actor's starts: two steps under the best skill of theirs the
+    step draws on, or at practiced with a gift for learning (`engine.levels`)."""
+    skill = capability.best_skill(actor, drawn.skills or capability.skills_for(actor, step))
+    level = skill.level if skill is not None else None
+    return levels.starting_mastery(level, growth.learning_gift(actor))
+
+
+def _theirs_now(frame: _Frame, learned: list[Technique]) -> None:
+    """A4. Techniques a step of the plan made the actor's, which the sheet doesn't hold until
+    the plan is played out: the steps that follow find them here."""
+    frame.learned.extend(learned)
+    frame.moves.now.update({t.id: t for t in learned})
+
+
 def _grow(
     state: WorldState,
     actor: Character,
@@ -897,8 +939,10 @@ def _grow(
     frame: _Frame,
     personal: int | None,
     duration: int,
+    start: Mastery,
 ) -> tuple[str, StateDelta, ProposedDeed | None]:
-    """A4, G19. What a stretch of training or a breakthrough attempt did."""
+    """A4, G19. What a stretch of training or a breakthrough attempt did. `start` is where the
+    actor's skill puts a new move (`_start`)."""
     training = step.training
     assert training is not None
     if training.kind is GrowthKind.BREAKTHROUGH:
@@ -910,8 +954,10 @@ def _grow(
         recorded = actor.sheet.practiced(key)
         so_far = float(recorded.effort_s) if recorded is not None else 0.0
     lived = personal if personal is not None else duration
-    made = growth.progress(state, actor, step, lived, so_far, frame.settled)
+    made = growth.progress(state, actor, step, lived, so_far, frame.settled, start)
     frame.practice[key] = made.effort_s
+    # A technique this stretch taught is theirs for the rest of the plan.
+    _theirs_now(frame, [t for c in made.effects.characters for t in c.techniques])
     rate, need = growth.pace_and_need(state, actor, step)
     frame.training = TrainingSoFar(
         key=key, what=training.what, before_s=so_far, rate=rate, need_s=need
