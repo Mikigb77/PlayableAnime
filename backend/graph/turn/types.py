@@ -190,7 +190,7 @@ class ThrowDetail(_ApiModel):
     deadly: bool = False
     miss_costs: str = ""
     insight: bool = False
-    # The face of the violet die that shows an insight: 18, or 16 when two talents cover it.
+    # The face of the violet die that shows an insight: 18, or 15 when two talents cover it.
     insight_at: int = 18
 
 

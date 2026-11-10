@@ -279,37 +279,42 @@ _TALENT_WORDS = {
         TalentStrength.ONE_OF_A_KIND: "talent únic, vuit vegades més ràpid",
     },
 }
-# A4: how fast a thing grows, by the doublings of the ordinary pace (`engine.talent`).
+# A4: how fast a thing grows (`engine.talent.pace_words`): a half, the ordinary pace, twice, and
+# so many times, in words up to ten.
 _PACE_WORDS = {
-    EN: talent_mod.PACE_WORDS,
-    ES: {
-        -1: "a la mitad de ritmo",
-        0: "al ritmo normal",
-        1: "el doble de rápido",
-        2: "cuatro veces más rápido",
-        3: "ocho veces más rápido",
-    },
-    CA: {
-        -1: "a la meitat de ritme",
-        0: "al ritme normal",
-        1: "el doble de ràpid",
-        2: "quatre vegades més ràpid",
-        3: "vuit vegades més ràpid",
-    },
+    ES: ("a la mitad de ritmo", "al ritmo normal", "el doble de rápido", "{} veces más rápido"),
+    CA: ("a la meitat de ritme", "al ritme normal", "el doble de ràpid", "{} vegades més ràpid"),
 }
-# A4: how a thing they learn stands to the talent that sets its pace, once ruled on.
+_TIMES_WORDS = {
+    ES: "tres cuatro cinco seis siete ocho nueve diez".split(),
+    CA: "tres quatre cinc sis set vuit nou deu".split(),
+}
+
+
+def _pace_words(pace: float, language: Language) -> str:
+    if language not in _PACE_WORDS:
+        return talent_mod.pace_words(pace)
+    half, ordinary, twice, times = _PACE_WORDS[language]
+    if pace <= 2:
+        return half if pace < 1 else ordinary if pace == 1 else twice
+    words = dict(enumerate(_TIMES_WORDS[language], start=3))
+    return times.format(words.get(int(pace), f"{pace:g}"))
+
+
+# A4: how a thing they learn stands to each talent that reaches it, once ruled on.
+# For one talent, and for several.
 _FIT_WORDS = {
     EN: {
-        TalentFit.INSIDE: ", inside your talent ({talent})",
-        TalentFit.RELATED: ", related to your talent ({talent})",
+        TalentFit.INSIDE: (", inside your talent ({})", ", inside your talents ({})"),
+        TalentFit.RELATED: (", related to your talent ({})", ", related to your talents ({})"),
     },
     ES: {
-        TalentFit.INSIDE: ", dentro de tu talento ({talent})",
-        TalentFit.RELATED: ", afín a tu talento ({talent})",
+        TalentFit.INSIDE: (", dentro de tu talento ({})", ", dentro de tus talentos ({})"),
+        TalentFit.RELATED: (", afín a tu talento ({})", ", afín a tus talentos ({})"),
     },
     CA: {
-        TalentFit.INSIDE: ", dins del teu talent ({talent})",
-        TalentFit.RELATED: ", afí al teu talent ({talent})",
+        TalentFit.INSIDE: (", dins del teu talent ({})", ", dins dels teus talents ({})"),
+        TalentFit.RELATED: (", afí al teu talent ({})", ", afí als teus talents ({})"),
     },
 }
 
@@ -805,9 +810,9 @@ class _Knowledge:
     def talent_lines(self, player: Character) -> list[str]:
         """A4. The talents on their sheet as the engine reads them, each with its strength and
         the pace it gives, then every thing a talent or a weakness reaches: how fast it grows
-        now, how it stands to the talent that sets that pace, and the bridges that hold. What
-        was ruled outside every talent is one line at the end. A sheet saved before talent was
-        a record shows none."""
+        now, how it stands to each talent that reaches it, since their paces add, and the
+        bridges that hold. What was ruled outside every talent is one line at the end. A sheet
+        saved before talent was a record shows none."""
         sheet = player.sheet
         if not sheet.talents:
             return []
@@ -824,22 +829,25 @@ class _Knowledge:
         outside: list[str] = []
         for key, what in named.items():
             stands = talent_mod.standing(player, key)
-            by = stands.by
-            if by is None and stands.slowed_by is None:
+            if not stands.reaches and stands.slowed_by is None:
                 outside.append(what or key)
                 continue
-            pace = _PACE_WORDS[self.language][stands.steps]
+            pace = _pace_words(stands.pace, self.language)
             line = words["ruled"].format(what=what or key, pace=pace)
-            if by is not None and stands.fit is not None:
-                line += _FIT_WORDS[self.language][stands.fit].format(talent=by.name)
+            for fit, (one, several) in _FIT_WORDS[self.language].items():
+                names = [reach.talent.name for reach in stands.reaches if reach.fit is fit]
+                if names:
+                    said = several if len(names) > 1 else one
+                    line += said.format(_join(names, self.language))
             if stands.slowed_by is not None:
                 line += words["slowed"].format(talent=stands.slowed_by.name)
             lines.append(_cap(line))
-            # The bridges that carry it there: those from the talent that sets its pace.
+            # The bridges that carry it there, from any talent that reaches it.
+            reaching = {reach.talent.id for reach in stands.reaches}
             held = [
                 b.rests_on
                 for b in sheet.bridges
-                if by is not None and (b.key, b.talent_id) == (key, by.id) and b.steps
+                if b.key == key and b.talent_id in reaching and b.steps
             ]
             if held:
                 label = words["bridges" if len(held) > 1 else "bridge"]

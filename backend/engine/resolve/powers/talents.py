@@ -310,8 +310,8 @@ def bridge_made(
         after = with_rulings(actor, [], [record])
         pace = talent_mod.standing(after, record.key).words
         words = (
-            f"The bridge holds: resting on {bridging.rests_on}, {what} now grows {pace} "
-            f"through {_called(whose, bridging.talent)}."
+            f"The bridge holds: resting on {bridging.rests_on}, it carries "
+            f"{_called(whose, bridging.talent)} further into {what}, which now grows {pace}."
         )
     else:
         words = (
