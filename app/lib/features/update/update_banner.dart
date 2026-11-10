@@ -5,9 +5,11 @@ import '../../core/l10n.dart';
 import '../../design/design.dart';
 import 'app_update.dart';
 
-/// Offers a newer build of the app above the tabs, and shows its download and install (S12). It
-/// checks when the tabs first show and whenever the app comes back to the foreground, at most
-/// every half hour, so a story is never interrupted: the play screen has no tabs.
+/// Offers a newer build of the app above the tabs, and shows its download (S12). It checks when
+/// the tabs first show and whenever the app comes back to the foreground, at most every half hour,
+/// so a story is never interrupted: the play screen has no tabs. On Wi-Fi the build is fetched
+/// before it's offered, so the offer is ready to install. On the first run of a newer build it
+/// says the app was updated.
 class UpdateBanner extends ConsumerStatefulWidget {
   const UpdateBanner({super.key});
 
@@ -36,15 +38,34 @@ class _UpdateBannerState extends ConsumerState<UpdateBanner> with WidgetsBinding
     if (state == AppLifecycleState.resumed) ref.read(appUpdateProvider.notifier).check();
   }
 
+  void _sayUpdated(InstalledApp installed) {
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('update.done'),
+          content: Text(context.l10n.updateDone(installed.version, installed.build)),
+        ),
+      );
+    ref.read(appUpdateProvider.notifier).acknowledgeUpdated();
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(appUpdateProvider, (previous, next) {
+      final installed = next.installed;
+      if (next.justUpdated && previous?.justUpdated != true && installed != null) {
+        _sayUpdated(installed);
+      }
+    });
     final update = ref.watch(appUpdateProvider);
     final release = update.release;
     final visible =
         release != null &&
         switch (update.phase) {
-          UpdatePhase.available || UpdatePhase.failed => !update.dismissed,
-          UpdatePhase.downloading || UpdatePhase.installing || UpdatePhase.replacing => true,
+          UpdatePhase.available || UpdatePhase.ready || UpdatePhase.failed => !update.dismissed,
+          UpdatePhase.downloading => true,
+          // Fetched quietly; and while Android installs it, the cover says so instead.
           _ => false,
         };
     final card = visible
@@ -78,8 +99,7 @@ class _Card extends ConsumerWidget {
 
     final (String title, String? body) = switch (update.phase) {
       UpdatePhase.downloading => (l10n.updateDownloading((progress * 100).floor()), null),
-      UpdatePhase.installing => (l10n.updateAvailable, l10n.updateInstalling),
-      UpdatePhase.replacing => (l10n.updateAvailable, l10n.updateReplacing),
+      UpdatePhase.ready => (l10n.updateReady, l10n.updateReadyBody(release.version, release.build)),
       UpdatePhase.failed => (
         l10n.updateAvailable,
         switch (update.problem) {
@@ -88,7 +108,10 @@ class _Card extends ConsumerWidget {
           _ => l10n.updateFailedDownload,
         },
       ),
-      _ => (l10n.updateAvailable, l10n.updateAvailableBody(release.version, release.build)),
+      _ => (
+        l10n.updateAvailable,
+        l10n.updateAvailableBody(release.version, release.build, release.megabytes),
+      ),
     };
 
     return Semantics(
@@ -125,22 +148,22 @@ class _Card extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: Space.sm, bottom: Space.sm, right: Space.sm),
                 child: LinearProgressIndicator(value: progress),
               ),
-            // Nothing to press while it downloads, or once Android is installing it.
-            if (update.phase != UpdatePhase.downloading && update.phase != UpdatePhase.replacing)
+            // Nothing to press while it downloads: Android's installer opens once it's in.
+            if (update.phase != UpdatePhase.downloading)
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: Wrap(
                   spacing: Space.sm,
                   children: [
-                    if (update.phase != UpdatePhase.installing)
-                      TextButton(onPressed: controller.dismiss, child: Text(l10n.updateLater)),
-                    // While Android is asked, this asks again, in case its question didn't show.
+                    TextButton(onPressed: controller.dismiss, child: Text(l10n.updateLater)),
                     FilledButton.tonal(
                       key: const Key('update.now'),
                       onPressed: controller.update,
-                      child: Text(
-                        update.phase == UpdatePhase.failed ? l10n.updateTryAgain : l10n.updateNow,
-                      ),
+                      child: Text(switch (update.phase) {
+                        UpdatePhase.failed => l10n.updateTryAgain,
+                        UpdatePhase.ready => l10n.updateInstall,
+                        _ => l10n.updateNow,
+                      }),
                     ),
                   ],
                 ),

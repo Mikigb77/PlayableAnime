@@ -11,3 +11,10 @@ Future<String> downloadApk({
   required String name,
   required void Function(double done) onProgress,
 }) async => throw UpdateProblem.download;
+
+/// The web build never keeps a downloaded APK.
+Future<bool> hasApk({required String folder, required String name, required int size}) async =>
+    false;
+
+/// Nothing to clear on the web.
+Future<void> clearDownloads(String folder) async {}

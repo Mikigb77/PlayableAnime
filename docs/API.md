@@ -216,8 +216,9 @@ first show, when it comes back to the foreground (at most every half hour) and f
 - **`build`** is Android's versionCode, which grows with every deploy; the app offers the update
   when it is above its own. **`version`** is the version name, such as `1.0.0`.
 - **`url`** downloads the APK until `expires_at` (30 minutes, a Cloud Storage signed URL in
-  production, no `Authorization` header). The app asks again right before downloading, so the URL
-  is fresh. The download must be exactly **`size`** bytes with this **`sha256`** (lowercase hex),
+  production, no `Authorization` header). On Wi-Fi the app downloads it right after the check; on
+  mobile data it asks again right before downloading, when the player taps Update, so the URL is
+  fresh. The download must be exactly **`size`** bytes with this **`sha256`** (lowercase hex),
   or the app doesn't install it.
 - The server reads the deploy's manifest at most once a minute per instance, so a new build is
   offered within a minute of the deploy. A manifest it can't read counts as none (logged as a

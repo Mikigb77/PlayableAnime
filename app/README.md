@@ -100,8 +100,8 @@ CI runs the same three on Flutter 3.44.5, and builds the release APK with `infra
 
 `infra/build-apk.sh` passes `--dart-define=SELF_UPDATE=true`, so the APK offers and installs newer
 builds itself (S12, `lib/features/update/`). `flutter run` leaves it off, and so must a Google Play
-build (`SELF_UPDATE=false`, without the two install permissions in `AndroidManifest.xml`), since
-Play updates the app itself.
+build (`SELF_UPDATE=false`, without the `REQUEST_INSTALL_PACKAGES` permission in
+`AndroidManifest.xml`), since Play updates the app itself.
 
 ## Layout
 
@@ -132,9 +132,10 @@ lib/
     account/                Profile, credits and history, own key, content preferences (F7),
                             privacy policy, export, delete, the out-of-credits sheet, sign out
     voice/                  Dictation: online and phone engines, controller, button, input mode (V1–V7)
-    update/                 The app's own updates (S12): check, download, hand to Android's
-                            installer (MainActivity.kt), the cover over every screen while it
-                            installs, the banner above the tabs, Account's line
+    update/                 The app's own updates (S12): check, fetch ahead on Wi-Fi, open
+                            Android's installer (MainActivity.kt, UpdateFileProvider.kt), the
+                            cover over every screen while it installs, the banner above the
+                            tabs, the "updated" note, Account's line
   l10n/app_en.arb           Every string the player sees (S10)
   l10n/app_es.arb           The same strings in Spanish
   l10n/app_ca.arb           The same strings in Catalan
