@@ -1,11 +1,11 @@
 """Chains of cause and effect, settled link by link (A9).
 
 A plan that goes around someone's strength instead of meeting it isn't judged by the power gap. Each
-link is settled the way A2 settles a step: it holds if the facts say so, it is rolled only if the
-model judged it genuinely open, and it breaks if what it rests on isn't so or if the target has an
-answer to it and can still use it: a way to teleport out, to breathe without air, to put out the
-fire. The chain stops at the first link that breaks, and each link takes the in-world time it
-really takes (W10).
+link is settled the way A2 settles a step: it holds if the facts say so, the world's die decides
+it only if the model judged it genuinely open (A3), and it breaks if what it rests on isn't so or
+if the target has an answer to it and can still use it: a way to teleport out, to breathe without
+air, to put out the fire. The chain stops at the first link that breaks, and each link takes the
+in-world time it really takes (W10).
 """
 
 from dataclasses import dataclass
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from engine.context import TurnContext
 from engine.contracts.intent import ChainLink, IntentStep, OutcomeClass
 from engine.contracts.resolution import LinkResolution
-from engine.resolve import odds as odds_mod
+from engine.resolve import throw as dice
 from engine.resolve.durations import CHAIN_MAX_S
 from engine.resolve.words import cap, is_are, mentions, name, possessive
 from engine.rng import SeededRng
@@ -98,18 +98,15 @@ def _settle_link(
     if proposed is OutcomeClass.RULED_OUT:
         return settled(OutcomeClass.RULED_OUT, False, "It doesn't hold here.")
     if proposed in (OutcomeClass.CONTESTED, OutcomeClass.LONG_SHOT):
-        difficulty = ctx.settings.difficulty
-        odds = odds_mod.settle(
-            odds_mod.logit(odds_mod.UNMEASURED_ODDS[proposed]),
-            0.0,
-            odds_mod.BANDS[proposed],
-            difficulty,
-        )
-        roll = odds_mod.roll(
-            rng, odds, label=link.text, allowed=odds_mod.YES_OR_NO, difficulty=difficulty
+        # A3. Whether a consequence follows is nobody's doing, so the world's die decides it in
+        # the open: 11 or more where it could go either way, 19 or more for a long shot.
+        long_shot = proposed is OutcomeClass.LONG_SHOT
+        roll = dice.world_die(
+            rng, label=link.text, difficulty=ctx.settings.difficulty, long_shot=long_shot
         )
         holds = roll.result is StepResult.SUCCESS
-        reason = f"It could go either way: {roll.odds_label}."
+        chance = "It is a long shot" if long_shot else "It could go either way"
+        reason = f"{chance}, so the world's die decides: {roll.odds_label}."
         return settled(proposed, holds, reason, roll)
     return settled(OutcomeClass.CERTAIN, True, _basis_reason(state, link))
 

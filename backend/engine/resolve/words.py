@@ -44,14 +44,9 @@ def cap(text: str) -> str:
     return text[:1].upper() + text[1:] if text else text
 
 
-def odds_label(odds: float) -> str:
-    """The odds in words, as the scene details show them (A8)."""
-    if odds < 0.2:
-        return f"about 1 in {max(2, round(1 / max(odds, 0.001)))}"
-    if odds < 0.4:
-        return "unlikely"
-    if odds <= 0.6:
-        return "even odds"
-    if odds < 0.8:
-        return "likely"
-    return "very likely"
+_COUNTED = "one two three four five six seven eight nine ten eleven twelve".split()
+
+
+def counted(count: int) -> str:
+    """A small count in words, "six rungs", and in figures past twelve."""
+    return _COUNTED[count - 1] if 1 <= count <= len(_COUNTED) else str(count)

@@ -155,13 +155,13 @@ def test_a_clean_success_makes_the_move_a_technique_of_their_own():
         "learned",
     )
 
-    # Next time it is on the sheet: a technique like any other, counted in the odds and never
+    # Next time it is on the sheet: a technique like any other, thrown by its mastery and never
     # recorded twice. Named by its id or in other words, it is the same technique.
     for ref in ("technique-cuchilla-de-aura", "la cuchilla de aura"):
         again = resolve(played.state, Intent(steps=[cut_the_thief(power("aura"), technique(ref))]))
         (fight,) = again.steps
         assert fight.outcome_class is OutcomeClass.CONTESTED
-        assert "your Cuchilla de aura" in fight.reason
+        assert fight.reason.startswith("Cuchilla de aura (learning), 1 die, against ")
         assert "technique of yours now" not in fight.reason
         assert fight.drew_on == ["Aura del despertar", "Cuchilla de aura"]
 

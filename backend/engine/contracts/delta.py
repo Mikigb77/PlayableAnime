@@ -18,12 +18,14 @@ from enum import StrEnum
 from typing import Any
 
 from pydantic import ConfigDict, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from engine.base import EngineModel, Importance, Name
 from engine.state.cast import (
     CharacterStatus,
     DeathCertainty,
     FactionStatus,
+    Judged,
     PlaceSetting,
     PlaceStatus,
     Prominence,
@@ -31,6 +33,7 @@ from engine.state.cast import (
 )
 from engine.state.records import Cause, FactKind
 from engine.state.sheet import (
+    Attributes,
     Gain,
     Health,
     HitMode,
@@ -163,6 +166,12 @@ class CharacterChange(EngineModel):
         default=None,
         description="Engine only: the A8 tiers of someone new the engine makes real (F1).",
     )
+    # Kept out of the form the models fill: only the engine ever writes it.
+    attributes: SkipJsonSchema[Attributes | None] = Field(
+        default=None,
+        description="Engine only: the body and mind of someone new the engine makes real (F1, "
+        "G13), where they are not an average adult's.",
+    )
 
 
 class FactionChange(EngineModel):
@@ -215,6 +224,12 @@ class PlaceChange(EngineModel):
 
     visited: bool = Field(default=False, description="The player character is there.")
     known_to_player: bool = False
+    # Kept out of the form the models fill: only the engine ever writes it.
+    judged: SkipJsonSchema[list[Judged]] = Field(
+        default_factory=list,
+        description="Engine only (A3): things of the place whose level was judged this turn. "
+        "A thing already judged keeps its level.",
+    )
 
 
 class NewFact(EngineModel):

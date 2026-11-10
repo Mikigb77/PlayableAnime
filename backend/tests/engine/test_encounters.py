@@ -130,10 +130,12 @@ def test_aiming_harm_at_someone_who_can_answer_starts_a_fight_whatever_the_roll(
 
 
 def test_a_swing_the_power_gap_rules_out_still_starts_the_fight():
-    """A2, A8: the god notices the swing. Lin against the elder, two realms up, is ruled out, and
-    the fight is on."""
+    """A2, A8, G18: the god notices the swing. Lin's bare fist against an elder three realms up
+    is ruled out, since harm from that far below can't get through, and the fight is on."""
     state = cultivation_world()
-    state.characters["elder-mo"].location_id = "well"
+    elder = state.characters["elder-mo"]
+    elder.location_id = "well"
+    elder.sheet.ladders[0].rung += 1
     state.scene.present_ids.append("elder-mo")
     after, played, _ = turn(state, attack("elder-mo", aim=Aim.KILL))
     assert played.resolution.steps[0].outcome_class.value == "ruled_out"

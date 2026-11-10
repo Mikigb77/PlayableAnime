@@ -29,8 +29,10 @@ from engine.state import (
     Character,
     CharacterSheet,
     CostKind,
+    DieKind,
     Extraordinary,
     LadderPosition,
+    Mark,
     Mastery,
     PendingEvent,
     Power,
@@ -150,17 +152,30 @@ def test_using_a_move_with_nothing_in_the_way_counts_once():
     assert played.state.player.sheet.growth == []
 
 
-def test_a_use_a_roll_decided_counts_twice_however_it_went():
+def test_a_use_a_throw_decided_counts_twice_however_it_went_and_three_times_on_an_insight():
     state = knowing(awakened())
-    results = set()
+    results, counted = set(), set()
     for seed in SEEDS:
         (fight,) = resolve(state, Intent(steps=[cut_the_thief(technique("blade"))]), seed).steps
-        assert fight.roll is not None
+        thrown = fight.roll.throw
+        # The move's own violet die showing 18 or more is an insight, and so is a throw over
+        # the top (A4).
+        own = next(die for die in thrown.dice if die.kind is DieKind.VIOLET)
+        assert thrown.insight == (own.face >= 18)
+        insight = thrown.insight or thrown.mark is Mark.OVER_THE_TOP
         (grown,) = learned_in(fight)
-        assert (grown.id, grown.mastery, grown.uses) == ("blade", Mastery.LEARNING, 2)
+        assert (grown.id, grown.mastery, grown.uses) == (
+            "blade",
+            Mastery.LEARNING,
+            3 if insight else 2,
+        )
+        told = "An insight into Aura blade: this use counts as three." in fight.reason
+        assert told == insight
         results.add(fight.result)
+        counted.add(grown.uses)
 
     assert results == set(StepResult)  # a miss against real resistance teaches as well
+    assert counted == {2, 3}
 
 
 def test_a_move_that_could_not_be_used_counts_nothing():
@@ -237,9 +252,12 @@ def test_use_alone_stops_at_second_nature():
 
     played = play(state, Intent(steps=[cut_the_thief(technique("blade"))]))
 
+    # The thief stands two levels under a move at second nature, so nothing resisted: one use.
+    (settled,) = played.resolution.steps
+    assert settled.roll is None and "can't push back" in settled.reason
     assert (blade_of(played.state).mastery, blade_of(played.state).uses) == (
         Mastery.SECOND_NATURE,
-        102,
+        101,
     )
     assert played.state.player.sheet.growth == []
 

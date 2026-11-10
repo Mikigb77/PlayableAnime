@@ -154,9 +154,15 @@ class WorldState(EngineModel):
     misses_in_a_row: int = Field(
         default=0,
         ge=0,
-        description="A3: the player character's rolled steps that missed in a row since their "
-        "last one that came off cleanly, which makes their next roll likelier "
-        "(`engine.resolve.capability.streak_shift`).",
+        description="No longer read. It counted the player character's misses in a row while "
+        "a run of them lifted the next roll, which the dice ended (A3). Kept so saved stories "
+        "load.",
+    )
+    openings: list[str] = Field(
+        default_factory=list,
+        description="A3: the ids of those the player character holds an opening on, won by a "
+        "throw over the top, so their next step against them throws a green die. Each is used "
+        "by the next step that faces them, and none outlasts the encounter.",
     )
 
     @model_validator(mode="after")

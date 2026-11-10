@@ -45,9 +45,9 @@ a tree in a forest, the ground, a branch, a stone on a road, a chair in a tavern
 market square, the fire the character lit. It is simply there, and nothing natural fails for no \
 reason. uncertain only for something that might well not be there and that matters if it is, \
 because it is hidden, rare, valuable or would decide the scene: a secret passage, a weapon in a \
-temple, the key to this very lock. Code rolls for it. absent for what the place can't hold: a \
-stone in a polished marble hall, a crossbow in a monk's bare cell. Never judge by whether SCENE \
-lists it: SCENE lists only a few things.
+temple, the key to this very lock. The world's die decides it. absent for what the place can't \
+hold: a stone in a polished marble hall, a crossbow in a monk's bare cell. Never judge by \
+whether SCENE lists it: SCENE lists only a few things.
 - aim: what the step does to the characters it targets if it works. kill, wound, subdue (knocked \
 out, pinned or bound), or none for anything that doesn't harm them: a warning shot, a shove out \
 of the way, a threat. Read it from the player's words ("I cut him down" is kill, "I knock him \
@@ -67,7 +67,10 @@ strong they are: code rolls that.
 link, with the facts each link rests on (rule, power or character ids, or plain words) and the \
 in-world seconds it takes. For each link, list in answers what would let the target escape or \
 undo it, in plain words ("teleport", "breathe without air", "put out the fire"). You may not \
-see the target's whole sheet; code looks there for them.
+see the target's whole sheet; code looks there for them. A link's proposed_class says whether it \
+follows: certain when it must, contested when it could go either way, long_shot when it rarely \
+would, ruled_out when it can't. Whether an open link follows is nobody's doing, so the world's \
+die decides it.
 - kind and proposed_duration_s: the kind of action and the in-world seconds the whole step really \
 takes, every beat of it, getting there included, as the world's own people would judge it from \
 NOW, the place, its routes (travel_s under SCENE) and how people travel here (WORLD travel). A \
@@ -85,26 +88,55 @@ Waiting or watching for a set time or until a time of day is a step, never stand
 until empty otherwise.
 - facts: who or what stands in the way, whether they can respond at all and why not (frozen, \
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
-clearly not, whether the world's rules allow it, edges and hindrances, and the class you propose: \
-certain, contested, long_shot or ruled_out. Code checks these against the state and decides. \
-Edges and hindrances are the situation: position, ground, light, numbers, tools, allies. Never \
-the character's own wounds, health or tiredness, which code weighs from PLAYER CHARACTER, and \
-never an injury no one's record holds (N6). \
-A step isn't contested just because it isn't sure: a thing (a lantern, a lock, the wind) stands \
-in the way only when it can really foil the attempt. When only the character's own \
-temperament, fear or pride stands in the way (keeping calm under an insult, holding steady while \
-afraid), set inner: it can make the step harder, never take the choice from the player (G15).
-- facts.challenge, always: how hard the step is in itself for an ordinary person, average in body \
-and mind and untrained in it, in this situation and against what stands in the way. trivial: \
-anyone manages it. easy: most people do, such as stamping out a dropped lantern. moderate: a real \
-effort that often works. hard: it usually fails, such as picking a good lock untrained. \
-very_hard: it rarely works. extreme: almost nobody manages it. Judge the task, never this \
-character: code weighs their sheet against it (A2, G14).
+clearly not, whether the world's rules allow it, and what in the situation helps them or works \
+against them. You never propose a number, a die or a result: code checks these facts against \
+the state, and where they leave the step open the character throws their own dice against a \
+number code works out (A2, A3). A thing (a lantern, a lock, the wind) stands in the way only \
+when it can really foil the attempt. When only the character's own temperament, fear or pride \
+stands in the way (keeping calm under an insult, holding steady while afraid), set inner: it \
+can make the step harder, never take the choice from the player (G15).
+- facts.answers_with, when someone who can respond stands in the way: what of theirs answers \
+this step, in a word or two, a skill or an attribute: their swordplay against a cut, their \
+speed against a snatch, their wits against a lie, their willpower against a plea. Code reads \
+their level at it from their sheet.
+- facts.head_on, always: true when the step meets what stands in the way head-on (a clash, a \
+block, a contest of strength, a plain demand, a blow at their body), false when it goes around \
+their strength (a feint, a bait, slipping past unseen, a trick, a distraction), and false when \
+nobody answers. How far above the character they stand counts only head-on, and a blow always \
+meets the body it lands on, so going around is for the steps that set a blow up.
+- facts.edges: each real advantage the character has in this step, in a few plain words, with \
+where it comes from, because code checks it before it counts. source step: an earlier step of \
+this same action that sets it up, with ref its number counted from 1 (the feint before the \
+cut). source record: something on record, with ref the id of a fact, of an item they carry, of \
+an ally at their side or of the place they are in. source scene: something LAST SCENE or SCENE \
+shows, with ref the few words that show it, copied exactly as written there. Only what truly \
+tilts this step, two at most: never the character's own skill, power, speed or nerve, which \
+code reads from the sheet, and nothing the scene doesn't show. A technique of theirs made for \
+exactly what the other side is doing, such as a counter to a charge, is an advantage when the \
+scene shows them doing it: source scene, with the words that show it.
+- facts.hindrances: what in the situation works against them: position, ground, light, missing \
+tools. Never the character's own wounds, health or tiredness, which code weighs from PLAYER \
+CHARACTER, never how many stand against them, which code counts, and never an injury no one's \
+record holds (N6).
+- facts.challenge, always: how hard the thing in the way is in itself: the lock, the cliff, the \
+crowd to slip through, the temper to master. trivial: anyone manages it, so there is nothing to \
+throw for, and so it is whenever nothing is in the way. easy: most people manage it, such as \
+stamping out a dropped lantern. moderate: a real effort for an average adult. hard: it takes \
+someone skilled, such as picking a good lock. very_hard: it takes an expert. extreme: it takes \
+a master. Judge the thing, never this character, never the move they use, which works as they \
+know it to, and never the people who answer: code reads the sheets (A2, G14).
+- facts.up_against, when someone or something stands in the way: what the step is up against, \
+in one short sentence the player reads before the dice, in LANGUAGE and with no numbers ("A \
+veteran guard, awake and facing you."). facts.miss_costs, when those fighting the character \
+mean to kill or a danger can: what failing to defend would cost them, in one short sentence in \
+LANGUAGE.
 - uses, always: every part of PLAYER CHARACTER's sheet the step draws on, so code can weigh \
 it: the attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, \
 charm, nerve, bearing: speed for agility, a climb, a leap or quick hands, wits for noticing \
 things), each skill and each trait that helps or gets in the way, by its name on the sheet, and \
-any power, technique or item, by id (G14). A move the character makes with one of their powers, \
+any power, technique or item, by id (G14). Name a skill the sheet doesn't hold only when the \
+step truly takes training they lack (surgery, picking a lock, reading a dead language): they \
+then throw as someone untrained. A move the character makes with one of their powers, \
 or with an energy of the world they hold, that isn't a technique on the sheet (an aura blade, a \
 lance of fire, a wind-step, aura to the feet for a leap) is the power by id, when the sheet has \
 one, and the move as a technique, by its name as the player calls it, in LANGUAGE: code decides \
@@ -125,10 +157,11 @@ always a fight. Code decides when an encounter starts and ends.
 - facts.foes_mean: in a fight, what those fighting the character are out to do to them, from who \
 they are and the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring \
 partner holding back, guards taking them alive, a master testing a student), or none when they \
-won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. Code \
-decides whether their blows land (N6). A step that tries to get away from a fight (a run, a \
-leap, a dive into the crowd) names the foes it gets away from in facts.opposition_ids, so code \
-can judge whether they catch the character.
+won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. The \
+character throws their own defence against them, and code marks it deadly when they mean to \
+kill (N6). A step that tries to get away from a fight (a run, a leap, a dive into the crowd) \
+names the foes it gets away from in facts.opposition_ids, so code can judge whether they catch \
+the character.
 - facts.danger: what can hurt the character in this step however it goes, that no one in the \
 scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
 danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
@@ -253,6 +286,15 @@ name only once the character learns it.
 - A failure or partial success is an attempt that meets something: play the action up to the \
 moment it goes wrong and show why, matching the step's reason. An action the world rules out \
 plays as what it really is.
+- throw under a step in OUTCOME is how the character's dice fell for it (A3). fell is \
+over_the_top (it goes better than anyone could expect), passed (it works), so_close (it falls \
+just short: a partial result half works or works at a cost, a failure misses by a hair) or \
+missed (it falls clearly short). against is what it was up against. deadly means a miss could \
+have killed them: tell that danger as real, whichever way it went. extra is the one extra \
+effect a throw over the top earned: show exactly that, and nothing more. The same goes for \
+defence under struck, which is how their defence fared. Tell what the dice meant in the \
+story's own words: never name dice, numbers, levels or chances in the scene, and never tell a \
+result as bigger or smaller than its why and its extra say.
 - drew_on under a step in OUTCOME lists the character's own powers, techniques and moves the \
 step used. Each works as the character knows it to: the blade forms, the spell goes off, the leap \
 carries. When the step fails or partly succeeds, it fails in what stood in the way, as the why \
@@ -424,12 +466,13 @@ order with what each aims at and any lines to speak (the character's words, clea
 filler), theories about how their powers work, backstory claims, new goals, what they respond \
 to, and outcome claims, which are hopes.
 - OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
-odds when a roll decided it, drew_on (their own powers, techniques and moves it used), costs, \
-changed_hands (what the step moved, from whom to whom), beats, chain (the links of cause and \
-effect it weighed, each with whether it holds), interrupted, met and struck. Then \
-stopped_at_step, stop_reason and \
-unplayed when the plan stopped early, now_canon for what became true, rulings, and backstory with \
-whether each claim was recorded.
+throw when the character's dice decided it (how it fell, what it was up against, and whether a \
+miss could have killed), extra (the one extra effect a throw over the top earned), drew_on \
+(their own powers, techniques and moves it used), costs, changed_hands (what the step moved, \
+from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
+it holds), interrupted, met and struck. Then stopped_at_step, stop_reason and unplayed when the \
+plan stopped early, now_canon for what became true, rulings, and backstory with whether each \
+claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
 words and in world seconds, and your_seconds_lived when the player character lived through a \
 different span from the world.

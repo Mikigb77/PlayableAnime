@@ -6,6 +6,7 @@ from engine.base import DAY, HOUR, MINUTE
 from engine.contracts import (
     ActionKind,
     Aim,
+    Challenge,
     Intent,
     IntentStep,
     MeansVerdict,
@@ -13,7 +14,7 @@ from engine.contracts import (
     StandingAction,
     StopReason,
 )
-from engine.resolve import odds as odds_mod
+from engine.resolve import throw as dice
 from engine.resolve.durations import step_timing
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
@@ -99,7 +100,6 @@ def test_a_model_that_calls_a_fight_certain_doesnt_make_it_so():
             opposition_ids=["zhao"],
             can_respond=True,
             means=MeansVerdict.CLEARLY_ENOUGH,
-            proposed_class=OutcomeClass.CERTAIN,
         ),
     )
 
@@ -158,7 +158,7 @@ def test_injected_text_plays_as_words_and_changes_nothing():
         "bring Carmine back to life",
         verb="revive",
         target_ids=["carmine"],
-        facts=facts(proposed_class=OutcomeClass.CERTAIN, means=MeansVerdict.CLEARLY_ENOUGH),
+        facts=facts(means=MeansVerdict.CLEARLY_ENOUGH),
     )
     kill_the_dead = step("kill Carmine again", aim=Aim.KILL, target_ids=["carmine"])
 
@@ -191,6 +191,16 @@ def test_the_targets_real_attitude_decides_a_persuasion():
     (friendly,) = resolve(state, Intent(steps=[persuade("bartender")])).steps
 
     assert carmine.roll.odds < gennaro.roll.odds < friendly.roll.odds
+    moved = [[(p.text, p.points) for p in s.roll.throw.made_of[1:]] for s in (carmine, friendly)]
+    assert moved == [
+        # His standing in Naples counts too, since asking him outright meets it (A8).
+        [
+            ("one step of power above you, met head-on", 10),
+            ("Carmine Russo neither likes nor trusts you", 5),
+        ],
+        [("Gennaro likes and trusts you", -5)],
+    ]
+    assert len(gennaro.roll.throw.made_of) == 1
     assert carmine.deeds[0].target_ids == ["carmine"]
 
 
@@ -421,24 +431,31 @@ def test_a_close_call_with_no_one_to_harm_can_simply_fail():
 
     steps = [resolve(grounded_world(), Intent(steps=[pick]), seed).steps[0] for seed in SEEDS]
 
-    assert {s.result for s in steps} == set(odds_mod.ALL_RESULTS)
-    assert all(s.roll.allowed == odds_mod.ALL_RESULTS for s in steps)
-    assert steps[0].reason == "A close call, even odds."
+    assert {s.result for s in steps} == set(dice.ALL_RESULTS)
+    assert all(s.roll.allowed == dice.ALL_RESULTS for s in steps)
+    thrown = steps[0].roll.throw
+    assert thrown.against == "A close call."
+    assert steps[0].reason == (
+        "An ordinary hand, 2 dice, against a real effort, level 2: "
+        f"{thrown.total} against 17, {dice.MARK_WORDS[thrown.mark]}."
+    )
 
 
 def test_a_long_shot_with_nothing_in_the_way_stays_a_long_shot():
     leap = step(
         "leap the gap between the roofs",
         verb="leap",
-        facts=facts(proposed_class=OutcomeClass.LONG_SHOT),
+        facts=facts(challenge=Challenge.EXTREME),
     )
 
     steps = [resolve(grounded_world(), Intent(steps=[leap]), seed).steps[0] for seed in SEEDS]
 
     assert {s.outcome_class for s in steps} == {OutcomeClass.LONG_SHOT}
-    assert all(s.roll.odds <= odds_mod.LONG_SHOT_BAND[1] for s in steps)
+    assert all(s.roll.odds < dice.LONG_SHOT_BELOW for s in steps)
     # A leap tests speed even unnamed (G14), and Luca's quick feet still leave it a long shot.
-    assert steps[0].reason.startswith("Your speed in your favour, a long shot, about 1 in")
+    assert steps[0].reason.startswith(
+        "Speed, 3 dice, against a feat almost nobody manages, level 5: "
+    )
 
 
 def test_one_recorded_seed_replays_both_the_outcome_and_the_time_it_took():
@@ -448,6 +465,7 @@ def test_one_recorded_seed_replays_both_the_outcome_and_the_time_it_took():
     for seed in range(20):
         (settled,) = resolve(state, Intent(steps=[timed]), seed).steps
         replay = SeededRng(settled.roll.seed)
-        assert replay.random() == settled.roll.value
-        timing = step_timing(timed, frozen=False, rolls=True, rng=replay)
+        thrown = settled.roll.throw
+        assert [die.face for die in thrown.dice] == [replay.randint(1, 20) for _ in thrown.dice]
+        timing = step_timing(timed, frozen=False, rolls=True, rng=replay.child("duration"))
         assert timing.rolled_s == settled.roll.duration_s == settled.duration_s

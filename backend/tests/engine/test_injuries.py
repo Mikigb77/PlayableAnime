@@ -177,11 +177,11 @@ def test_an_edge_about_a_foes_wound_stands_only_when_the_foe_is_hurt():
     state = grounded_world()
     edges = ["Carmine is already wounded", "the bar is dark"]
     facts, dropped = unrecorded_harm(state, state.player, step(edges=edges, targets=["carmine"]))
-    assert facts.edges == ["the bar is dark"] and dropped == 1
+    assert [e.text for e in facts.edges] == ["the bar is dark"] and dropped == 1
 
     hurt(state, "carmine", Health.HURT, "a cut on the arm")
     facts, dropped = unrecorded_harm(state, state.player, step(edges=edges, targets=["carmine"]))
-    assert facts.edges == edges and dropped == 0
+    assert [e.text for e in facts.edges] == edges and dropped == 0
 
 
 def test_an_edge_must_name_someone_hurt_and_never_a_part_the_record_says_is_whole():
@@ -192,7 +192,7 @@ def test_an_edge_must_name_someone_hurt_and_never_a_part_the_record_says_is_whol
         state, state.player, step(edges=edges, targets=["carmine", "bartender"])
     )
     # Gennaro is unhurt, and Carmine's wound is on his arm, not his ribs.
-    assert facts.edges == ["Carmine's bleeding arm"] and dropped == 2
+    assert [e.text for e in facts.edges] == ["Carmine's bleeding arm"] and dropped == 2
 
 
 def test_a_hindrance_about_an_allys_recorded_wound_stands():

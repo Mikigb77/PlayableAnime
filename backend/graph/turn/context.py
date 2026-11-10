@@ -25,10 +25,11 @@ from engine.contracts import (
     PictureKind,
     Resolution,
 )
+from engine.contracts.resolution import Peril
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
-from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent
+from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.world import WorldState, natural_key
 from graph.language import written_in
 from graph.llm import Prompt
@@ -596,6 +597,35 @@ def _action_view(intent: Intent, words: str | None) -> dict[str, Any]:
     return view
 
 
+def _throw_view(roll: RollRecord | None) -> dict[str, Any]:
+    """A3. A throw of the character's own dice as the narrator is told it: how it fell, what it
+    was up against and whether a miss could kill. No dice, numbers or odds, and nothing for the
+    world's die, whose answer the step's why already gives."""
+    thrown = roll.throw if roll is not None else None
+    if thrown is None or thrown.of_the_world:
+        return {}
+    view: dict[str, Any] = {"fell": thrown.mark.value}
+    if thrown.against:
+        view["against"] = thrown.against
+    if thrown.deadly:
+        view["deadly"] = True
+    return view
+
+
+def _struck_view(peril: Peril) -> dict[str, Any]:
+    """N6: what struck back, with how the character's defence fared when they threw one."""
+    view: dict[str, Any] = {
+        "by": peril.by,
+        "means": peril.aim.value,
+        "harm": peril.harm.value,
+        "why": peril.reason,
+    }
+    defence = _throw_view(peril.roll)
+    if defence:
+        view["defence"] = defence
+    return view
+
+
 def _outcome_view(resolution: Resolution) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
@@ -605,8 +635,12 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             "result": step.result.value,
             "why": step.reason,
         }
-        if step.roll is not None:
-            view["odds"] = step.roll.odds_label or f"{round(step.roll.odds * 100)}%"
+        thrown = _throw_view(step.roll)
+        if thrown:
+            # A3: how the dice fell and what they were up against, never the odds.
+            view["throw"] = thrown
+        if step.extra:
+            view["extra"] = step.extra
         if step.drew_on:
             # R1, A3: their own powers and techniques the step used, which work as they know
             # them to, so a miss is told in what stood in the way.
@@ -637,10 +671,7 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             ]
         if step.perils:
             # N6: what struck back at the player character after their step, in order.
-            view["struck"] = [
-                {"by": p.by, "means": p.aim.value, "harm": p.harm.value, "why": p.reason}
-                for p in step.perils
-            ]
+            view["struck"] = [_struck_view(p) for p in step.perils]
         if step.interrupted:
             view["interrupted"] = True
         steps.append(view)

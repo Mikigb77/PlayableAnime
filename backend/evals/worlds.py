@@ -24,6 +24,7 @@ from engine.state import (
     Item,
     ItemKind,
     LadderPosition,
+    Mastery,
     Membership,
     PassingState,
     PendingEvent,
@@ -236,9 +237,15 @@ def crowded_well() -> WorldState:
     return state
 
 
-def duel(*, rung: int = 0, counter: bool = True) -> WorldState:
+GUO_CHARGES = "Guo Tai lowers his shoulder and charges, blade first."
+GUO_CIRCLES = "Guo Tai circles, blade low, waiting."
+
+
+def duel(*, rung: int = 0, counter: bool = True, charging: bool = True) -> WorldState:
     """Lin and Guo Tai, two swordsmen, Guo on `rung` of the realms; Lin knows a counter to Guo's
-    Iron Ox style when `counter` says so (G25)."""
+    Iron Ox style when `counter` says so, as well as he knows his sword (G25). The scene left
+    off with Guo charging, which is what the counter answers, unless `charging` says he only
+    circles."""
     state = sect()
     lin = state.characters["lin"]
     lin.sheet.ladders[0].rung = 0
@@ -250,8 +257,10 @@ def duel(*, rung: int = 0, counter: bool = True) -> WorldState:
                 name="Reed-Bending Counter",
                 style="Flowing Reed",
                 effect="Yields to a charging blow and turns its weight against the striker.",
+                mastery=Mastery.SKILLED,
             )
         )
+    state.scene.ended_on = GUO_CHARGES if charging else GUO_CIRCLES
     guo = disciple(
         "guo",
         "Guo Tai",
@@ -263,6 +272,22 @@ def duel(*, rung: int = 0, counter: bool = True) -> WorldState:
         Technique(id="ox-charge", name="Iron Ox Charge", style="Iron Ox", effect="A charging cut.")
     )
     return add(state, guo)
+
+
+def spark_palm() -> WorldState:
+    """Lin in the yard at night with an unlit lantern and a small move he has practiced: a
+    Spark Palm that lights a wick (A4, A2)."""
+    state = sect()
+    state.characters["lin"].sheet.techniques.append(
+        Technique(
+            id="spark-palm",
+            name="Spark Palm",
+            effect="A flick of qi off the palm that lights a wick or tinder.",
+            mastery=Mastery.PRACTICED,
+        )
+    )
+    state.scene.ended_on = "The lantern by the well has gone out."
+    return state
 
 
 def insulted(*, temper: bool = True) -> WorldState:

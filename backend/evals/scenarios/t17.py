@@ -37,6 +37,7 @@ from engine.state import (
     EventStatus,
     GoalStatus,
     Health,
+    Mark,
     PassingState,
     PowerAxis,
     StepResult,
@@ -199,9 +200,16 @@ async def long_fight(ev: Eval) -> None:
         story = ev.story(worlds.mage_fight(), seed=f"{seed}/first-blow", under_way=True)
         first = await story.act("I attack the grey mage", plan(attack("mage", facts=HOLDS_BACK)))
         fight = first.state.scene.encounter
+        # A realm up the mage is a hard throw, not a wall (A3, G18): where the first blow kills
+        # him, the fight began and ended with it.
+        fell = not first.state.characters["mage"].alive
         ev.check(
-            "attacking a key NPC starts a fight",
-            fight is not None and fight.kind.value == "fight" and fight.opponent_ids == ["mage"],
+            "attacking a key NPC starts a fight, unless the first blow ends it",
+            (fight is None)
+            if fell
+            else fight is not None
+            and fight.kind.value == "fight"
+            and fight.opponent_ids == ["mage"],
             f"{seed}: {fight}",
             live=False,
         )
@@ -210,7 +218,7 @@ async def long_fight(ev: Eval) -> None:
             "the fight's first blow is pictured",
             first.plan.picture is not None
             and first.plan.picture.trigger
-            in (PictureTrigger.FIGHT_START, PictureTrigger.DECISIVE_BLOW)
+            in (PictureTrigger.FIGHT_START, PictureTrigger.DECISIVE_BLOW, PictureTrigger.DEATH)
             and first.plan.picture.subject_id == "mage",
             f"{seed}: {first.plan.picture} after {first.step(0).reason}",
             live=False,
@@ -300,9 +308,10 @@ def on_the_bridge(seed: str, ev: Eval) -> Story:
     title="Mortal fight",
     requirements=("N6", "A2", "A5", "T17"),
     passes_when=(
-        "An elder three realms up cuts the player down with no roll, but sparring he only brings "
-        "them down; against three thugs the player can kill one, be cut, die, or leap from the "
-        "bridge and get away, and every blow and fall is told as the engine settled it (N6)"
+        "An elder three realms up cuts the player down unless a Deadly throw they almost never "
+        "make holds, but sparring he only brings them down; against three thugs the player can "
+        "kill one, be cut, die, or leap from the bridge and get away, and every blow and fall is "
+        "told as the engine settled it (N6)"
     ),
 )
 async def mortal_fight(ev: Eval) -> None:
@@ -310,11 +319,25 @@ async def mortal_fight(ev: Eval) -> None:
     for seed in ev.seeds(6, live=1):
         story = ev.story(worlds.elder_bai(), seed=f"{seed}/enemy", under_way=True)
         played = await story.act("I cut down Elder Bai", plan(attack("bai", "sword")))
-        struck = played.step(0).perils
+        swing = played.step(0)
+        struck = swing.perils
         ev.check(
-            "an elder three realms up cuts Lin down, with no roll (A2)",
-            [(p.harm, p.roll) for p in struck] == [(Harm.DEAD, None)]
-            and not played.state.characters["lin"].alive,
+            "a plain sword can't hurt an elder three realms up, with no roll (A2, G18)",
+            swing.outcome_class is OutcomeClass.RULED_OUT and swing.roll is None,
+            f"{seed}: {swing.reason}",
+            live=False,
+        )
+        # No gap reaches zero, and none is kind (A3): Lin throws his own defence, marked Deadly
+        # before the dice, against a number three rungs up that he almost never reaches.
+        thrown = [p.roll.throw for p in struck if p.roll is not None and p.roll.throw is not None]
+        ev.check(
+            "the elder's answer is a Deadly throw Lin almost never makes (A3, N6)",
+            len(struck) == 1
+            and len(thrown) == 1
+            and thrown[0].deadly
+            and struck[0].roll.odds < 0.03
+            and (struck[0].harm is Harm.DEAD) == (thrown[0].mark is Mark.MISSED)
+            and played.state.characters["lin"].alive == (struck[0].harm is not Harm.DEAD),
             f"{seed}: {[p.reason for p in struck]}",
             live=False,
         )
@@ -1267,7 +1290,8 @@ async def logic_over_dice(ev: Eval) -> None:
             ev.check("the dragon's case has no roll", stab.roll is None, where)
             ev.check(
                 "the reason is in the scene details",
-                "far beyond what this can hurt" in played.scene.details.steps[0].reason,
+                "harm from that far below can't get through"
+                in played.scene.details.steps[0].reason,
                 where,
             )
     if ev.live:
@@ -1305,43 +1329,64 @@ def strike_at(target: str, **kw) -> Intent:
     title="Power gap",
     requirements=("G18", "A8", "A2", "W1", "T17"),
     passes_when=(
-        "It fails almost every time and the elder reacts to the insult. Against a gravely "
-        "wounded elder, the same attack can succeed (G18, A8). Using time stop, the result is the "
-        "same on every seed, with no roll"
+        "Two realms up it is still a throw, and it fails almost every time; the elder reacts "
+        "to the insult. Against a gravely wounded elder, the same attack succeeds more often "
+        "(G18, A8). Using time stop, the result is the same on every seed, with no roll"
     ),
 )
 async def power_gap(ev: Eval) -> None:
-    from engine.state import Health
-
-    for seed in ev.seeds(30, live=2):
+    head_on = Counter()
+    for seed in ev.seeds(300, live=2):
         story = ev.story(worlds.sect(), seed=f"{seed}/head-on", under_way=True)
         story.change(elder_here)
         before = story.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin")
         played = await story.act("I attack Elder Mo head-on with my sword", strike_at("elder-mo"))
         settled = played.step(0)
+        head_on[settled.result] += 1
         where = f"{seed}: {settled.outcome_class} {settled.reason}"
+        # A gap never removes the throw (A3): two rungs raise the number by a level each.
+        thrown = settled.roll.throw if settled.roll is not None else None
         ev.check(
-            "a head-on attack two realms up fails, with no roll",
-            settled.outcome_class is OutcomeClass.RULED_OUT
-            and settled.result is StepResult.FAILURE
-            and settled.roll is None,
+            "a head-on attack two realms up is still a throw, and a long shot",
+            settled.outcome_class is OutcomeClass.LONG_SHOT
+            and thrown is not None
+            and any(
+                part.points == 20 and part.text.startswith("two rungs above you")
+                for part in thrown.made_of
+            ),
             where,
         )
-        deeds = [d for d in played.state.deeds.values() if "elder-mo" in d.target_ids]
+        deeds = [
+            d for d in played.state.deeds.values() if "elder-mo" in [*d.target_ids, *d.victim_ids]
+        ]
         ev.check("the attempt is a deed against the elder", bool(deeds), where)
-        after = played.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin")
+        elder = played.state.characters["elder-mo"]
+        after = elder.sheet.disposition.attitudes.get("lin")
         ev.check(
             "the elder reacts to the insult",
-            after is not None and (before is None or after.affinity < before.affinity),
+            not elder.alive
+            or (after is not None and (before is None or after.affinity < before.affinity)),
             f"{seed}: {before} -> {after}",
         )
-        await ev.judge(
-            "the insult and the elder's answer",
-            Rubric(
-                must=("The attack fails against the elder's strength", "The elder reacts to it"),
-                must_not=("The disciple wounds the elder",),
-            ),
-            played,
+        if settled.result is StepResult.FAILURE:
+            await ev.judge(
+                "the insult and the elder's answer",
+                Rubric(
+                    must=(
+                        "The attack fails against the elder's strength",
+                        "The elder reacts to it",
+                    ),
+                    must_not=("The disciple wounds the elder",),
+                ),
+                played,
+            )
+    tried = sum(head_on.values())
+    if not ev.live:
+        ev.metric("head_on_win_rate", round(head_on[StepResult.SUCCESS] / tried, 3))
+        ev.check(
+            "two realms up it fails almost every time, and not every time",
+            0 < head_on[StepResult.SUCCESS] < 0.15 * tried,
+            str(dict(head_on)),
         )
 
     wins = total = 0
@@ -1359,18 +1404,23 @@ async def power_gap(ev: Eval) -> None:
         settled = played.step(0)
         total += 1
         wins += killed(played, "elder-mo")
+        thrown = settled.roll.throw if settled.roll is not None else None
         ev.check(
-            "against a gravely wounded elder it is a rolled long shot",
-            settled.outcome_class is OutcomeClass.LONG_SHOT and settled.roll is not None,
-            f"{seed}: {settled.outcome_class}",
+            "against a gravely wounded elder his wound takes 10 off the number (A8)",
+            thrown is not None
+            and any(
+                part.points == -10 and part.text.endswith("is badly wounded")
+                for part in thrown.made_of
+            ),
+            f"{seed}: {settled.outcome_class} {settled.reason}",
             live=False,
         )
     if total:
         ev.metric("wounded_elder_win_rate", round(wins / total, 3))
         ev.check(
-            "the wounded elder can fall, but rarely",
-            0 < wins < 0.2 * total,
-            f"{wins} of {total}",
+            "the wounded elder falls more often than the unhurt one, and still not often",
+            head_on[StepResult.SUCCESS] / tried < wins / total < 0.5,
+            f"{wins} of {total} against {head_on[StepResult.SUCCESS]} of {tried}",
             live=False,
         )
 

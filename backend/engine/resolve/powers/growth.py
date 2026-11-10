@@ -33,9 +33,10 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   counts four, and a new move starts at practiced; a slow learner needs twice the uses.
 - **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
   guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
-  attempt is rolled: success climbs a rung, a partial result shakes the character and a failure
-  wounds them, and how long it takes is rolled too, so the world can interrupt it (W10). A loud
-  rung's breakthrough is seen from afar (W1).
+  attempt is thrown for, three dice against a level of 3 (A3): passed climbs a rung, a throw
+  that falls just short shakes the character and a miss wounds them, and how long it takes is
+  drawn too, so the world can interrupt it (W10). A loud rung's breakthrough is seen from afar
+  (W1).
 
 A world with nothing extraordinary never grows a power (G6, G8).
 """
@@ -56,7 +57,7 @@ from engine.contracts.delta import (
 )
 from engine.contracts.intent import GrowthKind, IntentStep, OutcomeClass, PowerGrant, Teacher
 from engine.contracts.resolution import ProposedDeed, TrainingSoFar
-from engine.resolve import odds as odds_mod
+from engine.resolve import throw as dice
 from engine.resolve.checks import Move, Settled, same_way
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, mentions, name, possessive, stems
@@ -103,11 +104,10 @@ TECHNIQUE_HOURS = 150
 TRAINED = Mastery.PRACTICED
 INVENT_FACTOR = 3
 POWER_HOURS = 200
-# Shifts to a breakthrough's log-odds.
-MASTER_SHIFT = 0.6
-GIFT_SHIFT = 0.6
-EDGE_SHIFT = 0.35
-MAX_EDGES = 3
+# G19, A3. A breakthrough is three dice against a level of 3, whoever tries it.
+BREAKTHROUGH_DICE = 3
+BREAKTHROUGH_LEVEL = 3
+MAX_HINDRANCES = 2
 LOUD_STRENGTH = 90
 
 # A gift or a flaw for learning is read from a trait's words until talent is a record of its
@@ -453,36 +453,50 @@ def _ruled_out(reason: str) -> Settled:
 
 
 def breakthrough(
-    state: WorldState, actor: Character, step: IntentStep, rng: SeededRng, difficulty
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    rng: SeededRng,
+    difficulty,
+    *,
+    greens: list[str] | tuple[str, ...] = (),
 ) -> Settled:
-    """G19. The attempt is rolled, never certain: success, a partial result or a failure."""
+    """G19, A3. The attempt is thrown for, never certain: three dice against a level of 3,
+    whoever they are, since every rung is as far from the last. A master's teaching and a gift
+    for learning each add a green die, then any advantage of the step that holds (`greens`),
+    two in all. A flaw for learning adds 5 to the number, and so does each thing in the scene
+    against them, two at most. Passed climbs the rung, so close stalls and a miss wounds."""
     training = step.training
     assert training is not None
     ladder, position = _ladder(state, actor, training.ladder_id)
     assert ladder is not None
     rung = ladder.rungs[(position.rung if position is not None else -1) + 1]
-    shift = 0.0
+    reasons: list[str] = []
     if teacher_of(state, actor, step) is Teacher.MASTER:
-        shift += MASTER_SHIFT
+        reasons.append("a master's teaching")
     if learning_gift(actor):
-        shift += GIFT_SHIFT
-    if learning_flaw(actor):
-        shift -= GIFT_SHIFT
-    facts = step.facts
-    edges = sum(1 for e in facts.edges if e.strip())
-    hindrances = sum(1 for h in facts.hindrances if h.strip())
-    shift += EDGE_SHIFT * (min(MAX_EDGES, edges) - min(MAX_EDGES, hindrances))
-    band = odds_mod.BANDS[OutcomeClass.CONTESTED]
-    odds = odds_mod.settle(0.0, shift, band, difficulty)
-    roll = odds_mod.roll(
-        rng.child("outcome"),
-        odds,
-        label=f"break through to {rung.name}",
-        allowed=odds_mod.ALL_RESULTS,
-        difficulty=difficulty,
+        reasons.append("a gift for learning")
+    number = dice.level_number(
+        BREAKTHROUGH_LEVEL,
+        f"breaking through to {rung.name}, level {BREAKTHROUGH_LEVEL}",
+        difficulty,
     )
-    reason = f"Breaking through to {rung.name}: {roll.odds_label}."
-    return Settled(OutcomeClass.CONTESTED, roll.result, reason, roll)
+    if learning_flaw(actor):
+        number = number.plus("slow to learn", levels.STEP)
+    for hindrance in [h.strip() for h in step.facts.hindrances if h.strip()][:MAX_HINDRANCES]:
+        number = number.plus(hindrance, levels.STEP)
+    hand = dice.Hand(BREAKTHROUGH_DICE, f"A breakthrough, {BREAKTHROUGH_DICE} dice")
+    roll = dice.throw(
+        rng.child("outcome"),
+        hand,
+        number,
+        label=f"break through to {rung.name}",
+        allowed=dice.ALL_RESULTS,
+        difficulty=difficulty,
+        greens=[*reasons, *greens],
+        against=step.facts.up_against.strip() or f"The wall before {rung.name}.",
+    )
+    return Settled(dice.class_of(roll.odds), roll.result, f"{cap(dice.told(roll))}.", roll)
 
 
 def breakthrough_effects(
@@ -895,14 +909,14 @@ def used(
     actor: Character,
     step: IntentStep,
     techniques: list[Technique],
-    rolled: bool,
+    count: int,
     moves: Moves,
 ) -> tuple[str, StateDelta]:
-    """A4. Using a move is how it grows. Each technique the step used counts one use, or two
-    when a roll decided the step, which is use against real resistance. A turn counts once for
+    """A4. Using a move is how it grows. Each technique the step used counts `count` uses: one
+    where nothing resisted, two where the actor's own throw decided the step, which is use
+    against real resistance, and three for an insight (`engine.levels`). A turn counts once for
     a move, at its best step, however many steps of the plan use it. The reason for any that
     rose, in the world's words, and the engine's change."""
-    count = levels.RESISTED_USE if rolled else levels.PLAIN_USE
     gift = talent(actor)
     changed: list[Technique] = []
     gains: list[Gain] = []
