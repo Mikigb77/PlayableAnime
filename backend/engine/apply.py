@@ -68,6 +68,7 @@ from engine.kin import descendants
 from engine.limits import adult_problem
 from engine.looks import look_after
 from engine.state.cast import (
+    MAX_JUDGED,
     Character,
     CharacterStatus,
     DeathCertainty,
@@ -403,6 +404,12 @@ class _Applier:
             _add(place.known_by, player)
         if change.known_to_player:
             _add(place.known_by, player)
+        if change.judged and self.engine_only(subject, "judged"):
+            # A3. A thing keeps the level it was first judged at.
+            for judged in change.judged:
+                if place.level_of(judged.key) is None:
+                    place.judged.append(judged)
+            del place.judged[:-MAX_JUDGED]
 
     def scene_place(self, end: SceneEnd, changes: list[PlaceChange]) -> str | None:
         """R3, R8. The place the scene ends in, once this delta's places are on record, or None
@@ -602,6 +609,12 @@ class _Applier:
                 character.sheet.axes = change.axes.model_copy()
             else:
                 self.reject(subject, "axes", "a known character's measure doesn't change here")
+        if change.attributes is not None and self.engine_only(subject, "attributes"):
+            # F1, G13: like their measure, only someone the engine makes real comes with a body.
+            if created:
+                character.sheet.attributes = change.attributes.model_copy()
+            else:
+                self.reject(subject, "attributes", "a known character's body doesn't change here")
         if change.skills and self.engine_only(subject, "skills"):
             for skill in change.skills:
                 wanted = skill.name.casefold()

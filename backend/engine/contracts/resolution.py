@@ -189,6 +189,16 @@ class StepResolution(EngineModel):
         description="N6: the foes this step got cleanly away from. `engine.encounters` ends the "
         "fight once the player character has left everyone still in it behind.",
     )
+    extra: str = Field(
+        default="",
+        description="A3: the one fixed extra effect of a throw over the top, in words, which "
+        "code picks by the kind of step: an opening, a notch of trust or fear, half the time.",
+    )
+    opening_ids: list[str] = Field(
+        default_factory=list,
+        description="A3: whom this step won the actor an opening on, by a blow or a defence "
+        "thrown over the top. Their next step against them throws a green die.",
+    )
 
     @property
     def hurt_by_peril(self) -> bool:

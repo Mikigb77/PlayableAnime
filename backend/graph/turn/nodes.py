@@ -251,7 +251,9 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     if intent is None:
         played = PlayOut(state=world, resolution=Resolution())
     else:
-        resolution = pipeline.resolve(world, intent, turn.ctx, rng)
+        # A3: the scene the player is answering, which an advantage may quote.
+        last_scene = turn.scenes[-1].narration if turn.scenes else ""
+        resolution = pipeline.resolve(world, intent, turn.ctx, rng, scene=last_scene)
         resolution, found = check.check_resolution(resolution, state.get("overflow"))
         issues += found
         played = pipeline.play_out(world, resolution, turn.ctx, rng)

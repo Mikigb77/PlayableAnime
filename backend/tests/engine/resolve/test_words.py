@@ -1,4 +1,4 @@
-from engine.resolve.words import mentions, odds_label, stems
+from engine.resolve.words import mentions, stems
 
 
 def test_stems_fold_simple_word_forms_together():
@@ -17,13 +17,6 @@ def test_mentions_matches_one_way_only():
     assert not mentions("Fire", "put out the fire")
     assert not mentions("a bottle of grappa on the bar", "the bar stool")
     assert not mentions("", "anything") and not mentions("anything", "the")
-
-
-def test_odds_read_as_words():
-    assert odds_label(0.1) == "about 1 in 10"
-    assert odds_label(0.03) == "about 1 in 33"
-    assert odds_label(0.5) == "even odds"
-    assert odds_label(0.9) == "very likely"
 
 
 def test_spanish_and_catalan_small_words_and_accents_match_like_english_ones():

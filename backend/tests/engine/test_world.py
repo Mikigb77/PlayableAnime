@@ -921,7 +921,7 @@ def test_resolves_deeds_flow_into_the_world_whether_the_shot_kills_wounds_or_mis
         facts=StepFacts(foes_mean=Aim.NONE),
     )
     seen = set()
-    for seed in range(40):
+    for seed in range(200):  # three dice against Carmine's level 2 seldom miss
         state = grounded_world()
         stream = SeededRng.for_turn(f"seed-{seed}", "main", 2)
         resolution = pipeline.resolve(state, Intent(steps=[shoot]), ctx(), stream)

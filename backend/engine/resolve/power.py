@@ -2,8 +2,10 @@
 
 Every character carries a tier on each axis, worked out from their whole sheet (G13, G14). Where
 the world has a ladder on that axis, the gap is measured in its rungs, so "one realm up" means
-what the world says it means; elsewhere one step is two tiers. Condition counts: a badly wounded or
-weakened character stands lower than their sheet (A8).
+what the world says it means; elsewhere one step is two tiers. A throw counts whole rungs between
+two people where a move meets that power head-on (`rungs_above`), and their wounds and
+exhaustion on its number (`engine.resolve.capability`). `standing` is where a body stands after
+its condition, which a force that never throws is measured against (W10a).
 """
 
 import re
@@ -11,7 +13,7 @@ from dataclasses import dataclass
 from statistics import median
 
 from engine.invariants import ancestry
-from engine.resolve.words import stems
+from engine.resolve.words import counted, stems
 from engine.state.bible import PowerLadder
 from engine.state.cast import Character, CharacterStatus
 from engine.state.sheet import Health, PowerAxis
@@ -19,6 +21,8 @@ from engine.state.world import WorldState
 
 # One step of power where the world has no ladder on the axis, in tiers.
 NO_LADDER_STEP = 2.0
+# G18. From how many steps below harm can't get through by ordinary means, with no ladder to say.
+SHRUGS_OFF = 3
 
 # How far a condition pulls someone down, in steps (rungs where there is a ladder).
 HEALTH_PENALTY = {
@@ -47,9 +51,6 @@ HELPLESS_NAMES = frozenset({"bound"})
 # Words that turn a helpless state into its opposite or less: "half asleep", "no longer bound".
 NOT_HELPLESS = frozenset("not no never half barely nearly almost longer".split())
 SUBDUED_STATE = "subdued"
-# A8: allies count. Each other one within a step of the strongest adds this, up to the cap.
-NUMBERS_STEP = 0.5
-MAX_NUMBERS = 1.0
 
 
 @dataclass(frozen=True)
@@ -138,13 +139,59 @@ def standing(state: WorldState, character: Character, axis: PowerAxis, measure: 
     )
 
 
-def ranked_with_numbers(side: list[Standing], measure: Scale) -> tuple[list[Standing], float]:
-    """A8. One side of a contest, strongest first, and how many steps those close behind the
-    strongest add to it: half a step each within a step of them, up to one."""
-    ranked = sorted(side, key=lambda s: (-s.tier, s.character.id))
-    strongest = ranked[0]
-    close = sum(1 for s in ranked[1:] if strongest.tier - s.tier < measure.step)
-    return ranked, min(MAX_NUMBERS, NUMBERS_STEP * close)
+def true_tier(state: WorldState, character: Character, axis: PowerAxis) -> float:
+    """Where they stand on the axis before wounds and exhaustion, which a throw counts on its
+    number instead (A8): the sheet's tier or the rung's, less any weakening the sheet records."""
+    return max(0.0, base_tier(state, character, axis) - character.sheet.condition.weakened_tiers)
+
+
+def rungs_above(
+    state: WorldState, axis: PowerAxis, actor: Character, other: Character
+) -> tuple[int, Scale]:
+    """G18. How many whole rungs `other` stands above `actor` on the axis, below them when it is
+    negative, and the scale they were measured on. Part of a rung is no rung."""
+    measure = scale(state, axis, actor, other)
+    gap = (true_tier(state, other, axis) - true_tier(state, actor, axis)) / measure.step
+    return int(gap), measure
+
+
+def rung_words(
+    state: WorldState,
+    actor: Character,
+    other: Character | None,
+    rungs: int,
+    measure: Scale,
+    *,
+    met: bool = False,
+) -> str:
+    """G18, A8. How far `other` stands from `actor`, in the world's words: "two rungs above
+    you, Core Formation over Qi Condensation" where both stand on the world's ladder, and in
+    steps of power where it has none. With `met`, the step meets that power: "met head-on"."""
+    many = abs(rungs)
+    if measure.ladder is not None:
+        unit = "rung" if many == 1 else "rungs"
+    else:
+        unit = "step of power" if many == 1 else "steps of power"
+    whom = "you" if actor.id == state.player_id else actor.name
+    words = f"{counted(many)} {unit} {'above' if rungs > 0 else 'below'} {whom}"
+    if measure.ladder is not None and other is not None:
+        theirs = rung(state, other, measure.ladder.axis)
+        mine = rung(state, actor, measure.ladder.axis)
+        if theirs and mine and theirs[0] != mine[0]:
+            words = f"{words}, {theirs[0]} {'over' if rungs > 0 else 'under'} {mine[0]}"
+    return f"{words}, met head-on" if met else words
+
+
+def shrugs_off(measure: Scale) -> int:
+    """G18. From how many rungs below harm can't get through by ordinary means: what the
+    world's ladder says, and three steps of power where there is no ladder."""
+    return measure.ladder.shrugs_off if measure.ladder is not None else SHRUGS_OFF
+
+
+def rung_levels(measure: Scale) -> int:
+    """G18. How many levels one rung counts for where a move meets that power head-on: what the
+    world's ladder says, and one where there is no ladder."""
+    return measure.ladder.rung_levels if measure.ladder is not None else 1
 
 
 def in_the_fray(state: WorldState, character: Character) -> bool:

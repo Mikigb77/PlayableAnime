@@ -1,9 +1,9 @@
 """One scale of levels for moves, skills, bodies and things (A3, A4, G14, G18).
 
 A level is a number of 20-sided dice on one side, and a number to beat on the other: someone at
-level 3 throws three dice, and whoever goes against something at level 3 has to reach 27
-(`number`). Everything a step can be weighed with sits on this one scale, so any two can be
-compared:
+level 3 throws three dice, and whoever goes against something at level 3 has to reach 27 on a
+Balanced story (`number`). Everything a step can be weighed with sits on this one scale, so any
+two can be compared:
 
 - **A move** throws by its mastery: one die while they are learning it, two practiced, three
   skilled, four at second nature, and a fifth for a move made their own.
@@ -24,13 +24,17 @@ Talent sets the pace: someone who learns four times as fast needs a quarter of t
 four and eight, fourteen in all), a slow learner twice as many, and a gifted character's new
 move starts at practiced.
 
-Nothing here rolls. Outcomes are still weighed by `engine.resolve.capability` and
-`engine.resolve.odds`; this module says where a move starts and how it grows, and holds the
-scale the throw will be built on.
+The story's difficulty is what comes off every number (A5): 6 on Story, 3 on Balanced and
+nothing on Brutal, so at their own level a character passes about four times in five, seven in
+ten or six in ten.
+
+Nothing here rolls. `engine.resolve.capability` builds the hand and the number of a step from
+this scale, and `engine.resolve.throw` throws the dice.
 """
 
 import math
 
+from engine.context import Difficulty
 from engine.contracts.intent import Challenge
 from engine.state.sheet import Mastery, SkillLevel
 
@@ -63,10 +67,18 @@ CHALLENGE_LEVEL = {
     Challenge.EXTREME: 5,
 }
 
+# A5. What the story's difficulty takes off every number a level sets.
+EASE = {Difficulty.STORY: 6, Difficulty.BALANCED: 3, Difficulty.BRUTAL: 0}
+# A3. One step of what moves a number besides the level: a wound, a hindrance, a gift that fits.
+STEP = 5
+# A2. Something this many levels under the hand is nothing to throw for.
+NO_CONTEST_BELOW = 2
+
 # A4. Uses that take a move to the next mastery, at an ordinary pace.
 USES_TO_NEXT = {Mastery.LEARNING: 6, Mastery.PRACTICED: 15, Mastery.SKILLED: 30}
 PLAIN_USE = 1  # used, with nothing resisting
-RESISTED_USE = 2  # used where a roll decided it
+RESISTED_USE = 2  # used where a throw decided it
+INSIGHT_USE = 3  # used where the move's own die showed an insight
 # How far under the skill it belongs to a new move starts, in steps of the scale.
 NEW_MOVE_BELOW_SKILL = 2
 # Where a new move starts for someone with a gift for learning, whatever their skill.
@@ -81,10 +93,13 @@ def attribute_dice(level: int) -> int:
     return max(1, AVERAGE_DICE + level - AVERAGE_ATTRIBUTE)
 
 
-def number(level: int) -> int:
-    """What a throw has to reach against something at this level: ten for each level, less
-    three, so 7, 17, 27, 37 and 47. Level 0 is nothing to beat."""
-    return max(0, 10 * level - 3)
+def number(level: int, difficulty: Difficulty = Difficulty.BALANCED) -> int:
+    """What a throw has to reach against something at this level: ten for each level, less what
+    the story's difficulty takes off (`EASE`), so 7, 17, 27, 37 and 47 on Balanced. Level 0 is
+    nothing to beat."""
+    if level <= 0:
+        return 0
+    return max(0, 10 * level - EASE[difficulty])
 
 
 def uses_to_next(mastery: Mastery, pace: float = 1.0) -> int | None:

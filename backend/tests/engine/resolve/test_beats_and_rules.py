@@ -7,6 +7,7 @@ from engine.contracts import (
     BeatUse,
     BeatVerdict,
     Intent,
+    MeansVerdict,
     OutcomeClass,
     Plausibility,
     SheetPart,
@@ -224,7 +225,7 @@ def test_a_fireball_in_a_grounded_world_is_ruled_out_whatever_the_model_proposed
         verb="attack",
         target_ids=["carmine"],
         uses=[SheetUse(part=SheetPart.POWER, ref="fireball")],
-        facts=facts(world_allows=True, proposed_class=OutcomeClass.CERTAIN),
+        facts=facts(world_allows=True, means=MeansVerdict.CLEARLY_ENOUGH),
     )
 
     for actor in (None, "carmine"):  # NPCs get no powers the world lacks either (G8)

@@ -130,12 +130,12 @@ def test_carrying_on_makes_the_newcomer_the_player_character():
     assert before.player_id == "luca"  # the state carried on from is untouched
 
 
-def test_the_newcomer_starts_with_no_run_of_misses():
-    # A3: a run of bad luck was the old player character's, not theirs.
+def test_the_newcomer_holds_none_of_the_openings_the_fallen_won():
+    # A3: an opening won by a throw over the top was the old player character's, not theirs.
     state = grounded_world()
-    state.misses_in_a_row = 3
+    state.openings = ["carmine"]
     _, after = dead_and_carried(state)
-    assert after.misses_in_a_row == 0
+    assert after.openings == []
 
 
 def test_whoever_was_there_saw_how_they_died():

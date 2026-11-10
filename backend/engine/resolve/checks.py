@@ -44,7 +44,7 @@ from engine.contracts.intent import (
 )
 from engine.contracts.resolution import BeatResolution, BeatVerdict
 from engine.possessions import gone_to, is_money
-from engine.resolve import odds as odds_mod
+from engine.resolve import throw as dice
 from engine.resolve.words import any_mentions, cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
 from engine.state.bible import Prevalence
@@ -54,19 +54,12 @@ from engine.state.sheet import CharacterSheet, Item, Power, Practice, Technique
 from engine.state.world import WorldState
 from engine.timekeeping import effect_over
 
-# The odds that a place holds something it plausibly might, before difficulty (R2, A5).
-FIND_ODDS = 0.5
-
 
 def find_roll(label: str, ctx: TurnContext, rng: SeededRng) -> RollRecord:
-    """R2. The roll on whether a place holds something it only might: an even chance, moved by
-    the difficulty."""
-    odds = odds_mod.settle(
-        odds_mod.logit(FIND_ODDS), 0.0, odds_mod.FIND_BAND, ctx.settings.difficulty
-    )
-    return odds_mod.roll(
-        rng, odds, label=label, allowed=odds_mod.YES_OR_NO, difficulty=ctx.settings.difficulty
-    )
+    """R2, A3. Whether a place holds something it only might is nobody's doing, so the world's
+    die decides it in the open: one grey die, 11 or more. The story's difficulty never moves
+    it."""
+    return dice.world_die(rng, label=label, difficulty=ctx.settings.difficulty)
 
 
 @dataclass(frozen=True)

@@ -192,7 +192,7 @@ def carry_on(
             update={"known_by": [successor.id], "met_by": [successor.id]}
         )
     new.player_id = successor.id
-    new.misses_in_a_row = 0  # A3: the run of misses was the old character's, not theirs
+    new.openings = []  # A3: the openings were the old character's, not theirs
     # C6: they know where they live, and the places around it.
     place = new.places.get(successor.location_id or "")
     seen: set[str] = set()

@@ -13,8 +13,17 @@ from collections import Counter
 
 from engine.base import HOUR, MINUTE
 from engine.context import Rating
-from engine.contracts import ActionKind, Aim, Intent, OutcomeClass, StandingAction
-from engine.state import CharacterStatus, StepResult
+from engine.contracts import (
+    ActionKind,
+    Aim,
+    Challenge,
+    Edge,
+    EdgeSource,
+    Intent,
+    OutcomeClass,
+    StandingAction,
+)
+from engine.state import CharacterStatus, Health, Mark, StepResult
 from engine.world import Kind
 from evals import worlds
 from evals.judge import Rubric
@@ -43,31 +52,52 @@ def dead(played: Played, character_id: str) -> bool:
 
 # --- Technique duel (G25, G18) -----------------------------------------------------------------
 
+# The words of the scene that show what the counter answers, as the interpret step copies them.
+CHARGE = "lowers his shoulder and charges"
+MADE_FOR_IT = "the counter is made for a charge like this"
+
 
 def duel_strike(counter: bool) -> Intent:
     uses = [item("sword"), skill("swordsmanship")]
+    edges = []
     if counter:
         uses.append(technique("reed-counter"))
+        # G25, A3: a technique made for exactly what the other side is doing is a real
+        # advantage, and code checks the scene shows it before it gives the green die.
+        edges.append(Edge(text=MADE_FOR_IT, source=EdgeSource.SCENE, ref=CHARGE))
     words = "turn Guo's charge with the Reed-Bending Counter" if counter else "cut at Guo"
-    return plan(attack("guo", "sword", aim=Aim.WOUND, text=words, verb="duel", uses=uses))
+    return plan(
+        attack(
+            "guo",
+            "sword",
+            aim=Aim.WOUND,
+            text=words,
+            verb="duel",
+            uses=uses,
+            facts=facts(opposition_ids=["guo"], can_respond=True, edges=edges),
+        )
+    )
 
 
 @scenario(
     "t17.technique-duel",
     suite="T17",
     title="Technique duel",
-    requirements=("G25", "G18", "A2", "T17"),
+    requirements=("G25", "G18", "A2", "A3", "T17"),
     passes_when=(
-        "The counter clearly shifts the odds between equals, and against the stronger foe it "
-        "buys an escape at best (G25, G18)"
+        "The counter clearly shifts the odds between equals when the scene shows what it "
+        "answers, and gives nothing when it doesn't. Against the stronger foe it is still a "
+        "throw, and a far harder one (G25, G18)"
     ),
     notes=(
-        "The engine counts a technique the step draws on as one shift of the odds (G25); the "
-        "script draws the counter only where it answers Guo's style."
+        "A technique throws by its mastery (A4), so the counter helps as a real advantage: a "
+        "green die, which code gives only where the scene shows the charge it is made for (A3). "
+        "The script draws the counter as the interpret step would."
     ),
 )
 async def technique_duel(ev: Eval) -> None:
     rates: dict[str, Counter[str]] = {"plain": Counter(), "counter": Counter()}
+    even = 0.0
     for seed in ev.seeds(150, live=2):
         odds = {}
         for kind in ("plain", "counter"):
@@ -89,10 +119,35 @@ async def technique_duel(ev: Eval) -> None:
                 f"{seed}: {cut.outcome_class} {cut.reason}",
                 live=False,
             )
+            if kind == "counter" and cut.roll is not None:
+                ev.check(
+                    "the counter throws a green die for the charge the scene shows",
+                    cut.roll.throw.greens == [MADE_FOR_IT],
+                    f"{seed}: {cut.reason}",
+                    live=False,
+                )
         ev.check(
             "the counter shifts the odds",
             None not in odds.values() and odds["counter"] >= odds["plain"] + 0.1,
             f"{seed}: {odds}",
+            live=False,
+        )
+        even = odds["counter"] or even
+
+        # The same counter while Guo only circles: nothing in the scene for it to answer.
+        story = ev.story(
+            worlds.duel(rung=0, counter=True, charging=False),
+            seed=f"{seed}/circling",
+            under_way=True,
+        )
+        played = await story.act(
+            "I turn Guo's charge with the Reed-Bending Counter", duel_strike(True)
+        )
+        cut = played.step(0)
+        ev.check(
+            "with no charge to answer the counter gives no die",
+            cut.roll is not None and cut.roll.throw.greens == [] and cut.roll.odds == odds["plain"],
+            f"{seed}: {cut.reason}",
             live=False,
         )
     if not ev.live:
@@ -110,11 +165,16 @@ async def technique_duel(ev: Eval) -> None:
             "I turn the elder's charge with the Reed-Bending Counter", duel_strike(True)
         )
         cut = played.step(0)
+        thrown = cut.roll.throw if cut.roll is not None else None
+        # A3, G18: a gap never removes the throw. Two rungs raise the number by a level each.
         ev.check(
-            "against a foe two realms up the counter never wins the fight",
-            cut.outcome_class is OutcomeClass.RULED_OUT
-            and cut.roll is None
-            and not dead(played, "guo"),
+            "against a foe two realms up the counter is still a throw, and a far harder one",
+            thrown is not None
+            and any(
+                part.points == 20 and part.text.startswith("two rungs above you")
+                for part in thrown.made_of
+            )
+            and (ev.live or cut.roll.odds <= even - 0.4),
             f"{seed}: {cut.outcome_class} {cut.reason}",
         )
         flee = await story.act(
@@ -131,16 +191,181 @@ async def technique_duel(ev: Eval) -> None:
             ),
         )
         escapes[flee.step(0).outcome_class.value] += 1
-        await ev.judge(
-            "the counter against a stronger foe",
-            Rubric(
-                must=("The counter doesn't let Lin beat Guo, who is far stronger",),
-                must_not=("Lin wins the fight",),
-            ),
-            [played, flee],
-        )
-    # An escape is the best the counter can buy; how often the engine allows one is recorded.
+        if cut.result is StepResult.FAILURE:
+            await ev.judge(
+                "the counter against a stronger foe",
+                Rubric(
+                    must=("The counter doesn't let Lin beat Guo, who is far stronger",),
+                    must_not=("Lin wins the fight",),
+                ),
+                [played, flee],
+            )
+    # How the engine classed the escape each time is recorded.
     ev.metric("escape_classes_two_realms_up", dict(escapes))
+
+
+# --- The throw (A2, A3, A4, G18, N6) -----------------------------------------------------------
+
+
+def light_the_lantern(palm: bool = True) -> Intent:
+    """Lighting the lantern, which the interpret step judged a real effort, with a move Lin has
+    practiced and nothing resisting it, or with his bare hands and no move at all."""
+    return plan(
+        step(
+            "light the lantern with a Spark Palm" if palm else "rub a spark out of the dry wick",
+            ActionKind.TASK,
+            5,
+            verb="light",
+            uses=[technique("spark-palm")] if palm else [],
+            facts=facts(challenge=Challenge.MODERATE),
+        )
+    )
+
+
+def cut_with_claims() -> Intent:
+    """A cut at Guo with three advantages claimed: one the scene shows, and two it doesn't."""
+    edges = [
+        Edge(text="he is committed to his charge", source=EdgeSource.SCENE, ref=CHARGE),
+        Edge(text="the dark hides my blade", source=EdgeSource.SCENE, ref="pitch dark"),
+        Edge(text="my feint opened him up", source=EdgeSource.STEP, ref="1"),
+    ]
+    return plan(
+        attack(
+            "guo",
+            "sword",
+            aim=Aim.WOUND,
+            text="cut at Guo as he comes",
+            uses=[item("sword"), skill("swordsmanship")],
+            facts=facts(opposition_ids=["guo"], can_respond=True, edges=edges),
+        )
+    )
+
+
+def hold_ground() -> Intent:
+    """A step in a fight that harms no one, against thugs who mean to kill."""
+    return plan(
+        step(
+            "hold my ground at the middle of the bridge",
+            verb="hold",
+            facts=facts(foes_mean=Aim.KILL, miss_costs="A knife finds your ribs, and you fall."),
+        )
+    )
+
+
+@scenario(
+    "t17.the-throw",
+    suite="T17",
+    title="The throw",
+    requirements=("A2", "A3", "A4", "G18", "N6", "T17"),
+    passes_when=(
+        "A move the character has practiced, with nothing resisting, is never thrown for. An "
+        "opponent two rungs up is still a throw. An advantage whose source doesn't hold gives "
+        "no green die. A defence marked Deadly that misses costs what its mark said, and one "
+        "that holds costs nothing (A2, A3, N6)"
+    ),
+)
+async def the_throw(ev: Eval) -> None:
+    for seed in ev.seeds(40, live=1):
+        story = ev.story(worlds.spark_palm(), seed=f"{seed}/lantern", under_way=True)
+        played = await story.act("I light the lantern with a Spark Palm", light_the_lantern())
+        lit = played.step(0)
+        ev.check(
+            "a practiced move with nothing resisting is never thrown for",
+            lit.outcome_class is OutcomeClass.CERTAIN
+            and lit.roll is None
+            and lit.result is StepResult.SUCCESS,
+            f"{seed}: {lit.outcome_class} {lit.reason}",
+        )
+        [palm] = [t for t in played.state.player.sheet.techniques if t.id == "spark-palm"]
+        bare = await ev.story(worlds.spark_palm(), seed=f"{seed}/bare", under_way=True).act(
+            "I rub a spark out of the dry wick", light_the_lantern(palm=False)
+        )
+        ev.check(
+            "the same task with no move behind it is thrown for",
+            bare.step(0).roll is not None,
+            f"{seed}: {bare.step(0).reason}",
+            live=False,
+        )
+        ev.check(
+            "the use still counts toward its mastery, once",
+            palm.uses == 1,
+            f"{seed}: {palm.uses}",
+            live=False,
+        )
+
+        story = ev.story(worlds.duel(rung=2, counter=False), seed=f"{seed}/up", under_way=True)
+        played = await story.act("I cut at Guo", duel_strike(False))
+        cut = played.step(0)
+        ev.check(
+            "an opponent two rungs up is still a throw",
+            cut.roll is not None
+            and cut.roll.throw is not None
+            and cut.outcome_class in (OutcomeClass.LONG_SHOT, OutcomeClass.CONTESTED),
+            f"{seed}: {cut.outcome_class} {cut.reason}",
+        )
+
+        story = ev.story(worlds.duel(rung=0, counter=False), seed=f"{seed}/claims", under_way=True)
+        played = await story.act("I cut at Guo as he comes", cut_with_claims())
+        cut = played.step(0)
+        ev.check(
+            "only the advantage the scene shows gives a green die",
+            cut.roll is not None and cut.roll.throw.greens == ["he is committed to his charge"],
+            f"{seed}: {cut.reason}",
+            live=False,
+        )
+
+    seen: Counter[str] = Counter()
+    told = []
+    for seed in ev.seeds(120, live=2):
+        story = ev.story(worlds.bridge_ambush(), seed=f"{seed}/deadly", under_way=True)
+        story.change(lambda state: worlds.start_fight(state, "thug-0", "thug-1", "thug-2"))
+        played = await story.act("I hold my ground", hold_ground())
+        [peril] = played.step(0).perils
+        thrown = peril.roll.throw if peril.roll is not None else None
+        deadly = thrown is not None and thrown.deadly
+        ev.check(
+            "a defence against foes who mean to kill is marked Deadly, with what a miss costs",
+            deadly and thrown.miss_costs == "A knife finds your ribs, and you fall.",
+            f"{seed}: {peril.reason}",
+            live=False,
+        )
+        if not deadly:
+            continue
+        lin = played.state.characters["lin"]
+        health = lin.sheet.condition.health
+        if thrown.mark is Mark.MISSED:
+            paid = not lin.alive
+        elif thrown.mark is Mark.SO_CLOSE:
+            paid = lin.alive and health is Health.BADLY_WOUNDED
+        else:
+            paid = lin.alive and health is Health.UNHURT
+        seen[thrown.mark.value] += 1
+        ev.check(
+            "how far the Deadly defence fell short is what it costs",
+            paid,
+            f"{seed}: {peril.reason} -> {lin.status} {health}",
+        )
+        if seed.endswith(("/0", "/1")):
+            told.append(played)
+    ev.metric("deadly_defence", dict(seen))
+    ev.check(
+        "over many seeds the defence holds, falls just short and misses",
+        {"passed", "so_close", "missed"} <= set(seen),
+        str(dict(seen)),
+        live=False,
+    )
+    await ev.judge(
+        "a Deadly defence told as it fell",
+        Rubric(
+            must=(
+                "What happens to Lin is exactly what OUTCOME's struck says: unhurt, badly "
+                "wounded or dead",
+                "The danger of the knives is told as real, whichever way it went",
+            ),
+            must_not=("Names dice, numbers, levels or chances in the scene",),
+        ),
+        told,
+    )
 
 
 # --- Temper, not control (G15, G13) ------------------------------------------------------------
@@ -154,7 +379,7 @@ def keep_calm(temper: bool) -> Intent:
             10,
             verb="keep calm",
             uses=[trait("hot temper")] if temper else [],
-            facts=facts(opposition="Lin's own pride", proposed_class=OutcomeClass.CONTESTED),
+            facts=facts(opposition="Lin's own pride"),
         )
     )
 

@@ -11,6 +11,7 @@ import pytest
 from engine.contracts import (
     ActionKind,
     Aim,
+    Challenge,
     Intent,
     MeansVerdict,
     OutcomeClass,
@@ -34,7 +35,6 @@ def hot_headed():
 
 def keep_calm(temper: bool = True, **fact_kw):
     fact_kw.setdefault("opposition", "Lin's own pride")
-    fact_kw.setdefault("proposed_class", OutcomeClass.CONTESTED)
     return step(
         "keep my temper, bow and walk away",
         ActionKind.EXCHANGE,
@@ -72,8 +72,13 @@ def test_the_reason_says_the_choice_is_the_players_and_how_hard_it_was():
         settled = resolve(state, plan(keep_calm()), seed).steps[0]
         seen[settled.result] = settled.reason
     assert seen[StepResult.SUCCESS].startswith("Lin's own pride pushes back, but the choice is")
-    assert "yours" in seen[StepResult.SUCCESS] and seen[StepResult.SUCCESS].endswith("you do it.")
-    assert seen[StepResult.PARTIAL].endswith("you do it, but the strain shows.")
+    assert "yours" in seen[StepResult.SUCCESS] and seen[StepResult.SUCCESS].endswith("You do it.")
+    assert seen[StepResult.PARTIAL].endswith("You do it, but the strain shows.")
+    # How hard it was is the throw, with the temper named on its number (A8).
+    assert (
+        "An ordinary hand, 2 dice, against Lin's own pride, a real effort, level 2; your hot "
+        "temper (+5): "
+    ) in seen[StepResult.PARTIAL]
 
 
 @pytest.mark.parametrize(
@@ -125,19 +130,16 @@ def test_someone_in_the_way_or_harm_aimed_at_someone_is_never_inner():
 
 def test_an_easy_inner_step_is_certain_and_a_hard_one_is_never_ruled_out():
     state = hot_headed()
-    for easy_kw in (
-        {"proposed_class": OutcomeClass.CERTAIN},
-        {"proposed_class": None, "means": MeansVerdict.CLEARLY_ENOUGH},
-    ):
+    for easy_kw in ({"challenge": Challenge.TRIVIAL}, {"means": MeansVerdict.CLEARLY_ENOUGH}):
         easy = resolve(state, plan(keep_calm(**easy_kw)), 0).steps[0]
         assert easy.outcome_class is OutcomeClass.CERTAIN and easy.roll is None
         assert easy.result is StepResult.SUCCESS
-    for proposed in (OutcomeClass.RULED_OUT, OutcomeClass.LONG_SHOT):
-        for seed in SEEDS:
-            settled = resolve(state, plan(keep_calm(proposed_class=proposed)), seed).steps[0]
-            assert settled.outcome_class is OutcomeClass.LONG_SHOT, proposed
-            assert settled.result is not StepResult.FAILURE
-            assert "very hard" in settled.reason
+        assert easy.reason == "Lin's own pride pushes back, but the choice is yours: you do it."
+    for seed in SEEDS:
+        settled = resolve(state, plan(keep_calm(challenge=Challenge.VERY_HARD)), seed).steps[0]
+        assert settled.outcome_class is OutcomeClass.LONG_SHOT
+        assert settled.result is not StepResult.FAILURE
+        assert "a very hard task, level 4" in settled.reason
 
 
 def test_a_plan_carries_on_past_a_temper_held_in_with_strain():

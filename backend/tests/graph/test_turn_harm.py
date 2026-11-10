@@ -161,8 +161,8 @@ def test_a_fight_never_reopens_a_wound_the_character_never_had(fake, make_client
     codes = [issue.code for issue in result.issues]
     assert "unrecorded_harm" in codes and "rejected" in codes
     (step,) = result.resolution.steps
-    # The odds name what is really against them, and nothing the record doesn't hold.
-    assert step.outcome_class == "contested" and "the crowded bar against you" in step.reason
+    # The number names what is really against them, and nothing the record doesn't hold.
+    assert step.outcome_class == "contested" and "; the crowded bar (+5): " in step.reason
     assert "wound" not in step.reason and "ribs" not in step.reason
     [request] = fake.calls(Node.NARRATOR)
     brief = request.prompt.messages[-1].text

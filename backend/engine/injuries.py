@@ -195,7 +195,7 @@ def unrecorded_harm(state: WorldState, actor: Character, step: IntentStep) -> tu
         return _own(actor, text)
 
     hindrances = [h for h in facts.hindrances if stands(h, edge=False)]
-    edges = [e for e in facts.edges if stands(e, edge=True)]
+    edges = [e for e in facts.edges if stands(f"{e.text} {e.ref}".strip(), edge=True)]
     dropped = len(facts.hindrances) - len(hindrances) + len(facts.edges) - len(edges)
     if not dropped:
         return facts, 0
