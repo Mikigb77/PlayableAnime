@@ -420,6 +420,23 @@ void main() {
       expect(again.read(appUpdateProvider).justUpdated, isFalse);
     });
 
+    test('says it was updated even when the API can\'t be reached', () async {
+      SharedPreferences.setMockInitialValues({AppUpdateController.lastBuildKey: 11});
+      final c = await signedIn(
+        client: MockClient((request) async {
+          if (request.url.path == '/v1/app/latest') return http.Response('oops', 502);
+          return http.Response.fromStream(await harness.backend.send(request));
+        }),
+      );
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      final state = c.read(appUpdateProvider);
+      expect(state.phase, UpdatePhase.unknown);
+      expect(state.justUpdated, isTrue);
+      expect(state.installed?.build, 12);
+    });
+
     test('says nothing on the very first run', () async {
       final c = await signedIn();
 

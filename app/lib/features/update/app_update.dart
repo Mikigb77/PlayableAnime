@@ -273,6 +273,9 @@ class AppUpdateController extends Notifier<UpdateState> {
           return;
         }
         justUpdated = await _noteBuild(installed.build);
+        if (!ref.mounted) return;
+        // Known from here on, even if the API can't be reached: the "updated" note shows now.
+        state = UpdateState(state.phase, installed: installed, justUpdated: justUpdated);
       }
       final release = await _latest();
       if (!ref.mounted) return;
@@ -307,7 +310,17 @@ class AppUpdateController extends Notifier<UpdateState> {
     } on Object catch (e) {
       if (!ref.mounted) return;
       final problem = e is UpdateProblem ? e : UpdateProblem.download;
-      state = now ? before.copyWith(phase: UpdatePhase.failed, problem: problem) : before;
+      state = now
+          ? state.copyWith(phase: UpdatePhase.failed, problem: problem)
+          : UpdateState(
+              before.phase,
+              installed: state.installed,
+              release: before.release,
+              progress: before.progress,
+              problem: before.problem,
+              dismissed: before.dismissed,
+              justUpdated: state.justUpdated,
+            );
     }
   }
 
