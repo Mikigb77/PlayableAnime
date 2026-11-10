@@ -10,8 +10,27 @@ sealed class TurnEvent {
 
 /// Sent at once, so the app can show the action and a typing state.
 class TurnStarted extends TurnEvent {
-  const TurnStarted(this.turn);
+  const TurnStarted(this.turn, {this.resumed = false, this.kind, this.action});
   final int turn;
+
+  /// The story owed a turn, and this request plays that one out whatever it sent (A3): the app
+  /// shows [action], the one that is playing.
+  final bool resumed;
+
+  /// The kind and the action of the turn that is played out. Only with [resumed].
+  final String? kind;
+  final String? action;
+}
+
+/// What the engine decided, before the narrator writes a word (A3): each step with its class, its
+/// reason and the dice that decided it, exactly as the saved scene will carry them. Sent once,
+/// right after [TurnStarted], on every turn with steps.
+class StepsDecided extends TurnEvent {
+  const StepsDecided({required this.turn, required this.details});
+  final int turn;
+
+  /// The `SceneDetails` object as JSON.
+  final JsonMap details;
 }
 
 /// More narration, as it is written.
@@ -115,7 +134,22 @@ TurnEvent? _map(SseEvent event) {
   JsonMap data() => event.json as JsonMap;
   switch (event.event) {
     case 'turn.started':
-      return TurnStarted((data()['turn'] as num).toInt());
+      final d = data();
+      return TurnStarted(
+        (d['turn'] as num).toInt(),
+        resumed: d['resumed'] == true,
+        kind: d['kind'] as String?,
+        action: d['action'] as String?,
+      );
+    case 'steps.decided':
+      // The scene carries the same steps again, so a malformed copy here costs only the early
+      // look at them, never the turn.
+      final d = event.json;
+      if (d is! JsonMap || d['details'] is! JsonMap) return null;
+      return StepsDecided(
+        turn: (d['turn'] as num?)?.toInt() ?? 0,
+        details: d['details'] as JsonMap,
+      );
     case 'narration.delta':
       return NarrationDelta(data()['text'] as String? ?? '');
     case 'narration.reset':

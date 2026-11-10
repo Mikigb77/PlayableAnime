@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,6 +11,7 @@ import '../../core/api/api_error.dart';
 import '../../core/api/api_error_text.dart';
 import '../../core/l10n.dart';
 import '../../core/navigation.dart';
+import '../../core/preferences.dart';
 import '../../design/design.dart';
 import '../../router.dart' show Routes;
 import '../account/account_repository.dart';
@@ -24,6 +26,8 @@ import '../voice/input_mode.dart';
 import '../voice/speech_engine.dart';
 import 'ending_card.dart';
 import 'play_controller.dart';
+import 'replay/replay_plays.dart';
+import 'replay/replay_view.dart';
 import 'rewind_sheet.dart';
 import 'scene_details_sheet.dart';
 import 'scene_menu.dart';
@@ -37,11 +41,12 @@ import 'turn_error_card.dart';
 /// written with a calm reveal, older scenes loading as the player scrolls back, the suggested
 /// choices and the standing actions, and the composer with dictation (V1) and slash commands (S5).
 ///
-/// Every scene has its details (A8), a listen button that reads it aloud (V8), and a menu to
-/// illustrate (M2) or report it (F6); the app bar opens `/status`, Memory and the story's settings
-/// (S6). A story that has no scenes yet, just
+/// Every scene has its details (A8), which replay its dice when it has any (S15), a listen button
+/// that reads it aloud (V8), and a menu to illustrate (M2) or report it (F6); the app bar opens
+/// `/status`, Memory and the story's settings (S6). A story that has no scenes yet, just
 /// started from a draft, plays its opening turn as soon as it opens, and so does a story someone
-/// new carries on after its ending (N6).
+/// new carries on after its ending (N6). A turn that was decided and shown but never told is
+/// played out before anything else (A3).
 class StoryScreen extends ConsumerStatefulWidget {
   const StoryScreen({super.key, required this.storyId, this.initialStory});
 
@@ -77,10 +82,19 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   /// Keeps the streaming scene in view until the player scrolls away or its top reaches the top.
   bool _following = false;
+
+  /// The turn in flight is one the story owed, and the page has been sent to it once.
+  bool _owedInView = false;
   bool _showLatest = false;
 
   /// A turn the player started is waiting for the mic to turn off (V2).
   bool _waitingForMic = false;
+
+  /// The replay of the turn in flight is open over the page (gamer mode, S15).
+  bool _replaying = false;
+
+  /// The scene that landed behind the replay, to read aloud once the replay is closed (V8).
+  int? _readAfterReplay;
 
   @override
   void initState() {
@@ -93,6 +107,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     _notices = _play.notices.listen(_onNotice);
     _narrator = ref.read(narratorProvider)..addListener(_narrationChanged);
     _narration = _narrator.notices.listen(_onNarration);
+    // Read from the device now, so the first turn's dice already know the player's choice (S15).
+    ref.read(gamerModeProvider);
     unawaited(_play.start());
   }
 
@@ -117,6 +133,11 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     if (!mounted) return;
     setState(() {});
     if (!_landed && _play.story != null) _landOnLatest();
+    // A turn the story owes starts by itself as the story opens (A3): the page goes to it, as it
+    // does to a turn the player sends.
+    final owed = _play.pending?.resumes ?? false;
+    if (owed && !_owedInView) _following = true;
+    _owedInView = owed;
     // Keeps the turn in view as it streams, and its error card if it fails.
     if (_following && _play.pending != null) _follow();
   }
@@ -126,7 +147,12 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final l10n = context.l10n;
     switch (notice) {
       case SceneSaved(:final turn):
-        unawaited(_readNew(turn));
+        // In gamer mode the dice come first: the reading waits for the replay to close (S15).
+        if (_replaying) {
+          _readAfterReplay = turn;
+        } else {
+          unawaited(_readNew(turn));
+        }
         // The saved scene takes the streaming one's place, with its time and event above the
         // words: keep the words where the player is reading them.
         final before = _topOf(_pendingNarrationKey);
@@ -163,6 +189,16 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         _snack(l10n.errorVersionConflict);
         // The player's words for the turn that lost go back in the box, to send again or not.
         if (action != null) _giveBack(action);
+      case StepsShown(:final details):
+        unawaited(_showThrows(details));
+      case OwedTurnPlaying(:final action):
+        // Another turn was already decided, so that one plays (A3). Words written for this one
+        // go back in the box.
+        _snack(action == null ? l10n.turnOwedPlaying : l10n.turnOwedWordsBack);
+        if (action != null) _giveBack(action);
+      case OwedTurnLetGo(:final action):
+        _snack(l10n.turnOwedLetGo);
+        if (action != null) _giveBack(action);
       case OutOfCredits(:final error, :final turn, :final picture):
         unawaited(_outOfCredits(error, turn: turn, picture: picture));
       case CreditsSpent():
@@ -194,6 +230,69 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     } else if (picture != null) {
       unawaited(_play.illustrate(picture));
     }
+  }
+
+  // ---- The dice ----------------------------------------------------------------------------
+
+  /// Gamer mode (S15): the turn's steps are decided, so its dice play at once, over the page,
+  /// while the story is written behind them. Only a turn with a throw opens it.
+  Future<void> _showThrows(SceneDetails details) async {
+    if (_replaying || !details.hasThrows) return;
+    // From here the reading waits: a scene that lands while the player's choice is still being
+    // read from the device waits for the dice like any other.
+    _replaying = true;
+    try {
+      final on = await ref.read(gamerModeProvider.notifier).loaded();
+      if (!mounted || !on) return;
+      // Never over a sheet or another page the player has opened.
+      if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+      final l10n = context.l10n;
+      final standing = _play.pending?.kind == 'standing';
+      await showReplay(
+        context,
+        own: true,
+        plays: playsOf(
+          details,
+          // A standing action's one step is the action's wire name (S2).
+          stepText: (step) => (standing ? _standingLabel(step.text, l10n) : null) ?? step.text,
+        ),
+        chain: details.chain,
+      );
+    } finally {
+      _replaying = false;
+      final landed = _readAfterReplay;
+      _readAfterReplay = null;
+      if (mounted && landed != null) unawaited(_readNew(landed));
+    }
+  }
+
+  /// A scene's details (A8): its dice replayed when any were thrown (S15), or the list of what
+  /// the facts settled.
+  void _openDetails(Scene scene) {
+    if (scene.details.hasThrows) {
+      unawaited(showSceneReplay(context, scene));
+    } else {
+      showSceneDetails(context, scene);
+    }
+  }
+
+  static String? _standingLabel(String? wire, AppLocalizations l10n) =>
+      StandingAction.values.where((a) => a.wire == wire).firstOrNull?.label(l10n);
+
+  /// What a turn the story owed shows as the player's action. The server keeps a standing action
+  /// by its wire name, and an ending with no note as nothing (A3).
+  String? _owedLabel(String kind, String? action) => switch (kind) {
+    'standing' => _standingLabel(action, context.l10n) ?? action,
+    'end' => action ?? context.l10n.endLabel,
+    _ => action,
+  };
+
+  /// Plays out the turn the story owes (A3).
+  Future<void> _playOwed() async {
+    if (await _micOff() == null) return;
+    _following = true;
+    _quiet();
+    await _play.resume();
   }
 
   // ---- Reading aloud ------------------------------------------------------------------------
@@ -430,7 +529,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   void _dismiss(PendingTurn failed) {
     _play.dismissFailure();
-    // Words the player wrote are never lost: back in the box if it was emptied.
+    // Words the player wrote are never lost: back in the box if it was emptied. A turn the
+    // story owes still plays those words, so they stay with it.
+    if (_play.owes) return;
     if (failed.input.action case final action?) _giveBack(action);
   }
 
@@ -607,7 +708,21 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     if (notification is UserScrollNotification && notification.direction != ScrollDirection.idle) {
       _following = false;
     }
-    final metrics = notification.metrics;
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      // A scroll can end while the page is being laid out, when what it holds changes size.
+      // Nothing may be rebuilt from in there, so the rest waits for the frame to end.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) _scrolled(_scroll.position);
+      });
+    } else {
+      _scrolled(notification.metrics);
+    }
+    return false;
+  }
+
+  /// What follows from where the page now stands: older scenes are fetched near the top, and
+  /// the way back to the newest scene is offered far above it.
+  void _scrolled(ScrollMetrics metrics) {
     // After a failed page, only the retry button asks again, so a lost connection isn't hammered.
     if (_landed && metrics.extentBefore < 900 && _play.olderError == null) {
       unawaited(_play.loadOlder());
@@ -615,7 +730,6 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     // Only once the newest scene is well out of reach, so the pill doesn't sit over the words.
     final latest = _landed && metrics.extentAfter > metrics.viewportDimension * 1.5;
     if (latest != _showLatest) setState(() => _showLatest = latest);
-    return false;
   }
 
   /// Back to the end of the feed. From far back it jumps most of the way and glides the rest, and
@@ -726,7 +840,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                 Composer(
                   controller: _action,
                   focusNode: _focus,
-                  enabled: story.scenes.isNotEmpty && !story.openingDue,
+                  // A turn the story owes plays before any new one (A3). While it is being
+                  // written the box is open as in any turn, to write what comes after it.
+                  enabled:
+                      story.scenes.isNotEmpty && !story.openingDue && !(_play.owes && !_play.busy),
                   busy: _play.busy || _waitingForMic,
                   onSubmit: _send,
                   dictating: _mode.dictating,
@@ -776,7 +893,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         ornament: scene != last || pending != null,
         narrationKey: _narrationKeys.putIfAbsent(scene.turn, GlobalKey.new),
         dropCap: scene.kind == 'opening',
-        onDetails: () => showSceneDetails(context, scene),
+        onDetails: () => _openDetails(scene),
         // A scene the player blocked (F6) is never read.
         listen: _play.isBlocked(scene) || scene.narration.trim().isEmpty
             ? null
@@ -825,11 +942,21 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                   key: _pendingKey,
                   child: _PendingScene(
                     pending: pending,
+                    label: pending.owedKind == null
+                        ? pending.label
+                        : _owedLabel(pending.kind, pending.label),
                     narrationKey: _pendingNarrationKey,
                     onRetry: _retry,
                     onRephrase: _rephrase,
                     onAccount: () => unawaited(context.push(Routes.account)),
                     onDismiss: pending.isOpening ? null : () => _dismiss(pending),
+                  ),
+                ),
+              if (story.unfinishedTurn case final owed? when pending == null && _play.owes)
+                ContentColumn.reading(
+                  child: _OwedTurn(
+                    action: _owedLabel(owed.kind, owed.action),
+                    onContinue: _waitingForMic ? null : () => unawaited(_playOwed()),
                   ),
                 ),
               if (_play.refusal case final refusal? when pending == null)
@@ -856,6 +983,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                 ),
               if (last != null &&
                   !_play.busy &&
+                  !_play.owes &&
                   !_waitingForMic &&
                   story.ending == null &&
                   !story.openingDue)
@@ -1161,11 +1289,56 @@ class _Begin extends StatelessWidget {
   }
 }
 
+/// A turn the story owes (A3): it was decided and its dice were shown, but its scene never
+/// arrived. It is the next thing that happens, whatever else the player meant to do.
+class _OwedTurn extends StatelessWidget {
+  const _OwedTurn({required this.action, required this.onContinue});
+
+  final String? action;
+  final VoidCallback? onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return SceneCard(
+      playerAction: action,
+      ornament: false,
+      narration: Container(
+        key: const ValueKey('turn.owed'),
+        padding: const EdgeInsets.all(Space.lg),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(Radii.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.turnOwedTitle, style: theme.textTheme.titleMedium),
+            const SizedBox(height: Space.xs),
+            Text(
+              l10n.turnOwed,
+              style: theme.textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary),
+            ),
+            const SizedBox(height: Space.md),
+            FilledButton.tonal(
+              key: const ValueKey('turn.owed.continue'),
+              onPressed: onContinue,
+              child: Text(l10n.turnOwedContinue),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The turn in flight: the player's action, then the narration as it streams in, or what went
 /// wrong.
 class _PendingScene extends StatelessWidget {
   const _PendingScene({
     required this.pending,
+    required this.label,
     required this.narrationKey,
     required this.onRetry,
     required this.onRephrase,
@@ -1174,6 +1347,9 @@ class _PendingScene extends StatelessWidget {
   });
 
   final PendingTurn pending;
+
+  /// What the player did, in the app's words.
+  final String? label;
   final Key narrationKey;
   final VoidCallback onRetry;
   final ValueChanged<String> onRephrase;
@@ -1185,7 +1361,7 @@ class _PendingScene extends StatelessWidget {
     final error = pending.error;
     final action = pending.input.action;
     return SceneCard(
-      playerAction: pending.label,
+      playerAction: label,
       spokenAction: pending.spoken,
       ornament: false,
       narration: KeyedSubtree(

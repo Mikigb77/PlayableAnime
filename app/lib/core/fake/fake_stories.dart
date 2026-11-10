@@ -64,6 +64,10 @@ class FakeStory {
   bool openingDue = false;
   String situation = '';
 
+  /// A turn that was decided and shown but never told (A3): its turn number, kind, what the
+  /// player did, and the scene it will save. While it is here, every turn request plays it.
+  JsonMap? unfinished;
+
   int get turn => scenes.isEmpty ? 0 : scenes.last['turn'] as int;
 
   /// How many scenes back a death in the next scene could be rewound (C8): up to 5 on Story, 1 on
@@ -109,6 +113,12 @@ class FakeStory {
     'successor': ending == null ? null : successor,
     'heirs': ending == null || ending?['closed'] == true ? const <JsonMap>[] : heirs,
     'opening_due': openingDue,
+    if (unfinished case final owed? when ending == null)
+      'unfinished_turn': {
+        'turn': owed['turn'],
+        'kind': owed['kind'],
+        if (owed['action'] != null) 'action': owed['action'],
+      },
   };
 }
 

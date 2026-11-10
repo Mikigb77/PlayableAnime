@@ -90,6 +90,8 @@ The first version's state, checked against the code in WS18.
 - [ ] Slash commands: `/status` works; `/thoughts <character>`, `/recap` and `/ooc` are still to come
 - [x] Settings for narration length and tone (S6)
 - [x] A color of the player's own for each story, instead of its genre's (S13)
+- [x] The dice shown as a replay of each turn, step by step, with gamer mode to play them before
+      the scene (S15)
 - [ ] More BYOK providers (OpenAI, Anthropic, OpenRouter)
 - [x] English, Spanish and Catalan (S10): the app's text, the starters, the privacy policy and stories, each story in the language it started in
 

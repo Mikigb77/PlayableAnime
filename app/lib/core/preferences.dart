@@ -87,6 +87,54 @@ class LanguageController extends Notifier<AppLanguage> {
 
 final languageProvider = NotifierProvider<LanguageController, AppLanguage>(LanguageController.new);
 
+/// Gamer mode (S15): each turn's dice play before its scene is read. Off by default, and kept on
+/// this device like the other preferences.
+class GamerModeController extends Notifier<bool> {
+  static const _key = 'play.gamer_mode';
+
+  /// The stored choice being read, so a turn played the moment a story opens still gets it.
+  Future<void> _loaded = Future.value();
+
+  /// The player flipped the switch before the stored choice was read: theirs wins.
+  var _changed = false;
+
+  @override
+  bool build() {
+    _changed = false;
+    _loaded = _load();
+    return false;
+  }
+
+  /// The player's choice, once the stored one is read.
+  Future<bool> loaded() async {
+    await _loaded;
+    return state;
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_key);
+      if (saved != null && !_changed) state = saved;
+    } on Object {
+      // No stored choice (or no storage, as in tests): off.
+    }
+  }
+
+  Future<void> set(bool on) async {
+    _changed = true;
+    state = on;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_key, on);
+    } on Object {
+      // The choice still applies for this run.
+    }
+  }
+}
+
+final gamerModeProvider = NotifierProvider<GamerModeController, bool>(GamerModeController.new);
+
 /// The language the app shows now, as a code such as `es`: the player's choice, or the device's
 /// languages resolved the way the app resolves them. For what the server writes in the app's
 /// language, such as the starter premises (S10).

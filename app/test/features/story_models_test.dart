@@ -210,6 +210,105 @@ void main() {
       expect(const TurnInput.standing('wait').toJson(2)['standing'], 'wait');
       // The opening takes no field and no input mode.
       expect(const TurnInput.opening().toJson(1), {'kind': 'opening', 'expected_version': 1});
+      // Neither does playing out the turn a story owes (A3).
+      expect(const TurnInput.resume().toJson(4), {'kind': 'resume', 'expected_version': 4});
+    });
+
+    test('a throw reads its dice, its number and its mark (A3)', () {
+      final thrown = SceneDetails.fromJson(const {
+        'steps': [
+          {
+            'text': 'Slip under the axe',
+            'class': 'contested',
+            'reason':
+                'Footwork (second nature), 4 dice, against the bandit chief, level 3: '
+                '43 against 27, over the top.',
+            'roll': {
+              'odds_label': '43 against 27',
+              'result': 'success',
+              'seed': 's9',
+              'throw': {
+                'dice': [
+                  {'kind': 'plain', 'face': 20, 'sprung': false},
+                  {'kind': 'plain', 'face': 6, 'sprung': true},
+                  {'kind': 'green', 'face': 3, 'sprung': false},
+                  {'kind': 'violet', 'face': 4, 'sprung': false},
+                  {'kind': 'gold', 'face': 2, 'sprung': false},
+                ],
+                'hand': 4,
+                'hand_why': 'Footwork (second nature), 4 dice',
+                'greens': ['Coming from behind'],
+                'number': 27,
+                'made_of': [
+                  {'text': 'the bandit chief, level 3', 'points': 27},
+                ],
+                'total': 43,
+                'most': 80,
+                'mark': 'passed',
+                'against': 'His axe is already falling.',
+                'deadly': true,
+                'miss_costs': 'A miss by more than 5 kills.',
+                'insight': false,
+                'insight_at': 15,
+              },
+            },
+          },
+        ],
+      }).steps.single.roll!.thrown!;
+      expect(
+        [for (final die in thrown.dice) die.kind],
+        [DieKind.plain, DieKind.plain, DieKind.green, DieKind.violet, DieKind.gold],
+      );
+      expect([for (final die in thrown.dice) die.sprung], [false, true, false, false, false]);
+      // A gold die never counts under ten.
+      expect([for (final die in thrown.dice) die.value], [20, 6, 3, 4, 10]);
+      expect((thrown.hand, thrown.number, thrown.total, thrown.most), (4, 27, 43, 80));
+      expect(thrown.mark, ThrowMark.passed);
+      expect(thrown.madeOf.single, (text: 'the bandit chief, level 3', points: 27));
+      expect((thrown.deadly, thrown.missCosts), (true, 'A miss by more than 5 kills.'));
+      expect((thrown.insight, thrown.insightAt), (false, 15));
+      expect(thrown.greens, ['Coming from behind']);
+      expect(thrown.ofTheWorld, isFalse);
+    });
+
+    test('a roll saved before the dice travelled has no throw, and a broken one is left out', () {
+      final details = SceneDetails.fromJson(const {
+        'steps': [
+          {
+            'text': 'Old',
+            'class': 'contested',
+            'reason': '',
+            'roll': {'odds_label': 'about even', 'result': 'failure', 'seed': 's1'},
+          },
+          {
+            'text': 'Broken',
+            'class': 'contested',
+            'reason': '',
+            'roll': {'odds_label': '3 against 7', 'result': 'failure', 'seed': 's2', 'throw': 7},
+          },
+        ],
+      });
+      expect(details.steps.first.roll!.thrown, isNull);
+      expect(details.steps.last.roll!.thrown, isNull);
+      expect(details.hasThrows, isFalse);
+    });
+
+    test('a story reads the turn it owes, and a saved scene pays it (A3)', () {
+      final story = Story.fromJson(const {
+        'id': 's',
+        'title': 'T',
+        'version': 3,
+        'scenes': <Object>[],
+        'unfinished_turn': {'turn': 4, 'kind': 'standing', 'action': 'wait'},
+      });
+      final owed = story.unfinishedTurn!;
+      expect((owed.turn, owed.kind, owed.action), (4, 'standing', 'wait'));
+      final after = story.withScene(
+        Scene.fromJson(const {'turn': 4, 'narration': 'Done.'}),
+        version: 4,
+      );
+      expect(after.unfinishedTurn, isNull);
+      expect(Story.fromJson(const {'id': 's', 'title': 'T'}).unfinishedTurn, isNull);
     });
 
     test('scene details read steps, rolls, beats, the chain and where a plan stopped', () {
