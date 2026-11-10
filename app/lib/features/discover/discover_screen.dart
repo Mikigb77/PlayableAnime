@@ -9,9 +9,9 @@ import '../library/library.dart';
 import '../library/library_screen.dart' show storyMeta;
 import 'premises.dart';
 
-/// The way back into the latest story, when there is one to play on; then the starter premises,
-/// the flagship worlds first and large (S1), a way to start from your own idea, and the other
-/// worlds as a shelf of covers.
+/// The app's name and a headline in the night air, a way to start from your own idea, the way
+/// back into the latest story when there is one to play on, then the starter premises: the
+/// flagship worlds first and large (S1), and the others as a shelf of covers.
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
@@ -19,7 +19,11 @@ class DiscoverScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final header = ContentColumn(
-      child: PageHeader(title: l10n.discoverTitle, subtitle: l10n.discoverSubtitle),
+      child: PageHeader(
+        brand: true,
+        title: l10n.discoverHeadline,
+        accentTitle: l10n.discoverHeadlineAccent,
+      ),
     );
     // The first load waits for the stories too, so the story to continue doesn't push the worlds
     // down once they show. A failed or retried load of them never holds Discover up.
@@ -27,61 +31,73 @@ class DiscoverScreen extends ConsumerWidget {
     final stories = ref.watch(storiesProvider);
     final storiesFirstLoad = stories.isLoading && !stories.hasValue && !stories.hasError;
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: AsyncValueView(
-          value: storiesFirstLoad ? const AsyncLoading<List<Premise>>() : premises,
-          onRetry: () => ref.invalidate(premisesProvider),
-          loading: (_) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              header,
-              const Expanded(child: ContentColumn(child: SkeletonList(imageHeight: 220))),
-            ],
-          ),
-          builder: (premises) {
-            final continuing = stories.value ?? const <StorySummary>[];
-            final signature = premises.where((p) => p.flagship).toList();
-            final more = premises.where((p) => !p.flagship).toList();
-            return RefreshIndicator(
-              onRefresh: () {
-                ref.invalidate(storiesProvider);
-                return ref.refresh(premisesProvider.future);
-              },
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(child: header),
-                  SliverToBoxAdapter(child: _ContinueStory(stories: continuing)),
-                  if (premises.isEmpty)
-                    SliverToBoxAdapter(
-                      child: EmptyState(
-                        icon: Icons.explore_outlined,
-                        title: l10n.discoverEmptyTitle,
-                        message: l10n.discoverEmptyBody,
-                        actionLabel: l10n.discoverCreateAction,
-                        onAction: () => context.push(Routes.create),
-                      ),
-                    ),
-                  if (signature.isNotEmpty) ...[
-                    SliverToBoxAdapter(
-                      child: ContentColumn(child: SectionLabel(l10n.discoverSignature)),
-                    ),
-                    _PremiseGrid(premises: signature),
-                  ],
-                  if (premises.isNotEmpty)
-                    const SliverToBoxAdapter(child: ContentColumn(child: _CreateYourOwn())),
-                  if (more.isNotEmpty) ...[
-                    SliverToBoxAdapter(
-                      child: ContentColumn(child: SectionLabel(l10n.discoverMore)),
-                    ),
-                    _PremiseGrid(premises: more, compact: true),
-                  ],
-                  const SliverToBoxAdapter(child: SizedBox(height: Space.xxxl)),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: Ambient()),
+          SafeArea(
+            bottom: false,
+            child: AsyncValueView(
+              value: storiesFirstLoad ? const AsyncLoading<List<Premise>>() : premises,
+              onRetry: () => ref.invalidate(premisesProvider),
+              loading: (_) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  header,
+                  const Expanded(child: ContentColumn(child: SkeletonList(imageHeight: 220))),
                 ],
               ),
-            );
-          },
-        ),
+              builder: (premises) {
+                final continuing = stories.value ?? const <StorySummary>[];
+                final signature = premises.where((p) => p.flagship).toList();
+                final more = premises.where((p) => !p.flagship).toList();
+                return RefreshIndicator(
+                  onRefresh: () {
+                    ref.invalidate(storiesProvider);
+                    return ref.refresh(premisesProvider.future);
+                  },
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: RiseIn(child: header)),
+                      if (premises.isNotEmpty)
+                        const SliverToBoxAdapter(
+                          child: RiseIn(order: 1, child: ContentColumn(child: _CreateYourOwn())),
+                        ),
+                      SliverToBoxAdapter(
+                        child: RiseIn(order: 2, child: _ContinueStory(stories: continuing)),
+                      ),
+                      if (premises.isEmpty)
+                        SliverToBoxAdapter(
+                          child: EmptyState(
+                            icon: Icons.explore_outlined,
+                            title: l10n.discoverEmptyTitle,
+                            message: l10n.discoverEmptyBody,
+                            actionLabel: l10n.discoverCreateAction,
+                            onAction: () => context.push(Routes.create),
+                          ),
+                        ),
+                      if (signature.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: RiseIn(
+                            order: 3,
+                            child: ContentColumn(child: SectionLabel(l10n.discoverSignature)),
+                          ),
+                        ),
+                        _PremiseGrid(premises: signature),
+                      ],
+                      if (more.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: ContentColumn(child: SectionLabel(l10n.discoverMore)),
+                        ),
+                        _PremiseGrid(premises: more, compact: true),
+                      ],
+                      const SliverToBoxAdapter(child: PageEnd()),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -120,7 +136,7 @@ class _PremiseGrid extends StatelessWidget {
         final side = (constraints.crossAxisExtent - width) / 2 + Space.gutter;
         if (columns == 1) {
           return SliverToBoxAdapter(
-            child: _SignatureRow(premises: premises, side: side, inner: inner, height: 260 * grow),
+            child: _SignatureRow(premises: premises, side: side, inner: inner, height: 284 * grow),
           );
         }
         final tile = (inner - Space.lg * (columns - 1)) / columns;
@@ -131,7 +147,7 @@ class _PremiseGrid extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: Space.lg,
               crossAxisSpacing: Space.lg,
-              mainAxisExtent: compact ? tile * 4 / 3 * grow : 260 * grow,
+              mainAxisExtent: compact ? tile * 4 / 3 * grow : 284 * grow,
             ),
             itemCount: premises.length,
             itemBuilder: (context, i) {
@@ -194,9 +210,9 @@ class _SignatureRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: side),
-        physics: _CardSnap(extent: card + Space.md),
+        physics: _CardSnap(extent: card + 14),
         itemCount: premises.length,
-        separatorBuilder: (_, _) => const SizedBox(width: Space.md),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, i) => SizedBox(
           width: card,
           child: _SignatureCard(premise: premises[i]),
@@ -252,7 +268,6 @@ class _CompactCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final accent = accentFor(GenreAccent.forGenre(premise.genre), Brightness.dark);
     final url = premise.coverUrl;
     final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -276,7 +291,7 @@ class _CompactCover extends StatelessWidget {
       child: ClipRRect(
         borderRadius: Radii.card,
         child: Material(
-          color: Palette.inkContainer,
+          color: Palette.inkSurface,
           child: InkWell(
             onTap: onTap,
             child: Stack(
@@ -327,14 +342,20 @@ class _CompactCover extends StatelessWidget {
                         premise.title,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge!.copyWith(
-                          fontFamily: theme.textTheme.headlineSmall!.fontFamily,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                          color: Palette.inkTextPrimary,
-                        ),
+                        style: coverTitleStyle(18).copyWith(color: Palette.inkTextPrimary),
                       ),
                     ],
+                  ),
+                ),
+                // A thin ring in the genre's accent, as on the large cards.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: Radii.card,
+                        border: Border.all(color: accent.withValues(alpha: 0.34)),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -346,52 +367,87 @@ class _CompactCover extends StatelessWidget {
   }
 }
 
+/// The way into a world of the player's own: a long pill in the accent, right under the
+/// headline that promises it, with a lit round for its icon. It grows with the text size.
 class _CreateYourOwn extends StatelessWidget {
   const _CreateYourOwn();
+
+  static const _shape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(30)));
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.lucid;
     final l10n = context.l10n;
+    final dark = theme.brightness == Brightness.dark;
+    final lit = dark ? colors.accentHi : colors.onAccentSoft;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Space.gutter, Space.xl, Space.gutter, 0),
-      child: Card(
-        margin: EdgeInsets.zero,
-        color: colors.accentSoft,
-        shape: RoundedRectangleBorder(
-          borderRadius: Radii.card,
-          side: BorderSide(color: colors.accent.withValues(alpha: 0.35)),
-        ),
+      padding: const EdgeInsets.fromLTRB(Space.gutter, 2, Space.gutter, 0),
+      child: Material(
+        type: MaterialType.transparency,
+        shape: _shape.copyWith(side: BorderSide(color: colors.accent.withValues(alpha: 0.42))),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push(Routes.create),
-          child: Padding(
-            padding: const EdgeInsets.all(Space.gutter),
-            child: Row(
-              children: [
-                ExcludeSemantics(
-                  child: Icon(Icons.auto_awesome_rounded, color: colors.onAccentSoft, size: 28),
-                ),
-                const SizedBox(width: Space.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.discoverCreateTitle, style: theme.textTheme.titleMedium),
-                      const SizedBox(height: Space.xs),
-                      Text(
-                        l10n.discoverCreateBody,
-                        style: theme.textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: Space.sm),
-                ExcludeSemantics(
-                  child: Icon(Icons.arrow_forward_rounded, color: colors.onAccentSoft),
-                ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colors.accent.withValues(alpha: dark ? 0.16 : 0.2),
+                colors.accent.withValues(alpha: dark ? 0.05 : 0.08),
               ],
+              stops: const [0, 0.6],
+            ),
+          ),
+          child: InkWell(
+            onTap: () => context.push(Routes.create),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 60),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(9, 8, 10, 8),
+                child: Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colors.accent.withValues(alpha: 0.16),
+                          boxShadow: [
+                            BoxShadow(color: colors.accent.withValues(alpha: 0.3), blurRadius: 22),
+                          ],
+                        ),
+                        child: Icon(Icons.auto_awesome_rounded, color: lit, size: 21),
+                      ),
+                    ),
+                    const SizedBox(width: Space.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.discoverCreateTitle,
+                            style: theme.textTheme.titleMedium!.copyWith(fontSize: 15, height: 1.2),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            l10n.discoverCreateBody,
+                            style: theme.textTheme.bodySmall!.copyWith(color: colors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ExcludeSemantics(
+                      child: SizedBox.square(
+                        dimension: 40,
+                        child: Icon(Icons.arrow_forward_rounded, color: lit, size: 21),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -400,9 +456,9 @@ class _CreateYourOwn extends StatelessWidget {
   }
 }
 
-/// The latest story the player can play on, as its Library row, so coming back to the app is one
-/// tap from where they left off. Nothing while the stories load, when they fail to, or when none
-/// is left to play.
+/// The latest story the player can play on, as its painted Library row with a lit way in, so
+/// coming back to the app is one tap from where they left off. Nothing while the stories load,
+/// when they fail to, or when none is left to play.
 class _ContinueStory extends StatelessWidget {
   const _ContinueStory({required this.stories});
 

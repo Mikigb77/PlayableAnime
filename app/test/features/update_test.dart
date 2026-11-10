@@ -696,7 +696,7 @@ void main() {
       expect(find.text(l10n.updateCoverTitle), findsOneWidget);
       expect(find.text(l10n.updateCoverBody), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
-      await tester.tap(find.text(l10n.navAccount), warnIfMissed: false);
+      await tester.tap(find.byTooltip(l10n.navAccount), warnIfMissed: false);
       await settle(tester);
       expect(find.byKey(const Key('account.update')), findsNothing);
 

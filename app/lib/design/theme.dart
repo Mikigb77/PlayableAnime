@@ -11,8 +11,15 @@ class LucidColors extends ThemeExtension<LucidColors> {
   const LucidColors({
     required this.accent,
     required this.onAccent,
+    required this.accentHi,
+    required this.accentLo,
     required this.accentSoft,
     required this.onAccentSoft,
+    required this.glass,
+    required this.glassBorder,
+    required this.glassShadow,
+    required this.hairline,
+    required this.veil,
     required this.background,
     required this.textPrimary,
     required this.textSecondary,
@@ -28,7 +35,12 @@ class LucidColors extends ThemeExtension<LucidColors> {
   /// The story's accent, readable as text on every surface of the theme.
   final Color accent;
 
-  /// Text and icons on a solid [accent] fill.
+  /// The bright and the deep end of the accent's gradient: gold lettering, the send button, a
+  /// drop capital. Both are readable as text on the page, like [accent].
+  final Color accentHi;
+  final Color accentLo;
+
+  /// Text and icons on a solid [accent] fill, and on the accent's gradient.
   final Color onAccent;
 
   /// A quiet tint of the accent for selected states and badges.
@@ -36,6 +48,18 @@ class LucidColors extends ThemeExtension<LucidColors> {
 
   /// Text and icons on [accentSoft].
   final Color onAccentSoft;
+
+  /// A floating bar's fill, seen through with a blur behind it, its hairline edge and the
+  /// shadow it casts on the page.
+  final Color glass;
+  final Color glassBorder;
+  final Color glassShadow;
+
+  /// The quietest edge: around a chip, a tile or a card that sits on the page.
+  final Color hairline;
+
+  /// A faint wash of the text color, for a chip's fill.
+  final Color veil;
 
   final Color background;
   final Color textPrimary;
@@ -55,24 +79,48 @@ class LucidColors extends ThemeExtension<LucidColors> {
   final Color caution;
   final Color danger;
 
+  /// The accent from its bright end to its deep end, as gold lettering and filled buttons wear it.
+  LinearGradient accentGradient({
+    AlignmentGeometry begin = Alignment.topLeft,
+    AlignmentGeometry end = Alignment.bottomRight,
+  }) => LinearGradient(
+    begin: begin,
+    end: end,
+    colors: [accentHi, accent, accentLo],
+    stops: const [0, 0.5, 1],
+  );
+
   @override
-  LucidColors copyWith({Color? accent, Color? onAccent, Color? accentSoft, Color? onAccentSoft}) =>
-      LucidColors(
-        accent: accent ?? this.accent,
-        onAccent: onAccent ?? this.onAccent,
-        accentSoft: accentSoft ?? this.accentSoft,
-        onAccentSoft: onAccentSoft ?? this.onAccentSoft,
-        background: background,
-        textPrimary: textPrimary,
-        textSecondary: textSecondary,
-        textMuted: textMuted,
-        shimmerBase: shimmerBase,
-        shimmerHighlight: shimmerHighlight,
-        vignette: vignette,
-        success: success,
-        caution: caution,
-        danger: danger,
-      );
+  LucidColors copyWith({
+    Color? accent,
+    Color? onAccent,
+    Color? accentHi,
+    Color? accentLo,
+    Color? accentSoft,
+    Color? onAccentSoft,
+  }) => LucidColors(
+    accent: accent ?? this.accent,
+    onAccent: onAccent ?? this.onAccent,
+    accentHi: accentHi ?? this.accentHi,
+    accentLo: accentLo ?? this.accentLo,
+    accentSoft: accentSoft ?? this.accentSoft,
+    onAccentSoft: onAccentSoft ?? this.onAccentSoft,
+    glass: glass,
+    glassBorder: glassBorder,
+    glassShadow: glassShadow,
+    hairline: hairline,
+    veil: veil,
+    background: background,
+    textPrimary: textPrimary,
+    textSecondary: textSecondary,
+    textMuted: textMuted,
+    shimmerBase: shimmerBase,
+    shimmerHighlight: shimmerHighlight,
+    vignette: vignette,
+    success: success,
+    caution: caution,
+    danger: danger,
+  );
 
   @override
   LucidColors lerp(LucidColors? other, double t) {
@@ -81,8 +129,15 @@ class LucidColors extends ThemeExtension<LucidColors> {
     return LucidColors(
       accent: l(accent, other.accent),
       onAccent: l(onAccent, other.onAccent),
+      accentHi: l(accentHi, other.accentHi),
+      accentLo: l(accentLo, other.accentLo),
       accentSoft: l(accentSoft, other.accentSoft),
       onAccentSoft: l(onAccentSoft, other.onAccentSoft),
+      glass: l(glass, other.glass),
+      glassBorder: l(glassBorder, other.glassBorder),
+      glassShadow: l(glassShadow, other.glassShadow),
+      hairline: l(hairline, other.hairline),
+      veil: l(veil, other.veil),
       background: l(background, other.background),
       textPrimary: l(textPrimary, other.textPrimary),
       textSecondary: l(textSecondary, other.textSecondary),
@@ -131,6 +186,7 @@ abstract final class AppTheme {
     final error = dark ? Palette.inkError : Palette.paperError;
 
     final accent = accentFor(genreAccent, brightness);
+    final (accentHi, accentLo) = accentEnds(genreAccent, brightness);
     final onAccent = onColor(accent);
     final accentSoft = blend(surface, accent, dark ? 0.16 : 0.14);
     final onAccentSoft = ensureContrast(accent, accentSoft);
@@ -178,8 +234,17 @@ abstract final class AppTheme {
     final colors = LucidColors(
       accent: accent,
       onAccent: onAccent,
+      accentHi: accentHi,
+      accentLo: accentLo,
       accentSoft: accentSoft,
       onAccentSoft: onAccentSoft,
+      glass: (dark ? const Color(0xFF0F1219) : Palette.paperSurface).withValues(
+        alpha: dark ? 0.62 : 0.74,
+      ),
+      glassBorder: textPrimary.withValues(alpha: dark ? 0.1 : 0.12),
+      glassShadow: const Color(0xFF000000).withValues(alpha: dark ? 0.38 : 0.14),
+      hairline: textPrimary.withValues(alpha: dark ? 0.09 : 0.14),
+      veil: textPrimary.withValues(alpha: dark ? 0.055 : 0.05),
       background: background,
       textPrimary: textPrimary,
       textSecondary: textSecondary,
@@ -197,9 +262,9 @@ abstract final class AppTheme {
       accent: accent,
     );
 
-    const buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14)));
-    const buttonPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 14);
-    final buttonText = text.labelLarge!.copyWith(fontSize: 15);
+    const buttonShape = StadiumBorder();
+    const buttonPadding = EdgeInsets.symmetric(horizontal: 24, vertical: 14);
+    final buttonText = text.labelLarge!.copyWith(fontSize: 15.5);
 
     return ThemeData(
       useMaterial3: true,
@@ -264,7 +329,7 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           shape: buttonShape,
           padding: buttonPadding,
-          minimumSize: const Size(64, Layout.minTouch),
+          minimumSize: const Size(64, 52),
           textStyle: buttonText,
         ),
       ),
@@ -272,9 +337,10 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           shape: buttonShape,
           padding: buttonPadding,
-          minimumSize: const Size(64, Layout.minTouch),
+          minimumSize: const Size(64, 52),
           foregroundColor: textPrimary,
-          side: BorderSide(color: outline),
+          backgroundColor: surface.withValues(alpha: 0.4),
+          side: BorderSide(color: textPrimary.withValues(alpha: dark ? 0.22 : 0.3)),
           textStyle: buttonText,
         ),
       ),

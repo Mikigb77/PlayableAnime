@@ -5,6 +5,7 @@ import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
 import 'package:playable_anime/core/l10n.dart';
 import 'package:playable_anime/core/session/session.dart';
+import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/privacy_screen.dart';
 import 'package:playable_anime/features/auth/auth_repository.dart';
 import 'package:playable_anime/features/auth/auth_widgets.dart';
@@ -67,6 +68,51 @@ void main() {
       await settle(tester);
       expect(find.byType(PrivacyScreen), findsOneWidget);
     });
+
+    testWidgets('opens on the forest gate, under one headline', (tester) async {
+      final handle = tester.ensureSemantics();
+      await launchApp(tester, backend: backend, store: store);
+      expect(find.byKey(const Key('welcome.gate')), findsOneWidget);
+      expect(find.byType(BrandMark), findsOneWidget);
+      expect(find.text(l10n.welcomeHeadline), findsOneWidget);
+      // The second line is set in gold.
+      expect(
+        tester.widget<GradientText>(find.byType(GradientText)).text,
+        l10n.welcomeHeadlineAccent,
+      );
+      // A screen reader hears the two lines as one heading, and nothing of the painting.
+      expect(
+        tester.getSemantics(
+          find.bySemanticsLabel('${l10n.welcomeHeadline} ${l10n.welcomeHeadlineAccent}'),
+        ),
+        isSemantics(isHeader: true),
+      );
+      expect(tester.takeException(), isNull);
+      handle.dispose();
+    });
+
+    for (final (name, size, scale) in [
+      ('a small phone at twice the text size', Size(320, 568), 2.0),
+      ('a wide window', Size(1280, 800), 1.0),
+      ('a phone on its side', Size(844, 390), 1.0),
+    ]) {
+      testWidgets('fits $name, in every language', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+        for (final locale in AppLocalizations.supportedLocales) {
+          tester.platformDispatcher.localesTestValue = [locale];
+          await launchApp(tester, backend: backend, store: store, size: size);
+          expect(tester.takeException(), isNull, reason: '$locale');
+          final words = await AppLocalizations.delegate.load(locale);
+          // Everything on it can be reached, down to the agreement.
+          await tester.ensureVisible(find.text(words.authHaveAccount));
+          await settle(tester);
+          expect(tester.takeException(), isNull, reason: '$locale');
+          await tester.pumpWidget(const SizedBox());
+        }
+      });
+    }
 
     testWidgets('hides Google where this build has no client for it', (tester) async {
       await launchApp(

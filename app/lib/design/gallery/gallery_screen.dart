@@ -38,6 +38,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   late GenreAccent _accent = widget.accent ?? GenreAccent.lucid;
   late double _textScale = widget.textScale ?? 1;
   bool _streaming = false;
+  int _tab = 0;
   String _streamed = _sampleNarration;
   final _composer = TextEditingController();
 
@@ -81,6 +82,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         children: [
           ContentColumn(child: _controls(context)),
           _section(context, 'Colors and type', _swatches(context)),
+          _section(context, 'Gold, glass and night air', _look(context)),
           _section(
             context,
             'Scene card',
@@ -448,6 +450,80 @@ class _GalleryScreenState extends State<GalleryScreen> {
         const SizedBox(height: Space.sm),
         const NarrationText('Narration in Literata, *with emphasis*.'),
         Text('+8 h · Day 3, dusk', style: context.lucidText.meta),
+      ],
+    );
+  }
+
+  /// The pieces the look is made of: gradient lettering, the app's mark, glass over the night
+  /// air, the tab bar, the pills and the bead, and a paragraph with its drop capital.
+  Widget _look(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const BrandMark(),
+        const SizedBox(height: Space.lg),
+        Text('Pick a world, or', style: theme.textTheme.displaySmall),
+        GradientText('dream up your own.', style: theme.textTheme.displaySmall!, balanced: true),
+        const SizedBox(height: Space.lg),
+        const Eyebrow('An eyebrow'),
+        const SizedBox(height: Space.lg),
+        ClipRRect(
+          borderRadius: Radii.card,
+          child: SizedBox(
+            height: 200,
+            child: Stack(
+              children: [
+                const Positioned.fill(child: Ambient()),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: LucidTabBar(
+                    tabs: const [
+                      LucidTab(
+                        icon: Icons.explore_outlined,
+                        selectedIcon: Icons.explore,
+                        label: 'Discover',
+                      ),
+                      LucidTab(
+                        icon: Icons.auto_stories_outlined,
+                        selectedIcon: Icons.auto_stories,
+                        label: 'Library',
+                      ),
+                      LucidTab(
+                        icon: Icons.person_outline_rounded,
+                        selectedIcon: Icons.person_rounded,
+                        label: 'Account',
+                      ),
+                    ],
+                    selected: _tab,
+                    onSelected: (i) => setState(() => _tab = i),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Space.lg),
+        Wrap(
+          spacing: Space.md,
+          runSpacing: Space.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            GhostPill(icon: Icons.insights_rounded, label: 'How it played out', onPressed: () {}),
+            GhostPill(
+              large: true,
+              icon: Icons.visibility_outlined,
+              label: 'Observe',
+              onPressed: () {},
+            ),
+            AccentOrb(icon: Icons.arrow_upward_rounded, tooltip: 'Send', onPressed: () {}),
+            const AccentOrb(icon: Icons.arrow_upward_rounded, tooltip: 'Send', lit: false),
+          ],
+        ),
+        const SizedBox(height: Space.lg),
+        const StarRule(),
+        const SizedBox(height: Space.lg),
+        const NarrationText(_sampleNarration, dropCap: true),
       ],
     );
   }
