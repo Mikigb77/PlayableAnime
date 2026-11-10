@@ -16,6 +16,7 @@ import 'package:playable_anime/core/session/session_controller.dart';
 import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/account_repository.dart';
 import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
+import 'package:playable_anime/features/story/replay/replay_view.dart';
 import 'package:playable_anime/features/story/scene_details_sheet.dart';
 import 'package:playable_anime/features/story/scene_view.dart';
 import 'package:playable_anime/features/story/status_screen.dart';
@@ -434,29 +435,66 @@ void main() {
     expect(find.text(l10n.classContested.toUpperCase()), findsWidgets);
   });
 
-  testWidgets('scene details say what struck back after a step (N6)', (tester) async {
+  testWidgets('a scene the dice decided opens as a replay, with what struck back (S15, N6)', (
+    tester,
+  ) async {
     await serve(tester);
     await open(tester);
     await send(tester, 'I strike at the masked disciple');
     await settle(tester);
     await openDetails(tester, 4);
-    expect(find.text(l10n.detailsStruck), findsOneWidget);
+    // The dice themselves, not the list: asked for from the scene, it keeps the scene's title.
+    expect(find.byType(ReplayScreen), findsOneWidget);
+    expect(find.byType(SceneDetailsView), findsNothing);
     expect(
-      find.text('The masked disciple strikes back (unlikely): it misses you.'),
+      find.descendant(of: find.byType(ReplayScreen), matching: find.text(l10n.sceneDetails)),
       findsOneWidget,
     );
-    expect(words(l10n.detailsOdds('unlikely')), findsOneWidget);
+    expect(find.byKey(const ValueKey('replay.stage.0.run')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('replay.skip')));
+    await settle(tester, frames: 10);
+    expect(find.text('Land the blow before they can answer'), findsOneWidget);
+    expect(find.text(l10n.replayRolled(34, 27)), findsOneWidget);
+    // What struck back has its own throw: the character's, to get clear.
+    expect(find.text('The masked disciple'), findsOneWidget);
+    expect(find.text(l10n.replayRolled(35, 27)), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('replay.row.1')));
+    await settle(tester, frames: 10);
+    expect(find.text(l10n.replayStruck(1).toUpperCase()), findsOneWidget);
+    expect(find.text('The masked disciple strikes back. It misses you.'), findsOneWidget);
+    expect(find.text(l10n.replayMasteryHolds(4, 10)), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('replay.back')));
+    await tester.tap(find.byKey(const ValueKey('replay.back')));
+    await settle(tester, frames: 12);
+    expect(find.byType(ReplayScreen), findsNothing);
   });
 
-  testWidgets('scene details explain the beats that made something true (R2)', (tester) async {
+  testWidgets('the replay shows the check that made something true (R2)', (tester) async {
     await serve(tester);
     await open(tester);
     await send(tester, 'I climb down a rope from the bell tower');
     await settle(tester);
     await openDetails(tester, 4);
-    expect(find.text('Find a rope'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('replay.skip')));
+    await settle(tester, frames: 10);
+
+    // The check comes before the step that relied on it, on the world's one die.
+    final check = find.byKey(const ValueKey('replay.row.0'));
+    expect(find.descendant(of: check, matching: find.text('Find a rope')), findsOneWidget);
+    expect(find.descendant(of: check, matching: find.text(l10n.replayRolled(14, 11))), findsOne);
     expect(
-      find.text(l10n.detailsBeatMadeCanon('a coil of rope by the bell tower')),
+      find.descendant(of: check, matching: find.text(l10n.replayEndThere.toUpperCase())),
+      findsOneWidget,
+    );
+    await tester.tap(check);
+    await settle(tester, frames: 10);
+    expect(find.text(l10n.replayCheck(1).toUpperCase()), findsOneWidget);
+    expect(find.text(l10n.replayWorldDie), findsOneWidget);
+    expect(find.text('A coil of rope by the bell tower'), findsOneWidget);
+    expect(
+      find.text('A bell tower keeps rope for its bell, and nothing said there was none.'),
       findsOneWidget,
     );
   });
@@ -569,7 +607,7 @@ void main() {
   });
 
   group('turn errors', () {
-    testWidgets('a storyteller failure drops the words; dismissing gives the action back', (
+    testWidgets('a storyteller failure drops the words, and a retry plays the same turn', (
       tester,
     ) async {
       await serve(tester);
@@ -577,13 +615,33 @@ void main() {
       await send(tester, '[fail:llm_unavailable] I look around');
       expect(find.byType(TurnErrorCard), findsOneWidget);
       expect(find.byType(StreamingNarration), findsNothing);
-      expect(find.text(l10n.retry), findsOneWidget);
       expect(box(tester), isEmpty);
+
+      // Its steps were decided before the storyteller failed, so the story owes this turn (A3):
+      // the retry asks for it by name, and sends no words a second time.
+      await tester.tap(find.text(l10n.retry));
+      await pumpUntil(tester, () => find.byType(TurnErrorCard).evaluate().isEmpty);
+      await settle(tester);
+      final again = backend.requests.lastWhere((r) => r.uri.path.endsWith('/turns'));
+      expect(again.json['kind'], 'resume');
+      expect(again.json.containsKey('action'), isFalse);
+      final saved = tester.widgetList<SceneView>(find.byType(SceneView)).last.scene;
+      expect((saved.turn, saved.playerAction), (4, '[fail:llm_unavailable] I look around'));
+    });
+
+    testWidgets('a turn that failed before anything was decided: dismissing gives the words back', (
+      tester,
+    ) async {
+      await serve(tester);
+      await open(tester);
+      await send(tester, '[fail:unreadable_action] Hm');
+      expect(find.byType(TurnErrorCard), findsOneWidget);
 
       await tester.tap(find.text(l10n.turnDismiss));
       await settle(tester);
       expect(find.byType(TurnErrorCard), findsNothing);
-      expect(box(tester), '[fail:llm_unavailable] I look around');
+      expect(find.byKey(const ValueKey('turn.owed')), findsNothing);
+      expect(box(tester), '[fail:unreadable_action] Hm');
     });
 
     testWidgets('an unreadable action goes back in the box to say it another way', (tester) async {

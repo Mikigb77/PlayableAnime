@@ -1107,5 +1107,139 @@
         "type": "int"
       }
     }
-  }
+  },
+  "replayTitleOwn": "How it plays out",
+  "replaySkip": "Skip",
+  "replayAgain": "Play again",
+  "replayBack": "Back to the story",
+  "replayGoOn": "Go on with the turn",
+  "replayStep": "Step {number}",
+  "@replayStep": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "replayCheck": "Step {number}: is it there?",
+  "@replayCheck": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "replayStruck": "Step {number}: struck back",
+  "@replayStruck": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "replayTapOn": "Tap to go on",
+  "replayTapResult": "Tap to see the result",
+  "replayAgainst": "Against",
+  "replayDeadly": "Deadly",
+  "replayNeeds": "Needs {number}",
+  "@replayNeeds": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "replayAtMost": "{most} at most",
+  "@replayAtMost": {
+    "placeholders": {
+      "most": {
+        "type": "int"
+      }
+    }
+  },
+  "replayVs": "against",
+  "replayRolled": "Rolled {total}, needed {number}",
+  "@replayRolled": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "replayWorldDie": "The world's die",
+  "replayLastInsight": "Last die: insight",
+  "replayLastMastery": "Last die: mastery",
+  "replayTwenty": "A 20 throws one more",
+  "replayCountsAs": "{face} counts as {floor}",
+  "@replayCountsAs": {
+    "placeholders": {
+      "face": {
+        "type": "int"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "replayOverTop": "Over the top by {over}: more than this hand can ordinarily do.",
+  "@replayOverTop": {
+    "placeholders": {
+      "over": {
+        "type": "int"
+      }
+    }
+  },
+  "replayInsight": "Insight on a {face}: it counts as three uses of the move.",
+  "@replayInsight": {
+    "placeholders": {
+      "face": {
+        "type": "int"
+      }
+    }
+  },
+  "replayMasteryHolds": "Mastery holds: the {face} counts as {floor}.",
+  "@replayMasteryHolds": {
+    "placeholders": {
+      "face": {
+        "type": "int"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "replayMarkTop": "Over the top",
+  "replayMarkPassed": "Passed",
+  "replayMarkClose": "So close",
+  "replayMarkMissed": "Missed",
+  "replayEndCertain": "Done",
+  "replayEndThere": "There",
+  "replayEndNotThere": "Not there",
+  "replayEndLands": "It lands",
+  "replayEndHeld": "No harm",
+  "replayCertain": "Certain: no roll",
+  "replayRuledOut": "Ruled out: no roll",
+  "replayLands": "Certain: it lands, with no roll",
+  "replayHeld": "Ruled out: it can't hurt you, so no roll",
+  "replayWatchAgain": "Watch the throw again",
+  "replayCloseStep": "Close this step",
+  "replayDice": "Dice: {faces}",
+  "@replayDice": {
+    "placeholders": {
+      "faces": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsGamer": "Gamer mode",
+  "settingsGamerHelp": "Watch each turn's dice before you read its scene. Remembered on this device.",
+  "turnOwedTitle": "This turn is already decided",
+  "turnOwed": "Its scene never reached you. The story plays it out before anything else.",
+  "turnOwedContinue": "Play it out",
+  "turnOwedPlaying": "The story still owed your last move, so that one plays first.",
+  "turnOwedWordsBack": "The story still owed your last move, so that one plays first. Your new words are back in the box.",
+  "turnOwedLetGo": "That turn couldn't be played out, so the story let it go. Make your move again."
 }

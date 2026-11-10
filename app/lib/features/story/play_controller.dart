@@ -30,11 +30,14 @@ class PendingTurn {
     this.phase = TurnPhase.starting,
     this.text = '',
     this.error,
+    this.details,
+    this.owedKind,
   });
 
   final TurnInput input;
 
-  /// What the player did, shown above the scene. None for the opening.
+  /// What the player did, shown above the scene. None for the opening. For a turn the story
+  /// owed it is what the server kept: the words, a choice's label, or `wait` or `observe`.
   final String? label;
 
   /// The action was dictated (V7).
@@ -45,16 +48,49 @@ class PendingTurn {
   final String text;
   final ApiException? error;
 
-  bool get failed => phase == TurnPhase.failed;
-  bool get isOpening => input.kind == 'opening';
+  /// The steps the engine decided, dice and all, as soon as the server says them and before the
+  /// story is written (`steps.decided`, A3).
+  final SceneDetails? details;
 
-  PendingTurn copyWith({TurnPhase? phase, String? text, ApiException? error}) => PendingTurn(
+  /// The kind of the turn the story owed, when that is the one playing (A3).
+  final String? owedKind;
+
+  /// The kind of turn that is playing: what was sent, or the turn the story owed.
+  String get kind => owedKind ?? input.kind;
+
+  bool get failed => phase == TurnPhase.failed;
+  bool get isOpening => kind == 'opening';
+
+  /// The story owed this turn, and this request only asks for it to be played out (A3).
+  bool get resumes => input.kind == 'resume';
+
+  PendingTurn copyWith({
+    TurnPhase? phase,
+    String? text,
+    ApiException? error,
+    SceneDetails? details,
+  }) => PendingTurn(
     input: input,
     label: label,
     spoken: spoken,
     phase: phase ?? this.phase,
     text: text ?? this.text,
     error: error ?? this.error,
+    details: details ?? this.details,
+    owedKind: owedKind,
+  );
+
+  /// The same turn in flight, now known to be the one the story owed: [kind] and [label] are
+  /// what the server kept, in place of what was sent (A3).
+  PendingTurn asOwed({required String kind, String? label, required bool spoken}) => PendingTurn(
+    input: input,
+    label: label,
+    spoken: spoken,
+    phase: phase,
+    text: text,
+    error: error,
+    details: details,
+    owedKind: kind,
   );
 }
 
@@ -101,6 +137,28 @@ class TurnRefused extends PlayNotice {
 class SceneSaved extends PlayNotice {
   const SceneSaved(this.turn);
   final int turn;
+}
+
+/// The steps of the turn in flight are decided, dice and all, before its story is written (A3):
+/// the screen can show the throws.
+class StepsShown extends PlayNotice {
+  const StepsShown(this.turn, this.details);
+  final int turn;
+  final SceneDetails details;
+}
+
+/// The story owed a turn that was already decided and shown, so that turn is playing in place of
+/// what the player sent (A3). [action] is what they wrote, for the screen to give back.
+class OwedTurnPlaying extends PlayNotice {
+  const OwedTurnPlaying({this.action});
+  final String? action;
+}
+
+/// A turn the story owed broke while it was played out, so the story let it go (A3): the next
+/// turn is a new one. [action] is its words, for the screen to give back.
+class OwedTurnLetGo extends PlayNotice {
+  const OwedTurnLetGo({this.action});
+  final String? action;
 }
 
 /// Closing the story at its ending failed (N6); it can be tried again.
@@ -156,6 +214,10 @@ class PlayController extends ChangeNotifier {
   bool _disposed = false;
   bool _openingAsked = false;
 
+  /// The turn the story owed that was asked to be played out as the story opened, so a turn that
+  /// keeps failing is asked for once and then waits for the player.
+  int? _resumeAsked;
+
   /// The turn number the server gave the turn in flight (`turn.started`).
   int? _startedTurn;
 
@@ -188,8 +250,12 @@ class PlayController extends ChangeNotifier {
   /// A turn is under way, so another can't start.
   bool get busy => _pending != null && !_pending!.failed;
 
-  /// The story has its opening, hasn't reached its ending, and the player can act.
-  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !opening && !ended && !busy;
+  /// The story has its opening, hasn't reached its ending, owes no turn, and the player can act.
+  bool get canAct => (_story?.scenes.isNotEmpty ?? false) && !opening && !ended && !busy && !owes;
+
+  /// The story owes a turn: it was decided and shown, and its scene isn't saved yet, so it is the
+  /// one that plays next, whatever is sent (A3).
+  bool get owes => _story?.unfinishedTurn != null && !ended;
 
   /// The next turn is an opening: the story has no scenes yet, or someone new carries it on (N6).
   bool get opening {
@@ -288,6 +354,12 @@ class PlayController extends ChangeNotifier {
       _openingAsked = true;
       unawaited(begin());
     }
+    // A3: a turn that was decided and shown is played out as the story opens.
+    final owed = story.unfinishedTurn;
+    if (owed != null && owes && _pending == null && _resumeAsked != owed.turn) {
+      _resumeAsked = owed.turn;
+      unawaited(resume());
+    }
   }
 
   void _replace(Story story) {
@@ -350,6 +422,10 @@ class PlayController extends ChangeNotifier {
       successor: fresh.successor,
       heirs: fresh.heirs,
       openingDue: fresh.version >= current.version ? fresh.openingDue : current.openingDue,
+      // Keeping a turn doesn't move the version, so a copy as new as this one knows best.
+      unfinishedTurn: fresh.version >= current.version
+          ? fresh.unfinishedTurn
+          : current.unfinishedTurn,
     );
     if (scenes.isNotEmpty && scenes.first.turn < _anchorTurn) _anchorTurn = scenes.first.turn;
   }
@@ -395,6 +471,13 @@ class PlayController extends ChangeNotifier {
 
   /// Plays the opening scene of a story that has none (`kind: "opening"`).
   Future<bool> begin() => _take(const TurnInput.opening());
+
+  /// Plays out the turn the story owes (`kind: "resume"`, A3): the same action, on the same dice.
+  Future<bool> resume() {
+    final owed = _story?.unfinishedTurn;
+    if (owed == null) return Future.value(false);
+    return _take(const TurnInput.resume(), label: owed.action, kind: owed.kind);
+  }
 
   /// Does what the player wrote or said. Resolves true once the server took the turn and started
   /// writing it, which is when the screen empties the box.
@@ -520,7 +603,12 @@ class PlayController extends ChangeNotifier {
 
   /// Takes [turn] again as it was, as after the player added their own key to a turn refused for
   /// credits (K6).
-  Future<bool> again(PendingTurn turn) => _take(turn.input, label: turn.label, spoken: turn.spoken);
+  Future<bool> again(PendingTurn turn) => _take(
+    turn.input,
+    label: turn.label,
+    spoken: turn.spoken,
+    kind: turn.resumes ? turn.kind : null,
+  );
 
   /// Drops the failed turn.
   void dismissFailure() {
@@ -530,13 +618,19 @@ class PlayController extends ChangeNotifier {
     }
   }
 
-  Future<bool> _take(TurnInput input, {String? label, bool spoken = false}) async {
+  Future<bool> _take(TurnInput input, {String? label, bool spoken = false, String? kind}) async {
     final story = _story;
     // A story at its ending takes no more turns, and someone new starts with their opening (N6).
     if (story == null || busy || _disposed || story.ending != null) return false;
     if (story.openingDue && input.kind != 'opening') return false;
+    // A3: a turn that was decided and shown is the one that plays, so it is asked for by name.
+    if (story.unfinishedTurn case final owed? when input.kind != 'resume') {
+      input = const TurnInput.resume();
+      label = owed.action;
+      kind = owed.kind;
+    }
     _refusal = null;
-    _pending = PendingTurn(input: input, label: label, spoken: spoken);
+    _pending = PendingTurn(input: input, label: label, spoken: spoken, owedKind: kind);
     _startedTurn = null;
     _changed();
     final version = story.version;
@@ -555,7 +649,7 @@ class PlayController extends ChangeNotifier {
           FlutterErrorDetails(exception: e, stack: stack, library: 'play screen'),
         );
       }
-      _refused(error);
+      _refused(error, version);
       return false;
     }
     if (_disposed) {
@@ -579,8 +673,14 @@ class PlayController extends ChangeNotifier {
   }
 
   /// A turn the server refused before it started: nothing was saved or charged.
-  void _refused(ApiException error) {
+  void _refused(ApiException error, int version) {
     switch (error.code) {
+      case ApiErrorCode.versionConflict || ApiErrorCode.validationError
+          when _pending?.resumes ?? false:
+        // A turn the story owed was saved meanwhile, as by the stream that was lost, or the
+        // story owes nothing any more (`nothing_unfinished`). Look which, so its scene joins
+        // the feed or its words go back (A3).
+        unawaited(_checkLanded(version, error));
       case ApiErrorCode.versionConflict:
         final action = _pending?.input.action;
         _pending = null;
@@ -613,8 +713,25 @@ class PlayController extends ChangeNotifier {
     final pending = _pending;
     if (_disposed || pending == null || pending.failed) return;
     switch (event) {
-      case TurnStarted(:final turn):
+      case TurnStarted(:final turn, :final resumed, :final kind, :final action):
         _startedTurn = turn;
+        if (resumed) _playingOwed(pending, turn: turn, kind: kind, action: action);
+      case StepsDecided(:final turn, :final details):
+        final SceneDetails decided;
+        try {
+          decided = SceneDetails.fromJson(details);
+        } on Object {
+          // The saved scene carries its steps again: one that can't be read fails nothing.
+          return;
+        }
+        _startedTurn ??= turn;
+        _pending = pending.copyWith(details: decided);
+        // A3: from this moment the story owes this turn.
+        _story = _story!.copyWith(
+          unfinishedTurn: () => UnfinishedTurn(turn: turn, kind: pending.kind, action: _shown),
+        );
+        _changed();
+        _notice(StepsShown(turn, decided));
       case NarrationDelta(:final text):
         _pending = pending.copyWith(text: pending.text + text);
         _changed();
@@ -626,6 +743,7 @@ class PlayController extends ChangeNotifier {
         // N6: nothing was saved or charged. The player plays on, or ends without it.
         _refusal = EndingRefusal(turn: pending, parts: refused);
         _pending = null;
+        _story = _story?.copyWith(unfinishedTurn: () => null);
         _changed();
       case SceneCompleted(:final scene, :final version, :final clock, :final ending):
         final Scene saved;
@@ -655,14 +773,18 @@ class PlayController extends ChangeNotifier {
       case TurnFailed(:final error):
         if (error.code == ApiErrorCode.versionConflict) {
           // Another turn was saved first (T10): show the story as it is now, and give the player
-          // their words back.
+          // their words back. A turn the story owed can only have lost to itself, saved by the
+          // stream that was lost: then there is nothing to say.
           _pending = null;
           _changed();
-          _notice(StoryMovedOn(action: pending.input.action));
+          if (!pending.resumes) _notice(StoryMovedOn(action: pending.input.action));
           unawaited(reload());
-        } else if (error.code == ApiErrorCode.network || error.code == ApiErrorCode.timeout) {
+        } else if (error.code == ApiErrorCode.network ||
+            error.code == ApiErrorCode.timeout ||
+            owes) {
           // The connection dropped: the turn may still have been saved. Look before offering a
-          // retry; a retry would be refused as a conflict anyway.
+          // retry; a retry would be refused as a conflict anyway. A turn the story owes is looked
+          // at too, since one that broke while it was played out is let go (A3).
           unawaited(_checkLanded(sentVersion, error));
         } else {
           // Nothing was saved and nothing was charged: drop the partial scene (T7).
@@ -672,11 +794,45 @@ class PlayController extends ChangeNotifier {
     }
   }
 
+  /// The story owed a turn, and the server says that is the one playing (`turn.started` with
+  /// `resumed`, A3): the feed shows it, and words the player sent for another turn go back to
+  /// them.
+  void _playingOwed(PendingTurn pending, {required int turn, String? kind, String? action}) {
+    final sent = pending.input;
+    final playing = kind ?? pending.kind;
+    final same =
+        pending.resumes ||
+        (sent.kind == playing && (sent.standing ?? pending.label)?.trim() == action?.trim());
+    _pending = pending.asOwed(
+      kind: playing,
+      label: action ?? (same ? pending.label : null),
+      spoken: same && pending.spoken,
+    );
+    _story = _story!.copyWith(
+      unfinishedTurn: () => UnfinishedTurn(turn: turn, kind: playing, action: action),
+    );
+    _changed();
+    if (!same) _notice(OwedTurnPlaying(action: sent.action));
+  }
+
+  /// What the turn in flight shows as the player's action, the way the server keeps it: the
+  /// words, a choice's label, `wait` or `observe`, or nothing for an ending with no note.
+  String? get _shown {
+    final pending = _pending;
+    if (pending == null) return null;
+    return switch (pending.input.kind) {
+      'standing' => pending.input.standing,
+      'end' => pending.input.action,
+      _ => pending.label,
+    };
+  }
+
   /// The stream ended without the saved scene. Looks at the story: the turn may have been saved
   /// (then it joins the feed), another turn may have been saved instead (then the story moved on),
-  /// or nothing changed (then the turn failed and can be retried).
+  /// or nothing changed (then the turn failed and can be retried). A turn the story owed that it
+  /// has let go is dropped, and its words go back to the player (A3).
   Future<void> _checkLanded(int sentVersion, ApiException error) async {
-    final input = _pending?.input;
+    final turn = _pending;
     final expected = _startedTurn ?? (_story?.scenes.lastOrNull?.turn ?? 0) + 1;
     try {
       final saves = _saves;
@@ -684,13 +840,22 @@ class PlayController extends ChangeNotifier {
       if (_disposed) return;
       if (fresh.version > sentVersion) {
         final mine = fresh.scenes.where((s) => s.turn == expected).firstOrNull;
-        final landed = mine != null && input != null && _isTurn(mine, input);
+        final landed = mine != null && turn != null && _isTurn(mine, turn);
         if (landed) _notice(SceneSaved(mine.turn));
         _merge(fresh, saves: saves);
         _pending = null;
         _changed();
-        if (!landed) _notice(StoryMovedOn(action: input?.action));
+        if (!landed) _notice(StoryMovedOn(action: turn == null ? null : _words(turn)));
         _paintPlanned();
+        return;
+      }
+      // Nothing was saved. Whether the story still owes the turn is the server's to say.
+      final owed = fresh.unfinishedTurn;
+      _story = _story?.copyWith(unfinishedTurn: () => owed);
+      if (owed == null && (turn?.resumes ?? false)) {
+        _pending = null;
+        _changed();
+        _notice(OwedTurnLetGo(action: _words(turn!)));
         return;
       }
     } on Object {
@@ -701,10 +866,16 @@ class PlayController extends ChangeNotifier {
     _changed();
   }
 
-  /// Whether a saved scene is the turn the player sent, and not one played elsewhere.
-  static bool _isTurn(Scene scene, TurnInput input) =>
-      scene.kind == input.kind &&
-      (input.kind != 'action' || scene.playerAction?.trim() == input.action?.trim());
+  /// The words the player wrote for [turn], to give back when it doesn't play: what was sent, or
+  /// for a turn the story owed, the words it kept.
+  static String? _words(PendingTurn turn) =>
+      turn.input.action ?? (turn.resumes && turn.kind == 'action' ? turn.label : null);
+
+  /// Whether a saved scene is the turn in flight, and not one played elsewhere.
+  static bool _isTurn(Scene scene, PendingTurn turn) =>
+      scene.kind == turn.kind &&
+      (turn.kind != 'action' ||
+          scene.playerAction?.trim() == (turn.input.action ?? turn.label)?.trim());
 
   // ---- Pictures ---------------------------------------------------------------------------
 

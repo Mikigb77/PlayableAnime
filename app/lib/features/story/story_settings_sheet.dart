@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_error_text.dart';
 import '../../core/l10n.dart';
+import '../../core/preferences.dart';
 import '../../design/design.dart';
 import 'story_models.dart';
 
@@ -12,8 +16,9 @@ typedef SettingsSaver = Future<void> Function({String? title, Json? settings});
 
 /// The story's settings (S6): its title, its color (S13), how long the narration runs, the tone,
 /// difficulty (A5), how often events arrive (W16), pictures (M2) and suggested choices (S2). The
-/// title and color show at once, the rest applies from the next scene. A story's language isn't
-/// here: it stays the one it started in (S10). Pops with what was saved, or null for nothing.
+/// title and color show at once, the rest applies from the next scene. Gamer mode (S15) is here
+/// too, and belongs to the device: it applies as it is flipped. A story's language isn't here:
+/// it stays the one it started in (S10). Pops with what was saved, or null for nothing.
 Future<SettingsSaved?> showStorySettings(
   BuildContext context, {
   required Story story,
@@ -212,6 +217,18 @@ class _StorySettingsFormState extends State<StorySettingsForm> {
             onChanged: (v) => setState(() => _settings = _settings.copyWith(suggestions: v)),
             title: Text(l10n.settingsSuggestions),
             subtitle: Text(l10n.settingsSuggestionsHelp),
+          ),
+          // Gamer mode (S15) is how this device shows a turn, not part of the story: it applies
+          // the moment it is flipped, with nothing to save.
+          Consumer(
+            builder: (context, ref, _) => SwitchListTile(
+              key: const ValueKey('settings.gamer'),
+              contentPadding: EdgeInsets.zero,
+              value: ref.watch(gamerModeProvider),
+              onChanged: (on) => unawaited(ref.read(gamerModeProvider.notifier).set(on)),
+              title: Text(l10n.settingsGamer),
+              subtitle: Text(l10n.settingsGamerHelp),
+            ),
           ),
           if (_error case final error?) ...[
             const SizedBox(height: Space.sm),

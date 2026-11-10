@@ -1516,6 +1516,29 @@ object, and the raw world state as memory.
 - **Turns stream** as Server-Sent Events (S3). The client parses them into `TurnEvent`s that always
   end in `SceneCompleted`, `TurnFailed` or `EndingRefused`, so a dropped connection is a typed
   error, not a hang. An interim JSON answer is replayed as the same events.
+- **The dice** (S15, A3, `app/lib/features/story/dice/` and `replay/`). The app never rolls: it
+  shows the dice the server sent. `dice/throw_sim.dart` is the prototype's physics ported line by
+  line, a fixed-step simulation that lands each die on the face it was given (twenty ways to throw
+  a hand, eight ways for the last die to come in), and `test/features/dice/prototype_throws.json`
+  holds the prototype's own numbers for 57 throws, which the port must match. `dice_tray.dart`
+  draws them on a `CustomPainter` with no package, checked against saved pictures at fixed seeds
+  (`goldens/`, compared with a small tolerance, since the last bit of an edge is drawn differently
+  from one processor to the next).
+  `replay/replay_plays.dart` lays a scene's `SceneDetails` out as plays in order (a step's checks,
+  the step, what struck back) and picks how each throw is shown from the roll's seed;
+  `replay_controller.dart` plays them one at a time and knows what a tap means in each phase;
+  `replay_view.dart` and `replay_card.dart` are the screen. A scene with a throw opens the replay
+  for "How it played out", and any other scene keeps the list (`scene_details_sheet.dart`).
+  **Gamer mode** is a device preference (`gamerModeProvider`, `play.gamer_mode`): on
+  `steps.decided` the play controller sends `StepsShown`, and the story screen opens the replay
+  over the page while the turn streams on behind it, holding back the reading aloud until it
+  closes.
+- **A turn the story owes** (A3, `play_controller.dart`): `Story.unfinished_turn` is resumed once
+  as the story opens (`kind: "resume"`), a retry of a turn that failed after `steps.decided` is
+  sent as a resume, and `turn.started` with `resumed` swaps the turn in flight for the one the
+  server says is playing, giving back words written for another. While a story owes a turn the
+  screen offers only "Play it out". A resume refused as `nothing_unfinished` or as a conflict
+  means the turn was saved or let go meanwhile, so the story is read again instead of failing.
 - **Endings** (N6, `app/lib/features/story/ending_card.dart`): `/end` asks for a confirmation and
   sends an end turn with the note typed after it. A refused note shows its parts with their reasons
   and offers to play on or end without them. A story at its ending shows the ending card instead
@@ -1532,7 +1555,11 @@ object, and the raw world state as memory.
   rotated refresh token can't be used twice. A link opened while signed out waits on the welcome
   screen (`/welcome?to=…`) and opens after sign-in.
 - **Fake API** (`--dart-define=API_MODE=fake`): an `http.Client` inside the app that speaks API.md,
-  with one file per area, so the app runs and is tested end to end without a server.
+  with one file per area, so the app runs and is tested end to end without a server. Its turns
+  send `steps.decided` with real `Throw`s: a fight (a green die when the words say "behind",
+  Deadly when they say "duel"), a leap (a 20 that throws one more on an even turn), a rope (the
+  world's die, then an insight), a plan that stops, and a step nothing can do. It keeps a decided
+  turn as the server does, and `[fail:lost]` drops the stream after the dice.
 - **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb` and their
   Catalan in `app_ca.arb`, generated at `flutter pub get` (S10). A story's own language is
   `StorySettings.language`, separate from the app's: a new story takes the app's when it is set up

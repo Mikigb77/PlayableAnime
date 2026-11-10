@@ -154,7 +154,8 @@ over their shimmer. A page arrives from the top down: each part fades in and ris
 320 ms, 50 ms after the one above it (`RiseIn(order: …)`). The night air moves on one slow loop of
 16 s: the glow breathes and each firefly wanders a few pixels and twinkles. With the platform's
 reduce-motion setting on, everything appears at once, and shimmers, the glow and the fireflies
-stand still (`Motion.of(context, …)`, `Motion.reduced`).
+stand still (`Motion.of(context, …)`, `Motion.reduced`). The dice are the one place where motion
+is the point, and they have their own rules ([The dice](#the-dice)).
 
 ## Components
 
@@ -222,7 +223,7 @@ together.
   mood, dramatic painterly light true to the moment's time of day with strong contrast and deep
   shadows, atmospheric depth and a muted, naturalistic palette with one strong accent, in the
   world's own era and look. Nothing cute or childish: no chibi or cartoon proportions, no
-  oversized eyes or baby faces on grown-ups, no candy or pastel colours, no storybook look.
+  oversized eyes or baby faces on grown-ups, no candy or pastel colors, no storybook look.
   Everyone is drawn at the age the story gives them. A scene is lit for the hour on the story's
   clock, while its bottom edge stays calm and darker for the fade. One uninterrupted image with no
   border or vignette of its own and no writing in it: no text, logos or panels. Mild in what it
@@ -300,14 +301,22 @@ Memory](docs/screenshots/play-sheets.jpg)
   **Wait** or **Observe**, in the app's words.
 - **Pictures** take their place under the words they belong to, as a shimmer in the right shape,
   and fade in when painted (M3). A picture that never comes leaves no trace.
-- **Why it went that way** (A8): each scene's "How it played out" sheet lists the steps with their
-  outcome class (certain, contested, long shot, ruled out), any roll with its odds and result, the
-  reasons in the serif, where a plan stopped (R6) and the chain of cause and effect. A standing
-  action's one step reads in the app's words too.
+- **Why it went that way** (A8): a scene the dice decided opens "How it played out" as a replay
+  of its throws ([The dice](#the-dice), S15). A scene the facts settled, or one saved before the
+  dice travelled, opens the sheet that lists the steps with their outcome class (certain,
+  contested, long shot, ruled out), any roll in one line with its result, the reasons in the
+  serif, where a plan stopped (R6) and the chain of cause and effect. A standing action's one step
+  reads in the app's words in both.
 - **When a turn fails** (T7), a calm card takes the scene's place and says what happened in plain
   words, with the way on: retry (counting down after a rate limit), say it another way, or open
   Account. Nothing was saved, and the words the player wrote are never lost. Running out of
   credits opens a sheet instead. A content limit shows the server's own words.
+- **A turn the story owes** (A3). Once a turn's steps have been shown, the story plays that turn
+  before any other. It starts by itself as the story opens, and the page goes to it. If it fails
+  and the player dismisses the card, it stays on the page under its own words as "This turn is
+  already decided", with **Play it out**; the action box and the choices wait behind it. Words
+  sent for another turn come back to the box, with a line that says another turn was already
+  decided.
 - **The scene menu** illustrates a scene (M2) or reports it (F6). A blocked scene collapses to one
   quiet line in its place.
 - **The bar** keeps the title and the world's date and time in sight (W10), with `/status`,
@@ -317,6 +326,52 @@ Memory](docs/screenshots/play-sheets.jpg)
 - **Names from the world** start with a capital where they stand as a heading or a card's title
   (`"the inner court".asHeading` is "The inner court"), and keep the world's own spelling
   everywhere else.
+
+## The dice
+
+"How it played out" for a scene the dice decided is a replay (S15): the turn's steps one at a
+time, each with the throw that decided it, and then the whole turn as a list.
+
+![A throw resting on what it is against, the dice in the air, a deadly throw where the gold die
+holds at ten, a 20 that throws one more and goes over the top, and a step opened again in the
+list](docs/screenshots/replay.jpg)
+
+- **A dark table, in the dice's own colors.** The replay looks the same in both themes and under
+  every accent (`ReplayInk`): bone for the hand, jade for a green die, violet for the insight
+  die, gold for mastery, grey for the world's die and white for a die a 20 threw. A story's color
+  never tints it, so a green die always reads as a green die. A result is jade when it went well,
+  gold when it was so close or over the top, and red when it went badly; a throw that can kill
+  wears red from the start and ends in jade if the character came through.
+- **One step at a time.** A step appears only when its turn comes, so nothing says what is coming.
+  While it plays it is the one thing to look at, large in the middle over the list, which dims.
+  When it is done it goes down into the list as a row, and the row lights once as it lands.
+- **Read first, then the dice.** A throw says what it is up against before any die moves, with
+  the hand in small pills under it, and rests there long enough to read: longer for more words,
+  and longer still when a miss can kill, where the tray's edge beats like a heart. A line under
+  the words runs out as the throw comes nearer. The card is laid out whole from the start, with
+  the room its result will need, so it never changes size while it is watched.
+- **The count is shown, not told.** Each die is read into a bar that runs to the most the hand
+  could make, in its own color, with a line at the number and the stretch that is so close
+  hatched just short of it; then into a sum; then the total against the number; then the stamp.
+  The words under it say only what the throw meant.
+- **A tap anywhere moves on**: it throws dice that are waiting, shows a result still being
+  counted, and goes on from a result being read. The card says so in small words where it
+  applies ("Tap to see the result", "Tap to go on"). **Skip** gives the list at once.
+- **The list** is the turn at a glance: each row with its total in a bead, what it was, and its
+  result. A row opens in place as it ended, with **Watch the throw again** and the roll's seed,
+  and the list scrolls to show it. Under the rows are the scene's time, its chain of cause and
+  effect and where a plan stopped.
+- **Gamer mode** (a switch in the story's settings, off by default, kept on the device) opens the
+  replay by itself when a turn's steps are decided, while the story is written behind it. Then it
+  is headed "How it plays out", offers nothing at its end and gives way to the story by itself,
+  and Skip goes straight to the story.
+- **Reduced motion:** the dice appear where they came to rest, the card and the row neither fly
+  nor flash, there is no celebration, and the time to read stays the same.
+- **How it is built:** the dice are drawn and moved by the app's own code (`features/story/dice`),
+  ported from the prototype line by line and held to its numbers by tests, with saved pictures
+  for their look. To change how they look, run
+  `flutter test --update-goldens test/features/dice` and look at the pictures before committing
+  them.
 
 ## Voice
 
@@ -340,7 +395,7 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
   sides fade out too, and the words keep to a column under it. The pictures are in
   `assets/brand/` (`gate.jpg`, and `mark.jpg` for `BrandMark`), cut from
   `tool/app_icon/forest-gate.jpg`, and keep its mark for AI-made media.
-- **Google's button** follows Google's branding rules: the four-colour G, "Continue with Google", and
+- **Google's button** follows Google's branding rules: the four-color G, "Continue with Google", and
   Google's dark or light fill and stroke, never the app accent. On the web the page shows the button
   Google draws itself, since Google allows no other sign-in button on the web.
 - **The birth-date step is neutral** (F8): the date starts empty and in typed entry, the copy says
@@ -395,6 +450,8 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
   mark, the line beside an eyebrow. A headline in two colors is one heading, and a paragraph with
   a drop capital is read whole.
 - Reduce motion is respected throughout.
+- The replay of a throw is read as its dice and its result: the tray says the numbers that fell
+  once they are counted, and the stamp is announced when it comes down.
 
 ## Working on the design
 

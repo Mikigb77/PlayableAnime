@@ -40,6 +40,50 @@ void main() {
     expect((out[2] as NarrationReset).reason, 'cutaway');
   });
 
+  test('the steps the engine decided arrive as they are, before the story (A3)', () async {
+    final out = await parseTurnEvents(
+      events(
+        '${encodeSseEvent('turn.started', {'turn': 4})}'
+        '${encodeSseEvent('steps.decided', {
+          'turn': 4,
+          'details': {
+            'steps': [
+              {'text': 'Leap', 'class': 'long_shot', 'reason': 'Wet stone.'},
+            ],
+          },
+        })}'
+        '${encodeSseEvent('narration.delta', {'text': 'You '})}'
+        '${encodeSseEvent('scene.completed', {
+          'scene': {'turn': 4},
+          'story': {'version': 4, 'clock': <String, Object?>{}},
+        })}',
+      ),
+    ).toList();
+    final decided = out[1] as StepsDecided;
+    expect(decided.turn, 4);
+    expect((decided.details['steps'] as List).single, containsPair('text', 'Leap'));
+    final started = out.first as TurnStarted;
+    expect((started.resumed, started.kind, started.action), (false, null, null));
+  });
+
+  test('a turn the story owed says so as it starts, with what the player did (A3)', () async {
+    final out = await parseTurnEvents(
+      events(
+        encodeSseEvent('turn.started', {
+          'turn': 7,
+          'resumed': true,
+          'kind': 'action',
+          'action': 'I leap',
+        }),
+      ),
+    ).toList();
+    final started = out.first as TurnStarted;
+    expect(
+      (started.turn, started.resumed, started.kind, started.action),
+      (7, true, 'action', 'I leap'),
+    );
+  });
+
   test('an error event becomes TurnFailed with its code', () async {
     final out = await parseTurnEvents(
       events(encodeSseEvent('error', {'code': 'llm_unavailable', 'message': 'down'})),
