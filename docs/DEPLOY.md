@@ -49,10 +49,19 @@ the repository goes private.
 Alerts and security updates are switched on in the repository's settings, not in the file (since
 2026-11-10; `gh api repos/Mikigb77/PlayableAnime/automated-security-fixes` shows whether they still
 are). Dependabot checks early on Monday (04:00 Madrid time), and a scheduled Claude pass at 06:09
-works through its PRs (Miki, 2026-11-10). A Dependabot PR is merged like any other: CI must be
-green, a major update needs a look at its changelog, and it is squash-merged into `dev`, then
-reaches production with the next deploy. If CI fails, the fix goes on the Dependabot branch or the
-update is closed with the reason.
+works through its PRs and every open alert (Miki, 2026-11-10). A Dependabot PR is merged like any
+other: CI must be green, a major update needs a look at its changelog, and it is squash-merged into
+`dev`, then reaches production with the next deploy. If CI fails, the fix goes on the Dependabot
+branch or the update is closed with the reason.
+
+The pass reads the alerts through the
+[`dependabot-alerts.yml`](../.github/workflows/dependabot-alerts.yml) workflow, which lists every
+open alert, and the ones closed in the last 8 days, in its run's log. Its token can read the alerts
+and nothing else (`vulnerability-alerts: read`), so it needs no key and no laptop. For each open
+alert the pass checks whether a fixed version exists and whether the package reaches what ships (its
+scope: runtime or development). When a fix exists but Dependabot couldn't apply it, such as a
+transitive package its parent holds back, the pass opens a PR with a safe fix if there is one (a
+newer parent, or an override). An alert with no fix stays open, and the report lists it.
 
 Some things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
 versions, and so does `intl`, which the Flutter SDK pins through `flutter_localizations`: they move
@@ -64,20 +73,26 @@ Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
 By 08:00 Madrid time the pass files one GitHub issue in each repository that has something to
 report, labelled `dependabot-report` and assigned to Miki, so one search lists every open report:
 [label:dependabot-report assignee:Mikigb77](https://github.com/issues?q=is%3Aopen+is%3Aissue+label%3Adependabot-report+assignee%3AMikigb77).
-A week with no Dependabot PR to handle, no new or changed alert and nothing merged, closed or
-deployed files nothing. The title and an `urgency:` label say how soon it needs Miki:
+A week with no Dependabot PR to handle, no new or changed alert, no open alert on a dependency that
+ships, and nothing merged, closed or deployed files nothing. The title and an `urgency:` label say
+how soon it needs Miki:
 
 - **high**, act today: something that ships is exposed or broken. An alert on a dependency that
-  ships is still open after the pass, a deploy or rollback failed, or `dev` or `main` is red because
-  of an update.
+  ships is open after the pass (it is reported every week until it is fixed), a deploy or rollback
+  failed, or `dev` or `main` is red because of an update.
 - **medium**, decide this week: something only Miki can decide is waiting, such as a major update
   that changes behavior, cost or licence, or a red update with no clear fix.
-- **low**, for the record: updates were merged, closed or deployed, and nothing needs Miki.
+- **low**, for the record: updates were merged, closed or deployed, alerts were fixed, and nothing
+  needs Miki.
 
 The report opens with what Miki needs to do, then lists what merged, closed (with the reason),
-deployed or is still pending, and any new alert, with links. An alert already reported and unchanged
-isn't repeated. Work still running at 08:00 is finished afterwards and added as a comment. The next
-week's report closes a low one; a high or medium report stays open until what it asks for is done.
+deployed or is still pending, the alerts fixed or dismissed that week, and every open alert, with
+links. An open alert is listed by its link, severity, scope and whether a fix exists: the package
+and the advisory stay on the alert's page, which only people with access to the repository see, so a
+public issue doesn't point at a hole that is still open. An open alert on development tooling that
+was already reported and hasn't changed doesn't file a report on its own. Work still running at
+08:00 is finished afterwards and added as a comment. The next week's report closes a low one; a high
+or medium report stays open until what it asks for is done.
 
 ## What runs where
 
