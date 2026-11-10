@@ -48,12 +48,13 @@ the repository goes private.
 
 Alerts and security updates are switched on in the repository's settings, not in the file (since
 2026-11-10; `gh api repos/Mikigb77/PlayableAnime/automated-security-fixes` shows whether they still
-are). A Dependabot PR is merged like any other: CI must be green, a major
-update needs a look at its changelog, and it is squash-merged into `dev`, then reaches production
-with the next deploy. If CI fails, the fix goes on the Dependabot branch or the update is closed
-with the reason. The Android build's Gradle plugins aren't watched: their versions follow Flutter's,
-so they move with a Flutter upgrade, and Python moves to a newer minor version in a PR of its own,
-like the runners' Ubuntu.
+are). A Dependabot PR is merged like any other: CI must be green, a major update needs a look at
+its changelog, and it is squash-merged into `dev`, then reaches production with the next deploy. If
+CI fails, the fix goes on the Dependabot branch or the update is closed with the reason.
+
+Two things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
+versions, so they move with a Flutter upgrade. Python moves to a newer minor version in a PR of its
+own, like the runners' Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
 
 ## What runs where
 
