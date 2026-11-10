@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
@@ -48,6 +50,9 @@ class AppRelease {
   /// Downloads the APK until [expiresAt].
   final Uri url;
   final DateTime expiresAt;
+
+  /// The size in whole megabytes, at least 1, for the offer.
+  int get megabytes => math.max(1, (size / 1000000).round());
 }
 
 /// This install of the app: its build and version, and where it keeps a downloaded update.
@@ -60,57 +65,42 @@ class InstalledApp {
   final String updatesDir;
 }
 
-/// What Android says about a handed-over update after [AppInstaller.install] returned.
-enum InstallOutcome {
-  /// Android is installing it: the player said yes, or nothing needed asking.
-  started,
-
-  /// Rarely heard, since Android ends the app when it replaces it.
-  installed,
-
-  /// The player said no.
-  cancelled,
-
-  /// Android refused it.
-  failed,
-}
-
-/// Android's side of updating: what is installed, and handing a downloaded APK to its installer.
+/// Android's side of updating: what is installed, the network, and Android's own installer.
 abstract interface class AppInstaller {
   /// This install, or null where the app can't update itself (the web, iOS).
   Future<InstalledApp?> installed();
 
-  /// Hands the APK at [path] to Android's installer, which asks the player to confirm. The file's
-  /// SHA-256 must be [sha256]. Throws [UpdateProblem] when it can't start.
+  /// Whether the phone is on a network that isn't metered, such as Wi-Fi, so the app may fetch a
+  /// newer build before the player asks for it.
+  Future<bool> unmetered();
+
+  /// Opens Android's installer on the APK at [path], whose SHA-256 must be [sha256]. Android asks
+  /// the player, installs it, which ends this app, and then offers Open, which starts the new
+  /// build. Throws [UpdateProblem] when the installer can't open.
   Future<void> install(String path, String sha256);
 
-  /// What happens after [install] returned: Android starts installing, the player says no, or
-  /// Android refuses it.
-  Stream<InstallOutcome> get outcomes;
+  /// Fires when Android's installer closes and this app is still running: the player said no, or
+  /// Android couldn't install it and said why on its own screen.
+  Stream<void> get closed;
 }
 
-/// The Kotlin side is `MainActivity.kt`: a PackageInstaller session, so no file is shared with
-/// another app.
+/// The Kotlin side is `MainActivity.kt`: it opens Android's installer on the file through
+/// `UpdateFileProvider`, which lets only that installer read it.
 class PlatformAppInstaller implements AppInstaller {
   PlatformAppInstaller() {
     _channel.setMethodCallHandler((call) async {
-      if (call.method != 'installStatus') return;
-      final status = (call.arguments as Map?)?['status'];
-      _outcomes.add(switch (status) {
-        'started' => InstallOutcome.started,
-        'installed' => InstallOutcome.installed,
-        'cancelled' => InstallOutcome.cancelled,
-        _ => InstallOutcome.failed,
-      });
+      if (call.method == 'installerClosed') _closed.add(null);
     });
   }
 
   static const _channel = MethodChannel('lucid_saga/app_update');
-  final _outcomes = StreamController<InstallOutcome>.broadcast();
+  final _closed = StreamController<void>.broadcast();
+
+  bool get _android => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   Future<InstalledApp?> installed() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+    if (!_android) return null;
     final info = await _channel.invokeMapMethod<String, Object?>('info');
     if (info == null) return null;
     return InstalledApp(
@@ -119,6 +109,10 @@ class PlatformAppInstaller implements AppInstaller {
       updatesDir: info['updates_dir']! as String,
     );
   }
+
+  @override
+  Future<bool> unmetered() async =>
+      _android && (await _channel.invokeMethod<bool>('unmetered') ?? false);
 
   @override
   Future<void> install(String path, String sha256) async {
@@ -130,7 +124,7 @@ class PlatformAppInstaller implements AppInstaller {
   }
 
   @override
-  Stream<InstallOutcome> get outcomes => _outcomes.stream;
+  Stream<void> get closed => _closed.stream;
 }
 
 enum UpdatePhase {
@@ -141,14 +135,22 @@ enum UpdatePhase {
   unknown,
   checking,
   upToDate,
+
+  /// A newer build is out and isn't on the phone yet: it downloads when the player asks.
   available,
+
+  /// Fetching the newer build on Wi-Fi before the player asks. Nothing shows for it.
+  preparing,
+
+  /// Downloading it because the player asked; Android's installer opens once it's in.
   downloading,
 
-  /// Handed to Android, which asks the player to confirm.
-  installing,
+  /// On the phone and checked, waiting for the player's Install.
+  ready,
 
-  /// Android is installing it: the app is covered until Android replaces it, which ends the app.
-  replacing,
+  /// Android's installer is open on it. The app is covered until Android replaces it, which ends
+  /// the app, or the installer closes.
+  installing,
   failed,
 }
 
@@ -161,6 +163,7 @@ class UpdateState {
     this.progress,
     this.problem,
     this.dismissed = false,
+    this.justUpdated = false,
   });
 
   static const off = UpdateState(UpdatePhase.off);
@@ -180,6 +183,9 @@ class UpdateState {
   /// offers the update.
   final bool dismissed;
 
+  /// This run is the first on a newer build than the last run's, so the app says it was updated.
+  final bool justUpdated;
+
   /// Whether there is a newer build to offer, or one on its way.
   bool get hasUpdate => release != null && phase.index >= UpdatePhase.available.index;
 
@@ -189,6 +195,7 @@ class UpdateState {
     double? progress,
     UpdateProblem? problem,
     bool? dismissed,
+    bool? justUpdated,
   }) => UpdateState(
     phase,
     installed: installed,
@@ -196,6 +203,7 @@ class UpdateState {
     progress: progress,
     problem: problem,
     dismissed: dismissed ?? this.dismissed,
+    justUpdated: justUpdated ?? this.justUpdated,
   );
 }
 
@@ -205,89 +213,126 @@ final selfUpdateProvider = Provider<bool>((ref) => AppConfig.selfUpdate);
 
 final appInstallerProvider = Provider<AppInstaller>((ref) => PlatformAppInstaller());
 
-/// How long after Android started installing the app takes the install as failed while it is
-/// still running: Android ends it when the install works, so by then something stopped the install
-/// without the app hearing why. Tests override it.
-final installGiveUpProvider = Provider<Duration>((ref) => const Duration(minutes: 2));
+/// The time, for how often the app checks on its own. Tests override it.
+final updateClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final appUpdateProvider = NotifierProvider<AppUpdateController, UpdateState>(
   AppUpdateController.new,
 );
 
-/// Checks for a newer build, downloads it and hands it to Android (S12). The APK on the GitHub
-/// release does this; a build that Google Play updates never does, as Play's policy requires.
+/// Checks for a newer build, fetches it, and opens Android's installer on it (S12). On Wi-Fi it
+/// fetches the build as soon as it sees it, so the offer is ready to install with one tap. The
+/// APK on the GitHub release does this; a build that Google Play updates never does, as Play's
+/// policy requires.
 class AppUpdateController extends Notifier<UpdateState> {
   /// A check runs at most this often on its own: at start, and when the app comes back.
   static const checkEvery = Duration(minutes: 30);
 
+  /// The build the app last ran as, kept on the phone, to say "updated" once on a newer one.
+  static const lastBuildKey = 'update.last_build';
+
   DateTime? _lastCheck;
-  StreamSubscription<InstallOutcome>? _outcomes;
-  Timer? _giveUp;
+  StreamSubscription<void>? _closed;
+
+  /// The downloaded APK, of the right size, and the build it holds.
+  ({String path, AppRelease release})? _apk;
 
   @override
   UpdateState build() {
-    ref.onDispose(() {
-      _outcomes?.cancel();
-      _giveUp?.cancel();
-    });
+    ref.onDispose(() => _closed?.cancel());
     return ref.watch(selfUpdateProvider) ? UpdateState.unknown : UpdateState.off;
   }
 
   AppInstaller get _installer => ref.read(appInstallerProvider);
   ApiClient get _api => ref.read(apiClientProvider);
 
-  /// A check leaves an update the player started alone; an update can start again while Android
-  /// is asked, in case its question never showed or was left behind.
-  bool get _busyForCheck => switch (state.phase) {
+  /// A check or an update leaves alone one already on its way.
+  bool get _busy => switch (state.phase) {
     UpdatePhase.off ||
     UpdatePhase.checking ||
+    UpdatePhase.preparing ||
     UpdatePhase.downloading ||
-    UpdatePhase.installing ||
-    UpdatePhase.replacing => true,
-    _ => false,
-  };
-
-  bool get _busyForUpdate => switch (state.phase) {
-    UpdatePhase.off ||
-    UpdatePhase.checking ||
-    UpdatePhase.downloading ||
-    UpdatePhase.replacing => true,
+    UpdatePhase.installing => true,
     _ => false,
   };
 
   /// Asks the API for the newest build. On its own (at start and on resume) at most every
   /// [checkEvery], quietly: a failed check changes nothing. [now] checks at once and shows the
-  /// result, for the player's "Check for updates".
+  /// result, for the player's "Check for updates". On Wi-Fi a newer build is fetched right away.
   Future<void> check({bool now = false}) async {
-    if (_busyForCheck) return;
+    if (_busy) return;
+    final at = ref.read(updateClockProvider)();
     final last = _lastCheck;
-    if (!now && last != null && DateTime.now().difference(last) < checkEvery) return;
-    _lastCheck = DateTime.now();
+    if (!now && last != null && at.difference(last) < checkEvery) return;
+    _lastCheck = at;
     final before = state;
     if (now) state = before.copyWith(phase: UpdatePhase.checking);
+    // The player's Update or Install may start while this waits on the network: then the update
+    // is theirs, and this check stops without touching it.
+    final during = state.phase;
+    bool overtaken() => !ref.mounted || state.phase != during;
     try {
-      final installed = before.installed ?? await _installer.installed();
+      var installed = before.installed;
       if (installed == null) {
-        state = UpdateState.off;
-        return;
+        installed = await _installer.installed();
+        if (!ref.mounted) return;
+        if (installed == null) {
+          state = UpdateState.off;
+          return;
+        }
+        final justUpdated = await _noteBuild(installed.build);
+        if (!ref.mounted) return;
+        // Known from here on, even if the API can't be reached: the "updated" note shows now.
+        state = UpdateState(state.phase, installed: installed, justUpdated: justUpdated);
       }
       final release = await _latest();
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       if (release == null || release.build <= installed.build) {
-        state = UpdateState(UpdatePhase.upToDate, installed: installed);
+        _apk = null;
+        state = UpdateState(
+          UpdatePhase.upToDate,
+          installed: installed,
+          justUpdated: state.justUpdated,
+        );
+        await clearDownloads(installed.updatesDir);
         return;
       }
+      if (_apk?.release.build != release.build) _apk = null;
+      final UpdatePhase phase;
+      // Fetched already, unless Android has cleared its cache since; or fetched now, on Wi-Fi.
+      if (_apk != null && await _onPhone(release, installed)) {
+        phase = UpdatePhase.ready;
+      } else {
+        _apk = null;
+        phase = await _canFetchQuietly(release, installed)
+            ? UpdatePhase.preparing
+            : UpdatePhase.available;
+      }
+      if (overtaken()) return;
       state = UpdateState(
-        UpdatePhase.available,
+        phase,
         installed: installed,
         release: release,
+        progress: phase == UpdatePhase.preparing ? 0 : null,
         // Later holds for that build only.
-        dismissed: before.dismissed && before.release?.build == release.build,
+        dismissed: state.dismissed && state.release?.build == release.build,
+        justUpdated: state.justUpdated,
       );
+      if (phase == UpdatePhase.preparing) await _download(release, installed);
     } on Object catch (e) {
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       final problem = e is UpdateProblem ? e : UpdateProblem.download;
-      state = now ? before.copyWith(phase: UpdatePhase.failed, problem: problem) : before;
+      state = now
+          ? state.copyWith(phase: UpdatePhase.failed, problem: problem)
+          : UpdateState(
+              before.phase,
+              installed: state.installed,
+              release: before.release,
+              progress: before.progress,
+              problem: before.problem,
+              dismissed: state.dismissed,
+              justUpdated: state.justUpdated,
+            );
     }
   }
 
@@ -299,77 +344,179 @@ class AppUpdateController extends Notifier<UpdateState> {
     progress: state.progress,
     problem: state.problem,
     dismissed: true,
+    justUpdated: state.justUpdated,
   );
 
-  /// Downloads the newer build and hands it to Android, which asks the player to confirm. Once
-  /// Android starts installing, the app stays covered until Android replaces it, and the player
-  /// opens it again on the new build.
+  /// The "updated" note was shown.
+  void acknowledgeUpdated() => state = state.copyWith(
+    phase: state.phase,
+    progress: state.progress,
+    problem: state.problem,
+    justUpdated: false,
+  );
+
+  /// The player's Update or Install: opens Android's installer on the fetched build, or downloads
+  /// it first and then opens the installer. Once Android has installed it, which ends the app, its
+  /// Open button starts the new build.
   Future<void> update() async {
     final installed = state.installed;
-    if (_busyForUpdate || installed == null || !state.hasUpdate) return;
+    final offered = state.release;
+    if (installed == null || offered == null || !state.hasUpdate) return;
+    if (state.phase == UpdatePhase.preparing) {
+      // Already on its way: show it, and open the installer as soon as it's in.
+      state = state.copyWith(
+        phase: UpdatePhase.downloading,
+        progress: state.progress,
+        dismissed: false,
+      );
+      return;
+    }
+    if (_busy) return;
+    // If Android has cleared it from the cache since, it downloads again.
+    if (_apk?.release.build == offered.build && (await _install() || !ref.mounted)) return;
     // The player asked for it, so the banner shows how it goes even after a Later.
     state = state.copyWith(phase: UpdatePhase.downloading, progress: 0, dismissed: false);
-    // Android can start installing a build the player was asked about before, while this one is
-    // on its way; then that install goes on, and this one stops.
-    bool overtaken() => !ref.mounted || state.phase == UpdatePhase.replacing;
+    final AppRelease? release;
     try {
       // A fresh URL: the one from the check may have expired while the banner waited.
-      final release = await _latest();
-      if (overtaken()) return;
-      if (release == null || release.build <= installed.build) {
-        state = UpdateState(UpdatePhase.upToDate, installed: installed);
-        return;
-      }
-      state = state.copyWith(phase: UpdatePhase.downloading, release: release, progress: 0);
+      release = await _latest();
+    } on Object catch (e) {
+      if (!ref.mounted) return;
+      final problem = e is UpdateProblem ? e : UpdateProblem.download;
+      state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
+      return;
+    }
+    if (!ref.mounted) return;
+    if (release == null || release.build <= installed.build) {
+      state = UpdateState(
+        UpdatePhase.upToDate,
+        installed: installed,
+        justUpdated: state.justUpdated,
+      );
+      return;
+    }
+    state = state.copyWith(phase: UpdatePhase.downloading, release: release, progress: 0);
+    await _download(release, installed);
+  }
+
+  /// The cover's way out when the app is back in front with no word from Android's installer.
+  void installerClosed() {
+    if (!ref.mounted || state.phase != UpdatePhase.installing) return;
+    state = state.copyWith(phase: _apk == null ? UpdatePhase.available : UpdatePhase.ready);
+  }
+
+  /// Downloads [release]: quietly while [UpdatePhase.preparing], and then it is ready; or
+  /// because the player asked ([UpdatePhase.downloading]), and then the installer opens.
+  Future<void> _download(AppRelease release, InstalledApp installed) async {
+    try {
       final path = await downloadApk(
         client: ref.read(httpClientProvider),
         url: release.url,
         size: release.size,
         folder: installed.updatesDir,
-        name: 'lucid-saga-${release.build}.apk',
+        name: _apkName(release),
         onProgress: (done) {
-          if (ref.mounted && state.phase == UpdatePhase.downloading) {
-            state = state.copyWith(phase: UpdatePhase.downloading, progress: done);
+          final phase = state.phase;
+          if (ref.mounted && (phase == UpdatePhase.preparing || phase == UpdatePhase.downloading)) {
+            state = state.copyWith(phase: phase, progress: done);
           }
         },
       );
-      if (overtaken()) return;
-      _outcomes ??= _installer.outcomes.listen(_onOutcome);
-      state = state.copyWith(phase: UpdatePhase.installing);
-      await _installer.install(path, release.sha256);
+      if (!ref.mounted) return;
+      _apk = (path: path, release: release);
+      switch (state.phase) {
+        case UpdatePhase.downloading:
+          await _install();
+        case UpdatePhase.preparing:
+          state = state.copyWith(phase: UpdatePhase.ready);
+        case _:
+          break;
+      }
     } on Object catch (e) {
-      if (overtaken()) return;
-      final problem = e is UpdateProblem ? e : UpdateProblem.download;
-      state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
+      if (!ref.mounted) return;
+      switch (state.phase) {
+        case UpdatePhase.downloading:
+          final problem = e is UpdateProblem ? e : UpdateProblem.download;
+          state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
+        // Fetching it quietly failed: the banner offers it as usual, and the next check tries
+        // again.
+        case UpdatePhase.preparing:
+          state = state.copyWith(phase: UpdatePhase.available);
+        case _:
+          break;
+      }
     }
   }
 
-  void _onOutcome(InstallOutcome outcome) {
-    final phase = state.phase;
-    final waiting = phase == UpdatePhase.installing || phase == UpdatePhase.replacing;
-    switch (outcome) {
-      // Whatever else was on its way, Android is now replacing the app. The app stays in front,
-      // covered, because Android and Play Protect may still need it before the new build is in.
-      case InstallOutcome.started when state.hasUpdate && phase != UpdatePhase.replacing:
-        state = state.copyWith(phase: UpdatePhase.replacing);
-        _giveUp?.cancel();
-        _giveUp = Timer(ref.read(installGiveUpProvider), () {
-          if (ref.mounted && state.phase == UpdatePhase.replacing) {
-            state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
-          }
-        });
-      case InstallOutcome.installed when waiting:
-        state = UpdateState(UpdatePhase.upToDate, installed: state.installed);
-      // A no counts only while Android asks: once an install has started, the Android side
-      // drops any other question it asked.
-      case InstallOutcome.cancelled when phase == UpdatePhase.installing:
-        state = state.copyWith(phase: UpdatePhase.available);
-      case InstallOutcome.failed when waiting:
-        state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.install);
-      case _:
-        break;
+  /// Opens Android's installer on the fetched build and covers the app until Android replaces it
+  /// or the installer closes. False when the file has gone from the cache, which Android may
+  /// clear at any time: then the update failed to download, and trying again fetches it again.
+  Future<bool> _install() async {
+    final apk = _apk;
+    final installed = state.installed;
+    if (apk == null || installed == null) return false;
+    _closed ??= _installer.closed.listen((_) => installerClosed());
+    // Installing from here on, so a second tap waits for this one.
+    state = state.copyWith(phase: UpdatePhase.installing, release: apk.release, dismissed: false);
+    if (!await _onPhone(apk.release, installed)) {
+      if (!ref.mounted) return false;
+      _apk = null;
+      state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.download);
+      return false;
+    }
+    if (!ref.mounted) return true;
+    try {
+      await _installer.install(apk.path, apk.release.sha256);
+    } on Object catch (e) {
+      if (!ref.mounted) return true;
+      final problem = e is UpdateProblem ? e : UpdateProblem.install;
+      // A damaged file goes, so Try again downloads it again.
+      if (problem == UpdateProblem.corrupt) {
+        _apk = null;
+        await clearDownloads(installed.updatesDir);
+        if (!ref.mounted) return true;
+      }
+      state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
+    }
+    return true;
+  }
+
+  /// Whether [release]'s APK is on the phone, whole.
+  Future<bool> _onPhone(AppRelease release, InstalledApp installed) async {
+    try {
+      return await hasApk(
+        folder: installed.updatesDir,
+        name: _apkName(release),
+        size: release.size,
+      );
+    } on Object {
+      return false;
     }
   }
+
+  /// Whether to fetch [release] before the player asks: it's on the phone already, or the phone
+  /// is on Wi-Fi or another network that isn't metered.
+  Future<bool> _canFetchQuietly(AppRelease release, InstalledApp installed) async {
+    try {
+      return await _onPhone(release, installed) || await _installer.unmetered();
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Keeps the build this run is on, and says whether it is newer than the last run's.
+  Future<bool> _noteBuild(int build) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final last = prefs.getInt(lastBuildKey);
+      if (last != build) await prefs.setInt(lastBuildKey, build);
+      return last != null && last < build;
+    } on Object {
+      return false;
+    }
+  }
+
+  static String _apkName(AppRelease release) => 'lucid-saga-${release.build}.apk';
 
   /// The newest build, or null when none is published (404).
   Future<AppRelease?> _latest() async {

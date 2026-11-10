@@ -13,25 +13,33 @@ import 'package:playable_anime/core/fake/fake_releases.dart';
 import 'package:playable_anime/core/session/session_controller.dart';
 import 'package:playable_anime/features/update/apk_download.dart';
 import 'package:playable_anime/features/update/app_update.dart';
+import 'package:playable_anime/features/update/update_cover.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers.dart';
 import 'harness.dart';
 
-/// Stands in for Android: this install is build 12, and it records what it was asked to install.
+/// Stands in for Android: this install is build 12, on a metered network unless [onWifi], and it
+/// records what Android's installer was opened on.
 class FakeInstaller implements AppInstaller {
-  FakeInstaller(this.updatesDir, {this.build = 12, this.failInstall});
+  FakeInstaller(this.updatesDir, {this.build = 12, this.onWifi = false, this.failInstall});
 
   final String updatesDir;
   final int build;
-  final UpdateProblem? failInstall;
+  bool onWifi;
+  UpdateProblem? failInstall;
   final installs = <(String path, String sha256)>[];
-  final _outcomes = StreamController<InstallOutcome>.broadcast();
+  final _closed = StreamController<void>.broadcast();
 
-  void finish(InstallOutcome outcome) => _outcomes.add(outcome);
+  /// Android's installer closes while the app still runs.
+  void close() => _closed.add(null);
 
   @override
   Future<InstalledApp?> installed() async =>
       InstalledApp(build: build, version: '1.0.0', updatesDir: updatesDir);
+
+  @override
+  Future<bool> unmetered() async => onWifi;
 
   @override
   Future<void> install(String path, String sha256) async {
@@ -40,28 +48,51 @@ class FakeInstaller implements AppInstaller {
   }
 
   @override
-  Stream<InstallOutcome> get outcomes => _outcomes.stream;
+  Stream<void> get closed => _closed.stream;
 }
 
 void main() {
   late Directory updates;
   late AppHarness harness;
   late FakeInstaller installer;
+  late DateTime time;
 
   setUp(() {
+    time = DateTime.utc(2026, 11, 10, 12);
     updates = Directory.systemTemp.createTempSync('lucid-updates');
-    addTearDown(() => updates.deleteSync(recursive: true));
+    addTearDown(() {
+      if (updates.existsSync()) updates.deleteSync(recursive: true);
+    });
     harness = AppHarness();
     installer = FakeInstaller(updates.path);
   });
 
   List<FakeRequest> checks() => harness.sent('GET', (p) => p == '/v1/app/latest');
+  List<FakeRequest> downloads() => harness.sent('GET', (p) => p.startsWith('/fake-releases/'));
 
-  Future<ProviderContainer> signedIn({
-    bool selfUpdate = true,
-    http.Client? client,
-    Duration? giveUpAfter,
-  }) async {
+  /// Answers like the fake backend, once [wait] lets each request through.
+  http.Client held(Future<void> Function(http.BaseRequest request) wait) =>
+      MockClient.streaming((request, body) async {
+        await wait(request);
+        final copy = http.Request(request.method, request.url)..headers.addAll(request.headers);
+        copy.bodyBytes = await body.toBytes();
+        return harness.backend.send(copy);
+      });
+
+  /// Holds each APK download until [gate] completes.
+  http.Client heldDownloads(Completer<void> gate) => held((request) async {
+    if (request.url.path.startsWith('/fake-releases/')) await gate.future;
+  });
+
+  /// Holds the second check until [gate] completes.
+  http.Client heldSecondCheck(Completer<void> gate) {
+    var checks = 0;
+    return held((request) async {
+      if (request.url.path == '/v1/app/latest' && ++checks == 2) await gate.future;
+    });
+  }
+
+  Future<ProviderContainer> signedIn({bool selfUpdate = true, http.Client? client}) async {
     await harness.signIn();
     final container = ProviderContainer(
       overrides: [
@@ -70,7 +101,7 @@ void main() {
         sessionStoreProvider.overrideWithValue(harness.store),
         selfUpdateProvider.overrideWithValue(selfUpdate),
         appInstallerProvider.overrideWithValue(installer),
-        if (giveUpAfter != null) installGiveUpProvider.overrideWithValue(giveUpAfter),
+        updateClockProvider.overrideWithValue(() => time),
       ],
     );
     addTearDown(container.dispose);
@@ -96,7 +127,8 @@ void main() {
       expect(checks(), isEmpty);
     });
 
-    test('is up to date while nothing is published', () async {
+    test('is up to date while nothing is published, and clears old downloads', () async {
+      File('${updates.path}/lucid-saga-12.apk').writeAsBytesSync([9, 9]);
       final c = await signedIn();
 
       await c.read(appUpdateProvider.notifier).check();
@@ -105,6 +137,7 @@ void main() {
       expect(state.phase, UpdatePhase.upToDate);
       expect(state.installed?.build, 12);
       expect(checks().single.uri.queryParameters['platform'], 'android');
+      expect(updates.listSync(), isEmpty);
     });
 
     test('is up to date on the newest build or a newer one', () async {
@@ -117,8 +150,8 @@ void main() {
       expect(c.read(appUpdateProvider).hasUpdate, isFalse);
     });
 
-    test('offers a newer build', () async {
-      publish(13);
+    test('offers a newer build on a metered network, without downloading it', () async {
+      publish(13, apk: List.filled(2600000, 1));
       final c = await signedIn();
 
       await c.read(appUpdateProvider.notifier).check();
@@ -127,7 +160,54 @@ void main() {
       expect(state.phase, UpdatePhase.available);
       expect(state.release?.build, 13);
       expect(state.release?.version, '1.0.0');
+      expect(state.release?.megabytes, 3);
       expect(state.hasUpdate, isTrue);
+      expect(downloads(), isEmpty);
+    });
+
+    test('on Wi-Fi fetches a newer build at once, so it is ready to install', () async {
+      installer.onWifi = true;
+      File('${updates.path}/lucid-saga-11.apk').writeAsBytesSync([9, 9]);
+      publish(13, apk: List.filled(1000, 7));
+      final c = await signedIn();
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      final state = c.read(appUpdateProvider);
+      expect(state.phase, UpdatePhase.ready);
+      expect(state.release?.build, 13);
+      expect(File('${updates.path}/lucid-saga-13.apk').readAsBytesSync(), List.filled(1000, 7));
+      expect(File('${updates.path}/lucid-saga-11.apk').existsSync(), isFalse);
+      expect(downloads(), hasLength(1));
+      expect(installer.installs, isEmpty);
+    });
+
+    test('a build already on the phone is ready without the network', () async {
+      File('${updates.path}/lucid-saga-13.apk').writeAsBytesSync([1, 2, 3, 4, 5]);
+      publish(13);
+      final c = await signedIn();
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+      expect(downloads(), isEmpty);
+    });
+
+    test('a quiet fetch that fails is offered as usual, with no error', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn(
+        client: MockClient((request) async {
+          if (request.url.path.startsWith('/fake-releases/')) return http.Response('gone', 403);
+          return http.Response.fromStream(await harness.backend.send(request));
+        }),
+      );
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      final state = c.read(appUpdateProvider);
+      expect(state.phase, UpdatePhase.available);
+      expect(state.problem, isNull);
     });
 
     test('checks on its own at most every half hour, and at once when asked', () async {
@@ -179,7 +259,7 @@ void main() {
       expect(c.read(appUpdateProvider).dismissed, isFalse);
     });
 
-    test('downloads the newer build and hands it to Android', () async {
+    test('Update downloads the newer build and opens Android\'s installer on it', () async {
       File('${updates.path}/lucid-saga-11.apk').writeAsBytesSync([9, 9]);
       publish(13, apk: List.filled(1000, 7));
       final c = await signedIn();
@@ -204,155 +284,125 @@ void main() {
       expect(checks(), hasLength(2));
     });
 
-    test('the player saying no to Android offers the update again', () async {
+    test('Install opens the installer on the fetched build at once', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+
+      controller.dismiss();
+      await controller.update();
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(c.read(appUpdateProvider).dismissed, isFalse);
+      expect(installer.installs.single.$1, '${updates.path}/lucid-saga-13.apk');
+      expect(downloads(), hasLength(1));
+      expect(checks(), hasLength(1));
+    });
+
+    test('Update while it is fetched quietly shows the download, then installs it', () async {
+      installer.onWifi = true;
+      publish(13);
+      final gate = Completer<void>();
+      final c = await signedIn(client: heldDownloads(gate));
+      final controller = c.read(appUpdateProvider.notifier);
+
+      final checking = controller.check();
+      for (var i = 0; i < 20 && c.read(appUpdateProvider).phase != UpdatePhase.preparing; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.preparing);
+
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.downloading);
+      await controller.update(); // a second tap starts nothing new
+      gate.complete();
+      await checking;
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(installer.installs, hasLength(1));
+      expect(downloads(), hasLength(1));
+    });
+
+    test('the installer closing with the app still here offers it again', () async {
       publish(13);
       final c = await signedIn();
       final controller = c.read(appUpdateProvider.notifier);
       await controller.check();
       await controller.update();
 
-      installer.finish(InstallOutcome.cancelled);
+      // A check, or another tap, while the installer is open starts nothing.
+      await controller.check(now: true);
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(installer.installs, hasLength(1));
+
+      installer.close();
       await Future<void>.delayed(Duration.zero);
 
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
       // The finished download is used again.
       await controller.update();
       expect(installer.installs, hasLength(2));
-      expect(harness.sent('GET', (p) => p.startsWith('/fake-releases/')), hasLength(1));
+      expect(downloads(), hasLength(1));
     });
 
-    test('can ask Android again while it is asked, and Later never hides a failure', () async {
+    test('the cover\'s way out only acts while the installer is open', () async {
       publish(13);
       final c = await signedIn();
       final controller = c.read(appUpdateProvider.notifier);
       await controller.check();
-      await controller.update();
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
 
-      await controller.check(now: true); // a check leaves it alone
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
-      await controller.update();
-      expect(installer.installs, hasLength(2));
+      controller.installerClosed();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
 
-      installer.finish(InstallOutcome.failed);
-      await Future<void>.delayed(Duration.zero);
+      await controller.update();
+      controller.installerClosed();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+    });
+
+    test('a newer build replaces one that is ready', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+
+      publish(14, apk: [4, 4, 4]);
+      await controller.check(now: true);
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+      expect(c.read(appUpdateProvider).release?.build, 14);
+      expect(updates.listSync().map((f) => f.path), ['${updates.path}/lucid-saga-14.apk']);
+      await controller.update();
+      expect(installer.installs.single.$1, '${updates.path}/lucid-saga-14.apk');
+    });
+
+    test('an installer that can\'t open is a failed install, and Try again reopens it', () async {
+      installer.failInstall = UpdateProblem.install;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+
+      await controller.update();
       controller.dismiss();
       final state = c.read(appUpdateProvider);
       expect(state.phase, UpdatePhase.failed);
       expect(state.problem, UpdateProblem.install);
-      expect(state.dismissed, isTrue);
 
-      await controller.update();
-      expect(c.read(appUpdateProvider).dismissed, isFalse);
-    });
-
-    test('the app waits for Android once it starts installing, and leaves it alone', () async {
-      publish(13);
-      final c = await signedIn();
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
+      installer.failInstall = null;
       await controller.update();
       expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
-
-      installer.finish(InstallOutcome.started);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
-      expect(c.read(appUpdateProvider).hasUpdate, isTrue);
-
-      // Coming back while Android installs it starts nothing new.
-      await controller.check(now: true);
-      await controller.update();
-      installer.finish(InstallOutcome.started);
-      await Future<void>.delayed(Duration.zero);
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
-      expect(installer.installs, hasLength(1));
-      expect(checks(), hasLength(2));
+      expect(c.read(appUpdateProvider).dismissed, isFalse);
+      expect(downloads(), hasLength(1));
     });
 
-    test('a no to a question asked again leaves the started install alone', () async {
-      publish(13);
-      final c = await signedIn();
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
-      await controller.update();
-      await controller.update();
-
-      installer.finish(InstallOutcome.started);
-      installer.finish(InstallOutcome.cancelled);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
-    });
-
-    test('Android starting a build it asked about before stops the one on its way', () async {
-      publish(13);
-      final c = await signedIn();
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
-      await controller.update();
-
-      final again = controller.update(); // the player asks again
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.downloading);
-      installer.finish(InstallOutcome.started); // and says yes to the first question
-      await again;
-
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
-      expect(installer.installs, hasLength(1));
-    });
-
-    test('takes an install it never heard the end of as failed, after a while', () async {
-      publish(13);
-      final c = await signedIn(giveUpAfter: const Duration(milliseconds: 20));
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
-      await controller.update();
-      installer.finish(InstallOutcome.started);
-      await Future<void>.delayed(Duration.zero);
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.replacing);
-
-      await Future<void>.delayed(const Duration(milliseconds: 40)); // still running
-
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.failed);
-      expect(c.read(appUpdateProvider).problem, UpdateProblem.install);
-      await controller.update();
-      expect(installer.installs, hasLength(2));
-    });
-
-    test('Android refusing it once it started installing can be tried again', () async {
-      publish(13);
-      final c = await signedIn();
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
-      await controller.update();
-
-      installer.finish(InstallOutcome.started);
-      installer.finish(InstallOutcome.failed);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = c.read(appUpdateProvider);
-      expect(state.phase, UpdatePhase.failed);
-      expect(state.problem, UpdateProblem.install);
-      await controller.update();
-      expect(installer.installs, hasLength(2));
-    });
-
-    test('Android refusing it is a failed install', () async {
-      publish(13);
-      final c = await signedIn();
-      final controller = c.read(appUpdateProvider.notifier);
-      await controller.check();
-      await controller.update();
-
-      installer.finish(InstallOutcome.failed);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(c.read(appUpdateProvider).phase, UpdatePhase.failed);
-      expect(c.read(appUpdateProvider).problem, UpdateProblem.install);
-    });
-
-    test('a damaged download is never installed', () async {
-      installer = FakeInstaller(updates.path, failInstall: UpdateProblem.corrupt);
+    test('a damaged download is never installed, and Try again downloads it again', () async {
+      installer.failInstall = UpdateProblem.corrupt;
       publish(13);
       final c = await signedIn();
       final controller = c.read(appUpdateProvider.notifier);
@@ -362,38 +412,168 @@ void main() {
 
       expect(c.read(appUpdateProvider).phase, UpdatePhase.failed);
       expect(c.read(appUpdateProvider).problem, UpdateProblem.corrupt);
+
+      installer.failInstall = null;
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(downloads(), hasLength(2));
+    });
+
+    test('a fetched build that Android cleared from the cache downloads again', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+
+      // Android trims the app's cache.
+      updates.deleteSync(recursive: true);
+      installer.onWifi = false;
+      await controller.check(now: true);
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(File(installer.installs.single.$1).existsSync(), isTrue);
+      expect(downloads(), hasLength(2));
+    });
+
+    test('Install on a build the cache lost downloads it again instead of failing', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+
+      updates.deleteSync(recursive: true);
+      await controller.update();
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(File(installer.installs.single.$1).existsSync(), isTrue);
+      expect(downloads(), hasLength(2));
+    });
+
+    test('a check on its own leaves alone an update the player starts meanwhile', () async {
+      publish(13);
+      final gate = Completer<void>();
+      final c = await signedIn(client: heldSecondCheck(gate));
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+
+      time = time.add(AppUpdateController.checkEvery);
+      final checking = controller.check(); // waits on the API
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      gate.complete();
+      await checking;
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(installer.installs, hasLength(1));
+      expect(downloads(), hasLength(1));
+    });
+
+    test('Later while a check waits on the API holds', () async {
+      publish(13);
+      final gate = Completer<void>();
+      final c = await signedIn(client: heldSecondCheck(gate));
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+
+      time = time.add(AppUpdateController.checkEvery);
+      final checking = controller.check();
+      controller.dismiss();
+      gate.complete();
+      await checking;
+
+      expect(checks(), hasLength(2));
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+      expect(c.read(appUpdateProvider).dismissed, isTrue);
+    });
+
+    test('says once that the app was updated, on the first run of a newer build', () async {
+      SharedPreferences.setMockInitialValues({AppUpdateController.lastBuildKey: 11});
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+
+      await controller.check();
+      expect(c.read(appUpdateProvider).justUpdated, isTrue);
+      controller.acknowledgeUpdated();
+      expect(c.read(appUpdateProvider).justUpdated, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt(AppUpdateController.lastBuildKey), 12);
+
+      // The next start on the same build says nothing.
+      final again = await signedIn();
+      await again.read(appUpdateProvider.notifier).check();
+      expect(again.read(appUpdateProvider).justUpdated, isFalse);
+    });
+
+    test('says it was updated even when the API can\'t be reached', () async {
+      SharedPreferences.setMockInitialValues({AppUpdateController.lastBuildKey: 11});
+      final c = await signedIn(
+        client: MockClient((request) async {
+          if (request.url.path == '/v1/app/latest') return http.Response('oops', 502);
+          return http.Response.fromStream(await harness.backend.send(request));
+        }),
+      );
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      final state = c.read(appUpdateProvider);
+      expect(state.phase, UpdatePhase.unknown);
+      expect(state.justUpdated, isTrue);
+      expect(state.installed?.build, 12);
+    });
+
+    test('says nothing on the very first run', () async {
+      final c = await signedIn();
+
+      await c.read(appUpdateProvider.notifier).check();
+
+      expect(c.read(appUpdateProvider).justUpdated, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt(AppUpdateController.lastBuildKey), 12);
     });
   });
 
   group('the Android side', () {
     const channel = MethodChannel('lucid_saga/app_update');
 
-    Future<void> androidSays(String status) =>
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
-          channel.name,
-          const StandardMethodCodec().encodeMethodCall(
-            MethodCall('installStatus', {'status': status}),
-          ),
-          (_) {},
-        );
-
-    test('says when Android starts installing, and how it ends', () async {
+    test('says when Android\'s installer closes', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       final android = PlatformAppInstaller();
-      final outcomes = <InstallOutcome>[];
-      android.outcomes.listen(outcomes.add);
+      var closed = 0;
+      android.closed.listen((_) => closed++);
 
-      for (final status in ['started', 'cancelled', 'installed', 'something new']) {
-        await androidSays(status);
-      }
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        channel.name,
+        const StandardMethodCodec().encodeMethodCall(const MethodCall('installerClosed')),
+        (_) {},
+      );
       await Future<void>.delayed(Duration.zero);
 
-      expect(outcomes, [
-        InstallOutcome.started,
-        InstallOutcome.cancelled,
-        InstallOutcome.installed,
-        InstallOutcome.failed,
-      ]);
+      expect(closed, 1);
+    });
+
+    test('asks Android about the network and the installed build', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        return switch (call.method) {
+          'unmetered' => true,
+          'info' => {'build': 40, 'version': '1.0.0', 'updates_dir': '/cache/updates'},
+          _ => null,
+        };
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final android = PlatformAppInstaller();
+      expect(await android.unmetered(), isTrue);
+      final installed = await android.installed();
+      expect(installed?.build, 40);
+      expect(installed?.updatesDir, '/cache/updates');
     });
 
     test('a failed hand-over is an install problem, and a damaged file says so', () async {
@@ -439,9 +619,21 @@ void main() {
       final dropped = MockClient((_) async => throw http.ClientException('reset'));
       await expectLater(download(dropped), throwsA(UpdateProblem.download));
     });
+
+    test('a finished download counts only at its full size, and can be cleared', () async {
+      final folder = '${updates.path}/nested';
+      expect(await hasApk(folder: folder, name: 'lucid-saga-13.apk', size: 4), isFalse);
+      await download(MockClient((_) async => http.Response.bytes([1, 2, 3, 4], 200)));
+      expect(await hasApk(folder: folder, name: 'lucid-saga-13.apk', size: 4), isTrue);
+      expect(await hasApk(folder: folder, name: 'lucid-saga-13.apk', size: 5), isFalse);
+
+      await clearDownloads(folder);
+      expect(Directory(folder).listSync(), isEmpty);
+      await clearDownloads('${updates.path}/missing');
+    });
   });
 
-  group('the banner and Account', () {
+  group('the banner, the cover and Account', () {
     Future<void> launch(WidgetTester tester, {String location = '/discover'}) async {
       await tester.runAsync(
         () => harness.launch(
@@ -453,67 +645,105 @@ void main() {
           ],
         ),
       );
+      // The check reads and clears the updates folder, which takes real time.
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await settle(tester);
     }
 
-    testWidgets('offers a newer build above the tabs, and Later hides it', (tester) async {
-      publish(13);
+    /// Taps [button] and waits, in real time, for the download to land and the installer to open.
+    Future<void> tapUntilInstalling(WidgetTester tester, Finder button) async {
+      await tester.runAsync(() async {
+        await tester.tap(button);
+        for (var i = 0; i < 100 && installer.installs.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      });
+      await settle(tester);
+    }
+
+    testWidgets('offers a newer build above the tabs with its size, and Later hides it', (
+      tester,
+    ) async {
+      publish(13, apk: List.filled(2600000, 1));
       await launch(tester);
       final l10n = await english();
 
       expect(find.text(l10n.updateAvailable), findsOneWidget);
-      expect(find.text(l10n.updateAvailableBody('1.0.0', 13)), findsOneWidget);
+      expect(find.text(l10n.updateAvailableBody('1.0.0', 13, 3)), findsOneWidget);
+      expect(find.text(l10n.updateNow), findsOneWidget);
 
       await tester.tap(find.text(l10n.updateLater));
       await settle(tester);
       expect(find.byKey(const Key('update.banner')), findsNothing);
     });
 
-    testWidgets('Update downloads it and Android takes over', (tester) async {
+    testWidgets('on Wi-Fi the offer is ready to install, and Install covers the app', (
+      tester,
+    ) async {
+      installer.onWifi = true;
       publish(13);
       await launch(tester);
       final l10n = await english();
 
-      await tester.runAsync(() async {
-        await tester.tap(find.byKey(const Key('update.now')));
-        for (var i = 0; i < 50 && installer.installs.isEmpty; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-        }
-      });
-      await settle(tester);
-
-      expect(installer.installs, hasLength(1));
-      expect(find.text(l10n.updateInstalling), findsOneWidget);
-
+      expect(find.text(l10n.updateReady), findsOneWidget);
+      expect(find.text(l10n.updateReadyBody('1.0.0', 13)), findsOneWidget);
       expect(find.byKey(const Key('update.cover')), findsNothing);
 
-      await tester.runAsync(() async {
-        installer.finish(InstallOutcome.started);
-        await Future<void>.delayed(Duration.zero);
-      });
-      await settle(tester);
+      await tapUntilInstalling(tester, find.text(l10n.updateInstall));
 
-      // The whole app is covered until Android replaces it, and nothing under it can be pressed.
+      // The whole app is covered while Android installs it, and nothing under it can be pressed.
       expect(find.byKey(const Key('update.cover')), findsOneWidget);
       expect(find.text(l10n.updateCoverTitle), findsOneWidget);
       expect(find.text(l10n.updateCoverBody), findsOneWidget);
-      expect(find.byKey(const Key('update.now')), findsNothing);
-      expect(find.text(l10n.updateLater), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       await tester.tap(find.text(l10n.navAccount), warnIfMissed: false);
       await settle(tester);
       expect(find.byKey(const Key('account.update')), findsNothing);
 
-      // Android refusing it takes the cover away, and the banner offers it again.
+      // The installer closing with the app still here takes the cover away; Install reopens it.
       await tester.runAsync(() async {
-        installer.finish(InstallOutcome.failed);
+        installer.close();
         await Future<void>.delayed(Duration.zero);
       });
       await settle(tester);
-
       expect(find.byKey(const Key('update.cover')), findsNothing);
-      expect(find.text(l10n.updateFailedInstall), findsOneWidget);
-      expect(find.text(l10n.updateTryAgain), findsOneWidget);
+      expect(find.text(l10n.updateInstall), findsOneWidget);
+    });
+
+    testWidgets('Update downloads it first on a metered network', (tester) async {
+      publish(13);
+      await launch(tester);
+      final l10n = await english();
+
+      await tapUntilInstalling(tester, find.byKey(const Key('update.now')));
+
+      expect(installer.installs, hasLength(1));
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+      expect(find.text(l10n.updateCoverTitle), findsOneWidget);
+    });
+
+    testWidgets('the cover never traps the player if the installer says nothing', (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      publish(13);
+      await launch(tester);
+
+      await tapUntilInstalling(tester, find.byKey(const Key('update.now')));
+      await tester.pump(UpdateCover.giveUpAfter * 2);
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+
+      // The installer takes the screen, and the cover stays however long it's open.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump(UpdateCover.giveUpAfter * 2);
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+
+      // Back in front with no word from Android: the cover goes after a moment.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(UpdateCover.giveUpAfter ~/ 2);
+      expect(find.byKey(const Key('update.cover')), findsOneWidget);
+      await tester.pump(UpdateCover.giveUpAfter);
+      await settle(tester);
+      expect(find.byKey(const Key('update.cover')), findsNothing);
+      expect(find.byKey(const Key('update.now')), findsOneWidget);
     });
 
     testWidgets('the cover covers any screen, and stays still with reduce motion', (tester) async {
@@ -528,25 +758,44 @@ void main() {
       await tester.ensureVisible(tile);
       await settle(tester);
 
-      await tester.runAsync(() async {
-        await tester.tap(find.descendant(of: tile, matching: find.text(l10n.updateNow)));
-        for (var i = 0; i < 50 && installer.installs.isEmpty; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-        }
-        installer.finish(InstallOutcome.started);
-        await Future<void>.delayed(Duration.zero);
-      });
-      await settle(tester);
+      await tapUntilInstalling(
+        tester,
+        find.descendant(of: tile, matching: find.text(l10n.updateNow)),
+      );
 
-      expect(find.byKey(const Key('update.cover')), findsOneWidget);
-      expect(find.text(l10n.updateCoverTitle), findsOneWidget);
+      // Account's own line says so too, under the cover.
+      final cover = find.byKey(const Key('update.cover'));
+      expect(cover, findsOneWidget);
       expect(
-        find.descendant(
-          of: find.byKey(const Key('update.cover')),
-          matching: find.byType(LinearProgressIndicator),
-        ),
+        find.descendant(of: cover, matching: find.text(l10n.updateCoverTitle)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: cover, matching: find.byType(LinearProgressIndicator)),
         findsNothing,
       );
+    });
+
+    testWidgets('a failure says why and offers it again', (tester) async {
+      installer.failInstall = UpdateProblem.install;
+      publish(13);
+      await launch(tester);
+      final l10n = await english();
+
+      await tapUntilInstalling(tester, find.byKey(const Key('update.now')));
+
+      expect(find.byKey(const Key('update.cover')), findsNothing);
+      expect(find.text(l10n.updateFailedInstall), findsOneWidget);
+      expect(find.text(l10n.updateTryAgain), findsOneWidget);
+    });
+
+    testWidgets('says the app was updated on the first run of a newer build', (tester) async {
+      SharedPreferences.setMockInitialValues({AppUpdateController.lastBuildKey: 11});
+      await launch(tester);
+      final l10n = await english();
+
+      expect(find.text(l10n.updateDone('1.0.0', 12)), findsOneWidget);
+      expect(find.byKey(const Key('update.banner')), findsNothing);
     });
 
     testWidgets('shows nothing on the newest build', (tester) async {
@@ -554,6 +803,7 @@ void main() {
       await launch(tester);
 
       expect(find.byKey(const Key('update.banner')), findsNothing);
+      expect(find.byKey(const Key('update.done')), findsNothing);
     });
 
     testWidgets('Account shows this build and checks for a newer one', (tester) async {
@@ -572,8 +822,22 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       await settle(tester);
-      expect(find.text(l10n.accountUpdateReady(13)), findsOneWidget);
+      expect(find.text(l10n.accountUpdateOut(13)), findsOneWidget);
       expect(find.descendant(of: tile, matching: find.text(l10n.updateNow)), findsOneWidget);
+
+      // On Wi-Fi the next check fetches it, and Account offers Install.
+      installer.onWifi = true;
+      await tester.runAsync(() async {
+        await tester.tap(find.descendant(of: tile, matching: find.text(l10n.updateNow)));
+        for (var i = 0; i < 100 && installer.installs.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        installer.close();
+        await Future<void>.delayed(Duration.zero);
+      });
+      await settle(tester);
+      expect(find.text(l10n.accountUpdateReady(13)), findsOneWidget);
+      expect(find.descendant(of: tile, matching: find.text(l10n.updateInstall)), findsOneWidget);
     });
 
     testWidgets('Account has no app section in a build that an app store updates', (tester) async {
