@@ -1073,6 +1073,18 @@ test_dependabot() {
   done < <(awk '/^  - package-ecosystem: /{eco=$3} /^    directory: /{print eco, $2}' "$cfg")
 }
 
+# The weekly pass reads the alerts through this workflow, which can read them and nothing else.
+test_dependabot_alerts() {
+  local wf="$ROOT/.github/workflows/dependabot-alerts.yml"
+  start "The Dependabot alerts workflow only reads the alerts"
+  if [ -f "$wf" ]; then ok; else bad "missing $wf"; fi
+  contains "$wf" "permissions: {}"
+  equals "$(grep -cE '^ +[a-z-]+: (read|write)$' "$wf")" 1 "the workflow asks for one permission"
+  contains "$wf" "      vulnerability-alerts: read"
+  equals "$(sed -n '/^on:/,/^$/p' "$wf" | grep -c '^  [a-z_]*:')" 1 "the workflow starts only by hand"
+  contains "$wf" "  workflow_dispatch:"
+}
+
 test_docs_list_every_command() {
   start "docs/DEPLOY.md lists exactly the commands the scripts run"
   "$INFRA/tests/print-commands.sh" >"$WORK/commands-now"
@@ -1110,6 +1122,7 @@ test_publish_apk
 test_upload_apk
 test_workflow_matches_scripts
 test_dependabot
+test_dependabot_alerts
 test_docs_list_every_command
 
 printf '\n%d checks passed, %d failed\n' "$passed" "$failed"
