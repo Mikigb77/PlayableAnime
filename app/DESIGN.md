@@ -201,10 +201,11 @@ dark figure.
   lighting, deep ink-blue night tones with one strong warm gold accent. No text, no letters, no
   logos, no watermark, no border, no frame, no rounded corners, no user interface." That came
   as 1024 px with the scene on a 584 px inner panel. On 2026-11-10 the panel was upscaled 4x with
-  Real-ESRGAN and repainted by Gemini at 4096 px in two steps, a faithful copy
-  (`gemini-3-pro-image`) and then the same picture with a better drawn traveller
-  (`gemini-nano-banana-2.1`, Miki's pick), the same picture as the website's hero. The scripts
-  and the exact prompts are in the website's repo, Mikigb77/LucidSaga_Web (`scripts/upscale.py`,
+  Real-ESRGAN and repainted by Gemini at 4096 px: the same design painted afresh in a darker,
+  denser forest, with the traveller from a repaint that draws them with more care (robe folds, a
+  buckled satchel, cuffed boots), mostly by `gemini-nano-banana-2.1`. Miki picked it from three
+  rounds of pictures, and it is the same picture as the website's hero. The scripts and the
+  exact prompts are in the website's repo, Mikigb77/LucidSaga_Web (`scripts/upscale.py`,
   `scripts/repaint.py`). The file holds that scene at 1680 px, enough for the App Store's 1024 px
   icon, inside a 400 px margin of the scene mirrored at its edges for the blurred rim of
   Android's adaptive layer. It keeps the IPTC mark for AI-made media.
