@@ -199,9 +199,16 @@ dark figure.
   stays readable at 48 pixels, kept inside the middle 60% of the frame, on a full-bleed background
   that fills the whole square edge to edge. Painterly anime key-art style, cinematic low-key
   lighting, deep ink-blue night tones with one strong warm gold accent. No text, no letters, no
-  logos, no watermark, no border, no frame, no rounded corners, no user interface." Its file keeps
-  the IPTC mark for AI-made media. It is 1024 px with the scene on an inner panel, so the App
-  Store's 1024 px icon is that panel scaled up; repaint at 2K before an iOS release.
+  logos, no watermark, no border, no frame, no rounded corners, no user interface." That came
+  as 1024 px with the scene on a 584 px inner panel. On 2026-11-10 the panel was upscaled 4x with
+  Real-ESRGAN and repainted by Gemini at 4096 px: the same design painted afresh in a darker,
+  denser forest, with the traveller from a repaint that draws them with more care (robe folds, a
+  buckled satchel, cuffed boots), mostly by `gemini-nano-banana-2.1`. Miki picked it from three
+  rounds of pictures, and it is the same picture as the website's hero. The scripts and the
+  exact prompts are in the website's repo, Mikigb77/LucidSaga_Web (`scripts/upscale.py`,
+  `scripts/repaint.py`). The file holds that scene at 1680 px, enough for the App Store's 1024 px
+  icon, inside a 400 px margin of the scene mirrored at its edges for the blurred rim of
+  Android's adaptive layer. It keeps the IPTC mark for AI-made media.
 - **One source:** `tool/app_icon/icon.svg`, on Android's 108-unit adaptive-icon grid in three
   layers: `#bg`, the painting, opaque; `#fg`, empty, since the painting is one layer; and `#mono`,
   the doorway with the traveller cut out, for Android 13 themed icons.

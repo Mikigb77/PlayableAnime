@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
   <!--
-    The forest gate. forest-gate.jpg was painted by Gemini on Vertex AI (2026-11-04; the model and
-    prompt are in DESIGN.md, "App icon"). It came as a 1024 px square with the scene
-    on an inner panel, so the panel's middle (pixels 225 to 809 across, 228 to 812 down) fills the
-    sharp square from 12 to 96 here. The margin around it, which only an Android launcher's motion
-    ever shows, is the same picture blurred, so the seam stays soft. render.mjs inlines the JPEG.
+    The forest gate. forest-gate.jpg is the scene Gemini on Vertex AI first painted for the icon
+    (2026-11-04; the model and prompt are in DESIGN.md, "App icon"), repainted at 4K in a darker
+    forest with a better drawn traveller (2026-11-10). The scene fills the sharp square from 12 to 96 here, 1680 px of
+    the file at 20 px a unit; the 400 px around it are the scene mirrored at its edges, so the
+    picture runs from -8 to 116 and its blur never fades at the grid's edge. That margin, which
+    only an Android launcher's motion ever shows, is drawn blurred, so the seam stays soft.
+    render.mjs inlines the JPEG.
   -->
   <defs>
     <filter id="soften" x="-10%" y="-10%" width="120%" height="120%">
@@ -21,10 +23,8 @@
 
   <g id="bg">
     <rect width="108" height="108" fill="#0B0D12"/>
-    <image href="forest-gate.jpg" x="-20.363" y="-20.795" width="147.288" height="147.288"
-      preserveAspectRatio="none" filter="url(#soften)"/>
-    <image href="forest-gate.jpg" x="-20.363" y="-20.795" width="147.288" height="147.288"
-      preserveAspectRatio="none" clip-path="url(#sharp)"/>
+    <image href="forest-gate.jpg" x="-8" y="-8" width="124" height="124" filter="url(#soften)"/>
+    <image href="forest-gate.jpg" x="-8" y="-8" width="124" height="124" clip-path="url(#sharp)"/>
   </g>
 
   <!-- The painting is one layer, so the adaptive foreground stays empty. -->
