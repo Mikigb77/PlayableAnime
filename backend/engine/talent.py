@@ -27,14 +27,18 @@ one that held lifts that thing a step toward the talent's pace, or two, and neve
 it starts from. Someone one of a kind can carry a second thing all the way up, which takes three
 ordinary bridges from outside.
 
-Where several talents reach a thing, the best one sets the pace: talents never multiply. A
-weakness that covers the thing takes one step off whatever the others give. When two talents both
-cover a move fully, its violet die shows an insight on 16 or more instead of 18 (A3).
+Where several talents reach a thing, **their paces add** (decided 2026-11-10, Miki): each
+counts for the pace its own steps give that thing, so two one of a kind talents that both cover a
+move learn it sixteen times as fast, and one that covers it beside a genius that is related to it
+ten times. They add and never multiply, and of the talents that cover everything only the
+strongest counts. A weakness that covers the thing halves what the others give. When two talents
+both cover a move fully, its violet die also shows an insight on 15 or more instead of 18 (A3).
 
 Nothing here rolls or changes anything: it reads the sheet. A sheet with no talents, saved before
 talent was a record of its own, is read from its traits' words as before, as one general talent.
 """
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -55,19 +59,13 @@ MAX_ONE_OF_A_KIND = 3
 # A3. The face of a move's violet die that shows an insight, and the one that does when two
 # talents both cover the move fully.
 INSIGHT_AT = 18
-SHARED_INSIGHT_AT = 16
+SHARED_INSIGHT_AT = 15
 # The pace from which a new move starts a mastery higher, and is learned on sight when watched.
 GENIUS_STEPS = TalentStrength.GENIUS.steps
 ONE_OF_A_KIND_STEPS = TalentStrength.ONE_OF_A_KIND.steps
-SLOWEST, FASTEST = TalentStrength.SLOW.steps, ONE_OF_A_KIND_STEPS
 
-PACE_WORDS = {
-    -1: "at half the pace",
-    0: "at the ordinary pace",
-    1: "twice as fast",
-    2: "four times as fast",
-    3: "eight times as fast",
-}
+# How many times as fast, in words up to ten: a pace is a half, or a whole number.
+_TIMES = dict(enumerate("three four five six seven eight nine ten".split(), start=3))
 STRENGTH_WORDS = {
     TalentStrength.SLOW: "slow",
     TalentStrength.KNACK: "a knack",
@@ -222,31 +220,63 @@ def copies_on_sight(character: Character) -> bool:
     return _says(_trait_texts(character.sheet, TraitKind.GIFT), _COPY_WORDS, ())
 
 
-@dataclass(frozen=True)
-class Standing:
-    """How one thing stands with a character's talents: the doublings of the ordinary pace it
-    grows at, the talent that sets them and how the thing stands to it once bridges are counted,
-    the talents that cover it fully, and a weakness that slows it."""
+def pace_words(pace: float) -> str:
+    """A pace as a reason says it: "at half the pace", "twice as fast", "12 times as fast"."""
+    if pace < 1:
+        return "at half the pace"
+    if pace == 1:
+        return "at the ordinary pace"
+    if pace == 2:
+        return "twice as fast"
+    return f"{_TIMES.get(int(pace), f'{pace:g}')} times as fast"
 
-    steps: int = 0
-    by: Talent | None = None
-    fit: TalentFit | None = None
-    full: tuple[Talent, ...] = ()
-    slowed_by: Talent | None = None
+
+@dataclass(frozen=True)
+class Reach:
+    """One talent that reaches a thing, and how many of its own steps do once its bridges are
+    counted: all of them when it covers the thing fully."""
+
+    talent: Talent
+    steps: int
 
     @property
     def pace(self) -> float:
-        """How fast it grows, 1 for an ordinary character."""
+        """What it adds to how fast the thing grows."""
         return 2.0**self.steps
 
     @property
+    def fit(self) -> TalentFit:
+        """How the thing stands to it now: inside once every step reaches it."""
+        full = self.steps >= self.talent.strength.steps
+        return TalentFit.INSIDE if full else TalentFit.RELATED
+
+
+@dataclass(frozen=True)
+class Standing:
+    """How one thing stands with a character's talents: how fast it grows, 1 for an ordinary
+    character, each talent that reaches it, strongest reach first, and a weakness that slows
+    it."""
+
+    pace: float = 1.0
+    reaches: tuple[Reach, ...] = ()
+    slowed_by: Talent | None = None
+
+    @property
+    def steps(self) -> int:
+        """The doublings of the ordinary pace it is worth, rounded down. What a pace unlocks is
+        read from this: a genius's pace is 2 and one of a kind's 3, however it adds up."""
+        return math.floor(math.log2(self.pace))
+
+    @property
     def insight_at(self) -> int:
-        """A3. The face of the move's violet die that shows an insight."""
-        return SHARED_INSIGHT_AT if len(self.full) >= 2 else INSIGHT_AT
+        """A3. The face of the move's violet die that shows an insight: lower when two talents
+        both cover it fully."""
+        full = sum(1 for reach in self.reaches if reach.fit is TalentFit.INSIDE)
+        return SHARED_INSIGHT_AT if full >= 2 else INSIGHT_AT
 
     @property
     def words(self) -> str:
-        return PACE_WORDS[self.steps]
+        return pace_words(self.pace)
 
 
 def reach(sheet: CharacterSheet, talent: Talent, key: str) -> int:
@@ -275,26 +305,25 @@ def fit_of(sheet: CharacterSheet, talent: Talent, key: str) -> TalentFit:
 
 
 def standing(character: Character, key: str) -> Standing:
-    """A4. How fast the character learns the thing `key` names. The best talent that reaches it
-    sets the pace, since talents never multiply, and a weakness that covers it takes a step off."""
+    """A4. How fast the character learns the thing `key` names. The paces of the talents that
+    reach it add, counting only the strongest of those that cover everything, and a weakness
+    that covers it halves the sum. With none it is the ordinary pace."""
     sheet = character.sheet
     talents = talents_of(character)
-    best: Talent | None = None
-    steps = 0
-    full: list[Talent] = []
+    reaches: list[Reach] = []
+    general: Reach | None = None
     for talent in talents:
-        top = talent.strength.steps
-        if top <= 0:
-            continue
         reached = reach(sheet, talent, key)
-        if reached == top:
-            full.append(talent)
-        if reached > steps:
-            best, steps = talent, reached
-    fit: TalentFit | None = None
-    if best is not None:
-        short = best.strength.steps - steps
-        fit = TalentFit.INSIDE if short == 0 else TalentFit.RELATED
+        if reached <= 0:
+            continue
+        if not talent.general:
+            reaches.append(Reach(talent, reached))
+        elif general is None or reached > general.steps:
+            general = Reach(talent, reached)
+    if general is not None:
+        reaches.append(general)
+    reaches.sort(key=lambda found: -found.steps)
+    pace = sum(found.pace for found in reaches) or 1.0
     slow = next(
         (
             t
@@ -304,9 +333,8 @@ def standing(character: Character, key: str) -> Standing:
         None,
     )
     if slow is not None:
-        steps -= 1
-    steps = max(SLOWEST, min(FASTEST, steps))
-    return Standing(steps=steps, by=best, fit=fit, full=tuple(full), slowed_by=slow)
+        pace /= 2
+    return Standing(pace=pace, reaches=tuple(reaches), slowed_by=slow)
 
 
 def unruled(character: Character, key: str) -> bool:

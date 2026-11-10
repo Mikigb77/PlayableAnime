@@ -3,7 +3,7 @@
 Agreed with Miki on 2026-11-10: talent is a list on the sheet, written from the player's own
 words, on one scale where every step doubles the pace. Whether a talent covers a thing is ruled
 once (inside, related or outside), a bridge built in the story lifts a thing toward a talent, and
-talents never multiply.
+the paces of the talents that reach one thing add.
 """
 
 import pytest
@@ -57,11 +57,35 @@ def bridged(character: Character, talent_id: str, steps: int = 1, key: str = BLA
 # --- the scale -------------------------------------------------------------------------------
 
 
-def test_every_step_of_talent_doubles_the_pace():
-    paces = [talent.Standing(steps=steps).pace for steps in (-1, 0, 1, 2, 3)]
+def reaching(stands: talent.Standing) -> list[tuple[str, TalentFit]]:
+    return [(reach.talent.id, reach.fit) for reach in stands.reaches]
 
-    assert paces == [0.5, 1, 2, 4, 8]
+
+def test_every_step_of_talent_doubles_the_pace():
+    paces = [
+        talent.standing(ruled(lin(gift("sword", strength)), sword=TalentFit.INSIDE), BLADE).pace
+        for strength in (SLOW, KNACK, GENIUS, UNIQUE)
+    ]
+
+    assert paces == [0.5, 2, 4, 8]
+    assert talent.standing(lin(), BLADE).pace == 1
     assert [s.steps for s in (SLOW, KNACK, GENIUS, UNIQUE)] == [-1, 1, 2, 3]
+
+
+def test_a_pace_is_said_in_words_up_to_ten():
+    said = [talent.pace_words(pace) for pace in (0.5, 1, 2, 3, 4, 8, 10, 12, 16)]
+
+    assert said == [
+        "at half the pace",
+        "at the ordinary pace",
+        "twice as fast",
+        "three times as fast",
+        "four times as fast",
+        "eight times as fast",
+        "ten times as fast",
+        "12 times as fast",
+        "16 times as fast",
+    ]
 
 
 def test_a_name_is_one_key_in_any_language():
@@ -150,7 +174,7 @@ def test_a_thing_never_ruled_on_grows_at_the_ordinary_pace():
 
     stands = talent.standing(character, BLADE)
 
-    assert (stands.steps, stands.by, stands.words) == (0, None, "at the ordinary pace")
+    assert (stands.pace, stands.reaches, stands.words) == (1, (), "at the ordinary pace")
     assert talent.unruled(character, BLADE)
 
 
@@ -159,7 +183,7 @@ def test_a_talent_the_ruling_doesnt_list_is_outside():
 
     stands = talent.standing(character, BLADE)
 
-    assert (stands.steps, stands.by.id) == (2, "architect")
+    assert (stands.pace, reaching(stands)) == (4, [("architect", TalentFit.INSIDE)])
     assert not talent.unruled(character, BLADE)
 
 
@@ -168,7 +192,7 @@ def test_a_general_talent_covers_everything_with_no_ruling():
 
     stands = talent.standing(character, "skill:anything-at-all")
 
-    assert (stands.steps, stands.fit) == (2, TalentFit.INSIDE)
+    assert (stands.pace, reaching(stands)) == (4, [("prodigy", TalentFit.INSIDE)])
     assert not talent.unruled(character, BLADE)  # nothing to rule on
 
 
@@ -178,19 +202,92 @@ def test_a_knack_that_is_only_related_gives_nothing():
     assert talent.standing(character, BLADE).steps == 0
 
 
-def test_talents_never_multiply_the_best_one_sets_the_pace():
+# --- several talents on one thing ------------------------------------------------------------
+
+
+def test_two_one_of_a_kind_talents_that_both_cover_a_thing_learn_it_sixteen_times_as_fast():
+    """Miki's case: two talents behind one technique learn it faster than either alone."""
     character = ruled(
-        lin(gift("sword", UNIQUE), gift("architect")),
+        lin(gift("sword", UNIQUE), gift("aura", UNIQUE)),
         sword=TalentFit.INSIDE,
-        architect=TalentFit.INSIDE,
+        aura=TalentFit.INSIDE,
     )
 
     stands = talent.standing(character, BLADE)
 
-    assert (stands.steps, stands.by.id, stands.pace) == (3, "sword", 8)
+    assert (stands.pace, stands.words) == (16, "16 times as fast")
+    assert reaching(stands) == [("sword", TalentFit.INSIDE), ("aura", TalentFit.INSIDE)]
 
 
-def test_a_weakness_that_covers_the_thing_takes_a_step_off():
+@pytest.mark.parametrize(
+    ("second", "fit", "pace"),
+    [
+        (GENIUS, TalentFit.INSIDE, 12),
+        (GENIUS, TalentFit.RELATED, 10),
+        (KNACK, TalentFit.INSIDE, 10),
+        (KNACK, TalentFit.RELATED, 8),  # a knack that is only related gives nothing
+        (GENIUS, TalentFit.OUTSIDE, 8),
+    ],
+)
+def test_each_talent_that_reaches_a_thing_adds_the_pace_it_gives(second, fit, pace):
+    character = ruled(
+        lin(gift("sword", UNIQUE), gift("architect", second)),
+        sword=TalentFit.INSIDE,
+        architect=fit,
+    )
+
+    assert talent.standing(character, BLADE).pace == pace
+
+
+def test_talents_add_and_never_multiply():
+    three = [gift(name, UNIQUE) for name in ("sword", "aura", "sight")]
+    character = ruled(lin(*three), **{t.id: TalentFit.INSIDE for t in three})
+
+    assert talent.standing(character, BLADE).pace == 24
+
+
+def test_two_talents_together_can_reach_a_stronger_talents_pace():
+    """What a pace unlocks is read from the pace, however it adds up."""
+    character = ruled(
+        lin(gift("sword"), gift("aura")), sword=TalentFit.INSIDE, aura=TalentFit.INSIDE
+    )
+
+    stands = talent.standing(character, BLADE)
+
+    assert (stands.pace, stands.steps) == (8, talent.ONE_OF_A_KIND_STEPS)
+
+
+def test_the_strongest_reach_is_named_first():
+    character = ruled(
+        lin(gift("architect"), gift("sword", UNIQUE)),
+        architect=TalentFit.INSIDE,
+        sword=TalentFit.RELATED,
+    )
+
+    assert reaching(talent.standing(character, BLADE)) == [
+        ("architect", TalentFit.INSIDE),
+        ("sword", TalentFit.RELATED),
+    ]
+    character.sheet.talent_rulings[0].covers[1].fit = TalentFit.INSIDE
+    assert [who for who, _ in reaching(talent.standing(character, BLADE))] == ["sword", "architect"]
+
+
+def test_of_the_talents_that_cover_everything_only_the_strongest_counts():
+    """Said twice about everything, a gift is still one gift."""
+    twice = lin(gift("prodigy", GENIUS, general=True), gift("quick", KNACK, general=True))
+    beside = ruled(
+        lin(gift("prodigy", GENIUS, general=True), gift("sword", UNIQUE)),
+        sword=TalentFit.INSIDE,
+    )
+
+    assert (talent.standing(twice, BLADE).pace, reaching(talent.standing(twice, BLADE))) == (
+        4,
+        [("prodigy", TalentFit.INSIDE)],
+    )
+    assert talent.standing(beside, BLADE).pace == 12  # a talent for one thing adds to it
+
+
+def test_a_weakness_that_covers_the_thing_halves_what_the_others_give():
     alone = ruled(lin(gift("clumsy", SLOW)), clumsy=TalentFit.INSIDE)
     beside = ruled(
         lin(gift("sword", UNIQUE), gift("clumsy", SLOW)),
@@ -199,25 +296,33 @@ def test_a_weakness_that_covers_the_thing_takes_a_step_off():
     )
     only_near = ruled(lin(gift("clumsy", SLOW)), clumsy=TalentFit.RELATED)
 
+    two = ruled(
+        lin(gift("sword", UNIQUE), gift("architect"), gift("clumsy", SLOW)),
+        sword=TalentFit.INSIDE,
+        architect=TalentFit.INSIDE,
+        clumsy=TalentFit.INSIDE,
+    )
+
     assert talent.standing(alone, BLADE).words == "at half the pace"
-    assert (talent.standing(beside, BLADE).steps, talent.standing(beside, BLADE).slowed_by.id) == (
-        2,
+    assert (talent.standing(beside, BLADE).pace, talent.standing(beside, BLADE).slowed_by.id) == (
+        4,
         "clumsy",
     )
-    assert talent.standing(only_near, BLADE).steps == 0
+    assert talent.standing(two, BLADE).words == "six times as fast"
+    assert talent.standing(only_near, BLADE).pace == 1
 
 
 # --- insight when two talents cover a move ---------------------------------------------------
 
 
-def test_two_talents_that_both_cover_a_move_fully_show_an_insight_on_16():
+def test_two_talents_that_both_cover_a_move_fully_show_an_insight_on_15():
     both = ruled(
         lin(gift("sword", UNIQUE), gift("architect", KNACK)),
         sword=TalentFit.INSIDE,
         architect=TalentFit.INSIDE,
     )
 
-    assert talent.standing(both, BLADE).insight_at == 16
+    assert talent.standing(both, BLADE).insight_at == 15
 
 
 def test_a_talent_that_is_only_related_doesnt_bring_the_easier_insight():
@@ -244,7 +349,10 @@ def test_a_bridge_all_the_way_makes_the_second_talent_cover_it_fully():
         architect=TalentFit.RELATED,
     )
 
-    assert talent.standing(bridged(character, "architect"), BLADE).insight_at == 16
+    before = talent.standing(character, BLADE).pace
+    stands = talent.standing(bridged(character, "architect"), BLADE)
+
+    assert (before, stands.pace, stands.insight_at) == (10, 12, 15)
 
 
 # --- bridges ---------------------------------------------------------------------------------
@@ -266,7 +374,7 @@ def test_a_bridge_over_the_heart_of_the_thing_lifts_two_steps():
 
     stands = talent.standing(character, BLADE)
 
-    assert (stands.steps, stands.fit) == (2, TalentFit.RELATED)
+    assert (stands.pace, reaching(stands)) == (4, [("sight", TalentFit.RELATED)])
 
 
 def test_one_of_a_kind_carries_a_second_thing_all_the_way_in_three_bridges():
@@ -276,7 +384,7 @@ def test_one_of_a_kind_carries_a_second_thing_all_the_way_in_three_bridges():
 
     stands = talent.standing(character, BLADE)
 
-    assert (stands.steps, stands.fit, stands.full) == (3, TalentFit.INSIDE, (stands.by,))
+    assert (stands.pace, reaching(stands)) == (8, [("sight", TalentFit.INSIDE)])
 
 
 def test_a_bridge_that_didnt_hold_lifts_nothing():
@@ -288,6 +396,6 @@ def test_a_bridge_that_didnt_hold_lifts_nothing():
 def test_a_bridge_lifts_only_its_own_thing_and_its_own_talent():
     character = bridged(lin(gift("architect"), gift("sword", UNIQUE)), "architect")
 
-    assert talent.standing(character, BLADE).by.id == "architect"
+    assert reaching(talent.standing(character, BLADE)) == [("architect", TalentFit.RELATED)]
     assert talent.standing(character, "technique:aura-step").steps == 0
     assert talent.reach(character.sheet, character.sheet.talent("sword"), BLADE) == 0

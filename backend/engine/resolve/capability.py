@@ -235,7 +235,7 @@ def hand_for(
 
 
 def _insight_at(actor: Character, move: str) -> int:
-    """A3, A4. The face of a move's violet die that shows an insight: 18, or 16 when two
+    """A3, A4. The face of a move's violet die that shows an insight: 18, or 15 when two
     talents of theirs both cover the move fully (`engine.talent`)."""
     return talent_mod.standing(actor, talent_mod.technique_key(move)).insight_at
 

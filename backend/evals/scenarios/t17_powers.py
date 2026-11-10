@@ -1202,7 +1202,11 @@ async def talent(ev: Eval) -> None:
         "a talent shown, never named",
         Rubric(
             must=(
-                "The aura blade comes to Lin strikingly fast, as to someone born to the blade",
+                # Both talents feed the blade's pace, and the player argues both, so the
+                # telling may lean on either.
+                "The aura blade comes to Lin strikingly fast, far faster than practice alone "
+                "would explain, through what he is gifted at: the blade itself, or his eye "
+                "for structure",
                 "Deriving the formula is shown as real work, and whether it pays off is "
                 "exactly what OUTCOME says",
             ),
