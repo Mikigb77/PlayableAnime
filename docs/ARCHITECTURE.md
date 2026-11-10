@@ -892,14 +892,14 @@ turn = TurnInput(state=world, ctx=TurnContext(story_id=..., turn=world.turn + 1,
                  kind=TurnKind.ACTION, action="I throw a stone at Zhao, then run for the gate",
                  scenes=scenes)  # every scene since the last chapter, and at least the last 3
 async with aclosing(run_turn(turn, llm)) as events:
-    async for event in events:  # NarrationDelta, NarrationReset, then TurnCompleted(result)
-        ...
+    async for event in events:  # StepsDecided, NarrationDelta, NarrationReset, then
+        ...                     # TurnCompleted(result)
 ```
 
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. It also shows the scene the player is answering (LAST SCENE, its last 6,000 characters), so that what the scene showed counts as there, and the schema requires a `plausibility` for everything a beat uses (R2). The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, leaves out edges and hindrances that lean on an injury the record doesn't hold (`engine.injuries`, issue `unrecorded_harm`, N6), and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. For the dice (A3), the prompt asks for facts in words and never for a class, a number or a result: what of the other side's answers the step (`answers_with`), whether it meets their power head-on or goes around it (`head_on`, required, like `challenge`), each real advantage with where it comes from (`edges`: a step, a record or the scene's own words, which code checks before it gives a green die; a technique made for exactly what the other side is doing counts when the scene shows them doing it), what the character is up against in a sentence the player reads before the dice (`up_against`), and, when foes mean to kill or a danger can, what a miss costs (`miss_costs`). |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call, and neither does a turn played out from its kept reading (`TurnInput.reading`, A3), which is used as it was read. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. It also shows the scene the player is answering (LAST SCENE, its last 6,000 characters), so that what the scene showed counts as there, and the schema requires a `plausibility` for everything a beat uses (R2). The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, leaves out edges and hindrances that lean on an injury the record doesn't hold (`engine.injuries`, issue `unrecorded_harm`, N6), and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. For the dice (A3), the prompt asks for facts in words and never for a class, a number or a result: what of the other side's answers the step (`answers_with`), whether it meets their power head-on or goes around it (`head_on`, required, like `challenge`), each real advantage with where it comes from (`edges`: a step, a record or the scene's own words, which code checks before it gives a green die; a technique made for exactly what the other side is doing counts when the scene shows them doing it), what the character is up against in a sentence the player reads before the dice (`up_against`), and, when foes mean to kill or a danger can, what a miss costs (`miss_costs`). |
 | 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). An end turn's note is first held to what the world allows (`graph/turn/ending.py`'s `earned`, N6): it resolves the note, drops every step ruled out or left to a long shot, and resolves the rest again until nothing is dropped, so every refused part is found at once although a plan stops at its first (R6); the note's outcome claims are refused too (A6). Unless the player asked to end without them, refused parts end the turn with `EndingRefused` before anything plays. Ending without them keeps the rest of the note without its claims, with its summary made from the kept steps, and the brief gets `left_out` instead of the note's words. After `play_out`, `ending_of` reads the turn's ending: a death when the player character was alive before it and is dead after (self-inflicted when the last step played, the one that killed them, aimed harm at their own id), or a chosen ending for an end turn. A turn with an ending plans no event, picture or suggestions. The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
 | 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the scene's place with its setting and the places it lies within (R8, also in the interpret prompt), the people present, the sheet with the purse even when it is empty and the health and wounds even when unhurt (N6), `CHANGED HANDS` with the player character's latest gains and losses and who has what they lost (C10, also in the interpret prompt), the outcome with any unplayed steps and what each step moved (`changed_hands`), with, for a step or a defence the character's own dice decided, how the throw fell, what it was up against and whether a miss could have killed (`throw`, `defence`; never the dice, the number or the chance, and nothing for the world's die) and the one fixed extra effect of a throw over the top (`extra`, A3), the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
@@ -907,7 +907,11 @@ async with aclosing(run_turn(turn, llm)) as events:
 | 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |
 
 **Events.** Nodes send `NarrationDelta` and `NarrationReset` through LangGraph's custom stream,
-and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). A reset is sent
+and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). The resolve
+node sends `StepsDecided` the same way once the plan is checked, on a turn that has steps: the
+scene's `details` as `scene_draft` will build them again from the same resolution, each roll with
+its `throw` (the engine's `Throw`, die by die), and the `Reading` the endpoint keeps when dice
+were thrown ([below](#turn-endpoint), A3). A reset is sent
 only when text was shown: `retry` when the model failed partway and is being retried, `cutaway`
 and `template` when the narration was blocked. `TurnCompleted.result` carries the state to save,
 the scene, the intent, the resolution, the plan, the pending events that fired, the turn's
@@ -958,15 +962,17 @@ filled in, are not served.
    the last chapter, at most 60, so summaries that were late for long catch up a window at a time)
    and at least the last 3 (C3), the player's content preferences (F7) and the story's settings
    (S6).
-3. **Stream**: `turn.started` at once, then `run_turn`'s narration as `narration.delta` and
-   `narration.reset`. The model client and LangGraph are built off the event loop, since the first
+3. **Stream**: `turn.started` at once, then `steps.decided` with what the resolve node decided
+   (`graph.turn.StepsDecided`: the scene's `details`, dice and all, A3), then `run_turn`'s
+   narration as `narration.delta` and `narration.reset`. The model client and LangGraph are built off the event loop, since the first
    turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
    `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
    charged. An end turn whose note the world refuses ends with `ending.refused` instead, with
    nothing saved or charged either (N6).
 4. **Save** (`turns.save`), in one transaction: the state, `turn` and `version` with an optimistic
    check (`UPDATE ... WHERE version = <read>`, so of two racing turns the second gets
-   `version_conflict`), the `Scene` row with its time labels in the world's calendar
+   `version_conflict`; a turn that isn't the one the story owes also needs
+   `unfinished_turn IS NULL`), the `Scene` row with its time labels in the world's calendar
    (`engine.labels.scene_time`) and its cast, the pending events the turn scheduled, applied or
    cancelled, the world state kept for a rewind (`stories.rewind.keep`, C8), the picture plan
    (`media.plans.plan_picture`, M1; drawn in the app's own request, M3) and the charge
@@ -988,6 +994,30 @@ filled in, are not served.
    action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
    values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
 
+**A turn that was shown is played out (A3, `stories/unfinished.py`).** The player sees how a turn
+went in `steps.decided`, before its scene exists, so a throw, or a fall that kills for certain,
+must not be something to look at and then walk away from. When the graph sends `StepsDecided`,
+`turns.stream` first keeps the turn on the story row (`Story.unfinished_turn`, migration `0008`)
+and only then sends the event. The write is
+`UPDATE ... WHERE version = <read> AND unfinished_turn IS NULL`, so of two actions sent at once
+only one is ever shown, and the other ends with `version_conflict`; a turn with no steps, which
+keeps nothing, fails the same way at its save if it raced one that was shown. What is kept is what makes the engine decide the
+same again, never an outcome: the turn number and timeline, what was sent (kind, action, standing,
+input mode, `drop_refused`), the two settings the engine decides by (difficulty, A5, and event
+frequency, W16) and the interpret step's checked reading (`graph.turn.Reading`: the `Intent` and
+the steps handed back, R6). The dice come from the turn's seed (`turn_rng`: story, timeline and
+turn), so the same reading on the same world throws the same dice. `turns.prepare` checks for a
+kept turn before it reads the request: when the story owes one for its very next turn on its
+timeline, that turn is prepared instead (`_resume`), with `TurnInput.reading` set, so the interpret
+node makes no model call and no second reading can decide otherwise. The settings that only shape
+the telling and the player's content preferences (F7) are read fresh. `kind: "resume"` asks for
+this by name and is refused when nothing is owed. Saving the scene clears the column in the same
+update that bumps the version, and so do a rewind and a carry-on. A story is never stuck: a kept
+turn for another moment or one that can't be read is dropped when the next turn is prepared, and a
+resumed turn that ends in `internal_error` is let go (`turns._let_go`), while a model failure,
+the player leaving or a first `internal_error` keeps it. The column holds the player's own words, like `Scene.player_action`,
+so it is never logged (T6): T5's line gets `resumed`, `throws`, `marks` and `deadly`, numbers only.
+
 **Pending events (B12).** A row's id is derived from the story and the engine's event id, and its
 `payload` holds the engine's `PendingEvent`. When a turn reads them, a row's columns (status, due
 time, kind) win over the state, so an event cancelled in the admin stays cancelled. A row written
@@ -1005,6 +1035,9 @@ URLs from `media.lookups`).
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
 meter and picture planner: every event, each error before and after the stream starts, a lost
 version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
+`test_unfinished_turns.py` covers the decided steps and a kept turn: the event before the telling,
+the same dice whatever is sent next, the settings it was decided under, two actions at once, and a
+story never stuck.
 
 **How a turn's own time grows (measured in WS18).** With the offline model, so only our code
 counts, a turn on a new story takes about 35 ms before its first words and 50 ms in all, locally.

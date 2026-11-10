@@ -3,7 +3,7 @@
 1. `catch_up` (code): the world catches up on what fell due (W6, W10, B12).
 2. `interpret` (model): the player's words become an `Intent`, checked in code (V3, R2, A9).
 3. `resolve` (code): resolve, play out, direct and record the director's plan, then the plan is
-   checked (A2, R6, W16, M1, C5).
+   checked (A2, R6, W16, M1, C5). The decided steps go out at once, before the telling (A3).
 4. `build_context` (code): the narrator's brief (R3, C3).
 5. `narrate` (model, streamed): the scene, with F4's cut-away and template fallbacks (S3, B7).
 6. `apply_update` (code): the narrator's update applied and checked (C1), the scene built.
@@ -48,7 +48,7 @@ from graph.turn import ending as ending_mod
 from graph.turn.context import chapter_prompt, interpret_prompt, narration_brief
 from graph.turn.errors import EndingRefused, LimitReached, UnreadableAction
 from graph.turn.outputs import ChapterOutput, NarratorOutput
-from graph.turn.scene import scene_draft
+from graph.turn.scene import details, scene_draft
 from graph.turn.types import (
     CHAPTER_TURNS,
     MAX_CHAPTER_TURNS,
@@ -56,6 +56,8 @@ from graph.turn.types import (
     NarrationDelta,
     NarrationReset,
     PastScene,
+    Reading,
+    StepsDecided,
     TurnDeps,
     TurnInput,
     TurnKind,
@@ -201,6 +203,10 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     the opening has no action. A blocked interpret call is the one block the player sees (F4)."""
     turn = state["input"]
     world = state["world"]
+    if turn.reading is not None:
+        # A3: this turn was decided and shown, so it is played out as it was read then. No
+        # model reads the action again, since another reading could decide otherwise.
+        return {"intent": turn.reading.intent, "overflow": list(turn.reading.overflow)}
     if turn.kind is TurnKind.OPENING or (turn.kind is TurnKind.END and not turn.action):
         # N6: an ending with no note is told from things as they stand.
         return {"intent": None}
@@ -232,12 +238,14 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
 
 
 @timed("resolve")
-async def resolve(state: TurnState) -> dict[str, Any]:
+async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any]:
     """Step 3, all in code: resolve the steps, play them out on in-world time, let the director
-    pick, and check the plan before anything is narrated (A2, R6, W10, W16, M1, C5)."""
+    pick, and check the plan before anything is narrated (A2, R6, W10, W16, M1, C5). What it
+    decided goes out at once, ahead of the story text (`StepsDecided`, A3)."""
     turn = state["input"]
     world = state["world"]
     intent = state.get("intent")
+    read = intent  # as the interpret step read it, before an ending keeps only what it may
     rng = turn_rng(turn)
     issues: list[Issue] = []
     left_out: tuple[str, ...] = ()
@@ -273,6 +281,10 @@ async def resolve(state: TurnState) -> dict[str, Any]:
     played = replace(played, state=pipeline.record_direction(played.state, plan, turn.ctx))
     plan, found = check.check_plan(played.state, plan, turn.ctx)
     issues += found
+    if read is not None and played.resolution.steps:
+        # A3, B7: the steps are decided, so the player can watch them before the telling.
+        reading = Reading(intent=read, overflow=tuple(state.get("overflow") or ()))
+        runtime.stream_writer(StepsDecided(details(played.resolution), reading))
     return {
         "intent": intent,
         "played": played,

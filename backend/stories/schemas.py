@@ -25,14 +25,19 @@ ACTION_CHARS = 2000
 TITLE_CHARS = 120
 
 
+# A3: the request that plays out the turn a story owes, and sends no action of its own.
+RESUME = "resume"
+
+
 class TurnIn(BaseModel):
     """API.md's `TurnRequest`. Each kind takes its own field and no other: `action` for an
     action, `choice_id` for a choice, `standing` for a standing action, and none for the opening.
     An end turn (N6) takes an optional `action`, the note on how the story should end, and
-    `drop_refused` to end without what the world refused of it.
+    `drop_refused` to end without what the world refused of it. `resume` takes none: it plays
+    out the turn the story owes (A3, `Story.unfinished_turn`).
     """
 
-    kind: TurnKind
+    kind: TurnKind | Literal["resume"]
     action: str | None = Field(default=None, max_length=ACTION_CHARS)
     choice_id: str | None = Field(default=None, min_length=1, max_length=32)
     standing: StandingAction | None = None
@@ -59,6 +64,7 @@ class TurnIn(BaseModel):
             TurnKind.STANDING: "standing",
             TurnKind.OPENING: None,
             TurnKind.END: "action",
+            RESUME: None,
         }[self.kind]
         optional = self.kind is TurnKind.END  # an ending's note is optional
         for name in ("action", "choice_id", "standing"):
@@ -76,7 +82,9 @@ class TurnIn(BaseModel):
     @property
     def mode(self) -> str | None:
         """The input mode saved on the scene."""
-        if self.kind is TurnKind.OPENING or (self.kind is TurnKind.END and self.action is None):
+        if self.kind in (TurnKind.OPENING, RESUME):
+            return None
+        if self.kind is TurnKind.END and self.action is None:
             return None
         if self.kind in (TurnKind.ACTION, TurnKind.END):
             return self.input_mode or "typed"
@@ -192,6 +200,16 @@ class StorySummaryOut(BaseModel):
     updated_at: datetime
 
 
+class UnfinishedTurnOut(BaseModel):
+    """A3. The turn a story still owes: its steps were decided and shown, and its scene isn't
+    saved yet."""
+
+    turn: int
+    kind: TurnKind
+    # What the player did, as its scene will show it.
+    action: str | None = None
+
+
 class StoryOut(BaseModel):
     """API.md's `Story`, with the last scenes. `turn` is 0 until the opening is played."""
 
@@ -215,3 +233,6 @@ class StoryOut(BaseModel):
     heirs: list[HeirOut] = Field(default_factory=list)
     # N6: someone new carries the story on, and their opening is the next turn.
     opening_due: bool = False
+    # A3: the turn that was decided and shown, and whose scene isn't saved yet. Whatever turn
+    # is sent next plays this one out.
+    unfinished_turn: UnfinishedTurnOut | None = None

@@ -321,7 +321,8 @@ def test_a_model_that_fails_twice_is_llm_unavailable_and_saves_nothing(player, m
 
     played = play(player, story, {"kind": "standing", "standing": "wait", "expected_version": 2})
 
-    assert played.names == ["turn.started", "error"]
+    # A3: the steps were decided before the narrator was asked for a word.
+    assert played.names == ["turn.started", "steps.decided", "error"]
     assert played.named("error")[0]["code"] == "llm_unavailable"
     assert_nothing_saved(story, player)
 
@@ -382,7 +383,8 @@ def test_a_turn_on_the_players_own_key_is_not_charged(player, make_story, model)
 
 def test_the_loser_of_two_concurrent_turns_saves_nothing(player, make_story, model):
     """T10: both turns read version 2. The other saves first, so this one ends with
-    version_conflict and nothing of it is saved."""
+    version_conflict and nothing of it is saved. It ends before its steps are shown (A3), so
+    the narrator is never asked for it."""
     from billing import meter
 
     story = opened(player, make_story, model)
@@ -400,7 +402,8 @@ def test_the_loser_of_two_concurrent_turns_saves_nothing(player, make_story, mod
     events = parse_events(async_to_sync(run)())
 
     names = [name for name, _ in events]
-    assert (names[0], set(names[1:-1]), names[-1]) == ("turn.started", {"narration.delta"}, "error")
+    assert names == ["turn.started", "error"]
+    assert len(model.backend.calls(Node.NARRATOR)) == 1  # the opening's
     assert events[-1][1]["code"] == "version_conflict"
     assert events[-1][1]["details"] == {"current_version": 3}
     assert Scene.objects.filter(story=story).count() == 1

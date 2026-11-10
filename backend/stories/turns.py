@@ -7,10 +7,14 @@ saves it (B5, B7, B12, S3, T5, T10, K2, V7).
 
 The checks that can fail (auth, ownership, rating, version, the request itself, then credits,
 rate limit and quota) run before the stream starts, so they come back as JSON errors. Once the
-stream has started, a failure is an `error` event. Nothing is saved until the turn completes: the
-world state, the scene, its pending events, its picture plan, the ledger entry, the version bump
-and the world state kept for a rewind (C8) are saved in one transaction, or none of them are
-(API.md).
+stream has started, a failure is an `error` event. Nothing of the world is saved until the turn
+completes: the world state, the scene, its pending events, its picture plan, the ledger entry,
+the version bump and the world state kept for a rewind (C8) are saved in one transaction, or none
+of them are (API.md).
+
+The engine decides the steps before the narrator writes, and the stream sends them at once
+(`steps.decided`, A3). The turn is first kept on the story (`stories.unfinished`), so if its
+scene is never saved, the next turn sent plays that one out, with the same steps and dice.
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ import asyncio
 import json
 import logging
 import time
+from collections import Counter
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from dataclasses import dataclass, field, replace
@@ -48,6 +53,7 @@ from graph.turn import (
     NarrationReset,
     PastScene,
     ScenePicture,
+    StepsDecided,
     TurnInput,
     TurnKind,
     TurnResult,
@@ -66,9 +72,9 @@ from media.briefs import (
 )
 from media.plans import look_for_story, plan_picture
 from media.prompts import Brief
-from stories import endings, pending, responses, rewind
+from stories import endings, pending, responses, rewind, unfinished
 from stories.models import Scene, Story
-from stories.schemas import TurnIn
+from stories.schemas import RESUME, TurnIn
 
 logger = logging.getLogger("stories.turns")
 
@@ -82,6 +88,8 @@ class PreparedTurn:
     input_mode: str | None
     # The story version the turn read; it saves only if the story is still at it (T10).
     read_version: int
+    # A3: this is a turn that was decided and shown before, played out now whatever was sent.
+    resumed: bool = False
 
 
 def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
@@ -93,6 +101,24 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
     if ending is not None:
         # N6: the player character's story is over; the story takes no more turns.
         raise endings.ended(ending)
+    owed = unfinished.of_story(story, state)
+    if owed is not None:
+        try:
+            return _resume(story, state, owed, user)
+        except ValueError:
+            # Kept under rules that have changed since: it can't be played as the story stands.
+            logger.warning(
+                "An unfinished turn couldn't be played out, so it was let go",
+                extra={"unfinished_turn": {"story_turn": state.turn}},
+            )
+    if story.unfinished_turn:
+        # One kept for another moment, or that can't be read or played any more, never holds a
+        # story up.
+        unfinished.drop(story)
+    if body.kind == RESUME:
+        raise field_error(
+            "kind", "This story has no unfinished turn to play out.", type="nothing_unfinished"
+        )
     kind = TurnKind(body.kind)
     # N6: a story carried on by someone new opens again, for them.
     opening_due = state.turn == 0 or state.opening_due
@@ -123,6 +149,39 @@ def prepare(story: Story, body: TurnIn, user) -> PreparedTurn:
         drop_refused=body.drop_refused,
     )
     return PreparedTurn(story=story, input=turn, input_mode=body.mode, read_version=story.version)
+
+
+def _resume(story: Story, state: WorldState, owed: unfinished.Unfinished, user) -> PreparedTurn:
+    """A3. The turn the story owes, whatever was sent: the same action, read as it was when
+    it was first decided, under the settings the engine decided it by (A5, W16)."""
+    settings = responses.settings_of(story).model_copy(
+        update={"difficulty": owed.difficulty, "event_frequency": owed.event_frequency}
+    )
+    ctx = TurnContext(
+        story_id=str(story.pk),
+        turn=owed.turn,
+        settings=settings,
+        rating=Rating(story.rating),
+        content_prefs=ContentPrefs.model_validate(user.content_prefs or {}),
+    )
+    turn = TurnInput(
+        state=state,
+        ctx=ctx,
+        kind=owed.kind,
+        action=owed.action,
+        standing=owed.standing,
+        premise=story.premise,
+        scenes=_past_scenes(story, state),
+        drop_refused=owed.drop_refused,
+        reading=owed.reading,
+    )
+    return PreparedTurn(
+        story=story,
+        input=turn,
+        input_mode=owed.input_mode,
+        read_version=story.version,
+        resumed=True,
+    )
 
 
 def _choice_label(story: Story, turn: int, choice_id: str | None) -> str:
@@ -198,6 +257,9 @@ class _Run:
     sent: bool = False
     first_text_ms: int | None = None
     result: TurnResult | None = None
+    decided: StepsDecided | None = None
+    # A3: this run kept its turn on the story, or plays out the one the story owed.
+    owed: bool = False
 
 
 async def stream(
@@ -207,15 +269,20 @@ async def stream(
     byok: ByokKey | None,
     request: HttpRequest | None = None,
 ) -> AsyncIterator[bytes]:
-    """The turn as API.md's server-sent events: `turn.started`, the narration as it is written,
-    then `scene.completed` once it is saved, or `error` with nothing saved and nothing charged.
-    The credit hold is given back whatever happens, including the player leaving mid-turn."""
+    """The turn as API.md's server-sent events: `turn.started`, the steps the engine decided,
+    the narration as it is written, then `scene.completed` once it is saved, or `error` with no
+    scene saved and nothing charged. The credit hold is given back whatever happens, including
+    the player leaving mid-turn."""
     turn = prepared.input
     telemetry = TurnTelemetry()
-    run = _Run()
+    run = _Run(owed=prepared.resumed)
     llm = None
     try:
-        yield sse("turn.started", {"turn": turn.ctx.turn})
+        started: dict[str, Any] = {"turn": turn.ctx.turn}
+        if prepared.resumed:
+            # A3: the app sent some turn, and this is the one that plays.
+            started |= {"resumed": True, "kind": turn.kind.value, "action": _shown_action(turn)}
+        yield sse("turn.started", started)
         # The model SDK and LangGraph load on the first turn (B10), and a player's key gets a
         # client of its own: both off the event loop, so other streams don't stall (S3).
         llm = await asyncio.to_thread(
@@ -230,12 +297,29 @@ async def stream(
                     yield sse("narration.delta", {"text": event.text})
                 elif isinstance(event, NarrationReset):
                     yield sse("narration.reset", {"reason": event.reason})
+                elif isinstance(event, StepsDecided):
+                    run.decided = event
+                    if not run.owed:
+                        # A3: kept before its steps are shown, so the turn is played out.
+                        await akeep(prepared, event)
+                        run.owed = True
+                    yield sse(
+                        "steps.decided",
+                        {"turn": turn.ctx.turn, "details": event.details.model_dump(mode="json")},
+                    )
                 else:
                     run.result = event.result
         if run.result is None:
             raise RuntimeError("the turn ended without a result")
         saving = asyncio.ensure_future(
-            asave(prepared, run.result, telemetry=telemetry, ticket=ticket, request=request)
+            asave(
+                prepared,
+                run.result,
+                telemetry=telemetry,
+                ticket=ticket,
+                request=request,
+                owed=run.owed,
+            )
         )
         try:
             completed = await asyncio.shield(saving)
@@ -287,10 +371,12 @@ async def stream(
         )
         logger.debug("Invariant details: %s", error)
         run.outcome = "internal_error"
+        await _let_go(prepared)
         yield _error(ErrorCode.INTERNAL_ERROR)
     except Exception as error:
         log_failure("A turn failed, so nothing was saved", error)
         run.outcome = "internal_error"
+        await _let_go(prepared)
         yield _error(ErrorCode.INTERNAL_ERROR)
     finally:
         try:
@@ -299,6 +385,38 @@ async def stream(
         finally:
             await meter.arelease(ticket)
             _log(prepared, run, telemetry)
+
+
+def _shown_action(turn: TurnInput) -> str | None:
+    """What the player did, as its scene will show it."""
+    if turn.kind is TurnKind.STANDING and turn.standing is not None:
+        return turn.standing.value
+    return turn.action
+
+
+def keep(prepared: PreparedTurn, decided: StepsDecided) -> None:
+    unfinished.keep(
+        prepared.story,
+        prepared.input,
+        decided,
+        input_mode=prepared.input_mode,
+        version=prepared.read_version,
+    )
+
+
+akeep = sync_to_async(keep)
+
+
+async def _let_go(prepared: PreparedTurn) -> None:
+    """A3. A turn the story owed that broke while it was played out is let go, so the story is
+    never stuck behind it: the next turn sent is a fresh one. The first failure keeps it, since
+    it may have been a passing fault."""
+    if not prepared.resumed:
+        return
+    try:
+        await sync_to_async(unfinished.drop)(prepared.story)
+    except Exception as error:
+        log_failure("An unfinished turn couldn't be let go", error)
 
 
 async def _outcome_of(saving: asyncio.Future) -> str:
@@ -335,9 +453,11 @@ def save(
     telemetry: TurnTelemetry,
     ticket: meter.Ticket,
     request: HttpRequest | None = None,
+    owed: bool = False,
 ) -> dict[str, Any]:
     """Saves the turn in one transaction and returns `scene.completed`'s data. Raises
-    `version_conflict` when another turn was saved since this one read the story (T10)."""
+    `version_conflict` when another turn was saved since this one read the story (T10), or when
+    the story owes a turn that isn't this one: `owed` says this is the turn it owes (A3)."""
     story = prepared.story
     state = result.state
     draft = result.scene
@@ -350,18 +470,25 @@ def save(
                 story, draft.turn, prepared.input.ctx.settings.difficulty, result.ending
             )
             ending = endings.record(result.ending, state, draft.turn, rewind=reach)
-        saved = Story.objects.filter(pk=story.pk, version=prepared.read_version).update(
+        current = Story.objects.filter(pk=story.pk, version=prepared.read_version)
+        if not owed:
+            # A3: another action was decided and shown while this one played, and that one
+            # is played out. Saving this one instead would let what was shown be dodged.
+            current = current.filter(unfinished_turn__isnull=True)
+        saved = current.update(
             state=data,
             turn=state.turn,
+            # A3: the turn is played out, so the story owes none.
+            unfinished_turn=None,
             version=F("version") + 1,
             updated_at=timezone.now(),
             **({"ending": ending} if ending is not None else {}),
         )
         if saved != 1:
-            current = Story.objects.filter(pk=story.pk).values_list("version", flat=True).first()
-            if current is None:
+            version = Story.objects.filter(pk=story.pk).values_list("version", flat=True).first()
+            if version is None:
                 raise ApiError(ErrorCode.NOT_FOUND, "Story not found.")
-            raise version_conflict(current)
+            raise version_conflict(version)
         lived = draft.personal_elapsed_s
         times = scene_time(
             state.bible.calendar,
@@ -506,12 +633,18 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
     only: never the action, the narration or a prompt (T6)."""
     turn = prepared.input
     result = run.result
+    throws = run.decided.throws if run.decided is not None else []
     fields: dict[str, Any] = {
         "turn": turn.ctx.turn,
         "kind": turn.kind.value,
         "input_mode": prepared.input_mode,
         "outcome": run.outcome,
         "sent": run.sent,
+        # A3: numbers only. How many throws the turn had, how each fell and how many could kill.
+        "resumed": prepared.resumed,
+        "throws": len(throws),
+        "marks": dict(Counter(throw.mark.value for throw in throws)),
+        "deadly": sum(1 for throw in throws if throw.deadly),
         "duration_ms": int((time.monotonic() - run.started) * 1000),
         "first_text_ms": run.first_text_ms,
         "narration_mode": result.narration_mode if result else None,

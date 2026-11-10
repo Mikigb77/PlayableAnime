@@ -358,8 +358,11 @@ Story         {id, title, genre, rating, version, turn,      # turn 0: play the 
                successor?: Successor,                    # who was drawn to carry it on, at its ending
                heirs: [Heir],                            # who of the family can carry it on, at an
                                                          # ending not closed; empty otherwise (N6)
-               opening_due: bool}                        # someone new carries it on: the next turn
+               opening_due: bool,                        # someone new carries it on: the next turn
                                                          # is their opening (N6)
+               unfinished_turn?: {turn,                  # A3: the turn that was decided and shown
+                                  kind,                  # and whose scene isn't saved yet. Show
+                                  action?}}              # its action and send kind=resume (Turns)
 Ending        {kind: "death"|"chosen",                    # the character died, or the player used /end
                character_id, character,                  # who, and their name as the story last knew it
                self_inflicted: bool,                     # harm they aimed at themselves killed them (F1)
@@ -412,7 +415,7 @@ Accent        "lucid"|"jade"|"azure"|"ember"|"violet"|"crimson"|"cyan"|"orchid"|
 ### Turns (B5, B7, S3, T10, V7)
 
 ```text
-TurnRequest {kind: "action"|"choice"|"standing"|"opening"|"end",
+TurnRequest {kind: "action"|"choice"|"standing"|"opening"|"end"|"resume",
              action?: string,            # kind=action, 1 to 2000 characters, trimmed; or kind=end's
                                          # optional note on how the story ends (N6)
              choice_id?: string,         # kind=choice only: an id from the last scene's choices
@@ -438,6 +441,19 @@ is typed or spoken, never `choice`. A turn whose character dies (`Ending.kind` `
 brings the story to its ending: its scene has no choices, picture or event, and `scene.completed`
 carries `story.ending`. From then on every turn is `409 story_ended`.
 
+**Once a turn is decided and shown, that turn is played out (A3).** The server sends the steps it
+decided, dice and all, before the story text (`steps.decided`). So that a throw, or a fall that
+kills, can't be looked at and then swapped for another action, the turn is kept on the story from
+that moment until its scene is saved (`Story.unfinished_turn`). While a story owes a turn, every
+turn request plays that one, whatever kind or action it carries: the same action, read the same way,
+on the same dice, at the difficulty and event frequency it was decided under. `turn.started` then
+says so, with `resumed` and the kind and action that are playing. `kind: "resume"` is the request
+for exactly this: it takes no field of its own, and on a story that owes no turn it is a
+`validation_error` of type `nothing_unfinished` (reload the story: the turn was saved meanwhile, or
+let go). An app that lost the stream after `steps.decided`, or that opens a story with
+`unfinished_turn` set, shows that action and sends `resume`. An older app that sends its action
+again gets the same turn.
+
 Checks that can fail (auth, ownership, rating, version, the request itself, then credits, rate
 limit and quota) run before the stream starts and come back as ordinary JSON errors. Once the
 server answers `200` with `Content-Type: text/event-stream`, it sends these events, each as
@@ -445,15 +461,23 @@ server answers `200` with `Content-Type: text/event-stream`, it sends these even
 
 | Event | Data | Notes |
 | --- | --- | --- |
-| `turn.started` | `{turn}` | Sent at once, so the app can show the action and a typing state. |
+| `turn.started` | `{turn, resumed?: true, kind?, action?}` | Sent at once, so the app can show the action and a typing state. `resumed`, `kind` and `action` are there only when the story owed a turn and this request plays it out (A3): the app shows that action, not the one it sent. |
+| `steps.decided` | `{turn, details: SceneDetails}` | What the engine decided, before the narrator writes a word (A3): each step with its class, its reason and the dice that decided it, exactly as the scene in `scene.completed` will carry them. Sent once, right after `turn.started`, on every turn with steps; an opening and an end turn with no note have none. The app can show the throws while the story is written. |
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock, ending?: Ending}}` | The turn is saved. Always the last event of a successful turn. `story.ending` is there when this turn brought the story to its ending (N6). |
 | `ending.refused` | `{message, refused: [{text, reason, class}]}` | An end turn's note asked for what the world won't give (N6). The last event: nothing was saved or charged. Each refused part comes with its reason in the world's words, and `class` is `ruled_out` or `long_shot`. Offer to play on, or to send the turn again with `drop_refused: true`. |
-| `error` | `{code, message, details}` | The turn failed after streaming began. Nothing was saved and no credits were charged, so the app discards the partial scene. `code` is `unreadable_action` (the interpret step runs after `turn.started`, so this is where it arrives: offer to rephrase or retry, F4, and for a hard limit show `message` as it is, with `details.category` as in the JSON error), `llm_unavailable` or `bad_key` (offer a retry or a look at the key), `version_conflict` (another turn was saved first: reload, `details.current_version`) or `internal_error`. `details` is `{}` when there are none. |
+| `error` | `{code, message, details}` | The turn failed after streaming began. Nothing was saved and no credits were charged, so the app discards the partial scene. `code` is `unreadable_action` (the interpret step runs after `turn.started`, so this is where it arrives: offer to rephrase or retry, F4, and for a hard limit show `message` as it is, with `details.category` as in the JSON error), `llm_unavailable` or `bad_key` (offer a retry or a look at the key), `version_conflict` (another turn was saved first, or another action sent at the same time was decided first: reload, `details.current_version`) or `internal_error`. `details` is `{}` when there are none. |
 
 A turn is all or nothing: the world state, the scene, the ledger entry and the version bump are saved
-together only when the turn completes.
+together only when the turn completes. The one thing kept earlier is the turn itself, from the
+moment its steps are shown (`Story.unfinished_turn`, A3): what was sent and how it was read, never
+an outcome, and it goes when the scene is saved. After `llm_unavailable`, `bad_key`, a lost
+connection or an `internal_error` the story still owes that turn, and the next request plays it
+out. A story is never stuck behind one: a kept turn that ends in `internal_error` again while it is
+being played out is let go, and so is one that was decided for another moment of the story. Of two
+actions sent at once, only the first to be decided is ever shown: the other ends with
+`version_conflict`. A turn with no steps to show, such as an opening, is never kept.
 
 ### Scene
 
@@ -479,7 +503,9 @@ SceneDetails {steps: [{text,                                    # the step in pl
                        reason,                                   # in the world's words (A8, G14)
                        roll?: {odds_label,                       # A3: the throw in one line,
                                result: "success"|"partial"|"failure",   # "31 against 27"; the
-                               seed},                            # reason names the dice
+                               seed,                             # reason names the dice
+                               throw?: Throw},                   # the dice; none on a scene
+                                                                 # saved before they travelled
                        beats?: [{beat, thing,                    # R2: only beats that found
                                  verdict: "made_canon"|"empty",  # something new or came up
                                  reason, roll?}],                # empty; empty stopped the step
@@ -491,6 +517,25 @@ SceneDetails {steps: [{text,                                    # the step in pl
               stopped_at_step?: int}                             # a chained plan stopped here (R6),
                                                                  # or something struck and hurt
                                                                  # the player character (N6)
+
+Throw {dice: [{kind: "plain"|"green"|"violet"|"gold"|"grey",    # A3: every die as it fell, in
+              face,                                             # the order thrown, 1 to 20;
+              sprung: bool}],                                   # sprung: thrown because the die
+                                                                # before it showed a 20
+       hand, hand_why,                    # the dice in the hand before any sprung, and why:
+                                          # "Aura blade (skilled), 3 dice"
+       greens: [string],                  # each green die's reason, in the order thrown
+       number,                            # what the total had to reach
+       made_of: [{text, points}],         # what the number is made of, the level first; the
+                                          # points add up to it
+       total, most,                       # the dice added up (a gold die never under 10), and the
+                                          # most the hand could make with no 20
+       mark: "over_the_top"|"passed"|"so_close"|"missed",
+       against,                           # what it was up against, in a sentence
+       deadly: bool, miss_costs,          # a miss could kill, and what it costs (N6)
+       insight: bool, insight_at}         # the violet die showed an insight (A4), and the face
+                                          # that shows one: 18, or 16 when two talents cover it
+                                          # The app never rolls: it shows these dice.
 
 SceneImage {planned: bool,                  # code planned it (M1); false for Illustrate (M2)
             kind: "portrait"|"place"|"scene"|"cover",
