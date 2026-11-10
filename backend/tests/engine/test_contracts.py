@@ -297,3 +297,13 @@ def test_the_interpret_model_must_always_judge_each_steps_challenge():
     assert {"facts", "uses"} <= set(schema["$defs"]["IntentStep"]["required"])
     assert "challenge" in schema["$defs"]["StepFacts"]["required"]
     assert StepFacts().challenge is None  # code may still leave it out
+
+
+def test_the_interpret_model_must_always_judge_whether_a_thing_is_there():
+    # R2: a use with no judgement is one code can only guess at, and the guess used to be a roll
+    # that failed natural things. The model always answers; code may leave it out, and then the
+    # thing is there (`engine.resolve.checks`).
+    use = Intent.model_json_schema()["$defs"]["BeatUse"]
+    assert {"source", "thing", "plausibility"} <= set(use["required"])
+    assert "ref" not in use["required"]
+    assert BeatUse(source=UseSource.NEW, thing="a branch").plausibility is None

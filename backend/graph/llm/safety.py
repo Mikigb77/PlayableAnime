@@ -22,8 +22,9 @@ Why each line is where it is:
 - **Pictures** stay mild in every rating (M6), so they filter from medium, and sexual content
   from low.
 - **The interpret step** runs with dangerous content off in both ratings, and in Mature with
-  harassment, hate speech and sexual content off too. It only reads the player's own words into
-  an intent and writes no story text, yet a block there is the one the player sees: the action
+  harassment, hate speech and sexual content off too. It only reads the player's own words, and
+  the scene they answer (R2), which the narrator's own filters already let through, into an
+  intent and writes no story text, yet a block there is the one the player sees: the action
   can't be read, so the deed never happens (F4). That is likeliest exactly where the ratings
   table allows the deed and only its telling is bounded, such as a character taking their own
   life or sexual violence off the page. The narrator's filters and the code's hard limits

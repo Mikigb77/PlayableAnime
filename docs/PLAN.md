@@ -440,7 +440,7 @@ screens.
 
 - From an `Intent` and the state to a `Resolution`, in code: check every beat against the body,
   powers, carried items, the scene and what this turn made canon (R2), deciding whether a missing
-  item is plausible, uncertain (rolled) or absent (an empty search); check the world's rules (G8);
+  item is plausible (there, and the default), uncertain (rolled) or absent (an empty search); check the world's rules (G8);
   compare the power axes and the ladder gap (A8, G14, G18); check whether the opposition can respond
   at all; then class each step as certain, contested, long shot or ruled out (A2). Code validates
   the facts the model proposed against the state wherever the state can tell.

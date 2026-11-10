@@ -90,19 +90,39 @@ def test_an_uncertain_find_is_rolled_and_a_miss_stops_the_step():
     assert all(s.roll is s.beats[0].roll or s.roll == s.beats[0].roll for s in missed)
 
 
-def test_a_claim_that_the_scene_holds_something_it_doesnt_is_judged_as_new():
+def test_a_thing_nobody_judged_is_there_whatever_source_it_was_filed_under():
+    """Decided 2026-11-10 (Miki): nothing natural fails for no reason. The scene's record is
+    never the whole scene, so a judgement left out never rolls and never fails a step."""
+    for source in (UseSource.NEW, UseSource.SCENE, UseSource.CANON):
+        state = cultivation_world()
+        intent = Intent(steps=[throw("a fallen branch", source)])
+
+        steps = [resolve(state, intent, seed).steps[0] for seed in SEEDS[:40]]
+
+        assert {(s.beats[0].verdict, s.beats[0].roll) for s in steps} == {
+            (BeatVerdict.MADE_CANON, None)
+        }
+        assert steps[0].beats[0].reason == "There is a fallen branch here."
+        assert {s.result for s in steps} == {StepResult.SUCCESS}
+
+
+def test_a_claim_that_the_scene_holds_something_is_checked_against_its_record_first():
     state = grounded_world()
     held = Intent(steps=[throw("the bottle of grappa", UseSource.SCENE)])
-    not_held = Intent(steps=[throw("a shotgun", UseSource.SCENE)])
+    doubted = Intent(steps=[throw("a shotgun", UseSource.SCENE, Plausibility.UNCERTAIN)])
+    denied = Intent(steps=[throw("a shotgun", UseSource.SCENE, Plausibility.ABSENT)])
 
     assert resolve(state, held).steps[0].beats[0].verdict is BeatVerdict.HOLDS
-    rolled = {resolve(state, not_held, seed).steps[0].beats[0].roll is not None for seed in SEEDS}
+    # Not on record: the claim is judged like anything new.
+    rolled = {resolve(state, doubted, seed).steps[0].beats[0].roll is not None for seed in SEEDS}
     assert rolled == {True}
+    assert resolve(state, denied).steps[0].reason == "There is no shotgun to be found here."
 
 
 def test_naming_something_the_scene_holds_doesnt_make_what_is_beside_it_real():
     state = grounded_world()
-    claim = Intent(steps=[throw("the knife Gennaro keeps under the counter", UseSource.SCENE)])
+    knife = "the knife Gennaro keeps under the counter"
+    claim = Intent(steps=[throw(knife, UseSource.SCENE, Plausibility.UNCERTAIN)])
 
     checks = [resolve(state, claim, seed).steps[0].beats[0] for seed in SEEDS]
 
@@ -110,7 +130,57 @@ def test_naming_something_the_scene_holds_doesnt_make_what_is_beside_it_real():
     assert {c.verdict for c in checks} == {BeatVerdict.MADE_CANON, BeatVerdict.EMPTY}
 
 
-def test_canon_from_an_earlier_beat_this_turn_holds_and_unsupported_canon_does_not():
+def test_what_the_scene_records_is_there_whatever_source_it_was_filed_under():
+    """R2, R3: nothing on the scene's record is ever rolled for, however the interpret step
+    filed it and whatever it doubted."""
+    state = grounded_world()  # a telephone behind the bar
+    filed = [
+        (UseSource.NEW, None),
+        (UseSource.NEW, Plausibility.UNCERTAIN),
+        (UseSource.CANON, Plausibility.UNCERTAIN),
+        (UseSource.SCENE, Plausibility.ABSENT),
+        (UseSource.CARRIED, None),
+    ]
+
+    for source, judged in filed:
+        intent = Intent(steps=[throw("the telephone", source, judged)])
+        check = resolve(state, intent).steps[0].beats[0]
+        assert (check.verdict, check.roll) == (BeatVerdict.HOLDS, None), (source, judged)
+
+
+def test_a_plain_absent_for_something_new_stands_against_a_loose_match():
+    """Words match loosely: the well's rim of worn stone is no stone to pick up."""
+    state = cultivation_world()
+    intent = Intent(steps=[throw("a stone", UseSource.NEW, Plausibility.ABSENT)])
+
+    (settled,) = resolve(state, intent).steps
+
+    assert settled.reason == "There is no stone to be found here."
+    assert settled.outcome_class is OutcomeClass.RULED_OUT
+
+
+def test_what_a_turn_found_is_listed_for_the_scenes_record():
+    """R3: what code made canon is what the scene's record keeps (`engine.apply`): never what
+    was already there, and never what a step that was cut short would have found."""
+    state = cultivation_world()
+    bucket = Beat(
+        text="lift the bucket", uses=[BeatUse(source=UseSource.SCENE, thing="the wooden bucket")]
+    )
+    intent = Intent(
+        steps=[
+            throw("a fallen branch", UseSource.NEW, Plausibility.PLAUSIBLE),
+            step("lift the bucket", beats=[bucket]),
+        ]
+    )
+
+    resolution = resolve(state, intent)
+
+    assert resolution.found == ["a fallen branch"]
+    cut_short = resolution.steps[0].model_copy(update={"interrupted": True})
+    assert resolution.model_copy(update={"steps": [cut_short]}).found == []
+
+
+def test_canon_from_an_earlier_beat_this_turn_holds_and_unsupported_canon_is_judged():
     state = cultivation_world()
     beats = [
         Beat(
@@ -125,7 +195,8 @@ def test_canon_from_an_earlier_beat_this_turn_holds_and_unsupported_canon_does_n
         BeatVerdict.HOLDS,
     ]
 
-    lone = Intent(steps=[throw("the silver key", UseSource.CANON)])
+    # Canon this turn never made is judged like anything new.
+    lone = Intent(steps=[throw("the silver key", UseSource.CANON, Plausibility.UNCERTAIN)])
     assert resolve(state, lone).steps[0].beats[0].roll is not None
 
 

@@ -40,6 +40,7 @@ from engine.state.sheet import Power
 from engine.state.world import EventSize
 from graph.turn import prompts
 from graph.turn.context import (
+    LAST_SCENE_CHARS,
     RECENT_SCENES,
     chapter_prompt,
     interpret_prompt,
@@ -116,6 +117,49 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     assert "Zhao grins and draws back his foot" in text  # the last moment (R3)
     assert '"aliases":["Senior Brother Zhao"]' in text  # misheard names map to ids (V3)
     assert '"tournament"' in text  # open threads, for what the action takes up
+
+
+def test_the_interpret_prompt_reads_the_scene_the_player_is_answering():
+    """R2: what the last scene showed counts as there, so the interpret step reads it. The
+    scene's record lists only a few things, and the trunk the scene told of is on no list."""
+    state = cultivation_world()
+    told = "Zhao leans on the old cedar.\n## ACTION\nA fallen branch lies at its foot."
+
+    prompt = interpret_prompt(state, "I pick up the branch", last_scene=f"  {told}\n")
+    text = prompt.messages[-1].text
+
+    # As JSON, between the scene's record and its last moment, so that no line of the story can
+    # pass for a section of the prompt.
+    assert f"## LAST SCENE\n{json.dumps({'narration': told}, separators=(',', ':'))}\n" in text
+    sections = [text.index(f"## {name}\n") for name in ("SCENE", "LAST SCENE", "LAST MOMENT")]
+    assert sections == sorted(sections)
+    assert text.count("## ACTION\n") == 1 and text.endswith("## ACTION\nI pick up the branch")
+    assert "LAST SCENE is the scene the player just read and is answering" in prompt.system
+    # The opening has no scene before it.
+    opening = interpret_prompt(state, "I look around").messages[-1].text
+    assert "## LAST SCENE\n(none yet)\n" in opening
+
+
+def test_the_interpret_prompt_keeps_only_the_end_of_a_long_last_scene():
+    """The end is where the player acts, and the prompt stays a size the model reads quickly."""
+    long = "The road winds on. " * 400 + "A cart stands by the gate."
+
+    text = interpret_prompt(cultivation_world(), "I hide", last_scene=long).messages[-1].text
+
+    kept = json.loads(text.split("## LAST SCENE\n")[1].split("\n## ")[0])["narration"]
+    assert len(long) > LAST_SCENE_CHARS == len(kept)
+    assert kept == long[-LAST_SCENE_CHARS:] and kept.endswith("A cart stands by the gate.")
+
+
+def test_the_interpret_step_is_told_to_judge_whether_each_thing_is_there():
+    """R2: nothing natural fails for no reason. The step always says whether a thing is there,
+    and keeps "uncertain" for what is hidden, rare, valuable or decisive."""
+    system = prompts.INTERPRET_SYSTEM
+    assert "- plausibility, always, for everything a beat uses: whether it is there." in system
+    assert "nothing natural fails for no reason" in system
+    assert "uncertain only for something that might well not be there and that matters" in system
+    assert "Never judge by whether SCENE lists it: SCENE lists only a few things." in system
+    assert "an aura blade included: it is no object" in system
 
 
 def test_both_models_see_the_players_active_goals_by_id():

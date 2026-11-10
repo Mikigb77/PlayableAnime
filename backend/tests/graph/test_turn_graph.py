@@ -199,6 +199,23 @@ def test_the_interpret_step_reads_the_players_words(fake, make_client):
     assert "## OUTCOME" in narration.prompt.messages[-1].text
 
 
+def test_the_interpret_step_reads_the_scene_the_player_is_answering(fake, make_client):
+    """R2: the last saved scene reaches the interpret step, so what it showed counts as there.
+    A first scene has none before it."""
+    scenes = (PastScene(1, "The gate stands shut."), PastScene(2, "A cart rolls up to the well."))
+    state = cultivation_world()
+    state.turn = 2
+    for turn in (turn_input(state, scenes=scenes), turn_input()):
+        fake.script(Node.INTERPRET, Reply(json=STONE))
+        fake.script(Node.NARRATOR, Reply(json=SCENE))
+        play(make_client(), turn)
+
+    answered, first = (call.prompt.messages[-1].text for call in fake.calls(Node.INTERPRET))
+    assert '## LAST SCENE\n{"narration":"A cart rolls up to the well."}\n' in answered
+    assert "The gate stands shut." not in answered
+    assert "## LAST SCENE\n(none yet)\n" in first
+
+
 # R1: the scene with the player's action told in its own part, before what came of it.
 ACTED = (
     {"action": "You meet Zhao's sneer, stoop and close your fingers on a stone. You let it fly."}
@@ -543,6 +560,10 @@ def test_only_beats_that_found_something_new_are_explained(fake, make_client):
     outcome = told.split("## OUTCOME\n")[1].split("\n## ")[0]
     assert outcome.count('"beats":') == 1
     assert '{"beat":"pick up a stick","uses":"a stick","check":"made_canon"' in outcome
+    # R2, R3: the narrator's scene end lists no stick, and the scene's record keeps it all the
+    # same, so the next turn's check finds it there.
+    assert result.resolution.found == ["a stick"]
+    assert result.state.scene.props == ["a stick"]
 
 
 def test_what_strikes_back_is_settled_before_it_is_told_and_the_scene_says_why(fake, make_client):

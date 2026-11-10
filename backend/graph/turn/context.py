@@ -378,10 +378,19 @@ def _goals_and_threads(state: WorldState, goals: WorldState | None = None) -> di
     }
 
 
-def interpret_prompt(state: WorldState, action: str, language: Language = Language.EN) -> Prompt:
+# The most of the last scene's text the interpret step reads: its end, where the player acts.
+LAST_SCENE_CHARS = 6000
+
+
+def interpret_prompt(
+    state: WorldState, action: str, language: Language = Language.EN, last_scene: str = ""
+) -> Prompt:
     """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`,
-    with the story's language for its notes (S10)."""
+    with the story's language for its notes (S10). `last_scene` is the text of the scene the
+    player is answering, so that what it showed counts as there (R2) and "the one she is holding
+    out" means something: the scene's record lists only a few things."""
     frame = state.scene
+    told = last_scene.strip()[-LAST_SCENE_CHARS:]
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
     world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
@@ -391,6 +400,8 @@ def interpret_prompt(state: WorldState, action: str, language: Language = Langua
             ("PLAYER CHARACTER", _player_view(state)),
             ("CHANGED HANDS", _changed_hands(state)),
             ("SCENE", _scene_view(state)),
+            # As JSON, like the narrator's recent scenes, so no line of it reads as a section.
+            ("LAST SCENE", {"narration": told} if told else "(none yet)"),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
             ("NOW", _now_view(state)),
             ("KNOWN", _known_view(state)),
