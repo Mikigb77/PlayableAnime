@@ -48,11 +48,11 @@ the repository goes private.
 
 Alerts and security updates are switched on in the repository's settings, not in the file (since
 2026-11-10; `gh api repos/Mikigb77/PlayableAnime/automated-security-fixes` shows whether they still
-are). Dependabot checks early on Monday (05:00 Madrid time), and a scheduled Claude pass at 07:39
-works through its PRs (Miki, 2026-11-10) and posts a summary in the project. A Dependabot PR is
-merged like any other: CI must be green, a major update needs a look at its changelog, and it is
-squash-merged into `dev`, then reaches production with the next deploy. If CI fails, the fix goes on
-the Dependabot branch or the update is closed with the reason.
+are). Dependabot checks early on Monday (04:00 Madrid time), and a scheduled Claude pass at 06:09
+works through its PRs (Miki, 2026-11-10) and posts a summary in the project by 08:00. A Dependabot
+PR is merged like any other: CI must be green, a major update needs a look at its changelog, and it
+is squash-merged into `dev`, then reaches production with the next deploy. If CI fails, the fix goes
+on the Dependabot branch or the update is closed with the reason.
 
 Some things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
 versions, and so does `intl`, which the Flutter SDK pins through `flutter_localizations`: they move
