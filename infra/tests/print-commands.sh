@@ -36,6 +36,13 @@ echo
 echo "# infra/deploy.sh redraw"
 "$INFRA/deploy.sh" redraw 2>&1 | commands
 echo
+echo "# infra/deploy.sh export (EXPORT_KEY=the reader's public key)"
+EXPORT_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "$INFRA/deploy.sh" export 2>&1 |
+  commands | sed 's#--key=A*#--key=EXPORT_KEY#'
+echo
+echo "# infra/deploy.sh export (EXPORT_KEY=forget)"
+EXPORT_KEY=forget "$INFRA/deploy.sh" export 2>&1 | commands
+echo
 echo "# infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)"
 printf 'apk\n' >"$ROOT/lucid-saga.apk.print-commands"
 BUILD_NUMBER=42 VERSION_NAME=1.0.0 "$INFRA/deploy.sh" upload-apk "$ROOT/lucid-saga.apk.print-commands" 2>&1 |

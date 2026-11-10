@@ -29,6 +29,9 @@ Usage: infra/deploy.sh <command> [argument]
   models           Call each model the app uses once, as the migration job (check_models).
   covers           Draw the starter premises' missing covers, as the migration job.
   redraw           Draw story pictures from an older house style again, as the migration job.
+  export           Seal the owner's own stories to EXPORT_KEY, as the migration job, and print a
+                   short-lived link to the sealed file, or delete it with EXPORT_KEY=forget
+                   (docs/DEPLOY.md#reading-the-owners-own-stories).
   upload-apk APK   Upload the Android app for its own updater and point android/latest.json at it.
   rollback REV     Send all traffic back to revision REV.
 
@@ -409,6 +412,35 @@ cmd_models() {
   fi
 }
 
+# Hands the owner's own stories (K7) to whoever holds the private key of EXPORT_KEY, as the
+# migration job with other arguments (T16). The job seals them and stores the file in the private
+# pictures bucket; its log, printed here, ends with a signed link that works for 30 minutes. The
+# link and this log are public, and the file opens only with the reader's private key. The key
+# goes to the job as one argument, so only its exact alphabet is let through. EXPORT_KEY=forget
+# deletes the stored file instead, once the reader has it.
+cmd_export() {
+  local key="${EXPORT_KEY:-}" args since
+  if [ "$key" = forget ]; then
+    args=manage.py,export_owner_stories,--forget
+    step "The owner's own stories: job $MIGRATE_JOB deletes the stored sealed file"
+  elif [[ "$key" =~ ^[A-Za-z0-9_-]{43}$ ]]; then
+    args="manage.py,export_owner_stories,--key=$key"
+    step "The owner's own stories, sealed for one reader: job $MIGRATE_JOB runs export_owner_stories"
+  else
+    die "EXPORT_KEY must be the reader's public key, as 'python -m stories.sealed keygen' prints it, or 'forget'"
+  fi
+  since="$(now_utc)"
+  if ! execute_job "$args" 10m; then
+    say "The export job failed."
+    job_logs "$since"
+    exit 1
+  fi
+  # The job's own lines: how much it sealed and the link, or that the file is deleted.
+  if ! is_dry_run; then
+    job_logs "$since"
+  fi
+}
+
 # Prints the build number in the release manifest on stdin, or 0 when there is none to read.
 manifest_build() {
   python3 -I -c '
@@ -510,6 +542,7 @@ main() {
     models) cmd_models ;;
     covers) cmd_covers ;;
     redraw) cmd_redraw ;;
+    export) cmd_export ;;
     upload-apk) cmd_upload_apk "${1:-}" ;;
     rollback) cmd_rollback "${1:-}" ;;
     -h | --help | help) usage ;;
