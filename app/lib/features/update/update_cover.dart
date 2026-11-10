@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,19 +7,63 @@ import '../../core/l10n.dart';
 import '../../design/design.dart';
 import 'app_update.dart';
 
-/// Covers the whole app while Android installs its update (S12), over every screen, so the old
-/// build can't be used while the new one comes in. The app stays in front under it until Android
-/// replaces it, which ends the app: Android and Google Play Protect may still check the build or
-/// ask the player during the install, and an app that leaves the screen then can stall it. If the
-/// install fails, the cover goes away and the banner says so.
-class UpdateCover extends ConsumerWidget {
+/// Covers the whole app while Android's installer is open on its update (S12), over every screen,
+/// so the old build can't be used while the new one comes in. Android's installer shows over it:
+/// it asks the player, installs the new build, which ends this app, and then offers Open, which
+/// starts the new build; the cover says so. If the installer closes and the app is still here
+/// (the player said no, or Android couldn't install it), the cover goes away and the banner
+/// offers the update again.
+class UpdateCover extends ConsumerStatefulWidget {
   const UpdateCover({super.key, required this.child});
+
+  /// How long the app may be back in front, with no word from Android's installer, before the
+  /// cover takes the installer as closed. Android says so at once; this is only a way out.
+  static const giveUpAfter = Duration(seconds: 3);
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final covered = ref.watch(appUpdateProvider.select((u) => u.phase == UpdatePhase.replacing));
+  ConsumerState<UpdateCover> createState() => _UpdateCoverState();
+}
+
+class _UpdateCoverState extends ConsumerState<UpdateCover> {
+  late final AppLifecycleListener _lifecycle;
+  Timer? _giveUp;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: _back,
+      onInactive: () => _giveUp?.cancel(),
+      onHide: () => _giveUp?.cancel(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _giveUp?.cancel();
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  /// The app is back in front. While the installer is open it isn't, so if it stays in front the
+  /// installer has closed without Android saying so; the cover must never trap the player.
+  void _back() {
+    if (ref.read(appUpdateProvider).phase != UpdatePhase.installing) return;
+    _giveUp?.cancel();
+    _giveUp = Timer(UpdateCover.giveUpAfter, () {
+      if (mounted) ref.read(appUpdateProvider.notifier).installerClosed();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.child;
+    ref.listen(appUpdateProvider.select((u) => u.phase), (previous, phase) {
+      if (phase != UpdatePhase.installing) _giveUp?.cancel();
+    });
+    final covered = ref.watch(appUpdateProvider.select((u) => u.phase == UpdatePhase.installing));
     return Stack(
       fit: StackFit.expand,
       children: [

@@ -90,6 +90,31 @@ Future<String> downloadApk({
   return target.path;
 }
 
+/// Whether [folder]/[name] is a finished download of [size] bytes, which [downloadApk] would use
+/// again without the network.
+Future<bool> hasApk({required String folder, required String name, required int size}) async {
+  try {
+    final file = File('$folder/$name');
+    return await file.exists() && await file.length() == size;
+  } on FileSystemException {
+    return false;
+  }
+}
+
+/// Deletes every downloaded update in [folder], once the app is on the newest build: an APK is
+/// some 65 MB.
+Future<void> clearDownloads(String folder) async {
+  try {
+    final dir = Directory(folder);
+    if (!await dir.exists()) return;
+    await for (final entry in dir.list()) {
+      if (entry is File) await _deleteQuietly(entry);
+    }
+  } on FileSystemException {
+    // The next download clears the folder anyway.
+  }
+}
+
 Future<void> _deleteQuietly(File file) async {
   try {
     await file.delete();

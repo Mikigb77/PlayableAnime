@@ -688,18 +688,21 @@ builds, and a re-run of an older run leaves a newer build in place. `GET /v1/app
 that manifest and gives the app a 30-minute signed URL ([API.md](API.md#app-updates-s12)).
 
 The app checks when its tabs first show and whenever it comes back to the foreground, at most every
-half hour, and Account has "Check for updates". Update downloads the APK, checks it, and hands it
-to Android, which asks to confirm (the first time, it also asks to allow installs from Lucid Saga
-in Settings). As soon as Android starts installing, the app covers every screen with "Updating
-Lucid Saga" and stays in front, since Android and Play Protect may still check the build or ask
-the player; Android then replaces it, which closes the old app, and the player opens it again on
-the new build. The first build with the updater has to be
-installed from the README once; every build after it arrives in the app.
+half hour, and Account has "Check for updates". On Wi-Fi (any network Android doesn't call metered)
+it downloads a newer build at once, quietly, so the offer shows as ready to install; on mobile data
+Update downloads it first. Install checks the APK's SHA-256 and opens Android's own installer on it
+through `UpdateFileProvider`, which only that installer can read. The installer stays in front for
+the whole update: it asks to confirm (the first time, it also asks to allow installs from Lucid Saga
+in Settings), lets Play Protect check the build, installs it, which ends the old app, and then says
+"App installed" with Open, which starts the new build. Meanwhile the app covers every screen with
+"Updating Lucid Saga". If the installer closes and the app is still running, the cover goes and the
+update is offered again. The first run of a newer build says the app was updated. The first build
+with the updater has to be installed from the README once; every build after it arrives in the app.
 
 **On Google Play** the store updates the app, and Play's policy forbids any other way. A Play build
 is built with `SELF_UPDATE=false` (`infra/build-apk.sh` reads it; the default is `true`), and drops
-the `REQUEST_INSTALL_PACKAGES` and `UPDATE_PACKAGES_WITHOUT_USER_ACTION` permissions from
-`app/android/app/src/main/AndroidManifest.xml`, for example through a `play` product flavor. The
+the `REQUEST_INSTALL_PACKAGES` permission from `app/android/app/src/main/AndroidManifest.xml`, for
+example through a `play` product flavor. The
 plan for then (Miki, 2026-11-06): a production app through Play, and a staging app that keeps
 updating itself from this bucket.
 
