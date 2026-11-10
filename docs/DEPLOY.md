@@ -341,7 +341,8 @@ the image, but not the APK.
 Merging `dev` into `main` deploys. To deploy `main` again without a merge, run the workflow by
 hand: **Actions > Deploy > Run workflow** on `main`, or `gh workflow run deploy.yml --ref main`. It
 only ever deploys `main`. Two deploys never run at once, and a dry run never replaces a deploy
-waiting its turn.
+waiting its turn. Started with an `export_key`, it deploys nothing and only
+[hands over the owner's own stories](#reading-the-owners-own-stories).
 
 1. **CI passed on this commit** ([`require-green-ci.sh`](../infra/require-green-ci.sh)): the CI
    workflow's run for this exact commit of `main` must have succeeded. CI starts on the same push,
@@ -580,6 +581,52 @@ services list --enabled
 
 It reads only. Changes still go through `infra/` in a PR and a re-run of the bootstrap, or through
 the deploy.
+
+## Reading the owner's own stories
+
+To find what to improve, Miki and the threads that work on the game read real play: Miki's own
+stories. Story text is sensitive and nobody reads a player's stories this way (T16), the Ops
+workflow can't reach the database, and this repository's Actions logs are public. So the stories
+leave the server only **sealed for one reader**: the reader makes a key pair, the job that runs
+migrations seals the stories to the public key, and only the private key, which never leaves the
+reader's machine, opens the file.
+
+Only the stories of the owner accounts are in it: the accounts that hold the owner role and whose
+email is in `OWNER_EMAILS` (K7). They come whole, with every scene, the world state and the events
+waiting to happen, which the account export (T12) leaves out, and without any account or row id
+([`stories/owner_export.py`](../backend/stories/owner_export.py)).
+
+1. Make a key pair, in `backend/`. The private key goes into a new file only you can read, and the
+   public key is printed:
+
+   ```bash
+   uv run python -m stories.sealed keygen reader.key
+   ```
+
+2. Start the **Deploy** workflow on `main` with that public key as `export_key` (**Actions >
+   Deploy > Run workflow**, or dispatch `deploy.yml` on `main` with the input `export_key`). With a
+   key it deploys nothing: it runs only the job "Export the owner's stories"
+   (`infra/deploy.sh export`), which has the migration job run
+   `manage.py export_owner_stories --key=...`. Only the Deploy workflow on `main` can sign in as
+   the deployer, so this can't be started from a branch or a fork.
+3. The job's log ends with a link. Download it within 30 minutes and open it:
+
+   ```bash
+   curl --fail --output export.bin 'LINK'
+   uv run python -m stories.sealed open reader.key export.bin export.json
+   ```
+
+4. Start the workflow once more with `forget` as `export_key`, which deletes the stored file
+   (`manage.py export_owner_stories --forget`).
+5. Delete `export.json`, `export.bin` and `reader.key` when you are done, and never commit, print
+   or paste story text into a PR, an issue or a log.
+
+The sealed file is stored in the private pictures bucket as `exports/owner-stories.bin`, and a new
+export replaces it. The link is a signed
+URL, so it and the run's log can be seen by anyone for those 30 minutes; what it serves is
+ChaCha20-Poly1305 ciphertext under a key agreed with X25519
+([`stories/sealed.py`](../backend/stories/sealed.py)), useless without the private key. The job
+prints how many stories and scenes it sealed, and nothing else about them.
 
 ## Who may call the API
 
@@ -826,6 +873,12 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
 
 # infra/deploy.sh redraw
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,redraw_pictures --task-timeout=60m --wait
+
+# infra/deploy.sh export (EXPORT_KEY=the reader's public key)
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,export_owner_stories,--key=EXPORT_KEY --task-timeout=10m --wait
+
+# infra/deploy.sh export (EXPORT_KEY=forget)
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,export_owner_stories,--forget --task-timeout=10m --wait
 
 # infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)
 gcloud storage cp APK gs://playable-anime-releases/android/lucid-saga-42.apk --content-type=application/vnd.android.package-archive
