@@ -18,11 +18,19 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   with a ruling of its own, and never flips the power's first ruling (A9).
 - **A move pulled off in play** (A4, G25). A move the character makes with a power of theirs,
   such as an aura blade made with their aura, is that power at work even before it is learned
-  (`engine.resolve.checks.Move`). The first time it comes off cleanly, it goes on the sheet as a
-  technique of their own, learned by doing it, once however many steps of the plan use it: from
-  then on it counts like any technique and is never "never learned" again. A technique someone
-  else in the world knows is their school's, and is learned from them, not picked up by
-  improvising something like it.
+  (`engine.resolve.checks.Move`), and so is one their records make theirs to try: a technique
+  they are still learning, or a move made of the world's energy they hold. The first time it
+  comes off cleanly, it goes on the sheet as a technique of their own, learned by doing it, once
+  however many steps of the plan use it: from then on it counts like any technique and is never
+  "never learned" again. A technique someone else in the world knows is their school's, and is
+  learned from them, not picked up by improvising something like it.
+- **Mastery** (A4, `engine.levels`). Every technique has one: learning, practiced, skilled or
+  second nature. A new move starts at learning, or two steps under the skill it belongs to. It
+  grows with use: each turn the character uses it counts once, or twice when a roll decided the
+  step, and each hour of practising it counts once, more with a teacher. Hours never stand
+  between a character and a move the story already let them do. Talent sets the pace
+  (`talent`): with a gift for learning a move takes a quarter of the uses, an hour of practice
+  counts four, and a new move starts at practiced; a slow learner needs twice the uses.
 - **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
   guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
   attempt is rolled: success climbs a rung, a partial result shakes the character and a failure
@@ -34,8 +42,10 @@ A world with nothing extraordinary never grows a power (G6, G8).
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 
+from engine import levels
 from engine.base import HOUR
 from engine.contracts.delta import (
     CharacterChange,
@@ -45,9 +55,9 @@ from engine.contracts.delta import (
     StateDelta,
 )
 from engine.contracts.intent import GrowthKind, IntentStep, OutcomeClass, PowerGrant, Teacher
-from engine.contracts.resolution import ProposedDeed
+from engine.contracts.resolution import ProposedDeed, TrainingSoFar
 from engine.resolve import odds as odds_mod
-from engine.resolve.checks import Move, Settled
+from engine.resolve.checks import Move, Settled, same_way
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, mentions, name, possessive, stems
 from engine.rng import SeededRng
@@ -57,6 +67,7 @@ from engine.state.sheet import (
     Gain,
     Health,
     LadderPosition,
+    Mastery,
     Power,
     Practice,
     Ruling,
@@ -88,6 +99,8 @@ SKILL_HOURS = {
     SkillLevel.EXPERT: 15_000,
 }
 TECHNIQUE_HOURS = 150
+# How well they have a technique they trained all the way through (`engine.levels`).
+TRAINED = Mastery.PRACTICED
 INVENT_FACTOR = 3
 POWER_HOURS = 200
 # Shifts to a breakthrough's log-odds.
@@ -97,11 +110,42 @@ EDGE_SHIFT = 0.35
 MAX_EDGES = 3
 LOUD_STRENGTH = 90
 
-_GIFT_STEMS = stems("genius prodigy talent talented gifted copycat")
-_GIFT_PHRASES = ("fast learner", "quick learner", "quick study", "learns fast", "learns quickly")
+# A gift or a flaw for learning is read from a trait's words until talent is a record of its
+# own, in the three languages a sheet can be written in (S10).
+_COPY_STEMS = stems(
+    "copycat copy copies mimic mimics"
+    " imitador imitadora copión copiona"  # Spanish
+    " copiador copiadora"  # Catalan
+)
+_GIFT_STEMS = _COPY_STEMS | stems(
+    "genius prodigy talent talented gifted"
+    " genio prodigio talento talentoso talentosa superdotado superdotada dotado dotada"
+    " geni prodigi talentós superdotat dotat"
+)
+_GIFT_PHRASES = (
+    "fast learner",
+    "quick learner",
+    "quick study",
+    "learns fast",
+    "learns quickly",
+    "aprende rápido",
+    "aprende deprisa",
+    "aprèn ràpid",
+    "aprèn de pressa",
+)
 _FLAW_STEMS = stems("untalented")
-_FLAW_PHRASES = ("slow learner", "learns slowly", "no talent", "no aptitude")
-_COPY_STEMS = stems("copycat copy copies mimic mimics")
+_FLAW_PHRASES = (
+    "slow learner",
+    "learns slowly",
+    "no talent",
+    "no aptitude",
+    "sin talento",
+    "aprende despacio",
+    "aprende lento",
+    "sense talent",
+    "aprèn a poc a poc",
+    "aprèn lent",
+)
 _MASTER_STEMS = stems("master teacher guidance mentor")
 # Teachers who must be a living character beside the learner to count (A4).
 _GUIDES = (Teacher.MASTER, Teacher.RIVAL, Teacher.WATCHING)
@@ -190,6 +234,13 @@ def pace(actor: Character, teacher: Teacher) -> float:
     return rate
 
 
+def talent(actor: Character) -> float:
+    """A4. How fast they learn whoever teaches them: 1 for an ordinary character, more with a
+    gift for learning and less with a flaw. It sets how many uses a move's next mastery takes
+    (`engine.levels.uses_to_next`)."""
+    return pace(actor, Teacher.SELF)
+
+
 def stop_power(actor: Character, power_id: str | None) -> Power | None:
     if power_id:
         found = actor.sheet.power(power_id)
@@ -238,20 +289,24 @@ def check(
     return None
 
 
-def already_known(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
-    """A4 (decided 2026-11-10, Miki). Training a technique the character already knows is
-    practice: it simply happens, and nothing new is learned, so it is never refused and never
-    learned twice."""
+def already_known(
+    state: WorldState, actor: Character, step: IntentStep, earlier: Sequence[Technique] = ()
+) -> tuple[Settled, Technique] | None:
+    """A4 (decided 2026-11-10, Miki). Training a technique the character already knows, on
+    their sheet or made theirs `earlier` in this plan, is practice: it simply happens, and
+    nothing new is learned, so it is never refused and never learned twice. The practice counts
+    toward the technique's mastery (`practised`)."""
     training = step.training
     assert training is not None
     if training.kind is not GrowthKind.TECHNIQUE:
         return None
-    known = next((t for t in actor.sheet.techniques if mentions(t.name, training.what)), None)
+    theirs = [*actor.sheet.techniques, *earlier]
+    known = next((t for t in theirs if mentions(t.name, training.what)), None)
     if known is None:
         return None
     who = name(state, actor.id)
     reason = f"{cap(who)} already {_know(state, actor)} {known.name}, so this is practice."
-    return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason)
+    return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason), known
 
 
 def _breakthrough_check(
@@ -551,9 +606,12 @@ def progress(
     lived_s: int,
     effort_so_far: float,
     power_settled: stop.Settlements,
+    start: Mastery = Mastery.LEARNING,
 ) -> Progress:
     """A4. Add the stretch's effort to what was put in before, and make the gain once it is
-    enough. A copycat watching a technique learns it at once."""
+    enough. A copycat watching a technique learns it at once. `start` is where the actor's skill
+    puts a new move (`engine.levels`): a technique trained through is practiced, or there if
+    that is higher, and one copied at a glance starts there."""
     training = step.training
     assert training is not None
     teacher = teacher_of(state, actor, step)
@@ -580,7 +638,7 @@ def progress(
         return _skill_made(state, actor, step, done)
     if training.kind is GrowthKind.POWER and training.grants is not PowerGrant.NONE:
         return _grant_made(state, actor, step, done, power_settled)
-    return _technique_made(state, actor, step, done, instant)
+    return _technique_made(state, actor, step, done, instant, start)
 
 
 def _make(state: WorldState, actor: Character) -> str:
@@ -625,7 +683,12 @@ def _article(level: str) -> str:
     )
 
 
-def _technique(actor: Character, step: IntentStep, power_id: str | None) -> Technique:
+def _technique(
+    actor: Character,
+    step: IntentStep,
+    power_id: str | None,
+    mastery: Mastery = TRAINED,
+) -> Technique:
     training = step.training
     assert training is not None
     new_id = technique_id(training.what, {t.id for t in actor.sheet.techniques})
@@ -641,15 +704,22 @@ def _technique(actor: Character, step: IntentStep, power_id: str | None) -> Tech
         effect=effect,
         learned_from=learned,
         power_id=power_id,
+        mastery=mastery,
     )
 
 
 def _technique_made(
-    state: WorldState, actor: Character, step: IntentStep, done: Practice, instant: bool
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    done: Practice,
+    instant: bool,
+    start: Mastery,
 ) -> Progress:
     training = step.training
     assert training is not None
-    technique = _technique(actor, step, training.power_id)
+    mastery = start if instant else max(start, TRAINED, key=lambda m: m.rank)
+    technique = _technique(actor, step, training.power_id, mastery)
     gain = Gain(
         what=technique.name,
         change="learned",
@@ -728,20 +798,30 @@ def proven(
     step: IntentStep,
     moves: list[Move],
     earlier: list[Technique],
+    start: Mastery = Mastery.LEARNING,
 ) -> tuple[str, list[Technique], StateDelta]:
-    """A4, G25. The moves a step pulled off cleanly with the actor's own powers become techniques
-    of their own, so the next use finds them on the sheet and counts them like any technique.
-    One a technique of theirs already names, on the sheet or learned `earlier` in this plan, is
-    that technique, and one that names a technique someone else knows is that person's school's
-    (G25): neither is recorded. The reason in the world's words, the new techniques, and the
-    engine's change."""
+    """A4, G25. The moves a step pulled off cleanly become techniques of the actor's own, so the
+    next use finds them on the sheet and counts them like any technique: a move made with a
+    power of theirs, a technique they were still learning, or a move made of the world's energy
+    they hold. Each starts at `start`, where their skill puts a new move (`engine.levels`). One
+    a technique of theirs already names, on the sheet or learned `earlier` in this plan, is that
+    technique, and one that names a technique someone else knows is that person's school's
+    (G25), unless they are learning it: neither is recorded. A technique they were learning is
+    theirs from here, so the effort put in toward it is cleared. The reason in the world's
+    words, the new techniques, and the engine's change."""
     known = [*actor.sheet.techniques, *earlier]
-    taught = [t for c in state.characters.values() if c.id != actor.id for t in c.sheet.techniques]
+    others = [c for c in state.characters.values() if c.id != actor.id]
     taken = {t.id for t in known}
     techniques: list[Technique] = []
     gains: list[Gain] = []
+    learned: list[Practice] = []
     for move in moves:
-        if any(mentions(t.name, move.name) for t in [*known, *techniques, *taught]):
+        if any(same_way(t.name, move.name) for t in [*known, *techniques]):
+            continue
+        teachers = [
+            c.id for c in others if any(mentions(t.name, move.name) for t in c.sheet.techniques)
+        ]
+        if teachers and move.practice is None:
             continue
         new_id = technique_id(move.name, taken)
         taken.add(new_id)
@@ -749,19 +829,165 @@ def proven(
             Technique(
                 id=new_id,
                 name=move.name,
-                style=move.power.name,
-                learned_from="their own",
-                power_id=move.power.id,
+                style=move.style,
+                learned_from=min(teachers) if teachers else "their own",
+                power_id=move.power.id if move.power is not None else None,
+                mastery=start,
             )
         )
         gains.append(
             Gain(what=move.name, change="learned", source="pulled off in play", reason=step.text)
         )
+        if move.practice is not None:
+            learned.append(move.practice.model_copy(update={"effort_s": 0}))
     if not techniques:
         return "", [], StateDelta()
     whose = "yours" if actor.id == state.player_id else possessive(state, actor.id)
-    learned = " and ".join(t.name for t in techniques)
+    named = " and ".join(t.name for t in techniques)
     which = "techniques" if len(techniques) > 1 else "a technique"
-    reason = f"{learned} {'are' if len(techniques) > 1 else 'is'} {which} of {whose} now."
-    change = CharacterChange(id=actor.id, techniques=techniques, gains=gains)
+    reason = f"{named} {'are' if len(techniques) > 1 else 'is'} {which} of {whose} now."
+    change = CharacterChange(id=actor.id, techniques=techniques, gains=gains, practice=learned)
     return reason, techniques, StateDelta(characters=[change])
+
+
+# --- mastery (A4) ---------------------------------------------------------------------------
+
+# A4. What an hour of practising a move they know counts for, in uses, at an ordinary pace.
+USES_PER_HOUR = 1.0
+PRACTICE_KEY = "mastery:"
+MASTERY_WORDS = {
+    Mastery.LEARNING: "learning",
+    Mastery.PRACTICED: "practiced",
+    Mastery.SKILLED: "skilled",
+    Mastery.SECOND_NATURE: "second nature",
+    Mastery.OWN: "their own",
+}
+
+
+@dataclass
+class Moves:
+    """A4. The actor's techniques as a plan has changed them so far, by id: the ones it made
+    theirs and the ones whose count of uses it raised. `counted` is how much each has counted
+    for from being used this turn, since a turn counts once for a move, at its best step."""
+
+    now: dict[str, Technique] = field(default_factory=dict)
+    counted: dict[str, int] = field(default_factory=dict)
+
+    def latest(self, technique: Technique) -> Technique:
+        return self.now.get(technique.id, technique)
+
+
+def used_in(
+    actor: Character, techniques: list[Technique], moves: list[Move], earlier: list[Technique]
+) -> list[Technique]:
+    """A4. The techniques of the actor's a step used: those it drew on, and those its moves
+    name, on the sheet or made theirs `earlier` in this plan. Each once."""
+    theirs = [*actor.sheet.techniques, *earlier]
+    named = [t for move in moves for t in theirs if same_way(t.name, move.name)]
+    found: dict[str, Technique] = {}
+    for technique in [*techniques, *named]:
+        found.setdefault(technique.id, technique)
+    return list(found.values())
+
+
+def used(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    techniques: list[Technique],
+    rolled: bool,
+    moves: Moves,
+) -> tuple[str, StateDelta]:
+    """A4. Using a move is how it grows. Each technique the step used counts one use, or two
+    when a roll decided the step, which is use against real resistance. A turn counts once for
+    a move, at its best step, however many steps of the plan use it. The reason for any that
+    rose, in the world's words, and the engine's change."""
+    count = levels.RESISTED_USE if rolled else levels.PLAIN_USE
+    gift = talent(actor)
+    changed: list[Technique] = []
+    gains: list[Gain] = []
+    risen: list[str] = []
+    for technique in techniques:
+        more = count - moves.counted.get(technique.id, 0)
+        if more <= 0:
+            continue
+        moves.counted[technique.id] = count
+        before = moves.latest(technique)
+        after = _with_uses(before, more, gift)
+        if after == before:
+            continue
+        moves.now[technique.id] = after
+        changed.append(after)
+        if after.mastery is not before.mastery:
+            gains.append(_mastery_gain(before, after, "use in play", step.text))
+            risen.append(_risen(state, actor, before, after))
+    if not changed:
+        return "", StateDelta()
+    change = CharacterChange(id=actor.id, techniques=changed, gains=gains)
+    return " ".join(risen), StateDelta(characters=[change])
+
+
+def practice_uses(lived_s: int, rate: float) -> int:
+    """A4. What a stretch of practising a move they know counts for, in uses: one for each hour
+    of effort at the pace they keep (`effort_s`, `pace`), and one at least."""
+    return max(1, int(effort_s(lived_s) * rate * USES_PER_HOUR // HOUR))
+
+
+def practised(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    technique: Technique,
+    lived_s: int,
+    moves: Moves,
+) -> tuple[str, StateDelta, TrainingSoFar]:
+    """A4. A stretch spent practising a technique they know counts toward its mastery, an hour
+    of effort for a use, more with a teacher (`pace`). The reason for a rise, the engine's
+    change, and where the stretch started, so one cut short counts the time it ran
+    (`practice_cut`)."""
+    rate = pace(actor, teacher_of(state, actor, step))
+    so_far = TrainingSoFar(
+        key=f"{PRACTICE_KEY}{technique.id}", what=technique.name, rate=rate, practising=True
+    )
+    before = moves.latest(technique)
+    after = _with_uses(before, practice_uses(lived_s, rate), talent(actor))
+    if after == before:
+        return "", StateDelta(), so_far
+    moves.now[technique.id] = after
+    gains, reason = [], ""
+    if after.mastery is not before.mastery:
+        gains = [_mastery_gain(before, after, "practice", step.text)]
+        reason = _risen(state, actor, before, after)
+    change = CharacterChange(id=actor.id, techniques=[after], gains=gains)
+    return reason, StateDelta(characters=[change]), so_far
+
+
+def practice_cut(actor: Character, so_far: TrainingSoFar, lived_s: int, why: str) -> StateDelta:
+    """A4. Practice that an event cut short counts the time it ran, on the technique as the
+    sheet has it now."""
+    technique = actor.sheet.technique(so_far.key.removeprefix(PRACTICE_KEY))
+    if technique is None or lived_s <= 0:
+        return StateDelta()
+    after = _with_uses(technique, practice_uses(lived_s, so_far.rate), talent(actor))
+    if after == technique:
+        return StateDelta()
+    gains = []
+    if after.mastery is not technique.mastery:
+        gains = [_mastery_gain(technique, after, "practice", why)]
+    return StateDelta(characters=[CharacterChange(id=actor.id, techniques=[after], gains=gains)])
+
+
+def _with_uses(technique: Technique, more: int, gift: float) -> Technique:
+    mastery, uses = levels.grown(technique.mastery, technique.uses, more, gift)
+    return technique.model_copy(update={"mastery": mastery, "uses": uses})
+
+
+def _mastery_gain(before: Technique, after: Technique, source: str, reason: str) -> Gain:
+    change = f"{MASTERY_WORDS[before.mastery]} to {MASTERY_WORDS[after.mastery]}"
+    return Gain(what=after.name, change=change, source=source, reason=reason)
+
+
+def _risen(state: WorldState, actor: Character, before: Technique, after: Technique) -> str:
+    whose = cap(possessive(state, actor.id))
+    was, now = MASTERY_WORDS[before.mastery], MASTERY_WORDS[after.mastery]
+    return f"{whose} {after.name} has grown from {was} to {now}."

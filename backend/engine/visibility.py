@@ -24,12 +24,13 @@ from functools import cached_property
 
 from pydantic import Field
 
-from engine import possessions
+from engine import levels, possessions
 from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, in_label, number_label
 from engine.limits import normalize
+from engine.resolve.powers.growth import talent
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -49,7 +50,7 @@ from engine.state.records import (
     Transfer,
     Visibility,
 )
-from engine.state.sheet import Health
+from engine.state.sheet import Health, Mastery, Technique
 from engine.state.world import WorldState, natural_key
 from engine.world.rumors import Certainty, certainty
 from engine.world.telling import cap, tell
@@ -231,6 +232,31 @@ def standing_label(reputation: Reputation, language: Language = EN) -> str:
     return words or neutral
 
 
+# A4: how well they have a technique, as Status says it after the technique's name.
+_MASTERY_WORDS = {
+    EN: {
+        Mastery.LEARNING: "learning",
+        Mastery.PRACTICED: "practiced",
+        Mastery.SKILLED: "skilled",
+        Mastery.SECOND_NATURE: "second nature",
+        Mastery.OWN: "made your own",
+    },
+    ES: {
+        Mastery.LEARNING: "aprendiendo",
+        Mastery.PRACTICED: "practicada",
+        Mastery.SKILLED: "dominada",
+        Mastery.SECOND_NATURE: "segunda naturaleza",
+        Mastery.OWN: "hecha tuya",
+    },
+    CA: {
+        Mastery.LEARNING: "aprenent",
+        Mastery.PRACTICED: "practicada",
+        Mastery.SKILLED: "dominada",
+        Mastery.SECOND_NATURE: "segona naturalesa",
+        Mastery.OWN: "feta teva",
+    },
+}
+
 _HEALTH_WORDS = {
     EN: {
         Health.UNHURT: "Unhurt",
@@ -304,7 +330,8 @@ _WORDS = {
         "expecting": "Expecting a child, due {due}",
         "ready": "ready",
         "cost": "{power}, cost: {costs}",
-        "technique": "{name} (technique)",
+        "technique": "{name} (technique, {mastery})",
+        "technique_uses": "{name} (technique, {mastery}, {uses} of {need} uses)",
         "ends": "Ends {when}",
         "heard": "Heard {when}",
         "and": " and ",
@@ -328,7 +355,8 @@ _WORDS = {
         "expecting": "Esperando un bebé, que nacerá {due}",
         "ready": "disponible",
         "cost": "{power}, coste: {costs}",
-        "technique": "{name} (técnica)",
+        "technique": "{name} (técnica, {mastery})",
+        "technique_uses": "{name} (técnica, {mastery}, {uses} de {need} usos)",
         "ends": "Termina {when}",
         "heard": "Lo oíste {when}",
         "and": " y ",
@@ -352,7 +380,8 @@ _WORDS = {
         "expecting": "Esperant un nadó, que naixerà {due}",
         "ready": "disponible",
         "cost": "{power}, cost: {costs}",
-        "technique": "{name} (tècnica)",
+        "technique": "{name} (tècnica, {mastery})",
+        "technique_uses": "{name} (tècnica, {mastery}, {uses} de {need} usos)",
         "ends": "Acaba {when}",
         "heard": "Ho vas sentir {when}",
         "and": " i ",
@@ -679,10 +708,24 @@ class _Knowledge:
             if costs:
                 cost = _WORDS[self.language]["cost"].format(power=power.name, costs=costs)
                 lines.append(_cap(cost))
-        # G25, A4: the techniques they know, those they made their own in play included.
-        word = _WORDS[self.language]["technique"]
-        lines += [_cap(word.format(name=t.name)) for t in player.sheet.techniques]
+        # G25, A4: the techniques they know, those they made their own in play included, each
+        # with how well they have it and the uses counted toward the next mastery.
+        gift = talent(player)
+        lines += [self.technique_line(t, gift) for t in player.sheet.techniques]
         return lines
+
+    def technique_line(self, technique: Technique, gift: float) -> str:
+        """A4. A technique with how well they have it, and its count toward the next mastery at
+        their own pace of learning."""
+        words = _WORDS[self.language]
+        mastery = _MASTERY_WORDS[self.language][technique.mastery]
+        need = levels.uses_to_next(technique.mastery, gift)
+        if need is None:
+            return _cap(words["technique"].format(name=technique.name, mastery=mastery))
+        line = words["technique_uses"]
+        return _cap(
+            line.format(name=technique.name, mastery=mastery, uses=technique.uses, need=need)
+        )
 
     def resource_lines(self, player: Character) -> list[str]:
         resources = player.sheet.resources
