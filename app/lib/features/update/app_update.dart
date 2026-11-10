@@ -213,6 +213,9 @@ final selfUpdateProvider = Provider<bool>((ref) => AppConfig.selfUpdate);
 
 final appInstallerProvider = Provider<AppInstaller>((ref) => PlatformAppInstaller());
 
+/// The time, for how often the app checks on its own. Tests override it.
+final updateClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 final appUpdateProvider = NotifierProvider<AppUpdateController, UpdateState>(
   AppUpdateController.new,
 );
@@ -258,57 +261,66 @@ class AppUpdateController extends Notifier<UpdateState> {
   /// result, for the player's "Check for updates". On Wi-Fi a newer build is fetched right away.
   Future<void> check({bool now = false}) async {
     if (_busy) return;
+    final at = ref.read(updateClockProvider)();
     final last = _lastCheck;
-    if (!now && last != null && DateTime.now().difference(last) < checkEvery) return;
-    _lastCheck = DateTime.now();
+    if (!now && last != null && at.difference(last) < checkEvery) return;
+    _lastCheck = at;
     final before = state;
     if (now) state = before.copyWith(phase: UpdatePhase.checking);
+    // The player's Update or Install may start while this waits on the network: then the update
+    // is theirs, and this check stops without touching it.
+    final during = state.phase;
+    bool overtaken() => !ref.mounted || state.phase != during;
     try {
       var installed = before.installed;
-      var justUpdated = before.justUpdated;
       if (installed == null) {
         installed = await _installer.installed();
+        if (!ref.mounted) return;
         if (installed == null) {
           state = UpdateState.off;
           return;
         }
-        justUpdated = await _noteBuild(installed.build);
+        final justUpdated = await _noteBuild(installed.build);
         if (!ref.mounted) return;
         // Known from here on, even if the API can't be reached: the "updated" note shows now.
         state = UpdateState(state.phase, installed: installed, justUpdated: justUpdated);
       }
       final release = await _latest();
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       if (release == null || release.build <= installed.build) {
         _apk = null;
+        state = UpdateState(
+          UpdatePhase.upToDate,
+          installed: installed,
+          justUpdated: state.justUpdated,
+        );
         await clearDownloads(installed.updatesDir);
-        if (!ref.mounted) return;
-        state = UpdateState(UpdatePhase.upToDate, installed: installed, justUpdated: justUpdated);
         return;
       }
-      // Later holds for that build only.
-      final dismissed = before.dismissed && before.release?.build == release.build;
       if (_apk?.release.build != release.build) _apk = null;
       final UpdatePhase phase;
-      if (_apk != null) {
+      // Fetched already, unless Android has cleared its cache since; or fetched now, on Wi-Fi.
+      if (_apk != null && await _onPhone(release, installed)) {
         phase = UpdatePhase.ready;
-      } else if (await _canFetchQuietly(release, installed)) {
-        phase = UpdatePhase.preparing;
       } else {
-        phase = UpdatePhase.available;
+        _apk = null;
+        phase = await _canFetchQuietly(release, installed)
+            ? UpdatePhase.preparing
+            : UpdatePhase.available;
       }
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       state = UpdateState(
         phase,
         installed: installed,
         release: release,
         progress: phase == UpdatePhase.preparing ? 0 : null,
-        dismissed: dismissed,
-        justUpdated: justUpdated,
+        // Later holds for that build only.
+        dismissed: state.dismissed && state.release?.build == release.build,
+        justUpdated: state.justUpdated,
       );
       if (phase == UpdatePhase.preparing) await _download(release, installed);
     } on Object catch (e) {
-      if (!ref.mounted) return;
+      if (overtaken()) return;
       final problem = e is UpdateProblem ? e : UpdateProblem.download;
       state = now
           ? state.copyWith(phase: UpdatePhase.failed, problem: problem)
@@ -318,7 +330,7 @@ class AppUpdateController extends Notifier<UpdateState> {
               release: before.release,
               progress: before.progress,
               problem: before.problem,
-              dismissed: before.dismissed,
+              dismissed: state.dismissed,
               justUpdated: state.justUpdated,
             );
     }
@@ -360,7 +372,8 @@ class AppUpdateController extends Notifier<UpdateState> {
       return;
     }
     if (_busy) return;
-    if (_apk?.release.build == offered.build) return _install();
+    // If Android has cleared it from the cache since, it downloads again.
+    if (_apk?.release.build == offered.build && (await _install() || !ref.mounted)) return;
     // The player asked for it, so the banner shows how it goes even after a Later.
     state = state.copyWith(phase: UpdatePhase.downloading, progress: 0, dismissed: false);
     final AppRelease? release;
@@ -375,7 +388,11 @@ class AppUpdateController extends Notifier<UpdateState> {
     }
     if (!ref.mounted) return;
     if (release == null || release.build <= installed.build) {
-      state = UpdateState(UpdatePhase.upToDate, installed: installed);
+      state = UpdateState(
+        UpdatePhase.upToDate,
+        installed: installed,
+        justUpdated: state.justUpdated,
+      );
       return;
     }
     state = state.copyWith(phase: UpdatePhase.downloading, release: release, progress: 0);
@@ -432,24 +449,48 @@ class AppUpdateController extends Notifier<UpdateState> {
   }
 
   /// Opens Android's installer on the fetched build and covers the app until Android replaces it
-  /// or the installer closes.
-  Future<void> _install() async {
+  /// or the installer closes. False when the file has gone from the cache, which Android may
+  /// clear at any time: then the update failed to download, and trying again fetches it again.
+  Future<bool> _install() async {
     final apk = _apk;
-    if (apk == null) return;
+    final installed = state.installed;
+    if (apk == null || installed == null) return false;
     _closed ??= _installer.closed.listen((_) => installerClosed());
+    // Installing from here on, so a second tap waits for this one.
     state = state.copyWith(phase: UpdatePhase.installing, release: apk.release, dismissed: false);
+    if (!await _onPhone(apk.release, installed)) {
+      if (!ref.mounted) return false;
+      _apk = null;
+      state = state.copyWith(phase: UpdatePhase.failed, problem: UpdateProblem.download);
+      return false;
+    }
+    if (!ref.mounted) return true;
     try {
       await _installer.install(apk.path, apk.release.sha256);
     } on Object catch (e) {
-      if (!ref.mounted) return;
+      if (!ref.mounted) return true;
       final problem = e is UpdateProblem ? e : UpdateProblem.install;
       // A damaged file goes, so Try again downloads it again.
       if (problem == UpdateProblem.corrupt) {
         _apk = null;
-        if (state.installed case final installed?) await clearDownloads(installed.updatesDir);
-        if (!ref.mounted) return;
+        await clearDownloads(installed.updatesDir);
+        if (!ref.mounted) return true;
       }
       state = state.copyWith(phase: UpdatePhase.failed, problem: problem);
+    }
+    return true;
+  }
+
+  /// Whether [release]'s APK is on the phone, whole.
+  Future<bool> _onPhone(AppRelease release, InstalledApp installed) async {
+    try {
+      return await hasApk(
+        folder: installed.updatesDir,
+        name: _apkName(release),
+        size: release.size,
+      );
+    } on Object {
+      return false;
     }
   }
 
@@ -457,9 +498,7 @@ class AppUpdateController extends Notifier<UpdateState> {
   /// is on Wi-Fi or another network that isn't metered.
   Future<bool> _canFetchQuietly(AppRelease release, InstalledApp installed) async {
     try {
-      final name = _apkName(release);
-      if (await hasApk(folder: installed.updatesDir, name: name, size: release.size)) return true;
-      return await _installer.unmetered();
+      return await _onPhone(release, installed) || await _installer.unmetered();
     } on Object {
       return false;
     }

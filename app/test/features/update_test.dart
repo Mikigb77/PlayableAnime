@@ -55,8 +55,10 @@ void main() {
   late Directory updates;
   late AppHarness harness;
   late FakeInstaller installer;
+  late DateTime time;
 
   setUp(() {
+    time = DateTime.utc(2026, 11, 10, 12);
     updates = Directory.systemTemp.createTempSync('lucid-updates');
     addTearDown(() {
       if (updates.existsSync()) updates.deleteSync(recursive: true);
@@ -68,13 +70,27 @@ void main() {
   List<FakeRequest> checks() => harness.sent('GET', (p) => p == '/v1/app/latest');
   List<FakeRequest> downloads() => harness.sent('GET', (p) => p.startsWith('/fake-releases/'));
 
-  /// Answers like the fake backend, but holds each APK download until [gate] completes.
-  http.Client heldDownloads(Completer<void> gate) => MockClient.streaming((request, body) async {
+  /// Answers like the fake backend, once [wait] lets each request through.
+  http.Client held(Future<void> Function(http.BaseRequest request) wait) =>
+      MockClient.streaming((request, body) async {
+        await wait(request);
+        final copy = http.Request(request.method, request.url)..headers.addAll(request.headers);
+        copy.bodyBytes = await body.toBytes();
+        return harness.backend.send(copy);
+      });
+
+  /// Holds each APK download until [gate] completes.
+  http.Client heldDownloads(Completer<void> gate) => held((request) async {
     if (request.url.path.startsWith('/fake-releases/')) await gate.future;
-    final copy = http.Request(request.method, request.url)..headers.addAll(request.headers);
-    copy.bodyBytes = await body.toBytes();
-    return harness.backend.send(copy);
   });
+
+  /// Holds the second check until [gate] completes.
+  http.Client heldSecondCheck(Completer<void> gate) {
+    var checks = 0;
+    return held((request) async {
+      if (request.url.path == '/v1/app/latest' && ++checks == 2) await gate.future;
+    });
+  }
 
   Future<ProviderContainer> signedIn({bool selfUpdate = true, http.Client? client}) async {
     await harness.signIn();
@@ -85,6 +101,7 @@ void main() {
         sessionStoreProvider.overrideWithValue(harness.store),
         selfUpdateProvider.overrideWithValue(selfUpdate),
         appInstallerProvider.overrideWithValue(installer),
+        updateClockProvider.overrideWithValue(() => time),
       ],
     );
     addTearDown(container.dispose);
@@ -400,6 +417,79 @@ void main() {
       await controller.update();
       expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
       expect(downloads(), hasLength(2));
+    });
+
+    test('a fetched build that Android cleared from the cache downloads again', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.ready);
+
+      // Android trims the app's cache.
+      updates.deleteSync(recursive: true);
+      installer.onWifi = false;
+      await controller.check(now: true);
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(File(installer.installs.single.$1).existsSync(), isTrue);
+      expect(downloads(), hasLength(2));
+    });
+
+    test('Install on a build the cache lost downloads it again instead of failing', () async {
+      installer.onWifi = true;
+      publish(13);
+      final c = await signedIn();
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+
+      updates.deleteSync(recursive: true);
+      await controller.update();
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(File(installer.installs.single.$1).existsSync(), isTrue);
+      expect(downloads(), hasLength(2));
+    });
+
+    test('a check on its own leaves alone an update the player starts meanwhile', () async {
+      publish(13);
+      final gate = Completer<void>();
+      final c = await signedIn(client: heldSecondCheck(gate));
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+
+      time = time.add(AppUpdateController.checkEvery);
+      final checking = controller.check(); // waits on the API
+      await controller.update();
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      gate.complete();
+      await checking;
+
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.installing);
+      expect(installer.installs, hasLength(1));
+      expect(downloads(), hasLength(1));
+    });
+
+    test('Later while a check waits on the API holds', () async {
+      publish(13);
+      final gate = Completer<void>();
+      final c = await signedIn(client: heldSecondCheck(gate));
+      final controller = c.read(appUpdateProvider.notifier);
+      await controller.check();
+
+      time = time.add(AppUpdateController.checkEvery);
+      final checking = controller.check();
+      controller.dismiss();
+      gate.complete();
+      await checking;
+
+      expect(checks(), hasLength(2));
+      expect(c.read(appUpdateProvider).phase, UpdatePhase.available);
+      expect(c.read(appUpdateProvider).dismissed, isTrue);
     });
 
     test('says once that the app was updated, on the first run of a newer build', () async {
