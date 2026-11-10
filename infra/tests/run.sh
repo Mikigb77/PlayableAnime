@@ -1051,6 +1051,28 @@ test_workflow_matches_scripts() {
   contains "$ROOT/README.md" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
 }
 
+# Dependabot's PRs follow the branch flow: a PR into main fails CI (into-main), so every version
+# update targets dev, and each entry watches a folder that holds its manifest.
+test_dependabot() {
+  local cfg="$ROOT/.github/dependabot.yml" dir eco manifest
+  start "Dependabot opens its PRs into dev and watches folders that exist"
+  if [ -f "$cfg" ]; then ok; else bad "missing $cfg"; fi
+  equals "$(grep -c '^    target-branch: dev$' "$cfg")" "$(grep -c '^  - package-ecosystem: ' "$cfg")" \
+    "every entry in dependabot.yml needs target-branch: dev"
+  lacks "$cfg" "target-branch: main"
+  while read -r eco dir; do
+    case "$eco" in
+      uv) manifest=uv.lock ;;
+      docker) manifest=Dockerfile ;;
+      pub) manifest=pubspec.lock ;;
+      npm) manifest=package-lock.json ;;
+      github-actions) manifest=.github/workflows/ci.yml ;;
+      *) manifest="(no check for the $eco ecosystem; add one here)" ;;
+    esac
+    if [ -f "$ROOT${dir%/}/$manifest" ]; then ok; else bad "$eco watches $dir, which has no $manifest"; fi
+  done < <(awk '/^  - package-ecosystem: /{eco=$3} /^    directory: /{print eco, $2}' "$cfg")
+}
+
 test_docs_list_every_command() {
   start "docs/DEPLOY.md lists exactly the commands the scripts run"
   "$INFRA/tests/print-commands.sh" >"$WORK/commands-now"
@@ -1087,6 +1109,7 @@ test_build_apk
 test_publish_apk
 test_upload_apk
 test_workflow_matches_scripts
+test_dependabot
 test_docs_list_every_command
 
 printf '\n%d checks passed, %d failed\n' "$passed" "$failed"
