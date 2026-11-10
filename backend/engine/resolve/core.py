@@ -528,6 +528,7 @@ def _settle_step(
                     OutcomeClass.RULED_OUT, StepResult.FAILURE, _sentence(hit.blocked)
                 )
     own_choice = False
+    told_hand = ""  # R4: what the step is done with, and how well they have it
     defending = False  # N6: the step is itself the defence, so its own throw is
     kept: PlaceChange | None = None  # A3: the level of a thing this step judged, for its place
     if settled is None:
@@ -536,6 +537,7 @@ def _settle_step(
         if not own_choice and bridging is None:
             step, kept = _judged(state, actor, step, opposition)
         brought = _hand(state, actor, step, drawn, frame)
+        told_hand = brought.told
         if step.chain:
             settled, outcome = _with_chain(
                 state, actor, step, opposition, drawn, ctx, rng, frame, brought
@@ -840,6 +842,7 @@ def _settle_step(
         result=settled.result,
         costs=power_costs(used) if attempted else [],
         drew_on=drew_on,
+        hand=told_hand,
         duration_s=duration,
         personal_s=personal,
         beats=beats,

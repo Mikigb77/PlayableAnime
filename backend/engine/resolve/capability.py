@@ -161,11 +161,14 @@ _MENACE = ("nerve", "bearing")
 @dataclass(frozen=True)
 class Brought:
     """What the actor throws for one step: the hand, the technique whose own die it ends on,
-    if any, and whether the dice came from their attributes, which then don't count again."""
+    if any, and whether the dice came from their attributes, which then don't count again.
+    `told` is what they do it with and how well they have it, for the telling (R4): a skill or
+    a move with its level, "Swordsmanship (novice)", and nothing for a raw feat."""
 
     hand: Hand
     technique: Technique | None = None
     by_attribute: bool = False
+    told: str = ""
 
 
 @dataclass(frozen=True)
@@ -201,14 +204,16 @@ def hand_for(
     if techniques:
         best = max(techniques, key=lambda t: (t.mastery.rank, t.uses))
         dice = levels.MASTERY_DICE[best.mastery]
-        why = f"{cap(best.name)} ({MASTERY_WORDS[best.mastery]}), {_dice(dice)}"
+        told = f"{cap(best.name)} ({MASTERY_WORDS[best.mastery]})"
+        why = f"{told}, {_dice(dice)}"
         hand = Hand(dice, why, own_die(best.mastery), _insight_at(actor, best.name))
-        return Brought(hand, technique=best)
+        return Brought(hand, technique=best, told=told)
     if drawn.moves:
         move = drawn.moves[0].name
         dice = levels.MASTERY_DICE[start]
-        why = f"{cap(move)} (a new move), {_dice(dice)}"
-        return Brought(Hand(dice, why, DieKind.VIOLET, _insight_at(actor, move)))
+        told = f"{cap(move)} (a new move)"
+        hand = Hand(dice, f"{told}, {_dice(dice)}", DieKind.VIOLET, _insight_at(actor, move))
+        return Brought(hand, told=told)
     # The skill it draws on: one of theirs the step names or plainly is, and untrained where it
     # names a skill their sheet doesn't hold.
     best_of = best_skill(actor, drawn.skills) or best_skill(actor, skills_for(actor, step))
@@ -216,7 +221,8 @@ def hand_for(
         level = best_of.level if best_of is not None else SkillLevel.UNTRAINED
         dice = levels.SKILL_DICE[level]
         what = best_of.name if best_of is not None else drawn.skills[0]
-        return Brought(Hand(dice, f"{cap(what)} ({level.value}), {_dice(dice)}"))
+        told = f"{cap(what)} ({level.value})"
+        return Brought(Hand(dice, f"{told}, {_dice(dice)}"), told=told)
     # A raw feat. Where a power of theirs does the work, only the attributes the step names
     # count: the arm doesn't throw a spell.
     names = attributes_used(step, axis, named_only=bool(drawn.powers))

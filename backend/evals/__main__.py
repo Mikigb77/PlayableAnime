@@ -135,6 +135,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     errors = logging.StreamHandler(sys.stderr)
     errors.setFormatter(CallFormatter(logging.BASIC_FORMAT))
     logging.basicConfig(level=logging.ERROR, handlers=[errors])
+    # A form the provider refused is worth its one line: the model then reads the form from
+    # the prompt, which changes how well it fills it in.
+    logging.getLogger("graph.llm.gemini").setLevel(logging.WARNING)
 
     if args.command == "list":
         for scenario in chosen([], args.suite):
