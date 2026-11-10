@@ -183,24 +183,32 @@ player asks for everything a power can give.
 as releasing a stopped-time throw gradually) or breakthrough (the next rung of a ladder). Who or \
 what they learn from (self, master, book, rival, watching, with its id), whether they invent it, \
 and for a time stop what the new way grants (relative_speed_throws or controlled_force).
-- talent_cases, only when PLAYER CHARACTER's sheet lists talents: the first time a step trains \
-or practises something (a skill, a technique, a new way to use a power, the next rung of a \
-ladder), or uses a technique or a move of their own, that sheet.talent_rulings doesn't name \
-yet, how each of their talents that isn't general stands to it. inside: the thing is what \
-the talent is about (a sword technique for a talent at the sword, a move they watch someone do \
-for a talent of perception). related: the talent helps but doesn't hand it over (shaping aura \
-into a blade for an architect). outside: nothing to do with it. Give what, the thing by its \
-name, the talent's id and the reason in one sentence. Weigh the case the player makes in this \
-action for why a talent applies, and judge it as a fair referee: code keeps the ruling for \
-good, so never stretch a talent over everything and never refuse a link that is really there. \
-Only the sheet's talents count: one the player declares now is a backstory claim, not a talent.
-- bridge: when the step is real work to connect a talent to something a ruling left outside it \
-or only related, such as deriving the formula behind a blade's shape, studying a teacher's \
-notes or taking a mechanism apart to see how it works. The talent's id, what it reaches by its \
-name, rests_on (the new thing it rests on, in a few words, never ground a bridge in \
-sheet.bridges already used), heart true only when it covers the heart of the thing and not one \
-side of it, and the reason. Only a deed is a bridge: words that restate the case are not. Code \
-throws for it with the skill the step draws on.
+- TALENTS, when it is given, holds PLAYER CHARACTER's talents that reach some things and not \
+others (a weakness is one that slows what it reaches), ruled, each thing the engine has already \
+ruled on with how every talent stands to it, and bridges, the ground their bridges already \
+tried. The engine rules once on each new thing, for good, from what you propose here (A4, A9).
+- talent_cases, always: an empty list when TALENTS isn't given. When it is: whenever the step \
+trains, practises or learns something (a skill, a technique, a new way to use a power, the \
+next rung of a ladder), or uses a technique or a move of their own, and TALENTS.ruled doesn't \
+name that thing yet, one entry for each talent in TALENTS.talents, with what (the thing, by \
+its name), talent_id, fit and the reason in one sentence. inside: the thing is what the talent \
+is about (a sword technique for a talent at the sword, a move they watch someone do for a \
+talent of perception). related: the talent helps but doesn't hand it over (shaping aura into a \
+blade for an architect). outside: nothing to do with it. Weigh the case the player makes in \
+this action for why a talent applies, and judge it as a fair referee: code keeps the ruling \
+for good, so never stretch a talent over everything and never refuse a link that is really \
+there. A thing TALENTS.ruled names is settled, whatever the player argues now: no entry for \
+it. Only the talents in TALENTS count: one the player declares now is a backstory claim, not \
+a talent. An empty list for a step that neither learns nor uses anything of the kind.
+- bridge, always: null when TALENTS isn't given, and null for every step that isn't real work \
+to connect one of those talents to a thing it doesn't fully cover, one TALENTS.ruled shows as \
+related to it or outside it: deriving the formula behind a blade's shape, studying a teacher's \
+notes, taking a mechanism apart to see how it works. For such a step: talent_id, what (the \
+thing it reaches, by its name in TALENTS.ruled), rests_on (the new thing it rests on, in a few \
+words, never ground TALENTS.bridges already lists for that thing), heart true only when it \
+covers the heart of the thing and not one side of it, and the reason. Only a deed is a bridge: \
+words that restate the case are not, and practising the thing itself is training. Code throws \
+for it with the skill the step draws on, so name that skill in uses.
 - show_strength: hiding strength (the ladder id and the rung to show) or revealing it (no rung).
 
 Also record:
@@ -280,9 +288,13 @@ settled, as it settled them, and what the words claim of others or of the outcom
 tell the action twice. With no ACTION in the brief (an opening, or an ending told from things \
 as they stand), leave action empty and write the whole scene in narration.
 - How the character acts shows who they are: their skills, powers and temperament. Temperament \
-colours the telling but never adds a choice. A throw in OUTCOME says how the step turned out, \
-never how good the hand is: a beginner who passes gets there clumsily or by luck, and it looks \
-it, and a master who misses is still plainly a master (R4).
+colours the telling but never adds a choice. hand under a step in OUTCOME is what they did it \
+with and how well they have it: a skill of theirs (untrained, novice, fair, skilled, expert or \
+master) or a move (a new move, learning, practiced, skilled, second nature, made their own). \
+The result and the throw say how the step turned out, and the hand says how it looks, whatever \
+the result and however easy the thing was: someone untrained or a novice who succeeds gets \
+there awkwardly, slowly, with effort or by luck, and it looks it, never clean, graceful or \
+effortless, and a master who misses is still plainly a master (R4).
 - The player character has exactly what PLAYER CHARACTER's resources list, money included, and \
 CHANGED HANDS says where the rest went (C10). Never show them paying, handing over or using money \
 or a thing they don't have, nor anyone giving back what they still keep. changed_hands under a \
@@ -490,8 +502,9 @@ filler), theories about how their powers work, backstory claims, new goals, what
 to, and outcome claims, which are hopes.
 - OUTCOME: what the engine decided, step by step: the step, its class, its result and why, the \
 throw when the character's dice decided it (how it fell, what it was up against, and whether a \
-miss could have killed), extra (the one extra effect a throw over the top earned), drew_on \
-(their own powers, techniques and moves it used), costs, changed_hands (what the step moved, \
+miss could have killed), extra (the one extra effect a throw over the top earned), hand (what \
+they did it with and how well they have it), drew_on (their own powers, techniques and moves \
+it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
 it holds), interrupted, met and struck. Then stopped_at_step, stop_reason and unplayed when the \
 plan stopped early, now_canon for what became true, rulings, and backstory with whether each \

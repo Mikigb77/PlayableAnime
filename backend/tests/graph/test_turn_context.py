@@ -317,9 +317,10 @@ def test_the_narrator_is_told_how_the_dice_fell_and_never_the_dice():
 def test_the_narrator_tells_a_throw_by_the_hand_that_threw_it():
     """R4, A3: how the dice fell is what happened, never how skilled the character is. Found in
     a live run on 2026-11-10: a novice whose stroke came off was told as a master's."""
-    assert "never how good the hand is: a beginner who passes gets there clumsily or by luck" in (
+    assert "The result and the throw say how the step turned out, and the hand says how it" in (
         prompts.NARRATOR_SYSTEM
     )
+    assert "gets there awkwardly, slowly, with effort or by luck" in prompts.NARRATOR_SYSTEM
     assert "a master who misses is still plainly a master (R4)" in prompts.NARRATOR_SYSTEM
 
 
@@ -855,6 +856,35 @@ def test_the_outcome_names_the_abilities_a_step_used_so_a_miss_is_the_foes_doing
     )
 
 
+def test_the_outcome_says_what_a_step_was_done_with_and_how_well():
+    """R4 (live run, 2026-11-10): a novice cut a falling leaf with nothing in the way, the
+    outcome said only that it worked, and the stroke was told "swift, quiet and perfectly
+    clean". Each step now carries the hand it was done with, thrown or not, and the narrator
+    tells the doing to match it whatever the result."""
+    done = StepResolution(
+        index=0,
+        text="cut the falling leaf in two",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="Nothing stands in the way.",
+        result=StepResult.SUCCESS,
+        hand="Swordsmanship (novice)",
+        duration_s=2,
+    )
+    raw = done.model_copy(update={"hand": ""})
+
+    told = brief(resolution=Resolution(steps=[done])).user.split("## OUTCOME")[1]
+    plain = brief(resolution=Resolution(steps=[raw])).user.split("## OUTCOME")[1]
+
+    assert '"hand":"Swordsmanship (novice)"' in told
+    assert '"hand"' not in plain
+    system = prompts.NARRATOR_SYSTEM
+    assert "hand under a step in OUTCOME is what they did it with and how well" in system
+    assert "the hand says how it looks, whatever the result and however easy the thing" in system
+    assert "and it looks it, never clean, graceful or effortless" in system
+    assert "a master who misses is still plainly a master (R4)" in system
+    assert "hand (what they did it with and how well they have it)" in system
+
+
 def test_a_player_character_with_nothing_on_them_reads_as_carrying_nothing():
     """C10, M5: an empty list of things is shown, not left out, so neither the scene nor its
     picture prompt hands the character a weapon the premise or the genre suggests (Miki,
@@ -967,9 +997,10 @@ def test_the_narrator_tells_where_the_character_is_and_records_every_move():
     assert "the place each place lies within (within) and its setting" in system
 
 
-def test_both_models_read_the_talents_their_rulings_and_the_bridges():
-    """A4: the interpret step makes a case only for a thing no ruling names yet, and names a
-    talent by its id, so it reads all three on the sheet. The narrator reads them too."""
+def test_both_models_read_the_talents_and_the_narrator_their_rulings_and_bridges():
+    """A4: both models read the talents on the sheet, and the narrator the rulings and the
+    bridges there too. The interpret step, which makes a case only for a thing no ruling names
+    yet, reads those once, under TALENTS."""
     state = grounded_world()
     sheet = state.player.sheet
     sheet.talents = [
@@ -988,41 +1019,119 @@ def test_both_models_read_the_talents_their_rulings_and_the_bridges():
         )
     ]
 
-    for text in (interpret_prompt(state, "I practise").messages[-1].text, brief(state).user):
+    def sheet_in(text: str) -> dict:
         you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
-        assert you["sheet"]["talents"] == [
+        return you["sheet"]
+
+    read, told = interpret_prompt(state, "I practise").messages[-1].text, brief(state).user
+    for text in (read, told):
+        assert sheet_in(text)["talents"] == [
             {"id": "sword", "name": "The sword", "covers": "blades", "strength": "one_of_a_kind"}
         ]
-        assert you["sheet"]["talent_rulings"] == [
-            {
-                "key": "technique:quick-draw",
-                "what": "Quick draw",
-                "covers": [
-                    {"talent_id": "sword", "fit": "related", "reason": "a draw is half a cut"}
-                ],
-            }
-        ]
-        assert you["sheet"]["bridges"] == [
-            {
-                "key": "technique:quick-draw",
-                "what": "Quick draw",
-                "talent_id": "sword",
-                "rests_on": "the angle of the holster",
-            }
-        ]
+    assert sheet_in(told)["talent_rulings"] == [
+        {
+            "key": "technique:quick-draw",
+            "what": "Quick draw",
+            "covers": [{"talent_id": "sword", "fit": "related", "reason": "a draw is half a cut"}],
+        }
+    ]
+    assert sheet_in(told)["bridges"] == [
+        {
+            "key": "technique:quick-draw",
+            "what": "Quick draw",
+            "talent_id": "sword",
+            "rests_on": "the angle of the holster",
+        }
+    ]
+    assert not {"talent_rulings", "bridges"} & set(sheet_in(read))
+    assert '"ruled":[{"what":"Quick draw","stands":{"sword":"related"}}]' in read
+
+
+def test_the_interpret_prompt_gathers_what_to_rule_on_under_talents():
+    """A4 (live run, 2026-11-10): the real model read the talents on the sheet and never said
+    how they stood to what was being learned, so nothing was ruled on. What it has to rule on is
+    now a section of its own beside the action: the talents that reach some things and not
+    others, what is already ruled with how each stands, and the ground bridges already tried."""
+    state = grounded_world()
+    sheet = state.player.sheet
+
+    def talents(of=state):
+        text = interpret_prompt(of, "I practise the draw").messages[-1].text
+        if "## TALENTS\n" not in text:
+            return None
+        return json.loads(text.split("## TALENTS\n", 1)[1].split("\n\n## ", 1)[0])
+
+    # Nobody without a talent is asked, nor someone whose only talent covers everything.
+    assert talents() is None
+    sheet.talents = [Talent(id="quick", name="Quick study", general=True)]
+    assert talents() is None
+
+    sheet.talents += [
+        Talent(id="sword", name="The sword", covers="blades", strength=TalentStrength.GENIUS),
+        Talent(id="maths", name="Hopeless at sums", covers="numbers", strength=TalentStrength.SLOW),
+    ]
+    assert talents() == {
+        "talents": [
+            {"id": "sword", "name": "The sword", "covers": "blades"},
+            {"id": "maths", "name": "Hopeless at sums", "covers": "numbers", "weakness": True},
+        ],
+        "ruled": [],  # shown empty, so "nothing ruled yet" is said and not left out
+    }
+
+    cover = TalentCover(talent_id="sword", fit=TalentFit.RELATED, reason="a draw is half a cut")
+    sheet.talent_rulings = [
+        TalentRuling(key="technique:quick-draw", what="Quick draw", covers=[cover])
+    ]
+    sheet.bridges = [
+        TalentBridge(
+            key="technique:quick-draw",
+            what="Quick draw",
+            talent_id="sword",
+            rests_on="the angle of the holster",
+            steps=0,
+        )
+    ]
+    told = talents()
+    # A talent the ruling doesn't list is outside, and a bridge that didn't hold shows as tried.
+    assert told["ruled"] == [
+        {"what": "Quick draw", "stands": {"sword": "related", "maths": "outside"}}
+    ]
+    assert told["bridges"] == [
+        {
+            "what": "Quick draw",
+            "talent_id": "sword",
+            "rests_on": "the angle of the holster",
+            "held": False,
+        }
+    ]
+    # It sits next to the action, where the player makes their case, and the narrator, who
+    # rules on nothing, isn't given it.
+    text = interpret_prompt(state, "I practise the draw").messages[-1].text
+    assert [part.split("\n", 1)[0] for part in text.split("\n\n## ")][-3:] == [
+        "TALENTS",
+        "LANGUAGE",
+        "ACTION",
+    ]
+    assert "## TALENTS" not in brief(state).user
 
 
 def test_the_interpret_step_is_asked_for_the_case_on_a_talent_and_for_bridges():
     """A4, A9: the model proposes how a talent stands to a new thing and what a bridge rests
-    on; code records the ruling once and throws for the bridge."""
+    on; code records the ruling once and throws for the bridge. Both are answered on every
+    step, with nothing where there is nothing to say."""
     system = prompts.INTERPRET_SYSTEM
-    assert "- talent_cases, only when PLAYER CHARACTER's sheet lists talents" in system
-    assert "the first time a step trains or practises something (a skill, a technique" in system
-    assert "uses a technique or a move of their own, that sheet.talent_rulings doesn't" in system
+    assert "- TALENTS, when it is given, holds PLAYER CHARACTER's talents" in system
+    assert "- talent_cases, always: an empty list when TALENTS isn't given." in system
+    assert "trains, practises or learns something (a skill, a technique" in system
+    assert "or uses a technique or a move of their own, and TALENTS.ruled doesn't name" in system
+    assert "one entry for each talent in TALENTS.talents" in system
     assert "Weigh the case the player makes in this action for why a talent applies" in system
+    assert "A thing TALENTS.ruled names is settled, whatever the player argues now" in system
     assert "one the player declares now is a backstory claim, not a talent" in system
-    assert "- bridge: when the step is real work to connect a talent" in system
+    assert "- bridge, always: null when TALENTS isn't given" in system
+    assert "never ground TALENTS.bridges already lists for that thing" in system
     assert "Only a deed is a bridge: words that restate the case are not" in system
+    assert "practising the thing itself is training" in system
 
 
 def test_the_narrator_tells_a_ruling_or_a_bridge_in_the_storys_own_words():

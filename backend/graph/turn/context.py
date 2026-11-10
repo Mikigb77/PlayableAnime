@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine import possessions
+from engine import talent as talent_mod
 from engine.base import DAY
 from engine.context import Language, TurnContext
 from engine.contracts import (
@@ -30,6 +31,7 @@ from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
+from engine.state.sheet import TalentStrength
 from engine.state.world import WorldState, natural_key
 from graph.language import written_in
 from graph.llm import Prompt
@@ -122,6 +124,42 @@ def _player_view(state: WorldState) -> dict[str, Any]:
     condition.setdefault("wounds", [])
     # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
+
+
+def _talents_view(state: WorldState) -> dict[str, Any] | None:
+    """A4. What the interpret step rules on, gathered in one place so the question can't be
+    missed: the player character's talents that reach some things and not others, each thing
+    already ruled on with how every one of them stands to it, and the ground their bridges
+    already tried. None when they have no such talent: a general one covers everything, with no
+    ruling."""
+    player = state.player
+    theirs = [t for t in talent_mod.talents_of(player) if not t.general]
+    if not theirs:
+        return None
+    talents = []
+    for talent in theirs:
+        entry: dict[str, Any] = {"id": talent.id, "name": talent.name, "covers": talent.covers}
+        if talent.strength is TalentStrength.SLOW:
+            entry["weakness"] = True
+        talents.append(entry)
+    ruled = []
+    for ruling in player.sheet.talent_rulings:
+        fits = {cover.talent_id: cover.fit.value for cover in ruling.covers}
+        # A talent a ruling doesn't list is outside (`engine.talent`).
+        stands = {talent.id: fits.get(talent.id, "outside") for talent in theirs}
+        ruled.append({"what": ruling.what or ruling.key, "stands": stands})
+    view: dict[str, Any] = {"talents": talents, "ruled": ruled}
+    if player.sheet.bridges:
+        view["bridges"] = [
+            {
+                "what": bridge.what or bridge.key,
+                "talent_id": bridge.talent_id,
+                "rests_on": bridge.rests_on,
+                "held": bridge.steps > 0,
+            }
+            for bridge in player.sheet.bridges
+        ]
+    return view
 
 
 def _family_view(
@@ -395,10 +433,15 @@ def interpret_prompt(
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
     world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
+    talents = _talents_view(state)
+    you = _player_view(state)
+    # A4: what is ruled on and bridged is told once, under TALENTS, with how each talent stands.
+    for told_there in ("talent_rulings", "bridges"):
+        you["sheet"].pop(told_there, None)
     user = render(
         [
             world,
-            ("PLAYER CHARACTER", _player_view(state)),
+            ("PLAYER CHARACTER", you),
             ("CHANGED HANDS", _changed_hands(state)),
             ("SCENE", _scene_view(state)),
             # As JSON, like the narrator's recent scenes, so no line of it reads as a section.
@@ -407,6 +450,9 @@ def interpret_prompt(
             ("NOW", _now_view(state)),
             ("KNOWN", _known_view(state)),
             ("GOALS AND THREADS", _goals_and_threads(state)),
+            # A4: only for a character whose talents want ruling on, and next to the action,
+            # where the player makes their case.
+            *([("TALENTS", talents)] if talents is not None else []),
             ("LANGUAGE", written_in(language)),
             ("ACTION", action.strip()),
         ]
@@ -641,6 +687,10 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             view["throw"] = thrown
         if step.extra:
             view["extra"] = step.extra
+        if step.hand:
+            # R4: what they did it with and how well they have it, so a novice who succeeds
+            # still looks a novice.
+            view["hand"] = step.hand
         if step.drew_on:
             # R1, A3: their own powers and techniques the step used, which work as they know
             # them to, so a miss is told in what stood in the way.

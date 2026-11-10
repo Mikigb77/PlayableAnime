@@ -310,10 +310,19 @@ class Training(EngineModel):
     )
 
 
+def _case_required(schema: dict[str, Any]) -> None:
+    """A4. A case the interpret model makes always names the thing and gives its reason, which
+    the player reads in the ruling. Code may still leave them out."""
+    must = ["what", "reason"]
+    schema["required"] = list(dict.fromkeys([*must, *schema.get("required", [])]))
+
+
 class TalentCase(EngineModel):
     """A4. Whether one talent of the character's covers one thing a step sets out to learn,
     with the reason. The interpret step proposes it, weighing the player's own case, the first
     time the thing is learned; code records it once and it never flips."""
+
+    model_config = ConfigDict(json_schema_extra=_case_required)
 
     what: str = Field(
         default="", description="The technique, skill or power being learned, by its name."
@@ -515,10 +524,15 @@ class StepFacts(EngineModel):
 
 
 def _step_required(schema: dict[str, Any]) -> None:
-    """A2, G14. Every step the interpret model writes carries its facts, so its challenge is
-    judged, and what it uses from the sheet, so the character counts: Gemini left `uses` out as
-    often as not, and a nimble climber then rolled like anyone."""
-    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "facts", "uses"]))
+    """A2, G14, A4. Every step the interpret model writes carries its facts, so its challenge
+    is judged, what it uses from the sheet, so the character counts, and its answer on talent:
+    how the character's talents stand to what it learns, an empty list when there is nothing to
+    rule on, and the bridge it builds, null on any other step. Gemini leaves out what a schema
+    doesn't require as often as not: without `uses` a nimble climber rolled like anyone, and
+    without these two no talent was ruled on at all in the first live run (2026-11-10). Code
+    may still leave them out."""
+    must = ["facts", "uses", "talent_cases", "bridge"]
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
 class IntentStep(EngineModel):
@@ -609,18 +623,32 @@ class IntentStep(EngineModel):
     talent_cases: list[TalentCase] = Field(
         default_factory=list,
         description=(
-            "A4: when the step sets out to learn, train or first use something PLAYER"
-            " CHARACTER's talent_rulings don't name yet, how each talent of theirs that isn't"
-            " general stands to it."
+            "A4: always given. Empty unless TALENTS is given and the step learns, trains,"
+            " practises or uses something TALENTS.ruled doesn't name yet: then one entry for"
+            " each talent in TALENTS.talents, saying how it stands to that thing."
         ),
     )
     bridge: Bridge | None = Field(
         default=None,
-        description="A4: when the step is work that connects a talent to something outside it.",
+        description=(
+            "A4: always given. null unless TALENTS is given and the whole step is work that"
+            " connects one of those talents to a thing it doesn't fully cover."
+        ),
     )
     show_strength: ShowStrength | None = Field(
         default=None, description="G20: hiding or revealing strength."
     )
+
+    @field_validator("bridge", mode="before")
+    @classmethod
+    def _no_empty_bridge(cls, value):
+        """A form that must always answer sometimes answers with an empty bridge where it
+        means none: one that names no talent, reaches nothing and rests on nothing is none."""
+        if isinstance(value, dict) and not any(
+            str(value.get(key) or "").strip() for key in ("talent_id", "what", "rests_on")
+        ):
+            return None
+        return value
 
 
 class StandingAction(StrEnum):

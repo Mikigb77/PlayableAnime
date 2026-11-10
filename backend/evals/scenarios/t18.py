@@ -38,7 +38,7 @@ from evals.judge import PICTURE_INSTRUCTIONS, Rubric
 from evals.pictures import Picture, ending, portrait_brief, scene_brief
 from evals.runner import Eval
 from evals.scenario import LIVE_ONLY, REGISTRY
-from evals.scenarios.common import act, attack, plan, step
+from evals.scenarios.common import act, attack, plan, skill, step
 from graph.llm import Node
 from media.notes import SceneText, note_prompt
 from media.prompts import FRAMING, GROUNDED, build_prompt
@@ -415,7 +415,15 @@ async def result_as_action(ev: Eval) -> None:
 
 
 def leaf_cut() -> Intent:
-    return act("cut the falling leaf in two", "cut", ActionKind.EXCHANGE, 2)
+    return plan(
+        step(
+            "cut the falling leaf in two",
+            ActionKind.EXCHANGE,
+            2,
+            verb="cut",
+            uses=[skill("swordsmanship")],
+        )
+    )
 
 
 @scenario(
@@ -432,10 +440,16 @@ async def skill_shows(ev: Eval) -> None:
             story = ev.story(worlds.sword_stroke(level), seed=f"{seed}/{level}", under_way=True)
             played = await story.act("I cut the falling leaf in two", leaf_cut())
             scenes.append((f"{level.value} swordsman", played))
+            stroke = played.step(0)
             ev.check(
-                "the narrator sees the sheet's skill level",
-                "swordsmanship" in story.prompt(Node.NARRATOR)
-                and level.value in story.prompt(Node.NARRATOR),
+                "the stroke is made with their swordsmanship, at the level the sheet gives",
+                stroke.hand == f"Swordsmanship ({level.value})",
+                f"{seed}: {level.value}: hand {stroke.hand!r}, {stroke.outcome_class.value}, "
+                f"{stroke.result.value}, {stroke.reason}",
+            )
+            ev.check(
+                "the narrator is told the hand beside the outcome, whatever the result",
+                f'"hand":"Swordsmanship ({level.value})"' in story.prompt(Node.NARRATOR),
                 f"{seed}: {level}",
                 live=False,
             )

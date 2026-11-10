@@ -145,6 +145,13 @@ class StepResolution(EngineModel):
         "name, once past the sheet check. They work as the actor knows them to: a step that "
         "fails meets what stood in the way, unless its reason names the ability.",
     )
+    hand: str = Field(
+        default="",
+        description="R4: what the actor did the step with and how well they have it, a skill "
+        'or a move with its level ("Swordsmanship (novice)"), whether or not anything was '
+        "thrown. Empty for a raw feat and for a step that never got that far. The telling "
+        "matches it whatever the result.",
+    )
     duration_s: int = Field(ge=0, description="World seconds it took (W10).")
     personal_s: int | None = Field(
         default=None, ge=0, description="The actor's lived seconds, when they differ (W10a)."
