@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
   <!--
     The forest gate. forest-gate.jpg is the scene Gemini on Vertex AI first painted for the icon
-    (2026-11-04; the model and prompt are in DESIGN.md, "App icon"), repainted at 4K with a better
-    drawn traveller (2026-11-10). The scene fills the sharp square from 12 to 96 here, 1680 px of
+    (2026-11-04; the model and prompt are in DESIGN.md, "App icon"), repainted at 4K in a darker
+    forest with a better drawn traveller (2026-11-10). The scene fills the sharp square from 12 to 96 here, 1680 px of
     the file at 20 px a unit; the 400 px around it are the scene mirrored at its edges, so the
     picture runs from -8 to 116 and its blur never fades at the grid's edge. That margin, which
     only an Android launcher's motion ever shows, is drawn blurred, so the seam stays soft.
