@@ -21,6 +21,7 @@ from engine.contracts import (
 from engine.invariants import check_transition
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
+    Attributes,
     Cause,
     CauseMechanism,
     CauseRef,
@@ -31,6 +32,7 @@ from engine.state import (
     FactionStatus,
     Goal,
     GoalStatus,
+    Judged,
     PendingEvent,
     PlaceStatus,
     Resurrection,
@@ -38,6 +40,7 @@ from engine.state import (
     RulingSource,
     WorldState,
 )
+from engine.state.cast import MAX_JUDGED
 
 ENGINE = DeltaSource.ENGINE
 NARRATOR = DeltaSource.NARRATOR
@@ -752,3 +755,70 @@ def test_an_event_that_is_due_but_never_applied_is_no_cause():
     applied = apply(state, ENGINE, characters=[back])
 
     assert reasons(applied) == ["event 'return' hasn't happened"]
+
+
+# --- what only the engine writes (A3, F1) ---------------------------------------------------------
+
+
+def judged(key: str, level: int = 3) -> Judged:
+    return Judged(key=key, what=key, level=level)
+
+
+def test_a_place_keeps_the_first_level_a_thing_was_judged_at():
+    state = cultivation_world()
+    first = PlaceChange(id="well", judged=[judged("archiv door lock pick")])
+    state = apply(state, ENGINE, places=[first]).state
+    again = PlaceChange(
+        id="well", judged=[judged("archiv door lock pick", level=1), judged("gate")]
+    )
+    applied = apply(state, ENGINE, places=[again])
+
+    assert not applied.rejected
+    kept = applied.state.places["well"]
+    assert [(j.key, j.level) for j in kept.judged] == [("archiv door lock pick", 3), ("gate", 3)]
+    assert kept.level_of("archiv door lock pick") == 3 and kept.level_of("a wall") is None
+
+
+def test_a_place_forgets_the_oldest_judged_things_first():
+    state = cultivation_world()
+    for n in range(MAX_JUDGED + 2):
+        state = apply(
+            state, ENGINE, places=[PlaceChange(id="well", judged=[judged(f"thing {n}")])]
+        ).state
+
+    kept = [j.key for j in state.places["well"].judged]
+    assert (
+        len(kept) == MAX_JUDGED and kept[0] == "thing 2" and kept[-1] == f"thing {MAX_JUDGED + 1}"
+    )
+
+
+def test_the_narrator_cant_say_how_hard_a_thing_is():
+    state = cultivation_world()
+    applied = apply(state, NARRATOR, places=[PlaceChange(id="well", judged=[judged("a lock", 1)])])
+
+    assert applied.state.places["well"].judged == []
+    assert reasons(applied) == ["only the engine decides this"]
+
+
+def test_someone_the_engine_makes_real_comes_with_the_body_it_gave_them():
+    state = cultivation_world()
+    body = Attributes(strength=5, speed=5, toughness=5, wits=5)
+    stranger = CharacterChange(id="old-man", name="the old man", attributes=body)
+    applied = apply(state, ENGINE, characters=[stranger])
+
+    assert not applied.rejected
+    assert applied.state.characters["old-man"].sheet.attributes == body
+
+
+def test_a_known_characters_body_doesnt_change_and_never_on_the_narrators_word():
+    state = cultivation_world()
+    before = state.characters["zhao"].sheet.attributes.model_copy()
+    stronger = CharacterChange(id="zhao", attributes=Attributes(strength=5))
+
+    applied = apply(state, ENGINE, characters=[stronger])
+    assert reasons(applied) == ["a known character's body doesn't change here"]
+    assert applied.state.characters["zhao"].sheet.attributes == before
+
+    applied = apply(state, NARRATOR, characters=[stronger])
+    assert reasons(applied) == ["only the engine decides this"]
+    assert applied.state.characters["zhao"].sheet.attributes == before

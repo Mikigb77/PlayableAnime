@@ -38,7 +38,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
-from engine.resolve import capability, resolve_intent
+from engine.resolve import resolve_intent
 from engine.resolve.powers import growth
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
@@ -89,15 +89,19 @@ def catch_up(
     return world.catch_up(state, until_s, ctx, rng, copy=copy)
 
 
-def resolve(state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng) -> Resolution:
-    """Step 3. Settle each step from the facts and roll only what they leave open (A2, A3).
+def resolve(
+    state: WorldState, intent: Intent, ctx: TurnContext, rng: SeededRng, *, scene: str = ""
+) -> Resolution:
+    """Step 3. Settle each step from the facts and throw only for what they leave open (A2, A3).
 
     `engine.resolve` (WS9): the world's rules, the sheet and the beats, who stands in the way and
-    whether they can respond at all, the power gap, then a seeded roll only for contested and
-    long-shot steps and close calls. A chained plan stops at the first step that doesn't cleanly
-    succeed (R6). Inside a time stop the world clock stands still while the actor's runs (W10a).
+    whether they can respond at all, then a seeded throw of the actor's dice against the number
+    the other side's level sets, only where something is open. A chained plan stops at the
+    first step that doesn't cleanly succeed (R6). Inside a time stop the world clock stands
+    still while the actor's runs (W10a). `scene` is the text of the scene the player is
+    answering, which an advantage may quote.
     """
-    return resolve_intent(state, intent, ctx, rng)
+    return resolve_intent(state, intent, ctx, rng, scene=scene)
 
 
 def apply_event(
@@ -155,8 +159,8 @@ def play_out(
 
     Rulings are recorded on the actor's sheet once, never flipped (A9), and then the plan's own
     `effects` apply (settled details of powers, accepted backstory). Time effects that ran out
-    on their user's clock are cleared at the end, and the player character's run of misses
-    moves on with the rolls that played (A3, `engine.resolve.capability`).
+    on their user's clock are cleared at the end, and the openings the player character holds
+    for their next step move on with the steps that played (A3).
 
     Code starts and ends the scene's encounter as the steps play (W10, `engine.encounters`): a
     long stretch that isn't part of it ends it before the stretch's events are rolled, each step
@@ -243,13 +247,19 @@ def play_out(
     prune_time_effects(current)
     encounters.settle(current)
     if actor_id == current.player_id:
-        # A3. The run of misses the player character's next roll is weighed with: every step
-        # that played counts, and one an event cut short didn't happen.
+        # A3. The openings the player character holds for their next step: each is used by the
+        # next step that faced whom it is on, those the steps that played won are added, and
+        # none outlasts the encounter. A step an event cut short didn't happen.
+        held = list(current.openings)
         for step in played:
             if not step.interrupted:
-                current.misses_in_a_row = capability.misses_after(
-                    current.misses_in_a_row, step.roll, step.result
-                )
+                held = [o for o in held if o not in step.opponent_ids] + step.opening_ids
+        in_it = current.scene.encounter is not None
+        current.openings = [
+            o
+            for o in dict.fromkeys(held)
+            if in_it and o in current.characters and current.characters[o].alive
+        ]
 
     update: dict = {"steps": played}
     later = resolution.steps[len(played) :]

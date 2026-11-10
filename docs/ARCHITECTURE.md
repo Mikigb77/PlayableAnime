@@ -159,7 +159,7 @@ these functions and saves the result.
 | `engine/contracts/` | What flows between the turn's steps (B5): `Intent` (interpret), `Resolution` (resolve), `DirectorPlan` (director) and `StateDelta` (what the narrator or the engine proposes to change). |
 | `engine/context.py` | `TurnContext`: the story id, the turn number, story settings (S6), rating (F2) and content preferences (F7), which live outside the world state. |
 | `engine/rng.py` | `SeededRng`, the seeded random numbers behind every roll (A3). |
-| `engine/levels.py` | One scale of levels for moves, skills, bodies and things (A3, A4, G14, G18), which the dice will be built on: the dice a move throws by its mastery, a step by its skill and a raw feat by its attribute, the level of each of the six challenge words, the number a level sets (ten for each level less three), and how mastery grows: `grown` (6 uses, then 15, then 30, divided by the pace talent sets), `starting_mastery` (two steps under the skill, or practiced for the gifted) and what a plain and a resisted use count for. Nothing here rolls, and nothing is decided by it yet. |
+| `engine/levels.py` | One scale of levels for moves, skills, bodies and things (A3, A4, G14, G18), which the dice are built on: the dice a move throws by its mastery, a step by its skill and a raw feat by its attribute, the level of each of the six challenge words, the number a level sets (ten for each level, less what the difficulty takes off: 6 on Story, 3 on Balanced, nothing on Brutal), the step of 5 everything else moves a number by, and how mastery grows: `grown` (6 uses, then 15, then 30, divided by the pace talent sets), `starting_mastery` (two steps under the skill, or practiced for the gifted) and what a plain use, a resisted use and an insight count for (1, 2 and 3). Nothing here throws: `engine/resolve/throw.py` does. |
 | `engine/timekeeping.py` | How long each kind of action may take, the seconds until a time of day ("until nightfall"), and `advance_clock`, which moves the world clock through pending events in time order and stops at the first that needs the player (W10, W10a). |
 | `engine/apply.py` | `apply_delta`: a proposed `StateDelta` applied with the C1 invariants, on behalf of the narrator or the engine, returning the new state and what it refused. Each item change goes through `engine.possessions`. The narrator never hurts the player character: a worse health, a wound or a passing state that names an injury is refused (N6), unless `may_hurt_player` says something recorded this turn caused it (a power's toll in health or blood, `injuries.pays_in_body`, or the first opening's premise). Healing still applies, and a new wound on an unhurt body leaves it hurt. A goal the narrator names in `goals_over` closes as achieved or failed, or, when it repeats another active goal, the later of the two closes as merged into the older (N2), and only with `player_acted`, which the turn graph sets when the player acted this turn. |
 | `engine/injuries.py` | Hurt bodies come only from the record (N6, G13): `names_injury` spots a wound, an injury, pain or an illness in a model's words (English, Spanish and Catalan; "broken" or "twisted" only beside a body part, so a broken lock is no injury), `is_hurt` reads it off a character's condition, and `unrecorded_harm` leaves out of a step's facts every edge and hindrance that leans on an injury the record doesn't hold: words naming someone in the scene or someone the step faces stand only when that person is hurt on the record (and the words name no part the record says is whole), a hindrance naming nobody else is the actor's and stands only for one of their flaws, passing states or wounds that last (the odds already weigh their health), and an edge naming nobody stands when someone the step faces holds it. `pays_in_body` says whether a step that played paid a power's toll in health or blood. `Condition.set_health` heals every wound that doesn't last once a body is back to unhurt, and loading a state does the same. |
@@ -434,8 +434,9 @@ order, and the first one that settles it ends the step:
    (never the energy alone), or a technique they were still learning, which is then theirs in its
    teacher's name with its practice cleared; a new way to use a power is never learned by doing
    it (A9). It starts at the mastery their skill gives a new move (`levels.starting_mastery`).
-   Each technique a step used counts toward its mastery (`growth.used`: once, or twice where a
-   roll decided the step, and once a turn at its best step), and a training step on a technique
+   Each technique a step used counts toward its mastery (`growth.used`: once, twice where a
+   throw of the actor's own decided the step, three times on an insight, which is the move's
+   violet die at 18 or more or any throw over the top, and once a turn at its best step), and a training step on a technique
    they know is practice that counts an hour for a use (`growth.practised`, and `practice_cut`
    from `pipeline` when an event cuts it short). A rise is a `Gain` and a sentence in the step's
    reason. `StepResolution.drew_on` names what the step used once past this check, so the narrator
@@ -449,7 +450,7 @@ order, and the first one that settles it ends the step:
 2. **Beats** (`checks.py`; R2). Whatever a beat uses must be the body, a power, something carried,
    something the scene holds (props, people, the place) or something an earlier beat made canon.
    Something the engine has no record of is there, and becomes canon, unless the interpret step says
-   otherwise: it is rolled for when that step calls it uncertain, which is kept for what is hidden,
+   otherwise: it is settled by the world's die when that step calls it uncertain, which is kept for what is hidden,
    rare, valuable or decisive, and it is an empty search, which fails the step, when the place can't
    hold it. A judgement left out counts as there. What the scene's record or this turn's canon holds
    is there whatever source it was filed under, so nothing on record is rolled for; only a plain
@@ -475,83 +476,117 @@ it (W10a), a helpless state on the sheet
    A harmful aim at someone the scene hasn't named ("some random guy") carries the interpret
    step's `stranger`: who they are, whether the place holds them now and whether a crowd is
    watching. `strangers.meet` checks the find like a beat (plausible is found, uncertain is
-   rolled, absent ends the step), then makes them real: a minor character where the actor is,
-   with might rolled by the world (most ordinary at tier 1, about 1 in 15 one step tougher, and
-   a hidden master one step above the actor, capped at the strongest the world holds and always
-   able to respond, from 1 in 1,000 in a grounded world to 1 in 200 where powers are common).
+   settled by the world's die, absent ends the step), then makes them real: a minor character where the actor is,
+   with might drawn by the world, hidden, since it tests nothing of the actor's (most ordinary
+   at tier 1, about 1 in 15 one step tougher, and a hidden master one step above the actor,
+   capped at the strongest the world holds and always able to respond, from 1 in 1,000 in a
+   grounded world to 1 in 200 where powers are common). Someone who can fight comes with the
+   body for it, since the dice read levels from the sheet: a tough stranger has strength, speed
+   and toughness 4, and a hidden master 5 with wits 5 (`CharacterChange.attributes`, engine
+   only and kept out of the narrator's form, applied only to someone the engine makes real).
    In a crowd with nobody else recorded there, an onlooker is made real too, to witness it (W1,
    W2). They go first in the step's `effects` and in `StepResolution.strangers`, and the
    narrator meets them under those ids (`met` in OUTCOME).
-4. **The class** (A2, G18). Power is measured on the step's axis (`power.py`), from the sheet's
-   tier raised to its ladder rung, minus condition (wounds, exhaustion, an empty reserve,
-   weakening). Gaps are counted in steps: the rungs of the world's ladder on that axis, or two
-   tiers where it has none. Each other opponent within a step of the strongest adds half a step,
-   up to one. Against someone who can respond: two or more steps up is ruled out head-on, one is a
-   long shot, closer is contested, and two or more down is certain. When nothing can push back, the
-   proposed means decide (clearly enough is certain, clearly not is ruled out, a close call is
-   rolled: between full harm and partial harm for a blow that lands, between any result for
-   anything else), capped by how far the target's body stands above the actor's might, so no
-   proposal gets a kitchen knife through a sleeping dragon. A step proposed as a long shot with no
-   verdict on the means is rolled as one. A harmful aim always meets that body check for every
-   target it doesn't meet head-on, whatever axis the step names and whoever else stands awake
-   beside them. Where nobody can be measured against the actor (things in the way such as a
-   lantern or the wind, a faction, a storm, someone pushing back on no axis, or a close call),
-   the class comes from the odds the character's sheet gives them against the challenge the
-   interpret step judged (`capability.py`, below): at 95% or more it is certain with no roll where
-   only things stand in the way (never against someone or a faction, and never on a blow a
-   tougher body caps), under 15% a long shot, and contested between. A proposed ruled-out step
-   stays ruled out. A step that only the actor's own
+4. **Settled or open** (`core.py`; A2, G18). A step is settled with no throw when the facts leave
+   nothing open, and otherwise the actor throws for it (point 6); the class recorded is certain or
+   ruled out for a settled step, and for a thrown one a long shot when its exact chance is under
+   15% and contested otherwise (`throw.class_of`). A gap in power never settles a step by itself.
+   A refusal names a fact: a rule of the world or something the sheet lacks (points 1 and 2), a
+   ruling already made (A9), a force a body takes unhurt (W10a), a link that breaks (point 5), or
+   what the world's ladder says a rung shrugs off (`core._shrugged_off`, `PowerLadder.shrugs_off`,
+   three steps of power with no ladder): harm by ordinary means, with no power, technique, move or
+   item with a history behind it, never gets through to a body that many rungs up, awake or
+   asleep.
+   Against someone who can respond (`_contested`), the step is certain only when their level is
+   two or more under the dice the actor throws (`throw.open_against`). Where nobody can respond
+   (`_unopposed`), the proposed means decide: clearly enough is certain, clearly not is ruled out,
+   and a close call is thrown for, between full and partial harm for a blow that lands and
+   between any result for anything else. With no verdict on the means, a thing judged a real
+   effort or harder is a close call. A body a rung or more above whoever strikes it is at most a
+   close call, thrown against its toughness plus the rungs between them, and where a blow lands on
+   a sleeping body while someone awake can answer, the harder of the two numbers is the one
+   thrown against (`_toughest`). A technique the actor has at practiced or better, with nothing
+   named in the way, works as they know it to. A thing in the way that is two levels or more
+   under the hand can't stop them; a faction in the way is never nothing, so it is always thrown
+   for. A step that only the actor's own
    temperament, fear or pride stands in the way of (`StepFacts.inner`, the actor named as the
    opposition, or words that name only an inner state, such as "his temper" or "Lin's own pride",
    with no one else, no faction, no harm aimed and means not clearly short; words naming anything
    else outweigh the flag) is the player's choice (G15): certain when the interpret step judged it
-   easy or the actor's sheet makes it sure, otherwise rolled with
-   only success or partial allowed (contested, or a long shot at the hardest, never ruled out), so
-   a hot temper makes it harder and the strain can show, but it is done, and the plan carries on
-   past it.
+   easy or it is two levels under what they throw, otherwise thrown with
+   only success or partial allowed (`throw.OWN_CHOICE`), so
+   a hot temper raises the number and the strain can show, but it is done, and the plan carries
+   on past it.
 5. **Chains** (`chain.py`; A9). A step with a chain of cause and effect goes around the strength
-   instead of meeting it, so the gap doesn't apply. Anyone who can respond may see it coming, which
-   is rolled first. Then each link holds, is rolled if the model judged it open, or breaks: when it
+   instead of meeting it, so the rungs don't count. Anyone who can respond may see it coming, which
+   the actor throws for first, yes or no, against their level with no rungs. Then each link holds,
+   breaks, or, if the model judged it open, is settled by the world's die (`throw.world_die`: one
+   grey die, 11 or more for an even chance, 19 or more for a long shot, never moved by the
+   difficulty). A link breaks when it
    rests on a fact that isn't true or on someone dead, when the model ruled it out, or when a target
    who isn't asleep or bound has an answer on their sheet. `ChainLink.answers` lists the answers in
    plain words ("teleport", "breathe without air"), and code looks for them in the target's ready
    powers, techniques, carried items and traits, which the interpret step may not see. The chain
    stops at the first link that breaks, and each link's time is added to the step (W10). The
-   step's roll is the one that decided it: the roll of the link it broke on, or, when every link
-   held, the hardest roll it took (the setup or an open link).
-6. **The roll** (`odds.py`, `capability.py`; A3, A5, G14). Only contested and long-shot steps,
-   close calls, uncertain finds and open links are rolled, each from its own seeded stream under
-   `rng.child("resolve", "step", i)`. Against someone measured on the step's axis, odds start from
-   the gap (even at no gap; a long shot starts at 1 in 10 one step up and falls toward 1 in 33).
-   Otherwise they start from how an ordinary person fares at the challenge the interpret step
-   judged (`StepFacts.challenge`, always asked for: trivial 97%, easy 85%, moderate 60%, hard 35%,
-   very hard 15%, extreme 5%; with none, the proposed class: certain as trivial, a long shot at 1
-   in 10, otherwise even). Then what the character brings shifts them in log-odds
-   (`capability.weigh`): the attributes the step tests (`SheetPart.ATTRIBUTE`, found by words such
-   as "agility" for speed or "perception" for wits; when it names none, by the activity in the
-   step's own words, "climb" or "leap" for speed and "search" for wits, and failing that by the
-   axis), 0.45 a level against an average person's 3, or against the opponent's own where
-   measured; skills, 0.5 a rank against someone untrained where the challenge was judged,
-   otherwise against a fair hand or the opponent's own; a technique (0.6); gifts and flaws used
-   (0.5 each, two at most). Skills and traits match by name either way ("climbing" finds Tree
-   climbing). `uses` is required of the interpret model, and where it still names no skill or
-   trait, code takes the character's own whose name the step's words hold, or whose name and
-   notes or description share two words with it (`skills_for`, `traits_for`); and
-   where nobody is measured against them, a power the step uses (0.5 to 1.4 by the gift's
-   strength) and their wounds and exhaustion, which measured tiers already carry. Edges and
-   hindrances (0.35 each, three at most; `check_intent` has already left out any that lean on an
-   injury the record doesn't hold, N6) and, for social steps, the target's real attitude (A3,
-   not the one they show) shift them too. Last, a run of misses: each rolled step of the player
-   character that missed since their last clean success adds 0.6, up to three
-   (`WorldState.misses_in_a_row`, moved on by `play_out` with the rolls that played; a roll that
-   couldn't fail, a roll only of time and a step with no roll leave it as it is). It never counts
-   toward the class, and an NPC's roll never gets it. The reason names what tipped the odds ("The
-   lantern's flame can push back: a real effort, your speed and your Agile in your favour,
-   likely."). Each class keeps its odds in a band whatever the shifts and the difficulty do:
-   contested 5 to 95%, long shot 2 to 15%, close call 20 to 80% (a blow that lands, or a close call
-   with no challenge judged; a judged task with nothing in the way keeps the contested band).
-   Difficulty shifts only those odds, never a certain or ruled-out step. Below the odds is a
-   success; a quarter of the rest is a partial success where the facts allow one.
+   step's roll is the one that decided it: the die of the link it broke on, or, when every link
+   held, the hardest throw it took (the setup or an open link).
+6. **The throw** (`throw.py`, `capability.py`, `levels.py`; A3, A5, G14). Each throw comes from
+   its own seeded stream under `rng.child("resolve", "step", i)` and is kept whole on the step's
+   `RollRecord.throw` (`Throw`: every die with its kind and face, the hand and why, the green
+   dice's reasons, the number and what it is made of, the total, the mark, what it was up
+   against, and whether it was Deadly), so the recorded seed replays it exactly. `RollRecord.odds`
+   is the exact chance the hand had (`throw.shares` lists every way the dice can fall), and
+   `odds_label` the throw in one line, "31 against 27", which is what the app shows today.
+   **The hand** (`capability.hand_for`): a technique of the actor's the step uses throws by its
+   mastery, one to five dice, with its own die last, violet below second nature (18 or more is an
+   insight) and gold from it (never counting below 10); a move they are trying for the first time
+   throws where their skill puts a new move, with a violet die. With no move, the skill the step
+   draws on, by name or by the step's own words (`skills_for`): untrained and novice one die,
+   fair two, skilled three, expert four, master five. With no skill, the attributes the step
+   tests (`SheetPart.ATTRIBUTE`, found by words such as "agility" for speed; when it names none,
+   by the activity in the step's own words, "climb" or "leap" for speed and "search" for wits, and
+   failing that by the axis): two dice for an average adult, one more for each level above. Where
+   a power does the work only the attributes the step names count, and with nothing to go by it
+   is an ordinary hand of two dice. Any die that shows 20 throws one more, plain.
+   **Green dice** (`capability.advantages`): `StepFacts.edges` are the advantages the interpret
+   step proposes, each an `Edge` with its source. `holds` checks it: a step of this plan that
+   came off cleanly, by its number; a record, which is a true fact, an item the actor carries,
+   someone alive at their side who is not whom the step is up against, or the place they are in;
+   or the scene, whose own words (the last scene told, where it ended, positions, props and the
+   place) must show each meaningful word of the quote. An opening the actor holds on someone the
+   step faces goes first (`WorldState.openings`). Two count at most.
+   **The number** (`capability.level_of`, `thing_number`, `number_for`): ten for each level, less
+   the difficulty's share. Someone who answers has the level of their technique, skill or
+   attribute at `StepFacts.answers_with`, read from their sheet, and failing that their skill at
+   what the step draws on, or the attributes the axis calls on. The strongest who can answer sets
+   it. Where the step meets their power head-on (`StepFacts.head_on`, always asked for; a harmful
+   aim is always head-on, and a blow is measured on might whatever axis the step names), the
+   whole rungs between them count `PowerLadder.rung_levels` levels each (`power.rungs_above`, on
+   where each stands before wounds, less any recorded weakening), as a part of its own in the
+   world's words (`power.rung_words`). A thing has the level of `StepFacts.challenge`
+   (`levels.CHALLENGE_LEVEL`; a real effort, level 2, when it wasn't judged), and its place keeps
+   the level it was first judged at (`Place.judged`, keyed by the word stems of what was tried,
+   `capability.thing_key`; `PlaceChange.judged` is engine only). Then steps of 5, each named:
+   each other foe within a level of the strongest (10 at most); wounded 5, badly wounded 10,
+   dying 20, exhausted 5 or 10 and a reserve run dry 5, on either side; each hindrance in the
+   scene, two at most (`check_intent` has already left out any that lean on an injury the record
+   doesn't hold, N6); a flaw in the way; a body or mind clearly better or worse at what the step
+   tests, unless the dice already came from it; a gift that fits; and, in a step of words, a
+   listener who likes and trusts the actor, or fears them when they threaten, or neither likes nor
+   trusts them (their real attitude, not the one they show). All help together takes at most 10
+   off. No run of misses lifts anything (`WorldState.misses_in_a_row` is kept only so saved
+   stories load).
+   **The mark** (`throw.mark_of`, `result_of`): reaching the number passes; short by 5 or less is
+   so close, a partial success where the facts allow one and otherwise a failure; short by more
+   is missed. A pass whose total is past 20 for each die in the hand is over the top, and
+   `core._over_the_top` adds its one fixed effect, in `StepResolution.extra`: after a blow or a
+   clash those who answered are staggered and become `opening_ids`, which `pipeline.play_out`
+   keeps in `WorldState.openings` for the next step that faces them, in the same fight; words move
+   each listener's trust, or their fear after a threat, one notch (10); a task on a thing takes
+   half the time. A throw the actor's own hand decided counts two uses for a move it used, and
+   three on an insight or over the top (A4).
+   The reason reads the throw (`throw.told`): "Swordplay (skilled), 3 dice, and a green die for
+   the opening on Wei, against Wei's swordplay (fair), level 2: 44 against 17, passed."
 7. **Time** (`durations.py`; W10). Durations are bounded by the kind of action. A step timed by the
    clock ("until nightfall") names a time of day, and `until_time` counts the seconds to it from
    where the plan has got to, on the world's calendar, never rolled and held past the kind's
@@ -571,26 +606,38 @@ it (W10a), a helpless state on the sheet
    their sheet gives them, and nothing else: the narrator shows only those (G13). The drafter
    gives a power only the costs its world's rules or the premise give it, and the draft summary
    and Status show them, so the player can change one before playing.
-9. **What strikes back** (`perils.py`; N6, A2, A5). After each step the player character takes,
+9. **What strikes back** (`perils.py`; N6, A2, A3, A5). After each step the player character takes,
    `strike_back` settles what answers it, as `StepResolution.perils`, with its harm in the step's
    `effects`. First the foes still in the fight: those of the scene's fight, those this plan
    fought, and, when the step aims harm or fights, those it faced, unless they are dead, helpless,
    elsewhere, frozen in the character's time stop, taken out by this plan, or left behind by a
    move that harms no one and cleanly succeeded against them, such as a run or a leap
    (`StepResolution.escaped`, which ends the fight in `engine.encounters` once no one in it is
-   left). Waiting or watching in a fight, the foes strike all the same. What they mean is
+   left). A foe the step cleanly got the better of has no answer to it. Waiting or watching in a
+   fight, the foes strike all the same. What they mean is
    `StepFacts.foes_mean` (a sparring partner subdues), or the step's own aim when it was aimed at
-   them, or at least a wound. They are measured on might like a step of theirs (step 4, numbers
-   included, `power.ranked_with_numbers`): two steps or more below the character is ruled out,
-   two or more above is certain, and so is anything against a character who is helpless, however
-   strong. Between is rolled with the difficulty against them (`odds.settle(...,
-   against_player=True)`) and the character's own step moving the odds by `EXPOSED_SHIFT` (open
-   after a miss, on top after a clean success). Then a danger the step met (`StepFacts.danger`,
-   `danger_class`, `danger_harm`), lowered one class for each step of might the character stands
-   above a person's peak, and never for harm they turn on themselves. A killing blow that is
-   certain kills; a rolled one that lands kills on `FATAL_ODDS` and otherwise leaves the character
-   badly wounded, or maimed (`MAIM_ODDS`) with a lasting wound (`ConditionChange.lasting_wounds`,
-   engine only); a partial one wounds. Harm builds up a step at a time, and anything harmful on
+   them, or at least a wound. Every die is the character's own: they throw their defence
+   (`capability.defence_hand`: the skill the step drew on, or their speed, whichever gives more
+   dice) against the level of the strongest foe at what they strike with, plus the rungs that foe
+   stands above them on might. Each other foe near the strongest adds 5 (10 at most), a step of
+   theirs that just missed adds 5 (`EXPOSED`), and wounds and exhaustion count on both sides.
+   With no throw: a character who is helpless takes the blow, foes whose level is two or more
+   under the hand can't get past their guard, and foes as many rungs below as the ladder says a
+   rung shrugs off can't hurt them by ordinary means. When the foes mean to kill, the throw is
+   marked Deadly before the dice (`Throw.deadly`, with `miss_costs` from the interpret step or
+   the engine's own line). How far it fell short decides the harm (`_harm`): a killing blow kills
+   on a miss, and leaves them badly wounded when it was so close, maimed with a lasting wound
+   (`ConditionChange.lasting_wounds`, engine only) when short by 4 or 5 (`MAIMS_SHORT_BY`); a
+   wounding blow wounds or hurts; a subduing one brings them down or hurts. A step that is itself
+   the defence (a parry, a block, a dodge against foes who can answer, `core._defending`) is the
+   one throw: it is marked Deadly when they mean to kill, and where it fell short the peril
+   reuses its mark with no second throw. A defence over the top turns the blow and wins an
+   opening on those foes (`Struck.openings`). Then a danger the step met (`StepFacts.danger`,
+   `danger_class`, `danger_harm`): the same defence throw against a level from how surely it
+   hurts an ordinary person (a long shot 1, contested 2, certain 4), less one for each step of
+   might the character stands above a person's peak, Deadly when it can kill, and never for harm
+   they turn on themselves. A danger certain to hurt a person lands on a body no tougher than a
+   person's with no throw. Harm builds up a step at a time, and anything harmful on
    top of dying kills. Each foe's blow is their deed against the character (W1), and a death
    ends the plan like one by the character's own blast.
 
@@ -598,8 +645,9 @@ A chained plan stops at the first step that doesn't cleanly succeed, or after wh
 struck back and hurt the player character (`StopReason.STRUCK`), with the rest in `unplayed`
 (R6), except past a step only the actor's own nature stood in the way of, which was done (G15).
 Each step also records its `kind`, the `opponent_ids` it fought or faced and the `encounter` it
-starts or carries on, which `engine.encounters` follows (W10). Reasons are written in the world's words and speak to the player ("Elder Mo at Core
-Formation against you at Qi Condensation: head-on, there is no contest.").
+starts or carries on, which `engine.encounters` follows (W10). Reasons are written in the world's words and speak to the player ("The ancient
+dragon stands six rungs above you, and harm from that far below can't get through by ordinary
+means.").
 
 ### Powers, theories and growth
 
@@ -847,9 +895,9 @@ async with aclosing(run_turn(turn, llm)) as events:
 | B5 step | Node | Kind | What it does |
 | --- | --- | --- | --- |
 | 1 | `catch_up` | code | `engine.pipeline.catch_up`: pending events that fell due fire in time order (W10, B12). Once 20 turns are saved since the last chapter, it also starts their chapter summary, which runs alongside the turn (C3). |
-| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. It also shows the scene the player is answering (LAST SCENE, its last 6,000 characters), so that what the scene showed counts as there, and the schema requires a `plausibility` for everything a beat uses (R2). The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, leaves out edges and hindrances that lean on an injury the record doesn't hold (`engine.injuries`, issue `unrecorded_harm`, N6), and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. |
+| 2 | `interpret` | model (`interpret`) | The player's words become an `engine.contracts.Intent` (V3, R2, A9). A standing action and the opening need no call. The prompt shows what time it is now on the 24-hour clock and how people travel, so durations fit the world (W10), and the schema requires `summary` and `steps`, since Gemini leaves out what a schema doesn't require. It also shows the scene the player is answering (LAST SCENE, its last 6,000 characters), so that what the scene showed counts as there, and the schema requires a `plausibility` for everything a beat uses (R2). The prompt asks for each step's aim and each link's answers by name, since resolve records the aim's outcome before narration (F4) and looks for the answers on the target's sheet (A9). Harm the character turns on themselves targets their own id, and a harmful aim at someone the scene hasn't named goes in `stranger` when nobody in SCENE fits (F1, W1). `check_intent` always makes the player character the actor, so the player's words never make anyone else act (A6), turns unknown ids back into words, keeps in `responds_to` only open threads the player knows and open leads (W16, N2), hands back steps past the eighth unplayed, drops an `until` that isn't a time of day, leaves out edges and hindrances that lean on an injury the record doesn't hold (`engine.injuries`, issue `unrecorded_harm`, N6), and makes an action that fits nothing one step, so nothing is refused (B5). Then `engine.limits.check_action` holds the steps to the hard limits (F3, F2, G12): a step over one never plays, and the turn ends with `LimitReached` before anything resolves. An end turn (`/end`, N6) is read only when it has a note on how the story ends. For the dice (A3), the prompt asks for facts in words and never for a class, a number or a result: what of the other side's answers the step (`answers_with`), whether it meets their power head-on or goes around it (`head_on`, required, like `challenge`), each real advantage with where it comes from (`edges`: a step, a record or the scene's own words, which code checks before it gives a green die; a technique made for exactly what the other side is doing counts when the scene shows them doing it), what the character is up against in a sentence the player reads before the dice (`up_against`), and, when foes mean to kill or a danger can, what a miss costs (`miss_costs`). |
 | 3 | `resolve` | code | `resolve`, then `check_resolution` (A2: the class wins over a contradicting result, and a certain step keeps only a roll that picked how long it took; A3: a rolled step's result is its roll's; R6: the plan stops at its first step that doesn't cleanly succeed), then `play_out` (which stops the plan at an event that needs the player), `direct` with the intent and `record_direction`, so the event's new thread, play-out and lead are in the state the rest of the turn sees, then `check_plan` (pictures, events, happenings and callbacks against the state and the player's settings, with the director's own theme rule, F3, F7, M1, M2). An end turn's note is first held to what the world allows (`graph/turn/ending.py`'s `earned`, N6): it resolves the note, drops every step ruled out or left to a long shot, and resolves the rest again until nothing is dropped, so every refused part is found at once although a plan stops at its first (R6); the note's outcome claims are refused too (A6). Unless the player asked to end without them, refused parts end the turn with `EndingRefused` before anything plays. Ending without them keeps the rest of the note without its claims, with its summary made from the kept steps, and the brief gets `left_out` instead of the note's words. After `play_out`, `ending_of` reads the turn's ending: a death when the player character was alive before it and is dead after (self-inflicted when the last step played, the one that killed them, aimed harm at their own id), or a chosen ending for an end turn. A turn with an ending plans no event, picture or suggestions. The narrator's brief gets the director's event and its `HAPPENINGS` (ignored events playing out, small things inside a time skip); the director's own pending events stay out of `FIRED`, so nothing is told twice. This is C5's code part, before anything streams. |
-| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the scene's place with its setting and the places it lies within (R8, also in the interpret prompt), the people present, the sheet with the purse even when it is empty and the health and wounds even when unhurt (N6), `CHANGED HANDS` with the player character's latest gains and losses and who has what they lost (C10, also in the interpret prompt), the outcome with any unplayed steps and what each step moved (`changed_hands`), the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
+| 4 | `build_context` | code | The narrator's brief: the moment the last scene ended on (R3), the scene's place with its setting and the places it lies within (R8, also in the interpret prompt), the people present, the sheet with the purse even when it is empty and the health and wounds even when unhurt (N6), `CHANGED HANDS` with the player character's latest gains and losses and who has what they lost (C10, also in the interpret prompt), the outcome with any unplayed steps and what each step moved (`changed_hands`), with, for a step or a defence the character's own dice decided, how the throw fell, what it was up against and whether a miss could have killed (`throw`, `defence`; never the dice, the number or the chance, and nothing for the world's die) and the one fixed extra effect of a throw over the top (`extra`, A3), the time (when the scene began, how long it took and what time it is now, or `NOW` for the opening, so the telling keeps to the clock, W10), `ENDING` with the end turn's note (or, when the player ended without what was refused, what was left out) and the death or epilogue `TASK` on a turn with an ending (N6), the events the player could notice, the director's pick, the chapters, the rolling summary and the last 3 scenes (C3). Secrets, secret powers, mystery answers and events far away stay out (C6). |
 | 5 | `narrate` | model (`narrator`), streamed | The brief's OUTCOME carries each step's checked beats when one made something canon or came up empty, so the narration plays the search and stops the step there (R2). One structured call, with the `narration` field streamed as it is written (S3, B7). A block is retold as a cut-away, then as the template line, and the deed stands (F4). A narration that reads as working real-world instructions counts as a block, checked before each piece is sent (`engine.limits.harm_instructions`, F3). Any other failure, after the client's one retry, ends the turn with `llm_unavailable` (T7). |
 | 6 | `apply_update` | code | `check_update` keeps a blank scene end from erasing the last moment, leaves the dead out of the scene, leaves out any new character or faction named after a real person or organisation (G12) and any item change the engine already made this turn, as a step's exchange or an event (C10, `move_recorded`), then `engine.apply.apply_delta(..., source=DeltaSource.NARRATOR)` applies the rest with C1, keeping what the turn's beats made canon (`Resolution.found`) on the scene's record beside the narrator's own list while the scene stays in its place (R2, R3), refusing harm to the player character unless a power's toll in health or blood or the first opening's premise caused it (N6), the turn is bumped and the `SceneDraft` is built in API.md's shape: steps with class, reason and roll, the beats that made something canon or came up empty (R2), the chain, where the plan stopped, the event, the planned picture with its prompt, and the time. |
 | 7 | `after_turn` | code | Waits up to 5 s for the chapter summary started in step 1 (the cheapest model, B8), then runs `engine.invariants.check_transition` on the turn's first and last states. A late or failed summary, or one that reads as real-world instructions (F3), is asked for again next turn. A C1 violation is an engine bug: it raises `InvariantError` and nothing is saved. |

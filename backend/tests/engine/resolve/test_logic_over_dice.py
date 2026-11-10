@@ -1,12 +1,14 @@
 """T17 "Logic over dice": cutting the throat of a sleeping guard the player is standing over,
 killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife,
 over many seeds and on every difficulty. The first two succeed every time and the dragon is never
-hurt, with no roll recorded and the reason in the scene details (A2, A5)."""
+hurt, with no roll recorded and the reason in the scene details (A2, A5). The dragon is refused
+by a fact the world's ladder states, never by the gap alone (G18)."""
 
 import pytest
 
 from engine.context import Difficulty
 from engine.contracts import Aim, Intent, MeansVerdict, OutcomeClass
+from engine.resolve import throw as dice
 from engine.state import CharacterStatus, Condition, PassingState, PowerAxis, StepResult
 
 from .worlds import (
@@ -111,7 +113,11 @@ def test_a_kitchen_knife_never_hurts_a_sleeping_ancient_dragon(difficulty, propo
         assert settled.result is StepResult.FAILURE
         assert settled.roll is None
         assert settled.effects.empty
-        assert "far beyond what this can hurt" in settled.reason
+        # The world's ladder names the fact that refuses it (G18).
+        assert settled.reason.endswith(
+            "The ancient dragon stands six rungs above you, and harm from that far below can't "
+            "get through by ordinary means."
+        )
         # The attempt is still a deed: the dragon may notice (A8, W1).
         assert settled.deeds[0].target_ids == ["dragon"]
 
@@ -137,8 +143,9 @@ def test_calling_the_stab_a_matter_of_stealth_doesnt_get_a_knife_through_dragon_
 
 
 def test_a_guard_awake_beside_a_sleeping_elder_doesnt_make_the_elder_easier_to_hurt():
-    # Elder Mo sleeps two realms up while a disciple of Lin's own realm keeps watch: getting past
-    # the disciple is a contest, but the sword still can't hurt the elder's body (A2, G18).
+    # Elder Mo sleeps two realms up while a disciple of Lin's own realm keeps watch. Getting past
+    # the disciple would be an even throw, but the blow lands on the elder's body, which is the
+    # harder of the two, so that is the number (A2, G18).
     state = add(sect(), disciple("wei", "Wei"))
     state.characters["elder-mo"].sheet.condition = Condition(states=[PassingState(name="asleep")])
     attack = cut_throat(
@@ -150,8 +157,34 @@ def test_a_guard_awake_beside_a_sleeping_elder_doesnt_make_the_elder_easier_to_h
 
     for seed in SEEDS:
         (settled,) = resolve(state, Intent(steps=[attack]), seed).steps
-        assert (settled.outcome_class, settled.roll) == (OutcomeClass.RULED_OUT, None)
-        assert settled.reason == "Elder Mo at Core Formation is far beyond what this can hurt."
+        thrown = settled.roll.throw
+        assert settled.outcome_class is OutcomeClass.LONG_SHOT
+        assert [(part.text, part.points) for part in thrown.made_of] == [
+            ("Elder Mo's toughness, level 2", 17),
+            ("two rungs above you, Core Formation over Qi Condensation", 20),
+        ]
+        assert thrown.against == "Wei can answer, and Elder Mo's body is the question."
+    # Alone with the disciple, the same sword is an even throw.
+    spar = cut_throat("wei", "sword", facts=facts(opposition_ids=["wei"], can_respond=True))
+    (settled,) = resolve(state, Intent(steps=[spar])).steps
+    assert settled.roll.throw.number == 17
+
+
+def test_a_sleeping_body_a_rung_or_two_above_is_thrown_for_and_the_blow_lands_either_way():
+    # No proposal makes a sword kill a sleeping elder outright: the body is a fact code reads.
+    state = sect()
+    state.characters["elder-mo"].sheet.condition = Condition(states=[PassingState(name="asleep")])
+    for means in (None, MeansVerdict.CLEARLY_ENOUGH, MeansVerdict.CLOSE_CALL):
+        attack = cut_throat("elder-mo", "sword", facts=facts(means=means))
+        results = [resolve(state, Intent(steps=[attack]), seed).steps[0] for seed in SEEDS]
+        assert all(r.roll is not None and r.roll.allowed == dice.HARM_DONE for r in results)
+        assert {r.result for r in results} == {StepResult.SUCCESS, StepResult.PARTIAL}
+        assert {r.roll.throw.number for r in results} == {37}
+        assert results[0].reason.startswith(
+            "Elder Mo is asleep and can't respond. The blow lands either way, and the throw is "
+            "for how much. Strength and speed, 2 dice, against Elder Mo's toughness, level 2; "
+            "two rungs above you, Core Formation over Qi Condensation (+20): "
+        )
 
 
 @pytest.mark.parametrize(

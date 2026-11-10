@@ -20,6 +20,7 @@ from engine.contracts import (
     PictureDecision,
     PictureKind,
     PictureTrigger,
+    PlaceChange,
     PlannedEvent,
     Plausibility,
     PowerTheory,
@@ -36,10 +37,12 @@ from engine.contracts import (
     UseSource,
 )
 from engine.state import (
+    Attributes,
     CauseMechanism,
     CharacterStatus,
     DeathCertainty,
     EventSize,
+    Judged,
     PowerAxis,
     RollRecord,
     StepResult,
@@ -90,7 +93,6 @@ def time_stop_intent() -> Intent:
                     can_respond=False,
                     why_not="frozen in stopped time",
                     means=MeansVerdict.CLEARLY_ENOUGH,
-                    proposed_class=OutcomeClass.CERTAIN,
                 ),
                 lines=["Kick it again, senior brother."],
                 kind=ActionKind.EXCHANGE,
@@ -282,6 +284,18 @@ def test_model_output_schemas_avoid_free_form_maps_and_unions(model):
         assert node.get("additionalProperties") in (None, False), f"free-form map at {path}"
         branches = [b for b in node.get("anyOf", []) if b.get("type") != "null"]
         assert len(branches) <= 1, f"union at {path}"
+
+
+def test_what_only_the_engine_writes_is_left_out_of_the_form_the_narrator_fills():
+    # F1, A3: a stranger's body and the level a place keeps for a thing are the engine's own, so
+    # the narrate model is never offered them, and the engine can still write both.
+    schema = StateDelta.model_json_schema()
+    assert "attributes" not in schema["$defs"]["CharacterChange"]["properties"]
+    assert "judged" not in schema["$defs"]["PlaceChange"]["properties"]
+    assert not {"Attributes", "Judged"} & set(schema["$defs"])
+    assert CharacterChange(id="x", attributes=Attributes(strength=5)).attributes.strength == 5
+    kept = PlaceChange(id="well", judged=[Judged(key="lock pick", level=3)])
+    assert PlaceChange.model_validate(kept.model_dump()).judged == kept.judged
 
 
 def test_the_interpret_model_must_always_answer_with_steps():

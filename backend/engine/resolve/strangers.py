@@ -8,13 +8,17 @@ deed has witnesses and the world answers it like any other (W1, W2, W11).
 
 Who they turn out to be is rolled, since nobody can tell from a glance (A2):
 
-- **Most are ordinary**: tier 1, the world's ordinary person.
+- **Most are ordinary**: tier 1, the world's ordinary person, with an average adult's body.
 - **About 1 in 15 is tougher than they look**: someone who knows how to fight, one step of power
-  above an ordinary person, who can stop a weak attacker but not a strong one.
+  above an ordinary person and a level above them in body, who can stop a weak attacker but not
+  a strong one.
 - **A hidden master is rare**, and rarer where the extraordinary is (about 1 in 1,000 in a
   grounded world, 1 in 200 where powers are everywhere): one step above the attacker, capped at
-  the strongest the world holds (A9), and alert, so they always see it coming, whatever the
-  interpret step proposed.
+  the strongest the world holds (A9), with a body at a person's peak, and alert, so they always
+  see it coming, whatever the interpret step proposed.
+
+Their body is on the sheet they are made with (G13), so a throw against them reads their level
+like anyone's (A3).
 
 When a crowd is around to see it and nobody else there is awake to see it, an onlooker is made real
 too, so a killing in a busy street has a witness who can go to the law (W2, W11).
@@ -34,7 +38,7 @@ from engine.rng import SeededRng
 from engine.state.bible import Prevalence
 from engine.state.cast import Character, Prominence
 from engine.state.records import StepResult
-from engine.state.sheet import CharacterSheet, PowerAxes, PowerAxis
+from engine.state.sheet import Attributes, CharacterSheet, PowerAxes, PowerAxis
 from engine.state.world import WorldState
 from engine.world.geography import characters_at, perceives
 
@@ -52,6 +56,10 @@ ORDINARY_TIER = 1
 # The best a real person can be, such as a veteran killer: a hidden master in a world with no
 # ladder can be this strong even when nobody recorded yet is (A9, G6).
 PEAK_PERSON_TIER = 4
+# G13, A3. The body of a stranger who can fight, on the attribute scale where 3 is an average
+# adult and 5 the best a person can be: a level above ordinary, and two for a hidden master.
+TOUGH_BODY = 4
+MASTER_BODY = 5
 ANYONE = "a passer-by"
 ONLOOKER = "an onlooker"
 
@@ -107,13 +115,14 @@ def meet(
         place_id = None
     stranger_id = _fresh_id(state, f"stranger-{ctx.turn}-{index}")
     might, master = _measure(state, actor, rng.child("who"))
+    body = _body(might, master)
     stranger = Character(
         id=stranger_id,
         name=who,
         prominence=Prominence.MINOR,
         description=f"{cap(who)}, a stranger the story hadn't met.",
         location_id=place_id,
-        sheet=CharacterSheet(axes=PowerAxes(might=might)),
+        sheet=CharacterSheet(axes=PowerAxes(might=might), attributes=body or Attributes()),
     )
     people = [stranger]
     if step.stranger.crowd and place_id is not None and not _others_at(state, actor, place_id):
@@ -134,6 +143,7 @@ def meet(
             description=person.description,
             location_id=person.location_id,
             axes=person.sheet.axes,
+            attributes=body if person.id == stranger_id else None,
             meets_player=person.id == stranger_id and actor.id == state.player_id,
         )
         for person in people
@@ -162,6 +172,17 @@ def _measure(state: WorldState, actor: Character, rng: SeededRng) -> tuple[int, 
     if draw < master + TOUGH_ODDS:
         return ORDINARY_TIER + step, False
     return ORDINARY_TIER, False
+
+
+def _body(might: int, master: bool) -> Attributes | None:
+    """G13. The body a stranger who can fight is made with, or None for an ordinary one."""
+    if master:
+        return Attributes(
+            strength=MASTER_BODY, speed=MASTER_BODY, toughness=MASTER_BODY, wits=MASTER_BODY
+        )
+    if might > ORDINARY_TIER:
+        return Attributes(strength=TOUGH_BODY, speed=TOUGH_BODY, toughness=TOUGH_BODY)
+    return None
 
 
 def master_odds(state: WorldState) -> float:

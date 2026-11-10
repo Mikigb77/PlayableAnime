@@ -95,23 +95,35 @@ def harms(state: WorldState, *steps, difficulty=Difficulty.BALANCED) -> Counter:
 
 
 @pytest.mark.parametrize("difficulty", list(Difficulty))
-def test_a_far_stronger_foe_cuts_down_whoever_attacks_him_every_time_with_no_roll(difficulty):
-    """Three realms up, Elder Bai can't be hurt by Lin's sword, and nothing Lin has stops his."""
+def test_a_far_stronger_foe_cuts_down_whoever_attacks_him_almost_every_time(difficulty):
+    """Three realms up, Elder Bai can't be hurt by Lin's sword, and Lin's defence against his
+    answer is a throw he almost never makes: no gap reaches zero, and none is kind."""
     state = add(sect(), disciple("bai", "Elder Bai", rung=3))
 
+    dead = 0
     for seed in range(40):
         settled = one(state, strike("bai"), seed=seed, difficulty=difficulty)
         assert settled.outcome_class is OutcomeClass.RULED_OUT
         [peril] = settled.perils
-        assert (peril.by_ids, peril.outcome_class, peril.roll) == (["bai"], "certain", None)
-        assert peril.harm is Harm.DEAD and peril.aim is Aim.KILL  # in kind
-        assert "can't stop it" in peril.reason
+        assert peril.by_ids == ["bai"] and peril.aim is Aim.KILL  # in kind
+        thrown = peril.roll.throw
+        assert thrown.deadly and thrown.hand_why == "Speed, 2 dice"
+        assert [(part.text, part.points) for part in thrown.made_of][1:] == [
+            ("three rungs above you, Nascent Soul over Qi Condensation", 30),
+            ("your own step missed", 5),
+        ]
+        assert peril.roll.odds < 0.03
+        if peril.harm is not Harm.DEAD:
+            continue
+        dead += 1
+        assert peril.reason.endswith("missed. It kills you.")
         [death] = [c for c in settled.effects.characters if c.id == "lin"]
         assert death.status is CharacterStatus.DEAD
         # His blow is his deed against Lin (W1).
         assert [(d.actor_id, d.victim_ids) for d in settled.deeds if d.actor_id == "bai"] == [
             ("bai", ["lin"])
         ]
+    assert dead >= 36
 
 
 def test_a_far_weaker_foe_cant_get_through():
@@ -123,10 +135,10 @@ def test_a_far_weaker_foe_cant_get_through():
     for seed in range(40):
         [peril] = one(state, circle(Aim.KILL), seed=seed).perils
         assert (peril.outcome_class, peril.roll, peril.harm) == ("ruled_out", None, Harm.NONE)
-        assert peril.reason == "Zhou strikes back, but you are far beyond them."
+        assert peril.reason == "Zhou strikes back, but you are far beyond what they can hurt."
 
 
-@pytest.mark.parametrize("rung", [0, 3])
+@pytest.mark.parametrize("rung", [0, 2])
 def test_a_helpless_character_cant_stop_a_blow_however_strong(rung):
     state = sect()
     lin = state.characters["lin"]
@@ -137,7 +149,20 @@ def test_a_helpless_character_cant_stop_a_blow_however_strong(rung):
     [peril] = one(state, circle()).perils
 
     assert (peril.outcome_class, peril.roll, peril.harm) == ("certain", None, Harm.WOUNDED)
-    assert "bound" in peril.reason
+    assert peril.reason == "Zhou strikes back, and you are bound: you are wounded."
+
+
+def test_bound_or_not_a_body_three_rungs_up_shrugs_off_ordinary_blows():
+    # G18: what the ladder says a rung shrugs off holds awake or asleep.
+    state = sect()
+    lin = state.characters["lin"]
+    lin.sheet.ladders[0].rung, lin.sheet.axes.might = 3, 8
+    state = fighting(add(state, disciple("zhou", "Zhou")), "zhou")
+    lin.sheet.condition.states.append(PassingState(name="bound"))
+
+    [peril] = one(state, circle()).perils
+
+    assert (peril.outcome_class, peril.roll, peril.harm) == ("ruled_out", None, Harm.NONE)
 
 
 def test_a_foe_the_step_left_dead_dying_or_knocked_out_doesnt_strike_back():
@@ -229,13 +254,20 @@ def test_a_missed_blow_leaves_the_character_open_and_a_clean_one_keeps_them_on_t
     after: dict[StepResult, Counter] = {r: Counter() for r in StepResult}
     for seed in SEEDS:
         settled = one(state, wound, seed=seed)
+        if settled.result is StepResult.SUCCESS:
+            # A3. A foe the step just got the better of has no answer to it.
+            assert settled.perils == []
+            continue
         [peril] = settled.perils
         after[settled.result][peril.harm is not Harm.NONE] += 1
+        moved = [part.text for part in peril.roll.throw.made_of[1:]]
+        # A step that missed adds 5 to the defence that follows; one that fell just short doesn't.
+        assert ("your own step missed" in moved) == (settled.result is StepResult.FAILURE)
 
     def rate(result):
         return after[result][True] / max(1, sum(after[result].values()))
 
-    assert rate(StepResult.FAILURE) > rate(StepResult.PARTIAL) > rate(StepResult.SUCCESS)
+    assert rate(StepResult.FAILURE) > rate(StepResult.PARTIAL) > 0
 
 
 def test_the_same_moment_strikes_the_same_way():
@@ -251,12 +283,19 @@ def test_the_same_moment_strikes_the_same_way():
 def test_a_sparring_partner_holds_back():
     state = fighting(add(sect(), disciple("bai", "Elder Bai", rung=3)), "bai")
 
-    settled = one(state, circle(Aim.SUBDUE))
-
-    [peril] = settled.perils
-    assert peril.harm is Harm.SUBDUED and peril.outcome_class is OutcomeClass.CERTAIN
-    [change] = [c for c in settled.effects.characters if c.id == "lin"]
-    assert change.status is None and change.condition.states == [SUBDUED_STATE]
+    found = Counter()
+    for seed in SEEDS:
+        settled = one(state, circle(Aim.SUBDUE), seed=seed)
+        [peril] = settled.perils
+        # Never Deadly, and never worse than brought down, however far above he stands.
+        assert not peril.roll.throw.deadly
+        assert peril.roll.throw.against == "Elder Bai strikes back, meaning to take you down."
+        found[peril.harm] += 1
+        if peril.harm is Harm.SUBDUED:
+            [change] = [c for c in settled.effects.characters if c.id == "lin"]
+            assert change.status is None and change.condition.states == [SUBDUED_STATE]
+    assert set(found) <= {Harm.SUBDUED, Harm.HURT, Harm.NONE}
+    assert found[Harm.SUBDUED] > 0.9 * SEEDS.stop
 
 
 def test_foes_who_wont_strike_back_dont():

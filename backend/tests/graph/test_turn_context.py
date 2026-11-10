@@ -16,13 +16,16 @@ from engine.context import (
 )
 from engine.contracts import (
     ActionKind,
+    Aim,
     ChoiceKind,
     DirectorPlan,
     EventKind,
     EventSource,
+    Harm,
     Intent,
     IntentStep,
     OutcomeClass,
+    Peril,
     PictureDecision,
     PictureKind,
     PictureTrigger,
@@ -35,7 +38,19 @@ from engine.contracts import (
 from engine.labels import DAY_PARTS
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
-from engine.state.records import EventStatus, Goal, GoalStatus, PendingEvent, StepResult
+from engine.state.records import (
+    Die,
+    DieKind,
+    EventStatus,
+    Goal,
+    GoalStatus,
+    Mark,
+    NumberPart,
+    PendingEvent,
+    RollRecord,
+    StepResult,
+    Throw,
+)
 from engine.state.sheet import Power
 from engine.state.world import EventSize
 from graph.turn import prompts
@@ -241,6 +256,96 @@ def test_an_action_brief_carries_the_outcome_and_where_the_plan_stopped():
     assert '"why":"The troll\'s hide is thick."' in action.user
     assert '"world_seconds_passed":2' in action.user
     assert "## TASK" not in action.user
+
+
+def thrown(mark: Mark, *, kind: DieKind = DieKind.PLAIN, deadly: bool = False) -> RollRecord:
+    """A throw as the engine records it: 12 against 17, however `mark` says it fell."""
+    throw = Throw(
+        dice=[Die(kind=kind, face=12)],
+        hand=1,
+        hand_why="Speed, 1 die",
+        number=17,
+        made_of=[NumberPart(text="Zhao's swordplay (fair), level 2", points=17)],
+        total=12,
+        most=20,
+        mark=mark,
+        against="Zhao can answer.",
+        deadly=deadly,
+        miss_costs="His blade opens your throat." if deadly else "",
+    )
+    return RollRecord(
+        seed="s", odds=0.45, odds_label="12 against 17", result=StepResult.PARTIAL, throw=throw
+    )
+
+
+def outcome_of(resolution: Resolution) -> dict:
+    told = brief(cultivation_world(), intent=Intent(summary="cut"), resolution=resolution)
+    return json.loads(told.user.split("## OUTCOME\n", 1)[1].split("\n", 1)[0])
+
+
+def cut(**kw) -> StepResolution:
+    return StepResolution(
+        index=0,
+        text="cut at Zhao",
+        outcome_class=OutcomeClass.CONTESTED,
+        reason="Speed, 1 die, against Zhao's swordplay (fair), level 2: 12 against 17, so close.",
+        result=StepResult.PARTIAL,
+        duration_s=2,
+        **kw,
+    )
+
+
+def test_the_narrator_is_told_how_the_dice_fell_and_never_the_dice():
+    # A3: how it fell, what it was up against and whether a miss could kill. The dice, the
+    # number and the chance stay with the scene's details.
+    [step] = outcome_of(Resolution(steps=[cut(roll=thrown(Mark.SO_CLOSE, deadly=True))]))["steps"]
+    assert step["throw"] == {"fell": "so_close", "against": "Zhao can answer.", "deadly": True}
+    assert "extra" not in step
+
+    [step] = outcome_of(Resolution(steps=[cut(roll=thrown(Mark.PASSED))]))["steps"]
+    assert step["throw"] == {"fell": "passed", "against": "Zhao can answer."}
+
+
+def test_the_narrator_is_told_the_one_extra_effect_of_a_throw_over_the_top():
+    extra = "Over the top: Zhao is staggered and has no answer. Those who saw it will remember."
+    won = cut(roll=thrown(Mark.OVER_THE_TOP), extra=extra, opening_ids=["zhao"])
+    [step] = outcome_of(Resolution(steps=[won]))["steps"]
+    assert (step["throw"]["fell"], step["extra"]) == ("over_the_top", extra)
+    assert "opening_ids" not in step  # the engine's own bookkeeping
+    assert "extra is the one extra" in prompts.NARRATOR_SYSTEM
+    assert "never name dice, numbers, levels or chances" in prompts.NARRATOR_SYSTEM
+
+
+def test_the_worlds_die_and_a_step_with_no_throw_give_the_narrator_no_throw():
+    # The world's die is nobody's doing: the step's why already says what it found.
+    grey = cut(roll=thrown(Mark.PASSED, kind=DieKind.GREY))
+    plain = cut()
+    for step in outcome_of(Resolution(steps=[grey, plain]))["steps"]:
+        assert "throw" not in step
+
+
+def test_the_narrator_is_told_how_the_defence_fared_against_what_struck_back():
+    blow = Peril(
+        by_ids=["zhao"],
+        by="Zhao",
+        aim=Aim.KILL,
+        outcome_class=OutcomeClass.CONTESTED,
+        reason="Zhao strikes back. You are badly wounded.",
+        roll=thrown(Mark.SO_CLOSE, deadly=True),
+        result=StepResult.PARTIAL,
+        harm=Harm.BADLY_WOUNDED,
+    )
+    helpless = blow.model_copy(update={"roll": None, "harm": Harm.DEAD})
+    [step] = outcome_of(Resolution(steps=[cut(perils=[blow, helpless])]))["steps"]
+    first, second = step["struck"]
+    assert first == {
+        "by": "Zhao",
+        "means": "kill",
+        "harm": "badly_wounded",
+        "why": "Zhao strikes back. You are badly wounded.",
+        "defence": {"fell": "so_close", "against": "Zhao can answer.", "deadly": True},
+    }
+    assert "defence" not in second  # nothing was thrown: they couldn't fend it off
 
 
 def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():

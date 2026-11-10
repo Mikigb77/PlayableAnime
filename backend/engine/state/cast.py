@@ -211,6 +211,21 @@ class Route(EngineModel):
     mode: str = ""
 
 
+class Judged(EngineModel):
+    """A3. How hard a thing of a place was judged the first time someone tried it, so the same
+    lock is the same lock tomorrow. `key` is the words it was tried in, as sorted word stems
+    (`engine.resolve.capability.thing_key`), and `level` its place on the one scale
+    (`engine.levels.CHALLENGE_LEVEL`)."""
+
+    key: str
+    what: str = ""
+    level: int = Field(ge=1, le=5)
+
+
+# How many judged things a place remembers, the oldest first to go.
+MAX_JUDGED = 40
+
+
 class Place(EngineModel):
     """W7. Places have a status, a controller, a mood, a stability and travel times to their
     neighbours. Regions carry the player's reputation there (W3)."""
@@ -233,6 +248,15 @@ class Place(EngineModel):
     player_reputation: Reputation = Field(default_factory=Reputation)
     known_by: list[str] = Field(default_factory=list)
     visited_by: list[str] = Field(default_factory=list)
+    judged: list[Judged] = Field(
+        default_factory=list,
+        description="A3: the things of this place whose level was judged, each kept as first "
+        "judged. Engine only.",
+    )
+
+    def level_of(self, key: str) -> int | None:
+        """The level a thing of this place was judged at, by its key, or None if it never was."""
+        return next((j.level for j in self.judged if j.key == key), None)
 
     def travel_s_to(self, place_id: str) -> int | None:
         return next((r.travel_s for r in self.routes if r.to_id == place_id), None)

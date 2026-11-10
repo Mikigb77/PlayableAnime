@@ -435,22 +435,117 @@ class StepResult(StrEnum):
     FAILURE = "failure"
 
 
+class DieKind(StrEnum):
+    """A3. What a die of a throw is. Every die has twenty sides."""
+
+    PLAIN = "plain"
+    GREEN = "green"  # one real advantage that holds
+    VIOLET = "violet"  # a move's own die while they are mastering it: 18 or more is an insight
+    GOLD = "gold"  # a move's own die from second nature on: it never counts below 10
+    GREY = "grey"  # the world's die, for what is nobody's doing
+
+
+class Die(EngineModel):
+    """A3. One die of a throw, as it fell. `sprung` marks a die thrown because the one before it
+    showed a 20."""
+
+    kind: DieKind = DieKind.PLAIN
+    face: int = Field(ge=1, le=20)
+    sprung: bool = False
+
+    @property
+    def value(self) -> int:
+        """What it counts for: its face, and never below 10 for a gold die."""
+        return max(10, self.face) if self.kind is DieKind.GOLD else self.face
+
+
+class Mark(StrEnum):
+    """A3. How a throw came out against its number, best first."""
+
+    OVER_THE_TOP = "over_the_top"  # the total is past 20 for each die in the hand
+    PASSED = "passed"  # it reached the number
+    SO_CLOSE = "so_close"  # it fell short by 5 or less
+    MISSED = "missed"  # it fell short by more than 5
+
+    @property
+    def passed(self) -> bool:
+        return self in (Mark.OVER_THE_TOP, Mark.PASSED)
+
+
+class NumberPart(EngineModel):
+    """A3, A8. One thing a throw's number is made of: the level it is up against, or something
+    that moves it by a step of 5."""
+
+    text: str
+    points: int
+
+
+class Throw(EngineModel):
+    """A3. The dice that decided a step, kept so the throw can be shown and replayed exactly:
+    `SeededRng(seed).randint(1, 20)` gives each die's face in the order of `dice`.
+
+    The hand is what the character throws: plain dice by how well they have the move or the
+    skill, a green die for each real advantage that holds, and the move's own die last. A 20
+    throws one more die. The total is set against `number`, which code works out from what the
+    step is up against (`engine.resolve.throw`).
+    """
+
+    dice: list[Die] = Field(default_factory=list, description="In the order thrown.")
+    hand: int = Field(ge=1, description="The dice in the hand, before any sprung from a 20.")
+    hand_why: str = Field(default="", description="'Aura blade (skilled), 3 dice'.")
+    greens: list[str] = Field(
+        default_factory=list, description="Each green die's reason, in the order thrown."
+    )
+    number: int = Field(ge=0)
+    made_of: list[NumberPart] = Field(
+        default_factory=list, description="What the number is made of, the level first."
+    )
+    total: int = Field(ge=0)
+    most: int = Field(ge=0, description="The most the hand could make with no 20: 20 a die.")
+    mark: Mark
+    against: str = Field(default="", description="What it is up against, in a sentence.")
+    deadly: bool = Field(default=False, description="A miss can kill, marked before the dice.")
+    miss_costs: str = Field(default="", description="What a miss costs, for a deadly throw.")
+    insight: bool = Field(
+        default=False, description="A4: the violet die showed 18 or more, worth three uses."
+    )
+
+    @property
+    def short_by(self) -> int:
+        """How far the total fell short of the number; 0 when it reached it."""
+        return max(0, self.number - self.total)
+
+    @property
+    def line(self) -> str:
+        """ "31 against 27", as a scene shows a throw in one line."""
+        return f"{self.total} against {self.number}"
+
+    @property
+    def of_the_world(self) -> bool:
+        """The world's one grey die, for what is nobody's doing, and not a character's hand."""
+        return bool(self.dice) and self.dice[0].kind is DieKind.GREY
+
+
 class RollRecord(EngineModel):
     """A3. A seeded roll, recorded on the scene with its seed so it can be replayed exactly.
 
-    `odds` is the chance of success after difficulty (A5). `allowed` lists the results the facts
-    allow, since a close call is rolled only between outcomes the facts leave open (A2). When the
-    roll also decided how long something took (W10), `duration_s` holds it.
+    A step is decided by a throw of dice (`throw`): `odds` is then the exact chance the hand had
+    of reaching the number, and `odds_label` the throw in one line, "31 against 27". A roll made
+    before the dice has no throw: its `odds` is the chance of success after difficulty (A5) and
+    `value` the draw that decided it. `allowed` lists the results the facts allow, since a close
+    call is decided only between outcomes the facts leave open (A2). When the roll also decided
+    how long something took (W10), `duration_s` holds it.
     """
 
     seed: str
     label: str = ""
     odds: Probability
     odds_label: str = ""
-    value: Probability
+    value: Probability = 0.0
     result: StepResult
     allowed: list[StepResult] = Field(
         default_factory=lambda: [StepResult.SUCCESS, StepResult.PARTIAL, StepResult.FAILURE]
     )
     difficulty: Difficulty = Difficulty.BALANCED
     duration_s: int | None = Field(default=None, ge=0)
+    throw: Throw | None = Field(default=None, description="A3: the dice, when dice decided it.")

@@ -428,7 +428,7 @@ def test_a_retry_after_text_was_shown_resets_it(fake, make_client):
 def test_the_plan_is_checked_before_narration(fake, make_client, monkeypatch):
     """C5 and R6: a plan that runs past a failed step is cut there before anything is told."""
 
-    def careless_resolve(state, intent, ctx, rng):
+    def careless_resolve(state, intent, ctx, rng, **_):
         return Resolution(
             steps=[
                 StepResolution(

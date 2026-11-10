@@ -115,10 +115,25 @@ def test_a_hidden_master_always_sees_it_coming(monkeypatch):
     for seed in SEEDS[:40]:
         resolution = resolve(state, Intent(steps=[kill_someone()]), seed)
         (settled,) = resolution.steps
-        # One step above Luca and alert, whatever the interpret step said: a long shot at best.
+        # One step above Luca, with a body at a person's peak, and alert, whatever the
+        # interpret step said: a long shot at best.
         assert settled.outcome_class is OutcomeClass.LONG_SHOT
         created = settled.effects.characters[0]
         assert created.axes is not None and created.axes.might == 4
+        assert created.attributes == strangers._body(4, True)
+        assert [(part.text, part.points) for part in settled.roll.throw.made_of] == [
+            ("a man buying cigarettes' strength and speed, level 4", 37),
+            ("one step of power above you, met head-on", 10),
+        ]
+
+
+def test_a_stranger_who_can_fight_is_made_with_the_body_for_it():
+    # G13, A3: a throw against them reads their level from their sheet like anyone's.
+    assert strangers._body(strangers.ORDINARY_TIER, False) is None
+    tough = strangers._body(strangers.ORDINARY_TIER + 2, False)
+    assert (tough.strength, tough.speed, tough.toughness, tough.wits) == (4, 4, 4, 3)
+    master = strangers._body(4, True)
+    assert (master.strength, master.speed, master.toughness, master.wits) == (5, 5, 5, 5)
 
 
 def test_a_hidden_master_is_never_stronger_than_the_world_holds(monkeypatch):
