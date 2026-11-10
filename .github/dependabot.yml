@@ -7,6 +7,9 @@
 # new release waits 7 days before it is offered, so a broken or hijacked release is usually pulled
 # before it reaches us.
 #
+# Updates are checked early on Monday (05:00 Madrid time), so their PRs and CI are done before
+# the weekly Dependabot pass at 07:39, which merges the green ones (docs/DEPLOY.md#dependabot).
+#
 # The Android build's Gradle plugins (app/android) are left out: their versions follow Flutter's,
 # so they move when Flutter does.
 version: 2
@@ -18,6 +21,9 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Madrid
     cooldown:
       default-days: 7
     groups:
@@ -31,6 +37,9 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Madrid
     cooldown:
       default-days: 7
     ignore:
@@ -46,6 +55,9 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Madrid
     cooldown:
       default-days: 7
     ignore:
@@ -62,6 +74,9 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Madrid
     cooldown:
       default-days: 7
     groups:
@@ -74,6 +89,8 @@ updates:
     target-branch: dev
     schedule:
       interval: monthly
+      time: "05:00"
+      timezone: Europe/Madrid
     cooldown:
       default-days: 7
     groups:
