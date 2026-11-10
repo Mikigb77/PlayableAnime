@@ -507,7 +507,14 @@ class Throw(EngineModel):
     deadly: bool = Field(default=False, description="A miss can kill, marked before the dice.")
     miss_costs: str = Field(default="", description="What a miss costs, for a deadly throw.")
     insight: bool = Field(
-        default=False, description="A4: the violet die showed 18 or more, worth three uses."
+        default=False, description="A4: the violet die showed an insight, worth three uses."
+    )
+    insight_at: int = Field(
+        default=18,
+        ge=1,
+        le=20,
+        description="A4: the face of the violet die that shows an insight: 18, or 16 when two "
+        "talents both cover the move.",
     )
 
     @property

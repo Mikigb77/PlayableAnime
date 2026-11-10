@@ -117,11 +117,16 @@ def test_talent_sets_the_pace_of_mastery():
     assert levels.grown(Mastery.LEARNING, 0, 13, 4.0) == (Mastery.SKILLED, 7)
 
 
-def test_a_gifted_learners_new_move_starts_at_practiced():
-    assert levels.starting_mastery(None, gifted=True) is Mastery.PRACTICED
-    assert levels.starting_mastery(SkillLevel.EXPERT, gifted=True) is Mastery.PRACTICED
+def test_a_new_move_a_talent_covers_starts_higher():
+    """A genius's new move starts at practiced and one of a kind's at skilled. A knack sets the
+    pace and leaves the start to the skill."""
+    assert levels.starting_mastery(None, talent_steps=1) is Mastery.LEARNING
+    assert levels.starting_mastery(None, talent_steps=2) is Mastery.PRACTICED
+    assert levels.starting_mastery(None, talent_steps=3) is Mastery.SKILLED
+    assert levels.starting_mastery(SkillLevel.EXPERT, talent_steps=2) is Mastery.PRACTICED
+    assert levels.starting_mastery(None, talent_steps=-1) is Mastery.LEARNING
     # Where their skill puts them higher, the skill stands.
-    assert levels.starting_mastery(SkillLevel.MASTER, gifted=True) is Mastery.SKILLED
+    assert levels.starting_mastery(SkillLevel.MASTER, talent_steps=2) is Mastery.SKILLED
 
 
 def test_a_ladder_states_what_a_rung_counts_for_and_what_it_shrugs_off():

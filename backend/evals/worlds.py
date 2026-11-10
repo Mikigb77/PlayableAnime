@@ -12,6 +12,7 @@ from engine.state import (
     Character,
     CharacterSheet,
     Condition,
+    CostKind,
     Creature,
     Encounter,
     EncounterKind,
@@ -33,6 +34,7 @@ from engine.state import (
     PlaceSetting,
     Power,
     PowerAxes,
+    PowerCost,
     Prevalence,
     Prominence,
     Resources,
@@ -41,6 +43,8 @@ from engine.state import (
     SceneFrame,
     Skill,
     SkillLevel,
+    Talent,
+    TalentStrength,
     Technique,
     Trait,
     TraitKind,
@@ -788,6 +792,45 @@ def sword_stroke(level: SkillLevel) -> WorldState:
             Trait(name="sword saint", kind=TraitKind.GIFT, description="One with the blade.")
         )
     state.scene.ended_on = "A maple leaf spins down from the branch above the well."
+    return state
+
+
+def born_to_the_blade(*, talents: bool = True) -> WorldState:
+    """Lin with an awakened aura, an Aura blade he is only starting to learn, an architect's
+    training, and the two talents his player wrote when the story was made: one of a kind with
+    the sword, and a genius for structure (A4). Without `talents` he is the same Lin with none,
+    to measure the pace against."""
+    state = sect()
+    sheet = state.characters["lin"].sheet
+    sheet.powers.append(
+        Power(
+            id="aura",
+            name="Aura",
+            description="An inner spring of aura that he shapes at will.",
+            costs=[PowerCost(kind=CostKind.ENERGY, text="Spends aura.")],
+        )
+    )
+    sheet.techniques.append(
+        Technique(id="aura-blade", name="Aura blade", power_id="aura", mastery=Mastery.LEARNING)
+    )
+    sheet.skills.append(Skill(name="architecture", level=SkillLevel.EXPERT))
+    if talents:
+        sheet.talents = [
+            Talent(
+                id="talent-the-sword",
+                name="The sword",
+                covers="anything fought with a blade",
+                strength=TalentStrength.ONE_OF_A_KIND,
+                reason="He was born with a sword in his hand.",
+            ),
+            Talent(
+                id="talent-genius-architect",
+                name="Genius architect",
+                covers="structure, load and geometry",
+                strength=TalentStrength.GENIUS,
+            ),
+        ]
+    state.scene.ended_on = "The practice post by the well stands scarred and waiting."
     return state
 
 

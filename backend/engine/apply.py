@@ -602,6 +602,16 @@ class _Applier:
             for practice in change.practice:
                 kept = [p for p in character.sheet.practice if p.key != practice.key]
                 character.sheet.practice = [*kept, practice.model_copy()]
+        if change.talent_rulings and self.engine_only(subject, "talent rulings"):
+            # A4, A9. Ruled once: a thing already ruled on keeps its ruling.
+            when = {"turn": self.turn, "world_s": self.state.world_s}
+            for ruling in change.talent_rulings:
+                if character.sheet.talent_ruling(ruling.key) is None:
+                    character.sheet.talent_rulings.append(ruling.model_copy(update=when))
+        if change.bridges and self.engine_only(subject, "bridges"):
+            when = {"turn": self.turn, "world_s": self.state.world_s}
+            for bridge in change.bridges:
+                character.sheet.bridges.append(bridge.model_copy(update=when))
         if change.axes is not None and self.engine_only(subject, "axes"):
             # F1: only someone the engine makes real comes with their measure; anyone known
             # keeps theirs.

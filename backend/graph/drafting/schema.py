@@ -36,6 +36,7 @@ from engine.state import (
     Resurrection,
     RuleTopic,
     SkillLevel,
+    TalentStrength,
     ThreadKind,
     TimeEffect,
     TraitKind,
@@ -244,6 +245,31 @@ class TraitP(Proposal):
     name: str
     kind: TraitKind = TraitKind.QUIRK
     description: str = ""
+
+
+class TalentP(Proposal):
+    """A4. How fast the character learns one thing, from the player's own words."""
+
+    name: str = Field(
+        description="A short name in the player's words: 'The sword', 'Extreme perception', "
+        "'Genius architect', 'Hopeless at fighting'."
+    )
+    covers: str = Field(
+        default="",
+        description="What it covers, in one plain sentence the player can check: 'any move "
+        "they can watch someone do', 'anything fought with a blade'.",
+    )
+    strength: TalentStrength = Field(
+        default=TalentStrength.KNACK,
+        description="slow: a weakness, half the pace. knack: twice as fast. genius: four "
+        "times. one_of_a_kind: eight times, always for one specific thing.",
+    )
+    general: bool = Field(
+        default=False, description="True only when it covers everything they learn."
+    )
+    reason: str = Field(
+        default="", description="For one of a kind: the reason behind it, from the premise."
+    )
 
 
 class CostP(Proposal):
@@ -598,6 +624,11 @@ class CharacterProposal(Proposal):
     attributes: AttributesP = Field(default_factory=AttributesP)
     skills: list[SkillP] = Field(default_factory=list)
     traits: list[TraitP] = Field(default_factory=list)
+    talents: list[TalentP] = Field(
+        default_factory=list,
+        description="A4: how fast they learn each thing, only where the premise says so. Six "
+        "at most, three of them one of a kind.",
+    )
     powers: list[PowerP] = Field(default_factory=list)
     techniques: list[TechniqueP] = Field(default_factory=list)
     temperament: TemperamentP = Field(default_factory=TemperamentP)

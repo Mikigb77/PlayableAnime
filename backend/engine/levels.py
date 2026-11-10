@@ -20,9 +20,10 @@ Mastery grows with use (A4): six uses take a move from learning to practiced, fi
 skilled and thirty more to second nature, about fifty in all. A use that nothing resisted counts
 once, and one a roll decided counts twice. No count of uses reaches a move made their own. A new
 move starts two steps under the skill it belongs to, so a master's new move starts at skilled.
-Talent sets the pace: someone who learns four times as fast needs a quarter of the uses (two,
-four and eight, fourteen in all), a slow learner twice as many, and a gifted character's new
-move starts at practiced.
+Talent sets the pace (`engine.talent`), and each step of it doubles: a knack needs half the uses,
+a genius a quarter (two, four and eight, fourteen in all), someone one of a kind an eighth (one,
+two and four), and a slow learner twice as many. A new move a genius's talent covers starts at
+practiced, and one a one of a kind talent covers starts at skilled.
 
 The story's difficulty is what comes off every number (A5): 6 on Story, 3 on Balanced and
 nothing on Brutal, so at their own level a character passes about four times in five, seven in
@@ -81,8 +82,10 @@ RESISTED_USE = 2  # used where a throw decided it
 INSIGHT_USE = 3  # used where the move's own die showed an insight
 # How far under the skill it belongs to a new move starts, in steps of the scale.
 NEW_MOVE_BELOW_SKILL = 2
-# Where a new move starts for someone with a gift for learning, whatever their skill.
-GIFTED_START = Mastery.PRACTICED
+# Where a new move starts, whatever their skill, when a talent covers it at this many doublings
+# of the ordinary pace or more (`engine.talent`): a genius's at practiced, one of a kind's at
+# skilled.
+TALENT_START = {2: Mastery.PRACTICED, 3: Mastery.SKILLED}
 
 _BY_DICE = {dice: mastery for mastery, dice in MASTERY_DICE.items()}
 
@@ -126,12 +129,15 @@ def grown(mastery: Mastery, uses: int, gained: int, pace: float = 1.0) -> tuple[
     return mastery, uses
 
 
-def starting_mastery(skill: SkillLevel | None, gifted: bool = False) -> Mastery:
+def starting_mastery(skill: SkillLevel | None, talent_steps: int = 0) -> Mastery:
     """A4. Where a new move starts: two steps under the skill it belongs to, and at learning
     with no such skill or a lesser one. An expert's new move starts at practiced and a master's
-    at skilled, so a master with a new cut is still a master. Someone `gifted` at learning
-    starts at practiced, or where their skill puts them if that is higher."""
+    at skilled, so a master with a new cut is still a master. `talent_steps` is how many
+    doublings of the ordinary pace their talent gives this move (`engine.talent`): at a genius's
+    pace it starts at practiced and at one of a kind's at skilled, or where their skill puts
+    them if that is higher."""
     dice = SKILL_DICE[skill] - NEW_MOVE_BELOW_SKILL if skill is not None else 0
-    if gifted:
-        dice = max(dice, MASTERY_DICE[GIFTED_START])
+    lifted = [m for steps, m in TALENT_START.items() if talent_steps >= steps]
+    if lifted:
+        dice = max(dice, max(MASTERY_DICE[m] for m in lifted))
     return _BY_DICE[max(MASTERY_DICE[Mastery.LEARNING], dice)]

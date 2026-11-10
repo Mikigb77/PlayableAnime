@@ -7,8 +7,9 @@ the hand and the number, and the callers decide what a result does.
 - **The hand** is one to five dice by how well they have the move, or the skill or attribute
   the step draws on (`engine.levels`), a green die for each real advantage that holds, two at
   most, and, for a move, its own die thrown last: violet while they are still mastering it,
-  where 18 or more is an insight worth three uses (A4), and gold from second nature on, which
-  never counts below 10.
+  where 18 or more is an insight worth three uses (A4), or 16 or more when two talents of
+  theirs both cover the move (`engine.talent`), and gold from second nature on, which never
+  counts below 10.
 - **A 20 throws one more die**, plain, and that one can throw another.
 - **The mark.** The total reaching the number passes. Past 20 for each die in the hand as
   well, it is over the top. Short by 5 or less is so close, and short by more is missed.
@@ -29,6 +30,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from engine import levels
+from engine import talent as talent_mod
 from engine.context import Difficulty
 from engine.contracts.intent import OutcomeClass
 from engine.rng import SeededRng
@@ -38,7 +40,7 @@ from engine.state.sheet import Mastery
 SIDES = levels.DIE
 MAX_GREENS = 2
 SO_CLOSE_BY = 5  # a miss by this much or less is so close
-INSIGHT_AT = 18  # on the violet die
+INSIGHT_AT = talent_mod.INSIGHT_AT  # on the violet die, unless the hand says lower
 GOLD_FLOOR = 10  # what a gold die counts for at least (`Die.value`)
 # How many dice one die can set off in a row. Six 20s running is one throw in 64 million, so the
 # cap changes no figure anyone can see, and it keeps the exact chances a finite sum.
@@ -62,11 +64,13 @@ YES_OR_NO = [StepResult.SUCCESS, StepResult.FAILURE]
 @dataclass(frozen=True)
 class Hand:
     """What a character throws for a step, before any advantage: `dice` in all, the move's own
-    die among them when `last` says which kind it is, and why, in words."""
+    die among them when `last` says which kind it is, and why, in words. `insight_at` is the
+    face of a violet die that shows an insight."""
 
     dice: int
     why: str = ""
     last: DieKind | None = None
+    insight_at: int = INSIGHT_AT
 
     def __post_init__(self) -> None:
         if self.dice < 1:
@@ -213,7 +217,8 @@ def throw(
         against=against,
         deadly=deadly,
         miss_costs=miss_costs if deadly else "",
-        insight=own is not None and own.face >= INSIGHT_AT,
+        insight=own is not None and own.face >= hand.insight_at,
+        insight_at=hand.insight_at,
     )
     return RollRecord(
         seed=rng.seed,

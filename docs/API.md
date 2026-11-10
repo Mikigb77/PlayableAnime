@@ -612,7 +612,13 @@ StatusView {character: {name, lines: [string], portrait_url?},   # portrait once
                                           # lines include a child on the way (N6), and each
                                           # technique with its mastery and its count toward
                                           # the next: "Aura blade (technique, learning, 2 of
-                                          # 6 uses)" (A4)
+                                          # 6 uses)" (A4), then each talent, each thing ruled
+                                          # on and the bridges that hold: "The sword (talent,
+                                          # one of a kind, eight times as fast): anything
+                                          # fought with a blade", "Aura blade: grows eight
+                                          # times as fast, inside your talent (The sword)",
+                                          # "Bridge: the load formula", "Outside your
+                                          # talents: Herb lore; Rope trick" (A4)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10), and the

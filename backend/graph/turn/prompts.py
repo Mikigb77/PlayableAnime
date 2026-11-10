@@ -183,6 +183,24 @@ player asks for everything a power can give.
 as releasing a stopped-time throw gradually) or breakthrough (the next rung of a ladder). Who or \
 what they learn from (self, master, book, rival, watching, with its id), whether they invent it, \
 and for a time stop what the new way grants (relative_speed_throws or controlled_force).
+- talent_cases, only when PLAYER CHARACTER's sheet lists talents: the first time a step trains \
+or practises something (a skill, a technique, a new way to use a power, the next rung of a \
+ladder), or uses a technique or a move of their own, that sheet.talent_rulings doesn't name \
+yet, how each of their talents that isn't general stands to it. inside: the thing is what \
+the talent is about (a sword technique for a talent at the sword, a move they watch someone do \
+for a talent of perception). related: the talent helps but doesn't hand it over (shaping aura \
+into a blade for an architect). outside: nothing to do with it. Give what, the thing by its \
+name, the talent's id and the reason in one sentence. Weigh the case the player makes in this \
+action for why a talent applies, and judge it as a fair referee: code keeps the ruling for \
+good, so never stretch a talent over everything and never refuse a link that is really there. \
+Only the sheet's talents count: one the player declares now is a backstory claim, not a talent.
+- bridge: when the step is real work to connect a talent to something a ruling left outside it \
+or only related, such as deriving the formula behind a blade's shape, studying a teacher's \
+notes or taking a mechanism apart to see how it works. The talent's id, what it reaches by its \
+name, rests_on (the new thing it rests on, in a few words, never ground a bridge in \
+sheet.bridges already used), heart true only when it covers the heart of the thing and not one \
+side of it, and the reason. Only a deed is a bridge: words that restate the case are not. Code \
+throws for it with the skill the step draws on.
 - show_strength: hiding strength (the ladder id and the rung to show) or revealing it (no rung).
 
 Also record:
@@ -312,7 +330,10 @@ nature, and let nobody in the scene say so: a move that worked has worked this t
 technique's mastery in PLAYER CHARACTER is how well they have it (learning, practiced, skilled, \
 second_nature or own; practiced when none is given), and its uses count how often they have \
 used it since they reached that: tell their hand at it to match, careful while learning and \
-effortless at second nature.
+effortless at second nature. A step's why can also say how a talent of theirs stands to what \
+they are learning ("Ruled once: ...") or that a bridge holds or doesn't: show it as the thing \
+coming easily to them or not, in the story's own words, and never as a pace, a ruling or a \
+bridge by name.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
 - struck under a step in OUTCOME is what struck back at the player character right after it: the \

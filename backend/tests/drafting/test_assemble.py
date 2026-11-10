@@ -12,6 +12,7 @@ from engine.state import (
     PhysicsMode,
     Prevalence,
     RuleTopic,
+    TalentStrength,
 )
 from graph.drafting import samples
 from graph.drafting.assemble import (
@@ -38,6 +39,7 @@ from graph.drafting.schema import (
     NpcP,
     PowerP,
     RuleP,
+    TalentP,
     TimeP,
     WorldProposal,
 )
@@ -513,3 +515,79 @@ def test_extraordinary_prevalence_none_means_grounded():
 
     assert state.bible.grounded
     assert all(k.prevalence is Prevalence.NONE for k in state.bible.extraordinary)
+
+
+# --- talent (A4) ------------------------------------------------------------------------------
+
+
+def _talents(*proposed: TalentP):
+    state = assemble(
+        _world(),
+        _character(talents=list(proposed)),
+        DraftOptions(premise=samples.CULTIVATION_PREMISE),
+    )
+    assert check_state(state) == []
+    return state.player.sheet.talents
+
+
+def test_the_talents_the_player_described_go_on_the_sheet_with_ids_of_their_own():
+    sword = TalentP(
+        name="  The sword ",
+        covers="Anything fought with a blade.",
+        strength="one_of_a_kind",
+        reason="Born under the Sword Star.",
+    )
+    fighting = TalentP(name="Hopeless at haggling", strength="slow")
+
+    first, second = _talents(sword, fighting)
+
+    assert (first.id, first.name, first.strength) == (
+        "the-sword",
+        "The sword",
+        TalentStrength.ONE_OF_A_KIND,
+    )
+    assert (first.covers, first.reason, first.general) == (
+        "Anything fought with a blade.",
+        "Born under the Sword Star.",
+        False,
+    )
+    assert (second.id, second.strength) == ("hopeless-at-haggling", TalentStrength.SLOW)
+
+
+def test_a_character_with_no_talent_in_the_premise_has_none():
+    assert _talents() == []
+
+
+def test_one_of_a_kind_at_everything_is_drafted_as_a_general_genius():
+    (everything,) = _talents(
+        TalentP(name="Prodigy", covers="everything", strength="one_of_a_kind", general=True)
+    )
+
+    assert (everything.strength, everything.general) == (TalentStrength.GENIUS, True)
+
+
+def test_past_three_one_of_a_kind_talents_the_rest_are_drafted_as_genius():
+    names = ["The sword", "Extreme perception", "Command of the body", "Fire", "Poison"]
+
+    drafted = _talents(*(TalentP(name=name, strength="one_of_a_kind") for name in names))
+
+    one_of_a_kind, genius = TalentStrength.ONE_OF_A_KIND, TalentStrength.GENIUS
+    assert [t.strength for t in drafted] == [one_of_a_kind] * 3 + [genius] * 2
+
+
+def test_a_talent_is_listed_once_and_a_runaway_list_is_cut():
+    twice = _talents(TalentP(name="The sword"), TalentP(name="the sword", strength="genius"))
+    many = _talents(*(TalentP(name=f"Talent {n}") for n in range(20)))
+
+    assert [(t.id, t.strength) for t in twice] == [("the-sword", TalentStrength.KNACK)]
+    assert len(many) == 6
+
+
+def test_only_the_player_character_is_drafted_with_talents():
+    state = assemble(
+        _world(),
+        _character(talents=[TalentP(name="The sword")]),
+        DraftOptions(premise=samples.CULTIVATION_PREMISE),
+    )
+
+    assert all(not npc.sheet.talents for npc in state.npcs())

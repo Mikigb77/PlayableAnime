@@ -6,12 +6,14 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
 `practice` until the gain is made.
 
 - **Effort.** The first twelve hours of a stretch count in full and the rest at a third, since
-  nobody trains every waking hour of a year. A master doubles the pace, a manual, a rival or
-  watching someone helps less, a gift for learning (a genius, a copycat) makes it four times
-  faster, and a flaw halves it. A copycat who watches a technique learns it at once.
+  nobody trains every waking hour of a year. A master doubles the pace, and a manual, a rival
+  or watching someone helps less. Talent sets the rest (`engine.talent`): each thing grows at
+  the pace of the best talent that covers it, twice as fast for a knack, four times for a
+  genius and eight for someone one of a kind, and at half the pace under a weakness. Someone
+  whose one of a kind talent covers a technique learns it at once by watching it done.
 - **Skills** climb the one ladder of words, novice to master, each rank taking longer.
 - **Techniques** take about 150 hours with a teacher's pace, three times that when the character
-  invents one with no gift for it.
+  invents one that no genius of theirs covers.
 - **A new way to use a power** (an idea refused once, now earned) takes about 200 hours. For a
   time stop, it is how its throws land: released gradually, a stone merges back into time carrying
   its motion, or lands exactly as hard as its user chooses. It goes on the sheet as a technique,
@@ -26,17 +28,19 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   learned from them, not picked up by improvising something like it.
 - **Mastery** (A4, `engine.levels`). Every technique has one: learning, practiced, skilled or
   second nature. A new move starts at learning, or two steps under the skill it belongs to. It
-  grows with use: each turn the character uses it counts once, or twice when a roll decided the
-  step, and each hour of practising it counts once, more with a teacher. Hours never stand
-  between a character and a move the story already let them do. Talent sets the pace
-  (`talent`): with a gift for learning a move takes a quarter of the uses, an hour of practice
-  counts four, and a new move starts at practiced; a slow learner needs twice the uses.
+  grows with use: each turn the character uses it counts once, twice when their own throw
+  decided the step, and three times for an insight, and each hour of practising it counts
+  once, more with a teacher. Hours never stand between a character and a move the story
+  already let them do. Talent sets the pace (`engine.talent`): a move a genius's talent covers
+  takes a quarter of the uses, an hour of practice counts four, and it starts at practiced;
+  one of a kind's takes an eighth and starts at skilled; a slow learner needs twice the uses.
 - **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
   guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
   attempt is thrown for, three dice against a level of 3 (A3): passed climbs a rung, a throw
   that falls just short shakes the character and a miss wounds them, and how long it takes is
   drawn too, so the world can interrupt it (W10). A loud rung's breakthrough is seen from afar
   (W1).
+- **Which talent covers what** is ruled once and kept (`engine.resolve.powers.talents`).
 
 A world with nothing extraordinary never grows a power (G6, G8).
 """
@@ -47,6 +51,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from engine import levels
+from engine import talent as talent_mod
 from engine.base import HOUR
 from engine.contracts.delta import (
     CharacterChange,
@@ -76,7 +81,6 @@ from engine.state.sheet import (
     Skill,
     SkillLevel,
     Technique,
-    TraitKind,
 )
 from engine.state.world import WorldState
 
@@ -89,8 +93,6 @@ TEACHER_RATE = {
     Teacher.RIVAL: 1.5,
     Teacher.WATCHING: 1.2,
 }
-GIFT_RATE = 4.0
-FLAW_RATE = 0.5
 # Hours of ordinary effort, alone, from each level of skill to the next.
 SKILL_HOURS = {
     SkillLevel.UNTRAINED: 50,
@@ -110,42 +112,6 @@ BREAKTHROUGH_LEVEL = 3
 MAX_HINDRANCES = 2
 LOUD_STRENGTH = 90
 
-# A gift or a flaw for learning is read from a trait's words until talent is a record of its
-# own, in the three languages a sheet can be written in (S10).
-_COPY_STEMS = stems(
-    "copycat copy copies mimic mimics"
-    " imitador imitadora copión copiona"  # Spanish
-    " copiador copiadora"  # Catalan
-)
-_GIFT_STEMS = _COPY_STEMS | stems(
-    "genius prodigy talent talented gifted"
-    " genio prodigio talento talentoso talentosa superdotado superdotada dotado dotada"
-    " geni prodigi talentós superdotat dotat"
-)
-_GIFT_PHRASES = (
-    "fast learner",
-    "quick learner",
-    "quick study",
-    "learns fast",
-    "learns quickly",
-    "aprende rápido",
-    "aprende deprisa",
-    "aprèn ràpid",
-    "aprèn de pressa",
-)
-_FLAW_STEMS = stems("untalented")
-_FLAW_PHRASES = (
-    "slow learner",
-    "learns slowly",
-    "no talent",
-    "no aptitude",
-    "sin talento",
-    "aprende despacio",
-    "aprende lento",
-    "sense talent",
-    "aprèn a poc a poc",
-    "aprèn lent",
-)
 _MASTER_STEMS = stems("master teacher guidance mentor")
 # Teachers who must be a living character beside the learner to count (A4).
 _GUIDES = (Teacher.MASTER, Teacher.RIVAL, Teacher.WATCHING)
@@ -199,46 +165,33 @@ def effort_s(lived_s: int) -> float:
     return min(lived, FULL_EFFORT_S) + max(0, lived - FULL_EFFORT_S) * LONG_STRETCH_RATE
 
 
-def _trait_texts(actor: Character, kind: TraitKind) -> list[str]:
-    return [f"{t.name} {t.description}" for t in actor.sheet.traits if t.kind is kind]
+def pace(actor: Character, teacher: Teacher, key: str) -> float:
+    """A4. How much an hour of effort toward the thing `key` names counts for: what the teacher
+    adds, times the pace their talent gives that thing (`engine.talent.standing`)."""
+    return TEACHER_RATE[teacher] * talent_mod.standing(actor, key).pace
 
 
-def _says(texts: list[str], words: frozenset[str], phrases: tuple[str, ...]) -> bool:
-    for text in texts:
-        if stems(text) & words:
-            return True
-        folded = text.casefold()
-        if any(p in folded for p in phrases):
-            return True
-    return False
+def talent_key(state: WorldState, actor: Character, step: IntentStep) -> str:
+    """The thing a training step learns, as the rulings on talent name it. A breakthrough is
+    the ladder it climbs, the one the step names or the only one there is."""
+    training = step.training
+    assert training is not None
+    if training.kind is GrowthKind.BREAKTHROUGH:
+        ladder, _ = _ladder(state, actor, training.ladder_id)
+        return talent_mod.ladder_key(ladder.id if ladder is not None else training.ladder_id)
+    return talent_mod.training_key(training)
 
 
-def learning_gift(actor: Character) -> bool:
-    return _says(_trait_texts(actor, TraitKind.GIFT), _GIFT_STEMS, _GIFT_PHRASES)
+def technique_pace(actor: Character, technique: Technique) -> float:
+    """A4. How fast a technique of theirs grows with use: 1 for an ordinary character."""
+    return talent_mod.standing(actor, talent_mod.technique_key(technique.name)).pace
 
 
-def learning_flaw(actor: Character) -> bool:
-    return _says(_trait_texts(actor, TraitKind.FLAW), _FLAW_STEMS, _FLAW_PHRASES)
-
-
-def copycat(actor: Character) -> bool:
-    return any(stems(t) & _COPY_STEMS for t in _trait_texts(actor, TraitKind.GIFT))
-
-
-def pace(actor: Character, teacher: Teacher) -> float:
-    rate = TEACHER_RATE[teacher]
-    if learning_gift(actor):
-        rate *= GIFT_RATE
-    if learning_flaw(actor):
-        rate *= FLAW_RATE
-    return rate
-
-
-def talent(actor: Character) -> float:
-    """A4. How fast they learn whoever teaches them: 1 for an ordinary character, more with a
-    gift for learning and less with a flaw. It sets how many uses a move's next mastery takes
-    (`engine.levels.uses_to_next`)."""
-    return pace(actor, Teacher.SELF)
+def move_start(actor: Character, move: str, start: Mastery) -> Mastery:
+    """A4. Where a new move by this name starts: at `start`, where their skill puts it, or
+    where the talent that covers it does if that is higher (`engine.levels.TALENT_START`)."""
+    steps = talent_mod.standing(actor, talent_mod.technique_key(move)).steps
+    return max(start, levels.starting_mastery(None, steps), key=lambda m: m.rank)
 
 
 def stop_power(actor: Character, power_id: str | None) -> Power | None:
@@ -397,7 +350,8 @@ def teacher_of(state: WorldState, actor: Character, step: IntentStep) -> Teacher
 
 
 def _shows_it(state: WorldState, step: IntentStep) -> bool:
-    """Whether the one being watched knows the technique, so a copycat can take it at once."""
+    """Whether the one being watched knows the technique, so someone whose talent takes in a
+    move on sight can have it at once."""
     training = step.training
     assert training is not None
     guide = state.characters.get(training.teacher_id) if training.teacher_id else None
@@ -462,26 +416,28 @@ def breakthrough(
     greens: list[str] | tuple[str, ...] = (),
 ) -> Settled:
     """G19, A3. The attempt is thrown for, never certain: three dice against a level of 3,
-    whoever they are, since every rung is as far from the last. A master's teaching and a gift
-    for learning each add a green die, then any advantage of the step that holds (`greens`),
-    two in all. A flaw for learning adds 5 to the number, and so does each thing in the scene
-    against them, two at most. Passed climbs the rung, so close stalls and a miss wounds."""
+    whoever they are, since every rung is as far from the last. A master's teaching adds a
+    green die, and so does a talent that covers the climb at a genius's pace or better
+    (`engine.talent`), then any advantage of the step that holds (`greens`), two in all. A
+    weakness that slows it adds 5 to the number, and so does each thing in the scene against
+    them, two at most. Passed climbs the rung, so close stalls and a miss wounds."""
     training = step.training
     assert training is not None
     ladder, position = _ladder(state, actor, training.ladder_id)
     assert ladder is not None
     rung = ladder.rungs[(position.rung if position is not None else -1) + 1]
+    stands = talent_mod.standing(actor, talent_mod.ladder_key(ladder.id))
     reasons: list[str] = []
     if teacher_of(state, actor, step) is Teacher.MASTER:
         reasons.append("a master's teaching")
-    if learning_gift(actor):
+    if stands.steps >= talent_mod.GENIUS_STEPS:
         reasons.append("a gift for learning")
     number = dice.level_number(
         BREAKTHROUGH_LEVEL,
         f"breaking through to {rung.name}, level {BREAKTHROUGH_LEVEL}",
         difficulty,
     )
-    if learning_flaw(actor):
+    if stands.steps < 0:
         number = number.plus("slow to learn", levels.STEP)
     for hindrance in [h.strip() for h in step.facts.hindrances if h.strip()][:MAX_HINDRANCES]:
         number = number.plus(hindrance, levels.STEP)
@@ -584,6 +540,8 @@ class Progress:
 
 
 def needed_hours(actor: Character, step: IntentStep) -> float:
+    """A4. The hours of ordinary effort a gain takes. A technique the character invents takes
+    three times as long, unless a talent covers it at a genius's pace or better."""
     training = step.training
     assert training is not None
     if training.kind is GrowthKind.SKILL:
@@ -593,24 +551,29 @@ def needed_hours(actor: Character, step: IntentStep) -> float:
     if training.kind is GrowthKind.POWER:
         return POWER_HOURS
     hours = TECHNIQUE_HOURS
-    if training.invents and not learning_gift(actor):
+    stands = talent_mod.standing(actor, talent_mod.training_key(training))
+    if training.invents and stands.steps < talent_mod.GENIUS_STEPS:
         hours *= INVENT_FACTOR
     return hours
 
 
 def pace_and_need(state: WorldState, actor: Character, step: IntentStep) -> tuple[float, float]:
     """A4. The effective effort per hour of effort put in, and the effort the gain needs in
-    seconds: none for a copycat watching someone who knows the move."""
+    seconds: none for someone watching a technique done that a one of a kind talent of theirs
+    covers, who has it on sight."""
     training = step.training
     assert training is not None
     teacher = teacher_of(state, actor, step)
+    key = talent_key(state, actor, step)
+    covered = talent_mod.standing(actor, key).steps >= talent_mod.ONE_OF_A_KIND_STEPS
+    on_sight = covered or talent_mod.copies_on_sight(actor)
     instant = (
         training.kind is GrowthKind.TECHNIQUE
         and teacher is Teacher.WATCHING
-        and copycat(actor)
+        and on_sight
         and _shows_it(state, step)
     )
-    return pace(actor, teacher), 0.0 if instant else needed_hours(actor, step) * HOUR
+    return pace(actor, teacher, key), 0.0 if instant else needed_hours(actor, step) * HOUR
 
 
 def progress(
@@ -623,7 +586,7 @@ def progress(
     start: Mastery = Mastery.LEARNING,
 ) -> Progress:
     """A4. Add the stretch's effort to what was put in before, and make the gain once it is
-    enough. A copycat watching a technique learns it at once. `start` is where the actor's skill
+    enough. A technique taken in on sight is learned at once. `start` is where the actor's skill
     puts a new move (`engine.levels`): a technique trained through is practiced, or there if
     that is higher, and one copied at a glance starts there."""
     training = step.training
@@ -817,7 +780,8 @@ def proven(
     """A4, G25. The moves a step pulled off cleanly become techniques of the actor's own, so the
     next use finds them on the sheet and counts them like any technique: a move made with a
     power of theirs, a technique they were still learning, or a move made of the world's energy
-    they hold. Each starts at `start`, where their skill puts a new move (`engine.levels`). One
+    they hold. Each starts at `start`, where their skill puts a new move (`engine.levels`), or
+    higher where a talent of theirs covers it (`move_start`). One
     a technique of theirs already names, on the sheet or learned `earlier` in this plan, is that
     technique, and one that names a technique someone else knows is that person's school's
     (G25), unless they are learning it: neither is recorded. A technique they were learning is
@@ -846,7 +810,7 @@ def proven(
                 style=move.style,
                 learned_from=min(teachers) if teachers else "their own",
                 power_id=move.power.id if move.power is not None else None,
-                mastery=start,
+                mastery=move_start(actor, move.name, start),
             )
         )
         gains.append(
@@ -917,7 +881,6 @@ def used(
     against real resistance, and three for an insight (`engine.levels`). A turn counts once for
     a move, at its best step, however many steps of the plan use it. The reason for any that
     rose, in the world's words, and the engine's change."""
-    gift = talent(actor)
     changed: list[Technique] = []
     gains: list[Gain] = []
     risen: list[str] = []
@@ -927,7 +890,7 @@ def used(
             continue
         moves.counted[technique.id] = count
         before = moves.latest(technique)
-        after = _with_uses(before, more, gift)
+        after = _with_uses(before, more, technique_pace(actor, technique))
         if after == before:
             continue
         moves.now[technique.id] = after
@@ -956,15 +919,19 @@ def practised(
     moves: Moves,
 ) -> tuple[str, StateDelta, TrainingSoFar]:
     """A4. A stretch spent practising a technique they know counts toward its mastery, an hour
-    of effort for a use, more with a teacher (`pace`). The reason for a rise, the engine's
+    of effort for a use, more with a teacher and with talent (`pace`): an hour is worth two
+    uses to a knack, four to a genius and eight to someone one of a kind, on top of the fewer
+    uses each mastery takes them (`technique_pace`). The reason for a rise, the engine's
     change, and where the stretch started, so one cut short counts the time it ran
     (`practice_cut`)."""
-    rate = pace(actor, teacher_of(state, actor, step))
+    key = talent_mod.technique_key(technique.name)
+    rate = pace(actor, teacher_of(state, actor, step), key)
     so_far = TrainingSoFar(
         key=f"{PRACTICE_KEY}{technique.id}", what=technique.name, rate=rate, practising=True
     )
     before = moves.latest(technique)
-    after = _with_uses(before, practice_uses(lived_s, rate), talent(actor))
+    gift = technique_pace(actor, technique)
+    after = _with_uses(before, practice_uses(lived_s, rate), gift)
     if after == before:
         return "", StateDelta(), so_far
     moves.now[technique.id] = after
@@ -982,7 +949,8 @@ def practice_cut(actor: Character, so_far: TrainingSoFar, lived_s: int, why: str
     technique = actor.sheet.technique(so_far.key.removeprefix(PRACTICE_KEY))
     if technique is None or lived_s <= 0:
         return StateDelta()
-    after = _with_uses(technique, practice_uses(lived_s, so_far.rate), talent(actor))
+    gift = technique_pace(actor, technique)
+    after = _with_uses(technique, practice_uses(lived_s, so_far.rate), gift)
     if after == technique:
         return StateDelta()
     gains = []

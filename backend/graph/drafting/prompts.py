@@ -57,6 +57,17 @@ money, standing, connections, condition, their rung on a ladder, and their goals
 premise in the player's own words. A strong start is fine when the premise calls for it. \
 Their money is money and currency, such as 12 and "copper coins", never an item, so the engine \
 can count what they pay and lose (C10).
+- Talents say how fast the character learns, and only where the premise says so: most \
+characters have none. Write each from the player's own words, with a short name, what it covers \
+in one plain sentence, and its strength: slow (a weakness, such as "hopeless at fighting": half \
+the pace), knack (twice as fast), genius (four times) or one_of_a_kind (eight times). One of a \
+kind always names one specific thing, with the reason behind it: a subject, such as the sword, \
+or a faculty, such as extreme perception or a copycat eye, which covers whatever reaches them \
+through it (any move they can watch someone do). Three one of a kind talents at most. Someone \
+gifted at everything is one talent with general=true, a genius at most: nobody is one of a kind \
+at everything. A talent of the body, such as great coordination, covers the moves that use it. \
+A talent is how fast they learn, never what they can already do: that goes in skills, traits, \
+powers and techniques, as well as the talent where the premise gives both.
 - Each power names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
 come from the world and the premise, never from nowhere: what the world's rules say that kind of \
 power takes (qi spent, a mage's fatigue, a price in blood or years), or what the premise gives \
