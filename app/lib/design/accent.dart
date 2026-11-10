@@ -137,3 +137,15 @@ Color accentFor(GenreAccent accent, Brightness brightness) {
   final deeper = hsl.withSaturation(math.min(1, hsl.saturation * 1.05)).toColor();
   return ensureContrast(deeper, Palette.paperContainerHighest);
 }
+
+/// The bright and the deep end of an accent's gradient in a theme of [brightness], on either
+/// side of [accentFor]. Both are readable as text on the page and on a card, like the accent.
+(Color hi, Color lo) accentEnds(GenreAccent accent, Brightness brightness) {
+  final base = HSLColor.fromColor(accentFor(accent, brightness));
+  Color shifted(double by) => base.withLightness((base.lightness + by).clamp(0.0, 1.0)).toColor();
+  if (brightness == Brightness.dark) {
+    return (shifted(0.16), ensureContrast(shifted(-0.13), Palette.inkContainer));
+  }
+  // On paper the accent is already deep, so the gradient runs from a little above it down.
+  return (ensureContrast(shifted(0.08), Palette.paperContainerLow), shifted(-0.1));
+}

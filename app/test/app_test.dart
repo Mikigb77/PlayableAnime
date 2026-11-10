@@ -69,7 +69,7 @@ void main() {
     final l10n = await english();
     expect(find.text(l10n.appTitle), findsOneWidget);
     expect(find.text(l10n.welcomeTagline), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(LucidTabBar), findsNothing);
   });
 
   testWidgets('signed in, a player browses, opens a story and takes a turn', (tester) async {
@@ -78,12 +78,12 @@ void main() {
     final l10n = await english();
 
     // Discover: the signature worlds.
-    expect(find.text(l10n.discoverSubtitle), findsOneWidget);
+    expect(find.text(l10n.discoverHeadline), findsOneWidget);
     expect(find.text('The Last Outer Disciple'), findsOneWidget);
     expect(find.byType(CoverCard), findsWidgets);
 
     // Library: the story in progress.
-    await tester.tap(find.text(l10n.navLibrary));
+    await tester.tap(find.byTooltip(l10n.navLibrary));
     await settle(tester);
     expect(find.byType(StoryTile), findsOneWidget);
     await tester.tap(find.byType(StoryTile));
@@ -123,7 +123,7 @@ void main() {
   testWidgets('a story opened from a link has a way back', (tester) async {
     await signInStored();
     await launch(tester);
-    GoRouter.of(tester.element(find.byType(NavigationBar))).go('/story/story_ninth_peak');
+    GoRouter.of(tester.element(find.byType(LucidTabBar))).go('/story/story_ninth_peak');
     await settle(tester, frames: 10);
     expect(find.byType(BackButton), findsOneWidget);
     await tester.tap(find.byType(BackButton));
@@ -153,7 +153,7 @@ void main() {
     await signInStored();
     await launch(tester);
     final l10n = await english();
-    await tester.tap(find.text(l10n.navAccount));
+    await tester.tap(find.byTooltip(l10n.navAccount));
     await settle(tester);
     await tester.ensureVisible(find.text(l10n.accountSignOut));
     await settle(tester);

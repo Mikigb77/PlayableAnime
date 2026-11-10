@@ -7,8 +7,8 @@ import '../../core/l10n.dart';
 import '../../design/design.dart';
 import '../../router.dart';
 
-/// The frame of the signed-out screens: the accent glow over the page, an optional back button,
-/// and a centered column no wider than a phone.
+/// The frame of the signed-out forms: the night air behind the page ([Ambient]), an optional
+/// back button, and a centered column no wider than a phone.
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({super.key, required this.child, this.showBack = true});
 
@@ -17,45 +17,40 @@ class AuthScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.lucid;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: showBack
           ? AppBar(backgroundColor: Colors.transparent, leading: const BackButton())
           : null,
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(0.7, -0.9),
-            radius: 1.4,
-            colors: [colors.accentSoft, colors.background],
-          ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                Space.xl,
-                showBack ? kToolbarHeight : Space.xxl,
-                Space.xl,
-                Space.xl,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight:
-                      (constraints.maxHeight - (showBack ? kToolbarHeight : Space.xxl) - Space.xl)
-                          .clamp(0, double.infinity),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: Ambient()),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  Space.xl,
+                  showBack ? kToolbarHeight : Space.xxl,
+                  Space.xl,
+                  Space.xl,
                 ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: child,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight:
+                        (constraints.maxHeight - (showBack ? kToolbarHeight : Space.xxl) - Space.xl)
+                            .clamp(0, double.infinity),
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: child,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

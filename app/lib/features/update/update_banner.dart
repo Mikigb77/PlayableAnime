@@ -120,7 +120,13 @@ class _Card extends ConsumerWidget {
       child: Container(
         key: const Key('update.banner'),
         width: double.infinity,
-        color: theme.colorScheme.surfaceContainerHigh,
+        // A card of its own, floating like the tab bar under it.
+        margin: const EdgeInsets.fromLTRB(Layout.barInset, 0, Layout.barInset, Space.sm),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: Radii.card,
+          border: Border.all(color: context.lucid.hairline),
+        ),
         padding: const EdgeInsets.fromLTRB(Space.gutter, Space.md, Space.md, Space.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../core/l10n.dart';
 import '../theme.dart';
 import '../tokens.dart';
+import 'pills.dart';
 
-/// One scene in the reading feed. It reads like a page, not a chat: what the player did, then the
-/// time it took and any event, the picture full-bleed across the column, the narration in the
-/// reading serif, and the characters present, with a quiet ornament between scenes.
+/// One scene in the reading feed. It reads like a page, not a chat: what the player did beside
+/// a thin line of the accent, then the time it took and any event as chips, the narration in the
+/// reading serif, the picture full-bleed across the column, and a footer with the characters
+/// present and the way into the scene's details, with a quiet ornament between scenes.
 ///
 /// Every part is a slot, so the play screen (WS14) passes its own widgets: a [TimeChip], an
 /// [EventBadge], a [PictureSlot], a [StreamingNarration] or [NarrationText], a [PortraitStack].
@@ -63,7 +65,6 @@ class SceneCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colors = context.lucid;
     final pad = EdgeInsets.symmetric(horizontal: gutter);
     final hasMeta = time != null || event != null;
     final hasFooter = portraits != null || onDetails != null || listen != null || onMore != null;
@@ -73,12 +74,12 @@ class SceneCard extends StatelessWidget {
       children: [
         if (playerAction case final action?)
           Padding(
-            padding: pad.copyWith(bottom: Space.md),
+            padding: pad.copyWith(bottom: 14),
             child: _PlayerAction(text: action, spoken: spokenAction),
           ),
         if (hasMeta)
           Padding(
-            padding: pad.copyWith(bottom: Space.lg),
+            padding: pad.copyWith(bottom: 18),
             child: Wrap(
               spacing: Space.sm,
               runSpacing: Space.sm,
@@ -99,34 +100,34 @@ class SceneCard extends StatelessWidget {
           ),
         if (hasFooter)
           Padding(
-            padding: pad.copyWith(top: Space.md),
-            child: Row(
+            padding: pad.copyWith(top: Space.sm),
+            // Who is in the scene, and at the far side what can be done with it, or under the
+            // portraits when the two don't fit on a line: a narrow phone in a long language.
+            child: Wrap(
+              alignment: portraits == null ? WrapAlignment.end : WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ?portraits,
-                Expanded(
-                  child: Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: onDetails == null
-                        ? null
-                        : TextButton.icon(
-                            onPressed: onDetails,
-                            icon: const Icon(Icons.insights_rounded, size: 18),
-                            label: Text(
-                              l10n.sceneDetails,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            style: TextButton.styleFrom(foregroundColor: colors.textSecondary),
-                          ),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onDetails != null)
+                      Flexible(
+                        child: GhostPill(
+                          icon: Icons.insights_rounded,
+                          label: l10n.sceneDetails,
+                          onPressed: onDetails,
+                        ),
+                      ),
+                    ?listen,
+                    if (onMore != null)
+                      IconButton(
+                        tooltip: l10n.sceneMore,
+                        onPressed: onMore,
+                        icon: const Icon(Icons.more_horiz_rounded),
+                      ),
+                  ],
                 ),
-                ?listen,
-                if (onMore != null)
-                  IconButton(
-                    tooltip: l10n.sceneMore,
-                    onPressed: onMore,
-                    icon: const Icon(Icons.more_horiz_rounded),
-                  ),
               ],
             ),
           ),
@@ -153,13 +154,13 @@ class _PlayerAction extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              width: 3,
+              width: 2,
               decoration: BoxDecoration(
                 color: colors.accent,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(1),
               ),
             ),
-            const SizedBox(width: Space.md),
+            const SizedBox(width: 14),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
@@ -188,27 +189,72 @@ class _PlayerAction extends StatelessWidget {
   }
 }
 
-/// A small diamond between scenes.
+/// A small diamond between scenes, on a hairline that fades out to both sides.
 class SceneOrnament extends StatelessWidget {
   const SceneOrnament({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final line = Theme.of(context).colorScheme.outlineVariant;
-    final accent = context.lucid.accent.withValues(alpha: 0.7);
+    final accent = context.lucid.accent;
     return ExcludeSemantics(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Space.xxl),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 48, child: Divider(color: line)),
+            _FadingLine(color: accent.withValues(alpha: 0.45), width: 64),
             const SizedBox(width: Space.md),
-            Transform.rotate(angle: 0.785398, child: Container(width: 6, height: 6, color: accent)),
+            Transform.rotate(
+              angle: 0.785398,
+              child: Container(width: 6, height: 6, color: accent.withValues(alpha: 0.8)),
+            ),
             const SizedBox(width: Space.md),
-            SizedBox(width: 48, child: Divider(color: line)),
+            _FadingLine(color: accent.withValues(alpha: 0.45), width: 64, reversed: true),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The rule under a story's title: a star in the accent on a line that fades out to both sides,
+/// across the column.
+class StarRule extends StatelessWidget {
+  const StarRule({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.lucid.accent;
+    return ExcludeSemantics(
+      child: Row(
+        children: [
+          Expanded(child: _FadingLine(color: accent.withValues(alpha: 0.6))),
+          const SizedBox(width: Space.md),
+          Icon(Icons.auto_awesome_rounded, size: 13, color: accent),
+          const SizedBox(width: Space.md),
+          Expanded(child: _FadingLine(color: accent.withValues(alpha: 0.6), reversed: true)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A hairline that comes out of nothing into [color], or, [reversed], goes back into nothing.
+class _FadingLine extends StatelessWidget {
+  const _FadingLine({required this.color, this.width, this.reversed = false});
+
+  final Color color;
+  final double? width;
+  final bool reversed;
+
+  @override
+  Widget build(BuildContext context) {
+    final clear = color.withValues(alpha: 0);
+    return Container(
+      width: width,
+      height: 1,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: reversed ? [color, clear] : [clear, color]),
       ),
     );
   }

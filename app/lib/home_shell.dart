@@ -5,8 +5,12 @@ import 'core/l10n.dart';
 import 'design/design.dart';
 import 'features/update/update_banner.dart';
 
-/// The frame around the tabs: a bottom bar on phones, a side rail on wide screens, with the app's
-/// update offer just above the bottom bar or at the bottom of the page (S12).
+/// The frame around the tabs: on phones a bar of glass that floats over the page, on wide
+/// screens a side rail under the app's mark, with the app's update offer just above the bar or
+/// at the bottom of the page (S12).
+///
+/// On a phone a tab's page runs on behind the bar, so each tab ends its scroll with a
+/// [PageEnd], which leaves the bar's height free.
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.shell});
 
@@ -17,10 +21,18 @@ class HomeShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final destinations = [
-      (Icons.explore_outlined, Icons.explore, l10n.navDiscover),
-      (Icons.auto_stories_outlined, Icons.auto_stories, l10n.navLibrary),
-      (Icons.person_outline_rounded, Icons.person_rounded, l10n.navAccount),
+    final tabs = [
+      LucidTab(icon: Icons.explore_outlined, selectedIcon: Icons.explore, label: l10n.navDiscover),
+      LucidTab(
+        icon: Icons.auto_stories_outlined,
+        selectedIcon: Icons.auto_stories,
+        label: l10n.navLibrary,
+      ),
+      LucidTab(
+        icon: Icons.person_outline_rounded,
+        selectedIcon: Icons.person_rounded,
+        label: l10n.navAccount,
+      ),
     ];
     final wide = MediaQuery.sizeOf(context).width >= Layout.railBreakpoint;
     if (wide) {
@@ -32,22 +44,20 @@ class HomeShell extends StatelessWidget {
               onDestinationSelected: _go,
               labelType: NavigationRailLabelType.all,
               groupAlignment: -0.85,
-              leading: Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.lg),
-                child: ExcludeSemantics(
-                  child: Icon(Icons.auto_awesome_rounded, size: 28, color: context.lucid.accent),
-                ),
+              leading: const Padding(
+                padding: EdgeInsets.symmetric(vertical: Space.lg),
+                child: BrandMark(size: 36, showName: false),
               ),
               destinations: [
-                for (final (icon, selected, label) in destinations)
+                for (final tab in tabs)
                   NavigationRailDestination(
-                    icon: Icon(icon),
-                    selectedIcon: Icon(selected),
-                    label: Text(label),
+                    icon: Icon(tab.icon),
+                    selectedIcon: Icon(tab.selectedIcon),
+                    label: Text(tab.label),
                   ),
               ],
             ),
-            VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
+            VerticalDivider(width: 1, color: context.lucid.hairline),
             Expanded(
               child: Column(
                 children: [
@@ -61,28 +71,14 @@ class HomeShell extends StatelessWidget {
       );
     }
     return Scaffold(
+      // The page shows through the glass.
+      extendBody: true,
       body: shell,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const UpdateBanner(),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
-            ),
-            child: NavigationBar(
-              selectedIndex: shell.currentIndex,
-              onDestinationSelected: _go,
-              destinations: [
-                for (final (icon, selected, label) in destinations)
-                  NavigationDestination(
-                    icon: Icon(icon),
-                    selectedIcon: Icon(selected),
-                    label: label,
-                  ),
-              ],
-            ),
-          ),
+          LucidTabBar(tabs: tabs, selected: shell.currentIndex, onSelected: _go),
         ],
       ),
     );

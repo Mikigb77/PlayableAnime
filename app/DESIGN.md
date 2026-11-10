@@ -4,7 +4,7 @@ The look and feel of the app, and the rules every screen follows. The code lives
 and every component is on show in the widget gallery (`/gallery`). Requirements are cited by id
 from [`docs/REQUIREMENTS.md`](../docs/REQUIREMENTS.md).
 
-![The play screen, Discover and the gallery](docs/screenshots/overview.jpg)
+![Welcome, Discover, a story's title page and a scene with its choices](docs/screenshots/overview.jpg)
 
 ## Direction: a reading room at night
 
@@ -19,8 +19,16 @@ painting beside it, not like a chat log or a game HUD.
 - **One accent at a time.** Outside a story the accent is *lucid gold*. Inside a story the accent
   follows its genre (see below), so each world has its own tint without any genre-specific layout
   (G5), unless the player picked another color for the story (S13).
-- **Chrome recedes.** Few borders, soft layers instead of shadows, generous space, and no more than
-  one filled button on a screen.
+- **The same look as the website** (S14; Miki, 2026-11-10: the app should feel as finished as
+  the site). Four things carry it, each one component: **gold lettering**, the accent as a gradient
+  from bright to deep, for the line of a headline that matters, a story's title and the capital
+  that opens it (`GradientText`); **glass**, for whatever floats over the page, the tabs and a
+  story's bar (`Glass`); **night air**, a glow that breathes and a few fireflies behind the top of
+  a page (`Ambient`); and **the forest gate** from the icon, as the welcome screen's picture and
+  the small round mark beside the app's name (`BrandMark`).
+- **Chrome recedes.** Hairlines instead of borders, soft layers instead of shadows, generous space,
+  and one bright thing on a screen: the filled button, the send button once there are words to
+  send, the way into the story to continue.
 - **Pictures are events.** They arrive at key moments (M1), edge to edge on a phone, faded into the
   page with a vignette. They never block the text (M3).
 
@@ -42,6 +50,16 @@ Widgets read colors from the theme (`Theme.of(context).colorScheme` and `context
 **Contrast is tested, not hoped for.** Every text color, the accent and the error color reach WCAG
 AA (4.5:1) on every surface in both themes and for every accent (`test/design/contrast_test.dart`).
 Accents pass through `ensureContrast`, which moves lightness and keeps the hue.
+
+The look adds a few tokens to `context.lucid`, each made from the ones above so both themes and
+every accent have them:
+
+| Token | What it is |
+| --- | --- |
+| `accentHi`, `accentLo` | The bright and the deep end of the accent's gradient (`accentEnds`), with the accent between them (`accentGradient()`). Both read as text on the page and on a card, and `onAccent` reads on both: tested |
+| `glass`, `glassBorder`, `glassShadow` | A floating bar's see-through fill, its hairline edge and the shadow it casts |
+| `hairline` | The quietest edge: around a chip, a tile or a card that sits on the page |
+| `veil` | A faint wash of the text color, for a chip's fill |
 
 ### Genre accents
 
@@ -81,42 +99,62 @@ looks the same offline.
 
 | Style | Font | Size / line | Use |
 | --- | --- | --- | --- |
-| display S to L | Literata Display 500 | 30 to 44 | Page titles (`PageHeader`) |
-| headline S to L | Literata Display 500 | 21 to 28 | Cover titles, sheet titles |
-| title S to L | Inter 600 | 14 to 19 | List titles, buttons |
+| display S to L | Literata Display 500 | 30 to 44 | Page headlines (`PageHeader`, 33 in two lines), a story's title on its title page (40), the welcome headline (44) |
+| headline S to L | Literata Display 500 | 21 to 28 | Sheet titles |
+| cover titles | Literata 600 | 18 to 23 / 1.17 | A title over a painting (`coverTitleStyle`), heavier so it holds on a picture |
+| title S to L | Inter 600 | 14 to 19 | List titles, buttons (15.5) |
 | body S to L | Inter 400 | 12.5 to 16 | Interface text |
-| `narration` | Literata 400 | 18 / 1.65 | The story itself |
-| `playerAction` | Literata italic | 16 / 1.5 | What the player did, above a scene |
+| `narration` | Literata 400 | 18 / 1.62 | The story itself |
+| `playerAction` | Literata italic | 16.5 / 1.45 | What the player did, above a scene |
 | `overline` | Inter 600, tracked | 11 | Section labels, genre lines (uppercase) |
 | `meta` | Inter, tabular figures | 12.5 | Time, turn counts |
 
 The reading column is at most 680 px wide, about 70 characters a line. Narration supports `*italic*`
 and `**bold**`; a blank line starts a paragraph with a short gap.
 
+A headline in two lines sets its second in gold and breaks it into lines of like length
+(`GradientText(balanced: true)`), so no line is left with one word. Large headlines grow with the
+system's text size only to 1.4 times (`HeadlineScaling`): they are already several times the size
+of body text, and at twice that one word no longer fits a phone's line. Everything else scales in
+full.
+
 ## Space, shape and layout
 
 - **Spacing** is on a 4 pt grid: 2, 4, 8, 12, 16, 24, 32, 48. Screen gutters are 20.
-- **Radii:** 8 (small), 12 (pictures), 16 (cards, fields), 24 (sheets, the composer), and pills for
-  chips.
-- **Layout:** phones get a bottom navigation bar; from 840 px wide the tabs move into a side rail.
-  Lists and forms stay within 920 px, and reading within 680 px. A row of its own never stretches
-  across a wide screen: Library's stories go two across from 640 px inside the gutters, and
-  Account's settings keep to 680 px under the page title.
-- **Discover** opens on the latest story the player can still play on (Continue your story), then
-  the signature worlds, starting from your own idea, and the shelf of more worlds. On a phone the
-  signature worlds are a row to swipe, one large card at a time with the next peeking in, and a
-  swipe settles on a card; from 600 px inside the gutters they are two across, and the story to
-  continue is as wide as one of them. The section heading names them, so the cards carry no
-  badge. The first load waits for the player's stories as well as the worlds, so the story to
+- **Radii:** 8 (small), 12 (pictures), 16 (fields), 20 (cards), 24 (covers and painted tiles), 28
+  (sheets), and pills for buttons, chips, the composer and the glass bars.
+- **Layout:** phones get the tabs as a pill of glass that floats over the page's foot
+  (`LucidTabBar`), so the page runs on behind it and ends with a `PageEnd`, the room that lets its
+  last thing scroll clear of the bar. From 840 px wide the tabs move into a side rail under the
+  app's mark. Lists and forms stay within 920 px, and reading within 680 px. A row of its own
+  never stretches across a wide screen: Library's stories go two across from 640 px inside the
+  gutters, and Account's settings keep to 680 px under the page title.
+- **A tab's page** opens with the app's mark and name (on a phone; the rail has the mark on a wide
+  screen), then its headline, over the night air: "Pick a world, or" then, in gold, "dream up your
+  own."
+- **The tabs** show every name where there is room, in English, Spanish and Catalan on a phone
+  from 360 px wide (`test/design/tab_bar_test.dart` measures it in the app's own font). On a
+  narrower phone or at a large text size they draw closer in two steps, and then only the tab the
+  player is on keeps its name. Every tab keeps its name for screen readers and on a long press.
+- **Discover** opens on starting from your own idea, then the latest story the player can still
+  play on (Continue your story, S8), then the signature worlds and the shelf of more worlds. On a
+  phone the signature worlds are a row to swipe, one large card at a time with the next peeking
+  in, and a swipe settles on a card; from 600 px inside the gutters they are two across, and the
+  story to continue is as wide as one of them. The section heading names them, so the cards carry
+  no badge. The first load waits for the player's stories as well as the worlds, so the story to
   continue never pushes the worlds down once they show.
-- **Touch targets** are at least 48 px.
+- **Touch targets** are at least 48 px, whatever the drawn size: a ghost pill is 36 px high and a
+  send button 42 px across inside their 48.
 
 ## Motion
 
 Short and calm: 150 ms for small changes, 200 to 250 ms for entrances, eased out. New narration
 fades in word by word as it streams (S3), choices rise in one after another, and pictures fade in
-over their shimmer. With the platform's reduce-motion setting on, everything appears at once and
-shimmers stand still (`Motion.of(context, …)`).
+over their shimmer. A page arrives from the top down: each part fades in and rises 14 px over
+320 ms, 50 ms after the one above it (`RiseIn(order: …)`). The night air moves on one slow loop of
+16 s: the glow breathes and each firefly wanders a few pixels and twinkles. With the platform's
+reduce-motion setting on, everything appears at once, and shimmers, the glow and the fireflies
+stand still (`Motion.of(context, …)`, `Motion.reduced`).
 
 ## Components
 
@@ -124,21 +162,30 @@ All in `lib/design/components/`, exported from `design/design.dart`.
 
 | Component | What it is |
 | --- | --- |
-| `SceneCard` | One scene: the player's action (with a mic mark when spoken, V7), time chip, event badge, picture, narration, portraits and a footer for scene details and the scene menu. In the feed the picture comes after the narration (`pictureAfterNarration`), so a picture that lands late never pushes the words being read |
-| `NarrationText`, `StreamingNarration` | Finished narration, and narration as it streams in with a breathing caret and skeleton lines before the first words |
-| `StoryChoices` | Suggested choices as full-width tiles with their kind (thread, personal, side, wild), then **Wait** and **Observe** (S2) |
-| `Composer` | The action box: grows to five lines, mic slot, send button with a busy state, slash-command hints (S5) and a counter near the 2000-character limit |
+| `GradientText` | Lettering in the accent's gradient. `balanced` breaks a headline into lines of like length |
+| `Glass`, `GlassTopBar` | A panel of smoked glass with a hairline edge and a soft shadow, blurring what lies behind it; and a story's bar made of it, for a scaffold's `appBar` with `extendBodyBehindAppBar`. The page keeps its first words below `GlassTopBar.extent` |
+| `LucidTabBar` | The glass tabs at the foot of a phone, with the tab the player is on lit in the accent |
+| `Ambient` | The night air behind a page: the glow and the fireflies (`Ambient.corner` on a tab, `Ambient.forest` around the gate). It takes no taps and says nothing to a screen reader |
+| `RiseIn` | Lets a part of a page fade in and rise when it first shows, in the order given |
+| `BrandMark` | The forest gate in a small round frame, with or without the app's name |
+| `GhostPill`, `AccentOrb` | A quiet pill with a hairline edge, for an action beside the story (How it played out, Wait, Observe); and a round bead of the accent's gradient, lit from behind: send, or the way into a story |
+| `SceneCard` | One scene: the player's action under a thin line of the accent (with a mic mark when spoken, V7), time chip, event badge, picture, narration, portraits and a footer for scene details and the scene menu, which goes under the portraits when the two don't fit on a line. In the feed the picture comes after the narration (`pictureAfterNarration`), so a picture that lands late never pushes the words being read |
+| `NarrationText`, `StreamingNarration` | Finished narration, and narration as it streams in with a breathing caret and skeleton lines before the first words. With `dropCap` the first paragraph opens with a capital |
+| `DropCapParagraph` | A paragraph that opens with a large capital in gold, set into its first two lines. Only a letter or a digit is set this way, so a paragraph that opens with speech keeps its mark and stays plain, as does one in a column too narrow for words beside the capital. A screen reader hears the paragraph whole |
+| `StoryChoices` | Suggested choices as full-width tiles with their kind over them (main thread, personal, side path, wild card), the first one ringed in the accent, then **Wait** and **Observe** as ghost pills (S2) |
+| `Composer` | The action box, a pill of glass that lights its edge when it has focus: grows to five lines, mic slot, a send bead that lights up once there are words to send and spins while busy, slash-command hints (S5) and a counter near the 2000-character limit |
 | `MicButton` | The mic in four states: idle, starting, listening (with a level halo) and denied |
 | `PictureSlot` | A picture's place: shimmer while pending, fade-in when ready, quiet collapse when skipped or broken (M3). With `onError`, a picture that fails to load is reported once, so the play screen can fetch a fresh URL by its image id, and the shimmer stays meanwhile |
-| `PortraitAvatar`, `PortraitStack` | A character's portrait, or initials until one exists; a stack shows three and counts the rest |
+| `PortraitAvatar`, `PortraitStack` | A character's portrait, or initials until one exists; a stack shows three, each in a thin ring of the accent, and counts the rest |
 | `TimeChip` | How long a scene took and when it ended (W10); the accent tint when the player's clock ran apart from the world's (W10a) |
-| `EventBadge` | An event, louder from personal to local to world (W16) |
-| `CoverCard`, `StoryTile` | A premise or story with its cover, genre and line; a compact story row, in the Library and as Discover's story to continue |
+| `EventBadge` | An event, louder from personal (an outline) to local (a tint and a lit dot) to world (the gradient) (W16) |
+| `CoverCard`, `StoryTile` | A premise or story as a painting with its genre, title and line on a scrim at its foot, inside a thin ring of its accent; and a story's row, a card of night ink in both themes with the cover coming out of the ink on its far side: in the Library with its menu, and as Discover's story to continue with a lit bead. Tiles side by side match the taller one |
 | `showAppSheet` | A bottom sheet with a handle, a serif title and a width limit on large screens |
 | `SkeletonText`, `SkeletonList`, `Shimmer` | Loading placeholders in the shape of what is coming |
 | `EmptyState`, `ErrorState` | Nothing here yet, or a load that failed, in plain words with one action; errors use the typed API codes (T7) |
 | `AsyncValueView` | Loading, error and data for a Riverpod `AsyncValue` |
-| `ContentColumn`, `PageHeader`, `SectionLabel` | Width limits and headers |
+| `ContentColumn`, `PageHeader`, `SectionLabel`, `Eyebrow`, `PageEnd` | Width limits; a tab's header; a small uppercase label led in by a short line, as a group's heading or over a title; and the room at the end of a page under the glass tabs |
+| `StarRule`, `SceneOrnament` | A thin rule with a star at its heart, under a story's title; and the small mark between two scenes |
 
 Features add their own widgets on top of these; when one is useful to more than one screen, move it
 here and add it to the gallery.
@@ -157,15 +204,16 @@ together.
   in the upper two thirds, leaves the bottom calm and dark, and has no vignette or border of its
   own.
 - **Portraits** are head and shoulders with the face in the upper half, on a dark, simple
-  background, so they still read cropped to a 28 px circle in a stack; in the feed a portrait is
+  background, so they still read cropped to a 30 px circle in a stack; in the feed a portrait is
   shown at most 280 px wide.
 - **Covers** leave calm, darker space in the lower third, where `CoverCard` sets the genre and title
-  over a scrim. In the Library they are a small 4:5 thumbnail; on Discover's shelf of more worlds
-  they show whole, in their own 3:4 shape. A wider slot (Discover's signature cards, the create
-  flow's banner) keeps the cover's upper part (`coverFocus`), where its focal point is. A cover
-  not drawn yet, or still loading, shows a glow in the genre's accent, and the cover fades in over
-  it (`CoverImage`). The starter premises' covers are drawn once for everyone by the backend's
-  `draw_premise_covers` command, with the same framing.
+  over a scrim. In the Library a cover fills the far two thirds of its story's tile and fades into
+  the tile's ink where the words are; on Discover's shelf of more worlds covers show whole, in
+  their own 3:4 shape. A wider slot (Discover's signature cards, the create flow's banner, a
+  story's title page) keeps the cover's upper part (`coverFocus`), where its focal point is. A
+  cover not drawn yet, or still loading, shows a glow in the genre's accent, and the cover fades
+  in over it (`CoverImage`). The starter premises' covers are drawn once for everyone by the
+  backend's `draw_premise_covers` command, with the same framing.
 - **The house style (S7, M5)** suits the dark page and the app's readers, teens and adults: a
   grown-up look, like a frame from an anime film or a graphic novel made for adults (Miki,
   2026-11-08: the pictures looked like a fairy tale for children). Semi-realistic proportions,
@@ -224,18 +272,26 @@ dark figure.
 
 The story reads as one page of scenes, like a book that writes itself.
 
-![Opening at the newest scene, a turn streaming in, a fight with its picture, time stopped, a
-failed turn](docs/screenshots/play-screen.jpg)
+![Opening at the newest scene, the title page, a turn streaming in, the scene once saved, its
+picture and choices, a failed turn](docs/screenshots/play-screen.jpg)
 
-![How it played out (with a cause-and-effect chain, and a beat that made something true), story
-settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
+![How it played out (with what struck back), story settings, /status and
+Memory](docs/screenshots/play-sheets.jpg)
 
+- **The page runs on behind the bar.** The bar at the top is a pill of glass (`GlassTopBar`) that
+  floats over the page, so a cover or a picture passes under it, and the page dims a little under
+  the status bar so nothing is read through the clock. The page's last lines fade out towards the
+  action box.
+- **The title page** sits above the opening scene: the story's cover, when it has one, fading into
+  the page at its foot and behind the bar at its top, with the genre, the title in gold and a rule
+  with a star standing on it. The title is the page's heading for a screen reader.
+- **The opening scene starts with a drop capital**, as a story opens in a book
+  (`DropCapParagraph`), while it streams in and once it is saved. No other scene has one.
 - **Where it opens:** at the top of the newest scene, a little below the bar, so the player picks
-  up where they left off and its first line never sits under the bar. A title page with the genre
-  and title sits above the opening scene, and a story whose newest scene is its opening opens on
-  that title page, which stays whole while the opening streams in. Older scenes load above as the
-  player scrolls back, and the page never moves under them. **Latest** appears when they are far
-  back.
+  up where they left off and its first line never sits under the bar. A story whose newest scene
+  is its opening opens on the title page, which stays whole while the opening streams in. Older
+  scenes load above as the player scrolls back, and the page never moves under them. **Latest**
+  appears when they are far back.
 - **A turn:** the player's action appears at once, then the words stream in under it (S3). The page
   follows the scene as it grows but stops at its top, so it is read from the first word at the
   player's own pace. When it is saved, the time chip and event badge join it without moving the
@@ -254,9 +310,10 @@ settings, reporting a scene, /status](docs/screenshots/play-sheets.jpg)
   credits opens a sheet instead. A content limit shows the server's own words.
 - **The scene menu** illustrates a scene (M2) or reports it (F6). A blocked scene collapses to one
   quiet line in its place.
-- **The app bar** keeps the title and the world's date and time in sight (W10), with `/status`,
-  Memory and the story's settings (S6) a tap away. `/status` and Memory show the player
-  character's portrait once it is drawn (M4), and the initials until then.
+- **The bar** keeps the title and the world's date and time in sight (W10), with `/status`,
+  Memory and the story's settings (S6) a tap away. It keeps its height at any text size, so its
+  words grow only as far as they fit (1.3 times), as an app bar's do. `/status` and Memory show
+  the player character's portrait once it is drawn (M4), and the initials until then.
 - **Names from the world** start with a capital where they stand as a heading or a card's title
   (`"the inner court".asHeading` is "The inner court"), and keep the world's own spelling
   everywhere else.
@@ -276,6 +333,13 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 
 ## Sign-in and account
 
+- **The welcome screen is the gate.** The painting from the app's icon stands at the top of the
+  page and fades out at its foot, where the headline stands on it: "Step through." and, in gold,
+  "The story never ends." Fireflies drift in the forest around it. Under the headline are the
+  tagline and the ways in, on the first screen of a phone. On a page wider than the painting its
+  sides fade out too, and the words keep to a column under it. The pictures are in
+  `assets/brand/` (`gate.jpg`, and `mark.jpg` for `BrandMark`), cut from
+  `tool/app_icon/forest-gate.jpg`, and keep its mark for AI-made media.
 - **Google's button** follows Google's branding rules: the four-colour G, "Continue with Google", and
   Google's dark or light fill and stroke, never the app accent. On the web the page shows the button
   Google draws itself, since Google allows no other sign-in button on the web.
@@ -284,7 +348,8 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 - **Credits** read as cents below a dollar (`44.6¢`) and as dollars from one (`$1.20`), with a real
   minus sign; the owner sees "Unlimited" and still sees each cost in the history. Each line of the
   history keeps its amount and the balance after it beside the entry, wrapping within their share
-  of the row at large text sizes rather than overflowing.
+  of the row at large text sizes rather than overflowing. On the balance card, History sits at the
+  far side of the balance, or under it when the two don't fit on a line.
 - **The Developer section** (which server the app talks to, and the gallery) shows only in
   development builds and to the owner, never to players.
 - **Destructive steps** say exactly what goes, offer the export first, and ask the player to type a
@@ -316,10 +381,19 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 
 ## Accessibility
 
-- Contrast at 4.5:1 or better everywhere, tested.
-- Text scales to 200% without clipping or overflow; the gallery is tested at 2× text.
+- Contrast at 4.5:1 or better everywhere, tested: every text color on every surface, both ends of
+  the gold gradient on the page and on a card, what is written on the gradient, and the lit tab
+  on its own light over the glass.
+- Text scales to 200% without clipping or overflow; the gallery is tested at 2× text. Three things
+  that keep a fixed size hold their words back instead of clipping them: large headlines (1.4
+  times), a story's glass bar (1.3 times) and the initials in an avatar's circle.
 - Every icon-only button has a tooltip and a semantics label; pictures carry a label when the scene
-  gives one, and a pending picture says so.
+  gives one, and a pending picture says so. A component that names itself for a screen reader in
+  place of its children gives its tap again (`Semantics(onTap: …)`), as the tabs and the send
+  button do.
+- What is only for the eye is hidden from a screen reader: the night air, the gate, the app's
+  mark, the line beside an eyebrow. A headline in two colors is one heading, and a paragraph with
+  a drop capital is read whole.
 - Reduce motion is respected throughout.
 
 ## Working on the design
@@ -329,4 +403,5 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 - Open `/gallery` (debug builds and the fake API) to see every component. The query
   `?theme=light&accent=jade&scale=2` sets the controls up front, for screenshots.
 - Change a token in `lib/design/tokens.dart` or a component, then check the gallery in both themes
-  and at 2× text, and run `flutter test test/design/`.
+  and at 2× text, and run `flutter test test/design/`. The gallery's "Gold, glass and night air"
+  section shows the pieces of the look together.

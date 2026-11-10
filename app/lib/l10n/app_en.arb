@@ -21,9 +21,11 @@
     "description": "Bottom tab."
   },
   "welcomeTagline": "An endless story that remembers everything you do.",
-  "welcomePointSpeak": "Type or say anything. The world decides what follows.",
-  "welcomePointWorld": "Every deed leaves a mark, and the world moves on without you.",
-  "welcomePointPictures": "Pictures at the moments that matter.",
+  "welcomeHeadline": "Step through.",
+  "@welcomeHeadline": {
+    "description": "The welcome screen's headline, as on the website: its first line, then welcomeHeadlineAccent in gold."
+  },
+  "welcomeHeadlineAccent": "The story never ends.",
   "welcomeDemoSignIn": "Try the demo account",
   "@welcomeDemoSignIn": {
     "description": "Only in the offline fake-API build."
@@ -102,8 +104,11 @@
   "@fakeGoogleOwner": {
     "description": "Only in the offline fake-API build."
   },
-  "discoverTitle": "Discover",
-  "discoverSubtitle": "Pick a world, or dream up your own.",
+  "discoverHeadline": "Pick a world, or",
+  "@discoverHeadline": {
+    "description": "The headline at the top of Discover: its first line, then discoverHeadlineAccent in gold. Together they read as one sentence."
+  },
+  "discoverHeadlineAccent": "dream up your own.",
   "discoverSignature": "Signature worlds",
   "@discoverSignature": {
     "description": "Section of the flagship premises."
@@ -114,12 +119,15 @@
     "description": "Section at the top of Discover with the latest story the player can play on."
   },
   "discoverCreateTitle": "Start from your own idea",
-  "discoverCreateBody": "One line is enough. The storyteller builds the world around it.",
+  "discoverCreateBody": "One line is enough to build a world.",
   "discoverCreateAction": "Create your own",
   "discoverEmptyTitle": "No worlds to show yet",
   "discoverEmptyBody": "Start from your own idea instead. One line is enough.",
-  "libraryTitle": "Library",
-  "librarySubtitle": "Your stories, where you left them.",
+  "libraryHeadline": "Your stories,",
+  "@libraryHeadline": {
+    "description": "The headline at the top of the Library: its first line, then libraryHeadlineAccent in gold. Together they read as one sentence."
+  },
+  "libraryHeadlineAccent": "where you left them.",
   "libraryEmptyTitle": "No stories yet",
   "libraryEmptyBody": "Pick a world in Discover, or start from your own idea.",
   "libraryEmptyAction": "Discover worlds",

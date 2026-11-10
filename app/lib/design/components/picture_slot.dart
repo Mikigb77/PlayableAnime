@@ -42,6 +42,7 @@ class PictureSlot extends StatefulWidget {
     this.borderRadius = Radii.picture,
     this.semanticLabel,
     this.vignette = true,
+    this.fadeInto,
     this.onTap,
     this.onError,
   });
@@ -57,6 +58,10 @@ class PictureSlot extends StatefulWidget {
   /// What the picture shows, for screen readers.
   final String? semanticLabel;
   final bool vignette;
+
+  /// The page's color, when the picture runs edge to edge: its foot fades into the page, so
+  /// the picture is part of the page and not a box on it.
+  final Color? fadeInto;
   final VoidCallback? onTap;
 
   /// Called once when a ready picture fails to load, such as a signed URL that expired. When set,
@@ -158,7 +163,7 @@ class _PictureSlotState extends State<PictureSlot> {
                         return const SizedBox.shrink();
                       },
                     ),
-                  if (ready && widget.vignette) const _Vignette(),
+                  if (ready && widget.vignette) _Vignette(fadeInto: widget.fadeInto),
                   if (widget.onTap != null)
                     Material(
                       type: MaterialType.transparency,
@@ -174,13 +179,17 @@ class _PictureSlotState extends State<PictureSlot> {
   }
 }
 
-/// Darkens the edges and the bottom, so a picture sits in the dark reading column like a film still.
+/// Darkens the edges and the bottom, so a picture sits in the dark reading column like a film
+/// still. With [fadeInto], the foot goes all the way into the page's color instead.
 class _Vignette extends StatelessWidget {
-  const _Vignette();
+  const _Vignette({this.fadeInto});
+
+  final Color? fadeInto;
 
   @override
   Widget build(BuildContext context) {
     final edge = context.lucid.vignette;
+    final foot = fadeInto;
     return IgnorePointer(
       child: Stack(
         fit: StackFit.expand,
@@ -196,12 +205,24 @@ class _Vignette extends StatelessWidget {
           ),
           DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [edge.withValues(alpha: 0), edge.withValues(alpha: 0.35)],
-                stops: const [0.6, 1],
-              ),
+              gradient: foot == null
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [edge.withValues(alpha: 0), edge.withValues(alpha: 0.35)],
+                      stops: const [0.6, 1],
+                    )
+                  : LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        foot.withValues(alpha: 0.4),
+                        foot.withValues(alpha: 0),
+                        foot.withValues(alpha: 0),
+                        foot,
+                      ],
+                      stops: const [0, 0.16, 0.68, 1],
+                    ),
             ),
           ),
         ],

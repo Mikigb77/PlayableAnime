@@ -68,43 +68,48 @@ class ReadingBar extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = context.lucid;
-    return Material(
-      color: theme.colorScheme.surfaceContainerHigh,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: Space.gutter, end: Space.xs),
-        child: Row(
-          children: [
-            Icon(Icons.graphic_eq_rounded, size: 20, color: colors.accent),
-            const SizedBox(width: Space.sm),
-            Expanded(
-              child: Text(
-                deviceVoice ? l10n.narrationReadingDevice : l10n.narrationReading,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelLarge,
-              ),
-            ),
-            const SizedBox(width: Space.sm),
-            Flexible(
-              child: FilterChip(
-                key: const ValueKey('reading.readNew'),
-                label: Text(
-                  l10n.narrationKeepReading,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Layout.barInset, 0, Layout.barInset, Space.xs),
+      child: Material(
+        color: theme.colorScheme.surfaceContainerHigh,
+        shape: StadiumBorder(side: BorderSide(color: colors.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: Space.gutter, end: Space.xs),
+          child: Row(
+            children: [
+              Icon(Icons.graphic_eq_rounded, size: 20, color: colors.accent),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Text(
+                  deviceVoice ? l10n.narrationReadingDevice : l10n.narrationReading,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge,
                 ),
-                selected: readNewScenes,
-                onSelected: onReadNewScenes,
-                visualDensity: VisualDensity.compact,
               ),
-            ),
-            IconButton(
-              key: const ValueKey('reading.stop'),
-              tooltip: l10n.narrationStop,
-              onPressed: onStop,
-              icon: const Icon(Icons.stop_rounded),
-            ),
-          ],
+              const SizedBox(width: Space.sm),
+              Flexible(
+                child: FilterChip(
+                  key: const ValueKey('reading.readNew'),
+                  label: Text(
+                    l10n.narrationKeepReading,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  selected: readNewScenes,
+                  onSelected: onReadNewScenes,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              IconButton(
+                key: const ValueKey('reading.stop'),
+                tooltip: l10n.narrationStop,
+                onPressed: onStop,
+                icon: const Icon(Icons.stop_rounded),
+              ),
+            ],
+          ),
         ),
       ),
     );

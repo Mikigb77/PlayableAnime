@@ -52,6 +52,51 @@ void main() {
     }
   }
 
+  test('gold lettering reads on the page and on a card, at both ends of the gradient', () {
+    for (final brightness in Brightness.values) {
+      for (final accent in GenreAccent.values) {
+        final theme = AppTheme.build(brightness, accent);
+        final scheme = theme.colorScheme;
+        final c = theme.extension<LucidColors>()!;
+        final name = '${brightness.name} ${accent.name}';
+        expect((c.accentHi, c.accentLo), accentEnds(accent, brightness));
+        // The gradient runs from bright to deep, with the accent between.
+        expect(c.accentHi.computeLuminance(), greaterThan(c.accent.computeLuminance()));
+        expect(c.accentLo.computeLuminance(), lessThan(c.accent.computeLuminance()));
+        for (final end in [c.accentHi, c.accentLo]) {
+          for (final bg in [
+            c.background,
+            scheme.surface,
+            scheme.surfaceContainerLowest,
+            scheme.surfaceContainerLow,
+          ]) {
+            expect(contrastRatio(end, bg), greaterThanOrEqualTo(4.5), reason: name);
+          }
+          // Text and icons on the gradient itself: a filled pill, the send button.
+          expect(contrastRatio(c.onAccent, end), greaterThanOrEqualTo(4.5), reason: name);
+        }
+      }
+    }
+  });
+
+  test('the lit tab reads on its own light, over the glass', () {
+    for (final brightness in Brightness.values) {
+      for (final accent in GenreAccent.values) {
+        final c = AppTheme.build(brightness, accent).extension<LucidColors>()!;
+        final glass = Color.alphaBlend(c.glass, c.background);
+        final lit = Color.alphaBlend(c.accent.withValues(alpha: LucidTabBar.litWash), glass);
+        final name = '${brightness.name} ${accent.name}';
+        expect(
+          contrastRatio(LucidTabBar.litForeground(c, brightness), lit),
+          greaterThanOrEqualTo(4.5),
+          reason: name,
+        );
+        // The other tabs, on the glass alone.
+        expect(contrastRatio(c.textMuted, glass), greaterThanOrEqualTo(4.5), reason: name);
+      }
+    }
+  });
+
   test('cover text on the dark scrim meets 4.5:1 for every accent', () {
     for (final accent in GenreAccent.values) {
       final color = accentFor(accent, Brightness.dark);

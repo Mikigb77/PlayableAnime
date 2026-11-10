@@ -15,6 +15,7 @@ class SceneView extends StatelessWidget {
     required this.image,
     this.hidden = false,
     this.ornament = true,
+    this.dropCap = false,
     this.narrationKey,
     this.onDetails,
     this.listen,
@@ -30,6 +31,9 @@ class SceneView extends StatelessWidget {
   /// The player blocked this scene (F6): its text and picture stay out of sight, for good.
   final bool hidden;
   final bool ornament;
+
+  /// Opens the narration with a drop capital, as a story's opening scene does.
+  final bool dropCap;
 
   /// Marks the narration, so the screen can keep it in place when the scene lands.
   final Key? narrationKey;
@@ -70,7 +74,10 @@ class SceneView extends StatelessWidget {
       picture: image == null || image.isSkipped
           ? null
           : ScenePictureView(image: image, onError: onPictureError),
-      narration: KeyedSubtree(key: narrationKey, child: NarrationText(scene.narration)),
+      narration: KeyedSubtree(
+        key: narrationKey,
+        child: NarrationText(scene.narration, dropCap: dropCap),
+      ),
       portraits: scene.portraits.isEmpty ? null : ScenePortraits(portraits: scene.portraits),
       onDetails: scene.details.isEmpty ? null : onDetails,
       listen: listen,
@@ -109,15 +116,16 @@ class ScenePictureView extends StatelessWidget {
         ),
       );
     }
+    // Edge to edge on phones, where its foot fades into the page; rounded once the reading
+    // column floats in a wider screen.
+    final floats = MediaQuery.sizeOf(context).width > Layout.readingWidth;
     return PictureSlot(
       status: status,
       url: image.url,
       aspectRatio: image.aspectRatio,
       onError: onError,
-      // Edge to edge on phones; rounded once the reading column floats in a wider screen.
-      borderRadius: MediaQuery.sizeOf(context).width > Layout.readingWidth
-          ? Radii.picture
-          : BorderRadius.zero,
+      borderRadius: floats ? Radii.picture : BorderRadius.zero,
+      fadeInto: floats ? null : Theme.of(context).scaffoldBackgroundColor,
     );
   }
 }
