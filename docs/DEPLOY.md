@@ -20,8 +20,9 @@ feature branch --PR, self-reviewed, green CI--> dev --PR, green CI, merge commit
 ```
 
 CI runs on every PR and on every push to `dev` and `main`. A PR into `main` from any branch but
-`dev` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
-and the Workload Identity condition all work from it.
+`dev` fails CI's `into-main` check. `dev` is the default branch, so Dependabot's security updates
+([below](#dependabot)) go to it like every other PR; the Workload Identity condition admits only
+`main`.
 
 The CI jobs are separate checks of the same commit (backend tests, evals, the image, the app, the
 Android build, the deploy scripts), so they run side by side. The deploy's jobs are a chain
@@ -29,6 +30,31 @@ instead: the CI gate, then the deploy, then the model checks, the covers and the
 while the APK builds alongside and is published after the deploy. Every job runs on
 `ubuntu-24.04` rather than `ubuntu-latest`, so a new runner image never arrives in the middle of a
 deploy; moving to a newer Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
+
+### Dependabot
+
+Dependabot watches every dependency the repository declares: the API's Python packages
+(`backend/uv.lock`), its image (`backend/Dockerfile`), the app's Dart packages (`app/pubspec.lock`),
+the workflows' actions and the Neon CLI config (`package-lock.json`). It is free, and stays free if
+the repository goes private.
+
+- **Alerts** list each known vulnerability under the repository's Security tab.
+- **Security updates** open a PR into `dev`, the default branch, as soon as an advisory affects a
+  dependency and a fixed version exists.
+- **Version updates** ([`.github/dependabot.yml`](../.github/dependabot.yml)) open PRs into `dev`
+  once a week (the Neon config once a month): the minor and patch updates of each ecosystem in one
+  PR, each major update in its own. A release waits 7 days before it is offered, so a broken or
+  hijacked release is usually pulled first. Security updates never wait.
+
+Alerts and security updates are switched on in the repository's settings, not in the file (since
+2026-11-10; `gh api repos/Mikigb77/PlayableAnime/automated-security-fixes` shows whether they still
+are). A Dependabot PR is merged like any other: CI must be green, a major update needs a look at
+its changelog, and it is squash-merged into `dev`, then reaches production with the next deploy. If
+CI fails, the fix goes on the Dependabot branch or the update is closed with the reason.
+
+Two things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
+versions, so they move with a Flutter upgrade. Python moves to a newer minor version in a PR of its
+own, like the runners' Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
 
 ## What runs where
 
