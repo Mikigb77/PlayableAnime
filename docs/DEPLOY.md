@@ -52,9 +52,10 @@ are). A Dependabot PR is merged like any other: CI must be green, a major update
 its changelog, and it is squash-merged into `dev`, then reaches production with the next deploy. If
 CI fails, the fix goes on the Dependabot branch or the update is closed with the reason.
 
-Two things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
-versions, so they move with a Flutter upgrade. Python moves to a newer minor version in a PR of its
-own, like the runners' Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
+Some things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
+versions, and so does `intl`, which the Flutter SDK pins through `flutter_localizations`: they move
+with a Flutter upgrade. Python moves to a newer minor version in a PR of its own, like the runners'
+Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
 
 ## What runs where
 
