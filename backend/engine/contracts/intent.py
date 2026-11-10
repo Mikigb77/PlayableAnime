@@ -113,7 +113,8 @@ class SheetUse(EngineModel):
 class UseSource(StrEnum):
     """R2. Whatever a beat uses has to be the character's own body or powers, something they
     carry, something the scene holds, or something this turn made canon. `new` is something the
-    scene hasn't established, with the interpret step's judgement in `plausibility`."""
+    scene hasn't established. Whatever the source, the interpret step's judgement of whether it
+    is there is in `plausibility`, and code checks every source against its own records."""
 
     BODY = "body"
     POWER = "power"
@@ -124,19 +125,40 @@ class UseSource(StrEnum):
 
 
 class Plausibility(StrEnum):
-    """R2. Whether the place plausibly holds something the scene hasn't established. Plausible
-    becomes canon, uncertain is rolled, and absent turns the beat into an empty search."""
+    """R2. Whether something a beat uses is there. Plausible is what a place of that kind would
+    ordinarily hold, or what the scene showed: it is there with no roll, and so is anything left
+    unjudged (decided 2026-11-10, Miki). Uncertain is kept for what might well not be there and
+    matters, because it is hidden, rare, valuable or decisive: it is rolled. Absent turns the
+    beat into an empty search."""
 
     PLAUSIBLE = "plausible"
     UNCERTAIN = "uncertain"
     ABSENT = "absent"
 
 
+def _plausibility_required(schema: dict[str, Any]) -> None:
+    """R2. The interpret model must always judge whether a thing is there, since Gemini leaves
+    out what a schema doesn't require as often as not (see `StepFacts`), and a use with no
+    judgement is one code can only guess at. Code may still leave it out, and then the thing is
+    there."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "plausibility"]))
+
+
 class BeatUse(EngineModel):
+    model_config = ConfigDict(json_schema_extra=_plausibility_required)
+
     source: UseSource
     thing: str = Field(description="What is used, in plain words: 'a stone the size of an egg'.")
     ref: str | None = Field(default=None, description="The power or item id, when there is one.")
-    plausibility: Plausibility | None = Field(default=None, description="Only for source 'new'.")
+    plausibility: Plausibility | None = Field(
+        default=None,
+        description=(
+            "Whether it is there. plausible: their own, or what a place like this would"
+            " ordinarily hold, or what the scene showed. uncertain: only what might well not be"
+            " there and matters (hidden, rare, valuable or decisive), so code rolls. absent: the"
+            " place can't hold it."
+        ),
+    )
 
 
 class Beat(EngineModel):

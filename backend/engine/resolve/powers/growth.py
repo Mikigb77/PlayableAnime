@@ -202,8 +202,9 @@ def check(
     state: WorldState, actor: Character, step: IntentStep, canon: list[str]
 ) -> Settled | None:
     """What settles a training step at once, with no roll: a fixed rule it would break, a power
-    growing where the world has none, a teacher who isn't there, a technique already known, the
-    top of a ladder, or a breakthrough's bottleneck."""
+    growing where the world has none, a teacher who isn't there, the top of a ladder, or a
+    breakthrough's bottleneck. Practising a technique they already know is never refused
+    (`already_known`)."""
     training = step.training
     assert training is not None
     fixed = [r for r in (state.bible.rule(i) for i in training.against_rule_ids) if r and r.fixed]
@@ -228,10 +229,6 @@ def check(
                 return _ruled_out(f"{cap(who)} can already do that.")
         elif training.power_id and actor.sheet.power(training.power_id) is None:
             return _ruled_out(f"{cap(who)} {_have(state, actor)} no power like that.")
-    if training.kind in (GrowthKind.TECHNIQUE, GrowthKind.POWER):
-        known = next((t for t in actor.sheet.techniques if mentions(t.name, training.what)), None)
-        if known is not None and training.kind is GrowthKind.TECHNIQUE:
-            return _ruled_out(f"{cap(who)} already {_know(state, actor)} {known.name}.")
     if training.kind is GrowthKind.SKILL:
         skill = actor.sheet.skill(training.what)
         if skill is not None and skill.level is SkillLevel.MASTER:
@@ -239,6 +236,22 @@ def check(
     if training.kind is GrowthKind.BREAKTHROUGH:
         return _breakthrough_check(state, actor, step, canon)
     return None
+
+
+def already_known(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
+    """A4 (decided 2026-11-10, Miki). Training a technique the character already knows is
+    practice: it simply happens, and nothing new is learned, so it is never refused and never
+    learned twice."""
+    training = step.training
+    assert training is not None
+    if training.kind is not GrowthKind.TECHNIQUE:
+        return None
+    known = next((t for t in actor.sheet.techniques if mentions(t.name, training.what)), None)
+    if known is None:
+        return None
+    who = name(state, actor.id)
+    reason = f"{cap(who)} already {_know(state, actor)} {known.name}, so this is practice."
+    return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason)
 
 
 def _breakthrough_check(

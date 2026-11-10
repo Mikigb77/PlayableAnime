@@ -2,7 +2,7 @@
 
 import pytest
 
-from engine.apply import NARRATOR_ATTITUDE_CAP, DeltaSource, apply_delta
+from engine.apply import MAX_PROPS, NARRATOR_ATTITUDE_CAP, DeltaSource, apply_delta
 from engine.context import TurnContext
 from engine.contracts import (
     AttitudeShift,
@@ -640,6 +640,77 @@ def test_the_scene_end_keeps_only_real_people_and_places():
     scene = applied.state.scene
     assert (scene.place_id, scene.present_ids, scene.ended_on) == ("bar", ["luca"], "A shot")
     assert applied.state.summary == "Luca fired."
+
+
+def end_scene(state: WorldState, *, found=(), **end):
+    """The narrator ends the scene on a turn whose steps found `found` (R2, R3)."""
+    delta = StateDelta(scene_end=SceneEnd(ended_on="A pause.", **end))
+    return apply_delta(state, delta, ctx(3), source=NARRATOR, found=found).state.scene
+
+
+def test_the_scene_keeps_what_the_turn_found_beside_what_the_narrator_lists():
+    """R2, R3: the narrator lists what matters next and often leaves out the thing the character
+    just picked up. Code found it, so code keeps it for the next turn's check."""
+    state = grounded_world()
+
+    scene = end_scene(state, found=["a broken chair leg"], props=["a telephone behind the bar"])
+    assert scene.props == ["a telephone behind the bar", "a broken chair leg"]
+
+    # With no list from the narrator the record still holds it, and with nothing found the
+    # narrator's list stands as it is.
+    assert end_scene(state, found=[" a broken chair leg "]).props == ["a broken chair leg"]
+    assert end_scene(state, props=["a telephone behind the bar"]).props == [
+        "a telephone behind the bar"
+    ]
+
+
+def test_a_scene_that_goes_on_with_no_new_ending_keeps_what_was_found_too():
+    """The narrator may leave the scene's end out: the scene goes on as it was, plus the find."""
+    state = grounded_world()
+    told = list(state.scene.props)
+
+    applied = apply_delta(
+        state, StateDelta(summary="Luca looked around."), ctx(3), source=NARRATOR, found=["a coin"]
+    )
+
+    assert applied.state.scene.props == [*told, "a coin"]
+    assert applied.state.scene.ended_on == state.scene.ended_on
+    assert state.scene.props == told
+
+
+def test_what_the_narrator_already_lists_is_never_listed_twice():
+    scene = end_scene(
+        grounded_world(),
+        found=["the grappa", "a telephone", "a coin", "a coin", " "],
+        props=["a bottle of grappa on the bar", "a telephone behind the bar"],
+    )
+
+    assert scene.props == ["a bottle of grappa on the bar", "a telephone behind the bar", "a coin"]
+
+
+def test_what_was_found_stays_behind_when_the_scene_moves_on():
+    """R3: a stone found at the bar is no part of the room the next scene opens in."""
+    state = grounded_world()
+
+    moved = end_scene(state, found=["a loose cobblestone"], place_id="questura", props=["a desk"])
+    assert (moved.place_id, moved.props) == ("questura", ["a desk"])
+
+    # Named again, or named wrongly, the scene is where it was, and keeps what was found there.
+    for place_id in ("bar", "moon", None):
+        stayed = end_scene(state, found=["a loose cobblestone"], place_id=place_id)
+        assert (stayed.place_id, stayed.props) == ("bar", ["a loose cobblestone"])
+
+
+def test_the_scenes_record_never_grows_past_its_cap():
+    told = [f"crate number {i}" for i in range(MAX_PROPS - 1)]
+    found = ["a rope", "a lantern", "a hook"]
+
+    scene = end_scene(grounded_world(), found=found, props=told)
+
+    assert scene.props == [*told, "a rope"]
+    # The narrator's own list is never cut: only what code adds stops at the cap.
+    long = [f"crate number {i}" for i in range(MAX_PROPS + 3)]
+    assert end_scene(grounded_world(), found=found, props=long).props == long
 
 
 def test_the_player_sees_what_happens_to_the_place_they_are_in():

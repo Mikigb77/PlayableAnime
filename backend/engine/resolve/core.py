@@ -415,7 +415,11 @@ def _settle_step(
     if settled is None and step.training is not None:
         growing = True
         settled = growth.check(state, actor, step, frame.canon)
-        if settled is None and step.training.kind is GrowthKind.BREAKTHROUGH:
+        practice = growth.already_known(state, actor, step) if settled is None else None
+        if practice is not None:
+            # A4. Practising what they already know happens, and teaches nothing new.
+            settled, growing = practice, False
+        elif settled is None and step.training.kind is GrowthKind.BREAKTHROUGH:
             settled = growth.breakthrough(state, actor, step, rng, ctx.settings.difficulty)
         elif settled is None:
             settled = Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")

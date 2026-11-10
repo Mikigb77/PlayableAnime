@@ -207,10 +207,11 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     if turn.kind is TurnKind.STANDING:
         return {"intent": Intent(standing=turn.standing, summary=str(turn.standing))}
     action = turn.action or ""
+    # R2: the scene the player is answering, so that what it showed counts as there.
+    last_scene = turn.scenes[-1].narration if turn.scenes else ""
+    prompt = interpret_prompt(world, action, turn.ctx.settings.language, last_scene)
     try:
-        intent = await runtime.context.llm.structured(
-            Node.INTERPRET, interpret_prompt(world, action, turn.ctx.settings.language), Intent
-        )
+        intent = await runtime.context.llm.structured(Node.INTERPRET, prompt, Intent)
     except LLMBlocked as block:
         log_block("interpret", list(block.categories), stage=block.stage, source="model")
         raise UnreadableAction(categories=block.categories) from None
@@ -431,6 +432,8 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             may_hurt_player=hurts,
             # N2: a goal closes only on a turn the player acted, never on an opening.
             player_acted=state.get("intent") is not None,
+            # R2, R3: what the turn found stays on the scene's record.
+            found=state["resolution"].found,
         )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]

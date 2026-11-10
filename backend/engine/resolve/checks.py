@@ -5,10 +5,24 @@ Each check either lets the step go on or settles it on the spot with no roll: th
 out, the character has no such power, or the thing they reach for isn't there. An uncertain find
 is the one roll here (R2, A3).
 
+Nothing natural fails for no reason (decided 2026-11-10, Miki). What a place of that kind would
+hold is there with no roll: a thing the engine has no record of exists unless the interpret step
+says it is uncertain, which is kept for what is hidden, rare, valuable or decisive, or absent.
+What the scene's own record holds is there whatever source the interpret step gave it.
+
 A power is found by its id or its name. A move the character makes with a power of theirs, such
 as an aura blade from their aura, is that power at work, not a technique they never learned
 (`Move`): the power must be ready, and the contest decides, never the sheet check. Pulled off
 cleanly, the move becomes a technique of their own (A4, `engine.resolve.core`).
+
+"You have no power like that" is said only of something no record of theirs holds (`on_record`).
+A move made of the world's energy they hold, in a power, a technique, a reserve or a ladder they
+stand on, is theirs to try (`energy_move`), and so is one that names a technique they know or are
+still learning, whole or in part. It is tried on their own attributes and skills, and the contest
+decides. One shared word is never enough, so a power they lack is still one they lack.
+The interpret step files the same move under different sources from turn to turn, so each source
+is checked against every record: a technique named as a power is that technique, and an aura
+blade filed as something carried is a move, not an object they lack.
 """
 
 import re
@@ -28,6 +42,7 @@ from engine.possessions import gone_to, is_money
 from engine.resolve import odds as odds_mod
 from engine.resolve.words import any_mentions, cap, is_are, mentions, name, possessive, stems
 from engine.rng import SeededRng
+from engine.state.bible import Prevalence
 from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
 from engine.state.sheet import CharacterSheet, Item, Power, Technique
@@ -142,6 +157,16 @@ def sheet_check(
             # that power; nothing looser, so a power they lack is still one they lack.
             power = find_power(sheet, use.ref) or named_by_word(sheet, use.ref)
             if power is None:
+                # A technique of theirs named as a power is that technique, and what else their
+                # sheet records makes the move theirs to try (A4).
+                technique = known_technique(sheet, use.ref)
+                if technique is not None:
+                    not_ready = _draw_technique(state, actor, technique, drawn)
+                    if not_ready:
+                        return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, not_ready)
+                    continue
+                if on_record(state, actor, use.ref):
+                    continue
                 return Settled(
                     OutcomeClass.RULED_OUT,
                     StepResult.FAILURE,
@@ -153,25 +178,20 @@ def sheet_check(
                 )
             _add(drawn.powers, power)
         elif use.part is SheetPart.TECHNIQUE:
-            technique = next(
-                (t for t in sheet.techniques if t.id == use.ref or mentions(t.name, use.ref)),
-                None,
-            )
+            technique = known_technique(sheet, use.ref)
             if technique is not None:
-                _add(drawn.techniques, technique)
-                # G25. A technique of a power is that power at work: it must be ready, and it
-                # counts and costs like the power. A power over time starts only where named.
-                power = sheet.power(technique.power_id) if technique.power_id else None
-                if power is not None and power.time is None:
-                    if not _ready(state, actor, power):
-                        reason = _not_recovered(state, actor, power)
-                        return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
-                    _add(drawn.powers, power)
+                not_ready = _draw_technique(state, actor, technique, drawn)
+                if not_ready:
+                    return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, not_ready)
                 continue
             # A4, G14. No technique they learned: a move made with a power of theirs is that
             # power at work.
             power = find_power(sheet, use.ref) or made_with(sheet, use.ref, named)
             if power is None:
+                if on_record(state, actor, use.ref):
+                    # Something they are still learning, or made with the world's energy they
+                    # hold: theirs to try, with nothing of the sheet added to it.
+                    continue
                 return Settled(
                     OutcomeClass.RULED_OUT,
                     StepResult.FAILURE,
@@ -191,6 +211,8 @@ def sheet_check(
                     continue
                 reason = _no_money(state, actor, use.ref)
                 return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
+            if item is None and _at_hand(state, actor, use.ref):
+                continue
             missing = _item_missing(state, actor, item, use.ref)
             if missing:
                 return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, missing)
@@ -200,6 +222,78 @@ def sheet_check(
         elif use.part is SheetPart.TRAIT:
             drawn.traits.append(use.ref)
     return None
+
+
+def known_technique(sheet: CharacterSheet, ref: str) -> Technique | None:
+    """G25. The technique of theirs a use names: by its id, else by its name."""
+    if not ref.strip():
+        return None
+    return next((t for t in sheet.techniques if t.id == ref or mentions(t.name, ref)), None)
+
+
+def _draw_technique(state: WorldState, actor: Character, technique: Technique, drawn: Drawn) -> str:
+    """G25. A technique the step draws on. A technique of a power is that power at work: it must
+    be ready, and it counts and costs like the power. A power over time starts only where named.
+    Why it can't be used right now, or an empty string."""
+    _add(drawn.techniques, technique)
+    power = actor.sheet.power(technique.power_id) if technique.power_id else None
+    if power is not None and power.time is None:
+        if not _ready(state, actor, power):
+            return _not_recovered(state, actor, power)
+        _add(drawn.powers, power)
+    return ""
+
+
+def _own_ways(actor: Character) -> list[str]:
+    """What the character's sheet records of their ways besides their powers: the techniques
+    they know, the techniques and new uses they have put effort into (A4), and the world's
+    energy they hold (G25)."""
+    sheet = actor.sheet
+    texts = [t.name for t in sheet.techniques]
+    texts += [p.what for p in sheet.practice if p.key.startswith(("technique:", "power:"))]
+    texts += [r.name for r in sheet.condition.reserves]
+    return texts
+
+
+def _held_words(state: WorldState, actor: Character) -> frozenset[str]:
+    """Every word that says which of the world's energies the character holds: their ways, the
+    ladders they stand on with the rungs they have reached (G18), and their powers. A power over
+    time is found only where named (W10a), so it lends no word."""
+    sheet = actor.sheet
+    texts = _own_ways(actor) + [p.name for p in sheet.powers if p.time is None]
+    for position in sheet.ladders:
+        ladder = state.bible.ladder(position.ladder_id)
+        if ladder is not None:
+            texts.append(ladder.name)
+            texts += [rung.name for rung in ladder.rungs[: position.rung + 1]]
+    return frozenset().union(*(stems(text) for text in texts))
+
+
+def energy_move(state: WorldState, actor: Character, words: str) -> bool:
+    """G6, G25. Whether the words are a move made of the world's energy that the character
+    holds: they name one of the world's extraordinary kinds ("aura" in "an aura blade", where
+    the world has combat aura), and the character's sheet holds that same kind, in a power, a
+    technique known or practised, a reserve or a ladder they stand on. A sword stays a sword,
+    since no kind of the world names it, and so does a kind they never touched."""
+    kinds = [k.kind for k in state.bible.extraordinary if k.prevalence is not Prevalence.NONE]
+    named = stems(words) & frozenset().union(*(stems(kind) for kind in kinds))
+    return bool(named & _held_words(state, actor))
+
+
+def on_record(state: WorldState, actor: Character, words: str) -> bool:
+    """A4, G14 (decided 2026-11-10, Miki). Whether a power or technique that isn't on the sheet
+    by name is still the character's own to try. It is when it is made of the world's energy
+    they hold (`energy_move`), so "aura to my feet" is theirs once they have trained with aura.
+    And it is when it names one of their ways, whole or in part: "the rising palm, with all my
+    weight" for a Rising Palm they are still learning. One shared word is never enough, so
+    knowing an aura slash makes no one a void slasher, and "call down lightning" stays refused.
+    Nothing of the sheet is added to such a move, and the contest decides how it goes. A power
+    over time is found only where named (W10a): this never starts one."""
+    if energy_move(state, actor, words):
+        return True
+    said = stems(words)
+    ways = (stems(text) for text in _own_ways(actor))
+    return bool(said) and any(way and (way <= said or said <= way) for way in ways)
 
 
 def find_power(sheet: CharacterSheet, ref: str) -> Power | None:
@@ -313,6 +407,17 @@ def _owned_item(actor: Character, words: str) -> Item | None:
     return None
 
 
+def _at_hand(state: WorldState, actor: Character, words: str, ref: str | None = None) -> bool:
+    """C10, R3. Something filed as carried that the sheet doesn't list is still at hand when it
+    is no object at all but a move of their own (an aura blade), when the scene's record holds
+    it, such as the branch they picked up last turn, or when they wear it, as their looks say
+    (C9). Looks are written once and go stale: what the record says left them is gone, whatever
+    they say."""
+    if energy_move(state, actor, words) or _in_scene(state, words, ref):
+        return True
+    return mentions(actor.appearance, words) and not gone_to(state, actor, words, money=False)
+
+
 def _item_missing(state: WorldState, actor: Character, item: Item | None, words: str) -> str:
     """Why an item can't be used here and now, or an empty string if it can."""
     who = name(state, actor.id)
@@ -353,10 +458,11 @@ def beat_check(
     rng: SeededRng,
 ) -> BeatOutcome:
     """R2. Whatever a beat uses has to be the character's own body or powers, something they
-    carry, something the scene holds, or something this turn made canon. Something new that the
-    place plausibly holds becomes canon; if that's uncertain a roll decides; if the place can't
-    hold it, the beat is a search that comes up empty and the step goes no further. A claim that
-    the scene or this turn holds something it doesn't is judged as something new."""
+    carry, something the scene holds, or something this turn made canon. Something the engine
+    has no record of is there, and becomes canon, unless the interpret step says otherwise: if
+    it is uncertain a roll decides, and if the place can't hold it, the beat is a search that
+    comes up empty and the step goes no further. A claim that the scene or this turn holds
+    something the record doesn't show is judged the same way."""
     checks: list[BeatResolution] = []
     canon: list[str] = []
     for b, beat in enumerate(step.beats):
@@ -413,6 +519,16 @@ def _check_use(
             or named_by_word(actor.sheet, words)
         )
         if power is None:
+            # A technique of theirs named as a power is that technique, and what else their
+            # sheet records makes the move theirs to try (A4).
+            technique = known_technique(actor.sheet, use.ref or "") or known_technique(
+                actor.sheet, use.thing
+            )
+            if technique is not None:
+                not_ready = _draw_technique(state, actor, technique, drawn)
+                return verdict(BeatVerdict.EMPTY if not_ready else BeatVerdict.HOLDS, not_ready)
+            if on_record(state, actor, words):
+                return verdict(BeatVerdict.HOLDS)
             return verdict(
                 BeatVerdict.EMPTY,
                 f"{cap(name(state, actor.id))} {_have(state, actor)} no power like that.",
@@ -428,18 +544,26 @@ def _check_use(
             if actor.sheet.resources.money > 0:
                 return verdict(BeatVerdict.HOLDS)
             return verdict(BeatVerdict.EMPTY, _no_money(state, actor, use.thing))
+        if item is None and _at_hand(state, actor, use.thing, use.ref):
+            return verdict(BeatVerdict.HOLDS)
         missing = _item_missing(state, actor, item, use.thing)
         if missing:
             return verdict(BeatVerdict.EMPTY, missing)
         _add(drawn.items, item)
         return verdict(BeatVerdict.HOLDS)
-    if use.source is UseSource.SCENE and _in_scene(state, use):
-        return verdict(BeatVerdict.HOLDS)
-    if use.source is UseSource.CANON and any_mentions(canon, use.thing):
+    # R2, R3. What the scene's record or this turn's canon holds is there, whatever source the
+    # interpret step gave it, so nothing on record is ever rolled for. Only a plain "absent" for
+    # something filed as new stands against it: words match loosely, and a rim of worn stone is
+    # no stone to pick up.
+    ruled_absent = use.source is UseSource.NEW and use.plausibility is Plausibility.ABSENT
+    held = _in_scene(state, use.thing, use.ref) or any_mentions(canon, use.thing)
+    if held and not ruled_absent:
         return verdict(BeatVerdict.HOLDS)
 
-    # Something the scene hasn't established (R2, N7).
-    plausibility = use.plausibility or Plausibility.UNCERTAIN
+    # Something the engine has no record of (R2, N7). The record is never the whole scene: the
+    # ground of a forest and the trunk the last scene told of are on no list. So it is there
+    # unless the interpret step says otherwise, and a judgement left out never fails a step.
+    plausibility = use.plausibility or Plausibility.PLAUSIBLE
     if plausibility is Plausibility.PLAUSIBLE:
         return verdict(BeatVerdict.MADE_CANON, f"There is {_a(use.thing)} here.")
     if plausibility is Plausibility.ABSENT:
@@ -450,15 +574,16 @@ def _check_use(
     return verdict(BeatVerdict.EMPTY, f"The search turns up no {_bare(use.thing)}.", found)
 
 
-def _in_scene(state: WorldState, use: BeatUse) -> bool:
+def _in_scene(state: WorldState, thing: str, ref: str | None = None) -> bool:
+    """R2, R3. Whether the scene's record holds it: a prop, someone present or the place."""
     scene = state.scene
-    if use.ref and (use.ref in scene.present_ids or use.ref == scene.place_id):
+    if ref and (ref in scene.present_ids or ref == scene.place_id):
         return True
     names = list(scene.props)
     names += [state.characters[i].name for i in scene.present_ids if i in state.characters]
     if scene.place_id in state.places:
         names.append(state.places[scene.place_id].name)
-    return any_mentions(names, use.thing) is not None
+    return any_mentions(names, thing) is not None
 
 
 _ARTICLES = ("a ", "an ", "the ", "some ", "my ", "your ", "his ", "her ", "their ")
