@@ -59,10 +59,14 @@ abstract final class Radii {
   static const double xl = 24;
   static const double pill = 999;
 
-  static const card = BorderRadius.all(Radius.circular(lg));
+  /// Cards and choice tiles.
+  static const card = BorderRadius.all(Radius.circular(20));
+
+  /// A card that is a painting: a world's cover, the story to continue.
+  static const cover = BorderRadius.all(Radius.circular(xl));
   static const picture = BorderRadius.all(Radius.circular(md));
   static const field = BorderRadius.all(Radius.circular(lg));
-  static const sheet = BorderRadius.vertical(top: Radius.circular(xl));
+  static const sheet = BorderRadius.vertical(top: Radius.circular(28));
 }
 
 /// Layout widths.
@@ -78,4 +82,9 @@ abstract final class Layout {
 
   /// Minimum touch target (Material and Apple guidance).
   static const double minTouch = 48;
+
+  /// The floating glass bars: the height of the bar at the top of a story, and the gap that
+  /// keeps it and the tabs at the bottom of the app off the screen's edges.
+  static const double storyBarHeight = 54;
+  static const double barInset = 12;
 }

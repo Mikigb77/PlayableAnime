@@ -51,7 +51,7 @@ void main() {
   }) async {
     store.value = await storedSession(backend, email: email, password: password);
     await launchApp(tester, backend: backend, store: store, saver: saver, google: google);
-    await tester.tap(find.text(l10n.navAccount));
+    await tester.tap(find.byTooltip(l10n.navAccount));
     await settle(tester);
     expect(find.byType(AccountScreen), findsOneWidget);
   }
@@ -95,9 +95,9 @@ void main() {
         cents: 2.3,
         now: DateTime.now(),
       );
-      await tester.tap(find.text(l10n.navLibrary));
+      await tester.tap(find.byTooltip(l10n.navLibrary));
       await settle(tester);
-      await tester.tap(find.text(l10n.navAccount));
+      await tester.tap(find.byTooltip(l10n.navAccount));
       await settle(tester);
       expect(find.text('47.7¢'), findsOneWidget);
     });
@@ -158,9 +158,9 @@ void main() {
       await openAccount(tester);
       final reads = sent('GET', '/v1/me').length;
       gate = Completer<void>();
-      await tester.tap(find.text(l10n.navLibrary));
+      await tester.tap(find.byTooltip(l10n.navLibrary));
       await settle(tester);
-      await tester.tap(find.text(l10n.navAccount));
+      await tester.tap(find.byTooltip(l10n.navAccount));
       await settle(tester);
       expect(sent('GET', '/v1/me'), hasLength(reads + 1));
 
@@ -195,7 +195,7 @@ void main() {
     testWidgets('says so when the device cannot store the key', (tester) async {
       store.value = await storedSession(backend);
       await launchApp(tester, backend: backend, store: store, overrides: [lockedKeys]);
-      await tester.tap(find.text(l10n.navAccount));
+      await tester.tap(find.byTooltip(l10n.navAccount));
       await settle(tester);
       await tester.ensureVisible(find.byKey(const Key('account.ownKey')));
       await tester.enterText(find.byKey(const Key('account.ownKey')), 'AIza-test-key-9876');
@@ -368,7 +368,7 @@ void main() {
     testWidgets('a deleted account signs out even when the key can\'t be cleared', (tester) async {
       store.value = await storedSession(backend);
       await launchApp(tester, backend: backend, store: store, overrides: [lockedKeys]);
-      await tester.tap(find.text(l10n.navAccount));
+      await tester.tap(find.byTooltip(l10n.navAccount));
       await settle(tester);
       await tapVisible(tester, find.byKey(const Key('account.delete')));
       await tester.enterText(find.byKey(const Key('delete.confirm')), l10n.deleteWord);

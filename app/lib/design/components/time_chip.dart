@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
-import '../tokens.dart';
 
 /// How much in-world time a scene took, such as "+8 h", and when it ended, such as "Day 3, dusk"
 /// (W10). When the player's own clock ran differently, as in stopped time, the server's
@@ -22,20 +21,23 @@ class TimeChip extends StatelessWidget {
     final split = personalLabel != null;
     final foreground = split ? colors.onAccentSoft : colors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: split ? colors.accentSoft : Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(Radii.pill),
+      constraints: const BoxConstraints(minHeight: 30),
+      padding: const EdgeInsets.fromLTRB(10, 5, 12, 5),
+      decoration: ShapeDecoration(
+        color: split ? colors.accentSoft : colors.veil,
+        shape: StadiumBorder(
+          side: BorderSide(color: split ? colors.accent.withValues(alpha: 0.34) : colors.hairline),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             split ? Icons.hourglass_top_rounded : Icons.schedule_rounded,
-            size: 14,
+            size: 15,
             color: foreground,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 7),
           Flexible(
             child: Text.rich(
               TextSpan(

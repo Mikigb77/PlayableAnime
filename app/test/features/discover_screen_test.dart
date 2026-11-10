@@ -192,7 +192,13 @@ void main() {
     await app.launch(tester);
     final l10n = await english();
 
-    await tester.tap(find.text('The Last Outer Disciple'));
+    // The signature world comes after the player's own idea and the story to continue: bring
+    // it to the middle of the page, clear of the tabs that float over its foot.
+    final world = find.text('The Last Outer Disciple');
+    await tester.scrollUntilVisible(world, 200, scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(tester.element(world), alignment: 0.5);
+    await settle(tester);
+    await tester.tap(world);
     await settle(tester, frames: 10);
     expect(find.byType(CreateStoryScreen), findsOneWidget);
     expect(app.location(tester), '/create?premise=outer-disciple');
@@ -240,8 +246,10 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text(l10n.discoverMore.toUpperCase()), findsOneWidget);
-    // No picture is asked for: every card, large or on the shelf, draws its own glow.
-    expect(find.byType(Image), findsNothing);
+    // No picture is asked for: every card, large or on the shelf, draws its own glow. The one
+    // picture the page may hold is the app's own mark, from its bundle.
+    final marks = find.descendant(of: find.byType(BrandMark), matching: find.byType(Image));
+    expect(find.byType(Image).evaluate().length, marks.evaluate().length);
     expect(tester.takeException(), isNull);
   });
 

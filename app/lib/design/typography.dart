@@ -71,15 +71,15 @@ class LucidTextStyles extends ThemeExtension<LucidTextStyles> {
     narration: TextStyle(
       fontFamily: Fonts.serif,
       fontSize: 18,
-      height: 1.65,
+      height: 1.62,
       letterSpacing: 0.05,
       color: primary,
     ),
     playerAction: TextStyle(
       fontFamily: Fonts.serif,
       fontStyle: FontStyle.italic,
-      fontSize: 16,
-      height: 1.5,
+      fontSize: 16.5,
+      height: 1.45,
       color: secondary,
     ),
     overline: TextStyle(

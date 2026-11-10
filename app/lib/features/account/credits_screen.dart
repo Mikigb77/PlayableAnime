@@ -109,12 +109,17 @@ class BalanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            // The balance with History at its far side, or under it when the two don't fit on a
+            // line, as in a long language at a large text size.
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: Space.md,
+                children: [
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(l10n.accountBalance.toUpperCase(), style: context.lucidText.overline),
                       const SizedBox(height: Space.xs),
@@ -125,14 +130,14 @@ class BalanceCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                if (onHistory case final onHistory?)
-                  TextButton.icon(
-                    onPressed: onHistory,
-                    icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                    label: Text(l10n.accountCreditHistory),
-                  ),
-              ],
+                  if (onHistory case final onHistory?)
+                    TextButton.icon(
+                      onPressed: onHistory,
+                      icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                      label: Text(l10n.accountCreditHistory),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: Space.md),
             Text(

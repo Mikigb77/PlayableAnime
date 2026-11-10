@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import '../../core/l10n.dart';
 import '../motion.dart';
 import '../theme.dart';
+import 'drop_cap.dart';
 import 'skeleton.dart';
 
 /// One run of narration with the same emphasis.
@@ -89,14 +90,17 @@ List<NarrationRun> parseNarration(String source) {
 
 int _displayLength(List<NarrationRun> runs) => runs.fold(0, (n, r) => n + r.text.length);
 
+/// The spans of [runs], which start [from] characters into the narration: [settled] and [fades]
+/// count from the narration's start.
 List<InlineSpan> _spans(
   List<NarrationRun> runs,
   TextStyle base, {
   int settled = 1 << 30,
   List<(int start, double opacity)> fades = const [],
+  int from = 0,
 }) {
   final spans = <InlineSpan>[];
-  var offset = 0;
+  var offset = from;
   final color = base.color ?? const Color(0xFF000000);
 
   // The opacity of the character at [index].
@@ -150,17 +154,73 @@ List<InlineSpan> _spans(
   return spans;
 }
 
+/// Narration whose first paragraph opens with a drop capital, or null when it doesn't take one
+/// (see [DropCapParagraph.fits]). [tail] follows the last words, such as the caret of a scene
+/// still being written.
+Widget? _opened(
+  BuildContext context,
+  List<NarrationRun> runs,
+  TextStyle base, {
+  int settled = 1 << 30,
+  List<(int start, double opacity)> fades = const [],
+  List<InlineSpan> tail = const [],
+}) {
+  if (runs.isEmpty || !DropCapParagraph.fits(runs.first.text)) return null;
+  // The first paragraph ends at the first line end. The capital is set into that paragraph
+  // alone, and the rest follows as it always does.
+  final end = runs.indexWhere((run) => run.text == '\n');
+  final first = end < 0 ? runs : runs.sublist(0, end);
+  final rest = end < 0 ? const <NarrationRun>[] : runs.sublist(end + 1);
+  final paragraph = DropCapParagraph(
+    style: base,
+    spans: [
+      ..._spans(first, base, settled: settled, fades: fades),
+      if (rest.isEmpty) ...tail,
+    ],
+  );
+  if (rest.isEmpty) return paragraph;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      paragraph,
+      // The same short gap a blank line draws inside one block of text.
+      if (runs[end].paragraphBreak) SizedBox(height: MediaQuery.textScalerOf(context).scale(9)),
+      Text.rich(
+        TextSpan(
+          children: [
+            ..._spans(
+              rest,
+              base,
+              settled: settled,
+              fades: fades,
+              from: _displayLength(first) + runs[end].text.length,
+            ),
+            ...tail,
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
 /// Finished narration in the reading serif.
 class NarrationText extends StatelessWidget {
-  const NarrationText(this.text, {super.key, this.style});
+  const NarrationText(this.text, {super.key, this.style, this.dropCap = false});
 
   final String text;
   final TextStyle? style;
 
+  /// Opens the first paragraph with a drop capital, as a story's first scene does.
+  final bool dropCap;
+
   @override
   Widget build(BuildContext context) {
     final base = style ?? context.lucidText.narration;
-    return Text.rich(TextSpan(children: _spans(parseNarration(text), base)));
+    final runs = parseNarration(text);
+    if (dropCap) {
+      if (_opened(context, runs, base) case final opened?) return opened;
+    }
+    return Text.rich(TextSpan(children: _spans(runs, base)));
   }
 }
 
@@ -168,13 +228,23 @@ class NarrationText extends StatelessWidget {
 /// while the turn is being written, and before the first words arrive a few skeleton lines show
 /// that the story is being written. With reduce-motion on, words simply appear.
 class StreamingNarration extends StatefulWidget {
-  const StreamingNarration({super.key, required this.text, required this.streaming, this.style});
+  const StreamingNarration({
+    super.key,
+    required this.text,
+    required this.streaming,
+    this.style,
+    this.dropCap = false,
+  });
 
   /// Everything received so far. When it gets shorter or changes (a `narration.reset`), the
   /// reveal starts over without animation.
   final String text;
   final bool streaming;
   final TextStyle? style;
+
+  /// Opens the first paragraph with a drop capital, as [NarrationText.dropCap] does, so a
+  /// story's first scene looks the same while it is written as once it is saved.
+  final bool dropCap;
 
   @override
   State<StreamingNarration> createState() => _StreamingNarrationState();
@@ -246,18 +316,25 @@ class _StreamingNarrationState extends State<StreamingNarration>
       for (final (start, at) in _arrivals)
         (start, Curves.easeOut.transform(((_now - at).inMicroseconds / reveal).clamp(0.0, 1.0))),
     ];
+    final caret = [
+      if (widget.streaming)
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _Caret(color: context.lucid.accent),
+          ),
+        ),
+    ];
+    if (widget.dropCap) {
+      final opened = _opened(context, _runs, base, settled: _settled, fades: fades, tail: caret);
+      if (opened != null) return opened;
+    }
     return Text.rich(
       TextSpan(
         children: [
           ..._spans(_runs, base, settled: _settled, fades: fades),
-          if (widget.streaming)
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: _Caret(color: context.lucid.accent),
-              ),
-            ),
+          ...caret,
         ],
       ),
     );

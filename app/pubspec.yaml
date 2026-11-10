@@ -39,6 +39,9 @@ flutter:
   generate: true
 
   assets:
+    # The forest gate from the app's icon (tool/app_icon/forest-gate.jpg): the welcome screen's
+    # picture and the small round mark beside the app's name. See DESIGN.md.
+    - assets/brand/
     # Pictures the fake API serves in API_MODE=fake (lib/core/fake/).
     - assets/fake/
     # The privacy policy, a copy of docs/PRIVACY.md (T12).

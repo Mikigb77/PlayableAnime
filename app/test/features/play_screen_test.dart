@@ -201,6 +201,15 @@ void main() {
 
   Finder words(String text) => find.textContaining(text, findRichText: true);
 
+  /// An opening scene whose first paragraph, set with its drop capital, holds [text].
+  Finder opening(String text) => find.byWidgetPredicate(
+    (w) => w is DropCapParagraph && TextSpan(children: w.spans).toPlainText().contains(text),
+  );
+
+  /// How far [finder]'s top is below the glass bar the feed runs under.
+  double belowBar(WidgetTester tester, Finder finder) =>
+      tester.getTopLeft(finder).dy - tester.getBottomLeft(find.byType(GlassTopBar)).dy;
+
   testWidgets('a scripted story plays through: streaming, the saved scene, a picture', (
     tester,
   ) async {
@@ -249,10 +258,9 @@ void main() {
     await open(tester);
     await settle(tester, frames: 12);
 
-    final feed = tester.getTopLeft(find.byType(CustomScrollView)).dy;
     final newest = find.byWidgetPredicate((w) => w is SceneView && w.scene.turn == 3);
     // The same room a followed scene stops at, so its first line never sits under the bar.
-    expect(tester.getTopLeft(newest).dy - feed, moreOrLessEquals(Space.lg, epsilon: 1));
+    expect(belowBar(tester, newest), moreOrLessEquals(Space.lg, epsilon: 1));
   });
 
   testWidgets('a scene that is written quickly is still followed up to its top', (tester) async {
@@ -272,9 +280,8 @@ void main() {
     await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
     await settle(tester, frames: 12);
 
-    final feed = tester.getTopLeft(find.byType(CustomScrollView)).dy;
     final scene = find.byWidgetPredicate((w) => w is SceneView && w.scene.turn == 4);
-    final top = tester.getTopLeft(scene).dy - feed;
+    final top = belowBar(tester, scene);
     final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
     final atEnd = scroll.position.maxScrollExtent - scroll.position.pixels < 1;
     expect(top <= Space.lg + 1 || atEnd, isTrue, reason: 'the new scene starts $top px down');
@@ -297,7 +304,7 @@ void main() {
     await open(tester, id: id);
     await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
     await settle(tester);
-    expect(words('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
+    expect(opening('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
     final turns = backend.requests.where((r) => r.uri.path.endsWith('/turns'));
     expect(turns.single.json['kind'], 'opening');
     // The opening reads from the title page, which stays whole above it.
@@ -309,6 +316,51 @@ void main() {
     await settle(tester, frames: 12);
     final again = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
     expect(again.position.pixels, 0);
+  });
+
+  testWidgets('a story opens on its title page, which runs on behind the glass bar', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await serve(tester);
+    late String id;
+    await tester.runAsync(() async {
+      final draft =
+          await api.post('/v1/drafts', {
+                'premise': 'A lighthouse keeper finds a door in the sea.',
+                'rating': 'teen',
+              })
+              as JsonMap;
+      final started = await api.post('/v1/drafts/${draft['id']}/start', {}) as JsonMap;
+      id = started['story_id'] as String;
+    });
+    await open(tester, id: id);
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester);
+
+    // The page starts at the very top of the screen, under the bar.
+    final bar = tester.getRect(find.byType(GlassTopBar));
+    expect(tester.getTopLeft(find.byType(CustomScrollView)).dy, 0);
+    expect(bar.top, 0);
+    // Its title is the page's heading, in gold, clear of the bar, over a rule with a star.
+    final title = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(GradientText),
+    );
+    final story = tester.widget<SceneView>(find.byType(SceneView).first);
+    expect(story.dropCap, isTrue);
+    final name = tester.widget<GradientText>(title.first).text;
+    expect(name, isNotEmpty);
+    expect(tester.getTopLeft(title.first).dy, greaterThan(bar.bottom));
+    expect(
+      tester.getSemantics(find.descendant(of: title.first, matching: find.text(name))),
+      isSemantics(label: name, isHeader: true),
+    );
+    expect(find.byType(StarRule), findsOneWidget);
+    // The opening is the only scene with a capital: the next one reads as plain text.
+    expect(find.byType(DropCapParagraph), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    handle.dispose();
   });
 
   testWidgets('an opening played again on the player\'s own key reads from the title page', (
@@ -344,7 +396,7 @@ void main() {
     await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
     await settle(tester, frames: 12);
 
-    expect(words('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
+    expect(opening('A lighthouse keeper finds a door in the sea.'), findsOneWidget);
     final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
     expect(scroll.position.pixels, 0);
   });
@@ -355,7 +407,7 @@ void main() {
     await serve(tester);
     await open(tester);
     await toEnd(tester);
-    await tester.tap(find.widgetWithText(ActionChip, l10n.standingWait).last);
+    await tester.tap(find.widgetWithText(GhostPill, l10n.standingWait).last);
     await settle(tester);
     await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
     await settle(tester);
@@ -470,7 +522,7 @@ void main() {
     final jade = accentFor(GenreAccent.jade, Brightness.dark);
     final rose = accentFor(GenreAccent.rose, Brightness.dark);
     // The demo story is cultivation, so it opens in jade.
-    expect(primary(find.byType(AppBar)), jade);
+    expect(primary(find.byType(GlassTopBar)), jade);
 
     await tester.tap(find.byTooltip(l10n.storySettings));
     await settle(tester);
@@ -491,7 +543,7 @@ void main() {
     expect(patch.json['settings'], {'accent': 'rose'});
     // It shows at once, so the message doesn't wait for the next scene.
     expect(find.text(l10n.settingsSavedNow), findsOneWidget);
-    expect(primary(find.byType(AppBar)), rose);
+    expect(primary(find.byType(GlassTopBar)), rose);
 
     // The pages above the story take it too.
     await tester.tap(find.byTooltip(l10n.storyStatus));
@@ -513,7 +565,7 @@ void main() {
     expect(backend.requests.lastWhere((r) => r.method == 'PATCH').json['settings'], {
       'accent': null,
     });
-    expect(primary(find.byType(AppBar)), jade);
+    expect(primary(find.byType(GlassTopBar)), jade);
   });
 
   group('turn errors', () {

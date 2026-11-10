@@ -74,63 +74,75 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final header = ContentColumn(
-      child: PageHeader(title: l10n.libraryTitle, subtitle: l10n.librarySubtitle),
+      child: PageHeader(
+        brand: true,
+        title: l10n.libraryHeadline,
+        accentTitle: l10n.libraryHeadlineAccent,
+      ),
     );
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: AsyncValueView(
-          value: ref.watch(storiesProvider),
-          onRetry: () => ref.invalidate(storiesProvider),
-          loading: (_) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              header,
-              const Expanded(child: ContentColumn(child: SkeletonList(count: 4, imageHeight: 80))),
-            ],
+      body: Stack(
+        children: [
+          const Positioned.fill(child: Ambient()),
+          SafeArea(
+            bottom: false,
+            child: AsyncValueView(
+              value: ref.watch(storiesProvider),
+              onRetry: () => ref.invalidate(storiesProvider),
+              loading: (_) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  header,
+                  const Expanded(
+                    child: ContentColumn(child: SkeletonList(count: 4, imageHeight: 80)),
+                  ),
+                ],
+              ),
+              builder: (all) {
+                final stories = [
+                  for (final story in all)
+                    if (!_gone.contains(story.id)) story,
+                ];
+                return RefreshIndicator(
+                  onRefresh: () => ref.refresh(storiesProvider.future),
+                  child: stories.isEmpty
+                      ? ListView(
+                          children: [
+                            header,
+                            const SizedBox(height: Space.xxl),
+                            EmptyState(
+                              icon: Icons.auto_stories_outlined,
+                              title: l10n.libraryEmptyTitle,
+                              message: l10n.libraryEmptyBody,
+                              actionLabel: l10n.libraryEmptyAction,
+                              onAction: () => context.go('/discover'),
+                            ),
+                            const PageEnd(),
+                          ],
+                        )
+                      : CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(child: RiseIn(child: header)),
+                            _StoryGrid(
+                              count: stories.length,
+                              itemBuilder: (context, i) {
+                                final story = stories[i];
+                                return _StoryRow(
+                                  story: story,
+                                  confirm: () => _confirm(story),
+                                  onDelete: () => _delete(story),
+                                  onDeleteAsked: () => _confirmAndDelete(story),
+                                );
+                              },
+                            ),
+                            const SliverToBoxAdapter(child: PageEnd()),
+                          ],
+                        ),
+                );
+              },
+            ),
           ),
-          builder: (all) {
-            final stories = [
-              for (final story in all)
-                if (!_gone.contains(story.id)) story,
-            ];
-            return RefreshIndicator(
-              onRefresh: () => ref.refresh(storiesProvider.future),
-              child: stories.isEmpty
-                  ? ListView(
-                      children: [
-                        header,
-                        const SizedBox(height: Space.xxl),
-                        EmptyState(
-                          icon: Icons.auto_stories_outlined,
-                          title: l10n.libraryEmptyTitle,
-                          message: l10n.libraryEmptyBody,
-                          actionLabel: l10n.libraryEmptyAction,
-                          onAction: () => context.go('/discover'),
-                        ),
-                      ],
-                    )
-                  : CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(child: header),
-                        _StoryGrid(
-                          count: stories.length,
-                          itemBuilder: (context, i) {
-                            final story = stories[i];
-                            return _StoryRow(
-                              story: story,
-                              confirm: () => _confirm(story),
-                              onDelete: () => _delete(story),
-                              onDeleteAsked: () => _confirmAndDelete(story),
-                            );
-                          },
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: Space.xxxl)),
-                      ],
-                    ),
-            );
-          },
-        ),
+        ],
       ),
     );
   }
@@ -166,7 +178,7 @@ class _StoryRow extends StatelessWidget {
       background: Container(
         alignment: AlignmentDirectional.centerEnd,
         padding: const EdgeInsets.symmetric(horizontal: Space.xl),
-        decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: Radii.card),
+        decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: Radii.cover),
         child: Icon(Icons.delete_outline_rounded, color: scheme.onErrorContainer),
       ),
       child: StoryTile(
@@ -178,7 +190,8 @@ class _StoryRow extends StatelessWidget {
         onTap: () => context.push('/story/${Uri.encodeComponent(story.id)}'),
         trailing: PopupMenuButton<String>(
           tooltip: l10n.libraryOptions,
-          icon: Icon(Icons.more_vert_rounded, color: context.lucid.textMuted),
+          // The row is a painting on night ink in both themes.
+          icon: const Icon(Icons.more_vert_rounded, color: Palette.inkTextPrimary),
           onSelected: (_) => onDeleteAsked(),
           itemBuilder: (context) => [
             PopupMenuItem(
@@ -231,7 +244,7 @@ class _StoryGrid extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: side),
         sliver: SliverList.separated(
           itemCount: rows,
-          separatorBuilder: (_, _) => const SizedBox(height: Space.md),
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
           itemBuilder: (context, row) {
             if (columns == 1) return itemBuilder(context, row);
             final first = row * columns;

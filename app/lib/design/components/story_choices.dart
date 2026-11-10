@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/l10n.dart';
-import '../motion.dart';
 import '../theme.dart';
 import '../tokens.dart';
+import 'pills.dart';
+import 'rise_in.dart';
 
 /// Where a suggested choice leads (S2): along the current thread, or away from it.
 enum ChoiceKind {
@@ -62,8 +63,8 @@ enum StandingAction {
   };
 }
 
-/// The scene's suggested choices as full-width tiles, then the standing actions. Tiles fade up one
-/// after another when a scene's choices appear.
+/// The scene's suggested choices as full-width tiles, the first one lit, then the standing
+/// actions as quiet pills. Tiles rise in one after another when a scene's choices appear.
 class StoryChoices extends StatelessWidget {
   const StoryChoices({
     super.key,
@@ -87,13 +88,14 @@ class StoryChoices extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final (i, choice) in choices.indexed)
-          _Entrance(
+          RiseIn(
             key: ValueKey(choice.id),
-            index: i,
+            order: i,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: Space.sm),
+              padding: const EdgeInsets.only(bottom: 9),
               child: StoryChoiceTile(
                 choice: choice,
+                first: i == 0,
                 onPressed: enabled ? () => onChoice(choice) : null,
               ),
             ),
@@ -102,13 +104,13 @@ class StoryChoices extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: Space.xs),
             child: Wrap(
-              spacing: Space.sm,
-              runSpacing: Space.sm,
+              spacing: 10,
               children: [
                 for (final action in standing)
-                  ActionChip(
-                    avatar: Icon(action.icon, size: 18),
-                    label: Text(action.label(l10n)),
+                  GhostPill(
+                    large: true,
+                    icon: action.icon,
+                    label: action.label(l10n),
                     onPressed: enabled ? () => onStanding!(action) : null,
                   ),
               ],
@@ -119,119 +121,117 @@ class StoryChoices extends StatelessWidget {
   }
 }
 
-/// A single suggested choice: the kind's icon and the label, wrapping as long as it needs.
+/// A single suggested choice: the kind's icon in a round of the accent, the kind in small
+/// capitals and the label, wrapping as long as it needs. The [first] of a scene's choices wears
+/// a ring and a glow in the accent: the way the story is already going.
 class StoryChoiceTile extends StatelessWidget {
-  const StoryChoiceTile({super.key, required this.choice, required this.onPressed});
+  const StoryChoiceTile({
+    super.key,
+    required this.choice,
+    required this.onPressed,
+    this.first = false,
+  });
 
   final StoryChoice choice;
   final VoidCallback? onPressed;
+  final bool first;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final colors = context.lucid;
     final enabled = onPressed != null;
-    final away = choice.kind != ChoiceKind.thread;
+    final kind = choice.kind.label(context.l10n);
     return Semantics(
       button: true,
       enabled: enabled,
-      hint: choice.kind.label(context.l10n),
-      child: Material(
-        color: theme.colorScheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: theme.colorScheme.outlineVariant),
+      hint: kind,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: Radii.card,
+          boxShadow: [
+            if (first && enabled)
+              BoxShadow(color: colors.accent.withValues(alpha: 0.1), blurRadius: 26),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: Layout.minTouch + 4),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
-              child: Row(
-                children: [
-                  Icon(
-                    choice.kind.icon,
-                    size: 18,
-                    color: enabled
-                        ? (away ? colors.accent : colors.textSecondary)
-                        : colors.textMuted.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: Text(
-                      choice.label,
-                      style: theme.textTheme.bodyLarge!.copyWith(
-                        color: enabled ? colors.textPrimary : colors.textMuted,
+        child: Material(
+          type: MaterialType.transparency,
+          shape: RoundedRectangleBorder(
+            borderRadius: Radii.card,
+            side: BorderSide(
+              color: first && enabled
+                  ? colors.accent.withValues(alpha: 0.4)
+                  : scheme.outlineVariant,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [scheme.surfaceContainer, scheme.surface],
+              ),
+            ),
+            child: InkWell(
+              onTap: onPressed,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 62),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 12, 14, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: enabled ? colors.accent.withValues(alpha: 0.12) : colors.veil,
+                        ),
+                        child: Icon(
+                          choice.kind.icon,
+                          size: 19,
+                          color: enabled ? colors.accent : colors.textMuted.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // The screen reader has the kind as the button's hint.
+                            ExcludeSemantics(
+                              child: Text(
+                                kind.toUpperCase(),
+                                style: context.lucidText.overline.copyWith(
+                                  fontSize: 10,
+                                  height: 1.2,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              choice.label,
+                              style: theme.textTheme.bodyLarge!.copyWith(
+                                fontSize: 15.5,
+                                height: 1.32,
+                                fontWeight: FontWeight.w500,
+                                color: enabled ? colors.textPrimary : colors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Fades and lifts a child in, delayed by its [index] so a list cascades.
-class _Entrance extends StatefulWidget {
-  const _Entrance({super.key, required this.index, required this.child});
-
-  final int index;
-  final Widget child;
-
-  @override
-  State<_Entrance> createState() => _EntranceState();
-}
-
-class _EntranceState extends State<_Entrance> with SingleTickerProviderStateMixin {
-  static const _stagger = Duration(milliseconds: 40);
-
-  // The delay is part of the animation (an Interval), so no timer outlives the widget.
-  late final _controller = AnimationController(
-    vsync: this,
-    duration: Motion.base + _stagger * widget.index,
-  );
-  late final _curve = CurvedAnimation(
-    parent: _controller,
-    curve: Interval(
-      (_stagger * widget.index).inMicroseconds / _controller.duration!.inMicroseconds,
-      1,
-      curve: Motion.emphasized,
-    ),
-  );
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    if (Motion.reduced(context)) {
-      _controller.value = 1;
-    } else {
-      _controller.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _curve.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _curve,
-      child: SlideTransition(
-        position: Tween(begin: const Offset(0, 0.15), end: Offset.zero).animate(_curve),
-        child: widget.child,
       ),
     );
   }

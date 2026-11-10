@@ -510,13 +510,14 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     bool climbing = false,
   }) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
-      final position = _scroll.position;
-      if (!position.hasContentDimensions) {
-        // Not laid out yet, as under a page opened straight from a link: look again next frame.
+      if (!mounted) return;
+      if (!_scroll.hasClients || !_scroll.position.hasContentDimensions) {
+        // Not built or laid out yet, as under a page opened straight from a link (the page under
+        // the glass bar is built when it is laid out): look again next frame.
         _reveal(turn, animate: animate, done: done, attempt: attempt, climbing: climbing);
         return;
       }
+      final position = _scroll.position;
       final target = _sceneKeys[turn]?.currentContext;
       if (target != null || attempt >= 16) {
         done?.call();
@@ -547,16 +548,19 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     });
   }
 
-  /// Where the page rests to read a scene from its top: a little room under the bar, the same for
-  /// landing, following and bringing a scene up (S3), and never past the end. Null when [card]
-  /// isn't laid out.
+  /// Where the page rests to read a scene from its top: a little room under the glass bar, the
+  /// same for landing, following and bringing a scene up (S3), and never past the end. Null when
+  /// [card] isn't laid out.
   double? _restingOffset(RenderObject? card) {
     if (card == null || !card.attached || !_scroll.hasClients) return null;
     final top = RenderAbstractViewport.maybeOf(card)?.getOffsetToReveal(card, 0).offset;
     if (top == null) return null;
     final position = _scroll.position;
-    return (top - Space.lg).clamp(position.minScrollExtent, position.maxScrollExtent);
+    return (top - Space.lg - _barInset).clamp(position.minScrollExtent, position.maxScrollExtent);
   }
+
+  /// How far the glass bar reaches down the page, which runs on behind it.
+  double get _barInset => MediaQuery.paddingOf(context).top + GlassTopBar.extent;
 
   /// Whether [turn] is the opening, right under the title page at the start of the feed.
   bool _opensPage(int turn) => turn <= 1 && _play.anchorTurn <= 1;
@@ -648,10 +652,12 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       genre: story?.genre,
       chosen: story?.settings.accent,
       child: Scaffold(
-        appBar: AppBar(
-          leading: backOr(context, Routes.library),
-          titleSpacing: 0,
-          title: _AppBarTitle(
+        // The page runs on behind the bar: a story opens on its cover, and scenes pass under
+        // the glass as they are read.
+        extendBodyBehindAppBar: true,
+        appBar: GlassTopBar(
+          leading: backOr(context, Routes.library) ?? const BackButton(),
+          title: _BarTitle(
             title: story?.title ?? l10n.storyFallbackTitle,
             clock: story?.clockLabel,
           ),
@@ -674,11 +680,15 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
           ],
         ),
         body: switch ((story, _play.loadError)) {
-          (null, final Object error) => ErrorState(error: error, onRetry: _play.reload),
-          (null, _) => const Padding(
-            padding: EdgeInsets.all(Space.gutter),
-            child: ContentColumn.reading(
-              child: SkeletonText(lines: 8, lineHeight: 14, spacing: 14),
+          (null, final Object error) => SafeArea(
+            child: ErrorState(error: error, onRetry: _play.reload),
+          ),
+          (null, _) => const SafeArea(
+            child: Padding(
+              padding: EdgeInsets.all(Space.gutter),
+              child: ContentColumn.reading(
+                child: SkeletonText(lines: 8, lineHeight: 14, spacing: 14),
+              ),
             ),
           ),
           (final Story story, _) => Column(
@@ -690,6 +700,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                       onNotification: _onScroll,
                       child: _feed(context, story),
                     ),
+                    // The page's last lines fade out towards the action box.
+                    const Positioned(left: 0, right: 0, bottom: 0, child: _FootFade()),
                     Positioned(
                       bottom: Space.md,
                       left: 0,
@@ -728,7 +740,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
                     SlashCommand('status', l10n.slashStatus),
                     SlashCommand('end', l10n.slashEnd),
                   ],
-                ),
+                )
+              else
+                // Nothing floats under an ended story: only the system's own inset.
+                SizedBox(height: MediaQuery.paddingOf(context).bottom),
             ],
           ),
         },
@@ -760,6 +775,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         hidden: _play.isBlocked(scene),
         ornament: scene != last || pending != null,
         narrationKey: _narrationKeys.putIfAbsent(scene.turn, GlobalKey.new),
+        dropCap: scene.kind == 'opening',
         onDetails: () => showSceneDetails(context, scene),
         // A scene the player blocked (F6) is never read.
         listen: _play.isBlocked(scene) || scene.narration.trim().isEmpty
@@ -777,6 +793,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
     final top = _Top(
       story: story,
+      barInset: _barInset,
       reachedStart: _play.reachedStart,
       loading: _play.loadingOlder,
       error: _play.olderError,
@@ -796,7 +813,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
           padding: const EdgeInsets.only(bottom: Space.xxl),
           sliver: SliverList.list(
             children: [
-              if (startsHere) top else const SizedBox(height: Space.lg),
+              // Without the title page above it, the first scene starts clear of the bar.
+              if (startsHere) top else SizedBox(height: Space.lg + _barInset),
               for (final s in newer) scene(s),
               if (_play.opening && pending == null)
                 ContentColumn.reading(
@@ -880,9 +898,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   }
 }
 
-/// The story's title and the world's date and time, always in sight (W10).
-class _AppBarTitle extends StatelessWidget {
-  const _AppBarTitle({required this.title, this.clock});
+/// The story's title and the world's date and time, always in sight in the glass bar (W10).
+class _BarTitle extends StatelessWidget {
+  const _BarTitle({required this.title, this.clock});
 
   final String title;
   final String? clock;
@@ -890,38 +908,75 @@ class _AppBarTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clock = this.clock;
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: Space.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          if (clock != null)
-            Semantics(
-              label: context.l10n.storyClock(clock),
-              excludeSemantics: true,
-              child: AnimatedSwitcher(
-                duration: Motion.of(context, Motion.slow),
-                child: Text(
-                  clock,
-                  key: ValueKey(clock),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.lucidText.meta,
-                ),
+    final colors = context.lucid;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontFamily: Fonts.display,
+            fontWeight: FontWeight.w500,
+            fontSize: 15.5,
+            height: 1.2,
+            color: colors.textPrimary,
+          ),
+        ),
+        if (clock != null)
+          Semantics(
+            label: context.l10n.storyClock(clock),
+            excludeSemantics: true,
+            child: AnimatedSwitcher(
+              duration: Motion.of(context, Motion.slow),
+              child: Text(
+                clock,
+                key: ValueKey(clock),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.lucidText.meta.copyWith(fontSize: 12, color: colors.accent),
               ),
             ),
-        ],
+          ),
+      ],
+    );
+  }
+}
+
+/// The feed's last lines going out into the page's color, just above the action box.
+class _FootFade extends StatelessWidget {
+  const _FootFade();
+
+  @override
+  Widget build(BuildContext context) {
+    final page = Theme.of(context).scaffoldBackgroundColor;
+    return IgnorePointer(
+      child: Container(
+        height: 28,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [page.withValues(alpha: 0), page],
+          ),
+        ),
       ),
     );
   }
 }
 
 /// The top of the feed: a title page once the opening is loaded, or the older scenes loading.
+///
+/// The title page is the story's cover: the painting from the very top of the screen, behind
+/// the glass bar, going down into the page's color, with the genre, the title in the accent's
+/// gradient and a rule with a star standing on its foot. A story without a cover opens on the
+/// same words under the bar.
 class _Top extends StatelessWidget {
   const _Top({
     required this.story,
+    required this.barInset,
     required this.reachedStart,
     required this.loading,
     required this.error,
@@ -929,10 +984,17 @@ class _Top extends StatelessWidget {
   });
 
   final Story story;
+
+  /// How far the glass bar reaches down the page.
+  final double barInset;
   final bool reachedStart;
   final bool loading;
   final Object? error;
   final VoidCallback onRetry;
+
+  /// The cover's height on a phone, and its share of a shorter screen.
+  static const _coverHeight = 470.0;
+  static const _coverShare = 0.56;
 
   @override
   Widget build(BuildContext context) {
@@ -940,7 +1002,7 @@ class _Top extends StatelessWidget {
     final theme = Theme.of(context);
     if (!reachedStart) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: Space.xl),
+        padding: EdgeInsets.only(top: barInset + Space.xl, bottom: Space.xl),
         child: Center(
           child: error != null && !loading
               ? TextButton.icon(
@@ -961,32 +1023,110 @@ class _Top extends StatelessWidget {
         ),
       );
     }
-    return ContentColumn.reading(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.gutter, Space.xxl, Space.gutter, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (story.genre.isNotEmpty)
-              Text(
-                story.genre.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: context.lucidText.overline,
-              ),
-            const SizedBox(height: Space.sm),
-            Semantics(
-              header: true,
-              child: Text(
+    final cover = story.coverUrl;
+    final screen = MediaQuery.sizeOf(context);
+    final height = cover == null ? 0.0 : math.min(_coverHeight, screen.height * _coverShare);
+    final words = Padding(
+      padding: EdgeInsets.fromLTRB(
+        Space.gutter,
+        // On a cover the words stand on its foot; without one, under the bar.
+        cover == null ? barInset + Space.xxl : math.max(barInset + Space.xl, height * 0.66),
+        Space.gutter,
+        Space.xl,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (story.genre.isNotEmpty) ...[Eyebrow(story.genre), const SizedBox(height: Space.md)],
+          // A heading of its own, apart from the genre over it.
+          Semantics(
+            header: true,
+            container: true,
+            child: HeadlineScaling(
+              child: GradientText(
                 story.title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.displaySmall,
+                style: theme.textTheme.displayMedium!.copyWith(
+                  fontSize: 40,
+                  height: 1.05,
+                  letterSpacing: -0.8,
+                ),
               ),
             ),
-            const SceneOrnament(),
-          ],
-        ),
+          ),
+          const SizedBox(height: 18),
+          const StarRule(),
+        ],
       ),
     );
+    return ContentColumn.reading(
+      child: cover == null
+          ? words
+          : Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: height,
+                  child: _TitleCover(url: cover, fadeSides: screen.width > Layout.readingWidth),
+                ),
+                words,
+              ],
+            ),
+    );
+  }
+}
+
+/// The cover behind a story's title: dimmed under the bar, clear over its focal point, then
+/// down into the page's color. In a column that floats in a wider screen, its sides fade too.
+class _TitleCover extends StatelessWidget {
+  const _TitleCover({required this.url, required this.fadeSides});
+
+  final String url;
+  final bool fadeSides;
+
+  @override
+  Widget build(BuildContext context) {
+    final page = Theme.of(context).scaffoldBackgroundColor;
+    final width = math.min(MediaQuery.sizeOf(context).width, Layout.readingWidth);
+    Widget cover = Stack(
+      fit: StackFit.expand,
+      children: [
+        CoverImage(
+          url: url,
+          cacheWidth: (width * MediaQuery.devicePixelRatioOf(context)).round(),
+          fallback: ColoredBox(color: page),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              // The glass bar dims the very top itself.
+              colors: [
+                page.withValues(alpha: 0.3),
+                page.withValues(alpha: 0),
+                page.withValues(alpha: 0),
+                page.withValues(alpha: 0.86),
+                page,
+              ],
+              stops: const [0, 0.26, 0.44, 0.78, 1],
+            ),
+          ),
+        ),
+      ],
+    );
+    if (fadeSides) {
+      cover = ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [Color(0x00000000), Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
+          stops: [0, 0.12, 0.88, 1],
+        ).createShader(bounds),
+        child: cover,
+      );
+    }
+    return ExcludeSemantics(child: IgnorePointer(child: cover));
   }
 }
 
@@ -1058,13 +1198,14 @@ class _PendingScene extends StatelessWidget {
                 onAccount: onAccount,
                 onDismiss: onDismiss,
               )
-            : StreamingNarration(text: pending.text, streaming: true),
+            // An opening is set with its drop capital from its first words, as it will be saved.
+            : StreamingNarration(text: pending.text, streaming: true, dropCap: pending.isOpening),
       ),
     );
   }
 }
 
-/// "Latest", when the player has scrolled far back.
+/// "Latest", when the player has scrolled far back: a small pill of glass over the page.
 class _LatestButton extends StatelessWidget {
   const _LatestButton({required this.visible, required this.onPressed});
 
@@ -1083,24 +1224,24 @@ class _LatestButton extends StatelessWidget {
           offset: visible ? Offset.zero : const Offset(0, 0.3),
           duration: Motion.of(context, Motion.base),
           curve: Motion.standard,
-          child: Material(
-            color: theme.colorScheme.surfaceContainerHighest,
-            shape: const StadiumBorder(),
-            elevation: 0,
-            child: InkWell(
-              customBorder: const StadiumBorder(),
-              onTap: onPressed,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 40),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.sm),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.arrow_downward_rounded, size: 18, color: context.lucid.accent),
-                      const SizedBox(width: Space.sm),
-                      Text(context.l10n.storyLatest, style: theme.textTheme.labelLarge),
-                    ],
+          child: Glass(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: onPressed,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: Layout.minTouch - 4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.sm),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_downward_rounded, size: 18, color: context.lucid.accent),
+                        const SizedBox(width: Space.sm),
+                        Text(context.l10n.storyLatest, style: theme.textTheme.labelLarge),
+                      ],
+                    ),
                   ),
                 ),
               ),

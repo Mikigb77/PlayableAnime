@@ -42,6 +42,9 @@ class PortraitAvatar extends StatelessWidget {
         ? Center(
             child: Text(
               initials(name),
+              // The circle keeps its size, so the letters in it do too: they are a face's
+              // stand-in, and the name is beside it or told to a screen reader.
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: size * 0.36,
                 fontWeight: FontWeight.w600,
@@ -84,9 +87,10 @@ class PortraitRef {
   final String? url;
 }
 
-/// The known characters in a scene, overlapping, with "+N" past [max].
+/// The known characters in a scene, overlapping, each in a thin ring of the accent, with "+N"
+/// past [max].
 class PortraitStack extends StatelessWidget {
-  const PortraitStack({super.key, required this.portraits, this.size = 28, this.max = 3});
+  const PortraitStack({super.key, required this.portraits, this.size = 30, this.max = 3});
 
   final List<PortraitRef> portraits;
   final double size;
@@ -98,29 +102,34 @@ class PortraitStack extends StatelessWidget {
     final shown = portraits.take(max).toList();
     final extra = portraits.length - shown.length;
     final background = Theme.of(context).scaffoldBackgroundColor;
+    final ring = context.lucid.accent.withValues(alpha: 0.5);
+    // A face with the gap and the ring around it.
+    final step = size + _Ringed.extra;
     final overlap = size * 0.32;
     final count = shown.length + (extra > 0 ? 1 : 0);
     return Semantics(
       label: portraits.map((p) => p.name).join(', '),
       excludeSemantics: true,
       child: SizedBox(
-        height: size + 4,
-        width: count * (size + 4) - (count - 1) * overlap,
+        height: step,
+        width: count * step - (count - 1) * overlap,
         child: Stack(
           children: [
             for (final (i, p) in shown.indexed)
               Positioned(
-                left: i * (size + 4 - overlap),
+                left: i * (step - overlap),
                 child: _Ringed(
                   color: background,
+                  ring: ring,
                   child: PortraitAvatar(name: p.name, url: p.url, size: size),
                 ),
               ),
             if (extra > 0)
               Positioned(
-                left: shown.length * (size + 4 - overlap),
+                left: shown.length * (step - overlap),
                 child: _Ringed(
                   color: background,
+                  ring: ring,
                   child: CircleAvatar(
                     radius: size / 2,
                     backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -135,16 +144,26 @@ class PortraitStack extends StatelessWidget {
   }
 }
 
+/// A face set off from the one it overlaps by a gap in the page's color, inside a thin ring.
 class _Ringed extends StatelessWidget {
-  const _Ringed({required this.color, required this.child});
+  const _Ringed({required this.color, required this.ring, required this.child});
 
   final Color color;
+  final Color ring;
   final Widget child;
+
+  /// How much wider than the face: the gap and the ring, on both sides.
+  static const extra = 6.0;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(2),
+    padding: const EdgeInsets.all(1),
+    // The page's color under the ring too, so the face behind doesn't show through it.
     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    child: child,
+    foregroundDecoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: ring),
+    ),
+    child: Padding(padding: const EdgeInsets.all(2), child: child),
   );
 }

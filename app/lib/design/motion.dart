@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-/// Quick, quiet motion: 150 to 250 ms, and none at all when the system asks to reduce motion.
+/// Quick, quiet motion: 150 to 250 ms for what the player causes, a slower rise for a page's
+/// content as it opens, and one slow loop for the night air behind a page. None of it runs when
+/// the system asks to reduce motion.
 abstract final class Motion {
   static const fast = Duration(milliseconds: 150);
   static const base = Duration(milliseconds: 200);
@@ -11,6 +13,14 @@ abstract final class Motion {
 
   /// One shimmer sweep across a skeleton or a pending picture.
   static const shimmer = Duration(milliseconds: 1400);
+
+  /// How long a part of a page takes to rise into place as the page opens, and how much later
+  /// each next part starts.
+  static const rise = Duration(milliseconds: 320);
+  static const riseStagger = Duration(milliseconds: 50);
+
+  /// One loop of the glow's breathing and the fireflies' drift ([Ambient]).
+  static const ambient = Duration(seconds: 16);
 
   static const standard = Curves.easeOutCubic;
   static const emphasized = Cubic(0.2, 0, 0, 1);
