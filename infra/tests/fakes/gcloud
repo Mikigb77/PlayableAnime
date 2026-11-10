@@ -92,6 +92,8 @@ case "$group/$verb" in
       [[ -z "${FAKE_FAIL_REDRAW:-}" ]]
     elif [[ " $* " == *" --args=manage.py,check_models "* ]]; then
       [[ -z "${FAKE_FAIL_MODELS:-}" ]]
+    elif [[ " $* " == *" --args=manage.py,export_owner_stories,"* ]]; then
+      [[ -z "${FAKE_FAIL_EXPORT:-}" ]]
     else
       [[ -z "${FAKE_FAIL_MIGRATION:-}" ]]
     fi

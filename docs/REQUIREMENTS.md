@@ -1396,7 +1396,11 @@ stays open and keeps moving, with the same nightly scripted runs:
 
 **T16 Sensitive data (P0).** Story text can reveal a player's sexual preferences, which GDPR treats as
 special-category data. It is encrypted at rest (Neon does this), never logged (T6), only staff
-handling reports can read it, and it is deleted with the account.
+handling reports can read it, and it is deleted with the account. The one other way story text
+leaves the database is the owner's own stories (K7), which Miki and the threads working on the game
+read to find what to improve (Miki, 2026-11-10): they leave only sealed to a key the reader holds,
+so nothing readable reaches a log or a public place, and no other player's story can leave that way
+([DEPLOY.md](DEPLOY.md#reading-the-owners-own-stories)).
 
 **T18 Narration, voice and picture evals (P0 for narration and voice, P1 for pictures).** The same
 nightly scripted runs as T15 and T17, scored against a written rubric by a model judge that staff

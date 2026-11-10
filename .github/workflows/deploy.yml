@@ -21,6 +21,10 @@
 # where the installed app finds it and updates itself (S12).
 #
 # "Dry run" signs in, checks the setup and builds the image and the APK, then only prints the rest.
+#
+# Started by hand with a reader's public key, it deploys nothing: it only hands the owner's own
+# stories to that reader, sealed, or with "forget" deletes the sealed file again (T16,
+# docs/DEPLOY.md#reading-the-owners-own-stories).
 
 name: Deploy
 
@@ -33,17 +37,28 @@ on:
         description: Dry run (sign in, check and build, but push and deploy nothing)
         type: boolean
         default: false
+      export_key:
+        description: >-
+          Instead of deploying: seal the owner's own stories to this public key, from
+          "python -m stories.sealed keygen", and print a short-lived link to the file. "forget"
+          deletes the stored file
+        type: string
+        required: false
+        default: ""
 
 permissions: {}
 
-# One deploy at a time, and a queued one is never replaced by a dry run, which has its own queue.
+# One deploy at a time, and a queued one is never replaced by a dry run or an export, which have
+# their own queues.
 concurrency:
-  group: deploy-production${{ inputs.dry_run && '-dry-run' || '' }}
+  group: deploy-production${{ inputs.export_key && '-export' || inputs.dry_run && '-dry-run' || '' }}
   cancel-in-progress: false
 
 jobs:
   ci-green:
     name: CI passed on this commit
+    # An export deploys nothing, so the deploy and every job after it are skipped with this one.
+    if: ${{ !inputs.export_key }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -275,6 +290,7 @@ jobs:
   # Runs alongside CI and the deploy. Nothing is published unless both pass.
   apk:
     name: Build the Android app
+    if: ${{ !inputs.export_key }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -365,3 +381,38 @@ jobs:
         env:
           BUILD_NUMBER: ${{ needs.apk.outputs.version_code }}
           VERSION_NAME: ${{ needs.apk.outputs.version_name }}
+
+  # Not part of a deploy: runs only when started by hand with a reader's public key. The job that
+  # runs migrations seals the owner's own stories (K7) to that key, stores the file in the private
+  # pictures bucket and prints a signed link that works for 30 minutes. This log and the link are
+  # public; the file opens only with the reader's private key (T16).
+  export:
+    name: Export the owner's stories
+    if: ${{ inputs.export_key }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: config
+        run: infra/deploy.sh github-outputs
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          workload_identity_provider: ${{ steps.config.outputs.wif_provider }}
+          service_account: ${{ steps.config.outputs.deployer_sa }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # The key reaches the script as an environment variable, never as part of a command line.
+      - run: infra/deploy.sh export
+        env:
+          EXPORT_KEY: ${{ inputs.export_key }}

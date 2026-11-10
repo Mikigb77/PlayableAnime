@@ -112,6 +112,12 @@ The code is in `backend/accounts/`.
   sessions and anything else with a foreign key to them cascade, and picture files are removed on
   commit. `GET /v1/me/export` collects the account and its stories (`stories/export.py`, without
   the hidden world state) and asks `account_exporting` receivers for more, such as pictures.
+- **The owner's own stories (T16).** To review real play, `manage.py export_owner_stories` hands
+  over the stories of the owner accounts only (the role and an email still in `OWNER_EMAILS`, K7),
+  whole, with the world state and pending events (`stories/owner_export.py`), sealed to a public
+  key the reader made (`stories/sealed.py`: X25519, HKDF-SHA256, ChaCha20-Poly1305). The Deploy
+  workflow starts it as the migration job
+  ([DEPLOY.md](DEPLOY.md#reading-the-owners-own-stories)); nothing readable is logged or stored.
 - **Sign in with Apple** is left for the App Store launch. Apple's guideline 4.8 requires it on iOS
   once Google sign-in is offered there. It fits the same shape: the app sends Apple's identity
   token to a `POST /v1/auth/apple`, which checks it against Apple's public keys (audience is our

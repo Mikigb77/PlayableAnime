@@ -1,0 +1,7 @@
+# actionlint's settings (rhysd/actionlint, run by CI).
+paths:
+  # GitHub's `vulnerability-alerts` token scope reads Dependabot alerts; actionlint 1.7.12 doesn't
+  # know it yet. Drop this once it does.
+  .github/workflows/dependabot-alerts.yml:
+    ignore:
+      - 'unknown permission scope "vulnerability-alerts"'

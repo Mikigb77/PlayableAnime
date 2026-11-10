@@ -20,8 +20,9 @@ feature branch --PR, self-reviewed, green CI--> dev --PR, green CI, merge commit
 ```
 
 CI runs on every PR and on every push to `dev` and `main`. A PR into `main` from any branch but
-`dev` fails CI's `into-main` check. `main` stays the default branch: the README, the nightly evals
-and the Workload Identity condition all work from it.
+`dev` fails CI's `into-main` check. `dev` is the default branch, so Dependabot's security updates
+([below](#dependabot)) go to it like every other PR; the Workload Identity condition admits only
+`main`.
 
 The CI jobs are separate checks of the same commit (backend tests, evals, the image, the app, the
 Android build, the deploy scripts), so they run side by side. The deploy's jobs are a chain
@@ -29,6 +30,69 @@ instead: the CI gate, then the deploy, then the model checks, the covers and the
 while the APK builds alongside and is published after the deploy. Every job runs on
 `ubuntu-24.04` rather than `ubuntu-latest`, so a new runner image never arrives in the middle of a
 deploy; moving to a newer Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
+
+### Dependabot
+
+Dependabot watches every dependency the repository declares: the API's Python packages
+(`backend/uv.lock`), its image (`backend/Dockerfile`), the app's Dart packages (`app/pubspec.lock`),
+the workflows' actions and the Neon CLI config (`package-lock.json`). It is free, and stays free if
+the repository goes private.
+
+- **Alerts** list each known vulnerability under the repository's Security tab.
+- **Security updates** open a PR into `dev`, the default branch, as soon as an advisory affects a
+  dependency and a fixed version exists.
+- **Version updates** ([`.github/dependabot.yml`](../.github/dependabot.yml)) open PRs into `dev`
+  once a week (the Neon config once a month): the minor and patch updates of each ecosystem in one
+  PR, each major update in its own. A release waits 7 days before it is offered, so a broken or
+  hijacked release is usually pulled first. Security updates never wait.
+
+Alerts and security updates are switched on in the repository's settings, not in the file (since
+2026-11-10; `gh api repos/Mikigb77/PlayableAnime/automated-security-fixes` shows whether they still
+are). Dependabot checks early on Monday (04:00 Madrid time), and a scheduled Claude pass at 06:09
+works through its PRs and every open alert (Miki, 2026-11-10). A Dependabot PR is merged like any
+other: CI must be green, a major update needs a look at its changelog, and it is squash-merged into
+`dev`, then reaches production with the next deploy. If CI fails, the fix goes on the Dependabot
+branch or the update is closed with the reason.
+
+The pass reads the alerts through the
+[`dependabot-alerts.yml`](../.github/workflows/dependabot-alerts.yml) workflow, which lists every
+open alert, and the ones closed in the last 8 days, in its run's log. Its token can read the alerts
+and nothing else (`vulnerability-alerts: read`), so it needs no key and no laptop. For each open
+alert the pass checks whether a fixed version exists and whether the package reaches what ships (its
+scope: runtime or development). When a fix exists but Dependabot couldn't apply it, such as a
+transitive package its parent holds back, the pass opens a PR with a safe fix if there is one (a
+newer parent, or an override). An alert with no fix stays open, and the report lists it.
+
+Some things stay out of Dependabot's hands. The Android build's Gradle plugins follow Flutter's
+versions, and so does `intl`, which the Flutter SDK pins through `flutter_localizations`: they move
+with a Flutter upgrade. Python moves to a newer minor version in a PR of its own, like the runners'
+Ubuntu; the `python:3.13-slim` tag already brings its patch releases.
+
+#### The weekly report
+
+By 08:00 Madrid time the pass files one GitHub issue in each repository that has something to
+report, labelled `dependabot-report` and assigned to Miki, so one search lists every open report:
+[label:dependabot-report assignee:Mikigb77](https://github.com/issues?q=is%3Aopen+is%3Aissue+label%3Adependabot-report+assignee%3AMikigb77).
+A week with no Dependabot PR to handle, no new or changed alert, no open alert on a dependency that
+ships, and nothing merged, closed or deployed files nothing. The title and an `urgency:` label say
+how soon it needs Miki:
+
+- **high**, act today: something that ships is exposed or broken. An alert on a dependency that
+  ships is open after the pass (it is reported every week until it is fixed), a deploy or rollback
+  failed, or `dev` or `main` is red because of an update.
+- **medium**, decide this week: something only Miki can decide is waiting, such as a major update
+  that changes behavior, cost or licence, or a red update with no clear fix.
+- **low**, for the record: updates were merged, closed or deployed, alerts were fixed, and nothing
+  needs Miki.
+
+The report opens with what Miki needs to do, then lists what merged, closed (with the reason),
+deployed or is still pending, the alerts fixed or dismissed that week, and every open alert, with
+links. An open alert is listed by its link, severity, scope and whether a fix exists: the package
+and the advisory stay on the alert's page, which only people with access to the repository see, so a
+public issue doesn't point at a hole that is still open. An open alert on development tooling that
+was already reported and hasn't changed doesn't file a report on its own. Work still running at
+08:00 is finished afterwards and added as a comment. The next week's report closes a low one; a high
+or medium report stays open until what it asks for is done.
 
 ## What runs where
 
@@ -277,7 +341,8 @@ the image, but not the APK.
 Merging `dev` into `main` deploys. To deploy `main` again without a merge, run the workflow by
 hand: **Actions > Deploy > Run workflow** on `main`, or `gh workflow run deploy.yml --ref main`. It
 only ever deploys `main`. Two deploys never run at once, and a dry run never replaces a deploy
-waiting its turn.
+waiting its turn. Started with an `export_key`, it deploys nothing and only
+[hands over the owner's own stories](#reading-the-owners-own-stories).
 
 1. **CI passed on this commit** ([`require-green-ci.sh`](../infra/require-green-ci.sh)): the CI
    workflow's run for this exact commit of `main` must have succeeded. CI starts on the same push,
@@ -516,6 +581,52 @@ services list --enabled
 
 It reads only. Changes still go through `infra/` in a PR and a re-run of the bootstrap, or through
 the deploy.
+
+## Reading the owner's own stories
+
+To find what to improve, Miki and the threads that work on the game read real play: Miki's own
+stories. Story text is sensitive and nobody reads a player's stories this way (T16), the Ops
+workflow can't reach the database, and this repository's Actions logs are public. So the stories
+leave the server only **sealed for one reader**: the reader makes a key pair, the job that runs
+migrations seals the stories to the public key, and only the private key, which never leaves the
+reader's machine, opens the file.
+
+Only the stories of the owner accounts are in it: the accounts that hold the owner role and whose
+email is in `OWNER_EMAILS` (K7). They come whole, with every scene, the world state and the events
+waiting to happen, which the account export (T12) leaves out, and without any account or row id
+([`stories/owner_export.py`](../backend/stories/owner_export.py)).
+
+1. Make a key pair, in `backend/`. The private key goes into a new file only you can read, and the
+   public key is printed:
+
+   ```bash
+   uv run python -m stories.sealed keygen reader.key
+   ```
+
+2. Start the **Deploy** workflow on `main` with that public key as `export_key` (**Actions >
+   Deploy > Run workflow**, or dispatch `deploy.yml` on `main` with the input `export_key`). With a
+   key it deploys nothing: it runs only the job "Export the owner's stories"
+   (`infra/deploy.sh export`), which has the migration job run
+   `manage.py export_owner_stories --key=...`. Only the Deploy workflow on `main` can sign in as
+   the deployer, so this can't be started from a branch or a fork.
+3. The job's log ends with a link. Download it within 30 minutes and open it:
+
+   ```bash
+   curl --fail --output export.bin 'LINK'
+   uv run python -m stories.sealed open reader.key export.bin export.json
+   ```
+
+4. Start the workflow once more with `forget` as `export_key`, which deletes the stored file
+   (`manage.py export_owner_stories --forget`).
+5. Delete `export.json`, `export.bin` and `reader.key` when you are done, and never commit, print
+   or paste story text into a PR, an issue or a log.
+
+The sealed file is stored in the private pictures bucket as `exports/owner-stories.bin`, and a new
+export replaces it. The link is a signed
+URL, so it and the run's log can be seen by anyone for those 30 minutes; what it serves is
+ChaCha20-Poly1305 ciphertext under a key agreed with X25519
+([`stories/sealed.py`](../backend/stories/sealed.py)), useless without the private key. The job
+prints how many stories and scenes it sealed, and nothing else about them.
 
 ## Who may call the API
 
@@ -762,6 +873,12 @@ gcloud run jobs execute playable-anime-migrate --project=playable-anime --region
 
 # infra/deploy.sh redraw
 gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,redraw_pictures --task-timeout=60m --wait
+
+# infra/deploy.sh export (EXPORT_KEY=the reader's public key)
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,export_owner_stories,--key=EXPORT_KEY --task-timeout=10m --wait
+
+# infra/deploy.sh export (EXPORT_KEY=forget)
+gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,export_owner_stories,--forget --task-timeout=10m --wait
 
 # infra/deploy.sh upload-apk APK (BUILD_NUMBER=42, VERSION_NAME=1.0.0)
 gcloud storage cp APK gs://playable-anime-releases/android/lucid-saga-42.apk --content-type=application/vnd.android.package-archive

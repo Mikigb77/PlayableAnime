@@ -610,6 +610,51 @@ test_redraw() {
   contains "$out" "fake-log-line Model call rejected" "a failed redraw prints the job's logs"
 }
 
+test_export() {
+  local state out key=AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AbCdE
+  start "deploy.sh export seals the owner's stories to the reader's key and prints the job's link"
+  state="$(new_state export)"
+  out="$state/out-dry"
+  with_fakes "$out" env FAKE_STATE="$state" DRY_RUN=1 EXPORT_KEY="$key" "$INFRA/deploy.sh" export
+  equals "$status" 0 "dry-run export exit status"
+  contains "$out" "[dry-run] gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py,export_owner_stories,--key=$key --task-timeout=10m --wait"
+  if [ -e "$state/calls.log" ]; then bad "a dry run called gcloud"; else ok; fi
+
+  # The key becomes one of the job's arguments, so nothing but a key gets that far.
+  local bad_key
+  for bad_key in "" "short" "${key}A" "${key%?}," "--forget,--key=${key:0:30}" "${key%?} "; do
+    out="$state/out-bad"
+    with_fakes "$out" env FAKE_STATE="$state" EXPORT_KEY="$bad_key" "$INFRA/deploy.sh" export
+    if [ "$status" -ne 0 ]; then ok; else bad "took '$bad_key' for a key"; fi
+    contains "$out" "EXPORT_KEY must be the reader's public key"
+  done
+  if grep -q "jobs execute" "$state/calls.log" 2>/dev/null; then
+    bad "a bad key reached the job"
+  else
+    ok
+  fi
+
+  out="$state/out"
+  with_fakes "$out" env FAKE_STATE="$state" EXPORT_KEY="$key" "$INFRA/deploy.sh" export
+  equals "$status" 0 "export exit status"
+  contains "$state/calls.log" "gcloud run jobs execute playable-anime-migrate --project=playable-anime --region=europe-west3 --args=manage.py\\,export_owner_stories\\,--key=$key --task-timeout=10m --wait"
+  contains "$state/calls.log" "gcloud logging read resource.type=\\\"cloud_run_job\\\"\\ AND\\ resource.labels.job_name=\\\"playable-anime-migrate\\\"\\ AND\\ timestamp\\>=\\\"20"
+  contains "$out" "fake-log-line" "the job's log, which ends with the link, is printed"
+
+  out="$state/out-fail"
+  with_fakes "$out" env FAKE_STATE="$state" FAKE_FAIL_EXPORT=1 EXPORT_KEY="$key" \
+    "$INFRA/deploy.sh" export
+  if [ "$status" -ne 0 ]; then ok; else bad "a failed export passed"; fi
+  contains "$out" "The export job failed"
+  contains "$out" "fake-log-line" "a failed export prints the job's logs"
+
+  # Once the reader has the file, "forget" deletes the stored copy.
+  out="$state/out-forget"
+  with_fakes "$out" env FAKE_STATE="$state" EXPORT_KEY=forget "$INFRA/deploy.sh" export
+  equals "$status" 0 "forget exit status"
+  contains "$state/calls.log" "--args=manage.py\\,export_owner_stories\\,--forget --task-timeout=10m --wait"
+}
+
 test_models() {
   local state out
   start "deploy.sh models calls each model as the migration job and prints the job's logs on failure"
@@ -1041,6 +1086,12 @@ test_workflow_matches_scripts() {
   contains "$wf" "OPS_COMMAND: \${{ inputs.command }}" "the command reaches ops.sh only through the environment"
   wf="$ROOT/.github/workflows/deploy.yml"
   contains "$wf" "infra/require-green-ci.sh"
+  contains "$wf" "EXPORT_KEY: \${{ inputs.export_key }}" "the key reaches deploy.sh only through the environment"
+  if grep -E '^ *(- )?run: .*inputs\.' "$wf" >/dev/null; then
+    bad "deploy.yml pastes an input into a command line"
+  else
+    ok
+  fi
   if [ "$(grep -cF "OWNER_EMAILS: \${{ secrets.OWNER_EMAILS }}" "$wf")" -eq 3 ]; then ok; else
     bad "deploy.yml must pass the OWNER_EMAILS secret to preflight, migrate and service"
   fi
@@ -1049,6 +1100,40 @@ test_workflow_matches_scripts() {
   contains "$wf" "infra/deploy.sh upload-apk"
   contains "$ROOT/.github/workflows/ci.yml" "infra/build-apk.sh"
   contains "$ROOT/README.md" "https://github.com/Mikigb77/PlayableAnime/releases/latest/download/lucid-saga.apk"
+}
+
+# Dependabot's PRs follow the branch flow: a PR into main fails CI (into-main), so every version
+# update targets dev, and each entry watches a folder that holds its manifest.
+test_dependabot() {
+  local cfg="$ROOT/.github/dependabot.yml" dir eco manifest
+  start "Dependabot opens its PRs into dev and watches folders that exist"
+  if [ -f "$cfg" ]; then ok; else bad "missing $cfg"; fi
+  equals "$(grep -c '^    target-branch: dev$' "$cfg")" "$(grep -c '^  - package-ecosystem: ' "$cfg")" \
+    "every entry in dependabot.yml needs target-branch: dev"
+  lacks "$cfg" "target-branch: main"
+  while read -r eco dir; do
+    case "$eco" in
+      uv) manifest=uv.lock ;;
+      docker) manifest=Dockerfile ;;
+      pub) manifest=pubspec.lock ;;
+      npm) manifest=package-lock.json ;;
+      github-actions) manifest=.github/workflows/ci.yml ;;
+      *) manifest="(no check for the $eco ecosystem; add one here)" ;;
+    esac
+    if [ -f "$ROOT${dir%/}/$manifest" ]; then ok; else bad "$eco watches $dir, which has no $manifest"; fi
+  done < <(awk '/^  - package-ecosystem: /{eco=$3} /^    directory: /{print eco, $2}' "$cfg")
+}
+
+# The weekly pass reads the alerts through this workflow, which can read them and nothing else.
+test_dependabot_alerts() {
+  local wf="$ROOT/.github/workflows/dependabot-alerts.yml"
+  start "The Dependabot alerts workflow only reads the alerts"
+  if [ -f "$wf" ]; then ok; else bad "missing $wf"; fi
+  contains "$wf" "permissions: {}"
+  equals "$(grep -cE '^ +[a-z-]+: (read|write)$' "$wf")" 1 "the workflow asks for one permission"
+  contains "$wf" "      vulnerability-alerts: read"
+  equals "$(sed -n '/^on:/,/^$/p' "$wf" | grep -c '^  [a-z_]*:')" 1 "the workflow starts only by hand"
+  contains "$wf" "  workflow_dispatch:"
 }
 
 test_docs_list_every_command() {
@@ -1078,6 +1163,7 @@ test_access
 test_covers
 test_redraw
 test_models
+test_export
 test_ops
 test_migration_failure
 test_smoke
@@ -1087,6 +1173,8 @@ test_build_apk
 test_publish_apk
 test_upload_apk
 test_workflow_matches_scripts
+test_dependabot
+test_dependabot_alerts
 test_docs_list_every_command
 
 printf '\n%d checks passed, %d failed\n' "$passed" "$failed"

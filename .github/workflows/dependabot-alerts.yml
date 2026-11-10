@@ -1,0 +1,50 @@
+# Lists this repository's Dependabot alerts in this run's log, for the weekly Dependabot pass
+# (docs/DEPLOY.md#dependabot): every open alert, and the ones closed in the last 8 days. It reads
+# the alerts and nothing else, and changes nothing. The pass starts it through the API:
+#
+#   POST /repos/Mikigb77/PlayableAnime/actions/workflows/dependabot-alerts.yml/dispatches
+#   {"ref": "dev"}
+#
+# The log is public, like the repository. It shows what anyone could already work out by running
+# an audit on the public lockfiles, and no secrets.
+
+name: Dependabot alerts
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  list:
+    name: List Dependabot alerts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      # Read access to Dependabot alerts, and nothing else. actionlint doesn't know this scope yet
+      # (.github/actionlint.yaml).
+      vulnerability-alerts: read
+    steps:
+      - name: List the alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALERTS: repos/${{ github.repository }}/dependabot/alerts
+        run: |
+          SINCE=$(date -u -d '8 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          export SINCE
+          open=$(gh api --paginate "$ALERTS?state=open&per_page=100" --jq '.[] |
+            "#\(.number) \(.security_advisory.severity), \(.dependency.scope // "unknown") scope, " +
+            "\(.dependency.relationship // "unknown") dependency: " +
+            "\(.dependency.package.ecosystem) \(.dependency.package.name) in \(.dependency.manifest_path), " +
+            "vulnerable \(.security_vulnerability.vulnerable_version_range), " +
+            "fixed in \(.security_vulnerability.first_patched_version.identifier // "no release yet"). " +
+            "\(.security_advisory.ghsa_id), opened \(.created_at[:10]). \(.html_url)"')
+          closed=$(gh api --paginate "$ALERTS?state=fixed,dismissed,auto_dismissed&per_page=100" --jq '.[] |
+            select(.updated_at >= env.SINCE) |
+            "#\(.number) \(.state) on \(.updated_at[:10])\(if .dismissed_reason then " (\(.dismissed_reason))" else "" end): " +
+            "\(.dependency.package.ecosystem) \(.dependency.package.name), \(.security_advisory.ghsa_id). \(.html_url)"')
+          echo "Open alerts:"
+          echo "${open:-None.}"
+          echo
+          echo "Closed since $SINCE:"
+          echo "${closed:-None.}"

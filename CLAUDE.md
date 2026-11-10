@@ -63,7 +63,10 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
     Ops workflow (`.github/workflows/ops.yml` on `main`) with a gcloud command, or none for the
     last 3 hours of the API's warnings and errors, and read its run's log
     ([DEPLOY.md](docs/DEPLOY.md#reading-google-cloud)). It changes nothing; changes go through
-    `infra/` and the deploy.
+    `infra/` and the deploy. To read real play, export Miki's own stories, sealed to a key you
+    make, through the Deploy workflow's `export_key` input
+    ([DEPLOY.md](docs/DEPLOY.md#reading-the-owners-own-stories)); never print or commit story
+    text (T16).
 11. **A script Miki runs needs only a login.** Sign-ins open the browser and come back on a
     `localhost` callback (`gcloud auth login`, `neonctl auth`; in WSL, `BROWSER=wslview`), never
     `--no-launch-browser` or a code to copy by hand (`gh auth login --web --clipboard` copies
