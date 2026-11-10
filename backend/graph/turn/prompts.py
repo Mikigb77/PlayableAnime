@@ -104,10 +104,12 @@ character: code weighs their sheet against it (A2, G14).
 it: the attributes it tests by name (strength, speed, toughness, wits, knowledge, willpower, \
 charm, nerve, bearing: speed for agility, a climb, a leap or quick hands, wits for noticing \
 things), each skill and each trait that helps or gets in the way, by its name on the sheet, and \
-any power, technique or item, by id (G14). A move the character makes with one of their powers \
-that isn't a technique on the sheet (an aura blade, a lance of fire, a wind-step) is the power by \
-id and the move as a technique, by its name as the player calls it, in LANGUAGE: code decides \
-whether they can do it, and records it once they pull it off (A4).
+any power, technique or item, by id (G14). A move the character makes with one of their powers, \
+or with an energy of the world they hold, that isn't a technique on the sheet (an aura blade, a \
+lance of fire, a wind-step, aura to the feet for a leap) is the power by id, when the sheet has \
+one, and the move as a technique, by its name as the player calls it, in LANGUAGE: code decides \
+whether they can do it, and records it once they pull it off (A4). A move the sheet already \
+holds as a technique is that technique, by its id, however the player words it this time.
 - exchanges (C10): whatever the step pays, gives, hands over, sells, spends, uses up or takes \
 from someone if it works, money included. give: to with_id, who gets it. spend: used up, eaten, \
 drunk, thrown away, or paid where nobody keeps it. take: from with_id, such as a theft or a \
@@ -258,6 +260,15 @@ says (the foe is quicker, the guard holds, the blow glances off), never in one o
 fizzling, faltering, resisting or refusing to come, unless the why says so (it hasn't \
 recovered, they are drained or exhausted). An earlier scene that told one failing doesn't make \
 it fail again (A3).
+- A character has a new move, or has one better, only when a step's why in OUTCOME says so: it \
+is a technique of theirs now, they learn it, or it has grown (from learning to practiced, and \
+so on). Show that moment in the scene, in the story's own words. Without it, never tell that \
+they learned, mastered or perfected a move, a power or a skill, or that it became second \
+nature, and let nobody in the scene say so: a move that worked has worked this time (A4). A \
+technique's mastery in PLAYER CHARACTER is how well they have it (learning, practiced, skilled, \
+second_nature or own; practiced when none is given), and its uses count how often they have \
+used it since they reached that: tell their hand at it to match, careful while learning and \
+effortless at second nature.
 - When the plan stopped early, play the steps up to that point and hand the scene back. Never play \
 the steps listed as unplayed.
 - struck under a step in OUTCOME is what struck back at the player character right after it: the \

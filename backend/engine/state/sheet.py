@@ -190,8 +190,25 @@ class Power(EngineModel):
         return "; ".join(c.text.strip().rstrip(".") for c in self.costs if c.text.strip())
 
 
+class Mastery(StrEnum):
+    """A4, G25. How well a character has a move of theirs, lowest first. It grows with use and
+    with practice (`engine.levels`), up to second nature. A move made their own stands above
+    that, and no count of uses reaches it: only an improvement the story accepted does."""
+
+    LEARNING = "learning"
+    PRACTICED = "practiced"
+    SKILLED = "skilled"
+    SECOND_NATURE = "second_nature"
+    OWN = "own"
+
+    @property
+    def rank(self) -> int:
+        return list(Mastery).index(self)
+
+
 class Technique(EngineModel):
-    """G25. A named technique from a style, with its effect, cost and requirements."""
+    """G25. A named technique from a style, with its effect, cost and requirements, and how well
+    the character has it (A4)."""
 
     id: str
     name: Name
@@ -202,6 +219,17 @@ class Technique(EngineModel):
     learned_from: str = ""
     power_id: str | None = Field(
         default=None, description="The power it is a way of using, if any (A9, W10a)."
+    )
+    mastery: Mastery = Field(
+        default=Mastery.PRACTICED,
+        description="A4: how well they have it. A technique recorded before mastery was kept "
+        "is practiced.",
+    )
+    uses: int = Field(
+        default=0,
+        ge=0,
+        description="A4: the uses counted toward the next mastery, since the last one was "
+        "reached (`engine.levels`).",
     )
 
 

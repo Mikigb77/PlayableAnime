@@ -10,16 +10,21 @@ hold is there with no roll: a thing the engine has no record of exists unless th
 says it is uncertain, which is kept for what is hidden, rare, valuable or decisive, or absent.
 What the scene's own record holds is there whatever source the interpret step gave it.
 
-A power is found by its id or its name. A move the character makes with a power of theirs, such
-as an aura blade from their aura, is that power at work, not a technique they never learned
-(`Move`): the power must be ready, and the contest decides, never the sheet check. Pulled off
-cleanly, the move becomes a technique of their own (A4, `engine.resolve.core`).
+A power is found by its id or its name, and a technique by its id or its name, said in fewer
+words or in more (`same_way`). A move the character makes with a power of theirs, such as an
+aura blade from their aura, is that power at work, not a technique they never learned (`Move`):
+the power must be ready, and the contest decides, never the sheet check. Pulled off cleanly, the
+move becomes a technique of their own (A4, `engine.resolve.core`).
 
 "You have no power like that" is said only of something no record of theirs holds (`on_record`).
 A move made of the world's energy they hold, in a power, a technique, a reserve or a ladder they
 stand on, is theirs to try (`energy_move`), and so is one that names a technique they know or are
 still learning, whole or in part. It is tried on their own attributes and skills, and the contest
 decides. One shared word is never enough, so a power they lack is still one they lack.
+Such a move is a `Move` too, so the first time it comes off it is a technique of theirs: the
+technique they were learning, under its own name, or the move made of the energy, in the
+interpret step's words. The energy alone is no move, and a new way to use a power is earned by
+its own ruling (A9), never by doing it.
 The interpret step files the same move under different sources from turn to turn, so each source
 is checked against every record: a technique named as a power is that technique, and an aura
 blade filed as something carried is a move, not an object they lack.
@@ -45,7 +50,7 @@ from engine.rng import SeededRng
 from engine.state.bible import Prevalence
 from engine.state.cast import Character
 from engine.state.records import RollRecord, StepResult
-from engine.state.sheet import CharacterSheet, Item, Power, Technique
+from engine.state.sheet import CharacterSheet, Item, Power, Practice, Technique
 from engine.state.world import WorldState
 from engine.timekeeping import effect_over
 
@@ -77,12 +82,16 @@ class Settled:
 
 @dataclass(frozen=True)
 class Move:
-    """A4, G14. A move the character makes with a power of theirs that isn't a technique they
-    learned, such as an aura blade made with their aura: that power at work, named in the
-    interpret step's words."""
+    """A4, G14. A move of the character's own that isn't a technique on their sheet: one they
+    make with a power of theirs, such as an aura blade made with their aura (that power at work,
+    named in the interpret step's words), or one their records make theirs to try
+    (`on_record`): a technique they are still learning, or a move made of the world's energy
+    they hold. Pulled off cleanly, it becomes a technique of theirs (A4)."""
 
     name: str
-    power: Power
+    power: Power | None = None
+    style: str = ""  # the power's name, or the world's energy it is made of
+    practice: Practice | None = None  # the effort toward it so far, for one still being learned
 
 
 @dataclass
@@ -166,6 +175,7 @@ def sheet_check(
                         return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, not_ready)
                     continue
                 if on_record(state, actor, use.ref):
+                    _add_own_move(state, actor, drawn, use.ref)
                     continue
                 return Settled(
                     OutcomeClass.RULED_OUT,
@@ -177,6 +187,8 @@ def sheet_check(
                     OutcomeClass.RULED_OUT, StepResult.FAILURE, _not_recovered(state, actor, power)
                 )
             _add(drawn.powers, power)
+            # A move filed as a power ("aura_blade" for their Aura) is a move all the same.
+            _add_move(drawn, use.ref, power)
         elif use.part is SheetPart.TECHNIQUE:
             technique = known_technique(sheet, use.ref)
             if technique is not None:
@@ -191,6 +203,7 @@ def sheet_check(
                 if on_record(state, actor, use.ref):
                     # Something they are still learning, or made with the world's energy they
                     # hold: theirs to try, with nothing of the sheet added to it.
+                    _add_own_move(state, actor, drawn, use.ref)
                     continue
                 return Settled(
                     OutcomeClass.RULED_OUT,
@@ -224,11 +237,28 @@ def sheet_check(
     return None
 
 
+def same_way(way: str, words: str) -> bool:
+    """A4, G25. Whether `words` name the way called `way`: every word of theirs is in its name
+    ("the palm" for a Rising Palm), or its whole name is in them and is more than one word, so
+    "the rising palm, with all my weight" is the Rising Palm, and an "aura strike" is still no
+    plain Strike."""
+    name, said = stems(way), stems(words)
+    if not name or not said:
+        return False
+    return said <= name or (len(name) > 1 and name <= said)
+
+
 def known_technique(sheet: CharacterSheet, ref: str) -> Technique | None:
-    """G25. The technique of theirs a use names: by its id, else by its name."""
+    """G25. The technique of theirs a use names: by its id, else by its name, said in fewer
+    words or in more (`same_way`). One named in full comes first."""
     if not ref.strip():
         return None
-    return next((t for t in sheet.techniques if t.id == ref or mentions(t.name, ref)), None)
+    by_id = sheet.technique(ref)
+    if by_id is not None:
+        return by_id
+    return next((t for t in sheet.techniques if mentions(t.name, ref)), None) or next(
+        (t for t in sheet.techniques if same_way(t.name, ref)), None
+    )
 
 
 def _draw_technique(state: WorldState, actor: Character, technique: Technique, drawn: Drawn) -> str:
@@ -275,9 +305,25 @@ def energy_move(state: WorldState, actor: Character, words: str) -> bool:
     the world has combat aura), and the character's sheet holds that same kind, in a power, a
     technique known or practised, a reserve or a ladder they stand on. A sword stays a sword,
     since no kind of the world names it, and so does a kind they never touched."""
-    kinds = [k.kind for k in state.bible.extraordinary if k.prevalence is not Prevalence.NONE]
-    named = stems(words) & frozenset().union(*(stems(kind) for kind in kinds))
-    return bool(named & _held_words(state, actor))
+    return _energy_named(state, actor, words) is not None
+
+
+def _energy_named(state: WorldState, actor: Character, words: str) -> str | None:
+    """The world's energy the words name that the character holds, in the world's own words
+    ("combat aura"), or None (`energy_move`)."""
+    said, held = stems(words), _held_words(state, actor)
+    for kind in state.bible.extraordinary:
+        if kind.prevalence is not Prevalence.NONE and said & stems(kind.kind) & held:
+            return kind.kind
+    return None
+
+
+def _energy_words(state: WorldState, actor: Character) -> frozenset[str]:
+    """Every word that names an energy alone and no move made of it: the world's extraordinary
+    kinds, and the reserves the character holds."""
+    texts = [k.kind for k in state.bible.extraordinary]
+    texts += [r.name for r in actor.sheet.condition.reserves]
+    return frozenset().union(*(stems(text) for text in texts))
 
 
 def on_record(state: WorldState, actor: Character, words: str) -> bool:
@@ -347,13 +393,43 @@ def _add_move(drawn: Drawn, ref: str, power: Power) -> None:
     the power itself, nor one that has nothing to do with it, which plays as the power but isn't
     learned from it. A power over time grows its own ways instead (A4, W10a)."""
     words = move_name(ref)
-    if not words or len(words) > MAX_MOVE_NAME or power.time is not None or power.id == ref:
+    if not words or len(words) > MAX_MOVE_NAME or power.time is not None:
         return
+    if power.id == ref or stems(ref) == stems(power.id):
+        return  # the power by its id, however the id's words are joined
     what = f"{power.name} {power.description}"
     if mentions(what, words) or not stems(words) & stems(what):
         return
     if all(m.name.casefold() != words.casefold() for m in drawn.moves):
-        drawn.moves.append(Move(name=words, power=power))
+        drawn.moves.append(Move(name=words, power=power, style=power.name))
+
+
+def _add_own_move(state: WorldState, actor: Character, drawn: Drawn, ref: str) -> None:
+    """A4. A move the character's records make theirs to try (`on_record`), which can become a
+    technique of theirs once it comes off: a technique they are still learning, under its own
+    name, or a move made of the world's energy they hold, in the interpret step's words. The
+    energy alone is no move ("aura to my feet" is one, "aura" is not), and a new way to use a
+    power is earned by its own ruling (A9), never by doing it."""
+    words = move_name(ref)
+    if not stems(words) - _energy_words(state, actor):
+        return
+    learning = next(
+        (
+            p
+            for p in actor.sheet.practice
+            if p.key.startswith("technique:") and same_way(p.what, words)
+        ),
+        None,
+    )
+    if learning is not None:
+        move = Move(name=cap(learning.what.strip()), practice=learning)
+    else:
+        kind = _energy_named(state, actor, words)
+        if kind is None or len(words) > MAX_MOVE_NAME:
+            return
+        move = Move(name=words, style=kind)
+    if all(m.name.casefold() != move.name.casefold() for m in drawn.moves):
+        drawn.moves.append(move)
 
 
 # What a move's name starts with that isn't its name: an article or a possessive, in English,

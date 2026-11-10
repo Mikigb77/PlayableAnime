@@ -274,6 +274,13 @@ def _keep_training(
 ) -> list[Rejection]:
     so_far = step.training
     assert so_far is not None
+    actor = current.characters.get(actor_id)
+    if so_far.practising:
+        # Practising a technique they know: the time it ran counts toward its mastery.
+        if actor is None:
+            return []
+        delta = growth.practice_cut(actor, so_far, lived_s, step.text)
+        return list(apply_in_place(current, delta, ctx, source=DeltaSource.ENGINE).rejected)
     effort = so_far.before_s + growth.effort_s(lived_s) * so_far.rate
     if effort >= so_far.need_s:
         delta = step.effects

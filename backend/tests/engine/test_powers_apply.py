@@ -11,6 +11,7 @@ from engine.state import (
     CharacterStatus,
     HitMode,
     LadderPosition,
+    Mastery,
     Practice,
     Skill,
     SkillLevel,
@@ -123,6 +124,33 @@ def test_the_engine_records_growth():
     assert sheet.ladders == [LadderPosition(ladder_id="realms", rung=1)]
     assert sheet.practiced("skill:sword").effort_s == 10
     assert [s.level for s in sheet.skills] == [SkillLevel.SKILLED]
+
+
+def test_a_technique_they_have_keeps_what_it_is_and_only_its_mastery_moves():
+    """A4. Use and practice change how well they have a technique, never what it is."""
+    state = cultivation_world()
+    star = Technique(id="t", name="Falling Star", effect="A thrown star.", learned_from="zhao")
+    state.characters["lin"].sheet.techniques.append(star)
+    grown = Technique(id="t", name="Some other name", mastery=Mastery.SKILLED, uses=4)
+
+    applied = apply(state, characters=[lin(techniques=[grown])])
+
+    assert not applied.rejected
+    (kept,) = applied.state.characters["lin"].sheet.techniques
+    assert (kept.name, kept.effect, kept.learned_from) == ("Falling Star", "A thrown star.", "zhao")
+    assert (kept.mastery, kept.uses) == (Mastery.SKILLED, 4)
+
+
+def test_the_narrator_cant_raise_a_techniques_mastery():
+    state = cultivation_world()
+    state.characters["lin"].sheet.techniques.append(Technique(id="t", name="Falling Star"))
+    told = Technique(id="t", name="Falling Star", mastery=Mastery.OWN, uses=9)
+
+    applied = apply(state, NARRATOR, characters=[lin(techniques=[told])])
+
+    assert len(applied.rejected) == 1
+    (kept,) = applied.state.characters["lin"].sheet.techniques
+    assert (kept.mastery, kept.uses) == (Mastery.PRACTICED, 0)
 
 
 def test_strength_can_be_hidden_but_never_shown_above_the_truth():

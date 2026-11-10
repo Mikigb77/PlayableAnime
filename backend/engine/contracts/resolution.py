@@ -86,13 +86,16 @@ class ProposedDeed(EngineModel):
 class TrainingSoFar(EngineModel):
     """A4. Where a training step started, so one cut short keeps the effort put in: effort counts
     as `growth.effort_s` of the lived time it ran, times `rate`, on top of `before_s`, and makes
-    the gain if it reaches `need_s`."""
+    the gain if it reaches `need_s`. Practising a technique they already know (`practising`,
+    keyed `mastery:<technique id>`) has nothing to reach: the time it ran counts toward the
+    technique's mastery."""
 
     key: str
     what: str
     before_s: float = Field(default=0, ge=0)
     rate: float = Field(default=1.0, gt=0)
     need_s: float = Field(default=0, ge=0)
+    practising: bool = False
 
 
 class Harm(StrEnum):
