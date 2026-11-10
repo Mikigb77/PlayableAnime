@@ -7,7 +7,7 @@ from engine.state import GiftStrength
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
 from graph.drafting.catalog import starter
-from graph.drafting.schema import FactionP, NpcP, RuleP
+from graph.drafting.schema import FactionP, NpcP, RuleP, TalentP
 from graph.drafting.view import (
     CHARACTER_LINES,
     WORLD_LINES,
@@ -222,3 +222,57 @@ def test_a_power_with_no_cost_shows_none():
     lines = character_lines(_cultivation(character=character))
 
     assert not any("Cost:" in line for line in lines)
+
+
+def _with_talents():
+    character = samples.cultivation_character().model_copy(
+        update={
+            "talents": [
+                TalentP(name="Hopeless at haggling", strength="slow"),
+                TalentP(name="Architecture", covers="Structure and geometry.", strength="genius"),
+                TalentP(
+                    name="Extreme perception",
+                    covers="any move he can watch someone do",
+                    strength="one_of_a_kind",
+                ),
+                TalentP(name="The sword", strength="one_of_a_kind"),
+                TalentP(name="Quick hands", covers="sleight and knots", strength="knack"),
+            ]
+        }
+    )
+    return _cultivation(character=character)
+
+
+def test_the_summary_says_what_each_talent_covers_so_the_player_can_check_it():
+    # A4, G2: strongest first, each with what it covers, in words the player can change.
+    lines = character_lines(_with_talents())
+
+    assert (
+        "One of a kind: Extreme perception (any move he can watch someone do); The sword."
+        " Genius: Architecture (Structure and geometry). A knack: Quick hands (sleight and"
+        " knots). Weakness: Hopeless at haggling." in lines
+    )
+    assert len(lines) <= CHARACTER_LINES
+
+
+def test_the_talent_line_comes_in_spanish_and_catalan():
+    state = _with_talents()
+
+    assert (
+        "Talento único: Extreme perception (any move he can watch someone do); The sword."
+        " Genio: Architecture (Structure and geometry). Facilidad: Quick hands (sleight and"
+        " knots). Punto débil: Hopeless at haggling." in character_lines(state, Language.ES)
+    )
+    assert (
+        "Talent únic: Extreme perception (any move he can watch someone do); The sword."
+        " Geni: Architecture (Structure and geometry). Facilitat: Quick hands (sleight and"
+        " knots). Punt feble: Hopeless at haggling." in character_lines(state, Language.CA)
+    )
+
+
+def test_a_character_with_no_talents_has_no_talent_line():
+    lines = character_lines(_cultivation())
+
+    assert not any(
+        line.startswith(("One of a kind", "Genius:", "A knack", "Weakness")) for line in lines
+    )

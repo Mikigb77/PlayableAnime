@@ -25,12 +25,13 @@ from functools import cached_property
 from pydantic import Field
 
 from engine import levels, possessions
+from engine import talent as talent_mod
 from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, in_label, number_label
 from engine.limits import normalize
-from engine.resolve.powers.growth import talent
+from engine.resolve.powers.growth import technique_pace
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -50,7 +51,7 @@ from engine.state.records import (
     Transfer,
     Visibility,
 )
-from engine.state.sheet import Health, Mastery, Technique
+from engine.state.sheet import Health, Mastery, TalentFit, TalentStrength, Technique
 from engine.state.world import WorldState, natural_key
 from engine.world.rumors import Certainty, certainty
 from engine.world.telling import cap, tell
@@ -257,6 +258,61 @@ _MASTERY_WORDS = {
     },
 }
 
+# A4: a talent's strength as Status says it after the talent's name, with the pace it gives.
+_TALENT_WORDS = {
+    EN: {
+        TalentStrength.SLOW: "weakness, half the pace",
+        TalentStrength.KNACK: "talent, a knack, twice as fast",
+        TalentStrength.GENIUS: "talent, genius, four times as fast",
+        TalentStrength.ONE_OF_A_KIND: "talent, one of a kind, eight times as fast",
+    },
+    ES: {
+        TalentStrength.SLOW: "punto débil, a la mitad de ritmo",
+        TalentStrength.KNACK: "talento, facilidad, el doble de rápido",
+        TalentStrength.GENIUS: "talento, genio, cuatro veces más rápido",
+        TalentStrength.ONE_OF_A_KIND: "talento único, ocho veces más rápido",
+    },
+    CA: {
+        TalentStrength.SLOW: "punt feble, a la meitat de ritme",
+        TalentStrength.KNACK: "talent, facilitat, el doble de ràpid",
+        TalentStrength.GENIUS: "talent, geni, quatre vegades més ràpid",
+        TalentStrength.ONE_OF_A_KIND: "talent únic, vuit vegades més ràpid",
+    },
+}
+# A4: how fast a thing grows, by the doublings of the ordinary pace (`engine.talent`).
+_PACE_WORDS = {
+    EN: talent_mod.PACE_WORDS,
+    ES: {
+        -1: "a la mitad de ritmo",
+        0: "al ritmo normal",
+        1: "el doble de rápido",
+        2: "cuatro veces más rápido",
+        3: "ocho veces más rápido",
+    },
+    CA: {
+        -1: "a la meitat de ritme",
+        0: "al ritme normal",
+        1: "el doble de ràpid",
+        2: "quatre vegades més ràpid",
+        3: "vuit vegades més ràpid",
+    },
+}
+# A4: how a thing they learn stands to the talent that sets its pace, once ruled on.
+_FIT_WORDS = {
+    EN: {
+        TalentFit.INSIDE: ", inside your talent ({talent})",
+        TalentFit.RELATED: ", related to your talent ({talent})",
+    },
+    ES: {
+        TalentFit.INSIDE: ", dentro de tu talento ({talent})",
+        TalentFit.RELATED: ", afín a tu talento ({talent})",
+    },
+    CA: {
+        TalentFit.INSIDE: ", dins del teu talent ({talent})",
+        TalentFit.RELATED: ", afí al teu talent ({talent})",
+    },
+}
+
 _HEALTH_WORDS = {
     EN: {
         Health.UNHURT: "Unhurt",
@@ -332,6 +388,12 @@ _WORDS = {
         "cost": "{power}, cost: {costs}",
         "technique": "{name} (technique, {mastery})",
         "technique_uses": "{name} (technique, {mastery}, {uses} of {need} uses)",
+        "talent": "{name} ({strength}): {covers}",
+        "ruled": "{what}: grows {pace}",
+        "slowed": ", slowed by your weakness ({talent})",
+        "outside": "Outside your talents: {things}",
+        "bridge": "Bridge: {grounds}",
+        "bridges": "Bridges: {grounds}",
         "ends": "Ends {when}",
         "heard": "Heard {when}",
         "and": " and ",
@@ -357,6 +419,12 @@ _WORDS = {
         "cost": "{power}, coste: {costs}",
         "technique": "{name} (técnica, {mastery})",
         "technique_uses": "{name} (técnica, {mastery}, {uses} de {need} usos)",
+        "talent": "{name} ({strength}): {covers}",
+        "ruled": "{what}: crece {pace}",
+        "slowed": ", con el freno de tu punto débil ({talent})",
+        "outside": "Fuera de tus talentos: {things}",
+        "bridge": "Puente: {grounds}",
+        "bridges": "Puentes: {grounds}",
         "ends": "Termina {when}",
         "heard": "Lo oíste {when}",
         "and": " y ",
@@ -382,6 +450,12 @@ _WORDS = {
         "cost": "{power}, cost: {costs}",
         "technique": "{name} (tècnica, {mastery})",
         "technique_uses": "{name} (tècnica, {mastery}, {uses} de {need} usos)",
+        "talent": "{name} ({strength}): {covers}",
+        "ruled": "{what}: creix {pace}",
+        "slowed": ", amb el fre del teu punt feble ({talent})",
+        "outside": "Fora dels teus talents: {things}",
+        "bridge": "Pont: {grounds}",
+        "bridges": "Ponts: {grounds}",
         "ends": "Acaba {when}",
         "heard": "Ho vas sentir {when}",
         "and": " i ",
@@ -710,8 +784,9 @@ class _Knowledge:
                 lines.append(_cap(cost))
         # G25, A4: the techniques they know, those they made their own in play included, each
         # with how well they have it and the uses counted toward the next mastery.
-        gift = talent(player)
-        lines += [self.technique_line(t, gift) for t in player.sheet.techniques]
+        lines += [
+            self.technique_line(t, technique_pace(player, t)) for t in player.sheet.techniques
+        ]
         return lines
 
     def technique_line(self, technique: Technique, gift: float) -> str:
@@ -726,6 +801,52 @@ class _Knowledge:
         return _cap(
             line.format(name=technique.name, mastery=mastery, uses=technique.uses, need=need)
         )
+
+    def talent_lines(self, player: Character) -> list[str]:
+        """A4. The talents on their sheet as the engine reads them, each with its strength and
+        the pace it gives, then every thing a talent or a weakness reaches: how fast it grows
+        now, how it stands to the talent that sets that pace, and the bridges that hold. What
+        was ruled outside every talent is one line at the end. A sheet saved before talent was
+        a record shows none."""
+        sheet = player.sheet
+        if not sheet.talents:
+            return []
+        words = _WORDS[self.language]
+        lines = []
+        for talent in talent_mod.talents_of(player):
+            strength = _TALENT_WORDS[self.language][talent.strength]
+            line = words["talent"].format(name=talent.name, strength=strength, covers=talent.covers)
+            lines.append(_cap(line if talent.covers else line.removesuffix(": ")))
+        named = {r.key: r.what for r in sheet.talent_rulings}
+        for bridge in sheet.bridges:
+            if bridge.steps:
+                named.setdefault(bridge.key, bridge.what)
+        outside: list[str] = []
+        for key, what in named.items():
+            stands = talent_mod.standing(player, key)
+            by = stands.by
+            if by is None and stands.slowed_by is None:
+                outside.append(what or key)
+                continue
+            pace = _PACE_WORDS[self.language][stands.steps]
+            line = words["ruled"].format(what=what or key, pace=pace)
+            if by is not None and stands.fit is not None:
+                line += _FIT_WORDS[self.language][stands.fit].format(talent=by.name)
+            if stands.slowed_by is not None:
+                line += words["slowed"].format(talent=stands.slowed_by.name)
+            lines.append(_cap(line))
+            # The bridges that carry it there: those from the talent that sets its pace.
+            held = [
+                b.rests_on
+                for b in sheet.bridges
+                if by is not None and (b.key, b.talent_id) == (key, by.id) and b.steps
+            ]
+            if held:
+                label = words["bridges" if len(held) > 1 else "bridge"]
+                lines.append(label.format(grounds="; ".join(held)))
+        if outside:
+            lines.append(words["outside"].format(things="; ".join(outside)))
+        return lines
 
     def resource_lines(self, player: Character) -> list[str]:
         resources = player.sheet.resources
@@ -868,6 +989,7 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
         k.ladder_lines(player)
         + k.condition_lines(player)
         + k.power_lines(player)
+        + k.talent_lines(player)
         + k.resource_lines(player)
     )
     reputation = [

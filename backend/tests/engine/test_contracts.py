@@ -321,3 +321,19 @@ def test_the_interpret_model_must_always_judge_whether_a_thing_is_there():
     assert {"source", "thing", "plausibility"} <= set(use["required"])
     assert "ref" not in use["required"]
     assert BeatUse(source=UseSource.NEW, thing="a branch").plausibility is None
+
+
+def test_talent_rulings_and_bridges_are_left_out_of_the_form_the_narrator_fills():
+    # A4: which talent covers what is the engine's to record, from what the interpret step
+    # proposes on a step, so the narrate model is never offered either.
+    schema = StateDelta.model_json_schema()
+    offered = set(schema["$defs"]["CharacterChange"]["properties"])
+    assert not {"talent_rulings", "bridges"} & offered
+    assert not {"TalentRuling", "TalentBridge", "TalentCover"} & set(schema["$defs"])
+
+
+def test_the_interpret_step_can_make_a_case_for_a_talent_and_propose_a_bridge():
+    step = Intent.model_json_schema()["$defs"]["IntentStep"]["properties"]
+    assert {"talent_cases", "bridge"} <= set(step)
+    case = Intent.model_json_schema()["$defs"]["TalentCase"]
+    assert set(case["required"]) == {"talent_id", "fit"}

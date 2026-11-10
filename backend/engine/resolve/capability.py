@@ -45,6 +45,7 @@ from dataclasses import dataclass
 from statistics import mean
 
 from engine import levels
+from engine import talent as talent_mod
 from engine.context import Difficulty
 from engine.contracts.intent import Challenge, Edge, EdgeSource, IntentStep, SheetPart
 from engine.resolve.checks import Drawn
@@ -201,11 +202,13 @@ def hand_for(
         best = max(techniques, key=lambda t: (t.mastery.rank, t.uses))
         dice = levels.MASTERY_DICE[best.mastery]
         why = f"{cap(best.name)} ({MASTERY_WORDS[best.mastery]}), {_dice(dice)}"
-        return Brought(Hand(dice, why, own_die(best.mastery)), technique=best)
+        hand = Hand(dice, why, own_die(best.mastery), _insight_at(actor, best.name))
+        return Brought(hand, technique=best)
     if drawn.moves:
+        move = drawn.moves[0].name
         dice = levels.MASTERY_DICE[start]
-        why = f"{cap(drawn.moves[0].name)} (a new move), {_dice(dice)}"
-        return Brought(Hand(dice, why, DieKind.VIOLET))
+        why = f"{cap(move)} (a new move), {_dice(dice)}"
+        return Brought(Hand(dice, why, DieKind.VIOLET, _insight_at(actor, move)))
     # The skill it draws on: one of theirs the step names or plainly is, and untrained where it
     # names a skill their sheet doesn't hold.
     best_of = best_skill(actor, drawn.skills) or best_skill(actor, skills_for(actor, step))
@@ -223,6 +226,12 @@ def hand_for(
     dice = levels.AVERAGE_DICE
     what = drawn.powers[0].name if drawn.powers else "An ordinary hand"
     return Brought(Hand(dice, f"{cap(what)}, {_dice(dice)}"), by_attribute=True)
+
+
+def _insight_at(actor: Character, move: str) -> int:
+    """A3, A4. The face of a move's violet die that shows an insight: 18, or 16 when two
+    talents of theirs both cover the move fully (`engine.talent`)."""
+    return talent_mod.standing(actor, talent_mod.technique_key(move)).insight_at
 
 
 def defence_hand(state: WorldState, actor: Character, step: IntentStep, drawn: Drawn) -> Hand:

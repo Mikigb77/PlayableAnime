@@ -105,6 +105,84 @@ class Trait(EngineModel):
     description: str = ""
 
 
+class TalentStrength(StrEnum):
+    """A4. How strong a talent is, lowest first. Each step doubles the pace of learning: a slow
+    learner takes twice as long, a knack learns twice as fast, a genius four times and someone
+    one of a kind eight times."""
+
+    SLOW = "slow"
+    KNACK = "knack"
+    GENIUS = "genius"
+    ONE_OF_A_KIND = "one_of_a_kind"
+
+    @property
+    def steps(self) -> int:
+        """How many doublings of the ordinary pace it is worth; a weakness is one down."""
+        return {"slow": -1, "knack": 1, "genius": 2, "one_of_a_kind": 3}[self.value]
+
+
+class Talent(EngineModel):
+    """A4. How a character learns one kind of thing, written when they are made from the
+    player's own words. A weakness is a talent too, of strength slow. `covers` says in plain
+    words what it reaches: a subject, such as the sword or building, or a faculty, such as
+    perception, which reaches whatever comes to them through it. A talent that covers
+    everything they learn is `general`, and is never stronger than a genius: one of a kind
+    always names one specific thing, with the reason behind it (`engine.talent`)."""
+
+    id: str
+    name: Name
+    covers: str = Field(default="", description="What it reaches, in plain words.")
+    strength: TalentStrength = TalentStrength.KNACK
+    general: bool = Field(default=False, description="It covers everything they learn.")
+    reason: str = Field(default="", description="Where it comes from, in a sentence.")
+
+
+class TalentFit(StrEnum):
+    """A4. How one thing a character learns stands to one talent of theirs."""
+
+    INSIDE = "inside"  # it is what the talent is about: the talent's full pace
+    RELATED = "related"  # the talent helps but doesn't hand it over: one step under
+    OUTSIDE = "outside"  # the talent has nothing to do with it: the ordinary pace
+
+
+class TalentCover(EngineModel):
+    """A4. One talent's fit for one thing, with the reason it was ruled so."""
+
+    talent_id: str
+    fit: TalentFit
+    reason: str = ""
+
+
+class TalentRuling(EngineModel):
+    """A4, A9. Whether the character's talents cover one thing they learn, ruled once, the first
+    time they set out to learn it, and never flipped: a later ruling on the same `key` is not
+    accepted. A talent it doesn't list is outside. `key` names the thing, such as
+    `technique:aura-blade` or `skill:swordsmanship` (`engine.talent`)."""
+
+    key: str = Field(min_length=1)
+    what: str = ""
+    covers: list[TalentCover] = Field(default_factory=list)
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+
+
+class TalentBridge(EngineModel):
+    """A4. Work the character did in the story to connect a talent of theirs to something
+    outside it, such as deriving the formula behind a blade's shape. A bridge that held lifts
+    that one thing toward the talent's pace by `steps`, one, or two when it covers the heart of
+    the thing, and never past the talent it starts from. One that didn't hold is kept with no
+    steps, so the same ground is never tried twice."""
+
+    key: str = Field(min_length=1)
+    what: str = ""
+    talent_id: str
+    rests_on: str = Field(description="The new thing it rests on, in a few words.")
+    steps: int = Field(default=1, ge=0, le=2)
+    reason: str = ""
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+
+
 class GiftStrength(StrEnum):
     """G22. Chosen when the character is made."""
 
@@ -476,6 +554,9 @@ class CharacterSheet(EngineModel):
     attributes: Attributes = Field(default_factory=Attributes)
     skills: list[Skill] = Field(default_factory=list)
     traits: list[Trait] = Field(default_factory=list)
+    talents: list[Talent] = Field(
+        default_factory=list, description="A4: how they learn, written when they are made."
+    )
     powers: list[Power] = Field(default_factory=list)
     techniques: list[Technique] = Field(default_factory=list)
     disposition: Disposition = Field(default_factory=Disposition)
@@ -486,6 +567,14 @@ class CharacterSheet(EngineModel):
     rulings: list[Ruling] = Field(default_factory=list)
     growth: list[Gain] = Field(default_factory=list)
     practice: list[Practice] = Field(default_factory=list)
+    talent_rulings: list[TalentRuling] = Field(
+        default_factory=list,
+        description="A4: which of their talents cover each thing they learn, ruled once.",
+    )
+    bridges: list[TalentBridge] = Field(
+        default_factory=list,
+        description="A4: the work they did to connect a talent to something outside it.",
+    )
     backstory: list[BackstoryClaim] = Field(default_factory=list)
 
     def power(self, power_id: str) -> Power | None:
@@ -503,6 +592,12 @@ class CharacterSheet(EngineModel):
 
     def practiced(self, key: str) -> Practice | None:
         return next((p for p in self.practice if p.key == key), None)
+
+    def talent(self, talent_id: str) -> Talent | None:
+        return next((t for t in self.talents if t.id == talent_id), None)
+
+    def talent_ruling(self, key: str) -> TalentRuling | None:
+        return next((r for r in self.talent_rulings if r.key == key), None)
 
     def ruling(self, topic: str, power_id: str | None = None) -> Ruling | None:
         return next(

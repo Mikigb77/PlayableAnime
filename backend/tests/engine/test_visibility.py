@@ -719,3 +719,175 @@ def test_status_tells_what_the_player_character_gained_and_lost_in_every_languag
         "Para Carmine Russo: 50 lire",
     ]
     assert since(CA) == ["Pèrdua: flick knife", "D'algú: brass key", "Per a Carmine Russo: 50 lire"]
+
+
+def _talented():
+    from engine.state import Talent, TalentCover, TalentFit, TalentRuling, TalentStrength
+
+    state = cultivation_world()
+    sheet = state.player.sheet
+    sheet.talents = [
+        Talent(
+            id="sword",
+            name="The sword",
+            covers="anything fought with a blade",
+            strength=TalentStrength.ONE_OF_A_KIND,
+        ),
+        Talent(id="architect", name="Architecture", strength=TalentStrength.GENIUS),
+        Talent(id="hands", name="Quick hands", strength=TalentStrength.KNACK, covers="sleight"),
+        Talent(id="words", name="Words", strength=TalentStrength.SLOW, covers="persuading"),
+    ]
+    sheet.talent_rulings = [
+        TalentRuling(
+            key="technique:aura-blade",
+            what="Aura blade",
+            covers=[
+                TalentCover(talent_id="sword", fit=TalentFit.INSIDE),
+                TalentCover(talent_id="architect", fit=TalentFit.RELATED),
+            ],
+        ),
+        TalentRuling(
+            key="technique:aura-wall",
+            what="Aura wall",
+            covers=[TalentCover(talent_id="architect", fit=TalentFit.RELATED)],
+        ),
+        TalentRuling(
+            key="skill:haggling",
+            what="Haggling",
+            covers=[TalentCover(talent_id="words", fit=TalentFit.INSIDE)],
+        ),
+    ]
+    return state
+
+
+def test_status_shows_each_talent_with_its_strength_and_the_pace_it_gives():
+    # A4: the player can see what the story reads on their sheet.
+    state = _talented()
+
+    assert lines_of(state)[-7:-3] == [
+        "The sword (talent, one of a kind, eight times as fast): anything fought with a blade",
+        "Architecture (talent, genius, four times as fast)",
+        "Quick hands (talent, a knack, twice as fast): sleight",
+        "Words (weakness, half the pace): persuading",
+    ]
+    assert lines_of(state, ES)[-7:-3] == [
+        "The sword (talento único, ocho veces más rápido): anything fought with a blade",
+        "Architecture (talento, genio, cuatro veces más rápido)",
+        "Quick hands (talento, facilidad, el doble de rápido): sleight",
+        "Words (punto débil, a la mitad de ritmo): persuading",
+    ]
+    assert lines_of(state, CA)[-7:-3] == [
+        "The sword (talent únic, vuit vegades més ràpid): anything fought with a blade",
+        "Architecture (talent, geni, quatre vegades més ràpid)",
+        "Quick hands (talent, facilitat, el doble de ràpid): sleight",
+        "Words (punt feble, a la meitat de ritme): persuading",
+    ]
+
+
+def test_status_shows_how_each_thing_ruled_on_stands_and_the_bridges_that_hold():
+    # A4: the ruling the engine made, where the player can see it, with how fast it grows now.
+    from engine.state import TalentBridge
+
+    state = _talented()
+    wall = "technique:aura-wall"
+    state.player.sheet.bridges = [
+        TalentBridge(key=wall, what="Aura wall", talent_id="architect", rests_on="the formula"),
+        TalentBridge(key=wall, what="Aura wall", talent_id="architect", rests_on="a wish", steps=0),
+        TalentBridge(
+            key="skill:herb-lore", what="Herb lore", talent_id="hands", rests_on="deft picking"
+        ),
+    ]
+
+    assert lines_of(state)[-6:] == [
+        "Aura blade: grows eight times as fast, inside your talent (The sword)",
+        "Aura wall: grows four times as fast, inside your talent (Architecture)",
+        "Bridge: the formula",
+        "Haggling: grows at half the pace, slowed by your weakness (Words)",
+        "Herb lore: grows twice as fast, inside your talent (Quick hands)",
+        "Bridge: deft picking",
+    ]
+    assert lines_of(state, ES)[-6:] == [
+        "Aura blade: crece ocho veces más rápido, dentro de tu talento (The sword)",
+        "Aura wall: crece cuatro veces más rápido, dentro de tu talento (Architecture)",
+        "Puente: the formula",
+        "Haggling: crece a la mitad de ritmo, con el freno de tu punto débil (Words)",
+        "Herb lore: crece el doble de rápido, dentro de tu talento (Quick hands)",
+        "Puente: deft picking",
+    ]
+    assert lines_of(state, CA)[-6:] == [
+        "Aura blade: creix vuit vegades més ràpid, dins del teu talent (The sword)",
+        "Aura wall: creix quatre vegades més ràpid, dins del teu talent (Architecture)",
+        "Pont: the formula",
+        "Haggling: creix a la meitat de ritme, amb el fre del teu punt feble (Words)",
+        "Herb lore: creix el doble de ràpid, dins del teu talent (Quick hands)",
+        "Pont: deft picking",
+    ]
+
+
+def test_status_lists_what_no_talent_reaches_in_one_line():
+    """A long story rules on dozens of things. What a talent reaches gets a line of its own;
+    everything ruled outside them all shares one, so Status stays readable."""
+    from engine.state import TalentBridge, TalentCover, TalentFit, TalentRuling
+
+    state = _talented()
+    sheet = state.player.sheet
+    sheet.talent_rulings += [
+        TalentRuling(
+            key="skill:herb-lore",
+            what="Herb lore",
+            covers=[TalentCover(talent_id="sword", fit=TalentFit.OUTSIDE)],
+        ),
+        TalentRuling(key="technique:rope-trick", what="Rope trick"),
+    ]
+    # A bridge that didn't hold changes nothing here.
+    sheet.bridges = [
+        TalentBridge(
+            key="skill:herb-lore", what="Herb lore", talent_id="hands", rests_on="luck", steps=0
+        )
+    ]
+
+    assert lines_of(state)[-4:] == [
+        "Aura blade: grows eight times as fast, inside your talent (The sword)",
+        "Aura wall: grows twice as fast, related to your talent (Architecture)",
+        "Haggling: grows at half the pace, slowed by your weakness (Words)",
+        "Outside your talents: Herb lore; Rope trick",
+    ]
+    assert lines_of(state, ES)[-1] == "Fuera de tus talentos: Herb lore; Rope trick"
+    assert lines_of(state, CA)[-1] == "Fora dels teus talents: Herb lore; Rope trick"
+
+
+def test_status_says_related_until_a_bridge_carries_the_thing_all_the_way():
+    state = _talented()
+
+    assert "Aura wall: grows twice as fast, related to your talent (Architecture)" in lines_of(
+        state
+    )
+    assert "Aura wall: crece el doble de rápido, afín a tu talento (Architecture)" in lines_of(
+        state, ES
+    )
+    assert "Aura wall: creix el doble de ràpid, afí al teu talent (Architecture)" in lines_of(
+        state, CA
+    )
+
+
+def test_a_sheet_saved_before_talent_was_a_record_shows_no_talent_lines():
+    state = cultivation_world()
+    state.player.sheet.traits.append(Trait(name="Genius", kind=TraitKind.GIFT))
+
+    assert not any("talent" in line for line in lines_of(state))
+
+
+def test_status_counts_a_techniques_uses_at_the_pace_its_own_ruling_gives():
+    # A4: each technique at its own pace, not one pace for the whole sheet.
+    state = _talented()
+    state.player.sheet.techniques += [
+        Technique(id="blade", name="Aura blade", mastery=Mastery.LEARNING),
+        Technique(id="wall", name="Aura wall", mastery=Mastery.LEARNING),
+        Technique(id="palm", name="Rising Palm", mastery=Mastery.LEARNING),
+    ]
+
+    lines = lines_of(state)
+
+    assert "Aura blade (technique, learning, 0 of 1 uses)" in lines
+    assert "Aura wall (technique, learning, 0 of 3 uses)" in lines
+    assert "Rising Palm (technique, learning, 0 of 6 uses)" in lines
