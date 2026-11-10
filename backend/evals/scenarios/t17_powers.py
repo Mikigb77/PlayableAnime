@@ -1203,10 +1203,11 @@ async def talent(ev: Eval) -> None:
         Rubric(
             must=(
                 # Both talents feed the blade's pace, and the player argues both, so the
-                # telling may lean on either.
-                "The aura blade comes to Lin strikingly fast, far faster than practice alone "
-                "would explain, through what he is gifted at: the blade itself, or his eye "
-                "for structure",
+                # telling may lean on either. A scene shows the pace by how far one practice
+                # takes him: it need not say how long anyone else would take.
+                "The aura blade comes to Lin fast: one practice takes him a long way with it, "
+                "and the scene shows that coming through what he is gifted at, the blade "
+                "itself or his eye for structure",
                 "Deriving the formula is shown as real work, and whether it pays off is "
                 "exactly what OUTCOME says",
             ),
