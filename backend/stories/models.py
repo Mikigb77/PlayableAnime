@@ -2,6 +2,8 @@
 
 Only a turn writes a story row (B12): it saves the new world state, the scene and any pending
 events in one transaction, and bumps `version` so a concurrent turn can't overwrite it (T10).
+The one thing a turn writes before that is itself, before its decided steps are shown
+(`unfinished_turn`, A3).
 """
 
 import uuid
@@ -54,6 +56,10 @@ class Story(models.Model):
     # N6: the person drawn to carry the story on after its ending, until the player starts as
     # them or draws someone else: `stories.succession.Drawn`.
     successor = models.JSONField(null=True, blank=True)
+    # A3: a turn whose steps were decided and shown but whose scene isn't saved yet. Whatever
+    # turn is sent next plays this one out, so a throw can't be looked at and then taken back
+    # (`stories.unfinished`). Null once the scene is saved, which is nearly always.
+    unfinished_turn = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

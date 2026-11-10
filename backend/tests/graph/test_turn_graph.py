@@ -34,6 +34,8 @@ from graph.turn import (
     NarrationDelta,
     NarrationReset,
     PastScene,
+    Reading,
+    StepsDecided,
     TurnCompleted,
     TurnInput,
     TurnKind,
@@ -116,6 +118,109 @@ def streamed(events) -> str:
     return text
 
 
+# A step the dice settle (A2): a hard task with no move behind it.
+CLIMB = {
+    "summary": "Lin climbs the wall of the well.",
+    "steps": [
+        {
+            "text": "climb the wet wall of the well",
+            "verb": "climb",
+            "kind": "task",
+            "proposed_duration_s": 30,
+            "facts": {"challenge": "hard"},
+        },
+        # More steps than one scene takes: the last two are handed back (R6).
+        *(
+            {
+                "text": f"take step {n} along the lane",
+                "verb": "walk",
+                "kind": "move",
+                "proposed_duration_s": 5,
+            }
+            for n in range(1, 10)
+        ),
+    ],
+}
+HANDED_BACK = ("take step 8 along the lane", "take step 9 along the lane")
+
+
+def test_the_decided_steps_go_out_before_the_telling_with_their_dice(fake, make_client):
+    """A3, B7: the dice a step was decided by travel with it, exactly as the engine threw them,
+    and the player has them before the narrator writes a word."""
+    fake.script(Node.INTERPRET, Reply(json=CLIMB))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    events, result = play(make_client(), turn_input(action="I climb the wall and get away"))
+
+    decided, *told = events
+    assert isinstance(decided, StepsDecided)
+    assert told and all(isinstance(e, NarrationDelta) for e in told)
+    assert decided.details == result.scene.details
+    [thrown] = decided.throws
+    engine_throw = result.resolution.steps[0].roll.throw
+    assert [(d.kind, d.face, d.sprung) for d in thrown.dice] == [
+        (d.kind, d.face, d.sprung) for d in engine_throw.dice
+    ]
+    assert (thrown.hand, thrown.number, thrown.total, thrown.most, thrown.mark) == (
+        engine_throw.hand,
+        engine_throw.number,
+        engine_throw.total,
+        engine_throw.most,
+        engine_throw.mark,
+    )
+    assert [(p.text, p.points) for p in thrown.made_of] == [
+        (p.text, p.points) for p in engine_throw.made_of
+    ]
+    dumped = result.scene.model_dump(mode="json")["details"]["steps"][0]["roll"]["throw"]
+    assert dumped["mark"] == engine_throw.mark.value
+    assert dumped["dice"][0] == {
+        "kind": engine_throw.dice[0].kind.value,
+        "face": engine_throw.dice[0].face,
+        "sprung": engine_throw.dice[0].sprung,
+    }
+    # How the turn was read goes with it, for the endpoint to keep, with the steps handed back.
+    assert decided.reading.intent.steps[0].text == "climb the wet wall of the well"
+    assert decided.reading.overflow == HANDED_BACK
+    assert tuple(result.resolution.unplayed[-2:]) == HANDED_BACK
+
+
+def test_a_turn_with_its_reading_is_played_out_without_reading_the_action_again(
+    fake, make_client, telemetry
+):
+    """A3: the dice come from the turn's seed, so the same reading on the same world decides the
+    same steps, whatever action comes with it."""
+    fake.script(Node.INTERPRET, Reply(json=CLIMB))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    first, result = play(make_client(), turn_input(action="I climb the wall and get away"))
+    reading = first[0].reading
+    # What the endpoint keeps is JSON: the reading comes back from it as it went in.
+    kept = type(reading.intent).model_validate(reading.intent.model_dump(mode="json"))
+    assert kept == reading.intent
+    telemetry.calls.clear()
+
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    again, replayed = play(
+        make_client(),
+        turn_input(action="I climb the wall and get away", reading=Reading(kept, reading.overflow)),
+    )
+
+    assert [c.node for c in telemetry.calls] == ["narrator"]
+    assert again[0].details == first[0].details
+    assert again[0].reading == reading
+    assert replayed.scene.details == result.scene.details
+    assert replayed.resolution.unplayed == result.resolution.unplayed
+    assert replayed.state.world_s == result.state.world_s
+
+
+def test_an_opening_decides_no_steps(fake, make_client):
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    events, result = play(make_client(), turn_input(kind=TurnKind.OPENING))
+
+    assert not any(isinstance(e, StepsDecided) for e in events)
+    assert result.scene.details.steps == []
+
+
 def test_a_turn_runs_end_to_end(fake, make_client, telemetry):
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
@@ -124,8 +229,13 @@ def test_a_turn_runs_end_to_end(fake, make_client, telemetry):
 
     events, result = play(make_client(), turn)
 
-    assert all(isinstance(e, NarrationDelta) for e in events)
-    assert len(events) > 1  # streamed in pieces (S3)
+    # A3: what the engine decided comes first, and it is what the scene carries.
+    decided, *told = events
+    assert isinstance(decided, StepsDecided)
+    assert decided.details == result.scene.details
+    assert decided.throws == []  # both steps are certain, so no dice were thrown
+    assert all(isinstance(e, NarrationDelta) for e in told)
+    assert len(told) > 1  # streamed in pieces (S3)
     assert streamed(events) == SCENE["narration"]
     assert result.narration_mode == "full"
     assert [c.node for c in telemetry.calls] == ["interpret", "narrator"]

@@ -129,6 +129,7 @@ def rewind(story: Story, expected_version: int, scenes: int) -> Story:
             turn=to_turn,
             ending=None,
             successor=None,
+            unfinished_turn=None,
             version=F("version") + 1,
             updated_at=now,
         )
