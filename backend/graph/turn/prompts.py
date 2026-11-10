@@ -262,7 +262,9 @@ settled, as it settled them, and what the words claim of others or of the outcom
 tell the action twice. With no ACTION in the brief (an opening, or an ending told from things \
 as they stand), leave action empty and write the whole scene in narration.
 - How the character acts shows who they are: their skills, powers and temperament. Temperament \
-colours the telling but never adds a choice.
+colours the telling but never adds a choice. A throw in OUTCOME says how the step turned out, \
+never how good the hand is: a beginner who passes gets there clumsily or by luck, and it looks \
+it, and a master who misses is still plainly a master (R4).
 - The player character has exactly what PLAYER CHARACTER's resources list, money included, and \
 CHANGED HANDS says where the rest went (C10). Never show them paying, handing over or using money \
 or a thing they don't have, nor anyone giving back what they still keep. changed_hands under a \

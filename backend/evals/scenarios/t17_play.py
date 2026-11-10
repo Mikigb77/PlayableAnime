@@ -320,13 +320,15 @@ async def the_throw(ev: Eval) -> None:
         story = ev.story(worlds.bridge_ambush(), seed=f"{seed}/deadly", under_way=True)
         story.change(lambda state: worlds.start_fight(state, "thug-0", "thug-1", "thug-2"))
         played = await story.act("I hold my ground", hold_ground())
-        [peril] = played.step(0).perils
-        thrown = peril.roll.throw if peril.roll is not None else None
+        # A live interpret step may read holding one's ground as a defence that turns them all
+        # aside, and then nothing strikes back: there is no defence to weigh on that seed.
+        peril = next((p for s in played.steps for p in s.perils), None)
+        thrown = peril.roll.throw if peril is not None and peril.roll is not None else None
         deadly = thrown is not None and thrown.deadly
         ev.check(
             "a defence against foes who mean to kill is marked Deadly, with what a miss costs",
             deadly and thrown.miss_costs == "A knife finds your ribs, and you fall.",
-            f"{seed}: {peril.reason}",
+            f"{seed}: {peril.reason if peril is not None else 'nothing struck back'}",
             live=False,
         )
         if not deadly:
@@ -354,18 +356,19 @@ async def the_throw(ev: Eval) -> None:
         str(dict(seen)),
         live=False,
     )
-    await ev.judge(
-        "a Deadly defence told as it fell",
-        Rubric(
-            must=(
-                "What happens to Lin is exactly what OUTCOME's struck says: unhurt, badly "
-                "wounded or dead",
-                "The danger of the knives is told as real, whichever way it went",
+    if told:
+        await ev.judge(
+            "a Deadly defence told as it fell",
+            Rubric(
+                must=(
+                    "What happens to Lin is exactly what OUTCOME's struck says: unhurt, badly "
+                    "wounded or dead",
+                    "The danger of the knives is told as real, whichever way it went",
+                ),
+                must_not=("Names dice, numbers, levels or chances in the scene",),
             ),
-            must_not=("Names dice, numbers, levels or chances in the scene",),
-        ),
-        told,
-    )
+            told,
+        )
 
 
 # --- Temper, not control (G15, G13) ------------------------------------------------------------
