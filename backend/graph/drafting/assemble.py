@@ -34,6 +34,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from engine import talent as talent_mod
 from engine.base import HOUR, MINUTE, TIER_MAX, YEAR
 from engine.context import Language
 from engine.invariants import InvariantError, check_state, is_real_name
@@ -85,6 +86,7 @@ from engine.state import (
     Rung,
     SceneFrame,
     Skill,
+    Talent,
     Technique,
     Temperament,
     Thread,
@@ -109,6 +111,7 @@ from graph.drafting.schema import (
     MembershipP,
     NpcP,
     PowerP,
+    TalentP,
     TemperamentP,
     TimeP,
     WorldProposal,
@@ -139,6 +142,7 @@ MAX = {
     "lines": 12,
     "items": 24,
     "sheet": 12,
+    "talents": 6,
     "facts": 12,
 }
 TEXT_LIMIT = 600
@@ -877,6 +881,7 @@ class _Assembler:
                 for t in proposed.traits[: MAX["sheet"]]
                 if _name(t.name)
             ],
+            talents=_talents(proposed.talents) if isinstance(proposed, CharacterProposal) else [],
             powers=self._powers(proposed.powers, player=player),
             techniques=_techniques(proposed.techniques),
             disposition=Disposition(temperament=_temperament(proposed.temperament)),
@@ -1201,6 +1206,28 @@ def _skills(proposals) -> list[Skill]:
                 name=name, level=proposed.level, notes=_text(proposed.notes, 200)
             )
     return list(skills.values())
+
+
+def _talents(proposals: list[TalentP]) -> list[Talent]:
+    """A4. The talents the player described, each once and with an id of its own, as the engine
+    reads them (`engine.talent.as_read`): one of a kind said about everything is a general
+    genius, and past three one of a kind talents the rest are genius. So the summary the player
+    checks says what the story will do."""
+    ids = _Ids("talent")
+    talents: dict[str, Talent] = {}
+    for proposed in proposals[: MAX["talents"]]:
+        name = _name(proposed.name)
+        if not name or name.casefold() in talents:
+            continue
+        talents[name.casefold()] = Talent(
+            id=ids.add("", name),
+            name=name,
+            covers=_text(proposed.covers, 300),
+            strength=proposed.strength,
+            general=proposed.general,
+            reason=_text(proposed.reason, 300),
+        )
+    return talent_mod.as_read(list(talents.values()))
 
 
 def _techniques(proposals) -> list[Technique]:

@@ -38,6 +38,12 @@ from engine.state import (
     Resurrection,
     Ruling,
     RulingSource,
+    Talent,
+    TalentBridge,
+    TalentCover,
+    TalentFit,
+    TalentRuling,
+    TalentStrength,
     WorldState,
 )
 from engine.state.cast import MAX_JUDGED
@@ -822,3 +828,54 @@ def test_a_known_characters_body_doesnt_change_and_never_on_the_narrators_word()
     applied = apply(state, NARRATOR, characters=[stronger])
     assert reasons(applied) == ["only the engine decides this"]
     assert applied.state.characters["zhao"].sheet.attributes == before
+
+
+# --- talent (A4) ------------------------------------------------------------------------------
+
+
+def _blade_ruling(fit: TalentFit) -> TalentRuling:
+    cover = TalentCover(talent_id="sword", fit=fit)
+    return TalentRuling(key="technique:aura-blade", what="Aura blade", covers=[cover])
+
+
+def test_a_ruling_on_talent_is_recorded_once_with_when_it_was_made():
+    state = cultivation_world()
+    state.world_s = 500
+    state.player.sheet.talents = [
+        Talent(id="sword", name="The sword", strength=TalentStrength.ONE_OF_A_KIND)
+    ]
+    first = CharacterChange(id="lin", talent_rulings=[_blade_ruling(TalentFit.RELATED)])
+    flipped = CharacterChange(id="lin", talent_rulings=[_blade_ruling(TalentFit.INSIDE)])
+
+    ruled = apply(state, ENGINE, characters=[first])
+    again = apply(ruled.state, ENGINE, turn=9, characters=[flipped])
+
+    (ruling,) = again.state.player.sheet.talent_rulings
+    assert (ruling.covers[0].fit, ruling.turn, ruling.world_s) == (TalentFit.RELATED, 3, 500)
+    assert not ruled.rejected and not again.rejected
+
+
+def test_a_bridge_is_kept_with_when_it_was_built():
+    state = cultivation_world()
+    bridge = TalentBridge(
+        key="technique:aura-blade", talent_id="sword", rests_on="the formula", steps=1
+    )
+
+    applied = apply(state, ENGINE, turn=7, characters=[CharacterChange(id="lin", bridges=[bridge])])
+
+    (kept,) = applied.state.player.sheet.bridges
+    assert (kept.rests_on, kept.steps, kept.turn) == ("the formula", 1, 7)
+
+
+def test_the_narrator_can_neither_rule_on_a_talent_nor_build_a_bridge():
+    state = cultivation_world()
+    bridge = TalentBridge(key="technique:aura-blade", talent_id="sword", rests_on="a wish")
+    change = CharacterChange(
+        id="lin", talent_rulings=[_blade_ruling(TalentFit.INSIDE)], bridges=[bridge]
+    )
+
+    applied = apply(state, characters=[change])
+
+    assert reasons(applied) == ["only the engine decides this", "only the engine decides this"]
+    assert applied.state.player.sheet.talent_rulings == []
+    assert applied.state.player.sheet.bridges == []

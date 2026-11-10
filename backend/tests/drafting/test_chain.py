@@ -8,7 +8,7 @@ import pytest
 
 from engine.state import GiftStrength, PhysicsMode
 from graph.drafting import chain, samples
-from graph.drafting.prompts import current_rules
+from graph.drafting.prompts import SYSTEM, current_rules
 from graph.drafting.schema import (
     DraftProposal,
     ExtraordinaryP,
@@ -640,3 +640,13 @@ def test_a_draft_builds_its_state_once():
 
     assert draft.state() is draft.state()
     assert replace(draft, physics=PhysicsMode.STRICT).state() is not draft.state()
+
+
+def test_the_drafter_is_asked_for_talents_only_from_the_players_own_words():
+    """A4: how fast the character learns each thing, written when they are made."""
+    assert "- Talents say how fast the character learns, and only where the premise says so" in (
+        SYSTEM
+    )
+    assert "One of a kind always names one specific thing, with the reason behind it" in SYSTEM
+    assert "Three one of a kind talents at most." in SYSTEM
+    assert "nobody is one of a kind at everything" in SYSTEM

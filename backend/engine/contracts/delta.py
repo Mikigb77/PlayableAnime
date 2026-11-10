@@ -43,6 +43,8 @@ from engine.state.sheet import (
     Practice,
     Ruling,
     Skill,
+    TalentBridge,
+    TalentRuling,
     Technique,
 )
 from engine.state.world import ActiveTimeEffect
@@ -171,6 +173,15 @@ class CharacterChange(EngineModel):
         default=None,
         description="Engine only: the body and mind of someone new the engine makes real (F1, "
         "G13), where they are not an average adult's.",
+    )
+    talent_rulings: SkipJsonSchema[list[TalentRuling]] = Field(
+        default_factory=list,
+        description="Engine only (A4): which talents cover a thing they set out to learn, "
+        "ruled once. A thing already ruled on keeps its ruling.",
+    )
+    bridges: SkipJsonSchema[list[TalentBridge]] = Field(
+        default_factory=list,
+        description="Engine only (A4): work that connects a talent to something outside it.",
     )
 
 

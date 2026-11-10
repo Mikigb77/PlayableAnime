@@ -51,7 +51,15 @@ from engine.state.records import (
     StepResult,
     Throw,
 )
-from engine.state.sheet import Power
+from engine.state.sheet import (
+    Power,
+    Talent,
+    TalentBridge,
+    TalentCover,
+    TalentFit,
+    TalentRuling,
+    TalentStrength,
+)
 from engine.state.world import EventSize
 from graph.turn import prompts
 from graph.turn.context import (
@@ -304,6 +312,15 @@ def test_the_narrator_is_told_how_the_dice_fell_and_never_the_dice():
 
     [step] = outcome_of(Resolution(steps=[cut(roll=thrown(Mark.PASSED))]))["steps"]
     assert step["throw"] == {"fell": "passed", "against": "Zhao can answer."}
+
+
+def test_the_narrator_tells_a_throw_by_the_hand_that_threw_it():
+    """R4, A3: how the dice fell is what happened, never how skilled the character is. Found in
+    a live run on 2026-11-10: a novice whose stroke came off was told as a master's."""
+    assert "never how good the hand is: a beginner who passes gets there clumsily or by luck" in (
+        prompts.NARRATOR_SYSTEM
+    )
+    assert "a master who misses is still plainly a master (R4)" in prompts.NARRATOR_SYSTEM
 
 
 def test_the_narrator_is_told_the_one_extra_effect_of_a_throw_over_the_top():
@@ -948,3 +965,66 @@ def test_the_narrator_tells_where_the_character_is_and_records_every_move():
     assert "a move the scene tells but place_id doesn't name never happened" in system
     assert "- SCENE: the place, with its setting and the places it lies within" in system
     assert "the place each place lies within (within) and its setting" in system
+
+
+def test_both_models_read_the_talents_their_rulings_and_the_bridges():
+    """A4: the interpret step makes a case only for a thing no ruling names yet, and names a
+    talent by its id, so it reads all three on the sheet. The narrator reads them too."""
+    state = grounded_world()
+    sheet = state.player.sheet
+    sheet.talents = [
+        Talent(id="sword", name="The sword", covers="blades", strength=TalentStrength.ONE_OF_A_KIND)
+    ]
+    cover = TalentCover(talent_id="sword", fit=TalentFit.RELATED, reason="a draw is half a cut")
+    sheet.talent_rulings = [
+        TalentRuling(key="technique:quick-draw", what="Quick draw", covers=[cover])
+    ]
+    sheet.bridges = [
+        TalentBridge(
+            key="technique:quick-draw",
+            what="Quick draw",
+            talent_id="sword",
+            rests_on="the angle of the holster",
+        )
+    ]
+
+    for text in (interpret_prompt(state, "I practise").messages[-1].text, brief(state).user):
+        you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+        assert you["sheet"]["talents"] == [
+            {"id": "sword", "name": "The sword", "covers": "blades", "strength": "one_of_a_kind"}
+        ]
+        assert you["sheet"]["talent_rulings"] == [
+            {
+                "key": "technique:quick-draw",
+                "what": "Quick draw",
+                "covers": [
+                    {"talent_id": "sword", "fit": "related", "reason": "a draw is half a cut"}
+                ],
+            }
+        ]
+        assert you["sheet"]["bridges"] == [
+            {
+                "key": "technique:quick-draw",
+                "what": "Quick draw",
+                "talent_id": "sword",
+                "rests_on": "the angle of the holster",
+            }
+        ]
+
+
+def test_the_interpret_step_is_asked_for_the_case_on_a_talent_and_for_bridges():
+    """A4, A9: the model proposes how a talent stands to a new thing and what a bridge rests
+    on; code records the ruling once and throws for the bridge."""
+    system = prompts.INTERPRET_SYSTEM
+    assert "- talent_cases, only when PLAYER CHARACTER's sheet lists talents" in system
+    assert "the first time a step trains or practises something (a skill, a technique" in system
+    assert "uses a technique or a move of their own, that sheet.talent_rulings doesn't" in system
+    assert "Weigh the case the player makes in this action for why a talent applies" in system
+    assert "one the player declares now is a backstory claim, not a talent" in system
+    assert "- bridge: when the step is real work to connect a talent" in system
+    assert "Only a deed is a bridge: words that restate the case are not" in system
+
+
+def test_the_narrator_tells_a_ruling_or_a_bridge_in_the_storys_own_words():
+    system = prompts.NARRATOR_SYSTEM
+    assert "never as a pace, a ruling or a bridge by name" in system

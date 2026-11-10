@@ -16,7 +16,7 @@ from pydantic import ConfigDict, Field, field_validator
 
 from engine.base import EngineModel
 from engine.state.scene import EncounterKind
-from engine.state.sheet import HitMode, PowerAxis
+from engine.state.sheet import HitMode, PowerAxis, TalentFit
 
 
 class ActionKind(StrEnum):
@@ -310,6 +310,45 @@ class Training(EngineModel):
     )
 
 
+class TalentCase(EngineModel):
+    """A4. Whether one talent of the character's covers one thing a step sets out to learn,
+    with the reason. The interpret step proposes it, weighing the player's own case, the first
+    time the thing is learned; code records it once and it never flips."""
+
+    what: str = Field(
+        default="", description="The technique, skill or power being learned, by its name."
+    )
+    talent_id: str = Field(description="The talent's id on PLAYER CHARACTER.")
+    fit: TalentFit = Field(
+        description=(
+            "inside: the thing is what the talent is about. related: the talent helps but"
+            " doesn't hand it over. outside: it has nothing to do with it."
+        )
+    )
+    reason: str = Field(default="", description="Why, in one sentence, in LANGUAGE.")
+
+
+class Bridge(EngineModel):
+    """A4. A step of real work that connects a talent of the character's to something a ruling
+    left outside it or only related, such as deriving the formula behind a blade's shape. The
+    interpret step says what it reaches and what new thing it rests on; code throws for it with
+    the skill the step draws on, and keeps a bridge that held on the sheet."""
+
+    talent_id: str = Field(description="The talent it starts from, by its id.")
+    what: str = Field(description="The technique, skill or power it reaches, by its name.")
+    rests_on: str = Field(
+        description=(
+            "The new thing it rests on, in a few words: a formula they derive, a teacher's"
+            " notes, a blade to measure. Never an argument already made."
+        )
+    )
+    heart: bool = Field(
+        default=False,
+        description="True when it covers the heart of the thing, false for one side of it.",
+    )
+    reason: str = Field(default="", description="Why it reaches that far, in one sentence.")
+
+
 class ShowStrength(EngineModel):
     """G20. Hiding one's strength, or revealing it."""
 
@@ -567,6 +606,18 @@ class IntentStep(EngineModel):
         description="W10a: the player asked for everything a controlled time stop can give.",
     )
     training: Training | None = Field(default=None, description="A4, G19: what the step trains.")
+    talent_cases: list[TalentCase] = Field(
+        default_factory=list,
+        description=(
+            "A4: when the step sets out to learn, train or first use something PLAYER"
+            " CHARACTER's talent_rulings don't name yet, how each talent of theirs that isn't"
+            " general stands to it."
+        ),
+    )
+    bridge: Bridge | None = Field(
+        default=None,
+        description="A4: when the step is work that connects a talent to something outside it.",
+    )
     show_strength: ShowStrength | None = Field(
         default=None, description="G20: hiding or revealing strength."
     )

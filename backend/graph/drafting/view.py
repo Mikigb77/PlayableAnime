@@ -25,6 +25,8 @@ from engine.state import (
     GoalStatus,
     RuleTopic,
     SkillLevel,
+    Talent,
+    TalentStrength,
     TraitKind,
     WorldRule,
     WorldState,
@@ -94,6 +96,27 @@ _WORDS = {
         "in": "d'aquí a",
         "and": " i ",
         "moments": "un moment",
+    },
+}
+# A4: a talent's strength, as a noun too, strongest first as the summary lists them.
+_TALENT_STRENGTHS = {
+    EN: {
+        TalentStrength.ONE_OF_A_KIND: "One of a kind",
+        TalentStrength.GENIUS: "Genius",
+        TalentStrength.KNACK: "A knack",
+        TalentStrength.SLOW: "Weakness",
+    },
+    ES: {
+        TalentStrength.ONE_OF_A_KIND: "Talento único",
+        TalentStrength.GENIUS: "Genio",
+        TalentStrength.KNACK: "Facilidad",
+        TalentStrength.SLOW: "Punto débil",
+    },
+    CA: {
+        TalentStrength.ONE_OF_A_KIND: "Talent únic",
+        TalentStrength.GENIUS: "Geni",
+        TalentStrength.KNACK: "Facilitat",
+        TalentStrength.SLOW: "Punt feble",
     },
 }
 # Nouns, as "Pericia: espada", so they fit a character of any gender.
@@ -192,6 +215,16 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
             " ".join(
                 _sentence(f"{_skill_level(level, language)}: {_join(names, language)}")
                 for level, names in groups.items()
+            )
+        )
+    if sheet.talents:
+        # A4: how fast they learn each thing, so the player can check it and change it in
+        # plain words: "One of a kind: The sword (anything fought with a blade)."
+        lines.append(
+            " ".join(
+                _sentence(f"{label}: {'; '.join(named)}")
+                for strength, label in _TALENT_STRENGTHS[language].items()
+                if (named := [_talent(t) for t in sheet.talents if t.strength is strength])
             )
         )
     gifts = [t.name for t in sheet.traits if t.kind is TraitKind.GIFT]
@@ -344,6 +377,12 @@ def _skill_level(level: SkillLevel, language: Language) -> str:
     if language in _SKILL_LEVELS:
         return _SKILL_LEVELS[language].get(level, level.value.capitalize())
     return level.value.capitalize()
+
+
+def _talent(talent: Talent) -> str:
+    """A talent by its name, with what it covers: "The sword (anything fought with a blade)"."""
+    covers = talent.covers.strip().rstrip(".")
+    return f"{talent.name} ({covers})" if covers else talent.name
 
 
 def _entry(name: str, description: str) -> str:

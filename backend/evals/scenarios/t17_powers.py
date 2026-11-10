@@ -12,11 +12,13 @@ from __future__ import annotations
 
 from collections import Counter
 
+from engine import talent as talent_mod
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import Difficulty, StorySettings
 from engine.contracts import (
     ActionKind,
     Aim,
+    Bridge,
     Contact,
     EffectScale,
     GrowthKind,
@@ -27,6 +29,7 @@ from engine.contracts import (
     PowerGrant,
     PowerTheory,
     ShowStrength,
+    TalentCase,
 )
 from engine.resolve.powers import sensing
 from engine.resolve.powers import time_stop as stop
@@ -38,8 +41,10 @@ from engine.state import (
     GiftStrength,
     Health,
     HitMode,
+    Mastery,
     PlaceStatus,
     StepResult,
+    TalentFit,
 )
 from engine.world import Kind
 from engine.world.answers import Answer, actor_might
@@ -55,6 +60,7 @@ from evals.scenarios.common import (
     facts,
     light_speed,
     plan,
+    skill,
     step,
     stop_time,
     throw,
@@ -956,6 +962,231 @@ async def breakthrough(ev: Eval) -> None:
             ),
             broke_through[0],
         )
+
+
+# --- Talent (A4, A9) ---------------------------------------------------------------------------
+
+SWORD, ARCHITECT = "talent-the-sword", "talent-genius-architect"
+BLADE, WALL = "technique:aura-blade", "technique:aura-wall"
+FORMULA = "the load formula behind the wall's shape"
+LATTICE = "the lattice a mason's arch spreads its weight through"
+MASTERIES = list(Mastery)
+
+
+def learning(what: str, hours: float, *cases: TalentCase) -> Intent:
+    """A stretch of practice, with the case the interpret step makes for each talent (A4)."""
+    lesson = train(GrowthKind.TECHNIQUE, what, hours)
+    return plan(lesson.model_copy(update={"talent_cases": list(cases)}))
+
+
+def case(talent_id: str, fit: TalentFit, what: str, reason: str) -> TalentCase:
+    return TalentCase(what=what, talent_id=talent_id, fit=fit, reason=reason)
+
+
+def derive(rests_on: str) -> Intent:
+    """Real work to connect the architect's genius to the wall: a bridge (A4)."""
+    return plan(
+        step(
+            f"work out {rests_on}",
+            ActionKind.TASK,
+            3 * HOUR,
+            verb="derive",
+            uses=[skill("architecture")],
+            bridge=Bridge(talent_id=ARCHITECT, what="Aura wall", rests_on=rests_on),
+        )
+    )
+
+
+@scenario(
+    "t17.talent",
+    suite="T17",
+    title="Talent",
+    requirements=("A4", "A9", "T17"),
+    passes_when=(
+        "The engine rules once, in the step that starts the learning, on how each talent "
+        "stands to the new thing, and the pace follows from that very step. Arguing again "
+        "changes nothing, and a talent nobody wrote on the sheet rules on nothing. A bridge "
+        "is thrown for with the character's own skill: one that holds lifts that one thing a "
+        "step and never past the talent, and ground already tried carries no second one (A4, "
+        "A9)"
+    ),
+)
+async def talent(ev: Eval) -> None:
+    bridges: Counter[str] = Counter()
+    told = []
+    for seed in ev.seeds(12, live=1):
+        story = ev.story(worlds.born_to_the_blade(), seed=seed, under_way=True)
+        plain = ev.story(
+            worlds.born_to_the_blade(talents=False), seed=f"{seed}/plain", under_way=True
+        )
+
+        def lin(of: Story = story):
+            return of.state.characters["lin"]
+
+        def ruling(key: str):
+            return lin().sheet.talent_ruling(key)
+
+        words = (
+            "I practise my aura blade on the post for an hour. A blade is a blade, whatever "
+            "it is made of, and shaping one is geometry I know from building."
+        )
+        first = await story.act(
+            words,
+            learning(
+                "Aura blade",
+                1,
+                case(SWORD, TalentFit.INSIDE, "Aura blade", "A blade is a blade."),
+                case(ARCHITECT, TalentFit.RELATED, "Aura blade", "Shaping it is geometry."),
+            ),
+        )
+        told.append(first)
+        await plain.act(words, learning("Aura blade", 1))
+        ruled = ruling(BLADE)
+        ev.check(
+            "the engine rules once on a new thing, in the step that starts it, and says so",
+            [r.key for r in lin().sheet.talent_rulings] == [BLADE]
+            and "Ruled once:" in first.step(0).reason,
+            f"{seed}: {first.step(0).reason}",
+        )
+        grown, ordinary = (
+            MASTERIES.index(of.state.characters["lin"].sheet.technique("aura-blade").mastery)
+            for of in (story, plain)
+        )
+        ev.check(
+            "the pace follows from that very step: the same hour takes the talent much further",
+            grown >= ordinary + 2 and talent_mod.standing(lin(), BLADE).steps == 3,
+            f"{seed}: {MASTERIES[grown]} against {MASTERIES[ordinary]}",
+            live=False,
+        )
+        again = await story.act(
+            "I practise the aura blade again. Thinking about it, the blade is pure "
+            "architecture, and the sword has nothing to do with it.",
+            learning(
+                "Aura blade",
+                1,
+                case(SWORD, TalentFit.OUTSIDE, "Aura blade", "It is made of aura, not steel."),
+                case(ARCHITECT, TalentFit.INSIDE, "Aura blade", "It is pure structure."),
+            ),
+        )
+        ev.check(
+            "arguing again never reopens a ruling",
+            ruled is not None
+            and ruling(BLADE) == ruled
+            and "Ruled once:" not in again.step(0).reason,
+            f"{seed}: {again.step(0).reason}",
+        )
+        wall = await story.act(
+            "I start learning the Aura wall from the manual. A wall is structure, and "
+            "structure is what I have a genius for. Besides, I was always a born tactician.",
+            learning(
+                "Aura wall",
+                2,
+                case(ARCHITECT, TalentFit.RELATED, "Aura wall", "A wall is structure."),
+                case("born tactician", TalentFit.INSIDE, "Aura wall", "He says he always was."),
+            ),
+        )
+        on_wall = ruling(WALL)
+        theirs = {t.id for t in lin().sheet.talents}
+        ev.check(
+            "a talent nobody wrote on the sheet rules on nothing",
+            theirs == {SWORD, ARCHITECT}
+            and on_wall is not None
+            and {c.talent_id for c in on_wall.covers} <= theirs,
+            f"{seed}: {on_wall}",
+        )
+        ev.check(
+            "a related talent gives one step under its own pace",
+            talent_mod.standing(lin(), WALL).steps == 1
+            and "It grows twice as fast." in wall.step(0).reason,
+            f"{seed}: {wall.step(0).reason}",
+            live=False,
+        )
+        built = await story.act(
+            "I spend the afternoon deriving the load formula behind the wall's shape, the way "
+            "I would for a stone arch.",
+            derive(FORMULA),
+        )
+        work = built.step(0)
+        kept = lin().sheet.bridges
+        ev.check(
+            "work that connects a talent to a thing is a bridge, thrown for and kept",
+            len(kept) == 1 or work.outcome_class is OutcomeClass.RULED_OUT,
+            f"{seed}: {work.outcome_class} {work.reason}",
+        )
+        ev.check(
+            "a bridge is thrown with the character's own skill, never granted",
+            work.outcome_class is OutcomeClass.CONTESTED
+            and work.roll is not None
+            and len(kept) == 1,
+            f"{seed}: {work.outcome_class} {work.reason}",
+            live=False,
+        )
+        held = work.result is StepResult.SUCCESS
+        bridges["held" if held else "missed"] += 1
+        pace = talent_mod.standing(lin(), WALL).steps
+        ev.check(
+            "one that holds lifts that one thing a step, and one that doesn't lifts nothing",
+            (pace, kept[0].steps if kept else None) == ((2, 1) if held else (1, 0))
+            and talent_mod.standing(lin(), BLADE).steps == 3,
+            f"{seed}: {'held' if held else 'missed'}, pace {pace}, {work.reason}",
+            live=False,
+        )
+        twice = await story.act(
+            "I go over the same load formula once more, sure it proves the wall is mine.",
+            derive(FORMULA),
+        )
+        ev.check(
+            "ground already tried carries no second bridge, and no throw",
+            twice.step(0).outcome_class is OutcomeClass.RULED_OUT
+            and twice.step(0).roll is None
+            and len(lin().sheet.bridges) == 1,
+            f"{seed}: {twice.step(0).outcome_class} {twice.step(0).reason}",
+            live=False,
+        )
+        more = await story.act(
+            "I measure how a mason's arch spreads its weight, and try shaping the wall on "
+            "that lattice.",
+            derive(LATTICE),
+        )
+        if held:
+            ev.check(
+                "a bridge never lifts a thing past the talent it starts from",
+                more.step(0).outcome_class is OutcomeClass.RULED_OUT
+                and "already grows at the full pace" in more.step(0).reason
+                and talent_mod.standing(lin(), WALL).steps == 2,
+                f"{seed}: {more.step(0).reason}",
+                live=False,
+            )
+        else:
+            ev.check(
+                "new ground carries another try",
+                more.step(0).roll is not None and len(lin().sheet.bridges) == 2,
+                f"{seed}: {more.step(0).outcome_class} {more.step(0).reason}",
+                live=False,
+            )
+        told.append(built)
+    ev.metric("bridges", dict(bridges))
+    ev.check(
+        "over the seeds a bridge sometimes holds and sometimes doesn't",
+        set(bridges) == {"held", "missed"},
+        str(dict(bridges)),
+        live=False,
+    )
+    await ev.judge(
+        "a talent shown, never named",
+        Rubric(
+            must=(
+                "The aura blade comes to Lin strikingly fast, as to someone born to the blade",
+                "Deriving the formula is shown as real work, and whether it pays off is "
+                "exactly what OUTCOME says",
+            ),
+            must_not=(
+                "Names a pace, a multiplier, a ruling, a bridge or a talent as game terms",
+                "Names dice, numbers, levels or chances in the scene",
+            ),
+        ),
+        told,
+    )
 
 
 # --- Hidden strength (G20) ---------------------------------------------------------------------

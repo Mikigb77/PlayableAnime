@@ -58,6 +58,7 @@ what code settles from it (A7).
 from dataclasses import dataclass, field
 
 from engine import levels
+from engine import talent as talent_mod
 from engine.context import Difficulty, TurnContext
 from engine.contracts.delta import (
     AttitudeShift,
@@ -113,6 +114,7 @@ from engine.resolve.power import (
 )
 from engine.resolve.powers import claims as claims_mod
 from engine.resolve.powers import growth, sensing
+from engine.resolve.powers import talents as talents_mod
 from engine.resolve.powers import theories as theories_mod
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, is_are, name, names, possessive, stems
@@ -128,6 +130,8 @@ from engine.state.sheet import (
     PowerAxis,
     Ruling,
     RulingSource,
+    TalentBridge,
+    TalentRuling,
     Technique,
     TimeEffect,
 )
@@ -195,6 +199,10 @@ class _Frame:
     moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
     learned: list[Technique] = field(default_factory=list)  # A4: moves this plan made theirs
     moves: growth.Moves = field(default_factory=growth.Moves)  # A4: their mastery as it grows
+    # A4: what this plan ruled about the actor's talents, and the bridges it tried, which the
+    # sheet doesn't hold until the plan is played out.
+    talent_rulings: list[TalentRuling] = field(default_factory=list)
+    bridges: list[TalentBridge] = field(default_factory=list)
 
 
 @dataclass
@@ -398,6 +406,7 @@ def _settle_step(
     nature stood in its way, so it was done whatever the roll said (G15)."""
     if frame.met:
         state = _with_people(state, frame.met)
+    actor = talents_mod.with_rulings(actor, frame.talent_rulings, frame.bridges)
     drawn = Drawn()
     beats: list[BeatResolution] = []
     chain: list[LinkResolution] = []
@@ -449,8 +458,18 @@ def _settle_step(
     if frozen and holding is not None:
         step = _in_the_stop(step)
 
+    # A4, A9. The first time they set out to learn or use a thing, the engine rules once on
+    # how their talents stand to it, and this very step already goes at that pace.
+    ruled: list[TalentRuling] = []
+    ruled_words: list[str] = []
+    if settled is None:
+        at_stake = talents_mod.things(state, actor, step, drawn, frame.learned)
+        ruled, ruled_words = talents_mod.rule(state, actor, step, at_stake)
+        actor = talents_mod.with_rulings(actor, ruled, [])
+
     growing = showing = False
     practising: Technique | None = None  # a technique they know that this step practises
+    bridging: talents_mod.Bridging | None = None  # A4: a bridge this step sets out to build
     if settled is None and step.training is not None:
         growing = True
         settled = growth.check(state, actor, step, frame.canon)
@@ -478,6 +497,12 @@ def _settle_step(
         settled = sensing.check(state, actor, step)
         showing = settled is None
         settled = settled or Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
+    elif settled is None and step.bridge is not None:
+        # A4. Work that connects a talent to something outside it is thrown for, against the
+        # reach and nothing else.
+        settled, bridging = talents_mod.bridge_check(state, actor, step)
+        if bridging is not None:
+            step = bridging.step
 
     met: strangers_mod.Met | None = None
     if settled is None and step.aim.harmful and step.stranger is not None:
@@ -508,7 +533,7 @@ def _settle_step(
     if settled is None:
         assert opposition is not None
         own_choice = not step.chain and _inner(state, actor, step, opposition)
-        if not own_choice:
+        if not own_choice and bridging is None:
             step, kept = _judged(state, actor, step, opposition)
         brought = _hand(state, actor, step, drawn, frame)
         if step.chain:
@@ -646,6 +671,12 @@ def _settle_step(
     effects = _merge(effects, extra)
     if kept is not None and happened:
         effects = _merge(effects, StateDelta(places=[kept]))
+    if ruled and happened:
+        # A4. Ruled once and kept: the steps that follow, and every later turn, go by it.
+        frame.talent_rulings.extend(ruled)
+        change = CharacterChange(id=actor.id, talent_rulings=ruled)
+        effects = _merge(effects, StateDelta(characters=[change]))
+        after.extend(ruled_words)
     if attempted:
         # C10. What the step pays, gives, spends or takes moves now, before anything is told.
         moves = exchanges.changes(
@@ -672,7 +703,7 @@ def _settle_step(
         frame.gone = f"{cap(name(state, actor.id))} {is_are(state, actor.id)} dead."
     frame.training = None
     if growing and happened:
-        start = _start(actor, step, drawn)
+        start = _start(actor, step, drawn, growth.talent_key(state, actor, step))
         why, grown, deed = _grow(state, actor, step, settled, frame, personal, duration, start)
         reason = f"{reason} {why}".strip()
         effects = _merge(effects, grown)
@@ -690,6 +721,12 @@ def _settle_step(
         if deed is not None:
             deeds.append(deed)
     clean = happened and settled.result is StepResult.SUCCESS and frame.gone is None
+    if bridging is not None and happened:
+        # A4. Held or not, the bridge is kept, so the same ground is never tried twice.
+        why, built, change = talents_mod.bridge_made(state, actor, bridging, settled.result)
+        frame.bridges.append(built)
+        after.append(why)
+        effects = _merge(effects, change)
     if drawn.moves and clean and not (growing or showing):
         # A4, G25. A move of their own that came off cleanly is a technique of theirs now,
         # starting where their skill at it puts a new move.
@@ -1011,12 +1048,14 @@ def _stopped_deed(
     )
 
 
-def _start(actor: Character, step: IntentStep, drawn: Drawn) -> Mastery:
+def _start(actor: Character, step: IntentStep, drawn: Drawn, key: str = "") -> Mastery:
     """A4. Where a new move of the actor's starts: two steps under the best skill of theirs the
-    step draws on, or at practiced with a gift for learning (`engine.levels`)."""
+    step draws on, or higher where a talent of theirs covers the thing `key` names
+    (`engine.levels`, `engine.talent`)."""
     skill = capability.best_skill(actor, drawn.skills or capability.skills_for(actor, step))
     level = skill.level if skill is not None else None
-    return levels.starting_mastery(level, growth.learning_gift(actor))
+    steps = talent_mod.standing(actor, key).steps if key else 0
+    return levels.starting_mastery(level, steps)
 
 
 def _theirs_now(frame: _Frame, learned: list[Technique]) -> None:
@@ -1288,6 +1327,7 @@ def _hand(
     """G14, A4. What the actor throws for the step, with their moves as this plan has them. A
     plan that goes around the strength meets no body, so only an axis it names counts (A9)."""
     used = growth.used_in(actor, drawn.techniques, drawn.moves, frame.learned)
+    new = talent_mod.technique_key(drawn.moves[0].name) if drawn.moves else ""
     return capability.hand_for(
         state,
         actor,
@@ -1295,7 +1335,7 @@ def _hand(
         drawn,
         step.axis if step.chain else _axis(step),
         techniques=[frame.moves.latest(t) for t in used],
-        start=_start(actor, step, drawn),
+        start=_start(actor, step, drawn, new),
     )
 
 
