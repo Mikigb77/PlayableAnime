@@ -799,7 +799,8 @@ def test_status_shows_how_each_thing_ruled_on_stands_and_the_bridges_that_hold()
     ]
 
     assert lines_of(state)[-6:] == [
-        "Aura blade: grows eight times as fast, inside your talent (The sword)",
+        "Aura blade: grows ten times as fast, inside your talent (The sword), related to your"
+        " talent (Architecture)",
         "Aura wall: grows four times as fast, inside your talent (Architecture)",
         "Bridge: the formula",
         "Haggling: grows at half the pace, slowed by your weakness (Words)",
@@ -807,7 +808,8 @@ def test_status_shows_how_each_thing_ruled_on_stands_and_the_bridges_that_hold()
         "Bridge: deft picking",
     ]
     assert lines_of(state, ES)[-6:] == [
-        "Aura blade: crece ocho veces más rápido, dentro de tu talento (The sword)",
+        "Aura blade: crece diez veces más rápido, dentro de tu talento (The sword), afín a tu"
+        " talento (Architecture)",
         "Aura wall: crece cuatro veces más rápido, dentro de tu talento (Architecture)",
         "Puente: the formula",
         "Haggling: crece a la mitad de ritmo, con el freno de tu punto débil (Words)",
@@ -815,7 +817,8 @@ def test_status_shows_how_each_thing_ruled_on_stands_and_the_bridges_that_hold()
         "Puente: deft picking",
     ]
     assert lines_of(state, CA)[-6:] == [
-        "Aura blade: creix vuit vegades més ràpid, dins del teu talent (The sword)",
+        "Aura blade: creix deu vegades més ràpid, dins del teu talent (The sword), afí al teu"
+        " talent (Architecture)",
         "Aura wall: creix quatre vegades més ràpid, dins del teu talent (Architecture)",
         "Pont: the formula",
         "Haggling: creix a la meitat de ritme, amb el fre del teu punt feble (Words)",
@@ -847,13 +850,49 @@ def test_status_lists_what_no_talent_reaches_in_one_line():
     ]
 
     assert lines_of(state)[-4:] == [
-        "Aura blade: grows eight times as fast, inside your talent (The sword)",
+        "Aura blade: grows ten times as fast, inside your talent (The sword), related to your"
+        " talent (Architecture)",
         "Aura wall: grows twice as fast, related to your talent (Architecture)",
         "Haggling: grows at half the pace, slowed by your weakness (Words)",
         "Outside your talents: Herb lore; Rope trick",
     ]
     assert lines_of(state, ES)[-1] == "Fuera de tus talentos: Herb lore; Rope trick"
     assert lines_of(state, CA)[-1] == "Fora dels teus talents: Herb lore; Rope trick"
+
+
+def test_status_names_every_talent_that_reaches_a_thing_since_their_paces_add():
+    """Miki's case: two one of a kind talents behind one technique."""
+    from engine.state import Talent, TalentBridge, TalentCover, TalentFit, TalentStrength
+
+    state = _talented()
+    sheet = state.player.sheet
+    sheet.talents.append(
+        Talent(id="aura", name="Aura sense", strength=TalentStrength.ONE_OF_A_KIND)
+    )
+    sheet.talent_rulings[0].covers.append(TalentCover(talent_id="aura", fit=TalentFit.INSIDE))
+
+    assert lines_of(state)[-3] == (
+        "Aura blade: grows 18 times as fast, inside your talents (The sword and Aura sense),"
+        " related to your talent (Architecture)"
+    )
+    assert lines_of(state, ES)[-3] == (
+        "Aura blade: crece 18 veces más rápido, dentro de tus talentos (The sword y Aura sense),"
+        " afín a tu talento (Architecture)"
+    )
+    assert lines_of(state, CA)[-3] == (
+        "Aura blade: creix 18 vegades més ràpid, dins dels teus talents (The sword i Aura sense),"
+        " afí al teu talent (Architecture)"
+    )
+    # A bridge from the third talent adds to what the other two give, and is shown with them.
+    blade = "technique:aura-blade"
+    sheet.bridges = [
+        TalentBridge(key=blade, what="Aura blade", talent_id="architect", rests_on="the edge"),
+    ]
+    assert lines_of(state)[-4:-2] == [
+        "Aura blade: grows 20 times as fast, inside your talents (The sword, Aura sense and"
+        " Architecture)",
+        "Bridge: the edge",
+    ]
 
 
 def test_status_says_related_until_a_bridge_carries_the_thing_all_the_way():

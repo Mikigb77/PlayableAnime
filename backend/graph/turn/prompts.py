@@ -197,9 +197,11 @@ talent of perception). related: the talent helps but doesn't hand it over (shapi
 blade for an architect). outside: nothing to do with it. Weigh the case the player makes in \
 this action for why a talent applies, and judge it as a fair referee: code keeps the ruling \
 for good, so never stretch a talent over everything and never refuse a link that is really \
-there. A thing TALENTS.ruled names is settled, whatever the player argues now: no entry for \
-it. Only the talents in TALENTS count: one the player declares now is a backstory claim, not \
-a talent. An empty list for a step that neither learns nor uses anything of the kind.
+there. Judge each talent on its own: where several reach the thing, code adds their paces, so \
+each one that really reaches it gets its own fit and reason, and none is moved up or down \
+because of another. A thing TALENTS.ruled names is settled, whatever the player argues now: \
+no entry for it. Only the talents in TALENTS count: one the player declares now is a backstory \
+claim, not a talent. An empty list for a step that neither learns nor uses anything of the kind.
 - bridge, always: null when TALENTS isn't given, and null for every step that isn't real work \
 to connect one of those talents to a thing it doesn't fully cover, one TALENTS.ruled shows as \
 related to it or outside it: deriving the formula behind a blade's shape, studying a teacher's \

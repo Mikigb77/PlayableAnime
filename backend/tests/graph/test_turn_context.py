@@ -1126,6 +1126,7 @@ def test_the_interpret_step_is_asked_for_the_case_on_a_talent_and_for_bridges():
     assert "or uses a technique or a move of their own, and TALENTS.ruled doesn't name" in system
     assert "one entry for each talent in TALENTS.talents" in system
     assert "Weigh the case the player makes in this action for why a talent applies" in system
+    assert "Judge each talent on its own: where several reach the thing, code adds their" in system
     assert "A thing TALENTS.ruled names is settled, whatever the player argues now" in system
     assert "one the player declares now is a backstory claim, not a talent" in system
     assert "- bridge, always: null when TALENTS isn't given" in system

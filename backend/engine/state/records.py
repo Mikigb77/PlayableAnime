@@ -513,7 +513,7 @@ class Throw(EngineModel):
         default=18,
         ge=1,
         le=20,
-        description="A4: the face of the violet die that shows an insight: 18, or 16 when two "
+        description="A4: the face of the violet die that shows an insight: 18, or 15 when two "
         "talents both cover the move.",
     )
 

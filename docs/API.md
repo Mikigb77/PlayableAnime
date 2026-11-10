@@ -534,7 +534,7 @@ Throw {dice: [{kind: "plain"|"green"|"violet"|"gold"|"grey",    # A3: every die 
        against,                           # what it was up against, in a sentence
        deadly: bool, miss_costs,          # a miss could kill, and what it costs (N6)
        insight: bool, insight_at}         # the violet die showed an insight (A4), and the face
-                                          # that shows one: 18, or 16 when two talents cover it
+                                          # that shows one: 18, or 15 when two talents cover it
                                           # The app never rolls: it shows these dice.
 
 SceneImage {planned: bool,                  # code planned it (M1); false for Illustrate (M2)
@@ -662,6 +662,9 @@ StatusView {character: {name, lines: [string], portrait_url?},   # portrait once
                                           # one of a kind, eight times as fast): anything
                                           # fought with a blade", "Aura blade: grows eight
                                           # times as fast, inside your talent (The sword)",
+                                          # or with every talent that reaches it, since their
+                                          # paces add: "Aura blade: grows 16 times as fast,
+                                          # inside your talents (The sword and Aura sense)",
                                           # "Bridge: the load formula", "Outside your
                                           # talents: Herb lore; Rope trick" (A4)
             reputation: [{name, label}],

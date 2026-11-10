@@ -109,7 +109,7 @@ def test_the_first_time_a_thing_is_used_the_engine_rules_once_and_says_so():
     assert (
         'Ruled once: Aura blade is inside your talent "The sword" (A blade is a blade, whatever'
         ' it is made of) and related to your talent "Genius architect" (shaping aura is structure'
-        " and geometry). It grows eight times as fast." in settled.reason
+        " and geometry). It grows ten times as fast." in settled.reason
     )
     (ruling,) = rulings(played.state)
     assert (ruling.key, ruling.what, ruling.turn) == (BLADE, "Aura blade", 3)
@@ -334,6 +334,41 @@ def test_a_fight_counts_two_uses_against_what_their_talent_asks(held, fit, after
     assert (blade.mastery, blade.uses, need) == after
 
 
+def test_two_one_of_a_kind_talents_behind_a_move_grow_it_faster_than_one():
+    """Miki's case (2026-11-10): the paces add. One fight with the sword alone leaves the blade
+    practiced; with a second talent behind it the same fight leaves it skilled."""
+    aura = talent("aura", "Aura sense", UNIQUE, covers="the feel and the shaping of aura")
+    sword = case("sword", INSIDE)
+    alone = arguing(cut_the_thief(technique("blade")), sword)
+    both = arguing(alone, sword, case("aura", INSIDE, reason="the blade is aura given an edge"))
+
+    one = play(talented(SWORD, aura), Intent(steps=[alone]))
+    two = play(talented(SWORD, aura), Intent(steps=[both]))
+
+    assert (stands(one.state).pace, stands(two.state).pace) == (8, 16)
+    assert (blade_of(one.state).mastery, blade_of(two.state).mastery) == (
+        Mastery.PRACTICED,
+        Mastery.SKILLED,
+    )
+    assert "It grows 16 times as fast." in two.resolution.steps[0].reason
+
+
+def test_training_adds_the_paces_of_the_talents_that_reach_the_thing():
+    """Four hours count as 24: twice as fast for the architect's eye, which is only related,
+    and four times for a genius with aura that covers the wall."""
+    aura = talent("aura", "A gift for aura", GENIUS, covers="shaping aura")
+    lesson = arguing(
+        train(GrowthKind.TECHNIQUE, "Aura wall", 4),
+        case("architect", RELATED, what="Aura wall", reason="a wall is structure"),
+        case("aura", INSIDE, what="Aura wall", reason="it is aura, shaped"),
+    )
+
+    played = play(talented(ARCHITECT, aura), Intent(steps=[lesson]))
+
+    assert "It grows six times as fast." in played.resolution.steps[0].reason
+    assert played.state.player.sheet.practice[0].effort_s == 24 * 3600
+
+
 @pytest.mark.parametrize(
     ("held", "fit", "start", "dice"),
     [
@@ -396,6 +431,26 @@ def test_one_of_a_kind_takes_in_a_technique_it_covers_by_watching_it_done():
     assert (palm.mastery, palm.learned_from) == (Mastery.SKILLED, "zhao")
 
 
+def test_two_geniuses_that_both_cover_a_technique_take_it_in_by_watching_together():
+    """What a pace brings follows the pace, however it adds up: two geniuses give eight times."""
+    eye = talent("eye", "A sharp eye", GENIUS, covers="any move he can watch done")
+    palms = talent("palms", "Born for palm arts", GENIUS, covers="palm techniques")
+    state = talented(eye, palms)
+    state.characters["zhao"].sheet.techniques.append(Technique(id="palm", name="Rising Palm"))
+    watch = arguing(
+        train(
+            GrowthKind.TECHNIQUE, "Rising Palm", 0.1, teacher=Teacher.WATCHING, teacher_id="zhao"
+        ),
+        case("eye", INSIDE, what="Rising Palm", reason="he watches it done"),
+        case("palms", INSIDE, what="Rising Palm", reason="it is a palm art"),
+    )
+
+    played = play(state, Intent(steps=[watch]))
+
+    assert "You pick up Rising Palm just by watching." in played.resolution.steps[0].reason
+    assert played.state.player.sheet.technique("technique-rising-palm").mastery is Mastery.SKILLED
+
+
 def test_a_genius_still_has_to_put_in_the_hours_to_learn_by_watching():
     state = talented(ARCHITECT)
     state.characters["zhao"].sheet.techniques.append(Technique(id="palm", name="Rising Palm"))
@@ -448,8 +503,8 @@ def test_a_climb_their_genius_covers_throws_a_green_die_and_a_weakness_adds_five
 # --- insight ---------------------------------------------------------------------------------
 
 
-def test_two_talents_that_cover_the_move_show_an_insight_on_16():
-    """The violet die of a move both talents cover fully shows an insight on 16 and 17 too."""
+def test_two_talents_that_cover_the_move_show_an_insight_on_15():
+    """The violet die of a move both talents cover fully shows an insight on 15, 16 and 17 too."""
     hands = talent("hands", "Quick hands", KNACK)
     both = arguing(cut_the_thief(technique("blade")), case("sword", INSIDE), case("hands", INSIDE))
     one = arguing(cut_the_thief(technique("blade")), case("sword", INSIDE), case("hands", RELATED))
@@ -459,8 +514,8 @@ def test_two_talents_that_cover_the_move_show_an_insight_on_16():
         single = play(talented(SWORD, hands), Intent(steps=[one]), seed).resolution.steps[0]
         thrown = doubled.roll.throw
         (violet,) = [d for d in thrown.dice if d.kind is DieKind.VIOLET]
-        assert (thrown.insight_at, single.roll.throw.insight_at) == (16, 18)
-        if violet.face in (16, 17):
+        assert (thrown.insight_at, single.roll.throw.insight_at) == (15, 18)
+        if violet.face in (15, 16, 17):
             seen += 1
             assert thrown.insight and not single.roll.throw.insight
             assert "An insight into Aura blade" in doubled.reason
@@ -515,8 +570,8 @@ def test_a_bridge_is_thrown_with_their_own_skill_against_the_reach():
         " hard task, level 3:"
     )
     assert settled.reason.endswith(
-        "The bridge holds: resting on the load formula behind the wall's shape, Aura wall now"
-        ' grows four times as fast through your talent "Genius architect".'
+        "The bridge holds: resting on the load formula behind the wall's shape, it carries your"
+        ' talent "Genius architect" further into Aura wall, which now grows four times as fast.'
     )
     (bridge,) = bridges(played.state)
     assert (bridge.key, bridge.talent_id, bridge.steps, bridge.turn) == (WALL, "architect", 1, 4)

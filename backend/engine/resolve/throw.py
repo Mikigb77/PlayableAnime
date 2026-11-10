@@ -7,7 +7,7 @@ the hand and the number, and the callers decide what a result does.
 - **The hand** is one to five dice by how well they have the move, or the skill or attribute
   the step draws on (`engine.levels`), a green die for each real advantage that holds, two at
   most, and, for a move, its own die thrown last: violet while they are still mastering it,
-  where 18 or more is an insight worth three uses (A4), or 16 or more when two talents of
+  where 18 or more is an insight worth three uses (A4), or 15 or more when two talents of
   theirs both cover the move (`engine.talent`), and gold from second nature on, which never
   counts below 10.
 - **A 20 throws one more die**, plain, and that one can throw another.
