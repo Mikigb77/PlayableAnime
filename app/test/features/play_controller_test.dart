@@ -462,6 +462,210 @@ void main() {
     });
   });
 
+  group('a turn the story owes (A3)', () {
+    const leap = '[fail:lost] I leap across the gap';
+
+    /// Another device, or an earlier visit, starts a turn that is lost after its dice.
+    Future<void> loseElsewhere({String words = leap}) async {
+      final other = StoryRepository(api);
+      final story = await other.get(_demo);
+      final events = await other.takeTurn(
+        _demo,
+        TurnInput.action(words, inputMode: 'typed'),
+        expectedVersion: story.version,
+      );
+      await events.drain<void>().catchError((Object _) {});
+    }
+
+    test('the steps arrive before the story, dice and all', () async {
+      final (:play, :notices, :texts) = control();
+      await play.start();
+      String? textAtDice;
+      play.notices.listen((notice) {
+        if (notice is StepsShown) textAtDice = play.pending?.text;
+      });
+      await play.act('I leap across the gap', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+
+      final shown = notices.whereType<StepsShown>().single;
+      expect(shown.turn, 4);
+      expect(shown.details.hasThrows, isTrue);
+      // Not a word of the story was written yet.
+      expect(textAtDice, isEmpty);
+      expect(notices.indexOf(shown), lessThan(notices.indexWhere((n) => n is SceneSaved)));
+      // The saved scene carries the same dice, and the story owes nothing.
+      final saved = play.story!.scenes.last.details.steps.single.roll!;
+      final decided = shown.details.steps.single.roll!;
+      expect(saved.seed, decided.seed);
+      expect(saved.thrown!.total, decided.thrown!.total);
+      expect(play.owes, isFalse);
+      expect(play.canAct, isTrue);
+    });
+
+    test(
+      'a connection lost after the dice leaves the turn owed, and a retry plays it out',
+      () async {
+        final (:play, :notices, texts: _) = control();
+        await play.start();
+        await play.act(leap, inputMode: 'typed');
+        await until(play, () => play.pending?.failed ?? false);
+        expect(play.owes, isTrue);
+        expect(play.story!.unfinishedTurn!.turn, 4);
+        expect(play.story!.unfinishedTurn!.action, leap);
+        expect(play.story!.version, 3);
+        expect(play.canAct, isFalse);
+        final decided = notices.whereType<StepsShown>().single.details.steps.single.roll!;
+
+        expect(await play.retry(), isTrue);
+        await until(play, () => play.pending == null);
+        // It asks for the owed turn by name, and sends no words a second time.
+        expect(turnRequests().last.json['kind'], 'resume');
+        expect(turnRequests().last.json.containsKey('action'), isFalse);
+        final scene = play.story!.scenes.last;
+        expect((scene.turn, scene.playerAction), (4, leap));
+        // The same dice: nothing is rolled again.
+        expect(scene.details.steps.single.roll!.seed, decided.seed);
+        expect(scene.details.steps.single.roll!.thrown!.total, decided.thrown!.total);
+        expect(play.owes, isFalse);
+        expect(notices.whereType<OwedTurnPlaying>(), isEmpty);
+        expect(notices.whereType<StoryMovedOn>(), isEmpty);
+      },
+    );
+
+    test('a storyteller failure after the dice keeps the turn too', () async {
+      final (:play, notices: _, texts: _) = control();
+      await play.start();
+      await play.act('[fail:llm_unavailable] I leap across the gap', inputMode: 'typed');
+      await until(play, () => play.pending?.failed ?? false);
+      expect(play.pending!.error!.code, ApiErrorCode.llmUnavailable);
+      expect(play.owes, isTrue);
+
+      // Dismissed, it is still what the story does next.
+      play.dismissFailure();
+      expect(play.pending, isNull);
+      expect(play.owes, isTrue);
+      expect(await play.resume(), isTrue);
+      await until(play, () => play.pending == null);
+      expect(play.story!.scenes.last.turn, 4);
+      expect(turnRequests().last.json['kind'], 'resume');
+    });
+
+    test('a story opened while it owes a turn plays it out at once', () async {
+      await loseElsewhere();
+      final (:play, :notices, texts: _) = control();
+      final labels = <String?>{};
+      play.addListener(() {
+        if (play.pending case final pending?) labels.add(pending.label);
+      });
+      await play.start();
+      await until(play, () => play.story?.scenes.lastOrNull?.turn == 4 && play.pending == null);
+
+      expect(turnRequests().last.json['kind'], 'resume');
+      // The feed shows what the player did then, and the dice are shown again.
+      expect(labels, {leap});
+      expect(notices.whereType<StepsShown>().single.turn, 4);
+      expect(notices.whereType<OwedTurnPlaying>(), isEmpty);
+      expect(play.owes, isFalse);
+    });
+
+    test('an owed standing action keeps its kind, for the feed to name it', () async {
+      final other = StoryRepository(api);
+      // The fake keeps any turn whose connection is lost after the dice; a wait has one step.
+      final lost = backend.data.stories.get(_demo, FakeAuthState.demoUserId);
+      final events = await other.takeTurn(
+        _demo,
+        const TurnInput.standing('wait'),
+        expectedVersion: lost.version,
+      );
+      // Stop listening after the dice, as a lost connection would.
+      await events.firstWhere((event) => event is StepsDecided);
+
+      final (:play, notices: _, texts: _) = control();
+      final kinds = <(String, String?)>{};
+      play.addListener(() {
+        if (play.pending case final pending?) kinds.add((pending.kind, pending.label));
+      });
+      await play.start();
+      await until(play, () => play.story?.scenes.lastOrNull?.turn == 4 && play.pending == null);
+      expect(kinds, {('standing', 'wait')});
+      expect(play.story!.scenes.last.kind, 'standing');
+    });
+
+    test(
+      'whatever is sent, the owed turn is the one that plays, and the words come back',
+      () async {
+        final (:play, :notices, texts: _) = control();
+        await play.start();
+        // This device hasn't heard that the story owes a turn.
+        await loseElsewhere();
+        expect(play.owes, isFalse);
+        final labels = <String?>[];
+        play.addListener(() {
+          if (play.pending case final pending?) labels.add(pending.label);
+        });
+
+        await play.act('I go home', inputMode: 'typed');
+        await until(play, () => play.pending == null);
+        expect(notices.whereType<OwedTurnPlaying>().single.action, 'I go home');
+        // The feed first showed the words sent, then the turn that is really playing.
+        expect(labels.first, 'I go home');
+        expect(labels.last, leap);
+        expect(play.story!.scenes.last.playerAction, leap);
+        expect(play.story!.scenes.last.turn, 4);
+        expect(notices.whereType<StoryMovedOn>(), isEmpty);
+      },
+    );
+
+    test('a turn the story let go is dropped, and its words go back', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.act(leap, inputMode: 'typed');
+      await until(play, () => play.pending?.failed ?? false);
+      // The server lets it go meanwhile.
+      backend.data.stories.get(_demo, FakeAuthState.demoUserId).unfinished = null;
+
+      expect(await play.retry(), isFalse);
+      await until(play, () => play.pending == null);
+      expect(notices.whereType<OwedTurnLetGo>().single.action, leap);
+      expect(notices.whereType<TurnRefused>(), isEmpty);
+      expect(play.owes, isFalse);
+      expect(play.canAct, isTrue);
+      expect(play.story!.scenes.last.turn, 3);
+    });
+
+    test('a turn saved by the stream that was lost joins the feed without a word', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.act(leap, inputMode: 'typed');
+      await until(play, () => play.pending?.failed ?? false);
+      // The owed turn is played out elsewhere before this device asks.
+      final other = StoryRepository(api);
+      await (await other.takeTurn(
+        _demo,
+        const TurnInput.resume(),
+        expectedVersion: 3,
+      )).drain<void>();
+
+      expect(await play.retry(), isFalse);
+      await until(play, () => play.pending == null);
+      expect(play.story!.scenes.last.turn, 4);
+      expect(play.owes, isFalse);
+      expect(notices.whereType<SceneSaved>().single.turn, 4);
+      expect(notices.whereType<StoryMovedOn>(), isEmpty);
+      expect(notices.whereType<OwedTurnLetGo>(), isEmpty);
+    });
+
+    test('an opening and a plain turn with no dice are never owed', () async {
+      final (:play, :notices, texts: _) = control();
+      await play.start();
+      await play.act('I look around', inputMode: 'typed');
+      await until(play, () => play.pending == null);
+      // Its one step is certain: shown, with nothing to throw.
+      expect(notices.whereType<StepsShown>().single.details.hasThrows, isFalse);
+      expect(play.owes, isFalse);
+    });
+  });
+
   group('pictures', () {
     test(
       'a fight is painted after the text; a skipped picture leaves the scene without one',

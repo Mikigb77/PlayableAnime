@@ -132,21 +132,179 @@ enum RollResult {
   };
 }
 
+/// What a die of a throw is (A3): plain for the hand, green for an advantage, violet or gold for
+/// the move's own die, and grey for the world's.
+enum DieKind {
+  plain,
+  green,
+  violet,
+  gold,
+  grey;
+
+  static DieKind fromWire(String? value) => switch (value) {
+    'green' => green,
+    'violet' => violet,
+    'gold' => gold,
+    'grey' => grey,
+    _ => plain,
+  };
+}
+
+/// One die as it fell (A3).
+class ThrownDie {
+  const ThrownDie({required this.kind, required this.face, this.sprung = false});
+
+  factory ThrownDie.fromJson(Json json) => ThrownDie(
+    kind: DieKind.fromWire(json['kind'] as String?),
+    face: ((json['face'] as num?)?.toInt() ?? 1).clamp(1, 20),
+    sprung: json['sprung'] as bool? ?? false,
+  );
+
+  /// What a gold die counts for at least, whatever it shows.
+  static const goldFloor = 10;
+
+  final DieKind kind;
+
+  /// The number it shows, 1 to 20.
+  final int face;
+
+  /// Thrown because the die before it showed a 20.
+  final bool sprung;
+
+  /// What it adds to the total: its face, and never under 10 for a gold die.
+  int get value => kind == DieKind.gold && face < goldFloor ? goldFloor : face;
+}
+
+/// How a throw fell against its number (A3).
+enum ThrowMark {
+  overTheTop,
+  passed,
+  soClose,
+  missed;
+
+  static ThrowMark fromWire(String? value) => switch (value) {
+    'over_the_top' => overTheTop,
+    'passed' => passed,
+    'so_close' => soClose,
+    _ => missed,
+  };
+
+  /// The total reached the number.
+  bool get reached => this == overTheTop || this == passed;
+}
+
+/// One thing a throw's number is made of: the level first, then each thing that moved it.
+typedef NumberPart = ({String text, int points});
+
+/// The dice that decided a step (docs/API.md `Throw`, A3): every die as it fell, the hand and
+/// why, the number and what it is made of, and how the total fell against it. The app shows
+/// these dice and never rolls any.
+class SceneThrow {
+  const SceneThrow({
+    required this.dice,
+    required this.number,
+    required this.total,
+    required this.most,
+    required this.mark,
+    this.hand = 1,
+    this.handWhy = '',
+    this.greens = const [],
+    this.madeOf = const [],
+    this.against = '',
+    this.deadly = false,
+    this.missCosts = '',
+    this.insight = false,
+    this.insightAt = 18,
+  });
+
+  factory SceneThrow.fromJson(Json json) {
+    final dice = _list(json['dice'], ThrownDie.fromJson);
+    final hand = (json['hand'] as num?)?.toInt() ?? dice.where((d) => !d.sprung).length;
+    return SceneThrow(
+      dice: dice,
+      hand: hand,
+      handWhy: json['hand_why'] as String? ?? '',
+      greens: [
+        for (final green in json['greens'] as List? ?? const [])
+          if (green is String) green,
+      ],
+      number: (json['number'] as num?)?.toInt() ?? 0,
+      madeOf: [
+        for (final part in json['made_of'] as List? ?? const [])
+          if (part is Json)
+            (text: part['text'] as String? ?? '', points: (part['points'] as num?)?.toInt() ?? 0),
+      ],
+      total: (json['total'] as num?)?.toInt() ?? dice.fold<int>(0, (sum, d) => sum + d.value),
+      most: (json['most'] as num?)?.toInt() ?? 20 * hand,
+      mark: ThrowMark.fromWire(json['mark'] as String?),
+      against: json['against'] as String? ?? '',
+      deadly: json['deadly'] as bool? ?? false,
+      missCosts: json['miss_costs'] as String? ?? '',
+      insight: json['insight'] as bool? ?? false,
+      insightAt: (json['insight_at'] as num?)?.toInt() ?? 18,
+    );
+  }
+
+  /// The throw in [json], or none when there are no dice to show.
+  static SceneThrow? maybe(Object? json) {
+    if (json is! Json) return null;
+    final thrown = SceneThrow.fromJson(json);
+    return thrown.dice.isEmpty ? null : thrown;
+  }
+
+  /// Every die in the order thrown.
+  final List<ThrownDie> dice;
+
+  /// The dice in the hand, before any a 20 threw, and why: "Aura blade (skilled), 3 dice".
+  final int hand;
+  final String handWhy;
+
+  /// Each green die's reason, in the order thrown.
+  final List<String> greens;
+
+  /// What the total had to reach, and what it is made of.
+  final int number;
+  final List<NumberPart> madeOf;
+
+  /// The dice added up, and the most the hand could make with no 20.
+  final int total;
+  final int most;
+  final ThrowMark mark;
+
+  /// What it was up against, in a sentence.
+  final String against;
+
+  /// A miss could kill, and what it costs (N6).
+  final bool deadly;
+  final String missCosts;
+
+  /// The violet die showed an insight (A4), and the face that shows one.
+  final bool insight;
+  final int insightAt;
+
+  /// The world's one grey die, for what is nobody's doing.
+  bool get ofTheWorld => dice.first.kind == DieKind.grey;
+}
+
 class SceneRoll {
-  const SceneRoll({required this.oddsLabel, required this.result, this.seed});
+  const SceneRoll({required this.oddsLabel, required this.result, this.seed, this.thrown});
 
   factory SceneRoll.fromJson(Json json) => SceneRoll(
     oddsLabel: json['odds_label'] as String? ?? '',
     result: RollResult.fromWire(json['result'] as String?),
     seed: json['seed'] as String?,
+    thrown: SceneThrow.maybe(json['throw']),
   );
 
-  /// The odds in words, such as "about even".
+  /// The roll in one line: "31 against 27", or the odds in words on a scene saved before the dice.
   final String oddsLabel;
   final RollResult result;
 
   /// The roll's seed, so the same roll can be checked again.
   final String? seed;
+
+  /// The dice (A3). None on a scene saved before they travelled.
+  final SceneThrow? thrown;
 }
 
 SceneRoll? _roll(Object? json) => json is Json ? SceneRoll.fromJson(json) : null;
@@ -285,6 +443,14 @@ class SceneDetails {
   final int? stoppedAtStep;
 
   bool get isEmpty => steps.isEmpty && chain.isEmpty;
+
+  /// Dice decided something here (A3), so the scene has a throw to watch.
+  bool get hasThrows => steps.any(
+    (step) =>
+        step.roll?.thrown != null ||
+        step.beats.any((beat) => beat.roll?.thrown != null) ||
+        step.struck.any((struck) => struck.roll?.thrown != null),
+  );
 }
 
 class Scene {
@@ -693,6 +859,28 @@ class Successor {
   final Heir? heir;
 }
 
+/// A turn the story still owes (docs/API.md `Story.unfinished_turn`, A3): its steps were decided
+/// and shown, and its scene isn't saved yet. Whatever is sent next plays it out.
+class UnfinishedTurn {
+  const UnfinishedTurn({required this.turn, required this.kind, this.action});
+
+  static UnfinishedTurn? maybe(Object? json) => json is Json
+      ? UnfinishedTurn(
+          turn: (json['turn'] as num?)?.toInt() ?? 0,
+          kind: json['kind'] as String? ?? 'action',
+          action: json['action'] as String?,
+        )
+      : null;
+
+  final int turn;
+
+  /// action, choice, standing or end.
+  final String kind;
+
+  /// The words that were sent, a choice's label, `wait` or `observe`, or an end turn's note.
+  final String? action;
+}
+
 class Story {
   const Story({
     required this.id,
@@ -709,6 +897,7 @@ class Story {
     this.successor,
     this.heirs = const [],
     this.openingDue = false,
+    this.unfinishedTurn,
   });
 
   factory Story.fromJson(Json json) => Story(
@@ -726,6 +915,7 @@ class Story {
     successor: Successor.maybe(json['successor']),
     heirs: _list(json['heirs'], Heir.fromJson),
     openingDue: json['opening_due'] as bool? ?? false,
+    unfinishedTurn: UnfinishedTurn.maybe(json['unfinished_turn']),
   );
 
   final String id;
@@ -761,6 +951,10 @@ class Story {
   /// is their opening (N6).
   final bool openingDue;
 
+  /// The turn the story still owes (A3), which the next request plays out.
+  final UnfinishedTurn? unfinishedTurn;
+
+  /// [unfinishedTurn] is a function so it can be set to none.
   Story copyWith({
     List<Scene>? scenes,
     int? version,
@@ -769,6 +963,7 @@ class Story {
     StorySettings? settings,
     StoryEnding? ending,
     bool? openingDue,
+    UnfinishedTurn? Function()? unfinishedTurn,
   }) => Story(
     id: id,
     title: title ?? this.title,
@@ -784,9 +979,11 @@ class Story {
     successor: successor,
     heirs: heirs,
     openingDue: openingDue ?? this.openingDue,
+    unfinishedTurn: unfinishedTurn == null ? this.unfinishedTurn : unfinishedTurn(),
   );
 
-  /// The story with a saved scene. Once any scene is saved, no opening is due.
+  /// The story with a saved scene. Once any scene is saved, no opening is due and no turn is
+  /// owed.
   Story withScene(Scene scene, {required int version, String? clockLabel, StoryEnding? ending}) =>
       copyWith(
         scenes: [...scenes.where((s) => s.turn != scene.turn), scene],
@@ -794,6 +991,7 @@ class Story {
         clockLabel: clockLabel,
         ending: ending,
         openingDue: false,
+        unfinishedTurn: () => null,
       );
 }
 

@@ -236,6 +236,211 @@ void main() {
       expect((await stories.get(story.id)).version, story.version + 1);
     });
 
+    group('the dice (A3)', () {
+      /// Plays [words] and gives what the turn decided, as `steps.decided` says it.
+      Future<SceneDetails> decide(String words) async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            TurnInput.action(words, inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        // The steps come before the first word of the story.
+        final decided = events.whereType<StepsDecided>().single;
+        expect(
+          events.indexOf(decided),
+          lessThan(events.indexWhere((event) => event is NarrationDelta)),
+        );
+        final details = SceneDetails.fromJson(decided.details);
+        // The saved scene carries the same steps.
+        final saved = Scene.fromJson((events.last as SceneCompleted).scene);
+        expect(saved.details.steps.length, details.steps.length);
+        return details;
+      }
+
+      Iterable<SceneThrow> throwsOf(SceneDetails details) sync* {
+        for (final step in details.steps) {
+          for (final beat in step.beats) {
+            if (beat.roll?.thrown case final thrown?) yield thrown;
+          }
+          if (step.roll?.thrown case final thrown?) yield thrown;
+          for (final struck in step.struck) {
+            if (struck.roll?.thrown case final thrown?) yield thrown;
+          }
+        }
+      }
+
+      test('between them, the offline turns reach every kind of throw', () async {
+        final all = <SceneThrow>[];
+        // Turns 4 to 9: the third fight is turn 6, which falls so close, and the second leap
+        // is turn 8, which is even and goes over the top.
+        for (final words in [
+          'I duel the masked disciple from behind',
+          'I leap across the gap',
+          'I duel the masked disciple',
+          'I climb down a rope from the bell tower',
+          'I leap across the gap',
+          'I open the door, then slip past the guard',
+        ]) {
+          all.addAll(throwsOf(await decide(words)));
+        }
+
+        final dice = [for (final thrown in all) ...thrown.dice];
+        expect({for (final die in dice) die.kind}, DieKind.values.toSet());
+        expect({for (final thrown in all) thrown.mark}, ThrowMark.values.toSet());
+        // A 20 threw one more die, and a gold die held at ten.
+        expect(dice.where((die) => die.sprung), isNotEmpty);
+        expect(dice.where((die) => die.kind == DieKind.gold && die.face < 10), isNotEmpty);
+        // A violet die showed an insight, and another did not.
+        expect({for (final thrown in all) thrown.insight}, {true, false});
+        expect(all.where((thrown) => thrown.deadly && thrown.missCosts.isNotEmpty), isNotEmpty);
+        expect(all.where((thrown) => thrown.greens.isNotEmpty), isNotEmpty);
+        expect(all.where((thrown) => thrown.ofTheWorld), isNotEmpty);
+
+        for (final thrown in all) {
+          // Every throw adds up the way the engine's do.
+          final hand = thrown.dice.where((die) => !die.sprung).length;
+          expect(thrown.hand, hand);
+          expect(thrown.most, 20 * hand);
+          expect(thrown.total, thrown.dice.fold<int>(0, (sum, die) => sum + die.value));
+          expect(thrown.number, thrown.madeOf.fold<int>(0, (sum, part) => sum + part.points));
+          for (final (i, die) in thrown.dice.indexed) {
+            expect(die.sprung, i > 0 && thrown.dice[i - 1].face == 20);
+          }
+          expect(thrown.mark, switch (thrown) {
+            _ when thrown.total >= thrown.number && thrown.total > thrown.most =>
+              ThrowMark.overTheTop,
+            _ when thrown.total >= thrown.number => ThrowMark.passed,
+            _ when !thrown.ofTheWorld && thrown.number - thrown.total <= 5 => ThrowMark.soClose,
+            _ => ThrowMark.missed,
+          });
+        }
+      });
+
+      test('a step the dice decided tells its throw in words, as the engine does', () async {
+        final details = await decide('I attack the masked disciple from behind');
+        final step = details.steps.single;
+        expect(
+          step.reason,
+          'Sword form (skilled), 3 dice, and a green die for coming from behind, against the '
+          'masked disciple\'s swordplay (skilled), level 3: 46 against 27, passed. '
+          'It lands where their guard was a heartbeat ago.',
+        );
+        expect(step.roll!.oddsLabel, '46 against 27');
+        expect(step.struck.single.reason, startsWith('The masked disciple strikes back. Footwork'));
+      });
+
+      test('a step the facts settle has no dice', () async {
+        final details = await decide('I look around');
+        expect(details.steps.single.roll, isNull);
+        expect(details.hasThrows, isFalse);
+      });
+    });
+
+    group('a turn the story owes (A3)', () {
+      const lost = '[fail:lost] I leap across the gap';
+
+      /// Starts [words] and loses the connection after the dice.
+      Future<Story> lose(String words) async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            TurnInput.action(words, inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        expect(events.whereType<StepsDecided>(), hasLength(1));
+        expect((events.last as TurnFailed).error.code, ApiErrorCode.network);
+        return story;
+      }
+
+      test('a turn lost after its dice is kept, and saves nothing', () async {
+        final story = await lose(lost);
+        final after = await stories.get(story.id);
+        expect(after.version, story.version);
+        expect(after.scenes.last.turn, story.scenes.last.turn);
+        final owed = after.unfinishedTurn!;
+        expect((owed.turn, owed.kind, owed.action), (story.scenes.last.turn + 1, 'action', lost));
+      });
+
+      test('whatever is asked next, that turn plays, with the same dice', () async {
+        final story = await lose(lost);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.standing('wait'),
+            expectedVersion: story.version,
+          ),
+        );
+        final started = events.first as TurnStarted;
+        expect((started.resumed, started.kind, started.action), (true, 'action', lost));
+        final scene = Scene.fromJson((events.last as SceneCompleted).scene);
+        expect((scene.kind, scene.playerAction), ('action', lost));
+        expect(
+          SceneDetails.fromJson(events.whereType<StepsDecided>().single.details).hasThrows,
+          isTrue,
+        );
+        final after = await stories.get(story.id);
+        expect(after.unfinishedTurn, isNull);
+        expect(after.version, story.version + 1);
+      });
+
+      test('resume plays it out, and is refused when nothing is owed', () async {
+        final story = await lose(lost);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.resume(),
+            expectedVersion: story.version,
+          ),
+        );
+        expect((events.first as TurnStarted).resumed, isTrue);
+        expect(events.last, isA<SceneCompleted>());
+
+        final after = await stories.get(story.id);
+        await expectLater(
+          stories.takeTurn(story.id, const TurnInput.resume(), expectedVersion: after.version),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.code, 'code', ApiErrorCode.validationError)
+                .having(
+                  (e) => ((e.details['fields'] as List).single as JsonMap)['type'],
+                  'type',
+                  'nothing_unfinished',
+                ),
+          ),
+        );
+      });
+
+      test('a storyteller failure after the dice keeps the turn', () async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.action('[fail:llm_unavailable] I leap across', inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        expect((events.last as TurnFailed).error.code, ApiErrorCode.llmUnavailable);
+        expect((await stories.get(story.id)).unfinishedTurn, isNotNull);
+      });
+
+      test('a turn refused before its steps are decided is not kept', () async {
+        final story = await stories.get((await library.stories()).single.id);
+        await collect(
+          await stories.takeTurn(
+            story.id,
+            const TurnInput.action('[fail:unreadable_action] Hm', inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        expect((await stories.get(story.id)).unfinishedTurn, isNull);
+      });
+    });
+
     test('each turn kind takes only its own field, and the opening comes first, once', () async {
       final story = await stories.get((await library.stories()).single.id);
       Future<void> refused(Map<String, Object?> body) => expectLater(

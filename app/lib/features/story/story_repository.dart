@@ -48,6 +48,16 @@ class TurnInput {
       standing = null,
       inputMode = note == null ? null : inputMode;
 
+  /// Plays out the turn the story still owes (`Story.unfinished_turn`, A3). It takes no field of
+  /// its own: the server kept the action, how it was read and its dice.
+  const TurnInput.resume()
+    : kind = 'resume',
+      action = null,
+      choiceId = null,
+      standing = null,
+      inputMode = null,
+      dropRefused = false;
+
   final String kind;
   final String? action;
   final String? choiceId;
