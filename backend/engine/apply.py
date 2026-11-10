@@ -24,6 +24,7 @@ Who may change what:
   practice and time effects (A4, G19, G20, W10a).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -99,6 +100,7 @@ from engine.state.sheet import (
     Wound,
 )
 from engine.state.world import ActiveTimeEffect, WorldState, natural_key
+from engine.text import any_mentions
 from engine.timekeeping import effect_over
 from engine.world.geography import find_place
 from engine.world.tuning import GESTATION_S
@@ -138,6 +140,7 @@ def apply_delta(
     source: DeltaSource,
     may_hurt_player: bool = False,
     player_acted: bool = False,
+    found: Sequence[str] = (),
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
@@ -146,7 +149,9 @@ def apply_delta(
     Places and factions go first, so characters in the same delta can refer to them, and family
     ties after every character. The narrator hurts the player character only with
     `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`). A goal
-    closes only with `player_acted`, on a turn the player acted (N2).
+    closes only with `player_acted`, on a turn the player acted (N2). `found` is what this turn
+    made canon (`Resolution.found`): the scene's record keeps it beside what the narrator lists,
+    while the scene stays in its place (R2, R3).
     """
     return apply_in_place(
         state.model_copy(deep=True),
@@ -155,6 +160,7 @@ def apply_delta(
         source=source,
         may_hurt_player=may_hurt_player,
         player_acted=player_acted,
+        found=found,
     )
 
 
@@ -166,6 +172,7 @@ def apply_in_place(
     source: DeltaSource,
     may_hurt_player: bool = False,
     player_acted: bool = False,
+    found: Sequence[str] = (),
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
@@ -198,11 +205,12 @@ def apply_in_place(
         with_player = _with_player(new)
         place_id = applier.scene_place(end, delta.places)
         left = new.scene.place_id
+        stays = place_id is None or place_id == left
         new.scene = SceneFrame(
             place_id=place_id or new.scene.place_id,
             present_ids=[i for i in end.present_ids if i in new.characters],
             positions=end.positions,
-            props=end.props,
+            props=_scene_props(end.props, found if stays else ()),
             ended_on=end.ended_on,
             encounter=new.scene.encounter,
         )
@@ -211,9 +219,30 @@ def apply_in_place(
             # C6, R8: the player character knows the place their scene ends in, and has been there.
             _add(new.places[place_id].visited_by, new.player_id)
             _add(new.places[place_id].known_by, new.player_id)
+    elif found:
+        # The scene goes on where it was, so its record keeps what the turn found (R2, R3).
+        applier.state.scene.props = _scene_props(applier.state.scene.props, found)
     if delta.summary:
         applier.state.summary = delta.summary
     return Applied(applier.state, tuple(applier.rejected))
+
+
+# The most things a scene's record holds once code has added to the narrator's list (R3).
+MAX_PROPS = 24
+
+
+def _scene_props(told: list[str], found: Sequence[str]) -> list[str]:
+    """R2, R3. The scene's things as the narrator listed them, then whatever this turn made
+    canon there that the list doesn't name. The narrator lists what matters next and often
+    leaves out the branch the character just picked up; code found it, so code keeps it, and
+    the next turn's beat check finds it on record."""
+    props = list(told)
+    for thing in found:
+        if len(props) >= MAX_PROPS:
+            break
+        if thing.strip() and any_mentions(props, thing) is None:
+            props.append(thing.strip())
+    return props
 
 
 def _with_player(state: WorldState) -> set[str]:

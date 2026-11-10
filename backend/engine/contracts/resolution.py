@@ -247,3 +247,16 @@ class Resolution(EngineModel):
     @property
     def personal_s(self) -> int:
         return sum(s.duration_s if s.personal_s is None else s.personal_s for s in self.steps)
+
+    @property
+    def found(self) -> list[str]:
+        """R2, R3. What the steps that played made canon, in order, such as the branch a beat
+        picked up: the scene's record keeps them (`engine.apply`). A step an event cut short
+        found nothing."""
+        return [
+            beat.thing
+            for step in self.steps
+            if not step.interrupted
+            for beat in step.beats
+            if beat.verdict is BeatVerdict.MADE_CANON
+        ]

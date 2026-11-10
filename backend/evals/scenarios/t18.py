@@ -557,6 +557,76 @@ async def nothing_there(ev: Eval) -> None:
         )
 
 
+# --- Something natural (R2) --------------------------------------------------------------------
+
+# However the interpret step files the branch, and with its judgement left out as often as not.
+BRANCH_FILED = (
+    (UseSource.NEW, Plausibility.PLAUSIBLE),
+    (UseSource.NEW, None),
+    (UseSource.SCENE, None),
+    (UseSource.CANON, None),
+    (UseSource.SCENE, Plausibility.PLAUSIBLE),
+)
+
+
+def snap_a_branch(source: UseSource, plausibility: Plausibility | None) -> Intent:
+    branch = BeatUse(source=source, thing="a dead branch", plausibility=plausibility)
+    return plan(
+        step(
+            "snap a dead branch off the nearest pine",
+            ActionKind.INSTANT,
+            4,
+            verb="snap",
+            beats=[Beat(text="reach up and snap off a dead branch", uses=[branch])],
+        )
+    )
+
+
+@scenario(
+    "t18.something-natural",
+    suite="T18",
+    title="Something natural",
+    requirements=("R2", "A2", "T18"),
+    passes_when=(
+        "Lin has the branch, with no roll for it and no search that comes up empty: what a "
+        "place of that kind would hold is simply there (R2)"
+    ),
+)
+async def something_natural(ev: Eval) -> None:
+    for n, seed in enumerate(ev.seeds(len(BRANCH_FILED), live=3)):
+        story = ev.story(worlds.among_the_pines(), seed=seed, under_way=True)
+        action = "I snap a dead branch off the nearest pine"
+        played = await story.act(action, snap_a_branch(*BRANCH_FILED[n % len(BRANCH_FILED)]))
+        beats = [b for s in played.steps for b in s.beats]
+        ev.check(
+            "nothing natural comes up empty or is rolled for (R2)",
+            all(b.verdict is not BeatVerdict.EMPTY and b.roll is None for b in beats),
+            f"{seed}: {[(b.thing, b.source, b.verdict, b.roll is not None) for b in beats]}",
+        )
+        ev.check(
+            "and no step is ruled out (A2)",
+            all(s.outcome_class is not OutcomeClass.RULED_OUT for s in played.steps),
+            f"{seed}: {[(s.outcome_class, s.reason) for s in played.steps]}",
+        )
+        ev.check(
+            "the scene's record keeps the branch for the next turn (R3)",
+            "a dead branch" in played.state.scene.props,
+            f"{seed}: {played.state.scene.props}",
+            live=False,
+        )
+        await ev.judge(
+            "the branch is simply there",
+            Rubric(
+                must=("Lin ends up with a branch from the pines in hand",),
+                must_not=(
+                    "The search for a branch fails, or comes up empty",
+                    "The scene says there is no branch to be had",
+                ),
+            ),
+            played,
+        )
+
+
 # --- Own words (R7) ----------------------------------------------------------------------------
 
 LINE = "You'll pay for this with your life."
