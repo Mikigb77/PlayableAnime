@@ -233,6 +233,23 @@ def test_the_best_technique_the_step_uses_sets_the_hand():
     assert thrown.hand_why == "Aura step (skilled), 3 dice"
 
 
+def test_a_step_keeps_what_it_was_done_with_and_how_well_thrown_or_not():
+    """R4 (live run, 2026-11-10): a novice's stroke with nothing in its way was told like a
+    master's, because a step with no throw said nothing of the hand. Every step that got as far
+    as being tried now keeps the skill or the move it was done with and its level."""
+    thrown = one(picker(SkillLevel.NOVICE), lock(Challenge.VERY_HARD))
+    assert thrown.roll is not None and thrown.hand == "Lockpicking (novice)"
+    # Nothing to throw for, and the hand is still told.
+    easy = one(picker(SkillLevel.NOVICE), lock(Challenge.TRIVIAL))
+    assert (easy.roll, easy.result) == (None, StepResult.SUCCESS)
+    assert easy.hand == "Lockpicking (novice)"
+    # A skill the sheet doesn't hold is untrained, and a move of theirs goes by its mastery.
+    assert one(picker(None), lock(Challenge.TRIVIAL)).hand == "Lockpicking (untrained)"
+    assert one(blade(Mastery.LEARNING), cut()).hand == "Aura blade (learning)"
+    # A raw feat names no skill: the sheet's attributes say the rest.
+    assert one(farm(), stamp()).hand == ""
+
+
 def test_a_skill_they_hold_is_found_by_the_steps_own_words():
     # Miki's forest runner failed to climb a tree: the interpret step had named nothing from
     # the sheet, so the climb rolled like anyone's.

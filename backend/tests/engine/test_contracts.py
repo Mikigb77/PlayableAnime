@@ -34,6 +34,7 @@ from engine.contracts import (
     StepFacts,
     StepResolution,
     StopReason,
+    TalentCase,
     UseSource,
 )
 from engine.state import (
@@ -46,6 +47,7 @@ from engine.state import (
     PowerAxis,
     RollRecord,
     StepResult,
+    TalentFit,
     Trace,
     TraceKind,
     Visibility,
@@ -332,8 +334,40 @@ def test_talent_rulings_and_bridges_are_left_out_of_the_form_the_narrator_fills(
     assert not {"TalentRuling", "TalentBridge", "TalentCover"} & set(schema["$defs"])
 
 
-def test_the_interpret_step_can_make_a_case_for_a_talent_and_propose_a_bridge():
-    step = Intent.model_json_schema()["$defs"]["IntentStep"]["properties"]
-    assert {"talent_cases", "bridge"} <= set(step)
-    case = Intent.model_json_schema()["$defs"]["TalentCase"]
-    assert set(case["required"]) == {"talent_id", "fit"}
+def test_the_interpret_model_must_always_answer_on_talent_for_each_step():
+    # A4: Gemini leaves out what a schema doesn't require, and in the first live run with
+    # talents (2026-11-10) it never made a case, so no talent was ruled on and every one of
+    # them did nothing. Each step now says how the talents stand, an empty list when there is
+    # nothing to rule on, and the bridge it builds, null on any other step.
+    schema = Intent.model_json_schema()
+    step = schema["$defs"]["IntentStep"]
+    assert {"talent_cases", "bridge"} <= set(step["required"])
+    assert {"type": "null"} in step["properties"]["bridge"]["anyOf"]
+    # A case names the thing and gives the reason the player reads in the ruling.
+    assert set(schema["$defs"]["TalentCase"]["required"]) == {"what", "reason", "talent_id", "fit"}
+    # Code may still leave them out.
+    plain = IntentStep(text="wait", verb="wait", kind=ActionKind.TASK, proposed_duration_s=5)
+    assert plain.talent_cases == [] and plain.bridge is None
+    assert TalentCase(talent_id="sword", fit=TalentFit.INSIDE).what == ""
+
+
+def test_an_empty_bridge_is_no_bridge():
+    # A4: a form that must always answer can answer with an empty bridge where it means none.
+    # Left as one, an ordinary step would be refused for building on a talent nobody has.
+    def step(bridge):
+        return IntentStep.model_validate(
+            {
+                "text": "cut the rope",
+                "verb": "cut",
+                "kind": "exchange",
+                "proposed_duration_s": 2,
+                "bridge": bridge,
+            }
+        )
+
+    assert step({"talent_id": "", "what": " ", "rests_on": ""}).bridge is None
+    assert step(None).bridge is None
+    real = step({"talent_id": "architect", "what": "Aura wall", "rests_on": "the load formula"})
+    assert real.bridge is not None and real.bridge.what == "Aura wall"
+    # One that reaches something still stands, and code rules on it.
+    assert step({"talent_id": "", "what": "Aura wall", "rests_on": ""}).bridge is not None
