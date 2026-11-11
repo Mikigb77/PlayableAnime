@@ -5,6 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from engine import pipeline
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
@@ -31,12 +32,14 @@ from engine.contracts import (
     PictureKind,
     PictureTrigger,
     PlannedEvent,
+    ProposedDeed,
     Resolution,
     StepResolution,
     StopReason,
     SuggestionPlan,
 )
 from engine.labels import DAY_PARTS
+from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
 from engine.state.records import (
@@ -632,6 +635,100 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
         assert title in text
     for title in ("FAR-AWAY", "NOWHERE", "NEVER-BORN"):
         assert title not in text
+
+
+def test_word_of_a_deed_on_its_way_is_nothing_the_player_character_notices():
+    """C6, W2: a report, a rumor or the news to a victim's family is about the player character
+    when the deed is theirs, and still happens out of their sight. Only being told on the spot,
+    or where they are, shows."""
+    state = cultivation_world()
+    about = {"due_s": 0, "subject_ids": ["lin", "zhao"]}
+    events = [
+        PendingEvent(id="e1", kind="world.rumor", title="RUMOR-HERE", place_id="well", **about),
+        PendingEvent(id="e2", kind="world.word", title="WORD-OUT", **about),
+        PendingEvent(id="e3", kind="world.discovery", title="LOOK-HERE", place_id="well", **about),
+        PendingEvent(
+            id="e4", kind="world.report", title="RAN-OFF", payload={"witness_id": "wei"}, **about
+        ),
+        PendingEvent(
+            id="e5", kind="world.tidings", title="KIN-AWAY", place_id="inner-court", **about
+        ),
+        PendingEvent(
+            id="e6", kind="world.report", title="TOLD-HERE", payload={"witness_id": "zhao"}, **about
+        ),
+        PendingEvent(id="e7", kind="world.tidings", title="KIN-HERE", place_id="well", **about),
+        PendingEvent(
+            id="e8", kind="world.report", title="AT-THE-SEAT", place_id="well", payload={}, **about
+        ),
+    ]
+    text = narration_brief(
+        before=state,
+        after=state,
+        ctx=ctx(),
+        intent=None,
+        resolution=Resolution(),
+        plan=DirectorPlan(),
+        fired=events,
+        scenes=(),
+    ).user
+    for title in ("TOLD-HERE", "KIN-HERE", "AT-THE-SEAT"):
+        assert title in text
+    for title in ("RUMOR-HERE", "WORD-OUT", "LOOK-HERE", "RAN-OFF", "KIN-AWAY"):
+        assert title not in text
+
+
+def test_the_narrator_is_told_who_runs_to_tell_and_the_interpret_step_who_is_leaving():
+    """W11: a witness with someone to tell sets off within a couple of minutes. The scene that
+    tells the deed shows them going, and the next action can go after them."""
+    before = cultivation_world()
+    before.places["inner-court"].controller_id = "azure-cloud"
+    before.characters["wei"] = Character(id="wei", name="Wei", location_id="well")
+    before.scene.present_ids.append("wei")
+    shove = StepResolution(
+        index=0,
+        text="shove Zhao into the well",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="",
+        result=StepResult.SUCCESS,
+        duration_s=2,
+        deeds=[ProposedDeed(kind="assault", text="Lin shoves Zhao", victim_ids=["zhao"])],
+    )
+    resolution = Resolution(steps=[shove])
+    after = pipeline.play_out(before, resolution, ctx(), SeededRng.for_turn("s", "main", 2)).state
+    intent = Intent(
+        steps=[
+            IntentStep(
+                text="shove Zhao into the well",
+                verb="shove",
+                kind=ActionKind.INSTANT,
+                proposed_duration_s=2,
+            )
+        ]
+    )
+
+    def witnesses(state, turn=2):
+        told = brief(before, after=state, intent=intent, resolution=resolution, context=ctx(turn))
+        return _section(told.user, "WITNESSES") if "## WITNESSES" in told.user else None
+
+    sect = "the Azure Cloud Sect"
+    assert witnesses(after) == [{"id": "wei", "who": "Wei", "to_tell": sect, "gone": False}]
+    # The player's next words can stop him: the interpret step reads that he is leaving.
+    scene = _section(interpret_prompt(after, "I grab Wei").messages[-1].text, "SCENE")
+    assert scene["leaving"] == [{"id": "wei", "to_tell": sect}]
+    assert "leaving" not in _section(interpret_prompt(before, "x").messages[-1].text, "SCENE")
+    assert "SCENE's leaving" in prompts.INTERPRET_SYSTEM
+
+    # A scene that ran past the moment he set off shows him go (W10).
+    later = after.model_copy(deep=True)
+    later.world_s += 5 * MINUTE
+    assert witnesses(later, turn=3) == [{"id": "wei", "who": "Wei", "to_tell": sect, "gone": True}]
+    # Whom he runs to is told only when the character knows of them (C6).
+    after.factions["azure-cloud"].known_by = []
+    assert witnesses(after) == [{"id": "wei", "who": "Wei", "gone": False}]
+    # Stopped for good, he is going nowhere.
+    after.characters["wei"].status = CharacterStatus.DEAD
+    after.characters["wei"].death_certainty = DeathCertainty.CONFIRMED
+    assert witnesses(after) is None
 
 
 def test_the_directors_own_events_reach_the_narrator_as_the_event_and_happenings():

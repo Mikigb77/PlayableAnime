@@ -2,11 +2,12 @@
 
 `record_consequences` turns each deed resolve proposed into a `Deed`: who did it, where, to whom,
 how severe by the world's norms, and who could perceive it. Then the world starts reacting, all
-of it in code and on in-world time: witnesses feel about the doer (W4), word starts to spread
-(W2), witnesses set off to tell the factions that hold the place or keep the law (W11), close
-ties hear of a death (W4), a secret deed waits to be discovered from its traces (W13), clocks that
-name the deed move (E2), and a conquered place grows restless (W7). The same runs for an NPC's
-deed (E5).
+of it in code and on in-world time: witnesses feel about the doer (W4), those of them with
+someone to tell set off to tell the factions that hold the place or keep the law (W11), word of
+it gets out once a witness is free to talk, or at once before a crowd (W2,
+`engine.world.carriers`), a secret deed waits to be discovered from its traces (W13), clocks
+that name the deed move (E2), and a conquered place grows restless (W7). The same runs for an
+NPC's deed (E5).
 
 A bout both sides agreed to is none of that (W1, `engine.resolve.bouts`). It is one deed however
 many blows it had, nobody takes it as an attack, and all it leaves is a little more regard
@@ -19,51 +20,16 @@ from collections.abc import Sequence
 from engine.context import TurnContext
 from engine.contracts.resolution import ProposedDeed, Resolution, StepResolution
 from engine.rng import SeededRng
-from engine.state.cast import Character
 from engine.state.records import Deed, TraceKind, Visibility
 from engine.state.world import WorldState, natural_key
-from engine.world.aftermath import on_attributed
-from engine.world.answers import law_at
+from engine.world.carriers import leave, schedule_reports, schedule_word, word_out
 from engine.world.cast import maybe_resistance
 from engine.world.clocks import deed_moves_clocks
-from engine.world.discovery import attributed, body_trace, schedule_look, ties_trace
-from engine.world.geography import (
-    ancestors,
-    characters_at,
-    faction_seat,
-    onlookers,
-    perceives,
-    region_of,
-    travel_s,
-)
-from engine.world.knowledge import (
-    FRIEND,
-    character_learns,
-    closeness,
-    faction_learns,
-    fought_bout,
-    region_learns,
-)
-from engine.world.norms import (
-    Nature,
-    assess_severity,
-    canonical,
-    deed_nature,
-    is_beast,
-    is_crime,
-)
-from engine.world.rumors import start_rumor
-from engine.world.scheduling import Kind, World, schedule
-from engine.world.telling import account
-from engine.world.tuning import (
-    CALL_S,
-    FLEE_S,
-    LOYAL_AFFINITY,
-    RUMOR_HOPS,
-    RUMOR_MIN_SEVERITY,
-    SILENT_FEAR,
-    UNKNOWN_TRIP_S,
-)
+from engine.world.discovery import body_trace, schedule_look, ties_trace
+from engine.world.geography import characters_at, onlookers, perceives
+from engine.world.knowledge import character_learns, faction_learns, fought_bout
+from engine.world.norms import assess_severity, canonical
+from engine.world.scheduling import World
 
 CONQUEST_STABILITY_LOSS = 30
 
@@ -80,6 +46,8 @@ def record_consequences(
     if not step.deeds:
         return state
     new = state.model_copy(deep=True)
+    # W11: whoever set off during the step to tell of an earlier deed isn't there to see this.
+    leave(new)
     # W2: whoever the step brought on stage or faced is in the scene, and a scene the player
     # character has only just walked into hasn't shown who is around.
     onstage = [*step.strangers, *step.opponent_ids]
@@ -198,7 +166,10 @@ def record_deed(
 
 
 def react(w: World, deed: Deed) -> None:
-    """The world's first reactions to a deed, at the moment it is done."""
+    """The world's first reactions to a deed, at the moment it is done. Those who saw it feel
+    about it at once. Everything else it sets going leaves with someone who carries word of it
+    (`engine.world.carriers`): the witnesses who set off to tell a faction, and the talk that
+    starts at once before a crowd, and otherwise only when a witness is free to talk."""
     state = w.state
     if deed.is_bout:
         # W1. Nobody takes a bout both sides agreed to as an attack: no word of one goes round,
@@ -210,24 +181,12 @@ def react(w: World, deed: Deed) -> None:
         character_learns(w, witness_id, deed)
 
     if deed.visibility is not Visibility.SECRET:
-        public = deed.visibility is Visibility.PUBLIC
-        if deed.severity >= RUMOR_MIN_SEVERITY or public:
-            start_rumor(
-                w,
-                text=account(state, deed),
-                is_true=True,
-                place_id=deed.place_id,
-                hops=RUMOR_HOPS[deed.severity] + (1 if public else 0),
-                deed=deed,
-                about_ids=[deed.actor_id, *deed.victim_ids, *deed.target_ids],
-                accuracy=100 if public else 90,
-                heard_by=deed.witness_ids,
-            )
-        region_learns(w, region_of(state, deed.place_id), deed)
         _leaders_who_saw(w, deed)
         schedule_reports(w, deed)
-        if attributed(state, deed):
-            on_attributed(w, deed)
+        if deed.visibility is Visibility.PUBLIC:
+            word_out(w, deed)  # nobody stops a crowd
+        else:
+            schedule_word(w, deed)
     else:
         crowd = [
             c
@@ -237,7 +196,7 @@ def react(w: World, deed: Deed) -> None:
         schedule_look(w, deed, crowd=bool(crowd))
 
     deed_moves_clocks(w, deed)
-    _mark_places(w, deed)
+    _conquered(w, deed)
 
 
 def _leaders_who_saw(w: World, deed: Deed) -> None:
@@ -248,122 +207,16 @@ def _leaders_who_saw(w: World, deed: Deed) -> None:
             faction_learns(w, faction.id, deed)
 
 
-def _report_targets(state: WorldState, deed: Deed) -> list[str]:
-    """Factions a witness would tell (W11): whoever holds the place, those who keep the law
-    there against a crime, and the witnesses' own factions when it is serious. Nobody reports a
-    hunt too small to be news (G24)."""
-    targets: list[str] = []
-    if deed.agreed:
-        return targets  # W1: what both sides agreed to is nobody's to report
-    if deed_nature(state, deed) is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
-        return targets
-    for place_id in ancestors(state, deed.place_id):
-        holder = state.places[place_id].controller_id
-        if holder in state.factions:
-            targets.append(holder)
-            break
-    if is_crime(state, deed):
-        targets.extend(f for f in sorted(state.factions) if law_at(state, f, deed.place_id))
-    if deed.severity >= 2:
-        for witness_id in deed.witness_ids:
-            witness = state.characters.get(witness_id)
-            if witness is not None:
-                targets.extend(m.faction_id for m in witness.memberships)
-    return [f for f in dict.fromkeys(targets) if f in state.factions]
-
-
-def would_report(state: WorldState, witness: Character, faction_id: str, deed: Deed) -> bool:
-    """Whether a witness tells this faction (W11): not if they are devoted to the doer, too
-    afraid of them (unless it is their own faction), or of a faction at odds with it, such as a
-    crime family's people with the police. The player's character never reports by itself, and
-    a beast tells nobody but its own pack (G24)."""
-    if witness.id == state.player_id or not witness.alive:
-        return False
-    if is_beast(state, witness.id) and not witness.member_of(faction_id):
-        return False
-    toward = witness.sheet.disposition.attitudes.get(deed.actor_id)
-    if toward is not None and toward.affinity >= LOYAL_AFFINITY:
-        return False
-    if closeness(state, witness, deed.actor_id) >= FRIEND:
-        return False
-    if witness.member_of(faction_id):
-        return True
-    if toward is not None and toward.fear >= SILENT_FEAR:
-        return False
-    for membership in witness.memberships:
-        own = state.factions.get(membership.faction_id)
-        if own is not None and own.relations.get(faction_id, 0) <= -30:
-            return False
-    return True
-
-
-def schedule_reports(w: World, deed: Deed) -> None:
-    """Each faction to tell gets one report, from the witness who can reach it soonest: at once
-    if the faction is right there, after a call where the world has phones, else after the
-    witness has got there on foot or by whatever people use, and about an hour where the map
-    doesn't say where the faction is (W10, G6)."""
+def _conquered(w: World, deed: Deed) -> None:
+    """W7: a conquered place loses stability and may grow a resistance."""
     state = w.state
-    instant = state.bible.travel.instant_messages
-    for faction_id in _report_targets(state, deed):
-        if deed.actor_id in state.factions[faction_id].leader_ids:
+    if canonical(deed.kind) != "conquer":
+        return
+    # The places it names, or else the place it was done in.
+    taken = [t for t in deed.target_ids if t in state.places] or [deed.place_id]
+    for place_id in dict.fromkeys(taken):
+        place = state.places.get(place_id) if place_id else None
+        if place is None:
             continue
-        seat = faction_seat(state, state.factions[faction_id])
-        trip = travel_s(state, deed.place_id, seat)
-        best: tuple[int, str, bool] | None = None
-        for witness_id in sorted(deed.witness_ids, key=natural_key):
-            witness = state.characters.get(witness_id)
-            if witness is None or not would_report(state, witness, faction_id, deed):
-                continue
-            labels = ("report", deed.id, faction_id, witness_id)
-            if trip == 0:
-                delay, moves = w.between(CALL_S, *labels), False
-            elif instant:
-                delay = w.between(FLEE_S, *labels, "flee") + w.between(CALL_S, *labels)
-                moves = False
-            else:
-                way = UNKNOWN_TRIP_S if trip is None else trip
-                delay, moves = w.between(FLEE_S, *labels, "flee") + way, trip is not None
-            if best is None or delay < best[0]:
-                best = (delay, witness_id, moves)
-        if best is None:
-            continue
-        delay, witness_id, moves = best
-        schedule(
-            w,
-            Kind.REPORT,
-            w.at_s + delay,
-            title=f"{state.characters[witness_id].name} tells {state.factions[faction_id].name}",
-            subject_ids=[witness_id, faction_id, deed.actor_id],
-            place_id=seat if moves else None,
-            payload={
-                "deed_id": deed.id,
-                "faction_id": faction_id,
-                "witness_id": witness_id,
-                "moves": moves,
-            },
-        )
-
-
-def _mark_places(w: World, deed: Deed) -> None:
-    """W7, W8: a conquered place loses stability and may grow a resistance; a place that saw
-    something terrible remembers it in its mood."""
-    state = w.state
-    if canonical(deed.kind) == "conquer":
-        # The places it names, or else the place it was done in.
-        taken = [t for t in deed.target_ids if t in state.places] or [deed.place_id]
-        for place_id in dict.fromkeys(taken):
-            place = state.places.get(place_id) if place_id else None
-            if place is None:
-                continue
-            place.stability = max(0, place.stability - CONQUEST_STABILITY_LOSS)
-            maybe_resistance(w, deed, place.id)
-    elif (
-        deed.visibility is not Visibility.SECRET
-        and deed.severity >= 4
-        and deed_nature(state, deed) is Nature.HARM
-        and not deed.agreed  # W1: a death both accepted leaves no place shaken
-        and deed.place_id in state.places
-    ):
-        actor = state.characters.get(deed.actor_id)
-        who = actor.name if actor else "someone"
-        state.places[deed.place_id].mood = f"shaken; people remember what {who} did here"
+        place.stability = max(0, place.stability - CONQUEST_STABILITY_LOSS)
+        maybe_resistance(w, deed, place.id)

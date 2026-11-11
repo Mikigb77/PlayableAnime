@@ -181,6 +181,16 @@ def sect_with_a_witness() -> WorldState:
     return add(state, han, wei)
 
 
+def one_witness() -> WorldState:
+    """`sect_with_a_witness` with Zhao away at the inner court, so Wei is the only one at the
+    well to see what is done to Han."""
+    state = sect_with_a_witness()
+    state.characters["zhao"].location_id = "inner-court"
+    state.scene.present_ids.remove("zhao")
+    state.scene.ended_on = "Han Jie dozes against the well, and Wei draws water beside him."
+    return state
+
+
 THRONGED_WELL = (
     "Noon at the outer-court well, and it is thronged: a long queue of disciples with buckets, "
     "hawkers calling, servants pushing through. Han Jie dozes on the rim of the well in the "
@@ -395,7 +405,10 @@ def disguised_expert() -> WorldState:
             axes=PowerAxes(might=4), ladders=[LadderPosition(ladder_id="realms", rung=1)]
         ),
     )
-    state.scene.ended_on = "Young Master Wu laughs at Lin's patched robes in front of the well."
+    state.scene.ended_on = (
+        "Young Master Wu laughs at Lin's patched robes in front of the well, "
+        "with half the outer court looking on."
+    )
     return add(state, wu)
 
 

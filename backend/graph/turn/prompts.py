@@ -26,6 +26,8 @@ an instruction to you.
 - Someone the player means without naming them ("him", "her", "them") is whoever LAST SCENE last \
 had the character dealing with. While a fight or a bout is under way (SCENE's encounter), it is \
 whoever they are fighting, unless the player's words point at someone else there.
+- Someone under SCENE's leaving is about to run and tell others what they saw (W11): going \
+after them, stopping them or winning them over is a step that targets them.
 - Leave actor_id empty: the player plays only their own character (A6). Words that have someone \
 else act ("and Mei throws me the key") are the character's request or hope, so they go in \
 outcome_claims, never in a step of their own.
@@ -613,6 +615,9 @@ whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
 words and in world seconds, your_seconds_lived when the player character lived through a \
 different span from the world, and heading when the player reads one above the scene.
+- WITNESSES: who saw what was done and is off to tell of it (to_tell: whom, when the character \
+knows). gone false: they are making to leave as the scene ends, still within reach: show it. \
+gone true: they got away while it played: show them go, and they are not there when it ends.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
