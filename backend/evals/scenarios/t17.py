@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
+from typing import Any
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import ContentPrefs, Difficulty, EventFrequency, Rating, StorySettings
@@ -1206,8 +1207,8 @@ def _scene_person(story: Story, character_id: str) -> dict | None:
     return next((c for c in scene["present"] if c["id"] == character_id), None)
 
 
-def _section(story: Story, name: str) -> dict | None:
-    """A section of the narrator's last brief that is one JSON object (deterministic mode)."""
+def _section(story: Story, name: str) -> Any:
+    """A section of the narrator's last brief that is one line of JSON (deterministic mode)."""
     brief = story.prompt(Node.NARRATOR)
     if f"## {name}\n" not in brief:
         return None
@@ -1331,6 +1332,15 @@ async def one_mans_word(ev: Eval) -> None:
                     )
                 ),
                 narration=None if ev.live else bram_at_his_fence(),
+            )
+            met = next((c for c in _section(story, "WHO ELSE") or [] if c["id"] == "bram"), None)
+            ev.check(
+                "walking over to someone, the narrator is told how they are before they speak",
+                met is not None
+                and met.get("here") is True
+                and len(met["toward_you"].get("heard_said", [])) == 1,
+                f"{seed}: {met and met.get('toward_you')}",
+                live=False,
             )
             talk = await story.act(
                 "I ask Bram how his fences are holding, and what people are saying in the "

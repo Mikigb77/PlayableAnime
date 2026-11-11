@@ -478,6 +478,17 @@ curious than they would otherwise be, they watch, keep their distance, hint or a
 neither accuse outright nor act as if it were known (W4). Someone who comes to face the \
 player character over what they were told puts it to them and hears the answer before \
 anything else.
+- Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
+turn may bring in who weren't in the scene when it began: whom the action names or meets, whom \
+an EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is \
+shown as SCENE shows its people. From their first line they are that person, with that look \
+and strength and that toward_you, heard_said included: never warmer, colder or better informed \
+than it says. When the scene needs someone the place would hold, use one of these who fits \
+before making anyone up. here: the record has them at this place, so the scene can meet them \
+there; someone without it is elsewhere, and comes in only when an EVENT or a happening brings \
+them. stranger: the player character doesn't know them, so the scene shows them by their look \
+and gives their name only once they or someone else says it. Nobody is in the scene just for \
+being listed: bring in whom the action goes to and whom the moment would have there.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
 ends. When it needs no decision, it is something that already played out: tell it as done. No \
 event hurts the player character by itself: what it does to them is settled when they act. Weave \
@@ -620,6 +631,10 @@ and the fight, chase, duel of words or negotiation under way, if any (encounter)
 terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \
 where it was going and how much of the way is left. A power someone keeps secret is left out \
 until it is used.
+- WHO ELSE: people who weren't in the scene when it began and whom this turn may bring into \
+it, each as SCENE shows its people, toward_you included: those the action names, those an \
+EVENT, a happening or a MOMENT is about, and those the record has at the place. here: the \
+record has them at the scene's place. stranger: the player character doesn't know them.
 - FALLEN: earlier player characters of this story whom someone in the scene knew.
 - NOW: on an opening, the date and the hour.
 - ENDED: on the opening of someone new, how long ago the last player character's story ended.

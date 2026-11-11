@@ -37,11 +37,12 @@ from engine.contracts import (
     StepResolution,
     StopReason,
     SuggestionPlan,
+    Trip,
 )
 from engine.labels import DAY_PARTS
 from engine.rng import SeededRng
-from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
+from engine.samples import cultivation_world, farm_world, grounded_world
+from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy, Prominence
 from engine.state.records import (
     Deed,
     Die,
@@ -1439,3 +1440,146 @@ def test_the_interpret_step_is_asked_for_the_case_on_a_talent_and_for_bridges():
 def test_the_narrator_tells_a_ruling_or_a_bridge_in_the_storys_own_words():
     system = prompts.NARRATOR_SYSTEM
     assert "never as a pace, a ruling or a bridge by name" in system
+
+
+def _barn_killing(state, *, heard_by):
+    state.deeds["barn"] = Deed(
+        id="barn",
+        actor_id="tomas",
+        kind="kill",
+        text="Tomas killed a thief in the barn",
+        turn=1,
+        world_s=0,
+        place_id="farm",
+        severity=4,
+        heard_by=dict.fromkeys(heard_by, 0.7),
+    )
+    return state
+
+
+def _to(*ids: str) -> Intent:
+    step = IntentStep(
+        text="call on them",
+        verb="greet",
+        kind=ActionKind.CONVERSATION,
+        proposed_duration_s=5 * MINUTE,
+        target_ids=list(ids),
+    )
+    return Intent(steps=[step])
+
+
+def _arrived(state, place_id: str):
+    after = state.model_copy(deep=True)
+    after.player.location_id = place_id
+    return after
+
+
+def test_the_narrator_is_told_who_a_turn_may_bring_into_the_scene_as_the_record_has_them():
+    """W4, E4: in the first live story about it (2026-11-11) Tomas walked over to Old Bram, who
+    had heard talk of a killing, and the scene played Bram as a friend. KNOWN had him by name
+    alone, so the narrator met him without how he is toward Tomas. Whoever the action names
+    comes as SCENE shows its people, and so does whoever the record has where a trip took the
+    character."""
+    state = _barn_killing(farm_world(), heard_by=["bram"])
+
+    # A scene at the farm that names nobody: Bram is in the village, and Ilse is under SCENE.
+    assert "## WHO ELSE" not in brief(state).user
+    # The action names him: how he is toward Tomas, and not where he is (C6).
+    (named,) = _section(brief(state, intent=_to("bram", "ilse")).user, "WHO ELSE")
+    assert named["id"] == "bram" and named["name"] == "Old Bram"
+    assert named["toward_you"]["affinity"] == 30
+    (heard,) = named["toward_you"]["heard_said"]
+    assert "killed a thief in the barn" in heard
+    assert not {"here", "location_id", "stranger"} & named.keys()
+    # A trip took Tomas to the village: the record has Bram there.
+    (there,) = _section(brief(state, after=_arrived(state, "village")).user, "WHO ELSE")
+    assert there["id"] == "bram" and there["here"] is True and there["location_id"] == "village"
+    assert there["toward_you"] == named["toward_you"]
+    # A trip that stopped on the way: the scene ends on the road, where the record has nobody.
+    state.characters["nel"] = Character(
+        id="nel", name="Nel", location_id="farm", known_by=["tomas"]
+    )
+    road = StepResolution(
+        index=0,
+        text="walk to the village",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="Nothing stops it.",
+        result=StepResult.SUCCESS,
+        duration_s=10 * MINUTE,
+        trip=Trip(from_id="farm", to_id="village", arrived=False),
+    )
+    assert [c["id"] for c in _section(brief(state).user, "WHO ELSE")] == ["nel"]
+    assert "## WHO ELSE" not in brief(state, resolution=Resolution(steps=[road])).user
+
+    system = prompts.NARRATOR_SYSTEM
+    assert "- Whoever comes into the scene is who the record says (W4, E4)." in system
+    assert "never warmer, colder or better informed than it says" in system
+    assert "use one of these who fits before making anyone up" in system
+    assert "Nobody is in the scene just for being listed" in system
+
+
+def test_who_else_is_those_the_turn_is_about_and_then_whoever_matters_at_the_place():
+    state = _barn_killing(cultivation_world(), heard_by=[])
+    lin = state.player_id
+    crowd = {
+        "a-friend": {"known_by": [lin]},
+        "b-cook": {},  # nobody to Lin, and nobody at the peak either
+        "c-rival": {"heard": True},
+        "d-master": {"prominence": Prominence.KEY},
+        "e-dead": {
+            "known_by": [lin],
+            "status": CharacterStatus.DEAD,
+            "death_certainty": DeathCertainty.CONFIRMED,
+        },
+        "f-far": {"known_by": [lin], "location_id": None},
+    }
+    for cid, extra in crowd.items():
+        heard = extra.pop("heard", False)
+        fields = {"location_id": "inner-court", "prominence": Prominence.MINOR} | extra
+        state.characters[cid] = Character(id=cid, name=cid.title(), **fields)
+        if heard:
+            state.deeds["barn"].heard_by[cid] = 0.7
+    state.deeds["barn"].actor_id = lin
+    after = _arrived(state, "inner-court")
+    feud = PlannedEvent(
+        size=EventSize.LOCAL,
+        kind=EventKind.VISITOR,
+        source=EventSource.DECK,
+        title="Someone comes",
+        brief="SOMEONE-COMES",
+        cast_ids=["f-far"],
+    )
+
+    others = _section(brief(state, after=after, plan=DirectorPlan(event=feud)).user, "WHO ELSE")
+
+    # The event's own first, then who has heard of Lin, who Lin knows, and the key people.
+    assert [c["id"] for c in others] == ["f-far", "c-rival", "a-friend", "d-master", "elder-mo"]
+    by_id = {c["id"]: c for c in others}
+    assert "here" not in by_id["f-far"] and "location_id" not in by_id["f-far"]
+    assert all(by_id[i]["here"] is True for i in ("c-rival", "a-friend", "d-master", "elder-mo"))
+    # Someone Lin neither knows nor has met is a stranger to him, whatever the record calls them.
+    assert {i for i, c in by_id.items() if c.get("stranger")} == {"c-rival", "d-master", "elder-mo"}
+    # Zhao was in the scene when it began: SCENE has him, here or not.
+    assert "zhao" not in by_id
+
+
+def test_who_else_leaves_out_whom_a_step_made_real_and_stops_at_a_handful():
+    state = cultivation_world()
+    lin = state.player_id
+    for n in range(12):
+        state.characters[f"disciple-{n}"] = Character(
+            id=f"disciple-{n}", name=f"Disciple {n}", location_id="well", known_by=[lin]
+        )
+    made = StepResolution(
+        index=0,
+        text="shove a passer-by",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="Nothing stops it.",
+        result=StepResult.SUCCESS,
+        duration_s=5,
+        strangers=["disciple-0"],
+    )
+
+    others = _section(brief(state, resolution=Resolution(steps=[made])).user, "WHO ELSE")
+
+    assert [c["id"] for c in others] == [f"disciple-{n}" for n in range(1, 9)]
