@@ -930,3 +930,303 @@ def test_status_counts_a_techniques_uses_at_the_pace_its_own_ruling_gives():
     assert "Aura blade (technique, learning, 0 of 1 uses)" in lines
     assert "Aura wall (technique, learning, 0 of 3 uses)" in lines
     assert "Rising Palm (technique, learning, 0 of 6 uses)" in lines
+
+
+# --- the sheet, in sections (G13, G16) --------------------------------------------------------
+
+
+def sheet_of(state, language=Language.EN):
+    return status_view(state, language).sheet
+
+
+def test_the_sheet_comes_in_sections_in_the_worlds_words():
+    # G13, G16: the screen lays the sheet out, so each part comes on its own with the words
+    # that say it, never as numbers.
+    sheet = sheet_of(cultivation_world())
+
+    assert sheet.about == ["Outer disciple, the outer court", "16 years old"]
+    assert sheet.description.startswith("A thin outer disciple")
+    assert (sheet.condition.health.value, sheet.condition.health_label) == ("unhurt", "Unhurt")
+    assert [(r.name, r.level) for r in sheet.condition.reserves] == [("Qi", 40)]
+    assert [(s.name, s.level_label, s.dice) for s in sheet.skills] == [("Herb lore", "Fair", 2)]
+    assert [(t.name, t.kind_label) for t in sheet.traits] == [
+        ("A past life's memories", "Gift"),
+        ("A weak body", "Flaw"),
+    ]
+    assert sheet.temperament == ["calm", "patient"]
+    (power,) = sheet.powers
+    assert power.name == "Time stop" and power.secret
+    assert power.limits == ["Three heartbeats per use", "A breath to recharge"]
+    assert (power.cost, power.ready, power.ready_label) == ("Leaves him drained", True, "Ready")
+    assert sheet.money_label is None and sheet.items == [] and sheet.techniques == []
+    for number in ("attributes", "axes", "might", "tier"):  # G16: words, not numbers
+        assert number not in dumped(sheet)
+
+
+def test_the_path_stops_at_their_own_rung():
+    # G18, C6: the rungs they climbed and the one they stand on. What lies above is the
+    # world's to tell.
+    state = cultivation_world()
+    realms = state.bible.ladders[0]
+    realms.rungs[2].description = "A core of qi takes shape."
+    state.player.sheet.ladders[0].rung = 2
+    state.player.sheet.ladders[0].stage = "early stage"
+
+    (path,) = sheet_of(state).paths
+
+    assert path.name == "Cultivation realms"
+    assert [(r.name, r.stage, r.description) for r in path.rungs] == [
+        ("Qi Condensation", "", ""),
+        ("Foundation Establishment", "", ""),
+        ("Core Formation", "early stage", "A core of qi takes shape."),
+    ]
+    assert "Nascent Soul" not in dumped(status_view(state).sheet)
+    # A ladder the world no longer has, or a rung past its end, shows no path.
+    state.player.sheet.ladders[0].rung = 9
+    assert sheet_of(state).paths == []
+    assert sheet_of(grounded_world()).paths == []
+
+
+def test_the_sheet_lists_what_they_hold_with_what_they_carry_first():
+    # C10, G13: the purse, then each belonging with its kind, what is on them before what is
+    # kept elsewhere.
+    from engine.state import Item, ItemKind
+
+    state = grounded_world()
+    items = state.player.sheet.resources.items
+    items.append(Item(id="bullets", name="bullets", kind=ItemKind.CONSUMABLE, quantity=12))
+    items.append(Item(id="spent", name="a spent match", quantity=0))
+    items.append(Item(id="note", name="a folded note", description="In his father's hand."))
+
+    sheet = sheet_of(state)
+
+    assert sheet.money_label == "200,000 lire"
+    assert [(i.name, i.kind_label, i.quantity, i.carried) for i in sheet.items] == [
+        ("Bullets", "Consumable", 12, True),
+        ("Flick knife", "Weapon", 1, True),
+        ("A folded note", "", 1, True),
+        ("Beretta pistol", "Weapon", 1, True),
+        ("Alfa Romeo Giulia", "Vehicle", 1, False),
+    ]
+    assert sheet.items[2].description == "In his father's hand."
+    assert sheet_of(state, ES).money_label == "200.000 lire"
+    assert [i.kind_label for i in sheet_of(state, ES).items] == [
+        "Consumible",
+        "Arma",
+        "",
+        "Arma",
+        "Vehículo",
+    ]
+    assert [i.kind_label for i in sheet_of(state, CA).items][-1] == "Vehicle"
+    # An empty purse in a currency is still a purse: the story reads it, and so does the player.
+    state.player.sheet.resources.money = 0
+    assert sheet_of(state).money_label == "0 lire"
+
+
+def test_the_sheet_says_when_a_power_is_ready_again():
+    # W10a, G13: a power on its cooldown, on the character's own clock.
+    state = cultivation_world()
+    state.world_s = 2 * DAY
+    lin = state.player
+    lin.personal_offset_s = 10
+    lin.sheet.powers[0].ready_at_personal_s = state.world_s + 10 + 3 * HOUR
+
+    assert [(p.ready, p.ready_label) for p in sheet_of(state).powers] == [
+        (False, "Ready in 3 hours")
+    ]
+    assert sheet_of(state, ES).powers[0].ready_label == "Disponible en 3 horas"
+    assert sheet_of(state, CA).powers[0].ready_label == "Disponible d'aquí a 3 hores"
+    # A power the world charges nothing for says no cost (G13).
+    lin.sheet.powers[0].costs = []
+    assert sheet_of(state).powers[0].cost == ""
+
+
+def test_the_sheet_shows_each_technique_with_its_dice_and_its_count():
+    # A3, A4: the dice a move throws by its mastery, and the uses counted toward the next at
+    # their own pace.
+    state = cultivation_world()
+    blade = Technique(
+        id="blade",
+        name="aura blade",
+        style="Azure Cloud style",
+        effect="A blade of qi along the edge of the hand.",
+        cost="a little qi",
+        learned_from="zhao",
+        mastery=Mastery.LEARNING,
+        uses=2,
+    )
+    state.player.sheet.techniques.append(blade)
+
+    (technique,) = sheet_of(state).techniques
+    assert (technique.name, technique.mastery_label) == ("Aura blade", "Learning")
+    assert (technique.dice, technique.uses, technique.need) == (1, 2, 6)
+    assert (technique.style, technique.cost) == ("Azure Cloud style", "a little qi")
+    assert technique.effect.startswith("A blade of qi")
+    assert sheet_of(state, ES).techniques[0].mastery_label == "Aprendiendo"
+    assert sheet_of(state, CA).techniques[0].mastery_label == "Aprenent"
+
+    # Where they have it from, as far as the record names it: someone they know, or themselves.
+    zhao = state.characters["zhao"].name
+    assert technique.source_label == f"Learned from {zhao}"
+    assert sheet_of(state, ES).techniques[0].source_label == f"Aprendida de {zhao}"
+    assert sheet_of(state, CA).techniques[0].source_label == f"Apresa de {zhao}"
+    state.characters["zhao"].name = "Aina"
+    assert sheet_of(state, CA).techniques[0].source_label == "Apresa d'Aina"
+    # Someone the world names by what they are takes the article in, as both languages do.
+    state.characters["zhao"].name = "el viejo herrero"
+    assert sheet_of(state, ES).techniques[0].source_label == "Aprendida del viejo herrero"
+    state.characters["zhao"].name = "el vell ferrer"
+    assert sheet_of(state, CA).techniques[0].source_label == "Apresa del vell ferrer"
+    state.characters["zhao"].known_by.remove(state.player_id)
+    assert sheet_of(state).techniques[0].source_label == ""  # C6: nobody they know
+    blade.learned_from = "their own"
+    assert sheet_of(state).techniques[0].source_label == "Your own"
+    assert sheet_of(state, ES).techniques[0].source_label == "Creación tuya"
+    assert sheet_of(state, CA).techniques[0].source_label == "Creació teva"
+    blade.learned_from = "master"  # a kind of teacher, with nobody named
+    assert sheet_of(state).techniques[0].source_label == ""
+
+    # Use alone takes a move no further than second nature, so there is nothing left to count.
+    blade.mastery, blade.uses = Mastery.SECOND_NATURE, 40
+    (technique,) = sheet_of(state).techniques
+    assert (technique.mastery_label, technique.dice, technique.need) == ("Second nature", 4, None)
+    blade.mastery = Mastery.OWN
+    assert sheet_of(state).techniques[0].dice == 5
+
+    # A gift for learning takes a quarter of the uses (A4).
+    state.player.sheet.traits.append(Trait(name="Genius", kind=TraitKind.GIFT))
+    blade.mastery, blade.uses = Mastery.SKILLED, 1
+    assert sheet_of(state).techniques[0].need == 8
+
+
+def test_the_sheet_tells_wounds_passing_states_and_a_child_on_the_way():
+    # G13, N6: how they are, each part on its own, with when a state passes on their own clock.
+    from engine.state import Health, PassingState, Pregnancy, Wound
+
+    state = cultivation_world()
+    lin = state.player
+    lin.personal_offset_s = 100
+    condition = lin.sheet.condition
+    condition.health = Health.WOUNDED
+    condition.wounds = [Wound(text="a cut across the ribs"), Wound(text="a lost eye", lasting=True)]
+    condition.states = [
+        PassingState(name="drunk", effect="Slower to react.", until_personal_s=100 + 2 * HOUR),
+        PassingState(name="grieving"),
+        PassingState(name="winded", until_personal_s=50),  # over, and not yet cleared
+    ]
+    lin.expecting = Pregnancy(conceived_s=0, due_s=30 * DAY)
+
+    told = sheet_of(state).condition
+
+    assert (told.health.value, told.health_label) == ("wounded", "Wounded")
+    assert [(w.text, w.lasting) for w in told.wounds] == [
+        ("A cut across the ribs", False),
+        ("A lost eye", True),
+    ]
+    assert [(s.name, s.effect, s.ends_label) for s in told.states] == [
+        ("Drunk", "Slower to react.", "Passes in 2 hours"),
+        ("Grieving", "", None),
+        ("Winded", "", None),
+    ]
+    assert told.expecting_label == "Expecting a child, due in 4 weeks"
+    spanish = sheet_of(state, ES).condition
+    assert spanish.health_label == "Con heridas"
+    assert spanish.states[0].ends_label == "Se pasa en 2 horas"
+    assert sheet_of(state, CA).condition.states[0].ends_label == "Passa d'aquí a 2 hores"
+
+
+def test_the_sheet_shows_each_talent_with_its_pace_and_what_was_ruled():
+    # A4: the talents as the engine reads them, and after them every thing ruled on, in the
+    # same words the plain lines use.
+    state = _talented()
+
+    sheet = sheet_of(state)
+
+    assert [(t.name, t.strength_label, t.pace_label, t.covers) for t in sheet.talents] == [
+        ("The sword", "One of a kind", "Eight times as fast", "anything fought with a blade"),
+        ("Architecture", "Genius", "Four times as fast", ""),
+        ("Quick hands", "A knack", "Twice as fast", "sleight"),
+        ("Words", "Weakness", "At half the pace", "persuading"),
+    ]
+    assert sheet.talent_notes == lines_of(state)[-3:]
+    assert len(sheet.talent_notes) == 3 and sheet.talent_notes[0].startswith("Aura blade: grows")
+    assert [(t.strength_label, t.pace_label) for t in sheet_of(state, ES).talents] == [
+        ("Talento único", "Ocho veces más rápido"),
+        ("Genio", "Cuatro veces más rápido"),
+        ("Facilidad", "El doble de rápido"),
+        ("Punto débil", "A la mitad de ritmo"),
+    ]
+    assert [(t.strength_label, t.pace_label) for t in sheet_of(state, CA).talents][::3] == [
+        ("Talent únic", "Vuit vegades més ràpid"),
+        ("Punt feble", "A la meitat de ritme"),
+    ]
+    # A sheet saved before talent was a record shows none, as its lines show none.
+    old = cultivation_world()
+    old.player.sheet.traits.append(Trait(name="Genius", kind=TraitKind.GIFT))
+    assert sheet_of(old).talents == [] and sheet_of(old).talent_notes == []
+
+
+def test_the_sheet_words_skills_and_traits_in_spanish_and_catalan():
+    # S10: the words the engine adds come in the story's language, and the world's own stay.
+    from engine.state import Skill, SkillLevel
+
+    state = grounded_world()
+    state.player.sheet.skills.append(Skill(name="cooking", level=SkillLevel.UNTRAINED))
+    state.player.sheet.skills.append(Skill(name="lying", level=SkillLevel.MASTER))
+
+    def skills(language):
+        return [(s.name, s.level_label, s.dice) for s in sheet_of(state, language).skills]
+
+    assert skills(Language.EN) == [
+        ("Lying", "Master", 5),
+        ("Pistol", "Skilled", 3),
+        ("Knife work", "Skilled", 3),
+        ("Driving", "Fair", 2),
+        ("Cooking", "Untrained", 1),
+    ]
+    assert [label for _, label, _ in skills(ES)] == [
+        "Maestría",
+        "Destreza",
+        "Destreza",
+        "Soltura",
+        "Sin formación",
+    ]
+    assert [label for _, label, _ in skills(CA)][::4] == ["Mestratge", "Sense formació"]
+    assert [t.kind_label for t in sheet_of(state, ES).traits] == ["Defecto", "Don"]
+    assert [t.kind_label for t in sheet_of(state, CA).traits] == ["Defecte", "Do"]
+    assert sheet_of(state, ES).about == ["The late boss's son, the Esposito family", "24 años"]
+    assert sheet_of(state, CA).about[-1] == "24 anys"
+
+
+def test_who_they_are_names_only_a_faction_they_know():
+    # C6: a place in a faction the character hasn't learned the name of is its rank alone.
+    state = cultivation_world()
+    lin = state.player
+    lin.sheet.resources.title = "Heir of the fallen Lin clan"
+
+    assert sheet_of(state).about == [
+        "Outer disciple, the outer court",
+        "Heir of the fallen Lin clan",
+        "16 years old",
+    ]
+    state.factions["outer-court"].known_by.remove(lin.id)
+    assert sheet_of(state).about[0] == "Outer disciple"
+    # With no place in any faction, their standing in the world's own ranks, said once.
+    lin.memberships = []
+    lin.sheet.resources.title = "outer disciple"
+    lin.age = None
+    assert sheet_of(state).about == ["Outer disciple"]
+
+
+def test_hidden_truth_never_reaches_the_sheet():
+    # C6: the sheet is the character's own, and still nothing of the world's hidden side.
+    state = grounded_world()
+    hidden = [s for c in state.characters.values() for s in c.secrets]
+    hidden += [m.answer for m in state.bible.mysteries]
+    assert hidden
+    for world in (state, cultivation_world()):
+        text = dumped(status_view(world))
+        for secret in hidden:
+            assert secret not in text
+        for key in ("is_true", "accuracy", "trust", "agenda", "ready_at_personal_s"):
+            assert key not in text

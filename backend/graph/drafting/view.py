@@ -26,11 +26,11 @@ from engine.state import (
     RuleTopic,
     SkillLevel,
     Talent,
-    TalentStrength,
     TraitKind,
     WorldRule,
     WorldState,
 )
+from engine.visibility import TALENT_STRENGTH_WORDS, skill_level_label
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
@@ -96,46 +96,6 @@ _WORDS = {
         "in": "d'aquí a",
         "and": " i ",
         "moments": "un moment",
-    },
-}
-# A4: a talent's strength, as a noun too, strongest first as the summary lists them.
-_TALENT_STRENGTHS = {
-    EN: {
-        TalentStrength.ONE_OF_A_KIND: "One of a kind",
-        TalentStrength.GENIUS: "Genius",
-        TalentStrength.KNACK: "A knack",
-        TalentStrength.SLOW: "Weakness",
-    },
-    ES: {
-        TalentStrength.ONE_OF_A_KIND: "Talento único",
-        TalentStrength.GENIUS: "Genio",
-        TalentStrength.KNACK: "Facilidad",
-        TalentStrength.SLOW: "Punto débil",
-    },
-    CA: {
-        TalentStrength.ONE_OF_A_KIND: "Talent únic",
-        TalentStrength.GENIUS: "Geni",
-        TalentStrength.KNACK: "Facilitat",
-        TalentStrength.SLOW: "Punt feble",
-    },
-}
-# Nouns, as "Pericia: espada", so they fit a character of any gender.
-_SKILL_LEVELS = {
-    ES: {
-        SkillLevel.UNTRAINED: "Sin formación",
-        SkillLevel.NOVICE: "Nociones",
-        SkillLevel.FAIR: "Soltura",
-        SkillLevel.SKILLED: "Destreza",
-        SkillLevel.EXPERT: "Pericia",
-        SkillLevel.MASTER: "Maestría",
-    },
-    CA: {
-        SkillLevel.UNTRAINED: "Sense formació",
-        SkillLevel.NOVICE: "Nocions",
-        SkillLevel.FAIR: "Soltesa",
-        SkillLevel.SKILLED: "Destresa",
-        SkillLevel.EXPERT: "Perícia",
-        SkillLevel.MASTER: "Mestratge",
     },
 }
 
@@ -213,7 +173,7 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
             groups.setdefault(skill.level, []).append(skill.name)
         lines.append(
             " ".join(
-                _sentence(f"{_skill_level(level, language)}: {_join(names, language)}")
+                _sentence(f"{skill_level_label(level, language)}: {_join(names, language)}")
                 for level, names in groups.items()
             )
         )
@@ -223,7 +183,7 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
         lines.append(
             " ".join(
                 _sentence(f"{label}: {'; '.join(named)}")
-                for strength, label in _TALENT_STRENGTHS[language].items()
+                for strength, label in TALENT_STRENGTH_WORDS[language].items()
                 if (named := [_talent(t) for t in sheet.talents if t.strength is strength])
             )
         )
@@ -371,12 +331,6 @@ def duration(seconds: int, language: Language = EN) -> str:
         if seconds >= size:
             return amount(round(seconds / size), unit, language)
     return _WORDS[language]["moments"]
-
-
-def _skill_level(level: SkillLevel, language: Language) -> str:
-    if language in _SKILL_LEVELS:
-        return _SKILL_LEVELS[language].get(level, level.value.capitalize())
-    return level.value.capitalize()
 
 
 def _talent(talent: Talent) -> str:

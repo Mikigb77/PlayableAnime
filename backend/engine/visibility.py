@@ -29,7 +29,7 @@ from engine import talent as talent_mod
 from engine.base import EngineModel
 from engine.context import Language
 from engine.kin import descendants
-from engine.labels import ago_label, clock_label, in_label, number_label
+from engine.labels import ago_label, clock_label, in_label, number_label, of_name
 from engine.limits import normalize
 from engine.resolve.powers.growth import technique_pace
 from engine.state.cast import (
@@ -51,7 +51,16 @@ from engine.state.records import (
     Transfer,
     Visibility,
 )
-from engine.state.sheet import Health, Mastery, TalentFit, TalentStrength, Technique
+from engine.state.sheet import (
+    Health,
+    ItemKind,
+    Mastery,
+    SkillLevel,
+    TalentFit,
+    TalentStrength,
+    Technique,
+    TraitKind,
+)
 from engine.state.world import WorldState, natural_key
 from engine.world.rumors import Certainty, certainty
 from engine.world.telling import cap, tell
@@ -149,7 +158,128 @@ class MemoryView(EngineModel):
 class StatusCharacter(EngineModel):
     name: str
     lines: list[str] = Field(default_factory=list)
+    """The sheet as plain lines, for apps from before `StatusView.sheet`."""
     portrait_url: str | None = None
+
+
+class SheetWound(EngineModel):
+    text: str
+    lasting: bool = False
+
+
+class SheetState(EngineModel):
+    name: str
+    effect: str = ""
+    ends_label: str | None = None
+
+
+class SheetReserve(EngineModel):
+    name: str
+    level: int
+
+
+class SheetCondition(EngineModel):
+    health: Health
+    health_label: str
+    wounds: list[SheetWound] = Field(default_factory=list)
+    states: list[SheetState] = Field(default_factory=list)
+    reserves: list[SheetReserve] = Field(default_factory=list)
+    expecting_label: str | None = None
+
+
+class SheetRung(EngineModel):
+    name: str
+    stage: str = ""
+    description: str = ""
+
+
+class SheetPath(EngineModel):
+    """One of the world's ladders (G18), from its first rung up to where they stand, lowest
+    first, so the last rung is theirs. Nothing above it: which rungs lie higher is the world's
+    to tell (C6)."""
+
+    name: str
+    rungs: list[SheetRung] = Field(min_length=1)
+
+
+class SheetItem(EngineModel):
+    name: str
+    kind: ItemKind
+    kind_label: str = ""
+    description: str = ""
+    history: str = ""
+    quantity: int = 1
+    carried: bool = True
+
+
+class SheetSkill(EngineModel):
+    name: str
+    level: SkillLevel
+    level_label: str
+    dice: int
+    notes: str = ""
+
+
+class SheetPower(EngineModel):
+    name: str
+    description: str = ""
+    limits: list[str] = Field(default_factory=list)
+    cost: str = ""
+    ready: bool = True
+    ready_label: str
+    secret: bool = False
+
+
+class SheetTechnique(EngineModel):
+    name: str
+    style: str = ""
+    effect: str = ""
+    cost: str = ""
+    source_label: str = ""
+    """Where they have it from, when the record says: "Your own", "Learned from Zhao Kun"."""
+    mastery: Mastery
+    mastery_label: str
+    dice: int
+    uses: int = 0
+    need: int | None = None
+    """The uses that reach the next mastery at their own pace, or None where use alone takes
+    it no further."""
+
+
+class SheetTrait(EngineModel):
+    name: str
+    kind: TraitKind
+    kind_label: str
+    description: str = ""
+
+
+class SheetTalent(EngineModel):
+    name: str
+    strength: TalentStrength
+    strength_label: str
+    pace_label: str
+    covers: str = ""
+
+
+class SheetView(EngineModel):
+    """The player character's sheet in sections (G13, G16), for a screen to lay out: who they
+    are, how they are, where they stand on the world's ladders, what they have, what they can
+    do and what they are like. Words the engine adds come in the story's language (S10), next
+    to the value they say, so a screen can draw a meter or pick a color without reading them."""
+
+    about: list[str] = Field(default_factory=list)
+    description: str = ""
+    condition: SheetCondition
+    paths: list[SheetPath] = Field(default_factory=list)
+    money_label: str | None = None
+    items: list[SheetItem] = Field(default_factory=list)
+    skills: list[SheetSkill] = Field(default_factory=list)
+    powers: list[SheetPower] = Field(default_factory=list)
+    techniques: list[SheetTechnique] = Field(default_factory=list)
+    traits: list[SheetTrait] = Field(default_factory=list)
+    temperament: list[str] = Field(default_factory=list)
+    talents: list[SheetTalent] = Field(default_factory=list)
+    talent_notes: list[str] = Field(default_factory=list)
 
 
 class ReputationEntry(EngineModel):
@@ -170,6 +300,7 @@ class SinceEntry(EngineModel):
 
 class StatusView(EngineModel):
     character: StatusCharacter
+    sheet: SheetView
     reputation: list[ReputationEntry] = Field(default_factory=list)
     clock: ClockView
     since: list[SinceEntry] = Field(default_factory=list)
@@ -342,6 +473,97 @@ _HEALTH_WORDS = {
     },
 }
 
+# G16: a skill's level as the sheet says it. In Spanish and Catalan a noun, as "Pericia: espada",
+# so it fits a character of any gender.
+SKILL_LEVEL_WORDS = {
+    ES: {
+        SkillLevel.UNTRAINED: "Sin formación",
+        SkillLevel.NOVICE: "Nociones",
+        SkillLevel.FAIR: "Soltura",
+        SkillLevel.SKILLED: "Destreza",
+        SkillLevel.EXPERT: "Pericia",
+        SkillLevel.MASTER: "Maestría",
+    },
+    CA: {
+        SkillLevel.UNTRAINED: "Sense formació",
+        SkillLevel.NOVICE: "Nocions",
+        SkillLevel.FAIR: "Soltesa",
+        SkillLevel.SKILLED: "Destresa",
+        SkillLevel.EXPERT: "Perícia",
+        SkillLevel.MASTER: "Mestratge",
+    },
+}
+
+
+def skill_level_label(level: SkillLevel, language: Language = EN) -> str:
+    """ "Skilled", "Destreza", "Destresa"."""
+    words = SKILL_LEVEL_WORDS.get(language)
+    return words[level] if words else level.value.capitalize()
+
+
+# A4: a talent's strength as a noun, strongest first, as a summary lists them.
+TALENT_STRENGTH_WORDS = {
+    EN: {
+        TalentStrength.ONE_OF_A_KIND: "One of a kind",
+        TalentStrength.GENIUS: "Genius",
+        TalentStrength.KNACK: "A knack",
+        TalentStrength.SLOW: "Weakness",
+    },
+    ES: {
+        TalentStrength.ONE_OF_A_KIND: "Talento único",
+        TalentStrength.GENIUS: "Genio",
+        TalentStrength.KNACK: "Facilidad",
+        TalentStrength.SLOW: "Punto débil",
+    },
+    CA: {
+        TalentStrength.ONE_OF_A_KIND: "Talent únic",
+        TalentStrength.GENIUS: "Geni",
+        TalentStrength.KNACK: "Facilitat",
+        TalentStrength.SLOW: "Punt feble",
+    },
+}
+
+# G13: what kind of thing a belonging is, as the sheet labels it. Anything else has no label.
+_ITEM_KIND_WORDS = {
+    EN: {
+        ItemKind.WEAPON: "Weapon",
+        ItemKind.ARMOUR: "Armour",
+        ItemKind.GEAR: "Gear",
+        ItemKind.TREASURE: "Treasure",
+        ItemKind.CONSUMABLE: "Consumable",
+        ItemKind.VEHICLE: "Vehicle",
+        ItemKind.PROPERTY: "Property",
+        ItemKind.DOCUMENT: "Document",
+    },
+    ES: {
+        ItemKind.WEAPON: "Arma",
+        ItemKind.ARMOUR: "Armadura",
+        ItemKind.GEAR: "Equipo",
+        ItemKind.TREASURE: "Tesoro",
+        ItemKind.CONSUMABLE: "Consumible",
+        ItemKind.VEHICLE: "Vehículo",
+        ItemKind.PROPERTY: "Propiedad",
+        ItemKind.DOCUMENT: "Documento",
+    },
+    CA: {
+        ItemKind.WEAPON: "Arma",
+        ItemKind.ARMOUR: "Armadura",
+        ItemKind.GEAR: "Equip",
+        ItemKind.TREASURE: "Tresor",
+        ItemKind.CONSUMABLE: "Consumible",
+        ItemKind.VEHICLE: "Vehicle",
+        ItemKind.PROPERTY: "Propietat",
+        ItemKind.DOCUMENT: "Document",
+    },
+}
+
+# G13: what makes them unusual, by kind.
+_TRAIT_KIND_WORDS = {
+    EN: {TraitKind.GIFT: "Gift", TraitKind.FLAW: "Flaw", TraitKind.QUIRK: "Quirk"},
+    ES: {TraitKind.GIFT: "Don", TraitKind.FLAW: "Defecto", TraitKind.QUIRK: "Manía"},
+    CA: {TraitKind.GIFT: "Do", TraitKind.FLAW: "Defecte", TraitKind.QUIRK: "Mania"},
+}
+
 # S10: every status a person, place or faction can show, in Spanish and Catalan, and how a death
 # the player character only believes in reads.
 _STATUS_WORDS = {
@@ -407,6 +629,10 @@ _WORDS = {
         "gained": "Gained: {what}",
         "lost": "Lost: {what}",
         "someone": "someone",
+        "age": "{age} years old",
+        "lasts": "Passes {when}",
+        "own_move": "Your own",
+        "learned_from": "Learned from {who}",
     },
     ES: {
         "saw": "Lo viste",
@@ -438,6 +664,10 @@ _WORDS = {
         "gained": "Ganancia: {what}",
         "lost": "Pérdida: {what}",
         "someone": "alguien",
+        "age": "{age} años",
+        "lasts": "Se pasa {when}",
+        "own_move": "Creación tuya",
+        "learned_from": "Aprendida {of_who}",
     },
     CA: {
         "saw": "Ho vas veure",
@@ -469,6 +699,10 @@ _WORDS = {
         "gained": "Guany: {what}",
         "lost": "Pèrdua: {what}",
         "someone": "algú",
+        "age": "{age} anys",
+        "lasts": "Passa {when}",
+        "own_move": "Creació teva",
+        "learned_from": "Apresa {of_who}",
     },
 }
 
@@ -822,6 +1056,17 @@ class _Knowledge:
             strength = _TALENT_WORDS[self.language][talent.strength]
             line = words["talent"].format(name=talent.name, strength=strength, covers=talent.covers)
             lines.append(_cap(line if talent.covers else line.removesuffix(": ")))
+        return lines + self.talent_notes(player)
+
+    def talent_notes(self, player: Character) -> list[str]:
+        """A4. Every thing a talent or a weakness of theirs reaches, once ruled on: how fast it
+        grows, which talents reach it and the bridges that hold, then one line for what was
+        ruled outside every talent."""
+        sheet = player.sheet
+        if not sheet.talents:
+            return []
+        words = _WORDS[self.language]
+        lines = []
         named = {r.key: r.what for r in sheet.talent_rulings}
         for bridge in sheet.bridges:
             if bridge.steps:
@@ -867,6 +1112,194 @@ class _Knowledge:
                 count = f" ({item.quantity})" if item.quantity > 1 else ""
                 lines.append(_cap(f"{item.name}{count}"))
         return lines
+
+    # --- the sheet, in sections -------------------------------------------------------------
+
+    def sheet(self, player: Character) -> SheetView:
+        """G13, G16. The player character's sheet in sections, in the world's words."""
+        sheet = player.sheet
+        resources = sheet.resources
+        money = None
+        if resources.money or resources.currency:
+            amount = number_label(resources.money, self.language)
+            money = f"{amount} {resources.currency}".strip()
+        held = sorted(resources.items, key=lambda i: (not i.carried, natural_key(i.id)))
+        kinds = _ITEM_KIND_WORDS[self.language]
+        trait_kinds = _TRAIT_KIND_WORDS[self.language]
+        return SheetView(
+            about=self.about(player),
+            description=player.description,
+            condition=self.condition(player),
+            paths=self.paths(player),
+            money_label=money,
+            items=[
+                SheetItem(
+                    name=_cap(item.name),
+                    kind=item.kind,
+                    kind_label=kinds.get(item.kind, ""),
+                    description=item.description,
+                    history=item.history,
+                    quantity=item.quantity,
+                    carried=item.carried,
+                )
+                for item in held
+                if item.quantity > 0
+            ],
+            skills=[
+                SheetSkill(
+                    name=_cap(skill.name),
+                    level=skill.level,
+                    level_label=skill_level_label(skill.level, self.language),
+                    dice=levels.SKILL_DICE[skill.level],
+                    notes=skill.notes,
+                )
+                for skill in sorted(sheet.skills, key=lambda s: -s.level.rank)
+            ],
+            powers=self.powers(player),
+            techniques=[self.technique(player, t) for t in sheet.techniques],
+            traits=[
+                SheetTrait(
+                    name=_cap(trait.name),
+                    kind=trait.kind,
+                    kind_label=trait_kinds[trait.kind],
+                    description=trait.description,
+                )
+                for trait in sheet.traits
+            ],
+            temperament=[t for t in sheet.disposition.temperament.traits if t.strip()],
+            talents=self.talents(player),
+            talent_notes=self.talent_notes(player),
+        )
+
+    def about(self, player: Character) -> list[str]:
+        """Who they are in a few words: their place in each faction they know they belong to,
+        a title, and their age."""
+        resources = player.sheet.resources
+        parts = []
+        for membership in player.memberships:
+            faction = self.state.factions.get(membership.faction_id)
+            name = faction.name if faction is not None and self.knows(faction) else ""
+            parts.append(", ".join(part for part in (membership.rank, name) if part))
+        parts.append(resources.title)
+        if not player.memberships:
+            parts.append(resources.rank)
+        if player.age is not None:
+            parts.append(_WORDS[self.language]["age"].format(age=player.age))
+        said: dict[str, str] = {}
+        for part in parts:
+            if part.strip():
+                said.setdefault(part.strip().casefold(), _cap(part.strip()))
+        return list(said.values())
+
+    def condition(self, player: Character) -> SheetCondition:
+        """G13. How they are: health, each wound, each passing state with when it passes, and
+        what is left of each reserve."""
+        condition = player.sheet.condition
+        lived = player.personal_s(self.now)
+        words = _WORDS[self.language]
+        states = []
+        for state in condition.states:
+            until = state.until_personal_s
+            ends = None
+            if until is not None and until > lived:
+                ends = words["lasts"].format(when=in_label(until - lived, self.language))
+            states.append(SheetState(name=_cap(state.name), effect=state.effect, ends_label=ends))
+        expecting = None
+        if player.expecting is not None and player.alive:
+            due = in_label(max(0, player.expecting.due_s - self.now), self.language)
+            expecting = words["expecting"].format(due=due)
+        return SheetCondition(
+            health=condition.health,
+            health_label=_HEALTH_WORDS[self.language][condition.health],
+            wounds=[SheetWound(text=_cap(w.text), lasting=w.lasting) for w in condition.wounds],
+            states=states,
+            reserves=[SheetReserve(name=_cap(r.name), level=r.level) for r in condition.reserves],
+            expecting_label=expecting,
+        )
+
+    def paths(self, player: Character) -> list[SheetPath]:
+        """G18. Each ladder they stand on, up to their own rung and no further (C6)."""
+        paths = []
+        for position in player.sheet.ladders:
+            ladder = self.state.bible.ladder(position.ladder_id)
+            if ladder is None or position.rung >= len(ladder.rungs):
+                continue
+            rungs = [SheetRung(name=_cap(rung.name)) for rung in ladder.rungs[: position.rung]]
+            here = ladder.rungs[position.rung]
+            rungs.append(
+                SheetRung(name=_cap(here.name), stage=position.stage, description=here.description)
+            )
+            paths.append(SheetPath(name=_cap(ladder.name), rungs=rungs))
+        return paths
+
+    def powers(self, player: Character) -> list[SheetPower]:
+        """G13. Each power with its limits, what it costs as the sheet says, and whether it is
+        ready (W10a)."""
+        lived = player.personal_s(self.now)
+        ready = _WORDS[self.language]["ready"]
+        powers = []
+        for power in player.sheet.powers:
+            ready_at = power.ready_at_personal_s
+            waiting = ready_at is not None and ready_at > lived
+            label = f"{ready} {in_label(ready_at - lived, self.language)}" if waiting else ready
+            powers.append(
+                SheetPower(
+                    name=_cap(power.name),
+                    description=power.description,
+                    limits=[_cap(limit) for limit in power.limits if limit.strip()],
+                    cost=_cap(power.costs_text),
+                    ready=not waiting,
+                    ready_label=_cap(label),
+                    secret=power.secret,
+                )
+            )
+        return powers
+
+    def technique(self, player: Character, technique: Technique) -> SheetTechnique:
+        """A4, G25. A technique with how well they have it, the dice it throws (A3) and its
+        count toward the next mastery at their own pace."""
+        return SheetTechnique(
+            name=_cap(technique.name),
+            style=technique.style,
+            effect=technique.effect,
+            cost=technique.cost,
+            source_label=self.technique_source(technique),
+            mastery=technique.mastery,
+            mastery_label=_cap(_MASTERY_WORDS[self.language][technique.mastery]),
+            dice=levels.MASTERY_DICE[technique.mastery],
+            uses=technique.uses,
+            need=levels.uses_to_next(technique.mastery, technique_pace(player, technique)),
+        )
+
+    def technique_source(self, technique: Technique) -> str:
+        """Where a technique comes from, as far as the record names it: their own making, or
+        someone they know (C6). Anything else says nothing."""
+        words = _WORDS[self.language]
+        source = technique.learned_from
+        if source in ("their own", "self"):
+            return words["own_move"]
+        teacher = self.state.characters.get(source)
+        if teacher is None or not self.knows(teacher):
+            return ""
+        of_who = of_name(teacher.name, self.language)
+        return words["learned_from"].format(who=teacher.name, of_who=of_who)
+
+    def talents(self, player: Character) -> list[SheetTalent]:
+        """A4. Their talents as the engine reads them, each with the pace it gives. A sheet
+        saved before talent was a record shows none."""
+        if not player.sheet.talents:
+            return []
+        strengths = TALENT_STRENGTH_WORDS[self.language]
+        return [
+            SheetTalent(
+                name=_cap(talent.name),
+                strength=talent.strength,
+                strength_label=strengths[talent.strength],
+                pace_label=_cap(_pace_words(2.0**talent.strength.steps, self.language)),
+                covers=talent.covers,
+            )
+            for talent in talent_mod.talents_of(player)
+        ]
 
 
 def _cap(text: str) -> str:
@@ -1025,6 +1458,7 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
     ]
     return StatusView(
         character=StatusCharacter(name=player.name, lines=lines),
+        sheet=k.sheet(player),
         reputation=reputation,
         clock=clock_view(state, language),
         since=since,

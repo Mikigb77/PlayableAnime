@@ -654,7 +654,10 @@ MemoryView {character: {name, lines: [string], portrait_url?},
             threads:  [{id, title, status}]}
 
 StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
-                                          # lines include a child on the way (N6), and each
+                                          # lines are the sheet as plain text, kept for apps
+                                          # from before `sheet`; an app that reads `sheet`
+                                          # doesn't show them. They
+                                          # include a child on the way (N6), and each
                                           # technique with its mastery and its count toward
                                           # the next: "Aura blade (technique, learning, 2 of
                                           # 6 uses)" (A4), then each talent, each thing ruled
@@ -667,11 +670,58 @@ StatusView {character: {name, lines: [string], portrait_url?},   # portrait once
                                           # inside your talents (The sword and Aura sense)",
                                           # "Bridge: the load formula", "Outside your
                                           # talents: Herb lore; Rope trick" (A4)
+            sheet: Sheet,                 # the same sheet in parts, which the app lays out (G16)
             reputation: [{name, label}],
             clock: Clock,
             since: [{text, ago_label}]}      # "The bar shooting: 2 days ago" (W10), and the
                                           # latest gains and losses: "To Milo: 12 copper coins" (C10)
+
+Sheet {about: [string],                   # who they are, a few words each: "Outer disciple,
+                                          # the Azure Sky Sect" (only a faction they know,
+                                          # C6), a title, "17 years old"
+       description,                       # how they come across
+       condition: {health: "unhurt"|"hurt"|"wounded"|"badly_wounded"|"dying", health_label,
+                   wounds: [{text, lasting}],          # lasting: one that stays, a lost eye
+                   states: [{name, effect, ends_label?}],   # "Passes in 2 hours" (W10)
+                   reserves: [{name, level}],          # what is left, 0 to 100
+                   expecting_label?},                  # a child on the way and when (N6)
+       paths: [{name, rungs: [{name, stage, description}]}],
+                                          # each ladder they stand on (G18), from its first
+                                          # rung up to their own, lowest first: the last is
+                                          # theirs and carries its stage and description.
+                                          # Nothing above it is sent (C6).
+       money_label?,                      # "12 silver taels"
+       items: [{name, kind, kind_label, description, history, quantity, carried}],
+                                          # kind: weapon | armour | gear | treasure |
+                                          # consumable | vehicle | property | document |
+                                          # other (no kind_label). What they carry comes
+                                          # first, then what they keep elsewhere (C10).
+       skills: [{name, level, level_label, dice, notes}],
+                                          # best first; level is the skill ladder's value
+                                          # (untrained to master) and dice what it throws (A3)
+       powers: [{name, description, limits: [string], cost, ready, ready_label, secret}],
+                                          # ready_label: "Ready", or "Ready in 2 hours" while
+                                          # it recovers (W10a); secret: nobody knows of it
+       techniques: [{name, style, effect, cost, source_label, mastery, mastery_label, dice,
+                     uses, need?}],       # mastery: learning | practiced | skilled |
+                                          # second_nature | own, and dice what it throws
+                                          # (A3). need: the uses that reach the next mastery
+                                          # at their own pace (A4), left out where use alone
+                                          # takes it no further. source_label: "Your own", or
+                                          # "Learned from Zhao Kun" for someone they know
+                                          # (C6), and empty where the record names nobody.
+       traits: [{name, kind: "gift"|"flaw"|"quirk", kind_label, description}],
+       temperament: [string],
+       talents: [{name, strength, strength_label, pace_label, covers}],
+                                          # strength: slow | knack | genius | one_of_a_kind;
+                                          # "Genius", "Four times as fast" (A4)
+       talent_notes: [string]}            # each thing ruled on, the bridges that hold and
+                                          # what lies outside, as in `lines` (A4)
 ```
+
+Every `*_label`, and every word the engine adds, comes in the story's language (S10) next to the
+value it says, so the app picks a color or draws a meter from the value and never reads the words.
+An app shows a value it doesn't know by its label alone.
 
 ### Reports (F6)
 

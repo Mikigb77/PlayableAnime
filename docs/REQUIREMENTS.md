@@ -400,6 +400,21 @@ player sees other characters' abilities only as far as their character has seen 
 (C6): you don't know how good the rival is with a knife until you watch him use one, or someone
 tells you.
 
+**The sheet is shown in parts** (decided 2026-11-11, Miki, who found one long list hard to read).
+The Character screen (S5) opens on who they are: their name and portrait, their place in a faction
+they know of, a title, their age, and how they come across. Then how they are: health, each
+wound, each passing state with when it passes, and what is left of each reserve. Then each ladder
+they stand on, from its first rung up to their own with its stage, and nothing above it, since
+what lies higher is the story's to tell (C6, G18). Under that, a part at a time: what they carry
+and what they keep elsewhere, with their money (C10); their skills, best first; their powers with
+their limits, cost and whether each is ready (W10a), and their techniques with how well they have
+each, the count toward the next mastery and, where the story recorded it, who they have it from
+(A4); and what they are like: temperament, traits, and their talents with the pace each gives and
+what the story ruled on (A4). A part with nothing in it is not offered. A skill or a technique
+also shows how many dice it throws (A3), the same number the dice replay shows (S15), and it is
+the only number on the sheet outside a world with a system. Attributes are not listed, as before.
+Every label the engine adds is in the story's language (S10).
+
 **G17 Characters can lose things too (P1).** Besides growing (A4), a character can lose things: a
 crippling wound, old age, an addiction, a sealed power, a lost fortune, a disgraced name, a crew
 that deserts. Every loss has a cause in the story, like every gain (C1), and some can be won back.
@@ -1319,7 +1334,7 @@ These are the parts of the product the player sees, most of them already listed 
 | S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. The steps the engine decided, with their dice, arrive before the first words (A3), and in gamer mode the app plays them at once, over the page, while the story is written (S15). | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
-| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (sheet, reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
+| S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (the Character screen: the sheet in parts (G16), reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
 | S6 | Settings for narration length, tone, difficulty and event frequency (calm, normal or dramatic, default normal), per story. Not the story's language: a story stays in the one it started in (S10). The same sheet holds the switch for gamer mode (S15), which is the player's own taste on that device and not a setting of the story. | P1 |
 | S7 | Portraits for characters and occasional key scenes, generated once and reused. They match the world's era and look (a 1970s crime family wears suits, not robes) in the app's stylised house style. **The house style is a grown-up one** (Miki, 2026-11-08: the pictures looked like a fairy tale made for children): serious and grounded, like an anime film or a graphic novel made for adults, with semi-realistic proportions, faces that show their age and character, detailed textures, and dramatic light on a muted palette with one accent, never cute, chibi, cartoon or storybook. **It is drawn in high detail** (Miki, 2026-11-08, picked from a side-by-side comparison of styles on the same scenes): intricate textures of cloth, skin, stone and metal, fine highlights and crisp small details, while the focal point stays clear. **Everyone is drawn at the age the story gives them**: a 15-year-old as a 15-year-old, a grown-up as a grown-up, unless their look says they look younger or older, and anyone without an age as an adult. When the house style changes, every picture is drawn once more in it on the next deploy (Miki, 2026-11-08: redraw all the pictures so far in the new style): the starter covers on Discover, and every ready portrait, place, scene and cover of the stories played so far, by the house at no charge to the player (M4). See the images section (M1 to M8). | P1 |
 | S8 | Accounts with sign-in. Stories belong to a user, and the Library shows only your own. Discover offers the latest story the player can still play on near its top, right under its headline and the way to start from your own idea, one tap from where they left off. | P0 |

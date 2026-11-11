@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/features/story/sheet_view.dart';
+import 'package:playable_anime/features/story/status_screen.dart';
 
 import '../helpers.dart';
 import 'harness.dart';
@@ -86,4 +88,34 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+
+  // The character sheet, a tab at a time, in English and in Spanish, whose words run longer.
+  for (final language in ['en', 'es']) {
+    testWidgets('the character sheet at 2× text ($language)', (tester) async {
+      tester.platformDispatcher.localesTestValue = [Locale(language)];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final words = await AppLocalizations.delegate.load(Locale(language));
+      await AppHarness().launch(tester, location: '/story/story_ninth_peak', textScale: 2);
+      await tester.tap(find.byTooltip(words.storyStatus));
+      await settle(tester, frames: 10);
+      final list = find
+          .descendant(of: find.byType(StatusScreen), matching: find.byType(Scrollable))
+          .first;
+      // Each tab is laid out whole as it opens, so a part that doesn't fit shows at once.
+      for (final tab in SheetTab.values) {
+        // The tabs scroll sideways at this size, so the one wanted is brought into view.
+        final key = find.byKey(ValueKey('sheet.tab.${tab.name}'));
+        await tester.ensureVisible(key);
+        await tester.pump();
+        await tester.tap(key);
+        await settle(tester);
+        expect(tester.takeException(), isNull, reason: tab.name);
+      }
+      for (var i = 0; i < 6; i++) {
+        await tester.drag(list, const Offset(0, -600), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

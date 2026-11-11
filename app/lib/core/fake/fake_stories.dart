@@ -461,6 +461,7 @@ void registerStoryRoutes(FakeBackend b) {
         if (story.id == 'story_ninth_peak')
           'portrait_url': (_seedMemory['character'] as JsonMap)['portrait_url'],
       },
+      'sheet': _seedSheet,
       'reputation': [
         {'name': 'Azure Cloud Sect', 'label': 'A failure they would rather forget'},
         {'name': 'Senior Sister Lan', 'label': 'Worried about you'},
@@ -647,6 +648,113 @@ List<JsonMap> _seedScenes() => <JsonMap>[
     'created_at': '2026-11-03T18:40:00Z',
   },
 ];
+
+/// Shen Yu's sheet in sections (docs/API.md `Sheet`), worded as `engine.visibility` words it.
+const _seedSheet = <String, Object?>{
+  'about': ['Outer disciple, the Azure Cloud Sect', '17 years old'],
+  'description': 'A thin disciple in a patched grey robe, calmer than his years.',
+  'condition': {
+    'health': 'hurt',
+    'health_label': 'Hurt',
+    'wounds': [
+      {'text': 'Meridians cut in the duel', 'lasting': true},
+    ],
+    'states': [
+      {'name': 'Short of sleep', 'effect': 'Slower to react', 'ends_label': 'Passes in 8 hours'},
+    ],
+    'reserves': [
+      {'name': 'Qi', 'level': 20},
+    ],
+    'expecting_label': null,
+  },
+  'paths': [
+    {
+      'name': 'Cultivation realms',
+      'rungs': [
+        {'name': 'Mortal', 'stage': '', 'description': ''},
+        {
+          'name': 'Qi Condensation',
+          'stage': 'Third stage',
+          'description': 'Qi gathers in the dantian and the body begins to change.',
+        },
+      ],
+    },
+  ],
+  'money_label': '3 spirit stones',
+  'items': [
+    {
+      'name': 'Sealed scroll',
+      'kind': 'treasure',
+      'kind_label': 'Treasure',
+      'description': 'It speaks, to you alone.',
+      'history': 'Found under the ninth peak.',
+      'quantity': 1,
+      'carried': true,
+    },
+    {
+      'name': 'Healing pills',
+      'kind': 'consumable',
+      'kind_label': 'Consumable',
+      'description': 'Each closes a shallow wound.',
+      'history': '',
+      'quantity': 2,
+      'carried': true,
+    },
+    {
+      'name': 'Wooden chest',
+      'kind': 'other',
+      'kind_label': '',
+      'description': 'In your cell in the outer dormitory.',
+      'history': '',
+      'quantity': 1,
+      'carried': false,
+    },
+  ],
+  'skills': [
+    {'name': 'Swordsmanship', 'level': 'skilled', 'level_label': 'Skilled', 'dice': 3, 'notes': ''},
+    {
+      'name': 'Herb lore',
+      'level': 'fair',
+      'level_label': 'Fair',
+      'dice': 2,
+      'notes': 'Learned gathering herbs for the pill hall.',
+    },
+  ],
+  'powers': <Object?>[],
+  'techniques': [
+    {
+      'name': 'Falling Leaf Palm',
+      'style': 'Azure Cloud style',
+      'effect': 'A soft strike that sends qi through a guard.',
+      'cost': 'a little qi',
+      'source_label': 'Learned from Senior Sister Lan',
+      'mastery': 'skilled',
+      'mastery_label': 'Skilled',
+      'dice': 3,
+      'uses': 12,
+      'need': 30,
+    },
+  ],
+  'traits': [
+    {
+      'name': 'A stubborn streak',
+      'kind': 'quirk',
+      'kind_label': 'Quirk',
+      'description': 'You do not let a thing go.',
+    },
+  ],
+  'temperament': ['Quiet', 'Patient'],
+  'talents': [
+    {
+      'name': 'The sword',
+      'strength': 'genius',
+      'strength_label': 'Genius',
+      'pace_label': 'Four times as fast',
+      'covers': 'anything fought with a blade',
+    },
+  ],
+  'talent_notes': ['Falling Leaf Palm: grows twice as fast, close to your talent (The sword)'],
+};
 
 /// The seeded story's memory: only what Shen Yu knows (C6), worded as `engine.visibility` words it.
 const _seedMemory = <String, Object?>{
