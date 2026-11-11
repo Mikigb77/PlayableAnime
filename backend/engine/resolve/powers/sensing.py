@@ -5,11 +5,13 @@ anyone higher is simply beyond them. A character can hide their strength and sho
 which fools everyone who can't see through it, so NPCs treat them by what they can perceive. Only
 someone already above the hider's true rung sees through the disguise. A reveal shifts attitudes
 at once, by how far each onlooker underestimated them, and it is a public deed that starts
-rumors (W1, W13).
+rumors (W1, W13). The onlookers are whoever saw it: the people of the scene and, before a
+crowd, everyone the record puts at the place (W2). Showing the rung one truly stands on is a
+reveal like any other (`meant`).
 """
 
 from engine.contracts.delta import AttitudeShift, CharacterChange, StateDelta
-from engine.contracts.intent import IntentStep, OutcomeClass
+from engine.contracts.intent import IntentStep, OutcomeClass, ShowStrength
 from engine.contracts.resolution import ProposedDeed
 from engine.resolve.checks import Settled
 from engine.resolve.words import cap, name, possessive
@@ -18,6 +20,7 @@ from engine.state.cast import Character
 from engine.state.records import StepResult
 from engine.state.sheet import LadderPosition, PowerAxis
 from engine.state.world import WorldState
+from engine.world.geography import characters_at, perceives, scene_ids
 
 # How much each rung an onlooker underestimated someone moves their attitude on a reveal.
 FEAR_PER_RUNG = 20
@@ -62,11 +65,22 @@ def _ladder(state: WorldState, actor: Character, ladder_id: str) -> PowerLadder 
     return state.bible.ladder(ladder_id)
 
 
+def meant(actor: Character, show: ShowStrength) -> ShowStrength:
+    """G20. A show as it is meant: showing the very rung they stand on shows their true
+    strength, the same as showing all of it. A reading that names that rung ("I let my Core
+    Formation show") would otherwise pass as one more disguise, with no reveal and nobody
+    moved by it."""
+    mine = position(actor, show.ladder_id)
+    if mine is not None and show.shown_rung == mine.rung:
+        return show.model_copy(update={"shown_rung": None})
+    return show
+
+
 def check(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
     """G20. A character can show less than they have, never more, and only on a ladder they
     stand on."""
-    show = step.show_strength
-    assert show is not None
+    assert step.show_strength is not None
+    show = meant(actor, step.show_strength)
     who = name(state, actor.id)
     ladder = _ladder(state, actor, show.ladder_id)
     mine = position(actor, show.ladder_id)
@@ -106,8 +120,8 @@ def settle(
 ) -> tuple[str, StateDelta, ProposedDeed | None]:
     """G20. Hide strength, or reveal it: the sheet records what others sense, and a reveal moves
     every onlooker who underestimated them, at once."""
-    show = step.show_strength
-    assert show is not None
+    assert step.show_strength is not None
+    show = meant(actor, step.show_strength)
     ladder = _ladder(state, actor, show.ladder_id)
     mine = position(actor, show.ladder_id)
     assert ladder is not None and mine is not None
@@ -121,11 +135,8 @@ def settle(
         return reason, StateDelta(characters=[change]), None
 
     true_name = ladder.rungs[mine.rung].name
-    onlookers = [
-        state.characters[cid]
-        for cid in state.scene.present_ids
-        if cid != actor.id and cid in state.characters and state.characters[cid].alive
-    ]
+    place_id = actor.location_id or state.scene.place_id
+    onlookers = _onlookers(state, actor, place_id, crowd=step.facts.crowd)
     changes = [CharacterChange(id=actor.id, ladders=[mine.model_copy(update={"shown_rung": None})])]
     witnesses: list[str] = []
     for onlooker in onlookers:
@@ -144,7 +155,7 @@ def settle(
         text=f"{cap(who)} {_reveal(state, actor)} {_their(state, actor)} strength: {true_name}",
         actor_id=actor.id if actor.id != state.player_id else None,
         target_ids=[],
-        place_id=actor.location_id or state.scene.place_id,
+        place_id=place_id,
         severity=REVEAL_SEVERITY,
         witness_ids=witnesses,
     )
@@ -152,6 +163,20 @@ def settle(
         f"{cap(who)} {_reveal(state, actor)} {_their(state, actor)} true strength: {true_name}."
     )
     return reason, StateDelta(characters=changes), deed
+
+
+def _onlookers(
+    state: WorldState, actor: Character, place_id: str | None, *, crowd: bool
+) -> list[Character]:
+    """W2. Who sees a reveal: the living people of the player character's scene, and before a
+    crowd everyone the record puts at the place, whether or not the last scene listed them
+    (in the first live story a young master the scene had dropped stood in the crowd and was
+    barely moved, 2026-11-11). Nobody asleep or senseless sees it."""
+    there = [i for i in scene_ids(state) if i in state.characters]
+    if crowd:
+        there += [c.id for c in characters_at(state, place_id)]
+    people = [state.characters[i] for i in dict.fromkeys(there) if i != actor.id]
+    return [c for c in people if c.alive and perceives(c)]
 
 
 def _hide(state: WorldState, actor: Character) -> str:

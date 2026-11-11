@@ -1206,6 +1206,18 @@ def _scene_person(story: Story, character_id: str) -> dict | None:
     return next((c for c in scene["present"] if c["id"] == character_id), None)
 
 
+def _section(story: Story, name: str) -> dict | None:
+    """A section of the narrator's last brief that is one JSON object (deterministic mode)."""
+    brief = story.prompt(Node.NARRATOR)
+    if f"## {name}\n" not in brief:
+        return None
+    return json.loads(brief.split(f"## {name}\n", 1)[1].split("\n", 1)[0])
+
+
+def _rumors_of(state, deed) -> list:
+    return [r for r in state.rumors.values() if r.deed_id == deed.id]
+
+
 def _came_for(story: Story, avenger_id: str) -> list:
     """The times someone came to the player character over a deed, in the order they came."""
     return [
@@ -1330,8 +1342,17 @@ async def one_mans_word(ev: Eval) -> None:
                         10 * MINUTE,
                         verb="ask",
                         target_ids=["bram"],
+                        facts=facts(asks_talk=True),
                     )
                 ),
+            )
+            told = _section(story, "TALK") or {}
+            ev.check(
+                "asked what people are saying, the scene is given what the village says",
+                told.get("asked") is True
+                and told.get("saying") in {r.text for r in _rumors_of(story.state, deed)},
+                f"{seed}: {told}",
+                live=False,
             )
             shown = _scene_person(story, "bram")
             ev.check(

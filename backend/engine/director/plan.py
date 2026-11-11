@@ -286,8 +286,9 @@ def direct(
     )
     # W2: a quiet scene may carry some of the talk of the place, now and then.
     busy = event is not None or moment is not None or bool(happenings)
+    asked = intent is not None and any(step.facts.asks_talk for step in intent.steps)
     talk = plan_talk(
-        state, resolution, rng.child("talk"), pressure=pressure, busy=busy, small=small
+        state, resolution, rng.child("talk"), pressure=pressure, busy=busy, small=small, asked=asked
     )
 
     # 5. The picture.

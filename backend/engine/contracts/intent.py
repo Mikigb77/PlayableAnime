@@ -401,8 +401,12 @@ def _facts_required(schema: dict[str, Any]) -> None:
     a schema doesn't require as often as not: a step with no judgement fell back to a guess
     whoever the character was, a lesson whose first blow carried no terms began as an attack,
     and a killing in a full square with no word of the crowd would have no witness. Code may
-    still leave them out."""
-    must = ["challenge", "head_on", "terms", "crowd"]
+    still leave them out. So is whether a blow goes beyond a bout's terms: left to the model,
+    two of three blows meant to blind a teacher in a lesson were read as part of the lesson
+    (2026-11-11). And whether the step asks what people are saying (W2): a neighbour asked
+    for the village's talk told of a wolf and an empty cart, while the village was talking of
+    a killing (2026-11-11)."""
+    must = ["challenge", "head_on", "terms", "breaks_terms", "crowd", "asks_talk"]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
@@ -517,6 +521,13 @@ class StepFacts(EngineModel):
         default=False,
         description="W2: people the scene doesn't name are around and would see this step done.",
     )
+    asks_talk: bool = Field(
+        default=False,
+        description=(
+            "W2: the step asks or listens for what people are saying: the news, the rumors,"
+            " the talk of the place. Code then offers the scene what the place is saying."
+        ),
+    )
     danger: str = Field(
         default="",
         description=(
@@ -558,8 +569,21 @@ def _step_required(schema: dict[str, Any]) -> None:
     may still leave them out. `destination` is asked for the same way (W10): a trip the model
     doesn't name is a trip code can't time. So is `show_strength` (G20), null on any step that
     neither hides strength nor shows it: left to the model, "I hide my cultivation" hid nothing
-    in the first live story about it (2026-11-11), so nothing was there to reveal."""
-    must = ["facts", "uses", "talent_cases", "bridge", "destination", "show_strength"]
+    in the first live story about it (2026-11-11), so nothing was there to reveal. And so are
+    `target_ids` and `aim` (V3, F4), an empty list and none for a step that is aimed at nobody:
+    "I cut Han's throat" was read as a killing with no target (2026-11-11), so nobody died on
+    record. Where a reading still names nobody, `graph.turn.check` finds who the words point
+    at."""
+    must = [
+        "target_ids",
+        "aim",
+        "facts",
+        "uses",
+        "talent_cases",
+        "bridge",
+        "destination",
+        "show_strength",
+    ]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 

@@ -35,10 +35,12 @@ from engine.contracts import (
 )
 from engine.director.themes import allowed_themes, fits
 from engine.labels import only_the_clock
+from engine.resolve.powers import sensing
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
 from engine.timekeeping import parse_clock
+from engine.world.geography import scene_ids
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import Issue
 
@@ -72,7 +74,8 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     hope. The interpret step never refuses (B5), so an intent with no step and no standing action
     becomes one step that carries the player's words as they are. An edge or hindrance that
     leans on an injury the record doesn't hold is left out (N6, `engine.injuries`). Hiding or
-    showing strength is a step of its own (G20, `_shows_apart`).
+    showing strength is a step of its own (G20, `_shows_apart`). A step whose reading left out
+    who it is aimed at finds them where the player's words point (V3, W1, `_aimed`).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -100,6 +103,7 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_opposition", "kept as words", ", ".join(unknown)))
             facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
+        _aimed(step, state, issues, action if len(intent.steps) == 1 else "")
         # N6, A8: an edge or hindrance that leans on an injury the record doesn't hold, such as
         # an "old wound" the character never had, is left out of the odds and the scene.
         step.facts, dropped = injuries.unrecorded_harm(state, state.player, step)
@@ -151,6 +155,107 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     return CheckedIntent(intent=intent, issues=issues, overflow=overflow)
 
 
+def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str = "") -> None:
+    """V3, W1, in place. Who a step is aimed at, where the reading left their id out. The real
+    model often names nobody under target_ids: "I cut Han's throat" was read as a killing aimed
+    at no one (2026-11-11), so nobody died on record while the scene told a death.
+
+    Words under `targets` that are exactly the name of one person in the scene, or else of one
+    person the player character knows, become that person. A step that means harm and still
+    aims at nothing on record, with no stranger to make real, is aimed at the one person of the
+    scene its own words name (`action` is the player's words, when the whole action is this
+    step); else at those the reading put in its way, as in a bout (`bouts.against`); else at
+    the one they are fighting. Past that it is aimed at nobody: code never picks a victim the
+    player's words don't point at."""
+    you = state.player_id
+    people = state.characters
+    scene = [i for i in scene_ids(state) if i != you and i in people and people[i].alive]
+    known = [
+        c.id for c in state.npcs() if c.id not in scene and (you in c.known_by or you in c.met_by)
+    ]
+    words = []
+    for said in step.targets:
+        match = _called(state, said, scene) or _called(state, said, known)
+        if match is None:
+            words.append(said)
+        elif match not in step.target_ids:
+            step.target_ids.append(match)
+            issues.append(Issue("target_by_name", "the words name them", match))
+    step.targets = words
+    if not step.aim.harmful or step.stranger is not None or step.target_ids:
+        return
+    named = _named_in(state, [step.text, *step.targets, action], scene)
+    in_way = [i for i in dict.fromkeys(step.facts.opposition_ids) if i != you and i in people]
+    encounter = state.scene.encounter
+    fought = [i for i in (encounter.opponent_ids if encounter else []) if i in scene]
+    if len(named) == 1:
+        found, how = named, "the step's words name them"
+    elif in_way:
+        found, how = in_way, "they stand in its way"
+    elif len(fought) == 1:
+        found, how = fought, "they are who the character is fighting"
+    else:
+        issues.append(Issue("no_target", "a step that means harm is aimed at nobody"))
+        return
+    step.target_ids = list(found)
+    issues.append(Issue("target_found", how, ", ".join(found)))
+
+
+def _names(state: WorldState, character_id: str) -> list[str]:
+    character = state.characters[character_id]
+    return [
+        n for n in (limits.normalize(name) for name in (character.name, *character.aliases)) if n
+    ]
+
+
+def _called(state: WorldState, said: str, among: list[str]) -> str | None:
+    """The one person of `among` whose name or alias is exactly these words, whatever their
+    case, accents or punctuation. None when nobody is, or more than one."""
+    words = limits.normalize(said)
+    found = [i for i in among if words and words in _names(state, i)]
+    return found[0] if len(found) == 1 else None
+
+
+def _named_in(state: WorldState, texts: list[str], among: list[str]) -> list[str]:
+    """Those of `among` some text names: by a name or alias of several words, or by one word
+    that is theirs alone there (a one-word name, or a word of their name nobody else shares),
+    written with a capital inside a sentence, as names are: "Mo" for Elder Mo, never the "sol"
+    of "under the sun" for someone called Sol, nor the "Old" a sentence opens with for Old
+    Bram."""
+    whole = [f" {limits.normalize(text)} " for text in texts if text]
+    capitals = {word for text in texts for word in _capitals(text or "")}
+    parts: dict[str, set[str]] = {}
+    for character_id in among:
+        character = state.characters[character_id]
+        for name in (character.name, *character.aliases):
+            for word in re.findall(_WORD, name):
+                if word[:1].isupper():
+                    parts.setdefault(limits.normalize(word), set()).add(character_id)
+    found = []
+    for character_id in among:
+        phrases = [name for name in _names(state, character_id) if " " in name]
+        own = {word for word, whose in parts.items() if whose == {character_id}}
+        if any(f" {name} " in text for name in phrases for text in whole) or own & capitals:
+            found.append(character_id)
+    return found
+
+
+# A word of letters, in any script.
+_WORD = r"[^\W\d_]+"
+# What a sentence can open after: its capital is no sign of a name.
+_OPENS_AFTER = '.!?:;\u00a1\u00bf"\u201c\u00ab(\u2014'
+
+
+def _capitals(text: str) -> set[str]:
+    """The words of a text written with a capital that doesn't just open a sentence, folded."""
+    found = set()
+    for match in re.finditer(_WORD, text):
+        before = text[: match.start()].rstrip()
+        if match.group()[:1].isupper() and before and before[-1] not in _OPENS_AFTER:
+            found.add(limits.normalize(match.group()))
+    return found - {""}
+
+
 def _shows_apart(
     steps: list[IntentStep], state: WorldState, issues: list[Issue]
 ) -> list[IntentStep]:
@@ -162,10 +267,12 @@ def _shows_apart(
     show) on a step that does something else."""
     apart: list[IntentStep] = []
     for step in steps:
-        show = step.show_strength
-        if show is None:
+        if step.show_strength is None:
             apart.append(step)
             continue
+        # Showing the very rung they stand on is showing their true strength.
+        show = sensing.meant(state.player, step.show_strength)
+        step = step.model_copy(update={"show_strength": show})
         if state.bible.ladder(show.ladder_id) is None:
             issues.append(Issue("unknown_ladder", "the show of strength is left out"))
             apart.append(step.model_copy(update={"show_strength": None}))
