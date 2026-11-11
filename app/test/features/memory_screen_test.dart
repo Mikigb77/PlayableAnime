@@ -275,6 +275,77 @@ void main() {
     expect(glyphOf('Deed heard_of'), Icons.hearing_outlined);
   });
 
+  testWidgets('a deed tells what became of it, as far as they know', (tester) async {
+    await show(tester, {
+      'character': {'name': 'Mara', 'lines': <String>[]},
+      'deeds': [
+        {
+          'id': 'd1',
+          'text': 'You shoved Zhao into the well',
+          'when_label': 'Day 2',
+          'seen': 'seen',
+          'known_label': 'Seen by Wei',
+          'trail': [
+            {'kind': 'went', 'text': 'Wei went to tell the Azure Cloud Sect'},
+            {'kind': 'dead', 'text': 'Wei is dead'},
+            {'kind': 'heard', 'text': 'Heard a day ago: “Someone shoved Zhao into the well”'},
+            {'kind': 'came', 'text': 'Zhao Mei came to face you over it, an hour ago'},
+            {'kind': 'sung', 'text': 'A song is sung of it'},
+            {'kind': 'went', 'text': '  '},
+          ],
+          'open_label': 'Who else knows? You can\'t tell until you hear it.',
+        },
+        {'id': 'd2', 'text': 'You bowed', 'when_label': 'Day 1', 'known_label': 'You were seen'},
+      ],
+    });
+    final colors = colorsOf(tester);
+    Color? colorOf(String text) => tester.widget<Text>(find.text(text)).style!.color;
+    IconData markOf(String text) => tester
+        .widget<Icon>(
+          find.descendant(
+            of: find.ancestor(of: find.text(text), matching: find.byType(Row)).first,
+            matching: find.byType(Icon),
+          ),
+        )
+        .icon!;
+
+    // Word on its way and someone at the door are lit. The rest is told quietly.
+    expect(colorOf('Wei went to tell the Azure Cloud Sect'), colors.caution);
+    expect(markOf('Wei went to tell the Azure Cloud Sect'), Icons.directions_run_rounded);
+    expect(colorOf('Zhao Mei came to face you over it, an hour ago'), colors.accent);
+    expect(colorOf('Wei is dead'), colors.textMuted);
+    expect(markOf('Heard a day ago: “Someone shoved Zhao into the well”'), Icons.hearing_outlined);
+    // A kind this app doesn't know still says its words, and an empty line says nothing.
+    expect(find.text('A song is sung of it'), findsOneWidget);
+    expect(colorOf('Who else knows? You can\'t tell until you hear it.'), colors.textMuted);
+    expect(
+      markOf('Who else knows? You can\'t tell until you hear it.'),
+      Icons.help_outline_rounded,
+    );
+    // In the order it happened, under who saw it.
+    final lines = [
+      for (final text in tester.widgetList<Text>(
+        find.descendant(
+          of: find.widgetWithText(RecordEntry, 'You shoved Zhao into the well'),
+          matching: find.byType(Text),
+        ),
+      ))
+        text.data,
+    ];
+    expect(lines, [
+      'You shoved Zhao into the well',
+      'Day 2',
+      'Seen by Wei',
+      'Wei went to tell the Azure Cloud Sect',
+      'Wei is dead',
+      'Heard a day ago: “Someone shoved Zhao into the well”',
+      'Zhao Mei came to face you over it, an hour ago',
+      'A song is sung of it',
+      'Who else knows? You can\'t tell until you hear it.',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('reads what a server from before the values sent', (tester) async {
     await show(tester, {
       'character': {'name': 'Mara', 'lines': <String>[]},
@@ -421,6 +492,28 @@ void main() {
       expect(deed('filmed').seen, isNull);
       expect(deed(null).seen, isNull);
       expect(deed('seen').whenLabel, 'Day 1');
+    });
+
+    test('reads what became of a deed, and nothing from a server older than it', () {
+      final deed = MemoryDeed.fromJson(const {
+        'id': 'd',
+        'text': 'D',
+        'trail': [
+          {'kind': 'went', 'text': 'Wei went to tell the sect'},
+          {'kind': 'sung', 'text': 'A song is sung of it'},
+          {'kind': 'dead'},
+          'not a line',
+        ],
+        'open_label': 'Who else knows?',
+      });
+      expect(
+        [for (final line in deed.trail) (line.kind, line.text)],
+        [(DeedTrailKind.went, 'Wei went to tell the sect'), (null, 'A song is sung of it')],
+      );
+      expect(deed.openLabel, 'Who else knows?');
+      final old = MemoryDeed.fromJson(const {'id': 'd', 'text': 'D', 'trail': 'none'});
+      expect(old.trail, isEmpty);
+      expect(old.openLabel, isNull);
     });
 
     test('takes a shape it doesn\'t expect without failing', () {

@@ -186,6 +186,14 @@ class Deed(EngineModel):
         default=False,
         description="W1: it went beyond the terms of an agreed bout: an attack under cover of one.",
     )
+    went_to_tell: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "W11, C6: the witnesses the player character saw set off to tell a faction what they"
+            " saw, by id, with the faction each went to (`engine.world.carriers`). Whether they"
+            " got there is nothing the character knows."
+        ),
+    )
     word_out_s: WorldSeconds | None = Field(
         default=None,
         description=(

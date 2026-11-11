@@ -666,12 +666,24 @@ MemoryView {character: {name, lines: [string], portrait_url?},
                                           # certainty == "unconfirmed", for older apps. The
                                           # same words show once per certainty, by when last
                                           # heard.
-            deeds:    [{id, text, when_label, seen, known_label}],
+            deeds:    [{id, text, when_label, seen, known_label,
+                        trail: [{kind, text}], open_label?}],
                                           # in time order. seen is who saw it as far as the
                                           # character knows (W2, C6): their own deed is
                                           # "seen" | "public" | "unseen", someone else's is
                                           # "watched" | "heard_of"; known_label says it in
-                                          # words: "Seen by Carmine Russo and 1 other"
+                                          # words: "Seen by Carmine Russo and 1 other".
+                                          # trail is what they know became of their own
+                                          # deed since, in the order it happened: kind is
+                                          # "went" (someone who saw it, whom they saw go off
+                                          # to tell) | "dead" (someone who saw it is dead, as
+                                          # far as they know) | "heard" (talk of it a scene
+                                          # told them) | "came" (someone came to them over
+                                          # it); text says it in words: "Wei went to tell
+                                          # the Azure Cloud Sect". open_label, where who
+                                          # else knows is an open question, says that they
+                                          # can't tell. An app shows a kind it doesn't know
+                                          # by its text alone.
             threads:  [{id, title, status}]}  # status: "open" | "dormant" | "resolved" |
                                           # "failed" | "abandoned" | "resolved_without_player"
 
