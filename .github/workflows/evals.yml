@@ -51,7 +51,7 @@ jobs:
   live:
     name: Live evals
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.EVALS_ENABLED == 'true') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 240
     permissions:
       contents: read
@@ -149,7 +149,7 @@ jobs:
     name: Push the style samples to a branch
     needs: live
     if: ${{ inputs.styles }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write

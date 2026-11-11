@@ -28,8 +28,12 @@ The CI jobs are separate checks of the same commit (backend tests, evals, the im
 Android build, the deploy scripts), so they run side by side. The deploy's jobs are a chain
 instead: the CI gate, then the deploy, then the model checks, the covers and the story pictures,
 while the APK builds alongside and is published after the deploy. Every job runs on
-`ubuntu-24.04` rather than `ubuntu-latest`, so a new runner image never arrives in the middle of a
-deploy; moving to a newer Ubuntu is a PR of its own. Every action is pinned to a commit with its version in a comment.
+`ubuntu-latest`, GitHub's newest stable Ubuntu image (Miki, 2026-11-11). GitHub moves that name to
+the next Ubuntu on its own schedule, and the tools on the machine change with it. So when a check
+or a deploy fails with no change of ours, look first at whether the image moved: the job's
+"Set up job" step names it. Until the fix is in, the workflows can name the last version that
+worked (`ubuntu-24.04` on that date). Every action is pinned to a commit with its version in a
+comment.
 
 ### Dependabot
 
