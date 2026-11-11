@@ -315,6 +315,13 @@ def test_the_interpret_model_must_always_judge_each_steps_challenge():
     assert StepFacts().challenge is None  # code may still leave it out
 
 
+def test_the_interpret_model_must_always_say_whether_a_fight_is_a_bout():
+    # W1: left to the model, the terms came on some blows of a lesson and not on others. Code
+    # keeps a bout once it has begun, but its first blow has only the model's word to go by.
+    assert "terms" in Intent.model_json_schema()["$defs"]["StepFacts"]["required"]
+    assert StepFacts().terms is None  # null is an answer: any other fight, or no fight
+
+
 def test_the_interpret_model_must_always_judge_whether_a_thing_is_there():
     # R2: a use with no judgement is one code can only guess at, and the guess used to be a roll
     # that failed natural things. The model always answers; code may leave it out, and then the

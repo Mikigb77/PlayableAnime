@@ -285,6 +285,43 @@ def test_a_bout_stays_one_for_as_long_as_it_lasts_whatever_later_blows_propose()
     assert [deed.kind for deed in after.deeds.values()] == ["bout"]
 
 
+def practice(n: int, terms: Terms | None = None) -> IntentStep:
+    """A practice blow at Zhao in one of the shapes an interpret step gives it: told as an
+    attack that aims no harm, at him or with him only in its way, or a plain exchange."""
+    facts = StepFacts(opposition_ids=["zhao"], can_respond=True, terms=terms)
+    text = "come at Zhao with the practice sword"
+    shape = n % 3
+    if shape == 0:
+        return step(text, verb="attack", axis=PowerAxis.MIGHT, facts=facts)
+    if shape == 1:
+        return step(text, verb="attack", target_ids=["zhao"], axis=PowerAxis.MIGHT, facts=facts)
+    return step(text, verb="lunge", axis=PowerAxis.MIGHT, facts=facts)
+
+
+@pytest.mark.parametrize("first", [0, 1, 2])
+def test_a_lesson_of_practice_blows_is_one_bout_however_each_was_read(first):
+    """The first live lesson (2026-11-11) had one of six practice blows filed as an attack: it
+    aimed no harm and named no target, so it wasn't taken as a blow of the bout. A bout begins
+    with such a blow too, and keeps its fight on, so the terms hold for the rest."""
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    state = cultivation_world()
+    before = state.characters["zhao"].attitude_toward("lin").model_copy(deep=True)
+
+    after, played, _ = turn(state, practice(first, Terms.NO_HARM))
+    assert played.resolution.steps[0].bout == bout
+    assert after.scene.encounter.kind is EncounterKind.FIGHT
+    assert after.scene.encounter.bout == bout
+
+    for n in range(12):
+        after, played, _ = turn(after, practice(first + 1 + n), seed=n, turn_no=4 + n)
+        assert played.resolution.steps[0].bout == bout, n
+        assert after.scene.encounter.bout == bout, n
+
+    assert [deed.kind for deed in after.deeds.values()] == ["bout"]
+    zhao = after.characters["zhao"].attitude_toward("lin")
+    assert not zhao.grudges and zhao.fear <= before.fear and zhao.affinity >= before.affinity
+
+
 def test_a_fight_in_earnest_gets_no_terms_afterwards():
     """An attack is never relabelled: once a blow outside any terms has hurt someone, the fight
     is one in earnest, whatever a later step proposes."""

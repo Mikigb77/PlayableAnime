@@ -695,9 +695,16 @@ it (W10a), a helpless state on the sheet
 10. **A bout both sides agreed to** (`bouts.py`, `core._under_terms`, `perils._held`; W1, W4,
    N6). The interpret step proposes the terms of an agreed fight (`StepFacts.terms`: `no_harm`,
    `wounds` or `death`) and whether the character means to go beyond them
-   (`StepFacts.breaks_terms`); code decides. A step that fights someone with no fight on starts
+   (`StepFacts.breaks_terms`); code decides. The terms are a required answer, null when the
+   fight is no bout, because Gemini leaves out what a schema doesn't require as often as not.
+   A step is a blow at whom it names as its targets, or when it names none, at whoever stands
+   in its way (`bouts.against`), and it is a blow when it aims harm, is told as a strike
+   (`attack`, `strike`, `stab`: an `assault`, `wound` or `kill` in the world's norms) or is an
+   exchange of a fight (`bouts.is_blow`), so a practice blow that aims no harm and names no
+   target is still one, while an insult, a theft or a healing stays the deed it is. A step that fights someone with no fight on starts
    a bout when it proposes terms and everyone in it can agree (`bouts.can_agree`: alive, able to
-   answer, there, no beast). The bout lives on the encounter (`Encounter.bout`, with whom it was
+   answer, there, no beast), and the fight that keeps the terms begins with it even when the
+   blow aimed no harm. The bout lives on the encounter (`Encounter.bout`, with whom it was
    agreed), so a later blow at those in it comes under its terms whether or not the step names
    them, and proposing terms again can only make them milder. A fight in earnest, in which
    someone was harmed outside any terms or whose terms were broken, never becomes a bout
@@ -715,7 +722,8 @@ it (W10a), a helpless state on the sheet
    unhurt (`Peril.terms`). Under `no_harm` a partner answers only the bout's exchanges, a blow
    at them or an `exchange` step, unless `foes_mean` says they strike: they wait while the
    character talks or looks on. The actor goes beyond the terms only with `breaks_terms` and an
-   aim they don't allow; those answering only when `foes_mean` is beyond them and one of them
+   aim they don't allow, or failing an aim a verb that says as much (`bouts.meant`: a blow
+   to maim is a wounding); those answering only when `foes_mean` is beyond them and one of them
    bears the character ill will (`bouts.bears_ill_will`: affinity at or under `ILL_WILL`, or a
    grudge). Either way the blow is an ordinary attack with `broke_terms` on its deed, and the
    bout is over.
@@ -1484,7 +1492,9 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
 - **Live** (nightly, once switched on). The same scripts on the real models (`LLM_PROVIDER=vertex`),
   one to four seeds each; checks that only make sense over many seeds are left out. The interpreter
   reads the player's words itself, and an intent that doesn't take the shape a script reads is a
-  failed check, not a crash. Scenes are scored by a **judge** (`Node.JUDGE`, Gemini 3.1 Pro with
+  failed check, not a crash. A failed check's line is all a live run's log shows of it, up to
+  `FAILURE_CHARS`, so a check whose cause lies in how a turn was read says so in its detail (the
+  friendly bout prints each blow as read and what code made of it). Scenes are scored by a **judge** (`Node.JUDGE`, Gemini 3.1 Pro with
   high thinking and Mature safety settings) against a written rubric of musts and must-nots: it gets
   each scene's action, narration and scene details, and answers pass or fail with a quote and a
   reason for every criterion. A criterion it skips fails, and a judge that errors never passes.
