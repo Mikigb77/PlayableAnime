@@ -104,6 +104,36 @@ void main() {
       expect(find.byIcon(ChoiceKind.personal.icon), findsOneWidget);
     });
 
+    testWidgets('a way to let time pass is a choice like the others, under its own kind (W10)', (
+      tester,
+    ) async {
+      // What the server calls it, and what an unknown kind falls back to.
+      expect(ChoiceKind.fromWire('time'), ChoiceKind.time);
+      expect(ChoiceKind.fromWire('something new'), ChoiceKind.thread);
+
+      StoryChoice? picked;
+      await tester.pumpWidget(
+        wrap(
+          StoryChoices(
+            choices: const [
+              ...choices,
+              StoryChoice(id: 'c3', label: 'Sleep until morning', kind: ChoiceKind.time),
+            ],
+            onChoice: (c) => picked = c,
+          ),
+          scroll: true,
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      final l10n = await english();
+      expect(find.text(l10n.choiceKindTime.toUpperCase()), findsOneWidget);
+      expect(find.byIcon(ChoiceKind.time.icon), findsOneWidget);
+      // It is not the one the eye is led to: that stays the first.
+      expect(tester.getTopLeft(find.text('Sleep until morning')).dy, greaterThan(100));
+      await tester.tap(find.text('Sleep until morning'));
+      expect(picked?.id, 'c3');
+    });
+
     testWidgets('does nothing while disabled', (tester) async {
       StoryChoice? picked;
       await tester.pumpWidget(

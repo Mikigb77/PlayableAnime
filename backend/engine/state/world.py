@@ -112,6 +112,12 @@ class DirectorState(EngineModel):
         description="W16: the last few moments drawn (`engine.director.moments`), newest "
         "last, so the same small thing doesn't happen again straight away.",
     )
+    recent_clock: list[WorldSeconds] = Field(
+        default_factory=list,
+        description="S2, W10: the story's clock at the end of each of the last scenes, newest "
+        "last, since a way to let time pass was last offered: a long run of scenes that took "
+        "next to no time gets one such suggestion.",
+    )
     frequency_drift: float = Field(default=0.0, ge=-1.0, le=1.0)
     recent_sources: list[str] = Field(
         default_factory=list,

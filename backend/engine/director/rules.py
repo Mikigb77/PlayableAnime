@@ -59,6 +59,15 @@ SMALL_GAP_S = 10 * MINUTE
 # A moment drawn recently isn't drawn again until this many others have come.
 RECENT_MOMENTS = 5
 
+# S2, W10: how the player paces a story is theirs to choose, so nothing pushes the clock on. But
+# after a long run of scenes that together took next to no time, this many in a row ending
+# within this span, one of the suggestions is a way to let time pass ("Sleep until morning"),
+# for a player who would like to move on and hasn't thought of it. It is one choice among the
+# others, and after it is offered the run starts over, so it comes at most once in that many
+# scenes.
+SLOW_CLOCK_SCENES = 12
+SLOW_CLOCK_S = 30 * MINUTE
+
 # W16, W10: how long an event from the world's state waits for the player before it plays out, by
 # size. Deck cards carry their own.
 SOURCE_WINDOW_S = {"personal": DAY, "local": 2 * DAY, "world": 7 * DAY}

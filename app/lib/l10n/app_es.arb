@@ -370,6 +370,7 @@
   "choiceKindPersonal": "Personal",
   "choiceKindSide": "Camino secundario",
   "choiceKindWild": "Comodín",
+  "choiceKindTime": "Salto temporal",
   "standingWait": "Esperar",
   "standingObserve": "Observar",
   "composerHint": "¿Qué haces?",

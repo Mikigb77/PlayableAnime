@@ -13,6 +13,10 @@ should get events that make sense for this time lap"):
 
 Events that came due (E2), what a time skip or the road rolls (E7, W10) and what an encounter
 brings come when they come; the clock only spaces what the director adds.
+
+The pace is the player's to choose, so nothing here moves the clock on. After a long run of
+scenes that took next to no time, the suggestions may hold one way to let time pass
+(`clock_is_slow`, S2): an offer, never a push.
 """
 
 from engine.director import rules
@@ -56,3 +60,18 @@ def small_thing_fits(memory: DirectorState, now_s: int) -> bool:
     if memory.last_small_s is not None:
         latest.append(memory.last_small_s)
     return not any(_within(now_s, at_s, rules.SMALL_GAP_S) for at_s in latest)
+
+
+def clock_after(memory: DirectorState, now_s: int) -> list[int]:
+    """The story's clock at the end of each of the last scenes, this one last
+    (`rules.SLOW_CLOCK_SCENES` of them at most)."""
+    return [*memory.recent_clock, now_s][-rules.SLOW_CLOCK_SCENES :]
+
+
+def clock_is_slow(ends: list[int]) -> bool:
+    """S2, W10. Whether a long run of scenes took next to no time: `rules.SLOW_CLOCK_SCENES` in
+    a row that all ended within `rules.SLOW_CLOCK_S` of each other. A clock that jumped in that
+    run, on or back (W10a), is not a slow one."""
+    if len(ends) < rules.SLOW_CLOCK_SCENES:
+        return False
+    return max(ends) - min(ends) < rules.SLOW_CLOCK_S

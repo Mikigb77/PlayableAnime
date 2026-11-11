@@ -136,12 +136,15 @@ class PictureDecision(EngineModel):
 
 
 class ChoiceKind(StrEnum):
-    """S2. Suggestions, at least one of them away from the current thread."""
+    """S2. Suggestions, at least one of them away from the current thread. `TIME` is a way to
+    let hours or days pass, offered now and then to a player whose scenes take next to no time
+    (W10)."""
 
     THREAD = "thread"
     PERSONAL = "personal"
     SIDE = "side"
     WILD = "wild"
+    TIME = "time"
 
 
 class SuggestionPlan(EngineModel):

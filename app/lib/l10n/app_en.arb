@@ -613,6 +613,7 @@
   "choiceKindPersonal": "Personal",
   "choiceKindSide": "Side path",
   "choiceKindWild": "Wild card",
+  "choiceKindTime": "Time skip",
   "standingWait": "Wait",
   "standingObserve": "Observe",
   "composerHint": "What do you do?",

@@ -17,6 +17,7 @@ from engine.contracts import (
     ActionKind,
     Aim,
     Beat,
+    ChoiceKind,
     EventSource,
     GrowthKind,
     Harm,
@@ -685,8 +686,9 @@ def minute(n: int, seconds: int = MINUTE, **intent) -> tuple[str, Intent]:
     requirements=("W16", "W10", "E4", "T17"),
     passes_when=(
         "Inside one hour of story time one of life's events comes at most, with a few small "
-        "moments ten minutes or more apart and no event marked for them; once two hours have "
-        "passed since the event, the next one comes"
+        "moments ten minutes or more apart and no event marked for them, and a way to let time "
+        "pass among the suggestions once in twelve scenes at most; once two hours have passed "
+        "since the event, the next one comes"
     ),
 )
 async def same_hour(ev: Eval) -> None:
@@ -761,6 +763,22 @@ async def same_hour(ev: Eval) -> None:
                 "a small thing keeps ten minutes from what came before it",
                 all(gap >= rules.SMALL_GAP_S for gap in apart),
                 f"{where}: {apart}",
+                live=False,
+            )
+            # S2: the pace is the player's, so nothing pushes the clock on: a way to let time
+            # pass is one choice among the others, once in a long run of short scenes.
+            offered = [
+                n for n, t in enumerate(played) if ChoiceKind.TIME in t.plan.suggestions.kinds
+            ]
+            ev.check(
+                "a way to let time pass is offered now and then, never pushed",
+                1 <= len(offered) <= 60 // rules.SLOW_CLOCK_SCENES
+                and all(
+                    later - sooner >= rules.SLOW_CLOCK_SCENES
+                    for sooner, later in zip(offered, offered[1:], strict=False)
+                )
+                and not any(needs_decision(played[n]) for n in offered),
+                f"{where}: offered in scenes {offered}",
                 live=False,
             )
             if moments:

@@ -261,6 +261,28 @@ void main() {
       ));
     });
 
+    test('now and then a way to let time pass is one of the choices (S2, W10)', () async {
+      Future<Scene> play(TurnInput input) async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(story.id, input, expectedVersion: story.version),
+        );
+        return Scene.fromJson((events.last as SceneCompleted).scene);
+      }
+
+      // Turn 4 offers the usual three.
+      final fourth = await play(const TurnInput.action('I look around', inputMode: 'typed'));
+      expect(fourth.choices.map((c) => c.kind), isNot(contains('time')));
+      // Turn 5 adds one, after the others.
+      final fifth = await play(const TurnInput.action('I look around', inputMode: 'typed'));
+      expect(fifth.choices, hasLength(4));
+      expect(fifth.choices.last.kind, 'time');
+      // Taking it lets the night pass, and the next scene says so.
+      final slept = await play(TurnInput.choice(fifth.choices.last.id));
+      expect(slept.playerAction, fifth.choices.last.label);
+      expect(slept.passageLabel, isNotNull);
+    });
+
     test('the offline heading counts days by the mornings that came (W10)', () {
       const hour = 3600;
       // The fake clock starts at six in the morning.
