@@ -191,7 +191,7 @@ a flood.
 | 4. The world's rules | Whether the world allows it (G8). If not, it plays as what it really is. | Allowed. A fireball would have been a man thrusting his palm at someone. | Allowed: time stop exists in this world, and Lin Feng has it. |
 | 5. Logic, then the dice | What the character brings, set against what stands in the way, makes each step certain, contested, a long shot or ruled out (A2, A8, G14). The facts settle certain and ruled-out steps, and for the rest the character throws their own dice against a number the player can see (A3). Any cost is paid: a power's toll, bullets, money, a favour. | Pistol and nerve against two armed men on their own ground: a hard throw. It falls just short, which leaves Carmine wounded and Luca getting away, but the bartender sees his face. | A straight strike at someone a realm above would be a much harder throw (G18), but Zhao is frozen and can't defend, and breaking an arm, even a realm up, is within what Lin Feng's blow can do. Certain, so there is no throw. The stop leaves Lin Feng drained. |
 | 6. Time passes | The clock moves by how long the action really took. Anything due during it happens in order, and anything that needs the player cuts the action short (W10). | Three minutes. The bartender is already on the phone to Carmine's men (G6). | World: +0 s. Lin Feng: +3 heartbeats (W10a). |
-| 7. Something new, if it's time | The director decides whether an event comes in, drawing on the world's own state first and in the world's own form (W16, G9). It never interrupts an encounter with something unrelated. | Nothing new: the chase is the stakes. | The ripple of stopped time draws an inner-court elder who was passing. It comes from the encounter itself, so it can enter. |
+| 7. Something new, if it's time | The director decides whether an event comes in, drawing on the world's own state first and in the world's own form (W16, G9), and sized to the story time that passed since the last one: minutes after an event, only a small thing of the moment. It never interrupts an encounter with something unrelated. | Nothing new: the chase is the stakes. | The ripple of stopped time draws an inner-court elder who was passing. It comes from the encounter itself, so it can enter. |
 | 8. The narrator tells it | In the world's voice, picking up where the last scene ended, it shows the character doing what the player said, step by step, then the outcome it was given (R1, A3), ending on something the player can act on (S4). The reason shows in the scene details (A8). | Luca pushes through the door, finds Carmine in the back booth and fires twice before the bodyguards can draw. One bullet takes Carmine in the shoulder. Then the screaming, the back door and the alley, ending as headlights turn the corner behind him. | The bucket clatters, the world freezes mid-splash, and Lin Feng walks between the hanging droplets to break Zhao's arm. To the crowd, Zhao's arm simply snaps and he screams, while Lin Feng hasn't moved. |
 | 9. The world remembers | Deeds, witnesses, wounds, attitudes, what the character learned, and any growth or loss are kept (W1–W4, G17). The player sees only what their character knows (C6), in the world's words (G16). | Attempted murder, witnessed. Carmine wants Luca dead, two of the three crews now fear him, and the police will hear by morning. Luca knows only that he was seen. | A dozen disciples saw Zhao fall but not why (W10a, G20). Zhao has a grudge, and the elder is curious. Lin Feng knows the crowd saw nothing, but not that the elder felt it. |
 
@@ -768,7 +768,7 @@ this as state. It is not something the narrator is just asked to remember.
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | W1 | **Deeds.** Every significant player act (killing, saving, betraying, conquering, a public display of power) is recorded as a deed with turn, place, victims, severity 1–5 and witnesses. A victim the scene hasn't named ("I kill some random guy") is made real first, when the place plausibly holds someone like that, so the deed has a victim and the world answers it; in a crowd an onlooker is made real too, to witness it (W2). Who the stranger turns out to be is drawn, hidden, since it tests nothing of the character's (A3): most are ordinary, about 1 in 15 knows how to fight, and a hidden master who always sees it coming is rare, from about 1 in 1,000 in a grounded world to 1 in 200 where powers are everywhere (Miki, 2026-11-05). Someone who can fight comes with the body for it (G13): stronger, quicker and hardier than most, and a hidden master more so and sharp with it, so a master is as hard to cut down as their rank says. Harm the character does only to themselves is no deed against anyone. | P0 |
-| W2 | **Who knows.** Every deed is secret, witnessed or public. Rumors spread to nearby places and factions over in-world time, and their accuracy can drop as they travel; a retelling that strays far enough no longer names the doer ("someone"), which makes it vaguer, not wrong. Characters react only to what they could know, and whoever knows firsthand what a rumor tells believes it only if it is so (C6). **A place is talking before the player character gets there, and its talk reaches them softly** (Miki, 2026-11-11: "maybe you reach a new city, you hear some rumor", then "don't force it, like arriving at a place, immediately hearing stuff. If there is a rumor in a place, we might hear it at some point, but it should be soft, it should blend with the story, and you might miss some rumors, that's also okay"). What has reached a place is what its people are saying, while it is still fresh (60 days): news first, then what is said of the character's own deeds. Nothing is heard by arriving. Code only offers one piece of that talk to a scene, and only to a quiet one: never a scene with an encounter, an event, a decision with stakes or a trip in it, nor one inside stopped time. Such a scene is offered it about one time in three, and always when the character only looks on (S2's observe). Where the place has nothing new to them, the narrator may make up what it talks about, about one quiet scene in ten, and that becomes a lead when it can be followed up (N2). The narrator tells the talk only when the scene has a natural opening for it, one thing, in passing, as part of what is already happening, and leaves it out otherwise, so some talk is missed. Only talk a scene told is recorded as heard, so Memory never lists a rumor no scene said (C6). | P0 |
+| W2 | **Who knows.** Every deed is secret, witnessed or public. Rumors spread to nearby places and factions over in-world time, and their accuracy can drop as they travel; a retelling that strays far enough no longer names the doer ("someone"), which makes it vaguer, not wrong. Characters react only to what they could know, and whoever knows firsthand what a rumor tells believes it only if it is so (C6). **A place is talking before the player character gets there, and its talk reaches them softly** (Miki, 2026-11-11: "maybe you reach a new city, you hear some rumor", then "don't force it, like arriving at a place, immediately hearing stuff. If there is a rumor in a place, we might hear it at some point, but it should be soft, it should blend with the story, and you might miss some rumors, that's also okay"). What has reached a place is what its people are saying, while it is still fresh (60 days): news first, then what is said of the character's own deeds. Nothing is heard by arriving. Code only offers one piece of that talk to a scene, and only to a quiet one: never a scene with an encounter, an event, a decision with stakes or a trip in it, nor one inside stopped time. Such a scene is offered it about one time in three, never within ten minutes of story time of the last small thing or event (W16), and always when the character only looks on (S2's observe). Where the place has nothing new to them, the narrator may make up what it talks about, about one quiet scene in ten, and that becomes a lead when it can be followed up (N2). The narrator tells the talk only when the scene has a natural opening for it, one thing, in passing, as part of what is already happening, and leaves it out otherwise, so some talk is missed. Only talk a scene told is recorded as heard, so Memory never lists a rumor no scene said (C6). | P0 |
 | W3 | **Reputation.** The player has a reputation with each faction and each region, on two separate axes: *esteem* (how much they like you) and *fear* (how dangerous they think you are). A feared tyrant has high fear and low esteem. Reputation moves only by the engine's rules, from deeds and the word that spreads about them, never because the narrator says so. | P0 |
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). The engine moves attitudes by its rules; the narrator can nudge one by at most 10 points per scene, so a single line of dialogue can't turn an enemy into a friend. | P0 |
 | W5 | **Escalation.** A threat level from the player's public deeds and power is an input to each faction's own agenda (E3), not a fixed ladder. How a faction answers depends on its nature and situation: locals avoid or flee, guards, bounties and hunters, an army or elite heroes, a coalition, but also appeasement, a recruitment offer, worship, a bribe, an assassin, an attempt to seal the player away, using the player against a rival, or ignoring them while busy with its own war. A faction answers with what it really has, and the world never conjures a champion that couldn't exist just to match the player (A9). One guarantee holds: once the player crosses a threat tier, the world visibly reacts within a set in-world time (W10), never within a set number of turns. | P0 |
@@ -876,7 +876,12 @@ in a trap. Nothing in the world is timed in turns.
   due in that stretch in time order. The first one that needs the player stops the action at that
   moment, and the scene starts there: the guards kick in the door at 3 a.m., two hours into the
   sleep. Events that don't need the player simply happen, and the player learns of them only when the
-  character could know (C6).
+  character could know (C6). **How much time passes is the story's to grant, never the player's to
+  take** (Miki, 2026-11-11: "if you see something like three days later, I wake up... we will see if
+  it happens. During those three days, even if you are in your room, something could happen. So
+  the time elapsing doesn't depend on the user, but rather on the story"): a stretch of a day or
+  more is rolled for what happens in it at a rate at which a few days may well hold something
+  (E7), and the scene starts where it was cut short.
 - **Encounters.** A fight, a chase, a duel of words or a negotiation is an encounter. Thirty turns of
   fighting a mage can take five in-world minutes. The narration can make a minute feel endless, but
   the clock moves only by that minute, and so does the rest of the world. W16 doesn't count encounter
@@ -896,7 +901,8 @@ in a trap. Nothing in the world is timed in turns.
   events (E7); a time skip never starts one. A fight stays a fight whatever else is proposed, and
   anything else becomes a fight when a step fights.
 - **Turns count only two things:** the player's attention, for W16, and model calls, for cost (K2,
-  K8).
+  K8). The player's attention says when a scene needs something; what comes is sized to the story
+  time that passed (W16), so a hundred scenes played inside one hour get what fits an hour.
 - **Time is visible and testable.** Each scene stores the clock before and after the turn and its
   duration. The app shows the date, the time of day and how long the last action took ("+8 h"), and
   `/status` shows how long ago key events happened. Staff can see the timeline of pending events with
@@ -1109,8 +1115,28 @@ how often events come, but never turns them off. The details:
   consequence (the flood takes the barn, the stranger keeps coming back) instead of repeating. It
   waits for an in-world time that fits it (hours for a flood, days for a summons, W10), and the
   player takes it up by acting on it or on the people in it.
+- **What comes fits the time that passed** (Miki, 2026-11-11: "if the user decides that he will
+  play 100 or 1,000 short parts that take no more than a second, that's player choice. Still,
+  some stuff should happen... 100 scenes in the same hour should get events that make sense for
+  this time lap"). Stall pressure counts the player's quiet turns and says when a scene needs
+  something; the story's clock says what. One of life's events needs two hours of story time
+  since the last event, a local one two days since the last local or world one, and a world one
+  two weeks since the last world one, and no event follows a smaller one sooner than the smaller
+  one's gap. Until an event fits, pressure brings a **moment** instead: a small thing of here and
+  now, drawn by code from a table as generic as the deck (someone nearby draws the eye, a sound
+  that doesn't belong, a familiar face going by, a small mishap or kindness) and dressed by the
+  narrator in the world's form. A moment asks nothing: no decision, no thread, nothing that plays
+  out if ignored, and no event shown in the app. It only becomes more if the player acts on it.
+  A moment, like the talk of a place (W2), needs ten minutes of story time since the last small
+  thing or event, and sooner than that nothing new comes in, however many scenes are played. So
+  a hundred scenes inside one hour hold one of life's events at most and a handful of small
+  things, and a story played in scenes of hours gets its events as before. A story's first event
+  waits on nothing. Events that came due (E2), what a time skip or the road rolls, and what an
+  encounter brings come when they come; the clock spaces only what the director adds.
 - **Time skips** roll for events inside the skipped time and stop early when one needs a decision
-  (E7): "I farm here for a year" can stop in month four when the river rises.
+  (E7): "I farm here for a year" can stop in month four when the river rises, and "I train for a
+  week" may be cut short on the third day. Whether the time passes quietly is the story's to
+  say (W10).
 - **The road** brings its own events to a trip, far more often than a quiet year at home does
   (W10): someone on the way, a way that is blocked, trouble, something off the way, a hard
   stretch, a place to stop.
@@ -1151,6 +1177,8 @@ own form (G9) and reuses existing characters and threads before inventing new on
 through W15 with a recorded origin. The P0 version is one table per event size (personal, local,
 world), and one for what a trip meets on the way (W10), drawn only while the character travels and
 as generic as the rest: the way is a mountain path, a motorway, a sea lane or a jump route (G5).
+Beside the deck is a table of moments, the small things of here and now that come when too
+little story time has passed for an event (W16), drawn the same way.
 
 **E5 One reaction loop for every actor (P1).** Deeds, rumors, reputation, grudges and discovery
 (W1–W4, W13) apply to NPC and faction deeds as well as the player's. An NPC who murders a rival gets
@@ -1163,7 +1191,18 @@ player is comfortably in control and falls after a big event.
 gang, researching or training (A4) can be one montage turn. The engine advances the clock, runs the
 world for the elapsed time in capped steps (K8), rolls for W16 events along the way, and stops the
 montage early when one needs a decision. A trip rolls what the road brings in their place, at the
-road's own rate (W10).
+road's own rate (W10). The time is the story's to grant (W10; Miki, 2026-11-11: "maybe I say, I
+train for a week. Well, we will see if you just train for a week, or maybe during that week
+there is something happening that forces a scene, and it breaks your flow. But that's what
+really makes the world feel alive"), so the rate is one at which a few days may well hold
+something: an event every 16, 8 or 4 days of skipped time on average for calm, normal and
+dramatic. On normal about one skip of a day in ten is cut short, three days about three times
+in ten, a week a little over half the time and two weeks nearly four times in five. A longer
+stretch is told more coarsely: the average gap grows with it, to half its length, so any
+stretch from a month to a thousand years is cut short about four times in five, a year in its
+fourth or fifth month on average rather than in its first week. What is rolled keeps to the
+sizes the time since the last events has room for (W16). Training cut short keeps the effort
+put in (A4).
 
 ## Open plot
 
@@ -1507,7 +1546,8 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Time loop | A world rewind, then the player repeats the same actions, then changes one | The same events replay on schedule, then the timeline diverges after the change (W10a) |
 | Ignored event | The player ignores a W16 event for 5 turns | The event plays out with its consequence instead of repeating |
 | Themes off | Quiet life again, with romance and dark themes switched off (F7) | No romance or dark events are drawn |
-| Time skip | "I farm here for a year" | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap |
+| Time skip | "I farm here for a year", and "I train for a week" over many seeds | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap. Some weeks of training pass whole and some are cut short, with the effort put in kept (E7, A4) |
+| The same hour | The player plays 60 quiet scenes of a minute each, then scenes of half an hour, on calm, normal and dramatic | Inside the hour one of life's events comes at most, with a few small moments ten minutes or more apart and no event marked for them; once two hours of story time have passed since the event, the next one comes (W16, W10) |
 | Ignored hook | The player ignores the premise's hook for 20 turns | The hook's clock advances and resolves without the player (the exam happens) |
 | Walk away | "I leave the academy and open a noodle shop" | The story follows the noodle shop, and the academy threads go on off-screen |
 | Divergence | Same premise and same actions, 5 seeds, 50 turns | The worlds differ in events, threads and new characters |

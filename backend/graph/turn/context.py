@@ -605,6 +605,9 @@ def narration_brief(
         sections.append(
             ("HAPPENINGS", [_dump(h, exclude=_PLANNED_HIDDEN) for h in plan.happenings])
         )
+    if plan.moment is not None:
+        # W16: a small thing of here and now, when too little time has passed for an event.
+        sections.append(("MOMENT", _dump(plan.moment, exclude={"id"})))
     callbacks = [after.threads[t] for t in plan.callbacks if t in after.threads]
     if callbacks:
         sections.append(

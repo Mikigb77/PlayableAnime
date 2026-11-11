@@ -274,10 +274,11 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     ending = ending_mod.ending_of(turn.state, played.state, intent, played.resolution, turn.kind)
     if ending is not None:
         # N6: the protagonist's last scene ends on them, with no new event, picture or
-        # suggestion to act on, and no talk of the place.
+        # suggestion to act on, no small thing of the moment and no talk of the place.
         plan = plan.model_copy(
             update={
                 "event": None,
+                "moment": None,
                 "picture": None,
                 "suggestions": SuggestionPlan(count=0),
                 "talk": None,

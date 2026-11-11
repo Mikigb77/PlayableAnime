@@ -209,8 +209,28 @@ class PlannedTalk(EngineModel):
     rumor_id: str | None = None
 
 
+class PlannedMoment(EngineModel):
+    """W16, W10. A small thing of here and now that happens around the player character in the
+    scene, when the story has been quiet and too little time has passed for one of life's events
+    (Miki, 2026-11-11: "100 scenes in the same hour should get events that make sense for this
+    time lap"). It asks nothing: no decision, no thread, nothing that plays out if ignored, and
+    the app marks no event. Code draws it (`engine.director.moments`), generic on purpose, and
+    the narrator dresses it in the world's own form (G5, G9)."""
+
+    id: str
+    brief: str = Field(description="What happens, for the narrator to tell in the world's form.")
+    cast_ids: list[str] = Field(
+        default_factory=list, description="An existing character it is about, when it has one."
+    )
+
+
 class DirectorPlan(EngineModel):
     event: PlannedEvent | None = None
+    moment: PlannedMoment | None = Field(
+        default=None,
+        description="W16: a small thing of the moment, in place of an event the time that "
+        "passed has no room for.",
+    )
     happenings: list[PlannedEvent] = Field(
         default_factory=list,
         description="Other things that came due during the turn, such as a festival in a time "

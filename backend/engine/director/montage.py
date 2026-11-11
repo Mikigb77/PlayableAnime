@@ -8,6 +8,14 @@ is marked `needs_player`, so the clock stops at it and the scene starts there ("
 in month four"). Rolling stops at that event, because nothing after it has happened yet. Small good
 things that need no decision simply happen on the way and colour the montage.
 
+How much time passes is the story's to grant, never the player's to take (Miki, 2026-11-11:
+"we will see if you just train for a week, or maybe during that week there is something
+happening that forces a scene ... that's what really makes the world feel alive"). So the rate
+is one at which a few days may well hold something (`rules.MONTAGE_MEAN_GAP_S`), and a longer
+stretch is told more coarsely (`stretch_gap`): a year is cut short as surely as a month, some
+months in, without stopping in its first week every time. What is rolled keeps to the sizes the
+time since the last events leaves room for, as any event does (`clock.sizes_in_time`).
+
 A trip is rolled the same way from its own table, at the road's own, much higher rate, so a
 journey meets things on the way (W10, `schedule_road`).
 """
@@ -19,6 +27,7 @@ from dataclasses import replace
 from engine.base import DAY
 from engine.context import TurnContext
 from engine.director import deck, rules
+from engine.director.clock import sizes_in_time
 from engine.director.due import MONTAGE_KIND, pick_payload
 from engine.director.sources import Pick, from_card, pick_event
 from engine.director.themes import allowed_themes
@@ -46,11 +55,16 @@ def schedule_stretch(
     """
     if end_s - start_s < rules.MONTAGE_MIN_S or state.scene.encounter is not None:
         return state
-    gap = rules.MONTAGE_MEAN_GAP_S[ctx.settings.event_frequency]
+    gap = stretch_gap(end_s - start_s, ctx)
     allowed = allowed_themes(state, ctx)
 
-    def pick(current: WorldState, pick_rng: SeededRng, recent: list[str]) -> Pick | None:
-        return pick_event(current, ctx, pick_rng, allowed, recent=recent, decision_only=False)
+    def pick(current: WorldState, pick_rng: SeededRng, recent: list[str], at_s: int) -> Pick | None:
+        # W10: only what the time since the last events has room for, at that point of the
+        # stretch.
+        sizes = sizes_in_time(current.director, at_s)
+        return pick_event(
+            current, ctx, pick_rng, allowed, recent=recent, decision_only=False, sizes=sizes
+        )
 
     return _schedule(
         state,
@@ -61,6 +75,16 @@ def schedule_stretch(
         rng,
         origin="W16 roll inside a time skip (E7)",
     )
+
+
+def stretch_gap(length_s: int, ctx: TurnContext) -> int:
+    """The mean time between events inside a stretch of `length_s`: the story's rate
+    (`rules.MONTAGE_MEAN_GAP_S`), or the stretch's length over `rules.MONTAGE_LONG_SHARE` once
+    that is longer. A long stretch is told more coarsely, so the chance that something cuts it
+    short rises with its length and then holds: a year stops about as often as a month, some
+    months in."""
+    base = rules.MONTAGE_MEAN_GAP_S[ctx.settings.event_frequency]
+    return max(base, length_s // rules.MONTAGE_LONG_SHARE)
 
 
 def road_steps(start_s: int, end_s: int) -> list[tuple[int, int]]:
@@ -91,7 +115,7 @@ def schedule_road(
     gap = rules.ROAD_MEAN_GAP_S[ctx.settings.event_frequency] * 2**quieter
     allowed = allowed_themes(state, ctx)
 
-    def pick(current: WorldState, pick_rng: SeededRng, recent: list[str]) -> Pick | None:
+    def pick(current: WorldState, pick_rng: SeededRng, recent: list[str], at_s: int) -> Pick | None:
         card = deck.draw_road(ctx, pick_rng, allowed, recent=recent)
         if card is None:
             return None
@@ -108,15 +132,16 @@ def _schedule(
     state: WorldState,
     steps: list[tuple[int, int]],
     gap: int,
-    pick_for: Callable[[WorldState, SeededRng, list[str]], Pick | None],
+    pick_for: Callable[[WorldState, SeededRng, list[str], int], Pick | None],
     ctx: TurnContext,
     rng: SeededRng,
     *,
     origin: str,
 ) -> WorldState:
     """Roll each step for an event, with a chance from its length and the mean `gap` between
-    events, and schedule what `pick_for` draws at a seeded time inside the step. Rolling stops
-    at the first event that needs a decision: nothing after it has happened yet."""
+    events, and schedule what `pick_for` draws for the step, given when it starts, at a seeded
+    time inside it. Rolling stops at the first event that needs a decision: nothing after it has
+    happened yet."""
     recent = list(state.director.recent_sources)
     start_s = steps[0][0]
     new: WorldState | None = None
@@ -124,7 +149,7 @@ def _schedule(
         step_rng = rng.child("step", index)
         if not step_rng.chance(1 - math.exp(-(high - low) / gap)):
             continue
-        pick = pick_for(new or state, step_rng.child("pick"), recent)
+        pick = pick_for(new or state, step_rng.child("pick"), recent, low)
         if pick is None:
             continue
         new = new or state.model_copy(deep=True)
