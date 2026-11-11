@@ -28,7 +28,7 @@ from engine.contracts import (
 )
 from engine.contracts.resolution import Peril, StepResolution
 from engine.invariants import ancestry
-from engine.labels import ago_label, in_label, moment, span_label
+from engine.labels import ago_label, in_label, moment, passage_label, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.sheet import TalentStrength
@@ -581,7 +581,7 @@ def narration_brief(
         if intent is not None:
             sections.append(("ACTION", _action_view(intent, words)))
         sections.append(("OUTCOME", _outcome_view(resolution, after)))
-        sections.append(("TIME", _time_view(before, after)))
+        sections.append(("TIME", _time_view(before, after, settings.language)))
     # The director tells its own events, and the world's events it made the scene's event or a
     # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
     told = {
@@ -833,9 +833,11 @@ def _now_view(state: WorldState) -> dict[str, Any]:
     return moment(state.bible.calendar, state.world_s).model_dump()
 
 
-def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
+def _time_view(before: WorldState, after: WorldState, language: Language) -> dict[str, Any]:
     """W10. When the scene began and what time it is now, with the time the action took: the
-    telling keeps to the clock."""
+    telling keeps to the clock. `heading` is what the player reads over a scene that hours or
+    days passed in, in the story's language (`labels.passage_label`), so the telling doesn't
+    say it twice."""
     elapsed = after.world_s - before.world_s
     lived = after.player.personal_s(after.world_s) - before.player.personal_s(before.world_s)
     view: dict[str, Any] = {
@@ -846,6 +848,9 @@ def _time_view(before: WorldState, after: WorldState) -> dict[str, Any]:
     }
     if lived != elapsed:
         view["your_seconds_lived"] = lived
+    heading = passage_label(after.bible.calendar, before.world_s, after.world_s, language)
+    if heading is not None:
+        view["heading"] = heading
     return view
 
 

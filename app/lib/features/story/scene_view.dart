@@ -4,8 +4,9 @@ import '../../core/l10n.dart';
 import '../../design/design.dart';
 import 'story_models.dart';
 
-/// One saved scene in the feed: what the player did, how long it took and when it ended (W10,
-/// W10a), any event (W16), the narration, its picture once painted (M3), the characters present
+/// One saved scene in the feed: what the player did, the heading when hours or days passed in it
+/// ("Three days later"), how long it took and when it ended (W10, W10a), any event (W16), the
+/// narration, its picture once painted (M3), the characters present
 /// (M4) and a footer that opens the details (A8), reads the scene aloud (V8) and opens the scene
 /// menu (F6, M2).
 class SceneView extends StatelessWidget {
@@ -60,6 +61,7 @@ class SceneView extends StatelessWidget {
       spokenAction: scene.spoken,
       ornament: ornament,
       pictureAfterNarration: true,
+      passage: scene.passageLabel,
       time: scene.hasTime
           ? TimeChip(
               // An opening takes no time, so it shows only when it happens.

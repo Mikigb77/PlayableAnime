@@ -4,6 +4,7 @@ import 'package:playable_anime/core/api/api_error.dart';
 import 'package:playable_anime/core/api/turn_events.dart';
 import 'package:playable_anime/core/fake/fake_auth.dart';
 import 'package:playable_anime/core/fake/fake_backend.dart';
+import 'package:playable_anime/core/fake/fake_stories.dart';
 import 'package:playable_anime/core/json.dart';
 import 'package:playable_anime/features/discover/premises.dart';
 import 'package:playable_anime/features/library/library.dart';
@@ -234,6 +235,43 @@ void main() {
       expect(events.whereType<SceneCompleted>(), isEmpty);
       expect((events.last as TurnFailed).error.code, ApiErrorCode.network);
       expect((await stories.get(story.id)).version, story.version + 1);
+    });
+
+    test('a scene that days passed in carries its heading, sent with its steps (W10)', () async {
+      Future<(String?, String?)> headings(String words) async {
+        final story = await stories.get((await library.stories()).single.id);
+        final events = await collect(
+          await stories.takeTurn(
+            story.id,
+            TurnInput.action(words, inputMode: 'typed'),
+            expectedVersion: story.version,
+          ),
+        );
+        final decided = events.whereType<StepsDecided>().single;
+        final saved = Scene.fromJson((events.last as SceneCompleted).scene);
+        return (decided.passageLabel, saved.passageLabel);
+      }
+
+      // A scene of minutes has none.
+      expect(await headings('I look around the courtyard'), (null, null));
+      expect(await headings('I train with the sword for a week'), ('A week later', 'A week later'));
+      expect(await headings('I wait three days for an answer'), (
+        'Three days later',
+        'Three days later',
+      ));
+    });
+
+    test('the offline heading counts days by the mornings that came (W10)', () {
+      const hour = 3600;
+      // The fake clock starts at six in the morning.
+      expect(fakePassageLabel(0, hour), isNull);
+      expect(fakePassageLabel(0, 3 * hour), 'Three hours later');
+      // Evening into the small hours is the same night; into the morning is the next day.
+      expect(fakePassageLabel(14 * hour, 20 * hour), 'Six hours later');
+      expect(fakePassageLabel(14 * hour, 24 * hour), 'The next day');
+      expect(fakePassageLabel(0, 3 * 24 * hour), 'Three days later');
+      expect(fakePassageLabel(0, 7 * 24 * hour), 'A week later');
+      expect(fakePassageLabel(0, 21 * 24 * hour), 'Three weeks later');
     });
 
     group('the dice (A3)', () {

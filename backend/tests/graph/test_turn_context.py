@@ -9,6 +9,7 @@ from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
     GoreLevel,
+    Language,
     NarrationLength,
     Rating,
     StorySettings,
@@ -376,8 +377,31 @@ def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():
     assert time == (
         '{"began":{"date":"Day 1, morning","clock":"07:00","part_of_day":"morning"},'
         '"now":{"date":"Day 1, dusk","clock":"18:30","part_of_day":"dusk"},'
-        '"passed":"11 h 30 min","world_seconds_passed":41400}'
+        '"passed":"11 h 30 min","world_seconds_passed":41400,"heading":"Twelve hours later"}'
     )
+
+
+def scene_time(hours: float, **settings) -> dict:
+    """The TIME the narrator is given for a scene that took `hours`, from 07:00 on day 1."""
+    state = cultivation_world()
+    after = state.model_copy(deep=True)
+    after.world_s += int(hours * HOUR)
+    action = brief(
+        state, after=after, context=ctx(**settings), intent=Intent(summary="pass the time")
+    )
+    return json.loads(action.user.split("## TIME\n", 1)[1].split("\n", 1)[0])
+
+
+def test_the_narrator_is_told_the_heading_the_player_reads_over_the_scene():
+    """W10: a scene that hours or days passed in is headed with them, in the story's language,
+    and the telling never says it again."""
+    assert "heading" not in scene_time(1.5)  # a short scene has none: the time bar tells it
+    assert scene_time(3)["heading"] == "Three hours later"
+    assert scene_time(24)["heading"] == "The next day"
+    assert scene_time(72)["heading"] == "Three days later"
+    assert scene_time(72, language=Language.ES)["heading"] == "Tres días después"
+    assert scene_time(72, language=Language.CA)["heading"] == "Tres dies després"
+    assert "never say the heading's words again" in prompts.NARRATOR_SYSTEM
     assert "- Keep to the clock (W10)." in prompts.NARRATOR_SYSTEM
     assert "never skip ahead" in prompts.NARRATOR_SYSTEM
 

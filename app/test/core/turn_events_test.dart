@@ -62,8 +62,31 @@ void main() {
     final decided = out[1] as StepsDecided;
     expect(decided.turn, 4);
     expect((decided.details['steps'] as List).single, containsPair('text', 'Leap'));
+    // A scene of seconds has no heading (W10).
+    expect(decided.passageLabel, isNull);
     final started = out.first as TurnStarted;
     expect((started.resumed, started.kind, started.action), (false, null, null));
+  });
+
+  test('the heading of a scene that days passed in comes with its steps (W10)', () async {
+    Future<StepsDecided> decided(Object? heading) async {
+      final out = await parseTurnEvents(
+        events(
+          encodeSseEvent('steps.decided', {
+            'turn': 4,
+            'details': {'steps': <Object>[]},
+            'passage_label': heading,
+          }),
+        ),
+      ).toList();
+      // The stream ends there, so a failure follows: only the steps matter here.
+      return out.whereType<StepsDecided>().single;
+    }
+
+    expect((await decided('Three days later')).passageLabel, 'Three days later');
+    // An empty one, or one that isn't words, is no heading.
+    expect((await decided('  ')).passageLabel, isNull);
+    expect((await decided(3)).passageLabel, isNull);
   });
 
   test('a turn the story owed says so as it starts, with what the player did (A3)', () async {

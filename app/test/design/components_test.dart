@@ -41,7 +41,43 @@ void main() {
       await tester.pumpWidget(wrap(const SceneCard(narration: Text('Only words.'))));
       expect(find.byType(TimeChip), findsNothing);
       expect(find.byType(EventBadge), findsNothing);
+      expect(find.byType(PassageHeading), findsNothing);
       expect(find.byType(SceneOrnament), findsOneWidget);
+    });
+
+    testWidgets('a scene that days passed in opens under its heading (W10)', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const SceneCard(
+            playerAction: 'I train with the sword for a week',
+            passage: 'Three days later',
+            time: TimeChip(duration: '+3 d', label: 'Day 4, dawn'),
+            narration: Text('On the third morning the bell rings.'),
+          ),
+          scroll: true,
+        ),
+      );
+      // Under what the player did and over the time and the story, as a heading.
+      final heading = tester.getRect(find.text('Three days later'));
+      expect(heading.top, greaterThan(tester.getRect(find.textContaining('I train')).bottom));
+      expect(heading.bottom, lessThan(tester.getRect(find.byType(TimeChip)).top));
+      expect(
+        tester.getSemantics(find.byType(PassageHeading)),
+        matchesSemantics(label: 'Three days later', isHeader: true),
+      );
+    });
+
+    testWidgets('a long heading in large text wraps between its lines', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: SizedBox(width: 260, child: PassageHeading('Diecisiete meses después')),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.text('Diecisiete meses después')).height, greaterThan(60));
     });
   });
 

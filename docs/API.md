@@ -158,7 +158,8 @@ ExportStory  {id, title, premise, genre, rating, settings, turn, version, create
                                                            # rewind took back comes before the
                                                            # scene played anew in its turn (C8)
 ExportScene  {turn, kind, player_action?, input_mode?, narration, choices, details, event?,
-              time: {world_start_s, world_end_s, label, duration_label, personal_label?},
+              time: {world_start_s, world_end_s, label, duration_label, personal_label?,
+                     passage_label?},
               image?: {kind, status, url?},
               rewound: bool,                               # a rewind took it back (C8)
               created_at}
@@ -462,7 +463,7 @@ server answers `200` with `Content-Type: text/event-stream`, it sends these even
 | Event | Data | Notes |
 | --- | --- | --- |
 | `turn.started` | `{turn, resumed?: true, kind?, action?}` | Sent at once, so the app can show the action and a typing state. `resumed`, `kind` and `action` are there only when the story owed a turn and this request plays it out (A3): the app shows that action, not the one it sent. |
-| `steps.decided` | `{turn, details: SceneDetails}` | What the engine decided, before the narrator writes a word (A3): each step with its class, its reason and the dice that decided it, exactly as the scene in `scene.completed` will carry them. Sent once, right after `turn.started`, on every turn with steps; an opening and an end turn with no note have none. The app can show the throws while the story is written. |
+| `steps.decided` | `{turn, details: SceneDetails, passage_label?}` | What the engine decided, before the narrator writes a word (A3): each step with its class, its reason and the dice that decided it, exactly as the scene in `scene.completed` will carry them. Sent once, right after `turn.started`, on every turn with steps; an opening and an end turn with no note have none. The app can show the throws while the story is written. `passage_label` is the scene's heading when hours or days passed in it (W10), the same words as the scene's `time.passage_label`, so the app can show it over the story before its first words. |
 | `narration.delta` | `{text}` | Narration as it is written. The first one arrives within about 2 s (S3). |
 | `narration.reset` | `{reason: "cutaway"|"template"|"retry"}` | The partial narration is being rewritten, so the app clears it: `cutaway` and `template` when it was blocked (F4), `retry` when the model failed partway and is being retried once (T7). |
 | `scene.completed` | `{scene: Scene, story: {version, clock, ending?: Ending}}` | The turn is saved. Always the last event of a successful turn. `story.ending` is there when this turn brought the story to its ending (N6). |
@@ -490,7 +491,8 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing"|"end",
        choices: [{id, label, kind: "thread"|"personal"|"side"|"wild"}],   # 0 to 4 (S2)
        standing_actions: ["wait", "observe"],
        time: {world_start_s, world_end_s, label, duration_label,   # "+8 h" (W10)
-              personal_label?},                                   # "World: +0 s. You: +40 s." (W10a)
+              personal_label?,                                    # "World: +0 s. You: +40 s." (W10a)
+              passage_label?},                                    # "Three days later" (W10)
        details: SceneDetails,
        event?: {size: "personal"|"local"|"world", title},        # a W16 event arrived
        image?: SceneImage,
