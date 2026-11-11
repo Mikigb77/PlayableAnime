@@ -31,6 +31,7 @@ class PendingTurn {
     this.text = '',
     this.error,
     this.details,
+    this.passageLabel,
     this.owedKind,
   });
 
@@ -52,6 +53,10 @@ class PendingTurn {
   /// story is written (`steps.decided`, A3).
   final SceneDetails? details;
 
+  /// The heading of a scene that hours or days passed in, such as "Three days later" (W10), which
+  /// comes with the steps and so stands over the story before its first words.
+  final String? passageLabel;
+
   /// The kind of the turn the story owed, when that is the one playing (A3).
   final String? owedKind;
 
@@ -69,6 +74,7 @@ class PendingTurn {
     String? text,
     ApiException? error,
     SceneDetails? details,
+    String? passageLabel,
   }) => PendingTurn(
     input: input,
     label: label,
@@ -77,6 +83,7 @@ class PendingTurn {
     text: text ?? this.text,
     error: error ?? this.error,
     details: details ?? this.details,
+    passageLabel: passageLabel ?? this.passageLabel,
     owedKind: owedKind,
   );
 
@@ -90,6 +97,7 @@ class PendingTurn {
     text: text,
     error: error,
     details: details,
+    passageLabel: passageLabel,
     owedKind: kind,
   );
 }
@@ -716,7 +724,7 @@ class PlayController extends ChangeNotifier {
       case TurnStarted(:final turn, :final resumed, :final kind, :final action):
         _startedTurn = turn;
         if (resumed) _playingOwed(pending, turn: turn, kind: kind, action: action);
-      case StepsDecided(:final turn, :final details):
+      case StepsDecided(:final turn, :final details, :final passageLabel):
         final SceneDetails decided;
         try {
           decided = SceneDetails.fromJson(details);
@@ -725,7 +733,7 @@ class PlayController extends ChangeNotifier {
           return;
         }
         _startedTurn ??= turn;
-        _pending = pending.copyWith(details: decided);
+        _pending = pending.copyWith(details: decided, passageLabel: passageLabel);
         // A3: from this moment the story owes this turn.
         _story = _story!.copyWith(
           unfinishedTurn: () => UnfinishedTurn(turn: turn, kind: pending.kind, action: _shown),

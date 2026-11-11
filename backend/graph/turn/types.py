@@ -333,10 +333,13 @@ class TurnResult:
 class StepsDecided:
     """`steps.decided`: what the engine decided, before the narrator writes a word (A3, B7).
     `details` is what the finished scene will carry. `reading` is how the turn was read, for the
-    endpoint to keep before it shows them, so the turn is played out as it was decided."""
+    endpoint to keep before it shows them, so the turn is played out as it was decided.
+    `passage_label` is the heading the scene will carry when hours or days passed in it ("Three
+    days later", W10), so the player reads it before the telling starts."""
 
     details: SceneDetails
     reading: Reading
+    passage_label: str | None = None
 
     @property
     def throws(self) -> list[ThrowDetail]:

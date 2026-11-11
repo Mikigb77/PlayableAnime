@@ -6,9 +6,10 @@ import '../tokens.dart';
 import 'pills.dart';
 
 /// One scene in the reading feed. It reads like a page, not a chat: what the player did beside
-/// a thin line of the accent, then the time it took and any event as chips, the narration in the
-/// reading serif, the picture full-bleed across the column, and a footer with the characters
-/// present and the way into the scene's details, with a quiet ornament between scenes.
+/// a thin line of the accent, the heading of a scene that hours or days passed in ("Three days
+/// later"), then the time it took and any event as chips, the narration in the reading serif,
+/// the picture full-bleed across the column, and a footer with the characters present and the
+/// way into the scene's details, with a quiet ornament between scenes.
 ///
 /// Every part is a slot, so the play screen (WS14) passes its own widgets: a [TimeChip], an
 /// [EventBadge], a [PictureSlot], a [StreamingNarration] or [NarrationText], a [PortraitStack].
@@ -18,6 +19,7 @@ class SceneCard extends StatelessWidget {
     required this.narration,
     this.playerAction,
     this.spokenAction = false,
+    this.passage,
     this.time,
     this.event,
     this.picture,
@@ -37,6 +39,9 @@ class SceneCard extends StatelessWidget {
 
   /// The action was dictated (V7), shown with a small mic.
   final bool spokenAction;
+
+  /// The heading of a scene that hours or days passed in, such as "Three days later" (W10).
+  final String? passage;
   final Widget? time;
   final Widget? event;
   final Widget? picture;
@@ -76,6 +81,11 @@ class SceneCard extends StatelessWidget {
           Padding(
             padding: pad.copyWith(bottom: 14),
             child: _PlayerAction(text: action, spoken: spokenAction),
+          ),
+        if (passage case final passage?)
+          Padding(
+            padding: pad.copyWith(top: playerAction == null ? 0 : 6, bottom: 20),
+            child: PassageHeading(passage),
           ),
         if (hasMeta)
           Padding(
@@ -184,6 +194,53 @@ class _PlayerAction extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The heading over a scene that hours or days passed in, as a book marks a cut (W10): "Three
+/// days later" in the display serif, between two hairlines of the accent that fade out to the
+/// sides. The words are the server's, in the story's language.
+class PassageHeading extends StatelessWidget {
+  const PassageHeading(this.text, {super.key});
+
+  final String text;
+
+  /// The least a line keeps beside the words, and the gap between a line and the words.
+  static const double _line = 28;
+  static const double _gap = Space.lg;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lucid;
+    final line = colors.accent.withValues(alpha: 0.5);
+    final style = Theme.of(context).textTheme.headlineSmall!.copyWith(
+      fontSize: 19,
+      height: 26 / 19,
+      letterSpacing: 0.2,
+      color: colors.textPrimary,
+    );
+    return Semantics(
+      header: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The words take what they need and the lines share the rest, so a long heading in
+          // large text wraps between two short lines instead of running off the page.
+          final room = constraints.maxWidth - 2 * (_line + _gap);
+          return Row(
+            children: [
+              Expanded(child: _FadingLine(color: line)),
+              const SizedBox(width: _gap),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: room < 0 ? 0 : room),
+                child: Text(text, textAlign: TextAlign.center, style: style),
+              ),
+              const SizedBox(width: _gap),
+              Expanded(child: _FadingLine(color: line, reversed: true)),
+            ],
+          );
+        },
       ),
     );
   }

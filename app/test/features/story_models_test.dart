@@ -68,6 +68,7 @@ void main() {
       expect(scene.choices.last.kind, 'wild');
       expect(scene.durationLabel, '+40 s');
       expect(scene.personalTimeLabel, contains('You: +40 s'));
+      expect(scene.passageLabel, isNull);
       expect(scene.eventSize, 'local');
       expect(scene.image?.status, 'planned');
       expect(scene.image?.isReady, isFalse);
@@ -356,6 +357,30 @@ void main() {
       expect(details.steps.last.beats, isEmpty);
       expect(details.chain, isEmpty);
       expect(details.stoppedAtStep, 1);
+    });
+
+    test('a scene that hours or days passed in reads its heading (W10)', () {
+      Scene scene(Object? heading) => Scene.fromJson({
+        'turn': 6,
+        'kind': 'action',
+        'player_action': 'I train with the sword for a week',
+        'narration': 'On the third morning the bell rings.',
+        'time': {
+          'world_start_s': 0,
+          'world_end_s': 259200,
+          'label': 'Day 4, dawn',
+          'duration_label': '+3 d',
+          'passage_label': ?heading,
+        },
+      });
+
+      expect(scene('Three days later').passageLabel, 'Three days later');
+      // It stays with the scene when its picture arrives.
+      final painted = scene('Three days later').withImage(const SceneImage(status: 'ready'));
+      expect(painted.passageLabel, 'Three days later');
+      // A server from before headings sends none, and an empty one is none.
+      expect(scene(null).passageLabel, isNull);
+      expect(scene('').passageLabel, isNull);
     });
 
     test('an empty duration reads as none, and a blocked scene says so', () {

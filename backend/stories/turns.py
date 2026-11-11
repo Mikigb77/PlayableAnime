@@ -303,10 +303,13 @@ async def stream(
                         # A3: kept before its steps are shown, so the turn is played out.
                         await akeep(prepared, event)
                         run.owed = True
-                    yield sse(
-                        "steps.decided",
-                        {"turn": turn.ctx.turn, "details": event.details.model_dump(mode="json")},
-                    )
+                    shown = {
+                        "turn": turn.ctx.turn,
+                        "details": event.details.model_dump(mode="json"),
+                    }
+                    if event.passage_label:
+                        shown["passage_label"] = event.passage_label  # W10
+                    yield sse("steps.decided", shown)
                 else:
                     run.result = event.result
         if run.result is None:
@@ -514,6 +517,7 @@ def save(
             time_label=times.label,
             duration_label=times.duration_label,
             personal_label=times.personal_label or "",
+            passage_label=times.passage_label or "",
             timeline_id=draft.timeline_id,
             cast=cast(state),
             # The cover is the story's, not this scene's (M1): Illustrate draws the scene itself.

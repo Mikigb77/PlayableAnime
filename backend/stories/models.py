@@ -141,6 +141,9 @@ class Scene(models.Model):
     time_label = models.CharField(max_length=120, blank=True)
     duration_label = models.CharField(max_length=60, blank=True)
     personal_label = models.CharField(max_length=120, blank=True)
+    # W10: the heading over a scene that hours or days passed in, such as "Three days later".
+    # Empty for a short scene, and for scenes saved before the story marked the passing of time.
+    passage_label = models.CharField(max_length=60, blank=True, default="", db_default="")
     timeline_id = models.CharField(max_length=64, default="main")
     # The other characters the player knew who were there when the scene ended, as
     # [{character_id, name}], for the scene's portraits (M4, M5).

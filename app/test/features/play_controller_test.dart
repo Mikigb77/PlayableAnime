@@ -477,6 +477,32 @@ void main() {
       await events.drain<void>().catchError((Object _) {});
     }
 
+    test(
+      'the heading of a scene that days passed in stands before its first words (W10)',
+      () async {
+        final (:play, :notices, texts: _) = control();
+        await play.start();
+        (String?, String?)? atSteps;
+        play.notices.listen((notice) {
+          if (notice is StepsShown) atSteps = (play.pending?.passageLabel, play.pending?.text);
+        });
+        await play.act('I train with the sword for a week', inputMode: 'typed');
+        await until(play, () => play.pending == null);
+
+        // The heading was there when the steps were decided, before a word of the story.
+        expect(atSteps, ('A week later', ''));
+        expect(play.story!.scenes.last.passageLabel, 'A week later');
+
+        // A scene of minutes has none, in flight or saved.
+        atSteps = null;
+        await play.act('I look around the courtyard', inputMode: 'typed');
+        await until(play, () => play.pending == null);
+        expect(atSteps, (null, ''));
+        expect(play.story!.scenes.last.passageLabel, isNull);
+        expect(notices.whereType<StepsShown>(), hasLength(2));
+      },
+    );
+
     test('the steps arrive before the story, dice and all', () async {
       final (:play, :notices, :texts) = control();
       await play.start();

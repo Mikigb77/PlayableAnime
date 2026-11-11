@@ -14,6 +14,7 @@ from engine.labels import (
     moment,
     of_name,
     part_of_day,
+    passage_label,
     personal_label,
     scene_time,
     second_of_day,
@@ -186,6 +187,132 @@ def test_the_scene_time_bar():
     assert bar.label == "14 May 1974, 23:10"
     assert (bar.duration_label, bar.personal_label) == ("+2 h 10 min", None)
     assert stopped.personal_label == "World: +0 s. You: +40 s."
+
+
+# --- the heading over a scene that hours or days passed in (W10) ---------------------------------
+
+
+def heading(hours: float, start_hour: int = 7, language: Language = Language.EN) -> str | None:
+    """The heading over a scene of `hours` that began at `start_hour` o'clock."""
+    calendar = Calendar(time_of_day=TimeOfDayStyle.CLOCK, start_second_of_day=0)
+    start = start_hour * HOUR
+    return passage_label(calendar, start, start + int(hours * HOUR), language)
+
+
+def test_a_short_scene_has_no_heading():
+    assert heading(0) is None
+    assert heading(1) is None
+    assert heading(1.99) is None
+    assert heading(-3) is None  # a clock that went back marks nothing (W10a)
+
+
+@pytest.mark.parametrize(
+    ("hours", "told"),
+    [
+        (2, "Two hours later"),
+        (2.4, "Two hours later"),
+        (2.5, "Three hours later"),
+        (6, "Six hours later"),
+        (12, "Twelve hours later"),
+        (20, "Twenty hours later"),
+        (21, "21 hours later"),  # from 07:00 to 04:00: no morning came
+    ],
+)
+def test_hours_inside_one_day_are_told_in_hours(hours, told):
+    assert heading(hours) == told
+
+
+def test_days_are_counted_by_the_mornings_that_came():
+    # A night's sleep ends on the next day, though only eight hours passed.
+    assert heading(8, start_hour=22) == "The next day"
+    # A watch past midnight is the same night.
+    assert heading(5, start_hour=22) == "Five hours later"
+    # A short stretch is told in hours even across a dawn.
+    assert heading(5, start_hour=3) == "Five hours later"
+    assert heading(6, start_hour=3) == "The next day"
+    assert heading(24) == heading(30) == "The next day"
+    assert heading(45) == "The next day"
+    assert heading(46) == heading(48) == "Two days later"
+
+
+@pytest.mark.parametrize(
+    ("days", "told"),
+    [
+        (2, "Two days later"),
+        (3, "Three days later"),
+        (6, "Six days later"),
+        (7, "A week later"),
+        (8, "Eight days later"),
+        (13, "Thirteen days later"),
+        (14, "Two weeks later"),
+        (17, "Two weeks later"),
+        (18, "Three weeks later"),  # to the nearest week
+        (27, "Four weeks later"),
+        (28, "A month later"),
+        (31, "A month later"),
+        (32, "Five weeks later"),
+        (59, "Eight weeks later"),
+        (60, "Two months later"),
+        (74, "Two months later"),
+        (75, "Three months later"),  # to the nearest month
+        (200, "Seven months later"),
+        (344, "Eleven months later"),
+        (345, "A year later"),
+        (365, "A year later"),
+        (374, "A year later"),
+        (375, "Thirteen months later"),
+        (547, "Eighteen months later"),
+        (548, "Two years later"),  # to the nearest year
+        (800, "Two years later"),
+        (913, "Three years later"),
+        (20 * 365, "Twenty years later"),
+        (30 * 365, "30 years later"),
+        (1000 * 365, "1000 years later"),
+    ],
+)
+def test_longer_stretches_are_told_in_days_weeks_months_and_years(days, told):
+    assert heading(24 * days) == told
+
+
+def test_the_heading_in_spanish_and_catalan():
+    spans = [2, 3, 24, 72, 7 * 24, 14 * 24, 30 * 24, 60 * 24, 365 * 24]
+    es = [heading(h, language=Language.ES) for h in spans]
+    ca = [heading(h, language=Language.CA) for h in spans]
+
+    assert es == [
+        "Dos horas después",
+        "Tres horas después",
+        "Al día siguiente",
+        "Tres días después",
+        "Una semana después",
+        "Dos semanas después",
+        "Un mes después",
+        "Dos meses después",
+        "Un año después",
+    ]
+    assert ca == [
+        "Dues hores després",  # two takes the gender of what it counts
+        "Tres hores després",
+        "L'endemà",
+        "Tres dies després",
+        "Una setmana després",
+        "Dues setmanes després",
+        "Un mes després",
+        "Dos mesos després",
+        "Un any després",
+    ]
+    assert heading(21, language=Language.ES) == "21 horas después"
+    assert heading(1, language=Language.CA) is None
+
+
+def test_the_scene_time_bar_carries_the_heading():
+    calendar = grounded_world().bible.calendar  # 21:00
+
+    assert scene_time(calendar, 0, 40 * MINUTE, 40 * MINUTE).passage_label is None
+    assert scene_time(calendar, 0, 3 * DAY, 3 * DAY).passage_label == "Three days later"
+    assert scene_time(calendar, 0, 9 * HOUR, 9 * HOUR, Language.ES).passage_label == (
+        "Al día siguiente"
+    )
 
 
 ES = Language.ES

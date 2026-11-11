@@ -26,11 +26,15 @@ class TurnStarted extends TurnEvent {
 /// reason and the dice that decided it, exactly as the saved scene will carry them. Sent once,
 /// right after [TurnStarted], on every turn with steps.
 class StepsDecided extends TurnEvent {
-  const StepsDecided({required this.turn, required this.details});
+  const StepsDecided({required this.turn, required this.details, this.passageLabel});
   final int turn;
 
   /// The `SceneDetails` object as JSON.
   final JsonMap details;
+
+  /// The heading of a scene that hours or days passed in, such as "Three days later" (W10): the
+  /// words the saved scene will carry, here before the story's first ones.
+  final String? passageLabel;
 }
 
 /// More narration, as it is written.
@@ -146,9 +150,11 @@ TurnEvent? _map(SseEvent event) {
       // look at them, never the turn.
       final d = event.json;
       if (d is! JsonMap || d['details'] is! JsonMap) return null;
+      final passage = d['passage_label'];
       return StepsDecided(
         turn: (d['turn'] as num?)?.toInt() ?? 0,
         details: d['details'] as JsonMap,
+        passageLabel: passage is String && passage.trim().isNotEmpty ? passage : null,
       );
     case 'narration.delta':
       return NarrationDelta(data()['text'] as String? ?? '');

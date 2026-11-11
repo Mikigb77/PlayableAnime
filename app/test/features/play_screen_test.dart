@@ -401,6 +401,39 @@ void main() {
     expect(scroll.position.pixels, 0);
   });
 
+  testWidgets('a scene that days passed in shows its heading before its first words (W10)', (
+    tester,
+  ) async {
+    await serve(
+      tester,
+      pace: const FakePace(
+        latency: Duration.zero,
+        firstWords: Duration(milliseconds: 600),
+        perChunk: Duration(milliseconds: 30),
+        picture: Duration(seconds: 2),
+      ),
+    );
+    await open(tester);
+    await toEnd(tester);
+    await tester.enterText(find.byType(TextField), 'I train with the sword for a week');
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    // The steps are decided halfway to the first words, and the heading comes with them.
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.widget<StreamingNarration>(find.byType(StreamingNarration)).text, isEmpty);
+    expect(find.widgetWithText(PassageHeading, 'A week later'), findsOneWidget);
+
+    await pumpUntil(tester, () => find.byType(StreamingNarration).evaluate().isEmpty);
+    await settle(tester);
+    // The saved scene keeps it, over its time.
+    final saved = find.byWidgetPredicate((w) => w is SceneView && w.scene.turn == 4);
+    expect(
+      find.descendant(of: saved, matching: find.widgetWithText(PassageHeading, 'A week later')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a standing action reads in the app\'s words, not the server\'s wire name', (
     tester,
   ) async {

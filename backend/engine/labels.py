@@ -379,6 +379,92 @@ _UNTIL = {
 }
 
 
+# W10: the shortest scene whose passing the story marks, and the hour a new day starts for
+# someone living it. A night ends when it gets light, not at midnight, so a scene that runs past
+# midnight is still the same night and a night's sleep ends on the next day.
+PASSAGE_MIN_S = 2 * HOUR
+PASSAGE_NIGHT_S = 6 * HOUR
+NEW_DAY_HOUR = DAY_PARTS[1][0]
+
+# Small counts in words, from two to twenty, as a story's page would have them (S10).
+_COUNT_WORDS = {
+    EN: (
+        "two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+        "sixteen seventeen eighteen nineteen twenty"
+    ).split(),
+    ES: (
+        "dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince "
+        "dieciséis diecisiete dieciocho diecinueve veinte"
+    ).split(),
+    CA: (
+        "dos tres quatre cinc sis set vuit nou deu onze dotze tretze catorze quinze setze "
+        "disset divuit dinou vint"
+    ).split(),
+}
+# Catalan's two takes the gender of what it counts: "dues hores", "dues setmanes".
+_FEMININE_UNITS = frozenset({"hour", "week"})
+_NEXT_DAY = {EN: "The next day", ES: "Al día siguiente", CA: "L'endemà"}
+_LATER = {EN: "{} later", ES: "{} después", CA: "{} després"}
+
+
+def _count(count: int, unit: str, language: Language) -> str:
+    """A count of a time unit with a small number in words: "three days", "dos semanas", "dues
+    setmanes". One, and anything over twenty, reads as `amount` has it: "a year", "30 years"."""
+    if not 2 <= count <= len(_COUNT_WORDS[language]) + 1:
+        return amount(count, unit, language)
+    word = _COUNT_WORDS[language][count - 2]
+    if language is CA and count == 2 and unit in _FEMININE_UNITS:
+        word = "dues"
+    many = _AMOUNTS[language][unit][1] if language in _AMOUNTS else f"{unit}s"
+    return f"{word} {many}"
+
+
+def passage_label(
+    calendar: Calendar, start_s: int, end_s: int, language: Language = EN
+) -> str | None:
+    """W10. The heading over a scene that hours or days passed in, as a book marks a cut:
+    "Three hours later", "The next day", "Three days later", "A week later", "Two weeks later",
+    "A year later"; in Spanish "Tres horas después", "Al día siguiente", "Tres días después"; in
+    Catalan "Tres hores després", "L'endemà", "Tres dies després" (S10). None for a scene under
+    two hours, which the time bar alone tells.
+
+    Days are counted as someone living them counts: by the mornings that came (`NEW_DAY_HOUR`),
+    so a night's sleep ends on the next day and a watch past midnight doesn't. A stretch under
+    six hours is told in hours even across a dawn. From two weeks on it is told in weeks, from
+    two months in months and from a year and a half in years, each to the nearest one, and a
+    week, a month and a year are called that.
+    """
+    span = end_s - start_s
+    if span < PASSAGE_MIN_S:
+        return None
+    since_dawn = second_of_day(calendar, start_s) - NEW_DAY_HOUR * HOUR
+    days = (since_dawn + span) // DAY - since_dawn // DAY
+    if days == 0 or span < PASSAGE_NIGHT_S:
+        told = _count((span + HOUR // 2) // HOUR, "hour", language)
+    elif days == 1:
+        return _NEXT_DAY[language]
+    else:
+        told = _count(*_days_told(days), language)
+    told = _LATER[language].format(told)
+    return told[:1].upper() + told[1:]
+
+
+_WEEK, _MONTH, _YEAR = LABEL_WEEK // DAY, LABEL_MONTH // DAY, LABEL_YEAR // DAY
+
+
+def _days_told(days: int) -> tuple[int, str]:
+    """Two days or more as a count of the unit a storyteller would use, to the nearest one."""
+    if days < 2 * _WEEK:
+        return (1, "week") if days == _WEEK else (days, "day")
+    if days < 2 * _MONTH:
+        whole_month = 4 * _WEEK <= days <= _MONTH + 1
+        return (1, "month") if whole_month else ((days + _WEEK // 2) // _WEEK, "week")
+    if days < _YEAR + _YEAR // 2 + 1:
+        months = (days + _MONTH // 2) // _MONTH
+        return (1, "year") if months == 12 else (months, "month")
+    return ((days + _YEAR // 2) // _YEAR, "year")
+
+
 class SceneTime(EngineModel):
     """The scene's time bar, in the shape of API.md's `Scene.time`."""
 
@@ -387,17 +473,20 @@ class SceneTime(EngineModel):
     label: str
     duration_label: str
     personal_label: str | None = None
+    passage_label: str | None = None
 
 
 def scene_time(
     calendar: Calendar, start_s: int, end_s: int, personal_s: int, language: Language = EN
 ) -> SceneTime:
     """The time bar for a scene that ran from `start_s` to `end_s` world seconds, in which the
-    player character lived `personal_s` seconds, in the story's language (S10)."""
+    player character lived `personal_s` seconds, in the story's language (S10), with the heading
+    that marks the hours or days that passed in it (`passage_label`)."""
     return SceneTime(
         world_start_s=start_s,
         world_end_s=end_s,
         label=clock_label(calendar, end_s, language),
         duration_label=duration_label(end_s - start_s, language),
         personal_label=personal_label(end_s - start_s, personal_s, language),
+        passage_label=passage_label(calendar, start_s, end_s, language),
     )
