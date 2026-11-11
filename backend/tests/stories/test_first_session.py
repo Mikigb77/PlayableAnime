@@ -104,12 +104,13 @@ def test_a_new_players_first_story_draws_its_first_pictures_on_the_house(
     spent = -sum((e.amount_cents for e in entries.exclude(kind=EntryKind.STARTER)), Decimal(0))
     assert spent + account.balance_cents == 50
     assert account.balance_cents < 5  # less than a turn's hold is left
-    # About 2.6 cents a turn and two key scenes: the $0.50 lasts about 13 turns. The narrator's
-    # system text, with its guide to the brief (T5) and its rules for goals (N2), bills in full
+    # About 3.7 cents a turn and a key scene or two: the $0.50 lasts about 12 turns. Both
+    # models' system text, with the narrator's guide to the brief (T5) and every rule the
+    # interpret step reads by (the last ones W2's crowd and V3's unnamed "him"), bills in full
     # here: the scripted model has no prompt cache, and this small world's start is under Vertex
     # AI's minimum for one anyway. A drafted world's start passes it, and from its second turn the
     # system text bills at a tenth.
-    assert 12 <= turns <= 22, turns
+    assert 11 <= turns <= 22, turns
 
 
 def test_without_the_house_the_first_pictures_eat_the_starter_credit(

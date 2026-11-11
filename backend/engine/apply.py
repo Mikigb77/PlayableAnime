@@ -103,7 +103,7 @@ from engine.state.sheet import (
 from engine.state.world import ActiveTimeEffect, WorldState, natural_key
 from engine.text import any_mentions
 from engine.timekeeping import effect_over
-from engine.world.geography import find_place
+from engine.world.geography import find_place, scene_ids
 from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
@@ -142,6 +142,7 @@ def apply_delta(
     may_hurt_player: bool = False,
     player_acted: bool = False,
     found: Sequence[str] = (),
+    reached: Sequence[str] = (),
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
@@ -152,7 +153,9 @@ def apply_delta(
     `may_hurt_player`, when something recorded this turn is the cause (`engine.injuries`). A goal
     closes only with `player_acted`, on a turn the player acted (N2). `found` is what this turn
     made canon (`Resolution.found`): the scene's record keeps it beside what the narrator lists,
-    while the scene stays in its place (R2, R3).
+    while the scene stays in its place (R2, R3). `reached` is whom the turn reached besides the
+    people in the scene (`engine.pipeline.reached`): the narrator moves the feelings of nobody
+    else (W4, `scene_people`).
     """
     return apply_in_place(
         state.model_copy(deep=True),
@@ -162,6 +165,7 @@ def apply_delta(
         may_hurt_player=may_hurt_player,
         player_acted=player_acted,
         found=found,
+        reached=reached,
     )
 
 
@@ -174,11 +178,17 @@ def apply_in_place(
     may_hurt_player: bool = False,
     player_acted: bool = False,
     found: Sequence[str] = (),
+    reached: Sequence[str] = (),
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
     applier = _Applier(
-        state, source, ctx.turn, may_hurt_player=may_hurt_player, player_acted=player_acted
+        state,
+        source,
+        ctx.turn,
+        may_hurt_player=may_hurt_player,
+        player_acted=player_acted,
+        in_scene=scene_people(state, delta, reached) if source is DeltaSource.NARRATOR else None,
     )
     for change in delta.places:
         applier.place(change)
@@ -226,6 +236,29 @@ def apply_in_place(
     if delta.summary:
         applier.state.summary = delta.summary
     return Applied(applier.state, tuple(applier.rejected))
+
+
+def scene_people(state: WorldState, delta: StateDelta, reached: Sequence[str] = ()) -> set[str]:
+    """W4. Whose feelings a narrated scene can move: the people in it. They are those the
+    last scene left there and those in its fight, chase or talks (`geography.scene_ids`), those
+    this scene's end lists, anyone the scene brings in (someone new, someone it has meet the
+    player character or someone it puts where the scene is) and whoever the turn reached
+    (`reached`).
+
+    Someone elsewhere saw none of it, however much it concerns them: a son doesn't come to hate
+    his father's killer in the moment of a killing he wasn't at. What they come to know reaches
+    them through the world, by a witness or by word (W2), and code moves how they feel then."""
+    people = {*scene_ids(state), *reached}
+    here = {state.player.location_id, state.scene.place_id}
+    if delta.scene_end is not None:
+        people.update(delta.scene_end.present_ids)
+        here.add(delta.scene_end.place_id)
+    here.discard(None)
+    for change in delta.characters:
+        new = change.id not in state.characters
+        if new or change.meets_player or change.location_id in here:
+            people.add(change.id)
+    return people
 
 
 # The most things a scene's record holds once code has added to the narrator's list (R3).
@@ -297,12 +330,15 @@ class _Applier:
         *,
         may_hurt_player: bool = False,
         player_acted: bool = False,
+        in_scene: set[str] | None = None,
     ) -> None:
         self.state = state
         self.source = source
         self.turn = turn
         self.may_hurt_player = may_hurt_player
         self.player_acted = player_acted
+        # W4: whose feelings the narrator may move (`scene_people`); None means anyone's.
+        self.in_scene = in_scene
         self.rejected: list[Rejection] = []
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
@@ -732,6 +768,14 @@ class _Applier:
         toward = shift.toward_id or self.state.player_id
         if toward not in self.state.characters or toward == character.id:
             self.reject(f"character {character.id}", "attitude", f"no one else called {toward!r}")
+            return
+        if not self.engine and self.in_scene is not None and character.id not in self.in_scene:
+            # W4. Only what reaches someone moves how they feel, and the world carries it (W2).
+            self.reject(
+                f"character {character.id}",
+                "attitude",
+                "they aren't in the scene: the engine moves how they feel once word reaches them",
+            )
             return
         attitudes = character.sheet.disposition.attitudes
         current = attitudes.setdefault(toward, Attitude())

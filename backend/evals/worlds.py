@@ -12,6 +12,8 @@ from engine.state import (
     Character,
     CharacterSheet,
     Condition,
+    Connection,
+    ConnectionKind,
     CostKind,
     Creature,
     Encounter,
@@ -177,6 +179,49 @@ def sect_with_a_witness() -> WorldState:
         memberships=[Membership(faction_id="outer-court", rank="outer disciple", loyalty=40)],
     )
     return add(state, han, wei)
+
+
+THRONGED_WELL = (
+    "Noon at the outer-court well, and it is thronged: a long queue of disciples with buckets, "
+    "hawkers calling, servants pushing through. Han Jie waits in the queue with his back to Lin."
+)
+
+
+def noon_at_the_well() -> WorldState:
+    """The well at noon, thronged with people the scene doesn't name. Han Jie, who takes Lin's
+    rations, waits in the queue with his back turned. His elder brother Han Lei is in the inner
+    court and sees nothing of what happens at the well; nobody else the record holds is there."""
+    state = sect()
+    outer = Membership(faction_id="outer-court", rank="outer disciple", loyalty=60)
+    han = disciple(
+        "han",
+        "Han Jie",
+        description="An outer disciple who takes Lin's rations, waiting in the queue.",
+        memberships=[outer],
+    )
+    lei = disciple(
+        "han-lei",
+        "Han Lei",
+        rung=1,
+        description="Han Jie's elder brother, who looks after him.",
+        memberships=[outer.model_copy(update={"rank": "senior outer disciple"})],
+    )
+    lei.location_id = "inner-court"
+    lei.sheet.resources.connections.append(
+        Connection(name="Han Jie", kind=ConnectionKind.FAMILY, character_id="han")
+    )
+    state.characters["zhao"].location_id = "inner-court"
+    add(state, han)
+    add(state, lei, present=False)
+    state.scene = state.scene.model_copy(
+        update={
+            "present_ids": ["lin", "han"],
+            "positions": ["Han Jie in the queue, his back to Lin", "Lin a few steps behind him"],
+            "props": ["the stone rim of the well", "a long queue of disciples with buckets"],
+            "ended_on": THRONGED_WELL,
+        }
+    )
+    return state
 
 
 def shielded_mage(*, teleport: bool = False) -> WorldState:

@@ -16,7 +16,9 @@ from engine.context import ContentPrefs, Difficulty, EventFrequency, Rating, Sto
 from engine.contracts import (
     ActionKind,
     Aim,
+    AttitudeShift,
     Beat,
+    CharacterChange,
     ChoiceKind,
     EventSource,
     GrowthKind,
@@ -27,6 +29,7 @@ from engine.contracts import (
     OutcomeClass,
     PictureTrigger,
     StandingAction,
+    StateDelta,
     Theme,
 )
 from engine.director import rules
@@ -34,6 +37,7 @@ from engine.director.deck import CARDS
 from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
 from engine.labels import clock_time, second_of_day
+from engine.resolve.bouts import against
 from engine.state import (
     Attitude,
     CharacterStatus,
@@ -47,6 +51,7 @@ from engine.state import (
     StepResult,
     Terms,
     ThreadStatus,
+    Visibility,
 )
 from engine.visibility import memory_view
 from engine.world import Kind
@@ -1983,6 +1988,7 @@ def never_comes_off(shape: int) -> bool:
 
 
 REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
+ENDING_CHARS = 200  # of how the scene before a misread turn ended, in a failed check's detail
 
 
 def as_read(turns: list[Played]) -> str:
@@ -2017,6 +2023,14 @@ def as_read(turns: list[Played]) -> str:
     return " | ".join(lines)
 
 
+def aimed_at(state, played: Played) -> set[str]:
+    """Who a turn was read as aimed at: each step's targets, or when it names none, those who
+    stand in its way (`bouts.against`)."""
+    intent = played.result.intent if played.result is not None else None
+    steps = intent.steps if intent is not None else []
+    return {i for s in steps for i in against(state, state.player_id, s)}
+
+
 def blinding_blow() -> Intent:
     told = facts(
         opposition_ids=["elder-mo"], can_respond=True, breaks_terms=True, foes_mean=Aim.NONE
@@ -2034,11 +2048,12 @@ def unharmed(state, character_id: str) -> bool:
     "t17.friendly-bout",
     suite="T17",
     title="A friendly bout",
-    requirements=("W1", "W4", "N6", "T17"),
+    requirements=("W1", "W4", "N6", "V3", "T17"),
     passes_when=(
         "A long lesson with a mentor is one bout: nobody is hurt, and it leaves no grudge, fear, "
-        "report or revenge. A blow meant to maim him is an attack that he remembers, and a "
-        "partner who bears the character ill will can use a friendly bout to hurt them"
+        'report or revenge. A blow meant to maim "him", with nobody named, is read as aimed '
+        "at the mentor and is an attack that he remembers, and a partner who bears the "
+        "character ill will can use a friendly bout to hurt them"
     ),
 )
 async def friendly_bout(ev: Eval) -> None:
@@ -2140,13 +2155,24 @@ async def friendly_bout(ev: Eval) -> None:
             lesson,
         )
 
-        # Beyond the terms: a blow meant to maim, under cover of the lesson.
+        # Beyond the terms: a blow meant to maim, under cover of the lesson. The player names
+        # nobody, as players do. In the third live lessons (2026-11-11) two of three read "his
+        # eyes" as those of Zhao, who stands by at the well, and the blow fell on him.
+        moment = story.state.scene.ended_on
         played = await story.act(
             "While he corrects my stance I drop the sword and drive my fingers at his eyes, "
             "meaning to blind him for good",
             blinding_blow(),
         )
         state = story.state
+        at_him = aimed_at(state, played) == {"elder-mo"}
+        ev.check(
+            "someone meant but not named is the one they are sparring with",
+            at_him,
+            f"{seed}: {as_read([played])} after a scene that ended: {moment[-ENDING_CHARS:]}",
+        )
+        if not at_him:
+            continue  # the blow went at someone else, so nothing below is about it
         ev.check(
             "a blow meant to maim goes beyond the terms",
             any(s.broke_terms for s in played.steps),
@@ -2193,6 +2219,135 @@ async def friendly_bout(ev: Eval) -> None:
             "his blow is on record as his attack",
             any(d.actor_id == "zhao" and d.broke_terms for d in story.state.deeds.values()),
             seed,
+        )
+
+
+# --- Before a crowd, and who could know (W2, W4, W11, C6) --------------------------------------
+
+IN_FRONT_OF_EVERYONE = (
+    "In the middle of the crowded queue at the well, in front of everyone, I draw my sword and "
+    "cut Han Jie's throat from behind"
+)
+
+
+def in_front_of_everyone() -> Intent:
+    """The killing as the interpret step reads it: Han never sees it coming, and people the
+    scene doesn't name are all around."""
+    told = facts(opposition_ids=["han"], can_respond=False, why_not="unaware", crowd=True)
+    return plan(cut_throat("han", "sword", facts=told))
+
+
+def brother_hates_him_already() -> dict:
+    """A narrator that has the dead man's brother, who is in the inner court, hate Lin on the
+    spot."""
+    grief = AttitudeShift(affinity=-10, grudge="Lin Feng murdered his brother at the well")
+    update = StateDelta(characters=[CharacterChange(id="han-lei", attitudes=[grief])])
+    return {
+        "narration": "(scripted) Han Jie falls, and the queue breaks apart, screaming.",
+        "suggestions": [],
+        "update": update.model_dump(mode="json"),
+    }
+
+
+@scenario(
+    "t17.before-a-crowd",
+    suite="T17",
+    title="Before a crowd",
+    requirements=("W2", "W4", "W11", "C6", "T17"),
+    passes_when=(
+        "A killing before a crowd is public: someone of the crowd saw it and goes to those who "
+        "keep the law, and word of it starts at once. The dead man's brother, who was "
+        "elsewhere, feels nothing about it until word reaches him, whatever the scene says, "
+        "and the player character has heard no talk of it that no scene told"
+    ),
+)
+async def before_a_crowd(ev: Eval) -> None:
+    for seed in ev.seeds(6, live=1):
+        story = ev.story(worlds.noon_at_the_well(), seed=seed)
+        await story.open()
+        before = story.state.characters["han-lei"].attitude_toward("lin").model_copy(deep=True)
+        killing = await story.act(
+            IN_FRONT_OF_EVERYONE,
+            in_front_of_everyone(),
+            narration=None if ev.live else brother_hates_him_already(),
+        )
+        state = killing.state
+        read = f"{seed}: {as_read([killing])}"
+        ev.check("the killing lands", state.characters["han"].status is CharacterStatus.DEAD, read)
+        deeds = [d for d in state.deeds.values() if "han" in d.victim_ids]
+        ev.check(
+            "it is one deed, done before a crowd: public",
+            [d.visibility for d in deeds] == [Visibility.PUBLIC],
+            f"{[(d.kind, d.visibility.value) for d in deeds]} from {read}",
+        )
+        if len(deeds) != 1:
+            continue
+        deed = deeds[0]
+        made = killing.steps[0].strangers if killing.steps else []
+        ev.check("someone of the crowd saw it", bool(deed.witness_ids), read)
+        ev.check(
+            "the witness is one of the crowd, made real by the deed",
+            bool(made) and deed.witness_ids == made,
+            f"{seed}: saw {deed.witness_ids}, made {made}",
+            live=False,
+        )
+        ev.check(
+            "word of it starts at once, told as it happened",
+            any(r.deed_id == deed.id and r.accuracy == 100 for r in state.rumors.values()),
+            seed,
+        )
+        reports = [
+            e
+            for e in state.pending_events.values()
+            if e.kind == Kind.REPORT and e.payload.get("witness_id") in deed.witness_ids
+        ]
+        ev.check(
+            "someone of the crowd goes to those who keep the law",
+            {r.payload["faction_id"] for r in reports} >= {"azure-cloud"},
+            f"{seed}: {[r.payload for r in reports]}",
+        )
+        brother = state.characters["han-lei"].attitude_toward("lin")
+        ev.check(
+            "his brother, who was elsewhere, feels as he did",
+            brother == before,
+            f"{seed}: {brother}",
+        )
+        ev.check(
+            "the scene's word that he hates Lin already is refused",
+            "rejected" in killing.issues,
+            f"{seed}: {killing.issues}",
+            live=False,
+        )
+        ev.check(
+            "Lin has heard no talk of it that no scene told",
+            not memory_view(state).rumors,
+            seed,
+            live=False,
+        )
+        await ev.judge(
+            "the killing is told as done in front of a crowd",
+            Rubric(
+                must=("People in the crowd see the killing and react to it",),
+                must_not=(
+                    "Nobody notices the killing, or the well is told as empty",
+                    "Han Lei, his brother, is in the scene or learns of it in the scene",
+                ),
+            ),
+            [killing],
+        )
+
+        # Word travels at the pace people do: by the time it reaches the inner court, he knows.
+        for _ in range(3):
+            await story.act(
+                "I slip away into the pines above the court and wait there for an hour",
+                act("hide in the pines for an hour", "hide", ActionKind.TASK, HOUR),
+            )
+        brother = story.state.characters["han-lei"].attitude_toward("lin")
+        ev.check(
+            "once word reaches him, he holds it against Lin",
+            bool(brother.grudges) and brother.affinity < before.affinity,
+            f"{seed}: {brother}",
+            live=False,
         )
 
 

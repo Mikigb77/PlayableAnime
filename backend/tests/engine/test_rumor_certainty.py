@@ -15,6 +15,7 @@ from engine.state import Deed, Rumor, StepResult, Visibility, WorldState
 from engine.state.records import GARBLED_LEAD
 from engine.state.sheet import Attitude
 from engine.visibility import memory_view, status_view
+from engine.world import hearsay
 from engine.world.clocks import on_clock_end
 from engine.world.rumors import Certainty, believes, certainty, start_rumor
 from engine.world.scheduling import Kind, World, schedule
@@ -78,20 +79,32 @@ def player_deed(state: WorldState, **kwargs) -> Deed:
     return deed
 
 
-def test_a_fight_the_player_lived_is_one_confirmed_rumor_and_one_deed():
+def told(state: WorldState) -> WorldState:
+    """A scene tells the player character what the place is saying, one piece at a time."""
+    for rumor in hearsay.talk_of(state, state.player_id, state.player.location_id, state.world_s):
+        assert hearsay.hear(at(state), state.player_id, rumor.id)
+    return state
+
+
+def test_a_fight_the_player_lived_is_a_deed_and_no_rumor_until_a_scene_tells_the_talk():
     state = blows(grounded_world(), 4)
 
     deeds = [d for d in state.deeds.values() if d.actor_id == "carmine"]
     assert len(deeds) == 4 and all("luca" in d.known_by for d in deeds)
     view = memory_view(state)
 
-    (rumor,) = view.rumors
-    assert rumor.text == "Carmine Russo attacked Luca Esposito at Carmine's bar."
-    assert rumor.certainty is Certainty.CONFIRMED
-    assert rumor.unconfirmed is False
+    # What they lived is in their memory as a deed. Nobody told them any talk of it.
+    assert view.rumors == []
+    assert not any("luca" in r.heard_at for r in state.rumors.values())
     (deed,) = [d for d in view.deeds if d.text.startswith("Carmine")]
     assert deed.text == "Carmine Russo attacked you at Carmine's bar."
     assert deed.known_label == "You saw it"
+
+    # Once a scene tells what the bar says of it, it is one rumor, and they know it is so.
+    (rumor,) = memory_view(told(state)).rumors
+    assert rumor.text == "Carmine Russo attacked Luca Esposito at Carmine's bar."
+    assert rumor.certainty is Certainty.CONFIRMED
+    assert rumor.unconfirmed is False
 
 
 def test_status_lists_a_moment_once_however_many_blows_it_took():
@@ -254,7 +267,7 @@ def test_a_retelling_of_a_deed_the_player_saw_is_confirmed_not_false():
 
 
 def test_the_wire_carries_certainty_whatever_the_story_language():
-    state = blows(grounded_world(), 2)
+    state = told(blows(grounded_world(), 2))
 
     dumped = memory_view(state, Language.ES).model_dump(mode="json")
 

@@ -1,11 +1,12 @@
 """What a place is saying (W2, C6): the rumors someone who comes there later may hear.
 
-Word reaches a place and everyone there hears it (`rumors.on_rumor`). Whoever comes later can
-hear it too, since what has reached a place is what its people are saying: what the world did
-while they were elsewhere, and what it says of their own deeds ("they say someone burned the
-mill"). It reaches them softly (Miki, 2026-11-11: "don't force it ... let the story walk you
-through hearing all that ... you might miss some rumors, that's also okay"). Nothing is heard
-by arriving. `talk_of` is what a place has to tell someone, the director offers one piece of it
+Word reaches a place and everyone there hears it (`rumors.on_rumor`), except the player
+character, whether they are there when it comes or get there later. What has reached a place
+is what its people are saying: what the world did while they were elsewhere, and what it says
+of their own deeds ("they say someone burned the mill"). It reaches them softly (Miki,
+2026-11-11: "don't force it ... let the story walk you through hearing all that ... you might
+miss some rumors, that's also okay"). Nothing is heard by arriving, or by being there when
+word comes. `talk_of` is what a place has to tell someone, the director offers one piece of it
 to a quiet scene now and then (`director.talk`), the narrator tells it only if the scene has
 room, and `hear` records it once a scene did, so Memory shows only what the story told (C6).
 """

@@ -1,27 +1,36 @@
 import pytest
 
 from engine import pipeline
-from engine.base import HOUR
+from engine.base import DAY, HOUR
 from engine.context import ImageSetting, StorySettings, TurnContext
 from engine.contracts import (
     ActionKind,
+    CharacterChange,
+    DirectorPlan,
+    EventKind,
+    EventSource,
     Intent,
     IntentStep,
     OutcomeClass,
     PictureTrigger,
+    PlannedEvent,
     ProposedDeed,
     Resolution,
     SheetPart,
     SheetUse,
     StandingAction,
+    StateDelta,
     StepResolution,
 )
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
     ActiveTimeEffect,
+    Character,
+    EventSize,
     EventStatus,
     PendingEvent,
+    Place,
     Ruling,
     StepResult,
     TimeEffect,
@@ -283,3 +292,49 @@ def test_seams_never_change_their_input_state():
     pipeline.apply_event(state, state.pending_events["council-meets"], ctx(), rng())
 
     assert state.model_dump() == before
+
+
+# --- whom a turn reached (W4) ------------------------------------------------------------------
+
+
+def test_a_turn_reaches_whom_its_steps_faced_changed_or_made_real_and_an_event_is_about():
+    """The narrator moves the feelings of the people in the scene and of whom the turn reached,
+    and of nobody else (`engine.apply.scene_people`)."""
+    state = grounded_world()
+    for name in ("nico", "rosa", "ugo", "pia", "tano"):
+        state.characters[name] = Character(id=name, name=name.title(), location_id="questura")
+    blow = ProposedDeed(kind="punch", text="a punch", victim_ids=["rosa"], target_ids=["ugo"])
+    fought = settled(
+        0,
+        5,
+        opponent_ids=["nico"],
+        strangers=["tano"],
+        deeds=[blow],
+        effects=StateDelta(characters=[CharacterChange(id="pia", location_id="bar")]),
+    )
+    event = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.ARRIVAL,
+        source=EventSource.DECK,
+        title="A visitor",
+        brief="Someone comes in.",
+        cast_ids=["carmine", "nobody-on-record"],
+    )
+
+    reached = pipeline.reached(state, Resolution(steps=[fought]), DirectorPlan(event=event))
+
+    assert reached == ["nico", "tano", "pia", "rosa", "ugo", "carmine"]
+    assert pipeline.reached(state, Resolution(steps=[settled(0, 5)]), DirectorPlan()) == []
+
+
+def test_a_stretch_of_a_day_or_more_reaches_everyone_in_the_region():
+    """A stretch is no single scene: over days the character deals with whoever lives around
+    them, so the narrator may show how any of them came to feel."""
+    state = cultivation_world()  # Elder Mo is in the inner court of the same peak
+    state.places["far-city"] = Place(id="far-city", name="Stone Harbour", kind="city")
+    state.characters["merchant"] = Character(id="merchant", name="Old Fu", location_id="far-city")
+    hour = Resolution(steps=[settled(0, HOUR)])
+    days = Resolution(steps=[settled(0, 3 * DAY)])
+
+    assert pipeline.reached(state, hour, DirectorPlan()) == []
+    assert pipeline.reached(state, days, DirectorPlan()) == ["lin", "zhao", "elder-mo"]

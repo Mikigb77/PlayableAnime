@@ -217,6 +217,49 @@ def characters_at(
     ]
 
 
+def together(state: WorldState, a: str | None, b: str | None) -> bool:
+    """Whether two places are one spot to the people of a scene: the same place, or one inside
+    the other (the well and the courtyard it stands in). A place the state doesn't name counts."""
+    return a is None or b is None or is_within(state, a, b) or is_within(state, b, a)
+
+
+def scene_ids(state: WorldState) -> list[str]:
+    """W2. Who is in the player character's scene: the player character, those the scene shows
+    (`SceneFrame.present_ids`) and those in its fight, chase or talks, who are there whatever
+    the last scene's end listed."""
+    encounter = state.scene.encounter
+    facing = encounter.opponent_ids if encounter is not None else []
+    return list(dict.fromkeys([state.player_id, *state.scene.present_ids, *facing]))
+
+
+def onlookers(
+    state: WorldState, place_id: str | None, involved: Iterable[str] = (), *, shown: bool = True
+) -> list[Character]:
+    """W2. The living characters who are there when something is done at a place, by id.
+    `involved` are its doer, those it fell on or was aimed at, and whoever it brought on stage.
+
+    A place can be a forest or a whole city, and being somewhere in it is not seeing what
+    happens in one corner of it. So where the player character is, what is done by or to
+    someone in their scene (`scene_ids`) is seen by the people in the scene and by those
+    involved who are at the place: someone struck from afar isn't there. Nobody else the
+    record puts at the place saw it, however many. What others do there outside the scene is
+    seen by everyone at the place but the scene's people, who were in the scene. Everyone at
+    the place is there when it is somewhere else, and where no scene has shown who is around
+    (`shown` false: the player character has only just arrived, or it was done before a crowd).
+    """
+    there = characters_at(state, place_id)
+    if not shown or not together(state, place_id, state.player.location_id or state.scene.place_id):
+        return there
+    cast = scene_ids(state)
+    involved = list(dict.fromkeys(involved))
+    if not any(i in cast for i in involved):
+        return [c for c in there if c.id not in cast]
+    people = [state.characters.get(i) for i in dict.fromkeys([*cast, *involved])]
+    return by_id(
+        c for c in people if c is not None and c.alive and together(state, c.location_id, place_id)
+    )
+
+
 def faction_seat(state: WorldState, faction: Faction) -> str | None:
     """Where a faction acts from: the outermost place it controls (then by id), else where its
     first living leader is, else its parent faction's seat."""

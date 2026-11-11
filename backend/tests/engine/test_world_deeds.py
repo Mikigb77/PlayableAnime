@@ -403,6 +403,7 @@ def test_rumors_and_grudges_tell_a_deed_in_the_world_s_words():
         location_id="well",
         memberships=[Membership(faction_id="outer-court", rank="outer disciple")],
     )
+    state.scene.present_ids.append("wei")
     kill = ProposedDeed(kind="kill", text="cut Zhao's throat (it worked)", victim_ids=["zhao"])
 
     after = play(state, deed_step(kill, dead=("zhao",))).state
