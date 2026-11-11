@@ -34,6 +34,7 @@ from engine.director.deck import CARDS
 from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
 from engine.labels import clock_time, second_of_day
+from engine.resolve.bouts import against
 from engine.state import (
     Attitude,
     CharacterStatus,
@@ -1983,6 +1984,7 @@ def never_comes_off(shape: int) -> bool:
 
 
 REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
+ENDING_CHARS = 200  # of how the scene before a misread turn ended, in a failed check's detail
 
 
 def as_read(turns: list[Played]) -> str:
@@ -2017,6 +2019,14 @@ def as_read(turns: list[Played]) -> str:
     return " | ".join(lines)
 
 
+def aimed_at(state, played: Played) -> set[str]:
+    """Who a turn was read as aimed at: each step's targets, or when it names none, those who
+    stand in its way (`bouts.against`)."""
+    intent = played.result.intent if played.result is not None else None
+    steps = intent.steps if intent is not None else []
+    return {i for s in steps for i in against(state, state.player_id, s)}
+
+
 def blinding_blow() -> Intent:
     told = facts(
         opposition_ids=["elder-mo"], can_respond=True, breaks_terms=True, foes_mean=Aim.NONE
@@ -2034,11 +2044,12 @@ def unharmed(state, character_id: str) -> bool:
     "t17.friendly-bout",
     suite="T17",
     title="A friendly bout",
-    requirements=("W1", "W4", "N6", "T17"),
+    requirements=("W1", "W4", "N6", "V3", "T17"),
     passes_when=(
         "A long lesson with a mentor is one bout: nobody is hurt, and it leaves no grudge, fear, "
-        "report or revenge. A blow meant to maim him is an attack that he remembers, and a "
-        "partner who bears the character ill will can use a friendly bout to hurt them"
+        'report or revenge. A blow meant to maim "him", with nobody named, is read as aimed '
+        "at the mentor and is an attack that he remembers, and a partner who bears the "
+        "character ill will can use a friendly bout to hurt them"
     ),
 )
 async def friendly_bout(ev: Eval) -> None:
@@ -2140,13 +2151,24 @@ async def friendly_bout(ev: Eval) -> None:
             lesson,
         )
 
-        # Beyond the terms: a blow meant to maim, under cover of the lesson.
+        # Beyond the terms: a blow meant to maim, under cover of the lesson. The player names
+        # nobody, as players do. In the third live lessons (2026-11-11) two of three read "his
+        # eyes" as those of Zhao, who stands by at the well, and the blow fell on him.
+        moment = story.state.scene.ended_on
         played = await story.act(
             "While he corrects my stance I drop the sword and drive my fingers at his eyes, "
             "meaning to blind him for good",
             blinding_blow(),
         )
         state = story.state
+        at_him = aimed_at(state, played) == {"elder-mo"}
+        ev.check(
+            "someone meant but not named is the one they are sparring with",
+            at_him,
+            f"{seed}: {as_read([played])} after a scene that ended: {moment[-ENDING_CHARS:]}",
+        )
+        if not at_him:
+            continue  # the blow went at someone else, so nothing below is about it
         ev.check(
             "a blow meant to maim goes beyond the terms",
             any(s.broke_terms for s in played.steps),
