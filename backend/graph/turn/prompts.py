@@ -311,6 +311,15 @@ land changing, the nights on the way. And the way is alive: what they pass and w
 them, what those travelling with them say and do, how the going wears on them or lifts them, \
 in this world's own colours. Such small things need no EVENT. Trouble, and anyone who asks \
 something of them, come only with an EVENT.
+- Arriving (W2). A place they reach is alive before they get there: show it as it is now, \
+what goes on there and who is about. heard under a trip is what people there are saying that \
+the character hadn't heard: let them catch each one as talk, in the mouths of people there or \
+on a notice, a broadcast or whatever carries word in this world, told as people tell it, \
+never as fact, and never leave one out. first_visit: they have never been here, so show it \
+for the first time. talk: where people live or gather there, let them also catch one thing \
+the place is talking about, of your own making, that fits this world and what has happened in \
+it: news, a rumor, a job going, a stranger come to town. When it is something they could \
+follow up, record it under leads.
 - Open on the player's action, in action (R1): the character doing what the player said they \
 do, told the way a good book would tell it, before anything comes of it. Every action gets this, \
 however small (a coin held out, a word, a look), and so does one the player already wrote like \
@@ -553,8 +562,9 @@ miss could have killed), extra (the one extra effect a throw over the top earned
 they did it with and how well they have it), drew_on (their own powers, techniques and moves \
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
-it holds), interrupted, met, struck and trip (where the step took them, and whether they \
-arrived). Then stopped_at_step, stop_reason and unplayed when the \
+it holds), interrupted, met, struck and trip (where the step took them, whether they \
+arrived, and on arriving what they hear there, whether it is their first visit and whether \
+the place owes them some talk of its own). Then stopped_at_step, stop_reason and unplayed when the \
 plan stopped early, now_canon for what became true, rulings, and backstory with whether each \
 claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \

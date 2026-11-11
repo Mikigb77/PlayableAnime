@@ -45,7 +45,8 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import journeys
+from engine.world import hearsay, journeys
+from engine.world.scheduling import World
 
 __all__ = [
     "PlayOut",
@@ -250,6 +251,10 @@ def play_out(
             current = record_consequences(current, resolution, timed, ctx, step_rng)
         # W10. Whoever arrived is there, and a trip that stopped on the way keeps what is left.
         journeys.follow(current, actor_id, timed, planned_s=step.duration_s)
+        # W2. The player character hears what the place they reached is saying.
+        arrived = _arrival(current, actor_id, timed, ctx, rng)
+        if arrived is not None:
+            timed = played[-1] = arrived
         # W10. Code starts and ends encounters from what the step did (`engine.encounters`).
         encounters.follow(current, timed, actor_id, ctx)
         encounters.settle(current)
@@ -341,6 +346,27 @@ def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) ->
     saving: the director's memory, the event's thread and its play-out, thread changes, leads that
     expired and goals the player stated (W16, N1, N2, M2)."""
     return director.record(state, plan, ctx)
+
+
+def _arrival(
+    state: WorldState, actor_id: str, step: StepResolution, ctx: TurnContext, rng: SeededRng
+) -> StepResolution | None:
+    """W2, C6. As a trip of the player character's arrives, in place: they hear what the place
+    is saying (`hearsay.on_arrival`), unless time stands still there, and the step records what
+    they heard and whether they had ever been there, for the narrator. None when the step is
+    no arrival of theirs or there is nothing to record."""
+    trip = step.trip
+    if trip is None or not trip.arrived or actor_id != state.player_id:
+        return None
+    first = journeys.first_visit(state, step)
+    heard: list[str] = []
+    if trip.to_id in state.places and not world_stopped(state):
+        w = World(state=state, ctx=ctx, at_s=state.world_s, rng=rng.child("arrival", step.index))
+        heard = hearsay.on_arrival(w, actor_id, trip.to_id)
+    if not first and not heard:
+        return None
+    told = trip.model_copy(update={"first_visit": first, "heard_ids": heard})
+    return step.model_copy(update={"trip": told})
 
 
 def settle_trips(

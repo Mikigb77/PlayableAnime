@@ -690,7 +690,12 @@ def _struck_view(peril: Peril) -> dict[str, Any]:
 def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
     """W10: where the step took the character, as code followed it: the place they reached, or
     how much of the way is left when something stopped them before. `arrived` is left out for
-    a trip the player timed over ground no route covers: the scene says how far they got."""
+    a trip the player timed over ground no route covers: the scene says how far they got.
+
+    W2: an arrival comes with what the place is saying that they hadn't heard (`heard`, in the
+    world's words), whether they have never been there (`first_visit`), and whether the scene
+    owes the place some talk of its own (`talk`): on a first visit at the end of a real trip.
+    """
     trip = step.trip
     assert trip is not None
     place = state.places.get(trip.to_id) if trip.to_id else None
@@ -707,6 +712,14 @@ def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
     ):
         left = journey.left_s if trip.to_id == journey.to_id else max(1, journey.done_s)
         view["left"] = span_label(left)
+    if trip.arrived:
+        heard = [state.rumors[i].text for i in trip.heard_ids if i in state.rumors]
+        if heard:
+            view["heard"] = heard
+        if trip.first_visit:
+            view["first_visit"] = True
+            if step.duration_s >= journeys.MIN_ROUTE_S:
+                view["talk"] = True
     return view
 
 

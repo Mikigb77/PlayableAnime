@@ -43,6 +43,7 @@ from engine.state import (
     StepResult,
     ThreadStatus,
 )
+from engine.visibility import memory_view
 from engine.world import Kind
 from engine.world.tuning import MAX_TICKS_PER_PASSAGE, UNKNOWN_TRIP_S
 from evals import worlds
@@ -1063,6 +1064,21 @@ async def long_road(ev: Eval) -> None:
             story.state.scene.place_id == "city" and story.state.journey is None,
             f"{seed}: in {story.state.scene.place_id} after {len(legs)} stretches",
         )
+        # W2: the city was talking before they came, and they hear it as they get there.
+        ev.check(
+            "they hear what the city is saying as they arrive, and Memory keeps it",
+            "tomas" in story.state.rumors["city-news"].heard_at
+            and worlds.HARROWGATE_TALK in [r.text for r in memory_view(story.state).rumors],
+            f"{seed}: {story.state.rumors['city-news'].heard_at}",
+            live=False,
+        )
+        ev.check(
+            "the narrator is told what the city is saying, and that it is a first visit",
+            f'"heard":["{worlds.HARROWGATE_TALK}"],"first_visit":true,"talk":true'
+            in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
         ev.check(
             "however many stretches it took, the way took the map's three days",
             on_the_road == ROAD_TO_THE_CITY,
@@ -1088,6 +1104,8 @@ async def long_road(ev: Eval) -> None:
                     "A stretch of days on the road is told as days passing on the way: the "
                     "land, the weather, the nights",
                     "The scene in which the character reaches Harrowgate is set in Harrowgate",
+                    "On reaching Harrowgate the character hears, as talk in the city, that "
+                    "the old duke is dead and his two sons both claim the seat",
                 ),
                 must_not=(
                     "A scene has the character in Harrowgate before the trip there has arrived",
