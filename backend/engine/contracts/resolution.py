@@ -95,6 +95,17 @@ class Trip(EngineModel):
         description="Something of the actor's own carried them, a power, a technique or an "
         "item the step used, so the time it took says nothing of the road.",
     )
+    first_visit: bool = Field(
+        default=False,
+        description="W2: the player character arrived somewhere they had never been, by a "
+        "real trip, so the scene shows the place for the first time and what it is talking "
+        "about.",
+    )
+    heard_ids: list[str] = Field(
+        default_factory=list,
+        description="W2, C6: the rumors the player character heard on arriving, which had "
+        "reached the place before them (`engine.world.hearsay`).",
+    )
 
 
 class ProposedDeed(EngineModel):

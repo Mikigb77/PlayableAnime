@@ -40,6 +40,7 @@ from engine.state import (
     Resources,
     Route,
     RuleTopic,
+    Rumor,
     SceneFrame,
     Skill,
     SkillLevel,
@@ -1175,9 +1176,13 @@ def farm() -> WorldState:
     return farm_world()
 
 
+HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."
+
+
 def long_road() -> WorldState:
     """The farm world with the city of Harrowgate three days by cart beyond Millbrook, for a
-    journey (T17): the map says how far everything is."""
+    journey (T17): the map says how far everything is, and the city has its own talk, which
+    hasn't reached the valley."""
     state = farm_world()
     state.places["city"] = Place(
         id="city",
@@ -1186,6 +1191,14 @@ def long_road() -> WorldState:
         setting=PlaceSetting.OUTDOORS,
         routes=[Route(to_id="village", travel_s=3 * 24 * 60 * MINUTE, mode="by cart")],
         known_by=["tomas"],
+    )
+    state.rumors["city-news"] = Rumor(
+        id="city-news",
+        text=HARROWGATE_TALK,
+        is_true=True,
+        origin_place_id="city",
+        reached_place_ids=["city"],
+        started_s=state.world_s,
     )
     return state
 

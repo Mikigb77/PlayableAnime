@@ -8,7 +8,7 @@ from engine.base import DAY, HOUR, MINUTE
 from engine.contracts import ActionKind, Intent, IntentStep
 from engine.director import rules
 from engine.samples import farm_world
-from engine.state import Journey, Place, Route
+from engine.state import Journey, Place, Route, Rumor
 from graph.drafting import prompts as drafting_prompts
 from graph.drafting.schema import DraftProposal
 from graph.llm import Block, Node, Reply
@@ -81,6 +81,56 @@ def test_a_trip_takes_the_maps_time_and_the_scene_ends_there(fake, make_client):
     (step,) = json.loads(section(brief, "OUTCOME"))["steps"]
     assert step["trip"] == {"to": "Millbrook", "to_id": "village", "arrived": True}
     assert json.loads(section(brief, "TIME"))["world_seconds_passed"] == WALK
+
+
+def test_the_narrator_is_told_what_the_place_they_reach_is_saying(fake, make_client):
+    """W2, C6: word that reached Millbrook before Tomas is what he hears as he gets there."""
+    state = valley()
+    state.rumors["barn"] = Rumor(
+        id="barn",
+        text="The miller's barn burned down in the night.",
+        is_true=True,
+        reached_place_ids=["village"],
+        started_s=state.world_s,
+    )
+
+    _, result = walk(fake, make_client, scene("village"), state=state)
+
+    brief = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    (step,) = json.loads(section(brief, "OUTCOME"))["steps"]
+    assert step["trip"]["heard"] == ["The miller's barn burned down in the night."]
+    assert "first_visit" not in step["trip"]  # he knows Millbrook well
+    assert "tomas" in result.state.rumors["barn"].heard_at
+
+
+def test_a_place_never_seen_owes_the_scene_some_talk_of_its_own(fake, make_client, monkeypatch):
+    monkeypatch.setattr(rules, "ROAD_MIN_S", 10**12)  # a quiet road: this is about arriving
+    reading = {
+        "summary": "Tomas rides to Harrowgate.",
+        "steps": [
+            {
+                "text": "ride to Harrowgate",
+                "verb": "ride",
+                "kind": "travel",
+                "destination": "city",
+                "proposed_duration_s": HOUR,
+            }
+        ],
+    }
+    fake.script(Node.INTERPRET, Reply(json=reading))
+    fake.script(Node.NARRATOR, Reply(json=scene("city", present=("tomas",))))
+
+    play(make_client(), turn_input(valley(), action="I ride to Harrowgate"))
+
+    brief = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+    (step,) = json.loads(section(brief, "OUTCOME"))["steps"]
+    assert step["trip"] == {
+        "to": "Harrowgate",
+        "to_id": "city",
+        "arrived": True,
+        "first_visit": True,
+        "talk": True,
+    }
 
 
 def test_the_first_model_sees_how_far_the_places_it_knows_are(fake, make_client):
@@ -182,6 +232,8 @@ def test_the_models_are_told_how_trips_work():
     assert "never in the place they were going to" in telling
     assert "never the place the character left" in telling
     assert "the way is alive" in telling and "come only with an EVENT" in telling
+    assert "- Arriving (W2)." in telling and "never leave one out" in telling
+    assert "of your own making" in telling and "record it under leads" in telling
     assert "travel_s by a place is the seconds the way there takes" in prompts.BRIEF_GUIDE
     assert "on_the_way is a trip that stopped before its end" in prompts.BRIEF_GUIDE
 
