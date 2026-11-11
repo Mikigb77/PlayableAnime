@@ -2073,7 +2073,7 @@ async def friendly_bout(ev: Eval) -> None:
             read,
             live=False,
         )
-        if never_comes_off(shape):
+        if never_comes_off(shape) and not ev.live:  # live, the model reads the blow itself
             first = blows[0]
             ev.check(
                 "a first blow that never came off still agrees the bout",
