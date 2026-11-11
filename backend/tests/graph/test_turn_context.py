@@ -43,6 +43,7 @@ from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy
 from engine.state.records import (
+    Deed,
     Die,
     DieKind,
     EventStatus,
@@ -446,6 +447,43 @@ def test_the_models_are_told_who_saw_what_is_done_and_whose_feelings_a_scene_mov
     assert "Code makes public what is done before a crowd." in reading
     assert "Only the people in the scene change how they feel (W4)" in telling
     assert "code moves how they feel once a witness or word reaches them" in telling
+
+
+def test_the_narrator_is_told_what_someone_has_only_heard_said_and_how_they_carry_it():
+    """W4: talk alone makes nobody an accuser. The scene shows what each person has only heard
+    said of the player character (`Deed.heard_by`), apart from what they hold against them,
+    the gravest first, and the narrator is told that it is no accusation."""
+    state = cultivation_world()
+    for n, (severity, kind) in enumerate([(2, "theft"), (4, "kill"), (3, "assault")], start=1):
+        state.deeds[f"deed-{n}"] = Deed(
+            id=f"deed-{n}",
+            actor_id="lin",
+            kind=kind,
+            text=f"Lin did a {kind} on Elder Mo",
+            turn=1,
+            world_s=0,
+            place_id="inner-court",
+            victim_ids=["elder-mo"],
+            severity=severity,
+            heard_by={"zhao": 0.7},
+        )
+    state.deeds["deed-4"] = state.deeds["deed-1"].model_copy(
+        update={"id": "deed-4", "heard_by": {}, "known_by": ["lin", "zhao"]}
+    )
+
+    (seen,) = [c for c in _section(brief(state).user, "SCENE")["present"] if c["id"] == "zhao"]
+
+    # The gravest first, in the world's words, and not the one he knows of for himself.
+    assert seen["toward_you"]["heard_said"] == [
+        "Lin Feng wounded Elder Mo at the inner court.",
+        "Lin Feng attacked Elder Mo at the inner court.",
+        "Lin Feng robbed Elder Mo at the inner court.",
+    ]
+    assert "grudges" not in seen["toward_you"]
+    telling = prompts.NARRATOR_SYSTEM
+    assert "Its heard_said is what they have only heard said of the player character" in telling
+    assert "they neither accuse outright nor act as if it were known (W4)" in telling
+    assert "puts it to them and hears the answer before anything else" in telling
 
 
 def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():

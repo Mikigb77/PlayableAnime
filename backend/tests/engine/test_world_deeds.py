@@ -371,10 +371,14 @@ def test_whoever_lived_through_a_massacre_turns_against_the_one_who_did_it():
 
     assert attitude_label(peddler.affinity) in ("Cold", "Hostile") and peddler.grudges
 
+    # Out in the fields Shu only hears of it, and from one man: he turns cold and wary, and
+    # holds nothing against Lin Feng until someone who knows tells him (W4).
     after, _ = idle(after, after.world_s + DAY)
     farmer = after.characters["farmer"].attitude_toward("lin")
 
-    assert attitude_label(farmer.affinity) in ("Cold", "Hostile") and farmer.grudges
+    assert attitude_label(farmer.affinity) in ("Cold", "Hostile")
+    (deed,) = after.deeds.values()
+    assert "farmer" in deed.heard_by and not farmer.grudges
 
 
 def test_a_brawl_barely_moves_a_bystander():

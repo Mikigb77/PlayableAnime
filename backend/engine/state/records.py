@@ -158,6 +158,22 @@ class Deed(EngineModel):
             " and a faction's answer count each deed once."
         ),
     )
+    heard_by: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "W4: people who have only heard talk of who did it and believe it, by id, with how"
+            " much of it they took in (the talk's accuracy). One leaves this once they know"
+            " (`known_by`), and the rest counts then."
+        ),
+    )
+    heard_by_factions: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "W5: factions that have only heard talk of who did it, by id, with how much of it"
+            " they took in (the talk's accuracy). One leaves this for `known_by_factions` once"
+            " someone who knows tells it, and the rest counts then."
+        ),
+    )
     terms: Terms | None = Field(
         default=None,
         description=(

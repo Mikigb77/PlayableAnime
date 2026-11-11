@@ -351,7 +351,7 @@ def with_a_sister(state: WorldState) -> WorldState:
     return state
 
 
-def test_word_of_a_killing_reaches_family_elsewhere_who_keep_a_grudge_and_come_for_revenge():
+def test_word_of_a_killing_reaches_family_elsewhere_who_keep_a_grudge_and_come_to_face_the_doer():
     state = with_a_sister(grounded_world())
     shoot = ProposedDeed(kind="kill", text="Luca shoots Gennaro", victim_ids=["bartender"])
     after = play(state, deed_step(shoot, dead=("bartender",))).state
@@ -370,9 +370,10 @@ def test_word_of_a_killing_reaches_family_elsewhere_who_keep_a_grudge_and_come_f
     attitude = after.characters["maria"].sheet.disposition.attitudes["luca"]
     assert attitude.affinity < -30 and [g.deed_id for g in attitude.grudges] == [deed.id]
     assert "maria" in after.deeds[deed.id].known_by
-    (revenge,) = [e for e in pending_of(after, Kind.ANSWER) if e.payload["avenger_id"] == "maria"]
-    assert revenge.payload["answer"] == "revenge" and revenge.payload["target_id"] == "luca"
-    assert revenge.due_s >= tidings.due_s + 6 * HOUR
+    # One man's word is all she has (Carmine's), so she comes to put it to Luca's face (W4).
+    (comes,) = [e for e in pending_of(after, Kind.ANSWER) if e.payload["avenger_id"] == "maria"]
+    assert comes.payload["answer"] == "confront" and comes.payload["target_id"] == "luca"
+    assert comes.due_s >= tidings.due_s + HOUR
 
 
 def test_an_npcs_deed_runs_the_same_loop_and_the_player_feels_nothing_for_them():
@@ -606,7 +607,13 @@ def test_a_destroyed_faction_with_nobody_left_stays_gone():
     assert len(after.factions) == len(state.factions)
 
 
-def test_an_avenger_emerges_with_a_recorded_origin_and_comes_for_the_killer():
+@pytest.mark.parametrize(
+    ("visibility", "answer"),
+    [(Visibility.SECRET, "confront"), (Visibility.PUBLIC, "revenge")],
+)
+def test_an_avenger_emerges_with_a_recorded_origin_and_comes_for_the_killer(visibility, answer):
+    """W15, W4: sure of who did it, they come for revenge. With no more than what is said, they
+    come to face the killer with it first."""
     state = grounded_world()
     state.characters["carmine"].status = CharacterStatus.DEAD
     state.characters["carmine"].death_certainty = DeathCertainty.CONFIRMED
@@ -620,6 +627,7 @@ def test_an_avenger_emerges_with_a_recorded_origin_and_comes_for_the_killer():
         place_id="bar",
         victim_ids=["carmine"],
         severity=4,
+        visibility=visibility,
     )
     state.pending_events["rise"] = PendingEvent(
         id="rise",
@@ -634,8 +642,9 @@ def test_an_avenger_emerges_with_a_recorded_origin_and_comes_for_the_killer():
     assert avenger.origin.kind is OriginKind.EMERGENCE and avenger.origin.ref_id == "deed-1"
     assert avenger.memberships[0].faction_id == "esposito"
     assert avenger.sheet.disposition.attitudes["luca"].grudges[0].deed_id == "deed-1"
-    (revenge,) = pending_of(after, Kind.ANSWER)
-    assert revenge.payload["avenger_id"] == avenger.id and revenge.payload["target_id"] == "luca"
+    (comes,) = pending_of(after, Kind.ANSWER)
+    assert comes.payload["avenger_id"] == avenger.id and comes.payload["target_id"] == "luca"
+    assert comes.payload["answer"] == answer
     assert check_transition(state, after) == []
 
 
@@ -840,11 +849,20 @@ def test_when_a_secret_killing_comes_out_the_people_there_their_faction_and_regi
 
     name_the_doer(at(state), deed)
 
+    # What goes round the bar is talk, and nobody saw it done: she only half believes it (W4).
+    attitude = state.characters["maria"].sheet.disposition.attitudes["luca"]
+    assert "maria" in deed.heard_by and attitude.affinity < 0 and not attitude.grudges
+    assert "carmine-crew" in deed.known_by_factions  # the finding is theirs
+    assert state.places["naples"].player_reputation.fear > 0
+
+    # Those who found it out tell his sister themselves, and then she holds it against him.
+    (tidings,) = pending_of(state, Kind.TIDINGS)
+    assert tidings.payload["character_id"] == "maria"
+    state, _ = idle(state, state.world_s + HOUR)
     attitude = state.characters["maria"].sheet.disposition.attitudes["luca"]
     assert [g.deed_id for g in attitude.grudges] == ["deed-1"]
-    assert not pending_of(state, Kind.TIDINGS)  # she heard it there and then
-    assert "carmine-crew" in deed.known_by_factions
-    assert state.places["naples"].player_reputation.fear > 0
+    assert "maria" in state.deeds["deed-1"].known_by
+    assert "maria" not in state.deeds["deed-1"].heard_by
 
 
 def test_someone_who_only_heard_nobody_knows_who_did_it_still_learns_the_truth_later():

@@ -19,7 +19,7 @@ from engine.resolve.powers.time_stop import stopped_time_deeds_known, stops_time
 from engine.state.records import Deed, PendingEvent, Trace, TraceKind, Visibility
 from engine.state.world import WorldState
 from engine.world.aftermath import on_attributed
-from engine.world.answers import Answer, law_at, open_answer, schedule_answer
+from engine.world.answers import law_at, look_into
 from engine.world.geography import characters_at, region_of
 from engine.world.knowledge import COMRADE, faction_learns, region_learns, ties_of
 from engine.world.norms import Nature, deed_nature, is_crime
@@ -39,6 +39,7 @@ from engine.world.tuning import (
     TIES_STRENGTH_PER_TIE,
     TRACE_ATTRIBUTION,
     TRACE_DELAY_S,
+    TRACE_FINDING_WEIGHT,
 )
 
 # Traces anyone nearby notices at once when people are around.
@@ -209,7 +210,7 @@ def name_the_doer(w: World, deed: Deed) -> None:
         hops=hops(deed.severity),
         deed=deed,
         about_ids=[deed.actor_id, *deed.victim_ids],
-        accuracy=80,
+        accuracy=round(TRACE_FINDING_WEIGHT * 100),
         heard_by=[c.id for c in characters_at(state, deed.place_id) if c.id != deed.actor_id],
     )
     weight = rumor.accuracy / 100
@@ -282,15 +283,5 @@ def _investigate(w: World, deed: Deed) -> None:
     state = w.state
     for faction in by_id(state.factions.values()):
         law = law_at(state, faction.id, deed.place_id)
-        if law is None or open_answer(state, target_id=deed.actor_id, faction_id=faction.id):
-            continue
-        schedule_answer(
-            w,
-            Answer.INVESTIGATE,
-            target_id=deed.actor_id,
-            destination_id=deed.place_id,
-            tier=0,
-            deed=deed,
-            faction=faction,
-            law=law,
-        )
+        if law is not None:
+            look_into(w, faction, deed, law)

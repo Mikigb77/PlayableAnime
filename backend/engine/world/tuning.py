@@ -97,6 +97,13 @@ KIN_HOSTILITY = 15
 # and was at least this serious: a wounding, or one member trying to murder another (W5, W11).
 INSIDE_ANSWER_SEVERITY = 3
 
+# How sure anyone is who did a deed (W4): one person's word is an accusation, and it takes
+# this many who saw it and can still say so, or a crowd, to put it beyond doubt.
+PROOF_WITNESSES = 2
+# Someone who came to face the doer with what they were told lets it rest, and comes for nothing
+# more, once they are this afraid of them (`SILENT_FEAR`) or no longer think ill of them.
+FORGIVEN_AFFINITY = 0
+
 # One deed moves esteem or fear by at most this much with one faction or region: reputation
 # changes slowly in both directions (W9).
 REPUTATION_STEP_MAX = 15
@@ -110,6 +117,7 @@ ANSWER_GATHER_S = {
     "investigate": (10 * MINUTE, HOUR),
     "bounty": (2 * HOUR, 12 * HOUR),
     "hunters": (HOUR, 6 * HOUR),
+    "confront": (HOUR, 2 * DAY),
     "revenge": (6 * HOUR, 7 * DAY),
     "army": (2 * DAY, 7 * DAY),
     "elite": (DAY, 4 * DAY),
@@ -153,6 +161,9 @@ TRACE_ATTRIBUTION = {
     "ties": 0.2,
     "record": 0.7,
 }
+# How much those who tied what a deed left behind to its doer take it as so, next to a
+# witness's word (1): the accuracy of the rumor a finding starts (`discovery.name_the_doer`).
+TRACE_FINDING_WEIGHT = 0.8
 # With people around, a body or a blast is noticed within moments.
 CROWD_DELAY_S = (5, 2 * MINUTE)
 DISCOVERY_ATTEMPTS = 4

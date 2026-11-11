@@ -191,6 +191,78 @@ def one_witness() -> WorldState:
     return state
 
 
+IN_THE_BARN = (
+    "In the barn, the drifter Jorn Hask sleeps in the hay with a ham from the Wellers' "
+    "smokehouse beside him, and Pim, the hired hand, has stopped in the doorway with a pail."
+)
+
+
+def thief_in_the_barn(*, two_saw: bool = False) -> WorldState:
+    """The farm world, where nobody keeps a law and no faction holds anything: what is done on
+    the farm becomes talk, and whatever the dead man's own make of it. Jorn Hask, a drifter who
+    has been stealing from the smokehouse, sleeps in the hay: his sheet says he is asleep, so
+    whether a blade reaches him hangs on no roll (A2). Pim, the hired hand, stands in the
+    doorway, the one person who would see it done. Jorn's elder brother Kasper is a carter who
+    lodges in Millbrook, where Old Bram lives. Ilse is in the house and sees nothing of the
+    barn. With `two_saw`, a second hand, Henk, is in the barn as well."""
+    state = farm_world()
+    give(state, "tomas", Item(id="knife", name="butchering knife", kind=ItemKind.WEAPON))
+    jorn = Character(
+        id="jorn",
+        name="Jorn Hask",
+        description="A drifter who has been stealing from the Wellers' smokehouse.",
+        age=29,
+        location_id="farm",
+        known_by=["tomas"],
+        met_by=["tomas"],
+    )
+    jorn.sheet.condition.states.append(PassingState(name="asleep"))
+    pim = Character(
+        id="pim",
+        name="Pim",
+        description="The Wellers' hired hand, a talkative lad from Millbrook.",
+        age=19,
+        location_id="farm",
+        known_by=["tomas"],
+        met_by=["tomas"],
+    )
+    kasper = Character(
+        id="kasper",
+        name="Kasper Hask",
+        prominence=Prominence.KEY,
+        description="Jorn's elder brother, a carter who lodges at the Millbrook inn.",
+        age=36,
+        location_id="village",
+        known_by=["tomas"],
+        met_by=["tomas"],
+    )
+    kasper.sheet.resources.connections.append(
+        Connection(name="Jorn Hask", kind=ConnectionKind.FAMILY, character_id="jorn")
+    )
+    add(state, kasper, present=False)
+    state.scene = state.scene.model_copy(
+        update={
+            "present_ids": ["tomas"],
+            "positions": ["Jorn asleep in the hay", "Pim in the barn doorway", "Tomas inside"],
+            "props": ["a pitchfork by the door", "a half-eaten ham in the hay"],
+            "ended_on": IN_THE_BARN,
+        }
+    )
+    add(state, jorn, pim)
+    if two_saw:
+        henk = Character(
+            id="henk",
+            name="Henk",
+            description="The Wellers' older hired hand, forking hay down from the loft.",
+            age=44,
+            location_id="farm",
+            known_by=["tomas"],
+            met_by=["tomas"],
+        )
+        add(state, henk)
+    return state
+
+
 THRONGED_WELL = (
     "Noon at the outer-court well, and it is thronged: a long queue of disciples with buckets, "
     "hawkers calling, servants pushing through. Han Jie dozes on the rim of the well in the "

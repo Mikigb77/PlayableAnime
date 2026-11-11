@@ -451,7 +451,12 @@ gave only the gist, phrase it in the character's voice. Outcome claims in the ac
 others react as they would.
 - Dead characters never act or speak, except in a memory clearly framed as one. Characters know \
 only what they have seen or been told. toward_you is how a character really feels about the \
-player character; when apparent_affinity is given, that is what they let show.
+player character; when apparent_affinity is given, that is what they let show. Its grudges are \
+what they know the player character did and hold against them. Its heard_said is what they have \
+only heard said of the player character and half believe, with nobody who saw it behind it: \
+they may be wary or curious, watch, hint or ask, and they neither accuse outright nor act as if \
+it were known (W4). Someone who comes to face the player character over what they were told \
+puts it to them and hears the answer before anything else.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
 ends. When it needs no decision, it is something that already played out: tell it as done. No \
 event hurts the player character by itself: what it does to them is settled when they act. Weave \
@@ -585,7 +590,8 @@ isn't the usual one, such as dead or ruined. travel_s by a place is the seconds 
 takes from SCENE's place, where the map knows it. Use these names as spelled.
 - LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
 - SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
-people present with the player character, each without their secrets, with toward_you and \
+people present with the player character, each without their secrets, with toward_you (its \
+grudges are deeds they know of, its heard_said deeds they have only heard talk of) and \
 sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
 and the fight, chase, duel of words or negotiation under way, if any (encounter), with its \
 terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \

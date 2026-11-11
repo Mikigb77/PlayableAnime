@@ -37,6 +37,7 @@ from engine.state.world import WorldState, natural_key
 from engine.world import carriers, journeys
 from engine.world.geography import routes_from
 from engine.world.scheduling import Kind
+from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
@@ -214,7 +215,26 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     attitude = character.sheet.disposition.attitudes.get(state.player_id)
     if attitude is not None:
         view["toward_you"] = _dump(attitude)
+    if heard := _heard_said(state, character.id):
+        # W4: what they have only heard said of the player character, and half believe.
+        view.setdefault("toward_you", {})["heard_said"] = heard
     return view
+
+
+# How many deeds someone has only heard talk of are told to a model, the gravest first.
+_HEARD_SAID = 3
+
+
+def _heard_said(state: WorldState, character_id: str) -> list[str]:
+    """W4: the player character's deeds this person has only heard talk of
+    (`Deed.heard_by`), in the world's words, the gravest and then the latest first."""
+    heard = [
+        deed
+        for deed in state.deeds.values()
+        if deed.actor_id == state.player_id and character_id in deed.heard_by
+    ]
+    heard.sort(key=lambda d: (-d.severity, -d.world_s, natural_key(d.id)))
+    return [account(state, deed) for deed in heard[:_HEARD_SAID]]
 
 
 def _fallen_view(state: WorldState) -> list[dict[str, Any]]:
