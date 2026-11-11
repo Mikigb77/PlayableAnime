@@ -8,8 +8,8 @@
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
    update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
-   `settle_trips` and `settle_picture`, and runs `engine.invariants.check_transition` on the
-   turn's first and last states before saving)
+   `settle_trips`, `settle_witnesses` and `settle_picture`, and runs
+   `engine.invariants.check_transition` on the turn's first and last states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
 own package, without changing the signature: resolve is `engine.resolve` (WS9), `catch_up`,
@@ -46,7 +46,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import hearsay, journeys
+from engine.world import carriers, hearsay, journeys
 from engine.world.geography import region_of
 from engine.world.scheduling import World
 
@@ -63,6 +63,7 @@ __all__ = [
     "resolve",
     "settle_picture",
     "settle_trips",
+    "settle_witnesses",
 ]
 
 
@@ -406,6 +407,17 @@ def settle_trips(
     what had to be put right, for the turn's log.
     """
     return journeys.settle(played, state, resolution, told=told)
+
+
+def settle_witnesses(state: WorldState) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied (step 6): whoever has set off by now to tell a
+    faction what they saw is out of the scene, whatever its end listed, and a witness the scene
+    let go of is free to talk from now on (W2, W11, `engine.world.carriers`). Returns the state,
+    a new one when there was anything to settle, and who left, for the turn's log."""
+    if not carriers.unsettled(state):
+        return state, []
+    settled = state.model_copy(deep=True)
+    return settled, carriers.settle(settled)
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

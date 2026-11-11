@@ -170,6 +170,15 @@ class Deed(EngineModel):
         default=False,
         description="W1: it went beyond the terms of an agreed bout: an attack under cover of one.",
     )
+    word_out_s: WorldSeconds | None = Field(
+        default=None,
+        description=(
+            "W2: when word of it got out beyond those who saw it (`engine.world.carriers`): at"
+            " once before a crowd, else once a witness was free to talk, or when the world"
+            " found out who did it (W13). None while it is kept among those who saw it, and on"
+            " deeds recorded before word needed a carrier."
+        ),
+    )
 
     @property
     def subject_ids(self) -> list[str]:

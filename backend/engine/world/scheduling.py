@@ -21,6 +21,7 @@ class Kind(StrEnum):
     to whoever scheduled them (such as `director.*`, WS11) and are only marked applied here."""
 
     REPORT = "world.report"  # a witness reaches a faction with what they saw (W11)
+    WORD = "world.word"  # whether a witness is free to talk, so word of a deed gets out (W2)
     ANSWER = "world.answer"  # a faction's answer, or a personal revenge, arrives (W4, W5)
     RUMOR = "world.rumor"  # a rumor reaches a place (W2)
     TIDINGS = "world.tidings"  # word of a death reaches the victim's close ties (W4, W11)

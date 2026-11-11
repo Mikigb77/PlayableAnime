@@ -1,42 +1,25 @@
-"""Reports reaching factions, and answers arriving (W4, W5, W10, W11).
+"""Answers arriving (W4, W5, W10, W11).
 
-A witness's report reaches a faction when the witness could really have got there, or called
-(W10). Then the faction learns of the deed (W3, W5, W11). An answer that sends people arrives
-where they believe the target to be: if the target is there, it needs them and the scene starts
-there (the guards kick in the door at 3 a.m.); if not, they search, and may track the target
-down later. Answers that don't send anyone (a bounty, a coalition, keeping clear) change the
-world off-screen, and the player runs into them in later scenes.
+An answer that sends people arrives where they believe the target to be: if the target is there,
+it needs them and the scene starts there (the guards kick in the door at 3 a.m.); if not, they
+search, and may track the target down later. Answers that don't send anyone (a bounty, a
+coalition, keeping clear) change the world off-screen, and the player runs into them in later
+scenes. What sets an answer going is a faction learning of a deed, which a witness's report
+brings (`engine.world.carriers`).
 """
 
 from engine.state.cast import FactionStatus
 from engine.state.records import Fact, FactKind, Origin, OriginKind, PendingEvent
 from engine.world.answers import ANSWER_TEXT, ARRIVING, Answer, members, schedule_answer
-from engine.world.discovery import attributed, attribution_odds, name_the_doer
+from engine.world.discovery import attribution_odds, name_the_doer, out
 from engine.world.geography import characters_at, faction_seat, is_within
-from engine.world.knowledge import faction_learns, shift_attitude
+from engine.world.knowledge import shift_attitude
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import World, by_id
 from engine.world.tuning import FIND_ODDS, HUNT_ATTEMPTS, SEARCH_S
 
 COALITION_BOOST = 20
 AVOID_FEAR = 10
-
-
-def on_report(w: World, event: PendingEvent) -> None:
-    """A witness reaches a faction with what they saw (W11)."""
-    state = w.state
-    deed = state.deeds.get(str(event.payload.get("deed_id")))
-    faction_id = str(event.payload.get("faction_id"))
-    witness = state.characters.get(str(event.payload.get("witness_id")))
-    if deed is None or faction_id not in state.factions:
-        return
-    # A witness who went to tell them is there now, unless they never left the player's scene
-    # (then they sent word with someone).
-    in_scene = witness is not None and witness.id in state.scene.present_ids
-    if witness is not None and witness.alive and event.payload.get("moves") and event.place_id:
-        if not in_scene:
-            witness.location_id = event.place_id
-    faction_learns(w, faction_id, deed)
 
 
 def _fact(w: World, text: str, known_by: list[str], subject_ids: list[str], ref: str) -> None:
@@ -126,7 +109,7 @@ def on_answer(w: World, event: PendingEvent) -> bool:
 
 def _look_closer(w: World, deed) -> None:
     """Investigators at the scene are another chance to name the doer (W13)."""
-    if attributed(w.state, deed) or not deed.traces:
+    if out(w.state, deed) or not deed.traces:
         return
     if w.roll("investigation", deed.id).chance(attribution_odds(w.state, deed, 0)):
         name_the_doer(w, deed)

@@ -30,13 +30,13 @@ from engine.state import (
 from engine.visibility import attitude_label
 from engine.world import Kind
 from engine.world.answers import Answer
-from engine.world.deeds import would_report
+from engine.world.carriers import would_report
 from engine.world.discovery import attribution_odds, name_the_doer
 from engine.world.norms import Nature, assess_severity, deed_nature, is_crime
 from engine.world.telling import account, found, listing
 from engine.world.tuning import BODY_NEARBY_STRENGTH, TRACE_ATTRIBUTION
 
-from .test_world import at, deed_step, idle, pending_of, play, the_deed
+from .test_world import at, deed_step, idle, moved_on, pending_of, play, the_deed
 
 # --- Beasts and hunts (G24, W4, W11) ------------------------------------------------------------
 
@@ -167,12 +167,19 @@ def test_word_of_a_person_s_death_reaches_their_friends_but_not_their_beasts():
     state.characters["wolf-2"].sheet.disposition.attitudes["herbalist"] = Attitude(affinity=60)
     state.characters["mei"] = Character(id="mei", name="Mei", location_id="well")
     state.characters["mei"].sheet.disposition.attitudes["herbalist"] = Attitude(affinity=60)
+    # Someone who can talk sees it: the wolves there carry no word of it (W2, G24).
+    state.characters["pan"] = Character(id="pan", name="Old Pan", location_id="ashwood")
+    state.scene.present_ids.append("pan")
     murder = ProposedDeed(
         kind="kill", text="kill Wei (it worked)", victim_ids=["herbalist"], severity=4
     )
     after = play(state, deed_step(murder, dead=("herbalist",))).state
+    assert not pending_of(after, Kind.TIDINGS)  # nobody who saw it has told anyone yet (W2)
 
-    told = {e.payload.get("character_id") for e in pending_of(after, Kind.TIDINGS)}
+    after, fired = idle(moved_on(after), after.world_s + 2 * HOUR)
+
+    tidings = [*pending_of(after, Kind.TIDINGS), *(e for e in fired if e.kind == Kind.TIDINGS)]
+    told = {e.payload.get("character_id") for e in tidings}
     assert "mei" in told and "wolf-2" not in told
 
 
@@ -195,8 +202,9 @@ def test_slaying_a_notable_beast_is_news_but_still_no_crime():
 
     assert deed.severity == 4  # what resolve proposed, under the dragon's five
     assert not is_crime(after, deed)
-    assert [r for r in after.rumors.values() if r.deed_id == deed.id]
     assert after.characters["herbalist"].attitude_toward("lin").fear > 0
+    after, _ = idle(moved_on(after), after.world_s + 2 * HOUR)  # once the herbalist can talk
+    assert [r for r in after.rumors.values() if r.deed_id == deed.id]
 
 
 def test_an_unwitnessed_beast_kill_leaves_its_body_for_the_pack_to_find():
@@ -408,6 +416,7 @@ def test_rumors_and_grudges_tell_a_deed_in_the_world_s_words():
 
     after = play(state, deed_step(kill, dead=("zhao",))).state
     deed = the_deed(after)
+    after, _ = idle(moved_on(after), after.world_s + 2 * HOUR)  # once Wei can talk
     (rumor,) = [r for r in after.rumors.values() if r.deed_id == deed.id]
 
     assert rumor.text == "Lin Feng killed Zhao Kun at the outer-court well."

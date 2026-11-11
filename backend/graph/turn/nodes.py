@@ -476,6 +476,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         state["world"], world, state["resolution"], told=ended
     )
     issues += [Issue("trip_place", note) for note in moved_scene]
+    # W11: whoever set off to tell what they saw has left the scene, whatever its end listed.
+    world, left = pipeline.settle_witnesses(world)
+    issues += [Issue("witness_left", "set off to tell what they saw", subject=who) for who in left]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
     # N6: once told, a successor's opening is done.
     world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})
