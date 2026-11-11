@@ -8,11 +8,13 @@ event (W16), the picture code planned (M1) and the time.
 
 from engine.contracts import (
     BeatVerdict,
+    ChoiceKind,
     DirectorPlan,
     PictureDecision,
     PictureKind,
     Resolution,
     StepResolution,
+    SuggestionPlan,
 )
 from engine.looks import place_looks
 from engine.state.records import RollRecord, Throw
@@ -60,7 +62,7 @@ def scene_draft(
         kind=turn.kind,
         player_action=_player_action(turn),
         narration=narration.text,
-        choices=choices(narration, plan.suggestions.count) if mode != "template" else [],
+        choices=choices(narration, plan.suggestions) if mode != "template" else [],
         details=details(resolution),
         event=SceneEvent(size=plan.event.size, title=plan.event.title) if plan.event else None,
         picture=picture(after, plan.picture, narration.image_prompt, mode),
@@ -78,21 +80,27 @@ def _player_action(turn: TurnInput) -> str | None:
     return turn.action.strip() if turn.action else None
 
 
-def choices(narration: NarratorOutput, count: int) -> list[Choice]:
+def choices(narration: NarratorOutput, plan: SuggestionPlan) -> list[Choice]:
     """S2: at most the number the director asked for, never wait or observe (always offered),
-    each label short and unique."""
+    each label short and unique. A way to let time pass is the director's to offer (W10), so a
+    choice the narrator marked `time` beyond what the plan asked for is a side matter."""
     picked: list[Choice] = []
     seen: set[str] = set()
-    if count <= 0:
+    if plan.count <= 0:
         return picked
+    time_left = plan.kinds.count(ChoiceKind.TIME)
     for suggestion in narration.suggestions:
         label = " ".join(suggestion.label.split())[:MAX_CHOICE_CHARS]
         key = label.casefold().rstrip(".!")
         if not label or key in seen or key in _STANDING_WORDS:
             continue
         seen.add(key)
-        picked.append(Choice(id=f"c{len(picked) + 1}", label=label, kind=suggestion.kind))
-        if len(picked) >= count:
+        kind = suggestion.kind
+        if kind is ChoiceKind.TIME:
+            kind = ChoiceKind.TIME if time_left > 0 else ChoiceKind.SIDE
+            time_left -= 1
+        picked.append(Choice(id=f"c{len(picked) + 1}", label=label, kind=kind))
+        if len(picked) >= plan.count:
             break
     return picked
 

@@ -18,6 +18,7 @@ something happens and what it is, never how it ends (W16).
 
 from engine.context import TurnContext
 from engine.contracts.direction import (
+    ChoiceKind,
     DirectorPlan,
     DirectorUpdates,
     EventSource,
@@ -28,7 +29,7 @@ from engine.contracts.direction import (
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
 from engine.director import rules
-from engine.director.clock import sizes_in_time, small_thing_fits
+from engine.director.clock import clock_after, clock_is_slow, sizes_in_time, small_thing_fits
 from engine.director.due import (
     MONTAGE_KIND,
     PLAYS_OUT_KIND,
@@ -274,7 +275,15 @@ def direct(
     )
     deciding = event.thread_id if event is not None and event.needs_decision else None
     thread_id = current_thread(state, changes, deciding)
-    suggestions = plan_suggestions(ctx, pressure=pressure, event=event, thread_id=thread_id)
+    # W10, S2: after a long run of scenes that took next to no time, a quiet scene offers one
+    # way to let time pass. Never a push: not in a scene with stakes, on the way of a trip,
+    # which has its own way on, or inside stopped time.
+    ends = clock_after(memory, state.world_s)
+    room = not pressure.stakes and state.journey is None and not world_stopped(state)
+    slow = clock_is_slow(ends) and room and ctx.turn > 1
+    suggestions = plan_suggestions(
+        ctx, pressure=pressure, event=event, thread_id=thread_id, time=slow
+    )
     # W2: a quiet scene may carry some of the talk of the place, now and then.
     busy = event is not None or moment is not None or bool(happenings)
     talk = plan_talk(
@@ -302,6 +311,8 @@ def direct(
         memory.recent_moments = recent_after(memory.recent_moments, moment)
     if moment is not None or talk is not None:
         memory.last_small_s = state.world_s  # W10: the next small thing keeps minutes from it
+    # S2: once a way to let time pass is offered, the run of short scenes starts over.
+    memory.recent_clock = [] if ChoiceKind.TIME in suggestions.kinds else ends
     big = (event is not None and event.size is not EventSize.PERSONAL) or any(
         d.severity >= rules.BIG_DEED for d in player_deeds(state, facts)
     )

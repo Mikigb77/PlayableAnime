@@ -154,6 +154,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   label: 'Ask the voice to prove it, right now',
                   kind: ChoiceKind.wild,
                 ),
+                StoryChoice(id: '5', label: 'Sleep until the morning bell', kind: ChoiceKind.time),
               ],
               onChoice: (_) {},
               onStanding: (_) {},

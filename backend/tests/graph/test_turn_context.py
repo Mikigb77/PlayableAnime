@@ -632,8 +632,43 @@ def test_no_suggestions_when_none_were_asked_for():
     narration = NarratorOutput(
         narration="x", suggestions=[SuggestionOut(label="Run", kind=ChoiceKind.THREAD)]
     )
-    assert choices(narration, 0) == []
-    assert [c.label for c in choices(narration, 1)] == ["Run"]
+    assert choices(narration, SuggestionPlan(count=0, kinds=[])) == []
+    one = SuggestionPlan(count=1, kinds=[ChoiceKind.THREAD])
+    assert [c.label for c in choices(narration, one)] == ["Run"]
+
+
+def test_a_way_to_let_time_pass_is_the_directors_to_offer():
+    """S2, W10: the narrator writes the choices and the director says their kinds, so a choice
+    marked `time` that the plan didn't ask for is shown as a side matter, and one it asked for
+    keeps its mark."""
+    narration = NarratorOutput(
+        narration="x",
+        suggestions=[
+            SuggestionOut(label="Ask the smith about the blade", kind=ChoiceKind.THREAD),
+            SuggestionOut(label="Sleep until morning", kind=ChoiceKind.TIME),
+            SuggestionOut(label="Train for three days", kind=ChoiceKind.TIME),
+        ],
+    )
+    quiet = [ChoiceKind.THREAD, ChoiceKind.PERSONAL, ChoiceKind.SIDE]
+
+    unasked = choices(narration, SuggestionPlan(count=3, kinds=quiet))
+    asked = choices(narration, SuggestionPlan(count=4, kinds=[*quiet, ChoiceKind.TIME]))
+
+    assert [c.kind for c in unasked] == [ChoiceKind.THREAD, ChoiceKind.SIDE, ChoiceKind.SIDE]
+    assert [c.kind for c in asked] == [ChoiceKind.THREAD, ChoiceKind.TIME, ChoiceKind.SIDE]
+    assert [c.label for c in asked] == [s.label for s in narration.suggestions]
+
+
+def test_the_narrator_is_asked_for_a_time_choice_only_when_the_plan_lists_one():
+    state = cultivation_world()
+    kinds = [ChoiceKind.THREAD, ChoiceKind.PERSONAL, ChoiceKind.SIDE, ChoiceKind.TIME]
+    plan = DirectorPlan(suggestions=SuggestionPlan(count=4, kinds=kinds, thread_id="tournament"))
+
+    assert '"kinds":["thread","personal","side","time"]' in brief(state, plan=plan).user
+    assert '"time"' not in brief(state).user.split("## SUGGESTIONS\n", 1)[1].split("\n", 1)[0]
+    # What such a choice is, and that the scene never leans on it.
+    assert 'A "time" choice, only when SUGGESTIONS lists one' in prompts.NARRATOR_SYSTEM
+    assert "nothing in the narration leans toward it" in prompts.NARRATOR_SYSTEM
 
 
 def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
