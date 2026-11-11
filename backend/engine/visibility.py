@@ -44,8 +44,11 @@ from engine.state.cast import (
 )
 from engine.state.records import (
     Deed,
+    EventStatus,
     GoalStatus,
     LeadStatus,
+    OriginKind,
+    PendingEvent,
     Rumor,
     StatusChange,
     ThreadStatus,
@@ -63,8 +66,11 @@ from engine.state.sheet import (
     TraitKind,
 )
 from engine.state.world import WorldState, natural_key
+from engine.world.answers import ARRIVING, Answer
 from engine.world.rumors import Certainty, certainty
+from engine.world.scheduling import Kind
 from engine.world.telling import cap, tell
+from engine.world.tuning import RUMOR_MIN_SEVERITY
 
 SINCE_LIMIT = 6
 # C10: how many of the player character's latest gains and losses `/status` weighs among them.
@@ -118,6 +124,20 @@ class DeedSeen(StrEnum):
     SEEN = "seen"  # their own, with someone they noticed watching
     PUBLIC = "public"  # their own, done where anyone could see
     UNSEEN = "unseen"  # their own, with nobody watching as far as they know
+
+
+class TrailKind(StrEnum):
+    """W2, W11, C6. What the player character knows became of a deed of theirs, after it."""
+
+    WENT = "went"  # someone who saw it, whom they saw go off to tell
+    DEAD = "dead"  # someone who saw it and is dead, as far as they know
+    HEARD = "heard"  # talk of it that a scene told them
+    CAME = "came"  # someone came to them over it
+
+
+class TrailEntry(EngineModel):
+    kind: TrailKind
+    text: str
 
 
 class CharacterCard(EngineModel):
@@ -183,6 +203,10 @@ class DeedEntry(EngineModel):
     when_label: str
     seen: DeedSeen
     known_label: str
+    trail: list[TrailEntry] = Field(default_factory=list)
+    """What the character knows became of it since, in the order it happened (C6)."""
+    open_label: str | None = None
+    """That who else knows is nothing they can tell, where that is an open question."""
 
 
 class ThreadEntry(EngineModel):
@@ -698,6 +722,21 @@ _WORDS = {
         "someone": "someone",
         "age": "{age} years old",
         "lasts": "Passes {when}",
+        "went_to": "{who} went to tell {whom}",
+        "went": "{who} went off to tell what they saw",
+        "who_saw": "someone who saw it",
+        "is_dead": "{who} is dead",
+        "is_presumed_dead": "{who} is presumed dead",
+        "heard_said": "Heard {when}: “{text}”",
+        "came": "{who} came {what}, {when}",
+        "came_many": "{who} came {what}, {when}",
+        "came_to_face": "to face you over it",
+        "came_for_revenge": "for revenge",
+        "came_to_arrest": "to arrest you",
+        "came_to_look": "to look into it",
+        "came_for_you": "for you over it",
+        "came_to_you": "to you because of it",
+        "who_else": "Who else knows? You can't tell until you hear it, or go and find out.",
         "own_move": "Your own",
         "learned_from": "Learned from {who}",
     },
@@ -733,6 +772,21 @@ _WORDS = {
         "someone": "alguien",
         "age": "{age} años",
         "lasts": "Se pasa {when}",
+        "went_to": "{who} fue a contárselo a {whom}",
+        "went": "{who} se fue a contar lo que vio",
+        "who_saw": "alguien que lo vio",
+        "is_dead": "{who} ha muerto",
+        "is_presumed_dead": "Se cree que {who} ha muerto",
+        "heard_said": "Lo oíste {when}: «{text}»",
+        "came": "{who} vino {what}, {when}",
+        "came_many": "{who} vinieron {what}, {when}",
+        "came_to_face": "a pedirte cuentas",
+        "came_for_revenge": "a vengarse",
+        "came_to_arrest": "a detenerte",
+        "came_to_look": "a investigar lo ocurrido",
+        "came_for_you": "a por ti por ello",
+        "came_to_you": "a verte por ello",
+        "who_else": "¿Quién más lo sabe? No lo sabrás hasta que lo oigas o vayas a averiguarlo.",
         "own_move": "Creación tuya",
         "learned_from": "Aprendida {of_who}",
     },
@@ -768,6 +822,21 @@ _WORDS = {
         "someone": "algú",
         "age": "{age} anys",
         "lasts": "Passa {when}",
+        "went_to": "{who} va anar a explicar-ho a {whom}",
+        "went": "{who} va marxar a explicar el que havia vist",
+        "who_saw": "algú que ho va veure",
+        "is_dead": "{who} ha mort",
+        "is_presumed_dead": "Es creu que {who} ha mort",
+        "heard_said": "Ho vas sentir {when}: «{text}»",
+        "came": "{who} va venir {what}, {when}",
+        "came_many": "{who} van venir {what}, {when}",
+        "came_to_face": "a demanar-te comptes",
+        "came_for_revenge": "a venjar-se",
+        "came_to_arrest": "a detenir-te",
+        "came_to_look": "a investigar què havia passat",
+        "came_for_you": "a buscar-te per això",
+        "came_to_you": "a veure't per això",
+        "who_else": "Qui més ho sap? No ho sabràs fins que ho sentis o ho vagis a esbrinar.",
         "own_move": "Creació teva",
         "learned_from": "Apresa {of_who}",
     },
@@ -907,16 +976,21 @@ class _Knowledge:
         """The deeds the player character knows, in time order, each with its telling, when it
         was and who saw it. Deeds that would read the same in all three show once: a fight of
         four blows is one entry, not four."""
-        told = []
-        seen: set[tuple[str, str, str]] = set()
+        return [(deeds[0], text, when, known) for deeds, text, when, known in self.deed_groups()]
+
+    def deed_groups(self) -> list[tuple[list[Deed], str, str, str]]:
+        """`told_deeds`, each entry with every deed it stands for, the first one first."""
+        groups: dict[tuple[str, str, str], tuple[list[Deed], str, str, str]] = {}
         for deed in self.deeds():
             text = self.deed_text(deed)
             when = clock_label(self.state.bible.calendar, deed.world_s, self.language)
             known = self.known_label(deed)
-            if (mark := (normalize(text), when, known)) not in seen:
-                seen.add(mark)
-                told.append((deed, text, when, known))
-        return told
+            mark = (normalize(text), when, known)
+            if mark in groups:
+                groups[mark][0].append(deed)
+            else:
+                groups[mark] = ([deed], text, when, known)
+        return list(groups.values())
 
     def rumors(self) -> list[RumorEntry]:
         """The rumors the player character heard, by when they last heard them (W2, C6). The same
@@ -979,6 +1053,154 @@ class _Knowledge:
         if deed.visibility is Visibility.PUBLIC and not deed.in_stopped_time:
             return DeedSeen.PUBLIC, words["public"]
         return DeedSeen.UNSEEN, words["unseen"]
+
+    def _noticed(self, deed: Deed) -> list[str]:
+        """Who saw a deed of the player character's, as far as they know, in a fixed order."""
+        return sorted(
+            (
+                w
+                for w in dict.fromkeys(deed.witness_ids)
+                if w != self.player_id and w not in deed.unnoticed_witness_ids
+            ),
+            key=natural_key,
+        )
+
+    def trail(self, deeds: list[Deed]) -> list[TrailEntry]:
+        """W2, W11, C6. What the player character knows became of a deed of theirs, or of the
+        deeds one entry stands for, in the order it happened: who of those who saw it they saw
+        go off to tell, and whom; who of them is dead; what a scene told them is being said of
+        it; and who came to them over it. Only what was in front of them: whether a runner got
+        there, who was told and who has heard are the world's to know, so none of it is here.
+        Nothing for someone else's deed."""
+        words = _WORDS[self.language]
+        state = self.state
+        entries: list[TrailEntry] = []
+
+        def add(kind: TrailKind, text: str) -> None:
+            entry = TrailEntry(kind=kind, text=_cap(text))
+            if entry not in entries:
+                entries.append(entry)
+
+        deeds = [d for d in deeds if d.actor_id == self.player_id]
+        for deed in deeds:
+            noticed = self._noticed(deed)
+            for witness_id in noticed:
+                faction_id = deed.went_to_tell.get(witness_id)
+                if faction_id is None:
+                    continue
+                who = self.name_of(witness_id) or words["someone"]
+                if whom := self.name_of(faction_id):
+                    add(TrailKind.WENT, words["went_to"].format(who=who, whom=whom))
+                else:
+                    add(TrailKind.WENT, words["went"].format(who=who))
+            for witness_id in noticed:
+                witness = state.characters.get(witness_id)
+                if witness is None:
+                    continue
+                who = self.name_of(witness_id) or words["who_saw"]
+                status, presumed = believed_status(
+                    witness.status_history,
+                    witness.status.value,
+                    self.player_id,
+                    initial=CharacterStatus.ALIVE.value,
+                )
+                if status == CharacterStatus.DEAD.value:
+                    key = "is_presumed_dead" if presumed else "is_dead"
+                    add(TrailKind.DEAD, words[key].format(who=who))
+        later: list[tuple[int, tuple, TrailKind, str]] = []
+        said: dict[str, Rumor] = {}
+        for deed in deeds:
+            for rumor in self._heard_of.get(deed.id, []):
+                kept = said.get(mark := normalize(rumor.text))
+                if kept is None or self._heard(rumor) > self._heard(kept):
+                    said[mark] = rumor
+            for event in self._answers_to.get(deed.id, []):
+                if text := self._came(event):
+                    key = natural_key(event.id)
+                    later.append((event.applied_s or 0, key, TrailKind.CAME, text))
+        for rumor in said.values():
+            heard_s = rumor.heard_at[self.player_id]
+            when = ago_label(self.now - heard_s, self.language)
+            text = words["heard_said"].format(when=when, text=rumor.text)
+            later.append((heard_s, natural_key(rumor.id), TrailKind.HEARD, text))
+        for _, _, kind, text in sorted(later, key=lambda entry: entry[:2]):
+            add(kind, text)
+        return entries
+
+    @cached_property
+    def _heard_of(self) -> dict[str, list[Rumor]]:
+        """The rumors of each deed that a scene told the player character, by the deed's id."""
+        heard: dict[str, list[Rumor]] = {}
+        for rumor in self.state.rumors.values():
+            if rumor.deed_id is None or rumor.timeline_id != self.timeline:
+                continue
+            if self.player_id in rumor.heard_at:
+                heard.setdefault(rumor.deed_id, []).append(rumor)
+        return heard
+
+    @cached_property
+    def _answers_to(self) -> dict[str, list[PendingEvent]]:
+        """The answers the world gave each deed that have arrived, by the deed's id."""
+        answers: dict[str, list[PendingEvent]] = {}
+        for event in self.state.pending_events.values():
+            deed_id = event.payload.get("deed_id")
+            if event.kind == Kind.ANSWER and event.status is EventStatus.APPLIED and deed_id:
+                answers.setdefault(str(deed_id), []).append(event)
+        return answers
+
+    @cached_property
+    def _met_events(self) -> set[str]:
+        """The events that happened in front of the player character: those a fact they know
+        came of."""
+        return {
+            f.origin.ref_id
+            for f in self.state.facts.values()
+            if f.origin is not None
+            and f.origin.kind is OriginKind.EVENT
+            and f.origin.ref_id is not None
+            and self.player_id in f.known_by
+        }
+
+    def _came(self, event: PendingEvent) -> str | None:
+        """W4, W5, C6. Someone who came to the player character over a deed and found them, in
+        words: who it was when they know them, and what for. None for an answer that sent
+        nobody and for one that came and found them gone."""
+        if event.timeline_id != self.timeline or event.id not in self._met_events:
+            return None
+        if event.payload.get("target_id") != self.player_id:
+            return None
+        try:
+            answer = Answer(str(event.payload.get("answer")))
+        except ValueError:
+            return None
+        if answer not in ARRIVING:
+            return None
+        words = _WORDS[self.language]
+        source_id = event.payload.get("avenger_id") or event.payload.get("faction_id")
+        who = self.name_of(str(source_id)) if source_id else None
+        # A faction whose name is a plural ("Los Tigres Negros") takes a plural verb.
+        many = who is not None and who.split(" ")[0].lower() in _PLURAL_ARTICLES
+        applied_s = self.now if event.applied_s is None else event.applied_s
+        when = ago_label(self.now - applied_s, self.language)
+        return words["came_many" if many else "came"].format(
+            who=who or words["someone"], what=words[_CAME_FOR.get(answer, "came_to_you")], when=when
+        )
+
+    def open_label(self, deeds: list[Deed], trail: list[TrailEntry]) -> str | None:
+        """C6. That who else knows of a deed of theirs is nothing the player character can tell,
+        where that is an open question: word of it went somewhere or came back, or someone saw
+        what is news by the world's norms (W12) and no bout both sides agreed to (W1). What was
+        done in public is known, and what nobody saw and nothing came of is left alone."""
+        mine = [d for d in deeds if d.actor_id == self.player_id]
+        if not mine or any(
+            d.visibility is Visibility.PUBLIC and not d.in_stopped_time for d in mine
+        ):
+            return None
+        news = any(
+            d.severity >= RUMOR_MIN_SEVERITY and not d.agreed and self._noticed(d) for d in mine
+        )
+        stirred = any(entry.kind is not TrailKind.DEAD for entry in trail)
+        return _WORDS[self.language]["who_else"] if news or stirred else None
 
     # --- entries --------------------------------------------------------------------------
 
@@ -1379,6 +1601,22 @@ class _Knowledge:
         ]
 
 
+# W4, W5: what someone who came to the player character came for, as Memory words it.
+_CAME_FOR = {
+    Answer.CONFRONT: "came_to_face",
+    Answer.REVENGE: "came_for_revenge",
+    Answer.ARREST: "came_to_arrest",
+    Answer.INVESTIGATE: "came_to_look",
+    Answer.HUNTERS: "came_for_you",
+    Answer.ARMY: "came_for_you",
+    Answer.ELITE: "came_for_you",
+    Answer.ASSASSIN: "came_for_you",
+    Answer.SEAL: "came_for_you",
+}
+# The words a plural name opens with, in the three languages.
+_PLURAL_ARTICLES = frozenset({"los", "las", "els", "les"})
+
+
 def _cap(text: str) -> str:
     """Capitalises the first letter only, keeping names such as "Qi Condensation" intact."""
     return text[:1].upper() + text[1:]
@@ -1429,10 +1667,20 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
             expires = _WORDS[language]["ends"].format(when=when)
         leads.append(LeadEntry(id=lead.id, text=lead.text, expires_label=expires))
     rumors = k.rumors()
-    deeds = [
-        DeedEntry(id=d.id, text=text, when_label=when, seen=k.seen(d)[0], known_label=known)
-        for d, text, when, known in k.told_deeds()
-    ]
+    deeds = []
+    for group, text, when, known in k.deed_groups():
+        trail = k.trail(group)
+        deeds.append(
+            DeedEntry(
+                id=group[0].id,
+                text=text,
+                when_label=when,
+                seen=k.seen(group[0])[0],
+                known_label=known,
+                trail=trail,
+                open_label=k.open_label(group, trail),
+            )
+        )
     threads = [
         ThreadEntry(id=t.id, title=t.title, status=t.status)
         for t in sorted(state.threads.values(), key=lambda t: (t.opened_turn, natural_key(t.id)))

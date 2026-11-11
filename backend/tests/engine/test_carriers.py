@@ -285,6 +285,57 @@ def test_the_scene_that_tells_a_turn_is_told_who_ran_in_it_though_no_scene_liste
     assert carriers.runners(played.state, turn=3) == []
 
 
+def test_the_deed_keeps_whom_the_character_saw_set_off_to_tell_and_to_whom():
+    """C6: it is theirs to remember. Whether he got there is nothing they know."""
+    after = shoved()
+    assert the_deed(after).went_to_tell == {}  # still in the scene, within reach
+
+    after.world_s = report(after).payload["sets_off_s"]
+    carriers.settle(after)
+    assert the_deed(after).went_to_tell == {"wei": SECT} and not knows(after)
+
+    # One who got away while a long step played went in front of them too.
+    played = play(well(), deed_step(shove()), deed_step(duration_s=HOUR), turn=2)
+    assert the_deed(played.state).went_to_tell == {"wei": SECT}
+
+    # A crowd's witness no scene had listed yet ran in the scene that told the deed.
+    state = well()
+    state.scene.present_ids = ["lin", "zhao"]
+    played = play(
+        state,
+        deed_step(shove(visibility=Visibility.PUBLIC)),
+        deed_step(duration_s=HOUR),
+        turn=2,
+    )
+    assert the_deed(played.state).went_to_tell == {"wei": SECT}
+
+
+def test_a_witness_who_sets_off_once_the_character_is_gone_is_nobody_they_saw_go():
+    after = shoved()
+    event = report(after)
+    after.turn = 3
+    after.scene.present_ids = ["lin"]
+    after.scene.place_id = after.player.location_id = "inner-court"
+
+    after.world_s = event.payload["sets_off_s"]
+    carriers.settle(after)
+    after, _ = idle(after, event.due_s)
+
+    assert knows(after) and the_deed(after).went_to_tell == {}
+
+    # Nor one who is stopped before he sets off.
+    stopped = shoved()
+    slay(stopped, "wei")
+    stopped.world_s = report(stopped).payload["sets_off_s"]
+    carriers.settle(stopped)
+    assert the_deed(stopped).went_to_tell == {}
+
+    # Nor a watcher they never noticed, though he runs like anyone.
+    hidden = shoved(unnoticed_witness_ids=["wei"])
+    hidden.world_s = report(hidden).payload["sets_off_s"]
+    assert carriers.settle(hidden) == ["wei"] and the_deed(hidden).went_to_tell == {}
+
+
 # --- Talk (W2, W3, W4) --------------------------------------------------------------------------
 
 

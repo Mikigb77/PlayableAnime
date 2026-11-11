@@ -914,6 +914,10 @@ const _seedMemory = <String, Object?>{
       'when_label': 'Day 1, dawn',
       'seen': 'unseen',
       'known_label': 'No one saw, as far as you know',
+      'trail': [
+        {'kind': 'heard', 'text': 'Heard 1 hour ago: “A scroll is missing from the library”'},
+      ],
+      'open_label': 'Who else knows? You can\'t tell until you hear it, or go and find out.',
     },
   ],
   'threads': [

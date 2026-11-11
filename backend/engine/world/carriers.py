@@ -242,6 +242,8 @@ def on_report(w: World, event: PendingEvent) -> None:
         moves = bool(event.payload.get("moves") and event.place_id)
         if "sets_off_s" in event.payload or moves:
             # They got away to bring it. Where the faction is right there, nobody had to leave.
+            if _in_scene(state, deed, witness.id, w.ctx.turn):
+                _seen_going(deed, witness.id, faction_id)
             _out_of_scene(state, [witness.id])
         if moves:
             witness.location_id = event.place_id
@@ -314,8 +316,13 @@ def leave(state: WorldState) -> list[str]:
     """Whoever has set off by now to tell what they saw is out of the player character's scene,
     whatever its record lists: code decides who runs (W11). Asked wherever it matters who is in
     the scene: when a deed is recorded, when the world asks whether word is out, and when a
-    scene ends. Returns who left, in order."""
-    gone = [r.witness_id for r in runners(state) if r.sets_off_s <= state.world_s]
+    scene ends. The deed keeps whom the character saw go, and to whom (`Deed.went_to_tell`): it
+    is theirs to remember, and whether the runner gets there is nothing they know (C6). Returns
+    who left, in order."""
+    left = [r for r in runners(state) if r.sets_off_s <= state.world_s]
+    for runner in left:
+        _seen_going(state.deeds[runner.deed_id], runner.witness_id, runner.faction_id)
+    gone = [r.witness_id for r in left]
     _out_of_scene(state, gone)
     return gone
 
@@ -345,6 +352,21 @@ def settle(state: WorldState) -> list[str]:
             if carries(state, witness, faction_id, deed):
                 event.due_s = min(event.due_s, state.world_s)
     return gone
+
+
+def _in_scene(state: WorldState, deed: Deed, witness_id: str, turn: int) -> bool:
+    """Whether the player character's scene has this witness of a deed in it: its record lists
+    them, or they saw a deed of this turn done where the scene is, which no scene has listed
+    yet."""
+    here = state.scene.place_id or state.player.location_id
+    return witness_id in state.scene.present_ids or (deed.turn == turn and deed.place_id == here)
+
+
+def _seen_going(deed: Deed, witness_id: str, faction_id: str) -> None:
+    """C6: the player character saw this witness set off to tell a faction, the first one they
+    went to. Not one they never noticed, such as a hidden watcher."""
+    if witness_id not in deed.unnoticed_witness_ids:
+        deed.went_to_tell.setdefault(witness_id, faction_id)
 
 
 def _out_of_scene(state: WorldState, ids: list[str]) -> None:

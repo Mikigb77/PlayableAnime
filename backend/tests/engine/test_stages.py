@@ -24,6 +24,7 @@ from engine.state import (
     Visibility,
     WorldState,
 )
+from engine.visibility import memory_view
 from engine.world import Kind
 from engine.world.answers import HOSTILE, Answer
 from engine.world.knowledge import Grounds, character_learns, faction_learns, proven
@@ -126,6 +127,31 @@ def test_one_witnesss_word_brings_a_friend_of_the_dead_to_face_the_doer_and_reve
     after, fired = idle(after, revenge.due_s)
     (came,) = [e for e in fired if e.id == revenge.id]
     assert came.status is EventStatus.APPLIED and came.needs_player
+
+
+def test_memory_tells_who_came_over_it_and_nothing_of_what_went_on_out_of_the_doers_sight():
+    """C6: word reaching Mei and her setting out are nothing Lin could know. Her coming is."""
+    state = with_a_friend(well(sect=False))
+    state.characters["mei"].known_by.append("lin")
+    after = killing(state)
+    (comes,) = coming(after)
+
+    (entry,) = memory_view(after).deeds
+    assert entry.trail == [] and entry.open_label is not None  # Wei saw it: who else knows?
+
+    after, _ = idle(after, comes.due_s)
+    (entry,) = memory_view(after).deeds
+    assert [(t.kind.value, t.text) for t in entry.trail] == [
+        ("came", "Mei came to face you over it, moments ago")
+    ]
+
+    (revenge,) = coming(after)
+    after, _ = idle(after, revenge.due_s)
+    (entry,) = memory_view(after).deeds
+    assert [t.text.rsplit(",", 1)[0] for t in entry.trail] == [
+        "Mei came to face you over it",
+        "Mei came for revenge",
+    ]
 
 
 @pytest.mark.parametrize("changed", ["cowed", "won over"])

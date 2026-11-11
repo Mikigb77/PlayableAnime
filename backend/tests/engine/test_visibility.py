@@ -13,16 +13,22 @@ from engine.state import (
     CharacterStatus,
     DeathCertainty,
     Deed,
+    EventStatus,
     Fact,
+    Faction,
     FactionStatus,
     Lead,
     LeadStatus,
     Mastery,
+    Origin,
+    OriginKind,
+    PendingEvent,
     PlaceStatus,
     Reputation,
     Rumor,
     StatusChange,
     Technique,
+    Terms,
     Trait,
     TraitKind,
     Visibility,
@@ -39,6 +45,7 @@ from engine.visibility import (
     standing_label,
     status_view,
 )
+from engine.world import Kind
 
 
 def dumped(view) -> str:
@@ -207,6 +214,226 @@ def test_who_saw_a_deed_as_far_as_the_player_knows():
         "spied-on": DeedSeen.UNSEEN,  # C6: a watcher they never noticed
         "public": DeedSeen.PUBLIC,
     }
+
+
+def trails(state: WorldState, language=Language.EN) -> dict[str, list[tuple[str, str]]]:
+    return {
+        d.id: [(t.kind.value, t.text) for t in d.trail] for d in memory_view(state, language).deeds
+    }
+
+
+def came(state: WorldState, event_id: str, *, found: bool = True, **payload) -> None:
+    """Someone came to the player character over a deed: the answer the world applied, and the
+    fact of it, which those who were there know."""
+    state.pending_events[event_id] = PendingEvent(
+        id=event_id,
+        kind=Kind.ANSWER,
+        due_s=state.world_s,
+        status=EventStatus.APPLIED,
+        applied_s=state.world_s,
+        payload={"target_id": state.player_id} | payload,
+    )
+    state.facts[event_id] = Fact(
+        id=event_id,
+        text="They came",
+        known_by=[state.player_id] if found else ["carmine"],
+        origin=Origin(kind=OriginKind.EVENT, ref_id=event_id),
+    )
+
+
+def test_a_deed_tells_whom_the_character_saw_go_off_to_tell_and_who_of_them_is_dead():
+    state = grounded_world()
+    own_deed(
+        state,
+        "shot",
+        severity=3,
+        witness_ids=["carmine", "bartender", "spy"],
+        unnoticed_witness_ids=["spy"],
+        went_to_tell={"carmine": "police", "bartender": "ghosts", "spy": "police"},
+    )
+    own_deed(state, "quiet", witness_ids=["carmine"])
+
+    assert trails(state)["shot"] == [
+        # Gennaro is nobody they know by name, and the faction he went to none they know of.
+        ("went", "Someone went off to tell what they saw"),
+        ("went", "Carmine Russo went to tell the Polizia di Stato in Naples"),
+    ]
+    assert trails(state)["quiet"] == []
+
+    state.scene.present_ids = ["luca", "carmine"]  # Gennaro is elsewhere by now
+    dead = engine(
+        state,
+        characters=[
+            CharacterChange(id="carmine", status=CharacterStatus.DEAD, known_to_player=True),
+            CharacterChange(id="bartender", status=CharacterStatus.DEAD),
+        ],
+    )
+
+    # C6: only a death they know of.
+    assert [kind for kind, _ in trails(dead)["shot"]] == ["went", "went", "dead"]
+    assert trails(dead)["shot"][-1] == ("dead", "Carmine Russo is dead")
+    dead.characters["bartender"].status_history[-1].known_by.append("luca")
+    assert trails(dead)["shot"][-2:] == [
+        ("dead", "Someone who saw it is dead"),  # nobody they know by name
+        ("dead", "Carmine Russo is dead"),
+    ]
+    assert trails(dead)["quiet"] == [("dead", "Carmine Russo is dead")]
+
+
+def test_a_deed_tells_what_a_scene_said_of_it_and_who_came_over_it_in_the_order_it_happened():
+    state = grounded_world()
+    own_deed(state, "shot", severity=3)
+    own_deed(state, "other")
+    state.world_s = 3 * DAY
+    state.rumors = {
+        "told": Rumor(
+            id="told",
+            text="Someone shot at Carmine in his own bar",
+            is_true=True,
+            deed_id="shot",
+            heard_at={"luca": 2 * DAY, "carmine": 0},
+        ),
+        "again": Rumor(  # the same words from another teller: one line, by the last hearing
+            id="again",
+            text="Someone shot at Carmine in his own bar",
+            is_true=True,
+            deed_id="shot",
+            heard_at={"luca": DAY},
+        ),
+        "unheard": Rumor(
+            id="unheard", text="Luca did it", is_true=True, deed_id="shot", heard_at={"carmine": 0}
+        ),
+        "elsewhere": Rumor(
+            id="elsewhere", text="Rain is coming", is_true=True, heard_at={"luca": DAY}
+        ),
+    }
+    state.world_s = DAY
+    came(state, "faced", answer="confront", avenger_id="carmine", deed_id="shot")
+    state.world_s = 3 * DAY - HOUR
+    came(state, "arrest", answer="arrest", faction_id="police", deed_id="shot")
+    came(state, "missed", found=False, answer="revenge", avenger_id="carmine", deed_id="shot")
+    came(state, "bounty", answer="bounty", faction_id="police", deed_id="shot")
+    came(state, "stranger", answer="hunters", faction_id="ghosts", deed_id="shot")
+    state.pending_events["arrest"].applied_s = 3 * DAY - HOUR
+    state.pending_events["on-its-way"] = PendingEvent(
+        id="on-its-way",
+        kind=Kind.ANSWER,
+        due_s=4 * DAY,
+        payload={"target_id": "luca", "answer": "revenge", "deed_id": "shot"},
+    )
+    state.world_s = 3 * DAY
+
+    assert trails(state) == {
+        "shot": [
+            ("came", "Carmine Russo came to face you over it, 2 days ago"),
+            ("heard", "Heard a day ago: “Someone shot at Carmine in his own bar”"),
+            ("came", "The Polizia di Stato in Naples came to arrest you, an hour ago"),
+            ("came", "Someone came for you over it, an hour ago"),
+        ],
+        "other": [],
+    }
+
+
+def test_who_else_knows_is_an_open_question_only_where_it_is_one():
+    state = grounded_world()
+    own_deed(state, "seen", severity=3, witness_ids=["carmine"])
+    own_deed(state, "slight", severity=1, witness_ids=["carmine"])
+    own_deed(state, "bout", severity=3, witness_ids=["carmine"], terms=Terms.NO_HARM)
+    own_deed(state, "spied-on", severity=3, witness_ids=["x"], unnoticed_witness_ids=["x"])
+    own_deed(state, "secret", severity=3)
+    own_deed(state, "came-of-it", severity=3)
+    own_deed(state, "public", severity=3, visibility=Visibility.PUBLIC, witness_ids=["carmine"])
+    own_deed(
+        state, "theirs", severity=3, actor_id="carmine", witness_ids=["luca"], known_by=["luca"]
+    )
+    state.rumors["r"] = Rumor(
+        id="r", text="A man was shot", is_true=True, deed_id="came-of-it", heard_at={"luca": 0}
+    )
+
+    assert {d.id: d.open_label for d in memory_view(state).deeds} == {
+        "seen": "Who else knows? You can't tell until you hear it, or go and find out.",
+        "slight": None,  # nothing word travels about (W12)
+        "bout": None,  # nobody's to report (W1)
+        "spied-on": None,  # C6: a watcher they never noticed
+        "secret": None,
+        "came-of-it": "Who else knows? You can't tell until you hear it, or go and find out.",
+        "public": None,  # everybody knows
+        "theirs": None,
+    }
+
+
+def test_blows_that_read_as_one_deed_tell_what_became_of_any_of_them_once():
+    state = grounded_world()
+    for blow in ("b1", "b2"):
+        own_deed(
+            state,
+            blow,
+            text="Shot at Carmine",
+            witness_ids=["carmine"],
+            went_to_tell={"carmine": "police"},
+        )
+    state.rumors["r"] = Rumor(
+        id="r", text="A man was shot", is_true=True, deed_id="b2", heard_at={"luca": 0}
+    )
+
+    assert trails(state) == {
+        "b1": [
+            ("went", "Carmine Russo went to tell the Polizia di Stato in Naples"),
+            ("heard", "Heard moments ago: “A man was shot”"),
+        ]
+    }
+
+
+def test_what_became_of_a_deed_in_spanish_and_catalan():
+    state = grounded_world()
+    state.factions["tigres"] = Faction(id="tigres", name="Los Tigres Negros", known_by=["luca"])
+    own_deed(
+        state,
+        "shot",
+        severity=3,
+        witness_ids=["carmine", "bartender"],
+        went_to_tell={"carmine": "police", "bartender": "ghosts"},
+    )
+    state.rumors["r"] = Rumor(
+        id="r", text="A man was shot", is_true=True, deed_id="shot", heard_at={"luca": 0}
+    )
+    came(state, "faced", answer="confront", avenger_id="carmine", deed_id="shot")
+    came(state, "hunt", answer="hunters", faction_id="tigres", deed_id="shot")
+    came(state, "gifts", answer="appease", faction_id="police", deed_id="shot")
+    state.world_s = 2 * DAY
+    state = engine(
+        state,
+        characters=[
+            CharacterChange(id="carmine", status=CharacterStatus.DEAD, known_to_player=True)
+        ],
+    )
+
+    assert [text for _, text in trails(state, ES)["shot"]] == [
+        "Alguien se fue a contar lo que vio",
+        "Carmine Russo fue a contárselo a the Polizia di Stato in Naples",
+        "Carmine Russo ha muerto",
+        "Carmine Russo vino a pedirte cuentas, hace 2 días",
+        "The Polizia di Stato in Naples vino a verte por ello, hace 2 días",
+        "Los Tigres Negros vinieron a por ti por ello, hace 2 días",
+        "Lo oíste hace 2 días: «A man was shot»",
+    ]
+    assert [text for _, text in trails(state, CA)["shot"]] == [
+        "Algú va marxar a explicar el que havia vist",
+        "Carmine Russo va anar a explicar-ho a the Polizia di Stato in Naples",
+        "Carmine Russo ha mort",
+        "Carmine Russo va venir a demanar-te comptes, fa 2 dies",
+        "The Polizia di Stato in Naples va venir a veure't per això, fa 2 dies",
+        "Los Tigres Negros van venir a buscar-te per això, fa 2 dies",
+        "Ho vas sentir fa 2 dies: «A man was shot»",
+    ]
+    (deed,) = memory_view(state, ES).deeds
+    assert deed.open_label == (
+        "¿Quién más lo sabe? No lo sabrás hasta que lo oigas o vayas a averiguarlo."
+    )
+    (deed,) = memory_view(state, CA).deeds
+    assert (
+        deed.open_label == "Qui més ho sap? No ho sabràs fins que ho sentis o ho vagis a esbrinar."
+    )
 
 
 def test_others_deeds_show_only_when_the_player_knows_of_them():
