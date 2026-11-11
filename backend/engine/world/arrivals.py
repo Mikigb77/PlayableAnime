@@ -2,7 +2,8 @@
 
 An answer that sends people arrives where they believe the target to be: if the target is there,
 it needs them and the scene starts there (the guards kick in the door at 3 a.m.); if not, they
-search, and may track the target down later. Answers that don't send anyone (a bounty, a
+search, and may track the target down later. Someone who comes on their own account is at that
+place from then on, on record. Answers that don't send anyone (a bounty, a
 coalition, keeping clear) change the world off-screen, and the player runs into them in later
 scenes. What sets an answer going is a faction learning of a deed, which a witness's report
 brings (`engine.world.carriers`).
@@ -90,6 +91,10 @@ def on_answer(w: World, event: PendingEvent) -> bool:
         return False
 
     destination = event.place_id
+    if avenger is not None and destination in state.places:
+        # Whoever comes is there now, on record, whether or not they find who they came for:
+        # the scene that meets them has them at its place (W4, W10).
+        avenger.location_id = destination
     if destination is not None and is_within(state, target.location_id, destination):
         here = [c.id for c in characters_at(state, destination, within=True)]
         _fact(w, f"{source_name} {text}.", [*insiders, *here], [target.id], event.id)
