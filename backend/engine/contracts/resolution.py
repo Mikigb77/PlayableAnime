@@ -97,14 +97,8 @@ class Trip(EngineModel):
     )
     first_visit: bool = Field(
         default=False,
-        description="W2: the player character arrived somewhere they had never been, by a "
-        "real trip, so the scene shows the place for the first time and what it is talking "
-        "about.",
-    )
-    heard_ids: list[str] = Field(
-        default_factory=list,
-        description="W2, C6: the rumors the player character heard on arriving, which had "
-        "reached the place before them (`engine.world.hearsay`).",
+        description="W10: the player character arrived somewhere they had never been, so the "
+        "scene shows the place for the first time.",
     )
 
 

@@ -24,6 +24,7 @@ from engine.contracts import (
     MeansVerdict,
     OutcomeClass,
     PictureTrigger,
+    StandingAction,
     Theme,
 )
 from engine.director import rules
@@ -940,18 +941,26 @@ async def day_in_town(ev: Eval) -> None:
 # --- The long road (W10, W7, W16) ---------------------------------------------------------------
 
 ROAD_TO_THE_CITY = 3 * DAY
+# A scripted scene that says it let the character catch the talk it was offered (W2).
+CAUGHT_THE_TALK = {
+    "narration": "(Scripted scene: at the next stall two carters are talking about the duke.)",
+    "told_talk": True,
+    "suggestions": [],
+    "update": {},
+}
 
 
 @scenario(
     "t17.long-road",
     suite="T17",
     title="The long road",
-    requirements=("W10", "W7", "W16", "R8", "T17"),
+    requirements=("W10", "W7", "W16", "W2", "R8", "T17"),
     passes_when=(
         "A trip takes the time the map says whatever the first model proposed, the character "
         "ends up where the trip took them, a journey can be walked in stretches and is stopped "
         "on the way by what the road brings, and the way there and back adds up to the map's "
-        "time (W10)"
+        "time (W10). Arriving brings no news: what the city is saying is offered to a later, "
+        "quiet scene, and only what a scene told is heard (W2)"
     ),
 )
 async def long_road(ev: Eval) -> None:
@@ -1064,19 +1073,41 @@ async def long_road(ev: Eval) -> None:
             story.state.scene.place_id == "city" and story.state.journey is None,
             f"{seed}: in {story.state.scene.place_id} after {len(legs)} stretches",
         )
-        # W2: the city was talking before they came, and they hear it as they get there.
+        # W2: the city was talking before they came, and arriving brings no news of it.
         ev.check(
-            "they hear what the city is saying as they arrive, and Memory keeps it",
-            "tomas" in story.state.rumors["city-news"].heard_at
-            and worlds.HARROWGATE_TALK in [r.text for r in memory_view(story.state).rumors],
+            "nothing is heard by arriving: the scene is told it is a first visit, and no talk",
+            story.state.rumors["city-news"].heard_at == {}
+            and '"arrived":true,"first_visit":true}' in story.prompt(Node.NARRATOR)
+            and "## TALK" not in story.prompt(Node.NARRATOR),
             f"{seed}: {story.state.rumors['city-news'].heard_at}",
             live=False,
         )
+        # They stop and look on, the one scene that is always offered what the place is saying
+        # unless something else is going on in it.
+        offered = False
+        looks: list[Played] = []
+        for _ in range(3):
+            looks.append(await story.stand(StandingAction.OBSERVE, narration=CAUGHT_THE_TALK))
+            if "## TALK" in story.prompt(Node.NARRATOR):
+                offered = True
+                break
+            ev.check(
+                "a scene that wasn't offered the talk records none, whatever it says it told",
+                story.state.rumors["city-news"].heard_at == {},
+                seed,
+                live=False,
+            )
         ev.check(
-            "the narrator is told what the city is saying, and that it is a first visit",
-            f'"heard":["{worlds.HARROWGATE_TALK}"],"first_visit":true,"talk":true'
-            in story.prompt(Node.NARRATOR),
+            "looking on in the city, a scene is offered what the city is saying",
+            offered and f'{{"saying":"{worlds.HARROWGATE_TALK}"}}' in story.prompt(Node.NARRATOR),
             seed,
+            live=False,
+        )
+        ev.check(
+            "what that scene told is heard, and Memory keeps it",
+            "tomas" in story.state.rumors["city-news"].heard_at
+            and worlds.HARROWGATE_TALK in [r.text for r in memory_view(story.state).rumors],
+            f"{seed}: {story.state.rumors['city-news'].heard_at}",
             live=False,
         )
         ev.check(
@@ -1104,16 +1135,18 @@ async def long_road(ev: Eval) -> None:
                     "A stretch of days on the road is told as days passing on the way: the "
                     "land, the weather, the nights",
                     "The scene in which the character reaches Harrowgate is set in Harrowgate",
-                    "On reaching Harrowgate the character hears, as talk in the city, that "
-                    "the old duke is dead and his two sons both claim the seat",
                 ),
                 must_not=(
+                    "A scene lists several rumors or pieces of news the character hears one "
+                    "after another",
+                    "The scene in which the character reaches Harrowgate stops for someone to "
+                    "tell them news they didn't ask for",
                     "A scene has the character in Harrowgate before the trip there has arrived",
                     "A journey of days is told as if it took minutes",
                     "A scene that stops on the way ends back in Millbrook or at the farm",
                 ),
             ),
-            legs,
+            [*legs, *looks],
         )
     ev.check(
         "some journeys meet something on the way and some go straight through",

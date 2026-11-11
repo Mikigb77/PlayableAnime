@@ -274,9 +274,14 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     ending = ending_mod.ending_of(turn.state, played.state, intent, played.resolution, turn.kind)
     if ending is not None:
         # N6: the protagonist's last scene ends on them, with no new event, picture or
-        # suggestion to act on.
+        # suggestion to act on, and no talk of the place.
         plan = plan.model_copy(
-            update={"event": None, "picture": None, "suggestions": SuggestionPlan(count=0)}
+            update={
+                "event": None,
+                "picture": None,
+                "suggestions": SuggestionPlan(count=0),
+                "talk": None,
+            }
         )
     played = replace(played, state=pipeline.record_direction(played.state, plan, turn.ctx))
     plan, found = check.check_plan(played.state, plan, turn.ctx)
@@ -453,6 +458,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
         ended = delta.scene_end is not None
+        if narration.told_talk:
+            # W2, C6: only talk a scene told is heard, so Memory never lists what no scene said.
+            world = pipeline.hear_talk(world, state["plan"], turn.ctx, turn_rng(turn))
     # W10: the scene ends where the turn's trips left the character, and a trip over ground the
     # map didn't cover writes its route.
     world, moved_scene = pipeline.settle_trips(
