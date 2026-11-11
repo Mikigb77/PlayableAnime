@@ -18,7 +18,7 @@ permissions: {}
 jobs:
   list:
     name: List Dependabot alerts
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       # Read access to Dependabot alerts, and nothing else. actionlint doesn't know this scope yet
