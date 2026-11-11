@@ -5,7 +5,7 @@ recent sources) or cost (the picture budget), as W10 allows. Everything that hap
 waits on in-world seconds.
 """
 
-from engine.base import DAY
+from engine.base import DAY, HOUR
 from engine.context import EventFrequency, ImageSetting
 
 # W16: turns without stakes before an event comes in, per story setting (S6).
@@ -57,6 +57,21 @@ MONTAGE_MEAN_GAP_S: dict[EventFrequency, int] = {
     EventFrequency.NORMAL: 180 * DAY,
     EventFrequency.DRAMATIC: 90 * DAY,
 }
+
+# W10, W16: what a trip meets on the way. A trip of ROAD_MIN_S or more is rolled in at most
+# MONTAGE_MAX_STEPS legs, each with an event chance from ROAD_MEAN_GAP_S, the average time on the
+# road between events. Most of what the road brings needs a decision, which stops the trip there:
+# on normal that is about one half-day's walk in six, one day's travel in three, two three-day
+# trips in three and nearly every trip of a week. Each stop since the character last arrived
+# somewhere doubles the gap, up to ROAD_MAX_QUIETER times, so a long way is a few scenes on the
+# road, never a stop at every bend.
+ROAD_MIN_S = HOUR
+ROAD_MEAN_GAP_S: dict[EventFrequency, int] = {
+    EventFrequency.CALM: 4 * DAY,
+    EventFrequency.NORMAL: 2 * DAY,
+    EventFrequency.DRAMATIC: DAY,
+}
+ROAD_MAX_QUIETER = 4
 
 # M2: the key-scene budget is a bucket that refills each turn up to a cap, about one picture per
 # ten turns on key moments and one per five on more. A key scene needs a full credit. A fight's

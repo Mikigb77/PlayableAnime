@@ -1,4 +1,5 @@
-"""E4: the seeded event deck, one table per event size (personal, local, world).
+"""E4: the seeded event deck, one table per event size (personal, local, world), and one for
+what a trip meets on the way (`ROAD`, W10).
 
 Cards are generic on purpose (G5): no card names a monster, a gun or a starship. The narrator
 dresses each draw in the world's own form (G9), so "armed outsiders" are bandits in a farming
@@ -424,7 +425,107 @@ DECK: tuple[Card, ...] = (
     ),
 )
 
-CARDS: dict[str, Card] = {card.id: card for card in DECK}
+# W10, W16: what a trip meets on the way, drawn only while the character travels
+# (`engine.director.montage.schedule_road`). As generic as the rest: the way is a mountain path, a
+# motorway, a sea lane or a jump route, and the narrator dresses each card to match (G5, G9).
+ROAD: tuple[Card, ...] = (
+    Card(
+        "road-someone",
+        P,
+        EventKind.ARRIVAL,
+        Tone.MIXED,
+        "Someone on the way",
+        "Someone else on the way crosses the character's path, such as a traveller, a trader or "
+        "a patrol, in whatever form this world has, and wants something of them: help, a trade, "
+        "company or an answer.",
+        "Passed by without a word, they go their own way, and what they needed goes unmet.",
+        ThreadKind.QUEST,
+        weight=1.5,
+        window_s=2 * HOUR,
+    ),
+    Card(
+        "road-blocked",
+        P,
+        EventKind.DISASTER,
+        Tone.TROUBLE,
+        "The way is blocked",
+        "The way ahead is closed: a fallen bridge, a checkpoint, a flood, a wreck, whatever this "
+        "world's ways suffer. Going on means going around, waiting it out or forcing it.",
+        "Left to itself, the way stays closed for now.",
+        ThreadKind.THREAT,
+        window_s=6 * HOUR,
+    ),
+    Card(
+        "road-danger",
+        P,
+        EventKind.RIVAL,
+        Tone.TROUBLE,
+        "Trouble on the way",
+        "Someone or something on the way means the character harm or wants what they carry, such "
+        "as robbers, a beast or a toll taken by force, in whatever form this world has.",
+        "Unanswered, it doesn't wait: it comes on.",
+        ThreadKind.THREAT,
+        window_s=HOUR,
+    ),
+    Card(
+        "road-find",
+        P,
+        EventKind.DISCOVERY,
+        Tone.MIXED,
+        "Something off the way",
+        "Something off the way catches the character's eye: smoke, a ruin, tracks, a cry, a light "
+        "where none should be.",
+        "Left alone, it falls behind them, unanswered.",
+        ThreadKind.MYSTERY,
+        window_s=6 * HOUR,
+        lingers=True,
+    ),
+    Card(
+        "road-hard",
+        P,
+        EventKind.DISASTER,
+        Tone.TROUBLE,
+        "A hard stretch",
+        "The way itself turns against them: a storm, a pass under snow, bad water, a breakdown, "
+        "whatever travel here has to fear. Pressing on has a cost, and so has stopping.",
+        "Ignored, it takes its cost in time, strength or supplies.",
+        ThreadKind.THREAT,
+        window_s=6 * HOUR,
+    ),
+    Card(
+        "road-rest",
+        P,
+        EventKind.OFFER,
+        Tone.GOOD,
+        "A place to stop",
+        "A good place to stop comes up on the way, such as an inn, a camp or a way station, with "
+        "someone there worth a word and something on offer.",
+        "Passed by, it is behind them.",
+        ThreadKind.QUEST,
+        window_s=6 * HOUR,
+    ),
+    Card(
+        "road-company",
+        P,
+        EventKind.VISITOR,
+        Tone.GOOD,
+        "Company on the way",
+        "Others going the same way fall in with the character for a stretch: talk, news of the "
+        "way ahead and a shared fire.",
+        needs_decision=False,
+    ),
+    Card(
+        "road-fair",
+        P,
+        EventKind.WINDFALL,
+        Tone.GOOD,
+        "A fair stretch",
+        "The way is kind for a while: good weather, easy going, a small kindness from a stranger.",
+        needs_decision=False,
+    ),
+)
+
+CARDS: dict[str, Card] = {card.id: card for card in (*DECK, *ROAD)}
 
 # How likely each size is, by the story's scale: a farming story gets farm-sized drama, and world
 # events only reach a character the wider world already notices (W16).
@@ -508,3 +609,21 @@ def draw(
     fresh = [card for card in table if card.source_key not in recent] or table
     tone = FREQUENCY_TONE[frequency]
     return rng.child("card").weighted(fresh, [card.weight * tone[card.tone] for card in fresh])
+
+
+def draw_road(
+    ctx: TurnContext,
+    rng: SeededRng,
+    allowed: frozenset[Theme],
+    *,
+    recent: list[str] | tuple[str, ...] = (),
+) -> Card | None:
+    """W10, W16: one seeded draw of what a trip meets on the way. The story's frequency leans
+    it to good things or to trouble, as it does the deck, and a card drawn recently is passed
+    over while the table has others."""
+    table = [card for card in ROAD if playable(card, ctx, allowed)]
+    if not table:
+        return None
+    fresh = [card for card in table if card.source_key not in recent] or table
+    tone = FREQUENCY_TONE[ctx.settings.event_frequency]
+    return rng.weighted(fresh, [card.weight * tone[card.tone] for card in fresh])

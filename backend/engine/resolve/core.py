@@ -97,7 +97,7 @@ from engine.resolve import strangers as strangers_mod
 from engine.resolve import throw as dice
 from engine.resolve.chain import settle_chain
 from engine.resolve.checks import Drawn, Settled, beat_check, sheet_check, world_check
-from engine.resolve.durations import lived_estimate, step_timing, until_time
+from engine.resolve.durations import Timing, lived_estimate, step_timing, until_time
 from engine.resolve.effects import aim_effects, power_costs, proposed_deed
 from engine.resolve.power import (
     base_tier,
@@ -137,6 +137,7 @@ from engine.state.sheet import (
 )
 from engine.state.world import ActiveTimeEffect, WorldState
 from engine.timekeeping import bound_duration, effect_over, in_time_stop
+from engine.world import journeys
 
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 NOTHING_IN_THE_WAY = "Nothing stands in the way."
@@ -203,6 +204,8 @@ class _Frame:
     # sheet doesn't hold until the plan is played out.
     talent_rulings: list[TalentRuling] = field(default_factory=list)
     bridges: list[TalentBridge] = field(default_factory=list)
+    # W10: where the actor is as this step starts, had the trips before it arrived.
+    place_id: str | None = None
 
 
 @dataclass
@@ -359,6 +362,7 @@ def _frame(state: WorldState, actor: Character) -> _Frame:
             for i in (state.openings if actor.id == state.player_id else [])
             if i in state.characters and state.characters[i].alive
         ],
+        place_id=journeys.start_of(state, actor),
     )
     # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
     # turn can't be started afresh once it runs out partway through this plan.
@@ -451,9 +455,24 @@ def _settle_step(
     stop_left = None
     if frozen:
         stop_left = stop.lasts_s(new_stop) if new_stop is not None else frame.stop_left_s
+    # W10. Where the step takes them. The map times a trip: its routes say how long the way is,
+    # whatever was proposed, and only something of the actor's own that the step uses carries
+    # them there sooner, in the time proposed for it.
+    trip = None if gone else journeys.heading(state, actor, step, frame.place_id)
+    going = step.kind in journeys.GOING  # the step is the trip itself, not something done there
+    own_way = bool(drawn.powers or drawn.techniques or drawn.items or drawn.moves)
+    route_s = trip.route_s if trip is not None else None
+    if route_s is not None and own_way:
+        sooner = step.proposed_duration_s
+        if frozen and step.proposed_personal_s is not None:
+            sooner = step.proposed_personal_s  # in a stop the way is lived, not on the clock
+        route_s = max(1, min(route_s, sooner))
     # A step that outlasts the stop finishes once time runs again, so those it acts on can
-    # answer by then (W10a).
-    outlasts = frozen and stop_left is not None and lived_estimate(step) > stop_left
+    # answer by then (W10a). A trip is as long as its way, whatever was proposed for it.
+    lived_s = lived_estimate(step)
+    if route_s is not None:
+        lived_s = route_s if going else max(lived_s, route_s)
+    outlasts = frozen and stop_left is not None and lived_s > stop_left
     frozen_now = frozen and not outlasts
     if frozen and holding is not None:
         step = _in_the_stop(step)
@@ -582,12 +601,32 @@ def _settle_step(
     if growing and step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
         timed_step = step.model_copy(update={"duration_uncertain": True})  # G19
     tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
+    # W10. A trip that is made takes what its way takes: all of a step that is the going
+    # itself, and the least of one that goes somewhere to do something there.
+    made = (
+        trip is not None
+        and settled.outcome_class is not OutcomeClass.RULED_OUT
+        and settled.result is not StepResult.FAILURE
+    )
+    way_s = route_s if made else None
+    fixed_s = way_s if going else None
     timing = None
     if not frozen and tempo is None and settled.outcome_class is not OutcomeClass.RULED_OUT:
         # W10. "Until nightfall" is counted on the world's clock from where this step starts.
         # In a stop or a haste, and for a step that never got going, the proposal stands.
         timing = until_time(step, state.bible.calendar, frame.world_s)
     counted_to = timing is not None
+    # A trip the player timed ("until dusk", "for two hours") stops when that time is up, on
+    # the way, unless the way is shorter: then they are there before it. Where no route says
+    # how long the way is, nobody can tell whether the time was enough, and the scene says
+    # where they got to.
+    set_s = timing.duration_s if timing is not None else None
+    if set_s is None and made and going and step.timed and not frozen and tempo is None:
+        set_s = bound_duration(step.kind, step.proposed_duration_s)
+    short = trip is not None and going and set_s is not None
+    short = short and (fixed_s is None or set_s < fixed_s)
+    if counted_to and fixed_s is not None and not short:
+        timing = Timing(duration_s=fixed_s, personal_s=None)
     if timing is None:
         timing = step_timing(
             timed_step,
@@ -598,22 +637,28 @@ def _settle_step(
             outlasts=outlasts if frozen else None,
             rate=tempo,
             rate_left_s=tempo_left,
+            fixed_s=set_s if short else fixed_s,
         )
     duration = timing.duration_s
     personal = timing.personal_s
     rolled_s = timing.rolled_s
     # A3. A task on a thing thrown over the top takes half the time. Time someone holds, a
-    # stop, a haste or a wait "until nightfall", is not the task's to shorten.
+    # stop, a haste or a wait "until nightfall", is not the task's to shorten, and neither is
+    # the map's time for a trip or the time the player set for one.
     quicker = (
         over_the_top
         and step.kind in _SHORTENED
-        and not (growing or showing or frozen or counted_to)
+        and not (growing or showing or frozen or counted_to or short or fixed_s is not None)
         and tempo is None
         and not (opposition is not None and opposition.responsive)
     )
     if quicker:
         duration = max(1, duration // _QUICKER)
         rolled_s = max(1, rolled_s // _QUICKER) if rolled_s is not None else None
+    if way_s is not None and not going and not frozen and tempo is None and duration < way_s:
+        # Sleeping at the inn in the village takes the walk there at the least.
+        duration = way_s
+        rolled_s = way_s if rolled_s is not None else None
     if gone:
         duration, personal = 0, None  # the dead take no time over anything
     if not frozen:
@@ -833,6 +878,21 @@ def _settle_step(
     # A3. An opening is used by the next step that faces whom it is on, and those this step won
     # are held from here.
     frame.openings = [o for o in frame.openings if o not in opponent_ids] + won
+    if trip is not None:
+        # W10. A trip that was made and not stopped short arrives, so the next step of the plan
+        # sets out from there. One the player timed over ground no route covers is left open.
+        arrived: bool | None = made and frame.gone is None
+        if arrived and short:
+            arrived = False if fixed_s is not None else None
+        trip = trip.model_copy(
+            update={
+                "takes_s": way_s,
+                "arrived": arrived,
+                "by_own_means": made and own_way,
+            }
+        )
+        if arrived and trip.to_id is not None:
+            frame.place_id = trip.to_id
     resolution = StepResolution(
         index=index,
         text=step.text,
@@ -853,6 +913,7 @@ def _settle_step(
         deeds=deeds,
         training=frame.training,
         kind=step.kind,
+        trip=trip,
         encounter=encounter,
         opponent_ids=opponent_ids,
         perils=perils,

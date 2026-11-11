@@ -73,7 +73,8 @@ would, ruled_out when it can't. Whether an open link follows is nobody's doing, 
 die decides it.
 - kind and proposed_duration_s: the kind of action and the in-world seconds the whole step really \
 takes, every beat of it, getting there included, as the world's own people would judge it from \
-NOW, the place, its routes (travel_s under SCENE) and how people travel here (WORLD travel). A \
+NOW, the place, how far things are (travel_s under SCENE and KNOWN) and how people travel here \
+(WORLD travel). A \
 word or a glance takes a few seconds, a sword exchange seconds, a real conversation a few \
 minutes, crossing a square a minute or two, walking across a town 10 to 30 minutes, searching a \
 room about ten minutes, a meal half an hour to an hour, a night's sleep about eight hours, a day's \
@@ -86,6 +87,24 @@ clock's parts of the day start at {day_parts}, unless the world says otherwise; 
 evening. Code counts the seconds to it, but still give proposed_duration_s as your own estimate. \
 Waiting or watching for a set time or until a time of day is a step, never standing. Leave \
 until empty otherwise.
+- timed: true when the player says how long the step lasts ("for two hours", "three days", "a \
+year"), or only that it lasts a while ("we walk a bit", "ride on for a stretch"), with \
+proposed_duration_s that time, your own estimate where they named none. False otherwise.
+- destination, always: when the step takes the character to another place than SCENE's (a walk \
+to the village, a ride to the capital, down into the cellar, back home), that place: its id \
+when SCENE or KNOWN lists it, else its name in a few words. Empty for a step that stays where \
+they are. Going somewhere is one step, kind travel (move only for a place a few minutes off), \
+and it goes the whole way: never split a trip into legs the player didn't choose. It stops \
+before the end only when the player says how long they go (until, timed). Code takes the \
+trip's time from the map: a travel_s by the place, under KNOWN or under SCENE's routes, is \
+what the way takes as people travel here, so give that as proposed_duration_s. Only a power, a \
+technique or an item of the character's own that the step uses (uses) gets them there sooner, \
+and proposed_duration_s is then the time it takes that way. Where no travel_s is given, \
+proposed_duration_s is the whole way by the way people travel here (WORLD travel), and it stays \
+the map's time for that trip from then on. On foot or by cart, a farm outside the village is \
+under an hour off, the next village hours, a city in another region days, another country \
+weeks; where the world has faster ways, what those take. on_the_way under SCENE is a trip that \
+stopped before its end, with what is left of it: carrying on is a step with that destination.
 - facts: who or what stands in the way, whether they can respond at all and why not (frozen, \
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
 clearly not, whether the world's rules allow it, and what in the situation helps them or works \
@@ -275,6 +294,23 @@ anything else that shows the hour match it, and the scene ends at TIME's now. Ne
 fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
 later"), and never take the character further than that time could carry them. An action that \
 would need longer plays only as far as the time allows.
+- A trip (W10). trip under a step in OUTCOME is where that step took the character: to, the \
+place, and arrived. The engine timed the way, and TIME is what it took: tell the way itself at \
+that pace, the road, the country, the weather and the nights going by, in a few lines for \
+hours and as a montage for days, never as a few steps and never cut. arrived true: they are \
+there when the step ends, so what follows plays there and the scene ends there: \
+scene_end.place_id is to_id, or a place you add for it when it has none, and whoever travels \
+with them is present there. arrived false: something stopped them before the end (the step's \
+why, an EVENT, or the time the player set), so the scene ends on the way, in a place you add \
+for that stretch (the road, a camp, an inn on the way) and never in the place they were going \
+to; left is how much of the way remains. An EVENT that stopped a trip meets them on the way, \
+as far along as the time that passed has brought them: tell the way up to it first. With no \
+arrived, the player set the time and no map says how far it carries them: judge it, and end \
+the scene where that is. A long way is felt as one: the distance behind them and ahead, the \
+land changing, the nights on the way. And the way is alive: what they pass and who passes \
+them, what those travelling with them say and do, how the going wears on them or lifts them, \
+in this world's own colours. Such small things need no EVENT. Trouble, and anyone who asks \
+something of them, come only with an EVENT.
 - Open on the player's action, in action (R1): the character doing what the player said they \
 do, told the way a good book would tell it, before anything comes of it. Every action gets this, \
 however small (a coin held out, a word, a look), and so does one the player already wrote like \
@@ -387,8 +423,10 @@ you.
 
 suggestions (S2): exactly the number SUGGESTIONS asks for, of the kinds it lists, each a short \
 action of at most 12 words, meaningfully different, with at least one away from the current \
-thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. Never \
-suggest waiting or observing: those are always offered.
+thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. When the \
+scene ends on the way of a trip (on_the_way under SCENE, or a trip under OUTCOME that didn't \
+arrive), one of them carries on toward where they were going (W10). Never suggest waiting or \
+observing: those are always offered.
 
 image_prompt (M1, M5): null unless PICTURE is given. Then one to three sentences that let an \
 illustrator who never read the scene draw it. For a scene, the moment PICTURE's why names, as \
@@ -433,8 +471,13 @@ from the world (a job, a summons, a rumor), never the character's own next step.
 place ruined or a faction destroyed: the engine does that. A place the scene reaches for the \
 first time comes with its name, kind, setting and parent_id, the place it lies within (R8): a \
 chamber deeper in a temple lies within the temple, and a clearing outside it within the forest, \
-never within the temple. Give a setting to a place in the scene that has none; a setting already \
-given never changes. Mark visited the place the character is in as the scene ends.
+never within the temple. A place a trip reached lies apart from the place it set out from: its \
+parent_id is the place both lie in, such as the region or the country, never the place the \
+character left. When the scene tells how far one place is from another (an hour's walk, three \
+days' ride), give that under the place's routes, with to_id the other place and travel_s the \
+seconds the way takes as most people travel here (W7). Give a setting to a place in the scene \
+that has none; a setting already given never changes. Mark visited the place the character is \
+in as the scene ends.
 - goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
 not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
 same: its id as same_as). Never close one for progress or for going unmentioned.
@@ -485,12 +528,14 @@ to you is a stranger to them: never name them. What they hold now is PLAYER CHAR
 resources, money included.
 - KNOWN: the people, places and factions the player character knows of who aren't in the scene, \
 with aliases, the place each place lies within (within) and its setting, and a status when it \
-isn't the usual one, such as dead or ruined. Use these names as spelled.
+isn't the usual one, such as dead or ruined. travel_s by a place is the seconds the way there \
+takes from SCENE's place, where the map knows it. Use these names as spelled.
 - LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
 - SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
 people present with the player character, each without their secrets, with toward_you and \
 sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
-and the fight, chase, duel of words or negotiation under way, if any (encounter). A power \
+and the fight, chase, duel of words or negotiation under way, if any (encounter). on_the_way is \
+a trip that stopped before its end: where it was going and how much of the way is left. A power \
 someone keeps secret is left out until it is used.
 - FALLEN: earlier player characters of this story whom someone in the scene knew.
 - NOW: on an opening, the date and the hour.
@@ -508,7 +553,8 @@ miss could have killed), extra (the one extra effect a throw over the top earned
 they did it with and how well they have it), drew_on (their own powers, techniques and moves \
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
-it holds), interrupted, met and struck. Then stopped_at_step, stop_reason and unplayed when the \
+it holds), interrupted, met, struck and trip (where the step took them, and whether they \
+arrived). Then stopped_at_step, stop_reason and unplayed when the \
 plan stopped early, now_canon for what became true, rulings, and backstory with whether each \
 claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \

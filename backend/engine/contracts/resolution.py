@@ -57,6 +57,46 @@ class BeatResolution(EngineModel):
     roll: RollRecord | None = Field(default=None, description="When the place might hold it.")
 
 
+class Trip(EngineModel):
+    """W10, W7. Where a step takes the actor, as code follows it (`engine.world.journeys`). The
+    interpret step says only where; the time comes from the map wherever its routes cover the
+    way."""
+
+    from_id: str | None = Field(default=None, description="The place it sets out from.")
+    to_id: str | None = Field(
+        default=None, description="The place it heads for, when the record holds it."
+    )
+    to: str = Field(
+        default="",
+        description="The destination in the player's words, when the record doesn't hold it "
+        "yet: the narrator's update names the place the scene reached.",
+    )
+    route_s: int | None = Field(
+        default=None,
+        ge=1,
+        description="What the way still to go takes by the map's routes, as people travel "
+        "there. None when no route covers it: then the step takes the time the interpret step "
+        "judged, and that time becomes the route once the actor arrives.",
+    )
+    takes_s: int | None = Field(
+        default=None,
+        ge=1,
+        description="What the whole of that way takes this actor: the route's time, or less "
+        "when something of their own carries them faster. None when no route covers it.",
+    )
+    arrived: bool | None = Field(
+        default=False,
+        description="The step took them all the way. False for a step that failed, one the "
+        "player timed to stop before, and one an event cut short. None when the player timed "
+        "it and no route says how long the way is: the scene says how far they got.",
+    )
+    by_own_means: bool = Field(
+        default=False,
+        description="Something of the actor's own carried them, a power, a technique or an "
+        "item the step used, so the time it took says nothing of the road.",
+    )
+
+
 class ProposedDeed(EngineModel):
     """W1. A deed that resolve proposes; `record_consequences` turns it into a `Deed` with its
     time, place and witnesses worked out (W2, W12)."""
@@ -175,6 +215,10 @@ class StepResolution(EngineModel):
         default=None, description="A4: a training step's effort so far, kept if it is cut short."
     )
     kind: ActionKind | None = Field(default=None, description="W10: the kind of action.")
+    trip: Trip | None = Field(
+        default=None,
+        description="W10: where the step took the actor, for a step that goes somewhere.",
+    )
     encounter: EncounterKind | None = Field(
         default=None,
         description="W10: the encounter this step starts or carries on with `opponent_ids`, as "

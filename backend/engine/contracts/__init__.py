@@ -90,6 +90,7 @@ from engine.contracts.resolution import (
     StepResolution,
     StopReason,
     TrainingSoFar,
+    Trip,
 )
 
 __all__ = [
@@ -168,5 +169,6 @@ __all__ = [
     "ThreadChange",
     "Training",
     "TrainingSoFar",
+    "Trip",
     "UseSource",
 ]
