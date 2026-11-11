@@ -2,6 +2,7 @@ import pytest
 
 from engine.contracts import (
     ActionKind,
+    Aim,
     AttitudeShift,
     Beat,
     BeatUse,
@@ -320,6 +321,22 @@ def test_the_interpret_model_must_always_say_whether_a_fight_is_a_bout():
     # keeps a bout once it has begun, but its first blow has only the model's word to go by.
     assert "terms" in Intent.model_json_schema()["$defs"]["StepFacts"]["required"]
     assert StepFacts().terms is None  # null is an answer: any other fight, or no fight
+
+
+def test_the_interpret_model_must_always_say_whether_a_blow_goes_beyond_the_terms():
+    # W1: left to the model, two of three blows meant to blind a teacher in a lesson were read
+    # as blows of the lesson (2026-11-11), so the bout went on and nothing was held against it.
+    assert "breaks_terms" in Intent.model_json_schema()["$defs"]["StepFacts"]["required"]
+    assert StepFacts().breaks_terms is False  # code may still leave it out
+
+
+def test_the_interpret_model_must_always_say_who_a_step_is_aimed_at_and_what_it_does_to_them():
+    # V3, F4: "I cut Han's throat" was read as a killing with no target (2026-11-11), so nobody
+    # died on record while the scene told a death. An empty list and none are answers.
+    step = Intent.model_json_schema()["$defs"]["IntentStep"]
+    assert {"target_ids", "aim"} <= set(step["required"])
+    plain = IntentStep(text="wait", verb="wait", kind=ActionKind.TASK, proposed_duration_s=5)
+    assert plain.target_ids == [] and plain.aim is Aim.NONE  # code may still leave them out
 
 
 def test_the_interpret_model_must_always_say_whether_a_crowd_is_around():

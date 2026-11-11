@@ -16,6 +16,12 @@ place is saying is always on offer to it. Where the
 record holds nothing they haven't heard, the place's talk is the narrator's to make up, more
 rarely (`rules.OWN_TALK_CHANCE`). Whether the scene has room for it is the narrator's call, and
 only what a scene told is recorded as heard (`pipeline.hear_talk`).
+
+Asking is something else. A player who has their character ask what people are saying, or
+listen for the talk of the place (`StepFacts.asks_talk`), gets what the place is saying: the
+newest thing it has for them, whatever else the scene carries and whatever the clock says, or
+talk of the narrator's own making when the record holds nothing new to them. Only a fight, a
+scene with something at stake, the road and stopped time leave no room for an answer.
 """
 
 from engine.contracts.direction import PlannedTalk
@@ -38,12 +44,16 @@ def plan_talk(
     pressure: Pressure,
     busy: bool,
     small: bool = True,
+    asked: bool = False,
 ) -> PlannedTalk | None:
     """The talk this scene may carry, if any. `busy` is whether the director already has
     something for the scene to tell: an event, a moment, or happenings that came due. `small`
-    is whether the story's clock leaves room for a small thing (`clock.small_thing_fits`)."""
-    if busy or not resolution.steps or pressure.encounter or pressure.stakes:
+    is whether the story's clock leaves room for a small thing (`clock.small_thing_fits`).
+    `asked` is whether the player character asked or listened for it this turn."""
+    if not resolution.steps or pressure.encounter or pressure.stakes:
         return None  # an opening has no steps: it has the premise's own situation to tell
+    if busy and not asked:
+        return None
     if world_stopped(state) or state.journey is not None:
         return None
     if any(step.trip is not None for step in resolution.steps):
@@ -52,6 +62,9 @@ def plan_talk(
     if place_id not in state.places:
         return None
     waiting = hearsay.talk_of(state, state.player_id, place_id, state.world_s)
+    if asked:
+        # They asked: the place answers with what it is saying, or the narrator makes it up.
+        return PlannedTalk(rumor_id=waiting[0].id if waiting else None, asked=True)
     looking_on = all(step.kind is ActionKind.OBSERVE for step in resolution.steps)
     if waiting and looking_on:
         return PlannedTalk(rumor_id=waiting[0].id)  # they are listening: whatever the clock says

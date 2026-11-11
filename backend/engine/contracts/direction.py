@@ -207,9 +207,11 @@ class PlannedTalk(EngineModel):
     """W2. Something the place the scene is in is saying, which the scene may let the player
     character catch when it has room for it, and may leave out (Miki, 2026-11-11: "it should be
     soft ... you might miss some rumors"). `rumor_id` is a rumor that reached the place and they
-    haven't heard; None leaves what the talk is to the narrator."""
+    haven't heard; None leaves what the talk is to the narrator. `asked` marks talk the player
+    character asked or listened for this turn, which the scene tells."""
 
     rumor_id: str | None = None
+    asked: bool = False
 
 
 class PlannedMoment(EngineModel):

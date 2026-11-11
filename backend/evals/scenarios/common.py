@@ -251,6 +251,8 @@ __all__ = [
 
 
 REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
+# What code put right in a reading (`graph.turn.check`), told with the reading it changed.
+READING_FIXES = ("target_found", "target_by_name", "no_target", "show_apart", "idle_show")
 
 
 def as_read(turns: list[Played]) -> str:
@@ -276,7 +278,13 @@ def as_read(turns: list[Played]) -> str:
                     f"in_way={told.opposition_ids} terms={terms}"
                     f"{' beyond' if told.breaks_terms else ''}"
                     f"{' unanswered' if told.can_respond is False else ''}"
+                    f"{' crowd' if told.crowd else ''}"
+                    f"{' asks_talk' if told.asks_talk else ''}"
                 )
+                if step_.targets:
+                    said += f" words={step_.targets}"  # V3: targets the reading left as words
+                if step_.stranger is not None:
+                    said += f" stranger={step_.stranger.who!r}"
                 if (show := step_.show_strength) is not None:
                     said += f" shows={show.ladder_id}:{show.shown_rung}"  # G20
             how = f"{settled.outcome_class.value}/{settled.result.value}"
@@ -284,7 +292,9 @@ def as_read(turns: list[Played]) -> str:
                 how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
             bout = settled.bout.terms.value if settled.bout is not None else "none"
             deeds = [d.kind for d in settled.deeds]
+            fixed = [code for code in played.issues if code in READING_FIXES]
             lines.append(
                 f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
+                f"{f' fixed={fixed}' if fixed else ''}"
             )
     return " | ".join(lines)
