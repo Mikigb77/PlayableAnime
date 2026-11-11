@@ -1920,9 +1920,16 @@ LESSON_BLOWS = 24
 
 
 def lesson_begins(state) -> None:
-    """Elder Mo, who is fond of Lin, has agreed to test him at the well."""
+    """Elder Mo, who is fond of Lin, has agreed to test him at the well, and Lin holds the
+    practice sword he was tossed: what the last scene told is on record. In the second live
+    lessons (2026-11-11) it wasn't, so a first blow with that sword was stopped before it was
+    tried and the lesson went on as an open fight."""
     elder_here(state)
     state.characters["elder-mo"].sheet.disposition.attitudes["lin"] = Attitude(affinity=20)
+    sword = worlds.Item(
+        id="practice-sword", name="wooden practice sword", kind=worlds.ItemKind.WEAPON
+    )
+    worlds.give(state, "lin", sword)
     state.scene.ended_on = (
         "Elder Mo tosses Lin a wooden practice sword. 'Come at me, boy. Touches only. Show me "
         "what the outer court has taught you.'"
@@ -1945,13 +1952,15 @@ BLOW_SHAPES = [
 
 
 def lesson_blow(n: int, shape: int = 0) -> Intent:
-    """A blow of the lesson as the interpret step might read it: the terms once, at the start,
-    and after that in any shape at all, with any guess at what the elder means in answer.
-    `shape` is the shape of the first blow, so over the seeds a lesson begins with each."""
+    """A blow of the lesson as the interpret step might read it: the terms at the start and
+    only now and then after it, in any shape at all, with any guess at what the elder means in
+    answer. `shape` is the shape of the first blow, so over the seeds a lesson begins with
+    each. One lesson in three begins with a blow that never comes off, made with a staff Lin
+    doesn't hold: the agreement to spar stands all the same."""
     told = facts(
         opposition_ids=["elder-mo"],
         can_respond=True,
-        terms=Terms.NO_HARM if n == 0 else None,
+        terms=Terms.NO_HARM if n % 5 == 0 else None,
         foes_mean=(None, Aim.SUBDUE, Aim.WOUND, Aim.KILL)[n % 4],
     )
     verb, aim, named = BLOW_SHAPES[(n + shape) % len(BLOW_SHAPES)]
@@ -1962,9 +1971,18 @@ def lesson_blow(n: int, shape: int = 0) -> Intent:
             aim=aim,
             target_ids=["elder-mo"] if named else [],
             axis=PowerAxis.MIGHT,
+            uses=[item("bamboo staff")] if n == 0 and never_comes_off(shape) else [],
             facts=told,
         )
     )
+
+
+def never_comes_off(shape: int) -> bool:
+    """Whether a scripted lesson begins with a blow that is stopped before it is tried."""
+    return shape % 3 == 2
+
+
+REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
 
 
 def as_read(turns: list[Played]) -> str:
@@ -1988,9 +2006,14 @@ def as_read(turns: list[Played]) -> str:
                     f"in_way={told.opposition_ids} terms={terms}"
                     f"{' beyond' if told.breaks_terms else ''}"
                 )
+            how = f"{settled.outcome_class.value}/{settled.result.value}"
+            if settled.outcome_class is OutcomeClass.RULED_OUT:
+                how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
             bout = settled.bout.terms.value if settled.bout is not None else "none"
             deeds = [d.kind for d in settled.deeds]
-            lines.append(f"t{played.turn}.{settled.index} {said} -> bout={bout} deeds={deeds}")
+            lines.append(
+                f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
+            )
     return " | ".join(lines)
 
 
@@ -2050,6 +2073,14 @@ async def friendly_bout(ev: Eval) -> None:
             read,
             live=False,
         )
+        if never_comes_off(shape) and not ev.live:  # live, the model reads the blow itself
+            first = blows[0]
+            ev.check(
+                "a first blow that never came off still agrees the bout",
+                first.outcome_class is OutcomeClass.RULED_OUT and first.bout is not None,
+                read,
+                live=False,
+            )
         ev.check(
             "nobody is hurt or left helpless by it",
             unharmed(state, "lin") and unharmed(state, "elder-mo"),

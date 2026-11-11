@@ -30,9 +30,16 @@ grudges and due to come for revenge):
   new comes into it by agreeing to them, unless they are already fighting the player character
   openly.
 
-The interpret step proposes the terms (`StepFacts.terms`). Code decides whether they hold and
-keeps them on the encounter (`Encounter.bout`, `engine.encounters`), so a bout stays one when a
-later step leaves them out. Plain Python (B4); nothing here assumes a genre (G5).
+- **The agreement outlasts a blow that never came off.** A step that met no one, such as a
+  first blow with a practice sword the record doesn't hold, still agreed the bout, so the bout
+  is on from then (in the second live lessons, 2026-11-11, such a first blow left no bout, and
+  the blows after it were played as an open fight). A blow beyond the terms that met no one
+  broke nothing.
+
+The interpret step proposes the terms (`StepFacts.terms`), on every blow of the bout. Code
+decides whether they hold and keeps them on the encounter (`Encounter.bout`,
+`engine.encounters`), so a bout stays one when a later step leaves them out. Plain Python (B4);
+nothing here assumes a genre (G5).
 """
 
 from engine.contracts.intent import ActionKind, Aim, IntentStep

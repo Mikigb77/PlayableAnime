@@ -9,7 +9,16 @@ from collections import Counter
 
 import pytest
 
-from engine.contracts import ActionKind, Aim, Harm, Intent, StandingAction
+from engine.contracts import (
+    ActionKind,
+    Aim,
+    Harm,
+    Intent,
+    OutcomeClass,
+    SheetPart,
+    SheetUse,
+    StandingAction,
+)
 from engine.resolve import bouts
 from engine.state import (
     Attitude,
@@ -498,6 +507,23 @@ def test_a_blow_said_to_maim_goes_beyond_the_terms_though_it_was_given_no_aim():
     tap = step("tap Elder Bai's shoulder with the flat", verb="strike", facts=there)
     assert bouts.meant(tap) is Aim.NONE
     assert not one(state, tap).broke_terms
+
+
+def test_a_blow_beyond_the_terms_that_met_no_one_broke_nothing():
+    """A blow meant to kill, made with a blade the record doesn't hold, is stopped before it is
+    tried: nobody was struck at, so the bout stands as it stood and Bai's answer is one of its
+    blows, where a blow that did come off is met as the attack it is."""
+    bout = Bout(terms=NO_HARM, with_ids=["bai"])
+    dagger = SheetUse(part=SheetPart.ITEM, ref="hidden dagger")
+    stab = spar(aim=Aim.KILL, terms=None, breaks_terms=True)
+    answered = 0
+    for seed in SEEDS:
+        untried = one(in_bout(dojo()), stab.model_copy(update={"uses": [dagger]}), seed=seed)
+        assert untried.outcome_class is OutcomeClass.RULED_OUT, seed
+        assert (untried.bout, untried.broke_terms, untried.deeds) == (bout, False, []), seed
+        assert all(p.terms is NO_HARM and p.aim is Aim.SUBDUE for p in untried.perils), seed
+        answered += bool(untried.perils)
+    assert answered
 
 
 def test_once_broken_the_bout_is_over_whatever_the_next_step_proposes():

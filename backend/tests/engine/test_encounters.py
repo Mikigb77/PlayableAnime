@@ -19,8 +19,11 @@ from engine.contracts import (
     ConditionChange,
     Intent,
     IntentStep,
+    OutcomeClass,
     PictureTrigger,
     SceneEnd,
+    SheetPart,
+    SheetUse,
     StateDelta,
     StepFacts,
 )
@@ -320,6 +323,94 @@ def test_a_lesson_of_practice_blows_is_one_bout_however_each_was_read(first):
     assert [deed.kind for deed in after.deeds.values()] == ["bout"]
     zhao = after.characters["zhao"].attitude_toward("lin")
     assert not zhao.grudges and zhao.fear <= before.fear and zhao.affinity >= before.affinity
+
+
+def unheld(blow: IntentStep) -> IntentStep:
+    """The same blow made with something the record doesn't hold, so code stops it before it
+    is tried."""
+    staff = SheetUse(part=SheetPart.ITEM, ref="bamboo staff")
+    return blow.model_copy(update={"uses": [staff]})
+
+
+@pytest.mark.parametrize("first", [0, 1, 2])
+def test_a_bout_agreed_on_a_blow_that_never_came_off_is_on_all_the_same(first):
+    """The second live lessons (2026-11-11) began with a blow made with a practice sword the
+    record didn't hold. Code stopped it before it was tried, so it met no one and no fight
+    began, and the bout it had agreed was lost with it: the blows after it were an open fight.
+    The agreement stands, so the fight that keeps its terms begins with whom it was made."""
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    state = cultivation_world()
+    before = state.characters["zhao"].attitude_toward("lin").model_copy(deep=True)
+
+    after, played, _ = turn(state, unheld(practice(first, Terms.NO_HARM)))
+    blow = played.resolution.steps[0]
+    assert blow.outcome_class is OutcomeClass.RULED_OUT and "bamboo staff" in blow.reason
+    assert (blow.bout, blow.deeds, blow.opponent_ids) == (bout, [], [])  # it met no one
+    fight = after.scene.encounter
+    assert (fight.kind, fight.opponent_ids) == (EncounterKind.FIGHT, ["zhao"])
+    assert (fight.bout, fight.in_earnest) == (bout, False)
+
+    for n in range(12):
+        after, played, _ = turn(after, practice(first + 1 + n), seed=n, turn_no=4 + n)
+        assert played.resolution.steps[0].bout == bout, n
+        assert after.scene.encounter.bout == bout, n
+
+    assert [deed.kind for deed in after.deeds.values()] == ["bout"]
+    zhao = after.characters["zhao"].attitude_toward("lin")
+    assert not zhao.grudges and zhao.fear <= before.fear and zhao.affinity >= before.affinity
+
+
+def test_a_blow_that_never_came_off_agrees_nothing_without_terms():
+    """Only an agreement keeps a fight on after a step that met no one: a blow with no terms
+    that was stopped before it was tried starts nothing, as before."""
+    after, played, _ = turn(cultivation_world(), unheld(practice(1)))
+
+    assert played.resolution.steps[0].outcome_class is OutcomeClass.RULED_OUT
+    assert played.resolution.steps[0].bout is None and after.scene.encounter is None
+
+
+def test_a_bout_begins_only_with_those_still_there_to_fight_it():
+    """The fight a bout begins with after a step that met no one is with those it was agreed
+    with who are still with the player character."""
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    _, played, _ = turn(cultivation_world(), unheld(practice(1, Terms.NO_HARM)))
+    blow = played.resolution.steps[0]
+    assert blow.bout == bout
+
+    gone = cultivation_world()
+    gone.scene.present_ids.remove("zhao")
+    gone.characters["zhao"].location_id = "inner-court"
+    encounters.follow(gone, blow, "lin", ctx())
+    assert gone.scene.encounter is None
+
+    there = cultivation_world()
+    encounters.follow(there, blow, "lin", ctx())
+    assert there.scene.encounter.opponent_ids == ["zhao"] and there.scene.encounter.bout == bout
+
+
+def test_a_blow_beyond_the_terms_that_never_came_off_breaks_nothing():
+    """A blow meant to maim that was stopped before it was tried met no one: nobody was
+    attacked, so the bout is on as it was and the fight is not one in earnest."""
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    start, _, _ = turn(cultivation_world(), spar())
+    assert start.scene.encounter.bout == bout
+
+    maim = unheld(spar(aim=Aim.WOUND, terms=None, breaks_terms=True))
+    after, played, _ = turn(start, maim, turn_no=4)
+    blow = played.resolution.steps[0]
+    assert blow.outcome_class is OutcomeClass.RULED_OUT
+    assert not blow.broke_terms and blow.deeds == []
+    assert (after.scene.encounter.bout, after.scene.encounter.in_earnest) == (bout, False)
+
+    # The same blow with something he does hold is an attack, and the bout is over.
+    real, played, _ = turn(start, spar(aim=Aim.WOUND, terms=None, breaks_terms=True), turn_no=4)
+    assert played.resolution.steps[0].broke_terms
+    assert real.scene.encounter is None or real.scene.encounter.bout is None
+
+    # The lesson goes on under its terms after the blow that never came off.
+    after, played, _ = turn(after, practice(0), turn_no=5)
+    assert played.resolution.steps[0].bout == bout and after.scene.encounter.bout == bout
+    assert [deed.kind for deed in after.deeds.values()] == ["bout"]
 
 
 def test_a_fight_in_earnest_gets_no_terms_afterwards():

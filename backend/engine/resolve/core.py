@@ -426,6 +426,7 @@ def _settle_step(
         state = _with_people(state, frame.met)
     actor = talents_mod.with_rulings(actor, frame.talent_rulings, frame.bridges)
     # W1. A blow of a bout both sides agreed to does at most what its terms accept.
+    stood = (frame.bout, frame.open_fight)  # the bout as it stood before this step
     step, bout, broke_terms = _under_terms(state, actor, step, frame)
     terms = bout.terms if bout is not None else None
     drawn = Drawn()
@@ -601,6 +602,13 @@ def _settle_step(
             settled = _unopposed(
                 state, actor, step, opposition, drawn, ctx, rng, frame, brought, hit
             )
+
+    if broke_terms and opposition is None:
+        # W1. A blow that met no one, such as one stopped before it was tried because the
+        # record holds no such blade, broke nothing: the bout stands as it stood, and whoever
+        # answers the step answers inside it.
+        frame.bout, frame.open_fight = stood
+        bout, broke_terms = frame.bout, False
 
     # A3. Whether the actor's own dice decided the step, and how they fell: the world's die
     # and a draw of how long something took test nothing of theirs.
@@ -975,7 +983,11 @@ def _under_terms(
     with no bout on starts one when it proposes terms and everyone in it can agree to them, and
     one that proposes terms with someone new while a bout is on brings them into it. A fight in
     earnest, in which someone was harmed outside any terms or whose terms were broken, stays
-    one whatever a later step proposes."""
+    one whatever a later step proposes.
+
+    What is agreed here stands though the step then meets no one, as when it is stopped before
+    it is tried (`engine.encounters` begins the bout with those it was agreed with), and a
+    blow beyond the terms that met no one broke nothing (`_settle_step`)."""
     target_ids = bouts.against(state, actor.id, step)
     if not target_ids or not bouts.is_blow(step):
         return step, None, False
