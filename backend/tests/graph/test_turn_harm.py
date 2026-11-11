@@ -8,8 +8,8 @@ from engine.context import Rating, TurnContext
 from engine.contracts import DirectorPlan, Resolution, StepResolution
 from engine.contracts.delta import CharacterChange, StateDelta
 from engine.resolve import strangers
-from engine.samples import grounded_world
-from engine.state import StepResult
+from engine.samples import cultivation_world, grounded_world
+from engine.state import Attitude, Bout, StepResult, Terms
 from engine.state.cast import CharacterStatus
 from engine.state.sheet import Health
 from graph.llm import Node, Reply
@@ -168,6 +168,51 @@ def test_a_fight_never_reopens_a_wound_the_character_never_had(fake, make_client
     brief = request.prompt.messages[-1].text
     assert "old wound" not in brief
     assert '"condition":{"health":"unhurt","wounds":[]}' in brief
+
+
+def test_a_lesson_s_blows_are_a_bout_whatever_the_interpret_step_made_of_them(fake, make_client):
+    # 2026-11: in Miki's long story every blow of a lesson with a mentor was recorded as an
+    # attack on him, and he ended afraid, bearing grudges and due to come for revenge. The
+    # interpret step proposes the terms once; code keeps them, holds each blow to them and
+    # records one bout, however a later blow is read (W1).
+    state = cultivation_world()
+    state.characters["zhao"].sheet.disposition.attitudes["lin"] = Attitude(affinity=20)
+
+    def blow(aim: str, **facts) -> dict:
+        facts = {"opposition_ids": ["zhao"], "can_respond": True, "foes_mean": "none", **facts}
+        strike = {
+            "text": "strike at Zhao with the practice sword",
+            "verb": "strike",
+            "kind": "exchange",
+            "proposed_duration_s": 3,
+            "aim": aim,
+            "target_ids": ["zhao"],
+            "facts": facts,
+        }
+        return {"summary": "spar with Zhao", "steps": [strike]}
+
+    client = make_client()
+    told = Reply(json={"narration": "Wood cracks on wood."})
+    for proposed in (blow("subdue", terms="no_harm"), blow("wound"), blow("kill")):
+        fake.script(Node.INTERPRET, Reply(json=proposed))
+        fake.script(Node.NARRATOR, told)
+        result = play(client, turn_input(state, "I come at Zhao again"))
+        state = result.state
+        (step,) = result.resolution.steps
+        assert step.bout is not None and step.bout.terms is Terms.NO_HARM
+        brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+        assert '"bout":"no_harm"' in brief
+
+    zhao = state.characters["zhao"]
+    condition = zhao.sheet.condition
+    assert zhao.alive and (condition.health, condition.states) == (Health.UNHURT, [])
+    assert [deed.kind for deed in state.deeds.values()] == ["bout"]
+    attitude = zhao.attitude_toward("lin")
+    assert (attitude.fear, attitude.grudges) == (0, []) and attitude.affinity > 20
+    assert state.scene.encounter.bout == Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    # The interpret step saw the bout under way before each later blow.
+    later = fake.calls(Node.INTERPRET)[-1].prompt.messages[-1].text
+    assert '"bout":{"terms":"no_harm","with_ids":["zhao"]}' in later
 
 
 def test_the_first_opening_records_a_wound_the_premise_starts_with(fake, make_client):

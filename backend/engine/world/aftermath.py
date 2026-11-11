@@ -15,7 +15,7 @@ from engine.state.world import WorldState
 from engine.world.cast import maybe_avenger
 from engine.world.geography import faction_seat, travel_s
 from engine.world.knowledge import COMRADE, FRIEND, character_learns, faction_learns, ties_of
-from engine.world.norms import Nature, deed_nature, is_beast
+from engine.world.norms import Nature, deed_nature, is_beast, killed
 from engine.world.rumors import knows_doer
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.telling import listing, struck_names
@@ -57,6 +57,8 @@ def on_attributed(w: World, deed: Deed) -> None:
     hunt = kind is Nature.HUNT
     if not hunt and (kind is not Nature.HARM or deed.severity < 3):
         return
+    if deed.agreed and not killed(state, deed.victim_ids):
+        return  # W1: inside terms both accepted, only a death is news to those close to them
     for victim_id in deed.victim_ids:
         victim = state.characters.get(victim_id)
         if victim is None:
@@ -89,6 +91,7 @@ def on_attributed(w: World, deed: Deed) -> None:
         if (
             not hunt
             and fell
+            and not deed.agreed  # W1: a death both accepted calls up no avenger of its own
             and victim.prominence is Prominence.KEY
             and not [c for c in close if c[1] >= FRIEND]
         ):

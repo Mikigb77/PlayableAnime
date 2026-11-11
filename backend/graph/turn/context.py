@@ -29,6 +29,7 @@ from engine.contracts import (
 from engine.contracts.resolution import Peril, StepResolution
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
+from engine.resolve import bouts
 from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.sheet import TalentStrength
@@ -579,7 +580,7 @@ def narration_brief(
         sections.append(("TASK", opening))
     else:
         if intent is not None:
-            sections.append(("ACTION", _action_view(intent, words)))
+            sections.append(("ACTION", _action_view(_as_held(intent, resolution), words)))
         sections.append(("OUTCOME", _outcome_view(resolution, after)))
         sections.append(("TIME", _time_view(before, after, settings.language)))
     # The director tells its own events, and the world's events it made the scene's event or a
@@ -654,6 +655,18 @@ def narration_brief(
         stable_chars=len(render(stable)),
         language=settings.language,
     )
+
+
+def _as_held(intent: Intent, resolution: Resolution) -> Intent:
+    """W1. The plan with each blow of an agreed bout aimed as its terms held it, so a sparring
+    blow the interpret step read as a killing one isn't told as an attempt on someone's life."""
+    fought = {s.index: s.bout for s in resolution.steps if s.bout is not None}
+    steps = list(intent.steps)
+    for index, bout in fought.items():
+        if index < len(steps):
+            aim = bouts.held(bout.terms, steps[index].aim)
+            steps[index] = steps[index].model_copy(update={"aim": aim})
+    return intent.model_copy(update={"steps": steps}) if fought else intent
 
 
 def _action_view(intent: Intent, words: str | None) -> dict[str, Any]:
@@ -783,6 +796,11 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
         if step.perils:
             # N6: what struck back at the player character after their step, in order.
             view["struck"] = [_struck_view(p) for p in step.perils]
+        if step.bout is not None:
+            # W1: fought in a bout both sides agreed to, under these terms: no attack on anyone.
+            view["bout"] = step.bout.terms.value
+        if step.broke_terms:
+            view["broke_terms"] = True  # W1: a blow went beyond them, and the bout is over
         if step.interrupted:
             view["interrupted"] = True
         if step.trip is not None and (step.trip.to_id or step.trip.to):

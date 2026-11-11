@@ -52,6 +52,7 @@ from engine.state.records import (
     StepResult,
     Throw,
 )
+from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import (
     Power,
     Talent,
@@ -365,6 +366,53 @@ def test_the_narrator_is_told_how_the_defence_fared_against_what_struck_back():
         "defence": {"fell": "so_close", "against": "Zhao can answer.", "deadly": True},
     }
     assert "defence" not in second  # nothing was thrown: they couldn't fend it off
+
+
+def test_the_narrator_is_told_a_step_was_fought_in_a_bout_and_when_a_blow_broke_its_terms():
+    # W1: a blow inside terms both sides agreed to is told as the fight both wanted.
+    lesson = cut(bout=Bout(terms=Terms.NO_HARM, with_ids=["zhao"]))
+    breach = cut(broke_terms=True)
+    inside, beyond, plain = outcome_of(Resolution(steps=[lesson, breach, cut()]))["steps"]
+
+    assert inside["bout"] == "no_harm" and "broke_terms" not in inside
+    assert beyond["broke_terms"] is True and "bout" not in beyond
+    assert "bout" not in plain and "broke_terms" not in plain
+
+
+def test_the_narrator_reads_a_blow_of_a_bout_aimed_as_its_terms_held_it():
+    # W1: a sparring blow the interpret step read as a killing one isn't told as one.
+    blow = IntentStep(
+        text="cut at Zhao",
+        verb="cut",
+        kind=ActionKind.EXCHANGE,
+        proposed_duration_s=2,
+        aim=Aim.KILL,
+        target_ids=["zhao"],
+    )
+    intent = Intent(summary="spar with Zhao", steps=[blow, blow])
+    first = cut(bout=Bout(terms=Terms.NO_HARM, with_ids=["zhao"]))
+    resolution = Resolution(steps=[first, cut().model_copy(update={"index": 1})])
+
+    told = brief(cultivation_world(), intent=intent, resolution=resolution).user
+    action = json.loads(told.split("## ACTION\n", 1)[1].split("\n", 1)[0])
+
+    assert [step["aim"] for step in action["steps"]] == ["subdue", "kill"]
+    assert intent.steps[0].aim is Aim.KILL  # the plan itself is left as it was read
+
+
+def test_both_models_see_the_terms_of_the_bout_under_way():
+    state = cultivation_world()
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT,
+        opponent_ids=["zhao"],
+        started_turn=1,
+        started_s=0,
+        bout=Bout(terms=Terms.NO_HARM, with_ids=["zhao"]),
+    )
+    shown = '"bout":{"terms":"no_harm","with_ids":["zhao"]}'
+
+    assert shown in brief(state, intent=Intent(summary="spar")).user
+    assert shown in interpret_prompt(state, "I spar with Zhao").messages[-1].text
 
 
 def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():

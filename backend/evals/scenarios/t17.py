@@ -35,6 +35,7 @@ from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
 from engine.labels import clock_time, second_of_day
 from engine.state import (
+    Attitude,
     CharacterStatus,
     ClockStatus,
     EventStatus,
@@ -44,6 +45,7 @@ from engine.state import (
     PassingState,
     PowerAxis,
     StepResult,
+    Terms,
     ThreadStatus,
 )
 from engine.visibility import memory_view
@@ -1909,6 +1911,200 @@ async def fair_long_shots(ev: Eval) -> None:
         by_difficulty["story"] > by_difficulty["balanced"] > by_difficulty["brutal"],
         str(by_difficulty),
     )
+
+
+# --- A friendly bout (W1, W4, N6) ----------------------------------------------------------------
+
+LESSON_BLOWS = 24
+
+
+def lesson_begins(state) -> None:
+    """Elder Mo, who is fond of Lin, has agreed to test him at the well."""
+    elder_here(state)
+    state.characters["elder-mo"].sheet.disposition.attitudes["lin"] = Attitude(affinity=20)
+    state.scene.ended_on = (
+        "Elder Mo tosses Lin a wooden practice sword. 'Come at me, boy. Touches only. Show me "
+        "what the outer court has taught you.'"
+    )
+
+
+def lesson_blow(n: int) -> Intent:
+    """A blow of the lesson as the interpret step might read it: the terms once, at the start,
+    and after that any aim at all, with any guess at what the elder means in answer."""
+    told = facts(
+        opposition_ids=["elder-mo"],
+        can_respond=True,
+        terms=Terms.NO_HARM if n == 0 else None,
+        foes_mean=(None, Aim.SUBDUE, Aim.WOUND, Aim.KILL)[n % 4],
+    )
+    aim = (Aim.SUBDUE, Aim.WOUND, Aim.KILL)[n % 3]
+    text = "strike at Elder Mo with the practice sword"
+    return plan(attack("elder-mo", aim=aim, text=text, verb="strike", facts=told))
+
+
+def blinding_blow() -> Intent:
+    told = facts(
+        opposition_ids=["elder-mo"], can_respond=True, breaks_terms=True, foes_mean=Aim.NONE
+    )
+    text = "drive my fingers at Elder Mo's eyes to blind him"
+    return plan(attack("elder-mo", aim=Aim.WOUND, text=text, verb="maim", facts=told))
+
+
+def unharmed(state, character_id: str) -> bool:
+    condition = state.characters[character_id].sheet.condition
+    return condition.health is Health.UNHURT and not condition.states and not condition.wounds
+
+
+@scenario(
+    "t17.friendly-bout",
+    suite="T17",
+    title="A friendly bout",
+    requirements=("W1", "W4", "N6", "T17"),
+    passes_when=(
+        "A long lesson with a mentor is one bout: nobody is hurt, and it leaves no grudge, fear, "
+        "report or revenge. A blow meant to maim him is an attack that he remembers, and a "
+        "partner who bears the character ill will can use a friendly bout to hurt them"
+    ),
+)
+async def friendly_bout(ev: Eval) -> None:
+    for seed in ev.seeds(12, live=1):
+        story = ev.story(worlds.cultivation_world(), seed=seed)
+        await story.open()
+        story.change(lesson_begins)
+        before = story.state.characters["elder-mo"].attitude_toward("lin").model_copy(deep=True)
+        lesson = [
+            await story.act(
+                "I bow, take up the practice sword and come at Elder Mo as he asked",
+                lesson_blow(0),
+            )
+        ]
+        for n in range(1, 6 if ev.live else LESSON_BLOWS):
+            lesson.append(
+                await story.act("I come at Elder Mo again with the practice sword", lesson_blow(n))
+            )
+        state = story.state
+        blows = [s for played in lesson for s in played.steps]
+        ev.check(
+            "the lesson is read as a bout both agreed to",
+            any(s.bout is not None and s.bout.terms is Terms.NO_HARM for s in blows),
+            seed,
+        )
+        ev.check(
+            "every blow of it comes under its terms, whatever aim was proposed",
+            all(s.bout is not None and not s.broke_terms for s in blows),
+            seed,
+            live=False,
+        )
+        ev.check(
+            "nobody is hurt or left helpless by it",
+            unharmed(state, "lin") and unharmed(state, "elder-mo"),
+            seed,
+        )
+        with_elder = [
+            d
+            for d in state.deeds.values()
+            if "elder-mo" in (d.actor_id, *d.victim_ids, *d.target_ids)
+        ]
+        ev.check(
+            "no blow of it is on record as an attack",
+            bool(with_elder) and all(d.is_bout for d in with_elder),
+            f"{seed}: {[d.kind for d in with_elder]}",
+        )
+        ev.check("the whole lesson is one deed", len(with_elder) == 1, seed, live=False)
+        elder = state.characters["elder-mo"].attitude_toward("lin")
+        ev.check(
+            "the mentor bears no grudge and isn't afraid",
+            not elder.grudges and elder.fear <= before.fear,
+            f"{seed}: {elder}",
+        )
+        ev.check(
+            "he thinks a little better of his student for it",
+            elder.affinity > before.affinity and elder.trust > before.trust,
+            f"{seed}: {elder}",
+            live=False,
+        )
+        answers = [
+            e
+            for e in state.pending_events.values()
+            if e.kind in (Kind.REPORT, Kind.ANSWER) and e.status is EventStatus.PENDING
+        ]
+        ev.check("nobody reports it or comes for revenge", not answers, seed)
+        ev.check("no word of an attack goes round", not state.rumors, seed, live=False)
+        ev.check(
+            "the narrator is told the blow was one of a friendly bout",
+            '"bout":"no_harm"' in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        await ev.judge(
+            "the lesson is told as a lesson",
+            Rubric(
+                must=(
+                    "The scenes tell a sparring lesson between a teacher and his student, with "
+                    "practice blows that are pulled, parried or land as touches",
+                ),
+                must_not=(
+                    "Lin or Elder Mo is wounded, bleeding or left unable to go on",
+                    "Elder Mo turns hostile, afraid or resentful over a blow of the lesson",
+                ),
+            ),
+            lesson,
+        )
+
+        # Beyond the terms: a blow meant to maim, under cover of the lesson.
+        played = await story.act(
+            "While he corrects my stance I drop the sword and drive my fingers at his eyes, "
+            "meaning to blind him for good",
+            blinding_blow(),
+        )
+        state = story.state
+        ev.check(
+            "a blow meant to maim goes beyond the terms",
+            any(s.broke_terms for s in played.steps),
+            seed,
+        )
+        encounter = state.scene.encounter
+        ev.check("the bout is over", encounter is None or encounter.bout is None, seed)
+        ev.check(
+            "that blow is on record as an attack on him",
+            any(
+                d.broke_terms and not d.agreed and "elder-mo" in (*d.victim_ids, *d.target_ids)
+                for d in state.deeds.values()
+            ),
+            seed,
+        )
+        after = state.characters["elder-mo"].attitude_toward("lin")
+        ev.check(
+            "he remembers it and trusts them less",
+            bool(after.grudges) and after.trust < elder.trust,
+            f"{seed}: {after}",
+        )
+
+    # The other way round: Zhao dislikes Lin, so his "friendly" bout can be a lure.
+    for seed in ev.seeds(12, live=0):
+        story = ev.story(worlds.cultivation_world(), seed=f"{seed}/lure", under_way=True)
+        offer = facts(
+            opposition_ids=["zhao"], can_respond=True, terms=Terms.NO_HARM, foes_mean=Aim.SUBDUE
+        )
+        played = await story.act(
+            "I take Zhao up on his friendly bout and trade blows with him",
+            plan(attack("zhao", aim=Aim.SUBDUE, text="trade blows with Zhao", facts=offer)),
+        )
+        ev.check("his offer starts a bout", played.step(0).bout is not None, seed)
+        played = await story.act(
+            "I circle him, looking for an opening",
+            plan(step("circle Zhao, looking for an opening", facts=facts(foes_mean=Aim.WOUND))),
+        )
+        ev.check(
+            "a partner who bears them ill will can go beyond the terms",
+            played.step(0).broke_terms and played.step(0).bout is None,
+            seed,
+        )
+        ev.check(
+            "his blow is on record as his attack",
+            any(d.actor_id == "zhao" and d.broke_terms for d in story.state.deeds.values()),
+            seed,
+        )
 
 
 # --- Cause and effect (A2, A9) -----------------------------------------------------------------

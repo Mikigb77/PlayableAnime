@@ -228,6 +228,6 @@ def hunt_severity(state: WorldState, beast_ids: list[str]) -> int:
 
 def is_crime(state: WorldState, deed: Deed) -> bool:
     """W11: a harmful act against someone, or a serious attempt at one, serious enough for those
-    who keep the law to act on. Insults and petty theft are left to the people involved, and a
-    hunt harms no person (G24)."""
-    return deed_nature(state, deed) is Nature.HARM and deed.severity >= 2
+    who keep the law to act on. Insults and petty theft are left to the people involved, a hunt
+    harms no person (G24), and what both sides of a fight agreed to is theirs to settle (W1)."""
+    return deed_nature(state, deed) is Nature.HARM and deed.severity >= 2 and not deed.agreed
