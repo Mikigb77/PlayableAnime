@@ -221,7 +221,7 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
         intent = await runtime.context.llm.structured(Node.INTERPRET, prompt, Intent)
     except LLMBlocked as block:
         log_block("interpret", list(block.categories), stage=block.stage, source="model")
-        raise UnreadableAction(categories=block.categories) from None
+        raise UnreadableAction(categories=block.categories, stage=block.stage) from None
     checked = check.check_intent(intent, world, action)
     # F3, G12, F2: a step over a hard limit never plays, so nothing is resolved or narrated.
     hits = limits.check_action(world, checked.intent, turn.ctx.rating)
@@ -440,7 +440,8 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         moved = [
             t for t in world.transfers if t.turn == turn.ctx.turn and t.origin is OriginKind.ENGINE
         ]
-        delta, found = check.check_update(narration.update, world, moved)
+        scene_text = f"{narration.action} {narration.narration}"
+        delta, found = check.check_update(narration.update, world, moved, scene_text)
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(
                 "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"

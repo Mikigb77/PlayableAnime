@@ -19,6 +19,7 @@ from engine.contracts import (
     PlannedEvent,
     Resolution,
     SceneEnd,
+    ShowStrength,
     StateDelta,
     StepFacts,
     StepResolution,
@@ -38,9 +39,11 @@ from engine.state.records import (
     ThreadStatus,
     Transfer,
 )
+from engine.state.sheet import LadderPosition
 from engine.state.world import EventSize
 from graph.turn.check import (
     ACTION_UNTOLD,
+    CLOCK_SCENE_END,
     MAX_STEPS,
     check_intent,
     check_plan,
@@ -162,6 +165,64 @@ def test_steps_past_the_limit_are_handed_back():
     assert [i.code for i in checked.issues] == ["too_many_steps"]
     resolution, _ = check_resolution(Resolution(steps=[resolved(0)]), checked.overflow)
     assert resolution.unplayed == checked.overflow
+
+
+def hidden_expert():
+    """Lin at Core Formation, passing for Qi Condensation."""
+    state = cultivation_world()
+    state.player.sheet.ladders = [LadderPosition(ladder_id="realms", rung=2, shown_rung=0)]
+    return state
+
+
+def test_a_blow_that_also_shows_strength_is_two_steps():
+    """G20: code settles a show of strength for certain, so one read into a blow would land
+    the blow with no throw. The show comes first, as its own step, and the blow is thrown."""
+    reveal = ShowStrength(ladder_id="realms")
+    blow = step(
+        "let my cultivation show and strike Zhao down",
+        target_ids=["zhao"],
+        aim=Aim.WOUND,
+        facts=StepFacts(opposition_ids=["zhao"], crowd=True),
+        show_strength=reveal,
+    )
+    checked = check_intent(Intent(steps=[blow, step("walk off")]), hidden_expert(), "x")
+    show, strike, rest = checked.intent.steps
+    assert (show.verb, show.kind, show.show_strength) == ("reveal", ActionKind.INSTANT, reveal)
+    assert show.aim is Aim.NONE and show.target_ids == [] and show.facts.crowd is True
+    assert strike.show_strength is None and strike.aim is Aim.WOUND
+    assert strike.target_ids == ["zhao"] and rest.text == "walk off"
+    assert [i.code for i in checked.issues] == ["show_apart"]
+    # Hiding while they strike is the same: the hiding first.
+    hide = blow.model_copy(update={"show_strength": ShowStrength(ladder_id="realms", shown_rung=1)})
+    checked = check_intent(Intent(steps=[hide]), hidden_expert(), "x")
+    assert [s.verb for s in checked.intent.steps] == ["hide", "throw"]
+
+
+def test_a_show_with_nothing_to_change_is_left_out_of_a_step_that_does_something_else():
+    """G20: a reveal with nothing hidden, or of a strength they don't have, read into a blow
+    is no reveal: the blow plays as what it is."""
+    blow = step(target_ids=["zhao"], aim=Aim.WOUND, show_strength=ShowStrength(ladder_id="realms"))
+    checked = check_intent(Intent(steps=[blow]), cultivation_world(), "x")
+    [strike] = checked.intent.steps
+    assert strike.show_strength is None and strike.aim is Aim.WOUND
+    assert [i.code for i in checked.issues] == ["idle_show"]
+    nobody = cultivation_world()
+    nobody.player.sheet.ladders = []
+    checked = check_intent(Intent(steps=[blow]), nobody, "x")
+    assert checked.intent.steps[0].show_strength is None
+    assert [i.code for i in checked.issues] == ["idle_show"]
+
+
+def test_a_show_of_strength_alone_stays_as_read_and_one_on_no_ladder_of_the_world_is_none():
+    """G20: a step that only hides or shows strength is code's to settle as before. A ladder
+    the world doesn't have is a show of nothing, so the step plays without it."""
+    hide = step("hide my cultivation", show_strength=ShowStrength(ladder_id="realms", shown_rung=0))
+    checked = check_intent(Intent(steps=[hide]), cultivation_world(), "x")
+    assert checked.intent.steps == [hide] and checked.issues == []
+    odd = step("walk on", show_strength=ShowStrength(ladder_id="levels"))
+    checked = check_intent(Intent(steps=[odd]), cultivation_world(), "x")
+    assert checked.intent.steps[0].show_strength is None
+    assert [i.code for i in checked.issues] == ["unknown_ladder"]
 
 
 # check_resolution
@@ -490,6 +551,30 @@ def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
     assert checked.summary is None
     assert [i.code for i in issues] == ["blank_scene_end", "dead_present"]
     assert delta.scene_end.present_ids == ["luca", "bartender", "new_guard"]  # never mutated
+
+
+def test_a_scene_end_that_gives_only_the_time_takes_the_scenes_last_sentence():
+    """R3: in a live story (2026-11-11) a scene ended on "Day 1, morning, 07:00", so the next
+    reading had no last moment to go by and aimed a blow at a bystander."""
+    state = grounded_world()
+    told = 'You bow. "Again," says the bartender, and he sets the glass down in front of you.'
+    for clock in ("Day 1, morning, 07:00", "Día 1, mañana", "19:30"):
+        delta = StateDelta(scene_end=SceneEnd(ended_on=clock, present_ids=["luca"]))
+        checked, issues = check_update(delta, state, told=told)
+        assert checked.scene_end.ended_on == (
+            '"Again," says the bartender, and he sets the glass down in front of you.'
+        )
+        assert [i.code for i in issues] == [CLOCK_SCENE_END]
+    # With no scene text to go by, it is as good as blank: the last moment stands.
+    delta = StateDelta(scene_end=SceneEnd(ended_on="Day 1, morning, 07:00"))
+    checked, issues = check_update(delta, state)
+    assert checked.scene_end.ended_on == state.scene.ended_on
+    assert [i.code for i in issues] == [CLOCK_SCENE_END, "blank_scene_end"]
+    # A moment that says what is happening stands, whatever hour it mentions.
+    delta = StateDelta(scene_end=SceneEnd(ended_on="At dusk the bartender locks the door."))
+    checked, issues = check_update(delta, state, told=told)
+    assert checked.scene_end.ended_on == "At dusk the bartender locks the door."
+    assert issues == []
 
 
 def test_a_scene_the_player_acted_in_must_tell_the_action():

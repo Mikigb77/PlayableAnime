@@ -68,6 +68,7 @@ from evals.scenario import REGISTRY
 from evals.scenarios.common import (
     LIFE,
     act,
+    as_read,
     attack,
     cut_throat,
     facts,
@@ -1124,7 +1125,7 @@ async def stop_the_witness(ev: Eval) -> None:
             act("sleep", "sleep", ActionKind.REST, 8 * HOUR),
         )
         han = next((d for d in story.state.deeds.values() if "han" in d.victim_ids), None)
-        ev.check("the killing is a deed", han is not None, seed)
+        ev.check("the killing is a deed", han is not None, f"{seed}: {as_read([killing])}")
         if han is None:
             continue
         told = [e for e in story.fired(Kind.REPORT) if e.status is EventStatus.APPLIED]
@@ -2408,41 +2409,7 @@ def never_comes_off(shape: int) -> bool:
     return shape % 3 == 2
 
 
-REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
 ENDING_CHARS = 200  # of how the scene before a misread turn ended, in a failed check's detail
-
-
-def as_read(turns: list[Played]) -> str:
-    """How each step of some turns was read and what code made of it, for the detail of a
-    failed check: a live run's log is all that can be read of it afterwards (T18). The story
-    is the eval's own, so nothing of a player's is shown (T16)."""
-    lines = []
-    for played in turns:
-        if played.result is None:
-            lines.append(f"t{played.turn} refused")
-            continue
-        read = played.result.intent.steps if played.result.intent is not None else []
-        for settled in played.steps:
-            said = "unread"
-            if settled.index < len(read):
-                step_ = read[settled.index]
-                told = step_.facts
-                terms = told.terms.value if told.terms is not None else "null"
-                said = (
-                    f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
-                    f"in_way={told.opposition_ids} terms={terms}"
-                    f"{' beyond' if told.breaks_terms else ''}"
-                    f"{' unanswered' if told.can_respond is False else ''}"
-                )
-            how = f"{settled.outcome_class.value}/{settled.result.value}"
-            if settled.outcome_class is OutcomeClass.RULED_OUT:
-                how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
-            bout = settled.bout.terms.value if settled.bout is not None else "none"
-            deeds = [d.kind for d in settled.deeds]
-            lines.append(
-                f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
-            )
-    return " | ".join(lines)
 
 
 def aimed_at(state, played: Played) -> set[str]:
@@ -2583,7 +2550,11 @@ async def friendly_bout(ev: Eval) -> None:
         # Beyond the terms: a blow meant to maim, under cover of the lesson. The player names
         # nobody, as players do. In the third live lessons (2026-11-11) two of three read "his
         # eyes" as those of Zhao, who stands by at the well, and the blow fell on him.
-        moment = story.state.scene.ended_on
+        scene = story.state.scene
+        moment = scene.ended_on
+        fight = scene.encounter
+        with_whom = fight.opponent_ids if fight is not None else None
+        bout = fight.bout.terms.value if fight is not None and fight.bout is not None else None
         played = await story.act(
             "While he corrects my stance I drop the sword and drive my fingers at his eyes, "
             "meaning to blind him for good",
@@ -2594,7 +2565,8 @@ async def friendly_bout(ev: Eval) -> None:
         ev.check(
             "someone meant but not named is the one they are sparring with",
             at_him,
-            f"{seed}: {as_read([played])} after a scene that ended: {moment[-ENDING_CHARS:]}",
+            f"{seed}: {as_read([played])} with {scene.present_ids} there, fighting {with_whom} "
+            f"(bout {bout}), after a scene that ended: {moment[-ENDING_CHARS:]}",
         )
         if not at_him:
             continue  # the blow went at someone else, so nothing below is about it

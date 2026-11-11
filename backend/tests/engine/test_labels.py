@@ -13,6 +13,7 @@ from engine.labels import (
     in_label,
     moment,
     of_name,
+    only_the_clock,
     part_of_day,
     passage_label,
     personal_label,
@@ -403,3 +404,42 @@ def test_spans_and_rough_times_in_catalan():
     assert in_label(10, CA) == "d'aquí a un moment"
     assert in_label(3 * HOUR, CA) == "d'aquí a 3 hores"
     assert in_label(800 * DAY, CA) == "d'aquí a 2 anys"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Day 1, morning, 07:00",
+        "day 1, dusk",
+        "07:00",
+        "Morning.",
+        "Día 3, atardecer",
+        "Dia 2, capvespre, 19:30",
+        "Day 1 at 07:00",
+    ],
+)
+def test_a_text_that_gives_only_the_date_or_the_hour_is_only_the_clock(text):
+    """R3: so a scene end that names a time where it should say what is happening is caught."""
+    assert only_the_clock(Calendar(), 7 * HOUR, text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "   ",
+        "Elder Mo lowers his sword and waits for your answer.",
+        "Day 1, morning: Lin stands at the well.",
+        "At dawn the gate opens.",
+    ],
+)
+def test_a_text_that_says_what_happens_is_not_only_the_clock(text):
+    assert not only_the_clock(Calendar(), 7 * HOUR, text)
+
+
+def test_the_worlds_own_date_is_only_the_clock_too():
+    calendar = custom()
+    for language in Language:
+        label = clock_label(calendar, 2 * DAY, language)
+        assert only_the_clock(calendar, 2 * DAY, label), label
+    assert not only_the_clock(calendar, 2 * DAY, "The frost thickens on the well.")
