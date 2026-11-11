@@ -9,8 +9,10 @@ some rumors, that's also okay."
 So the director only decides that a scene may carry one piece of that talk. Never a scene that
 is about something else: an encounter, an event, a decision with stakes, a trip, or one inside
 stopped time. And only now and then (`rules.TALK_CHANCE`), so a rumor waits for a moment it
-fits and some are never heard. A scene in which the character only looks on (the standing
-action, S2) is such a moment: what the place is saying is always on offer to it. Where the
+fits and some are never heard, and never within minutes of the last small thing
+(`clock.small_thing_fits`, W10), so a run of short scenes isn't a run of things overheard. A
+scene in which the character only looks on (the standing action, S2) is such a moment: what the
+place is saying is always on offer to it. Where the
 record holds nothing they haven't heard, the place's talk is the narrator's to make up, more
 rarely (`rules.OWN_TALK_CHANCE`). Whether the scene has room for it is the narrator's call, and
 only what a scene told is recorded as heard (`pipeline.hear_talk`).
@@ -35,9 +37,11 @@ def plan_talk(
     *,
     pressure: Pressure,
     busy: bool,
+    small: bool = True,
 ) -> PlannedTalk | None:
     """The talk this scene may carry, if any. `busy` is whether the director already has
-    something for the scene to tell: an event, or happenings that came due."""
+    something for the scene to tell: an event, a moment, or happenings that came due. `small`
+    is whether the story's clock leaves room for a small thing (`clock.small_thing_fits`)."""
     if busy or not resolution.steps or pressure.encounter or pressure.stakes:
         return None  # an opening has no steps: it has the premise's own situation to tell
     if world_stopped(state) or state.journey is not None:
@@ -48,8 +52,11 @@ def plan_talk(
     if place_id not in state.places:
         return None
     waiting = hearsay.talk_of(state, state.player_id, place_id, state.world_s)
+    looking_on = all(step.kind is ActionKind.OBSERVE for step in resolution.steps)
+    if waiting and looking_on:
+        return PlannedTalk(rumor_id=waiting[0].id)  # they are listening: whatever the clock says
+    if not small:
+        return None  # W10: minutes after the last small thing is too soon for another
     if waiting:
-        looking_on = all(step.kind is ActionKind.OBSERVE for step in resolution.steps)
-        offered = looking_on or rng.chance(rules.TALK_CHANCE)
-        return PlannedTalk(rumor_id=waiting[0].id) if offered else None
+        return PlannedTalk(rumor_id=waiting[0].id) if rng.chance(rules.TALK_CHANCE) else None
     return PlannedTalk() if rng.chance(rules.OWN_TALK_CHANCE) else None

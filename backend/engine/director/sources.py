@@ -10,6 +10,9 @@
 The model never picks the event type (W16). A source used recently is passed over, so the same NPC
 or thread doesn't come knocking every time. Titles are shown to the player, so they only name what
 the player character already knows (C6); briefs go to the narrator and never hold secrets.
+
+What comes fits the time that passed (W10): `clock.sizes_in_time` says which sizes of event the
+story clock leaves room for since the last ones, and every source keeps to them.
 """
 
 from dataclasses import dataclass, field
@@ -17,6 +20,7 @@ from dataclasses import dataclass, field
 from engine.context import TurnContext
 from engine.contracts.direction import EventKind, EventSource, PlannedEvent, Theme
 from engine.director import deck, rules
+from engine.director.clock import ALL_SIZES
 from engine.director.deck import Card, CastRole
 from engine.director.themes import fits
 from engine.limits import is_adult
@@ -27,6 +31,7 @@ from engine.state.world import EventSize, WorldState, natural_key
 
 FRIENDLY = 30  # affinity from which an NPC comes as a friend, and below minus which as a foe
 CLOSE_AFFINITY = 20
+
 
 THREAD_EVENT_KIND: dict[ThreadKind, EventKind] = {
     ThreadKind.MYSTERY: EventKind.DISCOVERY,
@@ -125,10 +130,19 @@ def cast_for(state: WorldState, role: CastRole, rng: SeededRng, *, adults_only: 
     return [rng.weighted(pool, weights).id]
 
 
-def _agenda(state: WorldState, ctx: TurnContext, rng: SeededRng, recent: list[str]) -> Pick | None:
+def _agenda(
+    state: WorldState,
+    ctx: TurnContext,
+    rng: SeededRng,
+    recent: list[str],
+    sizes: frozenset[EventSize],
+) -> Pick | None:
+    """A key NPC acting on their plans is a personal event, and a faction a local one."""
     player = state.player_id
     options: list[Character | Faction] = []
-    for npc in sorted(state.npcs(), key=lambda c: natural_key(c.id)):
+    npcs = state.npcs() if EventSize.PERSONAL in sizes else []
+    factions = state.factions.values() if EventSize.LOCAL in sizes else []
+    for npc in sorted(npcs, key=lambda c: natural_key(c.id)):
         if (
             npc.alive
             and npc.activity is Activity.ACTIVE
@@ -138,7 +152,7 @@ def _agenda(state: WorldState, ctx: TurnContext, rng: SeededRng, recent: list[st
             and _knows(state, npc)
         ):
             options.append(npc)
-    for faction in sorted(state.factions.values(), key=lambda f: natural_key(f.id)):
+    for faction in sorted(factions, key=lambda f: natural_key(f.id)):
         if (
             faction.activity is not Activity.ACTIVE
             or faction.status is FactionStatus.DESTROYED
@@ -236,12 +250,17 @@ def _agenda(state: WorldState, ctx: TurnContext, rng: SeededRng, recent: list[st
     )
 
 
+def _thread_size(thread: Thread) -> EventSize:
+    return EventSize.LOCAL if thread.kind is ThreadKind.THREAT else EventSize.PERSONAL
+
+
 def _dormant_thread(
     state: WorldState,
     ctx: TurnContext,
     rng: SeededRng,
     allowed: frozenset[Theme],
     recent: list[str],
+    sizes: frozenset[EventSize],
 ) -> Pick | None:
     candidates = [
         t
@@ -250,13 +269,14 @@ def _dormant_thread(
         and ctx.turn - t.last_active_turn >= rules.RETURN_AFTER_TURNS
         and f"thread:{t.id}" not in recent
         and fits(thread_themes(t), allowed)
+        and _thread_size(t) in sizes
     ]
     if not candidates:
         return None
     weights = [1 + min(10, max(0, ctx.turn - t.last_active_turn) / 10) for t in candidates]
     thread = rng.weighted(candidates, weights)
     known = state.player_id in thread.known_by
-    size = EventSize.LOCAL if thread.kind is ThreadKind.THREAT else EventSize.PERSONAL
+    size = _thread_size(thread)
     romance = Theme.ROMANCE in thread_themes(thread)
     cast = [
         i
@@ -290,12 +310,19 @@ def _dormant_thread(
 
 
 def _emerging(
-    state: WorldState, ctx: TurnContext, rng: SeededRng, recent: list[str]
+    state: WorldState,
+    ctx: TurnContext,
+    rng: SeededRng,
+    recent: list[str],
+    sizes: frozenset[EventSize],
 ) -> Pick | None:
+    """A newcomer in person is a personal event, and word of a new power a local one."""
     player = state.player_id
+    npcs = state.npcs() if EventSize.PERSONAL in sizes else []
+    factions = state.factions.values() if EventSize.LOCAL in sizes else []
     options: list[Character | Faction] = [
         c
-        for c in sorted(state.npcs(), key=lambda c: natural_key(c.id))
+        for c in sorted(npcs, key=lambda c: natural_key(c.id))
         if c.alive
         and c.activity is Activity.ACTIVE
         and c.origin is not None
@@ -305,7 +332,7 @@ def _emerging(
     ]
     options += [
         f
-        for f in sorted(state.factions.values(), key=lambda f: natural_key(f.id))
+        for f in sorted(factions, key=lambda f: natural_key(f.id))
         if f.origin is not None
         and f.origin.kind in (OriginKind.EMERGENCE, OriginKind.SUCCESSOR)
         and f.status is not FactionStatus.DESTROYED
@@ -400,16 +427,26 @@ def pick_event(
     *,
     recent: list[str],
     decision_only: bool = True,
+    sizes: frozenset[EventSize] = ALL_SIZES,
 ) -> Pick | None:
-    """The first source in W16's order that has something fitting, after the due events."""
+    """The first source in W16's order that has something fitting, after the due events, among
+    the `sizes` the time since the last events leaves room for (`clock.sizes_in_time`)."""
+    if not sizes:
+        return None
     pick = (
-        _agenda(state, ctx, rng.child("agenda"), recent)
-        or _dormant_thread(state, ctx, rng.child("thread"), allowed, recent)
-        or _emerging(state, ctx, rng.child("emergence"), recent)
+        _agenda(state, ctx, rng.child("agenda"), recent, sizes)
+        or _dormant_thread(state, ctx, rng.child("thread"), allowed, recent, sizes)
+        or _emerging(state, ctx, rng.child("emergence"), recent, sizes)
     )
     if pick is not None:
         return pick
     card = deck.draw(
-        state, ctx, rng.child("deck"), allowed, recent=recent, decision_only=decision_only
+        state,
+        ctx,
+        rng.child("deck"),
+        allowed,
+        recent=recent,
+        decision_only=decision_only,
+        sizes=sizes,
     )
     return from_card(state, card, rng.child("deck")) if card is not None else None

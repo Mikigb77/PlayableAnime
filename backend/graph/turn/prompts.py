@@ -328,6 +328,12 @@ are hurrying, fighting, hiding or deep in something, when nobody is about, or wh
 have to be pushed in, leave it out: they can miss it, and it may come up another day. Set \
 told_talk true only when the scene told it. Talk of your own making that they could follow up \
 goes under leads.
+- A moment (W16). MOMENT, when the brief has it, is a small thing that happens around the \
+character during the scene, of this place and this minute: give it this world's own form and \
+let it happen where it fits what they are doing, in a line or two, with cast_ids as whoever \
+it is about. It stays small: it brings no news, no danger and no new trouble, and nothing \
+follows from it unless the player takes it up. What the character makes of it is the player's \
+to say, so they never answer it in this scene: it can pass by, or be what the scene ends on.
 - Open on the player's action, in action (R1): the character doing what the player said they \
 do, told the way a good book would tell it, before anything comes of it. Every action gets this, \
 however small (a coin held out, a word, a look), and so does one the player already wrote like \
@@ -582,6 +588,8 @@ can notice. needs_you marks one that calls for them.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
 it needs a decision, and what follows from it.
 - HAPPENINGS: smaller events that came to pass in the time that went by, in the same form.
+- MOMENT: a small thing of here and now that happens around the character in this scene, and \
+asks nothing of them: brief, what it is, and cast_ids, someone they know whom it is about.
 - CALLBACKS: open threads to touch on.
 - TALK: something the place is saying that the scene may let the character catch, if it has \
 room: saying, a rumor in the world's words, or own, talk of your own making.

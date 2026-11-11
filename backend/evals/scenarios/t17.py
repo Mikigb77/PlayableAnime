@@ -18,6 +18,7 @@ from engine.contracts import (
     Aim,
     Beat,
     EventSource,
+    GrowthKind,
     Harm,
     Intent,
     IntentStep,
@@ -64,6 +65,7 @@ from evals.scenarios.common import (
     power,
     step,
     stop_time,
+    train,
 )
 from graph.llm import Node
 
@@ -614,6 +616,176 @@ async def time_skip(ev: Eval) -> None:
         len(montage_steps(0, 1000 * YEAR)) == rules.MONTAGE_MAX_STEPS,
         live=False,
     )
+
+    # Miki, 2026-11-11: "maybe I say, I train for a week. Well, we will see if you just train for
+    # a week, or maybe during that week there is something happening that forces a scene."
+    week = 7 * DAY
+    whole = cut = 0
+    for seed in ev.seeds(24, live=2):
+        story = ev.story(worlds.cultivation_world(), seed=f"{seed}/week")
+        await story.open()
+        played = await story.act(
+            "I train with the sword for a week",
+            plan(train(GrowthKind.SKILL, "swordsmanship", 7 * 24)),
+        )
+        step_ = played.step(0)
+        lived = played.world_seconds
+        sheet = played.state.characters["lin"].sheet
+        effort = sheet.practiced("skill:swordsmanship")
+        earned = sheet.skill("swordsmanship") is not None  # enough before the stop: it climbed
+        if not step_.interrupted:
+            whole += 1
+            ev.check("a week nothing cut short is a whole week", lived == week, f"{seed}: {lived}")
+            continue
+        cut += 1
+        ev.check(
+            "a week cut short stops at something that needs the player",
+            needs_decision(played) and 0 < lived < week,
+            f"{seed}: stopped after {lived}s",
+        )
+        ev.check(
+            "the training put in before it is kept (A4)",
+            earned or (effort is not None and 0 < effort.effort_s <= lived),
+            f"{seed}: {effort}",
+        )
+    ev.metric("weeks_whole", whole)
+    ev.metric("weeks_cut_short", cut)
+    ev.check(
+        "a week of training is the story's to grant: some pass whole and some are cut short",
+        whole >= 4 and cut >= 4,
+        f"{whole} whole, {cut} cut short",
+        live=False,
+    )
+
+
+# --- The same hour (W16, W10) ------------------------------------------------------------------
+
+
+# Scenes of a minute, each a different small thing to do, so none is a repeated action.
+MINUTES = (
+    ("I look out over the yard", "Look out over the yard", "look"),
+    ("I say a word to Ilse", "Say a word to Ilse", "say"),
+    ("I pick up the bucket", "Pick up the bucket", "pick up"),
+    ("I scratch the dog's ears", "Scratch the dog's ears", "scratch"),
+    ("I kick a stone off the path", "Kick a stone off the path", "kick"),
+    ("I straighten the gate", "Straighten the gate", "straighten"),
+    ("I drink from the well", "Drink from the well", "drink"),
+)
+
+
+def minute(n: int, seconds: int = MINUTE, **intent) -> tuple[str, Intent]:
+    words, text, verb = MINUTES[n % len(MINUTES)]
+    return words, act(text, verb, ActionKind.TASK, seconds, **intent)
+
+
+@scenario(
+    "t17.same-hour",
+    suite="T17",
+    title="The same hour",
+    requirements=("W16", "W10", "E4", "T17"),
+    passes_when=(
+        "Inside one hour of story time one of life's events comes at most, with a few small "
+        "moments ten minutes or more apart and no event marked for them; once two hours have "
+        "passed since the event, the next one comes"
+    ),
+)
+async def same_hour(ev: Eval) -> None:
+    rubric = Rubric(
+        must=(
+            "The small thing the scene was given happens around the character in a line or "
+            "two, in this world's own form, and the scene goes on",
+        ),
+        must_not=(
+            "Turns the small thing into danger, news or a new plot line by itself",
+            "Has the character answer the small thing when the player didn't say so",
+        ),
+    )
+    personal_gap = rules.EVENT_GAP_S["personal"]
+    for frequency in EventFrequency:
+        for seed in ev.seeds(8, live=1):
+            story = ev.story(
+                worlds.farm(),
+                seed=f"{seed}/{frequency}",
+                settings=StorySettings(event_frequency=frequency),
+                premise="I farm a small plot in a river valley with my wife, and I want nothing "
+                "more.",
+            )
+            await story.open()
+            start = story.state.world_s
+            played: list[Played] = []
+            answer: list[str] = []
+            for n in range(60):
+                words, intent = minute(n, responds_to=answer)
+                turn = await story.act(words, intent)
+                played.append(turn)
+                event = turn.event
+                answer = [event.thread_id] if needs_decision(turn) and event.thread_id else []
+            where = f"{seed} on {frequency}"
+            events = [t for t in played if t.event is not None]
+            moments = [t for t in played if t.plan.moment is not None]
+            ev.check(
+                "sixty scenes of a minute are one hour",
+                story.state.world_s - start == HOUR,
+                where,
+                live=False,
+            )
+            ev.check(
+                "one of life's events at most inside the hour",
+                len(events) <= 1,
+                f"{where}: {[t.event.title for t in events]}",
+                live=False,
+            )
+            ev.check(
+                "small things still happen, a few of them",
+                2 <= len(moments) <= 6,
+                f"{where}: {len(moments)} moments",
+                live=False,
+            )
+            ev.check(
+                "a moment marks no event and opens nothing",
+                all(
+                    t.scene.event is None
+                    and not t.plan.updates.new_threads
+                    and not t.plan.updates.schedule
+                    for t in moments
+                ),
+                where,
+            )
+            came = [t for t in played if t.event or t.plan.moment or t.plan.talk]
+            apart = [
+                later.state.world_s - earlier.state.world_s
+                for earlier, later in zip(came, came[1:], strict=False)
+                if later.event is None
+            ]
+            ev.check(
+                "a small thing keeps ten minutes from what came before it",
+                all(gap >= rules.SMALL_GAP_S for gap in apart),
+                f"{where}: {apart}",
+                live=False,
+            )
+            if moments:
+                told = moments[0]
+                await ev.judge(
+                    f"small things stay small ({frequency})",
+                    rubric,
+                    told,
+                    context=f"The scene was given this small thing: {told.plan.moment.brief}",
+                )
+
+            # Then the scenes take half an hour each, and life's events come again.
+            first_s = events[0].state.world_s if events else start
+            turn = played[-1]
+            for n in range(60, 80):
+                words, intent = minute(n, 30 * MINUTE, responds_to=answer)
+                turn = await story.act(words, intent)
+                if turn.event is not None:
+                    break
+            ev.check(
+                "once the hours have passed, the next event comes",
+                turn.event is not None and turn.state.world_s - first_s >= personal_gap,
+                f"{where}: {(turn.state.world_s - first_s) / HOUR:.1f} h after the first",
+                live=False,
+            )
 
 
 # --- Goal ownership (N2) -----------------------------------------------------------------------
@@ -1374,9 +1546,11 @@ async def trapped(ev: Eval) -> None:
         )
         took = played.step(0).duration_s
         durations.append(took)
+        roll = played.step(0).roll
         ev.check(
             "the escape time is rolled",
-            played.step(0).roll is not None and played.step(0).roll.duration_s == took,
+            # Days in the array may be cut short by something that needs them (E7).
+            roll is not None and (roll.duration_s == took or played.step(0).interrupted),
             seed,
         )
         lived = story.state.world_s - start
