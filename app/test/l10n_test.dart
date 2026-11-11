@@ -110,6 +110,7 @@ void main() {
       'settingsBrutal',
       'settingsColor',
       'settingsNormal',
+      'sheetCost',
     };
     final catalan = translations['ca']!.$2;
     final untranslated = [

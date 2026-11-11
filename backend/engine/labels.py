@@ -104,7 +104,14 @@ _CATALAN_VOWELS = frozenset("aeiouàèéíïòóúü")
 
 def of_name(name: str, language: Language) -> str:
     """ "de abril" in Spanish; in Catalan "de maig", but "d'abril" and "d'Hivern" before a
-    vowel sound, though not before an "i" or "u" that leads into another vowel ("de Iuna")."""
+    vowel sound, though not before an "i" or "u" that leads into another vowel ("de Iuna").
+    A name that opens with a small "el" takes it in, as both languages do: "del viejo
+    herrero", "dels germans Roca". A capital one is part of the name and stays: "de El Cid"."""
+    article, _, rest = name.partition(" ")
+    if rest and language in (ES, CA) and article == "el":
+        return f"del {rest}"
+    if rest and language is CA and article == "els":
+        return f"dels {rest}"
     if language is CA:
         sound = name.lower().removeprefix("h")
         glide = sound[:1] in "iu" and sound[1:2] in _CATALAN_VOWELS

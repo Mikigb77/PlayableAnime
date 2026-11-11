@@ -276,8 +276,7 @@ The story reads as one page of scenes, like a book that writes itself.
 ![Opening at the newest scene, the title page, a turn streaming in, the scene once saved, its
 picture and choices, a failed turn](docs/screenshots/play-screen.jpg)
 
-![How it played out (with what struck back), story settings, /status and
-Memory](docs/screenshots/play-sheets.jpg)
+![Story settings and Memory](docs/screenshots/play-sheets.jpg)
 
 - **The page runs on behind the bar.** The bar at the top is a pill of glass (`GlassTopBar`) that
   floats over the page, so a cover or a picture passes under it, and the page dims a little under
@@ -323,6 +322,42 @@ Memory](docs/screenshots/play-sheets.jpg)
 - **Names from the world** start with a capital where they stand as a heading or a card's title
   (`"the inner court".asHeading` is "The inner court"), and keep the world's own spelling
   everywhere else.
+
+## The character sheet
+
+`/status` opens the Character screen (S5): the sheet in the world's words (G16), laid out in
+parts so nothing has to be read as one long list.
+
+![Who they are, how they are and their path, then the Skills, Techniques and Traits
+tabs](docs/screenshots/character.jpg)
+
+- **Who they are comes first:** the portrait, the name, their place in the world in a few words
+  (a rank in a faction they know, a title, their age), the world's date and time, and a line on
+  how they come across, in the italic of the player's own words.
+- **How they are is a row of chips:** health with a heart, in the color of success when unhurt,
+  of caution when hurt and of danger from wounded on; each wound in the color of danger, or
+  quiet once it is one that stays; each passing state with when it passes; a child on the way.
+  Under them, each of the world's energies as a bar with its share. Color never speaks alone:
+  every chip says it in words.
+- **Their path** is a card for each ladder they stand on: their own rung on top, lit in the
+  story's color with its stage and what it means, and the rungs they climbed under it, ticked.
+  Nothing is drawn above it, because what lies higher is the story's to tell (C6).
+- **Four tabs hold what is looked up:** Carried (the purse, what is on them, then what they keep
+  elsewhere), Skills, Techniques (with powers first, each kind under its label; the tab is named
+  Powers where a world has no techniques) and Traits (temperament, what sets them apart, and how
+  they learn). A part with nothing in it has no tab, except Carried, which says when they carry
+  nothing, and a sheet with belongings alone shows them under a label with no tabs. The tabs
+  share the width and scroll sideways when they don't fit, as at a large text size.
+- **Dice are drawn, and said.** A skill or a technique shows five small dice with as many lit as
+  it throws (A3), and the line under its name says the same in words ("Skilled · 3 dice"),
+  which is what a screen reader hears. A technique that still grows with use has a thin bar and
+  its count toward the next level.
+- **A word at the far edge says what a thing is** (Weapon, Gift, Genius, Ready in 2 hours), in
+  small capitals, and drops under the name when the two don't fit.
+- **How it is built:** the server sends the sheet in parts with every label already in the
+  story's language (docs/API.md `Sheet`), beside the value it says, so the app picks a color or
+  draws a meter without reading words (`features/story/sheet.dart`, `sheet_view.dart`). A
+  server from before the parts sends plain lines, and the screen shows those.
 
 ## The dice
 
@@ -438,8 +473,9 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 ## Accessibility
 
 - Contrast at 4.5:1 or better everywhere, tested: every text color on every surface, both ends of
-  the gold gradient on the page and on a card, what is written on the gradient, and the lit tab
-  on its own light over the glass.
+  the gold gradient on the page and on a card, what is written on the gradient, the lit tab
+  on its own light over the glass, and the character sheet's colored words on a chip's wash and
+  on a card.
 - Text scales to 200% without clipping or overflow; the gallery is tested at 2× text. Three things
   that keep a fixed size hold their words back instead of clipping them: large headlines (1.4
   times), a story's glass bar (1.3 times) and the initials in an avatar's circle.
