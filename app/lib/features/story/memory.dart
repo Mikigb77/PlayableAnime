@@ -265,6 +265,41 @@ enum DeedSeen {
   static DeedSeen? parse(Object? json) => values.where((s) => s.wire == json).firstOrNull;
 }
 
+/// What one line of a deed's trail tells (W2, W11, C6).
+enum DeedTrailKind {
+  /// Someone who saw it, whom the character saw go off to tell.
+  went('went'),
+
+  /// Someone who saw it and is dead, as far as the character knows.
+  dead('dead'),
+
+  /// Talk of it that a scene told them.
+  heard('heard'),
+
+  /// Someone came to them over it.
+  came('came');
+
+  const DeedTrailKind(this.wire);
+
+  final String wire;
+
+  static DeedTrailKind? parse(Object? json) => values.where((k) => k.wire == json).firstOrNull;
+}
+
+/// One thing the character knows became of a deed of theirs, after it (C6).
+class DeedTrail {
+  const DeedTrail({required this.text, this.kind});
+
+  factory DeedTrail.fromJson(JsonMap json) =>
+      DeedTrail(text: _text(json['text']), kind: DeedTrailKind.parse(json['kind']));
+
+  /// The line, in the story's language: "Wei went to tell the Azure Cloud Sect".
+  final String text;
+
+  /// What [text] tells, for picking its mark. Null for a kind this app doesn't know.
+  final DeedTrailKind? kind;
+}
+
 /// Something done, by the character or by someone else they know of (W1).
 class MemoryDeed {
   const MemoryDeed({
@@ -273,6 +308,8 @@ class MemoryDeed {
     this.whenLabel,
     this.knownLabel,
     this.seen,
+    this.trail = const [],
+    this.openLabel,
   });
 
   factory MemoryDeed.fromJson(JsonMap json) => MemoryDeed(
@@ -281,6 +318,11 @@ class MemoryDeed {
     whenLabel: _label(json['when_label']),
     knownLabel: _label(json['known_label']),
     seen: DeedSeen.parse(json['seen']),
+    trail: [
+      for (final line in _list(json['trail'], DeedTrail.fromJson))
+        if (line.text.trim().isNotEmpty) line,
+    ],
+    openLabel: _label(json['open_label']),
   );
 
   final String id;
@@ -294,6 +336,13 @@ class MemoryDeed {
 
   /// What [knownLabel] says, for picking its mark. Null from a server older than it.
   final DeedSeen? seen;
+
+  /// What the character knows became of it since, in the order it happened (C6). Empty from
+  /// a server older than it, and for a deed nothing came of.
+  final List<DeedTrail> trail;
+
+  /// That who else knows is nothing the character can tell, where that is an open question.
+  final String? openLabel;
 }
 
 /// A plot line's state (N1).

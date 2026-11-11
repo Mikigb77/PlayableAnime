@@ -628,7 +628,8 @@ class _RumorEntry extends StatelessWidget {
   }
 }
 
-/// Something done (W1): what, when, and who saw it as far as the character knows (W2, C6).
+/// Something done (W1): what, when, who saw it as far as the character knows (W2), and what
+/// they know became of it since (W11, C6).
 class _DeedEntry extends StatelessWidget {
   const _DeedEntry({required this.deed});
 
@@ -656,6 +657,25 @@ class _DeedEntry extends StatelessWidget {
             DeedSeen.unseen => _Note(known, icon: Icons.visibility_off_outlined),
             _ => _Note(known),
           },
+        // What became of it since, as far as they know: lit where word is on its way or
+        // someone came, quiet for what only closes a door.
+        for (final line in deed.trail)
+          switch (line.kind) {
+            DeedTrailKind.went => _Note(
+              line.text,
+              icon: Icons.directions_run_rounded,
+              color: colors.caution,
+            ),
+            DeedTrailKind.dead => _Note(line.text, icon: Icons.remove_circle_outline_rounded),
+            DeedTrailKind.heard => _Note(line.text, icon: Icons.hearing_outlined),
+            DeedTrailKind.came => _Note(
+              line.text,
+              icon: Icons.person_pin_circle_outlined,
+              color: colors.accent,
+            ),
+            null => _Note(line.text),
+          },
+        if (deed.openLabel case final open?) _Note(open, icon: Icons.help_outline_rounded),
       ],
     );
   }

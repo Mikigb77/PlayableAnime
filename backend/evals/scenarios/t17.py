@@ -1158,6 +1158,26 @@ async def stop_the_witness(ev: Eval) -> None:
                 all(e.applied_s >= han.world_s + UNKNOWN_TRIP_S for e in told),
                 f"{seed}: {[e.applied_s - han.world_s for e in told]}",
             )
+        # C6: Memory tells what the character knows became of the killing, and no more.
+        entry = next((d for d in memory_view(story.state).deeds if d.id == han.id), None)
+        trail = [(t.kind.value, t.text) for t in entry.trail] if entry else []
+        if silenced and wei.status is CharacterStatus.DEAD:
+            ev.check(
+                "Memory tells that the one who saw it is dead",
+                ("dead", "Someone who saw it is dead") in trail,
+                f"{seed}: {trail}",
+            )
+        if not silenced:
+            ev.check(
+                "Memory tells that the one who saw it went to tell the sect",
+                ("went", "Someone went to tell the Azure Cloud Sect") in trail,
+                f"{seed}: {trail}",
+            )
+        ev.check(
+            "and that who else knows is nothing the character can tell",
+            entry is not None and entry.open_label is not None,
+            f"{seed}: {entry}",
+        )
         if silenced:
             await ev.judge(
                 "the night after",
