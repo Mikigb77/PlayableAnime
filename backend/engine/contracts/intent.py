@@ -498,8 +498,9 @@ class StepFacts(EngineModel):
         description=(
             "W1: when the fight is a bout both sides agreed to, the worst both accepted: no_harm"
             " (sparring, a lesson, a test of skill, a play fight), wounds (first blood, a duel or"
-            " a trial that accepts wounds) or death (to the death). Null for any other fight and"
-            " for a step that fights nobody. Code keeps the terms for the whole bout."
+            " a trial that accepts wounds) or death (to the death). Given on every step that"
+            " fights in the bout, for as long as it goes on as agreed. Null for any other fight"
+            " and for a step that fights nobody."
         ),
     )
     breaks_terms: bool = Field(
