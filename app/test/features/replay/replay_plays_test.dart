@@ -235,6 +235,46 @@ void main() {
       expect(plays.first.outcomeClass, OutcomeClass.certain);
       expect(plays.first.sure, isTrue);
     });
+
+    test('a roll saved before the dice travelled keeps its odds, and has no dice to throw', () {
+      final plays = playsOf(
+        const SceneDetails(
+          steps: [
+            SceneStep(
+              text: 'Take the scroll',
+              outcomeClass: OutcomeClass.certain,
+              reason: 'It sits within reach.',
+            ),
+            SceneStep(
+              text: 'Reach the window',
+              outcomeClass: OutcomeClass.contested,
+              reason: 'The wards answer anyone who carries a sealed text.',
+              roll: SceneRoll(oddsLabel: 'about even', result: RollResult.failure, seed: 'old-1'),
+              struck: [
+                SceneStruck(
+                  by: 'the ward',
+                  outcomeClass: OutcomeClass.contested,
+                  harm: 'hurt',
+                  reason: 'The ward strikes back (unlikely): it burns your hand.',
+                  roll: SceneRoll(oddsLabel: 'unlikely', result: RollResult.success),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      // Every one of them shows with no dice: a step the facts settled says nothing of odds.
+      expect([for (final play in plays) play.sure], everyElement(isTrue));
+      expect([for (final play in plays) play.odds], [null, 'about even', 'unlikely']);
+      expect(
+        [for (final play in plays) play.end],
+        [PlayEnd.certain, PlayEnd.missed, PlayEnd.lands],
+      );
+      // Its reason is left whole, and its seed stays with it.
+      expect(plays[1].why, 'The wards answer anyone who carries a sealed text.');
+      expect(plays[1].rollSeed, 'old-1');
+      expect(plays[2].why, 'The ward strikes back (unlikely): it burns your hand.');
+    });
   });
 
   group('the dice of a play', () {

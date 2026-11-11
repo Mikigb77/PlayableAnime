@@ -6,15 +6,15 @@ import 'package:flutter/rendering.dart';
 
 import '../../../core/l10n.dart';
 import '../../../design/design.dart';
-import '../scene_details_sheet.dart' show OutcomeClassLabel;
 import '../scene_view.dart';
 import '../story_models.dart';
 import 'replay_card.dart';
 import 'replay_controller.dart';
 import 'replay_plays.dart';
 
-/// "How it played out" for a scene the dice decided (S15, A8): its steps one at a time, each with
-/// the throw that decided it, then the whole turn as a list.
+/// "How it played out" (S15, A8): the scene's steps one at a time, each with the throw that
+/// decided it or the tick of a step the facts settled, then the whole turn as a list with its
+/// time (W10), its chain of cause and effect (A9) and where a plan stopped (R6).
 Future<void> showSceneReplay(BuildContext context, Scene scene) {
   final l10n = context.l10n;
   return showReplay(
@@ -870,7 +870,7 @@ class _Link extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    OutcomeClassLabel.labelFor(context.l10n, link.outcomeClass).toUpperCase(),
+                    classLabel(context.l10n, link.outcomeClass).toUpperCase(),
                     style: TextStyle(
                       fontFamily: Fonts.sans,
                       fontSize: 10.5,

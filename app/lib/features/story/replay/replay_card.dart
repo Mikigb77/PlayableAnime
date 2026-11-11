@@ -54,14 +54,25 @@ String endLabel(AppLocalizations l10n, PlayEnd end) => switch (end) {
   PlayEnd.held => l10n.replayEndHeld,
 };
 
-/// Why a play needed no throw, in a line.
+/// A play with no dice to show, in a line: why it needed no throw, or the odds of a roll saved
+/// before the dice travelled.
 String verdictOf(AppLocalizations l10n, ReplayPlay play) => switch (play.end) {
   PlayEnd.there => l10n.detailsBeatMadeCanon(play.thing),
   PlayEnd.notThere => l10n.detailsBeatEmpty(play.thing),
+  _ when play.odds != null => l10n.detailsOdds(play.odds!),
   PlayEnd.ruledOut => l10n.replayRuledOut,
   PlayEnd.lands => l10n.replayLands,
   PlayEnd.held => l10n.replayHeld,
   _ => l10n.replayCertain,
+};
+
+/// A step's class in a word: settled by the facts (certain, ruled out) or open to a throw
+/// (contested, long shot).
+String classLabel(AppLocalizations l10n, OutcomeClass outcome) => switch (outcome) {
+  OutcomeClass.certain => l10n.classCertain,
+  OutcomeClass.contested => l10n.classContested,
+  OutcomeClass.longShot => l10n.classLongShot,
+  OutcomeClass.ruledOut => l10n.classRuledOut,
 };
 
 /// The small line over a play's title: which step it is, and what kind of thing.
@@ -202,7 +213,10 @@ class _ReplayCardState extends State<ReplayCard> {
                     ),
                   ),
                 ],
-                if (play.rollSeed case final seed? when stage.again) ...[
+                // The roll's seed, on a step opened again: under "Watch the throw again", or
+                // under a roll that kept no dice.
+                if (play.rollSeed case final seed?
+                    when stage.again || (play.sure && !stage.staged)) ...[
                   const SizedBox(height: 8),
                   Text(
                     l10n.detailsSeed(seed),
@@ -257,7 +271,9 @@ class _ReplayCardState extends State<ReplayCard> {
         child: Align(
           alignment: Alignment.bottomCenter,
           child: stage.tick
-              ? _SureMark(good: play.tone == PlayTone.pass, color: color, reduced: widget.reduced)
+              // A bar only for what went badly, as on its row: an older roll that partly worked
+              // keeps its tick, in amber.
+              ? _SureMark(good: play.tone != PlayTone.fail, color: color, reduced: widget.reduced)
               : const SizedBox.square(dimension: 84),
         ),
       ),
@@ -265,7 +281,11 @@ class _ReplayCardState extends State<ReplayCard> {
       _Held(
         shown: stage.verdict,
         child: Text(
-          verdictOf(l10n, play).toUpperCase(),
+          // A roll that kept no dice says how it fell beside its odds, as its row does.
+          (play.odds == null
+                  ? verdictOf(l10n, play)
+                  : '${verdictOf(l10n, play)}  ·  ${endLabel(l10n, play.end)}')
+              .toUpperCase(),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: Fonts.sans,

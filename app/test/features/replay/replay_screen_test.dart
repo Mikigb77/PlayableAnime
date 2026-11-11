@@ -425,6 +425,84 @@ void main() {
     await _leave(tester);
   });
 
+  testWidgets('a turn the facts settled plays the same way, and throws nothing', (tester) async {
+    const road = SceneStep(
+      text: 'I set off down the road',
+      outcomeClass: OutcomeClass.certain,
+      reason: 'Nothing stands in the way.',
+      beats: [
+        SceneBeat(
+          beat: 'Walk the path',
+          thing: 'the road',
+          madeCanon: true,
+          reason: 'A road runs from the gate to the town.',
+        ),
+      ],
+    );
+    await _open(tester, _plays([_door, road]), time: '+5 min · Day 1, morning');
+    await _wait(tester, 400);
+
+    // The first step alone, with its tick and why.
+    expect(_key('replay.stage.0.run'), findsOneWidget);
+    expect(find.textContaining('road'), findsNothing);
+    await _wait(tester, 1800);
+    expect(find.text(l10n.replayCertain.toUpperCase()), findsOneWidget);
+    expect(find.textContaining(l10n.replayTapOn, findRichText: true), findsOneWidget);
+
+    // A tap moves on to what the second step relied on, then to the step itself.
+    await _tapScreen(tester);
+    await _wait(tester, 2800);
+    expect(_key('replay.stage.1.run'), findsOneWidget);
+    expect(
+      find.textContaining(l10n.replayCheck(2).toUpperCase(), findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.detailsBeatMadeCanon('the road').toUpperCase()), findsOneWidget);
+    await _tapScreen(tester);
+    await _wait(tester, 2800);
+    expect(_key('replay.stage.2.run'), findsOneWidget);
+    expect(find.text('I set off down the road'), findsOneWidget);
+    await _tapScreen(tester);
+    await _wait(tester, 1200);
+
+    // The whole turn as a list, with its time, and no die anywhere in it.
+    for (final row in [0, 1, 2]) {
+      expect(_key('replay.row.$row'), findsOneWidget);
+    }
+    expect(find.text(l10n.replayEndCertain.toUpperCase()), findsNWidgets(2));
+    expect(find.text(l10n.replayEndThere.toUpperCase()), findsOneWidget);
+    expect(find.text('+5 min · Day 1, morning'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^${l10n.replayDice('')}')), findsNothing);
+    expect(_key('replay.again'), findsOneWidget);
+
+    // A row opens with why, and offers no throw to watch.
+    await tester.tap(_key('replay.row.2'));
+    await _wait(tester, 1600);
+    expect(find.text('Nothing stands in the way.'), findsOneWidget);
+    expect(_key('replay.watch'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a scene with a chain and no steps opens on the chain (A9)', (tester) async {
+    await _open(
+      tester,
+      const [],
+      chain: const [
+        ChainLink(
+          text: 'The lamp falls into the straw',
+          outcomeClass: OutcomeClass.certain,
+          reason: 'Dry straw catches at once.',
+        ),
+      ],
+    );
+    await _wait(tester, 400);
+    expect(find.text('The lamp falls into the straw'), findsOneWidget);
+    expect(find.text(l10n.detailsLegend), findsOneWidget);
+    expect(_key('replay.skip'), findsNothing);
+    expect(_key('replay.back'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a plan that stopped says where (R6)', (tester) async {
     await _open(tester, _plays([_door, _strike], stoppedAt: 0));
     await _wait(tester, 400);
