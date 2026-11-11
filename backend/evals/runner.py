@@ -89,11 +89,14 @@ from graph.turn import (
     UnreadableAction,
     run_turn,
 )
+from graph.turn.errors import LimitReached
 from media.briefs import THREAD_SUBJECTS
 from media.notes import SceneText
 
 # How much of a missed criterion a failure line repeats before the judge's reason.
 CRITERION_CHARS = 80
+# How much of a refused turn's action a failed scenario's line shows.
+ACTION_CHARS = 80
 # How many failures a check keeps the details of. The count covers them all.
 KEPT_DETAILS = 5
 
@@ -282,6 +285,9 @@ class Played:
             data["refused"] = {
                 "code": self.refused.code,
                 "categories": list(self.refused.categories),
+                # A hard limit of the engine's, or the model's own filter and where it struck.
+                "by": "code" if isinstance(self.refused, LimitReached) else "model",
+                "stage": self.refused.stage,
             }
             return data
         result = self._result()
@@ -589,6 +595,26 @@ class ScenarioResult:
                         f"judge {judgement.name}: {v.id} ({_clip(v.criterion, CRITERION_CHARS)}) "
                         f"failed: {' '.join(v.reason.split()) or 'no reason given'}"
                     )
+        if lines:
+            lines += self._refusals()
+        return lines
+
+    def _refusals(self) -> list[str]:
+        """The turns of a live run that were refused, with who refused them and why, for a
+        scenario that failed: a story whose first action can't be read fails every check after
+        it, and the run's log is all that can be read of it afterwards (T18)."""
+        lines = []
+        for story in self.transcripts:
+            for turn in story["turns"]:
+                refused = turn.get("refused")
+                if refused is None:
+                    continue
+                where = f" at the {refused['stage']}" if refused.get("stage") else ""
+                lines.append(
+                    f"refused: {story['seed']} t{turn['turn']} "
+                    f"({_clip(turn.get('action') or '', ACTION_CHARS)}): {refused['code']} by "
+                    f"{refused.get('by', 'model')}{where}, categories {refused['categories']}"
+                )
         return lines
 
     def gaps(self) -> list[str]:

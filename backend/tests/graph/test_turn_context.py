@@ -148,6 +148,33 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     assert '"tournament"' in text  # open threads, for what the action takes up
 
 
+def test_the_interpret_prompt_names_the_rungs_of_the_worlds_ladders():
+    """G20: "I hide my cultivation" has to name the rung to show, and the sheet holds only the
+    rung's number. The reading model gets the ladders by their rungs' names, lowest first, and
+    nothing of what a rung is worth, which stays code's. It is always asked whether a step
+    hides strength or shows it: left to it, the first live story about it hid nothing."""
+    state = cultivation_world()
+    prompt = interpret_prompt(state, "I hide my cultivation")
+    world = _section(prompt.messages[-1].text, "WORLD")
+    assert world["ladders"] == [
+        {
+            "id": "realms",
+            "name": "cultivation realms",
+            "rungs": [
+                "Qi Condensation",
+                "Foundation Establishment",
+                "Core Formation",
+                "Nascent Soul",
+                "Soul Transformation",
+            ],
+        }
+    ]
+    assert "- show_strength, always (G20): null unless the step hides" in prompt.system
+    assert "WORLD's ladders" in prompt.system
+    grounded = interpret_prompt(grounded_world(), "I wait").messages[-1].text
+    assert "ladders" not in _section(grounded, "WORLD")
+
+
 def test_the_interpret_prompt_reads_the_scene_the_player_is_answering():
     """R2: what the last scene showed counts as there, so the interpret step reads it. The
     scene's record lists only a few things, and the trunk the scene told of is on no list."""

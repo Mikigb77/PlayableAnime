@@ -8,15 +8,19 @@ class UnreadableAction(Exception):
     """F4: the interpret step was blocked, so the action can't be read. The app offers to
     rephrase or retry; it's never shown as an error. API.md's `unreadable_action` (422).
 
-    `details` goes to the app as the error's `details`."""
+    `details` goes to the app as the error's `details`. `stage` is where the model's filter
+    stopped it ("prompt" or "response"), for the logs and the evals only."""
 
     code = "unreadable_action"
     default_message = "That action couldn't be read. Try saying it another way."
 
-    def __init__(self, *, categories: tuple[str, ...] = (), message: str | None = None) -> None:
+    def __init__(
+        self, *, categories: tuple[str, ...] = (), message: str | None = None, stage: str = ""
+    ) -> None:
         self.message = message or self.default_message
         super().__init__(self.message)
         self.categories = categories
+        self.stage = stage
         self.details: dict[str, Any] = {}
 
 

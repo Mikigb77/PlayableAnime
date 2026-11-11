@@ -5,6 +5,7 @@ in the story's language (S10): English by default, Spanish or Catalan. What the 
 read stays English: they write in the story's language whatever their brief is in.
 """
 
+import re
 from datetime import datetime, timedelta
 
 from engine.base import DAY, HOUR, MINUTE, EngineModel
@@ -237,6 +238,33 @@ def clock_label(calendar: Calendar, world_s: int, language: Language = EN) -> st
     else:
         label = None
     return label or _day_count(calendar, world_s, language)
+
+
+# Words a date or a time of day is made of besides its numbers, in any of the app's languages.
+_CLOCK_WORDS = frozenset(
+    {"of", "the", "at", "year", "de", "del", "d", "a", "las", "les", "h"}
+    | {part for _, part in DAY_PARTS}
+    | {name for names in _PART_NAMES.values() for name in names.values()}
+    | {word.lower() for word in (*_DAY_WORD.values(), *_YEAR_WORD.values())}
+)
+# The letters a number written as an ordinal ends in: "3rd", "1r", "2a", "4t", "1º".
+_ORDINAL_LETTERS = "adhnrstèºª"
+
+
+def only_the_clock(calendar: Calendar, world_s: int, text: str) -> bool:
+    """Whether `text` says nothing but a date or a time of day ("Day 1, morning, 07:00", "Día 3,
+    atardecer"), in any of the app's languages: every word of it is a number or a word the
+    world's clock is told with around `world_s`. A text with no word at all isn't one."""
+    words = re.findall(r"[^\W_]+", text.lower())
+    if not words:
+        return False
+    told = set(_CLOCK_WORDS)
+    for language in Language:
+        told.update(re.findall(r"[^\W_]+", clock_label(calendar, world_s, language).lower()))
+    for word in words:
+        if word not in told and not word.rstrip(_ORDINAL_LETTERS).isdigit():
+            return False
+    return True
 
 
 _UNITS = (

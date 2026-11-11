@@ -247,7 +247,12 @@ words, never ground TALENTS.bridges already lists for that thing), heart true on
 covers the heart of the thing and not one side of it, and the reason. Only a deed is a bridge: \
 words that restate the case are not, and practising the thing itself is training. Code throws \
 for it with the skill the step draws on, so name that skill in uses.
-- show_strength: hiding strength (the ladder id and the rung to show) or revealing it (no rung).
+- show_strength, always (G20): null unless the step hides how strong the character is (they \
+pass for weaker, mask their rank, hold their strength in) or lets it show again. ladder_id is \
+the ladder, from PLAYER CHARACTER's ladders. To hide: shown_rung, the rung others are to sense, \
+counted from 0 for the lowest of that ladder's rungs in WORLD's ladders, never above their own \
+rung, and 0 when the player names none. To let their true strength show: shown_rung null. \
+Hiding or showing is a step of its own, before whatever they do next.
 
 Also record:
 - theories: when the player reasons about how their own power works, the claim, a stable topic \
@@ -539,7 +544,9 @@ in as the scene ends.
 - goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
 not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
 same: its id as same_as). Never close one for progress or for going unmentioned.
-- scene_end: the exact moment this scene stops on; place_id, the place it stops in (R8): \
+- scene_end: ended_on, the last thing this scene shows, in a sentence that says who is doing \
+what and where ("She sets the cup down and waits for your answer."), never a date or an \
+hour: the next scene starts from it; place_id, the place it stops in (R8): \
 SCENE's place while the character is still there, else the place they reached, from KNOWN or \
 added under places; who is present and where they stand; and the things in hand or in the scene \
 that matter next. The next scene starts in that place, so a move the scene tells but place_id \

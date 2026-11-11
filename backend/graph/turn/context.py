@@ -490,7 +490,15 @@ def interpret_prompt(
     told = last_scene.strip()[-LAST_SCENE_CHARS:]
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
-    world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
+    seen = _world_view(state, include=_INTERPRET_WORLD)
+    if state.bible.ladders:
+        # G20: the world's ladders by their rungs' names, lowest first, so "I pass for an
+        # outer disciple" names a rung to show. What a rung is worth stays code's.
+        seen["ladders"] = [
+            {"id": ladder.id, "name": ladder.name, "rungs": [rung.name for rung in ladder.rungs]}
+            for ladder in state.bible.ladders
+        ]
+    world = ("WORLD", seen)
     talents = _talents_view(state)
     you = _player_view(state)
     # A4: what is ruled on and bridged is told once, under TALENTS, with how each talent stands.

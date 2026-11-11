@@ -556,8 +556,10 @@ def _step_required(schema: dict[str, Any]) -> None:
     doesn't require as often as not: without `uses` a nimble climber rolled like anyone, and
     without these two no talent was ruled on at all in the first live run (2026-11-10). Code
     may still leave them out. `destination` is asked for the same way (W10): a trip the model
-    doesn't name is a trip code can't time."""
-    must = ["facts", "uses", "talent_cases", "bridge", "destination"]
+    doesn't name is a trip code can't time. So is `show_strength` (G20), null on any step that
+    neither hides strength nor shows it: left to the model, "I hide my cultivation" hid nothing
+    in the first live story about it (2026-11-11), so nothing was there to reveal."""
+    must = ["facts", "uses", "talent_cases", "bridge", "destination", "show_strength"]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
@@ -680,7 +682,11 @@ class IntentStep(EngineModel):
         ),
     )
     show_strength: ShowStrength | None = Field(
-        default=None, description="G20: hiding or revealing strength."
+        default=None,
+        description=(
+            "G20: always given. null unless the step hides how strong the character is, or"
+            " lets it show again."
+        ),
     )
 
     @field_validator("bridge", mode="before")
@@ -691,6 +697,15 @@ class IntentStep(EngineModel):
         if isinstance(value, dict) and not any(
             str(value.get(key) or "").strip() for key in ("talent_id", "what", "rests_on")
         ):
+            return None
+        return value
+
+    @field_validator("show_strength", mode="before")
+    @classmethod
+    def _no_empty_show(cls, value):
+        """A form that must always answer sometimes answers with an empty one where it means
+        none: a show of strength that names no ladder is none."""
+        if isinstance(value, dict) and not str(value.get("ladder_id") or "").strip():
             return None
         return value
 

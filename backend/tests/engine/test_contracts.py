@@ -365,6 +365,34 @@ def test_the_interpret_model_must_always_answer_on_talent_for_each_step():
     assert TalentCase(talent_id="sword", fit=TalentFit.INSIDE).what == ""
 
 
+def test_the_interpret_model_must_always_say_whether_a_step_hides_or_shows_strength():
+    # G20: left to the model, "I hide my cultivation" hid nothing in the first live story about
+    # it (2026-11-11). A form that must always answer can answer with an empty one where it
+    # means none: left as one, an ordinary step would be refused for a strength nobody has.
+    step = Intent.model_json_schema()["$defs"]["IntentStep"]
+    assert "show_strength" in step["required"]
+    assert {"type": "null"} in step["properties"]["show_strength"]["anyOf"]
+
+    def read(show):
+        return IntentStep.model_validate(
+            {
+                "text": "cut the rope",
+                "verb": "cut",
+                "kind": "exchange",
+                "proposed_duration_s": 2,
+                "show_strength": show,
+            }
+        )
+
+    assert read({"ladder_id": " ", "shown_rung": None}).show_strength is None
+    assert read({"shown_rung": 0}).show_strength is None
+    assert read(None).show_strength is None
+    hidden = read({"ladder_id": "realms", "shown_rung": 0}).show_strength
+    assert hidden is not None and hidden.shown_rung == 0
+    plain = IntentStep(text="wait", verb="wait", kind=ActionKind.TASK, proposed_duration_s=5)
+    assert plain.show_strength is None  # code may still leave it out
+
+
 def test_an_empty_bridge_is_no_bridge():
     # A4: a form that must always answer can answer with an empty bridge where it means none.
     # Left as one, an ordinary step would be refused for building on a talent nobody has.
