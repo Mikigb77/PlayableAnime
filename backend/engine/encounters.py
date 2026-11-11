@@ -20,7 +20,9 @@ these on its working copy before and after each step, and `settle` once the plan
 - **A bout.** A fight both sides agreed to has terms (W1, `engine.resolve.bouts`). Resolve
   decides the bout a step was fought in (`StepResolution.bout`); here it is kept on the
   encounter (`Encounter.bout`) with whom it was agreed, from the step that began it until the
-  encounter ends or a blow goes beyond its terms (`StepResolution.broke_terms`). A fight in
+  encounter ends or a blow goes beyond its terms (`StepResolution.broke_terms`). The step that
+  began it may have met no one, such as a first blow with a practice sword the record doesn't
+  hold: the agreement stands, and the fight begins with those it was made with. A fight in
   which someone was harmed outside any terms, or whose terms were broken, is fought in earnest
   (`Encounter.in_earnest`) and never becomes a bout: an attack isn't relabelled as one.
 - **End.** It ends when none of its opponents is still in it (each is dead, missing, helpless, or
@@ -93,11 +95,16 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
     end_s = step.end_s if step.end_s is not None else state.world_s
     encounter = state.scene.encounter
     if encounter is None:
-        if step.encounter is None or not opponents:
+        kind = step.encounter
+        if step.bout is not None and not opponents:
+            # W1. A bout agreed on a step that met no one is still agreed, so the encounter
+            # that keeps its terms begins with those in it.
+            kind, opponents = EncounterKind.FIGHT, _agreed(state, step)
+        if kind is None or not opponents:
             return
         start_s = step.start_s if step.start_s is not None else end_s
         state.scene.encounter = Encounter(
-            kind=step.encounter,
+            kind=kind,
             opponent_ids=opponents,
             started_turn=ctx.turn,
             started_s=start_s,
@@ -126,6 +133,12 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
             encounter.kind = step.encounter
     if exchange:
         encounter.last_s = end_s
+
+
+def _agreed(state: WorldState, step: StepResolution) -> list[str]:
+    """W1. Those a step's bout was agreed with who are still there to fight it."""
+    with_ids = step.bout.with_ids if step.bout is not None else []
+    return [i for i in dict.fromkeys(with_ids) if still_in_it(state, i)]
 
 
 def _keep_terms(encounter: Encounter, step: StepResolution) -> None:

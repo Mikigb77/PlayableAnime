@@ -184,9 +184,10 @@ the character.
 - facts.terms (W1): always answer it. When the fight is a bout both sides agreed to, the worst \
 both accepted: no_harm (sparring, a lesson, a play fight: a touch, a throw or a pin decides \
 it), wounds (first blood, a duel that accepts wounds) or death. Agreed means the other took it \
-up, or it is how the two train together. null for any other fight, such as an ambush or a \
-brawl, and for a step that fights nobody. Code keeps the terms for the whole bout (SCENE's \
-encounter shows them as bout) and takes no blow inside them as an attack.
+up, or it is how the two train together. Give them on every step that fights in the bout, \
+the first and each one after it, for as long as it goes on as agreed (SCENE's encounter shows \
+a bout under way as bout): code takes no blow inside them as an attack. null for any other \
+fight, such as an ambush or a brawl, and for a step that fights nobody.
 - facts.breaks_terms (W1): true only when the character means to go beyond those terms: a blow \
 to maim or kill in a friendly bout, or one struck after the other yielded. That is an attack.
 - facts.danger: what can hurt the character in this step however it goes, that no one in the \
