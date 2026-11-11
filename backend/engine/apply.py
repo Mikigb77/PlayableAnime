@@ -241,17 +241,22 @@ def apply_in_place(
 def scene_people(state: WorldState, delta: StateDelta, reached: Sequence[str] = ()) -> set[str]:
     """W4. Whose feelings a narrated scene can move: the people in it. They are those the
     last scene left there and those in its fight, chase or talks (`geography.scene_ids`), those
-    this scene's end lists, anyone the scene brings in (someone new, or someone it has meet the
-    player character) and whoever the turn reached (`reached`).
+    this scene's end lists, anyone the scene brings in (someone new, someone it has meet the
+    player character or someone it puts where the scene is) and whoever the turn reached
+    (`reached`).
 
     Someone elsewhere saw none of it, however much it concerns them: a son doesn't come to hate
     his father's killer in the moment of a killing he wasn't at. What they come to know reaches
     them through the world, by a witness or by word (W2), and code moves how they feel then."""
     people = {*scene_ids(state), *reached}
+    here = {state.player.location_id, state.scene.place_id}
     if delta.scene_end is not None:
         people.update(delta.scene_end.present_ids)
+        here.add(delta.scene_end.place_id)
+    here.discard(None)
     for change in delta.characters:
-        if change.id not in state.characters or change.meets_player:
+        new = change.id not in state.characters
+        if new or change.meets_player or change.location_id in here:
             people.add(change.id)
     return people
 

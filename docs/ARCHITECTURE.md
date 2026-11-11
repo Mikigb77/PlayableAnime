@@ -188,7 +188,7 @@ a new one.
 | 1. Catch up | `catch_up(state, until_s, ctx, rng) -> TimePassage` applies events due by `until_s` (the graph passes `state.world_s`) in time order, stopping at the first that needs the player. It first makes sure every running clock has its next step pending and that the world tick is spaced so the stretch holds at most 24 ticks (K8), then runs `engine.timekeeping.advance_clock` with the world's handler. Nothing fires during a time stop | WS10 |
 | 3. Resolve | `resolve(state, intent, ctx, rng) -> Resolution` | WS9 |
 | 3. Time passes | `play_out(state, resolution, ctx, rng) -> PlayOut` plays the steps in order. The world catches up to each step's end through `catch_up` (one loop for every stretch of time, with the turn's own `rng`, so an event rolls the same however time is split into steps), and the actor's clock moves by their lived time. An event that needs the player cuts the plan short there (the cut step's effects and deeds don't happen, and later steps go to `unplayed`). Before the clock moves through a step of a day or more, `director.schedule_stretch` rolls that stretch's W16 events (E7), so a time skip stops at the first that needs a decision; a trip of the player character's of an hour or more rolls what the road brings in its place (`director.schedule_road`, W10). A step that goes somewhere (`StepResolution.trip`) leaves the actor at the place it reached once it has played in full, and one cut short leaves the player character on the way with what is left kept in `WorldState.journey` (`journeys.follow`). An arrival somewhere they have never been is marked on the step (`Trip.first_visit`), for the narrator. Nothing is heard by arriving (W2). At each finished step's end its `effects` apply as the engine's, then its consequences are recorded, then `engine.encounters` starts, carries on or ends the scene's encounter from what the step did (a time skip, or a step of ten minutes or more that doesn't itself fight or carry on the encounter, ends it before the stretch is rolled, and a time skip never starts one). The graph must not apply `effects` again | WS2 |
-| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events. In the player character's scene the witnesses are the people in the scene, with those the deed fell on and whoever the step faced or made real, and everyone the record puts at the place when the deed is public or the character has only just arrived (W2) | WS10 |
+| | `record_consequences(state, resolution, step, ctx, rng) -> WorldState`, called by `play_out` for each finished step: each proposed deed becomes a `Deed` with its severity and witnesses, and the world's reactions are set going as pending events. What is done by or to someone in the player character's scene is witnessed by the people in the scene, with those the deed fell on and whoever the step faced or made real, and by everyone the record puts at the place when the deed is public or the character has only just arrived (W2) | WS10 |
 | | `apply_event(state, event, ctx, rng) -> WorldState` applies one pending event that fell due, rolling from the event's own seed, and records on the applied event whether it needed the player. Kinds it doesn't own, such as `director.*`, are only marked applied | WS10 |
 | 3. Direct | `direct(state, resolution, ctx, rng, intent=None) -> DirectorPlan`, on the state `play_out` returned, with the turn's `Intent` (its `responds_to` and `goals`). It only decides and never changes the state | WS11 |
 | 6. Talk | `hear_talk(state, plan, ctx, rng) -> WorldState`, once the narrator says its scene told the talk the plan offered (`NarratorOutput.told_talk`): the player character has heard that rumor, as of the scene's end, so Memory shows it. Talk the scene left out stays unheard (W2, C6) | WS10 |
@@ -276,13 +276,14 @@ a new one.
   against the doer follows severity steeply (`BYSTANDER_HOSTILITY`): a brawl barely moves them,
   and a massacre leaves even a stranger who saw it cold or hostile, with a grudge (W8, W12).
 - **Who was there** (W2, W4). A place on the map can be a forest or a whole city, so where the
-  player character's scene is, those who see a deed are the people in the scene
-  (`geography.onlookers`): the player character, those the last scene's end listed
-  (`SceneFrame.present_ids`), those in its encounter, those the deed fell on or was aimed at
-  when they are at the place, and whoever the step faced or made real (`onstage`). Nobody else
-  the record puts at the place saw it. Everyone at the place did when no scene has shown who is
-  around (a step of the plan arrived there, or the deed is someone's somewhere else) and when
-  the deed is public. A deed is public when it was done before a crowd, the people the scene
+  player character is, those who see what is done by or to someone in their scene are the
+  people in the scene (`geography.onlookers`): the player character, those the last scene's end
+  listed (`SceneFrame.present_ids`), those in its encounter, those the deed fell on or was
+  aimed at when they are at the place, and whoever the step faced or made real (`onstage`).
+  Nobody else the record puts at the place saw it. What others do there outside the scene is
+  seen by everyone at the place but the scene's people. Everyone at the place saw a deed done
+  somewhere else, one done where no scene has shown who is around (a step of the plan arrived
+  there) and a public one. A deed is public when it was done before a crowd, the people the scene
   doesn't name (`StepFacts.crowd`, which the interpret step always answers), and is news by the
   world's norms, severity `RUMOR_MIN_SEVERITY` or more (`resolve.core._before_a_crowd`): its
   rumor starts at once at accuracy 100 and travels one hop further, and when it is harm outside

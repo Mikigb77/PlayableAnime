@@ -1,7 +1,7 @@
-"""Who sees a deed (W2). In the player character's scene it is the people in the scene, not
-everyone the record puts at the place: a place can be a forest or a whole city, and being
-somewhere in it is not seeing what happens in one corner of it. What is done before a crowd is
-public, and everyone there saw it."""
+"""Who sees a deed (W2). What is done by or to someone in the player character's scene is seen
+by the people in the scene, not by everyone the record puts at the place: a place can be a
+forest or a whole city, and being somewhere in it is not seeing what happens in one corner of
+it. What is done before a crowd is public, and everyone there saw it."""
 
 from engine.contracts import ProposedDeed, Trip
 from engine.samples import grounded_world
@@ -85,7 +85,11 @@ def test_someone_struck_from_afar_is_not_there_to_see_who_did_it():
     letter = ProposedDeed(kind="poison", text="Luca has Rosa's wine poisoned", victim_ids=["rosa"])
 
     assert seen_by(bar(), deed_step(letter)) == ["bartender", "carmine"]
-    assert [c.id for c in onlookers(bar(), "bar", ["rosa"])] == ["bartender", "carmine", "luca"]
+    assert [c.id for c in onlookers(bar(), "bar", ["luca", "rosa"])] == [
+        "bartender",
+        "carmine",
+        "luca",
+    ]
 
 
 def test_where_no_scene_has_shown_who_is_around_everyone_there_saw_it():
@@ -107,6 +111,32 @@ def test_what_someone_does_elsewhere_is_seen_by_everyone_the_record_puts_there()
     after = play(state, deed_step(slap), actor_id="ugo").state
 
     assert the_deed(after).witness_ids == ["pia", "rosa"]
+
+
+def test_what_others_do_at_the_same_place_outside_the_scene_is_not_seen_by_the_scene():
+    """The bar is one place on the map. What Nico does to Ugo there while the scene is Luca's
+    talk with Carmine is seen by whoever else the record puts there, and by nobody in the
+    scene: no scene showed it, so Luca's memory doesn't hold it."""
+    state = bar()
+    state.characters["ugo"] = Character(id="ugo", name="Ugo Bassi", location_id="bar")
+    state.characters["pia"] = Character(id="pia", name="Pia Conti", location_id="bar")
+    slap = ProposedDeed(kind="punch", text="Nico punches Ugo", actor_id="nico", victim_ids=["ugo"])
+
+    deed = the_deed(play(state, deed_step(slap), actor_id="nico").state)
+
+    assert deed.witness_ids == ["pia", "ugo"]
+    assert "luca" not in deed.known_by
+
+
+def test_what_an_outsider_does_to_someone_in_the_scene_is_seen_by_the_scene():
+    state = bar()
+    slap = ProposedDeed(
+        kind="punch", text="Nico punches Carmine", actor_id="nico", victim_ids=["carmine"]
+    )
+
+    deed = the_deed(play(state, deed_step(slap), actor_id="nico").state)
+
+    assert deed.witness_ids == ["bartender", "carmine", "luca"]
 
 
 def test_what_is_done_before_a_crowd_is_public_and_everyone_there_saw_it():

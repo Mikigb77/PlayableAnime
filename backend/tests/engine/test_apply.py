@@ -477,7 +477,7 @@ def test_the_narrator_moves_only_the_feelings_of_people_in_the_scene():
     assert "aren't in the scene" in refused.reason
 
 
-@pytest.mark.parametrize("way", ["listed", "meets", "fight", "reached"])
+@pytest.mark.parametrize("way", ["listed", "meets", "comes", "fight", "reached"])
 def test_whoever_comes_into_the_scene_or_the_turn_reached_can_be_moved(way):
     state = cultivation_world()
     change, end, reached = resents("elder-mo"), None, []
@@ -485,6 +485,8 @@ def test_whoever_comes_into_the_scene_or_the_turn_reached_can_be_moved(way):
         end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
     elif way == "meets":  # the scene has him meet the player character
         change = resents("elder-mo", meets_player=True)
+    elif way == "comes":  # the scene has him come to where it is
+        change = resents("elder-mo", location_id="well")
     elif way == "fight":  # he is in the scene's fight, whatever its last end listed
         state.scene.encounter = Encounter(
             kind=EncounterKind.FIGHT, opponent_ids=["elder-mo"], started_turn=2, started_s=0

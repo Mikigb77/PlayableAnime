@@ -130,11 +130,12 @@ def record_deed(
 ) -> Deed:
     """W1, W2: the deed with its severity by the world's norms and the witnesses who could
     perceive it. Resolve's witnesses stand when it names them; otherwise everyone there and
-    aware saw it, unless it was done in secret or in stopped time (W10a). In the player
-    character's scene, there means in the scene (`geography.onlookers`): its people, those the
-    deed fell on and whoever the step brought on stage (`onstage`), and not everyone the
-    record puts at the place. It is everyone at the place when no scene has shown who is
-    around (`shown` false), and when it was done before a crowd, which makes it public."""
+    aware saw it, unless it was done in secret or in stopped time (W10a). For what is done by
+    or to someone in the player character's scene, there means in the scene
+    (`geography.onlookers`): its people, those the deed fell on and whoever the step brought
+    on stage (`onstage`), and not everyone the record puts at the place. It is everyone at the
+    place when no scene has shown who is around (`shown` false), and when it was done before a
+    crowd, which makes it public."""
     state = w.state
     actor_id = proposed.actor_id or resolution.actor_id or state.player_id
     actor = state.characters.get(actor_id)
@@ -146,7 +147,7 @@ def record_deed(
     if explicit or proposed.in_stopped_time or proposed.visibility is Visibility.SECRET:
         witnesses = explicit
     else:
-        involved = [*victims, *proposed.target_ids, *onstage]
+        involved = [actor_id, *victims, *proposed.target_ids, *onstage]
         # Done before a crowd, everyone the record puts there saw it.
         shown = shown and proposed.visibility is not Visibility.PUBLIC
         witnesses = [
