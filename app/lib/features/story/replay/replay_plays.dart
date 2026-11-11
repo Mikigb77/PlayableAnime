@@ -1,6 +1,6 @@
-/// What the replay plays (S15): a scene's steps laid out one after another, each with the throw
-/// that decided it, in the order they happened. A step's checks come first, then the step, then
-/// whatever struck back after it.
+/// What the replay plays (S15): a scene's steps laid out one after another, in the order they
+/// happened, each with the throw that decided it or the tick of a step the facts settled. A
+/// step's checks come first, then the step, then whatever struck back after it.
 ///
 /// Nothing here decides anything. The dice, the number and the mark are the server's (A3); this
 /// only says how to show them: which die wears which color, which of the twenty ways the hand is
@@ -60,6 +60,7 @@ final class ReplayPlay {
     required this.end,
     required this.why,
     this.thrown,
+    this.odds,
     this.rollSeed,
     this.seed = 0,
     this.style = 'spill',
@@ -82,8 +83,12 @@ final class ReplayPlay {
   /// What happened, in the world's words (A8), without the throw told a second time.
   final String why;
 
-  /// The dice. None when the facts settled it.
+  /// The dice. None when the facts settled it, and on a scene saved before the dice travelled.
   final SceneThrow? thrown;
+
+  /// A roll saved before the dice travelled, in the words that scene kept for it ("about even"):
+  /// it was rolled, and there are no dice to show.
+  final String? odds;
 
   /// The roll's seed as the server keeps it, so the same roll can be checked again (A3).
   final String? rollSeed;
@@ -101,6 +106,7 @@ final class ReplayPlay {
   /// A chained plan stopped after this play (R6): what came after it didn't happen.
   final bool stoppedHere;
 
+  /// Nothing is thrown on the screen: the facts settled it, or its roll kept no dice.
   bool get sure => thrown == null;
   bool get deadly => thrown?.deadly ?? false;
   PlayTone get tone => end.tone;
@@ -198,6 +204,9 @@ List<ReplayPlay> playsOf(SceneDetails details, {String Function(SceneStep step)?
         end: end,
         why: whyWithoutThrow(reason, roll),
         thrown: thrown,
+        odds: thrown == null && roll != null && roll.oddsLabel.trim().isNotEmpty
+            ? roll.oddsLabel.trim()
+            : null,
         rollSeed: roll?.seed,
         seed: seedOf('${roll?.seed ?? first ?? ''}/${plays.length}'),
         style: style,
@@ -263,6 +272,7 @@ extension on ReplayPlay {
     end: end,
     why: why,
     thrown: thrown,
+    odds: odds,
     rollSeed: rollSeed,
     seed: seed,
     style: style,

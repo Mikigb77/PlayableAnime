@@ -17,7 +17,6 @@ import 'package:playable_anime/design/design.dart';
 import 'package:playable_anime/features/account/account_repository.dart';
 import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/story/replay/replay_view.dart';
-import 'package:playable_anime/features/story/scene_details_sheet.dart';
 import 'package:playable_anime/features/story/scene_view.dart';
 import 'package:playable_anime/features/story/status_screen.dart';
 import 'package:playable_anime/features/story/story_models.dart';
@@ -420,19 +419,64 @@ void main() {
 
     // Its one step in "How it played out" reads the same way.
     await openDetails(tester, saved.turn);
-    final sheet = find.byType(SceneDetailsView);
-    expect(find.descendant(of: sheet, matching: find.text(l10n.standingWait)), findsNWidgets(2));
-    expect(find.descendant(of: sheet, matching: find.text('wait')), findsNothing);
+    await settle(tester, frames: 10);
+    final replay = find.byType(ReplayScreen);
+    expect(find.descendant(of: replay, matching: find.text(l10n.standingWait)), findsOneWidget);
+    expect(find.descendant(of: replay, matching: find.text('wait')), findsNothing);
   });
 
-  testWidgets('scene details show the steps, the roll and where the plan stopped', (tester) async {
+  testWidgets('a scene with no dice opens in the replay too, a step at a time (S15)', (
+    tester,
+  ) async {
     await serve(tester);
     await open(tester);
     await openDetails(tester, 3);
-    expect(find.text('Reach the window before the wards wake'), findsOneWidget);
-    expect(words(l10n.detailsOdds('about even')), findsOneWidget);
-    expect(find.text(l10n.detailsStopped), findsOneWidget);
-    expect(find.text(l10n.classContested.toUpperCase()), findsWidgets);
+    await settle(tester, frames: 10);
+    final replay = find.byType(ReplayScreen);
+    expect(replay, findsOneWidget);
+    Finder shown(String text) => find.descendant(of: replay, matching: find.text(text));
+
+    // The first step alone, settled by the facts: its tick, and why. Nothing of the next.
+    expect(find.byKey(const ValueKey('replay.stage.0.run')), findsOneWidget);
+    expect(shown('Take the scroll from the shelf'), findsOneWidget);
+    expect(shown('Reach the window before the wards wake'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 1800));
+    expect(shown(l10n.replayCertain.toUpperCase()), findsOneWidget);
+    expect(shown('It sits within reach, and nothing guards it but the wards.'), findsOneWidget);
+
+    // A tap moves on to the second step, whose roll was saved before the dice travelled: it
+    // keeps its odds in a line, and no die is thrown for it.
+    await tester.tapAt(const Offset(30, 300));
+    await settle(tester, frames: 30);
+    expect(find.byKey(const ValueKey('replay.stage.1.run')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1800));
+    expect(
+      shown('${l10n.detailsOdds('about even')}  ·  ${l10n.replayMarkMissed}'.toUpperCase()),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel(RegExp('^${l10n.replayDice('')}')), findsNothing);
+
+    // Every result is known now, so there is nothing left to skip: a tap lays the list out.
+    expect(find.byKey(const ValueKey('replay.skip')), findsNothing);
+    await tester.tapAt(const Offset(30, 300));
+    await settle(tester, frames: 30);
+    final second = find.byKey(const ValueKey('replay.row.1'));
+    expect(
+      find.descendant(of: second, matching: find.text(l10n.detailsOdds('about even'))),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: second, matching: find.text(l10n.replayMarkMissed.toUpperCase())),
+      findsOneWidget,
+    );
+    expect(shown(l10n.detailsStopped), findsOneWidget);
+
+    // Opened again, the older roll shows the seed it was rolled on.
+    await tester.tap(second);
+    await settle(tester, frames: 30);
+    expect(shown(l10n.detailsSeed('fake-3-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('replay.watch')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a scene the dice decided opens as a replay, with what struck back (S15, N6)', (
@@ -443,9 +487,8 @@ void main() {
     await send(tester, 'I strike at the masked disciple');
     await settle(tester);
     await openDetails(tester, 4);
-    // The dice themselves, not the list: asked for from the scene, it keeps the scene's title.
+    // Asked for from the scene, it keeps the scene's title.
     expect(find.byType(ReplayScreen), findsOneWidget);
-    expect(find.byType(SceneDetailsView), findsNothing);
     expect(
       find.descendant(of: find.byType(ReplayScreen), matching: find.text(l10n.sceneDetails)),
       findsOneWidget,
