@@ -142,6 +142,7 @@ class SceneTimeOut(BaseModel):
     label: str
     duration_label: str
     personal_label: str | None = None
+    passage_label: str | None = None
 
 
 class SceneImageOut(BaseModel):

@@ -293,7 +293,9 @@ is now; NOW says when the opening takes place. The light, the sky, meals, crowds
 anything else that shows the hour match it, and the scene ends at TIME's now. Never let night \
 fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
 later"), and never take the character further than that time could carry them. An action that \
-would need longer plays only as far as the time allows.
+would need longer plays only as far as the time allows. When TIME has a heading ("Three days \
+later"), the player reads it above the scene: tell how that time went by, and never say the \
+heading's words again.
 - A trip (W10). trip under a step in OUTCOME is where that step took the character: to, the \
 place, and arrived. The engine timed the way, and TIME is what it took: tell the way itself at \
 that pace, the road, the country, the weather and the nights going by, in a few lines for \
@@ -581,8 +583,8 @@ arrived, and whether it is their first visit). Then stopped_at_step, stop_reason
 when the plan stopped early, now_canon for what became true, rulings, and backstory with \
 whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
-words and in world seconds, and your_seconds_lived when the player character lived through a \
-different span from the world.
+words and in world seconds, your_seconds_lived when the player character lived through a \
+different span from the world, and heading when the player reads one above the scene.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \

@@ -467,6 +467,7 @@ class Scene {
     this.durationLabel,
     this.timeLabel,
     this.personalTimeLabel,
+    this.passageLabel,
     this.worldStartS,
     this.worldEndS,
     this.eventSize,
@@ -497,6 +498,7 @@ class Scene {
       durationLabel: _text(time?['duration_label']),
       timeLabel: _text(time?['label']),
       personalTimeLabel: _text(time?['personal_label']),
+      passageLabel: _text(time?['passage_label']),
       worldStartS: (time?['world_start_s'] as num?)?.toInt(),
       worldEndS: (time?['world_end_s'] as num?)?.toInt(),
       eventSize: event?['size'] as String?,
@@ -534,6 +536,10 @@ class Scene {
   /// Both clocks when the player's ran apart from the world's, such as "World: +0 s. You: +40 s."
   /// (W10a).
   final String? personalTimeLabel;
+
+  /// The heading of a scene that hours or days passed in, such as "Three days later" (W10), in
+  /// the story's language. A short scene has none.
+  final String? passageLabel;
   final int? worldStartS;
   final int? worldEndS;
   final String? eventSize;
@@ -560,6 +566,7 @@ class Scene {
     durationLabel: durationLabel,
     timeLabel: timeLabel,
     personalTimeLabel: personalTimeLabel,
+    passageLabel: passageLabel,
     worldStartS: worldStartS,
     worldEndS: worldEndS,
     eventSize: eventSize,

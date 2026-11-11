@@ -30,6 +30,7 @@ from engine import injuries, limits, pipeline
 from engine.apply import DeltaSource, apply_delta
 from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
+from engine.labels import passage_label
 from engine.pipeline import PlayOut
 from engine.rng import SeededRng
 from engine.state.records import OriginKind
@@ -290,7 +291,11 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     if read is not None and played.resolution.steps:
         # A3, B7: the steps are decided, so the player can watch them before the telling.
         reading = Reading(intent=read, overflow=tuple(state.get("overflow") or ()))
-        runtime.stream_writer(StepsDecided(details(played.resolution), reading))
+        # W10: with the heading over a scene that hours or days passed in, as it will be saved.
+        heading = passage_label(
+            world.bible.calendar, world.world_s, played.state.world_s, turn.ctx.settings.language
+        )
+        runtime.stream_writer(StepsDecided(details(played.resolution), reading, heading))
     return {
         "intent": intent,
         "played": played,

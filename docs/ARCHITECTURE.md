@@ -168,7 +168,7 @@ these functions and saves the result.
 | `engine/text.py` | Word matching shared by resolve and possessions: `stems` and `mentions`, so "the knives" matches "knife" and nothing reads more than the model wrote. Spanish and Catalan articles and prepositions count for nothing, like English ones, and accented letters stay in their word (S10). |
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and the appearance a stated lasting change (`look_change`) leaves a character with. |
-| `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar, and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). |
+| `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar and its heading when hours or days passed ("Three days later", `passage_label`), and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). |
 | `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. `status_view` sends the sheet twice: in parts (`SheetView`, API.md's `Sheet`: who they are, condition, each ladder up to their own rung, belongings, skills, powers, techniques, traits and talents), which the app lays out, and as plain lines for apps from before the parts. Every label it adds is worded here, in the story's language, beside the value it says, with the dice a skill or a technique throws read from `engine/levels.py`. `memory_view` does the same for Memory: how someone takes the character (`attitude`), whether they live as far as the character knows (`status`, `presumed`), a faction's regard and fear (`esteem`, `dread`) and who saw a deed (`seen`), each beside its label. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the player's trips (`journeys`: where a step goes, how long the way is, what is left of a trip that stopped, and the routes new ground writes; W10, W7), what a place is saying to someone who comes there later (`hearsay`: the rumors that reached it before them, heard only once a scene told one; W2, C6), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
@@ -946,8 +946,9 @@ async with aclosing(run_turn(turn, llm)) as events:
 and the endpoint sends them as `narration.delta` and `narration.reset` (API.md). The resolve
 node sends `StepsDecided` the same way once the plan is checked, on a turn that has steps: the
 scene's `details` as `scene_draft` will build them again from the same resolution, each roll with
-its `throw` (the engine's `Throw`, die by die), and the `Reading` the endpoint keeps when dice
-were thrown ([below](#turn-endpoint), A3). A reset is sent
+its `throw` (the engine's `Throw`, die by die), the `Reading` the endpoint keeps when dice
+were thrown ([below](#turn-endpoint), A3), and the scene's heading when hours or days passed in
+it (`passage_label`, W10), which the saved scene words again from the same two clocks. A reset is sent
 only when text was shown: `retry` when the model failed partway and is being retried, `cutaway`
 and `template` when the narration was blocked. `TurnCompleted.result` carries the state to save,
 the scene, the intent, the resolution, the plan, the pending events that fired, the turn's
@@ -999,7 +1000,8 @@ filled in, are not served.
    and at least the last 3 (C3), the player's content preferences (F7) and the story's settings
    (S6).
 3. **Stream**: `turn.started` at once, then `steps.decided` with what the resolve node decided
-   (`graph.turn.StepsDecided`: the scene's `details`, dice and all, A3), then `run_turn`'s
+   (`graph.turn.StepsDecided`: the scene's `details`, dice and all, A3, and its heading when
+   hours or days passed, W10), then `run_turn`'s
    narration as `narration.delta` and `narration.reset`. The model client and LangGraph are built off the event loop, since the first
    turn loads their SDKs (B10) and a player's key gets a client of its own. A failure from here on is an `error` event (`unreadable_action`,
    `llm_unavailable`, `bad_key`, `version_conflict` or `internal_error`), and nothing is saved or
@@ -1583,6 +1585,11 @@ object, and the raw world state as memory.
   `steps.decided` the play controller sends `StepsShown`, and the story screen opens the replay
   over the page while the turn streams on behind it, holding back the reading aloud until it
   closes.
+- **The heading of a scene that hours or days passed in** (W10, `PassageHeading`): the server's
+  words ("Three days later"), which reach the app with `steps.decided` (`PendingTurn.passageLabel`)
+  and stand over the turn in flight before the story's first words, then come again with the
+  saved scene (`Scene.passageLabel`, `time.passage_label`), between what the player did and the
+  time chip.
 - **A turn the story owes** (A3, `play_controller.dart`): `Story.unfinished_turn` is resumed once
   as the story opens (`kind: "resume"`), a retry of a turn that failed after `steps.decided` is
   sent as a resume, and `turn.started` with `resumed` swaps the turn in flight for the one the
@@ -1609,7 +1616,8 @@ object, and the raw world state as memory.
   send `steps.decided` with real `Throw`s: a fight (a green die when the words say "behind",
   Deadly when they say "duel"), a leap (a 20 that throws one more on an even turn), a rope (the
   world's die, then an insight), a plan that stops, and a step nothing can do. It keeps a decided
-  turn as the server does, and `[fail:lost]` drops the stream after the dice.
+  turn as the server does, and `[fail:lost]` drops the stream after the dice. "sleep", "days"
+  and "week" make a scene of hours or days, with its heading (W10) sent with the steps.
 - **Strings** are in `app/lib/l10n/app_en.arb` with their Spanish in `app_es.arb` and their
   Catalan in `app_ca.arb`, generated at `flutter pub get` (S10). A story's own language is
   `StorySettings.language`, separate from the app's: a new story takes the app's when it is set up

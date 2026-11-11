@@ -523,12 +523,37 @@ String fakeDurationLabel(int seconds) => switch (seconds) {
   _ => '+${seconds ~/ 86400} d',
 };
 
+/// The heading of a scene that hours or days passed in, worded as the server words it (W10):
+/// "Three hours later", "The next day", "Three days later", "A week later". None under two hours.
+/// Days are counted by the mornings that came, at five o'clock on the fake clock, which starts
+/// at six.
+String? fakePassageLabel(int start, int end) {
+  final words =
+      'Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve Thirteen Fourteen Fifteen '
+              'Sixteen Seventeen Eighteen Nineteen Twenty'
+          .split(' ');
+  String later(int count, String unit) =>
+      '${count <= 20 ? words[count - 2] : count} ${unit}s later';
+  final span = end - start;
+  if (span < 2 * 3600) return null;
+  final sinceDawn = start + 3600;
+  final days = (sinceDawn + span) ~/ 86400 - sinceDawn ~/ 86400;
+  return switch (days) {
+    _ when days == 0 || span < 6 * 3600 => later((span + 1800) ~/ 3600, 'hour'),
+    1 => 'The next day',
+    7 => 'A week later',
+    < 14 => later(days, 'day'),
+    _ => later((days + 3) ~/ 7, 'week'),
+  };
+}
+
 JsonMap _time(int start, int end) => {
   'world_start_s': start,
   'world_end_s': end,
   'label': fakeWorldLabel(end),
   // An opening takes no time, so it has no duration to show.
   if (end > start) 'duration_label': fakeDurationLabel(end - start),
+  'passage_label': ?fakePassageLabel(start, end),
 };
 
 /// A fresh copy each time, so one fake backend's changes never leak into another's.

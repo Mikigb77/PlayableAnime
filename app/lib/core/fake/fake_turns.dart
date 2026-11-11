@@ -33,8 +33,10 @@ import 'fake_stories.dart';
 /// The action's words shape the scene: "attack" or "duel" is a fight with a roll and a picture
 /// (M1 counts fights), "then" chains steps that stop where one fails (R6), "stop time" runs the
 /// two clocks apart (W10a) with a cause-and-effect chain (A9), "leap" is a long shot and "fly" is
-/// ruled out (A2). Every third turn plans a picture too, and the first meeting with Senior Sister
-/// Lan plans her portrait.
+/// ruled out (A2). "sleep" or "rest" takes eight hours, "days" three days and "week" a week, and
+/// such a scene carries its heading ("The next day", "Three days later", "A week later", W10),
+/// which comes with the decided steps. Every third turn plans a picture too, and the first
+/// meeting with Senior Sister Lan plans her portrait.
 ///
 /// Every roll carries its dice (A3, `Throw`), and between them the words reach every kind of
 /// throw the replay shows (S15): a fight throws plain dice and a violet one, then a defence whose
@@ -183,7 +185,16 @@ void registerTurnRoutes(FakeBackend b) {
           'body': body,
           'scene': scene,
         };
-        yield (pace.firstWords ~/ 2, 'steps.decided', {'turn': turn, 'details': details});
+        yield (
+          pace.firstWords ~/ 2,
+          'steps.decided',
+          {
+            'turn': turn,
+            'details': details,
+            // W10: the scene's heading, ahead of its first words.
+            'passage_label': ?(scene['time'] as JsonMap)['passage_label'],
+          },
+        );
       }
       // The dice are decided part of the way to the first words.
       final firstWords = decided ? pace.firstWords - pace.firstWords ~/ 2 : pace.firstWords;
@@ -394,6 +405,9 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {boo
     ('standing', 'wait') => 30 * 60,
     ('standing', _) => 5 * 60,
     _ when timeStop => 0,
+    // A stretch of days, which the scene marks with a heading (W10): a week, or three days.
+    _ when RegExp(r'\bweek', caseSensitive: false).hasMatch(said) => 7 * 86400,
+    _ when RegExp(r'\bdays\b', caseSensitive: false).hasMatch(said) => 3 * 86400,
     _ when RegExp(r'sleep|rest', caseSensitive: false).hasMatch(said) => 8 * 3600,
     _ when RegExp(r'travel|ride|walk to', caseSensitive: false).hasMatch(said) => 2 * 3600,
     _ when fight => 40,
@@ -462,6 +476,7 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {boo
       'label': fakeWorldLabel(end),
       'duration_label': duration == 0 && !timeStop ? '' : fakeDurationLabel(duration),
       if (timeStop) 'personal_label': 'World: +0 s. You: +40 s.',
+      'passage_label': ?fakePassageLabel(start, end),
     },
     // An opening has no steps, and neither has an ending with no note (A3).
     'details': kind == 'opening' || (kind == 'end' && sent.isEmpty)

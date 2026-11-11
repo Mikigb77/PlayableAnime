@@ -29,6 +29,7 @@ def scene_data(scene: Scene) -> dict:
             "label": scene.time_label,
             "duration_label": scene.duration_label,
             "personal_label": scene.personal_label or None,
+            "passage_label": scene.passage_label or None,
         },
         "image": (
             {"kind": scene.image_kind, "status": scene.image_status, "url": scene.image_url}

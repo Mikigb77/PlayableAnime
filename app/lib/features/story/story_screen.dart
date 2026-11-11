@@ -1326,8 +1326,8 @@ class _OwedTurn extends StatelessWidget {
   }
 }
 
-/// The turn in flight: the player's action, then the narration as it streams in, or what went
-/// wrong.
+/// The turn in flight: the player's action, the heading once the server says that hours or days
+/// passed, then the narration as it streams in, or what went wrong.
 class _PendingScene extends StatelessWidget {
   const _PendingScene({
     required this.pending,
@@ -1356,6 +1356,8 @@ class _PendingScene extends StatelessWidget {
     return SceneCard(
       playerAction: label,
       spokenAction: pending.spoken,
+      // W10: the heading comes with the decided steps, so it stands before the first words.
+      passage: pending.failed ? null : pending.passageLabel,
       ornament: false,
       narration: KeyedSubtree(
         key: narrationKey,

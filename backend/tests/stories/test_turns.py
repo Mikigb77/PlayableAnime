@@ -11,6 +11,7 @@ from graph.llm import Block, Fail, Node, Reply
 from graph.turn import UnreadableAction
 from media.models import Image, ScenePicture
 from stories import pending, turns
+from stories.export import scene_data
 from stories.models import PendingEvent, PendingEventStatus, Scene, Story
 from stories.schemas import TurnIn
 from tests.stories.conftest import opening, parse_events, play
@@ -142,6 +143,9 @@ def test_an_action_plays_with_its_input_mode_and_shows_why(player, make_story, m
     # A8: the step, its class and the reason in the world's words.
     [step] = scene["details"]["steps"]
     assert step["text"] == "step around Zhao"
+    # W10: a scene of seconds has no heading, in the scene or ahead of it.
+    assert scene["time"]["passage_label"] is None
+    assert "passage_label" not in played.named("steps.decided")[0]
     assert step["class"] in {"certain", "contested", "long_shot", "ruled_out"}
     assert step["reason"]
     # M1: the director plans the Library cover from the second scene, once, to be described
@@ -151,6 +155,31 @@ def test_an_action_plays_with_its_input_mode_and_shows_why(player, make_story, m
     assert played.completed["story"]["version"] == 3
     assert Scene.objects.get(story=story, turn=2).input_mode == "voice"
     assert LedgerEntry.objects.filter(user_id=player.pk, kind="turn").count() == 2
+
+
+def test_a_scene_that_hours_passed_in_carries_a_heading(player, make_story, model):
+    story = opened(player, make_story, model)
+    copying = {**STEP_AROUND["steps"][0], "text": "copy the scroll", "verb": "copy"}
+    copying |= {"target_ids": [], "kind": "task", "proposed_duration_s": 3 * 3600}
+    model.backend.script(Node.INTERPRET, Reply(json={**STEP_AROUND, "steps": [copying]}))
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+
+    played = play(
+        player,
+        story,
+        {"kind": "action", "action": "I copy the scroll all morning.", "expected_version": 2},
+    )
+
+    # W10: the story marks the hours that passed, and says so before the telling starts.
+    [decided] = played.named("steps.decided")
+    assert decided["passage_label"] == "Three hours later"
+    assert played.names.index("steps.decided") < played.names.index("narration.delta")
+    assert played.completed["scene"]["time"]["passage_label"] == "Three hours later"
+    # The short scene before it has no heading.
+    first, second = Scene.objects.filter(story=story).order_by("turn")
+    assert (first.passage_label, second.passage_label) == ("", "Three hours later")
+    assert scene_data(first)["time"]["passage_label"] is None
+    assert scene_data(second)["time"]["passage_label"] == "Three hours later"
 
 
 def test_a_choice_plays_the_label_of_the_last_scene_suggestion(player, make_story, model):

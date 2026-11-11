@@ -82,6 +82,7 @@ def _scene_out(scene: Scene, image: dict | None, portraits: dict, blocked: bool)
             label=scene.time_label,
             duration_label=scene.duration_label,
             personal_label=scene.personal_label or None,
+            passage_label=scene.passage_label or None,
         ),
         details=scene.details or {},
         event=scene.event,
