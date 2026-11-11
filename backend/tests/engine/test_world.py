@@ -52,7 +52,7 @@ from engine.state import (
     WorldState,
 )
 from engine.visibility import memory_view
-from engine.world import Kind, hearsay
+from engine.world import Kind, carriers, hearsay
 from engine.world.answers import Answer, choose_answer
 from engine.world.discovery import name_the_doer
 from engine.world.geography import travel_s
@@ -120,6 +120,12 @@ def idle(state: WorldState, until_s: int, *, turn: int = 3) -> tuple[WorldState,
         fired.extend(passage.fired)
         turn += 1
     return state, fired
+
+
+def moved_on(state: WorldState) -> WorldState:
+    """The scenes that follow no longer show anyone who was there: they are free to talk (W2)."""
+    state.scene.present_ids = []
+    return state
 
 
 def pending_of(state: WorldState, kind: Kind) -> list[PendingEvent]:
@@ -350,12 +356,17 @@ def test_word_of_a_killing_reaches_family_elsewhere_who_keep_a_grudge_and_come_f
     shoot = ProposedDeed(kind="kill", text="Luca shoots Gennaro", victim_ids=["bartender"])
     after = play(state, deed_step(shoot, dead=("bartender",))).state
     deed = the_deed(after)
-    (tidings,) = pending_of(after, Kind.TIDINGS)
+    assert not pending_of(after, Kind.TIDINGS)  # nobody who saw it has told anyone yet (W2)
+
+    # Carmine saw it. Once the scene lets go of him and people have had time to talk, word is
+    # out, and it sets off to her.
+    after, fired = idle(moved_on(after), deed.world_s + 3 * HOUR)
+
+    (tidings,) = [e for e in fired if e.kind == Kind.TIDINGS]
     assert tidings.payload["character_id"] == "maria"
-    assert tidings.due_s >= deed.world_s + 5 * MINUTE  # a phone call after a 20-minute drive's news
-
-    after, fired = idle(after, deed.world_s + HOUR)
-
+    out_s = after.deeds[deed.id].word_out_s
+    assert out_s is not None and deed.world_s + 10 * MINUTE <= out_s <= deed.world_s + HOUR
+    assert tidings.due_s >= out_s + 5 * MINUTE  # a phone call after a 20-minute drive's news
     attitude = after.characters["maria"].sheet.disposition.attitudes["luca"]
     assert attitude.affinity < -30 and [g.deed_id for g in attitude.grudges] == [deed.id]
     assert "maria" in after.deeds[deed.id].known_by
@@ -366,12 +377,15 @@ def test_word_of_a_killing_reaches_family_elsewhere_who_keep_a_grudge_and_come_f
 
 def test_an_npcs_deed_runs_the_same_loop_and_the_player_feels_nothing_for_them():
     state = grounded_world()
+    # Someone besides the player character sees it, since they tell nobody by themselves (W2).
+    state.characters["nico"] = Character(id="nico", name="Nico Greco", location_id="bar")
+    state.scene.present_ids.append("nico")
     shoot = ProposedDeed(
         kind="kill", text="Carmine shoots Gennaro", actor_id="carmine", victim_ids=["bartender"]
     )
     after = play(state, deed_step(shoot, dead=("bartender",)), actor_id="carmine").state
     deed = the_deed(after)
-    assert deed.actor_id == "carmine" and deed.witness_ids == ["luca"]
+    assert deed.actor_id == "carmine" and deed.witness_ids == ["luca", "nico"]
 
     after, fired = idle(after, 3 * HOUR)
 
@@ -633,7 +647,9 @@ def test_a_conquered_place_loses_stability_and_grows_a_resistance():
     assert after.places["questura"].stability == state.places["questura"].stability - 30
     assert after.places["bar"].stability == state.places["bar"].stability
 
-    after, fired = idle(after, 90 * DAY)
+    # Up to the moment it forms: the world's own moves shift how factions stand from then on.
+    (due,) = pending_of(after, Kind.EMERGENCE)
+    after, fired = idle(after, due.due_s)
 
     (emergence,) = [e for e in fired if e.kind == Kind.EMERGENCE]
     (resistance,) = [f for f in after.factions.values() if f.kind == "resistance"]
@@ -724,15 +740,21 @@ def test_reports_without_phones_take_the_trip_and_move_the_witness():
     shove = ProposedDeed(kind="assault", text="Lin shoves Zhao into the well", victim_ids=["zhao"])
     after = play(state, deed_step(shove)).state
 
-    (report,) = [r for r in pending_of(after, Kind.REPORT) if r.payload["witness_id"] == "wei"]
+    # Wei only looked on, so he is away before Zhao, whom it fell on (W11).
+    reports = pending_of(after, Kind.REPORT)
+    assert {r.payload["witness_id"] for r in reports} == {"wei"}
+    (report,) = [r for r in reports if r.payload["faction_id"] == "azure-cloud"]
     assert report.payload["moves"] and report.place_id == "inner-court"
     assert report.due_s >= 40 * MINUTE
     assert report.due_s < UNKNOWN_TRIP_S + 2 * MINUTE
+    # He sets off within a couple of minutes, and the scene shows him going until then.
+    assert 30 <= report.payload["sets_off_s"] - the_deed(after).world_s <= 2 * MINUTE
+    assert [r.witness_id for r in carriers.runners(after)] == ["wei"]
 
-    after.scene.present_ids.remove("wei")  # the scenes that follow no longer show Wei
     after, _ = idle(after, HOUR)
 
     assert after.characters["wei"].location_id == "inner-court"
+    assert "azure-cloud" in the_deed(after).known_by_factions
 
 
 # --- What the self-review turned up ----------------------------------------------------------
@@ -918,19 +940,25 @@ def test_a_full_clock_set_back_no_longer_ends():
     assert after.clocks["council"].status is ClockStatus.RUNNING
 
 
-def test_a_witness_still_in_the_players_scene_sends_word_instead_of_walking_off():
+def test_a_witness_who_set_off_is_out_of_the_players_scene_whatever_its_end_listed():
     state = cultivation_world()
     state.places["inner-court"].controller_id = "azure-cloud"
     state.characters["wei"] = Character(id="wei", name="Wei", location_id="well")
     state.scene.present_ids.append("wei")
     shove = ProposedDeed(kind="assault", text="Lin shoves Zhao into the well", victim_ids=["zhao"])
     after = play(state, deed_step(shove)).state
+    assert "wei" in after.scene.present_ids  # a moment in which he can still be stopped
+
+    # The narrator's next scene end still lists him, two minutes on: code decides who runs.
+    after.world_s += 2 * MINUTE
+    assert carriers.settle(after) == ["wei"]
+    assert "wei" not in after.scene.present_ids and "zhao" in after.scene.present_ids
 
     after, fired = idle(after, HOUR)
 
     reports = [e for e in fired if e.kind == Kind.REPORT and e.payload["witness_id"] == "wei"]
-    assert reports and reports[0].payload["moves"]
-    assert after.characters["wei"].location_id == "well"
+    assert reports and all(r.status is EventStatus.APPLIED for r in reports)
+    assert after.characters["wei"].location_id == "inner-court"
 
 
 def test_resolves_deeds_flow_into_the_world_whether_the_shot_kills_wounds_or_misses():

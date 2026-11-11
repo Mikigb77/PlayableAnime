@@ -45,6 +45,7 @@ from engine.state import (
     PlaceStatus,
     StepResult,
     TalentFit,
+    Visibility,
 )
 from engine.world import Kind
 from engine.world.answers import Answer, actor_might
@@ -1274,7 +1275,7 @@ async def hidden_strength(ev: Eval) -> None:
             act("keep my head down", "endure", ActionKind.EXCHANGE, 30),
         )
         shown = await story.act(
-            "I let my cultivation show",
+            "I let my cultivation show, in front of everyone watching",
             plan(
                 step(
                     "let my cultivation show",
@@ -1282,6 +1283,8 @@ async def hidden_strength(ev: Eval) -> None:
                     1,
                     verb="reveal",
                     show_strength=ShowStrength(ladder_id="realms"),
+                    # W2: done before the crowd he keeps around him, so word of it is out at once.
+                    facts=facts(crowd=True),
                 )
             ),
         )
@@ -1293,7 +1296,11 @@ async def hidden_strength(ev: Eval) -> None:
             f"{seed}: fear {fear_before} -> {attitude.fear}",
         )
         reveal = next((d for d in state.deeds.values() if d.kind == "reveal"), None)
-        ev.check("the reveal is a public deed", reveal is not None, seed)
+        ev.check(
+            "the reveal is a public deed",
+            reveal is not None and reveal.visibility is Visibility.PUBLIC,
+            f"{seed}: {reveal.visibility if reveal else None}",
+        )
         ev.check(
             "rumors shift at once",
             reveal is not None and any(r.deed_id == reveal.id for r in state.rumors.values()),

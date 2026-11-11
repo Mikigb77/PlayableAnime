@@ -13,8 +13,9 @@ from engine.rng import SeededRng
 from engine.state.records import EventStatus, PendingEvent
 from engine.state.world import WorldState
 from engine.world.aftermath import on_tidings
-from engine.world.arrivals import on_answer, on_report
+from engine.world.arrivals import on_answer
 from engine.world.births import on_birth
+from engine.world.carriers import on_report, on_word
 from engine.world.cast import on_emergence, on_revival
 from engine.world.clocks import on_clock_end, on_clock_step
 from engine.world.discovery import on_discovery
@@ -24,6 +25,7 @@ from engine.world.tick import on_tick
 
 _QUIET = {
     Kind.REPORT: on_report,
+    Kind.WORD: on_word,
     Kind.RUMOR: on_rumor,
     Kind.TIDINGS: on_tidings,
     Kind.DISCOVERY: on_discovery,

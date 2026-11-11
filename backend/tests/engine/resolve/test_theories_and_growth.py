@@ -475,6 +475,9 @@ def disguised_expert():
 
 
 def test_hidden_strength_npcs_see_what_they_can_perceive_until_the_reveal():
+    from engine import pipeline
+    from tests.engine.resolve.power_worlds import ctx, rng
+
     state = disguised_expert()
     hide = step(
         "hide my cultivation",
@@ -499,7 +502,15 @@ def test_hidden_strength_npcs_see_what_they_can_perceive_until_the_reveal():
     attitude = shown.state.characters["young-master"].attitude_toward("lin")
     assert attitude.fear >= 40
     assert any(d.kind == "reveal" for d in shown.state.deeds.values())
-    assert shown.state.rumors  # word spreads at once
+    # W2: nobody speaks of it to his face. Word of it goes round once he has left them.
+    after = shown.state
+    assert after.rumors == {}
+    after.scene.present_ids = []
+    until_s, turn = after.world_s + HOUR, 5
+    while after.world_s < until_s:
+        after = pipeline.catch_up(after, until_s, ctx(turn), rng(0, turn)).state
+        turn += 1
+    assert after.rumors
     assert actor_might(shown.state, "lin") >= 2
 
 

@@ -34,8 +34,9 @@ from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, 
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.sheet import TalentStrength
 from engine.state.world import WorldState, natural_key
-from engine.world import journeys
+from engine.world import carriers, journeys
 from engine.world.geography import routes_from
+from engine.world.scheduling import Kind
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
@@ -313,6 +314,27 @@ def _scene_view(state: WorldState) -> dict[str, Any]:
     return view
 
 
+def _leaving_view(
+    state: WorldState, *, turn: int | None = None, scene: Sequence[str] = ()
+) -> list[dict[str, Any]]:
+    """W11. Who is off to tell a faction what they saw (`carriers.runners`), and whom they go
+    to when the player character knows of that faction (C6). With `turn`, for the scene that
+    tells that turn, of those it began with (`scene`) and those who saw what it did: each by
+    name, since it may not have listed them yet, and whether they got away while it played
+    (`gone`)."""
+    leaving = []
+    for runner in carriers.runners(state, turn=turn, scene=scene):
+        entry: dict[str, Any] = {"id": runner.witness_id}
+        if turn is not None:
+            entry["who"] = state.characters[runner.witness_id].name
+        if state.player_id in state.factions[runner.faction_id].known_by:
+            entry["to_tell"] = state.factions[runner.faction_id].name
+        if turn is not None:
+            entry["gone"] = runner.sets_off_s <= state.world_s
+        leaving.append(entry)
+    return leaving
+
+
 def _known_view(state: WorldState) -> dict[str, Any]:
     """Names the player character knows, for mapping misheard names (V3) and for continuity.
     A place the map's routes reach from the scene's comes with what the trip takes (W10)."""
@@ -454,12 +476,15 @@ def interpret_prompt(
     # A4: what is ruled on and bridged is told once, under TALENTS, with how each talent stands.
     for told_there in ("talent_rulings", "bridges"):
         you["sheet"].pop(told_there, None)
+    scene = _scene_view(state)
+    if leaving := _leaving_view(state):
+        scene["leaving"] = leaving  # W11: the player may go after them before they are gone
     user = render(
         [
             world,
             ("PLAYER CHARACTER", you),
             ("CHANGED HANDS", _changed_hands(state)),
-            ("SCENE", _scene_view(state)),
+            ("SCENE", scene),
             # As JSON, like the narrator's recent scenes, so no line of it reads as a section.
             ("LAST SCENE", {"narration": told} if told else "(none yet)"),
             ("LAST MOMENT", frame.ended_on or "(the story is just beginning)"),
@@ -583,6 +608,9 @@ def narration_brief(
             sections.append(("ACTION", _action_view(_as_held(intent, resolution), words)))
         sections.append(("OUTCOME", _outcome_view(resolution, after)))
         sections.append(("TIME", _time_view(before, after, settings.language)))
+        if witnesses := _leaving_view(after, turn=ctx.turn, scene=before.scene.present_ids):
+            # W11: who runs to tell what they saw, so the scene shows it and the player can act.
+            sections.append(("WITNESSES", witnesses))
     # The director tells its own events, and the world's events it made the scene's event or a
     # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
     told = {
@@ -876,13 +904,30 @@ def _time_view(before: WorldState, after: WorldState, language: Language) -> dic
 _PLANNED_HIDDEN = {"source", "source_id", "card_id", "plays_out_s"}
 
 
+# Word of a deed on its way, and the world's look at what one left behind: about the player
+# character when the deed is theirs, and still nothing they notice. The talk it starts reaches
+# them through TALK (W2).
+_UNSEEN = frozenset({Kind.RUMOR, Kind.WORD, Kind.DISCOVERY})
+# Someone being told of a deed, which shows only where it is done.
+_TOLD_SOMEWHERE = frozenset({Kind.REPORT, Kind.TIDINGS})
+
+
 def _perceived(event: PendingEvent, state: WorldState) -> bool:
     """Whether the player character could notice an event that fired: it needs them, involves
-    them, or happens where they are. Everything else stays off-screen (C6)."""
-    if event.needs_player or state.player_id in event.subject_ids:
+    them, or happens where they are. Everything else stays off-screen (C6). Word of a deed
+    reaching someone involves them only when they are there to see it: with the witness who
+    tells it on the spot, or where the one who is told is."""
+    if event.kind in _UNSEEN:
+        return False
+    if event.needs_player:
         return True
     here = state.scene.place_id or state.player.location_id
-    return event.place_id is not None and event.place_id == here
+    if event.place_id is not None and event.place_id == here:
+        return True
+    if event.kind in _TOLD_SOMEWHERE:
+        teller = event.payload.get("witness_id")
+        return event.place_id is None and teller in state.scene.present_ids
+    return state.player_id in event.subject_ids
 
 
 def _event_view(event: PendingEvent) -> dict[str, Any]:

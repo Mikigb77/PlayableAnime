@@ -80,7 +80,12 @@ def player_deed(state: WorldState, **kwargs) -> Deed:
 
 
 def told(state: WorldState) -> WorldState:
-    """A scene tells the player character what the place is saying, one piece at a time."""
+    """An hour on, when those who saw it have talked (W2), a scene tells the player character
+    what the place is saying, one piece at a time."""
+    until_s, turn = state.world_s + HOUR, 3
+    while state.world_s < until_s:
+        state = pipeline.catch_up(state, until_s, ctx(turn), rng(turn)).state
+        turn += 1
     for rumor in hearsay.talk_of(state, state.player_id, state.player.location_id, state.world_s):
         assert hearsay.hear(at(state), state.player_id, rumor.id)
     return state

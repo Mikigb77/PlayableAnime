@@ -35,7 +35,7 @@ from engine.world.telling import account
 from engine.world.tuning import BOUT_REGARD, BOUT_REGARD_MAX, BROKEN_TERMS_TRUST
 
 from .test_encounters import turn
-from .test_world import deed_step, idle, pending_of, play, the_deed
+from .test_world import deed_step, idle, moved_on, pending_of, play, the_deed
 
 WORLD_KINDS = (Kind.REPORT, Kind.ANSWER, Kind.RUMOR, Kind.TIDINGS, Kind.DISCOVERY)
 
@@ -272,13 +272,15 @@ def test_a_death_both_accepted_is_no_crime_and_turns_no_bystander_against_them()
     assert deed_nature(state, deed) is Nature.HARM and not is_crime(state, deed)
     assert not pending_of(state, Kind.REPORT)
     assert account(state, deed) == "Lin Feng killed Zhao Kun in a duel at the outer-court well."
-    assert [r.text for r in state.rumors.values()] == [account(state, deed)]  # still news
-    assert state.places["well"].mood == ""  # nobody there is shaken by it
+    assert not state.rumors  # Wei, who watched, hasn't told anyone yet (W2)
     wei = state.characters["wei"].attitude_toward("lin")
     assert wei.affinity == 0 and not wei.grudges and wei.fear > 0  # he saw what Lin can do
 
-    state, fired = idle(state, state.world_s + 30 * DAY)
+    state, fired = idle(moved_on(state), state.world_s + 30 * DAY)
 
+    told = [r.text for r in state.rumors.values() if r.deed_id == deed.id]
+    assert told == [account(state, deed)]  # still news
+    assert state.places["well"].mood == ""  # nobody there is shaken by it
     # Word reaches Zhao's court and the sect: they think a little less of Lin, fear him a
     # little more, and send nobody. The mountain only learns what he can do.
     for faction_id in ("outer-court", "azure-cloud"):
@@ -296,11 +298,14 @@ def test_the_same_killing_with_no_terms_is_a_crime_the_whole_mountain_holds_agai
     deed = the_deed(state)
 
     assert is_crime(state, deed) and pending_of(state, Kind.REPORT)
-    assert state.places["well"].mood.startswith("shaken")
     assert state.characters["wei"].attitude_toward("lin").affinity < 0
+    # Until Wei gets away with it, the mountain knows nothing.
+    assert state.places["well"].mood == ""
+    assert state.places["azure-peak"].player_reputation.esteem == 0
 
     state, fired = idle(state, state.world_s + 30 * DAY)
 
+    assert state.places["well"].mood.startswith("shaken")
     assert state.places["azure-peak"].player_reputation.esteem < 0
     sent = {e.payload["answer"] for e in fired if e.kind == Kind.ANSWER}
     assert Answer.ARREST.value in sent
@@ -310,11 +315,12 @@ def test_those_close_to_the_dead_still_grieve_a_death_both_accepted():
     """Mei was Zhao's sworn friend: the terms were his to accept, and the loss is hers."""
     state = play(duel_world(), deed_step(killing(Terms.DEATH), dead=("zhao",))).state
 
-    told = {e.payload.get("character_id") for e in pending_of(state, Kind.TIDINGS)}
+    assert not pending_of(state, Kind.TIDINGS)  # nobody has told anyone yet (W2)
+
+    state, fired = idle(moved_on(state), state.world_s + 30 * DAY)
+
+    told = {e.payload.get("character_id") for e in fired if e.kind == Kind.TIDINGS}
     assert "mei" in told
-
-    state, fired = idle(state, state.world_s + 30 * DAY)
-
     mei = state.characters["mei"].attitude_toward("lin")
     assert mei.affinity < 0 and mei.grudges
     avengers = [e.payload["avenger_id"] for e in fired if e.payload.get("answer") == "revenge"]

@@ -61,11 +61,13 @@ def start_rumor(
     accuracy: int = 90,
     heard_by: list[str] | None = None,
     seen_by: list[str] | None = None,
+    chatter: bool = True,
 ) -> Rumor:
     """A rumor starts at a place, heard by those given, and sets off to spread (W2). `seen_by`
     are those who were there when what it tells happened, for a rumor that tells no deed: they
     know it is so (C6). A deed's rumor goes by who knows the deed, and is no rumor to the
-    player character who saw the deed: it is in their memory as a deed."""
+    player character who saw the deed: it is in their memory as a deed. `chatter` is false when
+    people have already had their time to talk before it started, so it moves on at once."""
     state = w.state
     rumor = Rumor(
         id=state.new_id("rumor"),
@@ -95,7 +97,7 @@ def start_rumor(
             if news and names_actor(rumor, deed):
                 character_learns(w, character_id, deed, weight=rumor.accuracy / 100)
     if place_id is not None:
-        spread(w, rumor, place_id, hops_left=hops, accuracy=rumor.accuracy, first=True)
+        spread(w, rumor, place_id, hops_left=hops, accuracy=rumor.accuracy, first=chatter)
     return rumor
 
 

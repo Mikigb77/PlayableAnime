@@ -3,13 +3,14 @@ by the people in the scene, not by everyone the record puts at the place: a plac
 forest or a whole city, and being somewhere in it is not seeing what happens in one corner of
 it. What is done before a crowd is public, and everyone there saw it."""
 
+from engine.base import HOUR
 from engine.contracts import ProposedDeed, Trip
 from engine.samples import grounded_world
 from engine.state import Character, Encounter, EncounterKind, PassingState, Visibility, WorldState
 from engine.world import Kind
 from engine.world.geography import onlookers, scene_ids
 
-from .test_world import deed_step, pending_of, play, the_deed
+from .test_world import deed_step, idle, moved_on, pending_of, play, the_deed
 
 
 def bar() -> WorldState:
@@ -150,6 +151,11 @@ def test_what_is_done_before_a_crowd_is_public_and_everyone_there_saw_it():
     (rumor,) = after.rumors.values()
     assert (rumor.deed_id, rumor.accuracy) == (deed.id, 100)
     assert sorted(rumor.heard_at) == ["bartender", "carmine", "nico"]
-    # Seen by a few and not public, the same punch is told less exactly, and Nico hears nothing.
-    (told,) = play(bar(), deed_step(punch())).state.rumors.values()
-    assert told.accuracy < 100 and sorted(told.heard_at) == ["bartender", "carmine"]
+    # Seen by a few and not public, nobody speaks of the same punch while Luca stands there.
+    # Once he has moved on they do, less exactly, and to Nico too.
+    seen = play(bar(), deed_step(punch())).state
+    assert seen.rumors == {} and the_deed(seen).word_out_s is None
+    later, _ = idle(moved_on(seen), seen.world_s + HOUR)
+    (told,) = later.rumors.values()
+    first = [c for c, heard_s in told.heard_at.items() if heard_s == the_deed(later).word_out_s]
+    assert told.accuracy < 100 and sorted(first) == ["bartender", "carmine", "nico"]

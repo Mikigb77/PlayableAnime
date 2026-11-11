@@ -133,16 +133,19 @@ def known_time_stopper(state: WorldState, deed: Deed) -> bool:
     )
 
 
-def attributed(state: WorldState, deed: Deed) -> bool:
-    """Whether anyone but the doer knows who did it: a witness, or a true rumor naming them."""
-    if any(k != deed.actor_id for k in deed.known_by):
+def out(state: WorldState, deed: Deed) -> bool:
+    """Whether the world has been told who did it: word of it got out (W2), or a rumor rightly
+    names the doer. What only its witnesses know isn't out: they may be dead, or keeping quiet."""
+    if deed.word_out_s is not None:
         return True
     return any(names_actor(r, deed) for r in state.rumors.values() if r.deed_id == deed.id)
 
 
 def schedule_look(w: World, deed: Deed, *, attempt: int = 0, crowd: bool = False) -> None:
-    """Schedule the world's next look at a secret deed's traces, at a time the traces set."""
-    if deed.visibility is not Visibility.SECRET or not deed.traces:
+    """Schedule the world's next look at what a deed left behind, at a time the traces set: a
+    secret deed's, or a witnessed one's that nobody was free to tell of
+    (`engine.world.carriers`)."""
+    if deed.visibility is Visibility.PUBLIC or not deed.traces:
         return
     if attempt >= DISCOVERY_ATTEMPTS or pending(w.state, Kind.DISCOVERY, deed_id=deed.id):
         return
@@ -167,10 +170,11 @@ def schedule_look(w: World, deed: Deed, *, attempt: int = 0, crowd: bool = False
 
 
 def on_discovery(w: World, event: PendingEvent) -> None:
-    """A look at a secret deed's traces: something may be found, and the culprit may be named."""
+    """A look at the traces of a deed nobody has told of: something may be found, and the
+    culprit may be named."""
     state = w.state
     deed = state.deeds.get(str(event.payload.get("deed_id")))
-    if deed is None or attributed(state, deed):
+    if deed is None or out(state, deed):
         return
     attempt = int(event.payload.get("attempt", 0))
     stream = w.roll("discovery", deed.id, attempt)
@@ -195,6 +199,8 @@ def name_the_doer(w: World, deed: Deed) -> None:
     """The truth comes out: a rumor naming the doer starts where it happened, among the people
     and the faction there, and in the region (W3, W13)."""
     state = w.state
+    if deed.word_out_s is None:
+        deed.word_out_s = w.at_s
     rumor = start_rumor(
         w,
         text=account(state, deed),

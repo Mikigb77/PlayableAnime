@@ -8,6 +8,7 @@ pass condition is about the telling.
 
 from __future__ import annotations
 
+import json
 import math
 from collections import Counter
 
@@ -38,6 +39,7 @@ from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
 from engine.labels import clock_time, second_of_day
 from engine.resolve.bouts import against
+from engine.resolve.power import helpless_state
 from engine.state import (
     Attitude,
     CharacterStatus,
@@ -1038,6 +1040,137 @@ async def interrupted_sleep(ev: Eval) -> None:
         )
 
 
+# --- Stop the witness (W2, W11, W13) -----------------------------------------------------------
+
+
+def _witnesses(story: Story) -> list[dict]:
+    """Who the narrator's last brief said is off to tell what they saw (deterministic mode)."""
+    brief = story.prompt(Node.NARRATOR)
+    if "## WITNESSES\n" not in brief:
+        return []
+    return json.loads(brief.split("## WITNESSES\n", 1)[1].split("\n", 1)[0])
+
+
+def _leaving(story: Story) -> list[str]:
+    """Who the last reading was told is leaving the scene to tell of it (deterministic mode)."""
+    asked = story.prompt(Node.INTERPRET)
+    if "## SCENE\n" not in asked:
+        return []
+    scene = json.loads(asked.split("## SCENE\n", 1)[1].split("\n", 1)[0])
+    return [w["id"] for w in scene.get("leaving", [])]
+
+
+@scenario(
+    "t17.stop-the-witness",
+    suite="T17",
+    title="Stop the witness",
+    requirements=("W2", "W11", "W13", "W10", "C6", "T17"),
+    passes_when=(
+        "The scene of the killing shows the witness making to run. Cut down before he gets "
+        "away, he tells nobody: no report reaches the sect, no rumor names the killer and "
+        "nobody comes on his word. Left to run, he reaches the sect and it answers (W11)"
+    ),
+)
+async def stop_the_witness(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for seed in ev.seeds(8, live=1):
+        story = ev.story(worlds.one_witness(), seed=seed, under_way=True)
+        killing = await story.act(
+            "I cut Han's throat while he dozes against the well",
+            plan(
+                cut_throat(
+                    "han",
+                    "sword",
+                    facts=facts(opposition_ids=["han"], can_respond=False, why_not="asleep"),
+                )
+            ),
+        )
+        ev.check(
+            "the scene of the killing is told Wei is off to tell of it, still within reach",
+            [(w["id"], w["gone"]) for w in _witnesses(story)] == [("wei", False)],
+            f"{seed}: {_witnesses(story)}",
+            live=False,
+        )
+        await ev.judge(
+            "the witness makes to run",
+            Rubric(
+                must=(
+                    "Wei is shown reacting to the killing by backing away, turning to run, "
+                    "bolting or otherwise making to get away",
+                ),
+                must_not=(
+                    "Guards, enforcers or elders arrive or confront the player about the killing",
+                ),
+            ),
+            killing,
+        )
+        chase = await story.act(
+            "I go after Wei and cut him down before he is out of the yard",
+            plan(cut_throat("wei", "sword", facts=facts(opposition_ids=["wei"], can_respond=True))),
+        )
+        ev.check(
+            "the next reading is told Wei is leaving, so the player can go after him",
+            _leaving(story) == ["wei"],
+            f"{seed}: {_leaving(story)}",
+            live=False,
+        )
+        wei = chase.state.characters["wei"]
+        silenced = wei.status is not CharacterStatus.ALIVE or helpless_state(wei) is not None
+        ends["silenced" if silenced else "got away"] += 1
+        night = await story.act(
+            "I lie down by the well and sleep for eight hours",
+            act("sleep", "sleep", ActionKind.REST, 8 * HOUR),
+        )
+        han = next((d for d in story.state.deeds.values() if "han" in d.victim_ids), None)
+        ev.check("the killing is a deed", han is not None, seed)
+        if han is None:
+            continue
+        told = [e for e in story.fired(Kind.REPORT) if e.status is EventStatus.APPLIED]
+        came = [e for e in story.fired(Kind.ANSWER) if e.payload.get("deed_id") == han.id]
+        if silenced:
+            ev.check("a silenced witness reaches nobody", told == [], f"{seed}: {len(told)}")
+            ev.check(
+                "no faction knows who killed Han unless the world worked it out from the body",
+                han.known_by_factions == [] or han.discovered,
+                f"{seed}: {han.known_by_factions}",
+            )
+            ev.check(
+                "word of it is out only if the world found it out (W13)",
+                han.word_out_s is None or han.discovered,
+                f"{seed}: out at {han.word_out_s}",
+            )
+            ev.check(
+                "nobody comes on a witness's word",
+                came == [] or han.discovered,
+                f"{seed}: {[e.payload.get('answer') for e in came]}",
+            )
+        else:
+            ev.check(
+                "a witness who got away reaches the sect",
+                "azure-cloud" in han.known_by_factions,
+                f"{seed}: {han.known_by_factions}",
+            )
+            ev.check(
+                "and no sooner than he could have got there (W10)",
+                all(e.applied_s >= han.world_s + UNKNOWN_TRIP_S for e in told),
+                f"{seed}: {[e.applied_s - han.world_s for e in told]}",
+            )
+        if silenced:
+            await ev.judge(
+                "the night after",
+                Rubric(
+                    must_not=(
+                        "Wei, who was killed or left helpless, is shown up and about, talking "
+                        "or bringing others",
+                        "Guards, enforcers or elders say that Wei told them of the killing",
+                    ),
+                ),
+                night,
+            )
+    ev.metric("ends", dict(ends))
+    ev.check("some seeds silence the witness", ends["silenced"] > 0, str(dict(ends)), live=False)
+
+
 # --- A day in town (W10) -----------------------------------------------------------------------
 
 
@@ -2011,6 +2144,7 @@ def as_read(turns: list[Played]) -> str:
                     f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
                     f"in_way={told.opposition_ids} terms={terms}"
                     f"{' beyond' if told.breaks_terms else ''}"
+                    f"{' unanswered' if told.can_respond is False else ''}"
                 )
             how = f"{settled.outcome_class.value}/{settled.result.value}"
             if settled.outcome_class is OutcomeClass.RULED_OUT:
@@ -2147,8 +2281,11 @@ async def friendly_bout(ev: Eval) -> None:
                     "The scenes tell a sparring lesson between a teacher and his student, with "
                     "practice blows that are pulled, parried or land as touches",
                 ),
+                # Tiring is no wound: the fourth live lessons (2026-11-11) failed "left unable
+                # to go on" for a student worn out by the end of a long lesson.
                 must_not=(
-                    "Lin or Elder Mo is wounded, bleeding or left unable to go on",
+                    "A blow of the lesson wounds Lin or Elder Mo, draws blood or knocks one of "
+                    "them senseless (being worn out, winded, disarmed or bested is none of these)",
                     "Elder Mo turns hostile, afraid or resentful over a blow of the lesson",
                 ),
             ),
@@ -2226,14 +2363,14 @@ async def friendly_bout(ev: Eval) -> None:
 
 IN_FRONT_OF_EVERYONE = (
     "In the middle of the crowded queue at the well, in front of everyone, I draw my sword and "
-    "cut Han Jie's throat from behind"
+    "cut Han Jie's throat while he dozes"
 )
 
 
 def in_front_of_everyone() -> Intent:
-    """The killing as the interpret step reads it: Han never sees it coming, and people the
-    scene doesn't name are all around."""
-    told = facts(opposition_ids=["han"], can_respond=False, why_not="unaware", crowd=True)
+    """The killing as the interpret step reads it: Han is asleep, and people the scene doesn't
+    name are all around."""
+    told = facts(opposition_ids=["han"], can_respond=False, why_not="asleep", crowd=True)
     return plan(cut_throat("han", "sword", facts=told))
 
 
@@ -2263,8 +2400,9 @@ def brother_hates_him_already() -> dict:
 )
 async def before_a_crowd(ev: Eval) -> None:
     for seed in ev.seeds(6, live=1):
-        story = ev.story(worlds.noon_at_the_well(), seed=seed)
-        await story.open()
+        # Under way, so the scene is the one the world holds: an opening told live could wake
+        # him or turn him round, and the first live story (2026-11-11) rolled for the blow.
+        story = ev.story(worlds.noon_at_the_well(), seed=seed, under_way=True)
         before = story.state.characters["han-lei"].attitude_toward("lin").model_copy(deep=True)
         killing = await story.act(
             IN_FRONT_OF_EVERYONE,

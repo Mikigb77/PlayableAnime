@@ -181,24 +181,37 @@ def sect_with_a_witness() -> WorldState:
     return add(state, han, wei)
 
 
+def one_witness() -> WorldState:
+    """`sect_with_a_witness` with Zhao away at the inner court, so Wei is the only one at the
+    well to see what is done to Han."""
+    state = sect_with_a_witness()
+    state.characters["zhao"].location_id = "inner-court"
+    state.scene.present_ids.remove("zhao")
+    state.scene.ended_on = "Han Jie dozes against the well, and Wei draws water beside him."
+    return state
+
+
 THRONGED_WELL = (
     "Noon at the outer-court well, and it is thronged: a long queue of disciples with buckets, "
-    "hawkers calling, servants pushing through. Han Jie waits in the queue with his back to Lin."
+    "hawkers calling, servants pushing through. Han Jie dozes on the rim of the well in the "
+    "heat, and the queue shuffles round him."
 )
 
 
 def noon_at_the_well() -> WorldState:
     """The well at noon, thronged with people the scene doesn't name. Han Jie, who takes Lin's
-    rations, waits in the queue with his back turned. His elder brother Han Lei is in the inner
-    court and sees nothing of what happens at the well; nobody else the record holds is there."""
+    rations, dozes on its rim in the middle of them: his sheet says he is asleep, so whether a
+    blade reaches him hangs on no roll (A2). His elder brother Han Lei is in the inner court and
+    sees nothing of what happens at the well; nobody else the record holds is there."""
     state = sect()
     outer = Membership(faction_id="outer-court", rank="outer disciple", loyalty=60)
     han = disciple(
         "han",
         "Han Jie",
-        description="An outer disciple who takes Lin's rations, waiting in the queue.",
+        description="An outer disciple who takes Lin's rations, dozing on the rim of the well.",
         memberships=[outer],
     )
+    han.sheet.condition.states.append(PassingState(name="asleep"))
     lei = disciple(
         "han-lei",
         "Han Lei",
@@ -216,7 +229,7 @@ def noon_at_the_well() -> WorldState:
     state.scene = state.scene.model_copy(
         update={
             "present_ids": ["lin", "han"],
-            "positions": ["Han Jie in the queue, his back to Lin", "Lin a few steps behind him"],
+            "positions": ["Han Jie asleep on the rim of the well", "Lin a few steps from him"],
             "props": ["the stone rim of the well", "a long queue of disciples with buckets"],
             "ended_on": THRONGED_WELL,
         }
@@ -392,7 +405,10 @@ def disguised_expert() -> WorldState:
             axes=PowerAxes(might=4), ladders=[LadderPosition(ladder_id="realms", rung=1)]
         ),
     )
-    state.scene.ended_on = "Young Master Wu laughs at Lin's patched robes in front of the well."
+    state.scene.ended_on = (
+        "Young Master Wu laughs at Lin's patched robes in front of the well, "
+        "with half the outer court looking on."
+    )
     return add(state, wu)
 
 
