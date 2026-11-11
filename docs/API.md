@@ -488,7 +488,10 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing"|"end",
                                      # an end turn's note
        input_mode?: string,
        narration: string,
-       choices: [{id, label, kind: "thread"|"personal"|"side"|"wild"}],   # 0 to 4 (S2)
+       choices: [{id, label,                                     # 0 to 4 (S2)
+                  kind: "thread"|"personal"|"side"|"wild"|"time"}],   # time: a way to let hours
+                                                                      # or days pass (W10); show
+                                                                      # an unknown kind as thread
        standing_actions: ["wait", "observe"],
        time: {world_start_s, world_end_s, label, duration_label,   # "+8 h" (W10)
               personal_label?,                                    # "World: +0 s. You: +40 s." (W10a)

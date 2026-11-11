@@ -450,8 +450,12 @@ suggestions (S2): exactly the number SUGGESTIONS asks for, of the kinds it lists
 action of at most 12 words, meaningfully different, with at least one away from the current \
 thread. A "thread" choice follows the thread SUGGESTIONS names, when it names one. When the \
 scene ends on the way of a trip (on_the_way under SCENE, or a trip under OUTCOME that didn't \
-arrive), one of them carries on toward where they were going (W10). Never suggest waiting or \
-observing: those are always offered.
+arrive), one of them carries on toward where they were going (W10). A "time" choice, only when \
+SUGGESTIONS lists one, is a way to let hours or days pass that fits the moment and the hour, \
+such as sleeping until morning, working until dusk or training for some days, and it says for \
+how long or until when. It is one choice among the others: nothing in the narration leans \
+toward it or hurries the character on. Never suggest waiting or observing: those are always \
+offered.
 
 image_prompt (M1, M5): null unless PICTURE is given. Then one to three sentences that let an \
 illustrator who never read the scene draw it. For a scene, the moment PICTURE's why names, as \
@@ -595,8 +599,8 @@ asks nothing of them: brief, what it is, and cast_ids, someone they know whom it
 - CALLBACKS: open threads to touch on.
 - TALK: something the place is saying that the scene may let the character catch, if it has \
 room: saying, a rumor in the world's words, or own, talk of your own making.
-- SUGGESTIONS: how many suggestions to write and of which kinds, and the thread a thread \
-suggestion follows.
+- SUGGESTIONS: how many suggestions to write and of which kinds (thread, personal, side, wild, \
+and now and then time), and the thread a thread suggestion follows.
 - PICTURE: a picture comes with this scene: its kind, its subject and why.
 - ENDING: this scene ends the player character's story: how (kind), and the player's wish for it \
 or what the world left out of it. Its TASK follows.

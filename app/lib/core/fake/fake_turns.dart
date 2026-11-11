@@ -35,7 +35,8 @@ import 'fake_stories.dart';
 /// two clocks apart (W10a) with a cause-and-effect chain (A9), "leap" is a long shot and "fly" is
 /// ruled out (A2). "sleep" or "rest" takes eight hours, "days" three days and "week" a week, and
 /// such a scene carries its heading ("The next day", "Three days later", "A week later", W10),
-/// which comes with the decided steps. Every third turn plans a picture too, and the first
+/// which comes with the decided steps. Every fifth turn offers one way to let time pass among
+/// its choices (`kind: "time"`, S2). Every third turn plans a picture too, and the first
 /// meeting with Senior Sister Lan plans her portrait.
 ///
 /// Every roll carries its dice (A3, `Throw`), and between them the words reach every kind of
@@ -468,7 +469,13 @@ JsonMap _buildScene(FakeBackend b, FakeStory story, JsonMap body, int turn, {boo
       _ => 'choice',
     },
     'narration': narration,
-    'choices': suggestions && !ending ? pool.take(3).toList() : <Object>[],
+    'choices': suggestions && !ending
+        ? [
+            ...pool.take(3),
+            // S2, W10: now and then, one way to let time pass among the others.
+            if (turn % 5 == 0) _timeChoice,
+          ]
+        : <Object>[],
     'standing_actions': ['wait', 'observe'],
     'time': {
       'world_start_s': start,
@@ -851,6 +858,12 @@ const _eventTitles = {
   'personal': 'A letter with your mother\'s seal',
   'local': 'Fire in the lower market',
   'world': 'The Emperor is dead',
+};
+
+const _timeChoice = <String, Object?>{
+  'id': 'p7',
+  'label': 'Sleep until the morning bell',
+  'kind': 'time',
 };
 
 const _choicePool = <JsonMap>[

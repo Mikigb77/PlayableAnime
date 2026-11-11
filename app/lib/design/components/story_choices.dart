@@ -11,12 +11,17 @@ enum ChoiceKind {
   thread,
   personal,
   side,
-  wild;
+  wild,
+
+  /// A way to let hours or days pass, which the story offers now and then to a player whose
+  /// scenes take next to no time (W10). One choice among the others.
+  time;
 
   static ChoiceKind fromWire(String? value) => switch (value) {
     'personal' => personal,
     'side' => side,
     'wild' => wild,
+    'time' => time,
     _ => thread,
   };
 
@@ -25,6 +30,7 @@ enum ChoiceKind {
     personal => Icons.favorite_border_rounded,
     side => Icons.alt_route_rounded,
     wild => Icons.auto_awesome_outlined,
+    time => Icons.fast_forward_rounded,
   };
 
   String label(AppLocalizations l10n) => switch (this) {
@@ -32,6 +38,7 @@ enum ChoiceKind {
     personal => l10n.choiceKindPersonal,
     side => l10n.choiceKindSide,
     wild => l10n.choiceKindWild,
+    time => l10n.choiceKindTime,
   };
 }
 

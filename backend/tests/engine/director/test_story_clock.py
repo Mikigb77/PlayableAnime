@@ -14,15 +14,22 @@ import pytest
 from engine import pipeline
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import EventFrequency
-from engine.contracts import ActionKind, EventSource
+from engine.contracts import ActionKind, ChoiceKind, EventKind, EventSource, PlannedEvent
 from engine.director import rules
-from engine.director.clock import ALL_SIZES, sizes_in_time, small_thing_fits
+from engine.director.clock import (
+    ALL_SIZES,
+    clock_after,
+    clock_is_slow,
+    sizes_in_time,
+    small_thing_fits,
+)
 from engine.director.deck import CastRole
 from engine.director.due import MONTAGE_KIND
 from engine.director.moments import BY_ID, MOMENTS, draw_moment
 from engine.director.montage import schedule_stretch, stretch_gap
 from engine.director.pressure import Pressure
 from engine.director.sources import pick_event
+from engine.director.suggestions import plan_suggestions
 from engine.director.talk import plan_talk
 from engine.director.themes import allowed_themes
 from engine.samples import farm_world, grounded_world
@@ -535,3 +542,150 @@ def test_what_a_skip_rolls_keeps_to_the_time_since_the_last_events():
         ]
 
     assert sizes and set(sizes) == {"personal"}  # no second flood inside two days
+
+
+# --- a way to let time pass, offered and never pushed --------------------------------------------
+
+RUN = rules.SLOW_CLOCK_SCENES
+TIME = ChoiceKind.TIME
+
+
+def offers(played) -> list[int]:
+    """The turns whose suggestions hold a way to let time pass."""
+    return [n for n, turn in enumerate(played, start=1) if TIME in turn.plan.suggestions.kinds]
+
+
+def test_a_slow_clock_is_a_long_run_of_scenes_that_took_next_to_no_time():
+    assert (RUN, rules.SLOW_CLOCK_S) == (12, 30 * MINUTE)
+    minutes = [n * MINUTE for n in range(RUN)]
+
+    assert clock_is_slow(minutes)
+    assert not clock_is_slow(minutes[1:])  # a shorter run is not one yet
+    assert not clock_is_slow([n * 3 * MINUTE for n in range(RUN)])  # scenes of minutes move on
+    assert clock_is_slow([HOUR] * RUN)  # stopped clocks and instants: no time at all
+    assert not clock_is_slow([*minutes[:-1], -HOUR])  # a clock that went back (W10a)
+    assert not clock_is_slow([0, DAY, *minutes[2:]])  # or jumped on and came back
+
+    memory = DirectorState(recent_clock=minutes)
+    assert clock_after(memory, HOUR) == [*minutes[1:], HOUR]  # the last ones, this scene last
+    assert clock_after(DirectorState(), 0) == [0]
+
+
+@pytest.mark.parametrize("frequency", list(EventFrequency))
+def test_a_long_run_of_short_scenes_is_offered_a_way_to_let_time_pass_now_and_then(frequency):
+    """Miki, 2026-11-11: playing a hundred short scenes in the same hour is the player's choice.
+    So nothing pushes the clock on: one choice among the others, once in a long while."""
+    for story in STORIES[:10]:
+        _state, played = short_scenes(story, 60, event_frequency=frequency)
+        turns = offers(played)
+
+        assert turns and turns[0] >= RUN  # only after a long run
+        assert all(later - sooner >= RUN for sooner, later in pairwise(turns))
+        assert len(turns) <= 60 // RUN
+        for turn in turns:
+            plan = played[turn - 1].plan
+            kinds = plan.suggestions.kinds
+            # One such choice, beside the others, in a scene with nothing to decide.
+            assert kinds.count(TIME) == 1 and 3 <= len(kinds) == plan.suggestions.count <= 4
+            assert set(kinds) - {TIME}
+            assert plan.event is None or not plan.event.needs_decision
+
+
+def test_scenes_that_move_the_clock_on_are_never_offered_it():
+    for story in STORIES[:10]:
+        _state, minutes = short_scenes(story, 60, 5 * MINUTE)
+        _state, hours = short_scenes(story, 40, 3 * HOUR)
+
+        assert offers(minutes) == [] and offers(hours) == []
+
+
+def test_with_suggestions_off_nothing_is_offered():
+    _state, played = short_scenes("clock-0", 40, suggestions=False)
+
+    assert all(turn.plan.suggestions.count == 0 for turn in played)
+
+
+def slow(state):
+    """The state after a long run of scenes inside a few minutes, on a quiet day."""
+    state.world_s = DAY
+    state.director.recent_clock = [DAY - n * 10 for n in range(RUN, 0, -1)]
+    return state
+
+
+def test_a_slow_clock_offers_time_in_a_quiet_scene_and_the_run_starts_over():
+    state = slow(farm_world())
+    plan = direct(state)
+
+    assert TIME in plan.suggestions.kinds
+    assert plan.updates.memory.recent_clock == []
+    # The next scene is the first of a new run.
+    after = pipeline.record_direction(state, plan, ctx(9, story="clock-0"))
+    again = direct(after, turn=10)
+    assert TIME not in again.suggestions.kinds
+    assert again.updates.memory.recent_clock == [after.world_s]
+
+
+def test_it_is_never_offered_where_the_scene_is_about_something_else():
+    # In an encounter (W10): the scene is the fight's.
+    fight = slow(farm_world())
+    fight.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT, opponent_ids=["bram"], started_turn=8, started_s=0
+    )
+    # Inside stopped time (W10a): there is no time to let pass.
+    stopped = slow(farm_world())
+    stopped.time_effects.append(
+        ActiveTimeEffect(
+            character_id=stopped.player_id,
+            power_id="time-stop",
+            effect=TimeEffect.STOP,
+            started_personal_s=0,
+        )
+    )
+    for state in (fight, stopped):
+        plan = direct(state)
+        assert TIME not in plan.suggestions.kinds
+        # The run is kept, so the offer comes once the scene has room for it.
+        assert len(plan.updates.memory.recent_clock) == RUN
+
+
+def test_the_time_choice_is_a_fourth_choice_or_takes_the_side_matters_place():
+    calm = Pressure(0.0, 5.0, False, False, 0, 1, None)
+    building = Pressure(4.0, 5.0, False, False, 4, 1, None)
+    fighting = Pressure(0.0, 5.0, False, True, 0, 1, None)
+    event = PlannedEvent(
+        size=P,
+        kind=EventKind.ARRIVAL,
+        source=EventSource.DECK,
+        title="An old friend in trouble",
+        brief="",
+    )
+    c = ctx()
+
+    def kinds(pressure, *, event=None, thread_id="t"):
+        plan = plan_suggestions(c, pressure=pressure, event=event, thread_id=thread_id, time=True)
+        assert plan.count == len(plan.kinds) <= 4
+        return plan.kinds
+
+    T, PERSONAL, SIDE, WILD = (
+        ChoiceKind.THREAD,
+        ChoiceKind.PERSONAL,
+        ChoiceKind.SIDE,
+        ChoiceKind.WILD,
+    )
+    assert kinds(calm) == [T, PERSONAL, SIDE, TIME]
+    assert kinds(calm, thread_id=None) == [PERSONAL, SIDE, WILD, TIME]
+    assert kinds(building) == [T, PERSONAL, TIME, WILD]  # four already
+    # Never beside an event that needs a decision, or in an encounter.
+    assert TIME not in kinds(calm, event=event)
+    assert TIME not in kinds(fighting)
+    off = plan_suggestions(
+        ctx(suggestions=False), pressure=calm, event=None, thread_id="t", time=True
+    )
+    assert off.count == 0
+
+
+def test_the_run_of_short_scenes_is_saved_with_the_story():
+    memory = DirectorState(recent_clock=[0, MINUTE, 2 * MINUTE])
+
+    assert DirectorState.model_validate(memory.model_dump(mode="json")) == memory
+    assert DirectorState.model_validate({}).recent_clock == []  # a story saved before this
