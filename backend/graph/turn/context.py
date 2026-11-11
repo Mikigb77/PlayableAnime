@@ -26,13 +26,15 @@ from engine.contracts import (
     PictureKind,
     Resolution,
 )
-from engine.contracts.resolution import Peril
+from engine.contracts.resolution import Peril, StepResolution
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, span_label
 from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.sheet import TalentStrength
 from engine.state.world import WorldState, natural_key
+from engine.world import journeys
+from engine.world.geography import routes_from
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
@@ -291,19 +293,31 @@ def _scene_view(state: WorldState) -> dict[str, Any]:
     frame = state.scene
     place_id = frame.place_id or state.player.location_id
     place = state.places.get(place_id) if place_id else None
-    return {
+    view = {
         "place": _place_view(state, place) if place else None,
         "present": [_npc_view(c, state) for c in present_characters(state)],
         "positions": frame.positions,
         "props": frame.props,
         "encounter": _dump(frame.encounter, exclude={"last_s"}) if frame.encounter else None,
     }
+    journey = journeys.under_way(state, place_id)
+    if journey is not None and journey.to_id in state.places:
+        # W10: a trip that stopped on the way, and what is left of it.
+        view["on_the_way"] = {
+            "to": journey.to_id,
+            "name": state.places[journey.to_id].name,
+            "travel_s": journey.left_s,
+            "left": span_label(journey.left_s),
+        }
+    return view
 
 
 def _known_view(state: WorldState) -> dict[str, Any]:
-    """Names the player character knows, for mapping misheard names (V3) and for continuity."""
+    """Names the player character knows, for mapping misheard names (V3) and for continuity.
+    A place the map's routes reach from the scene's comes with what the trip takes (W10)."""
     you = state.player_id
     present = {c.id for c in present_characters(state)}
+    away = routes_from(state, state.scene.place_id or state.player.location_id)
     people = [
         {
             "id": c.id,
@@ -325,6 +339,7 @@ def _known_view(state: WorldState) -> dict[str, Any]:
             ),
             **({"setting": p.setting.value} if p.setting else {}),
             **({"status": p.status.value} if p.status is not PlaceStatus.THRIVING else {}),
+            **({"travel_s": away[p.id]} if p.id in away else {}),
         }
         for p in sorted(state.places.values(), key=lambda p: p.id)
         if _knows_place(state, p)
@@ -565,7 +580,7 @@ def narration_brief(
     else:
         if intent is not None:
             sections.append(("ACTION", _action_view(intent, words)))
-        sections.append(("OUTCOME", _outcome_view(resolution)))
+        sections.append(("OUTCOME", _outcome_view(resolution, after)))
         sections.append(("TIME", _time_view(before, after)))
     # The director tells its own events, and the world's events it made the scene's event or a
     # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
@@ -672,7 +687,30 @@ def _struck_view(peril: Peril) -> dict[str, Any]:
     return view
 
 
-def _outcome_view(resolution: Resolution) -> dict[str, Any]:
+def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
+    """W10: where the step took the character, as code followed it: the place they reached, or
+    how much of the way is left when something stopped them before. `arrived` is left out for
+    a trip the player timed over ground no route covers: the scene says how far they got."""
+    trip = step.trip
+    assert trip is not None
+    place = state.places.get(trip.to_id) if trip.to_id else None
+    view: dict[str, Any] = {"to": place.name if place is not None else trip.to}
+    if place is not None:
+        view["to_id"] = place.id
+    if trip.arrived is not None:
+        view["arrived"] = trip.arrived
+    journey = state.journey
+    if (
+        trip.arrived is False
+        and journey is not None
+        and trip.to_id in (journey.to_id, journey.from_id)
+    ):
+        left = journey.left_s if trip.to_id == journey.to_id else max(1, journey.done_s)
+        view["left"] = span_label(left)
+    return view
+
+
+def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
         view: dict[str, Any] = {
@@ -724,6 +762,8 @@ def _outcome_view(resolution: Resolution) -> dict[str, Any]:
             view["struck"] = [_struck_view(p) for p in step.perils]
         if step.interrupted:
             view["interrupted"] = True
+        if step.trip is not None and (step.trip.to_id or step.trip.to):
+            view["trip"] = _trip_view(step, state)
         steps.append(view)
     outcome: dict[str, Any] = {"steps": steps}
     if resolution.stopped_at_step is not None:

@@ -8,8 +8,8 @@
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
    update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
-   `settle_picture`, and runs `engine.invariants.check_transition` on the turn's first and last
-   states before saving)
+   `settle_trips` and `settle_picture`, and runs `engine.invariants.check_transition` on the
+   turn's first and last states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
 own package, without changing the signature: resolve is `engine.resolve` (WS9), `catch_up`,
@@ -45,6 +45,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
+from engine.world import journeys
 
 __all__ = [
     "PlayOut",
@@ -56,6 +57,8 @@ __all__ = [
     "record_consequences",
     "record_direction",
     "resolve",
+    "settle_picture",
+    "settle_trips",
 ]
 
 
@@ -165,6 +168,11 @@ def play_out(
     Code starts and ends the scene's encounter as the steps play (W10, `engine.encounters`): a
     long stretch that isn't part of it ends it before the stretch's events are rolled, each step
     that played starts, joins or carries it on, and it ends once nothing keeps it going.
+
+    A step that goes somewhere leaves the actor there once it has played in full, so what they
+    do next happens there, and one an event cut short leaves the player character on the way,
+    with what is left of it kept (W10, `engine.world.journeys`). A trip of theirs rolls what
+    the road brings in place of a long stretch's events (W16, `director.schedule_road`).
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
@@ -193,7 +201,11 @@ def play_out(
             # A day or more is a montage: the director rolls its W16 events first, so the first
             # that needs a decision stops the clock there (E7).
             stretch_rng = rng.child("director", "stretch", step.index)
-            current = director.schedule_stretch(current, start_s, planned_end, ctx, stretch_rng)
+            if journeys.on_the_road(current, actor_id, step):
+                # W10. A trip meets what the road brings, so a journey isn't always one scene.
+                current = director.schedule_road(current, start_s, planned_end, ctx, stretch_rng)
+            else:
+                current = director.schedule_stretch(current, start_s, planned_end, ctx, stretch_rng)
             passage = catch_up(current, planned_end, ctx, rng, copy=False)
             current = passage.state
             fired.extend(passage.fired)
@@ -212,6 +224,9 @@ def play_out(
         if actor is not None:
             actor.personal_offset_s += lived - elapsed
         lived += frozen_part
+        trip = step.trip
+        if cut and trip is not None and journeys.cut_short(step, elapsed):
+            trip = trip.model_copy(update={"arrived": False})  # W10: stopped on the way
         timed = step.model_copy(
             update={
                 "start_s": start_s,
@@ -219,6 +234,7 @@ def play_out(
                 "duration_s": elapsed,
                 "personal_s": None if step.personal_s is None and lived == elapsed else lived,
                 "interrupted": cut,
+                "trip": trip,
             }
         )
         played.append(timed)
@@ -232,6 +248,8 @@ def play_out(
                 rejected.extend(applied.rejected)
             step_rng = rng.child("play_out", "step", step.index)
             current = record_consequences(current, resolution, timed, ctx, step_rng)
+        # W10. Whoever arrived is there, and a trip that stopped on the way keeps what is left.
+        journeys.follow(current, actor_id, timed, planned_s=step.duration_s)
         # W10. Code starts and ends encounters from what the step did (`engine.encounters`).
         encounters.follow(current, timed, actor_id, ctx)
         encounters.settle(current)
@@ -323,6 +341,20 @@ def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) ->
     saving: the director's memory, the event's thread and its play-out, thread changes, leads that
     expired and goals the player stated (W16, N1, N2, M2)."""
     return director.record(state, plan, ctx)
+
+
+def settle_trips(
+    played: WorldState, state: WorldState, resolution: Resolution, *, told: bool
+) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied (step 6): the scene ends where this turn's trips
+    left the player character, a trip over ground the map didn't cover writes its route, and a
+    trip stopped on the way keeps what is left of it (W10, W7, `engine.world.journeys`).
+
+    `played` is the state the steps left, before the update, and `told` says whether the
+    narrator said where its scene ends. Returns the state, a new one when anything changed, and
+    what had to be put right, for the turn's log.
+    """
+    return journeys.settle(played, state, resolution, told=told)
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

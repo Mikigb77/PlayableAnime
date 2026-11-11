@@ -869,7 +869,7 @@ async def day_in_town(ev: Eval) -> None:
                     ActionKind.TRAVEL,
                     40 * MINUTE,
                     verb="walk",
-                    target_ids=["village"],
+                    destination="village",
                 )
             ),
         )
@@ -934,6 +934,175 @@ async def day_in_town(ev: Eval) -> None:
             ),
             story.turns[-4:],
         )
+
+
+# --- The long road (W10, W7, W16) ---------------------------------------------------------------
+
+ROAD_TO_THE_CITY = 3 * DAY
+
+
+@scenario(
+    "t17.long-road",
+    suite="T17",
+    title="The long road",
+    requirements=("W10", "W7", "W16", "R8", "T17"),
+    passes_when=(
+        "A trip takes the time the map says whatever the first model proposed, the character "
+        "ends up where the trip took them, a journey can be walked in stretches and is stopped "
+        "on the way by what the road brings, and the way there and back adds up to the map's "
+        "time (W10)"
+    ),
+)
+async def long_road(ev: Eval) -> None:
+    met_something = arrived_at_once = 0
+    for seed in ev.seeds(12, live=1):
+        story = ev.story(worlds.long_road(), seed=seed)
+        await story.open()
+        # The first model's usual mistake: a walk to the village as a two-minute move.
+        walk = await story.act(
+            "I walk down the road into Millbrook",
+            plan(step("walk into Millbrook", ActionKind.MOVE, 2 * MINUTE, destination="Millbrook")),
+        )
+        ev.check(
+            "the walk takes what the map says, not what was proposed",
+            walk.world_seconds == 40 * MINUTE,
+            f"{seed}: {walk.world_seconds}s",
+            live=False,
+        )
+        ev.check(
+            "a walk to the next village takes minutes to hours, never seconds",
+            10 * MINUTE <= walk.world_seconds <= 4 * HOUR,
+            f"{seed}: {walk.world_seconds}s",
+        )
+        ev.check(
+            "the character is where the trip took them",
+            walk.state.scene.place_id == "village" and walk.state.player.location_id == "village",
+            f"{seed}: {walk.state.scene.place_id}",
+        )
+        # A journey in stretches: half an hour toward the city, then on.
+        stretch = await story.act(
+            "I set out for Harrowgate and walk for half an hour",
+            plan(
+                step(
+                    "walk toward Harrowgate for half an hour",
+                    ActionKind.TRAVEL,
+                    30 * MINUTE,
+                    destination="city",
+                    timed=True,
+                )
+            ),
+        )
+        ev.check(
+            "a stretch the player sets stops when its time is up, on the way",
+            stretch.world_seconds == 30 * MINUTE and stretch.state.scene.place_id != "city",
+            f"{seed}: {stretch.world_seconds}s in {stretch.state.scene.place_id}",
+            live=False,
+        )
+        ev.check(
+            "the narrator is told the trip stopped on the way, and how much is left",
+            '"arrived":false,"left":"2 d 23 h"' in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        # At the stop they do something else, off the road: the journey is still theirs.
+        rest = await story.act(
+            "I go down to the stream by the road and rest a while",
+            plan(
+                step(
+                    "go down to the stream and rest",
+                    ActionKind.REST,
+                    20 * MINUTE,
+                    destination="the stream",
+                )
+            ),
+        )
+        ev.check(
+            "what they do at a stop on the way leaves the journey as it is",
+            rest.state.journey is not None
+            and rest.state.journey.left_s == ROAD_TO_THE_CITY - 30 * MINUTE,
+            f"{seed}: {rest.state.journey}",
+            live=False,
+        )
+        ev.check(
+            "a rest by the road leaves the journey to go on",
+            rest.state.journey is not None,
+            f"{seed}: in {rest.state.scene.place_id}",
+        )
+        on_the_road = stretch.world_seconds
+        stops = 0
+        legs: list[Played] = [stretch]
+        for _ in range(12):
+            if story.state.scene.place_id == "city":
+                break
+            leg = await story.act(
+                "I walk on to Harrowgate",
+                # However little the first model proposes, the rest takes what is left.
+                plan(step("walk on", ActionKind.TRAVEL, 5 * MINUTE)),
+            )
+            legs.append(leg)
+            if not leg.steps or leg.step(-1).trip is None:
+                continue
+            on_the_road += leg.world_seconds
+            if leg.step(-1).interrupted:
+                stops += 1
+                ev.check(
+                    "what the road brings stops the trip on the way, never at its end",
+                    leg.state.scene.place_id != "city" and leg.state.journey is not None,
+                    f"{seed}: {leg.state.scene.place_id}",
+                )
+                ev.check(
+                    "a stop on the way is the scene's event, from the road's own table",
+                    leg.event is not None
+                    and leg.event.card_id is not None
+                    and leg.event.card_id.startswith("road-"),
+                    f"{seed}: {leg.event}",
+                    live=False,
+                )
+        ev.check(
+            "the journey arrives",
+            story.state.scene.place_id == "city" and story.state.journey is None,
+            f"{seed}: in {story.state.scene.place_id} after {len(legs)} stretches",
+        )
+        ev.check(
+            "however many stretches it took, the way took the map's three days",
+            on_the_road == ROAD_TO_THE_CITY,
+            f"{seed}: {on_the_road}s in {len(legs)} stretches",
+            live=False,
+        )
+        ev.check(
+            "a journey of days takes days",
+            2 * DAY <= on_the_road <= 5 * DAY,
+            f"{seed}: {on_the_road}s",
+        )
+        ev.check(
+            "a long way is a few scenes on the road, never a stop at every bend",
+            stops <= 4,
+            f"{seed}: {stops} stops",
+        )
+        met_something += stops > 0
+        arrived_at_once += len(legs) == 2
+        await ev.judge(
+            "the telling of the journey",
+            Rubric(
+                must=(
+                    "A stretch of days on the road is told as days passing on the way: the "
+                    "land, the weather, the nights",
+                    "The scene in which the character reaches Harrowgate is set in Harrowgate",
+                ),
+                must_not=(
+                    "A scene has the character in Harrowgate before the trip there has arrived",
+                    "A journey of days is told as if it took minutes",
+                    "A scene that stops on the way ends back in Millbrook or at the farm",
+                ),
+            ),
+            legs,
+        )
+    ev.check(
+        "some journeys meet something on the way and some go straight through",
+        0 < met_something and 0 < arrived_at_once,
+        f"{met_something} met something, {arrived_at_once} went straight through",
+        live=False,
+    )
 
 
 # --- Phone witness (G6, W10) -------------------------------------------------------------------
@@ -1975,38 +2144,26 @@ async def divergence(ev: Eval) -> None:
     passes_when="The story follows the noodle shop, and the academy threads go on off-screen",
 )
 async def walk_away(ev: Eval) -> None:
-    from engine.contracts import CharacterChange, SceneEnd, StateDelta
-
     sect_places = {"well", "inner-court"}
     for seed in ev.seeds(4, live=1):
         story = ev.story(worlds.noodle_road(), seed=seed)
         await story.open()
-        # The narrator moves Lin and ends the scene in Qinghe, as its instructions ask.
-        arrive = StateDelta(
-            characters=[CharacterChange(id="lin", location_id="market-town")],
-            scene_end=SceneEnd(
-                ended_on="Lin sets down his bundle in an empty shopfront in Qinghe.",
-                place_id="market-town",
-                present_ids=["lin"],
-            ),
+        # Code takes the six hours from the map and leaves Lin in Qinghe (W10). What the road
+        # brings may stop him on the way, and then he walks on.
+        walk = plan(
+            step(
+                "walk down the mountain to Qinghe",
+                ActionKind.TRAVEL,
+                20 * MINUTE,
+                verb="travel",
+                destination="market-town",
+            )
         )
-        await story.act(
-            "I leave the academy and walk down to Qinghe to open a noodle shop",
-            plan(
-                step(
-                    "walk down the mountain to Qinghe",
-                    ActionKind.TRAVEL,
-                    6 * HOUR,
-                    verb="travel",
-                    target_ids=["market-town"],
-                )
-            ),
-            narration={
-                "narration": "(scripted) Lin walks down the mountain road to Qinghe.",
-                "suggestions": [],
-                "update": arrive.model_dump(mode="json"),
-            },
-        )
+        await story.act("I leave the academy and walk down to Qinghe to open a noodle shop", walk)
+        for _ in range(6):
+            if story.state.scene.place_id == "market-town":
+                break
+            await story.act("I walk on to Qinghe", walk)
         events = []
         for _ in range(20):
             played = await story.act(

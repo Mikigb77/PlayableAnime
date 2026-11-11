@@ -193,8 +193,10 @@ class LawP(Proposal):
 
 class RouteP(Proposal):
     to_id: str
-    travel_hours: float = Field(description="Rough travel time, in hours.")
-    mode: str = ""
+    travel_hours: float = Field(
+        description="W10: the hours the way takes as most people travel here: 0.5, 6, 72."
+    )
+    mode: str = Field(default="", description="How they go: on foot, by cart, by train.")
 
 
 class PlaceP(Proposal):
@@ -210,7 +212,14 @@ class PlaceP(Proposal):
     controller_id: str = Field(default="", description="The faction that controls it, if any.")
     mood: str = ""
     known_to_player: bool = True
-    routes: list[RouteP] = Field(default_factory=list)
+    routes: list[RouteP] = Field(
+        default_factory=list,
+        description=(
+            "W7, W10: the ways from here to other places people travel to, each written once,"
+            " on either end, so that every place can be reached from the others. A room or a"
+            " building needs none. The story takes a trip's time from these."
+        ),
+    )
 
 
 class FactionRelationP(Proposal):

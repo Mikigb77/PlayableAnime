@@ -422,6 +422,7 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     mode = state["narration_mode"]
     world = state["world"]
     issues: list[Issue] = []
+    ended = False  # whether the narrator said where its scene ends
     if mode != "template":
         issues += check.check_told(narration, state.get("intent"))
         # C10: what the engine moved this turn, so the scene doesn't move it again.
@@ -451,6 +452,13 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
+        ended = delta.scene_end is not None
+    # W10: the scene ends where the turn's trips left the character, and a trip over ground the
+    # map didn't cover writes its route.
+    world, moved_scene = pipeline.settle_trips(
+        state["world"], world, state["resolution"], told=ended
+    )
+    issues += [Issue("trip_place", note) for note in moved_scene]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
     # N6: once told, a successor's opening is done.
     world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})

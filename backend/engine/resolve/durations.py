@@ -74,9 +74,13 @@ def step_timing(
     outlasts: bool | None = None,
     rate: float | None = None,
     rate_left_s: int | None = None,
+    fixed_s: int | None = None,
 ) -> Timing:
     """The step's world and lived durations. `rolls` says whether an uncertain duration is
     rolled; a step that never got going (ruled out) takes only its proposed time.
+
+    `fixed_s` is the time a trip takes by the map (W10): it stands in for the proposal, holds
+    whatever the kind's bounds and is never rolled, since the road is as long as it is.
 
     In a time stop with `stop_left_s` lived seconds left, a step that outlasts it lives out the
     stop and then takes world time for the rest (W10a). `outlasts` is what the step was settled
@@ -84,12 +88,12 @@ def step_timing(
     stop's end, and one settled as outlasting it runs past. With a haste or slow, `rate` is the
     actor's lived seconds per world second, for `rate_left_s` more lived seconds if it runs out.
     """
-    uncertain = step.duration_uncertain and rolls
+    uncertain = step.duration_uncertain and rolls and fixed_s is None
     if frozen:
         proposed_lived = step.proposed_personal_s
         if proposed_lived is None:
             proposed_lived = step.proposed_duration_s
-        lived = bound_duration(step.kind, proposed_lived)
+        lived = bound_duration(step.kind, proposed_lived) if fixed_s is None else fixed_s
         rolled_value = None
         if uncertain:
             lived, rolled_value = _spread(step, proposed_lived, rng)
@@ -105,7 +109,7 @@ def step_timing(
         )
 
     if rate is not None and rate > 0 and rate != 1:
-        lived = lived_estimate(step)
+        lived = lived_estimate(step) if fixed_s is None else fixed_s
         rolled_value = None
         if uncertain:
             proposed = step.proposed_personal_s or step.proposed_duration_s
@@ -117,6 +121,8 @@ def step_timing(
             duration_s=world, personal_s=lived, rolled_s=rolled, rolled_value=rolled_value
         )
 
+    if fixed_s is not None:
+        return Timing(duration_s=fixed_s, personal_s=None)
     lived = None
     if step.proposed_personal_s is not None:
         lived = bound_duration(step.kind, step.proposed_personal_s)

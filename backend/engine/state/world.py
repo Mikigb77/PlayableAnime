@@ -38,6 +38,33 @@ class ActiveTimeEffect(EngineModel):
     ends_personal_s: int | None = None
 
 
+class Journey(EngineModel):
+    """W10. A trip the player character is partway through, after something that needed them
+    stopped it or the time they set ran out: how long the whole way takes by the map and how
+    much of it is behind them, so the rest takes what is left and turning back takes what was
+    done. It holds while they stay where the trip stopped (`at_id`), through a step aside and
+    a night at the inn, and it is dropped once they set out somewhere else
+    (`engine.world.journeys`)."""
+
+    from_id: str
+    to_id: str
+    total_s: int = Field(ge=1)
+    done_s: int = Field(ge=0)
+    at_id: str | None = Field(
+        default=None,
+        description="The place the trip stopped in, moved along when they step aside from it.",
+    )
+    mapped: bool = Field(
+        default=True,
+        description="Whether the map's routes timed the way. False when the time judged for "
+        "the trip stands in for it: the way becomes a route once the journey arrives (W7).",
+    )
+
+    @property
+    def left_s(self) -> int:
+        return max(1, self.total_s - self.done_s)
+
+
 class EventSize(StrEnum):
     """W16, E4."""
 
@@ -90,6 +117,12 @@ class DirectorState(EngineModel):
     )
     fight: KeyFight | None = None
     deck_draws: int = Field(default=0, ge=0)
+    road_stops: int = Field(
+        default=0,
+        ge=0,
+        description="W10, W16: how many times something on the way has stopped the player "
+        "character since they last arrived somewhere. Each makes the rest of the way quieter.",
+    )
 
 
 class Chapter(EngineModel):
@@ -163,6 +196,10 @@ class WorldState(EngineModel):
         description="A3: the ids of those the player character holds an opening on, won by a "
         "throw over the top, so their next step against them throws a green die. Each is used "
         "by the next step that faces them, and none outlasts the encounter.",
+    )
+    journey: Journey | None = Field(
+        default=None,
+        description="W10: the trip the player character is partway through, if any.",
     )
 
     @model_validator(mode="after")

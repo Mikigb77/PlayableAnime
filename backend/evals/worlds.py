@@ -1175,6 +1175,21 @@ def farm() -> WorldState:
     return farm_world()
 
 
+def long_road() -> WorldState:
+    """The farm world with the city of Harrowgate three days by cart beyond Millbrook, for a
+    journey (T17): the map says how far everything is."""
+    state = farm_world()
+    state.places["city"] = Place(
+        id="city",
+        name="Harrowgate",
+        kind="city",
+        setting=PlaceSetting.OUTDOORS,
+        routes=[Route(to_id="village", travel_s=3 * 24 * 60 * MINUTE, mode="by cart")],
+        known_by=["tomas"],
+    )
+    return state
+
+
 def village_far_off() -> WorldState:
     """The farm world with Millbrook a day's walk off, for a scenario that needs the news to
     travel before anyone can come."""
