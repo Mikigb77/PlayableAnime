@@ -395,11 +395,12 @@ class Edge(EngineModel):
 
 
 def _facts_required(schema: dict[str, Any]) -> None:
-    """A2, A3. The interpret model must always judge how hard a step is, and whether it meets
-    what stands in the way head-on, since Gemini leaves out what a schema doesn't require as
-    often as not, and a step with no judgement fell back to a guess whoever the character was.
-    Code may still leave them out."""
-    must = ["challenge", "head_on"]
+    """A2, A3, W1. The interpret model must always judge how hard a step is, whether it meets
+    what stands in the way head-on, and whether a fight is a bout both sides agreed to (null
+    when it isn't), since Gemini leaves out what a schema doesn't require as often as not: a
+    step with no judgement fell back to a guess whoever the character was, and a lesson whose
+    first blow carried no terms began as an attack. Code may still leave them out."""
+    must = ["challenge", "head_on", "terms"]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
@@ -497,8 +498,8 @@ class StepFacts(EngineModel):
         description=(
             "W1: when the fight is a bout both sides agreed to, the worst both accepted: no_harm"
             " (sparring, a lesson, a test of skill, a play fight), wounds (first blood, a duel or"
-            " a trial that accepts wounds) or death (to the death). None for any other fight."
-            " Code keeps the terms for the whole bout."
+            " a trial that accepts wounds) or death (to the death). Null for any other fight and"
+            " for a step that fights nobody. Code keeps the terms for the whole bout."
         ),
     )
     breaks_terms: bool = Field(

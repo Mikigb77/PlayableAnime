@@ -28,6 +28,10 @@ from evals.runner import LiveUnavailable, Models, ScenarioResult, run_scenario
 from evals.scenario import Mode, Scenario
 from evals.scenarios import all_scenarios
 
+# How much of a failed check's line a run prints. A check's detail may say how each step of a
+# lesson was read, and a live run's log is all that can be read of the run afterwards.
+FAILURE_CHARS = 4000
+
 
 class CallFormatter(logging.Formatter):
     """The plain log line, with what a failed model call says of itself (`graph.llm`): its node,
@@ -64,7 +68,7 @@ async def run(scenarios: Sequence[Scenario], mode: Mode, models: Models) -> list
         line = f"{result.status:>7}  {scenario.id}  ({result.seconds:.1f}s, {result.turns} turns)"
         print(line, flush=True)
         for failure in result.failures():
-            print(f"         {failure[:500]}", flush=True)
+            print(f"         {failure[:FAILURE_CHARS]}", flush=True)
     return results
 
 

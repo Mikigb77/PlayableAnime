@@ -190,6 +190,86 @@ def test_in_one_plan_the_first_blow_s_terms_cover_the_blows_after_it():
     assert both
 
 
+def practice(shape: str, **more):
+    """A practice blow in the shapes an interpret step gives one. The first live lesson
+    (2026-11-11) had one told as an attack that aims no harm and names no target, with the
+    mentor only what stands in its way, and it was filed as an attack on him."""
+    given = facts(opposition_ids=["bai"], can_respond=True, **more)
+    text = "come at Elder Bai with the practice sword"
+    if shape == "in the way":
+        return step(text, verb="attack", axis=PowerAxis.MIGHT, facts=given)
+    if shape == "no harm aimed":
+        return step(text, verb="attack", target_ids=["bai"], axis=PowerAxis.MIGHT, facts=given)
+    if shape == "an exchange":
+        return step(text, verb="lunge", axis=PowerAxis.MIGHT, facts=given)
+    assert shape == "harm at no target"
+    return step(text, verb="swing", aim=Aim.WOUND, axis=PowerAxis.MIGHT, facts=given)
+
+
+SHAPES = ["in the way", "no harm aimed", "an exchange", "harm at no target"]
+
+
+@pytest.mark.parametrize("shape", SHAPES)
+def test_a_practice_blow_is_a_blow_of_the_bout_however_it_was_read(shape):
+    """Whoever a step fights is who it is a blow at, whether they are its targets or stand in
+    its way, and whatever it aims to do."""
+    state = in_bout(dojo())
+    for seed in SEEDS:
+        settled = one(state, practice(shape), seed=seed)
+        assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"]), seed
+        assert settled.effects.characters == []
+        assert bout_deed(settled).target_ids == ["bai"]
+        assert (settled.encounter, settled.opponent_ids) == (EncounterKind.FIGHT, ["bai"])
+
+
+@pytest.mark.parametrize("shape", SHAPES)
+def test_a_bout_begins_with_a_practice_blow_however_it_was_read(shape):
+    state = dojo()
+    for seed in SEEDS:
+        settled = one(state, practice(shape, terms=NO_HARM), seed=seed)
+        assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"]), seed
+        assert bout_deed(settled).terms is NO_HARM
+        # The fight that keeps the bout's terms begins with it, though it aimed no harm.
+        assert (settled.encounter, settled.opponent_ids) == (EncounterKind.FIGHT, ["bai"])
+
+
+def test_another_deed_done_to_a_sparring_partner_is_still_that_deed():
+    """Only blows come under the terms. An insult, a theft or a healing in the middle of a
+    bout is the deed it is."""
+    state = in_bout(dojo())
+    there = facts(opposition_ids=["bai"], can_respond=True)
+    insult = step("call Elder Bai a fraud", ActionKind.INSTANT, verb="insult", facts=there)
+    steal = step("lift the jade token from Elder Bai's sash", verb="steal", facts=there)
+    heal = step("mend Elder Bai's bruised wrist", verb="heal", target_ids=["bai"], facts=there)
+    for seed in SEEDS:
+        for other in (insult, steal, heal):
+            assert not bouts.is_blow(other)
+            [deed] = [d for d in one(state, other, seed=seed).deeds if d.actor_id is None]
+            assert (deed.kind, deed.terms, deed.target_ids) == (other.verb, None, ["bai"])
+
+
+def test_a_blow_is_at_whom_it_names_whoever_else_is_said_to_stand_in_its_way():
+    """An onlooker the interpret step lists as in the way of a blow at a sparring partner
+    doesn't make it an attack on the partner: the blow is at whom it names."""
+    state = add(in_bout(dojo()), disciple("wei", "Wei"))
+    watched = facts(opposition_ids=["bai", "wei"], can_respond=True)
+    for shape in ("no harm aimed", "aimed"):
+        aim = Aim.WOUND if shape == "aimed" else Aim.NONE
+        blow = step(
+            "strike at Elder Bai", verb="strike", aim=aim, target_ids=["bai"], facts=watched
+        )
+        assert bouts.against(state, "lin", blow) == ["bai"]
+        for seed in SEEDS:
+            settled = one(state, blow, seed=seed)
+            assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"]), (shape, seed)
+            assert all(d.kind == "bout" for d in settled.deeds if d.actor_id is None)
+    # With no target named, it is a blow at everyone in its way, and Wei is in no bout.
+    stray = step("lash out", verb="attack", axis=PowerAxis.MIGHT, facts=watched)
+    assert bouts.against(state, "lin", stray) == ["bai", "wei"]
+    [mine] = [d for d in one(state, stray).deeds if d.actor_id is None]
+    assert (mine.kind, mine.terms, mine.target_ids) == ("attack", None, ["bai", "wei"])
+
+
 def test_first_blood_accepts_a_wound_and_holds_a_killing_blow_to_one():
     state = dojo()
     worst = {"lin": set(), "bai": set()}
@@ -397,6 +477,27 @@ def test_a_blow_meant_to_go_beyond_the_terms_is_an_attack_and_ends_the_bout():
         assert not any(d.broke_terms for d in settled.deeds if d.actor_id == "bai")
         killed += any(c.id == "bai" and c.status is not None for c in settled.effects.characters)
     assert killed
+
+
+def test_a_blow_said_to_maim_goes_beyond_the_terms_though_it_was_given_no_aim():
+    """What a blow is out to do is its aim, or failing one what its verb says: a blow the
+    interpret step says is meant to maim isn't taken into the bout for want of an aim."""
+    state = in_bout(dojo())
+    there = facts(opposition_ids=["bai"], can_respond=True, breaks_terms=True)
+    gouge = step("drive my fingers at Elder Bai's eyes", verb="maim", facts=there)
+    assert bouts.meant(gouge) is Aim.WOUND
+    for seed in SEEDS:
+        settled = one(state, gouge, seed=seed)
+        assert settled.broke_terms and settled.bout is None, seed
+        [mine] = [d for d in settled.deeds if d.actor_id is None]
+        assert (mine.kind, mine.broke_terms, mine.terms) == ("maim", True, None)
+    # The same blow in a duel that accepts wounds is one of the duel's.
+    duel = one(in_bout(dojo(), WOUNDS), gouge)
+    assert duel.bout is not None and not duel.broke_terms
+    # A strike with no aim says nothing beyond a friendly bout's terms.
+    tap = step("tap Elder Bai's shoulder with the flat", verb="strike", facts=there)
+    assert bouts.meant(tap) is Aim.NONE
+    assert not one(state, tap).broke_terms
 
 
 def test_once_broken_the_bout_is_over_whatever_the_next_step_proposes():
