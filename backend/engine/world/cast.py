@@ -30,8 +30,8 @@ from engine.state.records import (
 )
 from engine.state.sheet import Attitude, Connection, ConnectionKind, Grudge
 from engine.state.world import WorldState
-from engine.world.answers import schedule_revenge
-from engine.world.knowledge import in_faction
+from engine.world.answers import schedule_confrontation, schedule_revenge
+from engine.world.knowledge import in_faction, proven
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
 from engine.world.telling import account
 from engine.world.tuning import (
@@ -164,7 +164,11 @@ def _emerge_avenger(w: World, event: PendingEvent) -> None:
         grudges=[Grudge(reason=account(state, deed), deed_id=deed.id, since_turn=w.ctx.turn)],
     )
     state.characters[avenger.id] = avenger
-    schedule_revenge(w, avenger, deed)
+    if proven(state, deed):
+        schedule_revenge(w, avenger, deed)
+    else:
+        # W4: with one person's word for it, or what the traces said, they face the doer first.
+        schedule_confrontation(w, avenger, deed)
     enforce_caps(state)
 
 

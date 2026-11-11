@@ -2,7 +2,9 @@
 
 Victims, families and witnesses react as people (W11). When a death or a grave harm is
 attributed, word reaches the victims' family and friends wherever they are, at the pace news
-travels, and they keep a grudge and may come for revenge (W4). It reaches the victims' factions
+travels, from someone who knows (`knowledge.Grounds.TOLD`), also where talk of it got there
+first. They keep a grudge, and come to face the doer with it, or for revenge where it is beyond
+one person's word (W4). It reaches the victims' factions
 too, and the factions those sit in: a kingdom learns who wiped out its army even where nobody
 lived to report it (W5, W13). Someone killed who mattered, with nobody close left, may still find
 an avenger the world hadn't shown yet (W15). A hunted beast's pack hears who killed it (G24).
@@ -14,9 +16,15 @@ from engine.state.records import Deed, PendingEvent
 from engine.state.world import WorldState
 from engine.world.cast import maybe_avenger
 from engine.world.geography import faction_seat, travel_s
-from engine.world.knowledge import COMRADE, FRIEND, character_learns, faction_learns, ties_of
+from engine.world.knowledge import (
+    COMRADE,
+    FRIEND,
+    Grounds,
+    character_learns,
+    faction_learns,
+    ties_of,
+)
 from engine.world.norms import Nature, deed_nature, is_beast, killed
-from engine.world.rumors import knows_doer
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.telling import listing, struck_names
 from engine.world.tuning import NEWS_FACTOR, NEWS_FACTOR_INSTANT, NEWS_MIN_S
@@ -72,7 +80,8 @@ def on_attributed(w: World, deed: Deed) -> None:
             if cid != deed.actor_id and (hunt or not is_beast(state, cid))
         ]
         for character_id, _ in close:
-            if knows_doer(state, character_id, deed) or character_id == state.player_id:
+            # Whoever has only heard talk of it is still owed word from someone who knows.
+            if character_id in deed.known_by or character_id == state.player_id:
                 continue
             if pending(state, Kind.TIDINGS, deed_id=deed.id, character_id=character_id):
                 continue
@@ -137,7 +146,7 @@ def on_tidings(w: World, event: PendingEvent) -> None:
         faction_learns(w, str(faction_id), deed)
         return
     character_id = str(event.payload.get("character_id"))
-    if knows_doer(w.state, character_id, deed):
+    if character_id in deed.known_by:
         return
     deed.known_by.append(character_id)
-    character_learns(w, character_id, deed, weight=1.0)
+    character_learns(w, character_id, deed, weight=1.0, grounds=Grounds.TOLD)

@@ -40,7 +40,7 @@ from engine.world.aftermath import on_attributed
 from engine.world.answers import law_at
 from engine.world.discovery import body_trace, schedule_look, ties_trace
 from engine.world.geography import ancestors, characters_at, faction_seat, region_of, travel_s
-from engine.world.knowledge import FRIEND, closeness, faction_learns, region_learns
+from engine.world.knowledge import faction_learns, protects, region_learns, would_talk
 from engine.world.norms import Nature, deed_nature, is_beast, is_crime
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
@@ -49,7 +49,6 @@ from engine.world.tuning import (
     CALL_S,
     CHATTER_S,
     FLEE_S,
-    LOYAL_AFFINITY,
     RUMOR_HOPS,
     RUMOR_MIN_SEVERITY,
     SILENT_FEAR,
@@ -75,14 +74,6 @@ def _engaged(state: WorldState, character_id: str) -> bool:
     )
 
 
-def _protects(state: WorldState, witness: Character, deed: Deed) -> bool:
-    """Devoted to the doer, or close to them: they keep it to themselves."""
-    toward = witness.sheet.disposition.attitudes.get(deed.actor_id)
-    if toward is not None and toward.affinity >= LOYAL_AFFINITY:
-        return True
-    return closeness(state, witness, deed.actor_id) >= FRIEND
-
-
 def would_report(state: WorldState, witness: Character, faction_id: str, deed: Deed) -> bool:
     """Whether a witness tells this faction (W11): not if they are devoted to the doer, too
     afraid of them (unless it is their own faction), or of a faction at odds with it, such as a
@@ -92,7 +83,7 @@ def would_report(state: WorldState, witness: Character, faction_id: str, deed: D
         return False
     if is_beast(state, witness.id) and not witness.member_of(faction_id):
         return False
-    if _protects(state, witness, deed):
+    if protects(state, witness, deed):
         return False
     if witness.member_of(faction_id):
         return True
@@ -104,18 +95,6 @@ def would_report(state: WorldState, witness: Character, faction_id: str, deed: D
         if own is not None and own.relations.get(faction_id, 0) <= -30:
             return False
     return True
-
-
-def would_talk(state: WorldState, witness: Character, deed: Deed) -> bool:
-    """Whether a witness tells the people around them what they saw (W2): not if they are
-    devoted to the doer or too afraid of them. The player's character keeps their own counsel,
-    and beasts don't talk (G24)."""
-    if witness.id == state.player_id or not witness.alive or is_beast(state, witness.id):
-        return False
-    if _protects(state, witness, deed):
-        return False
-    toward = witness.sheet.disposition.attitudes.get(deed.actor_id)
-    return toward is None or toward.fear < SILENT_FEAR
 
 
 def carries(state: WorldState, witness: Character | None, faction_id: str, deed: Deed) -> bool:
