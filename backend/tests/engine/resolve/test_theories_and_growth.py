@@ -24,6 +24,7 @@ from engine.contracts import (
     Teacher,
     TheoryAbout,
 )
+from engine.director import rules
 from engine.resolve.powers import sensing
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.powers.theories import NEW_POWER, NOTHING_BEHIND_IT, TOO_BIG
@@ -73,6 +74,13 @@ from tests.engine.resolve.worlds import (
     step,
     with_troll,
 )
+
+
+@pytest.fixture(autouse=True)
+def quiet_days(monkeypatch):
+    """Nothing cuts a stretch of training short here (E7): these tests are about what the
+    training earns. That skipped time may be interrupted is `test_story_clock`'s."""
+    monkeypatch.setattr(rules, "MONTAGE_MIN_S", 10**12)
 
 
 def died(resolution, character_id: str) -> bool:

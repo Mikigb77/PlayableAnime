@@ -2,10 +2,11 @@
 
 Turns appear here only where they measure the player's attention (stall pressure, dormant threads,
 recent sources) or cost (the picture budget), as W10 allows. Everything that happens in the world
-waits on in-world seconds.
+waits on in-world seconds: when a scene needs something is the player's attention, and what
+comes is the story clock's (`EVENT_GAP_S`).
 """
 
-from engine.base import DAY, HOUR
+from engine.base import DAY, HOUR, MINUTE
 from engine.context import EventFrequency, ImageSetting
 
 # W16: turns without stakes before an event comes in, per story setting (S6).
@@ -44,19 +45,42 @@ RETURN_AFTER_TURNS = 8
 # many other events have come in.
 RECENT_SOURCES = 6
 
+# W16, W10: what comes in fits the time that passed (Miki, 2026-11-11: "100 scenes in the same
+# hour should get events that make sense for this time lap"). Stall pressure says when a scene
+# needs something, in turns, and the story clock says what: an event needs this much in-world
+# time since the last one of its size or larger, and no event follows a smaller one sooner than
+# the smaller one's gap. Hours for a personal event, days for a local one, weeks for a world
+# one. Until then pressure brings a moment: a small thing of here and now that asks nothing.
+EVENT_GAP_S = {"personal": 2 * HOUR, "local": 2 * DAY, "world": 14 * DAY}
+# A small thing, a moment or some talk of the place (W2), needs minutes since the last one and
+# since the last event, so a talk of ten minutes isn't broken into at every other line. Sooner
+# than that nothing new comes in, however many scenes the player plays.
+SMALL_GAP_S = 10 * MINUTE
+# A moment drawn recently isn't drawn again until this many others have come.
+RECENT_MOMENTS = 5
+
 # W16, W10: how long an event from the world's state waits for the player before it plays out, by
 # size. Deck cards carry their own.
 SOURCE_WINDOW_S = {"personal": DAY, "local": 2 * DAY, "world": 7 * DAY}
 
 # E7, K8: a stretch of a day or more is a montage. It is rolled in at most MONTAGE_MAX_STEPS steps,
 # each with an event chance from MONTAGE_MEAN_GAP_S, the average in-world time between events.
+# Time the player skips is the story's to grant (Miki, 2026-11-11: "we will see if you just
+# train for a week, or maybe during that week there is something happening that forces a
+# scene"): most of what is rolled needs a decision, which stops the stretch there, so on normal
+# about three skips of three days in ten are cut short, and a little over half the skips of a
+# week. A longer stretch is told more coarsely: the gap grows with it, to its length over
+# MONTAGE_LONG_SHARE, so a stretch of any length is cut short at most about four times in five,
+# a year as often as a month, and a year stops in its fourth or fifth month on average rather
+# than in its first week.
 MONTAGE_MIN_S = DAY
 MONTAGE_MAX_STEPS = 12
 MONTAGE_MEAN_GAP_S: dict[EventFrequency, int] = {
-    EventFrequency.CALM: 365 * DAY,
-    EventFrequency.NORMAL: 180 * DAY,
-    EventFrequency.DRAMATIC: 90 * DAY,
+    EventFrequency.CALM: 16 * DAY,
+    EventFrequency.NORMAL: 8 * DAY,
+    EventFrequency.DRAMATIC: 4 * DAY,
 }
+MONTAGE_LONG_SHARE = 2
 
 # W10, W16: what a trip meets on the way. A trip of ROAD_MIN_S or more is rolled in at most
 # MONTAGE_MAX_STEPS legs, each with an event chance from ROAD_MEAN_GAP_S, the average time on the
@@ -76,7 +100,8 @@ ROAD_MAX_QUIETER = 4
 # W2: the talk of a place reaches the player character softly. A quiet scene may carry one
 # thing the place is saying that they haven't heard about one time in three, so a rumor waits
 # for a scene it fits and some are missed. Where the record holds nothing new to them, the
-# narrator may make up what the place talks about, about one quiet scene in ten.
+# narrator may make up what the place talks about, about one quiet scene in ten. Either is a
+# small thing, so it keeps SMALL_GAP_S from the last one, unless the character only looks on.
 TALK_CHANCE = 1 / 3
 OWN_TALK_CHANCE = 0.1
 

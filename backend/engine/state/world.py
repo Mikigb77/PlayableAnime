@@ -85,7 +85,8 @@ class KeyFight(EngineModel):
 
 class DirectorState(EngineModel):
     """W16, E6, M2. What the director remembers between turns. Turns count only the player's
-    attention and cost (W10), so these are the only turn counters in the state.
+    attention and cost (W10), so these are the only turn counters in the state; what an event
+    waits on is the story's clock (`last_event_s`).
 
     `engine.director` reads it and `record_direction` writes it back from the plan."""
 
@@ -96,6 +97,21 @@ class DirectorState(EngineModel):
     )
     last_event_turn: int | None = None
     last_event_size: EventSize | None = None
+    last_event_s: dict[EventSize, WorldSeconds] = Field(
+        default_factory=dict,
+        description="W16, W10: when the last event of each size came into a scene, on the "
+        "story's clock, so what comes next fits the time that passed since.",
+    )
+    last_small_s: WorldSeconds | None = Field(
+        default=None,
+        description="W16, W10: when the last small thing came into a scene, a moment or some "
+        "talk of the place, so the next keeps a few minutes from it.",
+    )
+    recent_moments: list[str] = Field(
+        default_factory=list,
+        description="W16: the last few moments drawn (`engine.director.moments`), newest "
+        "last, so the same small thing doesn't happen again straight away.",
+    )
     frequency_drift: float = Field(default=0.0, ge=-1.0, le=1.0)
     recent_sources: list[str] = Field(
         default_factory=list,

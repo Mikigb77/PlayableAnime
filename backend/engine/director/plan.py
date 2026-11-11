@@ -5,7 +5,9 @@ It runs after the player's steps played out (B5 step 3) and decides, in code, fr
 1. What came due and has to be in the scene: the world's events that need the player, events
    rolled inside a time skip, and ignored events playing out (E2, E7, W16).
 2. Whether something new comes in, from stall pressure, in W16's order of sources. Nothing
-   unrelated comes in during an encounter (W10) or on the opening scene (N5).
+   unrelated comes in during an encounter (W10) or on the opening scene (N5). What comes fits
+   the time that passed on the story's clock: an event of a size it has room for, or else a
+   moment, a small thing of here and now, or nothing yet (W10, `clock`, `moments`).
 3. What the player took up, so a taken-up event stops waiting to play out (W16).
 4. Thread changes, callbacks, the suggestions' shape and the picture.
 5. The director's memory for next turn, goals the player stated and leads that expired (N2).
@@ -20,11 +22,13 @@ from engine.contracts.direction import (
     DirectorUpdates,
     EventSource,
     PlannedEvent,
+    PlannedMoment,
     ThreadChange,
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
 from engine.director import rules
+from engine.director.clock import sizes_in_time, small_thing_fits
 from engine.director.due import (
     MONTAGE_KIND,
     PLAYS_OUT_KIND,
@@ -37,6 +41,7 @@ from engine.director.due import (
 )
 from engine.director.goals import closed_goals, expired_leads, player_goals
 from engine.director.ids import IdProbe
+from engine.director.moments import draw_moment, recent_after
 from engine.director.pictures import decide_picture
 from engine.director.pressure import in_control, measure, next_drift
 from engine.director.sources import Pick, pick_event
@@ -55,6 +60,7 @@ from engine.state.records import (
     ThreadStatus,
 )
 from engine.state.world import EventSize, WorldState
+from engine.timekeeping import world_stopped
 
 
 def _taken_up(event: PendingEvent, facts: TurnFacts) -> bool:
@@ -224,14 +230,25 @@ def direct(
     updates.applied_ids = [i for i in updates.applied_ids if i not in updates.cancel_ids]
 
     # 3. Something new, if it's time (W16). Never during an encounter or on the opening scene.
+    # Pressure says when, in the player's quiet turns, and the story's clock says what (W10):
+    # an event of a size the time since the last ones has room for, or else a moment, a small
+    # thing of here and now, or nothing yet, so a hundred scenes in one hour get what fits an
+    # hour.
+    moment: PlannedMoment | None = None
+    small = small_thing_fits(memory, state.world_s) and not world_stopped(state)
     if event is None and not pressure.encounter and ctx.turn > 1:
         if rng.child("pressure").chance(pressure.early_chance):
-            pick = pick_event(state, ctx, rng.child("source"), allowed, recent=recent)
+            sizes = sizes_in_time(memory, state.world_s)
+            pick = pick_event(state, ctx, rng.child("source"), allowed, recent=recent, sizes=sizes)
             if pick is not None:
                 event = _open_event(state, ctx, pick, ids, updates)
                 recent.append(pick.key)
                 if pick.event.source is EventSource.DECK:
                     memory.deck_draws += 1
+            elif small and not happenings:
+                # Nothing stirs inside stopped time, and a scene that already tells what came
+                # to pass in the time that went by has something in it.
+                moment = draw_moment(state, ctx, rng.child("moment"), recent=memory.recent_moments)
 
     # 4. Threads, callbacks and suggestions.
     woken = {event.thread_id} if event is not None and event.thread_id else set()
@@ -259,20 +276,32 @@ def direct(
     thread_id = current_thread(state, changes, deciding)
     suggestions = plan_suggestions(ctx, pressure=pressure, event=event, thread_id=thread_id)
     # W2: a quiet scene may carry some of the talk of the place, now and then.
-    busy = event is not None or bool(happenings)
-    talk = plan_talk(state, resolution, rng.child("talk"), pressure=pressure, busy=busy)
+    busy = event is not None or moment is not None or bool(happenings)
+    talk = plan_talk(
+        state, resolution, rng.child("talk"), pressure=pressure, busy=busy, small=small
+    )
 
     # 5. The picture.
     picture = decide_picture(state, ctx, facts, memory, event=event, closed_threads=closed)
 
     # 6. The director's memory for next turn.
+    # Something came in, so the quiet starts over: an event that needs a decision, or a moment.
     decision = event is not None and event.needs_decision
-    memory.turns_without_stakes = 0 if decision else pressure.turns_without_stakes
-    memory.low_stakes_streak = 0 if event is not None else pressure.low_stakes_streak
-    memory.last_action_key = None if event is not None else pressure.action_key
+    stirred = event is not None or moment is not None
+    memory.turns_without_stakes = (
+        0 if decision or moment is not None else pressure.turns_without_stakes
+    )
+    memory.low_stakes_streak = 0 if stirred else pressure.low_stakes_streak
+    memory.last_action_key = None if stirred else pressure.action_key
     if event is not None:
         memory.last_event_turn = ctx.turn
         memory.last_event_size = event.size
+        # W10: the story's clock at this event, which the next one of its size waits on.
+        memory.last_event_s[event.size] = state.world_s
+    if moment is not None:
+        memory.recent_moments = recent_after(memory.recent_moments, moment)
+    if moment is not None or talk is not None:
+        memory.last_small_s = state.world_s  # W10: the next small thing keeps minutes from it
     big = (event is not None and event.size is not EventSize.PERSONAL) or any(
         d.severity >= rules.BIG_DEED for d in player_deeds(state, facts)
     )
@@ -291,6 +320,7 @@ def direct(
 
     return DirectorPlan(
         event=event,
+        moment=moment,
         happenings=happenings,
         callbacks=calls,
         picture=picture,

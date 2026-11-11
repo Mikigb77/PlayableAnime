@@ -889,6 +889,7 @@ async def breakthrough(ev: Eval) -> None:
     results: Counter[str] = Counter()
     lengths = set()
     broke_through = []
+    cut_short = 0
     for seed in ev.seeds(40, live=2):
         story = ev.story(worlds.seclusion(), seed=seed, under_way=True)
         played = await story.act("I go into seclusion to break through", seclusion())
@@ -896,7 +897,12 @@ async def breakthrough(ev: Eval) -> None:
         results[attempt.result.value] += 1
         lengths.add(attempt.duration_s)
         rung = played.state.characters["lin"].sheet.ladders[0].rung
-        if attempt.result is StepResult.SUCCESS:
+        if attempt.interrupted:
+            # E7: days of seclusion are the story's to grant. Something that needed them cut
+            # this one short, whatever the throw would have made of it.
+            cut_short += 1
+            ev.check("a seclusion cut short gains no rung", rung == 0, seed)
+        elif attempt.result is StepResult.SUCCESS:
             broke_through.append(played)
             ev.check("a breakthrough climbs the rung", rung == 1, seed)
             ev.check(
@@ -917,7 +923,13 @@ async def breakthrough(ev: Eval) -> None:
             f"{seed}: {attempt.outcome_class}",
         )
     ev.metric("results", dict(results))
+    ev.metric("cut_short", cut_short)
     if not ev.live:
+        ev.check(
+            "most seclusions run their course",
+            cut_short <= sum(results.values()) // 2,
+            f"{cut_short} of {sum(results.values())} cut short",
+        )
         ev.check(
             "the attempt can succeed, fail or wound",
             set(results) == {r.value for r in StepResult},

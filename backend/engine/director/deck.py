@@ -585,18 +585,21 @@ def draw(
     *,
     recent: list[str] | tuple[str, ...] = (),
     decision_only: bool = True,
+    sizes: frozenset[EventSize] = frozenset(EventSize),
 ) -> Card | None:
     """One seeded draw: first the size from its weights, then a card from that size's table.
 
     Cards drawn recently are passed over while the table has others. `decision_only` keeps out the
-    small good things that need no choice, which only colour a time skip (E7). Returns None when
-    nothing in the deck fits, which can only happen if every card is filtered out.
+    small good things that need no choice, which only colour a time skip (E7), and `sizes` keeps
+    the draw to the sizes the time since the last events leaves room for (W10,
+    `clock.sizes_in_time`). Returns None when nothing in the deck fits: every card is filtered
+    out, or the story's scale draws none of the sizes left.
     """
     frequency = ctx.settings.event_frequency
     scale = story_scale(state)
     tables: dict[EventSize, list[Card]] = {}
     for card in DECK:
-        if decision_only and not card.needs_decision:
+        if card.size not in sizes or (decision_only and not card.needs_decision):
             continue
         if playable(card, ctx, allowed):
             tables.setdefault(card.size, []).append(card)
