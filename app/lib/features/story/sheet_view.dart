@@ -3,29 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/l10n.dart';
 import '../../core/names.dart';
 import '../../design/design.dart';
+import 'record_widgets.dart';
 import 'sheet.dart';
-
-/// A card of the sheet: a soft layer with a hairline edge.
-class _SheetCard extends StatelessWidget {
-  const _SheetCard({required this.child, this.padding = const EdgeInsets.all(Space.lg)});
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: Radii.card,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: child,
-    );
-  }
-}
 
 /// How they are (G13): health, wounds and passing states as chips, then what is left of each
 /// of the world's energies as a meter.
@@ -33,9 +12,6 @@ class SheetConditionView extends StatelessWidget {
   const SheetConditionView({super.key, required this.condition});
 
   final SheetCondition condition;
-
-  /// How much of a chip's own color washes the page behind its words.
-  static const double chipWash = 0.10;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +23,7 @@ class SheetConditionView extends StatelessWidget {
     };
     final chips = [
       if (condition.healthLabel.isNotEmpty)
-        _Chip(
+        RecordChip(
           condition.healthLabel,
           tone: health,
           icon: condition.health == Health.unhurt
@@ -56,13 +32,14 @@ class SheetConditionView extends StatelessWidget {
         ),
       // A wound that heals reads as harm; one that stays is part of them now.
       for (final wound in condition.wounds)
-        _Chip(wound.text, tone: wound.lasting ? null : colors.danger),
+        RecordChip(wound.text, tone: wound.lasting ? null : colors.danger),
       for (final state in condition.states)
-        _Chip(
+        RecordChip(
           state.endsLabel == null ? state.name : '${state.name} · ${state.endsLabel}',
           note: state.effect,
         ),
-      if (condition.expectingLabel case final expecting?) _Chip(expecting, tone: colors.accent),
+      if (condition.expectingLabel case final expecting?)
+        RecordChip(expecting, tone: colors.accent),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,52 +52,6 @@ class SheetConditionView extends StatelessWidget {
           ),
       ],
     );
-  }
-}
-
-/// A short state in a pill. With a [tone] it is tinted; without, it is quiet.
-class _Chip extends StatelessWidget {
-  const _Chip(this.text, {this.tone, this.icon, this.note = ''});
-
-  final String text;
-  final Color? tone;
-  final IconData? icon;
-
-  /// What it does, for whoever holds a finger on it or listens to it.
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.lucid;
-    final tint = tone ?? colors.textSecondary;
-    final chip = Container(
-      padding: EdgeInsets.fromLTRB(icon == null ? 12 : 9, 6, 12, 6),
-      decoration: BoxDecoration(
-        color: tone?.withValues(alpha: SheetConditionView.chipWash),
-        borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: tint.withValues(alpha: tone == null ? 0.35 : 0.5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon case final icon?) ...[
-            Icon(icon, size: 15, color: tint),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              text,
-              style: theme.textTheme.labelLarge!.copyWith(
-                fontSize: 13.5,
-                color: tone ?? colors.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    return note.isEmpty ? chip : Tooltip(message: note, child: chip);
   }
 }
 
@@ -192,7 +123,7 @@ class SheetPathCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rungs = path.rungs.reversed.toList();
-    return _SheetCard(
+    return RecordCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -457,165 +388,6 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// A small label over a group inside a tab.
-class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text, {this.first = false});
-
-  final String text;
-
-  /// The first thing in its tab, so with no room above it.
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(Space.xs, first ? Space.xs : Space.lg, Space.xs, Space.sm),
-    child: Semantics(
-      header: true,
-      child: Text(
-        text.toUpperCase(),
-        style: context.lucidText.overline.copyWith(color: context.lucid.textMuted),
-      ),
-    ),
-  );
-}
-
-/// The small square that leads an entry in.
-class _Glyph extends StatelessWidget {
-  const _Glyph(this.icon, {this.lit = false});
-
-  final IconData icon;
-
-  /// In the accent, for what is theirs to use: money, a power.
-  final bool lit;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.lucid;
-    return ExcludeSemantics(
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: lit ? colors.accentSoft : Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.md),
-        ),
-        child: Icon(icon, size: 19, color: lit ? colors.onAccentSoft : colors.textSecondary),
-      ),
-    );
-  }
-}
-
-/// One entry of the sheet in its own card: a glyph, its name, a word or a mark on the right,
-/// and what there is to say about it underneath.
-class _Entry extends StatelessWidget {
-  const _Entry({
-    required this.icon,
-    required this.title,
-    this.lit = false,
-    this.trailing,
-    this.children = const [],
-  });
-
-  final IconData icon;
-  final String title;
-  final bool lit;
-  final Widget? trailing;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: MergeSemantics(
-        child: _SheetCard(
-          padding: const EdgeInsets.all(Space.md),
-          child: Row(
-            crossAxisAlignment: children.isEmpty
-                ? CrossAxisAlignment.center
-                : CrossAxisAlignment.start,
-            children: [
-              _Glyph(icon, lit: lit),
-              const SizedBox(width: Space.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Titled(
-                      title: Text(title, style: theme.textTheme.titleMedium),
-                      trailing: trailing,
-                    ),
-                    ...children,
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A name with its mark at the far edge of the same line. The mark drops under the name when
-/// the two don't fit, as at a large text size.
-class _Titled extends StatelessWidget {
-  const _Titled({required this.title, this.trailing});
-
-  final Widget title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: double.infinity,
-    child: Wrap(
-      spacing: Space.md,
-      runSpacing: Space.xs,
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [title, ?trailing],
-    ),
-  );
-}
-
-/// A line of an entry: what it is or does.
-class _Line extends StatelessWidget {
-  const _Line(this.text, {this.quiet = false});
-
-  final String text;
-
-  /// A note in the margin, such as where a technique comes from.
-  final bool quiet;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.lucid;
-    return Padding(
-      padding: const EdgeInsets.only(top: Space.xs),
-      child: Text(
-        text,
-        style: quiet
-            ? context.lucidText.meta.copyWith(color: colors.textMuted)
-            : Theme.of(context).textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
-      ),
-    );
-  }
-}
-
-/// A word on the right of an entry, in small capitals: what kind of thing it is.
-class _Kind extends StatelessWidget {
-  const _Kind(this.text, {this.color});
-
-  final String text;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: context.lucidText.overline.copyWith(color: color ?? context.lucid.textMuted),
-  );
-}
-
 /// The dice a skill or a technique throws (A3), as five small dice with that many lit. The
 /// line under the name says the count in words, so a screen reader skips the picture.
 class _Dice extends StatelessWidget {
@@ -677,7 +449,7 @@ class _Carried extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (sheet.moneyLabel case final money?)
-          _Entry(icon: Icons.toll_outlined, title: money, lit: true),
+          RecordEntry(icon: Icons.toll_outlined, title: money, lit: true),
         for (final item in carried) _ItemEntry(item: item),
         if (carried.isEmpty && sheet.moneyLabel == null)
           Padding(
@@ -690,7 +462,7 @@ class _Carried extends StatelessWidget {
             ),
           ),
         if (elsewhere.isNotEmpty) ...[
-          _GroupLabel(l10n.sheetElsewhere),
+          RecordGroupLabel(l10n.sheetElsewhere),
           for (final item in elsewhere) _ItemEntry(item: item),
         ],
       ],
@@ -704,13 +476,13 @@ class _ItemEntry extends StatelessWidget {
   final SheetItem item;
 
   @override
-  Widget build(BuildContext context) => _Entry(
+  Widget build(BuildContext context) => RecordEntry(
     icon: _itemIcon(item.kind),
     title: item.quantity > 1 ? '${item.name.asHeading} × ${item.quantity}' : item.name.asHeading,
-    trailing: item.kindLabel.isEmpty ? null : _Kind(item.kindLabel),
+    trailing: item.kindLabel.isEmpty ? null : RecordKind(item.kindLabel),
     children: [
-      if (item.description.isNotEmpty) _Line(item.description),
-      if (item.history.isNotEmpty) _Line(item.history, quiet: true),
+      if (item.description.isNotEmpty) RecordLine(item.description),
+      if (item.history.isNotEmpty) RecordLine(item.history, quiet: true),
     ],
   );
 }
@@ -727,7 +499,7 @@ class _Skills extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = context.lucid;
     final l10n = context.l10n;
-    return _SheetCard(
+    return RecordCard(
       padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -744,7 +516,7 @@ class _Skills extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Titled(
+                    RecordTitled(
                       title: Text(skill.name.asHeading, style: theme.textTheme.titleMedium),
                       trailing: _Dice(skill.dice),
                     ),
@@ -756,7 +528,7 @@ class _Skills extends StatelessWidget {
                       ].join(' · '),
                       style: context.lucidText.meta.copyWith(color: colors.textSecondary),
                     ),
-                    if (skill.notes.isNotEmpty) _Line(skill.notes),
+                    if (skill.notes.isNotEmpty) RecordLine(skill.notes),
                   ],
                 ),
               ),
@@ -781,9 +553,9 @@ class _Moves extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (both) _GroupLabel(l10n.sheetPowers, first: true),
+        if (both) RecordGroupLabel(l10n.sheetPowers, first: true),
         for (final power in sheet.powers) _PowerEntry(power: power),
-        if (both) _GroupLabel(l10n.sheetMoves),
+        if (both) RecordGroupLabel(l10n.sheetMoves),
         for (final technique in sheet.techniques) _TechniqueEntry(technique: technique),
       ],
     );
@@ -799,18 +571,18 @@ class _PowerEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lucid;
     final l10n = context.l10n;
-    return _Entry(
+    return RecordEntry(
       icon: Icons.auto_awesome_rounded,
       lit: true,
       title: power.name.asHeading,
       trailing: power.readyLabel.isEmpty
           ? null
-          : _Kind(power.readyLabel, color: power.ready ? colors.success : colors.caution),
+          : RecordKind(power.readyLabel, color: power.ready ? colors.success : colors.caution),
       children: [
-        if (power.description.isNotEmpty) _Line(power.description),
-        for (final limit in power.limits) _Line('·  $limit'),
-        if (power.cost.isNotEmpty) _Line(l10n.sheetCost(power.cost)),
-        if (power.secret) _Line(l10n.sheetSecret, quiet: true),
+        if (power.description.isNotEmpty) RecordLine(power.description),
+        for (final limit in power.limits) RecordLine('·  $limit'),
+        if (power.cost.isNotEmpty) RecordLine(l10n.sheetCost(power.cost)),
+        if (power.secret) RecordLine(l10n.sheetSecret, quiet: true),
       ],
     );
   }
@@ -826,7 +598,7 @@ class _TechniqueEntry extends StatelessWidget {
     final colors = context.lucid;
     final l10n = context.l10n;
     final need = technique.need;
-    return _Entry(
+    return RecordEntry(
       icon: Icons.gesture_rounded,
       title: technique.name.asHeading,
       trailing: _Dice(technique.dice),
@@ -841,17 +613,17 @@ class _TechniqueEntry extends StatelessWidget {
             style: context.lucidText.meta.copyWith(color: colors.textSecondary),
           ),
         ),
-        if (technique.style.isNotEmpty) _Line(technique.style),
-        if (technique.effect.isNotEmpty) _Line(technique.effect),
-        if (technique.cost.isNotEmpty) _Line(l10n.sheetCost(technique.cost)),
+        if (technique.style.isNotEmpty) RecordLine(technique.style),
+        if (technique.effect.isNotEmpty) RecordLine(technique.effect),
+        if (technique.cost.isNotEmpty) RecordLine(l10n.sheetCost(technique.cost)),
         if (need != null) ...[
           const SizedBox(height: Space.md),
           ExcludeSemantics(
             child: _Bar(share: technique.uses / need, color: colors.accent),
           ),
-          _Line(l10n.sheetUses(technique.uses, need), quiet: true),
+          RecordLine(l10n.sheetUses(technique.uses, need), quiet: true),
         ],
-        if (technique.sourceLabel.isNotEmpty) _Line(technique.sourceLabel, quiet: true),
+        if (technique.sourceLabel.isNotEmpty) RecordLine(technique.sourceLabel, quiet: true),
       ],
     );
   }
@@ -877,11 +649,11 @@ class _Nature extends StatelessWidget {
             child: Wrap(
               spacing: Space.sm,
               runSpacing: Space.sm,
-              children: [for (final word in sheet.temperament) _Chip(word.asHeading)],
+              children: [for (final word in sheet.temperament) RecordChip(word.asHeading)],
             ),
           ),
         for (final trait in sheet.traits)
-          _Entry(
+          RecordEntry(
             icon: switch (trait.kind) {
               TraitKind.gift => Icons.star_outline_rounded,
               TraitKind.flaw => Icons.heart_broken_outlined,
@@ -890,7 +662,7 @@ class _Nature extends StatelessWidget {
             title: trait.name.asHeading,
             trailing: trait.kindLabel.isEmpty
                 ? null
-                : _Kind(
+                : RecordKind(
                     trait.kindLabel,
                     color: switch (trait.kind) {
                       TraitKind.gift => colors.success,
@@ -898,17 +670,17 @@ class _Nature extends StatelessWidget {
                       TraitKind.quirk => null,
                     },
                   ),
-            children: [if (trait.description.isNotEmpty) _Line(trait.description)],
+            children: [if (trait.description.isNotEmpty) RecordLine(trait.description)],
           ),
         if (sheet.talents.isNotEmpty) ...[
-          _GroupLabel(l10n.sheetLearning),
+          RecordGroupLabel(l10n.sheetLearning),
           for (final talent in sheet.talents)
-            _Entry(
+            RecordEntry(
               icon: talent.weakness ? Icons.trending_down_rounded : Icons.trending_up_rounded,
               title: talent.name.asHeading,
               trailing: talent.strengthLabel.isEmpty
                   ? null
-                  : _Kind(
+                  : RecordKind(
                       talent.strengthLabel,
                       color: talent.weakness ? colors.caution : colors.accent,
                     ),
@@ -921,15 +693,15 @@ class _Nature extends StatelessWidget {
                       style: context.lucidText.meta.copyWith(color: colors.textSecondary),
                     ),
                   ),
-                if (talent.covers.isNotEmpty) _Line(talent.covers.asHeading),
+                if (talent.covers.isNotEmpty) RecordLine(talent.covers.asHeading),
               ],
             ),
           if (sheet.talentNotes.isNotEmpty)
-            _SheetCard(
+            RecordCard(
               padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, Space.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [for (final note in sheet.talentNotes) _Line(note)],
+                children: [for (final note in sheet.talentNotes) RecordLine(note)],
               ),
             ),
         ],

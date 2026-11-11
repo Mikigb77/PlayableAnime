@@ -637,10 +637,21 @@ Only what the player character knows, in the world's words. Hidden truth never a
 
 ```text
 MemoryView {character: {name, lines: [string], portrait_url?},
-            people:   [{id, name, lines: [string], attitude_label?, portrait_url?, status_label}],
-                                          # family comes first: "Your child." (N6)
+            people:   [{id, name, lines: [string], portrait_url?,
+                        attitude?, attitude_label?,   # how they come across (W4), for someone the
+                                          # character met: "warm" | "friendly" | "neutral" |
+                                          # "cold" | "hostile", and the same in words
+                        status, presumed, status_label}],
+                                          # whether they live as far as the character knows
+                                          # (C1, C6): "alive" | "missing" | "dead", a death only
+                                          # presumed, and the same in words. Family comes
+                                          # first: "Your child." (N6)
             places:   [{id, name, lines: [string], image_url?}],
-            factions: [{id, name, lines: [string], standing_label}],    # esteem and fear in words (W3)
+            factions: [{id, name, lines: [string],
+                        esteem, dread, standing_label}],
+                                          # their regard (W3): "admired" | "respected" |
+                                          # "neutral" | "disliked" | "despised"; their fear:
+                                          # "none" | "wary" | "feared"; and both in words
             goals:    [{id, text}],
             leads:    [{id, text, expires_label?}],
             rumors:   [{id, text, heard_label, certainty, unconfirmed}],
@@ -650,8 +661,18 @@ MemoryView {character: {name, lines: [string], portrait_url?},
                                           # certainty == "unconfirmed", for older apps. The
                                           # same words show once per certainty, by when last
                                           # heard.
-            deeds:    [{id, text, when_label, known_label}],
-            threads:  [{id, title, status}]}
+            deeds:    [{id, text, when_label, seen, known_label}],
+                                          # in time order. seen is who saw it as far as the
+                                          # character knows (W2, C6): their own deed is
+                                          # "seen" | "public" | "unseen", someone else's is
+                                          # "watched" | "heard_of"; known_label says it in
+                                          # words: "Seen by Carmine Russo and 1 other"
+            threads:  [{id, title, status}]}  # status: "open" | "dormant" | "resolved" |
+                                          # "failed" | "abandoned" | "resolved_without_player"
+
+# Every *_label is in the story's language (S10) and comes with the value it says, so the app
+# marks and tints an entry by the value and never reads the words. An app from before the
+# values shows the labels alone.
 
 StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
                                           # lines are the sheet as plain text, kept for apps
