@@ -7,6 +7,12 @@ whoever lived through a massacre turns against the one who did it and remembers 
 same loop runs for every actor (E5): an NPC who murders a rival gets grudges and avengers just as
 the player would. Only the player has a reputation with factions and regions (W3), and it changes
 slowly both ways (W9).
+
+What both sides of a fight agreed to is no attack (W1, `engine.resolve.bouts`). A bout leaves a
+little more regard between those who fought it (`fought_bout`). A death both accepted is a loss
+to those close to the dead, who may still hold it against the one who killed them, and nothing
+to bystanders, factions or the law. A blow that went beyond the terms is an attack, and costs
+more trust than an open one.
 """
 
 from engine.base import (
@@ -37,6 +43,9 @@ from engine.world.norms import CHILD_AGE, Nature, deed_nature, is_crime
 from engine.world.scheduling import World
 from engine.world.telling import account
 from engine.world.tuning import (
+    BOUT_REGARD,
+    BOUT_REGARD_MAX,
+    BROKEN_TERMS_TRUST,
     BYSTANDER_FEAR,
     BYSTANDER_HOSTILITY,
     INSIDE_ANSWER_SEVERITY,
@@ -153,7 +162,10 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
     tie = max((closeness(state, character, v) for v in affected if v != character.id), default=0)
     affinity = fear = trust = 0.0
     keeps_grudge = False
-    struck = character.id in deed.victim_ids or character.id in deed.target_ids
+    # W1. Whoever stood in a fight both sides agreed to wasn't attacked in it.
+    struck = not deed.agreed and (
+        character.id in deed.victim_ids or character.id in deed.target_ids
+    )
     if harmful and struck:
         # A hunted beast that lives remembers the hunt as any victim would (G24).
         hurt = max(sev, 2) if kind is Nature.HUNT else sev
@@ -166,11 +178,17 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
             # Nobody who lived through a monstrous deed takes it more lightly than a bystander.
             affinity = min(affinity, -BYSTANDER_HOSTILITY[sev])
             fear = max(fear, BYSTANDER_FEAR[sev])
-        keeps_grudge = hurt >= 2
+        # W1. A blow beyond the terms of a bout is remembered, however light it was.
+        keeps_grudge = hurt >= 2 or deed.broke_terms
     elif kind is Nature.HARM:
-        affinity = -(BYSTANDER_HOSTILITY[sev] + TIE_HOSTILITY * sev * tie)
+        # W1. A death both accepted turns no bystander against the one who dealt it: only those
+        # close to the dead take it as a loss.
+        seen = 0 if deed.agreed else BYSTANDER_HOSTILITY[sev]
+        affinity = -(seen + TIE_HOSTILITY * sev * tie)
         fear, trust = BYSTANDER_FEAR[sev], affinity / 2
-        keeps_grudge = (tie >= FRIEND and sev >= 3) or (tie and sev >= 4) or sev >= 5
+        keeps_grudge = tie >= FRIEND and sev >= 3
+        if not deed.agreed:
+            keeps_grudge = keeps_grudge or bool(tie and sev >= 4) or sev >= 5
     elif kind is Nature.HUNT:
         if tie:
             # The beast's own kin, its pack or its mate, remember the hunter (W4, G24).
@@ -190,6 +208,8 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
         fear = 3 * sev
     elif sev >= 3:
         fear = sev
+    if deed.broke_terms:
+        trust *= BROKEN_TERMS_TRUST  # it came under cover of a friendly fight
     grudge = (
         Grudge(reason=account(state, deed), deed_id=deed.id, since_turn=w.ctx.turn)
         if keeps_grudge
@@ -208,11 +228,33 @@ def character_learns(w: World, character_id: str, deed: Deed, *, weight: float =
     victim_fell = any(
         not state.characters[v].alive for v in deed.victim_ids if v in state.characters
     )
-    attacked = character.id in deed.victim_ids or character.id in deed.target_ids
     if tie >= FRIEND and victim_fell:
         schedule_revenge(w, character, deed)
-    elif attacked and sev >= 3 and character.prominence is Prominence.KEY:
+    elif struck and sev >= 3 and character.prominence is Prominence.KEY:
         schedule_revenge(w, character, deed)
+
+
+def fought_bout(w: World, deed: Deed) -> None:
+    """W1, W4. A bout both sides agreed to: those who fought it think a little better of each
+    other for it, up to `BOUT_REGARD_MAX`, and that is all. Nobody was attacked, so nobody is
+    afraid, keeps a grudge or comes for revenge, however many blows it had. The player
+    character's own feelings are the player's (G15)."""
+    state = w.state
+    fighters = [i for i in dict.fromkeys([deed.actor_id, *deed.target_ids])]
+    for fighter_id in sorted(fighters, key=natural_key):
+        fighter = state.characters.get(fighter_id)
+        if fighter is None or not fighter.alive or fighter_id == state.player_id:
+            continue
+        for other_id in fighters:
+            if other_id == fighter_id or other_id not in state.characters:
+                continue
+            attitude = fighter.sheet.disposition.attitudes.get(other_id, Attitude())
+            shift_attitude(
+                fighter,
+                other_id,
+                affinity=max(0, min(BOUT_REGARD, BOUT_REGARD_MAX - attitude.affinity)),
+                trust=max(0, min(BOUT_REGARD, BOUT_REGARD_MAX - attitude.trust)),
+            )
 
 
 # --- Factions and regions ---------------------------------------------------------------------
@@ -292,6 +334,17 @@ def faction_learns(w: World, faction_id: str, deed: Deed, *, weight: float = 1.0
     actor = state.characters.get(deed.actor_id)
     if actor is None or deed.actor_id in faction.leader_ids:
         return  # nobody answers their own leader
+    if deed.agreed:
+        # W1. A fight both sides agreed to is no attack on anyone's faction: there is nothing
+        # to answer. A death in it still shows what the player can do, and the dead one's own
+        # think a little less of them for it.
+        if deed.actor_id == state.player_id and deed.victim_ids:
+            theirs = any(in_faction(state, v, faction_id) for v in deed.victim_ids)
+            esteem = -deed.severity if theirs else 0
+            adjust_reputation(
+                faction.player_reputation, esteem=esteem * weight, fear=2 * deed.severity * weight
+            )
+        return
     kind = deed_nature(state, deed)
     struck = [*deed.victim_ids, *deed.target_ids] if kind in (Nature.HARM, Nature.HUNT) else []
     harmed = any(in_faction(state, v, faction_id) for v in struck)
@@ -347,6 +400,11 @@ def region_learns(w: World, region_id: str | None, deed: Deed, *, weight: float 
     state = w.state
     region = state.places.get(region_id) if region_id else None
     if region is None or deed.actor_id != state.player_id:
+        return
+    if deed.agreed:
+        # W1. What both sides agreed to harms nobody there: a death in it only shows strength.
+        if deed.victim_ids:
+            adjust_reputation(region.player_reputation, fear=2 * deed.severity * weight)
         return
     local = is_within(state, deed.place_id, region.id)
     # A hunt among them harms nobody of theirs (G24).

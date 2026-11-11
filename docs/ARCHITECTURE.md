@@ -173,7 +173,7 @@ these functions and saves the result.
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the player's trips (`journeys`: where a step goes, how long the way is, what is left of a trip that stopped, and the routes new ground writes; W10, W7), what a place is saying to someone who comes there later (`hearsay`: the rumors that reached it before them, heard only once a scene told one; W2, C6), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
-| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character gets cleanly away from all of them (N6), the player character falls, or ten in-world minutes pass with no exchange. Also `strong_foe`, M1's key opponent. |
+| `engine/encounters.py` | W10's encounters, which code starts and ends inside `play_out` (WS20): a fight from a step that aims harm at someone, another kind from the interpret step's proposal when someone who can respond faces the step, and the end once no opponent is still in it, the player character gets cleanly away from all of them (N6), the player character falls, or ten in-world minutes pass with no exchange. A fight both sides agreed to keeps its terms here (`Encounter.bout`, W1): from the step that began the bout (`StepResolution.bout`) until the encounter ends or a blow goes beyond them (`StepResolution.broke_terms`). A fight in which a blow outside any terms harmed someone, or whose terms were broken, is one in earnest (`Encounter.in_earnest`) and never gets any. Also `strong_foe`, M1's key opponent. |
 | `engine/resolve/` | Resolve (WS9): logic first, then dice. Turns an `Intent` into a `Resolution` in code; see [Resolve](#resolve-logic-first-then-dice). Powers, theories and growth (WS9b) are in `engine/resolve/powers/`; see [Powers](#powers-theories-and-growth). |
 | `engine/heirs.py` | Heirs (N6): `heirs` lists who of the player character's family can carry the story on at its ending (living descendants, and a child on the way whose carrier lives, a dying carrier's child settled by a seeded roll in `unborn_lost`), and `time_jump` runs the world on to the day an heir too young to act turns 16. No model calls. See [Carrying a story on as an heir](#carrying-a-story-on-as-an-heir). |
 | `engine/kin.py` | Lineage (N6): `ancestors`, `descendants` (with how many generations down) and `related` over `Character.parent_ids`. See [Families and births](#families-and-births). |
@@ -274,6 +274,20 @@ a new one.
   wounding it was. Severity floors apply only when someone was harmed. How far a bystander turns
   against the doer follows severity steeply (`BYSTANDER_HOSTILITY`): a brawl barely moves them,
   and a massacre leaves even a stranger who saw it cold or hostile, with a grudge (W8, W12).
+- **What both sides agreed to is no attack** (W1, W4, W11). A proposed deed that stayed inside
+  the terms of a bout carries them (`Deed.terms`). With no victim it is the bout itself
+  (`Deed.is_bout`): `record_consequences` records it once for the encounter however many blows
+  propose it, and `react` does nothing with it but `knowledge.fought_bout`, which adds
+  `BOUT_REGARD` to affinity and trust between those who fought, up to `BOUT_REGARD_MAX`. No
+  witness reacts, no rumor starts, nobody reports it and nothing waits to be discovered. A death
+  inside terms that accept death (`Deed.agreed`, with a victim) is no crime (`norms.is_crime`),
+  is reported by nobody, shakes no place and calls up no avenger of its own; bystanders only
+  fear the doer, factions and regions only move the player's reputation (a little esteem lost
+  with the dead one's own faction, some fear everywhere), and the victim's close ties still get
+  word, lose affinity, keep a grudge and may come for revenge. A deed that went beyond the
+  terms (`Deed.broke_terms`) is an attack like any other, its trust loss multiplied by
+  `BROKEN_TERMS_TRUST`, and the one struck keeps a grudge however light it was. `telling` says
+  "sparred with", "fought a duel with" or "killed ... in a duel".
 - **Beasts are not people** (G24). A character whose `people_id` names one of the bible's
   creatures is a beast, and a faction whose every member is a beast (a wolf pack) is no person
   either. Harm that falls only on beasts is a hunt (`Nature.HUNT`): no crime, no report to anyone
@@ -678,6 +692,33 @@ it (W10a), a helpless state on the sheet
    person's with no throw. Harm builds up a step at a time, and anything harmful on
    top of dying kills. Each foe's blow is their deed against the character (W1), and a death
    ends the plan like one by the character's own blast.
+10. **A bout both sides agreed to** (`bouts.py`, `core._under_terms`, `perils._held`; W1, W4,
+   N6). The interpret step proposes the terms of an agreed fight (`StepFacts.terms`: `no_harm`,
+   `wounds` or `death`) and whether the character means to go beyond them
+   (`StepFacts.breaks_terms`); code decides. A step that fights someone with no fight on starts
+   a bout when it proposes terms and everyone in it can agree (`bouts.can_agree`: alive, able to
+   answer, there, no beast). The bout lives on the encounter (`Encounter.bout`, with whom it was
+   agreed), so a later blow at those in it comes under its terms whether or not the step names
+   them, and proposing terms again can only make them milder. A fight in earnest, in which
+   someone was harmed outside any terms or whose terms were broken, never becomes a bout
+   (`Encounter.in_earnest`, `_Frame.open_fight`); a first blow without terms that hurt nobody
+   doesn't make it one, so terms the interpret step left out once can still be agreed. Someone
+   new joins a bout only by taking up its terms while not already fighting the character.
+   Inside the terms the step's
+   aim is held to the worst they accept (`bouts.held`) before anything is settled, so under
+   `no_harm` the engine changes nobody's health or state (`aim_effects(pulled=True)`), and the
+   deed the step proposes is the bout itself (`records.BOUT`, no victims, `ProposedDeed.terms`),
+   except a death inside `death` terms, which is its own deed with the terms on it. What strikes
+   back comes under the same terms when everyone answering is in the bout: it is no deed unless
+   it kills (a death inside `death` terms carries them; one the terms never accepted is a plain
+   killing), and a `no_harm` blow that lands is told as a touch or as the character brought down
+   unhurt (`Peril.terms`). Under `no_harm` a partner answers only the bout's exchanges, a blow
+   at them or an `exchange` step, unless `foes_mean` says they strike: they wait while the
+   character talks or looks on. The actor goes beyond the terms only with `breaks_terms` and an
+   aim they don't allow; those answering only when `foes_mean` is beyond them and one of them
+   bears the character ill will (`bouts.bears_ill_will`: affinity at or under `ILL_WILL`, or a
+   grudge). Either way the blow is an ordinary attack with `broke_terms` on its deed, and the
+   bout is over.
 
 A chained plan stops at the first step that doesn't cleanly succeed, or after which something
 struck back and hurt the player character (`StopReason.STRUCK`), with the rest in `unplayed`

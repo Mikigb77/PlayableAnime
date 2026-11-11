@@ -181,3 +181,11 @@ GESTATION_S = 270 * DAY  # how long a child is carried; the same for every peopl
 # On average, how long an active faction or key NPC goes between moves of their own.
 FACTION_MOVE_MEAN_S = 7 * DAY
 NPC_MOVE_MEAN_S = 5 * DAY
+
+# W1, W4: what a bout both sides agreed to adds to affinity and trust between those who fought
+# it, and up to where: bouts alone make nobody a close friend.
+BOUT_REGARD = 2
+BOUT_REGARD_MAX = 30
+# W1: how much more trust a blow beyond the terms of a bout costs than an open attack, since it
+# came under cover of a friendly fight.
+BROKEN_TERMS_TRUST = 1.5

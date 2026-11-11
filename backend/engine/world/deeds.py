@@ -7,6 +7,11 @@ of it in code and on in-world time: witnesses feel about the doer (W4), word sta
 ties hear of a death (W4), a secret deed waits to be discovered from its traces (W13), clocks that
 name the deed move (E2), and a conquered place grows restless (W7). The same runs for an NPC's
 deed (E5).
+
+A bout both sides agreed to is none of that (W1, `engine.resolve.bouts`). It is one deed however
+many blows it had, nobody takes it as an attack, and all it leaves is a little more regard
+between those who fought it. A death both accepted is still a death to those close to the dead,
+and nothing to the law or to bystanders.
 """
 
 from engine.context import TurnContext
@@ -33,6 +38,7 @@ from engine.world.knowledge import (
     character_learns,
     closeness,
     faction_learns,
+    fought_bout,
     region_learns,
 )
 from engine.world.norms import (
@@ -72,10 +78,31 @@ def record_consequences(
         return state
     new = state.model_copy(deep=True)
     for i, proposed in enumerate(step.deeds):
+        if _bout_recorded(new, resolution, proposed):
+            continue  # W1: the bout is one deed, however many blows it has
         w = World(state=new, ctx=ctx, at_s=new.world_s, rng=rng.child("deed", i))
         deed = record_deed(w, resolution, proposed)
         react(w, deed)
     return new
+
+
+def _bout_recorded(state: WorldState, resolution: Resolution, proposed: ProposedDeed) -> bool:
+    """W1. Whether a blow inside the terms of a bout belongs to a bout already on record: the
+    one the scene's encounter is, which someone of this blow fought in since it began."""
+    encounter = state.scene.encounter
+    if proposed.terms is None or proposed.victim_ids:
+        return False
+    if encounter is None or encounter.bout is None:
+        return False
+    actor_id = proposed.actor_id or resolution.actor_id or state.player_id
+    fighters = {actor_id, *proposed.target_ids}
+    return any(
+        deed.is_bout
+        and deed.world_s >= encounter.started_s
+        and deed.timeline_id == state.timeline_id
+        and fighters & {deed.actor_id, *deed.target_ids}
+        for deed in state.deeds.values()
+    )
 
 
 def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Deed:
@@ -122,8 +149,10 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
         traces=list(proposed.traces),
         in_stopped_time=proposed.in_stopped_time,
         known_by=list(dict.fromkeys([actor_id, *witnesses])),
+        terms=proposed.terms,
+        broke_terms=proposed.broke_terms,
     )
-    if visibility is Visibility.SECRET:
+    if visibility is Visibility.SECRET and not deed.is_bout:
         body = body_trace(state, deed)
         if body is not None:
             deed.traces.append(body)
@@ -139,6 +168,12 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
 def react(w: World, deed: Deed) -> None:
     """The world's first reactions to a deed, at the moment it is done."""
     state = w.state
+    if deed.is_bout:
+        # W1. Nobody takes a bout both sides agreed to as an attack: no word of one goes round,
+        # nobody reports it and nothing is left to find out.
+        fought_bout(w, deed)
+        deed_moves_clocks(w, deed)
+        return
     for witness_id in sorted(deed.witness_ids, key=natural_key):
         character_learns(w, witness_id, deed)
 
@@ -186,6 +221,8 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
     there against a crime, and the witnesses' own factions when it is serious. Nobody reports a
     hunt too small to be news (G24)."""
     targets: list[str] = []
+    if deed.agreed:
+        return targets  # W1: what both sides agreed to is nobody's to report
     if deed_nature(state, deed) is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
         return targets
     for place_id in ancestors(state, deed.place_id):
@@ -292,6 +329,7 @@ def _mark_places(w: World, deed: Deed) -> None:
         deed.visibility is not Visibility.SECRET
         and deed.severity >= 4
         and deed_nature(state, deed) is Nature.HARM
+        and not deed.agreed  # W1: a death both accepted leaves no place shaken
         and deed.place_id in state.places
     ):
         actor = state.characters.get(deed.actor_id)

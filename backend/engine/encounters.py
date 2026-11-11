@@ -17,6 +17,12 @@ these on its working copy before and after each step, and `settle` once the plan
   opponents, starts one, or is an exchange (a blow, a shot, a spell) is one of its exchanges.
   Something that isn't a fight turns into one when a step fights; a fight stays a fight whatever
   else is proposed, since a chase inside a fight is the same fight.
+- **A bout.** A fight both sides agreed to has terms (W1, `engine.resolve.bouts`). Resolve
+  decides the bout a step was fought in (`StepResolution.bout`); here it is kept on the
+  encounter (`Encounter.bout`) with whom it was agreed, from the step that began it until the
+  encounter ends or a blow goes beyond its terms (`StepResolution.broke_terms`). A fight in
+  which someone was harmed outside any terms, or whose terms were broken, is fought in earnest
+  (`Encounter.in_earnest`) and never becomes a bout: an attack isn't relabelled as one.
 - **End.** It ends when none of its opponents is still in it (each is dead, missing, helpless, or
   somewhere the player character isn't), when a step of the player character's got cleanly away
   from all of those still in it (N6), when the player character is dead or helpless, or when
@@ -97,6 +103,8 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
             started_s=start_s,
             last_s=end_s,
             key=any(strong_foe(state, i) for i in opponents),
+            bout=step.bout,
+            in_earnest=step.broke_terms or _drew_blood(step),
         )
         return
     if step.escaped and actor_id == state.player_id:
@@ -106,6 +114,7 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
             return
     exchange = _exchange(state, encounter, step, actor_id, opponents)
     fight = encounter.kind is EncounterKind.FIGHT
+    _keep_terms(encounter, step)
     # A fight takes in only those a step fights; anything else takes in whoever its steps face,
     # and turns into whatever they make it, a fight included.
     joins = step.encounter is EncounterKind.FIGHT or (step.encounter is not None and not fight)
@@ -117,6 +126,24 @@ def follow(state: WorldState, step: StepResolution, actor_id: str, ctx: TurnCont
             encounter.kind = step.encounter
     if exchange:
         encounter.last_s = end_s
+
+
+def _keep_terms(encounter: Encounter, step: StepResolution) -> None:
+    """W1. The bout as the step leaves it: over once a blow went beyond its terms, else as the
+    step was fought in it (its terms only get milder, and someone new may have joined). A step
+    that harmed someone outside any terms, or broke them, makes the fight one in earnest, which
+    never becomes a bout."""
+    if step.broke_terms:
+        encounter.bout, encounter.in_earnest = None, True
+    elif step.bout is not None and (encounter.bout is not None or not encounter.in_earnest):
+        encounter.bout = step.bout
+    if _drew_blood(step):
+        encounter.in_earnest = True
+
+
+def _drew_blood(step: StepResolution) -> bool:
+    """W1. Whether a blow of the step harmed someone outside the terms of any bout."""
+    return any(deed.victim_ids and deed.terms is None for deed in step.deeds)
 
 
 def settle(state: WorldState) -> None:

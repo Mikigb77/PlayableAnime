@@ -181,6 +181,14 @@ character throws their own defence against them, and code marks it deadly when t
 kill (N6). A step that tries to get away from a fight (a run, a leap, a dive into the crowd) \
 names the foes it gets away from in facts.opposition_ids, so code can judge whether they catch \
 the character.
+- facts.terms (W1): when the fight is a bout both sides agreed to, the worst both accepted: \
+no_harm (sparring, a lesson, a play fight: a touch, a throw or a pin decides it), wounds (first \
+blood, a duel that accepts wounds) or death. Agreed means the other took it up, or it is how \
+the two train together. Empty for any other fight, such as an ambush or a brawl. Code keeps the \
+terms for the whole bout (SCENE's encounter shows them as bout) and takes no blow inside them \
+as an attack.
+- facts.breaks_terms (W1): true only when the character means to go beyond those terms: a blow \
+to maim or kill in a friendly bout, or one struck after the other yielded. That is an attack.
 - facts.danger: what can hurt the character in this step however it goes, that no one in the \
 scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
 danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
@@ -417,6 +425,11 @@ says, no more and no less: none misses or can't hurt them, hurt and wounded are 
 fight on with, subdued brings them down or takes them, badly_wounded and maimed are grave, maimed \
 leaving a wound that lasts, such as a lost hand or eye, dying is their life running out, and dead \
 kills them (N6). Foes act as they would, but never beyond what struck says.
+- bout under a step in OUTCOME means it was fought in a bout both sides agreed to (W1): no_harm \
+is a friendly bout, where a touch, a throw or a pin decides each exchange and nobody is \
+wounded, so subdued under struck is the character thrown or pinned for the point; wounds \
+accepts wounds, and death is to the death. Nobody takes a blow inside the terms as an attack \
+or resents it. broke_terms means a blow went beyond them: an attack, and the bout is over.
 - When a step in OUTCOME lists its beats, play them in that order. made_canon is something the \
 place turned out to hold, so it is there now. empty is a search that comes up empty or a thing \
 that isn't there: play the reach for it, and the step stops at that beat (R2).
@@ -563,9 +576,10 @@ takes from SCENE's place, where the map knows it. Use these names as spelled.
 - SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
 people present with the player character, each without their secrets, with toward_you and \
 sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
-and the fight, chase, duel of words or negotiation under way, if any (encounter). on_the_way is \
-a trip that stopped before its end: where it was going and how much of the way is left. A power \
-someone keeps secret is left out until it is used.
+and the fight, chase, duel of words or negotiation under way, if any (encounter), with its \
+terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \
+where it was going and how much of the way is left. A power someone keeps secret is left out \
+until it is used.
 - FALLEN: earlier player characters of this story whom someone in the scene knew.
 - NOW: on an opening, the date and the hour.
 - ENDED: on the opening of someone new, how long ago the last player character's story ended.
@@ -582,7 +596,8 @@ miss could have killed), extra (the one extra effect a throw over the top earned
 they did it with and how well they have it), drew_on (their own powers, techniques and moves \
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
-it holds), interrupted, met, struck and trip (where the step took them, whether they \
+it holds), interrupted, met, struck, bout or broke_terms, and trip (where the step took them, \
+whether they \
 arrived, and whether it is their first visit). Then stopped_at_step, stop_reason and unplayed \
 when the plan stopped early, now_canon for what became true, rulings, and backstory with \
 whether each claim was recorded.
