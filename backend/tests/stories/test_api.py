@@ -202,7 +202,8 @@ def test_a_story_set_up_in_spanish_or_catalan_is_told_in_it(
     status = client.get(f"/v1/stories/{story.pk}/status").json()
     assert status["clock"]["label"].startswith(day)
     memory = client.get(f"/v1/stories/{story.pk}/memory").json()
-    assert all(p["status_label"] == alive for p in memory["people"])
+    # The label is in the story's language; the value beside it is the same in any (S10).
+    assert all(p["status_label"] == alive and p["status"] == "alive" for p in memory["people"])
     [summary] = client.get("/v1/stories").json()
     assert summary["world_time_label"].startswith(day)
     narrator = model.backend.calls(Node.NARRATOR)[-1]
@@ -242,6 +243,16 @@ def test_memory_shows_only_what_the_character_knows_with_their_pictures(
     assert memory["character"]["portrait_url"] is None
     people = {person["id"]: person for person in memory["people"]}
     assert people["zhao"]["portrait_url"].startswith("http://testserver/")
+    # Each label comes with the value it says, for the app to mark and tint by.
+    for person in memory["people"]:
+        assert person["status"] == "alive" and person["presumed"] is False
+        assert (person["attitude"] is None) == (person["attitude_label"] is None)
+    for faction in memory["factions"]:
+        assert faction["esteem"] == "neutral" and faction["dread"] == "none"
+    assert all(
+        deed["seen"] in {"watched", "heard_of", "seen", "public", "unseen"}
+        for deed in memory["deeds"]
+    )
     text = str(memory)
     state = story.state
     for character in state["characters"].values():

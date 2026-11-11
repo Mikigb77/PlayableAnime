@@ -329,18 +329,26 @@
   "memoryPeople": "People",
   "memoryPlaces": "Places",
   "memoryFactions": "Factions",
-  "memoryGoals": "Goals and leads",
-  "memoryGoal": "Goal",
-  "memoryLead": "Lead",
+  "memoryObjectives": "Objectives",
+  "memoryGoals": "Your goals",
+  "memoryLeads": "Leads",
   "memoryRumors": "Rumors",
   "memoryDeeds": "Deeds",
-  "memoryThreads": "Threads",
+  "memoryThreads": "The story's threads",
+  "memoryClosed": "Closed",
+  "memoryShowAll": "Show all ({count})",
+  "@memoryShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "memoryUnconfirmed": "Unconfirmed",
   "memoryConfirmed": "Confirmed",
   "memoryFalse": "False",
   "memoryEmptyTitle": "Nothing to remember yet",
   "memoryEmptyBody": "People, places and deeds appear here as your character meets and does them.",
-  "threadOpen": "Open",
   "threadDormant": "Quiet",
   "threadResolved": "Resolved",
   "threadFailed": "Failed",

@@ -276,7 +276,7 @@ The story reads as one page of scenes, like a book that writes itself.
 ![Opening at the newest scene, the title page, a turn streaming in, the scene once saved, its
 picture and choices, a failed turn](docs/screenshots/play-screen.jpg)
 
-![Story settings and Memory](docs/screenshots/play-sheets.jpg)
+![Story settings](docs/screenshots/play-sheets.jpg)
 
 - **The page runs on behind the bar.** The bar at the top is a pill of glass (`GlassTopBar`) that
   floats over the page, so a cover or a picture passes under it, and the page dims a little under
@@ -358,6 +358,38 @@ tabs](docs/screenshots/character.jpg)
   story's language (docs/API.md `Sheet`), beside the value it says, so the app picks a color or
   draws a meter without reading words (`features/story/sheet.dart`, `sheet_view.dart`). A
   server from before the parts sends plain lines, and the screen shows those.
+
+## Memory
+
+Memory shows only what the character knows (C6), a group at a time, built from the same cards
+as the character sheet (`features/story/record_widgets.dart`).
+
+![What they are after, the people they know with how each takes them, then factions, places,
+rumors and deeds](docs/screenshots/memory.jpg)
+
+- **What they are after leads the page:** their own goals, lit in the story's color; the leads
+  on offer, with a clock and when it ends for one that runs out; and the story's threads still
+  running, one gone quiet marked so. The threads that ended are folded away under **Closed**
+  with their count, each saying how it ended once opened.
+- **People are cards:** the portrait, or the initials until it is drawn, the name, and how they
+  take the character as a chip at the far edge, in the color of success for warm and friendly,
+  of caution for cold and of danger for hostile. Anyone not known to be alive says so after
+  their name: someone dead is struck through and dimmed, someone believed dead only dimmed,
+  and neither shows how they once took the character.
+- **A faction's chip says where they stand** (W3), tinted by its regard: success for respect and
+  admiration, caution for dislike or for fear alone, danger for contempt.
+- **A rumor reads as talk,** in the italic of the player's own words, with a chip for what the
+  character knows of it (Unconfirmed, Confirmed, False) and when it reached them.
+- **A deed says who saw it:** lit where someone did or it was done in public, quiet where
+  nobody did as far as the character knows. Someone else's deed is led in by an eye or an
+  ear, for one they watched or heard of.
+- **The latest leads.** Rumors and deeds show the newest first. Among the other groups a group
+  shows its first five entries and **Show all**, which opens the rest in place; a filter chip
+  shows one group whole, with every entry.
+- **Color never speaks alone,** and the app never reads the world's words: each chip and tag is
+  worded by the server in the story's language, and the color comes from the value sent beside
+  it (docs/API.md `MemoryView`). From a server older than the values the words show without a
+  tint.
 
 ## The dice
 
@@ -474,8 +506,8 @@ Where the platform has no recognizer, the mic hides. The tracker reports `typed`
 
 - Contrast at 4.5:1 or better everywhere, tested: every text color on every surface, both ends of
   the gold gradient on the page and on a card, what is written on the gradient, the lit tab
-  on its own light over the glass, and the character sheet's colored words on a chip's wash and
-  on a card.
+  on its own light over the glass, and the colored words of the character sheet and of Memory
+  on a chip's wash, over the page and over a card, and on a card.
 - Text scales to 200% without clipping or overflow; the gallery is tested at 2× text. Three things
   that keep a fixed size hold their words back instead of clipping them: large headlines (1.4
   times), a story's glass bar (1.3 times) and the initials in an avatar's circle.

@@ -29,6 +29,10 @@ from engine.state import (
     WorldState,
 )
 from engine.visibility import (
+    Attitude,
+    DeedSeen,
+    Dread,
+    Esteem,
     attitude_label,
     memory_view,
     speech_vocabulary,
@@ -83,7 +87,7 @@ def test_hidden_truth_never_reaches_the_memory_screen():
     ]
     # Carmine smiles at Luca and hates him: the screen shows the smile (W4).
     (carmine,) = view.people
-    assert carmine.attitude_label == "Friendly"
+    assert (carmine.attitude, carmine.attitude_label) == (Attitude.FRIENDLY, "Friendly")
 
 
 def test_people_are_the_ones_the_player_knows():
@@ -94,7 +98,8 @@ def test_people_are_the_ones_the_player_knows():
     assert names == ["Carmine Russo"]
     assert [p.name for p in memory_view(state).people] == ["Carmine Russo", "Gennaro"]
     # Known but never met: no attitude to read.
-    assert memory_view(state).people[1].attitude_label is None
+    gennaro = memory_view(state).people[1]
+    assert (gennaro.attitude, gennaro.attitude_label) == (None, None)
 
 
 def test_known_facts_join_the_lines_true_or_not():
@@ -137,6 +142,17 @@ def test_a_death_shows_only_once_the_player_knows_of_it():
     assert memory_view(unseen).people[0].status_label == "Alive"
     assert memory_view(seen).people[0].status_label == "Dead"
     assert memory_view(presumed).people[0].status_label == "Presumed dead"
+    # The value each label says travels with it, in any language, so a screen needn't read words.
+    said = [
+        (p.status, p.presumed, p.status_label)
+        for view in (unseen, seen, presumed)
+        for p in memory_view(view, ES).people[:1]
+    ]
+    assert said == [
+        ("alive", False, "Con vida"),
+        ("dead", False, "Ha muerto"),
+        ("dead", True, "Se cree que ha muerto"),
+    ]
 
 
 def test_a_change_nobody_told_the_player_leaves_their_belief_alone():
@@ -150,7 +166,8 @@ def test_a_change_nobody_told_the_player_leaves_their_belief_alone():
     )
     back = engine(missing, characters=[CharacterChange(id="carmine", status=CharacterStatus.ALIVE)])
 
-    assert memory_view(back).people[0].status_label == "Missing"
+    carmine = memory_view(back).people[0]
+    assert (carmine.status, carmine.presumed, carmine.status_label) == ("missing", False, "Missing")
 
 
 def own_deed(state: WorldState, deed_id: str, **kwargs) -> None:
@@ -183,6 +200,13 @@ def test_who_saw_a_deed_as_far_as_the_player_knows():
         "spied-on": "No one saw, as far as you know",
         "public": "Done in public",
     }
+    assert {d.id: d.seen for d in memory_view(state).deeds} == {
+        "seen-by-strangers": DeedSeen.SEEN,
+        "seen-by-known": DeedSeen.SEEN,
+        "secret": DeedSeen.UNSEEN,
+        "spied-on": DeedSeen.UNSEEN,  # C6: a watcher they never noticed
+        "public": DeedSeen.PUBLIC,
+    }
 
 
 def test_others_deeds_show_only_when_the_player_knows_of_them():
@@ -200,6 +224,10 @@ def test_others_deeds_show_only_when_the_player_knows_of_them():
     own_deed(state, "rewound", timeline_id="t2")
 
     assert known_labels(state) == {"heard": "You heard of it", "saw": "You saw it"}
+    assert {d.id: d.seen for d in memory_view(state).deeds} == {
+        "heard": DeedSeen.HEARD_OF,
+        "saw": DeedSeen.WATCHED,
+    }
     assert memory_view(state).deeds[0].when_label == "14 May 1974, 21:00"
 
 
@@ -293,6 +321,17 @@ def test_places_and_factions_show_known_status_only():
 )
 def test_standing_in_words(esteem, fear, label):
     assert standing_label(Reputation(esteem=esteem, fear=fear)) == label
+
+
+def test_a_faction_carries_the_esteem_and_the_dread_its_standing_says():
+    state = grounded_world()
+    state.factions["police"].player_reputation = Reputation(esteem=-30, fear=70)
+    state.factions["esposito"].player_reputation = Reputation(esteem=70)
+
+    stands = {f.id: (f.esteem, f.dread, f.standing_label) for f in memory_view(state).factions}
+
+    assert stands["police"] == (Esteem.DISLIKED, Dread.FEARED, "Disliked and feared")
+    assert stands["esposito"] == (Esteem.ADMIRED, Dread.NONE, "Admired")
 
 
 @pytest.mark.parametrize(

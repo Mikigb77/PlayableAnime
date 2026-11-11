@@ -20,6 +20,7 @@ story's language (S10). What the world itself wrote, such as a fact or a deed's 
 the language it was written in.
 """
 
+from enum import StrEnum
 from functools import cached_property
 
 from pydantic import Field
@@ -81,6 +82,44 @@ _DESCENDANT_WORDS = {
 # --- the views, as API.md shapes them ------------------------------------------------------
 
 
+class Attitude(StrEnum):
+    """W4. How someone comes across toward the player character, warmest first."""
+
+    WARM = "warm"
+    FRIENDLY = "friendly"
+    NEUTRAL = "neutral"
+    COLD = "cold"
+    HOSTILE = "hostile"
+
+
+class Esteem(StrEnum):
+    """W3. How well a faction thinks of the player character, best first."""
+
+    ADMIRED = "admired"
+    RESPECTED = "respected"
+    NEUTRAL = "neutral"
+    DISLIKED = "disliked"
+    DESPISED = "despised"
+
+
+class Dread(StrEnum):
+    """W3. How much a faction fears the player character."""
+
+    NONE = "none"
+    WARY = "wary"
+    FEARED = "feared"
+
+
+class DeedSeen(StrEnum):
+    """W2, C6. Who saw a deed, as far as the player character knows."""
+
+    WATCHED = "watched"  # someone else's deed, which the character saw
+    HEARD_OF = "heard_of"  # someone else's deed, which the character heard of
+    SEEN = "seen"  # their own, with someone they noticed watching
+    PUBLIC = "public"  # their own, done where anyone could see
+    UNSEEN = "unseen"  # their own, with nobody watching as far as they know
+
+
 class CharacterCard(EngineModel):
     name: str
     lines: list[str] = Field(default_factory=list)
@@ -88,11 +127,17 @@ class CharacterCard(EngineModel):
 
 
 class PersonEntry(EngineModel):
+    """Someone the player character knows. `attitude`, `status` and `presumed` are the values
+    the two labels say, so a screen can mark a death or tint a feeling without reading words."""
+
     id: str
     name: str
     lines: list[str] = Field(default_factory=list)
+    attitude: Attitude | None = None
     attitude_label: str | None = None
     portrait_url: str | None = None
+    status: str = CharacterStatus.ALIVE.value
+    presumed: bool = False
     status_label: str
 
 
@@ -107,6 +152,8 @@ class FactionEntry(EngineModel):
     id: str
     name: str
     lines: list[str] = Field(default_factory=list)
+    esteem: Esteem = Esteem.NEUTRAL
+    dread: Dread = Dread.NONE
     standing_label: str
 
 
@@ -134,6 +181,7 @@ class DeedEntry(EngineModel):
     id: str
     text: str
     when_label: str
+    seen: DeedSeen
     known_label: str
 
 
@@ -316,21 +364,25 @@ _ATTITUDES = {
     ES: ("Cordial", "Afable", "Neutral", "Distante", "Hostil"),
     CA: ("Cordial", "Afable", "Neutral", "Distant", "Hostil"),
 }
+_ATTITUDE_AT = {attitude: at for at, attitude in enumerate(Attitude)}
 
 
 def attitude_label(affinity: int, language: Language = EN) -> str:
     """How someone comes across toward the player character (W4): what they show, not what
     they feel."""
-    warm, friendly, neutral, cold, hostile = _ATTITUDES[language]
+    return _ATTITUDES[language][_ATTITUDE_AT[attitude_of(affinity)]]
+
+
+def attitude_of(affinity: int) -> Attitude:
     if affinity >= 60:
-        return warm
+        return Attitude.WARM
     if affinity >= 20:
-        return friendly
+        return Attitude.FRIENDLY
     if affinity > -20:
-        return neutral
+        return Attitude.NEUTRAL
     if affinity > -60:
-        return cold
-    return hostile
+        return Attitude.COLD
+    return Attitude.HOSTILE
 
 
 _STANDING = {
@@ -345,23 +397,38 @@ def standing_label(reputation: Reputation, language: Language = EN) -> str:
     """Esteem and fear in words (W3): "Respected and feared", "Despised", "Neutral"; in Spanish
     "Respeto y temor", "Desprecio", "Neutral"; in Catalan "Respecte i temor", "Menyspreu"."""
     admired, respected, disliked, despised, feared, wary, and_, neutral = _STANDING[language]
-    esteem = reputation.esteem
-    if esteem >= 60:
-        words = admired
-    elif esteem >= 20:
-        words = respected
-    elif esteem > -20:
-        words = ""
-    elif esteem > -60:
-        words = disliked
-    else:
-        words = despised
-    fear = feared if reputation.fear >= 60 else wary if reputation.fear >= 20 else ""
+    words = {
+        Esteem.ADMIRED: admired,
+        Esteem.RESPECTED: respected,
+        Esteem.NEUTRAL: "",
+        Esteem.DISLIKED: disliked,
+        Esteem.DESPISED: despised,
+    }[esteem_of(reputation)]
+    fear = {Dread.FEARED: feared, Dread.WARY: wary, Dread.NONE: ""}[dread_of(reputation)]
     if words and fear:
         return f"{words} {and_} {fear}"
     if fear:
         return fear[0].upper() + fear[1:]
     return words or neutral
+
+
+def esteem_of(reputation: Reputation) -> Esteem:
+    esteem = reputation.esteem
+    if esteem >= 60:
+        return Esteem.ADMIRED
+    if esteem >= 20:
+        return Esteem.RESPECTED
+    if esteem > -20:
+        return Esteem.NEUTRAL
+    if esteem > -60:
+        return Esteem.DISLIKED
+    return Esteem.DESPISED
+
+
+def dread_of(reputation: Reputation) -> Dread:
+    if reputation.fear >= 60:
+        return Dread.FEARED
+    return Dread.WARY if reputation.fear >= 20 else Dread.NONE
 
 
 # A4: how well they have a technique, as Status says it after the technique's name.
@@ -884,11 +951,16 @@ class _Knowledge:
 
     def known_label(self, deed: Deed) -> str:
         """Who saw it, as far as the player character knows (W2, C6)."""
+        return self.seen(deed)[1]
+
+    def seen(self, deed: Deed) -> tuple[DeedSeen, str]:
+        """W2, C6. Who saw a deed as far as the player character knows, as a value and in
+        words."""
         words = _WORDS[self.language]
         if deed.actor_id != self.player_id:
             if self.player_id in deed.witness_ids:
-                return words["saw"]
-            return words["heard_of"]
+                return DeedSeen.WATCHED, words["saw"]
+            return DeedSeen.HEARD_OF, words["heard_of"]
         # In stopped time every witness is immune to the stop and unnoticed (W10a), unless the
         # world later reveals them by taking them off `unnoticed_witness_ids`.
         noticed = [
@@ -900,13 +972,13 @@ class _Knowledge:
             names = [n for n in (self.name_of(w) for w in noticed) if n]
             others = len(noticed) - len(names)
             if not names:
-                return words["seen"]
+                return DeedSeen.SEEN, words["seen"]
             if others:
                 names.append(words["others" if others > 1 else "other"].format(count=others))
-            return words["seen_by"].format(names=_join(names, self.language))
+            return DeedSeen.SEEN, words["seen_by"].format(names=_join(names, self.language))
         if deed.visibility is Visibility.PUBLIC and not deed.in_stopped_time:
-            return words["public"]
-        return words["unseen"]
+            return DeedSeen.PUBLIC, words["public"]
+        return DeedSeen.UNSEEN, words["unseen"]
 
     # --- entries --------------------------------------------------------------------------
 
@@ -917,9 +989,7 @@ class _Knowledge:
         lines += self.facts_about(c.id)
         attitude = None
         if self.player_id in c.met_by:
-            attitude = attitude_label(
-                c.attitude_toward(self.player_id).shown_affinity, self.language
-            )
+            attitude = attitude_of(c.attitude_toward(self.player_id).shown_affinity)
         status, presumed = believed_status(
             c.status_history, c.status.value, self.player_id, initial=CharacterStatus.ALIVE.value
         )
@@ -927,7 +997,12 @@ class _Knowledge:
             id=c.id,
             name=c.name,
             lines=lines,
-            attitude_label=attitude,
+            attitude=attitude,
+            attitude_label=(
+                None if attitude is None else _ATTITUDES[self.language][_ATTITUDE_AT[attitude]]
+            ),
+            status=status,
+            presumed=presumed and status == CharacterStatus.DEAD.value,
             status_label=_status_words(status, presumed, self.language),
         )
 
@@ -969,6 +1044,8 @@ class _Knowledge:
             id=f.id,
             name=f.name,
             lines=lines,
+            esteem=esteem_of(f.player_reputation),
+            dread=dread_of(f.player_reputation),
             standing_label=standing_label(f.player_reputation, self.language),
         )
 
@@ -1353,7 +1430,7 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
         leads.append(LeadEntry(id=lead.id, text=lead.text, expires_label=expires))
     rumors = k.rumors()
     deeds = [
-        DeedEntry(id=d.id, text=text, when_label=when, known_label=known)
+        DeedEntry(id=d.id, text=text, when_label=when, seen=k.seen(d)[0], known_label=known)
         for d, text, when, known in k.told_deeds()
     ]
     threads = [

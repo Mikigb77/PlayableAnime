@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/l10n.dart';
+import 'package:playable_anime/features/story/memory_screen.dart';
 import 'package:playable_anime/features/story/sheet_view.dart';
 import 'package:playable_anime/features/story/status_screen.dart';
 
@@ -77,17 +78,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('memory at 2× text', (tester) async {
-    await AppHarness().launch(tester, location: '/story/story_ninth_peak', textScale: 2);
-    await tester.tap(find.byTooltip(l10n.storyMemory));
-    await settle(tester, frames: 10);
-    final list = find.byType(Scrollable).last;
-    for (var i = 0; i < 12; i++) {
-      await tester.drag(list, const Offset(0, -600), warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 400));
-    }
-    expect(tester.takeException(), isNull);
-  });
+  // Memory with every group opened, in English and in Spanish, whose words run longer.
+  for (final language in ['en', 'es']) {
+    testWidgets('memory at 2× text ($language)', (tester) async {
+      tester.platformDispatcher.localesTestValue = [Locale(language)];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final words = await AppLocalizations.delegate.load(Locale(language));
+      await AppHarness().launch(tester, location: '/story/story_ninth_peak', textScale: 2);
+      await tester.tap(find.byTooltip(words.storyMemory));
+      await settle(tester, frames: 10);
+      final list = find
+          .descendant(of: find.byType(MemoryScreen), matching: find.byType(Scrollable))
+          .first;
+      // The threads that ended and the people past the first few are opened on the way down.
+      for (final key in ['memory.closed', 'memory.more.people']) {
+        final button = find.byKey(ValueKey(key));
+        await tester.scrollUntilVisible(button, 300, scrollable: list);
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(button);
+        await settle(tester);
+        expect(tester.takeException(), isNull, reason: key);
+      }
+      for (var i = 0; i < 16; i++) {
+        await tester.drag(list, const Offset(0, -600), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   // The character sheet, a tab at a time, in English and in Spanish, whose words run longer.
   for (final language in ['en', 'es']) {
