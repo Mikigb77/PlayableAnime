@@ -169,7 +169,7 @@ these functions and saves the result.
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and the appearance a stated lasting change (`look_change`) leaves a character with. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar, and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). |
-| `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. `status_view` sends the sheet twice: in parts (`SheetView`, API.md's `Sheet`: who they are, condition, each ladder up to their own rung, belongings, skills, powers, techniques, traits and talents), which the app lays out, and as plain lines for apps from before the parts. Every label it adds is worded here, in the story's language, beside the value it says, with the dice a skill or a technique throws read from `engine/levels.py`. |
+| `engine/visibility.py` | The C6 projection: `memory_view` and `status_view` in the shapes of API.md's `MemoryView` and `StatusView`. `status_view` sends the sheet twice: in parts (`SheetView`, API.md's `Sheet`: who they are, condition, each ladder up to their own rung, belongings, skills, powers, techniques, traits and talents), which the app lays out, and as plain lines for apps from before the parts. Every label it adds is worded here, in the story's language, beside the value it says, with the dice a skill or a technique throws read from `engine/levels.py`. `memory_view` does the same for Memory: how someone takes the character (`attitude`), whether they live as far as the character knows (`status`, `presumed`), a faction's regard and fear (`esteem`, `dread`) and who saw a deed (`seen`), each beside its label. |
 | `engine/director/` | The story director (W16, E4, E6, E7, N1, N2, S2, M1, M2): stall pressure, where events come from and the seeded deck, threads, goals and leads, suggestions, pictures and the rolls inside a time skip. See [The story director](#the-story-director). |
 | `engine/world/` | The living world (WS10): deeds and witnesses (`deeds`), how severe a deed is by the world's norms (`norms`), rumors (`rumors`), attitudes, grudges, reputation and threat (`knowledge`), faction answers (`answers`, `arrivals`), discovery from traces (`discovery`), word of a death reaching close ties and the victims' factions (`aftermath`), deeds told in the world's words (`telling`), emerging, dormant and reviving cast (`cast`), births (`births`), clocks (`clocks`), the world tick (`tick`), maps and travel times (`geography`), the pending events it schedules (`scheduling`), their handlers (`events`), the catch-up loop (`passage`) and every delay, reach and cap in one place (`tuning`). No model calls. |
 | `engine/pipeline.py` | The functions the turn graph calls. `catch_up`, `apply_event` and `record_consequences` call `engine.world`; `resolve` calls `engine.resolve`; `direct` and `record_direction` call `engine.director`. |
@@ -1523,6 +1523,15 @@ object, and the raw world state as memory.
   draws the condition, the path and the tabs. The app words only its own chrome, such as the
   tabs' names and "Cost:"; every label about the character comes from the server in the story's
   language. A server from before the parts sends plain lines, and the screen shows those.
+- **Memory** (C6, `app/lib/features/story/memory.dart` and `memory_screen.dart`). The server
+  sends only what the character knows, and the app lays it out a group at a time: what they are
+  after (goals, leads, the story's threads, with the ones that ended folded away), people,
+  factions, places, rumors and deeds, the latest rumor and deed first. `memory.dart` reads the
+  answer leniently and takes a fate, a feeling or a regard from the value beside its label,
+  falling back to a server from before the values, which worded a fate in English. Each entry
+  is its own row of the page's list, so a long story builds only what is in view; among the
+  other groups a group shows its first five (`MemoryScreen.glance`) and a way to them all.
+  Character and Memory share their cards, chips and entries (`record_widgets.dart`).
 - **The dice** (S15, A3, `app/lib/features/story/dice/` and `replay/`). The app never rolls: it
   shows the dice the server sent. `dice/throw_sim.dart` is the prototype's physics ported line by
   line, a fixed-step simulation that lands each die on the face it was given (twenty ways to throw

@@ -5,12 +5,14 @@ import '../../core/l10n.dart';
 import '../../core/names.dart';
 import '../../design/design.dart';
 import 'memory.dart';
+import 'record_widgets.dart';
 
-/// What the character knows, in the world's words (C6, G16): who they are, the people, places
-/// and factions they have met, their goals and leads, rumors marked unconfirmed unless the character
-/// knows for themselves whether they are so, their own deeds
-/// and who saw them, and the story's threads (N1). The server sends only what the character
-/// knows, so nothing here can spoil the story.
+/// What the character knows, in the world's words (C6, G16), a group at a time: what they are
+/// after (their goals, the leads on offer and the story's threads, N1), the people they know
+/// and how each takes them, where they stand with the world's factions, the places they have
+/// been, what they have heard, marked unconfirmed unless they know for themselves whether it
+/// is so, and what was done and who saw it. The server sends only what the character knows,
+/// so nothing here can spoil the story.
 class MemoryScreen extends ConsumerStatefulWidget {
   const MemoryScreen({super.key, required this.storyId, this.accent});
 
@@ -20,6 +22,9 @@ class MemoryScreen extends ConsumerStatefulWidget {
   /// opened this page. The app's own otherwise.
   final GenreAccent? accent;
 
+  /// How many entries a group shows among the others. Alone, or opened, it shows them all.
+  static const glance = 5;
+
   @override
   ConsumerState<MemoryScreen> createState() => _MemoryScreenState();
 }
@@ -27,6 +32,12 @@ class MemoryScreen extends ConsumerStatefulWidget {
 class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   /// The one group shown, or every group when null.
   MemorySection? _only;
+
+  /// The groups opened in full among the others.
+  final _opened = <MemorySection>{};
+
+  /// Whether the threads that ended are shown.
+  bool _closedShown = false;
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +55,14 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
             final only = sections.contains(_only) ? _only : null;
             return RefreshIndicator(
               onRefresh: () => ref.refresh(memory.future),
+              // Each entry is a child of the list, so a long story builds only what is in view.
               child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: Space.xxxl),
                 children: [
-                  ContentColumn.reading(
+                  _Gutter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(Space.gutter, 0, Space.gutter, Space.lg),
+                      padding: const EdgeInsets.only(bottom: Space.lg),
                       child: Text(
                         l10n.memorySubtitle,
                         style: Theme.of(
@@ -59,7 +72,7 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
                     ),
                   ),
                   if (view.character case final character?)
-                    ContentColumn.reading(child: _CharacterCard(character: character)),
+                    _Gutter(child: _CharacterCard(character: character)),
                   if (sections.isEmpty)
                     EmptyState(
                       icon: Icons.menu_book_outlined,
@@ -75,10 +88,15 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
                         onSelected: (section) => setState(() => _only = section),
                       ),
                     for (final section in sections)
-                      if (only == null || only == section)
-                        ContentColumn.reading(
-                          child: _Section(section: section, view: view),
+                      if (only == null || only == section) ...[
+                        ContentColumn.reading(child: SectionLabel(_sectionTitle(l10n, section))),
+                        ..._entries(
+                          view,
+                          section,
+                          whole:
+                              only == section || sections.length == 1 || _opened.contains(section),
                         ),
+                      ],
                   ],
                 ],
               ),
@@ -88,17 +106,104 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
       ),
     );
   }
+
+  /// A group's entries, each a row of the page. Among the other groups it shows its first
+  /// few and a way to the rest.
+  List<Widget> _entries(MemoryView view, MemorySection section, {required bool whole}) {
+    final l10n = context.l10n;
+    final List<Widget> entries;
+    switch (section) {
+      case MemorySection.objectives:
+        // Never cut short: what they are after is all of it wanted at a glance.
+        return _objectives(view);
+      case MemorySection.people:
+        entries = [for (final person in view.people) _PersonEntry(person: person)];
+      case MemorySection.factions:
+        entries = [for (final faction in view.factions) _FactionEntry(faction: faction)];
+      case MemorySection.places:
+        entries = [for (final place in view.places) _PlaceEntry(place: place)];
+      // The server sends what was heard and what was done oldest first. The latest leads here.
+      case MemorySection.rumors:
+        entries = [for (final rumor in view.rumors.reversed) _RumorEntry(rumor: rumor)];
+      case MemorySection.deeds:
+        entries = [for (final deed in view.deeds.reversed) _DeedEntry(deed: deed)];
+    }
+    final shown = whole ? entries : entries.take(MemoryScreen.glance);
+    return [
+      for (final entry in shown) _Gutter(child: entry),
+      if (shown.length < entries.length)
+        _Gutter(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: ValueKey('memory.more.${section.name}'),
+              onPressed: () => setState(() => _opened.add(section)),
+              icon: const Icon(Icons.expand_more_rounded, size: 20),
+              label: Text(l10n.memoryShowAll(entries.length)),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// What the character is after: what they set themselves, what is on offer, and the story's
+  /// threads still running (N1), with the ones that ended folded away under them.
+  List<Widget> _objectives(MemoryView view) {
+    final l10n = context.l10n;
+    final open = view.openThreads.toList();
+    final closed = view.closedThreads.toList();
+    final groups = <(String, List<Widget>)>[
+      if (view.goals.isNotEmpty)
+        (l10n.memoryGoals, [for (final goal in view.goals) _GoalEntry(goal: goal)]),
+      if (view.leads.isNotEmpty)
+        (l10n.memoryLeads, [for (final lead in view.leads) _LeadEntry(lead: lead)]),
+      if (open.isNotEmpty)
+        (l10n.memoryThreads, [for (final thread in open) _ThreadEntry(thread: thread)]),
+    ];
+    return [
+      for (final (i, (label, entries)) in groups.indexed) ...[
+        _Gutter(child: RecordGroupLabel(label, first: i == 0)),
+        for (final entry in entries) _Gutter(child: entry),
+      ],
+      if (closed.isNotEmpty) ...[
+        _Gutter(
+          child: _Fold(
+            label: l10n.memoryClosed,
+            count: closed.length,
+            open: _closedShown,
+            onTap: () => setState(() => _closedShown = !_closedShown),
+          ),
+        ),
+        if (_closedShown)
+          for (final thread in closed) _Gutter(child: _ThreadEntry(thread: thread)),
+      ],
+    ];
+  }
 }
 
 String _sectionTitle(AppLocalizations l10n, MemorySection section) => switch (section) {
+  MemorySection.objectives => l10n.memoryObjectives,
   MemorySection.people => l10n.memoryPeople,
-  MemorySection.places => l10n.memoryPlaces,
   MemorySection.factions => l10n.memoryFactions,
-  MemorySection.goals => l10n.memoryGoals,
+  MemorySection.places => l10n.memoryPlaces,
   MemorySection.rumors => l10n.memoryRumors,
   MemorySection.deeds => l10n.memoryDeeds,
-  MemorySection.threads => l10n.memoryThreads,
 };
+
+/// A row of the page: in the reading column, clear of the screen's edges.
+class _Gutter extends StatelessWidget {
+  const _Gutter({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ContentColumn.reading(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      child: child,
+    ),
+  );
+}
 
 /// Chips to show one group at a time. They scroll sideways on a narrow screen.
 class _Filters extends StatelessWidget {
@@ -156,55 +261,125 @@ class _CharacterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.lucid;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(Space.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return RecordCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
+              PortraitAvatar(
+                name: character.name,
+                url: character.portraitUrl,
+                size: 56,
+                ring: true,
+              ),
+              const SizedBox(width: Space.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.memoryYou.toUpperCase(),
+                      style: context.lucidText.overline.copyWith(color: colors.accent),
+                    ),
+                    const SizedBox(height: Space.xxs),
+                    Semantics(
+                      header: true,
+                      child: Text(character.name.asHeading, style: theme.textTheme.headlineSmall),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (character.lines.isNotEmpty) const SizedBox(height: Space.sm),
+          for (final line in character.lines) RecordLine(line),
+        ],
+      ),
+    );
+  }
+}
+
+/// A line under an entry with a small mark before it: until when, since when, who saw.
+class _Note extends StatelessWidget {
+  const _Note(this.text, {this.icon, this.color});
+
+  final String text;
+  final IconData? icon;
+
+  /// The mark's color and the words'. Quiet without one.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = color ?? context.lucid.textMuted;
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon case final icon?) ...[
+            // Level with the first line of the words, at any text size.
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: ExcludeSemantics(child: Icon(icon, size: 15, color: tint)),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(text, style: context.lucidText.meta.copyWith(color: tint)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A header that folds what is under it away: its name, how many it holds, and which way it
+/// is turned.
+class _Fold extends StatelessWidget {
+  const _Fold({required this.label, required this.count, required this.open, required this.onTap});
+
+  final String label;
+  final int count;
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs, bottom: Space.xs),
+      child: Semantics(
+        button: true,
+        expanded: open,
+        child: InkWell(
+          key: const ValueKey('memory.closed'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(Radii.md),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: Layout.minTouch),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+              child: Row(
                 children: [
-                  PortraitAvatar(
-                    name: character.name,
-                    url: character.portraitUrl,
-                    size: 64,
-                    ring: true,
+                  Icon(
+                    open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    size: 20,
+                    color: colors.textSecondary,
                   ),
-                  const SizedBox(width: Space.lg),
+                  const SizedBox(width: Space.sm),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.memoryYou.toUpperCase(),
-                          style: context.lucidText.overline.copyWith(color: colors.accent),
-                        ),
-                        const SizedBox(height: Space.xxs),
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            character.name.asHeading,
-                            style: theme.textTheme.headlineSmall,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelLarge!.copyWith(color: colors.textSecondary),
                     ),
                   ),
+                  Text('$count', style: context.lucidText.meta),
                 ],
               ),
-              if (character.lines.isNotEmpty) const SizedBox(height: Space.md),
-              for (final line in character.lines)
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.xs),
-                  child: Text(
-                    line,
-                    style: context.lucidText.narration.copyWith(fontSize: 16, height: 1.5),
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -212,275 +387,36 @@ class _CharacterCard extends StatelessWidget {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.section, required this.view});
+/// Something the character means to do (N2).
+class _GoalEntry extends StatelessWidget {
+  const _GoalEntry({required this.goal});
 
-  final MemorySection section;
-  final MemoryView view;
+  final MemoryGoal goal;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final entries = switch (section) {
-      MemorySection.people => [for (final p in view.people) _PersonEntry(person: p)],
-      MemorySection.places => [for (final p in view.places) _PlaceEntry(place: p)],
-      MemorySection.factions => [for (final f in view.factions) _FactionEntry(faction: f)],
-      MemorySection.goals => [
-        for (final goal in view.goals)
-          _NoteEntry(note: goal, icon: Icons.flag_outlined, kind: l10n.memoryGoal),
-        for (final lead in view.leads)
-          _NoteEntry(note: lead, icon: Icons.explore_outlined, kind: l10n.memoryLead),
-      ],
-      MemorySection.rumors => [
-        for (final rumor in view.rumors) _NoteEntry(note: rumor, icon: Icons.hearing_outlined),
-      ],
-      MemorySection.deeds => [
-        for (final deed in view.deeds) _NoteEntry(note: deed, icon: Icons.history_edu_outlined),
-      ],
-      MemorySection.threads => [for (final t in view.threads) _ThreadEntry(thread: t)],
-    };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [SectionLabel(_sectionTitle(l10n, section)), ...entries],
-    );
-  }
+  Widget build(BuildContext context) =>
+      RecordEntry(icon: Icons.flag_outlined, lit: true, title: goal.text);
 }
 
-/// An entry's frame: a leading mark, the title, a label on the right and the lines below.
-class _Entry extends StatelessWidget {
-  const _Entry({
-    required this.leading,
-    required this.title,
-    this.titleStyle,
-    this.tag,
-    this.trailing,
-    this.lines = const [],
-    this.footer,
-  });
+/// Something on offer (W13), and until when where it runs out.
+class _LeadEntry extends StatelessWidget {
+  const _LeadEntry({required this.lead});
 
-  final Widget leading;
-  final String title;
-  final TextStyle? titleStyle;
-
-  /// A short state next to the title, such as "Presumed dead".
-  final String? tag;
-  final String? trailing;
-  final List<String> lines;
-  final Widget? footer;
+  final MemoryLead lead;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.lucid;
-    return MergeSemantics(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.gutter, vertical: Space.sm),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            leading,
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.xxs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(title, style: titleStyle ?? theme.textTheme.titleMedium),
-                      if (tag case final tag?) _Tag(tag),
-                    ],
-                  ),
-                  if (trailing case final trailing?) ...[
-                    const SizedBox(height: Space.xxs),
-                    Text(trailing, style: context.lucidText.meta.copyWith(color: colors.accent)),
-                  ],
-                  for (final line in lines)
-                    Padding(
-                      padding: const EdgeInsets.only(top: Space.xxs),
-                      child: Text(
-                        line,
-                        style: theme.textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
-                      ),
-                    ),
-                  ?footer,
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag(this.text, {this.color});
-
-  final String text;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.lucid;
-    final tint = color ?? colors.textMuted;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: tint.withValues(alpha: 0.6)),
-      ),
-      child: Text(text.toUpperCase(), style: context.lucidText.overline.copyWith(color: tint)),
-    );
-  }
-}
-
-/// A round mark for entries without a picture.
-class _Mark extends StatelessWidget {
-  const _Mark(this.icon, {this.size = 44});
-
-  final IconData icon;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(Radii.md),
-      ),
-      child: Icon(icon, size: size * 0.48, color: context.lucid.textSecondary),
-    ),
+  Widget build(BuildContext context) => RecordEntry(
+    icon: Icons.explore_outlined,
+    title: lead.text,
+    titleStyle: Theme.of(context).textTheme.bodyLarge,
+    children: [
+      if (lead.expiresLabel case final expires?)
+        _Note(expires, icon: Icons.schedule_rounded, color: context.lucid.caution),
+    ],
   );
 }
 
-class _PersonEntry extends StatelessWidget {
-  const _PersonEntry({required this.person});
-
-  final MemoryPerson person;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.lucid;
-    final fate = person.fate;
-    final gone = fate == Fate.dead || fate == Fate.presumedDead;
-    return _Entry(
-      leading: Opacity(
-        opacity: gone ? 0.55 : 1,
-        child: PortraitAvatar(name: person.name, url: person.portraitUrl, size: 44),
-      ),
-      title: person.name.asHeading,
-      titleStyle: theme.textTheme.titleMedium!.copyWith(
-        color: gone ? colors.textMuted : null,
-        decoration: fate == Fate.dead ? TextDecoration.lineThrough : null,
-        decorationColor: colors.textMuted,
-      ),
-      tag: fate == Fate.alive ? null : person.statusLabel,
-      trailing: gone ? null : person.attitudeLabel,
-      lines: person.lines,
-    );
-  }
-}
-
-class _PlaceEntry extends StatelessWidget {
-  const _PlaceEntry({required this.place});
-
-  final MemoryPlace place;
-
-  @override
-  Widget build(BuildContext context) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final url = place.imageUrl;
-    return _Entry(
-      leading: url == null
-          ? const _Mark(Icons.place_outlined)
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(Radii.md),
-              child: SizedBox(
-                width: 64,
-                height: 44,
-                child: Image(
-                  image: appImage(url, cacheWidth: (64 * dpr).round()),
-                  fit: BoxFit.cover,
-                  excludeFromSemantics: true,
-                  errorBuilder: (_, _, _) => const _Mark(Icons.place_outlined),
-                ),
-              ),
-            ),
-      title: place.name.asHeading,
-      lines: place.lines,
-    );
-  }
-}
-
-class _FactionEntry extends StatelessWidget {
-  const _FactionEntry({required this.faction});
-
-  final MemoryFaction faction;
-
-  @override
-  Widget build(BuildContext context) => _Entry(
-    leading: const _Mark(Icons.shield_outlined),
-    title: faction.name.asHeading,
-    trailing: faction.standingLabel.isEmpty ? null : faction.standingLabel,
-    lines: faction.lines,
-  );
-}
-
-class _NoteEntry extends StatelessWidget {
-  const _NoteEntry({required this.note, required this.icon, this.kind});
-
-  final MemoryNote note;
-  final IconData icon;
-
-  /// Goal or lead, where both share a group.
-  final String? kind;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.lucid;
-    final l10n = context.l10n;
-    // A rumor is talk, set like a quote, with what the character knows of it (C6).
-    final certainty = switch (note.certainty) {
-      RumorCertainty.unconfirmed => _Tag(l10n.memoryUnconfirmed, color: colors.caution),
-      RumorCertainty.confirmed => _Tag(l10n.memoryConfirmed, color: colors.success),
-      RumorCertainty.wrong => _Tag(l10n.memoryFalse, color: colors.danger),
-      null => null,
-    };
-    return _Entry(
-      leading: _Mark(icon, size: 36),
-      title: note.text,
-      titleStyle: note.certainty != null
-          ? context.lucidText.playerAction.copyWith(color: colors.textPrimary)
-          : theme.textTheme.bodyLarge,
-      tag: kind,
-      lines: const [],
-      footer: Padding(
-        padding: const EdgeInsets.only(top: Space.xxs),
-        child: Wrap(
-          spacing: Space.sm,
-          runSpacing: Space.xxs,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            ?certainty,
-            if (note.labels.isNotEmpty)
-              Text(
-                note.labels.join(' · '),
-                style: context.lucidText.meta.copyWith(color: colors.textSecondary),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+/// One of the story's threads (N1): running, quiet for now, or how it ended.
 class _ThreadEntry extends StatelessWidget {
   const _ThreadEntry({required this.thread});
 
@@ -493,20 +429,234 @@ class _ThreadEntry extends StatelessWidget {
     final colors = context.lucid;
     final status = thread.status;
     final label = switch (status) {
-      ThreadStatus.open => l10n.threadOpen,
+      ThreadStatus.open => null,
       ThreadStatus.dormant => l10n.threadDormant,
       ThreadStatus.resolved => l10n.threadResolved,
       ThreadStatus.failed => l10n.threadFailed,
       ThreadStatus.abandoned => l10n.threadAbandoned,
       ThreadStatus.resolvedWithoutPlayer => l10n.threadResolvedWithoutPlayer,
     };
-    return _Entry(
-      leading: _Mark(status.isClosed ? Icons.check_rounded : Icons.timeline_rounded, size: 36),
+    final icon = switch (status) {
+      ThreadStatus.open || ThreadStatus.dormant => Icons.timeline_rounded,
+      ThreadStatus.resolved || ThreadStatus.resolvedWithoutPlayer => Icons.check_rounded,
+      ThreadStatus.failed => Icons.close_rounded,
+      ThreadStatus.abandoned => Icons.remove_rounded,
+    };
+    return RecordEntry(
+      icon: icon,
       title: thread.title,
-      titleStyle: theme.textTheme.bodyLarge!.copyWith(
+      titleStyle: theme.textTheme.titleMedium!.copyWith(
         color: status.isClosed ? colors.textMuted : null,
       ),
-      tag: label,
+      trailing: label == null
+          ? null
+          : RecordKind(
+              label,
+              color: switch (status) {
+                ThreadStatus.resolved => colors.success,
+                ThreadStatus.failed => colors.danger,
+                _ => null,
+              },
+            ),
+    );
+  }
+}
+
+/// Someone the character knows: how they take them, whether they live as far as the
+/// character knows (C1), and what is known of them.
+class _PersonEntry extends StatelessWidget {
+  const _PersonEntry({required this.person});
+
+  final MemoryPerson person;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    final fate = person.fate;
+    final gone = fate == Fate.dead || fate == Fate.presumedDead;
+    final tone = switch (person.attitude) {
+      Attitude.warm || Attitude.friendly => colors.success,
+      Attitude.cold => colors.caution,
+      Attitude.hostile => colors.danger,
+      Attitude.neutral || null => null,
+    };
+    return RecordEntry(
+      // Their name follows, so the portrait says nothing of its own to a screen reader.
+      leading: ExcludeSemantics(
+        child: Opacity(
+          opacity: gone ? 0.55 : 1,
+          child: PortraitAvatar(name: person.name, url: person.portraitUrl, size: 44),
+        ),
+      ),
+      title: person.name.asHeading,
+      titleStyle: theme.textTheme.titleMedium!.copyWith(
+        color: gone ? colors.textMuted : null,
+        decoration: fate == Fate.dead ? TextDecoration.lineThrough : null,
+        decorationColor: colors.textMuted,
+      ),
+      tag: fate == Fate.alive || person.statusLabel.isEmpty
+          ? null
+          : RecordKind(person.statusLabel, color: gone ? null : colors.caution),
+      // How the dead took them is no longer how things stand.
+      trailing: switch (person.attitudeLabel) {
+        final attitude? when !gone => RecordChip(attitude, tone: tone),
+        _ => null,
+      },
+      children: [for (final line in person.lines) RecordLine(line)],
+    );
+  }
+}
+
+/// A faction the character knows of, and where they stand with it (W3).
+class _FactionEntry extends StatelessWidget {
+  const _FactionEntry({required this.faction});
+
+  final MemoryFaction faction;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lucid;
+    final tone = switch (faction.esteem) {
+      Esteem.admired || Esteem.respected => colors.success,
+      Esteem.disliked => colors.caution,
+      Esteem.despised => colors.danger,
+      // Fear alone is no friend's regard.
+      Esteem.neutral => faction.feared ? colors.caution : null,
+    };
+    return RecordEntry(
+      icon: Icons.shield_outlined,
+      title: faction.name.asHeading,
+      trailing: faction.standingLabel.isEmpty
+          ? null
+          : RecordChip(faction.standingLabel, tone: tone),
+      children: [for (final line in faction.lines) RecordLine(line)],
+    );
+  }
+}
+
+/// A place the character has been or heard of, with its picture where it has one.
+class _PlaceEntry extends StatelessWidget {
+  const _PlaceEntry({required this.place});
+
+  final MemoryPlace place;
+
+  @override
+  Widget build(BuildContext context) => RecordEntry(
+    leading: _PlacePicture(url: place.imageUrl),
+    title: place.name.asHeading,
+    children: [for (final line in place.lines) RecordLine(line)],
+  );
+}
+
+/// A place's picture, or a mark of the same size where it has none, so names line up.
+class _PlacePicture extends StatelessWidget {
+  const _PlacePicture({required this.url});
+
+  final String? url;
+
+  static const double _width = 56;
+  static const double _height = 44;
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final mark = ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: Icon(Icons.place_outlined, size: 20, color: context.lucid.textSecondary),
+    );
+    return ExcludeSemantics(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: SizedBox(
+          width: _width,
+          height: _height,
+          child: switch (url) {
+            null => mark,
+            final url => Image(
+              image: appImage(url, cacheWidth: (_width * dpr).round()),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => mark,
+            ),
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Something people say (W2), set as talk, with what the character knows of it (C6) and when
+/// it reached them.
+class _RumorEntry extends StatelessWidget {
+  const _RumorEntry({required this.rumor});
+
+  final MemoryRumor rumor;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = context.lucid;
+    final (label, tone, icon) = switch (rumor.certainty) {
+      RumorCertainty.unconfirmed => (
+        l10n.memoryUnconfirmed,
+        colors.caution,
+        Icons.help_outline_rounded,
+      ),
+      RumorCertainty.confirmed => (l10n.memoryConfirmed, colors.success, Icons.check_rounded),
+      RumorCertainty.wrong => (l10n.memoryFalse, colors.danger, Icons.close_rounded),
+    };
+    return RecordEntry(
+      icon: Icons.format_quote_rounded,
+      title: rumor.text,
+      titleStyle: context.lucidText.playerAction.copyWith(color: colors.textPrimary),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: Space.sm),
+          child: Wrap(
+            spacing: Space.md,
+            runSpacing: Space.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              RecordChip(label, tone: tone, icon: icon),
+              if (rumor.heardLabel case final heard?)
+                Text(heard, style: context.lucidText.meta.copyWith(color: colors.textMuted)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Something done (W1): what, when, and who saw it as far as the character knows (W2, C6).
+class _DeedEntry extends StatelessWidget {
+  const _DeedEntry({required this.deed});
+
+  final MemoryDeed deed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lucid;
+    return RecordEntry(
+      // Someone else's deed is led in by how it reached the character.
+      icon: switch (deed.seen) {
+        DeedSeen.watched => Icons.visibility_outlined,
+        DeedSeen.heardOf => Icons.hearing_outlined,
+        _ => Icons.history_edu_outlined,
+      },
+      title: deed.text,
+      titleStyle: Theme.of(context).textTheme.bodyLarge,
+      children: [
+        if (deed.whenLabel case final date?) _Note(date),
+        if (deed.knownLabel case final known?)
+          // Their own deed says who knows of it: lit where someone does.
+          switch (deed.seen) {
+            DeedSeen.seen => _Note(known, icon: Icons.visibility_outlined, color: colors.accent),
+            DeedSeen.public => _Note(known, icon: Icons.groups_outlined, color: colors.accent),
+            DeedSeen.unseen => _Note(known, icon: Icons.visibility_off_outlined),
+            _ => _Note(known),
+          },
+      ],
     );
   }
 }
