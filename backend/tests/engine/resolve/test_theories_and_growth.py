@@ -21,6 +21,7 @@ from engine.contracts import (
     PowerGrant,
     PowerTheory,
     ShowStrength,
+    StepFacts,
     Teacher,
     TheoryAbout,
 )
@@ -37,6 +38,7 @@ from engine.state import (
     HitMode,
     Item,
     LadderPosition,
+    PassingState,
     PlaceStatus,
     Power,
     PowerAxes,
@@ -512,6 +514,61 @@ def test_hidden_strength_npcs_see_what_they_can_perceive_until_the_reveal():
         turn += 1
     assert after.rumors
     assert actor_might(shown.state, "lin") >= 2
+
+
+def _hidden_expert():
+    state = disguised_expert()
+    hide = step(
+        "hide my cultivation",
+        ActionKind.INSTANT,
+        1,
+        verb="hide",
+        show_strength=ShowStrength(ladder_id="realms", shown_rung=0),
+    )
+    return play(state, Intent(steps=[hide])).state
+
+
+def test_showing_the_rung_one_truly_stands_on_is_a_reveal():
+    """G20: the real model may name the rung to show ("I let my Core Formation show") where
+    the engine expects none for all of it. That is the same reveal: a deed, and everyone who
+    underestimated them moved at once. Never one more disguise that nobody notices."""
+    named = step(
+        "let my Core Formation show",
+        ActionKind.INSTANT,
+        1,
+        verb="reveal",
+        show_strength=ShowStrength(ladder_id="realms", shown_rung=2),
+    )
+    shown = play(_hidden_expert(), Intent(steps=[named]), turn=4)
+    lin = shown.state.characters["lin"]
+    assert sensing.position(lin, "realms").shown_rung is None
+    assert shown.state.characters["young-master"].attitude_toward("lin").fear >= 40
+    assert [d.kind for d in shown.state.deeds.values()] == ["reveal"]
+    # With nothing hidden, showing that rung changes nothing, as showing all of it would.
+    again = resolve(shown.state, Intent(steps=[named])).steps[0]
+    assert again.outcome_class is OutcomeClass.CERTAIN and "never hidden" in again.reason
+
+
+def test_a_reveal_before_a_crowd_moves_everyone_there_whoever_the_scene_listed():
+    """G20, W2: in the first live story (2026-11-11) the scene before the reveal had dropped
+    the young master from its people, so the reveal "in front of everyone watching" moved him
+    as a bystander who hears of a display, and not as someone who had taken a master for a
+    novice. Before a crowd, everyone the record puts at the place sees it. Without one, only
+    the scene's people do, and nobody asleep does."""
+    reveal = dict(verb="reveal", show_strength=ShowStrength(ladder_id="realms"))
+
+    def fear_after(state, **facts):
+        shown = step("let my cultivation show", ActionKind.INSTANT, 1, **reveal, **facts)
+        played = play(state, Intent(steps=[shown]), turn=4)
+        return played.state.characters["young-master"].attitude_toward("lin").fear
+
+    dropped = _hidden_expert()
+    dropped.scene.present_ids = ["lin"]
+    assert fear_after(dropped.model_copy(deep=True), facts=StepFacts(crowd=True)) >= 40
+    assert fear_after(dropped.model_copy(deep=True)) == 0
+    asleep = _hidden_expert()
+    asleep.characters["young-master"].sheet.condition.states = [PassingState(name="asleep")]
+    assert fear_after(asleep) == 0
 
 
 def test_strength_can_be_hidden_never_inflated():

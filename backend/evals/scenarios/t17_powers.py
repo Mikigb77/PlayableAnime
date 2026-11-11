@@ -1294,7 +1294,8 @@ async def hidden_strength(ev: Eval) -> None:
         ev.check(
             "Wu's attitude shifts at once",
             attitude.fear >= 40 > fear_before,
-            f"{seed}: fear {fear_before} -> {attitude.fear}",
+            f"{seed}: fear {fear_before} -> {attitude.fear} after {as_read([mocked, shown])}, "
+            f"with {mocked.state.scene.present_ids} in the scene",
         )
         reveal = next((d for d in state.deeds.values() if d.kind == "reveal"), None)
         ev.check(

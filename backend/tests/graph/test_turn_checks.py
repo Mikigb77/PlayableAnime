@@ -17,6 +17,7 @@ from engine.contracts import (
     PictureKind,
     PictureTrigger,
     PlannedEvent,
+    Plausibility,
     Resolution,
     SceneEnd,
     ShowStrength,
@@ -24,6 +25,7 @@ from engine.contracts import (
     StepFacts,
     StepResolution,
     StopReason,
+    Stranger,
     SuggestionPlan,
     Theme,
 )
@@ -39,6 +41,7 @@ from engine.state.records import (
     ThreadStatus,
     Transfer,
 )
+from engine.state.scene import Encounter, EncounterKind
 from engine.state.sheet import LadderPosition
 from engine.state.world import EventSize
 from graph.turn.check import (
@@ -121,6 +124,97 @@ def test_unknown_targets_are_kept_as_words():
     assert checked.intent.steps[0].targets == ["a bucket", "senior-brother-jo"]
     assert [i.code for i in checked.issues] == ["unknown_target"]
     assert proposed.steps[0].target_ids == ["zhao", "senior-brother-jo"]  # never mutated
+
+
+def test_a_blow_whose_reading_named_nobody_is_aimed_at_whoever_the_words_point_at():
+    """V3, W1: the real model often leaves target_ids empty. "I cut Han's throat" was read as a
+    killing aimed at no one (2026-11-11), so nobody died on record while the scene told a
+    death. Code finds the target where the words point: the one person of the scene the step
+    names, else those the reading put in its way, else the one they are fighting."""
+    state = cultivation_world()
+
+    def aimed(text, action="x", **extra):
+        checked = check_intent(Intent(steps=[step(text, aim=Aim.KILL, **extra)]), state, action)
+        return checked.intent.steps[0].target_ids, [(i.code, i.subject) for i in checked.issues]
+
+    found = [("target_found", "zhao")]
+    # The step's own words name him, by a word of his name that is his alone there.
+    assert aimed("cut Zhao's throat") == (["zhao"], found)
+    assert aimed("strike down Senior Brother Zhao") == (["zhao"], found)
+    # The player's words do, when the whole action is this step.
+    assert aimed("cut his throat", "I cut Zhao Kun's throat while he dozes") == (["zhao"], found)
+    # Those the reading put in its way, as in a bout (`bouts.against`).
+    in_way = StepFacts(opposition_ids=["zhao"])
+    assert aimed("drive my fingers at his eyes", facts=in_way) == (["zhao"], found)
+    # The one they are fighting.
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT, opponent_ids=["zhao"], started_turn=1, started_s=0
+    )
+    assert aimed("strike again") == (["zhao"], found)
+    state.scene.encounter = None
+    # Past that, nobody: code never picks a victim the words don't point at.
+    assert aimed("lash out") == ([], [("no_target", None)])
+    # Someone the scene doesn't hold is never found by a word of the step.
+    state.characters["elder-mo"].known_by.append("lin")
+    assert aimed("strike down Elder Mo") == ([], [("no_target", None)])
+
+
+def test_a_word_is_a_name_only_as_names_are_written():
+    """V3: a one-word name counts when it is written with a capital inside a sentence, so the
+    "sol" of "under the sun" is nobody, and neither is the word a sentence opens with."""
+    state = cultivation_world()
+    state.characters["zhao"].name, state.characters["zhao"].aliases = "Sol", ["Old Sol"]
+
+    def aimed(text):
+        checked = check_intent(Intent(steps=[step(text, aim=Aim.KILL)]), state, "x")
+        return checked.intent.steps[0].target_ids
+
+    assert aimed("mato al guardia bajo el sol") == []
+    assert aimed("Sol sale y ataco") == []
+    assert aimed("Old habits: strike first") == []
+    assert aimed("mato a Sol") == ["zhao"]
+    assert aimed("strike old Sol down") == ["zhao"]
+    assert aimed("mato l'Sol") == ["zhao"]  # after an article joined by an apostrophe
+
+
+def test_what_a_reading_already_aims_a_blow_at_stands():
+    """V3, F1: a target the reading gave, a stranger to make real and harm turned on oneself
+    are left as read, and so is a step that harms nobody."""
+    state = cultivation_world()
+    state.characters["elder-mo"].location_id = "well"
+    state.scene.present_ids.append("elder-mo")
+    in_way = StepFacts(opposition_ids=["zhao"])
+    stranger = Stranger(who="a passing disciple", plausibility=Plausibility.PLAUSIBLE)
+    for extra in (
+        dict(aim=Aim.KILL, target_ids=["elder-mo"], facts=in_way),
+        dict(aim=Aim.KILL, target_ids=["lin"]),
+        dict(aim=Aim.KILL, stranger=stranger, facts=in_way),
+        dict(aim=Aim.NONE, facts=in_way),
+    ):
+        proposed = step("push past Zhao", **extra)
+        checked = check_intent(Intent(steps=[proposed]), state, "I push past Zhao")
+        assert checked.intent.steps[0].target_ids == proposed.target_ids
+        assert checked.issues == []
+    # Two people the words name are no one person: those in the way, or nobody.
+    both = step("cut down Zhao and Elder Mo", aim=Aim.KILL)
+    checked = check_intent(Intent(steps=[both]), state, "x")
+    assert checked.intent.steps[0].target_ids == []
+
+
+def test_words_that_are_exactly_someones_name_are_that_person():
+    """V3: a target the reading gave in words instead of by id is the person those words name:
+    someone in the scene first, else someone the player character knows, whatever the step
+    does. Words that name nobody, or more than one person, stay words."""
+    state = cultivation_world()
+    state.characters["elder-mo"].known_by.append("lin")
+    said = step(targets=["senior brother zhao", "a bucket", "Elder Mo", "the elder"])
+    checked = check_intent(Intent(steps=[said]), state, "x")
+    assert checked.intent.steps[0].target_ids == ["zhao", "elder-mo"]
+    assert checked.intent.steps[0].targets == ["a bucket", "the elder"]
+    assert [(i.code, i.subject) for i in checked.issues] == [
+        ("target_by_name", "zhao"),
+        ("target_by_name", "elder-mo"),
+    ]
 
 
 def test_unknown_opposition_is_kept_as_words():
@@ -217,8 +311,12 @@ def test_a_show_of_strength_alone_stays_as_read_and_one_on_no_ladder_of_the_worl
     """G20: a step that only hides or shows strength is code's to settle as before. A ladder
     the world doesn't have is a show of nothing, so the step plays without it."""
     hide = step("hide my cultivation", show_strength=ShowStrength(ladder_id="realms", shown_rung=0))
-    checked = check_intent(Intent(steps=[hide]), cultivation_world(), "x")
+    checked = check_intent(Intent(steps=[hide]), hidden_expert(), "x")
     assert checked.intent.steps == [hide] and checked.issues == []
+    # Showing the very rung they stand on is showing all of it (`sensing.meant`).
+    named = step("let it show", show_strength=ShowStrength(ladder_id="realms", shown_rung=2))
+    checked = check_intent(Intent(steps=[named]), hidden_expert(), "x")
+    assert checked.intent.steps[0].show_strength == ShowStrength(ladder_id="realms")
     odd = step("walk on", show_strength=ShowStrength(ladder_id="levels"))
     checked = check_intent(Intent(steps=[odd]), cultivation_world(), "x")
     assert checked.intent.steps[0].show_strength is None

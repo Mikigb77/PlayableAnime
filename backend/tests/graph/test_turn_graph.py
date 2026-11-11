@@ -24,7 +24,9 @@ from engine.contracts import (
 from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
 from engine.samples import cultivation_world, grounded_world
+from engine.state.cast import CharacterStatus
 from engine.state.records import Goal, GoalStatus, StepResult
+from engine.state.sheet import Health
 from engine.state.world import Chapter
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
@@ -728,6 +730,38 @@ def test_an_action_that_fits_nothing_still_plays(fake, make_client):
     _, result = play(make_client(), turn_input(action="I sing to the moon"))
     assert [s.text for s in result.resolution.steps] == ["I sing to the moon"]
     assert result.intent.steps[0].kind is ActionKind.INSTANT
+
+
+def test_a_killing_the_reading_aimed_at_nobody_still_has_its_victim(fake, make_client):
+    """V3, W1: on the real model "I cut Han's throat" was read as a killing with no target
+    (2026-11-11): nobody died on record while the scene told a death. The step's words name
+    its victim, so the deed is theirs, whatever the reading left out."""
+    reading = {
+        "summary": "Lin kills Zhao.",
+        "steps": [
+            {
+                "text": "cut Zhao's throat while he dozes",
+                "verb": "attack",
+                "kind": "instant",
+                "aim": "kill",
+                "target_ids": [],
+                "proposed_duration_s": 3,
+                "facts": {"can_respond": False, "why_not": "asleep"},
+            }
+        ],
+    }
+    fake.script(Node.INTERPRET, Reply(json=reading))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+    action = "I cut Zhao's throat while he dozes against the well"
+    _, result = play(make_client(), turn_input(action=action))
+
+    assert result.intent.steps[0].target_ids == ["zhao"]
+    assert "target_found" in [i.code for i in result.issues]
+    # He is asleep, so the blow lands, and the throw is only for how much.
+    zhao = result.state.characters["zhao"]
+    assert zhao.status is CharacterStatus.DEAD or zhao.sheet.condition.health is not Health.UNHURT
+    (deed,) = result.state.deeds.values()
+    assert "zhao" in (*deed.victim_ids, *deed.target_ids)
 
 
 def saved_turns(count: int):

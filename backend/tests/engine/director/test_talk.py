@@ -11,6 +11,7 @@ from engine.contracts import (
     PlannedTalk,
     Resolution,
     StandingAction,
+    StepFacts,
 )
 from engine.director import rules
 from engine.director.pressure import Pressure
@@ -66,6 +67,54 @@ def test_a_scene_where_they_only_look_on_is_always_offered_it():
     # Waiting is a quiet scene like any other.
     waiting = offered(village(), Intent(standing=StandingAction.WAIT))
     assert abs(share(waiting) - rules.TALK_CHANCE) < 0.08
+
+
+def asking() -> Intent:
+    step = IntentStep(
+        text="Ask what people are saying",
+        verb="ask",
+        kind=ActionKind.CONVERSATION,
+        proposed_duration_s=5 * MINUTE,
+        facts=StepFacts(asks_talk=True),
+    )
+    return Intent(steps=[step])
+
+
+def test_asking_what_people_are_saying_always_gets_what_the_place_is_saying():
+    """W2: soft is for what nobody asked for. A player who has their character ask for the
+    talk of the place, or listen for it, gets what the place is saying, every time: in the
+    first live story about it (2026-11-11) a neighbour asked for the village's talk told of a
+    wolf and an empty cart while the village was talking of a killing."""
+    talks = offered(village(), asking())
+
+    assert share(talks) == 1
+    assert {(t.rumor_id, t.asked) for t in talks} == {("barn", True)}
+    # Where the record holds nothing new to them, the answer is the narrator's to make up.
+    made_up = offered(village(talking=False), asking())
+    assert {(t.rumor_id, t.asked) for t in made_up} == {(None, True)}
+    # Minutes after the last small thing is not too soon for an answer.
+    state = village()
+    state.director.last_small_s = state.world_s
+    assert share(offered(state, asking())) == 1
+    # Talk nobody asked for is marked so.
+    assert {t.asked for t in offered(village(), chat()) if t is not None} == {False}
+
+
+def test_an_answer_fits_a_scene_that_is_about_something_else_but_not_a_fight_or_the_road():
+    state = village()
+    scene = play_turn(state, 2, asking()).play.resolution
+    answer = PlannedTalk(rumor_id="barn", asked=True)
+
+    # An event or a happening the director already has for the scene leaves room to answer.
+    assert plan_talk(state, scene, rng(), pressure=quiet(), busy=True, asked=True) == answer
+    assert plan_talk(state, scene, rng(), pressure=quiet(), busy=True, small=False, asked=True)
+    # A fight or something at stake doesn't, nor an opening.
+    for tense in (quiet(encounter=True), quiet(stakes=True)):
+        assert plan_talk(state, scene, rng(), pressure=tense, busy=False, asked=True) is None
+    assert plan_talk(state, Resolution(), rng(), pressure=quiet(), busy=False, asked=True) is None
+    # Nor the road.
+    state.journey = Journey(from_id="farm", to_id="village", total_s=HOUR, done_s=MINUTE)
+    assert plan_talk(state, scene, rng(), pressure=quiet(), busy=False, asked=True) is None
 
 
 def test_a_place_with_nothing_new_to_them_may_get_talk_of_the_storys_own_and_rarely():

@@ -792,14 +792,16 @@ def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
 def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
     """W2. The talk of the place this scene may carry, if it has room for it: something the
     place is saying that the character hasn't heard, in the world's words (`saying`), or, when
-    the record holds nothing new to them, talk of the narrator's own making (`own`)."""
+    the record holds nothing new to them, talk of the narrator's own making (`own`). `asked`
+    marks talk the player character asked or listened for this turn, which the scene tells."""
     talk = plan.talk
     if talk is None:
         return None
+    asked = {"asked": True} if talk.asked else {}
     if talk.rumor_id is None:
-        return {"own": True}
+        return {"own": True} | asked
     rumor = state.rumors.get(talk.rumor_id)
-    return {"saying": rumor.text} if rumor is not None else None
+    return {"saying": rumor.text} | asked if rumor is not None else None
 
 
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
