@@ -311,6 +311,23 @@ land changing, the nights on the way. And the way is alive: what they pass and w
 them, what those travelling with them say and do, how the going wears on them or lifts them, \
 in this world's own colours. Such small things need no EVENT. Trouble, and anyone who asks \
 something of them, come only with an EVENT.
+- Arriving (W10). A place they reach is alive before they get there: show it as it is now, \
+what goes on there and who is about, as far as their way through it lets them see. \
+first_visit: they have never been here, so show it for the first time. Arriving is no moment \
+for news: unless an EVENT brings someone to them, nobody stops them to tell them things, and \
+they get where they were going.
+- Talk of the place (W2). TALK, when the brief has it, is something the place is saying that \
+the character hasn't heard: saying is a rumor, in the world's words, and own means what the \
+place talks about is yours to make up, fitting this world and what has happened in it (news, \
+a rumor, a job going, a stranger come to town). It is an offer and never a task. When the \
+scene has a natural opening for it, let it reach them the way talk does, as part of what is \
+already happening: a word from someone they are dealing with, something said at the next \
+table, a notice, a broadcast, whatever carries word in this world. One thing, once, in \
+passing, as people tell it and never as fact, and never a list of things heard. When they \
+are hurrying, fighting, hiding or deep in something, when nobody is about, or when it would \
+have to be pushed in, leave it out: they can miss it, and it may come up another day. Set \
+told_talk true only when the scene told it. Talk of your own making that they could follow up \
+goes under leads.
 - Open on the player's action, in action (R1): the character doing what the player said they \
 do, told the way a good book would tell it, before anything comes of it. Every action gets this, \
 however small (a coin held out, a word, a look), and so does one the player already wrote like \
@@ -553,10 +570,10 @@ miss could have killed), extra (the one extra effect a throw over the top earned
 they did it with and how well they have it), drew_on (their own powers, techniques and moves \
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
-it holds), interrupted, met, struck and trip (where the step took them, and whether they \
-arrived). Then stopped_at_step, stop_reason and unplayed when the \
-plan stopped early, now_canon for what became true, rulings, and backstory with whether each \
-claim was recorded.
+it holds), interrupted, met, struck and trip (where the step took them, whether they \
+arrived, and whether it is their first visit). Then stopped_at_step, stop_reason and unplayed \
+when the plan stopped early, now_canon for what became true, rulings, and backstory with \
+whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
 words and in world seconds, and your_seconds_lived when the player character lived through a \
 different span from the world.
@@ -566,6 +583,8 @@ can notice. needs_you marks one that calls for them.
 it needs a decision, and what follows from it.
 - HAPPENINGS: smaller events that came to pass in the time that went by, in the same form.
 - CALLBACKS: open threads to touch on.
+- TALK: something the place is saying that the scene may let the character catch, if it has \
+room: saying, a rumor in the world's words, or own, talk of your own making.
 - SUGGESTIONS: how many suggestions to write and of which kinds, and the thread a thread \
 suggestion follows.
 - PICTURE: a picture comes with this scene: its kind, its subject and why.

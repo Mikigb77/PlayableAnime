@@ -131,6 +131,20 @@ def cut_short(step: StepResolution, elapsed_s: int) -> bool:
     return trip.takes_s is not None and elapsed_s < trip.takes_s
 
 
+def first_visit(state: WorldState, step: StepResolution) -> bool:
+    """W10. Whether a trip of the player character's that arrived took them somewhere they had
+    never been: a place on record they haven't visited, or one the record doesn't hold yet at
+    the end of a real trip. A few steps to the counter are no arrival, and neither is going
+    somewhere to do something else there."""
+    trip = step.trip
+    if trip is None or not trip.arrived or step.kind not in GOING:
+        return False
+    if trip.to_id is None:
+        return step.duration_s >= MIN_ROUTE_S
+    place = state.places.get(trip.to_id)
+    return place is not None and state.player_id not in place.visited_by
+
+
 def follow(state: WorldState, actor_id: str, step: StepResolution, *, planned_s: int) -> None:
     """W10. As a step ends in `play_out`, in place: someone whose trip arrived is at the place
     it went to, so what they do next happens there and is seen there (W1, W2). A trip of the

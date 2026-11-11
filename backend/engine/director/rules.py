@@ -73,6 +73,13 @@ ROAD_MEAN_GAP_S: dict[EventFrequency, int] = {
 }
 ROAD_MAX_QUIETER = 4
 
+# W2: the talk of a place reaches the player character softly. A quiet scene may carry one
+# thing the place is saying that they haven't heard about one time in three, so a rumor waits
+# for a scene it fits and some are missed. Where the record holds nothing new to them, the
+# narrator may make up what the place talks about, about one quiet scene in ten.
+TALK_CHANCE = 1 / 3
+OWN_TALK_CHANCE = 0.1
+
 # M2: the key-scene budget is a bucket that refills each turn up to a cap, about one picture per
 # ten turns on key moments and one per five on more. A key scene needs a full credit. A fight's
 # start and its decisive blow may borrow against the coming turns down to PICTURE_FLOOR, so both

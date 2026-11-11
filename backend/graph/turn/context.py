@@ -610,6 +610,9 @@ def narration_brief(
         sections.append(
             ("CALLBACKS", [{"id": t.id, "title": t.title, "stakes": t.stakes} for t in callbacks])
         )
+    talk = _talk_view(plan, after)
+    if talk is not None:
+        sections.append(("TALK", talk))
     suggestions = plan.suggestions.count
     kinds = [kind.value for kind in plan.suggestions.kinds][:suggestions]
     asked: dict[str, Any] = {"count": suggestions, "kinds": kinds}
@@ -690,7 +693,9 @@ def _struck_view(peril: Peril) -> dict[str, Any]:
 def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
     """W10: where the step took the character, as code followed it: the place they reached, or
     how much of the way is left when something stopped them before. `arrived` is left out for
-    a trip the player timed over ground no route covers: the scene says how far they got."""
+    a trip the player timed over ground no route covers: the scene says how far they got.
+    `first_visit` marks an arrival somewhere they have never been.
+    """
     trip = step.trip
     assert trip is not None
     place = state.places.get(trip.to_id) if trip.to_id else None
@@ -707,7 +712,22 @@ def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
     ):
         left = journey.left_s if trip.to_id == journey.to_id else max(1, journey.done_s)
         view["left"] = span_label(left)
+    if trip.arrived and trip.first_visit:
+        view["first_visit"] = True
     return view
+
+
+def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
+    """W2. The talk of the place this scene may carry, if it has room for it: something the
+    place is saying that the character hasn't heard, in the world's words (`saying`), or, when
+    the record holds nothing new to them, talk of the narrator's own making (`own`)."""
+    talk = plan.talk
+    if talk is None:
+        return None
+    if talk.rumor_id is None:
+        return {"own": True}
+    rumor = state.rumors.get(talk.rumor_id)
+    return {"saying": rumor.text} if rumor is not None else None
 
 
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:

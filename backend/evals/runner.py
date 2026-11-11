@@ -397,9 +397,16 @@ class Story:
         label = self.last.scene.choices[choice].label
         return await self._play(TurnKind.CHOICE, label, interpretation, narration=narration)
 
-    async def stand(self, standing: StandingAction = StandingAction.WAIT) -> Played:
+    async def stand(
+        self,
+        standing: StandingAction = StandingAction.WAIT,
+        *,
+        narration: Narration | Iterable[Narration] | None = None,
+    ) -> Played:
         """Wait or observe (S2): no model reads it."""
-        return await self._play(TurnKind.STANDING, None, None, standing=standing)
+        return await self._play(
+            TurnKind.STANDING, None, None, narration=narration, standing=standing
+        )
 
     def _past_scenes(self) -> tuple[PastScene, ...]:
         """As the endpoint reads them: those the next chapter covers, and the latest few."""

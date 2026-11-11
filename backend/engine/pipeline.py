@@ -45,7 +45,8 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import journeys
+from engine.world import hearsay, journeys
+from engine.world.scheduling import World
 
 __all__ = [
     "PlayOut",
@@ -53,6 +54,7 @@ __all__ = [
     "apply_event",
     "catch_up",
     "direct",
+    "hear_talk",
     "play_out",
     "record_consequences",
     "record_direction",
@@ -250,6 +252,10 @@ def play_out(
             current = record_consequences(current, resolution, timed, ctx, step_rng)
         # W10. Whoever arrived is there, and a trip that stopped on the way keeps what is left.
         journeys.follow(current, actor_id, timed, planned_s=step.duration_s)
+        if actor_id == current.player_id and journeys.first_visit(current, timed):
+            # W10. They have never been here, so the scene shows the place for the first time.
+            trip = timed.trip.model_copy(update={"first_visit": True})
+            timed = played[-1] = timed.model_copy(update={"trip": trip})
         # W10. Code starts and ends encounters from what the step did (`engine.encounters`).
         encounters.follow(current, timed, actor_id, ctx)
         encounters.settle(current)
@@ -341,6 +347,21 @@ def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) ->
     saving: the director's memory, the event's thread and its play-out, thread changes, leads that
     expired and goals the player stated (W16, N1, N2, M2)."""
     return director.record(state, plan, ctx)
+
+
+def hear_talk(
+    state: WorldState, plan: DirectorPlan, ctx: TurnContext, rng: SeededRng
+) -> WorldState:
+    """W2, C6. The scene told the player character the talk the director offered it
+    (`DirectorPlan.talk`): they have heard that rumor, as of now, so Memory shows it. Talk the
+    scene left out stays unheard, and talk of the narrator's own making is no rumor on record.
+    Returns the state unchanged when there is nothing to record."""
+    talk = plan.talk
+    if talk is None or talk.rumor_id is None or talk.rumor_id not in state.rumors:
+        return state
+    heard = state.model_copy(deep=True)
+    w = World(state=heard, ctx=ctx, at_s=heard.world_s, rng=rng.child("talk", talk.rumor_id))
+    return heard if hearsay.hear(w, heard.player_id, talk.rumor_id) else state
 
 
 def settle_trips(
