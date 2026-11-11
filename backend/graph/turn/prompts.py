@@ -64,8 +64,7 @@ fear is never opposition: the choice is the player's (G15).
 passer-by"): when someone in SCENE fits, put their id in target_ids. When nobody there does, \
 leave target_ids empty and describe them in stranger: who they are, in a few words, whether the \
 place plausibly holds someone like that right now (a busy street at noon: plausible; a locked \
-cellar: absent), and crowd when others are around to see it (W1, W2). Never pick or invent how \
-strong they are: code rolls that.
+cellar: absent) (W1). Never pick or invent how strong they are: code rolls that.
 - When a step's outcome rests on cause and effect that isn't obvious, write the chain link by \
 link, with the facts each link rests on (rule, power or character ids, or plain words) and the \
 in-world seconds it takes. For each link, list in answers what would let the target escape or \
@@ -193,6 +192,10 @@ a bout under way as bout): code takes no blow inside them as an attack. null for
 fight, such as an ambush or a brawl, and for a step that fights nobody.
 - facts.breaks_terms (W1): true only when the character means to go beyond those terms: a blow \
 to maim or kill in a friendly bout, or one struck after the other yielded. That is an attack.
+- facts.crowd (W2), always: true when people SCENE doesn't name are around and would see the \
+step done (a busy street, a market at noon, a full tavern). false in a private or empty place, \
+and for what is done so that nobody around notices (a hand in a pocket, poison slipped into a \
+cup). Code makes public what is done before a crowd.
 - facts.danger: what can hurt the character in this step however it goes, that no one in the \
 scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a river in flood. \
 danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
@@ -487,7 +490,9 @@ update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
 appearance (an adult gets an age; their looks and usual clothes, never what they carry, which \
 are items), and changes to known ones: where they are, their condition, \
-how they feel about the player, meeting the player. Reuse the ids given. Never hurt the \
+how they feel about the player, meeting the player. Only the people in the scene change how \
+they feel (W4): someone elsewhere saw none of it, however much it concerns them, and code \
+moves how they feel once a witness or word reaches them. Reuse the ids given. Never hurt the \
 player character here, not even for what struck them: the engine already recorded every wound \
 and every worse health, and refuses yours. Only two harms are yours to record, as the scene \
 shows them: a health or blood cost under OUTCOME's costs, and on the first opening a PREMISE \

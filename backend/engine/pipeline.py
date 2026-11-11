@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 
 from engine import director, encounters, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
+from engine.base import DAY
 from engine.context import TurnContext
 from engine.contracts.delta import CharacterChange, StateDelta
 from engine.contracts.direction import (
@@ -46,6 +47,7 @@ from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
 from engine.world import hearsay, journeys
+from engine.world.geography import region_of
 from engine.world.scheduling import World
 
 __all__ = [
@@ -347,6 +349,34 @@ def record_direction(state: WorldState, plan: DirectorPlan, ctx: TurnContext) ->
     saving: the director's memory, the event's thread and its play-out, thread changes, leads that
     expired and goals the player stated (W16, N1, N2, M2)."""
     return director.record(state, plan, ctx)
+
+
+def reached(state: WorldState, resolution: Resolution, plan: DirectorPlan) -> list[str]:
+    """W4. Whom this turn reached besides the people in the scene, so the narrator may show how
+    they took it (`engine.apply.scene_people`): those a step faced, struck at, made real or
+    changed, those who struck back, and those an event, a happening or a moment the director
+    planned is about. A stretch of a day or more is no single scene, so it reaches everyone who
+    lives in the region the player character spent it in. `state` is the world the steps left."""
+    ids: list[str] = []
+    for step in resolution.steps:
+        ids += [*step.opponent_ids, *step.strangers]
+        ids += [change.id for change in step.effects.characters]
+        for deed in step.deeds:
+            ids += [*([deed.actor_id] if deed.actor_id else []), *deed.victim_ids, *deed.target_ids]
+        for peril in step.perils:
+            ids += peril.by_ids
+    ids += [change.id for change in resolution.effects.characters]
+    for planned in (plan.event, plan.moment, *plan.happenings):
+        if planned is not None:
+            ids += planned.cast_ids
+    if resolution.duration_s >= DAY:
+        home = region_of(state, state.player.location_id or state.scene.place_id)
+        ids += [
+            c.id
+            for c in state.characters.values()
+            if c.alive and (c.location_id is None or region_of(state, c.location_id) == home)
+        ]
+    return [i for i in dict.fromkeys(ids) if i in state.characters]
 
 
 def hear_talk(

@@ -14,6 +14,8 @@ between those who fought it. A death both accepted is still a death to those clo
 and nothing to the law or to bystanders.
 """
 
+from collections.abc import Sequence
+
 from engine.context import TurnContext
 from engine.contracts.resolution import ProposedDeed, Resolution, StepResolution
 from engine.rng import SeededRng
@@ -29,6 +31,7 @@ from engine.world.geography import (
     ancestors,
     characters_at,
     faction_seat,
+    onlookers,
     perceives,
     region_of,
     travel_s,
@@ -77,13 +80,25 @@ def record_consequences(
     if not step.deeds:
         return state
     new = state.model_copy(deep=True)
+    # W2: whoever the step brought on stage or faced is in the scene, and a scene the player
+    # character has only just walked into hasn't shown who is around.
+    onstage = [*step.strangers, *step.opponent_ids]
+    shown = not _just_arrived(resolution, step)
     for i, proposed in enumerate(step.deeds):
         if _bout_recorded(new, resolution, proposed):
             continue  # W1: the bout is one deed, however many blows it has
         w = World(state=new, ctx=ctx, at_s=new.world_s, rng=rng.child("deed", i))
-        deed = record_deed(w, resolution, proposed)
+        deed = record_deed(w, resolution, proposed, onstage=onstage, shown=shown)
         react(w, deed)
     return new
+
+
+def _just_arrived(resolution: Resolution, step: StepResolution) -> bool:
+    """Whether the actor got somewhere in this plan, by this step: no scene has been told
+    there yet, so nothing says who of the place is around them."""
+    return any(
+        s.trip is not None and s.trip.arrived for s in resolution.steps if s.index <= step.index
+    )
 
 
 def _bout_recorded(state: WorldState, resolution: Resolution, proposed: ProposedDeed) -> bool:
@@ -105,10 +120,21 @@ def _bout_recorded(state: WorldState, resolution: Resolution, proposed: Proposed
     )
 
 
-def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Deed:
+def record_deed(
+    w: World,
+    resolution: Resolution,
+    proposed: ProposedDeed,
+    *,
+    onstage: Sequence[str] = (),
+    shown: bool = True,
+) -> Deed:
     """W1, W2: the deed with its severity by the world's norms and the witnesses who could
-    perceive it. Resolve's witnesses stand when it names them; otherwise everyone present and
-    aware saw it, unless it was done in secret or in stopped time (W10a)."""
+    perceive it. Resolve's witnesses stand when it names them; otherwise everyone there and
+    aware saw it, unless it was done in secret or in stopped time (W10a). In the player
+    character's scene, there means in the scene (`geography.onlookers`): its people, those the
+    deed fell on and whoever the step brought on stage (`onstage`), and not everyone the
+    record puts at the place. It is everyone at the place when no scene has shown who is
+    around (`shown` false), and when it was done before a crowd, which makes it public."""
     state = w.state
     actor_id = proposed.actor_id or resolution.actor_id or state.player_id
     actor = state.characters.get(actor_id)
@@ -120,8 +146,13 @@ def record_deed(w: World, resolution: Resolution, proposed: ProposedDeed) -> Dee
     if explicit or proposed.in_stopped_time or proposed.visibility is Visibility.SECRET:
         witnesses = explicit
     else:
+        involved = [*victims, *proposed.target_ids, *onstage]
+        # Done before a crowd, everyone the record puts there saw it.
+        shown = shown and proposed.visibility is not Visibility.PUBLIC
         witnesses = [
-            c.id for c in characters_at(state, place_id) if c.id != actor_id and perceives(c)
+            c.id
+            for c in onlookers(state, place_id, involved, shown=shown)
+            if c.id != actor_id and perceives(c)
         ]
     visibility = proposed.visibility or (Visibility.WITNESSED if witnesses else Visibility.SECRET)
     if proposed.in_stopped_time:

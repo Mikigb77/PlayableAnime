@@ -903,6 +903,37 @@ def test_a_blank_scene_end_keeps_the_last_moment(fake, make_client):
     assert "blank_scene_end" in [i.code for i in result.issues]
 
 
+def test_a_scene_moves_only_the_feelings_of_its_people_and_of_whom_the_turn_reached(
+    fake, make_client
+):
+    """W4: Zhao, struck at in the scene, can come out of it angrier. Elder Mo is in the inner
+    court and saw none of it, so the scene can't turn him against Lin: that change is refused,
+    and code moves how he feels once word reaches him (W2)."""
+    feelings = [
+        {"id": "zhao", "attitudes": [{"affinity": -5}]},
+        {"id": "elder-mo", "attitudes": [{"affinity": -5, "grudge": "Lin struck Zhao"}]},
+    ]
+    update = SCENE["update"] | {"characters": feelings}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": update}))
+    turn = turn_input()
+    before = turn.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin")
+
+    _, result = play(make_client(), turn)
+
+    refused = [(i.subject, i.area) for i in result.issues if i.code == "rejected"]
+    assert refused == [("character elder-mo: attitude", "character.attitude")]
+    assert result.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin") == before
+
+    # In a scene that ends with him there, he is one of its people.
+    with_him = update | {"scene_end": SCENE["update"]["scene_end"] | {"present_ids": ["elder-mo"]}}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": with_him}))
+    _, result = play(make_client(), turn_input())
+    assert "rejected" not in [i.code for i in result.issues]
+    assert result.state.characters["elder-mo"].sheet.disposition.attitudes["lin"].grudges
+
+
 def two_goals():
     state = cultivation_world()
     state.goals = {

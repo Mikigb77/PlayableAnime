@@ -11,9 +11,16 @@ from engine.contracts.resolution import BeatVerdict
 from engine.resolve import strangers
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
-from engine.state import CharacterStatus, PassingState, StepResult
+from engine.state import (
+    CharacterStatus,
+    PassingState,
+    StepResult,
+    Terms,
+    Visibility,
+    WorldState,
+)
 
-from .worlds import SEEDS, ctx, facts, item, resolve, rng, step
+from .worlds import SEEDS, ctx, facts, item, resolve, rng, step, stop_time
 
 
 def kill_someone(
@@ -213,3 +220,122 @@ def test_someone_asleep_nearby_sees_nothing_so_the_crowd_gives_a_witness(monkeyp
 
     (settled,) = resolve(state, Intent(steps=[kill_someone(crowd=True)])).steps
     assert len(settled.strangers) == 2
+
+
+# --- Before a crowd (W2, W11) ------------------------------------------------------------------
+
+
+def in_the_square() -> WorldState:
+    """Luca and Carmine alone in a street of Naples, as far as the record goes."""
+    state = in_the_street()
+    state.characters["carmine"].location_id = "naples"
+    state.scene.present_ids = ["luca", "carmine"]
+    return state
+
+
+def before_a_crowd(text: str = "punch Carmine in the face", aim: Aim = Aim.WOUND, **more):
+    """A step at Carmine with people the scene doesn't name around to see it."""
+    there = facts(opposition_ids=["carmine"], can_respond=True, crowd=True, **more)
+    return step(text, aim=aim, target_ids=["carmine"], facts=there)
+
+
+def test_what_is_done_before_a_crowd_is_public_whoever_it_is_done_to():
+    """Miki, 2026-11-11: "if you kill someone in the middle of a plaza ... there are so many
+    witnesses". The crowd is the people the scene doesn't name, so the deed is public, and one
+    of them is made real to have seen it when nobody on record did."""
+    state = in_the_square()
+    resolution = resolve(state, Intent(steps=[before_a_crowd()]))
+    (settled,) = resolution.steps
+
+    assert settled.deeds and all(d.visibility is Visibility.PUBLIC for d in settled.deeds)
+    (onlooker_id,) = settled.strangers
+    after = pipeline.play_out(state, resolution, ctx(), rng()).state
+    mine = next(d for d in after.deeds.values() if d.actor_id == "luca")
+    assert mine.visibility is Visibility.PUBLIC
+    assert mine.witness_ids == ["carmine", onlooker_id]
+    assert after.characters[onlooker_id].location_id == "naples"
+    # Someone of the crowd goes to the law, and word of it starts at once.
+    assert any(
+        e.kind == "world.report" and e.payload.get("witness_id") == onlooker_id
+        for e in after.pending_events.values()
+    )
+    assert any(r.deed_id == mine.id and r.accuracy == 100 for r in after.rumors.values())
+
+
+def test_the_same_blow_with_no_crowd_is_seen_only_by_those_in_the_scene():
+    state = in_the_square()
+    quiet = before_a_crowd().model_copy(
+        update={"facts": facts(opposition_ids=["carmine"], can_respond=True)}
+    )
+    resolution = resolve(state, Intent(steps=[quiet]))
+    (settled,) = resolution.steps
+
+    assert settled.strangers == [] and all(d.visibility is None for d in settled.deeds)
+    after = pipeline.play_out(state, resolution, ctx(), rng()).state
+    mine = next(d for d in after.deeds.values() if d.actor_id == "luca")
+    assert (mine.visibility, mine.witness_ids) == (Visibility.WITNESSED, ["carmine"])
+
+
+def test_a_crowd_that_holds_someone_on_record_needs_no_one_made_up():
+    state = grounded_world()  # at the bar, with Carmine and the bartender
+
+    (settled,) = resolve(state, Intent(steps=[before_a_crowd()])).steps
+
+    assert settled.strangers == []
+    assert all(d.visibility is Visibility.PUBLIC for d in settled.deeds)
+
+
+def test_a_small_thing_before_a_crowd_is_no_news():
+    """A crowd talks of a killing, not of an insult: what is too small to start a rumor
+    anywhere stays as seen as it would be anywhere, and nobody is made real to have seen it."""
+    state = in_the_square()
+    jeer = before_a_crowd("call Carmine a coward to his face", aim=Aim.NONE).model_copy(
+        update={"verb": "insult"}
+    )
+    resolution = resolve(state, Intent(steps=[jeer]))
+    (settled,) = resolution.steps
+
+    assert settled.strangers == []
+    assert settled.deeds and all(d.visibility is None for d in settled.deeds)
+    after = pipeline.play_out(state, resolution, ctx(), rng()).state
+    mine = next(d for d in after.deeds.values() if d.actor_id == "luca")
+    assert (mine.visibility, mine.witness_ids) == (Visibility.WITNESSED, ["carmine"])
+    assert not after.rumors
+
+
+def test_a_small_kindness_before_a_crowd_is_no_news_either():
+    state = in_the_square()
+    alms = before_a_crowd("give Carmine my coat against the cold", aim=Aim.NONE).model_copy(
+        update={"verb": "help"}
+    )
+
+    (settled,) = resolve(state, Intent(steps=[alms])).steps
+
+    assert settled.strangers == []
+    assert settled.deeds and all(d.visibility is None for d in settled.deeds)
+
+
+def test_a_bout_before_a_crowd_is_no_attack_to_witness():
+    state = in_the_square()
+    match = before_a_crowd("trade blows with Carmine", aim=Aim.SUBDUE, terms=Terms.NO_HARM)
+
+    (settled,) = resolve(state, Intent(steps=[match])).steps
+
+    assert settled.bout is not None and settled.strangers == []
+    assert [(d.kind, d.visibility) for d in settled.deeds] == [("bout", None)]
+
+
+def test_nothing_done_in_stopped_time_is_public_however_full_the_square():
+    state = cultivation_world()
+    frozen = step(
+        "kick Zhao's legs from under him",
+        aim=Aim.SUBDUE,
+        target_ids=["zhao"],
+        facts=facts(opposition_ids=["zhao"], crowd=True),
+    )
+
+    _, settled = resolve(state, Intent(steps=[stop_time(), frozen])).steps
+
+    assert settled.strangers == []
+    assert settled.deeds and all(d.visibility is None for d in settled.deeds)
+    assert all(d.in_stopped_time for d in settled.deeds)

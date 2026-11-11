@@ -51,7 +51,8 @@ from engine.state import (
     Visibility,
     WorldState,
 )
-from engine.world import Kind
+from engine.visibility import memory_view
+from engine.world import Kind, hearsay
 from engine.world.answers import Answer, choose_answer
 from engine.world.discovery import name_the_doer
 from engine.world.geography import travel_s
@@ -229,6 +230,29 @@ def test_word_travels_at_the_pace_people_do_and_loses_accuracy_on_the_way():
     assert rumor.heard_at["elder-mo"] == reached[0].applied_s
     assert "elder-mo" in rumor.believed_by
     assert after.characters["elder-mo"].sheet.disposition.attitudes["lin"].fear > 0
+
+
+def test_word_that_comes_to_where_the_player_character_is_waits_for_a_scene_to_tell_it():
+    """Everyone at a place hears word when it comes, except the player character: nothing a
+    scene didn't tell is in their memory (C6). It is the talk of the place, which a quiet scene
+    may let them catch (`engine.world.hearsay`)."""
+    state = cultivation_world()
+    state.characters["bo"] = Character(id="bo", name="Bo Lang", location_id="inner-court")
+    flog = ProposedDeed(kind="assault", text="Elder Mo flogs Bo", actor_id="elder-mo")
+    flog = flog.model_copy(update={"victim_ids": ["bo"]})
+    after = play(state, deed_step(flog), actor_id="elder-mo").state
+    deed = the_deed(after)
+
+    after, fired = idle(after, 6 * HOUR)
+
+    assert any(e.kind == Kind.RUMOR and e.payload["place_id"] == "well" for e in fired)
+    (rumor,) = [r for r in after.rumors.values() if r.deed_id == deed.id]
+    assert "zhao" in rumor.heard_at and "lin" not in rumor.heard_at
+    assert memory_view(after).rumors == []
+    # It is what the well is saying now, and a scene that tells it is how he hears it.
+    assert [r.id for r in hearsay.talk_of(after, "lin", "well", after.world_s)] == [rumor.id]
+    assert hearsay.hear(at(after), "lin", rumor.id)
+    assert [r.id for r in memory_view(after).rumors] == [rumor.id]
 
 
 def test_a_retelling_that_strays_far_enough_no_longer_names_the_doer():
@@ -696,6 +720,7 @@ def test_reports_without_phones_take_the_trip_and_move_the_witness():
     state = cultivation_world()
     state.places["inner-court"].controller_id = "azure-cloud"
     state.characters["wei"] = Character(id="wei", name="Wei", location_id="well")
+    state.scene.present_ids.append("wei")
     shove = ProposedDeed(kind="assault", text="Lin shoves Zhao into the well", victim_ids=["zhao"])
     after = play(state, deed_step(shove)).state
 
@@ -704,6 +729,7 @@ def test_reports_without_phones_take_the_trip_and_move_the_witness():
     assert report.due_s >= 40 * MINUTE
     assert report.due_s < UNKNOWN_TRIP_S + 2 * MINUTE
 
+    after.scene.present_ids.remove("wei")  # the scenes that follow no longer show Wei
     after, _ = idle(after, HOUR)
 
     assert after.characters["wei"].location_id == "inner-court"
