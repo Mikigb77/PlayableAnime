@@ -29,7 +29,6 @@ import 'play_controller.dart';
 import 'replay/replay_plays.dart';
 import 'replay/replay_view.dart';
 import 'rewind_sheet.dart';
-import 'scene_details_sheet.dart';
 import 'scene_menu.dart';
 import 'scene_view.dart';
 import 'story_models.dart';
@@ -266,15 +265,9 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     }
   }
 
-  /// A scene's details (A8): its dice replayed when any were thrown (S15), or the list of what
-  /// the facts settled.
-  void _openDetails(Scene scene) {
-    if (scene.details.hasThrows) {
-      unawaited(showSceneReplay(context, scene));
-    } else {
-      showSceneDetails(context, scene);
-    }
-  }
+  /// A scene's details (A8, S15): its steps replayed one at a time, with the dice of each one
+  /// that threw any.
+  void _openDetails(Scene scene) => unawaited(showSceneReplay(context, scene));
 
   static String? _standingLabel(String? wire, AppLocalizations l10n) =>
       StandingAction.values.where((a) => a.wire == wire).firstOrNull?.label(l10n);

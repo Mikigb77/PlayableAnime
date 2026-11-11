@@ -301,12 +301,9 @@ Memory](docs/screenshots/play-sheets.jpg)
   **Wait** or **Observe**, in the app's words.
 - **Pictures** take their place under the words they belong to, as a shimmer in the right shape,
   and fade in when painted (M3). A picture that never comes leaves no trace.
-- **Why it went that way** (A8): a scene the dice decided opens "How it played out" as a replay
-  of its throws ([The dice](#the-dice), S15). A scene the facts settled, or one saved before the
-  dice travelled, opens the sheet that lists the steps with their outcome class (certain,
-  contested, long shot, ruled out), any roll in one line with its result, the reasons in the
-  serif, where a plan stopped (R6) and the chain of cause and effect. A standing action's one step
-  reads in the app's words in both.
+- **Why it went that way** (A8): every scene opens "How it played out" as a replay of its steps
+  ([The dice](#the-dice), S15), with the dice of each step that threw any and a tick on each one
+  the facts settled. A standing action's one step reads in the app's words there.
 - **When a turn fails** (T7), a calm card takes the scene's place and says what happened in plain
   words, with the way on: retry (counting down after a rate limit), say it another way, or open
   Account. Nothing was saved, and the words the player wrote are never lost. Running out of
@@ -329,8 +326,9 @@ Memory](docs/screenshots/play-sheets.jpg)
 
 ## The dice
 
-"How it played out" for a scene the dice decided is a replay (S15): the turn's steps one at a
-time, each with the throw that decided it, and then the whole turn as a list.
+"How it played out" is a replay for every scene (S15): the turn's steps one at a time, each with
+the throw that decided it or the tick of a step the facts settled, and then the whole turn as a
+list.
 
 ![A throw resting on what it is against, the dice in the air, a deadly throw where the gold die
 holds at ten, a 20 that throws one more and goes over the top, and a step opened again in the
@@ -354,17 +352,20 @@ list](docs/screenshots/replay.jpg)
   could make, in its own color, with a line at the number and the stretch that is so close
   hatched just short of it; then into a sum; then the total against the number; then the stamp.
   The words under it say only what the throw meant.
+- **No die where none was thrown.** A step the facts settled draws a ring that closes on a tick,
+  or on a bar when the world ruled it out, with why under it. A roll saved before the dice
+  travelled plays the same way, with the odds it kept in a line beside how it fell.
 - **A tap anywhere moves on**: it throws dice that are waiting, shows a result still being
   counted, and goes on from a result being read. The card says so in small words where it
   applies ("Tap to see the result", "Tap to go on"). **Skip** gives the list at once.
-- **The list** is the turn at a glance: each row with its total in a bead, what it was, and its
-  result. A row opens in place as it ended, with **Watch the throw again** and the roll's seed,
+- **The list** is the turn at a glance: each row with its total in a bead, or a tick where
+  nothing was thrown, what it was, and its result. A row opens in place as it ended, with **Watch the throw again** and the roll's seed,
   and the list scrolls to show it. Under the rows are the scene's time, its chain of cause and
   effect and where a plan stopped.
 - **Gamer mode** (a switch in the story's settings, off by default, kept on the device) opens the
-  replay by itself when a turn's steps are decided, while the story is written behind it. Then it
-  is headed "How it plays out", offers nothing at its end and gives way to the story by itself,
-  and Skip goes straight to the story.
+  replay by itself when a turn's steps are decided and one of them threw dice, while the story is
+  written behind it. Then it is headed "How it plays out", offers nothing at its end and gives
+  way to the story by itself, and Skip goes straight to the story.
 - **Reduced motion:** the dice appear where they came to rest, the card and the row neither fly
   nor flash, there is no celebration, and the time to read stays the same.
 - **How it is built:** the dice are drawn and moved by the app's own code (`features/story/dice`),

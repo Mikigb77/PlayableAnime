@@ -862,9 +862,7 @@
   "reportSend": "Send report",
   "reportSent": "Thanks. Your report was sent.",
   "reportSentHidden": "Thanks. The scene is blocked and your report was sent.",
-  "detailsSteps": "Steps",
   "detailsChain": "Cause and effect",
-  "detailsNoRoll": "No roll: the facts settled it",
   "detailsOdds": "Odds {odds}",
   "@detailsOdds": {
     "description": "The odds of a roll in words, such as 'about even'.",
@@ -902,18 +900,11 @@
     }
   },
   "detailsStopped": "The plan stopped here. What came after it didn't happen.",
-  "detailsStruck": "What struck back",
-  "@detailsStruck": {
-    "description": "Under a step in the scene details: what struck back at the character after it, the foes still fighting them or a danger such as a long drop (N6)."
-  },
   "detailsLegend": "Certain and ruled-out steps are settled by the facts. Only contested steps and long shots are rolled.",
   "classCertain": "Certain",
   "classContested": "Contested",
   "classLongShot": "Long shot",
   "classRuledOut": "Ruled out",
-  "resultSuccess": "Success",
-  "resultPartial": "Partly",
-  "resultFailure": "Failure",
   "settingsTitle": "Story settings",
   "settingsName": "Title",
   "settingsColor": "Color",

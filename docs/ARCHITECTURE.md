@@ -540,7 +540,7 @@ it (W10a), a helpless state on the sheet
    dice's reasons, the number and what it is made of, the total, the mark, what it was up
    against, and whether it was Deadly), so the recorded seed replays it exactly. `RollRecord.odds`
    is the exact chance the hand had (`throw.shares` lists every way the dice can fall), and
-   `odds_label` the throw in one line, "31 against 27", which is what the app shows today.
+   `odds_label` the throw in one line, "31 against 27", which a build from before the dice shows.
    **The hand** (`capability.hand_for`): a technique of the actor's the step uses throws by its
    mastery, one to five dice, with its own die last, violet below second nature (18 or more is an
    insight) and gold from it (never counting below 10); a move they are trying for the first time
@@ -1527,8 +1527,9 @@ object, and the raw world state as memory.
   `replay/replay_plays.dart` lays a scene's `SceneDetails` out as plays in order (a step's checks,
   the step, what struck back) and picks how each throw is shown from the roll's seed;
   `replay_controller.dart` plays them one at a time and knows what a tap means in each phase;
-  `replay_view.dart` and `replay_card.dart` are the screen. A scene with a throw opens the replay
-  for "How it played out", and any other scene keeps the list (`scene_details_sheet.dart`).
+  `replay_view.dart` and `replay_card.dart` are the screen. Every scene opens it for "How it
+  played out": a step the facts settled plays with a tick and no die, and so does a roll saved
+  before the dice travelled, with the odds it kept in a line (`ReplayPlay.odds`).
   **Gamer mode** is a device preference (`gamerModeProvider`, `play.gamer_mode`): on
   `steps.decided` the play controller sends `StepsShown`, and the story screen opens the replay
   over the page while the turn streams on behind it, holding back the reading aloud until it
