@@ -2011,6 +2011,7 @@ def as_read(turns: list[Played]) -> str:
                     f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
                     f"in_way={told.opposition_ids} terms={terms}"
                     f"{' beyond' if told.breaks_terms else ''}"
+                    f"{' unanswered' if told.can_respond is False else ''}"
                 )
             how = f"{settled.outcome_class.value}/{settled.result.value}"
             if settled.outcome_class is OutcomeClass.RULED_OUT:
@@ -2147,8 +2148,11 @@ async def friendly_bout(ev: Eval) -> None:
                     "The scenes tell a sparring lesson between a teacher and his student, with "
                     "practice blows that are pulled, parried or land as touches",
                 ),
+                # Tiring is no wound: the fourth live lessons (2026-11-11) failed "left unable
+                # to go on" for a student worn out by the end of a long lesson.
                 must_not=(
-                    "Lin or Elder Mo is wounded, bleeding or left unable to go on",
+                    "A blow of the lesson wounds Lin or Elder Mo, draws blood or knocks one of "
+                    "them senseless (being worn out, winded, disarmed or bested is none of these)",
                     "Elder Mo turns hostile, afraid or resentful over a blow of the lesson",
                 ),
             ),
@@ -2226,14 +2230,14 @@ async def friendly_bout(ev: Eval) -> None:
 
 IN_FRONT_OF_EVERYONE = (
     "In the middle of the crowded queue at the well, in front of everyone, I draw my sword and "
-    "cut Han Jie's throat from behind"
+    "cut Han Jie's throat while he dozes"
 )
 
 
 def in_front_of_everyone() -> Intent:
-    """The killing as the interpret step reads it: Han never sees it coming, and people the
-    scene doesn't name are all around."""
-    told = facts(opposition_ids=["han"], can_respond=False, why_not="unaware", crowd=True)
+    """The killing as the interpret step reads it: Han is asleep, and people the scene doesn't
+    name are all around."""
+    told = facts(opposition_ids=["han"], can_respond=False, why_not="asleep", crowd=True)
     return plan(cut_throat("han", "sword", facts=told))
 
 
@@ -2263,8 +2267,9 @@ def brother_hates_him_already() -> dict:
 )
 async def before_a_crowd(ev: Eval) -> None:
     for seed in ev.seeds(6, live=1):
-        story = ev.story(worlds.noon_at_the_well(), seed=seed)
-        await story.open()
+        # Under way, so the scene is the one the world holds: an opening told live could wake
+        # him or turn him round, and the first live story (2026-11-11) rolled for the blow.
+        story = ev.story(worlds.noon_at_the_well(), seed=seed, under_way=True)
         before = story.state.characters["han-lei"].attitude_toward("lin").model_copy(deep=True)
         killing = await story.act(
             IN_FRONT_OF_EVERYONE,
