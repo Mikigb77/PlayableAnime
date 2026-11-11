@@ -8,11 +8,14 @@ grudges and due to come for revenge):
 - **Inside the terms** a blow is no attack. It leaves no grudge, starts no rumor of one, is no
   crime and brings nobody for revenge, however many blows the bout has. The bout is one deed,
   which those who fought it think a little better of each other for (`engine.world`).
-- **The terms hold the blows.** A blow of the bout does at most what the terms accept, whatever
-  aim was proposed for it. Under `no_harm` a touch, a throw or a pin decides it: nobody is
-  wounded or left helpless, and a bruise is the worst it leaves. So a sparring blow read
-  carelessly can't turn into a wounding. A friendly partner strikes only in the bout's
-  exchanges, and waits while the player character talks or looks on.
+- **The terms hold the blows.** A blow of the bout is any step that fights those in it
+  (`is_blow`), whether they are its targets or only stand in its way, and whatever it aims to
+  do: in the first live lesson (2026-11-11) a practice blow that aimed no harm and named no
+  target was filed as an attack. A blow does at most what the terms accept, whatever aim was
+  proposed for it. Under `no_harm` a touch, a throw or a pin decides it: nobody is wounded or
+  left helpless, and a bruise is the worst it leaves. So a sparring blow read carelessly can't
+  turn into a wounding. A friendly partner strikes only in the bout's exchanges, and waits
+  while the player character talks or looks on.
 - **Beyond the terms** a blow is an attack that came under cover of a friendly fight, and costs
   more trust than an open one. The actor goes beyond them only when the interpret step says they
   mean to (`StepFacts.breaks_terms`). Someone fighting the player character does only when they
@@ -32,12 +35,12 @@ keeps them on the encounter (`Encounter.bout`, `engine.encounters`), so a bout s
 later step leaves them out. Plain Python (B4); nothing here assumes a genre (G5).
 """
 
-from engine.contracts.intent import Aim
+from engine.contracts.intent import ActionKind, Aim, IntentStep
 from engine.resolve.power import helpless_state, in_the_fray
 from engine.state.cast import Character
-from engine.state.scene import Bout, Terms
+from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.world import WorldState
-from engine.world.norms import is_beast
+from engine.world.norms import DISPLAY_KINDS, HARM_FLOORS, HELP_KINDS, canonical, is_beast
 
 # The worst a blow may be out to do under each terms, and the aims from mildest to worst.
 WORST = {Terms.NO_HARM: Aim.SUBDUE, Terms.WOUNDS: Aim.WOUND, Terms.DEATH: Aim.KILL}
@@ -46,6 +49,45 @@ _TERMS = [Terms.NO_HARM, Terms.WOUNDS, Terms.DEATH]
 # How little someone has to like the player character, on affinity (W4), to go beyond the terms
 # of a bout with them. Anyone who holds a grudge against them may as well.
 ILL_WILL = -20
+# The kinds of deed that are blows, in the world's norms (`engine.world.norms`): what an attack,
+# a strike or a stab is recorded as.
+_STRIKES = frozenset({"assault", "wound", "kill"})
+_VERB_MEANS = {"wound": Aim.WOUND, "kill": Aim.KILL}
+
+
+def is_blow(step: IntentStep) -> bool:
+    """Whether a step fights: it aims harm at someone, is told as a strike, or is an exchange
+    of a fight. A practice blow often aims no harm at all and names nobody as its target, with
+    the partner as what stands in its way, and it is still a blow of the bout. A step that is
+    some other deed, such as an insult, a theft or a healing, is that deed whatever goes on
+    around it."""
+    if step.aim.harmful:
+        return True
+    word = canonical(step.verb or "")
+    if word in _STRIKES:
+        return True
+    if word in HARM_FLOORS or word in HELP_KINDS or word in DISPLAY_KINDS:
+        return False
+    return step.encounter is EncounterKind.FIGHT or step.kind is ActionKind.EXCHANGE
+
+
+def against(state: WorldState, actor_id: str, step: IntentStep) -> list[str]:
+    """The characters a step is a blow at: those it names as its targets, or when it names
+    none, those who stand in its way."""
+    for faced in (step.target_ids, step.facts.opposition_ids):
+        found = [i for i in dict.fromkeys(faced) if i != actor_id and i in state.characters]
+        if found:
+            return found
+    return []
+
+
+def meant(step: IntentStep) -> Aim:
+    """What a blow is out to do: its aim, or when it has none, what its verb says of it (a
+    stab wounds). Whether a blow goes beyond the terms is judged by this, so one the interpret
+    step says is meant to maim is an attack even when it gave it no aim."""
+    if step.aim.harmful:
+        return step.aim
+    return _VERB_MEANS.get(canonical(step.verb or ""), Aim.NONE)
 
 
 def allows(terms: Terms, aim: Aim) -> bool:

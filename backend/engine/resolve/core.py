@@ -904,6 +904,10 @@ def _settle_step(
     )
     drew_on = drawn.names if attempted and not unready else []
     encounter, opponent_ids = _engagement(step, opposition, actor.id)
+    if bout is not None and encounter is None and opponent_ids:
+        # W1. A blow of a bout is a blow of a fight, even one that aims no harm at anyone, so
+        # the encounter that keeps the bout's terms begins and carries on with it.
+        encounter = EncounterKind.FIGHT
     # A3. An opening is used by the next step that faces whom it is on, and those this step won
     # are held from here.
     frame.openings = [o for o in frame.openings if o not in opponent_ids] + won
@@ -963,16 +967,17 @@ def _under_terms(
     stand and keeps them for the bout.
 
     A blow at those the actor is in a bout with comes under its terms whether or not the step
-    names them, and they only ever get milder. It is held to the worst they accept, unless the
-    interpret step says the actor means to go beyond them: then it is an attack as proposed, and
-    the bout is over. A step that fights someone with no bout on starts one when it proposes
-    terms and everyone in it can agree to them, and one that proposes terms with someone new
-    while a bout is on brings them into it. A fight in earnest, in which someone was harmed
-    outside any terms or whose terms were broken, stays one whatever a later step proposes."""
-    target_ids = [
-        i for i in dict.fromkeys(step.target_ids) if i != actor.id and i in state.characters
-    ]
-    if not target_ids or not (step.aim.harmful or step.encounter is EncounterKind.FIGHT):
+    names them, and they only ever get milder. A blow is any step that fights them
+    (`bouts.is_blow`), whether it aims at them or names no target and they stand in its way
+    (`bouts.against`). It is held to the worst the terms accept, unless the interpret step says
+    the actor means to go beyond them, by its aim or failing one by its verb (`bouts.meant`):
+    then it is an attack as proposed, and the bout is over. A step that fights someone
+    with no bout on starts one when it proposes terms and everyone in it can agree to them, and
+    one that proposes terms with someone new while a bout is on brings them into it. A fight in
+    earnest, in which someone was harmed outside any terms or whose terms were broken, stays
+    one whatever a later step proposes."""
+    target_ids = bouts.against(state, actor.id, step)
+    if not target_ids or not bouts.is_blow(step):
         return step, None, False
     proposed = step.facts.terms
     if frame.bout is None:
@@ -987,7 +992,9 @@ def _under_terms(
         if proposed is None or joined is None:
             # A blow at someone outside the bout is none of its own. One that is also meant to
             # go beyond the terms with someone in it ends the bout.
-            beyond = step.facts.breaks_terms and not bouts.allows(frame.bout.terms, step.aim)
+            beyond = step.facts.breaks_terms and not bouts.allows(
+                frame.bout.terms, bouts.meant(step)
+            )
             if beyond and any(i in bouts.sides(state, frame.bout) for i in target_ids):
                 frame.bout, frame.open_fight = None, True
                 return step, None, True
@@ -995,7 +1002,7 @@ def _under_terms(
         frame.bout = joined
     terms = bouts.milder(frame.bout.terms, proposed)
     frame.bout = frame.bout.model_copy(update={"terms": terms})
-    if step.facts.breaks_terms and not bouts.allows(terms, step.aim):
+    if step.facts.breaks_terms and not bouts.allows(terms, bouts.meant(step)):
         frame.bout, frame.open_fight = None, True
         return step, None, True
     aim = bouts.held(terms, step.aim)

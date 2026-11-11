@@ -50,6 +50,7 @@ from engine.state import (
 )
 from engine.visibility import memory_view
 from engine.world import Kind
+from engine.world.norms import Nature, deed_nature
 from engine.world.tuning import MAX_TICKS_PER_PASSAGE, UNKNOWN_TRIP_S
 from evals import worlds
 from evals.judge import Rubric
@@ -1928,18 +1929,69 @@ def lesson_begins(state) -> None:
     )
 
 
-def lesson_blow(n: int) -> Intent:
+# The shapes an interpret step gives a practice blow: its verb, what it aims to do, and whether it
+# names the elder as its target or leaves him as what stands in its way. The first live lesson
+# (2026-11-11) had one read as an attack that aims no harm and names no target, and it was filed
+# as an attack on him.
+BLOW_SHAPES = [
+    ("strike", Aim.SUBDUE, True),
+    ("attack", Aim.NONE, False),
+    ("strike", Aim.WOUND, True),
+    ("attack", Aim.NONE, True),
+    ("strike", Aim.KILL, True),
+    ("lunge", Aim.NONE, False),
+    ("swing", Aim.WOUND, False),
+]
+
+
+def lesson_blow(n: int, shape: int = 0) -> Intent:
     """A blow of the lesson as the interpret step might read it: the terms once, at the start,
-    and after that any aim at all, with any guess at what the elder means in answer."""
+    and after that in any shape at all, with any guess at what the elder means in answer.
+    `shape` is the shape of the first blow, so over the seeds a lesson begins with each."""
     told = facts(
         opposition_ids=["elder-mo"],
         can_respond=True,
         terms=Terms.NO_HARM if n == 0 else None,
         foes_mean=(None, Aim.SUBDUE, Aim.WOUND, Aim.KILL)[n % 4],
     )
-    aim = (Aim.SUBDUE, Aim.WOUND, Aim.KILL)[n % 3]
-    text = "strike at Elder Mo with the practice sword"
-    return plan(attack("elder-mo", aim=aim, text=text, verb="strike", facts=told))
+    verb, aim, named = BLOW_SHAPES[(n + shape) % len(BLOW_SHAPES)]
+    return plan(
+        step(
+            "strike at Elder Mo with the practice sword",
+            verb=verb,
+            aim=aim,
+            target_ids=["elder-mo"] if named else [],
+            axis=PowerAxis.MIGHT,
+            facts=told,
+        )
+    )
+
+
+def as_read(turns: list[Played]) -> str:
+    """How each step of some turns was read and what code made of it, for the detail of a
+    failed check: a live run's log is all that can be read of it afterwards (T18). The story
+    is the eval's own, so nothing of a player's is shown (T16)."""
+    lines = []
+    for played in turns:
+        if played.result is None:
+            lines.append(f"t{played.turn} refused")
+            continue
+        read = played.result.intent.steps if played.result.intent is not None else []
+        for settled in played.steps:
+            said = "unread"
+            if settled.index < len(read):
+                step_ = read[settled.index]
+                told = step_.facts
+                terms = told.terms.value if told.terms is not None else "null"
+                said = (
+                    f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
+                    f"in_way={told.opposition_ids} terms={terms}"
+                    f"{' beyond' if told.breaks_terms else ''}"
+                )
+            bout = settled.bout.terms.value if settled.bout is not None else "none"
+            deeds = [d.kind for d in settled.deeds]
+            lines.append(f"t{played.turn}.{settled.index} {said} -> bout={bout} deeds={deeds}")
+    return " | ".join(lines)
 
 
 def blinding_blow() -> Intent:
@@ -1967,7 +2019,7 @@ def unharmed(state, character_id: str) -> bool:
     ),
 )
 async def friendly_bout(ev: Eval) -> None:
-    for seed in ev.seeds(12, live=1):
+    for shape, seed in enumerate(ev.seeds(14, live=3)):
         story = ev.story(worlds.cultivation_world(), seed=seed)
         await story.open()
         story.change(lesson_begins)
@@ -1975,24 +2027,27 @@ async def friendly_bout(ev: Eval) -> None:
         lesson = [
             await story.act(
                 "I bow, take up the practice sword and come at Elder Mo as he asked",
-                lesson_blow(0),
+                lesson_blow(0, shape),
             )
         ]
         for n in range(1, 6 if ev.live else LESSON_BLOWS):
             lesson.append(
-                await story.act("I come at Elder Mo again with the practice sword", lesson_blow(n))
+                await story.act(
+                    "I come at Elder Mo again with the practice sword", lesson_blow(n, shape)
+                )
             )
         state = story.state
         blows = [s for played in lesson for s in played.steps]
+        read = f"{seed}: {as_read(lesson)}"
         ev.check(
             "the lesson is read as a bout both agreed to",
             any(s.bout is not None and s.bout.terms is Terms.NO_HARM for s in blows),
-            seed,
+            read,
         )
         ev.check(
-            "every blow of it comes under its terms, whatever aim was proposed",
+            "every blow of it comes under its terms, however it was read",
             all(s.bout is not None and not s.broke_terms for s in blows),
-            seed,
+            read,
             live=False,
         )
         ev.check(
@@ -2005,17 +2060,20 @@ async def friendly_bout(ev: Eval) -> None:
             for d in state.deeds.values()
             if "elder-mo" in (d.actor_id, *d.victim_ids, *d.target_ids)
         ]
+        # A bow to him may be on record beside the bout; nothing that is harm by the world's
+        # norms may.
+        harm = [d.kind for d in with_elder if deed_nature(state, d) is Nature.HARM]
         ev.check(
             "no blow of it is on record as an attack",
-            bool(with_elder) and all(d.is_bout for d in with_elder),
-            f"{seed}: {[d.kind for d in with_elder]}",
+            any(d.is_bout for d in with_elder) and not harm,
+            f"{[d.kind for d in with_elder]} from {read}",
         )
         ev.check("the whole lesson is one deed", len(with_elder) == 1, seed, live=False)
         elder = state.characters["elder-mo"].attitude_toward("lin")
         ev.check(
             "the mentor bears no grudge and isn't afraid",
             not elder.grudges and elder.fear <= before.fear,
-            f"{seed}: {elder}",
+            f"{elder} from {read}",
         )
         ev.check(
             "he thinks a little better of his student for it",
@@ -2061,7 +2119,7 @@ async def friendly_bout(ev: Eval) -> None:
         ev.check(
             "a blow meant to maim goes beyond the terms",
             any(s.broke_terms for s in played.steps),
-            seed,
+            f"{seed}: {as_read([played])}",
         )
         encounter = state.scene.encounter
         ev.check("the bout is over", encounter is None or encounter.bout is None, seed)
