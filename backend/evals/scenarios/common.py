@@ -12,6 +12,7 @@ from engine.contracts import (
     Intent,
     IntentStep,
     MeansVerdict,
+    OutcomeClass,
     PowerGrant,
     PowerTheory,
     SheetPart,
@@ -21,6 +22,7 @@ from engine.contracts import (
     Training,
 )
 from engine.state import HitMode, PowerAxis
+from evals.runner import Played
 
 
 def step(
@@ -246,3 +248,43 @@ __all__ = [
     "train_power",
     "trait",
 ]
+
+
+REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
+
+
+def as_read(turns: list[Played]) -> str:
+    """How each step of some turns was read and what code made of it, for the detail of a
+    failed check: a live run's log is all that can be read of it afterwards (T18). The story
+    is the eval's own, so nothing of a player's is shown (T16)."""
+    lines = []
+    for played in turns:
+        if played.result is None:
+            why = played.refused
+            said = f" ({', '.join(why.categories) or why.code} {why.stage})" if why else ""
+            lines.append(f"t{played.turn} refused{said.rstrip()}")
+            continue
+        read = played.result.intent.steps if played.result.intent is not None else []
+        for settled in played.steps:
+            said = "unread"
+            if settled.index < len(read):
+                step_ = read[settled.index]
+                told = step_.facts
+                terms = told.terms.value if told.terms is not None else "null"
+                said = (
+                    f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
+                    f"in_way={told.opposition_ids} terms={terms}"
+                    f"{' beyond' if told.breaks_terms else ''}"
+                    f"{' unanswered' if told.can_respond is False else ''}"
+                )
+                if (show := step_.show_strength) is not None:
+                    said += f" shows={show.ladder_id}:{show.shown_rung}"  # G20
+            how = f"{settled.outcome_class.value}/{settled.result.value}"
+            if settled.outcome_class is OutcomeClass.RULED_OUT:
+                how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
+            bout = settled.bout.terms.value if settled.bout is not None else "none"
+            deeds = [d.kind for d in settled.deeds]
+            lines.append(
+                f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
+            )
+    return " | ".join(lines)

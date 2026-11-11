@@ -37,6 +37,7 @@ from engine.state.world import WorldState, natural_key
 from engine.world import carriers, journeys
 from engine.world.geography import routes_from
 from engine.world.scheduling import Kind
+from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
@@ -214,7 +215,26 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     attitude = character.sheet.disposition.attitudes.get(state.player_id)
     if attitude is not None:
         view["toward_you"] = _dump(attitude)
+    if heard := _heard_said(state, character.id):
+        # W4: what they have only heard said of the player character, and half believe.
+        view.setdefault("toward_you", {})["heard_said"] = heard
     return view
+
+
+# How many deeds someone has only heard talk of are told to a model, the gravest first.
+_HEARD_SAID = 3
+
+
+def _heard_said(state: WorldState, character_id: str) -> list[str]:
+    """W4: the player character's deeds this person has only heard talk of
+    (`Deed.heard_by`), in the world's words, the gravest and then the latest first."""
+    heard = [
+        deed
+        for deed in state.deeds.values()
+        if deed.actor_id == state.player_id and character_id in deed.heard_by
+    ]
+    heard.sort(key=lambda d: (-d.severity, -d.world_s, natural_key(d.id)))
+    return [account(state, deed) for deed in heard[:_HEARD_SAID]]
 
 
 def _fallen_view(state: WorldState) -> list[dict[str, Any]]:
@@ -470,7 +490,15 @@ def interpret_prompt(
     told = last_scene.strip()[-LAST_SCENE_CHARS:]
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
-    world = ("WORLD", _world_view(state, include=_INTERPRET_WORLD))
+    seen = _world_view(state, include=_INTERPRET_WORLD)
+    if state.bible.ladders:
+        # G20: the world's ladders by their rungs' names, lowest first, so "I pass for an
+        # outer disciple" names a rung to show. What a rung is worth stays code's.
+        seen["ladders"] = [
+            {"id": ladder.id, "name": ladder.name, "rungs": [rung.name for rung in ladder.rungs]}
+            for ladder in state.bible.ladders
+        ]
+    world = ("WORLD", seen)
     talents = _talents_view(state)
     you = _player_view(state)
     # A4: what is ruled on and bridged is told once, under TALENTS, with how each talent stands.

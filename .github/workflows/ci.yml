@@ -9,7 +9,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
@@ -35,7 +35,7 @@ jobs:
   # The story evals in deterministic mode (T15, T17, T18): every scenario the engine alone decides,
   # played through the real turn graph with scripted model answers. No model, no database, no key.
   evals:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
 
   backend-image:
     # Builds the Cloud Run image and runs it as Cloud Run would: migrate, then serve on $PORT.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
@@ -107,7 +107,7 @@ jobs:
         run: docker logs api || true
 
   app:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
@@ -128,7 +128,7 @@ jobs:
   # main: the deploy builds that commit's APK itself, and its CI gate shouldn't wait for a second.
   android:
     if: github.ref != 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -147,7 +147,7 @@ jobs:
   # Only dev merges into main, because that merge deploys. Every other PR goes into dev.
   into-main:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Only dev merges into main
         env:
@@ -162,7 +162,7 @@ jobs:
   # The deploy scripts and workflows (docs/DEPLOY.md). No credentials: gcloud, gh and curl are
   # fakes in the tests, and the real gcloud runs offline and signed out to check every flag.
   infra:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

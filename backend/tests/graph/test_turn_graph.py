@@ -450,6 +450,8 @@ def test_a_blocked_interpret_step_is_an_unreadable_action(fake, make_client, tel
         play(make_client(), turn_input())
     assert raised.value.code == "unreadable_action"
     assert raised.value.categories == ("harassment",)
+    assert raised.value.stage == "prompt"  # for the logs and the evals, never the app
+    assert raised.value.details == {}
     assert fake.calls(Node.NARRATOR) == []
 
 
@@ -901,6 +903,18 @@ def test_a_blank_scene_end_keeps_the_last_moment(fake, make_client):
     _, result = play(make_client(), turn)
     assert result.state.scene.ended_on == turn.state.scene.ended_on
     assert "blank_scene_end" in [i.code for i in result.issues]
+
+
+def test_a_scene_end_that_gives_only_the_time_takes_the_scenes_last_sentence(fake, make_client):
+    """R3: the next scene starts from what was happening, never from an hour on the clock."""
+    told = "You stoop for a stone. Zhao laughs, and you let it fly at his brow."
+    end = {"ended_on": "Day 1, morning, 07:00", "place_id": "well", "present_ids": ["lin"]}
+    scene = SCENE | {"narration": told, "update": SCENE["update"] | {"scene_end": end}}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=scene))
+    _, result = play(make_client(), turn_input())
+    assert result.state.scene.ended_on == "Zhao laughs, and you let it fly at his brow."
+    assert "clock_scene_end" in [i.code for i in result.issues]
 
 
 def test_a_scene_moves_only_the_feelings_of_its_people_and_of_whom_the_turn_reached(

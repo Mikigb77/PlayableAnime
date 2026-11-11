@@ -13,6 +13,9 @@ Whoever knows for themselves what a rumor tells, because they did it, saw it, we
 someone close or were there when it happened, knows whether it is so (`certainty`): they believe
 it if it is and not if it isn't, and the player's Memory screen marks it confirmed or false
 instead of unconfirmed (C6).
+
+Talk is the weakest way to know who did something (`knowledge.Grounds.HEARD`): those who believe
+it think worse of the doer, and nobody acts against them on it (W4, W5).
 """
 
 from enum import StrEnum
@@ -21,6 +24,7 @@ from engine.state.records import GARBLED_LEAD, Deed, EventStatus, PendingEvent, 
 from engine.state.world import WorldState
 from engine.world.geography import characters_at, news_neighbours, region_of
 from engine.world.knowledge import (
+    Grounds,
     character_learns,
     faction_learns,
     in_faction,
@@ -95,7 +99,9 @@ def start_rumor(
         if believes(state, character_id, rumor, rumor.accuracy):
             rumor.believed_by.append(character_id)
             if news and names_actor(rumor, deed):
-                character_learns(w, character_id, deed, weight=rumor.accuracy / 100)
+                character_learns(
+                    w, character_id, deed, weight=rumor.accuracy / 100, grounds=Grounds.HEARD
+                )
     if place_id is not None:
         spread(w, rumor, place_id, hops_left=hops, accuracy=rumor.accuracy, first=chatter)
     return rumor
@@ -263,12 +269,12 @@ def on_rumor(w: World, event: PendingEvent) -> None:
             continue
         rumor.believed_by.append(character.id)
         if attributed:
-            character_learns(w, character.id, deed, weight=weight)
+            character_learns(w, character.id, deed, weight=weight, grounds=Grounds.HEARD)
 
     if attributed and accuracy >= BELIEVED_FROM:
         holder = state.places[place_id].controller_id
         if holder is not None:
-            faction_learns(w, holder, deed, weight=weight)
+            faction_learns(w, holder, deed, weight=weight, grounds=Grounds.HEARD)
         region = region_of(state, place_id)
         if region not in reached_regions:
             region_learns(w, region, deed, weight=weight)

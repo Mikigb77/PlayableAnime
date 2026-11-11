@@ -59,7 +59,7 @@ jobs:
     name: CI passed on this commit
     # An export deploys nothing, so the deploy and every job after it are skipped with this one.
     if: ${{ !inputs.export_key }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
       actions: read
@@ -75,7 +75,7 @@ jobs:
   deploy:
     name: ${{ inputs.dry_run && 'Dry run' || 'Deploy' }}
     needs: ci-green
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
@@ -196,7 +196,7 @@ jobs:
   models:
     name: Check the models
     needs: deploy
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
@@ -227,7 +227,7 @@ jobs:
   covers:
     name: Draw the starter covers
     needs: models
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     continue-on-error: true
     permissions:
@@ -261,7 +261,7 @@ jobs:
     name: Redraw story pictures
     needs: [models, covers]
     if: ${{ !cancelled() && needs.models.result == 'success' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 70
     continue-on-error: true
     permissions:
@@ -291,7 +291,7 @@ jobs:
   apk:
     name: Build the Android app
     if: ${{ !inputs.export_key }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
@@ -340,7 +340,7 @@ jobs:
     name: Publish the Android app
     needs: [deploy, apk]
     if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
@@ -389,7 +389,7 @@ jobs:
   export:
     name: Export the owner's stories
     if: ${{ inputs.export_key }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read

@@ -25,8 +25,9 @@ from evals.runner import MAX_TURNS, Eval, LiveUnavailable, Models, RunawayStory,
 from evals.scenario import BOTH, LIVE_ONLY, Mode, Registry, Scenario
 from evals.scenarios.common import act
 from evals.scripted import MissingInterpretation
-from graph.llm import FakeBackend, ModelClient, ModelConfig, Node, Reply
-from graph.llm.fake import TINY_PNG
+from graph.llm import Block, FakeBackend, ModelClient, ModelConfig, Node, Reply
+from graph.llm.fake import TINY_PNG, offline_reply
+from graph.llm.types import Request
 from tests.evals.conftest import passing_judge
 
 
@@ -519,3 +520,37 @@ def test_a_missed_criterion_is_reported_with_the_judges_reason():
         "judge the look: M3 (Each person looks their age) failed: no reason given",
         "judge broken: the judge answered nothing",
     ]
+
+
+def test_a_failed_live_scenario_says_which_turns_were_refused_and_why():
+    """T18: a story whose first action can't be read fails every check after it, and the run's
+    log is all that can be read of it afterwards. So a failed scenario lists the turns that
+    were refused, with who refused them and why."""
+
+    def filtered(request: Request) -> Reply | Block:
+        if request.node is Node.INTERPRET:
+            return Block(categories=("harassment",), stage="prompt")
+        return offline_reply(request)
+
+    models = Models(
+        backend=FakeBackend(default=filtered, keep_requests=False),
+        judge_backend=FakeBackend(default=passing_judge, keep_requests=False),
+    )
+    verdicts = {}
+
+    async def script(ev: Eval) -> None:
+        story = ev.story(worlds.cultivation_world(), seed="s/0", under_way=True)
+        played = await story.act("I cut Zhao down where he stands")
+        ev.check("the blow is read", verdicts.get("read", played.completed), "it never played")
+
+    result = play(script, mode=Mode.LIVE, models=models)
+
+    assert result.status == "failed"
+    assert result.failures() == [
+        "the blow is read: 1 failed of 1: it never played",
+        "refused: s/0 t2 (I cut Zhao down where he stands): unreadable_action by model at the "
+        "prompt, categories ['harassment']",
+    ]
+    # A refusal a passing scenario expected is not worth a line.
+    verdicts["read"] = True
+    assert play(script, mode=Mode.LIVE, models=models).failures() == []

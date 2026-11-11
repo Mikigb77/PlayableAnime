@@ -56,6 +56,7 @@ from evals.scenario import REGISTRY
 from evals.scenarios.common import (
     act,
     army_throw,
+    as_read,
     attack,
     cut_throat,
     facts,
@@ -1267,7 +1268,7 @@ async def hidden_strength(ev: Eval) -> None:
             "until the reveal, Wu senses what Lin shows",
             sensing.perceived_rung(state, wu, lin, "realms") == 0
             and actor_might(state, "lin") == 2,
-            seed,
+            f"{seed}: {as_read([hidden])}",
         )
         fear_before = wu.attitude_toward("lin").fear
         mocked = await story.act(
@@ -1299,7 +1300,7 @@ async def hidden_strength(ev: Eval) -> None:
         ev.check(
             "the reveal is a public deed",
             reveal is not None and reveal.visibility is Visibility.PUBLIC,
-            f"{seed}: {reveal.visibility if reveal else None}",
+            f"{seed}: {reveal.visibility if reveal else None} from {as_read([shown])}",
         )
         ev.check(
             "rumors shift at once",

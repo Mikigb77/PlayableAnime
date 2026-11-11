@@ -12,6 +12,7 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 - `check_told`: whether a scene the player acted in told their action before its outcome (R1).
 """
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -27,11 +28,13 @@ from engine.contracts import (
     PictureTrigger,
     Resolution,
     StateDelta,
+    StepFacts,
     StepResolution,
     StopReason,
     SuggestionPlan,
 )
 from engine.director.themes import allowed_themes, fits
+from engine.labels import only_the_clock
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
@@ -50,6 +53,8 @@ LAST_PICTURES = (PictureTrigger.DEATH, PictureTrigger.DECISIVE_BLOW)
 REAL_ENTITY = "real_entity"
 # N6, A8: an edge or hindrance about an injury the record doesn't hold, left out.
 UNRECORDED_HARM = "unrecorded_harm"
+# R3: the issue code for a scene end that gave only the date or the hour.
+CLOCK_SCENE_END = "clock_scene_end"
 
 
 @dataclass(frozen=True)
@@ -66,7 +71,8 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     make anyone else act (A6), so words that have someone else act are the character's order or
     hope. The interpret step never refuses (B5), so an intent with no step and no standing action
     becomes one step that carries the player's words as they are. An edge or hindrance that
-    leans on an injury the record doesn't hold is left out (N6, `engine.injuries`).
+    leans on an injury the record doesn't hold is left out (N6, `engine.injuries`). Hiding or
+    showing strength is a step of its own (G20, `_shows_apart`).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -122,6 +128,8 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             issues.append(Issue("unknown_goal", "not an active goal", ref))
     intent.dropped_goals = dropped
 
+    intent.steps = _shows_apart(intent.steps, state, issues)
+
     overflow: list[str] = []
     if len(intent.steps) > MAX_STEPS:
         overflow = [step.text for step in intent.steps[MAX_STEPS:]]
@@ -141,6 +149,50 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
         ]
         intent.summary = intent.summary or text
     return CheckedIntent(intent=intent, issues=issues, overflow=overflow)
+
+
+def _shows_apart(
+    steps: list[IntentStep], state: WorldState, issues: list[Issue]
+) -> list[IntentStep]:
+    """G20. Hiding one's strength or letting it show is a step of its own, which code settles
+    for certain. Read into a step that also strikes someone, trains or builds on a talent, it
+    would settle that too, with no throw: so the show comes first, as its own step, and the
+    rest of the step plays as what it is. A show that names a ladder the world doesn't have is
+    left out, and so is one that has nothing to change (no such strength, or nothing hidden to
+    show) on a step that does something else."""
+    apart: list[IntentStep] = []
+    for step in steps:
+        show = step.show_strength
+        if show is None:
+            apart.append(step)
+            continue
+        if state.bible.ladder(show.ladder_id) is None:
+            issues.append(Issue("unknown_ladder", "the show of strength is left out"))
+            apart.append(step.model_copy(update={"show_strength": None}))
+            continue
+        busy = step.aim.harmful or step.training is not None or step.bridge is not None
+        if not busy:
+            apart.append(step)
+            continue
+        mine = next((p for p in state.player.sheet.ladders if p.ladder_id == show.ladder_id), None)
+        changes = mine is not None and (show.shown_rung is not None or mine.shown_rung is not None)
+        if changes:
+            issues.append(Issue("show_apart", "the show of strength became its own step"))
+            apart.append(
+                IntentStep(
+                    text=step.text,
+                    verb="hide" if show.shown_rung is not None else "reveal",
+                    kind=ActionKind.INSTANT,
+                    proposed_duration_s=1,
+                    show_strength=show,
+                    # W2: a reveal before a crowd is as public as the blow that follows it.
+                    facts=StepFacts(crowd=step.facts.crowd),
+                )
+            )
+        else:
+            issues.append(Issue("idle_show", "the show of strength is left out"))
+        apart.append(step.model_copy(update={"show_strength": None}))
+    return apart
 
 
 def _actor_reason(state: WorldState, actor_id: str) -> str:
@@ -250,11 +302,14 @@ def _stop_reason(step: StepResolution) -> StopReason:
 
 
 def check_update(
-    delta: StateDelta, state: WorldState, moved: Sequence[Transfer] = ()
+    delta: StateDelta, state: WorldState, moved: Sequence[Transfer] = (), told: str = ""
 ) -> tuple[StateDelta, list[Issue]]:
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
-    A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. The
+    A scene ends on a moment the next one starts from (R3), so a blank one keeps the last. One
+    that gives only the date or the hour ("Day 1, morning, 07:00") tells the next scene nothing
+    of who is where doing what, so the scene's own last sentence (`told` is its text) stands in
+    for it. The
     dead can't be present (C1), and the rolling summary is never blanked. A new character or
     faction named after a real person or organisation is left out, and a known one keeps its
     name (G12). What the engine already moved this turn (`moved`, the transfers its steps and
@@ -270,6 +325,9 @@ def check_update(
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()
+        if only_the_clock(state.bible.calendar, state.world_s, end.ended_on):
+            issues.append(Issue(CLOCK_SCENE_END, "the scene's end gave only the time"))
+            end.ended_on = _last_sentence(told)
         if not end.ended_on:
             issues.append(Issue("blank_scene_end", "kept the last scene's ending"))
             end.ended_on = state.scene.ended_on
@@ -286,6 +344,20 @@ def check_update(
     if delta.summary is not None and not delta.summary.strip():
         delta.summary = None
     return delta, issues
+
+
+# R3: how much of a scene's last sentence stands in for a scene end that gave only the time.
+LAST_SENTENCE_CHARS = 300
+
+
+def _last_sentence(told: str) -> str:
+    """The last sentence of a scene's text, or the end of it when nothing ends a sentence in
+    it. Blank for a scene with no text."""
+    text = " ".join(told.split())
+    if not text:
+        return ""
+    sentences = [s for s in re.split(r"(?<=[.!?…])[\"'”’»)]*\s+", text) if s.strip()]
+    return sentences[-1].strip()[-LAST_SENTENCE_CHARS:]
 
 
 # R1: the issue code for a scene that skipped the player's action and opened on what came of it.

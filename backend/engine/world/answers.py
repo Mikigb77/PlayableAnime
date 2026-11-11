@@ -6,6 +6,11 @@ appeases, recruits or worships, one at war with someone else ignores the player 
 them. It answers with what it really has: an elite champion only if it has someone who could be
 one, and nobody is conjured to match the player (A9). The answer is a pending event due once the
 faction has gathered and travelled (W10). The narrator dresses it in the world's form (G9).
+
+How far an answer goes follows how sure they are who did it (W4, W5, `engine.world.knowledge`).
+On talk alone nobody is sent to arrest, hunt or kill: those who keep the law come to look into
+it. Someone close to the dead who has only one person's word for it comes to face the doer with
+it first (`CONFRONT`), and for revenge only after.
 """
 
 from enum import StrEnum
@@ -17,6 +22,7 @@ from engine.state.records import Deed, Origin, OriginKind, PendingEvent
 from engine.state.world import WorldState
 from engine.world.geography import faction_seat, is_within, region_of, travel_s
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
+from engine.world.telling import account
 from engine.world.tuning import ANSWER_GATHER_S, UNKNOWN_TRIP_S, ZEAL_GATHER_FACTOR
 
 
@@ -26,6 +32,7 @@ class Answer(StrEnum):
     INVESTIGATE = "investigate"  # they look into a crime with no known culprit
     BOUNTY = "bounty"
     HUNTERS = "hunters"
+    CONFRONT = "confront"  # someone close to a victim comes to face the one they were told did it
     REVENGE = "revenge"  # one person's own vengeance (W4)
     ARMY = "army"
     ELITE = "elite"  # its strongest, if it has anyone strong enough
@@ -46,6 +53,7 @@ ARRIVING = frozenset(
         Answer.ARREST,
         Answer.INVESTIGATE,
         Answer.HUNTERS,
+        Answer.CONFRONT,
         Answer.REVENGE,
         Answer.ARMY,
         Answer.ELITE,
@@ -59,6 +67,19 @@ ARRIVING = frozenset(
     }
 )
 
+# Answers that set out to take, hurt or kill the target. Nobody sends one on talk alone (W5).
+HOSTILE = frozenset(
+    {
+        Answer.ARREST,
+        Answer.BOUNTY,
+        Answer.HUNTERS,
+        Answer.ARMY,
+        Answer.ELITE,
+        Answer.ASSASSIN,
+        Answer.SEAL,
+    }
+)
+
 # In the engine's plain words; the narrator tells it in the world's (G9).
 ANSWER_TEXT = {
     Answer.AVOID: "keeps clear of {target}",
@@ -66,6 +87,7 @@ ANSWER_TEXT = {
     Answer.INVESTIGATE: "comes to look into what happened",
     Answer.BOUNTY: "puts a price on {target}'s head",
     Answer.HUNTERS: "sends hunters after {target}",
+    Answer.CONFRONT: "comes to face {target} over what {target} is said to have done",
     Answer.REVENGE: "comes for revenge on {target}",
     Answer.ARMY: "marches in force against {target}",
     Answer.ELITE: "sends its strongest against {target}",
@@ -158,10 +180,13 @@ def choose_answer(
     *,
     enforcing: bool,
     harmed: bool,
+    hostile: bool = True,
 ) -> Answer:
-    """W5: weigh the answers that fit this faction's nature and situation, then draw one."""
+    """W5: weigh the answers that fit this faction's nature and situation, then draw one. With
+    `hostile` false it has only heard talk, and none of the answers that take, hurt or kill is
+    among them."""
     state = w.state
-    if enforcing:
+    if enforcing and hostile:
         return Answer.ARREST
     target_might = actor_might(state, target_id)
     gap = target_might - faction_might(state, faction, excluding=target_id)
@@ -216,6 +241,8 @@ def choose_answer(
     if at_war:
         add(Answer.IGNORE, 2)
         add(Answer.USE_AGAINST_RIVAL, 2)
+    if not hostile:
+        weights = {answer: weight for answer, weight in weights.items() if answer not in HOSTILE}
     if not weights:
         add(Answer.AVOID, 1)
     options = sorted(weights, key=lambda a: a.value)
@@ -271,6 +298,9 @@ def schedule_answer(
     target = state.characters.get(target_id)
     who = avenger.name if avenger else faction.name if faction else "someone"
     text = ANSWER_TEXT[answer].format(target=target.name if target else "them")
+    if answer is Answer.CONFRONT and deed is not None:
+        # The narrator has only the title to go by: what it is over, and that it is no attack.
+        text = f"{text}, to hear it answered and not to attack: {account(state, deed)}"
     return schedule(
         w,
         Kind.ANSWER,
@@ -300,18 +330,24 @@ def answer_threat(
     *,
     enforcing: bool,
     harmed: bool,
+    hostile: bool = True,
 ) -> PendingEvent | None:
     """A faction answers a deed or a crossed threat tier, unless an answer of the same weight is
-    already on its way. A much bigger threat replaces a smaller answer still under way."""
+    already on its way. A much bigger threat replaces a smaller answer still under way, and
+    knowing who did it ends a look into it. With `hostile` false it has only heard talk, and
+    sends nobody to take, hurt or kill (W5)."""
     if faction.status is FactionStatus.DESTROYED:
         return None
     target_id = deed.actor_id
     existing = open_answer(w.state, target_id=target_id, faction_id=faction.id)
     if existing is not None:
-        if tier < int(existing.payload.get("tier", 0)) + 2:
+        looking = existing.payload.get("answer") == Answer.INVESTIGATE.value
+        if not (looking and hostile) and tier < int(existing.payload.get("tier", 0)) + 2:
             return None
         cancel(w, existing)
-    answer = choose_answer(w, faction, target_id, tier, enforcing=enforcing, harmed=harmed)
+    answer = choose_answer(
+        w, faction, target_id, tier, enforcing=enforcing, harmed=harmed, hostile=hostile
+    )
     law = law_at(w.state, faction.id, deed.place_id) if enforcing else None
     return schedule_answer(
         w,
@@ -325,8 +361,41 @@ def answer_threat(
     )
 
 
-def schedule_revenge(w: World, avenger: Character, deed: Deed) -> PendingEvent | None:
-    """W4: someone close to a victim comes for the one they believe did it, later."""
+def look_into(w: World, faction: Faction, deed: Deed, law: Law | None) -> PendingEvent | None:
+    """W11: those who keep the law come to look into a crime they can't yet lay at anyone's
+    door: one found with nobody named for it, or one they have only heard talk of. Nothing
+    when they already have an answer on its way to the doer."""
+    if open_answer(w.state, target_id=deed.actor_id, faction_id=faction.id) is not None:
+        return None
+    return schedule_answer(
+        w,
+        Answer.INVESTIGATE,
+        target_id=deed.actor_id,
+        destination_id=deed.place_id,
+        tier=0,
+        deed=deed,
+        faction=faction,
+        law=law,
+    )
+
+
+def schedule_revenge(
+    w: World, avenger: Character, deed: Deed, *, faced: bool = False
+) -> PendingEvent | None:
+    """W4: someone close to a victim comes for the one they are sure did it, later. With
+    `faced`, they have put it to the doer's face first (`schedule_confrontation`)."""
+    return _comes_for(w, Answer.REVENGE, avenger, deed, faced=faced)
+
+
+def schedule_confrontation(w: World, accuser: Character, deed: Deed) -> PendingEvent | None:
+    """W4: someone close to a victim who has one person's word for who did it comes to face them
+    with it. What follows is theirs to decide once they have (`arrivals.on_answer`)."""
+    return _comes_for(w, Answer.CONFRONT, accuser, deed)
+
+
+def _comes_for(
+    w: World, answer: Answer, avenger: Character, deed: Deed, *, faced: bool = False
+) -> PendingEvent | None:
     target_id = deed.actor_id
     if avenger.id == target_id or not avenger.alive:
         return None
@@ -334,12 +403,15 @@ def schedule_revenge(w: World, avenger: Character, deed: Deed) -> PendingEvent |
         return None
     target = w.state.characters.get(target_id)
     destination = target.location_id if target is not None else deed.place_id
-    return schedule_answer(
+    event = schedule_answer(
         w,
-        Answer.REVENGE,
+        answer,
         target_id=target_id,
         destination_id=destination or deed.place_id,
         tier=deed.severity,
         deed=deed,
         avenger=avenger,
     )
+    if faced:
+        event.payload["faced"] = True
+    return event

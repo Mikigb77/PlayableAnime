@@ -29,6 +29,7 @@ from engine.contracts import (
     MeansVerdict,
     OutcomeClass,
     PictureTrigger,
+    SceneEnd,
     StandingAction,
     StateDelta,
     Theme,
@@ -57,6 +58,7 @@ from engine.state import (
 )
 from engine.visibility import memory_view
 from engine.world import Kind
+from engine.world.knowledge import proven
 from engine.world.norms import Nature, deed_nature
 from engine.world.tuning import MAX_TICKS_PER_PASSAGE, UNKNOWN_TRIP_S
 from evals import worlds
@@ -66,6 +68,7 @@ from evals.scenario import REGISTRY
 from evals.scenarios.common import (
     LIFE,
     act,
+    as_read,
     attack,
     cut_throat,
     facts,
@@ -1122,7 +1125,7 @@ async def stop_the_witness(ev: Eval) -> None:
             act("sleep", "sleep", ActionKind.REST, 8 * HOUR),
         )
         han = next((d for d in story.state.deeds.values() if "han" in d.victim_ids), None)
-        ev.check("the killing is a deed", han is not None, seed)
+        ev.check("the killing is a deed", han is not None, f"{seed}: {as_read([killing])}")
         if han is None:
             continue
         told = [e for e in story.fired(Kind.REPORT) if e.status is EventStatus.APPLIED]
@@ -1169,6 +1172,292 @@ async def stop_the_witness(ev: Eval) -> None:
             )
     ev.metric("ends", dict(ends))
     ev.check("some seeds silence the witness", ends["silenced"] > 0, str(dict(ends)), live=False)
+
+
+# --- One man's word (W4, W5) -------------------------------------------------------------------
+
+
+def _scene_person(story: Story, character_id: str) -> dict | None:
+    """How the narrator's last brief showed someone in the scene (deterministic mode)."""
+    brief = story.prompt(Node.NARRATOR)
+    if "## SCENE\n" not in brief:
+        return None
+    scene = json.loads(brief.split("## SCENE\n", 1)[1].split("\n", 1)[0])
+    return next((c for c in scene["present"] if c["id"] == character_id), None)
+
+
+def _came_for(story: Story, avenger_id: str) -> list:
+    """The times someone came to the player character over a deed, in the order they came."""
+    return [
+        e
+        for e in story.fired(Kind.ANSWER, avenger_id=avenger_id)
+        if e.status is EventStatus.APPLIED and e.needs_player
+    ]
+
+
+def a_day_in_millbrook() -> Intent:
+    return plan(
+        step("Help with the harvest in Millbrook", ActionKind.WORK, 12 * HOUR, verb="work"),
+        step("Sleep at the inn", ActionKind.REST, 12 * HOUR, verb="sleep"),
+    )
+
+
+def bram_at_his_fence() -> dict:
+    """A scripted scene that ends with Old Bram in it, as a live one that walks up to him does."""
+    end = SceneEnd(
+        ended_on="Old Bram leans on his fence and looks Tomas over.",
+        place_id="village",
+        present_ids=["tomas", "bram"],
+    )
+    return {
+        "narration": "(scripted) Old Bram straightens up from his fence as Tomas comes over.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
+@scenario(
+    "t17.one-mans-word",
+    suite="T17",
+    title="One man's word",
+    requirements=("W4", "W5", "W2", "W10", "T17"),
+    passes_when=(
+        "After a killing one person saw, whoever only hears it said thinks worse of the player "
+        "and holds nothing against them, and nobody comes on talk. The dead man's brother, "
+        "told by someone who knows, comes to face the player with it, and for revenge only "
+        "after, hours later. When two saw it, he comes for revenge with no accusation first"
+    ),
+)
+async def one_mans_word(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for n, seed in enumerate(ev.seeds(8, live=1)):
+        two_saw = n % 2 == 1  # live plays the story one man saw
+        story = ev.story(worlds.thief_in_the_barn(two_saw=two_saw), seed=seed, under_way=True)
+        await story.act(
+            "I cut Jorn's throat with my knife while he sleeps in the hay",
+            plan(
+                cut_throat(
+                    "jorn",
+                    "knife",
+                    facts=facts(opposition_ids=["jorn"], can_respond=False, why_not="asleep"),
+                )
+            ),
+        )
+        await story.act(
+            "I leave the barn and walk down the road into Millbrook",
+            plan(
+                step(
+                    "walk into Millbrook",
+                    ActionKind.TRAVEL,
+                    40 * MINUTE,
+                    verb="walk",
+                    destination="village",
+                )
+            ),
+        )
+        await story.act(
+            "I take a seat outside the Millbrook inn and rest there for an hour",
+            act("rest outside the inn for an hour", "rest", ActionKind.TASK, HOUR),
+        )
+        deed = next((d for d in story.state.deeds.values() if "jorn" in d.victim_ids), None)
+        ev.check("the killing is a deed", deed is not None, seed)
+        if deed is None:
+            continue
+        saw = sorted(deed.witness_ids)
+        ev.check(
+            "who saw it is who was in the barn",
+            saw == (["henk", "pim"] if two_saw else ["pim"]),
+            f"{seed}: {saw}",
+            live=False,
+        )
+        ev.check(
+            "what one saw is one man's word, and what two saw is beyond it",
+            proven(story.state, deed) is two_saw,
+            f"{seed}: saw {saw}",
+            live=False,
+        )
+
+        # Old Bram, who has no tie to the dead man, has only what goes round Millbrook.
+        bram = story.state.characters["bram"].attitude_toward("tomas")
+        heard = "bram" in deed.heard_by
+        if heard and not _came_for(story, "kasper"):
+            ends["Bram heard it said"] += 1
+            ev.check(
+                "someone who only heard it said thinks worse of the player, with no grudge",
+                bram.affinity < 30 and not bram.grudges,
+                f"{seed}: {bram}",
+            )
+            await story.act(
+                "I walk over to Old Bram at his fence and wish him a good day",
+                plan(
+                    step(
+                        "wish Old Bram a good day",
+                        ActionKind.CONVERSATION,
+                        5 * MINUTE,
+                        verb="greet",
+                        target_ids=["bram"],
+                    )
+                ),
+                narration=None if ev.live else bram_at_his_fence(),
+            )
+            talk = await story.act(
+                "I ask Bram how his fences are holding, and what people are saying in the "
+                "village these days",
+                plan(
+                    step(
+                        "ask Bram what people are saying",
+                        ActionKind.CONVERSATION,
+                        10 * MINUTE,
+                        verb="ask",
+                        target_ids=["bram"],
+                    )
+                ),
+            )
+            shown = _scene_person(story, "bram")
+            ev.check(
+                "the narrator is told what Bram has only heard said, and no grudge",
+                shown is not None
+                and len(shown["toward_you"].get("heard_said", [])) == 1
+                and "Jorn Hask" in shown["toward_you"]["heard_said"][0]
+                and "grudges" not in shown["toward_you"],
+                f"{seed}: {shown and shown.get('toward_you')}",
+                live=False,
+            )
+            if not ev.live or "bram" in talk.state.scene.present_ids:
+                await ev.judge(
+                    "someone who has only heard it said",
+                    Rubric(
+                        must=(
+                            "Old Bram is cooler, warier or more guarded with Tomas than a "
+                            "friendly neighbour would be, or he hints at, repeats or asks "
+                            "about what is being said of Tomas",
+                        ),
+                        must_not=(
+                            "Old Bram states as a certain fact that Tomas killed Jorn, as "
+                            "someone who saw it or knows it would",
+                            "Old Bram attacks Tomas, tries to seize him or calls on others "
+                            "to seize him",
+                        ),
+                    ),
+                    talk,
+                )
+        elif two_saw:
+            ev.check(
+                "talk of what two saw counts as knowing",
+                "bram" not in deed.heard_by,
+                f"{seed}: {deed.heard_by}",
+            )
+
+        # Kasper, the dead man's brother, is sent word by someone who knows. He takes up to two
+        # days to come and face Tomas, and up to a week to come for revenge (W10).
+        for _ in range(9 if two_saw else 4):
+            if _came_for(story, "kasper"):
+                break
+            await story.act(
+                "I take a room at the inn and stay in Millbrook until tomorrow, helping with "
+                "the harvest",
+                a_day_in_millbrook(),
+            )
+        came = _came_for(story, "kasper")
+        deed = story.state.deeds[deed.id]
+        kasper = story.state.characters["kasper"].attitude_toward("tomas")
+        ev.check(
+            "told by someone who knows, the brother holds it against the player",
+            "kasper" in deed.known_by and [g.deed_id for g in kasper.grudges] == [deed.id],
+            f"{seed}: known by {deed.known_by}, {kasper}",
+        )
+        only_heard = [
+            cid
+            for cid in deed.heard_by
+            if any(
+                g.deed_id == deed.id
+                for g in story.state.characters[cid].attitude_toward("tomas").grudges
+            )
+            or story.fired(Kind.ANSWER, avenger_id=cid)
+        ]
+        ev.check(
+            "nobody who only heard it said holds it against the player or comes for them",
+            only_heard == [],
+            f"{seed}: {only_heard}",
+        )
+        ev.check("the brother comes to the player", bool(came), f"{seed}: nobody came")
+        if not came:
+            continue
+        first = came[0].payload
+        if two_saw:
+            ends["revenge at once"] += 1
+            ev.check(
+                "for what two saw he comes for revenge, with no accusation first",
+                first["answer"] == "revenge" and not first.get("faced"),
+                f"{seed}: {first}",
+            )
+            continue
+        ev.check(
+            "on one man's word he comes to face the player with it, not for revenge",
+            first["answer"] == "confront",
+            f"{seed}: {first}",
+        )
+        ev.check(
+            "the scene is told he came to hear it answered and not to attack",
+            "to hear it answered and not to attack" in story.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        await ev.judge(
+            "the brother puts it to the player's face",
+            Rubric(
+                must=(
+                    "Kasper Hask comes to Tomas and puts it to him that he killed Jorn, or "
+                    "demands to know whether it is true",
+                ),
+                must_not=(
+                    "Kasper strikes, stabs or otherwise attacks Tomas in this scene",
+                    "Kasper speaks as someone who saw the killing with his own eyes",
+                ),
+            ),
+            story.last,
+        )
+        faced_s = came[0].applied_s
+        await story.act(
+            "I tell Kasper the truth: his brother had been robbing my smokehouse, I found him "
+            "in my barn and I killed him, and I am sorry for his loss",
+            plan(
+                step(
+                    "tell Kasper what happened",
+                    ActionKind.CONVERSATION,
+                    10 * MINUTE,
+                    verb="tell",
+                    target_ids=["kasper"],
+                )
+            ),
+        )
+        for _ in range(9):
+            if len(_came_for(story, "kasper")) > 1:
+                break
+            await story.act(
+                "I stay on in Millbrook for another day, helping with the harvest",
+                a_day_in_millbrook(),
+            )
+        after = _came_for(story, "kasper")[1:]
+        ends["revenge after facing him" if after else "no revenge yet"] += 1
+        ev.check(
+            "an accusation that changed nothing brings revenge",
+            bool(after) and after[0].payload["answer"] == "revenge" and after[0].payload["faced"],
+            f"{seed}: {[e.payload for e in after]}",
+            live=False,
+        )
+        ev.check(
+            "and no sooner than six hours after he faced the player (W10)",
+            all(e.applied_s >= faced_s + 6 * HOUR for e in after),
+            f"{seed}: {[e.applied_s - faced_s for e in after]}",
+        )
+    ev.metric("ends", dict(ends))
+    ev.check(
+        "some seeds leave Bram with what he heard said",
+        ends["Bram heard it said"] > 0,
+        str(dict(ends)),
+        live=False,
+    )
 
 
 # --- A day in town (W10) -----------------------------------------------------------------------
@@ -2120,41 +2409,7 @@ def never_comes_off(shape: int) -> bool:
     return shape % 3 == 2
 
 
-REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
 ENDING_CHARS = 200  # of how the scene before a misread turn ended, in a failed check's detail
-
-
-def as_read(turns: list[Played]) -> str:
-    """How each step of some turns was read and what code made of it, for the detail of a
-    failed check: a live run's log is all that can be read of it afterwards (T18). The story
-    is the eval's own, so nothing of a player's is shown (T16)."""
-    lines = []
-    for played in turns:
-        if played.result is None:
-            lines.append(f"t{played.turn} refused")
-            continue
-        read = played.result.intent.steps if played.result.intent is not None else []
-        for settled in played.steps:
-            said = "unread"
-            if settled.index < len(read):
-                step_ = read[settled.index]
-                told = step_.facts
-                terms = told.terms.value if told.terms is not None else "null"
-                said = (
-                    f"{step_.verb}/{step_.kind.value}/{step_.aim.value} at={step_.target_ids} "
-                    f"in_way={told.opposition_ids} terms={terms}"
-                    f"{' beyond' if told.breaks_terms else ''}"
-                    f"{' unanswered' if told.can_respond is False else ''}"
-                )
-            how = f"{settled.outcome_class.value}/{settled.result.value}"
-            if settled.outcome_class is OutcomeClass.RULED_OUT:
-                how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
-            bout = settled.bout.terms.value if settled.bout is not None else "none"
-            deeds = [d.kind for d in settled.deeds]
-            lines.append(
-                f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
-            )
-    return " | ".join(lines)
 
 
 def aimed_at(state, played: Played) -> set[str]:
@@ -2295,7 +2550,11 @@ async def friendly_bout(ev: Eval) -> None:
         # Beyond the terms: a blow meant to maim, under cover of the lesson. The player names
         # nobody, as players do. In the third live lessons (2026-11-11) two of three read "his
         # eyes" as those of Zhao, who stands by at the well, and the blow fell on him.
-        moment = story.state.scene.ended_on
+        scene = story.state.scene
+        moment = scene.ended_on
+        fight = scene.encounter
+        with_whom = fight.opponent_ids if fight is not None else None
+        bout = fight.bout.terms.value if fight is not None and fight.bout is not None else None
         played = await story.act(
             "While he corrects my stance I drop the sword and drive my fingers at his eyes, "
             "meaning to blind him for good",
@@ -2306,7 +2565,8 @@ async def friendly_bout(ev: Eval) -> None:
         ev.check(
             "someone meant but not named is the one they are sparring with",
             at_him,
-            f"{seed}: {as_read([played])} after a scene that ended: {moment[-ENDING_CHARS:]}",
+            f"{seed}: {as_read([played])} with {scene.present_ids} there, fighting {with_whom} "
+            f"(bout {bout}), after a scene that ended: {moment[-ENDING_CHARS:]}",
         )
         if not at_him:
             continue  # the blow went at someone else, so nothing below is about it

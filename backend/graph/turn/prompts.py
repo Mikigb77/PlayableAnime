@@ -247,7 +247,12 @@ words, never ground TALENTS.bridges already lists for that thing), heart true on
 covers the heart of the thing and not one side of it, and the reason. Only a deed is a bridge: \
 words that restate the case are not, and practising the thing itself is training. Code throws \
 for it with the skill the step draws on, so name that skill in uses.
-- show_strength: hiding strength (the ladder id and the rung to show) or revealing it (no rung).
+- show_strength, always (G20): null unless the step hides how strong the character is (they \
+pass for weaker, mask their rank, hold their strength in) or lets it show again. ladder_id is \
+the ladder, from PLAYER CHARACTER's ladders. To hide: shown_rung, the rung others are to sense, \
+counted from 0 for the lowest of that ladder's rungs in WORLD's ladders, never above their own \
+rung, and 0 when the player names none. To let their true strength show: shown_rung null. \
+Hiding or showing is a step of its own, before whatever they do next.
 
 Also record:
 - theories: when the player reasons about how their own power works, the claim, a stable topic \
@@ -451,7 +456,12 @@ gave only the gist, phrase it in the character's voice. Outcome claims in the ac
 others react as they would.
 - Dead characters never act or speak, except in a memory clearly framed as one. Characters know \
 only what they have seen or been told. toward_you is how a character really feels about the \
-player character; when apparent_affinity is given, that is what they let show.
+player character; when apparent_affinity is given, that is what they let show. Its grudges are \
+what they know the player character did and hold against them. Its heard_said is what they have \
+only heard said of the player character and half believe, with nobody who saw it behind it: \
+they may be wary or curious, watch, hint or ask, and they neither accuse outright nor act as if \
+it were known (W4). Someone who comes to face the player character over what they were told \
+puts it to them and hears the answer before anything else.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
 ends. When it needs no decision, it is something that already played out: tell it as done. No \
 event hurts the player character by itself: what it does to them is settled when they act. Weave \
@@ -534,7 +544,9 @@ in as the scene ends.
 - goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
 not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
 same: its id as same_as). Never close one for progress or for going unmentioned.
-- scene_end: the exact moment this scene stops on; place_id, the place it stops in (R8): \
+- scene_end: ended_on, the last thing this scene shows, in a sentence that says who is doing \
+what and where ("She sets the cup down and waits for your answer."), never a date or an \
+hour: the next scene starts from it; place_id, the place it stops in (R8): \
 SCENE's place while the character is still there, else the place they reached, from KNOWN or \
 added under places; who is present and where they stand; and the things in hand or in the scene \
 that matter next. The next scene starts in that place, so a move the scene tells but place_id \
@@ -585,7 +597,8 @@ isn't the usual one, such as dead or ruined. travel_s by a place is the seconds 
 takes from SCENE's place, where the map knows it. Use these names as spelled.
 - LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
 - SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
-people present with the player character, each without their secrets, with toward_you and \
+people present with the player character, each without their secrets, with toward_you (its \
+grudges are deeds they know of, its heard_said deeds they have only heard talk of) and \
 sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
 and the fight, chase, duel of words or negotiation under way, if any (encounter), with its \
 terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \
