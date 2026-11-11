@@ -319,7 +319,7 @@
   "oocKeySavedRetrying": "Key saved. Trying again on it.",
   "storyFallbackTitle": "Story",
   "storyMemory": "Memory",
-  "storyStatus": "Status",
+  "storyStatus": "Character",
   "storyBeginning": "The story is about to begin.",
   "storyTurnFailed": "The scene wasn't saved, so nothing changed. Try again.",
   "memoryTitle": "Memory",
@@ -346,7 +346,7 @@
   "threadFailed": "Failed",
   "threadAbandoned": "Abandoned",
   "threadResolvedWithoutPlayer": "Resolved without you",
-  "statusTitle": "Status",
+  "statusTitle": "Character",
   "statusReputation": "Reputation",
   "statusSince": "Since then",
   "accountTitle": "Account",
@@ -951,6 +951,51 @@
   "settingsSavedNow": "Saved.",
   "statusNow": "Now",
   "statusEmpty": "Nothing to show yet. Play a scene first.",
+  "sheetPath": "Your path",
+  "sheetCarried": "Carried",
+  "sheetSkills": "Skills",
+  "sheetMoves": "Techniques",
+  "sheetPowers": "Powers",
+  "sheetTraits": "Traits",
+  "sheetNothingCarried": "You carry nothing.",
+  "sheetElsewhere": "Kept elsewhere",
+  "sheetDice": "{count, plural, =1{1 die} other{{count} dice}}",
+  "@sheetDice": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sheetCost": "Cost: {cost}",
+  "@sheetCost": {
+    "placeholders": {
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
+  "sheetUses": "Next level: {uses} of {need} uses",
+  "@sheetUses": {
+    "placeholders": {
+      "uses": {
+        "type": "int"
+      },
+      "need": {
+        "type": "int"
+      }
+    }
+  },
+  "sheetSecret": "Nobody knows",
+  "sheetLearning": "How you learn",
+  "sheetPercent": "{level}%",
+  "@sheetPercent": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
   "micStart": "Dictate",
   "micStarting": "Starting the microphone",
   "micStop": "Stop dictating",

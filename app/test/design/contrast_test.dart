@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/design/design.dart';
+import 'package:playable_anime/features/story/sheet_view.dart';
 
 /// Every text color the themes use reaches 4.5:1 on every surface it can sit on, in both
 /// themes and for every genre accent (WCAG AA for body text).
@@ -93,6 +94,27 @@ void main() {
         );
         // The other tabs, on the glass alone.
         expect(contrastRatio(c.textMuted, glass), greaterThanOrEqualTo(4.5), reason: name);
+      }
+    }
+  });
+
+  test('the character sheet\'s words read on a chip\'s wash and on a card', () {
+    for (final brightness in Brightness.values) {
+      for (final accent in GenreAccent.values) {
+        final theme = AppTheme.build(brightness, accent);
+        final c = theme.extension<LucidColors>()!;
+        final card = theme.colorScheme.surfaceContainerLow;
+        final name = '${brightness.name} ${accent.name}';
+        for (final tone in [c.success, c.caution, c.danger, c.accent]) {
+          // A chip of how they are: its words in its own color, over a wash of it on the page.
+          final wash = Color.alphaBlend(
+            tone.withValues(alpha: SheetConditionView.chipWash),
+            c.background,
+          );
+          expect(contrastRatio(tone, wash), greaterThanOrEqualTo(4.5), reason: name);
+          // A word at an entry's edge: "Ready in 2 hours", "Gift", "Weakness".
+          expect(contrastRatio(tone, card), greaterThanOrEqualTo(4.5), reason: name);
+        }
       }
     }
   });

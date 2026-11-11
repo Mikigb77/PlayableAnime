@@ -12,6 +12,7 @@ from engine.labels import (
     duration_label,
     in_label,
     moment,
+    of_name,
     part_of_day,
     personal_label,
     scene_time,
@@ -251,6 +252,18 @@ def test_the_world_s_dates_in_catalan():
     assert clock_label(april, 2 * HOUR + 10 * MINUTE, CA) == "14 d'abril de 1974, 23:10"
     assert clock_label(frost, 2 * DAY, CA) == "Dia 3 de Lluna de Gebre, any 412, capvespre"
     assert clock_label(winter, 2 * DAY, CA) == "Dia 3 d'Hivern, any 412, capvespre"
+
+
+def test_a_name_after_of_takes_its_article_in():
+    assert of_name("abril", ES) == "de abril"
+    assert of_name("la maestra Wen", ES) == "de la maestra Wen"
+    assert of_name("el viejo herrero", ES) == "del viejo herrero"
+    assert of_name("El Cid", ES) == "de El Cid"  # part of the name
+    assert of_name("el", ES) == "de el"  # a word alone is a name, not an article
+    assert of_name("el vell ferrer", CA) == "del vell ferrer"
+    assert of_name("els germans Roca", CA) == "dels germans Roca"
+    assert of_name("Elna", CA) == "d'Elna"
+    assert of_name("els", CA) == "d'els"
 
 
 def test_spans_and_rough_times_in_catalan():

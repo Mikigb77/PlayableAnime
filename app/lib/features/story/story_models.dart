@@ -4,6 +4,7 @@
 library;
 
 import '../../core/json.dart';
+import 'sheet.dart';
 
 typedef Json = JsonMap;
 
@@ -1002,6 +1003,7 @@ class StatusData {
     required this.lines,
     required this.reputation,
     required this.since,
+    this.sheet,
     this.clockLabel,
     this.portraitUrl,
   });
@@ -1012,6 +1014,7 @@ class StatusData {
       name: character['name'] as String? ?? '',
       portraitUrl: character['portrait_url'] as String?,
       lines: _strings(character['lines']),
+      sheet: json['sheet'] is Json ? Sheet.fromJson(json['sheet'] as Json) : null,
       reputation: [
         for (final r in json['reputation'] as List? ?? const [])
           ((r as Json)['name'] as String, r['label'] as String),
@@ -1025,6 +1028,11 @@ class StatusData {
   }
 
   final String name;
+
+  /// The sheet in sections (G13). A server from before it sends only [lines].
+  final Sheet? sheet;
+
+  /// The sheet as plain lines, shown only when there is no [sheet].
   final List<String> lines;
   final List<(String name, String label)> reputation;
   final List<(String text, String ago)> since;

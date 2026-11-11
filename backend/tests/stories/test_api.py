@@ -258,6 +258,12 @@ def test_status_shows_the_sheet_and_the_clock(client, player, make_story):
     assert status["character"]["portrait_url"] is None  # not drawn yet
     assert status["clock"]["world_s"] == 0
     assert status["clock"]["label"]
+    # The sheet in sections (G13, G16), with the plain lines still there for an older app.
+    sheet = status["sheet"]
+    assert sheet["condition"]["health"] == "unhurt" and sheet["condition"]["health_label"]
+    assert [path["rungs"][-1]["name"] for path in sheet["paths"]] == ["Qi Condensation"]
+    assert [(p["name"], p["ready"]) for p in sheet["powers"]] == [("Time stop", True)]
+    assert status["character"]["lines"]
 
 
 def test_status_shows_the_player_characters_portrait_once_drawn(client, player, make_story):
