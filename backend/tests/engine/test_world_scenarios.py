@@ -104,6 +104,7 @@ def sect_with_a_witness() -> WorldState:
         location_id="well",
         memberships=[Membership(faction_id="outer-court", rank="outer disciple", loyalty=40)],
     )
+    state.scene.present_ids.append("wei")
     return state
 
 

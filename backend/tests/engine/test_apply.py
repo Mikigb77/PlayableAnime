@@ -28,6 +28,8 @@ from engine.state import (
     CharacterStatus,
     DeathCertainty,
     Deed,
+    Encounter,
+    EncounterKind,
     EventStatus,
     FactionStatus,
     Goal,
@@ -447,6 +449,78 @@ def test_the_engine_moves_attitudes_freely_within_bounds_and_records_grudges():
     attitude = applied.state.characters["bartender"].sheet.disposition.attitudes["carmine"]
     assert (attitude.affinity, attitude.fear) == (-100, 100)
     assert attitude.grudges[0].reason == "He shot at me"
+
+
+def resents(character_id: str, **more) -> CharacterChange:
+    """The narrator has someone think worse of the player character, and hold it against him."""
+    shift = AttitudeShift(affinity=-8, grudge="Lin Feng shamed Zhao Kun at the well")
+    return CharacterChange(id=character_id, attitudes=[shift], **more)
+
+
+def feelings(state: WorldState, character_id: str):
+    return state.characters[character_id].sheet.disposition.attitudes.get("lin")
+
+
+def test_the_narrator_moves_only_the_feelings_of_people_in_the_scene():
+    """Miki, 2026-11-11: "that person realizes that you are the murderer of his father, but
+    that happens off screen". Someone who wasn't there saw none of it, so a scene can't change
+    how they feel: word has to reach them first, and code moves their feelings then (W2, W4)."""
+    state = cultivation_world()  # Lin and Zhao at the well; Elder Mo is in the inner court
+    before = feelings(state, "elder-mo")
+
+    applied = apply(state, characters=[resents("zhao"), resents("elder-mo")])
+
+    assert feelings(applied.state, "zhao").grudges
+    assert feelings(applied.state, "elder-mo") == before
+    (refused,) = applied.rejected
+    assert (refused.subject, refused.change) == ("character elder-mo", "attitude")
+    assert "aren't in the scene" in refused.reason
+
+
+@pytest.mark.parametrize("way", ["listed", "meets", "comes", "fight", "reached"])
+def test_whoever_comes_into_the_scene_or_the_turn_reached_can_be_moved(way):
+    state = cultivation_world()
+    change, end, reached = resents("elder-mo"), None, []
+    if way == "listed":  # this scene's end lists him: he walked into it
+        end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+    elif way == "meets":  # the scene has him meet the player character
+        change = resents("elder-mo", meets_player=True)
+    elif way == "comes":  # the scene has him come to where it is
+        change = resents("elder-mo", location_id="well")
+    elif way == "fight":  # he is in the scene's fight, whatever its last end listed
+        state.scene.encounter = Encounter(
+            kind=EncounterKind.FIGHT, opponent_ids=["elder-mo"], started_turn=2, started_s=0
+        )
+    else:  # a step of the turn faced him, or an event was about him
+        reached = ["elder-mo"]
+
+    delta = StateDelta(characters=[change], scene_end=end)
+    applied = apply_delta(state, delta, ctx(3), source=NARRATOR, reached=reached)
+
+    assert not applied.rejected
+    assert feelings(applied.state, "elder-mo").grudges
+
+
+def test_someone_new_in_the_scene_feels_as_the_scene_says():
+    newcomer = CharacterChange(
+        id="sister-yun",
+        name="Yun Shu",
+        description="An inner disciple who watched from the wall.",
+        attitudes=[AttitudeShift(affinity=6)],
+    )
+
+    applied = apply(cultivation_world(), characters=[newcomer])
+
+    assert not applied.rejected
+    assert feelings(applied.state, "sister-yun").affinity == 6
+
+
+def test_the_engine_moves_the_feelings_of_someone_far_away():
+    """Word of a deed reaches people where they are, and the engine moves how they feel."""
+    applied = apply(cultivation_world(), ENGINE, characters=[resents("elder-mo")])
+
+    assert not applied.rejected
+    assert feelings(applied.state, "elder-mo").grudges
 
 
 def test_attitudes_need_someone_else_to_be_about():

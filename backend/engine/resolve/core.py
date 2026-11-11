@@ -120,7 +120,7 @@ from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, is_are, name, names, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, Judged, PlaceStatus
-from engine.state.records import Mark, RollRecord, StepResult, Trace, TraceKind
+from engine.state.records import Mark, RollRecord, StepResult, Trace, TraceKind, Visibility
 from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.sheet import (
     Health,
@@ -138,6 +138,8 @@ from engine.state.sheet import (
 from engine.state.world import ActiveTimeEffect, WorldState
 from engine.timekeeping import bound_duration, effect_over, in_time_stop
 from engine.world import journeys
+from engine.world.norms import Nature, assess_severity, nature
+from engine.world.tuning import RUMOR_MIN_SEVERITY
 
 STANDING_DURATIONS_S = {StandingAction.WAIT: 60, StandingAction.OBSERVE: 30}
 NOTHING_IN_THE_WAY = "Nothing stands in the way."
@@ -898,6 +900,15 @@ def _settle_step(
             deeds.insert(0, deed)
     if any(d.victim_ids and d.terms is None for d in deeds):
         frame.open_fight = True  # W1: someone was harmed outside any terms: a fight in earnest
+    real = list(met.people) if met is not None else []  # F1, W2: who this step made real
+    if deeds and not frozen_now and strangers_mod.crowded(step):
+        # W2. What is done before a crowd is public: everyone there saw it.
+        deeds, watcher = _before_a_crowd(state, actor, deeds, frame, ctx.turn, index)
+        if watcher is not None:
+            person, change = watcher
+            real.append(person)
+            frame.met.append(person)
+            effects = _merge(StateDelta(characters=[change]), effects)
     stakes = bool(
         step.aim.harmful
         or roll is not None
@@ -947,7 +958,7 @@ def _settle_step(
         duration_s=duration,
         personal_s=personal,
         beats=beats,
-        strangers=[p.id for p in met.people] if met is not None else [],
+        strangers=[p.id for p in real],
         chain=chain,
         stopped_at_link=stopped_at_link,
         effects=effects,
@@ -965,6 +976,50 @@ def _settle_step(
         broke_terms=broke_terms or lured,
     )
     return resolution, stakes, own_choice
+
+
+def _before_a_crowd(
+    state: WorldState,
+    actor: Character,
+    deeds: list[ProposedDeed],
+    frame: _Frame,
+    turn: int,
+    index: int,
+) -> tuple[list[ProposedDeed], tuple[Character, CharacterChange] | None]:
+    """W2, W11. The deeds of a step done before a crowd, and someone of the crowd to make real.
+
+    A deed that is news by the world's norms (`_news`) is public, unless something already
+    settled who saw it: a crowd talks of a killing, not of an insult or a shove, which stay as
+    seen as they would be anywhere. When one of those made public is harm to someone, outside
+    any terms both sides agreed to, and nobody the record puts there but the doer and those it
+    fell on is awake to see it, one of the crowd is made real, so it has a witness who can go
+    to the law."""
+    made = [d.visibility is None and _news(state, d) for d in deeds]
+    told = [
+        d.model_copy(update={"visibility": Visibility.PUBLIC}) if public else d
+        for d, public in zip(deeds, made, strict=True)
+    ]
+    harm = [
+        d
+        for d, public in zip(told, made, strict=True)
+        if public
+        and d.terms is None
+        and nature(state, d.kind, d.victim_ids, d.target_ids, d.severity) is Nature.HARM
+    ]
+    if not harm:
+        return told, None
+    apart = {actor.id}
+    for deed in harm:
+        apart |= {deed.actor_id or actor.id, *deed.victim_ids, *deed.target_ids}
+    place_id = frame.place_id or actor.location_id or state.scene.place_id
+    return told, strangers_mod.onlooker(state, place_id, apart, turn, index)
+
+
+def _news(state: WorldState, deed: ProposedDeed) -> bool:
+    """W2. Whether a deed is something people talk about, by the world's norms (W12): as
+    serious as what starts a rumor wherever it is seen."""
+    severity = assess_severity(state, deed.kind, deed.severity, deed.victim_ids, deed.target_ids)
+    return severity >= RUMOR_MIN_SEVERITY
 
 
 def _under_terms(

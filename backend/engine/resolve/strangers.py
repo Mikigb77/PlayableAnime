@@ -20,8 +20,9 @@ Who they turn out to be is rolled, since nobody can tell from a glance (A2):
 Their body is on the sheet they are made with (G13), so a throw against them reads their level
 like anyone's (A3).
 
-When a crowd is around to see it and nobody else there is awake to see it, an onlooker is made real
-too, so a killing in a busy street has a witness who can go to the law (W2, W11).
+What is done before a crowd is public (W2), whoever it is done to: when it does someone harm
+and nobody there but those it fell on is awake to see it, one of the crowd is made real too
+(`onlooker`), so a killing in a busy street has a witness who can go to the law (W11).
 """
 
 from dataclasses import dataclass, field
@@ -125,28 +126,10 @@ def meet(
         sheet=CharacterSheet(axes=PowerAxes(might=might), attributes=body or Attributes()),
     )
     people = [stranger]
-    if step.stranger.crowd and place_id is not None and not _others_at(state, actor, place_id):
-        people.append(
-            Character(
-                id=_fresh_id(state, f"onlooker-{ctx.turn}-{index}"),
-                name=ONLOOKER,
-                prominence=Prominence.MINOR,
-                description="Someone in the crowd who saw it happen.",
-                location_id=place_id,
-            )
-        )
     changes = [
-        CharacterChange(
-            id=person.id,
-            name=person.name,
-            prominence=Prominence.MINOR,
-            description=person.description,
-            location_id=person.location_id,
-            axes=person.sheet.axes,
-            attributes=body if person.id == stranger_id else None,
-            meets_player=person.id == stranger_id and actor.id == state.player_id,
+        _made(stranger).model_copy(
+            update={"attributes": body, "meets_player": actor.id == state.player_id}
         )
-        for person in people
     ]
     reason = f"There is {who} here." if found_roll is None else f"There is {who} here after all."
     check = BeatResolution(
@@ -202,10 +185,42 @@ def strongest(state: WorldState) -> int:
     return max([PEAK_PERSON_TIER, *rungs, *bodies])
 
 
-def _others_at(state: WorldState, actor: Character, place_id: str) -> bool:
-    """Whether someone besides the actor is there and awake to see it, and so will witness the
-    deed as `engine.world.deeds` records it (W2)."""
-    return any(c.id != actor.id and perceives(c) for c in characters_at(state, place_id))
+def _made(person: Character) -> CharacterChange:
+    """The change that makes someone the plan thought up real."""
+    return CharacterChange(
+        id=person.id,
+        name=person.name,
+        prominence=Prominence.MINOR,
+        description=person.description,
+        location_id=person.location_id,
+        axes=person.sheet.axes,
+    )
+
+
+def crowded(step: IntentStep) -> bool:
+    """W2. Whether people the scene doesn't name are around to see a step, as the interpret
+    step says of every step (`StepFacts.crowd`), or said of a stranger it aimed at."""
+    return step.facts.crowd or (step.stranger is not None and step.stranger.crowd)
+
+
+def onlooker(
+    state: WorldState, place_id: str | None, apart: set[str], turn: int, index: int
+) -> tuple[Character, CharacterChange] | None:
+    """W2, W11. Someone in the crowd who saw what was done there, made real, with the change
+    that does it. None when someone the record already puts at the place is awake to see it,
+    besides those in `apart` (the doer and those it fell on): then it has its witness."""
+    if place_id is None or place_id not in state.places:
+        return None
+    if any(c.id not in apart and perceives(c) for c in characters_at(state, place_id)):
+        return None
+    person = Character(
+        id=_fresh_id(state, f"onlooker-{turn}-{index}"),
+        name=ONLOOKER,
+        prominence=Prominence.MINOR,
+        description="Someone in the crowd who saw it happen.",
+        location_id=place_id,
+    )
+    return person, _made(person)
 
 
 def _who(words: str) -> str:

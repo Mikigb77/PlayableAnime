@@ -206,7 +206,7 @@ class Stranger(EngineModel):
     )
     crowd: bool = Field(
         default=False,
-        description="Others are around to see it, such as a busy street or a full tavern.",
+        description="As `StepFacts.crowd`, kept for the turns read before it.",
     )
 
 
@@ -395,12 +395,14 @@ class Edge(EngineModel):
 
 
 def _facts_required(schema: dict[str, Any]) -> None:
-    """A2, A3, W1. The interpret model must always judge how hard a step is, whether it meets
-    what stands in the way head-on, and whether a fight is a bout both sides agreed to (null
-    when it isn't), since Gemini leaves out what a schema doesn't require as often as not: a
-    step with no judgement fell back to a guess whoever the character was, and a lesson whose
-    first blow carried no terms began as an attack. Code may still leave them out."""
-    must = ["challenge", "head_on", "terms"]
+    """A2, A3, W1, W2. The interpret model must always judge how hard a step is, whether it
+    meets what stands in the way head-on, whether a fight is a bout both sides agreed to (null
+    when it isn't) and whether a crowd is around to see the step, since Gemini leaves out what
+    a schema doesn't require as often as not: a step with no judgement fell back to a guess
+    whoever the character was, a lesson whose first blow carried no terms began as an attack,
+    and a killing in a full square with no word of the crowd would have no witness. Code may
+    still leave them out."""
+    must = ["challenge", "head_on", "terms", "crowd"]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
@@ -510,6 +512,10 @@ class StepFacts(EngineModel):
             " maim or kill in a friendly bout, or one struck after the other yielded. Then it is"
             " an attack."
         ),
+    )
+    crowd: bool = Field(
+        default=False,
+        description="W2: people the scene doesn't name are around and would see this step done.",
     )
     danger: str = Field(
         default="",

@@ -4,8 +4,10 @@ A rumor starts where something happened and moves along the map at the pace news
 (W10): with people on foot or by car, faster where the world has phones (G6). Each hop loses some
 accuracy; a retelling that strays far enough becomes its own, vaguer version that no longer names
 the doer. Everyone at a place hears it when it arrives, but beasts don't follow people's talk
-(G24). Those who believe it react (W4), factions there learn of it (W3, W5), and the player hears
-it too if they are there (C6). Rumors are told in the world's words (G16).
+(G24). Those who believe it react (W4) and factions there learn of it (W3, W5). The player
+character is the exception: word that reaches where they are becomes the talk of the place,
+which they hear only once a scene tells it (`engine.world.hearsay`), so Memory never lists a
+rumor no scene said (C6). Rumors are told in the world's words (G16).
 
 Whoever knows for themselves what a rumor tells, because they did it, saw it, were told it by
 someone close or were there when it happened, knows whether it is so (`certainty`): they believe
@@ -62,7 +64,8 @@ def start_rumor(
 ) -> Rumor:
     """A rumor starts at a place, heard by those given, and sets off to spread (W2). `seen_by`
     are those who were there when what it tells happened, for a rumor that tells no deed: they
-    know it is so (C6). A deed's rumor goes by who knows the deed."""
+    know it is so (C6). A deed's rumor goes by who knows the deed, and is no rumor to the
+    player character who saw the deed: it is in their memory as a deed."""
     state = w.state
     rumor = Rumor(
         id=state.new_id("rumor"),
@@ -80,6 +83,10 @@ def start_rumor(
     state.rumors[rumor.id] = rumor
     for character_id in dict.fromkeys(heard_by or []):
         if is_beast(state, character_id):
+            continue
+        if deed is not None and character_id == state.player_id:
+            # C6. What the player character lived is a deed they know, not talk they heard.
+            # What people go on to say of it reaches them as any talk does (`hearsay`).
             continue
         news = not heard_before(state, character_id, rumor, deed)
         rumor.heard_at.setdefault(character_id, w.at_s)
@@ -245,6 +252,8 @@ def on_rumor(w: World, event: PendingEvent) -> None:
     attributed = names_actor(rumor, deed)
 
     for character in characters_at(state, place_id):
+        if character.id == state.player_id:
+            continue  # W2, C6: it is the talk of the place now, heard once a scene tells it
         if is_beast(state, character.id) or heard_before(state, character.id, rumor, deed):
             continue
         rumor.heard_at[character.id] = w.at_s

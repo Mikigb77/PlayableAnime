@@ -432,6 +432,19 @@ def test_the_interpret_step_is_told_who_someone_meant_but_not_named_is():
     assert '"opponent_ids":["elder-mo"]' in interpret_prompt(state, "I hit him").messages[-1].text
 
 
+def test_the_models_are_told_who_saw_what_is_done_and_whose_feelings_a_scene_moves():
+    """W2, W4: the interpret step says of every step whether a crowd is around, and not for
+    what is done so that nobody notices; the narrator moves only the feelings of the scene's
+    people."""
+    reading, telling = prompts.INTERPRET_SYSTEM, prompts.NARRATOR_SYSTEM
+
+    assert "- facts.crowd (W2), always: true when people SCENE doesn't name are around" in reading
+    assert "and for what is done so that nobody around notices" in reading
+    assert "Code makes public what is done before a crowd." in reading
+    assert "Only the people in the scene change how they feel (W4)" in telling
+    assert "code moves how they feel once a witness or word reaches them" in telling
+
+
 def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():
     # W10: the light, meals and the hour in the telling keep to the clock.
     state = cultivation_world()  # day count from 07:00

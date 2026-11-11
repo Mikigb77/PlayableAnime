@@ -460,6 +460,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             player_acted=state.get("intent") is not None,
             # R2, R3: what the turn found stays on the scene's record.
             found=state["resolution"].found,
+            # W4: the scene moves only the feelings of its own people and of whom the turn
+            # reached; anyone else hears of it through the world.
+            reached=pipeline.reached(world, state["resolution"], state["plan"]),
         )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]
