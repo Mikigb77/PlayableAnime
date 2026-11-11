@@ -1,14 +1,13 @@
-"""What a place is saying (W2, C6): the rumors someone hears on arriving.
+"""What a place is saying (W2, C6): the rumors someone who comes there later may hear.
 
-Word reaches a place and everyone there hears it (`rumors.on_rumor`). Whoever comes later hears
-it too, since what has reached a place is what its people are saying. `on_arrival` gives the
-player character the talk of the place a trip took them to, so a town they reach has its news:
-what the world did while they were elsewhere, and what it says of their own deeds ("they say
-someone burned the mill"). It is told in the world's words (G16) and kept in what they know, so
-Memory shows it (C6).
-
-Only what the record holds is heard here. What else a place they have never seen is talking
-about is the narrator's to tell (`graph.turn.prompts`).
+Word reaches a place and everyone there hears it (`rumors.on_rumor`). Whoever comes later can
+hear it too, since what has reached a place is what its people are saying: what the world did
+while they were elsewhere, and what it says of their own deeds ("they say someone burned the
+mill"). It reaches them softly (Miki, 2026-11-11: "don't force it ... let the story walk you
+through hearing all that ... you might miss some rumors, that's also okay"). Nothing is heard
+by arriving. `talk_of` is what a place has to tell someone, the director offers one piece of it
+to a quiet scene now and then (`director.talk`), the narrator tells it only if the scene has
+room, and `hear` records it once a scene did, so Memory shows only what the story told (C6).
 """
 
 from engine.invariants import ancestry
@@ -17,7 +16,7 @@ from engine.state.world import WorldState, natural_key
 from engine.world.knowledge import character_learns
 from engine.world.rumors import believes, knows_doer, knows_firsthand, names_actor
 from engine.world.scheduling import World
-from engine.world.tuning import TALK_FRESH_S, TALK_HEARD
+from engine.world.tuning import TALK_FRESH_S
 
 
 def talk_of(state: WorldState, character_id: str, place_id: str | None, at_s: int) -> list[Rumor]:
@@ -59,21 +58,20 @@ def _better(rumor: Rumor, other: Rumor) -> bool:
     return natural_key(rumor.id) < natural_key(other.id)
 
 
-def on_arrival(w: World, character_id: str, place_id: str | None) -> list[str]:
-    """W2, C6. Someone arrives at a place and hears what it is saying, in place: at most
-    `TALK_HEARD` rumors, by id in the order heard. They believe what a hearer there would, and
-    learn who did a deed when the rumor rightly names a doer they didn't know."""
+def hear(w: World, character_id: str, rumor_id: str) -> bool:
+    """W2, C6. A scene told someone a rumor, in place: they have heard it, believe it as a
+    hearer there would, and learn who did a deed when it rightly names a doer they didn't
+    know. False when the record doesn't hold the rumor or they had already heard it."""
     state = w.state
-    heard: list[str] = []
-    for rumor in talk_of(state, character_id, place_id, w.at_s)[:TALK_HEARD]:
-        deed = state.deeds.get(rumor.deed_id) if rumor.deed_id else None
-        names_new_doer = names_actor(rumor, deed) and not knows_doer(state, character_id, deed)
-        rumor.heard_at[character_id] = w.at_s
-        heard.append(rumor.id)
-        if not believes(state, character_id, rumor, rumor.accuracy):
-            continue
+    rumor = state.rumors.get(rumor_id)
+    if rumor is None or character_id in rumor.heard_at:
+        return False
+    deed = state.deeds.get(rumor.deed_id) if rumor.deed_id else None
+    names_new_doer = names_actor(rumor, deed) and not knows_doer(state, character_id, deed)
+    rumor.heard_at[character_id] = w.at_s
+    if believes(state, character_id, rumor, rumor.accuracy):
         if character_id not in rumor.believed_by:
             rumor.believed_by.append(character_id)
         if names_new_doer:
             character_learns(w, character_id, deed, weight=rumor.accuracy / 100)
-    return heard
+    return True

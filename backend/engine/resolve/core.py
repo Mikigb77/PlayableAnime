@@ -311,6 +311,7 @@ def _standing_step(
     standing = StepResolution(
         index=0,
         text=standing_action.value,
+        kind=kind,
         outcome_class=OutcomeClass.CERTAIN,
         reason=NOTHING_IN_THE_WAY,
         result=StepResult.SUCCESS,

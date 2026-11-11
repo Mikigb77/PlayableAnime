@@ -41,6 +41,7 @@ from engine.director.pictures import decide_picture
 from engine.director.pressure import in_control, measure, next_drift
 from engine.director.sources import Pick, pick_event
 from engine.director.suggestions import plan_suggestions
+from engine.director.talk import plan_talk
 from engine.director.themes import allowed_themes
 from engine.director.threads import callbacks, current_thread, lifecycle
 from engine.director.turn import TurnFacts, player_deeds, read_turn
@@ -257,6 +258,9 @@ def direct(
     deciding = event.thread_id if event is not None and event.needs_decision else None
     thread_id = current_thread(state, changes, deciding)
     suggestions = plan_suggestions(ctx, pressure=pressure, event=event, thread_id=thread_id)
+    # W2: a quiet scene may carry some of the talk of the place, now and then.
+    busy = event is not None or bool(happenings)
+    talk = plan_talk(state, resolution, rng.child("talk"), pressure=pressure, busy=busy)
 
     # 5. The picture.
     picture = decide_picture(state, ctx, facts, memory, event=event, closed_threads=closed)
@@ -291,6 +295,7 @@ def direct(
         callbacks=calls,
         picture=picture,
         suggestions=suggestions,
+        talk=talk,
         stall_pressure=max(0.0, pressure.value),
         updates=updates,
     )

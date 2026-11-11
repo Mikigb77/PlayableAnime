@@ -132,7 +132,7 @@ def cut_short(step: StepResolution, elapsed_s: int) -> bool:
 
 
 def first_visit(state: WorldState, step: StepResolution) -> bool:
-    """W2. Whether a trip of the player character's that arrived took them somewhere they had
+    """W10. Whether a trip of the player character's that arrived took them somewhere they had
     never been: a place on record they haven't visited, or one the record doesn't hold yet at
     the end of a real trip. A few steps to the counter are no arrival, and neither is going
     somewhere to do something else there."""

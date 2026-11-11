@@ -200,6 +200,15 @@ class DirectorUpdates(EngineModel):
     )
 
 
+class PlannedTalk(EngineModel):
+    """W2. Something the place the scene is in is saying, which the scene may let the player
+    character catch when it has room for it, and may leave out (Miki, 2026-11-11: "it should be
+    soft ... you might miss some rumors"). `rumor_id` is a rumor that reached the place and they
+    haven't heard; None leaves what the talk is to the narrator."""
+
+    rumor_id: str | None = None
+
+
 class DirectorPlan(EngineModel):
     event: PlannedEvent | None = None
     happenings: list[PlannedEvent] = Field(
@@ -212,5 +221,9 @@ class DirectorPlan(EngineModel):
     )
     picture: PictureDecision | None = None
     suggestions: SuggestionPlan = Field(default_factory=SuggestionPlan)
+    talk: PlannedTalk | None = Field(
+        default=None,
+        description="W2: talk of the place that a quiet scene may carry, now and then.",
+    )
     stall_pressure: float = Field(default=0.0, ge=0.0, description="W16, for logs and tuning.")
     updates: DirectorUpdates = Field(default_factory=DirectorUpdates)

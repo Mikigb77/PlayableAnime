@@ -76,10 +76,8 @@ ACCURACY_LOSS = (5, 20)
 GARBLED_BELOW = 45
 # A hearer believes a rumor at least this accurate, unless they are devoted to the accused.
 BELIEVED_FROM = 50
-# What a place is saying to someone who arrives there (W2, C6): the newest rumors that reached
-# it, at most this many at one arrival, and only while they are still talk. A brawl of last
-# year is no longer news.
-TALK_HEARD = 3
+# What a place is saying to someone who comes there later (W2, C6): the rumors that reached it,
+# only while they are still talk. A brawl of last year is no longer news.
 TALK_FRESH_S = 60 * DAY
 
 # --- Reputation and attitudes (W3, W4, W8, W9, W12) --------------------------------------------

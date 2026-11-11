@@ -1,0 +1,55 @@
+"""W2: the talk of the place, offered softly.
+
+A place the player character is in may be saying things they haven't heard: the rumors that
+reached it before them (`engine.world.hearsay`). Miki, 2026-11-11: "don't force it, like arriving
+at a place, immediately hearing stuff ... if there is a rumor in a place, we might hear it at
+some point, but it should be soft ... it should also blend with the story. And you might miss
+some rumors, that's also okay."
+
+So the director only decides that a scene may carry one piece of that talk. Never a scene that
+is about something else: an encounter, an event, a decision with stakes, a trip, or one inside
+stopped time. And only now and then (`rules.TALK_CHANCE`), so a rumor waits for a moment it
+fits and some are never heard. A scene in which the character only looks on (the standing
+action, S2) is such a moment: what the place is saying is always on offer to it. Where the
+record holds nothing they haven't heard, the place's talk is the narrator's to make up, more
+rarely (`rules.OWN_TALK_CHANCE`). Whether the scene has room for it is the narrator's call, and
+only what a scene told is recorded as heard (`pipeline.hear_talk`).
+"""
+
+from engine.contracts.direction import PlannedTalk
+from engine.contracts.intent import ActionKind
+from engine.contracts.resolution import Resolution
+from engine.director import rules
+from engine.director.pressure import Pressure
+from engine.director.sources import here
+from engine.rng import SeededRng
+from engine.state.world import WorldState
+from engine.timekeeping import world_stopped
+from engine.world import hearsay
+
+
+def plan_talk(
+    state: WorldState,
+    resolution: Resolution,
+    rng: SeededRng,
+    *,
+    pressure: Pressure,
+    busy: bool,
+) -> PlannedTalk | None:
+    """The talk this scene may carry, if any. `busy` is whether the director already has
+    something for the scene to tell: an event, or happenings that came due."""
+    if busy or not resolution.steps or pressure.encounter or pressure.stakes:
+        return None  # an opening has no steps: it has the premise's own situation to tell
+    if world_stopped(state) or state.journey is not None:
+        return None
+    if any(step.trip is not None for step in resolution.steps):
+        return None  # a scene that went somewhere is about the going, and the arriving
+    place_id = here(state)
+    if place_id not in state.places:
+        return None
+    waiting = hearsay.talk_of(state, state.player_id, place_id, state.world_s)
+    if waiting:
+        looking_on = all(step.kind is ActionKind.OBSERVE for step in resolution.steps)
+        offered = looking_on or rng.chance(rules.TALK_CHANCE)
+        return PlannedTalk(rumor_id=waiting[0].id) if offered else None
+    return PlannedTalk() if rng.chance(rules.OWN_TALK_CHANCE) else None

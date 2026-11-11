@@ -745,7 +745,9 @@ def test_the_narrator_tells_the_action_first_in_its_own_part():
 def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
     schema = NarratorOutput.model_json_schema()
     assert list(schema["properties"])[:2] == ["action", "narration"]
-    assert schema["required"] == ["action", "narration", "update"]
+    # W2: whether the scene told the talk it was offered is always answered, as `update` is.
+    assert schema["required"] == ["action", "narration", "told_talk", "update"]
+    assert list(schema["properties"])[2] == "told_talk"
     assert NarratorOutput(narration=" You wake. ").text == "You wake."
     told = NarratorOutput(action=" You hold out the coin. ", narration="\nHe takes it.")
     assert told.text == "You hold out the coin.\n\nHe takes it."
