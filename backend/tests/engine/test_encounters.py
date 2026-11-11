@@ -27,17 +27,20 @@ from engine.contracts import (
 from engine.rng import SeededRng
 from engine.samples import cultivation_world
 from engine.state import (
+    Bout,
     Character,
     CharacterSheet,
     CharacterStatus,
     Condition,
     Encounter,
     EncounterKind,
+    Health,
     PassingState,
     Place,
     PowerAxes,
     PowerAxis,
     Prominence,
+    Terms,
     WorldState,
 )
 
@@ -252,6 +255,114 @@ def test_a_negotiation_that_turns_violent_becomes_a_fight_and_is_pictured_as_one
         assert plan.picture.trigger in (PictureTrigger.FIGHT_START, PictureTrigger.DECISIVE_BLOW)
         return
     raise AssertionError("no seed left the fight on")
+
+
+# --- A bout both sides agreed to (W1) -----------------------------------------------------------
+
+
+def spar(aim: Aim = Aim.SUBDUE, terms: Terms | None = Terms.NO_HARM, **more) -> IntentStep:
+    """A blow at Zhao in a bout, as the interpret step proposes it."""
+    facts = StepFacts(opposition_ids=["zhao"], can_respond=True, terms=terms, **more)
+    return attack(aim=aim, facts=facts)
+
+
+def test_a_bout_stays_one_for_as_long_as_it_lasts_whatever_later_blows_propose():
+    """Code keeps the terms on the encounter: a later blow read as a wounding or a killing, with
+    no terms at all, is still a blow of the lesson, and the whole bout is one deed."""
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    after, played, _ = turn(cultivation_world(), spar())
+    assert played.resolution.steps[0].bout == bout
+    assert after.scene.encounter.bout == bout
+
+    for n in range(12):
+        aim = (Aim.WOUND, Aim.KILL)[n % 2]
+        after, played, _ = turn(after, attack(aim=aim), seed=n, turn_no=4 + n)
+        assert played.resolution.steps[0].bout == bout, n
+        assert after.scene.encounter.bout == bout, n
+
+    condition = after.characters["zhao"].sheet.condition
+    assert (condition.health, condition.states, condition.wounds) == (Health.UNHURT, [], [])
+    assert [deed.kind for deed in after.deeds.values()] == ["bout"]
+
+
+def test_a_fight_in_earnest_gets_no_terms_afterwards():
+    """An attack is never relabelled: once a blow outside any terms has hurt someone, the fight
+    is one in earnest, whatever a later step proposes."""
+    hurt = 0
+    for seed in SEEDS:
+        start, played, _ = turn(cultivation_world(), attack(aim=Aim.WOUND), seed=seed)
+        fight = start.scene.encounter
+        wounded = any(c.id == "zhao" for c in played.resolution.steps[0].effects.characters)
+        if fight is None:
+            continue
+        assert fight.in_earnest == wounded, seed
+        after, played, _ = turn(start, spar(), seed=seed, turn_no=4)
+        began = played.resolution.steps[0].bout is not None
+        assert began != wounded, seed
+        if after.scene.encounter is not None:
+            assert (after.scene.encounter.bout is not None) == began
+        hurt += wounded
+    assert 0 < hurt < len(SEEDS)
+
+
+def test_terms_left_out_on_a_first_blow_that_hurt_nobody_can_still_be_agreed():
+    """The interpret step forgot the terms on the lesson's first blow. Nobody was hurt, so the
+    blow that names them begins the bout, and the first one stays the attempt it was."""
+    after, played, _ = turn(fight_on(cultivation_world()), spar())
+
+    bout = Bout(terms=Terms.NO_HARM, with_ids=["zhao"])
+    assert played.resolution.steps[0].bout == bout
+    assert after.scene.encounter.bout == bout and not after.scene.encounter.in_earnest
+
+
+def test_words_that_come_to_agreed_blows_become_a_bout():
+    state = cultivation_world()
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.DUEL, opponent_ids=["zhao"], started_turn=2, started_s=0
+    )
+
+    after, _, _ = turn(state, spar(terms=Terms.WOUNDS))
+
+    fight = after.scene.encounter
+    if fight is not None:  # a first blow that wounds him badly enough ends it
+        assert fight.kind is EncounterKind.FIGHT
+        assert fight.bout == Bout(terms=Terms.WOUNDS, with_ids=["zhao"])
+
+
+def test_a_blow_beyond_the_terms_leaves_an_open_fight_that_never_becomes_a_bout_again():
+    start, _, _ = turn(cultivation_world(), spar())
+    beyond = spar(aim=Aim.WOUND, terms=None, breaks_terms=True)
+    open_fights = 0
+    for seed in SEEDS:
+        after, played, _ = turn(start, beyond, seed=seed, turn_no=4)
+        assert played.resolution.steps[0].broke_terms
+        if after.scene.encounter is None:
+            continue
+        open_fights += 1
+        assert after.scene.encounter.bout is None
+        again, played, _ = turn(after, spar(), seed=seed, turn_no=5)
+        assert played.resolution.steps[0].bout is None
+        assert again.scene.encounter is None or again.scene.encounter.bout is None
+    assert open_fights
+
+
+def test_a_partner_who_goes_beyond_the_terms_ends_the_bout_and_it_is_their_attack():
+    """Zhao dislikes Lin (W4), so a "friendly" bout with him can be a lure."""
+    start, _, _ = turn(cultivation_world(), spar())
+    opening = IntentStep(
+        text="circle Zhao, guard low",
+        verb="circle",
+        kind=ActionKind.EXCHANGE,
+        proposed_duration_s=5,
+        facts=StepFacts(foes_mean=Aim.KILL),
+    )
+    for seed in range(40):
+        after, played, _ = turn(start, opening, seed=seed, turn_no=4)
+        settled = played.resolution.steps[0]
+        assert settled.broke_terms and settled.bout is None
+        assert after.scene.encounter is None or after.scene.encounter.bout is None
+        [blow] = [deed for deed in after.deeds.values() if deed.actor_id == "zhao"]
+        assert blow.broke_terms and not blow.agreed
 
 
 # --- End ----------------------------------------------------------------------------------------

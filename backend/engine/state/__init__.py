@@ -75,7 +75,7 @@ from engine.state.records import (
     TraceKind,
     Visibility,
 )
-from engine.state.scene import Encounter, EncounterKind, SceneFrame
+from engine.state.scene import Bout, Encounter, EncounterKind, SceneFrame, Terms
 from engine.state.sheet import (
     Attitude,
     Attributes,
@@ -140,6 +140,7 @@ __all__ = [
     "Attitude",
     "Attributes",
     "BackstoryClaim",
+    "Bout",
     "Calendar",
     "CalendarStyle",
     "Cause",
@@ -238,6 +239,7 @@ __all__ = [
     "TalentStrength",
     "Technique",
     "Temperament",
+    "Terms",
     "Thread",
     "ThreadKind",
     "ThreadStatus",

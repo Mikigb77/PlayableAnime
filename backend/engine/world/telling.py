@@ -16,6 +16,7 @@ from typing import Protocol
 
 from engine.state.cast import Character, Faction, Place
 from engine.state.records import Deed
+from engine.state.scene import Terms
 from engine.state.world import WorldState
 from engine.world.norms import Nature, canonical, creature_of, deed_nature, killed
 from engine.world.tuning import REGION_KINDS
@@ -114,6 +115,12 @@ _ON_PLACES = frozenset({"raze", "burn", "destroy", "conquer"})
 # Kinds that say less than a death: an attack that killed is told as a killing.
 _DEADLY = frozenset({"assault", "wound"})
 _KILLING = frozenset({"kill", "massacre"})
+# W1. A bout both sides agreed to, told by its terms, before whom it was fought with.
+_BOUT = {
+    Terms.NO_HARM: "sparred with",
+    Terms.WOUNDS: "fought a duel with",
+    Terms.DEATH: "fought a duel to the death with",
+}
 # Resolve's outcome note at the end of a step's text: "(it worked)", "(it partly worked)".
 _OUTCOME = re.compile(r"\s*\((?:it worked|it partly worked|it failed)\)\s*$")
 
@@ -239,6 +246,10 @@ def tell(
     def whom(ids: list[str]) -> tuple[list[str], int]:
         return _struck(state, ids, teller, doer_id=deed.actor_id, self_word=themselves)
 
+    if deed.is_bout:
+        # W1. A fight both sides agreed to is told as one, never as an attack.
+        partners, others = whom(deed.target_ids)
+        return f"{cap(subject)} {_BOUT[deed.terms]} {listing(partners, more=others)}{place}."
     harmful = what in (Nature.HARM, Nature.HUNT)
     hosts = [t for t in deed.target_ids if t in state.factions]
     on, unnamed = whom([*deed.victim_ids, *hosts] if harmful else deed.target_ids)
@@ -273,7 +284,8 @@ def tell(
     elif harmful and verb is None:
         verb = "hurt"
     if verb is not None and (on or unnamed):
-        return f"{cap(subject)} {verb} {listing(on, more=unnamed)}{place}."
+        how = " in a duel" if deed.agreed and verb == "killed" else ""  # W1: both accepted it
+        return f"{cap(subject)} {verb} {listing(on, more=unnamed)}{how}{place}."
     return None
 
 

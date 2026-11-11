@@ -40,6 +40,14 @@ A throw over the top turns the blow: the character holds an opening on those foe
 step against them throws a green die. A peril that hurts the player character stops the plan
 there, so the player decides what to do next (R6). Each foe's blow is their deed against the
 player character (W1).
+
+In a bout both sides agreed to (W1, `engine.resolve.bouts`) the answer comes under its terms:
+it is out to do at most what they accept, it is no deed against anyone unless it kills, and
+under `no_harm` terms it leaves the character neither hurt nor helpless, however the exchange
+went, and comes only in the bout's exchanges: a friendly partner waits while the character
+talks or looks on. Those fighting them go beyond the terms only when the interpret step says
+they mean to and one of them bears the character ill will. Then the blow is an attack and the
+bout is over.
 """
 
 from dataclasses import dataclass, field
@@ -49,7 +57,7 @@ from engine.context import Difficulty
 from engine.contracts.delta import CharacterChange, ConditionChange, StateDelta
 from engine.contracts.intent import ActionKind, Aim, IntentStep, OutcomeClass
 from engine.contracts.resolution import Harm, Peril, ProposedDeed
-from engine.resolve import capability
+from engine.resolve import bouts, capability
 from engine.resolve import throw as dice
 from engine.resolve.checks import Drawn
 from engine.resolve.effects import proposed_deed
@@ -71,7 +79,7 @@ from engine.resolve.words import cap, is_are, name, names
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, DeathCertainty
 from engine.state.records import Mark, RollRecord, StepResult
-from engine.state.scene import EncounterKind
+from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.sheet import Health, PowerAxis
 from engine.state.world import WorldState
 
@@ -133,6 +141,7 @@ class Struck:
     fighting: list[str] = field(default_factory=list)
     escaped: list[str] = field(default_factory=list)  # foes the step got cleanly away from
     openings: list[str] = field(default_factory=list)
+    broke_terms: bool = False  # W1: the foes went beyond the terms of the bout they were in
 
     @property
     def dead(self) -> bool:
@@ -155,14 +164,16 @@ def strike_back(
     rng: SeededRng,
     drawn: Drawn | None = None,
     defence: RollRecord | None = None,
+    bout: Bout | None = None,
 ) -> Struck:
     """What strikes back at the player character for `step`, settled with its `outcome_class` and
     `result`: the foes of the fight first, then a danger the step faced. `faced` are the living
     characters who could respond to the step, `out` those this plan already took out of the fight
     (killed, subdued or got away from, this step's kills included), and `fighting` the foes this
     plan already fought. `frozen` means the player character holds the world in a time stop,
-    `health` is theirs once the step's own changes are in, `drawn` what the step drew on, and
-    `defence` the step's own throw when the step was itself the defence."""
+    `health` is theirs once the step's own changes are in, `drawn` what the step drew on,
+    `defence` the step's own throw when the step was itself the defence, and `bout` the bout
+    they are in under terms both sides agreed to, if any (W1)."""
     struck = Struck()
     drawn = drawn or Drawn()
     before = health
@@ -172,6 +183,7 @@ def strike_back(
     # A3. A foe the step just got the better of has no answer to it.
     bested = {c.id for c in faced} if result is StepResult.SUCCESS and not missed else set()
     answering = [f for f in foes if f.id not in bested]
+    aim, terms, struck.broke_terms = _held(player, step, answering, aim, bout)
     if answering and aim.harmful:
         peril = _blow(
             state,
@@ -185,10 +197,18 @@ def strike_back(
             difficulty=difficulty,
             rng=rng,
             defence=defence,
+            terms=terms,
         )
         struck.perils.append(peril)
-        health = _health_after(health, peril.harm)
-        struck.deeds.append(_deed(player, peril))
+        if terms is not Terms.NO_HARM:
+            health = _health_after(health, peril.harm)
+        # W1. A blow inside the terms of a bout is no deed against anyone. A death is one
+        # always, and inside the terms only where they accept death.
+        died = peril.harm is Harm.DEAD
+        inside = terms if terms is Terms.DEATH or not died else None
+        if inside is None or died:
+            deed = _deed(player, peril, terms=inside, broke_terms=struck.broke_terms)
+            struck.deeds.append(deed)
         if _turned(peril):
             struck.openings = list(peril.by_ids)
     own_harm = step.aim.harmful and player.id in step.target_ids  # its danger is its means (F1)
@@ -201,6 +221,31 @@ def strike_back(
             struck.perils.append(danger)
     struck.effects = _effects(player, struck.perils, before)
     return struck
+
+
+def _held(
+    player: Character, step: IntentStep, foes: list[Character], aim: Aim, bout: Bout | None
+) -> tuple[Aim, Terms | None, bool]:
+    """W1 (`engine.resolve.bouts`). What the foes are out to do as the terms of their bout with
+    the character hold it, those terms, and whether they went beyond them.
+
+    The answer comes under the terms when everyone answering is in the bout. It goes beyond
+    them only when the interpret step says so (`StepFacts.foes_mean`) and one of them bears the
+    character ill will; otherwise it is held to the worst the terms accept. A friendly partner
+    doesn't strike at all while the character talks, waits or looks on, unless the interpret
+    step says they do: the blows of a `no_harm` bout are its exchanges."""
+    if bout is None or not foes or not all(f.id in bout.with_ids for f in foes):
+        return aim, None, False
+    at_them = step.aim.harmful and any(f.id in step.target_ids for f in foes)
+    fights = at_them or step.kind is ActionKind.EXCHANGE
+    if bout.terms is Terms.NO_HARM and step.facts.foes_mean is None and not fights:
+        return Aim.NONE, bout.terms, False
+    if bouts.allows(bout.terms, aim):
+        return aim, bout.terms, False
+    meant = step.facts.foes_mean is aim
+    if meant and any(bouts.bears_ill_will(f, player.id) for f in foes):
+        return aim, None, True
+    return bouts.held(bout.terms, aim), bout.terms, False
 
 
 def _turned(peril: Peril) -> bool:
@@ -306,8 +351,11 @@ def _blow(
     difficulty: Difficulty,
     rng: SeededRng,
     defence: RollRecord | None,
+    terms: Terms | None = None,
 ) -> Peril:
-    """The foes' blow, which the player character throws their defence against (A3, A8)."""
+    """The foes' blow, which the player character throws their defence against (A3, A8).
+    `terms` are those of the bout it comes inside, if it does (W1): under `no_harm` it is pulled,
+    so harm doesn't build up from it."""
     ranked = sorted(
         (_attacker(state, player, f, step, drawn) for f in foes),
         key=lambda a: (-a.total, a.foe.id),
@@ -359,6 +407,8 @@ def _blow(
                 number = number.plus(f"{_your(state, player)} own step missed", EXPOSED)
             deadly = aim is Aim.KILL
             means = {Aim.KILL: "meaning to kill", Aim.SUBDUE: f"meaning to take {you} down"}
+            if terms is Terms.NO_HARM:
+                means = {Aim.SUBDUE: "pulling the blow"}
             against = f"{strike}, {means[aim]}." if aim in means else f"{strike}."
             roll = dice.throw(
                 rng.child("outcome"),
@@ -383,8 +433,14 @@ def _blow(
         roll=roll,
         result=_landed(mark),
         harm=_harm(aim, mark, short_by),
+        terms=terms,
     )
-    peril = _worse(peril, health, player)
+    if terms is Terms.NO_HARM:
+        # W1. A pulled blow hurts nobody: it touches them, or brings them down for the point.
+        pulled = Harm.SUBDUED if peril.harm is Harm.SUBDUED else Harm.NONE
+        peril = peril.model_copy(update={"harm": pulled})
+    else:
+        peril = _worse(peril, health, player)
     return peril.model_copy(update={"reason": _reason(state, player, strike, words, peril)})
 
 
@@ -509,8 +565,8 @@ def _effects(player: Character, perils: list[Peril], health: Health) -> StateDel
     each peril that did harm, in order, never leaving them better than they were."""
     changes = []
     for peril in perils:
-        if peril.harm is Harm.NONE:
-            continue
+        if peril.harm is Harm.NONE or peril.terms is Terms.NO_HARM:
+            continue  # W1: a pulled blow of a friendly bout leaves them neither hurt nor helpless
         if peril.harm is Harm.DEAD:
             changes.append(
                 CharacterChange(
@@ -533,8 +589,12 @@ def _effects(player: Character, perils: list[Peril], health: Health) -> StateDel
     return StateDelta(characters=changes)
 
 
-def _deed(player: Character, peril: Peril) -> ProposedDeed:
-    """W1. The blow at the player character is the strongest foe's deed, landed or not."""
+def _deed(
+    player: Character, peril: Peril, *, terms: Terms | None = None, broke_terms: bool = False
+) -> ProposedDeed:
+    """W1. The blow at the player character is the strongest foe's deed, landed or not.
+    `terms` are those of a bout whose terms it stayed inside, and `broke_terms` marks one that
+    went beyond them."""
     strike = "strike" if len(peril.by_ids) > 1 else "strikes"
     blow = IntentStep(
         text=f"{cap(peril.by)} {strike} back at {player.name}",
@@ -552,6 +612,8 @@ def _deed(player: Character, peril: Peril) -> ProposedDeed:
         targets=[player],
         others=[],
         in_stopped_time=False,
+        terms=terms,
+        broke_terms=broke_terms,
     )
     assert deed is not None  # an aim at someone is always a deed
     return deed
@@ -570,6 +632,11 @@ def _reason(state: WorldState, player: Character, lead: str, words: str, peril: 
             # A3. A defence thrown over the top turns the blow and wins an opening.
             whose = _your(state, player)
             outcome = f"{you} turn the blow, and {whose} next step against them throws a green die"
+    if peril.terms is Terms.NO_HARM and peril.result is not StepResult.FAILURE:
+        # W1. It landed, pulled: nobody is hurt in a friendly bout.
+        down = peril.harm is Harm.SUBDUED
+        outcome = f"{you} {is_are(state, player.id)} brought down, unhurt" if down else ""
+        outcome = outcome or f"the blow touches {you}, pulled"
     if peril.roll is None:
         return f"{lead}, and {words}: {outcome}."
     return f"{lead}. {cap(words)}. {cap(outcome)}."

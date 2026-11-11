@@ -18,6 +18,25 @@ class EncounterKind(StrEnum):
     OTHER = "other"
 
 
+class Terms(StrEnum):
+    """W1. The worst that both sides of a fight agreed it may do to them: consent covers the
+    bout, not the wound. A blow inside the terms is no attack, and one beyond them is one
+    (`engine.resolve.bouts`)."""
+
+    NO_HARM = "no_harm"  # sparring, a lesson, a play fight: a touch, a throw or a pin decides it
+    WOUNDS = "wounds"  # first blood, a duel or a trial that accepts wounds
+    DEATH = "death"  # to the death
+
+
+class Bout(EngineModel):
+    """W1. A fight both sides agreed to, inside an encounter: its terms and whom the player
+    character agreed them with. Code keeps it from the step that began it until the encounter
+    ends or a blow goes beyond the terms (`engine.resolve.bouts`, `engine.encounters`)."""
+
+    terms: Terms
+    with_ids: list[str] = Field(default_factory=list)
+
+
 class Encounter(EngineModel):
     """W10. Code starts and ends it (`engine.encounters`); the interpret step may propose a kind.
     `opponent_ids` is everyone it has been with, including those already out of it."""
@@ -33,6 +52,16 @@ class Encounter(EngineModel):
         default=None,
         description="When its last exchange ended; None means when it started. It ends once "
         "`engine.encounters.LAPSE_S` of in-world time pass with none.",
+    )
+    bout: Bout | None = Field(
+        default=None,
+        description="W1: the terms it is fought under, when both sides agreed to it. None for "
+        "any other encounter, and for a fight that has no terms or broke them.",
+    )
+    in_earnest: bool = Field(
+        default=False,
+        description="W1: someone in it was harmed outside any terms, or its terms were broken, "
+        "so it can never become a bout: an attack isn't relabelled as one.",
     )
 
 

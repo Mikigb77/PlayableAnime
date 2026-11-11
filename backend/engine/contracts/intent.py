@@ -15,7 +15,7 @@ from typing import Any
 from pydantic import ConfigDict, Field, field_validator
 
 from engine.base import EngineModel
-from engine.state.scene import EncounterKind
+from engine.state.scene import EncounterKind, Terms
 from engine.state.sheet import HitMode, PowerAxis, TalentFit
 
 
@@ -490,6 +490,23 @@ class StepFacts(EngineModel):
             " wound, subdue (a sparring partner holding back, guards taking them alive), or none"
             " when they won't strike back. None when there is no fight or it follows the"
             " character's own aim."
+        ),
+    )
+    terms: Terms | None = Field(
+        default=None,
+        description=(
+            "W1: when the fight is a bout both sides agreed to, the worst both accepted: no_harm"
+            " (sparring, a lesson, a test of skill, a play fight), wounds (first blood, a duel or"
+            " a trial that accepts wounds) or death (to the death). None for any other fight."
+            " Code keeps the terms for the whole bout."
+        ),
+    )
+    breaks_terms: bool = Field(
+        default=False,
+        description=(
+            "W1: the character means to go beyond the terms of the bout they are in: a blow to"
+            " maim or kill in a friendly bout, or one struck after the other yielded. Then it is"
+            " an attack."
         ),
     )
     danger: str = Field(

@@ -21,6 +21,7 @@ from engine.base import (
     WorldSeconds,
 )
 from engine.context import Difficulty
+from engine.state.scene import Terms
 
 
 class OriginKind(StrEnum):
@@ -115,6 +116,10 @@ class Trace(EngineModel):
     strength: Percent = Field(default=50, description="How much it raises the odds of discovery.")
 
 
+# W1. The kind of the deed that is a bout both sides agreed to (`engine.resolve.bouts`).
+BOUT = "bout"
+
+
 class Deed(EngineModel):
     """W1. A significant act, recorded with its turn, place, victims, severity and witnesses.
 
@@ -153,10 +158,33 @@ class Deed(EngineModel):
             " and a faction's answer count each deed once."
         ),
     )
+    terms: Terms | None = Field(
+        default=None,
+        description=(
+            "W1: the terms both sides agreed to that the deed stayed inside"
+            " (`engine.resolve.bouts`). With no victim it is the bout itself, one deed however"
+            " many blows; with one, a death both accepted. Nobody takes either as an attack."
+        ),
+    )
+    broke_terms: bool = Field(
+        default=False,
+        description="W1: it went beyond the terms of an agreed bout: an attack under cover of one.",
+    )
 
     @property
     def subject_ids(self) -> list[str]:
         return [*self.victim_ids, *self.target_ids]
+
+    @property
+    def is_bout(self) -> bool:
+        """W1. The bout itself: a fight inside terms both sides agreed to, which hurt nobody
+        beyond them."""
+        return self.terms is not None and not self.victim_ids
+
+    @property
+    def agreed(self) -> bool:
+        """W1. Inside terms both sides accepted: the bout itself, or a death in it."""
+        return self.terms is not None
 
 
 # How a retelling that lost the doer's name begins (W2), in the world's words.

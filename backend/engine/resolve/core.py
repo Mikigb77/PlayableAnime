@@ -91,7 +91,7 @@ from engine.contracts.resolution import (
     StopReason,
     TrainingSoFar,
 )
-from engine.resolve import capability, exchanges
+from engine.resolve import bouts, capability, exchanges
 from engine.resolve import perils as perils_mod
 from engine.resolve import strangers as strangers_mod
 from engine.resolve import throw as dice
@@ -121,7 +121,7 @@ from engine.resolve.words import cap, is_are, name, names, possessive, stems
 from engine.rng import SeededRng
 from engine.state.cast import Character, CharacterStatus, Judged, PlaceStatus
 from engine.state.records import Mark, RollRecord, StepResult, Trace, TraceKind
-from engine.state.scene import EncounterKind
+from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.sheet import (
     Health,
     HitMode,
@@ -206,6 +206,11 @@ class _Frame:
     bridges: list[TalentBridge] = field(default_factory=list)
     # W10: where the actor is as this step starts, had the trips before it arrived.
     place_id: str | None = None
+    # W1: the bout this plan is fighting under terms both sides agreed to, and whether a fight
+    # is on in earnest (someone was harmed outside any terms, or its terms were broken), which
+    # no step can make a bout afterwards.
+    bout: Bout | None = None
+    open_fight: bool = False
 
 
 @dataclass
@@ -339,13 +344,17 @@ def _standing_step(
         drawn=Drawn(),
         difficulty=ctx.settings.difficulty,
         rng=rng.child("resolve", "step", 0, "peril"),
+        bout=frame.bout,
     )
+    under_terms = any(p.terms is not None for p in struck.perils)
     return standing.model_copy(
         update={
             "perils": struck.perils,
             "effects": struck.effects,
             "deeds": struck.deeds,
             "opening_ids": struck.openings,
+            "bout": frame.bout if under_terms else None,  # W1: the blow was one of the bout's
+            "broke_terms": struck.broke_terms,
         }
     )
 
@@ -365,6 +374,10 @@ def _frame(state: WorldState, actor: Character) -> _Frame:
         ],
         place_id=journeys.start_of(state, actor),
     )
+    encounter = state.scene.encounter
+    if encounter is not None:
+        frame.bout = encounter.bout
+        frame.open_fight = encounter.in_earnest and encounter.bout is None
     # A1. Cooldowns already running on the actor's clock, so a stop carried over from an earlier
     # turn can't be started afresh once it runs out partway through this plan.
     for power in actor.sheet.powers:
@@ -412,6 +425,9 @@ def _settle_step(
     if frame.met:
         state = _with_people(state, frame.met)
     actor = talents_mod.with_rulings(actor, frame.talent_rulings, frame.bridges)
+    # W1. A blow of a bout both sides agreed to does at most what its terms accept.
+    step, bout, broke_terms = _under_terms(state, actor, step, frame)
+    terms = bout.terms if bout is not None else None
     drawn = Drawn()
     beats: list[BeatResolution] = []
     chain: list[LinkResolution] = []
@@ -710,7 +726,7 @@ def _settle_step(
     effects = StateDelta()
     happened = settled.outcome_class is not OutcomeClass.RULED_OUT
     if happened:
-        effects = aim_effects(step, settled.result, targets)
+        effects = aim_effects(step, settled.result, targets, pulled=terms is Terms.NO_HARM)
     if met is not None:
         if actor.id == state.player_id:
             # Not in the scene's record yet, but the player saw what they did to them.
@@ -816,6 +832,7 @@ def _settle_step(
     if clean:
         frame.passed.add(index)
 
+    lured = False  # W1: someone fighting them went beyond the terms of their bout
     if actor.id == state.player_id and frame.gone is None:
         # N6. The foes still in the fight answer, and a danger the step faced strikes.
         frame.out |= _taken_out(effects)
@@ -834,7 +851,14 @@ def _settle_step(
             defence=settled.roll if defending and by_hand else None,
             difficulty=ctx.settings.difficulty,
             rng=rng.child("peril"),
+            bout=frame.bout,
         )
+        if struck.broke_terms:
+            # W1. Someone fighting them went beyond the terms: the bout is over.
+            lured = True
+            frame.bout, frame.open_fight = None, True
+        elif not step.aim.harmful and any(p.terms is not None for p in struck.perils):
+            bout = frame.bout  # the step struck nobody, and its answer was a blow of the bout
         won = [*won, *(i for i in struck.openings if i not in won)]
         perils, escaped = struck.perils, struck.escaped
         frame.fighting = list(dict.fromkeys([*frame.fighting, *struck.fighting]))
@@ -857,11 +881,15 @@ def _settle_step(
             targets=others_hit,
             others=[c for c in opposition.characters if c not in targets],
             in_stopped_time=frozen_now,
+            terms=terms,
+            broke_terms=broke_terms,
         )
         if deed is not None and frozen_now and holding is not None:
             deed = _stopped_deed(state, actor, step, deed, holding, hit, others_hit, settled)
         if deed is not None:
             deeds.insert(0, deed)
+    if any(d.victim_ids and d.terms is None for d in deeds):
+        frame.open_fight = True  # W1: someone was harmed outside any terms: a fight in earnest
     stakes = bool(
         step.aim.harmful
         or roll is not None
@@ -921,8 +949,75 @@ def _settle_step(
         escaped=escaped,
         extra=told_extra,
         opening_ids=won,
+        bout=None if lured else bout,
+        broke_terms=broke_terms or lured,
     )
     return resolution, stakes, own_choice
+
+
+def _under_terms(
+    state: WorldState, actor: Character, step: IntentStep, frame: _Frame
+) -> tuple[IntentStep, Bout | None, bool]:
+    """W1 (`engine.resolve.bouts`). The step as the terms of its bout hold it, that bout, and
+    whether it went beyond them. The interpret step proposes terms; code decides whether they
+    stand and keeps them for the bout.
+
+    A blow at those the actor is in a bout with comes under its terms whether or not the step
+    names them, and they only ever get milder. It is held to the worst they accept, unless the
+    interpret step says the actor means to go beyond them: then it is an attack as proposed, and
+    the bout is over. A step that fights someone with no bout on starts one when it proposes
+    terms and everyone in it can agree to them, and one that proposes terms with someone new
+    while a bout is on brings them into it. A fight in earnest, in which someone was harmed
+    outside any terms or whose terms were broken, stays one whatever a later step proposes."""
+    target_ids = [
+        i for i in dict.fromkeys(step.target_ids) if i != actor.id and i in state.characters
+    ]
+    if not target_ids or not (step.aim.harmful or step.encounter is EncounterKind.FIGHT):
+        return step, None, False
+    proposed = step.facts.terms
+    if frame.bout is None:
+        people = [actor, *(state.characters[i] for i in target_ids)]
+        agreed = proposed is not None and all(bouts.can_agree(state, p) for p in people)
+        if frame.open_fight or not agreed:
+            return step, None, False
+        with_ids = [p.id for p in people if p.id != state.player_id]
+        frame.bout = Bout(terms=proposed, with_ids=with_ids)
+    elif not bouts.covers(state, frame.bout, actor.id, target_ids):
+        joined = _joined(state, actor, frame, target_ids)
+        if proposed is None or joined is None:
+            # A blow at someone outside the bout is none of its own. One that is also meant to
+            # go beyond the terms with someone in it ends the bout.
+            beyond = step.facts.breaks_terms and not bouts.allows(frame.bout.terms, step.aim)
+            if beyond and any(i in bouts.sides(state, frame.bout) for i in target_ids):
+                frame.bout, frame.open_fight = None, True
+                return step, None, True
+            return step, None, False
+        frame.bout = joined
+    terms = bouts.milder(frame.bout.terms, proposed)
+    frame.bout = frame.bout.model_copy(update={"terms": terms})
+    if step.facts.breaks_terms and not bouts.allows(terms, step.aim):
+        frame.bout, frame.open_fight = None, True
+        return step, None, True
+    aim = bouts.held(terms, step.aim)
+    return (step if aim is step.aim else step.model_copy(update={"aim": aim})), frame.bout, False
+
+
+def _joined(
+    state: WorldState, actor: Character, frame: _Frame, target_ids: list[str]
+) -> Bout | None:
+    """W1. The bout with those a blow of the player character's newly names in it, as when a
+    second partner steps into a sparring ring. None when one of them can't agree, or is already
+    fighting the character outside the bout: an open fight with someone never becomes a bout."""
+    bout = frame.bout
+    if bout is None or actor.id != state.player_id:
+        return None
+    new = [i for i in target_ids if i not in bout.with_ids]
+    encounter = state.scene.encounter
+    fighting = {*frame.fighting, *(encounter.opponent_ids if encounter is not None else [])}
+    for new_id in new:
+        if new_id in fighting or not bouts.can_agree(state, state.characters[new_id]):
+            return None
+    return bout.model_copy(update={"with_ids": [*bout.with_ids, *new]})
 
 
 def _engagement(

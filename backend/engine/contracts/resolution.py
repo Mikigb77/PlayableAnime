@@ -13,7 +13,7 @@ from engine.base import EngineModel, Severity
 from engine.contracts.delta import StateDelta
 from engine.contracts.intent import ActionKind, Aim, OutcomeClass, UseSource
 from engine.state.records import RollRecord, StepResult, Trace, Visibility
-from engine.state.scene import EncounterKind
+from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.sheet import CostKind, Ruling
 
 
@@ -126,6 +126,16 @@ class ProposedDeed(EngineModel):
     )
     traces: list[Trace] = Field(default_factory=list)
     in_stopped_time: bool = False
+    terms: Terms | None = Field(
+        default=None,
+        description="W1: the terms both sides agreed to that the deed stayed inside. With no "
+        "victim it is the bout itself, recorded once however many blows it had.",
+    )
+    broke_terms: bool = Field(
+        default=False,
+        description="W1: it went beyond the terms of an agreed bout, so it is an attack that "
+        "came under cover of one.",
+    )
 
 
 class TrainingSoFar(EngineModel):
@@ -171,6 +181,11 @@ class Peril(EngineModel):
     roll: RollRecord | None = None
     result: StepResult
     harm: Harm = Harm.NONE
+    terms: Terms | None = Field(
+        default=None,
+        description="W1: the terms of the agreed bout the blow came inside, if it did. Under "
+        "no_harm it bruises at most and leaves nobody helpless.",
+    )
 
 
 class StepResolution(EngineModel):
@@ -244,6 +259,17 @@ class StepResolution(EngineModel):
         default_factory=list,
         description="N6: the foes this step got cleanly away from. `engine.encounters` ends the "
         "fight once the player character has left everyone still in it behind.",
+    )
+    bout: Bout | None = Field(
+        default=None,
+        description="W1: the bout both sides agreed to that the step was fought in, with its "
+        "terms as code reads them (`engine.resolve.bouts`). None for a step outside one, and "
+        "for one that broke them.",
+    )
+    broke_terms: bool = Field(
+        default=False,
+        description="W1: a blow of this step, the actor's or a foe's, went beyond the terms of "
+        "the bout it was in, so the bout is over and what is left is an open fight.",
     )
     extra: str = Field(
         default="",
