@@ -415,6 +415,23 @@ def test_both_models_see_the_terms_of_the_bout_under_way():
     assert shown in interpret_prompt(state, "I spar with Zhao").messages[-1].text
 
 
+def test_the_interpret_step_is_told_who_someone_meant_but_not_named_is():
+    """V3: "him" with nobody named is whoever the last scene had the character dealing with,
+    and in a fight or a bout whoever they are fighting. In a live lesson (2026-11-11) a blow at
+    "his eyes", meant for the teacher, fell on someone who stood by."""
+    state = cultivation_world()
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT, opponent_ids=["elder-mo"], started_turn=1, started_s=0
+    )
+    system = prompts.INTERPRET_SYSTEM
+
+    assert 'Someone the player means without naming them ("him", "her", "them") is' in system
+    assert "While a fight or a bout is under way (SCENE's encounter), it is whoever" in system
+    assert "unless the player's words point at someone else there." in system
+    # Who that is is in the prompt: the encounter names those the character is fighting.
+    assert '"opponent_ids":["elder-mo"]' in interpret_prompt(state, "I hit him").messages[-1].text
+
+
 def test_the_narrator_is_told_when_the_scene_began_and_what_time_it_is_now():
     # W10: the light, meals and the hour in the telling keep to the clock.
     state = cultivation_world()  # day count from 07:00
