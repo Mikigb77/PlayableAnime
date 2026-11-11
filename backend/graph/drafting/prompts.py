@@ -35,8 +35,16 @@ is usually fixed; how far it can go is usually open. Link each rule to the kinds
 - Give a power ladder only where the premise has one (cultivation realms, aura ranks, adventurer \
 ranks, levels), lowest rung first. The gaps between rungs are large and felt.
 - Two to ten places, each with the place it lies within (parent_id) and its setting: outdoors, \
-indoors, underground or underwater (R8). Up to eight factions (a faction can sit inside a larger \
-one: a crew inside a family, a court inside a sect) and two to eight key characters, each with a \
+indoors, underground or underwater (R8). Draw the map between them (W7, W10): link the \
+places people travel between through routes, a farm to its village, a town to the next town, a \
+city to the pass that leads to it, so that every place can be reached from the others. Only a \
+room or a building needs none: it is simply inside its parent. A route is written once, on \
+either of its two places, with to_id the other one, travel_hours the hours the way takes as \
+most people travel here (0.5, 6, or 72 for three days on the road) and mode how they go (on \
+foot, by cart, by train). The story takes a trip's time from these, so make them true to the \
+world's size.
+- Up to eight factions (a faction can sit inside a larger one: a crew inside a family, a court \
+inside a sect) and two to eight key characters, each with a \
 temperament, what they want and, where it fits, an agenda and a secret. Give every adult an age. \
 Where key characters are family, record it with parent_ids: a child names their parents, the \
 player character included. A parentage the player character doesn't know of is a secret instead.

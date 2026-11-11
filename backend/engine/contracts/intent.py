@@ -530,8 +530,9 @@ def _step_required(schema: dict[str, Any]) -> None:
     rule on, and the bridge it builds, null on any other step. Gemini leaves out what a schema
     doesn't require as often as not: without `uses` a nimble climber rolled like anyone, and
     without these two no talent was ruled on at all in the first live run (2026-11-10). Code
-    may still leave them out."""
-    must = ["facts", "uses", "talent_cases", "bridge"]
+    may still leave them out. `destination` is asked for the same way (W10): a trip the model
+    doesn't name is a trip code can't time."""
+    must = ["facts", "uses", "talent_cases", "bridge", "destination"]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
 
@@ -580,6 +581,15 @@ class IntentStep(EngineModel):
     )
     gist: str = Field(default="", description="R7: what to say, when the player gave only gist.")
     kind: ActionKind
+    destination: str = Field(
+        default="",
+        description=(
+            "W10: when the step takes the character to another place than SCENE's, that place:"
+            " its id when SCENE or KNOWN lists it, else its name in a few words. Empty for a"
+            " step that stays where they are. Code takes the trip's time from the map where"
+            " its routes cover the way."
+        ),
+    )
     proposed_duration_s: int = Field(ge=0, description="World seconds it should take (W10).")
     until: str | None = Field(
         default=None,
@@ -587,6 +597,15 @@ class IntentStep(EngineModel):
             "W10: when the step lasts until a time of day ('until nightfall', 'sleep till"
             " dawn'), that time on the world's 24-hour clock, as HH:MM. Code counts the seconds"
             " to it in place of proposed_duration_s."
+        ),
+    )
+    timed: bool = Field(
+        default=False,
+        description=(
+            "W10: the player says how long the step lasts ('for two hours', 'three days'), or"
+            " only that it lasts a while ('walk a bit'), and proposed_duration_s is that time."
+            " A trip timed this way stops when the time is up, on the way when the way is"
+            " longer."
         ),
     )
     duration_uncertain: bool = Field(

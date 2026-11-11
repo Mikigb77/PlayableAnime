@@ -146,7 +146,8 @@ flowchart LR
 line is enough: "I'm the son of a mafia boss in 1970s Naples, and someone inside the family killed
 my father", or "I'm reborn as the weakest outer disciple of the Azure Cloud Sect, with my past
 life's memories and the power to stop time." The AI drafts the world from it (S1): genre and tone,
-what is real in it (G6), which rules never change (G7), places, factions and the factions inside
+what is real in it (G6), which rules never change (G7), places and the routes between them with
+how long each takes (W7, W10), factions and the factions inside
 them (G10), key NPCs with their temperaments and agendas (E3), the first clocks (E2), and the answer
 to any major mystery (N7). The player sees a short summary in plain words ("Grounded: no magic and
 nothing supernatural, and that won't change. Naples, 1974. The Esposito family has three crews, and
@@ -772,7 +773,7 @@ this as state. It is not something the narrator is just asked to remember.
 | W4 | **NPC attitude.** Each character has affinity, fear and trust toward the player, and keeps grudges. Relatives, friends and allies of anyone the player kills become hostile and can come for revenge later. Key NPCs also have attitudes toward each other (E3). The engine moves attitudes by its rules; the narrator can nudge one by at most 10 points per scene, so a single line of dialogue can't turn an enemy into a friend. | P0 |
 | W5 | **Escalation.** A threat level from the player's public deeds and power is an input to each faction's own agenda (E3), not a fixed ladder. How a faction answers depends on its nature and situation: locals avoid or flee, guards, bounties and hunters, an army or elite heroes, a coalition, but also appeasement, a recruitment offer, worship, a bribe, an assassin, an attempt to seal the player away, using the player against a rival, or ignoring them while busy with its own war. A faction answers with what it really has, and the world never conjures a champion that couldn't exist just to match the player (A9). One guarantee holds: once the player crosses a threat tier, the world visibly reacts within a set in-world time (W10), never within a set number of turns. | P0 |
 | W6 | **Off-screen world.** The world moves on in-world time (W10), not every N turns. **Deterministic part (P0):** advancing clocks (E2), spreading rumors (W2), rolling for discovery (W13), scheduling faction responses (W5) and revivals (W15a), all in code with no model call, run as catch-up at the start of each turn for the in-world time that has passed (B5). **Model part (P1):** a cheap model writes what factions and key NPCs actually do with their plans (scheming, recruiting, retaliating, allying). Results reach the player as news, rumors, ambushes or W16 events. | P0 / P1 |
-| W7 | **Places and territory.** Places have a status (thriving, damaged, ruined, occupied), a controller, a mood, the place they lie within and whether they are outdoors, indoors, underground or underwater (R8), and rough travel times to neighbouring places (W10). Conquest changes the controller, lowers stability and creates resistance, unrest and outside rivals. A ruined town stays ruined unless someone rebuilds it, which takes in-world time, people and resources and is recorded as an event (C1). | P1 |
+| W7 | **Places and territory.** Places have a status (thriving, damaged, ruined, occupied), a controller, a mood, the place they lie within and whether they are outdoors, indoors, underground or underwater (R8), and rough travel times to neighbouring places (W10): the routes, which a new world is drafted with (G1), which a scene adds when it tells how far a place is, and which a trip over ground no route covers writes once it arrives. Conquest changes the controller, lowers stability and creates resistance, unrest and outside rivals. A ruined town stays ruined unless someone rebuilds it, which takes in-world time, people and resources and is recorded as an event (C1). | P1 |
 | W8 | **Consistency.** Characters' everyday behavior matches what they know: no cheerful greetings in a town the player burned, and survivors remember. A violation is a continuity bug (see C5). | P0 |
 | W9 | **Redemption and infamy both count.** Good deeds raise esteem through the same mechanics, and a player can try to win back a region. Reputation changes slowly in both directions. | P1 |
 | W10 | **In-world time.** See the time model below: the story clock advances by how long each action takes in the story, never by a fixed amount per turn. | P0 |
@@ -803,8 +804,9 @@ in a trap. Nothing in the world is timed in turns.
   the interpret model must answer with its steps (on 2026-11-04 it left them out of most turns, and
   each action played as a five-second nothing).
 - **The models read the clock.** The interpret step sees what time it is now, on the 24-hour clock
-  whatever the calendar shows, with how people travel in the world and the routes from where the
-  character is, so a walk across town takes its 10 to 30 minutes and a meal its half hour or more.
+  whatever the calendar shows, with how people travel in the world and how far each place the
+  character knows is by the map, so a walk across town takes its 10 to 30 minutes and a meal its
+  half hour or more.
   A step the player times by the clock ("until nightfall", "sleep till dawn") names that time of
   day, and code counts the seconds to it from where the plan has got to, never rolled: the time
   the player named holds even past the kind's longest (a watch until dusk can outlast an hour), and
@@ -813,6 +815,47 @@ in a trap. Nothing in the world is timed in turns.
   is now, and the opening sees the hour the story opens: the light, meals and time of day in the
   telling match the clock, night never falls before the clock reaches it, and the telling never
   skips ahead of it (R3).
+- **A trip takes what the way takes** (Miki's review, 2026-11-11: a ride to another city took
+  minutes, and the next scene had the character back where they set out). The interpret step says
+  only where a step goes: the place's id, or its name when the record doesn't hold it yet. Code
+  takes the time from the map. Where the routes between places (W7) cover the way, the trip takes
+  their time, whatever was proposed and whatever the kind's bounds, and it is never rolled, so the
+  same trip takes the same time every time. Only something of the character's own that the step
+  uses, such as a power, a technique or a mount, gets them there sooner, in the time proposed for
+  it and never later than the road. A throw over the top never halves a trip's time (A3), and a
+  walk started inside a time stop is as long as its way, so the stop runs out on the way (W10a).
+  A step that goes somewhere to do something there, such as a night at the inn in the village,
+  takes its own time and at least the way, and it leaves the character there.
+  Where no route covers the way (new ground, or only the short
+  walk between a place and the one it lies in), the trip takes the time the interpret step judged,
+  and once it arrives that time is written as the route between the two places. Code moves the
+  character: when a trip arrives they are at the place it went to, the later steps of the same plan
+  happen there and are seen there (W1, W2), and the scene ends there, whatever the narrator's
+  update says (R8).
+- **A journey is not forced into one scene** (Miki, 2026-11-11: "during the journey I might want
+  to do something, or there might be some event, and you might encounter something"; "the
+  objective is to make the whole travel feel alive"). The player sets the pace: "I walk for half
+  an hour", "until dusk" or just "we walk a bit" stops the trip when that time is up, on the way,
+  a rest or anything else can be done there, and "I walk on" carries the trip on for the rest of
+  the way. The
+  road sets it too: a trip of an hour or more rolls what it meets on the way from the road's own
+  cards (E4), likelier the longer the way. On normal, something that needs a decision stops about
+  one half-day's walk in six, one day's travel in three, two three-day trips in three and nearly
+  every trip of a week, and the story's event frequency makes the road calmer or busier (W16). It
+  stops the trip where it happens and is the scene's event, and each stop since the character
+  last arrived somewhere makes the rest of the way quieter, so a long way is a few scenes on the
+  road, never a stop at every bend. Code rolls only that something of a kind happens and when:
+  what it is in this world, robbers or a broken axle, is the story's to tell. A trip that stops on
+  the way keeps what is left of it: the rest takes what is left, turning back takes what was done,
+  and the scene ends on the way, never at the destination. The journey stays theirs through what
+  they do at the stop: a fight, a night in a room at the inn, a look at the ruin off the road, an
+  errand of under an hour. It ends at either end of the way, and it is given up once they set out
+  somewhere else. The narrator is told where each trip went, whether it arrived and how much of
+  the way is left, and tells the way itself at the pace of the time it took, alive with what they
+  pass, who passes them and how the going wears on them; trouble and anyone who asks something of
+  them come only with an event. A scene that ends on the way offers carrying on among its
+  suggestions (S2). When nothing stops it, a trip of days is one scene that tells the days
+  passing.
 - **Some durations are outcomes.** When how long something takes is uncertain (breaking out of a
   magical trap, picking a lock, finding someone in a city, recovering from a wound), the A3 roll
   decides the time as well as the result. The same trap can hold the character for five minutes or
@@ -1066,6 +1109,9 @@ how often events come, but never turns them off. The details:
   player takes it up by acting on it or on the people in it.
 - **Time skips** roll for events inside the skipped time and stop early when one needs a decision
   (E7): "I farm here for a year" can stop in month four when the river rises.
+- **The road** brings its own events to a trip, far more often than a quiet year at home does
+  (W10): someone on the way, a way that is blocked, trouble, something off the way, a hard
+  stretch, a place to stop.
 - **Loose ends.** Each event leaves a thread (N1) that can go dormant and return later.
 - **Good things too.** The deck holds windfalls, offers and welcome visitors as well as trouble, so a
   quiet story stays pleasant rather than punishing.
@@ -1101,7 +1147,8 @@ about you. Weights come from the setting, the story's scale, the event-frequency
 switched-on themes (F7) and the player's wishes (N8). The narrator dresses the draw in the world's
 own form (G9) and reuses existing characters and threads before inventing new ones; new ones go
 through W15 with a recorded origin. The P0 version is one table per event size (personal, local,
-world).
+world), and one for what a trip meets on the way (W10), drawn only while the character travels and
+as generic as the rest: the way is a mountain path, a motorway, a sea lane or a jump route (G5).
 
 **E5 One reaction loop for every actor (P1).** Deeds, rumors, reputation, grudges and discovery
 (W1–W4, W13) apply to NPC and faction deeds as well as the player's. An NPC who murders a rival gets
@@ -1113,7 +1160,8 @@ player is comfortably in control and falls after a big event.
 **E7 Downtime and time skips for any activity (P1).** Travelling, farming a season, ruling, building a
 gang, researching or training (A4) can be one montage turn. The engine advances the clock, runs the
 world for the elapsed time in capped steps (K8), rolls for W16 events along the way, and stops the
-montage early when one needs a decision.
+montage early when one needs a decision. A trip rolls what the road brings in their place, at the
+road's own rate (W10).
 
 ## Open plot
 
@@ -1331,7 +1379,7 @@ These are the parts of the product the player sees, most of them already listed 
 | Id | Requirement | Pri |
 | --- | --- | --- |
 | S1 | Start from a starter premise or from one box of your own. The AI expands it into a world bible (setting, what is real in the world and which rules never change, laws and customs, factions, key NPCs, tone) and the player sheet, plus the premise's first clocks (E2), following the flow in G1 and G2. Advanced fields stay hidden unless asked for. The bible keeps growing as the player explores (N7). Starter premises lead with the flagship genre (cultivation, knights and aura, magic, monsters and many races, reincarnation with or without a special gift) and also cover at least a grounded modern story, science fiction and a modern world with a hidden supernatural side. | P0 |
-| S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. The player can turn suggestions off. | P0 |
+| S2 | Free text, typed or dictated (V1), is the main way to act. Every scene also offers zero to four suggested choices, at least one of them away from the current thread (personal, side or wild), plus **wait** and **observe** as standing actions. A scene that ends on the way of a trip offers carrying on among them (W10). The player can turn suggestions off. | P0 |
 | S3 | Narration streams in as it is written (SSE), and the first words arrive within 2 s. The steps the engine decided, with their dice, arrive before the first words (A3), and in gamer mode the app plays them at once, over the page, while the story is written (S15). | P0 |
 | S4 | The story never ends by itself, though the player can end it (N6). Every scene ends on something the player can act on, not necessarily a cliffhanger: W16 sets the pace, so quiet scenes are fine until stall pressure builds. Chapters and arcs are named afterwards (N1). | P0 |
 | S5 | Slash commands: `/ooc` (talk to the narrator, and story wishes from N8), `/recap`, `/thoughts <character>`, `/status` (the Character screen: the sheet in parts (G16), reputation, date and time), and `/end` with an optional note on how the story ends (N6). `/thoughts` shows only what that character would let show; real secrets need an in-fiction power such as mind reading, so it never reveals what C6 keeps hidden. | P1 |
@@ -1451,6 +1499,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Fleeing witness | Kill someone, let a witness flee, then spend 10 short turns (about 3 in-world minutes) brewing a potion | No guards arrive until the report could really have been made and they could have travelled (W10) |
 | Interrupted sleep | After the fleeing-witness run, the player sleeps for 8 hours | The engine plays the night in time order, and the guards wake the player at the moment they arrive |
 | A day in town | From the farm at dawn, the player walks into the village, eats at the inn, then stays there until nightfall | Each action moves the clock by what it really takes, the wait ends at nightfall on the clock, and every scene's light and time of day match the clock (W10) |
+| The long road | From the farm, the player walks to the village (which the first model reads as a two-minute move), sets out for a city three days off and walks for half an hour, then walks on until they arrive, over 12 seeds | The walk takes the map's forty minutes and leaves the character in the village, the half hour stops on the way with the rest kept, what the road brings stops some journeys on the way and never at their end, some go straight through, every journey arrives, and its stretches add up to the map's three days (W10, W7, W16) |
 | Trapped | The player is caught in a magical trap, over many seeds | Escape times vary with the roll, from minutes to days, and the world moves on by that time |
 | Time stop | The player stops time and kills a guard in a crowded square, over many seeds | The kill happens on every seed with no roll (A2), no pending event fires during the stop, nobody saw it, and the body still starts rumors (W10a, W13) |
 | Time loop | A world rewind, then the player repeats the same actions, then changes one | The same events replay on schedule, then the timeline diverges after the change (W10a) |

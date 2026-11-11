@@ -108,6 +108,32 @@ def _travel_graph(state: WorldState, routes: dict[str, dict[str, int]]) -> dict:
     return graph
 
 
+def _ways(state: WorldState, from_id: str) -> dict[str, tuple[int, bool]]:
+    """The quickest way from one place to every place the map connects it to: the seconds it
+    takes, and whether it runs over a route the map records, rather than only the short walks
+    between a place and the one it sits in. A route straight between two places is what the
+    trip takes, whatever else connects them."""
+    routes = _route_graph(state)
+    graph = _travel_graph(state, routes)
+    # Each way is weighed by its time, then by whether a route covers it, so of two ways that
+    # take the same time the one over a route stands.
+    best: dict[str, tuple[int, int]] = {from_id: (0, 1)}
+    frontier: list[tuple[int, int, str]] = [(0, 1, from_id)]
+    while frontier:
+        cost, unrouted, pid = heapq.heappop(frontier)
+        if (cost, unrouted) > best.get(pid, (cost, unrouted)):
+            continue
+        for nxt, step in sorted(graph[pid].items()):
+            way = (cost + step, 0 if nxt in routes[pid] else unrouted)
+            if nxt not in best or way < best[nxt]:
+                best[nxt] = way
+                heapq.heappush(frontier, (*way, nxt))
+    ways = {pid: (cost, not unrouted) for pid, (cost, unrouted) in best.items()}
+    for to_id, direct in routes[from_id].items():
+        ways[to_id] = (direct, True)
+    return ways
+
+
 def travel_s(state: WorldState, from_id: str | None, to_id: str | None) -> int | None:
     """Rough travel time between two places, or None when nothing on the map connects them
     (W10). A route between the two is what it takes; otherwise the quickest way over routes and
@@ -116,24 +142,38 @@ def travel_s(state: WorldState, from_id: str | None, to_id: str | None) -> int |
         return None
     if from_id == to_id:
         return 0
-    routes = _route_graph(state)
-    if to_id in routes[from_id]:
-        return routes[from_id][to_id]
-    graph = _travel_graph(state, routes)
-    best: dict[str, int] = {from_id: 0}
-    frontier: list[tuple[int, str]] = [(0, from_id)]
-    while frontier:
-        cost, pid = heapq.heappop(frontier)
-        if pid == to_id:
-            return cost
-        if cost > best.get(pid, cost):
-            continue
-        for nxt, step in sorted(graph[pid].items()):
-            total = cost + step
-            if total < best.get(nxt, total + 1):
-                best[nxt] = total
-                heapq.heappush(frontier, (total, nxt))
-    return None
+    way = _ways(state, from_id).get(to_id)
+    return way[0] if way is not None else None
+
+
+def route_s(state: WorldState, from_id: str | None, to_id: str | None) -> int | None:
+    """W10. What a trip between two places takes by the map's own routes, or None when no route
+    covers the way: the two aren't connected, or only by the short walks between a place and
+    the one it sits in, which are too rough to time someone's steps by (a room next door isn't
+    a quarter of an hour away)."""
+    if from_id is None or to_id is None or from_id == to_id:
+        return None
+    return routes_from(state, from_id).get(to_id)
+
+
+def has_route(state: WorldState, a: str | None, b: str | None) -> bool:
+    """Whether the map records a route straight between two places, either way."""
+    if a not in state.places or b not in state.places:
+        return False
+    return any(r.to_id == b for r in state.places[a].routes) or any(
+        r.to_id == a for r in state.places[b].routes
+    )
+
+
+def routes_from(state: WorldState, from_id: str | None) -> dict[str, int]:
+    """W10. Every place the map's routes reach from `from_id`, with what the trip takes."""
+    if from_id is None or from_id not in state.places:
+        return {}
+    return {
+        to_id: max(1, cost)
+        for to_id, (cost, routed) in _ways(state, from_id).items()
+        if routed and to_id != from_id
+    }
 
 
 def news_neighbours(state: WorldState, place_id: str) -> list[tuple[str, int]]:
