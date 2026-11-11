@@ -564,6 +564,7 @@ def test_a_slow_clock_is_a_long_run_of_scenes_that_took_next_to_no_time():
     assert not clock_is_slow([n * 3 * MINUTE for n in range(RUN)])  # scenes of minutes move on
     assert clock_is_slow([HOUR] * RUN)  # stopped clocks and instants: no time at all
     assert not clock_is_slow([*minutes[:-1], -HOUR])  # a clock that went back (W10a)
+    assert not clock_is_slow([0, DAY, *minutes[2:]])  # or jumped on and came back
 
     memory = DirectorState(recent_clock=minutes)
     assert clock_after(memory, HOUR) == [*minutes[1:], HOUR]  # the last ones, this scene last

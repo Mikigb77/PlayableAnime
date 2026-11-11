@@ -70,8 +70,8 @@ def clock_after(memory: DirectorState, now_s: int) -> list[int]:
 
 def clock_is_slow(ends: list[int]) -> bool:
     """S2, W10. Whether a long run of scenes took next to no time: `rules.SLOW_CLOCK_SCENES` in
-    a row that ended within `rules.SLOW_CLOCK_S` of each other. A clock that went back (W10a)
-    is not a slow one."""
+    a row that all ended within `rules.SLOW_CLOCK_S` of each other. A clock that jumped in that
+    run, on or back (W10a), is not a slow one."""
     if len(ends) < rules.SLOW_CLOCK_SCENES:
         return False
-    return _within(ends[-1], ends[0], rules.SLOW_CLOCK_S)
+    return max(ends) - min(ends) < rules.SLOW_CLOCK_S
