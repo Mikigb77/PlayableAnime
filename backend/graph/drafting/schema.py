@@ -641,7 +641,11 @@ class CharacterProposal(Proposal):
     aliases: list[str] = Field(default_factory=list)
     age: int | None = None
     people_id: str = ""
-    description: str = Field(default="", description="How they come across.")
+    description: str = Field(
+        default="",
+        description="How they come across, in one line: their bearing and manner. Their face, "
+        "build, hair and clothes go in appearance, not here.",
+    )
     appearance: str = Field(default="", description=APPEARANCE)
     location_id: str = ""
     attributes: AttributesP = Field(default_factory=AttributesP)

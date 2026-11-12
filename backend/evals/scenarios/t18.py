@@ -8,6 +8,7 @@ pictures (V3, M5, M6).
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from dataclasses import replace
@@ -388,8 +389,9 @@ def player_record(prompt: str) -> str:
     title="Looks and stock phrases",
     requirements=("R9", "C9", "T18"),
     passes_when=(
-        "The plain scenes are written without the character's appearance and don't describe "
-        "how they look, a scene that writes them one leaves the kept appearance as it was, the "
+        "The plain scenes are written without the character's appearance or the line on how "
+        "they come across and don't describe how they look, a scene that writes them one "
+        "leaves the kept appearance as it was, the "
         "hair they tie back is the hair on record, and wording three scenes repeated is handed "
         "to the narrator as worn (R9)"
     ),
@@ -412,9 +414,11 @@ async def looks_and_stock_phrases(ev: Eval) -> None:
                 handed is shown,
                 f"{seed}: turn {played.turn}",
             )
+            # The record is read offline only: a live story's prompts aren't kept.
+            record = json.loads(player_record(story.prompt(Node.NARRATOR)) or "{}")
             ev.check(
-                "and its brief carries none",
-                ('"appearance"' in player_record(story.prompt(Node.NARRATOR))) is handed,
+                "and its brief carries none, nor the line on how they come across",
+                ("appearance" in record) is handed and ("description" in record) is handed,
                 f"{seed}: turn {played.turn}",
                 live=False,
             )
