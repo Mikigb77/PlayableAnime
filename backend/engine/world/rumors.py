@@ -20,7 +20,7 @@ it think worse of the doer, and nobody acts against them on it (W4, W5).
 
 from enum import StrEnum
 
-from engine.state.records import GARBLED_LEAD, Deed, EventStatus, PendingEvent, Rumor
+from engine.state.records import Deed, EventStatus, PendingEvent, Rumor
 from engine.state.world import WorldState
 from engine.world.geography import characters_at, news_neighbours, region_of
 from engine.world.knowledge import (
@@ -32,7 +32,7 @@ from engine.world.knowledge import (
 )
 from engine.world.norms import is_beast
 from engine.world.scheduling import Kind, World, by_id, schedule
-from engine.world.telling import account
+from engine.world.telling import SOMEONE, account, garbled
 from engine.world.tuning import (
     ACCURACY_LOSS,
     BELIEVED_FROM,
@@ -201,8 +201,9 @@ def _garbled(w: World, rumor: Rumor, deed: Deed | None, accuracy: int) -> Rumor:
     longer names the doer, so it no longer tells anyone who did it, though what it still says is
     so. One per rumor, reused as it spreads."""
     state = w.state
-    told = account(state, deed, doer="someone") if deed is not None else rumor.text
-    text = f"{GARBLED_LEAD}{told}"
+    language = w.ctx.settings.language  # S10
+    told = account(state, deed, doer=SOMEONE, language=language) if deed is not None else rumor.text
+    text = garbled(told, language)
     about = [i for i in rumor.about_ids if deed is None or i != deed.actor_id]
     for other in by_id(state.rumors.values()):
         if other.deed_id == rumor.deed_id and other.text == text and other.id != rumor.id:

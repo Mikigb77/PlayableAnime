@@ -328,7 +328,9 @@ cheers"). They are hopes, not facts, and the step is the attempt (A6).
 given.
 - summary: the action in one plain sentence.
 - Write what you note in your own words (goals, backstory claims, theories, outcome claims and \
-the summary) in the language LANGUAGE names (S10). Lines stay exactly as the player gave them.
+the summary) in the language LANGUAGE names (S10). Code reads a step's verb, so it is a plain \
+English verb in any language (attack, steal, search, persuade). Lines stay exactly as the player \
+gave them.
 """
 # W10: the parts of the day as the clock names them (`engine.labels`), so "until dusk" lands where
 # the player's clock says dusk starts.
@@ -846,6 +848,10 @@ techniques, ranks, talents, things. A name is never translated or respelled.
 - A line, or a part of one, that is already in that language stays as it is.
 - Keep each line's shape: a sentence stays a sentence, and a short label with no full stop stays \
 a short label, starting in upper or lower case as the English does.
+- Nothing says whether the player's character, or anyone else, is a man or a woman. Word each \
+line so that it fits either, the way WORDS says health: with a noun or a verb, never with an \
+adjective that takes a gender.
+- Say every line, even a short one: none comes back in English.
 - For the game's own words, use WORDS.
 
 Answer with every line of LINES, each under its own n.\
@@ -866,8 +872,11 @@ WORDING_WORDS = {
         "soltura. skilled: destreza. expert: pericia. master: maestría.\n"
         "How well they have a move or a technique: learning: aprendiendo. practiced: practicada. "
         "skilled: dominada. second nature: segunda naturaleza. made your own: hecha tuya.\n"
-        "Health: hurt: con heridas leves. wounded: con heridas. badly wounded: con heridas "
-        "graves. dying: al borde de la muerte."
+        "Health, said so that it fits a man or a woman: you are hurt: tienes heridas leves. "
+        "you are wounded: tienes heridas. you are badly wounded: tienes heridas graves. you are "
+        "maimed, with a wound that will last: te queda una herida para siempre. you are dying: "
+        "estás al borde de la muerte. you are brought down: quedas fuera de combate. exhausted: "
+        "sin fuerzas. For someone else the same way: tiene heridas, queda fuera de combate."
     ),
     Language.CA: (
         "die: dau. dice: daus. a green die: un dau verd. a throw of the dice: una tirada. an "
@@ -879,8 +888,11 @@ WORDING_WORDS = {
         "soltesa. skilled: destresa. expert: perícia. master: mestratge.\n"
         "How well they have a move or a technique: learning: aprenent. practiced: practicada. "
         "skilled: dominada. second nature: segona naturalesa. made your own: feta teva.\n"
-        "Health: hurt: amb ferides lleus. wounded: amb ferides. badly wounded: amb ferides greus. "
-        "dying: a punt de morir."
+        "Health, said so that it fits a man or a woman: you are hurt: tens ferides lleus. you "
+        "are wounded: tens ferides. you are badly wounded: tens ferides greus. you are maimed, "
+        "with a wound that will last: et queda una ferida per sempre. you are dying: estàs a "
+        "punt de morir. you are brought down: quedes fora de combat. exhausted: sense forces. "
+        "For someone else the same way: té ferides, queda fora de combat."
     ),
 }
 

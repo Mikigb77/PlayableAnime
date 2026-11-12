@@ -482,6 +482,15 @@ def test_the_interpret_step_is_told_who_someone_meant_but_not_named_is():
     assert '"opponent_ids":["elder-mo"]' in interpret_prompt(state, "I hit him").messages[-1].text
 
 
+def test_the_reading_names_a_steps_verb_in_english_whatever_the_story_speaks():
+    """S10, B5: code reads a verb, to tell a deed (G16), to know a defence, a threat or what
+    a bout allows, so a Spanish or a Catalan story's reading still names it in English."""
+    system = prompts.INTERPRET_SYSTEM
+
+    assert "the summary) in the language LANGUAGE names (S10)." in system
+    assert "Code reads a step's verb, so it is a plain English verb in any language" in system
+
+
 def test_the_models_are_told_who_saw_what_is_done_and_whose_feelings_a_scene_moves():
     """W2, W4: the interpret step says of every step whether a crowd is around, and not for
     what is done so that nobody notices; the narrator moves only the feelings of the scene's

@@ -11,14 +11,27 @@ import inspect
 import pytest
 
 from engine.context import Language, Rating, StorySettings, TurnContext
-from engine.contracts import BeatVerdict, Harm, OutcomeClass
+from engine.contracts import (
+    Aim,
+    BeatVerdict,
+    DirectorPlan,
+    EventKind,
+    EventSource,
+    Harm,
+    OutcomeClass,
+    Peril,
+    PlannedEvent,
+    Resolution,
+    StepResolution,
+)
 from engine.resolve import chain, core
 from engine.resolve.core import NOTHING_IN_THE_WAY
 from engine.resolve.perils import MISS_COSTS
 from engine.resolve.throw import told
 from engine.resolve.words import cap
 from engine.samples import grounded_world
-from engine.state.records import Mark, StepResult
+from engine.state.records import Mark, Origin, PendingEvent, StepResult, Thread, ThreadKind
+from engine.state.world import EventSize
 from graph.llm import Block, Fail, Hang, Node, Reply
 from graph.turn import (
     EndingRefused,
@@ -212,10 +225,78 @@ def test_the_book_holds_the_engines_own_lines_in_both_languages():
         ),
         ("It follows.", "", False),
         ("It follows.", "Se sostiene. " + "Y además llueve. " * 6, False),  # it runs on
+        # The English line handed back is no wording of it, however it is spaced or cased.
+        ("The guard strikes back.", "The guard strikes back.", False),
+        ("There is una piedra suelta here.", "there is  una piedra suelta here.", False),
+        ("Speed, 2 dice", "Speed, 2 dice", False),
+        ("There is una piedra suelta here.", "Aquí hay una piedra suelta.", True),
+        # What was the story's own already comes back as it stood, and that is its wording.
+        ("el derrumbe del techo", "el derrumbe del techo", True),
+        ("Zhao Kun", "Zhao Kun", True),
+        ("Falling Star Release", "Falling Star Release", True),
     ],
 )
 def test_a_said_line_keeps_the_engines_numbers_and_names(english, said, kept):
     assert saying.faithful(english, said) is kept
+
+
+def test_an_english_line_handed_back_counts_as_kept_and_is_asked_again(fake, make_client):
+    """S10: the log's `lines_kept` shows it, and the next turn asks for the line again."""
+    danger = "el derrumbe del techo"
+    says(fake, {HAND: HAND, TASK: "una tarea difícil, nivel 3", danger: danger})
+
+    async def said():
+        wording = saying.begin(make_client(), [HAND, TASK, danger], Language.ES)
+        issues = await wording.settle()
+        return wording, issues, saying.begin(make_client(), [HAND, TASK, danger], Language.ES)
+
+    wording, issues, again = run(said())
+
+    assert [(i.code, i.detail) for i in issues] == [(saying.KEPT, "1 of 3")]
+    assert wording.word(HAND) == HAND and wording.word(danger) == danger
+    assert again.asked == 1 and again.word(TASK) == "una tarea difícil, nivel 3"
+    assert saying.lines_asked(fake.calls(Node.WORDING)[-1].prompt) == [(1, HAND)]
+    again.task.cancel()
+
+
+def struck_back(by: str, *foe_ids: str) -> Resolution:
+    blow = Peril(
+        by_ids=list(foe_ids),
+        by=by,
+        aim=Aim.WOUND,
+        outcome_class=OutcomeClass.CERTAIN,
+        reason=f"{cap(by)} strikes back. It hurts you.",
+        result=StepResult.SUCCESS,
+        harm=Harm.HURT,
+    )
+    step = StepResolution(
+        index=0,
+        text="aguantar la puerta",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason=NOTHING_IN_THE_WAY,
+        result=StepResult.SUCCESS,
+        duration_s=30,
+        perils=[blow],
+    )
+    return Resolution(steps=[step])
+
+
+def test_the_name_of_a_lone_foe_stands_and_the_rest_of_who_struck_is_said():
+    """S10: a name is the story's own, so nothing says it again. Several foes are joined by
+    the engine's "and", and a danger may be one the engine worded."""
+    troll = "el trol de las cavernas"
+    alone = saying.lines_of(struck_back(troll, "troll"), DirectorPlan(), Language.ES)
+
+    assert alone.kept == {troll}
+    assert alone.texts() == [
+        NOTHING_IN_THE_WAY,
+        "El trol de las cavernas strikes back. It hurts you.",
+    ]
+    assert alone.reworded(str.upper).details.steps[0].struck[0].by == troll
+
+    for by, ids in (("Zhao Kun and Elder Mo", ("zhao", "mo")), ("the long drop", ())):
+        told_by = saying.lines_of(struck_back(by, *ids), DirectorPlan(), Language.ES)
+        assert not told_by.kept and by in told_by.texts()
 
 
 def test_an_english_story_says_nothing_again(fake, make_client):
@@ -268,6 +349,12 @@ def test_the_model_says_the_rest_once_and_it_is_remembered(fake, make_client):
     prompt = asked.prompt.messages[-1].text
     assert "## LANGUAGE\nSpanish from Spain, speaking to the player as tú" in prompt
     assert "dice: dados" in prompt and "dice: daus" in catalan.prompt.messages[-1].text
+    # Health is said so that it fits a man or a woman, since nothing on record says which.
+    assert "you are wounded: tienes heridas." in prompt and "con heridas" not in prompt
+    assert "you are wounded: tens ferides." in catalan.prompt.messages[-1].text
+    system = asked.prompt.system
+    assert "never with an adjective that takes a gender" in system
+    assert "none comes back in English" in system
 
 
 def test_a_line_the_model_changed_or_left_out_stays_in_english(fake, make_client):
@@ -460,28 +547,80 @@ def test_dice_whose_lines_cant_be_said_go_out_in_english_before_the_telling(
     ]
 
 
-def test_an_events_title_is_said_and_the_scene_carries_it(fake, make_client):
+def in_guillemets(request):
+    """The wording model, scripted to say each line as it stands between « and »."""
+    asked = saying.lines_asked(request.prompt)
+    return Reply(json={"lines": [{"n": n, "text": f"«{text}»"} for n, text in asked]})
+
+
+def test_the_directors_title_comes_from_its_book_and_the_scene_carries_it(fake, make_client):
+    """W16: a card's title, and the thread it opens, with no model."""
     fake.script(Node.INTERPRET, Reply(json=FARMING))
     fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
-    fake.default = lambda request: Reply(
-        json={
-            "lines": [
-                {"n": n, "text": f"«{text}»"} for n, text in saying.lines_asked(request.prompt)
-            ]
-        }
-    )
 
     events, result = play(
         make_client(), turn_input(quiet_farm(), action="Trabajo los campos", settings=SPANISH)
     )
 
     title = result.plan.event.title
-    assert result.scene.event.title == f"«{title}»"
-    assert isinstance(events[0], StepsDecided)
+    assert (title, result.scene.event.title) == ("A rival", "Una rivalidad")
+    assert isinstance(events[0], StepsDecided) and fake.calls(Node.WORDING) == []
     assert [step.reason for step in result.scene.details.steps] == ["Nada lo impide."]
-    # The narrator and the record keep the event as the director wrote it.
+    assert result.state.threads[result.plan.event.thread_id].title == "Una rivalidad"
+    # The narrator is briefed with the event as the director wrote it.
+    assert title in fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+
+
+def test_an_event_the_world_titled_is_said_by_the_model(fake, make_client):
+    fake.script(Node.INTERPRET, Reply(json=FARMING))
+    fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
+    fake.default = in_guillemets
+    state = quiet_farm()
+    state.pending_events["e1"] = PendingEvent(
+        id="e1", kind="arrival", title="The bailiff comes", due_s=state.world_s, needs_player=True
+    )
+
+    _, result = play(
+        make_client(), turn_input(state, action="Trabajo los campos", settings=SPANISH)
+    )
+
+    assert result.plan.event.title == "The bailiff comes"
+    assert result.scene.event.title == "«The bailiff comes»"
     brief = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
-    assert title in brief and f"«{title}»" not in brief
+    assert "The bailiff comes" in brief and "«The bailiff comes»" not in brief
+
+
+def test_a_thread_of_the_storys_own_comes_back_under_the_title_it_keeps(fake, make_client):
+    """N1: its title is in the story's words already, so nothing says it again. A thread the
+    director titled itself, before a story kept its titles in its language, goes by the book."""
+
+    def returning(title: str) -> saying.Lines:
+        feud = Thread(id="feud", title=title, kind=ThreadKind.RIVALRY, origin=Origin(kind="event"))
+        event = PlannedEvent(
+            size=EventSize.PERSONAL,
+            kind=EventKind.RIVAL,
+            source=EventSource.THREAD,
+            source_id="feud",
+            title=title,
+            brief="It comes back.",
+            thread_id="feud",
+        )
+        plan = DirectorPlan(event=event)
+        return saying.lines_of(Resolution(steps=[]), plan, Language.ES, {"feud": feud})
+
+    own = returning("La valla de Bram")
+    assert own.kept == {"La valla de Bram"} and own.texts() == []
+    assert own.reworded(str.upper).event_title == "La valla de Bram"
+
+    old = returning("A rival")
+    assert not old.kept and old.texts() == ["A rival"]
+
+    async def begun():
+        return saying.begin(make_client(), old.texts(), Language.ES)
+
+    wording = run(begun())
+    assert wording.task is None and fake.requests == []
+    assert old.reworded(wording.word).event_title == "Una rivalidad"
 
 
 def test_an_opening_with_nothing_decided_shows_no_steps(fake, make_client, telemetry):

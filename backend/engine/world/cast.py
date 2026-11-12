@@ -161,7 +161,13 @@ def _emerge_avenger(w: World, event: PendingEvent) -> None:
     avenger.sheet.disposition.attitudes[target.id] = Attitude(
         affinity=-80,
         trust=-60,
-        grudges=[Grudge(reason=account(state, deed), deed_id=deed.id, since_turn=w.ctx.turn)],
+        grudges=[
+            Grudge(
+                reason=account(state, deed, language=w.ctx.settings.language),
+                deed_id=deed.id,
+                since_turn=w.ctx.turn,
+            )
+        ],
     )
     state.characters[avenger.id] = avenger
     if proven(state, deed):

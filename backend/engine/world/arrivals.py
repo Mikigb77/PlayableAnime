@@ -32,6 +32,7 @@ from engine.world.geography import characters_at, faction_seat, is_within
 from engine.world.knowledge import faction_learns, shift_attitude
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import World, by_id, cancel
+from engine.world.telling import bounty
 from engine.world.tuning import (
     FIND_ODDS,
     FORGIVEN_AFFINITY,
@@ -190,7 +191,8 @@ def _off_screen(w: World, event, answer, faction, target, insiders, text) -> Non
         present = [c.id for c in characters_at(state, where)]
         start_rumor(
             w,
-            text=text,
+            # S10: a rumor is kept as it is told, so it is told in the story's language.
+            text=bounty(faction.name, target.name, w.ctx.settings.language),
             is_true=True,
             place_id=where,
             hops=4,

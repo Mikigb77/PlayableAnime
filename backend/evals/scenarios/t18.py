@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import re
+from dataclasses import replace
 
 from engine.base import MINUTE
 from engine.context import Language, StorySettings
@@ -32,7 +33,7 @@ from engine.contracts import (
     UseSource,
 )
 from engine.resolve import throw as dice
-from engine.state import PlaceSetting, SkillLevel, StepResult
+from engine.state import PlaceSetting, SkillLevel, StepResult, WorldState
 from engine.world.geography import is_within
 from evals import worlds
 from evals.judge import LINES_INSTRUCTIONS, PICTURE_INSTRUCTIONS, Rubric
@@ -73,10 +74,8 @@ def words(text: str) -> str:
 STONE_BEATS = ("crouch and sweep a hand over the flagstones", "close on a loose stone", "throw it")
 
 
-def grab_and_throw() -> Intent:
-    stone = BeatUse(
-        source=UseSource.NEW, thing="a loose stone", plausibility=Plausibility.PLAUSIBLE
-    )
+def grab_and_throw(thing: str = "a loose stone") -> Intent:
+    stone = BeatUse(source=UseSource.NEW, thing=thing, plausibility=Plausibility.PLAUSIBLE)
     return plan(
         attack(
             "troll",
@@ -743,6 +742,50 @@ THROWS_SAID = (
     (Language.CA, "Agafo una pedra i la llanço al trol"),
 )
 
+# The first word of a verb the reading may give the grab or the throw, as code reads it (B5).
+THROW_VERBS = frozenset(
+    "throw hurl toss fling lob pelt stone attack strike hit grab take pick seize snatch find "
+    "search crouch get".split()
+)
+
+# A story names its people, its places and its things in its own language (S10), and the engine
+# keeps a name as it is spelled. So each story here has the troll's courtyard under its own
+# names, and the stone as its interpret step would note it.
+COURTYARD_SAID = {
+    Language.ES: {
+        "troll": "el trol de las cavernas",
+        "looks": "Un trol de las cavernas de piel gris, con un garrote.",
+        "well": "el pozo del patio exterior",
+        "tunnel": "el túnel de desagüe",
+        "ended_on": (
+            "El trol de las cavernas ruge y se abalanza sobre Lin, con el garrote ya en alto."
+        ),
+        "stone": "una piedra suelta",
+    },
+    Language.CA: {
+        "troll": "el trol de les coves",
+        "looks": "Un trol de les coves de pell grisa, amb una porra.",
+        "well": "el pou del pati exterior",
+        "tunnel": "el túnel de desguàs",
+        "ended_on": (
+            "El trol de les coves rugeix i s'abraona sobre en Lin, amb la porra ja enlaire."
+        ),
+        "stone": "una pedra solta",
+    },
+}
+
+
+def troll_lunges_in(language: Language) -> WorldState:
+    """`worlds.troll_lunges` as a story in `language` names it."""
+    said = COURTYARD_SAID[language]
+    state = worlds.troll_lunges()
+    troll = state.characters["troll"]
+    troll.name, troll.description = said["troll"], said["looks"]
+    state.places["well"].name = said["well"]
+    state.places["tunnel"].name = said["tunnel"]
+    state.scene.ended_on = said["ended_on"]
+    return state
+
 
 def as_met(lines: saying.Lines) -> list[str]:
     """Every line of `lines` the engine wrote, in the order the player meets them, repeats
@@ -762,7 +805,9 @@ def lines_said(played: Played, language: Language) -> list[tuple[str, str]]:
     needs words."""
     english = saying.lines_of(played.resolution, played.plan, language)
     event = played.scene.event
-    shown = saying.Lines(played.scene.details, event.title if event else None)
+    shown = replace(
+        english, details=played.scene.details, event_title=event.title if event else None
+    )
     pairs = zip(as_met(english), as_met(shown), strict=True)
     return [(was, said) for was, said in pairs if any(char.isalpha() for char in was)]
 
@@ -771,12 +816,12 @@ def lines_said(played: Played, language: Language) -> list[tuple[str, str]]:
     "t18.story-language",
     suite="T18",
     title="The engine's lines in the story's language",
-    requirements=("S10", "A3", "A8", "B8", "T18"),
+    requirements=("S10", "A3", "A8", "B5", "B8", "T18"),
     passes_when=(
         'In a Spanish and a Catalan story the dice and "How it played out" say every line the '
         "engine wrote in the story's language, as a player would say it, with each number and "
-        "name kept; the dice still go out before the telling, and the saved scene keeps the "
-        "lines as they were shown (S10)"
+        "name kept; the dice still go out before the telling, the saved scene keeps the lines "
+        "as they were shown, and the reading names each step's verb in English (S10)"
     ),
 )
 async def story_language(ev: Eval) -> None:
@@ -784,12 +829,12 @@ async def story_language(ev: Eval) -> None:
         pairs: dict[tuple[str, str], None] = {}
         for seed in ev.seeds(3, live=2):
             story = ev.story(
-                worlds.troll_lunges(),
+                troll_lunges_in(language),
                 seed=f"{seed}/{language.value}",
                 under_way=True,
                 settings=StorySettings(language=language),
             )
-            played = await story.act(action, grab_and_throw())
+            played = await story.act(action, grab_and_throw(COURTYARD_SAID[language]["stone"]))
             where = f"{seed} ({language.value})"
             if played.result is None:
                 ev.check("the turn is played", False, where)
@@ -810,6 +855,13 @@ async def story_language(ev: Eval) -> None:
                 "every line is said in time, with its numbers and names (S10)",
                 saying.UNSAID not in issues and saying.KEPT not in issues,
                 f"{where}: {[(i.code, i.area, i.detail) for i in played.result.issues]}",
+            )
+            read = played.result.intent.steps
+            ev.check(
+                "the reading names each step's verb in English, for code to read (B5)",
+                bool(read)
+                and all(step.verb.casefold().partition(" ")[0] in THROW_VERBS for step in read),
+                f"{where}: {[(step.verb, step.text) for step in read]}",
             )
             asked = [call for call in played.calls if call.node == Node.WORDING.value]
             ev.check(

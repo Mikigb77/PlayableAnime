@@ -74,6 +74,31 @@ def test_something_the_place_cant_hold_is_an_empty_search_and_the_plan_stops():
     assert resolution.canon == []
 
 
+def test_a_thing_named_in_the_storys_language_keeps_its_own_article():
+    """S10: a Spanish or a Catalan story names its things in its own language, so the engine's
+    line takes the thing with the article it came with and adds none of its own."""
+    found = {
+        "una piedra suelta": "There is una piedra suelta here.",
+        "Un roc": "There is Un roc here.",
+        "l'espasa del mestre": "There is l'espasa del mestre here.",
+        "el meu sarró": "There is el meu sarró here.",
+        "the old rope": "There is an old rope here.",
+        "umbrella": "There is an umbrella here.",
+    }
+    for thing, reason in found.items():
+        intent = Intent(steps=[throw(thing, UseSource.NEW, Plausibility.PLAUSIBLE)])
+        assert resolve(cultivation_world(), intent).steps[0].beats[0].reason == reason
+    missing = {
+        "una ballesta cargada": "There is no ballesta cargada to be found here.",
+        "la clau del pany": "There is no clau del pany to be found here.",
+        "unes tisores": "There is no tisores to be found here.",
+        "a loaded crossbow": "There is no loaded crossbow to be found here.",
+    }
+    for thing, reason in missing.items():
+        intent = Intent(steps=[throw(thing, UseSource.NEW, Plausibility.ABSENT)])
+        assert resolve(cultivation_world(), intent).steps[0].reason == reason
+
+
 def test_an_uncertain_find_is_rolled_and_a_miss_stops_the_step():
     state = cultivation_world()
     intent = Intent(steps=[throw("a loose brick", UseSource.NEW, Plausibility.UNCERTAIN)])
