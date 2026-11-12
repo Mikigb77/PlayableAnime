@@ -409,15 +409,21 @@ def settle_trips(
     return journeys.settle(played, state, resolution, told=told)
 
 
-def settle_witnesses(state: WorldState) -> tuple[WorldState, list[str]]:
-    """After the narrator's update is applied (step 6): whoever has set off by now to tell a
-    faction what they saw is out of the scene, whatever its end listed, and a witness the scene
-    let go of is free to talk from now on (W2, W11, `engine.world.carriers`). Returns the state,
-    a new one when there was anything to settle, and who left, for the turn's log."""
+def settle_witnesses(
+    played: WorldState, state: WorldState, turn: int
+) -> tuple[WorldState, list[str], list[str]]:
+    """After the narrator's update is applied to `state` (step 6; `played` is the state the
+    steps left, before it). Code decides who runs, whatever the scene's end listed (W11,
+    `engine.world.carriers`): whoever has word to bring and hasn't set off, or is held in a
+    fight with the player character, is still in the scene; whoever has set off by now is out
+    of it, and the player character saw them go (C6); and a witness the scene let go of is free
+    to talk from now on (W2). Returns the state, a new one when there was anything to settle,
+    who left and who was kept in the scene, for the turn's log."""
     if not carriers.unsettled(state):
-        return state, []
+        return state, [], []
     settled = state.model_copy(deep=True)
-    return settled, carriers.settle(settled)
+    kept = carriers.keep(settled, played, turn)
+    return settled, carriers.settle(settled), kept
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

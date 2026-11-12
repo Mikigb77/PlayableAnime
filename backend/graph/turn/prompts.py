@@ -489,6 +489,14 @@ there; someone without it is elsewhere, and comes in only when an EVENT or a hap
 them. stranger: the player character doesn't know them, so the scene shows them by their look \
 and gives their name only once they or someone else says it. Nobody is in the scene just for \
 being listed: bring in whom the action goes to and whom the moment would have there.
+- Who gets away to tell what they saw is the engine's to decide (W11). WITNESSES lists those who \
+saw what was done and mean to tell of it. gone false: they are making to get away as the scene \
+ends, backing off, turning to run, halfway to the door, and still within the character's reach: \
+show that, and they are still among those present when it ends. Fear may root them for a \
+breath, never for the scene. held: the fight keeps them here: they try to get clear and don't, \
+and they are still present when the scene ends. gone true: they got away while the scene \
+played: show them go, and leave them out of those present at its end. None of them stays to \
+talk it over, and none comes back.
 - If EVENT is given, bring it in, in the world's own form. It starts now; you don't decide how it \
 ends. When it needs no decision, it is something that already played out: tell it as done. No \
 event hurts the player character by itself: what it does to them is settled when they act. Weave \
@@ -660,8 +668,9 @@ whether each claim was recorded.
 words and in world seconds, your_seconds_lived when the player character lived through a \
 different span from the world, and heading when the player reads one above the scene.
 - WITNESSES: who saw what was done and is off to tell of it (to_tell: whom, when the character \
-knows). gone false: they are making to leave as the scene ends, still within reach: show it. \
-gone true: they got away while it played: show them go, and they are not there when it ends.
+knows). gone false: they are making to leave as the scene ends, still within reach. held: the \
+scene's fight keeps them from leaving. gone true: they got away while it played, and they are \
+not there when it ends.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \

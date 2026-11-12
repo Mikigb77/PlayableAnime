@@ -434,7 +434,8 @@ def _leaving_view(
     to when the player character knows of that faction (C6). With `turn`, for the scene that
     tells that turn, of those it began with (`scene`) and those who saw what it did: each by
     name, since it may not have listed them yet, and whether they got away while it played
-    (`gone`)."""
+    (`gone`). That scene is also told who would run and is held by its fight (`held`,
+    `carriers.held`): they are going nowhere while it lasts."""
     leaving = []
     for runner in carriers.runners(state, turn=turn, scene=scene):
         entry: dict[str, Any] = {"id": runner.witness_id}
@@ -445,6 +446,15 @@ def _leaving_view(
         if turn is not None:
             entry["gone"] = runner.sets_off_s <= state.world_s
         leaving.append(entry)
+    if turn is not None:
+        shown = {entry["id"] for entry in leaving}
+        for runner in carriers.held(state):
+            if runner.witness_id in shown:
+                continue
+            entry = {"id": runner.witness_id, "who": state.characters[runner.witness_id].name}
+            if state.player_id in state.factions[runner.faction_id].known_by:
+                entry["to_tell"] = state.factions[runner.faction_id].name
+            leaving.append(entry | {"gone": False, "held": True})
     return leaving
 
 

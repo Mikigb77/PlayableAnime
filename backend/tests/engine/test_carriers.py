@@ -23,6 +23,7 @@ from engine.state import (
     EventStatus,
     PassingState,
     PendingEvent,
+    Place,
     Visibility,
     WorldState,
 )
@@ -336,6 +337,94 @@ def test_a_witness_who_sets_off_once_the_character_is_gone_is_nobody_they_saw_go
     assert carriers.settle(hidden) == ["wei"] and the_deed(hidden).went_to_tell == {}
 
 
+def ended(played: WorldState, *present: str, turn: int = 2) -> tuple[WorldState, list[str]]:
+    """The scene of `played` once its end listed only `present`, and who code kept in it."""
+    after = played.model_copy(deep=True)
+    after.scene.present_ids = list(present)
+    return after, carriers.keep(after, played, turn)
+
+
+def test_a_scenes_end_takes_nobody_out_of_it_who_has_word_to_bring_and_hasnt_gone():
+    """Who runs is code's to decide (W11). On the real model (2026-11-11) the narrator ended a
+    scene without the witness, and nothing after it had the character see him go."""
+    played = shoved()
+
+    # The scene that told the shove ended without Wei, who is yet to set off: he is still in it.
+    after, kept = ended(played, "lin", "zhao")
+    assert kept == ["wei"] and after.scene.present_ids == ["lin", "zhao", "wei"]
+    assert the_deed(after).went_to_tell == {} and carriers.settle(after) == []
+    # One its end listed is nobody code had to put back.
+    assert ended(played, "lin", "zhao", "wei")[1] == []
+
+    # Nor is a watcher nobody noticed, or someone who wasn't in the scene as it played.
+    hidden = shoved(unnoticed_witness_ids=["wei"])
+    after, kept = ended(hidden, "lin", "zhao")
+    assert kept == [] and after.scene.present_ids == ["lin", "zhao"]
+    old = shoved()
+    old.scene.present_ids = ["lin", "zhao"]
+    assert ended(old, "lin", "zhao", turn=3) == (old, [])
+
+
+def test_a_witness_the_scenes_end_left_out_once_he_had_set_off_went_in_front_of_them():
+    played = shoved()
+    played.world_s = report(played).payload["sets_off_s"]
+
+    # The scene was told he got away while it played, and left him out as it should.
+    after, kept = ended(played, "lin", "zhao")
+
+    assert kept == [] and after.scene.present_ids == ["lin", "zhao"]
+    assert the_deed(after).went_to_tell == {"wei": SECT}
+    assert carriers.settle(after) == []  # nobody left whom its end still listed
+
+    # One the scene sent somewhere else before he had set off went in front of them too.
+    played = shoved()
+    after = played.model_copy(deep=True)
+    after.scene.present_ids = ["lin", "zhao"]
+    after.characters["wei"].location_id = "inner-court"
+    assert carriers.keep(after, played, 2) == []
+    assert the_deed(after).went_to_tell == {"wei": SECT}
+
+
+def test_a_witness_held_in_a_fight_is_in_the_scene_whatever_its_end_listed():
+    played = shoved()
+    played.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT, opponent_ids=["wei"], started_turn=2, started_s=played.world_s
+    )
+    played.world_s = report(played).payload["sets_off_s"] + MINUTE
+
+    assert [r.witness_id for r in carriers.held(played)] == ["wei"]
+    assert carriers.runners(played) == []  # he is going nowhere while it lasts
+    after, kept = ended(played, "lin", "zhao")
+    assert kept == ["wei"] and "wei" in after.scene.present_ids
+    assert the_deed(after).went_to_tell == {} and carriers.settle(after) == []
+
+    # The fight over, he goes, and they see it.
+    after.scene.encounter = None
+    assert carriers.held(after) == [] and carriers.settle(after) == ["wei"]
+    assert the_deed(after).went_to_tell == {"wei": SECT}
+
+
+def test_a_scene_that_ends_somewhere_else_leaves_its_witnesses_behind():
+    played = shoved()
+    after = played.model_copy(deep=True)
+    after.scene.present_ids = ["lin"]
+    after.scene.place_id = after.player.location_id = "inner-court"
+
+    assert carriers.keep(after, played, 2) == []
+    assert after.scene.present_ids == ["lin"] and the_deed(after).went_to_tell == {}
+
+    # Also out in the place around the well, though not at a spot inside it.
+    around = played.model_copy(deep=True)
+    around.scene.present_ids = ["lin"]
+    around.scene.place_id = around.player.location_id = "azure-peak"
+    assert carriers.keep(around, played, 2) == [] and around.scene.present_ids == ["lin"]
+    inside = played.model_copy(deep=True)
+    inside.places["bucket-side"] = Place(id="bucket-side", name="by the bucket", parent_id="well")
+    inside.scene.present_ids = ["lin"]
+    inside.scene.place_id = inside.player.location_id = "bucket-side"
+    assert carriers.keep(inside, played, 2) == ["wei"]
+
+
 # --- Talk (W2, W3, W4) --------------------------------------------------------------------------
 
 
@@ -454,12 +543,20 @@ def test_settling_a_scene_with_nothing_waiting_changes_nothing():
     assert not carriers.unsettled(state) and carriers.settle(state) == []
     assert state == well()
     # The turn's seam copies only when there is something to settle.
-    same, left = pipeline.settle_witnesses(state)
-    assert same is state and left == []
+    same, left, kept = pipeline.settle_witnesses(state, state, 2)
+    assert same is state and left == [] and kept == []
     after = shoved()
     after.world_s += FLEE_S[1]
-    settled, left = pipeline.settle_witnesses(after)
+    settled, left, kept = pipeline.settle_witnesses(after, after, 2)
     assert settled is not after and left == ["wei"] and "wei" in after.scene.present_ids
+    assert kept == []
+    # A witness its end left out who is yet to set off is put back, on the copy.
+    played = shoved()
+    after = played.model_copy(deep=True)
+    after.scene.present_ids = ["lin", "zhao"]
+    settled, left, kept = pipeline.settle_witnesses(played, after, 2)
+    assert (left, kept) == ([], ["wei"]) and after.scene.present_ids == ["lin", "zhao"]
+    assert settled.scene.present_ids == ["lin", "zhao", "wei"]
 
 
 def test_the_same_deed_plays_the_same_way_again():
