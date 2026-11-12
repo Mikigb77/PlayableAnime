@@ -202,8 +202,8 @@
   },
   "createNewTitle": "New story",
   "createStartTitle": "Start this story",
-  "createHeading": "What's your story?",
-  "createSubheading": "Who you are, where you are, and what is about to go wrong. The storyteller does the rest.",
+  "createHeading": "What story do you want to live?",
+  "createSubheading": "One line is enough. Say more to decide more.",
   "createPremiseLabel": "Premise",
   "createPremiseHint": "A disgraced knight wakes up in the enemy's camp…",
   "createStarterPremiseHelp": "Keep it as it is, or change anything you like.",
@@ -213,7 +213,7 @@
   "createSparkCultivation": "I'm reborn as the weakest outer disciple of the Azure Cloud Sect, with my past life's memories and the power to stop time.",
   "createSparkSalvage": "A salvage pilot finds a living ship inside the wreck of a war that officially never happened.",
   "createRatingLabel": "Rating",
-  "createAdvancedLabel": "Advanced",
+  "createAdvancedLabel": "How it plays",
   "createAdvancedBody": "Physics, gifts, difficulty and world events. The defaults suit most stories.",
   "createDraftAction": "Draft the world",
   "createDraftCost": "Drafting uses credits. If it fails, nothing is charged.",
@@ -232,26 +232,12 @@
   "draftingNoCharge": "If drafting fails, nothing is charged.",
   "reviewTitle": "Your story",
   "reviewWorld": "The world",
-  "reviewCharacter": "Your character",
-  "reviewTapToEdit": "Tap a line to change it.",
-  "reviewEditLine": "Change this line",
   "reviewAskWorld": "Ask for a different world",
-  "reviewAskCharacter": "Ask for a different character",
+  "reviewAskCharacter": "Ask for a change",
   "reviewRedraftingWorld": "Redrafting the world…",
   "reviewRedraftingCharacter": "Redrafting your character…",
   "reviewRedraftingBoth": "Redrafting the world and your character…",
   "reviewSaving": "Saving…",
-  "reviewSettings": "Rating and rules",
-  "reviewRating": "Rating",
-  "reviewAdvanced": "Advanced",
-  "reviewRules": "{count, plural, =0{No rules} =1{1 rule} other{{count} rules}}",
-  "@reviewRules": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "reviewStart": "Start the story",
   "reviewStartNote": "The story opens on its first scene.",
   "reviewSaved": "Saved.",
@@ -263,10 +249,107 @@
   "reviewLeaveBody": "It isn't in your library until you start it, so leaving now loses it.",
   "reviewLeaveStay": "Keep it",
   "reviewLeave": "Leave",
+  "createDecideLabel": "What you can decide now",
+  "createDecideWho": "Who you are",
+  "createDecideWhoExample": "I'm a squire with no family name.",
+  "createDecideSpecial": "What makes you special",
+  "createDecideSpecialExample": "I'm a genius with the sword.",
+  "createDecideComing": "What is coming",
+  "createDecideComingExample": "My knight exam is in three days.",
+  "createDecidePeople": "Who is in your life",
+  "createDecidePeopleExample": "My rival is called Garrick.",
+  "createDecideNote": "What you name here, you see before you start. Everything you leave out stays a surprise.",
+  "reviewLegendDirect": "You change it, right away",
+  "reviewLegendAsk": "You tell the storyteller",
+  "reviewYou": "You",
+  "reviewYours": "From your own words",
+  "reviewYoursNone": "Your idea names no date, no goal and nobody, so nothing of the start is shown. All of it is waiting in the story.",
+  "reviewKept": "The story keeps the rest",
+  "reviewKeptBody": "Your first scene, the people in your life and what is already in motion are the story's to tell.",
+  "keptPeople": "{count, plural, =1{person to meet} other{people to meet}}",
+  "@keptPeople": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keptEvents": "{count, plural, =1{thing in motion} other{things in motion}}",
+  "@keptEvents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keptQuestions": "{count, plural, =1{open question} other{open questions}}",
+  "@keptQuestions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewPlays": "How it plays",
+  "reviewYearsOld": "{age, plural, =1{1 year old} other{{age} years old}}",
+  "@reviewYearsOld": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "rowLooks": "Looks",
+  "rowManner": "Comes across as",
+  "rowRank": "Rank",
+  "rowSkills": "Good at",
+  "rowTalents": "Talent",
+  "rowTraits": "Gifts and flaws",
+  "rowNature": "Nature",
+  "rowPower": "Powers",
+  "rowBelongings": "Carries",
+  "rowEra": "When and where",
+  "rowLadder": "Ranks",
+  "rowPeoples": "Peoples",
+  "rowFactions": "Who holds power",
+  "openerDeadline": "What is coming",
+  "openerQuestion": "An open question",
+  "openerPerson": "Someone in your life",
+  "openerConnections": "Who you can count on",
+  "openerGoal": "Your goal",
+  "reviewAskOwnWords": "in your own words",
+  "rulesFixedGroup": "Never changes",
+  "rulesOpenGroup": "True for now",
+  "rulesOpenGroupNote": "the story may find more",
+  "ruleSheetTitle": "A rule of the world",
+  "ruleSheetNew": "A new rule",
+  "ruleHolds": "Holds for the whole story",
+  "ruleHoldsBody": "Off, it is true for now, and a discovery in play can change it.",
+  "nameSheetTitle": "Your name and age",
+  "nameLabel": "Name",
+  "ageLabel": "Age",
+  "titleSheetTitle": "The title",
+  "toneSheetTitle": "The tone",
+  "looksSheetTitle": "Your looks",
+  "looksHelp": "Face, build, hair and usual clothes. Every picture of you is drawn from this.",
+  "mannerSheetTitle": "How you come across",
+  "fieldEmpty": "Write something, or close this to leave it as it is.",
+  "reviseAbout": "About: {part}",
+  "@reviseAbout": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewEditTitle": "Change the title",
+  "reviewEditTone": "Change the tone",
+  "reviewEditName": "Change your name and age",
+  "reviewAskHere": "Ask the storyteller to change this",
+  "reviewRungHere": "You are here",
+  "reviewRungsBeyond": "and beyond",
+  "choiceChange": "Change",
   "save": "Save",
-  "lineSheetTitle": "Change this line",
-  "lineRemove": "Remove line",
-  "lineEmpty": "Write the line, or remove it.",
   "reviseWorldTitle": "A different world",
   "reviseCharacterTitle": "A different character",
   "reviseLabel": "What should change?",
@@ -277,8 +360,6 @@
   "costWorld": "Redrafts the world to match, which uses credits.",
   "costCharacter": "Redrafts your character to match, which uses credits.",
   "costBoth": "Redrafts the world and your character, which uses credits for both.",
-  "ratingSheetTitle": "Rating",
-  "advancedTitle": "Advanced",
   "physicsLabel": "Physics",
   "physicsFunFirst": "Fun first",
   "physicsStrict": "Strict",
@@ -298,7 +379,7 @@
   "eventsCalmBody": "The world brings trouble of its own now and then.",
   "eventsNormalBody": "The world brings trouble of its own at a steady pace.",
   "eventsDramaticBody": "The world brings trouble of its own often, and big.",
-  "giftLabel": "Gift",
+  "giftLabel": "Special gift",
   "giftNone": "None",
   "giftSmall": "Small",
   "giftRare": "Rare",
@@ -308,9 +389,6 @@
   "giftSmallBody": "A small edge, such as a nose for herbs or a feel for the wind.",
   "giftRareBody": "A rare talent the world has seen only a handful of times.",
   "giftOverpoweredBody": "Something overpowered, such as time stop, with limits that make choices interesting.",
-  "rulesLabel": "Rules of the world",
-  "rulesBody": "Fixed rules hold for the whole story. Open ones can change through a discovery in play.",
-  "ruleFixed": "Fixed",
   "ruleHint": "A rule of this world",
   "ruleAdd": "Add a rule",
   "ruleRemove": "Remove this rule",

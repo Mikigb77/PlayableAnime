@@ -103,12 +103,13 @@ class CreateFlow extends ChangeNotifier {
     return _change(redraftFor(draft, edit), () => _drafts.edit(draft, edit));
   }
 
-  /// A change in plain words to one part. Always one model call.
-  Future<Object?> revise(DraftPart part, String instruction) {
+  /// A change in plain words to one part, asked at the lines that tell of [about] when given.
+  /// Always one model call.
+  Future<Object?> revise(DraftPart part, String instruction, {LineKind? about}) {
     final draft = _draft!;
     return _change(
       Redraft(world: part == DraftPart.world, character: part == DraftPart.character),
-      () => _drafts.revise(draft, part, instruction),
+      () => _drafts.revise(draft, part, instruction, about: about),
     );
   }
 
@@ -189,21 +190,4 @@ extension on ApiException {
   String? get startedStoryId => code == ApiErrorCode.forbidden && details['story_id'] is String
       ? details['story_id'] as String
       : null;
-}
-
-extension on Draft {
-  Draft started(String storyId) => Draft(
-    id: id,
-    premise: premise,
-    premiseId: premiseId,
-    rating: rating,
-    title: title,
-    genre: genre,
-    tone: tone,
-    worldLines: worldLines,
-    characterLines: characterLines,
-    advanced: advanced,
-    version: version,
-    storyId: storyId,
-  );
 }
