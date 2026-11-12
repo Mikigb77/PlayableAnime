@@ -780,8 +780,15 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
        talents: [{name, strength, strength_label, pace_label, covers}],
                                           # strength: slow | knack | genius | one_of_a_kind;
                                           # "Genius", "Four times as fast" (A4)
-       talent_notes: [string]}            # each thing ruled on, the bridges that hold and
+       talent_notes: [string],            # each thing ruled on, the bridges that hold and
                                           # what lies outside, as in `lines` (A4)
+       grew: [{kind, when, text, how}]}   # how they grew (A4, G17), latest first, at most 30.
+                                          # kind: breakthrough | skill | learned | mastery |
+                                          # new_use. when: the day, "Day 9". text: "Broke
+                                          # through to Qi Condensation", "Swordsmanship:
+                                          # Skilled", "Learned Falling Leaf Palm". how: "With a
+                                          # master", "By doing it", or empty where the record
+                                          # doesn't say
 ```
 
 Every `*_label`, and every word the engine adds, comes in the story's language (S10) next to the

@@ -36,7 +36,7 @@ from engine.director.goals import GoalKind, GoalOrigin
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, date_label, in_label, number_label, of_name
 from engine.limits import normalize
-from engine.resolve.powers.growth import technique_pace
+from engine.resolve.powers.growth import GainHow, GainKind, read_gain, technique_pace
 from engine.state.bible import PowerLadder
 from engine.state.cast import (
     Character,
@@ -79,6 +79,8 @@ from engine.world.telling import cap, tell
 from engine.world.tuning import RUMOR_MIN_SEVERITY
 
 SINCE_LIMIT = 6
+# How many of their latest gains the sheet lists under how they grew.
+GREW_LIMIT = 30
 # C10: how many of the player character's latest gains and losses `/status` weighs among them.
 SINCE_TRANSFERS = 3
 EN = Language.EN
@@ -315,6 +317,18 @@ class SheetPath(EngineModel):
     above: list[SheetRungAbove] = Field(default_factory=list)
 
 
+class SheetGain(EngineModel):
+    """One thing the character gained (A4, G17), as their sheet tells how they grew: `text` is
+    what ("Broke through to Qi Condensation", "Swordsmanship: Skilled", "Learned Falling Leaf
+    Palm"), `when` the date in the world's calendar and `how` the way it was made where the
+    record says ("With a master", "By doing it")."""
+
+    kind: GainKind
+    when: str
+    text: str
+    how: str = ""
+
+
 class SheetItem(EngineModel):
     name: str
     kind: ItemKind
@@ -393,6 +407,7 @@ class SheetView(EngineModel):
     temperament: list[str] = Field(default_factory=list)
     talents: list[SheetTalent] = Field(default_factory=list)
     talent_notes: list[str] = Field(default_factory=list)
+    grew: list[SheetGain] = Field(default_factory=list)
 
 
 class ReputationEntry(EngineModel):
@@ -518,6 +533,37 @@ _MASTERY_WORDS = {
         Mastery.SKILLED: "dominada",
         Mastery.SECOND_NATURE: "segona naturalesa",
         Mastery.OWN: "feta teva",
+    },
+}
+
+# A4: how a gain was made, as the sheet says it under what they gained.
+_GAIN_HOW_WORDS = {
+    EN: {
+        GainHow.SELF: "On your own",
+        GainHow.MASTER: "With a master",
+        GainHow.BOOK: "From a manual",
+        GainHow.RIVAL: "Against a rival",
+        GainHow.WATCHING: "By watching",
+        GainHow.PLAY: "By doing it",
+        GainHow.PRACTICE: "With practice",
+    },
+    ES: {
+        GainHow.SELF: "Por tu cuenta",
+        GainHow.MASTER: "Con un maestro",
+        GainHow.BOOK: "De un manual",
+        GainHow.RIVAL: "Frente a un rival",
+        GainHow.WATCHING: "Observando",
+        GainHow.PLAY: "Sobre la marcha",
+        GainHow.PRACTICE: "Con práctica",
+    },
+    CA: {
+        GainHow.SELF: "Pel teu compte",
+        GainHow.MASTER: "Amb un mestre",
+        GainHow.BOOK: "D'un manual",
+        GainHow.RIVAL: "Davant d'un rival",
+        GainHow.WATCHING: "Observant",
+        GainHow.PLAY: "Sobre la marxa",
+        GainHow.PRACTICE: "Amb pràctica",
     },
 }
 
@@ -791,6 +837,10 @@ _WORDS = {
         "rung_known": "Confirmed",
         "rung_known_before": "Confirmed before {who}",
         "rung_learned": "From what you have learned",
+        "grew_breakthrough": "Broke through to {what}",
+        "grew_learned": "Learned {what}",
+        "grew_level": "{what}: {level}",
+        "grew_new_use": "{what}: a new way to use {power}",
     },
     ES: {
         "saw": "Lo viste",
@@ -852,6 +902,10 @@ _WORDS = {
         "rung_known": "Lo comprobaste",
         "rung_known_before": "Lo comprobaste ante {who}",
         "rung_learned": "Por lo que has aprendido",
+        "grew_breakthrough": "Alcanzaste {what}",
+        "grew_learned": "Aprendiste {what}",
+        "grew_level": "{what}: {level}",
+        "grew_new_use": "{what}: una nueva forma de usar {power}",
     },
     CA: {
         "saw": "Ho vas veure",
@@ -913,6 +967,10 @@ _WORDS = {
         "rung_known": "Ho vas comprovar",
         "rung_known_before": "Ho vas comprovar davant {of_who}",
         "rung_learned": "Pel que has après",
+        "grew_breakthrough": "Vas assolir {what}",
+        "grew_learned": "Vas aprendre {what}",
+        "grew_level": "{what}: {level}",
+        "grew_new_use": "{what}: una nova manera de fer servir {power}",
     },
 }
 
@@ -1602,6 +1660,7 @@ class _Knowledge:
             temperament=[t for t in sheet.disposition.temperament.traits if t.strip()],
             talents=self.talents(player),
             talent_notes=self.talent_notes(player),
+            grew=self.grew(player),
         )
 
     def about(self, player: Character) -> list[str]:
@@ -1721,6 +1780,43 @@ class _Knowledge:
         if standing.known:
             return _WORDS[self.language]["rung_learned"]
         return self._dated("rung_heard", standing.heard_s)
+
+    def grew(self, player: Character) -> list[SheetGain]:
+        """A4, G17. How the character grew, latest first: each gain on their record with its
+        date, in the story's language. The record keeps a gain in the engine's own words, so it
+        is read back (`growth.read_gain`) and said here; a loss, or a gain in words nobody
+        writes any more, is left out."""
+        words = _WORDS[self.language]
+        calendar = self.state.bible.calendar
+        found: list[SheetGain] = []
+        for gain in reversed(player.sheet.growth):
+            read = None if gain.loss else read_gain(gain)
+            if read is None:
+                continue
+            what = _cap(gain.what)
+            if read.kind is GainKind.BREAKTHROUGH:
+                text = words["grew_breakthrough"].format(what=what)
+            elif read.kind is GainKind.LEARNED:
+                text = words["grew_learned"].format(what=what)
+            elif read.kind is GainKind.NEW_USE:
+                text = words["grew_new_use"].format(what=what, power=read.power)
+            elif isinstance(read.now, SkillLevel):
+                level = skill_level_label(read.now, self.language)
+                text = words["grew_level"].format(what=what, level=level)
+            else:
+                level = _cap(_MASTERY_WORDS[self.language][read.now])
+                text = words["grew_level"].format(what=what, level=level)
+            found.append(
+                SheetGain(
+                    kind=read.kind,
+                    when=date_label(calendar, gain.world_s, self.language),
+                    text=text,
+                    how=_GAIN_HOW_WORDS[self.language][read.how] if read.how else "",
+                )
+            )
+            if len(found) == GREW_LIMIT:
+                break
+        return found
 
     def powers(self, player: Character) -> list[SheetPower]:
         """G13. Each power with its limits, what it costs as the sheet says, and whether it is
