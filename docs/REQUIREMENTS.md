@@ -159,10 +159,16 @@ of the world stays exactly as it was. Whatever the character doesn't know stays 
 ordered the killing (C6). **The summary never gives away how the story starts** (Miki,
 2026-11-10): its first goal, its first event and the first people in the character's life are
 the story's surprise, so the player meets them in play and has no say in them beforehand. A
-deadline, an open question, a goal, a person or a connection is in the summary only when the
+deadline, an open question, a goal, what the character wants, a person or a connection is in
+the summary only when the
 player's own words name it: the premise ("the trial of knighthood is in three days", so the
 summary says "The trial of knighthood: in 3 days", and a starter whose premise says the ranking
-tournament starts in two days shows that), or a change they asked for. Their words name a thing
+tournament starts in two days shows that), or a change they asked for. **A deadline comes when
+their words say it does**: where they give it an amount of time ("in 3 days", "dentro de cinco
+días", "d'aquí a dues setmanes"), code spreads exactly that time over the steps the drafter
+wrote, so the summary never says four days for a premise's three; it is set as the words are
+said, so a deadline the player moves later stays where they moved it. Whoever their words name
+is in the summary, however small a part the drafter gave them. Their words name a thing
 when they say most of what it says; they name a deadline also when they set a time ahead for
 it and say one word of it ("I take the knight exam in 3 days" names "The trial of
 knighthood"); and they name a person only by that person's name, since what a premise says of
@@ -171,8 +177,8 @@ words name, they can change like any other line. The rest is drafted all the sam
 story tells it when it comes: of it the player is shown a count (so many people, so many things
 already in motion, so many open questions) and nothing more. Code reads the player's words for
 this, never the model, and of a
-change they asked for the draft keeps only which deadline, question, person, connection or goal
-it named, never the words. **What is a plain value, the player changes themselves** (Miki,
+change they asked for the draft keeps only which deadline, question, person, connection, goal
+or want it named, never the words. **What is a plain value, the player changes themselves** (Miki,
 2026-11-10): the story's title and its tone are theirs to type, saved at once by code, with no
 model call and at no cost, and so are the character's plain fields (G2). Everything else they
 change in plain words, asked at the part of the summary it is about, so "make this stricter"
@@ -203,7 +209,11 @@ sword, a genius at building, hopeless with words" becomes the sheet's talents (A
 character's summary lists each with what it covers, strongest first, so the player can check them
 and change them in plain words: "One of a kind: The sword (anything fought with a blade). Genius:
 Architecture (structure and geometry). Weakness: Hopeless with words." A talent is set when the
-character is made and is never declared in play. **The character's name, age, looks and manner
+character is made and is never declared in play. **What the character is after is the
+player's to say** (G1): the drafter writes a goal, or something they want, only where the
+premise gives it, as one short aim ("Pass the knight exam"), and a goal that is the premise
+handed back word for word is dropped. The player sets their goals in play. **The character's
+name, age, looks and manner
 are the player's to type** (Miki, 2026-11-10: "if you want to edit your character name, you
 cannot do it"): each is a field of its own, saved at once by code, with no model call and at no
 cost. A new name takes the old one's place wherever the draft says it, hidden parts included,
@@ -1387,7 +1397,9 @@ event reaches a scene, and these requirements decide what can happen. E1 became 
 
 **E2 Clocks (P0).** Every threat, ambition and scheduled event is a clock in state: a name, a few
 steps, what happens at each step, and what advances or reverses it. The premise seeds the first
-clocks ("the exam starts in seven days", "the heroes are coming"). Clocks advance with in-world time
+clocks ("the exam starts in seven days", "the heroes are coming"), and a clock the player's words
+give an amount of time ends at exactly that time, however the drafter split it into steps (G1).
+Clocks advance with in-world time
 (W10) and with deeds, whether or not the player is there, so an ignored thread keeps moving: the exam
 happens without you, and the river floods. A clock that reaches its end becomes a pending event with a due
 in-world time (W10), and the scene in which that time arrives must include it.
@@ -1833,7 +1845,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Grounded world | A mafia story in which the player tries to throw a fireball and claims to be a secret wizard | Nothing supernatural happens, the people present react to the gesture, the scene details give the reason, and nothing fantastic (magic, levels, monsters) appears in 50 turns (G7, G8) |
 | Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
 | Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
-| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, and ones that name no deadline and nobody; then the player asks for a rival by name | The deadline a premise sets is in the summary, a premise that names none is shown no deadline, nobody and no goal it doesn't speak of, and the rival the player then asks for by name shows from then on (G1, G2) |
+| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, and ones that name no deadline and nobody; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of, and the rival the player then asks for by name shows from then on (G1, G2, E2) |
 | Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
 | The throw | A practiced move used with nothing resisting; a cut at a swordsman two rungs up; a cut with three advantages claimed, one the scene shows and two it doesn't; and holding ground against three thugs who mean to kill, over many seeds | The practiced move is never thrown for. Two rungs up is still a throw. Only the advantage that holds gives a green die. The defence is marked Deadly before the dice with what a miss costs, and how far it fell short is exactly what it costs: nothing, a bad wound, or death (A2, A3, N6) |
 

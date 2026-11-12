@@ -1428,18 +1428,20 @@ flowchart LR
   new name calls no model. The drafter is told, on every later change, that the draft's names
   are the ones that hold, whatever the premise called them.
 - **The summary keeps how the story starts a surprise** (G1, Miki 2026-11-10; `openers.py`,
-  `named.py`). The drafter still writes the first clocks, the key people, the open questions,
-  the character's connections and their goals (the openers), and the character knows what they
-  know. The draft's screen shows an opener only when the player's own words name it. The
+  `named.py`). The drafter still writes the first clocks, the key people, the open questions
+  and the character's connections, and a goal or a want of theirs where the premise gives one
+  (the openers), and the character knows what they know. The draft's screen shows an opener
+  only when the player's own words name it, and everyone they name whatever the drafter made of
+  them. The
   premise is kept, so it is read each time. A change the player asks for is not: when it is
   made (`chain.revise`, `chain.finish_edit`), `openers.named_by` reads its words (the request
   in plain words, or what they wrote into a line themselves: `chain.own_words` takes a new line
   whole, and of a line they only changed the words it didn't have, so the drafter's words in it
   name nothing) against the changed draft, and the draft keeps the keys of the openers they
   named in its `told` column: a clock's, a question's or a person's id, a connection's name, a
-  goal's text, none of it the player's writing. `openers.carried` drops the keys of what a
-  later change removed, and moves a goal's or a connection's key to its new words when the
-  change only reworded it. `chain.Draft.said` is both, as `openers.Said`. The reading is plain
+  goal's or a want's text, none of it the player's writing. `openers.carried` drops the keys of
+  what a later change removed, and moves a goal's, a want's or a connection's key to its new
+  words when the change only reworded it. `chain.Draft.said` is both, as `openers.Said`. The reading is plain
   Python over `graph/words.py` (each language's small words, and `alike` for a word in two
   forms, "killed" and "killing"). `named.named`: the words name a thing when they say more than
   two thirds of it, or all of it but one word where two of those words stand together in them,
@@ -1449,8 +1451,17 @@ flowchart LR
   council picks the next boss" doesn't, though both speak of a boss, nor does "The heroine
   tells the prince" for a premise that speaks of both. `named.timed`: a deadline is also named
   by a clause that sets a time ahead ("in 3 days", "dentro de tres días", "d'aquí a tres dies",
-  "tomorrow"; "three days ago" is none) and holds a word of it, or by the rest of its sentence
-  when the time is all the clause says. `named.called`: a person
+  "tomorrow"; "three days ago" is none, and "esta mañana" is this morning) and holds a word of
+  it, or by the rest of its sentence when the time is all the clause says; a time that counts
+  down to something ("three days before the exam") is said of what follows it
+  (`named.times_ahead`). **A deadline comes when the player's words say** (E2): where the time
+  is an amount and a unit, in figures or in words, `times_ahead` also reads its length, and
+  `openers.clock_times` gives it to the one clock the clause says most of (to none where two
+  share that, where one clause sets two times, or for "a few days" and "tomorrow", whose
+  length code can't tell). `chain._on_time` then writes it into the proposal as the clock's
+  hours per step, over the steps the drafter wrote, at the first draft for the premise and at
+  a change for its request, never on a read, so a deadline the player moved later is not moved
+  back. `assemble` drops a goal that is the premise word for word. `named.called`: a person
   is named only by their name, one word of it with a capital or all of it in any case, without
   the words someone else is called by too, so the Esposito family in a premise names nobody in
   it (`openers.own_names`); a description names nobody. `view.world_lines`,
@@ -1822,8 +1833,10 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   wrote each step and its beats in the story's language: none holds a word only English has.
   The eval of a draft's summary (`t17.start-is-a-surprise`, G1) drafts made-up premises with
   the real drafter (`Eval.draft`, `Eval.revised`) and sends the judge each premise beside the
-  summary the screen would show for it (`judge.judge_summary`); a judgement of a summary that
-  fails lists the premise and the summary the judge read in the run's log.
+  summary the screen would show for it, part by part (`judge.judge_summary`); a judgement of a
+  summary that fails lists the premise and the summary the judge read in the run's log. Code
+  checks that the deadline is there at the time the premise gives it ("in 3 days", "en 5
+  días", "d'aquí a 2 dies").
   Its stories name the troll, the courtyard
   and the stone in their own language, as a story's world does, and a judgement of lines that
   fails lists the lines the judge read in the run's log, since its reasons only point at them

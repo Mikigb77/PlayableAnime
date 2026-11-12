@@ -1,10 +1,22 @@
-"""G1: the openers of a draft (its deadlines, questions, people, connections and goals), which
-ones the player's own words name, and what a draft keeps of that. Every premise is made up."""
+"""G1: the openers of a draft (its deadlines, questions, people, connections, goals and wants),
+which ones the player's own words name, what a draft keeps of that, and the time their words
+set for a deadline (E2). Every premise is made up."""
 
+from engine.base import DAY, WEEK
 from engine.context import Language
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
-from graph.drafting.openers import Said, carried, named_by, names, of_clock, openers, own_names
+from graph.drafting.openers import (
+    Said,
+    carried,
+    clock_times,
+    named_by,
+    names,
+    of_clock,
+    of_want,
+    openers,
+    own_names,
+)
 
 EN = Language.EN
 
@@ -21,12 +33,25 @@ def _cultivation():
     return _state(samples.cultivation(), samples.CULTIVATION_PREMISE)
 
 
-def test_every_deadline_question_person_connection_and_goal_is_an_opener():
+def test_every_deadline_question_person_connection_goal_and_want_is_an_opener():
     keys = {opener.key for opener in openers(_naples())}
 
     assert {"clock:council", "person:carmine", "goal:find out who killed my father."} <= keys
     assert "connection:three loyal soldiers" in keys
+    assert "want:revenge for his father" in keys
     assert any(key.startswith("mystery:") for key in keys)
+
+
+def test_what_the_character_wants_is_theirs_once_their_words_say_it():
+    state = _naples()
+    want = of_want(state, "revenge for his father")
+
+    # The premise speaks of a father who was killed, never of revenge.
+    assert not Said(samples.NAPLES_PREMISE).names(want, EN)
+    assert named_by(state, "I want revenge for my father.", EN) >= {"want:revenge for his father"}
+    # Kept by its words, as a goal is: the same want in other words keeps its place.
+    told = frozenset({"want:revenge for my dead father"})
+    assert carried(state, told, EN) == {"want:revenge for his father"}
 
 
 def test_words_name_openers_by_what_they_say_a_name_or_a_time_ahead():
@@ -89,3 +114,33 @@ def test_a_person_is_called_by_what_is_theirs_alone():
     # A name two people carry is a family's.
     state.characters["carmine"].name = f"Carmine {state.player.name.split()[-1]}"
     assert own_names(state, state.characters["carmine"]) == "Carmine"
+
+
+def test_a_deadline_comes_when_the_players_words_say():
+    state = _cultivation()
+
+    # E2: whatever the drafter's steps add up to, the player said five days.
+    assert clock_times(state, "The ranking tournament is in five days.", EN) == {
+        "tournament": 5 * DAY
+    }
+    assert clock_times(state, "I fight in the tournament in a week, ready or not.", EN) == {
+        "tournament": WEEK
+    }
+    # A time for something else, a time gone by and a length code can't read set nothing.
+    assert clock_times(state, "The exam is in three days.", EN) == {}
+    assert clock_times(state, "The tournament was three days ago.", EN) == {}
+    assert clock_times(state, "The tournament is in a few days.", EN) == {}
+    assert clock_times(state, samples.CULTIVATION_PREMISE, EN) == {}
+
+
+def test_a_time_goes_to_the_one_deadline_it_says_most_of():
+    state = _cultivation()
+    tournament = state.clocks["tournament"]
+    state.clocks["exam"] = tournament.model_copy(update={"id": "exam", "name": "The ranking exam"})
+
+    # "ranking tournament" is two words of one and one of the other.
+    assert clock_times(state, "The ranking tournament is in five days.", EN) == {
+        "tournament": 5 * DAY
+    }
+    # "ranking" alone is as much of one as of the other: neither is set.
+    assert clock_times(state, "The ranking is in five days.", EN) == {}

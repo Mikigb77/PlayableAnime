@@ -703,22 +703,26 @@ async def genre_spread(ev: Eval) -> None:
 # --- How the story starts is its surprise (G1, G2) ---------------------------------------------
 
 # Made-up premises for the real drafter. Each of the first sets a deadline in its own words, one
-# in each language a story is written in; the others name no deadline and nobody.
+# in each language a story is written in, with the time the summary must give it; the others
+# name no deadline and nobody.
 TIMED_PREMISES = (
     (
         Language.EN,
         "I'm a squire about to take the knight exam in 3 days, and I have never once summoned "
         "aura.",
+        "in 3 days",
     ),
     (
         Language.ES,
         "Soy la aprendiz más torpe de una academia de magia, y el examen de ingreso al gremio "
         "es dentro de cinco días.",
+        "en 5 días",
     ),
     (
         Language.CA,
         "Soc un pescador d'un poble de la costa, i d'aquí a dos dies arriba el recaptador del "
         "rei a cobrar un deute que no puc pagar.",
+        "d'aquí a 2 dies",
     ),
 )
 BARE_PREMISES = (
@@ -738,8 +742,11 @@ GIVEN_AWAY = (
     "premise doesn't speak of",
     "A line of the summary introduces a person other than the player's own character by name "
     "and says who they are, though the premise doesn't name them",
-    "A line of the summary gives the character a goal the premise doesn't speak of",
+    "A line of the summary gives the character a goal, or says what they want, though the "
+    "premise doesn't speak of it",
 )
+# A goal is an aim in a few words, not what the player wrote handed back to them.
+REPEATED = "A line of the summary is the whole premise repeated"
 
 
 @scenario(
@@ -748,9 +755,10 @@ GIVEN_AWAY = (
     title="The start is a surprise",
     requirements=("G1", "G2", "T17"),
     passes_when=(
-        "The deadline a premise sets is in the summary, a premise that names none is shown no "
-        "deadline, nobody and no goal it doesn't speak of, and the rival the player then asks "
-        "for by name shows from then on (G1, G2)"
+        "The deadline a premise sets is in the summary at the time the premise gives it, a "
+        "premise that names none is shown no deadline, nobody, no goal and no want it doesn't "
+        "speak of, and the rival the player then asks for by name shows from then on (G1, G2, "
+        "E2)"
     ),
     notes=(
         "Deterministic mode reads the offline drafter's outer disciple against a starter's "
@@ -763,33 +771,47 @@ async def start_is_a_surprise(ev: Eval) -> None:
     from graph.drafting import samples
     from graph.drafting.catalog import starter
     from graph.drafting.openers import named_by, openers
-    from graph.drafting.view import character_lines, world_lines
+    from graph.drafting.view import PartKind, character_parts, world_parts
 
-    timed = TIMED_PREMISES if ev.live else ((Language.EN, starter("outer-disciple").premise),)
+    def screen(draft) -> tuple[list, list[str]]:
+        """What the draft's screen shows: the world's parts, and every line of both cards."""
+        state = draft.state()
+        world = world_parts(state, draft.language, draft.said)
+        character = character_parts(state, draft.language, draft.said)
+        return world, [part.text for part in world + character]
+
+    offline = ((Language.EN, starter("outer-disciple").premise, "in 2 days"),)
+    timed = TIMED_PREMISES if ev.live else offline
     bare = BARE_PREMISES if ev.live else ((Language.EN, samples.CULTIVATION_PREMISE),)
     shown = hidden = 0
-    for language, premise in timed:
+    for language, premise, when in timed:
         draft = await ev.draft(premise, language=language)
-        state = draft.state()
-        world = world_lines(state, language, draft.said)
-        clocks = [clock.name.rstrip(".") for clock in state.clocks.values()]
+        world, lines = screen(draft)
+        deadlines = [part.text for part in world if part.kind is PartKind.DEADLINE]
         ev.check(
             "a deadline the premise sets is in the summary",
-            any(line.startswith(f"{name}:") for name in clocks for line in world),
-            f"{language.value}: the draft's clocks {clocks}, the summary {world}",
+            bool(deadlines),
+            f"{language.value}: the draft's clocks "
+            f"{[clock.name for clock in draft.state().clocks.values()]}, the summary {lines}",
+        )
+        # E2: the drafter splits a deadline into steps, and code makes them add up.
+        ev.check(
+            "and it comes when the premise says",
+            any(line.rstrip(".").endswith(when) for line in deadlines),
+            f"{language.value}: {when!r} in {deadlines}",
         )
         await ev.judge_summary(
             f"a premise that sets a deadline ({language.value})",
             Rubric(
                 must=(
                     "A line of the summary is the deadline the premise sets, with the time "
-                    "until it",
+                    "until it that the premise gives",
                 ),
-                must_not=GIVEN_AWAY[1:],
+                must_not=(*GIVEN_AWAY[1:], REPEATED),
                 instructions=SUMMARY_INSTRUCTIONS,
             ),
             premise,
-            world + character_lines(state, language, draft.said),
+            lines,
         )
     for language, premise in bare:
         draft = await ev.draft(premise, language=language)
@@ -814,12 +836,11 @@ async def start_is_a_surprise(ev: Eval) -> None:
             and any(key.startswith("person:") for key in drafted),
             f"{language.value}: {sorted(drafted)}",
         )
-        world = world_lines(state, language, draft.said)
         await ev.judge_summary(
             f"a premise that names no deadline and nobody ({language.value})",
-            Rubric(must_not=GIVEN_AWAY, instructions=SUMMARY_INSTRUCTIONS),
+            Rubric(must_not=(*GIVEN_AWAY, REPEATED), instructions=SUMMARY_INSTRUCTIONS),
             premise,
-            world + character_lines(state, language, draft.said),
+            screen(draft)[1],
         )
         if language is not Language.EN:
             continue
@@ -834,11 +855,17 @@ async def start_is_a_surprise(ev: Eval) -> None:
             ),
             f"{sorted(revised.told)}",
         )
+        named_people = [part.text for part in screen(revised)[0] if part.kind is PartKind.PERSON]
+        rival = next((person for person in people.values() if "Zhao" in person.name), None)
         ev.check(
             "and is in the summary from then on",
-            any(
-                line.startswith("Zhao Kun")
-                for line in world_lines(revised.state(), language, revised.said)
+            any("Zhao Kun" in line for line in named_people),
+            f"the people shown {named_people}; the rival on record: "
+            + (
+                "nobody"
+                if rival is None
+                else f"{rival.name!r}, known to the character: "
+                f"{revised.state().player_id in rival.known_by}"
             ),
         )
     ev.metric("openers of the bare premises shown", shown)

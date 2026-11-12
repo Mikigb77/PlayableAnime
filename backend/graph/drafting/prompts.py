@@ -54,8 +54,9 @@ Where key characters are family, record it with parent_ids: a child names their 
 player character included. A parentage the player character doesn't know of is a secret instead.
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
-is four steps of 60 hours). Nothing is timed in turns, and the clocks run whether or not the \
-player is there.
+is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \
+"exam in three days" is 72 hours in all, never four days. Nothing is timed in turns, and the \
+clocks run whether or not the player is there.
 - Threads for the open plot lines. Decide the answer and the clues of any major mystery now, so \
 an investigation stays fair.
 - The story opens on the premise's situation: the place, who is there, where they stand, what is \
@@ -65,10 +66,14 @@ THE CHARACTER
 - Draft the player character from the premise and the world: attributes (3 is an average \
 person, 5 the peak of what a person can be, 6 to 10 beyond human only where the world allows it), \
 skills, traits (gifts and flaws), powers only where the world has them, temperament, equipment, \
-money, standing, connections, condition, their rung on a ladder, and their goals from the \
-premise in the player's own words. A strong start is fine when the premise calls for it. \
+money, standing, connections, condition and their rung on a ladder. A strong start is fine \
+when the premise calls for it. \
 Their money is money and currency, such as 12 and "copper coins", never an item, so the engine \
 can count what they pay and lose (C10).
+- What the character is after is the player's to say. Write a goal, or something they want \
+(temperament.wants), only where the premise gives it, each as one short aim that uses the \
+premise's words for what it names ("Pass the knight exam"), never the premise repeated. A \
+premise that gives no aim leaves both empty: the player sets their goals in play.
 - Talents say how fast the character learns, and only where the premise says so: most \
 characters have none. Write each from the player's own words, with a short name, what it covers \
 in one plain sentence, and its strength: slow (a weakness, such as "hopeless at fighting": half \
@@ -98,9 +103,9 @@ The player reads the names, descriptions, rules, era, the ladder's rungs everyon
 clocks, threads, mystery questions and the character, but never secrets, agendas, factions' \
 goals and methods, mystery answers and clues, the hidden past, or a ladder's higher rungs. How \
 the story starts is its surprise: before it starts they are shown a clock, a mystery question, a \
-key person, a connection or a goal only when their own words name it. So call what the premise \
-names by the premise's own words (its "knight exam in three days" is the clock "The knight \
-exam"), and write the rest for the story to tell in play. Keep \
+key person, a connection, a goal or a want only when their own words name it. So call what the \
+premise names by the premise's own words (its "knight exam in three days" is the clock "The \
+knight exam"), and write the rest for the story to tell in play. Keep \
 every description to how things look from outside, and never put a secret, a plan or an answer \
 into a name, a description, a rule, a fact or the summary: a rule or a description names no \
 rung above the ones everyone has heard of. Mark whether the character knows each place, \

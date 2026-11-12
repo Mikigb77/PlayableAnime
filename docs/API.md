@@ -309,15 +309,17 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   peoples and the factions the character knows. Of how the story starts they show only what the
   player's own words name (G1): a deadline, an open question or a key person is a line only when
   the premise, or a change the player asked for, names it (a person by their name), and so are
-  a connection and a goal in `character_lines`. The rest is drafted and kept for the story to
-  tell.
+  a connection, a goal and what the character wants in `character_lines`. The rest is drafted
+  and kept for the story to tell. A deadline their words give an amount of time ("in 3 days")
+  comes at exactly that time (E2).
   At most 10 lines each. Of the ladder they name the rungs everyone in the world has heard of, five
   at most, with "and beyond" when it goes on (G18, C6): the character's path starts with those.
 - **The summary part by part.** `world_parts` and `character_parts` are the same lines, not cut to
   10, each with its `kind`, so the app can label a line, group it and point a change at it. The
   app's own words for a kind are fixed text, in its language (S10). The parts of how the story
   starts (`deadline`, `question`, `person`, `connections`, `goal`) are there only when the
-  player's own words name them, as in the lines. `kept` counts what the story keeps back of its
+  player's own words name them, as in the lines, and `nature` says what the character wants
+  only then. `kept` counts what the story keeps back of its
   start, and tells none of it: the people, the things already in motion and the open questions
   the player's words don't name. `ladder` gives the first ladder as `rungs` (the ones the lines
   name), `more` when it goes on above them, and the character's place: `at`, an index into

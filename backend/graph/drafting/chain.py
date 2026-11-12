@@ -15,12 +15,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from engine.base import HOUR
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import direct
-from graph.drafting.assemble import DraftOptions, assemble, slug
+from graph.drafting.assemble import DraftOptions, assemble, drafted_clocks, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
-from graph.drafting.openers import Said, carried, moved, named_by
+from graph.drafting.openers import Said, carried, clock_times, moved, named_by
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -35,6 +36,7 @@ from graph.drafting.real_names import without_real_names
 from graph.drafting.schema import (
     WORLD_SECTIONS,
     CharacterProposal,
+    ClockP,
     DraftProposal,
     RuleP,
     WorldChange,
@@ -158,6 +160,7 @@ async def create(
     proposal = without_real_names(await llm.structured(Node.DRAFTER, prompt, DraftProposal))
     world = proposal.world.model_copy(update={"dropped_rule_ids": []})
     draft = replace(draft, proposal=proposal.model_copy(update={"world": world}))
+    draft = _on_time(draft, [premise])
     if rules:
         current = current_rules(draft.state())
         chosen = {r.id: r for r in rules if r.id}
@@ -184,7 +187,7 @@ async def revise(
         revised = await _revise_world(llm, draft, instruction, about)
     else:
         revised = await _revise_character(llm, draft, instruction, about)
-    return _noting(revised, [instruction])
+    return _noting(_on_time(revised, [instruction]), [instruction])
 
 
 @dataclass(frozen=True)
@@ -303,7 +306,7 @@ async def finish_edit(llm: ModelClient, plan: EditPlan) -> Draft:
             )
     if plan.character_asks:
         draft = await _revise_character(llm, draft, "\n\n".join(plan.character_asks))
-    return _noting(draft, plan.written)
+    return _noting(_on_time(draft, plan.written), plan.written)
 
 
 async def edit(llm: ModelClient, draft: Draft, edits: Edits) -> Draft:
@@ -559,6 +562,29 @@ def own_words(before: list[str], after: list[str]) -> list[str]:
         if words:
             theirs.append(" ".join(words))
     return theirs
+
+
+def _on_time(draft: Draft, words: Iterable[str]) -> Draft:
+    """E2, G1: a deadline comes when the player's own words say it does. The drafter splits a
+    deadline into steps of so many hours, and their sum can miss the time the player gave ("in
+    3 days", drafted as four steps of a day); so where `words` set a time for a deadline
+    (`clock_times`), that time is spread over the steps the drafter wrote. It is done once, as
+    the words are said, on the draft's own record: the premise at the first draft and a
+    request at its change, so a deadline the player moves later stays where they moved it."""
+    state = draft.state()
+    times: dict[str, int] = {}
+    for text in words:
+        times |= clock_times(state, text, draft.language)
+    world = draft.proposal.world
+    paced: dict[int, ClockP] = {}
+    for clock, proposed in zip(state.clocks.values(), drafted_clocks(world), strict=True):
+        if clock.id in times and clock.remaining:
+            hours = times[clock.id] / HOUR / clock.remaining
+            paced[id(proposed)] = proposed.model_copy(update={"step_every_hours": hours})
+    if not paced:
+        return draft
+    clocks = [paced.get(id(clock), clock) for clock in world.clocks]
+    return replace(draft, proposal=_with_world(draft.proposal, clocks=clocks))
 
 
 def _noting(draft: Draft, words: Iterable[str]) -> Draft:

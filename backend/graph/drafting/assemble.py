@@ -109,6 +109,7 @@ from graph.drafting.schema import (
     AxesP,
     CalendarP,
     CharacterProposal,
+    ClockP,
     LadderPositionP,
     MembershipP,
     NpcP,
@@ -197,6 +198,11 @@ def assemble(
     return state
 
 
+def drafted_clocks(world: WorldProposal) -> list[ClockP]:
+    """The clocks of a proposal that become the state's (E2), in the state's own order."""
+    return [clock for clock in world.clocks[: MAX["clocks"]] if _texts(clock.steps, 1)]
+
+
 # Ids.
 
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
@@ -256,6 +262,11 @@ def _text(value: str | None, limit: int = TEXT_LIMIT) -> str:
 
 def _name(value: str | None) -> str:
     return _text(value, NAME_LIMIT)
+
+
+def _wording(text: str | None) -> list[str]:
+    """The words of a text, to tell whether two texts say the same thing word for word."""
+    return re.findall(r"\w+", (text or "").casefold())
 
 
 def _texts(values: Iterable[str], limit: int, size: int = TEXT_LIMIT) -> list[str]:
@@ -347,7 +358,7 @@ class _Assembler:
         facts = self._facts()
         goals = {
             f"goal-{i}": Goal(id=f"goal-{i}", text=text)
-            for i, text in enumerate(_texts(self.character.goals, 6, 300), start=1)
+            for i, text in enumerate(self._goals(), start=1)
         }
         return WorldState(
             bible=bible,
@@ -391,11 +402,7 @@ class _Assembler:
         for key in (self.character.name, "pc", "you", "me"):
             self.chars.alias(key, PLAYER_ID)
             self.chars.alias(slug(key), PLAYER_ID)
-        self.clock_list = _with_ids(
-            self.clocks,
-            [c for c in w.clocks[: MAX["clocks"]] if _texts(c.steps, 1)],
-            "name",
-        )
+        self.clock_list = _with_ids(self.clocks, drafted_clocks(w), "name")
         self.thread_list = _with_ids(
             self.threads, [t for t in w.threads[: MAX["threads"]] if _text(t.title)], "title"
         )
@@ -991,6 +998,14 @@ class _Assembler:
         return list(memberships.values())
 
     # The plot (E2, N1, N7).
+
+    def _goals(self) -> list[str]:
+        """G2: the aims the premise gives the character. A goal is one aim, never the premise
+        handed back: a drafter asked for the player's own words can copy all of them, and "Goal:
+        I'm a squire about to take the knight exam in 3 days, and..." tells the player nothing."""
+        premise = _wording(self.options.premise)
+        aims = (goal for goal in self.character.goals if _wording(goal) != premise)
+        return _texts(aims, 6, 300)
 
     def _clocks(self) -> list[Clock]:
         clocks: dict[str, Clock] = {}
