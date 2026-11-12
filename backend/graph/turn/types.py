@@ -377,6 +377,11 @@ class TurnState(TypedDict, total=False):
     plan: DirectorPlan
     ending: Ending | None  # N6: the player character's story ends in this scene
     left_out: tuple[str, ...]  # N6: what the world refused of an ending's note, ended without
+    # S10: the engine's lines of the turn, as far as they are said in the story's language; the
+    # model call still saying some of them; and the decided steps still waiting on it to go out.
+    lines: Any  # graph.turn.saying.Lines
+    wording: Any  # graph.turn.saying.Wording
+    decided: StepsDecided | None
     brief: Any  # graph.turn.context.NarrationBrief
     narration: Any  # graph.turn.outputs.NarratorOutput
     narration_mode: NarrationMode

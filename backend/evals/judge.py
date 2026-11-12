@@ -37,6 +37,18 @@ PICTURE_INSTRUCTIONS = (
     "reasoning that names what you see. When in doubt, fail it."
 )
 
+# S10: the engine's own lines, said again in a story's language (`graph.turn.saying`).
+LINES_INSTRUCTIONS = (
+    "You judge how the rules lines of a story game were said in another language. The game's "
+    "engine wrote each line in English: why a step went the way it did, what a throw of dice was "
+    "made with and against, what a miss costs. A model then said each one in the language named "
+    "under LANGUAGE, for the player to read beside the dice. Each row under LINES gives the "
+    "English line and, after =>, how it was said. Judge only the said lines against the criteria "
+    "below. Read every row before answering. Answer every criterion by its id. For each answer, "
+    "quote the said line that decides it word for word (or leave the quote empty when none "
+    "does), and give one sentence of reasoning. When in doubt, fail it."
+)
+
 # M6, from the T15 content-line cases' own picture instructions when a case gives none.
 MILD_PICTURE = (
     "Shows no nudity, nothing sexual or suggestive, no more than a little blood, no real person "
@@ -179,6 +191,13 @@ def scene_prompt(
     return Prompt.build(rubric.instructions, "\n\n".join(parts))
 
 
+def lines_prompt(rubric: Rubric, pairs: Sequence[tuple[str, str]], *, language: str) -> Prompt:
+    """`pairs` are (the engine's English line, how it was said)."""
+    rows = "\n".join(f"{n}. {english} => {said}" for n, (english, said) in enumerate(pairs, 1))
+    parts = [f"## LANGUAGE\n{language}", f"## LINES\n{rows}", _criteria_block(rubric)]
+    return Prompt.build(rubric.instructions, "\n\n".join(parts))
+
+
 def picture_prompt(
     rubric: Rubric, images: Sequence[tuple[str, bytes, str]], *, context: str = ""
 ) -> Prompt:
@@ -218,6 +237,19 @@ async def judge_scenes(
     return await judge(
         llm, name, rubric, scene_prompt(rubric, scenes, rating=rating, context=context)
     )
+
+
+async def judge_lines(
+    llm: ModelClient,
+    name: str,
+    rubric: Rubric,
+    pairs: Sequence[tuple[str, str]],
+    *,
+    language: str,
+) -> Judgement:
+    if not pairs:
+        return Judgement(name, error="no_lines")
+    return await judge(llm, name, rubric, lines_prompt(rubric, pairs, language=language))
 
 
 async def judge_pictures(

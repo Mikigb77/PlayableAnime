@@ -3,7 +3,7 @@
 import pytest
 
 from engine import limits
-from engine.context import Rating
+from engine.context import Language, Rating
 from engine.contracts import ActionKind, Intent, IntentStep, StateDelta
 from engine.contracts.delta import CharacterChange, FactionChange
 from engine.contracts.intent import Aim, Beat, Plausibility, StepFacts, Stranger
@@ -204,6 +204,11 @@ def test_the_gravest_hit_is_reported_first():
 
 def test_every_category_has_a_message_for_the_player():
     assert set(limits.MESSAGES) == set(LimitCategory)
+    # S10: in each language a story is written in, each in its own words.
+    for category in LimitCategory:
+        said = [limits.message(category, language) for language in Language]
+        assert said[0] == limits.message(category) == limits.MESSAGES[category]
+        assert len(set(said)) == len(Language) and all(line.strip() for line in said)
 
 
 # --- Real people and organisations (G12) ------------------------------------------------

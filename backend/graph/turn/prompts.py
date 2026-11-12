@@ -830,6 +830,60 @@ as they appear. Add nothing the scenes don't say. Write the summary in the langu
 (S10), whatever language the scenes are in.\
 """
 
+# S10: the engine's own lines of a turn, said in the story's language (`graph.turn.saying`).
+WORDING_SYSTEM = """\
+You word the rules lines of a story game in the language LANGUAGE names (S10). The game's engine \
+wrote each line of LINES in English, for the player to read beside the dice: why a step went the \
+way it did, what a throw was made with and against, what a miss costs. Say each line in that \
+language the way a friend running the game at the table would tell the player: plain, short and \
+natural, speaking to the player as "you" wherever the English does.
+
+- Say what the English says and nothing else: keep every fact, and add none.
+- Keep every number as it is written, in figures: "2 dice", "level 3", "(+10)" and "18 against \
+37" keep their 2, 3, 10, 18 and 37.
+- Keep every name exactly as it is spelled, whatever language it is in: people, places, moves, \
+techniques, ranks, talents, things. A name is never translated or respelled.
+- A line, or a part of one, that is already in that language stays as it is.
+- Keep each line's shape: a sentence stays a sentence, and a short label with no full stop stays \
+a short label, starting in upper or lower case as the English does.
+- For the game's own words, use WORDS.
+
+Answer with every line of LINES, each under its own n.\
+"""
+
+# The game's own words. The dice, a step, the levels of a skill and of a move, health and the
+# breakthrough are as the app and the sheet already say them (the app's `replay*` phrases,
+# `engine.visibility`), so the dice, the sheet and these lines speak alike. The rest (a rung,
+# the nine attributes) get one word each here, so every line says them the same way.
+WORDING_WORDS = {
+    Language.ES: (
+        "die: dado. dice: dados. a green die: un dado verde. a throw of the dice: una tirada. "
+        "an insight: una inspiración. level: nivel. a rung of a ladder of power: un peldaño. to "
+        "break through: dar el salto. a step of the player's action: un paso. strength: fuerza. "
+        "speed: velocidad. toughness: aguante. wits: ingenio. knowledge: saber. willpower: "
+        "voluntad. charm: encanto. nerve: temple. bearing: porte.\n"
+        "How good someone is at a skill: untrained: sin formación. novice: nociones. fair: "
+        "soltura. skilled: destreza. expert: pericia. master: maestría.\n"
+        "How well they have a move or a technique: learning: aprendiendo. practiced: practicada. "
+        "skilled: dominada. second nature: segunda naturaleza. made your own: hecha tuya.\n"
+        "Health: hurt: con heridas leves. wounded: con heridas. badly wounded: con heridas "
+        "graves. dying: al borde de la muerte."
+    ),
+    Language.CA: (
+        "die: dau. dice: daus. a green die: un dau verd. a throw of the dice: una tirada. an "
+        "insight: una inspiració. level: nivell. a rung of a ladder of power: un graó. to break "
+        "through: fer el salt. a step of the player's action: un pas. strength: força. speed: "
+        "velocitat. toughness: aguant. wits: enginy. knowledge: saber. willpower: voluntat. "
+        "charm: encant. nerve: tremp. bearing: port.\n"
+        "How good someone is at a skill: untrained: sense formació. novice: nocions. fair: "
+        "soltesa. skilled: destresa. expert: perícia. master: mestratge.\n"
+        "How well they have a move or a technique: learning: aprenent. practiced: practicada. "
+        "skilled: dominada. second nature: segona naturalesa. made your own: feta teva.\n"
+        "Health: hurt: amb ferides lleus. wounded: amb ferides. badly wounded: amb ferides greus. "
+        "dying: a punt de morir."
+    ),
+}
+
 # F4's last resort, in the story's language (S10). `{where}` is "in <place>" or "there".
 TEMPLATE_LINE = {
     Language.EN: "What happened {where} stays off the page. Its consequences won't.",

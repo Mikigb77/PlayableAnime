@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import sys
 from datetime import date
 
 import pytest
@@ -32,6 +33,16 @@ def fresh_log_context():
     """A response a test never reads to the end (a file, a stream) keeps its request's log
     context open, as it would until the stream ends in production. Start each test clean."""
     logs._context.set(None)
+
+
+@pytest.fixture(autouse=True)
+def nothing_said_yet():
+    """S10: how the model said a line is remembered while the process lives
+    (`graph.turn.saying`). Start each test with nothing said, without loading the turn graph for
+    tests that never play a turn."""
+    saying = sys.modules.get("graph.turn.saying")
+    if saying is not None:
+        saying.forget()
 
 
 # Signed-in players. Every endpoint except /health and /v1/auth/* needs an access token (T8).
