@@ -78,6 +78,9 @@ TEXT_NODES = (
     Node.SUMMARIZER,
     Node.DRAFTER,
     Node.PICTURE_NOTE,
+    # Last, so its model is called through a node with a longer deadline: the wording step's
+    # is short because the dice wait for it (S10).
+    Node.WORDING,
 )
 SYSTEM = "You answer a health check. Reply with exactly one word."
 PROMPT = "Reply with the word ok."
@@ -133,6 +136,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
     """Each node's structured output, as it asks for it. The judge's is left out with it."""
     from graph.drafting.chain import CharacterProposal, DraftProposal, WorldChange
     from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
+    from graph.turn.saying import Said
     from media.notes import PictureNote
 
     return (
@@ -144,6 +148,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
         (Node.DRAFTER, WorldChange),
         (Node.DRAFTER, CharacterProposal),
         (Node.PICTURE_NOTE, PictureNote),
+        (Node.WORDING, Said),  # S10: a turn's lines in the story's language
     )
 
 

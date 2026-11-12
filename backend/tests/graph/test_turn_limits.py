@@ -3,7 +3,8 @@ block log line each one leaves."""
 
 import pytest
 
-from engine.context import Rating, TurnContext
+from engine import limits
+from engine.context import Language, Rating, StorySettings, TurnContext
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import Character
 from graph.llm import Block, Node, Reply
@@ -21,8 +22,9 @@ from moderation.evals import build_world, load_cases
 from tests.graph.conftest import collect, run
 
 
-def turn_input(state, action: str, rating=Rating.MATURE) -> TurnInput:
-    ctx = TurnContext(story_id="story-1", turn=state.turn + 1, rating=rating)
+def turn_input(state, action: str, rating=Rating.MATURE, language=Language.EN) -> TurnInput:
+    settings = StorySettings(language=language)
+    ctx = TurnContext(story_id="story-1", turn=state.turn + 1, rating=rating, settings=settings)
     return TurnInput(state=state, ctx=ctx, kind=TurnKind.ACTION, action=action)
 
 
@@ -102,7 +104,19 @@ def test_a_real_person_never_plays(fake, make_client):
     with pytest.raises(LimitReached) as raised:
         play(make_client(), turn_input(cultivation_world(), "I punch Taylor Swift"))
     assert raised.value.details == {"category": "real_person"}
+    assert raised.value.message == limits.MESSAGES[limits.LimitCategory.REAL_PERSON]
     assert fake.calls(Node.NARRATOR) == []
+
+
+def test_a_limit_is_said_in_the_storys_language(fake, make_client):
+    """S10: the one line a player reads when a step never plays."""
+    fake.script(Node.INTERPRET, Reply(json=intent("punch Taylor Swift", targets=["Taylor Swift"])))
+    turn = turn_input(cultivation_world(), "Le pego a Taylor Swift", language=Language.ES)
+    with pytest.raises(LimitReached) as raised:
+        play(make_client(), turn)
+    assert raised.value.message == (
+        "En las historias solo hay personas ficticias. Prueba con alguien de este mundo."
+    )
 
 
 def test_a_narration_that_reads_as_a_recipe_is_retold_as_a_cutaway(fake, make_client, log_lines):

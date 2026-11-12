@@ -52,6 +52,7 @@ from evals.judge import (
     Judgement,
     Rubric,
     SceneToJudge,
+    judge_lines,
     judge_pictures,
     judge_scenes,
 )
@@ -84,6 +85,7 @@ from graph.turn import (
     NarrationReset,
     PastScene,
     SceneDraft,
+    StepsDecided,
     TurnCompleted,
     TurnInput,
     TurnKind,
@@ -187,6 +189,9 @@ class Played:
     streamed: str
     resets: tuple[str, ...]
     seconds: float
+    # A3: what the engine decided, as it went out, and whether any of the telling got out first.
+    decided: StepsDecided | None = None
+    told_first: bool = False
 
     @property
     def completed(self) -> bool:
@@ -586,6 +591,8 @@ class Story:
             self._scripted.line = Line.of(ctx.turn, action, interpretation, narration)
         calls_before = len(self.telemetry.calls)
         streamed, resets = "", []
+        decided: StepsDecided | None = None
+        told_first = False
         result: TurnResult | None = None
         refused: UnreadableAction | None = None
         started = time.perf_counter()
@@ -597,6 +604,8 @@ class Story:
                     elif isinstance(event, NarrationReset):
                         streamed = ""
                         resets.append(event.reason)
+                    elif isinstance(event, StepsDecided):
+                        decided, told_first = event, bool(streamed or resets)
                     elif isinstance(event, TurnCompleted):
                         result = event.result
         except UnreadableAction as error:
@@ -612,6 +621,8 @@ class Story:
             streamed=streamed,
             resets=tuple(resets),
             seconds=time.perf_counter() - started,
+            decided=decided,
+            told_first=told_first,
         )
         self.turns.append(played)
         self.ev._turn_played(self, played)
@@ -910,6 +921,17 @@ class Eval:
             judgement.error,
             {"turns": [p.turn for _, p in (i if isinstance(i, tuple) else ("", i) for i in items)]},
         )
+        self.judged.append(judgement)
+        return judgement
+
+    async def judge_lines(
+        self, name: str, rubric: Rubric, pairs: Sequence[tuple[str, str]], *, language: str
+    ) -> Judgement | None:
+        """Scores how the engine's lines were said in a story's language (S10, live mode only).
+        `pairs` are (the English line, how it was said)."""
+        if not self.live:
+            return None
+        judgement = await judge_lines(self.judge_client(), name, rubric, pairs, language=language)
         self.judged.append(judgement)
         return judgement
 

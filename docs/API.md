@@ -506,7 +506,8 @@ Scene {turn, kind: "opening"|"action"|"choice"|"standing"|"end",
 
 SceneDetails {steps: [{text,                                    # the step in plain words
                        class: "certain"|"contested"|"long_shot"|"ruled_out",
-                       reason,                                   # in the world's words (A8, G14)
+                       reason,                                   # in the world's words (A8, G14);
+                                                                 # see "The story's language"
                        roll?: {odds_label,                       # A3: the throw in one line,
                                result: "success"|"partial"|"failure",   # "31 against 27"; the
                                seed,                             # reason names the dice
@@ -523,6 +524,15 @@ SceneDetails {steps: [{text,                                    # the step in pl
               stopped_at_step?: int}                             # a chained plan stopped here (R6),
                                                                  # or something struck and hurt
                                                                  # the player character (N6)
+
+# The story's language (S10). In an English story the engine's lines are its own, and a rolled
+# step's `reason` tells the throw in words ("Speed, 2 dice, against a hard task, level 3: 36
+# against 27, passed."), which the app leaves out because it shows the dice. In a Spanish or a
+# Catalan story `reason` (of a step, a beat, what struck back and a link), `by`, a roll's
+# `odds_label` when it kept no dice, a throw's `hand_why`, `greens`, `made_of[].text`, `against`
+# and `miss_costs`, and the scene's `event.title` come in the story's language, and a `reason`
+# comes without the sentence that tells its throw, so it may be empty. A line the wording model
+# couldn't say in time stays in English. Scenes saved before 2026-11-12 keep their English lines.
 
 Throw {dice: [{kind: "plain"|"green"|"violet"|"gold"|"grey",    # A3: every die as it fell, in
               face,                                             # the order thrown, 1 to 20;

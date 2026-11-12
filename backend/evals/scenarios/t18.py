@@ -31,15 +31,18 @@ from engine.contracts import (
     StateDelta,
     UseSource,
 )
+from engine.resolve import throw as dice
 from engine.state import PlaceSetting, SkillLevel, StepResult
 from engine.world.geography import is_within
 from evals import worlds
-from evals.judge import PICTURE_INSTRUCTIONS, Rubric
+from evals.judge import LINES_INSTRUCTIONS, PICTURE_INSTRUCTIONS, Rubric
 from evals.pictures import Picture, ending, portrait_brief, scene_brief
-from evals.runner import Eval
+from evals.runner import Eval, Played
 from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import act, attack, plan, skill, step
+from graph.language import written_in
 from graph.llm import Node
+from graph.turn import saying
 from media.notes import SceneText, note_prompt
 from media.prompts import FRAMING, GROUNDED, build_prompt
 from moderation.evals import build_world, load_cases
@@ -728,6 +731,126 @@ async def spoken_mess(ev: Eval) -> None:
             "it reads the final intent",
             harms is harmful,
             f"{transcript!r}: {[(s.verb, s.aim) for s in (intent.steps if intent else [])]}",
+        )
+
+
+# --- The engine's lines in the story's language (S10) -------------------------------------------
+
+# The review of Miki's story, 2026-11-11: "Zephyr can push back: a real effort, your speed in your
+# favour" stood in English under a Spanish scene, and no player talks like that.
+THROWS_SAID = (
+    (Language.ES, "Cojo una piedra y se la lanzo al trol"),
+    (Language.CA, "Agafo una pedra i la llanço al trol"),
+)
+
+
+def as_met(lines: saying.Lines) -> list[str]:
+    """Every line of `lines` the engine wrote, in the order the player meets them, repeats
+    included, so two tellings of one turn line up."""
+    met: list[str] = []
+
+    def note(text: str) -> str:
+        met.append(text)
+        return text
+
+    lines.reworded(note)
+    return met
+
+
+def lines_said(played: Played, language: Language) -> list[tuple[str, str]]:
+    """(The engine's English line, how the saved scene has it), for each line of a turn that
+    needs words."""
+    english = saying.lines_of(played.resolution, played.plan, language)
+    event = played.scene.event
+    shown = saying.Lines(played.scene.details, event.title if event else None)
+    pairs = zip(as_met(english), as_met(shown), strict=True)
+    return [(was, said) for was, said in pairs if any(char.isalpha() for char in was)]
+
+
+@scenario(
+    "t18.story-language",
+    suite="T18",
+    title="The engine's lines in the story's language",
+    requirements=("S10", "A3", "A8", "B8", "T18"),
+    passes_when=(
+        'In a Spanish and a Catalan story the dice and "How it played out" say every line the '
+        "engine wrote in the story's language, as a player would say it, with each number and "
+        "name kept; the dice still go out before the telling, and the saved scene keeps the "
+        "lines as they were shown (S10)"
+    ),
+)
+async def story_language(ev: Eval) -> None:
+    for language, action in THROWS_SAID:
+        pairs: dict[tuple[str, str], None] = {}
+        for seed in ev.seeds(3, live=2):
+            story = ev.story(
+                worlds.troll_lunges(),
+                seed=f"{seed}/{language.value}",
+                under_way=True,
+                settings=StorySettings(language=language),
+            )
+            played = await story.act(action, grab_and_throw())
+            where = f"{seed} ({language.value})"
+            if played.result is None:
+                ev.check("the turn is played", False, where)
+                continue
+            decided = played.decided
+            ev.check(
+                "the dice go out before any of the telling (A3)",
+                decided is not None and not played.told_first,
+                where,
+            )
+            ev.check(
+                "the saved scene keeps the lines as the dice showed them (S10)",
+                decided is not None and played.scene.details == decided.details,
+                where,
+            )
+            issues = [i.code for i in played.result.issues]
+            ev.check(
+                "every line is said in time, with its numbers and names (S10)",
+                saying.UNSAID not in issues and saying.KEPT not in issues,
+                f"{where}: {[(i.code, i.area, i.detail) for i in played.result.issues]}",
+            )
+            asked = [call for call in played.calls if call.node == Node.WORDING.value]
+            ev.check(
+                "one call to the cheapest model says them all (B8)",
+                len(asked) <= 1,
+                f"{where}: {len(asked)} calls",
+            )
+            thrown = [step for step in played.steps if step.roll and step.roll.throw]
+            detail = played.scene.details.steps
+            ev.check(
+                "a reason leaves its throw to the dice (A3)",
+                bool(thrown)
+                and all(
+                    dice.told(step.roll).casefold() not in shown.reason.casefold()
+                    for step, shown in zip(played.steps, detail, strict=True)
+                    if step.roll and step.roll.throw
+                ),
+                where,
+                live=False,
+            )
+            pairs.update(dict.fromkeys(lines_said(played, language)))
+        await ev.judge_lines(
+            f"the lines in {language.value}",
+            Rubric(
+                must=(
+                    "Every said line is in the language named under LANGUAGE; a name of a "
+                    "person, place or technique may stay as it is spelled",
+                    "Every said line tells what its English line tells: the same fact, with "
+                    "nothing added and nothing left out",
+                    "The said lines read as a native speaker would say them at a game table: "
+                    "plain and natural, with no phrase that only makes sense in English",
+                ),
+                must_not=(
+                    "A said line changes a number, or writes in words a number its English "
+                    "line gives in figures",
+                    "A said line is left in English",
+                ),
+                instructions=LINES_INSTRUCTIONS,
+            ),
+            list(pairs),
+            language=written_in(language),
         )
 
 
