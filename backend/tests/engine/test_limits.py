@@ -60,6 +60,112 @@ def test_a_childlike_look_rules_out_romance_whatever_age_is_recorded(appearance)
 
 
 @pytest.mark.parametrize(
+    "appearance",
+    [
+        "Aparenta unos doce años, con una cinta en el pelo.",
+        "Un cuerpo infantil y una voz aguda.",
+        "16, delgado, pelo negro recogido.",
+        "Lleva uniforme escolar y coletas.",
+        "El cuerpo de una niña de diez años, los ojos de una anciana.",
+        "Una chica de catorce años con un abrigo rojo.",
+        "Tiene 15 años y es pequeña para su edad.",
+        "Delgada, tiene 15 años.",
+        "Lia tiene quince años y es rápida con el cuchillo.",
+        "Lia, de 15 años, pelirroja.",
+        "Acaba de cumplir dieciséis años.",
+        "Una niña de ojos grandes.",
+        "Parece una niña, aunque dice tener quinientos años.",
+        "Una colegiala con trenzas.",
+        "Cara de niño y manos de herrero.",
+        "Una joven de 16.",
+        "Menor de edad.",
+        "12 años, pálida, con una sombrilla.",
+        "Es una niña de voz fina.",
+        "Alta para su edad; es una chica de 15 años.",
+        "Lia es una niña.",
+        "Pálida; doce años; una sombrilla.",
+        "Aparenta uns dotze anys, amb una cinta als cabells.",
+        "Un cos infantil i una veu aguda.",
+        "Porta uniforme d'escola i cuetes.",
+        "El cos d'una nena de deu anys, els ulls d'una vella.",
+        "Una noia de catorze anys amb un abric vermell.",
+        "Té 15 anys i és petita per l'edat.",
+        "La Lia té quinze anys.",
+        "Lia, de 15 anys, pèl-roja.",
+        "Acaba de fer setze anys.",
+        "Una nena d'ulls grossos.",
+        "Sembla una nena, tot i que diu que té cinc-cents anys.",
+        "Una col·legiala amb trenes.",
+        "Cara de nen i mans de ferrer.",
+        "Una noia de 16.",
+        "Menor d’edat.",
+        "16 anys, una cartera d'escola.",
+        "Un al·lot de quinze anys.",
+        "Encara és un nen.",
+        "La Lia és una nena.",
+        "Prima, de quinze anys d'edat.",
+    ],
+)
+def test_a_childlike_look_is_read_in_spanish_and_in_catalan(appearance):
+    """S10: a story's world is written in its language, and a description may be in any."""
+    assert limits.adult_problem(person(age=500, appearance=appearance)) == "described as childlike"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "24, delgado, pelo oscuro peinado hacia atrás, una cicatriz en la ceja.",
+        "Cincuentona, ancha, bigote gris, anillos de oro.",
+        "Una viuda que cría a dos hijos sobre la panadería.",
+        "Una cicatriz de diez años le cruza la mandíbula.",
+        "Maestra de instituto con tinta en los dedos.",
+        "Maestra de educación infantil.",
+        "2 espadas a la espalda, madre de diez.",
+        "Su hija tiene 6 años.",
+        "Dirige un cuerpo de 12 jinetes.",
+        "Tenía 15 años cuando llegó la guerra.",
+        "Hace 10 años que no ve el mar.",
+        "Lleva 12 años en la guardia.",
+        "Una joven de 2 metros.",
+        "Aparenta una calma que no siente.",
+        "30 años, un delantal de camarera.",
+        "Viuda, madre de un niño de cinco años.",
+        "Su hija es una niña de 6 años.",
+        "Lleva a su niñita en brazos.",
+        "Madre de dos niños pequeños.",
+        "Parecía un niño cuando llegó a la secta; hoy es un guerrero curtido.",
+        "Aparentaba doce años cuando la conocí; de eso hace ya dos décadas.",
+        "Diez años en el frente, una cicatriz en la ceja.",
+        "Tras 12 años, sigue en la guardia.",
+        "Parece 3 veces más fuerte de lo que es.",
+        "Cría caballos en el valle.",
+        "24, prim, cabells foscos pentinats enrere, una cicatriu a la cella.",
+        "Una vídua que cria dos fills sobre el forn.",
+        "Una cicatriu de deu anys li creua la mandíbula.",
+        "Mestra d'institut amb tinta als dits.",
+        "Mestra d'educació infantil.",
+        "La seva filla té 6 anys.",
+        "Tenia 15 anys quan va arribar la guerra.",
+        "Fa 10 anys que no veu el mar.",
+        "Fa 12 anys que és a la guàrdia.",
+        "Una jove de 2 metres.",
+        "Sembla nou a la ciutat.",
+        "30 anys, un davantal de cambrera.",
+        "Vídua, mare d'un nen de cinc anys.",
+        "La seva filla és una nena de 6 anys.",
+        "Mare de dos nens petits.",
+        "Semblava un nen quan va arribar; avui és un guerrer.",
+        "Deu anys al front, una cicatriu a la cella.",
+        "Sembla set vegades més fort.",
+        "Té set i gana.",
+        "Deu diners a tothom.",
+    ],
+)
+def test_ordinary_adult_descriptions_pass_in_spanish_and_in_catalan(text):
+    assert limits.is_adult(person(age=30, appearance=text, description=text))
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "24, lean, dark hair combed back, a scar through one eyebrow.",
@@ -113,6 +219,181 @@ def test_ordinary_adult_descriptions_pass(text):
 )
 def test_romantic_and_sexual_steps_are_recognised(text, kind):
     assert limits.intimacy(step(text)) is kind
+
+
+SPANISH_STEPS = [
+    ("besar a Mei", Intimacy.ROMANCE),
+    ("le doy un beso a Lia", Intimacy.ROMANCE),
+    ("coquetear con la camarera", Intimacy.ROMANCE),
+    ("seducir al guardia para conseguir la llave", Intimacy.ROMANCE),
+    ("pedirle matrimonio", Intimacy.ROMANCE),
+    ("la invito a salir", Intimacy.ROMANCE),
+    ("le acaricio la mejilla", Intimacy.ROMANCE),
+    ("me declaro a Lia", Intimacy.ROMANCE),
+    ("cortejo a la hija del posadero", Intimacy.ROMANCE),
+    ("le pido salir conmigo", Intimacy.ROMANCE),
+    ("acariciarle el cabello", Intimacy.ROMANCE),
+    ("me acuesto con Lia", Intimacy.SEXUAL),
+    ("hacer el amor con ella", Intimacy.SEXUAL),
+    ("tener sexo con Lia", Intimacy.SEXUAL),
+    ("la desnudo despacio", Intimacy.SEXUAL),
+    ("le quito la ropa", Intimacy.SEXUAL),
+    ("la manoseo en la oscuridad", Intimacy.SEXUAL),
+    ("violar a la prisionera", Intimacy.SEXUAL_VIOLENCE),
+    ("la arrastro al callejón y la violo", Intimacy.SEXUAL_VIOLENCE),
+    ("abusar sexualmente de ella", Intimacy.SEXUAL_VIOLENCE),
+    ("forzarla a acostarse conmigo", Intimacy.SEXUAL_VIOLENCE),
+    ("la violación de la prisionera", Intimacy.SEXUAL_VIOLENCE),
+    # A greeting, an oath or a cut, as in English.
+    ("me arrodillo y beso la mano del anciano", None),
+    ("beso el anillo del don", None),
+    ("dejo que mi hoja bese su garganta", None),
+    ("le doy un beso en la mejilla", None),
+    # Words with an everyday sense.
+    ("molesto al guardia hasta que se va", None),
+    ("no quiero molestar al tabernero", None),
+    ("violar la ley del clan", None),
+    ("violo la tregua", None),
+    ("una violación flagrante de la ley", None),
+    ("me acuesto con fiebre", None),
+    ("me acurruco junto al fuego", None),
+    ("acaricio la empuñadura de mi espada", None),
+    ("acaricio al perro", None),
+    ("le invito a salir de la habitación", None),
+    ("me corto el pelo al rape", None),
+    ("pesco un rape en el puerto", None),
+    ("toco la viola a diario", None),
+    ("me acostumbro con el tiempo", None),
+    ("quito el peto al guardia caído", None),
+    ("me declaro a favor del consejo", None),
+    ("duermo con el cuchillo bajo la almohada", None),
+    ("compruebo el sexo del potro", None),
+    ("lanzo una piedra a Zhao", None),
+    ("sigo al cortejo fúnebre", None),
+    ("el juglar canta un viejo romance", None),
+    ("tengo un romance con Lia", Intimacy.ROMANCE),
+    ("pido salir a tomar el aire", None),
+    ("acaricio a mi lobo", None),
+    ("le acaricio el lomo al caballo", None),
+    ("cargo una viola al hombro", None),
+    ("recojo las violas del jardín", None),
+    ("le violan sus derechos", None),
+    ("la ciudad no se rinde, así que decido tomarla por la fuerza", None),
+    ("camino bajo las desnudas ramas del roble", None),
+    ("se declara a sí mismo emperador", None),
+    ("mantengo una relación íntima con la corte", None),
+]
+CATALAN_STEPS = [
+    ("besar la Mei", Intimacy.ROMANCE),
+    ("li faig un petó a la Lia", Intimacy.ROMANCE),
+    ("omplir-la de petons", Intimacy.ROMANCE),
+    ("flirtejar amb la cambrera", Intimacy.ROMANCE),
+    ("seduir el guardià per aconseguir la clau", Intimacy.ROMANCE),
+    ("demanar-li matrimoni", Intimacy.ROMANCE),
+    ("la convido a sortir", Intimacy.ROMANCE),
+    ("li acarono la galta", Intimacy.ROMANCE),
+    ("em declaro a la Lia", Intimacy.ROMANCE),
+    ("festejar amb la Mei", Intimacy.ROMANCE),
+    ("li demano per sortir", Intimacy.ROMANCE),
+    ("acariciar-li els cabells", Intimacy.ROMANCE),
+    ("anar-me'n al llit amb ella", Intimacy.SEXUAL),
+    ("fer l’amor amb ella", Intimacy.SEXUAL),
+    ("tenir sexe amb la Lia", Intimacy.SEXUAL),
+    ("la despullo a poc a poc", Intimacy.SEXUAL),
+    ("li trec la roba", Intimacy.SEXUAL),
+    ("la grapejo a les fosques", Intimacy.SEXUAL),
+    ("violar la presonera", Intimacy.SEXUAL_VIOLENCE),
+    ("l'arrossego al carreró i la violo", Intimacy.SEXUAL_VIOLENCE),
+    ("abusar sexualment d'ella", Intimacy.SEXUAL_VIOLENCE),
+    ("forçar-la a allitar-se amb mi", Intimacy.SEXUAL_VIOLENCE),
+    ("la violació de la presonera", Intimacy.SEXUAL_VIOLENCE),
+    ("m'agenollo i beso la mà de l'ancià", None),
+    ("beso l'anell del senyor", None),
+    ("deixo que la meva fulla besi el seu coll", None),
+    ("li faig un petó a la galta", None),
+    ("molesto el guardià fins que se'n va", None),
+    ("violar la llei del clan", None),
+    ("violar aquesta sagrada llei", None),
+    ("violo la treva", None),
+    ("denuncio la violació de la treva", None),
+    ("m'allito amb febre", None),
+    ("m'embolico amb la manta", None),
+    ("acarono el gos", None),
+    ("el convido a sortir de la cambra", None),
+    ("et rapes el cap", None),
+    ("toco la viola cada dia", None),
+    ("una cursa folla pel bosc", None),
+    ("peto la porta d'una coça", None),
+    ("dormo amb la finestra oberta", None),
+    ("comprovo el sexe del poltre", None),
+    ("llanço una pedra a en Zhao", None),
+    ("festejo la victòria amb la colla", None),
+    ("li dic que es deixi de romanços", None),
+    ("tinc un romanç amb la Lia", Intimacy.ROMANCE),
+    ("demano per sortir un moment", None),
+    ("l'acarono darrere les orelles", None),
+    ("toco el violí a la plaça", None),
+    ("cullo les violes del marge", None),
+    ("saludo la Violant", None),
+    ("la ciutat no es rendeix, així que decideixo prendre-la per la força", None),
+    ("regiro les despulles del drac", None),
+    ("agafo el gerro i el peto contra terra", None),
+    ("la folla idea de saltar el mur", None),
+    ("es declara a si mateix emperador", None),
+]
+
+
+@pytest.mark.parametrize(("text", "kind"), SPANISH_STEPS)
+def test_a_spanish_storys_steps_are_read_in_spanish(text, kind):
+    """S10: the reading of a Spanish story may word a step in Spanish."""
+    assert limits.intimacy(step(text), Language.ES) is kind
+
+
+@pytest.mark.parametrize(("text", "kind"), CATALAN_STEPS)
+def test_a_catalan_storys_steps_are_read_in_catalan(text, kind):
+    assert limits.intimacy(step(text), Language.CA) is kind
+
+
+@pytest.mark.parametrize("language", [Language.ES, Language.CA])
+def test_english_words_still_count_in_a_story_in_another_language(language):
+    """The reading may word a step in English whatever the story speaks, and the graver
+    reading of the two stands."""
+    assert limits.intimacy(step("kiss Mei"), language) is Intimacy.ROMANCE
+    assert limits.intimacy(step("sleep with Lia"), language) is Intimacy.SEXUAL
+    assert limits.intimacy(step("rape the captive"), language) is Intimacy.SEXUAL_VIOLENCE
+    assert limits.intimacy(step("molest the girl"), language) is Intimacy.SEXUAL_VIOLENCE
+    mixed = step("besar a Lia", verb="force myself on her")
+    assert limits.intimacy(mixed, language) is Intimacy.SEXUAL_VIOLENCE
+
+
+@pytest.mark.parametrize(
+    ("language", "greeting", "kiss"),
+    [
+        (Language.ES, "besar la mano del anciano", "besar la mano de Lia y luego besarla"),
+        (Language.CA, "besar la mà de l'ancià", "besar la mà de la Lia i després besar-la"),
+    ],
+)
+def test_a_greetings_kiss_stays_one_when_the_reading_names_the_verb_in_english(
+    language, greeting, kiss
+):
+    """B5: the reading names a step's verb in English, so "kiss" stands beside the story's
+    words for the hand or the ring it is given to."""
+    assert limits.intimacy(step(greeting, verb="kiss"), language) is None
+    assert limits.intimacy(step(kiss, verb="kiss"), language) is Intimacy.ROMANCE
+    assert limits.intimacy(step("Lia", verb="kiss"), language) is Intimacy.ROMANCE
+
+
+def test_each_language_has_its_own_words():
+    """Catalan "petó" is a kiss and Spanish "peto" is a breastplate, so a story's words are
+    read only in its own language, and an English story reads as it always did."""
+    armour = step("quito el peto al guardia")
+    assert limits.intimacy(armour) is None and limits.intimacy(armour, Language.ES) is None
+    kiss = step("li faig un petó")
+    assert limits.intimacy(kiss, Language.CA) is Intimacy.ROMANCE
+    assert limits.intimacy(kiss) is None and limits.intimacy(kiss, Language.ES) is None
+    # English alone has "molest" in any form.
+    assert limits.intimacy(step("molestation")) is Intimacy.SEXUAL_VIOLENCE
+    assert limits.intimacy(step("besar a Mei")) is None
 
 
 def test_the_verb_and_beats_count_as_much_as_the_text():
@@ -175,6 +456,35 @@ def test_a_partner_the_story_doesnt_know_yet_is_left_to_the_narrator():
     # The narrator introduces them as an adult with an age; once known, the check holds them.
     intent = Intent(steps=[step("flirt with the barmaid", targets=["the barmaid"])])
     assert limits.check_action(grounded_world(), intent, Rating.MATURE) == []
+
+
+def test_the_limits_hold_in_a_spanish_and_a_catalan_story():
+    """F2, F3, S10: the same lines, read in the story's language."""
+    state = with_character(cultivation_world(), person(id="mei", name="Mei", age=15))
+    adults = with_character(grounded_world(), person(age=27))
+    for language, kiss, sex, assault, bother in (
+        (Language.ES, "besar a Mei", "me acuesto con Lia", "violar a Lia", "molestar a Mei"),
+        (Language.CA, "besar la Mei", "fer l'amor amb la Lia", "violar la Lia", "molestar la Mei"),
+    ):
+        hits = limits.check_action(
+            state, Intent(steps=[step(kiss, target_ids=["mei"])]), Rating.MATURE, language
+        )
+        assert {(h.category, h.subject) for h in hits} == {
+            (LimitCategory.MINOR, state.player_id),
+            (LimitCategory.MINOR, "mei"),
+        }
+        teen_sex = Intent(steps=[step(sex, target_ids=["lia"])])
+        teen_assault = Intent(steps=[step(assault, target_ids=["lia"])])
+        [hit] = limits.check_action(adults, teen_sex, Rating.TEEN, language)
+        assert hit.category is LimitCategory.SEXUAL
+        [hit] = limits.check_action(adults, teen_assault, Rating.TEEN, language)
+        assert hit.category is LimitCategory.SEXUAL_VIOLENCE
+        assert limits.check_action(adults, teen_sex, Rating.MATURE, language) == []
+        # Bothering someone is no limit, for a minor or in a Teen story.
+        nagging = Intent(steps=[step(bother, target_ids=["mei"])])
+        assert limits.check_action(state, nagging, Rating.TEEN, language) == []
+        # Read as an English story, the same words cross nothing and stop nothing.
+        assert limits.check_action(adults, teen_sex, Rating.TEEN) == []
 
 
 def test_a_teen_story_goes_as_far_as_a_kiss():

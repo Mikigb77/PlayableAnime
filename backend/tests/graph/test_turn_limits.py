@@ -226,10 +226,11 @@ def test_the_deterministic_content_line_cases_play_through_the_graph(fake, make_
     [intent] = case.interpretation
     [action] = case.script
     fake.script(Node.INTERPRET, Reply(json=intent.model_dump(mode="json")))
-    turn = turn_input(build_world(case), action, rating=case.rating)
+    turn = turn_input(build_world(case), action, rating=case.rating, language=case.language)
 
     with pytest.raises(LimitReached) as raised:
         play(make_client(rating=case.rating.value), turn)
 
     assert raised.value.details == {"category": case.expect.limit.value}
+    assert raised.value.message == limits.message(case.expect.limit, case.language)  # S10
     assert fake.calls(Node.NARRATOR) == []
