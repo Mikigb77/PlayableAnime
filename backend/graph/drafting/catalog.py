@@ -4,12 +4,14 @@ A starter's template is what code holds the draft to (G7, G8, G18, G22): the fix
 needs, the extraordinary things that must exist or must not, the power ladder, the peoples, and
 the gift the premise grants. The model sees the template in its prompt, and
 `graph.drafting.assemble` enforces it on whatever the model proposes, until the player lets one of
-its rules go while setting up the story (G7).
+its rules go while setting up the story (G7). Both get it in the language the story is drafted
+in (`PremiseTemplate.in_language`, S10), so a Spanish story's fixed rules, ladder and peoples are
+in Spanish like the rest of its world.
 
 Every person and organisation here is fictional (G12). Real cities and history are backdrops only.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from engine.context import Language
@@ -24,11 +26,36 @@ from engine.state import (
     Rung,
     WorldRule,
 )
-from graph.drafting.catalog_ca import CATALAN
-from graph.drafting.catalog_es import SPANISH, PremiseText
+from graph.drafting.catalog_ca import CATALAN, TEMPLATE_CATALAN
+from graph.drafting.catalog_es import SPANISH, TEMPLATE_SPANISH, PremiseText
 
 # S10: each starter's words in the app's other languages.
 _TRANSLATIONS = {Language.ES: SPANISH, Language.CA: CATALAN}
+# S10: what a starter's template says in words the player reads, by the English it stands for.
+_TEMPLATE_WORDS = {Language.ES: TEMPLATE_SPANISH, Language.CA: TEMPLATE_CATALAN}
+
+
+def worded(text: str, language: Language) -> str:
+    """A template's text in `language` (S10): its Spanish or Catalan, else as it is."""
+    return _TEMPLATE_WORDS.get(language, {}).get(text, text)
+
+
+def _all_wordings() -> dict[str, frozenset[str]]:
+    told: dict[str, frozenset[str]] = {}
+    for english in {text for words in _TEMPLATE_WORDS.values() for text in words}:
+        same = frozenset({english, *(worded(english, language) for language in _TEMPLATE_WORDS)})
+        for one in same:
+            told[one] = told.get(one, frozenset()) | same
+    return told
+
+
+_WORDINGS = _all_wordings()
+
+
+def wordings(text: str) -> frozenset[str]:
+    """Every language's wording of a template's text, given any one of them, so a rule a draft
+    holds in another language than its template speaks now is still that rule, word for word."""
+    return _WORDINGS.get(text, frozenset({text}))
 
 
 @dataclass(frozen=True)
@@ -59,6 +86,32 @@ class PremiseTemplate:
     @property
     def rule_ids(self) -> frozenset[str]:
         return frozenset(rule.id for rule in self.rules)
+
+    def in_language(self, language: Language) -> "PremiseTemplate":
+        """The template in the language a story is drafted in (S10): the words the player
+        reads, which are its rules, the kinds and how far they reach, the ladder with its rungs
+        and the peoples. Ids, tiers and everything else code goes by stay as they are, and so do
+        the notes, which only the drafter reads."""
+        if language not in _TEMPLATE_WORDS:
+            return self
+
+        def say(text: str) -> str:
+            return worded(text, language)
+
+        ladder = self.ladder
+        if ladder is not None:
+            rungs = [rung.model_copy(update={"name": say(rung.name)}) for rung in ladder.rungs]
+            ladder = ladder.model_copy(update={"name": say(ladder.name), "rungs": rungs})
+        return replace(
+            self,
+            rules=tuple(r.model_copy(update={"text": say(r.text)}) for r in self.rules),
+            extraordinary=tuple(
+                k.model_copy(update={"kind": say(k.kind), "reach": say(k.reach)})
+                for k in self.extraordinary
+            ),
+            ladder=ladder,
+            peoples=tuple(p.model_copy(update={"name": say(p.name)}) for p in self.peoples),
+        )
 
 
 @dataclass(frozen=True)

@@ -1,8 +1,9 @@
 """The starter premises in Spanish (S10): what Discover shows a player whose app is in Spanish.
 
-Keyed by the starter's id in `graph.drafting.catalog`. Only the words the player reads are here;
-the genre's template, its rules and its ladder stay with the starter. A test checks that every
-starter has its Spanish, so a new starter needs an entry here too (Spanish from Spain, with "tú").
+Keyed by the starter's id in `graph.drafting.catalog`. Only the words the player reads are here:
+each premise, and below them the words of its genre's template, which a Spanish story is drafted
+with (`TEMPLATE_SPANISH`). A test checks that every starter has its Spanish, so a new starter
+needs an entry here too (Spanish from Spain, with "tú").
 """
 
 from dataclasses import dataclass
@@ -281,4 +282,142 @@ SPANISH: dict[str, PremiseText] = {
             "mostró no es lo que le contaron a la policía."
         ),
     ),
+}
+
+# What a starter's template says in words the player reads (S10): its fixed rules, the kinds that
+# exist and how far they reach, the ladder with its rungs, and the peoples, each by the English
+# it stands for in `graph.drafting.catalog`. A test checks that every such text is here, so a new
+# starter's template needs its Spanish too. They match the premises above: "Condensación de Qi",
+# "maestro del aura", "hombres bestia", "armazón de guerra", "la Aguja".
+TEMPLATE_SPANISH: dict[str, str] = {
+    # Rules.
+    "Qi cultivation is real, and the strong climb the realms.": (
+        "El cultivo del qi es real, y los fuertes ascienden por los reinos."
+    ),
+    "Aura is real: trained knights draw it to strengthen body and blade.": (
+        "El aura es real: los caballeros entrenados la invocan para fortalecer el cuerpo y la "
+        "espada."
+    ),
+    "Humans, elves, dwarves and beastkin share this world, and monsters roam its wilds.": (
+        "Humanos, elfos, enanos y hombres bestia comparten este mundo, y los monstruos recorren "
+        "sus tierras salvajes."
+    ),
+    "Magic is real, and monsters carry it in their cores.": (
+        "La magia es real, y los monstruos la llevan en sus núcleos."
+    ),
+    "A rare few can bend time, and almost nobody knows.": (
+        "Unos pocos pueden doblegar el tiempo, y casi nadie lo sabe."
+    ),
+    "Magic and monsters are real, and so is the Demon Lord.": (
+        "La magia y los monstruos son reales, y el Señor Demonio también."
+    ),
+    "A rare few ancient swords hold a spirit that can speak.": (
+        "Unas pocas espadas antiguas guardan un espíritu capaz de hablar."
+    ),
+    "Humans, elves, dwarves and lizardfolk climb the Spire side by side, and monsters fill "
+    "its floors.": (
+        "Humanos, elfos, enanos y hombres lagarto suben la Aguja codo con codo, y los monstruos "
+        "llenan sus pisos."
+    ),
+    "Magic is real, and the royal academy teaches it to nobles.": (
+        "La magia existe, y la academia real se la enseña a los nobles."
+    ),
+    "Grounded: no magic and nothing supernatural, and that won't change.": (
+        "Realista: sin magia ni nada sobrenatural, y eso no cambiará."
+    ),
+    "Nobody can do more than a real person could.": (
+        "Nadie puede hacer más de lo que podría una persona real."
+    ),
+    "No magic and nothing supernatural: only science, and that won't change.": (
+        "Sin magia ni nada sobrenatural: solo ciencia, y eso no cambiará."
+    ),
+    "Jump drives carry ships between stars in days, and no message travels faster than a ship.": (
+        "Los motores de salto llevan las naves de una estrella a otra en días, y ningún mensaje "
+        "viaja más rápido que una nave."
+    ),
+    "Vampires are real, and they hide among the living.": (
+        "Los vampiros son reales, y se esconden entre los vivos."
+    ),
+    "Magic is real, and Hollowmere teaches it.": "La magia es real, y Hollowmere la enseña.",
+    "Gods are real, worshipped like pop idols, and mortal.": (
+        "Los dioses son reales, se los adora como a ídolos del pop, y son mortales."
+    ),
+    "Giant war-frames are real, and each one bonds with a single pilot for life.": (
+        "Los gigantescos armazones de guerra son reales, y cada uno se vincula a un solo piloto "
+        "de por vida."
+    ),
+    "The dead can linger, and almost nobody believes it.": (
+        "Los muertos pueden quedarse entre los vivos, y casi nadie lo cree."
+    ),
+    "Magic is rare: a few storm-callers can speak to wind and wave.": (
+        "La magia es escasa: unos pocos invocadores de tormentas saben hablar al viento y a "
+        "las olas."
+    ),
+    "Cybernetic implants are everywhere, and anyone with a neural jack can dive into the net.": (
+        "Los implantes cibernéticos están por todas partes, y cualquiera con un conector neural "
+        "puede bucear en la red."
+    ),
+    "Magic and dragons are real, though most folk never meet either.": (
+        "La magia y los dragones son reales, aunque la mayoría de la gente nunca ve ni lo uno "
+        "ni lo otro."
+    ),
+    "One person in a hundred gains a power at sixteen, and everyone knows it.": (
+        "Una persona de cada cien despierta con un poder a los dieciséis años, y todo el mundo "
+        "lo sabe."
+    ),
+    # Kinds, and how far they reach.
+    "qi cultivation": "cultivo del qi",
+    "Realms from Qi Condensation to Nascent Soul and beyond.": (
+        "Reinos desde la Condensación de Qi hasta el Alma Naciente y más allá."
+    ),
+    "aura": "aura",
+    "From squire to saint.": "De escudero a santo.",
+    "magic": "magia",
+    "powers over time": "poderes sobre el tiempo",
+    "sword spirits": "espíritus de espada",
+    "magic or anything supernatural": "magia o cualquier cosa sobrenatural",
+    "vampires": "vampiros",
+    "gods and their miracles": "dioses y sus milagros",
+    "bonded war-frames": "armazones de guerra vinculados",
+    "A frame stands as tall as a tower and answers only its pilot.": (
+        "Un armazón es tan alto como una torre y solo responde a su piloto."
+    ),
+    "ghosts": "fantasmas",
+    "sea magic": "magia del mar",
+    "cybernetics": "cibernética",
+    "Implants push a body past its limits, at a price.": (
+        "Los implantes llevan el cuerpo más allá de sus límites, pero tienen un precio."
+    ),
+    "magic and dragons": "magia y dragones",
+    "superpowers": "superpoderes",
+    # Ladders and their rungs.
+    "cultivation realms": "reinos de cultivo",
+    "Qi Condensation": "Condensación de Qi",
+    "Foundation Establishment": "Establecimiento de la Base",
+    "Core Formation": "Formación del Núcleo",
+    "Nascent Soul": "Alma Naciente",
+    "Soul Transformation": "Transformación del Alma",
+    "aura ranks": "rangos de aura",
+    "Squire": "Escudero",
+    "Knight": "Caballero",
+    "Aura Master": "Maestro del Aura",
+    "Sword Saint": "Santo de la Espada",
+    "hunter ranks": "rangos de cazador",
+    "Iron": "Hierro",
+    "Bronze": "Bronce",
+    "Silver": "Plata",
+    "Gold": "Oro",
+    "Mithril": "Mithril",
+    "adventurer ranks": "rangos de aventurero",
+    "D-rank": "Rango D",
+    "C-rank": "Rango C",
+    "B-rank": "Rango B",
+    "A-rank": "Rango A",
+    "S-rank": "Rango S",
+    # Peoples.
+    "humans": "humanos",
+    "elves": "elfos",
+    "dwarves": "enanos",
+    "beastkin": "hombres bestia",
+    "lizardfolk": "hombres lagarto",
 }

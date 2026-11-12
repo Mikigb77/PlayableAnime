@@ -12,10 +12,10 @@ import pytest
 from engine.context import Language
 from engine.state import GiftStrength, Prevalence
 from graph.drafting import samples
-from graph.drafting.assemble import HUMAN_PEAK, DraftOptions, assemble
-from graph.drafting.catalog import STARTER_PREMISES, starter
-from graph.drafting.catalog_ca import CATALAN
-from graph.drafting.catalog_es import SPANISH
+from graph.drafting.assemble import GROUNDED_RULE_TEXTS, HUMAN_PEAK, DraftOptions, assemble
+from graph.drafting.catalog import STARTER_PREMISES, starter, worded, wordings
+from graph.drafting.catalog_ca import CATALAN, TEMPLATE_CATALAN
+from graph.drafting.catalog_es import SPANISH, TEMPLATE_SPANISH
 from graph.drafting.prompts import template_block
 from graph.drafting.schema import DraftProposal, ExtraordinaryP, RuleP
 from graph.drafting.view import gift_strength, world_lines
@@ -113,25 +113,28 @@ def test_template_rules_are_fixed_and_their_kinds_point_at_them():
             assert template.grounded_rule_id in template.rule_ids
 
 
+@pytest.mark.parametrize("language", list(Language), ids=lambda language: language.value)
 @pytest.mark.parametrize("premise", STARTER_PREMISES, ids=lambda p: p.id)
-def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
-    template = premise.template
+def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise, language):
+    # S10: in the language the story is drafted in, as `chain.Draft.template` gives it.
+    template = premise.template.in_language(language)
     grounded = template.grounded_rule_id is not None
     exclusive = template.exclusive_rule_id is not None
     for name, proposal in _proposals(grounded or exclusive).items():
         state = assemble(
             proposal.world,
             proposal.character,
-            DraftOptions(premise=premise.premise, template=template),
+            DraftOptions(premise=premise.premise, template=template, language=language),
         )
         bible = state.bible
         rules = {r.id: r for r in bible.rules}
         where = f"{premise.id}, {name}"
 
-        # G7: the genre's fixed rules, word for word.
-        for rule in template.rules:
+        # G7: the genre's fixed rules, word for word, in the story's language.
+        for rule, english in zip(template.rules, premise.template.rules, strict=True):
             assert rule.id in rules, where
             assert (rules[rule.id].text, rules[rule.id].fixed) == (rule.text, True), where
+            assert rule.text == worded(english.text, language), where
         # G6, G7: the kinds the genre fixes, at its prevalence, tied to its rules.
         kinds = {k.id: k for k in bible.extraordinary}
         for required in template.extraordinary:
@@ -149,7 +152,8 @@ def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
             assert bible.ladders == [], where
         elif any(k.prevalence is not Prevalence.NONE for k in template.extraordinary):
             assert not bible.grounded, where
-            assert not any("Grounded" in r.text for r in bible.rules), where
+            said = set(GROUNDED_RULE_TEXTS.values())
+            assert not any(r.text in said or "Grounded" in r.text for r in bible.rules), where
         # G8: where the genre's kinds are the only ones, the model's own kinds, their powers and
         # any power ladder of theirs go.
         if exclusive:
@@ -158,7 +162,7 @@ def test_every_starter_drafts_into_a_bible_that_keeps_its_genre(premise):
                 assert bible.ladders == [], where
         # G18: the genre's ladder when the proposal brings none.
         if template.ladder is not None and not proposal.world.ladders:
-            assert [ladder.id for ladder in bible.ladders] == [template.ladder.id], where
+            assert bible.ladders == [template.ladder], where
         # G23: the genre's peoples.
         people = {p.name for p in bible.peoples}
         assert {p.name for p in template.peoples} <= people, where
@@ -219,6 +223,89 @@ def test_a_starter_that_grants_a_gift_sets_its_strength():
         template = starter(premise_id).template
         state = assemble(proposal.world, proposal.character, DraftOptions(template=template))
         assert gift_strength(state) is strength, premise_id
+
+
+def _template_texts() -> set[str]:
+    """Every text of a starter's template that the player reads."""
+    texts: set[str] = set()
+    for premise in STARTER_PREMISES:
+        template = premise.template
+        texts |= {rule.text for rule in template.rules}
+        texts |= {kind.kind for kind in template.extraordinary}
+        texts |= {kind.reach for kind in template.extraordinary if kind.reach}
+        if template.ladder is not None:
+            texts |= {template.ladder.name, *(rung.name for rung in template.ladder.rungs)}
+        texts |= {people.name for people in template.peoples}
+    return texts
+
+
+@pytest.mark.parametrize(
+    ("language", "words"), [(Language.ES, TEMPLATE_SPANISH), (Language.CA, TEMPLATE_CATALAN)]
+)
+def test_every_template_text_has_its_spanish_and_catalan(language, words):
+    """S10: a starter's fixed rules, kinds, ladder and peoples are in the story's language like
+    the rest of its world, so a new starter's template needs its Spanish in
+    `graph.drafting.catalog_es` and its Catalan in `graph.drafting.catalog_ca`."""
+    shared = {"aura", "Mithril", "humans", "Bronze"}  # words a language shares with English
+    assert set(words) == _template_texts()
+    for english, said in words.items():
+        assert said.strip() and said == " ".join(said.split()), english
+        assert said != english or english in shared, english
+        assert worded(english, language) == said
+        assert {english, said} <= wordings(said)
+    # What isn't a template's stays as it is.
+    assert worded("Anything goes.", language) == "Anything goes."
+    assert wordings("Anything goes.") == {"Anything goes."}
+
+
+def test_a_template_speaks_the_language_its_story_is_drafted_in():
+    template = starter("beast-tide").template
+    assert template.in_language(Language.EN) is template
+
+    spanish = template.in_language(Language.ES)
+    assert [r.text for r in spanish.rules] == [
+        "Humanos, elfos, enanos y hombres bestia comparten este mundo, y los monstruos recorren "
+        "sus tierras salvajes.",
+        "La magia es real, y los monstruos la llevan en sus núcleos.",
+    ]
+    assert [k.kind for k in spanish.extraordinary] == ["magia"]
+    assert spanish.ladder.name == "rangos de cazador"
+    assert [r.name for r in spanish.ladder.rungs] == ["Hierro", "Bronce", "Plata", "Oro", "Mithril"]
+    assert [p.name for p in spanish.peoples] == ["humanos", "elfos", "enanos", "hombres bestia"]
+    catalan = starter("outer-disciple").template.in_language(Language.CA)
+    assert [r.name for r in catalan.ladder.rungs][:2] == [
+        "Condensació del Qi",
+        "Establiment de la Base",
+    ]
+    assert catalan.extraordinary[0].reach == (
+        "Reialmes des de la Condensació del Qi fins a l'Ànima Naixent i més enllà."
+    )
+
+    # Only the words change: ids, topics, tiers and everything else code goes by are the same.
+    def bare(t):
+        return (
+            [(r.id, r.fixed, r.topic) for r in t.rules],
+            [(k.id, k.prevalence, k.rule_ids) for k in t.extraordinary],
+            t.ladder.model_dump(exclude={"name": True, "rungs": {"__all__": {"name"}}}),
+            [p.model_dump(exclude={"name"}) for p in t.peoples],
+            (t.grounded_rule_id, t.exclusive_rule_id, t.gift, t.notes),
+        )
+
+    assert bare(spanish) == bare(template)
+    # The starter's own template is as it was.
+    assert template.ladder.rungs[0].name == "Iron" and template.peoples[1].name == "elves"
+
+
+def test_the_drafter_is_given_the_template_in_the_storys_language():
+    template = starter("ashen-squire").template
+    english = template_block(template, frozenset())
+    assert "aura-exists: Aura is real: trained knights draw it" in english
+    assert "The aura ranks (id aura-ranks): Squire, Knight, Aura Master, Sword Saint." in english
+
+    spanish = template_block(template.in_language(Language.ES), frozenset())
+    assert "aura-exists: El aura es real: los caballeros entrenados la invocan" in spanish
+    assert "(id aura-ranks): Escudero, Caballero, Maestro del Aura, Santo de la Espada." in spanish
+    assert "Aura is real" not in spanish and "Squire" not in spanish
 
 
 @pytest.mark.parametrize(
