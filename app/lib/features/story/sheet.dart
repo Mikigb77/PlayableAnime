@@ -171,13 +171,20 @@ class SheetRungAbove {
 
 /// One of the world's ladders (G18). [rungs] runs from its first rung up to where they stand,
 /// lowest first, so the last one is theirs; it is empty for a ladder they don't stand on.
-/// [above] holds the rungs over their own that the story has named to them, lowest first, and
-/// the server sends nothing else of what lies higher (C6).
+/// [above] holds the rungs over their own that they have heard of, lowest first, and the
+/// server sends nothing else of what lies higher (C6), except [higher]: who they have seen
+/// stand above all of those, in the server's words, with no rung named.
 class SheetPath {
-  const SheetPath({required this.name, this.rungs = const [], this.above = const []});
+  const SheetPath({
+    required this.name,
+    this.rungs = const [],
+    this.above = const [],
+    this.higher = '',
+  });
 
   factory SheetPath.fromJson(JsonMap json) => SheetPath(
     name: _text(json['name']),
+    higher: _text(json['higher']),
     rungs: [
       for (final rung in _list(json['rungs'], SheetRung.fromJson))
         if (rung.name.isNotEmpty) rung,
@@ -191,6 +198,7 @@ class SheetPath {
   final String name;
   final List<SheetRung> rungs;
   final List<SheetRungAbove> above;
+  final String higher;
 
   /// A ladder they neither stand on nor have heard a rung of is no path of theirs.
   bool get isEmpty => rungs.isEmpty && above.isEmpty;

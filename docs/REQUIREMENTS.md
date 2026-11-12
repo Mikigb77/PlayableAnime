@@ -484,6 +484,27 @@ they know of; then their own rung with the day they reached it and the rungs the
 with the day. A ladder they don't stand on shows once they have heard of one of its rungs, as a
 scale beside their own way. What a rung is, and what climbing to it takes (G19), is never shown
 before the story tells it.
+**The path starts with the rungs everyone knows and widens when the story does** (decided
+2026-11-12, from Miki's "if the world has 3 or 4 levels, but then you start messing with gods and
+stuff like that, and the power levels scales, then that screen should also widen up or grow").
+A new world's ladder is drafted whole, up to the rung its strongest beings stand on, the
+legends, ancients and gods it has included, and it says how many of its rungs, counted from the
+lowest, everyone in the world has heard of: at least the first, and the first five where the
+drafter doesn't say. Those are heard of from the story's first moment ("Everyone has heard of
+it"), and are confirmed like any other; the summary the player reads before starting names
+exactly those, five at most, with "and beyond" when the ladder goes on (G1), and the narrator is
+told which they are, so people speak of a higher rung as legend, rumor or secret if they know of
+it at all. What the player read before starting, the character knows: a rung that their own
+premise or the draft's screen names is heard of from the first moment too. And once someone who
+shows a rung above every rung they know of (G20) has stood before the character, the path gains
+a row under its top, "Higher still", that says who stands somewhere up there ("Elder Mo stands
+somewhere up here.", three names at most, the story's key people first, or only that someone
+they have met does when they can name none of them), and neither the rung's name nor how far up
+it lies; when the story names that rung, it shows as any rung does, confirmed before them. A
+ladder drafted before this says nothing of which rungs everyone knows, so its path starts as it
+did, with their own rung and whatever the story has named to them, and says who stands higher
+still like any other. A ladder that gains rungs in the middle of a story, past the top it was
+drafted with, is not built yet.
 
 **G19 Breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers. A breakthrough
 needs what the world says it needs: resources (spirit stones, pills, a beast core), insight, time in
@@ -1717,7 +1738,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10); a rung reached leads how they grew on their sheet (G17) |
 | Talent | A character one of a kind with the sword and a genius at building practises an aura blade, arguing that both talents cover it, argues the opposite a turn later, starts learning a wall of aura while claiming a talent the sheet doesn't have, then derives a formula to connect the wall to their building, tries the same formula again and then new ground, over many seeds | The engine rules once, in the step that starts the learning, on how each talent stands to the new thing, and the pace follows from that very step. Arguing again changes nothing, and a talent nobody wrote on the sheet rules on nothing. A bridge is thrown for with the character's own skill: one that holds lifts that one thing a step and never past the talent, and ground already tried carries no second one (A4, A9) |
 | Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
-| The path | A cultivator on the first realm asks a senior which realms lie above, hears of a far higher one as a story, and later an elder stops beside them | A rung above the character's own shows on their path from the scene that names it, as heard of, and as known once someone who stands on it has stood before them; no rung shows that neither a scene nor something they know has named (G18, C6) |
+| The path | A cultivator on the first realm asks a senior which realms lie above, hears of a far higher one as a story, and later an elder stops beside them | A rung above the character's own shows on their path from the scene that names it, as heard of, and as known once someone who stands on it has stood before them; no rung shows that neither a scene nor something they know has named; in a world that says which rungs everyone knows, those show from the first moment, and someone above every rung they know of shows as standing higher still, with no rung named (G18, C6) |
 | Strong gift | A reborn character with time stop plays 50 turns | The gift wins the fights it should, the world notices and answers it, and at least one event with stakes can't be solved by fighting (G22) |
 | Race relations | A human walks into an elven city, then a beastkin enters a human town that once fought beastkin | Strangers react according to the races' history before they know the player, and that changes with what the player does (G23) |
 | Monster hunt | The player hunts a forest beast for its core, then passes through its territory again later | The core is worth what the world says, and the pack remembers (G24) |

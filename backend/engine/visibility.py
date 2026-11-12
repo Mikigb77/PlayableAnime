@@ -81,6 +81,8 @@ from engine.world.tuning import RUMOR_MIN_SEVERITY
 SINCE_LIMIT = 6
 # How many of their latest gains the sheet lists under how they grew.
 GREW_LIMIT = 30
+# How many of those they have seen stand above every rung they know of the path names.
+HIGHER_NAMES = 3
 # C10: how many of the player character's latest gains and losses `/status` weighs among them.
 SINCE_TRANSFERS = 3
 EN = Language.EN
@@ -294,10 +296,11 @@ class SheetRung(EngineModel):
 
 class SheetRungAbove(EngineModel):
     """A rung above their own, as far as they know of it (C6, `engine.path`): `known` once the
-    story confirmed it, only heard of until then. `note` is how they know ("Heard of, day 14",
-    "Confirmed before Elder Han, day 15"), `said` what they have learned or heard about it, in
-    the record's words, and `gap_below` whether rungs lie under it that nobody has named to
-    them. Never what the rung is or what reaching it takes: that is the story's to tell."""
+    story confirmed it, only heard of until then. `note` is how they know ("Everyone has heard
+    of it", "Heard of, day 14", "Confirmed before Elder Han, day 15"), `said` what they have
+    learned or heard about it, in the record's words, and `gap_below` whether rungs lie under
+    it that nobody has named to them. Never what the rung is or what reaching it takes: that is
+    the story's to tell."""
 
     name: str
     known: bool = False
@@ -310,11 +313,14 @@ class SheetPath(EngineModel):
     """One of the world's ladders (G18). `rungs` runs from its first rung up to where they
     stand, lowest first, so the last one is theirs, and is empty for a ladder they don't stand
     on. `above` holds the rungs over their own that they have heard of, lowest first, and
-    nothing else: which rungs lie higher is the story's to tell (C6)."""
+    nothing else: which rungs lie higher is the story's to tell (C6). `higher` is said once
+    someone who stands above all of those has stood before them ("Elder Mo stands somewhere up
+    here."), with neither the rung's name nor how far up it lies."""
 
     name: str
     rungs: list[SheetRung] = Field(default_factory=list)
     above: list[SheetRungAbove] = Field(default_factory=list)
+    higher: str = ""
 
 
 class SheetGain(EngineModel):
@@ -837,6 +843,10 @@ _WORDS = {
         "rung_known": "Confirmed",
         "rung_known_before": "Confirmed before {who}",
         "rung_learned": "From what you have learned",
+        "rung_common": "Everyone has heard of it",
+        "higher_one": "{who} stands somewhere up here.",
+        "higher_many": "{who} stand somewhere up here.",
+        "higher_someone": "Someone you have met stands somewhere up here.",
         "grew_breakthrough": "Broke through to {what}",
         "grew_learned": "Learned {what}",
         "grew_level": "{what}: {level}",
@@ -902,6 +912,10 @@ _WORDS = {
         "rung_known": "Lo comprobaste",
         "rung_known_before": "Lo comprobaste ante {who}",
         "rung_learned": "Por lo que has aprendido",
+        "rung_common": "Todo el mundo ha oído hablar de ello",
+        "higher_one": "{who} está en algún punto de aquí arriba.",
+        "higher_many": "{who} están en algún punto de aquí arriba.",
+        "higher_someone": "Alguien con quien te has cruzado está en algún punto de aquí arriba.",
         "grew_breakthrough": "Alcanzaste {what}",
         "grew_learned": "Aprendiste {what}",
         "grew_level": "{what}: {level}",
@@ -967,6 +981,10 @@ _WORDS = {
         "rung_known": "Ho vas comprovar",
         "rung_known_before": "Ho vas comprovar davant {of_who}",
         "rung_learned": "Pel que has après",
+        "rung_common": "Tothom n'ha sentit a parlar",
+        "higher_one": "{who} és en algun punt d'aquí dalt.",
+        "higher_many": "{who} són en algun punt d'aquí dalt.",
+        "higher_someone": "Algú amb qui t'has creuat és en algun punt d'aquí dalt.",
         "grew_breakthrough": "Vas assolir {what}",
         "grew_learned": "Vas aprendre {what}",
         "grew_level": "{what}: {level}",
@@ -1711,8 +1729,9 @@ class _Knowledge:
 
     def paths(self, player: Character) -> list[SheetPath]:
         """G18, C6. Each ladder as far as they know it: the rungs they climbed with when, their
-        own, and over it the rungs the story has named to them (`engine.path`). A ladder they
-        don't stand on shows once they have heard of a rung of it."""
+        own, over it the rungs they have heard of (`engine.path`), and whoever they have seen
+        stand higher still. A ladder they don't stand on shows once they have heard of a rung
+        of it."""
         paths = []
         for ladder in self.state.bible.ladders:
             own = path_mod.own_rung(player, ladder.id)
@@ -1734,6 +1753,7 @@ class _Knowledge:
                         note=self._dated("rung_reached", reached.get(own)),
                     )
                 )
+            standings = path_mod.known(self.state, player, ladder)
             above = [
                 SheetRungAbove(
                     name=_cap(ladder.rungs[standing.rung].name),
@@ -1742,11 +1762,27 @@ class _Knowledge:
                     said=path_mod.about(self.state, player, ladder.rungs[standing.rung].name),
                     gap_below=standing.gap_below,
                 )
-                for standing in path_mod.known(self.state, player, ladder)
+                for standing in standings
             ]
             if rungs or above:
-                paths.append(SheetPath(name=_cap(ladder.name), rungs=rungs, above=above))
+                top = standings[-1].rung if standings else own
+                higher = self._higher(path_mod.higher_still(self.state, player, ladder, top))
+                paths.append(
+                    SheetPath(name=_cap(ladder.name), rungs=rungs, above=above, higher=higher)
+                )
         return paths
+
+    def _higher(self, ids: list[str]) -> str:
+        """Who they have seen stand above every rung they know of, by name as far as they know
+        the names, or that someone does."""
+        if not ids:
+            return ""
+        words = _WORDS[self.language]
+        names = [name for name in map(self.name_of, ids) if name][:HIGHER_NAMES]
+        if not names:
+            return words["higher_someone"]
+        key = "higher_one" if len(names) == 1 else "higher_many"
+        return words[key].format(who=_join(names, self.language))
 
     def _reached(self, player: Character, ladder: PowerLadder) -> dict[int, int]:
         """When they reached each rung of a ladder, by its index, as far as their growth holds
@@ -1770,7 +1806,8 @@ class _Knowledge:
 
     def _rung_note(self, standing: path_mod.Standing) -> str:
         """How they know of a rung above their own: confirmed before someone they can name, or
-        only confirmed (C6), heard of in a scene, or learned from something they know."""
+        only confirmed (C6), learned from something they know, heard of as everyone has, or
+        heard of in a scene."""
         if standing.known_s is not None:
             who = self.name_of(standing.known_from or "")
             if who is None:
@@ -1779,6 +1816,8 @@ class _Knowledge:
             return self._dated("rung_known_before", standing.known_s, who=who, of_who=of_who)
         if standing.known:
             return _WORDS[self.language]["rung_learned"]
+        if standing.common:
+            return _WORDS[self.language]["rung_common"]
         return self._dated("rung_heard", standing.heard_s)
 
     def grew(self, player: Character) -> list[SheetGain]:

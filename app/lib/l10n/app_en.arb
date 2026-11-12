@@ -967,6 +967,7 @@
   "sheetPath": "Your path",
   "pathAbove": "What lies above?",
   "pathAboveNote": "Nobody has told you.",
+  "pathHigher": "Higher still",
   "pathUnmeasured": "Unmeasured",
   "pathUnmeasuredNote": "Nobody has told you what lies between.",
   "sheetGrew": "How you grew",

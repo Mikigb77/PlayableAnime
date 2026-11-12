@@ -1374,7 +1374,9 @@ def path_above(story: Story) -> list[tuple[str, bool, bool]]:
     passes_when=(
         "A rung above the character's own shows on their path from the scene that names it, as "
         "heard of, and as known once someone who stands on it has stood before them; no rung "
-        "shows that neither a scene nor something they know has named (G18, C6)"
+        "shows that neither a scene nor something they know has named; in a world that says "
+        "which rungs everyone knows, those show from the first moment, and someone above every "
+        "rung they know of shows as standing higher still, with no rung named (G18, C6)"
     ),
 )
 async def the_path(ev: Eval) -> None:
@@ -1440,3 +1442,43 @@ async def the_path(ev: Eval) -> None:
         )
         heard.append(len(said))
     ev.metric("rungs_named_by_scenes", heard)
+
+    # A world that says which of its rungs everyone has heard of: the first two.
+    bow = "I bow as the old man passes"
+    passes = "An old man in grey stops at the well and looks at you for a long moment."
+    for seed in ev.seeds(2, live=1):
+        world = worlds.cultivation_world()
+        realms = world.bible.ladders[0]
+        realms.known_to_all = 2
+        untold = {rung.name for rung in realms.rungs[realms.known_to_all :]}
+        story = ev.story(world, seed=seed)
+        played = await story.open()
+        said = {name for name in untold if path.named(played.narration, name)}
+        ev.check(
+            "a rung everyone has heard of shows from the first moment",
+            "Foundation Establishment" in {name for name, _, _ in path_above(story)},
+            f"{seed}: {path_above(story)}",
+        )
+        ev.check(
+            "with nobody above what they know of in sight, nobody stands higher still",
+            not status_view(story.state).sheet.paths[0].higher,
+            live=False,
+        )
+        scripted = at_the_well(story, passes, "elder-mo") if not ev.live else None
+        played = await story.act(
+            bow, act(bow, "bow", ActionKind.EXCHANGE, MINUTE), narration=scripted
+        )
+        said |= {name for name in untold if path.named(played.narration, name)}
+        (realm_path,) = status_view(story.state).sheet.paths
+        names = {rung.name for rung in realm_path.above}
+        ev.check(
+            "a rung above the ones everyone knows shows only once a scene names it",
+            names & untold <= said,
+            f"{seed}: shown {sorted(names)}, said {sorted(said)}",
+        )
+        ev.check(
+            "someone above every rung they know of stands higher still, with no rung named",
+            bool(realm_path.higher) and not names & untold,
+            f"{seed}: {realm_path.higher!r}, shown {sorted(names)}",
+            live=False,
+        )

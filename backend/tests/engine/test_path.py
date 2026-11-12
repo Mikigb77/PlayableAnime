@@ -5,7 +5,7 @@ import pytest
 from engine import path, pipeline
 from engine.base import DAY
 from engine.samples import cultivation_world, grounded_world
-from engine.state import Fact, FactKind, Rumor, RungHeard
+from engine.state import CharacterStatus, Fact, FactKind, Rumor, RungHeard
 
 
 @pytest.mark.parametrize(
@@ -103,6 +103,52 @@ def test_someone_who_hides_their_strength_confirms_nothing():
     path.hear(state, "They say Core Formation changes a man.")
 
     assert heard_of(state) == [("realms", 2, False)]
+
+
+def test_the_rungs_everyone_has_heard_of_need_no_scene_to_name_them():
+    # G18, C6: the world says how many of its rungs, from the lowest, everyone has heard of.
+    state = cultivation_world()
+    realms = state.bible.ladders[0]
+    realms.known_to_all = 3
+
+    above = path.known(state, state.player, realms)
+    assert [(s.rung, s.known, s.common, s.gap_below) for s in above] == [
+        (1, False, True, False),
+        (2, False, True, False),
+    ]
+    # A scene that names one of them is no news. Zhao, whom Lin has met, stands on the first,
+    # so the story confirms it without anyone saying its name.
+    assert path.hear(state, "Core Formation is where the elders sit.") == [
+        path.Told("realms", 1, known=True, before="zhao")
+    ]
+    assert heard_of(state) == [("realms", 1, True)]
+    # A rung above the ones everyone knows is still the story's to name.
+    assert path.hear(state, "Nascent Soul, they whisper.") == [path.Told("realms", 3, known=False)]
+    assert [(s.rung, s.known, s.common) for s in path.known(state, state.player, realms)] == [
+        (1, True, True),
+        (2, False, True),
+        (3, False, False),
+    ]
+
+
+def test_someone_above_every_rung_they_know_of_stands_higher_still():
+    # C6, G20: Lin has met Zhao, a rung above his own, and nobody has named that rung to him.
+    state = cultivation_world()
+    realms = state.bible.ladders[0]
+    lin = state.player
+
+    assert path.higher_still(state, lin, realms, top=0) == ["zhao"]
+    # Whoever is in the scene has stood before them, and someone they can name comes first.
+    state.scene.present_ids.append("elder-mo")
+    assert path.higher_still(state, lin, realms, top=0) == ["zhao", "elder-mo"]
+    # Once he knows of Zhao's rung, only the elder stands above all he knows of.
+    assert path.higher_still(state, lin, realms, top=1) == ["elder-mo"]
+    assert path.higher_still(state, lin, realms, top=2) == []
+    # Someone who hides under it shows nothing above (G20), and the dead stand nowhere.
+    state.characters["elder-mo"].sheet.ladders[0].shown_rung = 1
+    assert path.higher_still(state, lin, realms, top=1) == []
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    assert path.higher_still(state, lin, realms, top=0) == ["elder-mo"]
 
 
 def test_the_rungs_they_know_of_leave_room_for_the_ones_nobody_named():
