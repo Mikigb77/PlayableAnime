@@ -634,12 +634,12 @@ def _check_use(
     # unless the interpret step says otherwise, and a judgement left out never fails a step.
     plausibility = use.plausibility or Plausibility.PLAUSIBLE
     if plausibility is Plausibility.PLAUSIBLE:
-        return verdict(BeatVerdict.MADE_CANON, f"There is {_a(use.thing)} here.")
+        return verdict(BeatVerdict.MADE_CANON, _is_here(use.thing))
     if plausibility is Plausibility.ABSENT:
         return verdict(BeatVerdict.EMPTY, f"There is no {_bare(use.thing)} to be found here.")
     found = find_roll(f"find {use.thing}", ctx, rng)
     if found.result is StepResult.SUCCESS:
-        return verdict(BeatVerdict.MADE_CANON, f"There is {_a(use.thing)} here after all.", found)
+        return verdict(BeatVerdict.MADE_CANON, _is_here(use.thing, after_all=True), found)
     return verdict(BeatVerdict.EMPTY, f"The search turns up no {_bare(use.thing)}.", found)
 
 
@@ -671,9 +671,31 @@ _ARTICLES = tuple(
 )
 
 
+# A thing the story names as the one it is, and those that name several of them.
+_THE_ONE = tuple(a for a in _OWN_ARTICLES if not a.startswith(("un", "algu")))
+_SEVERAL = ("los ", "las ", "els ", "les ", "mis ", "tus ", "sus ")
+
+
+def _opening(text: str) -> str:
+    """A thing's name as its article is looked for: in lower case, with a plain apostrophe."""
+    return text.casefold().replace("\u2019", "'")
+
+
+def _is_here(thing: str, *, after_all: bool = False) -> str:
+    """That the thing a step reaches for is there. One the story names as the one it is ("la
+    pedra del pati", "el meu sarró") is here; any other is one of its kind ("There is a loose
+    stone here.")."""
+    text = thing.strip()
+    tail = " after all" if after_all else ""
+    lowered = _opening(text)
+    if lowered.startswith(_THE_ONE):
+        return f"{cap(text)} {'are' if lowered.startswith(_SEVERAL) else 'is'} here{tail}."
+    return f"There is {_a(text)} here{tail}."
+
+
 def _bare(thing: str) -> str:
     text = thing.strip()
-    lowered = text.casefold()
+    lowered = _opening(text)
     for article in _ARTICLES:
         if lowered.startswith(article):
             return text[len(article) :]
@@ -684,7 +706,7 @@ def _a(thing: str) -> str:
     """The thing as one of its kind: "a loose stone", "an old rope". One that is named with an
     article of its own, in any of the story's languages, keeps it ("una piedra suelta")."""
     text = thing.strip()
-    if text.casefold().startswith(("a ", "an ", "some ", *_OWN_ARTICLES)):
+    if _opening(text).startswith(("a ", "an ", "some ", *_OWN_ARTICLES)):
         return text
     bare = _bare(text)
     return f"{'an' if bare[:1].casefold() in 'aeiou' else 'a'} {bare}"

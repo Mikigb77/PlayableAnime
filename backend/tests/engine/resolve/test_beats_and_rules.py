@@ -15,6 +15,7 @@ from engine.contracts import (
     StopReason,
     UseSource,
 )
+from engine.resolve import checks
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
     CharacterStatus,
@@ -76,12 +77,17 @@ def test_something_the_place_cant_hold_is_an_empty_search_and_the_plan_stops():
 
 def test_a_thing_named_in_the_storys_language_keeps_its_own_article():
     """S10: a Spanish or a Catalan story names its things in its own language, so the engine's
-    line takes the thing with the article it came with and adds none of its own."""
+    line takes the thing with the article it came with and adds none of its own. One named as
+    the one it is ("la pedra", "el meu sarró") is here, as a line says of such a thing."""
     found = {
         "una piedra suelta": "There is una piedra suelta here.",
         "Un roc": "There is Un roc here.",
-        "l'espasa del mestre": "There is l'espasa del mestre here.",
-        "el meu sarró": "There is el meu sarró here.",
+        "l'espasa del mestre": "L'espasa del mestre is here.",
+        "l\u2019espasa del mestre": "L\u2019espasa del mestre is here.",
+        "el meu sarró": "El meu sarró is here.",
+        "la pedra del terra del pati": "La pedra del terra del pati is here.",
+        "las piedras del patio": "Las piedras del patio are here.",
+        "els rocs del marge": "Els rocs del marge are here.",
         "the old rope": "There is an old rope here.",
         "umbrella": "There is an umbrella here.",
     }
@@ -91,12 +97,16 @@ def test_a_thing_named_in_the_storys_language_keeps_its_own_article():
     missing = {
         "una ballesta cargada": "There is no ballesta cargada to be found here.",
         "la clau del pany": "There is no clau del pany to be found here.",
+        "l\u2019espasa": "There is no espasa to be found here.",
         "unes tisores": "There is no tisores to be found here.",
         "a loaded crossbow": "There is no loaded crossbow to be found here.",
     }
     for thing, reason in missing.items():
         intent = Intent(steps=[throw(thing, UseSource.NEW, Plausibility.ABSENT)])
         assert resolve(cultivation_world(), intent).steps[0].reason == reason
+    # What a search that was thrown for turned up is said the same two ways.
+    assert checks._is_here("a rope", after_all=True) == "There is a rope here after all."
+    assert checks._is_here("la corda", after_all=True) == "La corda is here after all."
 
 
 def test_an_uncertain_find_is_rolled_and_a_miss_stops_the_step():

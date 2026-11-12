@@ -547,7 +547,8 @@ order, and the first one that settles it ends the step:
    step. Each check is in `StepResolution.beats`, with a line that names the thing ("There is a
    loose stone here."): the engine gives it "a" or "an" unless it came with an article of its
    own, in English, Spanish or Catalan, since a story names its things in its language (S10:
-   "una piedra suelta", "l'espasa"). Words are matched one way only (`words.py`): every
+   "una piedra suelta"). A thing the story names as the one it is reads as that one: "La pedra
+   del pati is here.", "Las piedras del patio are here." Words are matched one way only (`words.py`): every
    meaningful word the model wrote must be in what the state holds, so "the knife Gennaro keeps
    under the counter" doesn't hold just because Gennaro is there. The model gives ids (`ref`) where
    it can.
@@ -1090,8 +1091,9 @@ Catalan story:
   dice; it finds it by building the same English sentence, which it couldn't in another language.
 - **`BOOK`** holds the lines the engine always writes the same way, in both languages: "Nothing
   stands in the way.", "It follows.", "A close call.", "certain", the three fallbacks for what a
-  miss costs and why an ending's claim is refused. A test fails when the engine words one of
-  them another way.
+  miss costs, why an ending's claim is refused, and three parts of a danger's number ("your own
+  step missed", "one more at their side", "two more at their side"). A test fails when the
+  engine words one of them another way.
 - **The director's titles have a book of their own** (`engine/director/titles.py`, below), which
   `saying.begin` reads before it asks the model: a card's title or "Elder Mo seeks you out"
   needs no call. An event that brings back one of the story's own threads carries the thread's
