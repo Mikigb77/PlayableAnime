@@ -663,6 +663,9 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
         "steps": [[s.kind.value if s.kind else None, s.duration_s] for s in result.resolution.steps]
         if result
         else [],
+        # R3: the scene's weight and how many words it came to, since its length follows it.
+        "weight": result.weight.value if result else None,
+        "words": len(result.scene.narration.split()) if result else None,
         **tally,
     } | telemetry.summary()
     logger.info("Turn %s", run.outcome, extra={"turn": fields})

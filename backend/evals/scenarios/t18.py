@@ -29,6 +29,7 @@ from engine.contracts import (
     PlaceChange,
     Plausibility,
     SceneEnd,
+    SceneWeight,
     StateDelta,
     UseSource,
 )
@@ -221,6 +222,122 @@ async def action_told_first(ev: Eval) -> None:
             ),
             played,
         )
+
+
+# --- A scene's length follows its weight (R3) ---------------------------------------------------
+
+# Miki's long story, read on 2026-11-10: the typical scene came to 258 words whether one question
+# was asked or a duel was fought.
+ASK_HU = "I ask Old Hu what the draught is for"
+STRIKE_ZHAO = "I draw my sword and strike at Zhao Kun"
+# At the medium setting the narrator is asked for 60 to 120 words for a passing moment and 250 to
+# 400 for a turning point, and a telling may run a little over or under what it was asked for.
+PASSING_AT_MOST, TURNING_AT_LEAST = 160, 200
+
+
+def ask_about_the_draught() -> Intent:
+    return plan(
+        step(
+            "ask Old Hu what the draught is for",
+            ActionKind.CONVERSATION,
+            20,
+            verb="ask",
+            target_ids=["old-hu"],
+        )
+    )
+
+
+def strike_at_zhao() -> Intent:
+    return plan(
+        attack(
+            "zhao",
+            "sword",
+            text="draw his sword and strike at Zhao Kun",
+            verb="strike",
+            aim=Aim.WOUND,
+        )
+    )
+
+
+@scenario(
+    "t18.length-follows-weight",
+    suite="T18",
+    title="Length follows weight",
+    requirements=("R3", "S6", "T18"),
+    passes_when=(
+        "The question is weighed a passing moment and told short, the fight's start with a key "
+        "character is weighed a turning point and given room, and the short scene still tells "
+        "the asking and ends on something to act on (R3)"
+    ),
+)
+async def length_follows_weight(ev: Eval) -> None:
+    passing = 0
+    for seed in ev.seeds(5, live=3):
+        quiet = ev.story(worlds.potion_stall(), seed=f"{seed}/quiet", under_way=True)
+        asked = await quiet.act(ASK_HU, ask_about_the_draught())
+        fight = ev.story(worlds.potion_stall(), seed=f"{seed}/fight", under_way=True)
+        struck = await fight.act(STRIKE_ZHAO, strike_at_zhao())
+
+        given = asked.plan.event or asked.plan.moment or asked.plan.happenings or asked.plan.talk
+        ev.check(
+            "a question with nothing at stake is a passing moment, unless the scene was given "
+            "something of its own to tell",
+            asked.plan.weight is (SceneWeight.ORDINARY if given else SceneWeight.LIGHT),
+            f"{seed}: {asked.plan.weight.value}",
+            live=False,
+        )
+        ev.check(
+            "a fight's start with a key character is a turning point",
+            struck.plan.weight is SceneWeight.HEAVY,
+            f"{seed}: {struck.plan.weight.value}",
+        )
+        ev.check(
+            "the narrator is asked for each scene's length, within the player's setting (S6)",
+            ("A passing moment: 60 to 120 words." in quiet.prompt(Node.NARRATOR))
+            is (asked.plan.weight is SceneWeight.LIGHT)
+            and "A turning point: 250 to 400 words." in fight.prompt(Node.NARRATOR),
+            seed,
+            live=False,
+        )
+        passing += asked.plan.weight is SceneWeight.LIGHT
+        if not ev.live:
+            continue
+        short, long = len(asked.narration.split()), len(struck.narration.split())
+        if asked.plan.weight is SceneWeight.LIGHT:
+            ev.check(
+                "the passing moment is told short",
+                0 < short <= PASSING_AT_MOST,
+                f"{seed}: {short} words",
+            )
+            await ev.judge(
+                "a short scene is still a whole scene",
+                Rubric(
+                    must=(
+                        "The scene tells Lin asking before Old Hu answers",
+                        "It ends on something Lin could act on",
+                    ),
+                    must_not=("It fills the moment with happenings nobody asked for",),
+                ),
+                asked,
+            )
+        if struck.plan.weight is SceneWeight.HEAVY:
+            ev.check(
+                "the turning point gets room",
+                long >= TURNING_AT_LEAST,
+                f"{seed}: {long} words",
+            )
+        if asked.plan.weight is not struck.plan.weight:
+            ev.check(
+                "the question comes to fewer words than the fight",
+                short < long,
+                f"{seed}: {short} against {long} words",
+            )
+    ev.check(
+        "most quiet questions are passing moments",
+        passing >= 3,
+        f"{passing} of 5",
+        live=False,
+    )
 
 
 # --- Where the character is (R8) ----------------------------------------------------------------
