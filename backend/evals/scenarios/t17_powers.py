@@ -36,6 +36,7 @@ from engine.contracts import (
 )
 from engine.resolve.powers import sensing
 from engine.resolve.powers import time_stop as stop
+from engine.resolve.powers.growth import GainKind
 from engine.resolve.powers.theories import NOTHING_BEHIND_IT
 from engine.state import (
     CharacterStatus,
@@ -885,10 +886,11 @@ def seclusion(hours: float = 30) -> Intent:
     "t17.breakthrough",
     suite="T17",
     title="Breakthrough",
-    requirements=("G19", "W10", "A4", "T17"),
+    requirements=("G19", "W10", "A4", "G17", "T17"),
     passes_when=(
         "The attempt can fail or wound, its length varies with the roll, and the world "
-        "interrupts it when something needs the player (G19, W10)"
+        "interrupts it when something needs the player (G19, W10); a rung reached leads how "
+        "they grew on their sheet (G17)"
     ),
 )
 async def breakthrough(ev: Eval) -> None:
@@ -911,6 +913,14 @@ async def breakthrough(ev: Eval) -> None:
         elif attempt.result is StepResult.SUCCESS:
             broke_through.append(played)
             ev.check("a breakthrough climbs the rung", rung == 1, seed)
+            grew = status_view(played.state).sheet.grew
+            ev.check(
+                "and leads how they grew on their sheet (G17)",
+                bool(grew)
+                and grew[0].kind is GainKind.BREAKTHROUGH
+                and "Foundation Establishment" in grew[0].text,
+                f"{seed}: {[g.text for g in grew[:1]]}",
+            )
             ev.check(
                 "and gets its picture (M1)",
                 played.plan.picture.trigger is PictureTrigger.BREAKTHROUGH,
@@ -1423,5 +1433,10 @@ async def the_path(ev: Eval) -> None:
                 f"{seed} turn {n + 1}: {shown}",
                 live=False,
             )
+        ev.check(
+            "asked which realms lie above, the story names one",
+            bool(said),
+            f"{seed}: no scene named a realm above Qi Condensation",
+        )
         heard.append(len(said))
     ev.metric("rungs_named_by_scenes", heard)

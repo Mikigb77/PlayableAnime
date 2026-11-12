@@ -49,6 +49,7 @@ import re
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from engine import levels
 from engine import talent as talent_mod
@@ -83,6 +84,21 @@ from engine.state.sheet import (
     Technique,
 )
 from engine.state.world import WorldState
+
+# The words a gain is recorded in (`Gain.change`, `Gain.source`). A screen that shows how the
+# character grew reads the record back through `read_gain`, so it never repeats them.
+LEARNED = "learned"
+NEW_USE = "a new way to use "
+TO = " to "
+WATCHING = "watching"
+IN_PLAY = "pulled off in play"
+BY_USE = "use in play"
+PRACTICE = "practice"
+
+
+def _trained(teacher: Teacher) -> str:
+    return f"training ({teacher.value})"
+
 
 FULL_EFFORT_S = 12 * HOUR
 LONG_STRETCH_RATE = 1 / 3
@@ -640,8 +656,8 @@ def _skill_made(state: WorldState, actor: Character, step: IntentStep, done: Pra
     new = Skill(name=skill_name, level=raised, notes=skill.notes if skill is not None else "")
     gain = Gain(
         what=skill_name,
-        change=f"{level.value} to {raised.value}",
-        source=f"training ({training.teacher.value})",
+        change=f"{level.value}{TO}{raised.value}",
+        source=_trained(training.teacher),
         reason=step.text,
     )
     change = CharacterChange(id=actor.id, skills=[new], gains=[gain], practice=[done])
@@ -699,8 +715,8 @@ def _technique_made(
     technique = _technique(actor, step, training.power_id, mastery)
     gain = Gain(
         what=technique.name,
-        change="learned",
-        source="watching" if instant else f"training ({training.teacher.value})",
+        change=LEARNED,
+        source=WATCHING if instant else _trained(training.teacher),
         reason=step.text,
     )
     change = CharacterChange(id=actor.id, techniques=[technique], gains=[gain], practice=[done])
@@ -743,8 +759,8 @@ def _grant_made(
     )
     gain = Gain(
         what=technique.name,
-        change=f"a new way to use {power.name}",
-        source=f"training ({training.teacher.value})",
+        change=f"{NEW_USE}{power.name}",
+        source=_trained(training.teacher),
         reason=step.text,
     )
     change = CharacterChange(
@@ -813,9 +829,7 @@ def proven(
                 mastery=move_start(actor, move.name, start),
             )
         )
-        gains.append(
-            Gain(what=move.name, change="learned", source="pulled off in play", reason=step.text)
-        )
+        gains.append(Gain(what=move.name, change=LEARNED, source=IN_PLAY, reason=step.text))
         if move.practice is not None:
             learned.append(move.practice.model_copy(update={"effort_s": 0}))
     if not techniques:
@@ -896,7 +910,7 @@ def used(
         moves.now[technique.id] = after
         changed.append(after)
         if after.mastery is not before.mastery:
-            gains.append(_mastery_gain(before, after, "use in play", step.text))
+            gains.append(_mastery_gain(before, after, BY_USE, step.text))
             risen.append(_risen(state, actor, before, after))
     if not changed:
         return "", StateDelta()
@@ -937,7 +951,7 @@ def practised(
     moves.now[technique.id] = after
     gains, reason = [], ""
     if after.mastery is not before.mastery:
-        gains = [_mastery_gain(before, after, "practice", step.text)]
+        gains = [_mastery_gain(before, after, PRACTICE, step.text)]
         reason = _risen(state, actor, before, after)
     change = CharacterChange(id=actor.id, techniques=[after], gains=gains)
     return reason, StateDelta(characters=[change]), so_far
@@ -955,7 +969,7 @@ def practice_cut(actor: Character, so_far: TrainingSoFar, lived_s: int, why: str
         return StateDelta()
     gains = []
     if after.mastery is not technique.mastery:
-        gains = [_mastery_gain(technique, after, "practice", why)]
+        gains = [_mastery_gain(technique, after, PRACTICE, why)]
     return StateDelta(characters=[CharacterChange(id=actor.id, techniques=[after], gains=gains)])
 
 
@@ -965,7 +979,7 @@ def _with_uses(technique: Technique, more: int, gift: float) -> Technique:
 
 
 def _mastery_gain(before: Technique, after: Technique, source: str, reason: str) -> Gain:
-    change = f"{MASTERY_WORDS[before.mastery]} to {MASTERY_WORDS[after.mastery]}"
+    change = f"{MASTERY_WORDS[before.mastery]}{TO}{MASTERY_WORDS[after.mastery]}"
     return Gain(what=after.name, change=change, source=source, reason=reason)
 
 
@@ -973,3 +987,72 @@ def _risen(state: WorldState, actor: Character, before: Technique, after: Techni
     whose = cap(possessive(state, actor.id))
     was, now = MASTERY_WORDS[before.mastery], MASTERY_WORDS[after.mastery]
     return f"{whose} {after.name} has grown from {was} to {now}."
+
+
+# --- a gain read back (A4, G17) --------------------------------------------------------------
+
+
+class GainKind(StrEnum):
+    """What a gain on the record was."""
+
+    BREAKTHROUGH = "breakthrough"  # a rung of one of the world's ladders (G19)
+    SKILL = "skill"  # a skill rose a level
+    LEARNED = "learned"  # a technique, new on the sheet
+    MASTERY = "mastery"  # a technique they had, a level better
+    NEW_USE = "new_use"  # a new way to use a power, earned
+
+
+class GainHow(StrEnum):
+    """How a gain was made, as far as its record says."""
+
+    SELF = Teacher.SELF.value
+    MASTER = Teacher.MASTER.value
+    BOOK = Teacher.BOOK.value
+    RIVAL = Teacher.RIVAL.value
+    WATCHING = Teacher.WATCHING.value
+    PLAY = "play"  # by doing it when it counted
+    PRACTICE = "practice"  # hours of practising it
+
+
+@dataclass(frozen=True)
+class GainRead:
+    """A gain as its record tells it: what kind it was, the level it reached for a skill or a
+    technique, the power a new use belongs to, and how it was made."""
+
+    kind: GainKind
+    now: SkillLevel | Mastery | None = None
+    power: str = ""
+    how: GainHow | None = None
+
+
+def read_gain(gain: Gain) -> GainRead | None:
+    """The record of a gain read back, or None for one written in words this module doesn't
+    write."""
+    how = _how(gain.source)
+    if gain.source == GrowthKind.BREAKTHROUGH.value:
+        return GainRead(GainKind.BREAKTHROUGH)
+    if gain.change == LEARNED:
+        return GainRead(GainKind.LEARNED, how=how)
+    if gain.change.startswith(NEW_USE):
+        return GainRead(GainKind.NEW_USE, power=gain.change.removeprefix(NEW_USE), how=how)
+    was, _, now = gain.change.partition(TO)
+    levels_ = {level.value: level for level in SkillLevel}
+    if was in levels_ and now in levels_:
+        return GainRead(GainKind.SKILL, now=levels_[now], how=how)
+    masteries = {words: mastery for mastery, words in MASTERY_WORDS.items()}
+    if was in masteries and now in masteries:
+        return GainRead(GainKind.MASTERY, now=masteries[now], how=how)
+    return None
+
+
+def _how(source: str) -> GainHow | None:
+    if source in (IN_PLAY, BY_USE):
+        return GainHow.PLAY
+    if source == PRACTICE:
+        return GainHow.PRACTICE
+    if source == WATCHING:
+        return GainHow.WATCHING
+    found = re.fullmatch(r"training \((\w+)\)", source)
+    if found is None or found[1] not in {teacher.value for teacher in Teacher}:
+        return None
+    return GainHow(found[1])

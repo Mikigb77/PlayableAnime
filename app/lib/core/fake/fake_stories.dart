@@ -798,6 +798,28 @@ const _seedSheet = <String, Object?>{
     },
   ],
   'talent_notes': ['Falling Leaf Palm: grows twice as fast, close to your talent (The sword)'],
+  // How he grew (A4, G17), latest first, each gain with its day and how it was made.
+  'grew': [
+    {
+      'kind': 'mastery',
+      'when': 'Day 4',
+      'text': 'Falling Leaf Palm: Skilled',
+      'how': 'By doing it',
+    },
+    {'kind': 'skill', 'when': 'Day 3', 'text': 'Herb lore: Fair', 'how': 'From a manual'},
+    {
+      'kind': 'learned',
+      'when': 'Day 3',
+      'text': 'Learned Falling Leaf Palm',
+      'how': 'With a master',
+    },
+    {
+      'kind': 'breakthrough',
+      'when': 'Day 2',
+      'text': 'Broke through to Qi Condensation',
+      'how': '',
+    },
+  ],
 };
 
 /// The seeded story's memory: only what Shen Yu knows (C6), worded as `engine.visibility` words it.
