@@ -4,9 +4,12 @@
 2. `interpret` (model): the player's words become an `Intent`, checked in code (V3, R2, A9). A
    reading that would do what can't be taken back is read once more by the larger model (B8).
 3. `resolve` (code): resolve, play out, direct and record the director's plan, then the plan is
-   checked (A2, R6, W16, M1, C5). The decided steps go out at once, before the telling (A3).
+   checked (A2, R6, W16, M1, C5). The decided steps go out at once, before the telling (A3). In
+   a Spanish or a Catalan story the cheapest model starts saying the engine's lines in the
+   story's language (S10, `graph.turn.saying`), and the steps go out as soon as it has.
 4. `build_context` (code): the narrator's brief (R3, C3).
 5. `narrate` (model, streamed): the scene, with F4's cut-away and template fallbacks (S3, B7).
+   It holds its first words back until the decided steps have gone out.
 6. `apply_update` (code): the narrator's update applied and checked (C1), the scene built.
 7. `after_turn`: the chapter summary every 20 turns (C3), the C1 check on the whole turn, and
    the result.
@@ -47,13 +50,13 @@ from graph.llm import (
     StreamRestart,
     TextDelta,
 )
-from graph.turn import check
+from graph.turn import check, saying
 from graph.turn import ending as ending_mod
 from graph.turn.context import asks, chapter_prompt, interpret_prompt, narration_brief
 from graph.turn.errors import EndingRefused, LimitReached, UnreadableAction
 from graph.turn.form import intent_form
 from graph.turn.outputs import ChapterOutput, NarratorOutput
-from graph.turn.scene import details, scene_draft
+from graph.turn.scene import scene_draft
 from graph.turn.types import (
     CHAPTER_TURNS,
     MAX_CHAPTER_TURNS,
@@ -64,6 +67,7 @@ from graph.turn.types import (
     Reading,
     StepsDecided,
     TurnDeps,
+    TurnEvent,
     TurnInput,
     TurnKind,
     TurnResult,
@@ -274,7 +278,10 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
         categories = list(dict.fromkeys(h.category.value for h in hits))
         log_block("interpret", categories, stage="action", source="code")
         _limit_detail(hits)
-        raise LimitReached(gravest.category.value, limits.MESSAGES[gravest.category])
+        raise LimitReached(
+            gravest.category.value,
+            limits.message(gravest.category, turn.ctx.settings.language),  # S10
+        )
     return {
         "intent": checked.intent,
         "overflow": checked.overflow,
@@ -298,7 +305,10 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
         # N6: an ending keeps only what the world allows of the note.
         kept, refused = ending_mod.earned(world, intent, turn.ctx, turn_rng(turn))
         if refused and not turn.drop_refused:
-            raise EndingRefused(refused)
+            # S10: each reason in the story's language, like any other line of the engine's.
+            raise EndingRefused(
+                await saying.refusals_said(runtime.context.llm, refused, turn.ctx.settings.language)
+            )
         intent = kept
         left_out = tuple(r.text for r in refused)
     if intent is None:
@@ -332,14 +342,24 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     played = replace(played, state=pipeline.record_direction(played.state, plan, turn.ctx))
     plan, found = check.check_plan(played.state, plan, turn.ctx)
     issues += found
+    # S10: the engine's own lines, in the story's language. The fixed ones are said at once;
+    # the rest by the cheapest model, in a call that runs beside the narrator (B8).
+    language = turn.ctx.settings.language
+    lines = saying.lines_of(played.resolution, plan, language)
+    wording = saying.begin(runtime.context.llm, lines.texts(), language)
+    if wording.task is not None:
+        runtime.context.tasks.append(wording.task)
+    lines = lines.reworded(wording.word)
+    decided: StepsDecided | None = None
     if read is not None and played.resolution.steps:
         # A3, B7: the steps are decided, so the player can watch them before the telling.
         reading = Reading(intent=read, overflow=tuple(state.get("overflow") or ()))
         # W10: with the heading over a scene that hours or days passed in, as it will be saved.
-        heading = passage_label(
-            world.bible.calendar, world.world_s, played.state.world_s, turn.ctx.settings.language
-        )
-        runtime.stream_writer(StepsDecided(details(played.resolution), reading, heading))
+        heading = passage_label(world.bible.calendar, world.world_s, played.state.world_s, language)
+        decided = StepsDecided(lines.details, reading, heading)
+        if wording.task is None:
+            runtime.stream_writer(decided)
+            decided = None
     return {
         "intent": intent,
         "played": played,
@@ -348,6 +368,9 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
         "ending": ending,
         "left_out": left_out,
         "world": played.state,
+        "lines": lines,
+        "wording": wording,
+        "decided": decided,  # still to go out, once its lines are said (`narrate`)
         "issues": _issues(state, issues),
     }
 
@@ -380,6 +403,31 @@ async def build_context(state: TurnState) -> dict[str, Any]:
     return {"brief": brief}
 
 
+class _Gate:
+    """A3: the decided steps go out before the first word of the telling. While their lines are
+    still being said in the story's language (S10), what the narrator streams is held here."""
+
+    def __init__(self, write: Callable[[TurnEvent], None], *, shut: bool) -> None:
+        self._write = write
+        self._shut = shut
+        self._held: list[TurnEvent] = []
+
+    def emit(self, event: TurnEvent) -> None:
+        if self._shut:
+            self._held.append(event)
+        else:
+            self._write(event)
+
+    def open(self, first: TurnEvent | None = None) -> None:
+        """Sends `first`, then everything held, in the order it came."""
+        if first is not None:
+            self._write(first)
+        self._shut = False
+        for event in self._held:
+            self._write(event)
+        self._held.clear()
+
+
 @timed("narrate")
 async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any]:
     """Step 5: the one large call on the critical path (B8), streamed as it is written (S3, B7).
@@ -389,10 +437,35 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     real-world instructions (F3, `engine.limits.harm_instructions`) counts as blocked. A
     narration that fails for any other reason, after the model layer's one retry, ends the turn
     with `llm_unavailable` (T7).
+
+    Where the turn's lines are still being said in the story's language (S10), the narrator
+    starts at once all the same, and its words wait for the decided steps to go out first (A3):
+    as soon as the lines are said, or in the engine's English once `saying.GRACE_S` has passed.
     """
+    wording: saying.Wording = state["wording"]
+    if wording.task is None:
+        return await _narrate(state, runtime.context.llm, runtime.stream_writer)
+    decided: StepsDecided | None = state.get("decided")
+    gate = _Gate(runtime.stream_writer, shut=decided is not None)
+
+    async def say_lines() -> tuple[saying.Lines, list[Issue]]:
+        found = await wording.settle()
+        lines = state["lines"].reworded(wording.word)
+        gate.open(replace(decided, details=lines.details) if decided is not None else None)
+        return lines, found
+
+    said = asyncio.create_task(say_lines())
+    runtime.context.tasks.append(said)
+    update = await _narrate(state, runtime.context.llm, gate.emit)
+    lines, found = await said
+    return {**update, "lines": lines, "decided": None, "issues": _issues(state, found)}
+
+
+async def _narrate(
+    state: TurnState, llm: ModelClient, emit: Callable[[TurnEvent], None]
+) -> dict[str, Any]:
+    """The scene told, streamed through `emit`, with F4's cut-away and template fallbacks."""
     brief = state["brief"]
-    llm = runtime.context.llm
-    emit = runtime.stream_writer
     shown = False
 
     def recipe(text: str) -> LLMBlocked | None:
@@ -549,6 +622,7 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})
     # M4, M5: a scene that changed the look it pictures draws the new look.
     world, plan = pipeline.settle_picture(world, state["plan"])
+    lines: saying.Lines = state["lines"]
     scene = scene_draft(
         turn,
         before=state["passage"].state,
@@ -557,6 +631,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         plan=plan,
         narration=narration,
         mode=mode,
+        # S10: the scene keeps its lines as the player was shown them.
+        shown=lines.details,
+        event_title=lines.event_title,
     )
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 

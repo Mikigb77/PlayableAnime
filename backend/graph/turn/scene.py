@@ -6,6 +6,8 @@ that found something new or came up empty (R2), the chain (A9), where a plan sto
 event (W16), the picture code planned (M1) and the time.
 """
 
+import re
+
 from engine.contracts import (
     BeatVerdict,
     ChoiceKind,
@@ -17,6 +19,7 @@ from engine.contracts import (
     SuggestionPlan,
 )
 from engine.looks import place_looks
+from engine.resolve import throw as dice
 from engine.state.records import RollRecord, Throw
 from engine.state.world import WorldState
 from engine.world.telling import account
@@ -53,18 +56,25 @@ def scene_draft(
     plan: DirectorPlan,
     narration: NarratorOutput,
     mode: NarrationMode,
+    shown: SceneDetails | None = None,
+    event_title: str | None = None,
 ) -> SceneDraft:
-    """`before` is the state the scene started from; `after` the state once it played out."""
+    """`before` is the state the scene started from; `after` the state once it played out.
+    `shown` is the turn's details as the player was shown them, and `event_title` its event's
+    title, where they were said again in the story's language (S10, `graph.turn.saying`)."""
     elapsed = after.world_s - before.world_s
     lived = after.player.personal_s(after.world_s) - before.player.personal_s(before.world_s)
+    event = None
+    if plan.event is not None:
+        event = SceneEvent(size=plan.event.size, title=event_title or plan.event.title)
     return SceneDraft(
         turn=turn.ctx.turn,
         kind=turn.kind,
         player_action=_player_action(turn),
         narration=narration.text,
         choices=choices(narration, plan.suggestions) if mode != "template" else [],
-        details=details(resolution),
-        event=SceneEvent(size=plan.event.size, title=plan.event.title) if plan.event else None,
+        details=shown if shown is not None else details(resolution),
+        event=event,
         picture=picture(after, plan.picture, narration.image_prompt, mode),
         timeline_id=before.timeline_id,
         world_start_s=before.world_s,
@@ -105,11 +115,16 @@ def choices(narration: NarratorOutput, plan: SuggestionPlan) -> list[Choice]:
     return picked
 
 
-def details(resolution: Resolution) -> SceneDetails:
-    """API.md's `SceneDetails`, so the player can see why (A8)."""
+def details(resolution: Resolution, *, throws_told: bool = True) -> SceneDetails:
+    """API.md's `SceneDetails`, so the player can see why (A8).
+
+    The engine writes each throw into its reason in words, and the app leaves that sentence
+    out, since it shows the dice themselves. `throws_told=False` leaves it out here, for
+    reasons that are said again in the story's language (S10), where the app could no longer
+    find the sentence."""
     links = [link for step in resolution.steps for link in step.chain]
     return SceneDetails(
-        steps=[_step_detail(step) for step in resolution.steps],
+        steps=[_step_detail(step, throws_told) for step in resolution.steps],
         chain=[
             LinkDetail(link=link.text, outcome_class=link.outcome_class, reason=link.reason)
             for link in links
@@ -119,13 +134,28 @@ def details(resolution: Resolution) -> SceneDetails:
     )
 
 
-def _step_detail(step: StepResolution) -> StepDetail:
+def without_throw(reason: str, roll: RollRecord | None) -> str:
+    """A reason without the sentence that tells its throw (`engine.resolve.throw.told`): what
+    is left is what the throw meant. A reason worded another way is left whole."""
+    if roll is None or roll.throw is None:
+        return reason
+    found = re.search(re.escape(dice.told(roll)), reason, re.IGNORECASE)
+    if found is None:
+        return reason
+    rest = reason[found.end() :].removeprefix(".")
+    return " ".join(f"{reason[: found.start()]}{rest}".split())
+
+
+def _step_detail(step: StepResolution, throws_told: bool = True) -> StepDetail:
+    def why(reason: str, roll: RollRecord | None) -> str:
+        return reason if throws_told else without_throw(reason, roll)
+
     beats = [
         BeatDetail(
             beat=beat.text,
             thing=beat.thing,
             verdict=beat.verdict,
-            reason=beat.reason,
+            reason=why(beat.reason, beat.roll),
             roll=_roll_detail(beat.roll),
         )
         for beat in step.beats
@@ -136,7 +166,7 @@ def _step_detail(step: StepResolution) -> StepDetail:
             by=peril.by,
             outcome_class=peril.outcome_class,
             harm=peril.harm,
-            reason=peril.reason,
+            reason=why(peril.reason, peril.roll),
             roll=_roll_detail(peril.roll),
         )
         for peril in step.perils
@@ -144,7 +174,7 @@ def _step_detail(step: StepResolution) -> StepDetail:
     return StepDetail(
         text=step.text,
         outcome_class=step.outcome_class,
-        reason=step.reason,
+        reason=why(step.reason, step.roll),
         roll=_roll_detail(step.roll),
         beats=beats or None,
         struck=struck or None,

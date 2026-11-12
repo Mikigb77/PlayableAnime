@@ -53,6 +53,14 @@ DEFAULT_NODES: Mapping[Node, NodeSettings] = {
     Node.NARRATOR: NodeSettings(
         "gemini-3.5-flash", CallOptions(thinking="low", max_output_tokens=8192, timeout_s=60)
     ),
+    # S10: a turn's own lines ("Speed, 2 dice", why a step went as it did) said in a Spanish
+    # or a Catalan story's language, beside the narrator. The dice wait for it, so it is the
+    # cheapest model with a short deadline: a few hundred tokens in and out, about a twentieth
+    # of a cent, with room for a turn of eight steps that each struck back. The graph stops
+    # waiting after `graph.turn.saying.GRACE_S` and shows the engine's English.
+    Node.WORDING: NodeSettings(
+        "gemini-3.1-flash-lite", CallOptions(thinking="low", max_output_tokens=4096, timeout_s=6)
+    ),
     Node.CHECKER: NodeSettings(
         "gemini-3.1-flash-lite", CallOptions(thinking="low", max_output_tokens=2048, timeout_s=30)
     ),

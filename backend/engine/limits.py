@@ -27,7 +27,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from engine.context import Rating
+from engine.context import Language, Rating
 from engine.contracts.delta import StateDelta
 from engine.contracts.intent import Intent, IntentStep
 from engine.real_entities import EXACT_ORGANISATIONS, REAL_ORGANISATIONS, REAL_PEOPLE
@@ -66,6 +66,50 @@ MESSAGES = {
     ),
     LimitCategory.HARM_INSTRUCTIONS: "That part of the story can't be told as written.",
 }
+# S10: the same words in a Spanish or a Catalan story, with the rating as the app names it.
+_MESSAGES_IN = {
+    Language.ES: {
+        LimitCategory.MINOR: (
+            "El romance y el sexo solo ocurren entre personajes que la historia sabe que son "
+            "adultos. Prueba otra cosa."
+        ),
+        LimitCategory.SEXUAL_VIOLENCE: (
+            "Eso no forma parte de una historia juvenil. Prueba otra cosa."
+        ),
+        LimitCategory.SEXUAL: (
+            "En una historia juvenil, el romance llega hasta un beso. Prueba otra cosa."
+        ),
+        LimitCategory.REAL_PERSON: (
+            "En las historias solo hay personas ficticias. Prueba con alguien de este mundo."
+        ),
+        LimitCategory.HARM_INSTRUCTIONS: (
+            "Esa parte de la historia no se puede contar tal como está escrita."
+        ),
+    },
+    Language.CA: {
+        LimitCategory.MINOR: (
+            "El romanç i el sexe només passen entre personatges que la història sap que són "
+            "adults. Prova una altra cosa."
+        ),
+        LimitCategory.SEXUAL_VIOLENCE: (
+            "Això no forma part d'una història juvenil. Prova una altra cosa."
+        ),
+        LimitCategory.SEXUAL: (
+            "En una història juvenil, el romanç arriba fins a un petó. Prova una altra cosa."
+        ),
+        LimitCategory.REAL_PERSON: (
+            "A les històries només hi ha persones fictícies. Prova amb algú d'aquest món."
+        ),
+        LimitCategory.HARM_INSTRUCTIONS: (
+            "Aquesta part de la història no es pot explicar tal com està escrita."
+        ),
+    },
+}
+
+
+def message(category: LimitCategory, language: Language = Language.EN) -> str:
+    """What the player reads when a step crosses `category`, in their story's language."""
+    return _MESSAGES_IN.get(language, MESSAGES)[category]
 
 
 @dataclass(frozen=True)

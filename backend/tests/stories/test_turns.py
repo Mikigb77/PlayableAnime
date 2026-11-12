@@ -7,6 +7,7 @@ from django.db.models import F
 
 from billing.models import CreditHold, LedgerEntry
 from engine import limits
+from engine.context import Language, StorySettings
 from graph.llm import Block, Fail, Node, Reply
 from graph.turn import UnreadableAction
 from media.models import Image, ScenePicture
@@ -180,6 +181,52 @@ def test_a_scene_that_hours_passed_in_carries_a_heading(player, make_story, mode
     assert (first.passage_label, second.passage_label) == ("", "Three hours later")
     assert scene_data(first)["time"]["passage_label"] is None
     assert scene_data(second)["time"]["passage_label"] == "Three hours later"
+
+
+def test_a_spanish_storys_steps_reach_the_app_in_spanish_and_are_saved_so(
+    player, make_story, model, log_lines
+):
+    """S10: the engine's lines go out in the story's language, the fixed ones from code and the
+    rest from the wording model, and the saved scene carries the same lines."""
+    settings = StorySettings(language=Language.ES).model_dump(mode="json")
+    story = opened(player, make_story, model, settings=settings)
+    climb = {**STEP_AROUND["steps"][0], "text": "trepar por el muro del pozo", "verb": "climb"}
+    climb |= {"target_ids": [], "kind": "task", "proposed_duration_s": 30}
+    climb["facts"] = {"challenge": "hard"}
+    walk = {**STEP_AROUND["steps"][0], "text": "rodear a Zhao", "target_ids": []}
+    model.backend.script(Node.INTERPRET, Reply(json={**STEP_AROUND, "steps": [walk, climb]}))
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+    model.backend.script(
+        Node.WORDING,
+        Reply(
+            json={
+                "lines": [
+                    {"n": 1, "text": "Velocidad, 2 dados"},
+                    {"n": 2, "text": "una tarea difícil, nivel 3"},
+                ]
+            }
+        ),
+    )
+
+    played = play(
+        player, story, {"kind": "action", "action": "Trepo por el muro", "expected_version": 2}
+    )
+
+    assert played.names[:3] == ["turn.started", "steps.decided", "narration.delta"]
+    [decided] = played.named("steps.decided")
+    walked, climbed = decided["details"]["steps"]
+    assert walked["reason"] == "Nada lo impide."
+    throw = climbed["roll"]["throw"]
+    assert throw["hand_why"] == "Velocidad, 2 dados"
+    assert [part["text"] for part in throw["made_of"]] == ["una tarea difícil, nivel 3"]
+    assert climbed["reason"] == ""  # the throw alone, which the dice show
+    assert played.completed["scene"]["details"] == decided["details"]
+    assert scene_data(Scene.objects.get(story=story, turn=2))["details"] == decided["details"]
+    # T5: the wording call is counted with the turn's other calls, and nothing of it is logged.
+    lines = [line for line in log_lines() if line["message"].startswith("Turn ")]
+    [line] = [line for line in lines if line["turn"]["turn"] == 2]
+    assert line["turn"]["by_node"]["wording"]["calls"] == 1
+    assert "Velocidad" not in str(log_lines())
 
 
 def test_a_choice_plays_the_label_of_the_last_scene_suggestion(player, make_story, model):

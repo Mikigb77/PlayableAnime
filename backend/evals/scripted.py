@@ -3,7 +3,8 @@
 Each story gets its own fake backend (`graph.llm.FakeBackend`) under the real model client, so a
 deterministic turn still goes through the client's parsing, streaming, retries and telemetry.
 The interpret node gets the line's scripted interpretation, the narrator the line's scripted
-answer or a stock scene, and the summarizer a stock chapter.
+answer or a stock scene, the summarizer a stock chapter, and the wording step each line as it
+stands.
 
 Token counts follow the prompts the graph really builds, with fixed answer sizes, so the costs
 a deterministic run reports compare turns fairly (K8) without being real prices.
@@ -24,6 +25,7 @@ from graph.llm import Block, Fail, FakeBackend, Hang, Node, Reply, offline_reply
 from graph.llm.fake import TINY_PNG, Step
 from graph.llm.types import Request, Usage
 from graph.turn import NarratorOutput
+from graph.turn.saying import lines_asked
 
 # Answer sizes in tokens, about what Gemini writes for each (T5's first live numbers will
 # replace them).
@@ -131,6 +133,12 @@ class ScriptedModel:
             return self._answer(request, answer, NARRATION_TOKENS[self.length])
         if node is Node.SUMMARIZER:
             return self._answer(request, {"summary": STOCK_SUMMARY}, SUMMARY_TOKENS)
+        if node is Node.WORDING:
+            # S10: each line back as it stands, as a line already in the story's language is.
+            lines = [{"n": n, "text": text} for n, text in lines_asked(prompt)]
+            return self._answer(
+                request, {"lines": lines}, sum(tokens(line["text"]) for line in lines)
+            )
         if node is Node.PICTURE:
             return Reply(images=(TINY_PNG,))
         return offline_reply(request)

@@ -37,6 +37,8 @@ class Node(StrEnum):
     # something that can't be taken back, such as ending a friendly bout as an attack (W1).
     SECOND_READING = "second_reading"
     NARRATOR = "narrator"
+    # S10: says the engine's own lines of a turn in a Spanish or a Catalan story's language.
+    WORDING = "wording"
     CHECKER = "checker"
     TICK = "tick"
     SUMMARIZER = "summarizer"
