@@ -629,6 +629,41 @@ def test_a_missed_criterion_is_reported_with_the_judges_reason():
     ]
 
 
+def test_a_failed_judgement_of_lines_shows_the_lines_it_read():
+    """S10, T18: the judge's reason only points at a line ("row 2"), and the run's log is all
+    that can be read of a live run afterwards. So a failed judgement of lines lists them."""
+    pairs = [
+        ("Speed, 2 dice", "Velocidad, 2 dados"),
+        ("The guard strikes back.", "The guard strikes back."),
+    ]
+    rubric = Rubric(must=("Every said line is in Spanish",))
+
+    def strict(request: Request) -> Reply:
+        answer = {"id": "M1", "verdict": "fail", "reason": "Row 2 is left in English."}
+        return Reply(json=JudgeOutput(answers=[answer]))
+
+    def models(judge) -> Models:
+        return Models(
+            backend=FakeBackend(default=offline_reply, keep_requests=False),
+            judge_backend=FakeBackend(default=judge, keep_requests=False),
+        )
+
+    async def script(ev: Eval) -> None:
+        ev.check("played", True)
+        await ev.judge_lines("the lines in es", rubric, pairs, language="Spanish")
+
+    result = play(script, mode=Mode.LIVE, models=models(strict))
+
+    assert result.status == "failed"
+    assert result.failures() == [
+        "judge the lines in es: M1 (Every said line is in Spanish) failed: Row 2 is left in "
+        "English.",
+        "judge the lines in es read: Speed, 2 dice => Velocidad, 2 dados | "
+        "The guard strikes back. => The guard strikes back.",
+    ]
+    assert play(script, mode=Mode.LIVE, models=models(passing_judge)).failures() == []
+
+
 def test_a_failed_live_scenario_says_which_turns_were_refused_and_why():
     """T18: a story whose first action can't be read fails every check after it, and the run's
     log is all that can be read of it afterwards. So a failed scenario lists the turns that

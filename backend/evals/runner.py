@@ -21,7 +21,7 @@ import time
 import traceback
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import aclosing
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import Any
 
@@ -740,6 +740,12 @@ class ScenarioResult:
                         f"judge {judgement.name}: {v.id} ({_clip(v.criterion, CRITERION_CHARS)}) "
                         f"failed: {' '.join(v.reason.split()) or 'no reason given'}"
                     )
+            # The rows a judge of lines read (S10), which the reasons above only point at. Eval
+            # stories are made up, so they can be printed.
+            rows = judgement.subject.get("lines") or []
+            if rows:
+                read = " | ".join(f"{was} => {said}" for was, said in rows)
+                lines.append(f"judge {judgement.name} read: {read}")
         if lines:
             lines += self._refusals()
         return lines
@@ -932,6 +938,8 @@ class Eval:
         if not self.live:
             return None
         judgement = await judge_lines(self.judge_client(), name, rubric, pairs, language=language)
+        # Kept with the judgement, so a failed run's log shows the lines the judge read.
+        judgement = replace(judgement, subject={"lines": [list(pair) for pair in pairs]})
         self.judged.append(judgement)
         return judgement
 

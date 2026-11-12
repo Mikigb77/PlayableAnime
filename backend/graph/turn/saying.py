@@ -131,13 +131,17 @@ class Lines:
 
     details: SceneDetails
     event_title: str | None = None
-    # The title is a thread's own, which the story keeps in its language already (N1).
-    title_kept: bool = False
+    # What is the story's own already and stands as it is: the title of a thread that comes
+    # back (N1), and the name of the one who struck.
+    kept: frozenset[str] = frozenset()
 
     def reworded(self, word: Callable[[str], str]) -> Lines:
         """These lines with each one the engine wrote passed through `word`. What the player
         or a model wrote in the story's language already (a step's own text, a check's thing, a
         link of a theory) is left alone."""
+
+        def own(text: str) -> str:
+            return text if text in self.kept else word(text)
 
         def roll(shown: RollDetail | None) -> RollDetail | None:
             if shown is None:
@@ -174,7 +178,7 @@ class Lines:
                     "struck": [
                         struck.model_copy(
                             update={
-                                "by": word(struck.by),
+                                "by": own(struck.by),
                                 "reason": word(struck.reason),
                                 "roll": roll(struck.roll),
                             }
@@ -192,11 +196,10 @@ class Lines:
             chain = [
                 link.model_copy(update={"reason": word(link.reason)}) for link in self.details.chain
             ]
-        title = self.event_title
         return Lines(
             details=self.details.model_copy(update={"steps": steps, "chain": chain}),
-            event_title=word(title) if title and not self.title_kept else title,
-            title_kept=self.title_kept,
+            event_title=own(self.event_title) if self.event_title else self.event_title,
+            kept=self.kept,
         )
 
     def texts(self) -> list[str]:
@@ -218,16 +221,20 @@ def lines_of(
     threads: Mapping[str, Thread] | None = None,
 ) -> Lines:
     """The turn's lines as the engine wrote them. Outside English each reason comes without the
-    sentence that tells its throw, which the dice show (`graph.turn.scene.details`). An event
-    that brings back one of the story's `threads` under the thread's own title is in the
-    story's words already, unless the director titled that thread itself."""
+    sentence that tells its throw, which the dice show (`graph.turn.scene.details`). Two kinds
+    of line are the story's own already and are kept as they stand: the title of an event that
+    brings back one of the story's `threads` under the thread's own title, unless the director
+    titled that thread itself, and the name of a single foe who struck back."""
     event = plan.event
     thread = (threads or {}).get(event.thread_id or "") if event else None
-    own = thread is not None and thread.title == event.title and not titles.written(event.title)
+    perils = [peril for step in resolution.steps for peril in step.perils]
+    kept = {peril.by for peril in perils if len(peril.by_ids) == 1}
+    if thread is not None and thread.title == event.title and not titles.written(event.title):
+        kept.add(event.title)
     return Lines(
         details=details(resolution, throws_told=language is Language.EN),
         event_title=event.title if event else None,
-        title_kept=own,
+        kept=frozenset(kept),
     )
 
 
@@ -272,10 +279,30 @@ def _names(text: str) -> list[str]:
     return names
 
 
+# Words of the engine's lines that only English has: none is a word of Spanish or of Catalan.
+_ENGLISH = frozenset(
+    "the is are you your there here and of with against it but their they this that from not "
+    "was were have its them what who when which than too by at for if will would level speed "
+    "strength wounded hurt missed own strikes back step task hard easy short above below rung "
+    "rungs".split()
+)
+
+
+def _left_in_english(english: str, said: str) -> bool:
+    """Whether the model handed an English line back as it stood. A line that was in the
+    story's language already, such as a danger the player named, comes back the same too,
+    and that one is said."""
+    if " ".join(said.split()).casefold() != " ".join(english.split()).casefold():
+        return False
+    return any(word.casefold() in _ENGLISH for word in _WORD.findall(english))
+
+
 def faithful(english: str, said: str) -> bool:
     """Whether `said` can stand for the engine's line: it says something, keeps every number in
-    figures and every name as spelled, and doesn't run on."""
+    figures and every name as spelled, doesn't run on, and isn't the English line again."""
     if not said.strip() or len(said) > 3 * len(english) + 40:
+        return False
+    if _left_in_english(english, said):
         return False
     if Counter(_NUMBER.findall(english)) != Counter(_NUMBER.findall(said)):
         return False

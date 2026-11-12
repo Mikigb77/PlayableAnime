@@ -655,7 +655,20 @@ def _in_scene(state: WorldState, thing: str, ref: str | None = None) -> bool:
     return any_mentions(names, thing) is not None
 
 
-_ARTICLES = ("a ", "an ", "the ", "some ", "my ", "your ", "his ", "her ", "their ")
+# The small words a thing is named with. A Spanish or a Catalan story names its things in its
+# own language (S10), so the thing brings its own: "una piedra suelta", "l'espasa".
+_OWN_ARTICLES = (
+    *("un ", "una ", "unos ", "unas ", "uns ", "unes ", "el ", "la ", "lo ", "los ", "las "),
+    *("els ", "les ", "l'", "mi ", "mis ", "tu ", "tus ", "su ", "sus ", "algún ", "alguna "),
+    *("algun ", "el meu ", "la meva ", "el teu ", "la teva ", "el seu ", "la seva "),
+)
+_ARTICLES = tuple(
+    sorted(
+        ("a ", "an ", "the ", "some ", "my ", "your ", "his ", "her ", "their ", *_OWN_ARTICLES),
+        key=len,
+        reverse=True,
+    )
+)
 
 
 def _bare(thing: str) -> str:
@@ -668,8 +681,10 @@ def _bare(thing: str) -> str:
 
 
 def _a(thing: str) -> str:
+    """The thing as one of its kind: "a loose stone", "an old rope". One that is named with an
+    article of its own, in any of the story's languages, keeps it ("una piedra suelta")."""
     text = thing.strip()
-    if text.casefold().startswith(("a ", "an ", "some ")):
+    if text.casefold().startswith(("a ", "an ", "some ", *_OWN_ARTICLES)):
         return text
     bare = _bare(text)
     return f"{'an' if bare[:1].casefold() in 'aeiou' else 'a'} {bare}"

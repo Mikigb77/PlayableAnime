@@ -12,14 +12,17 @@ import pytest
 
 from engine.context import Language, Rating, StorySettings, TurnContext
 from engine.contracts import (
+    Aim,
     BeatVerdict,
     DirectorPlan,
     EventKind,
     EventSource,
     Harm,
     OutcomeClass,
+    Peril,
     PlannedEvent,
     Resolution,
+    StepResolution,
 )
 from engine.resolve import chain, core
 from engine.resolve.core import NOTHING_IN_THE_WAY
@@ -222,10 +225,78 @@ def test_the_book_holds_the_engines_own_lines_in_both_languages():
         ),
         ("It follows.", "", False),
         ("It follows.", "Se sostiene. " + "Y además llueve. " * 6, False),  # it runs on
+        # The English line handed back is no wording of it, however it is spaced or cased.
+        ("The guard strikes back.", "The guard strikes back.", False),
+        ("There is una piedra suelta here.", "there is  una piedra suelta here.", False),
+        ("Speed, 2 dice", "Speed, 2 dice", False),
+        ("There is una piedra suelta here.", "Aquí hay una piedra suelta.", True),
+        # What was the story's own already comes back as it stood, and that is its wording.
+        ("el derrumbe del techo", "el derrumbe del techo", True),
+        ("Zhao Kun", "Zhao Kun", True),
+        ("Falling Star Release", "Falling Star Release", True),
     ],
 )
 def test_a_said_line_keeps_the_engines_numbers_and_names(english, said, kept):
     assert saying.faithful(english, said) is kept
+
+
+def test_an_english_line_handed_back_counts_as_kept_and_is_asked_again(fake, make_client):
+    """S10: the log's `lines_kept` shows it, and the next turn asks for the line again."""
+    danger = "el derrumbe del techo"
+    says(fake, {HAND: HAND, TASK: "una tarea difícil, nivel 3", danger: danger})
+
+    async def said():
+        wording = saying.begin(make_client(), [HAND, TASK, danger], Language.ES)
+        issues = await wording.settle()
+        return wording, issues, saying.begin(make_client(), [HAND, TASK, danger], Language.ES)
+
+    wording, issues, again = run(said())
+
+    assert [(i.code, i.detail) for i in issues] == [(saying.KEPT, "1 of 3")]
+    assert wording.word(HAND) == HAND and wording.word(danger) == danger
+    assert again.asked == 1 and again.word(TASK) == "una tarea difícil, nivel 3"
+    assert saying.lines_asked(fake.calls(Node.WORDING)[-1].prompt) == [(1, HAND)]
+    again.task.cancel()
+
+
+def struck_back(by: str, *foe_ids: str) -> Resolution:
+    blow = Peril(
+        by_ids=list(foe_ids),
+        by=by,
+        aim=Aim.WOUND,
+        outcome_class=OutcomeClass.CERTAIN,
+        reason=f"{cap(by)} strikes back. It hurts you.",
+        result=StepResult.SUCCESS,
+        harm=Harm.HURT,
+    )
+    step = StepResolution(
+        index=0,
+        text="aguantar la puerta",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason=NOTHING_IN_THE_WAY,
+        result=StepResult.SUCCESS,
+        duration_s=30,
+        perils=[blow],
+    )
+    return Resolution(steps=[step])
+
+
+def test_the_name_of_a_lone_foe_stands_and_the_rest_of_who_struck_is_said():
+    """S10: a name is the story's own, so nothing says it again. Several foes are joined by
+    the engine's "and", and a danger may be one the engine worded."""
+    troll = "el trol de las cavernas"
+    alone = saying.lines_of(struck_back(troll, "troll"), DirectorPlan(), Language.ES)
+
+    assert alone.kept == {troll}
+    assert alone.texts() == [
+        NOTHING_IN_THE_WAY,
+        "El trol de las cavernas strikes back. It hurts you.",
+    ]
+    assert alone.reworded(str.upper).details.steps[0].struck[0].by == troll
+
+    for by, ids in (("Zhao Kun and Elder Mo", ("zhao", "mo")), ("the long drop", ())):
+        told_by = saying.lines_of(struck_back(by, *ids), DirectorPlan(), Language.ES)
+        assert not told_by.kept and by in told_by.texts()
 
 
 def test_an_english_story_says_nothing_again(fake, make_client):
@@ -278,6 +349,12 @@ def test_the_model_says_the_rest_once_and_it_is_remembered(fake, make_client):
     prompt = asked.prompt.messages[-1].text
     assert "## LANGUAGE\nSpanish from Spain, speaking to the player as tú" in prompt
     assert "dice: dados" in prompt and "dice: daus" in catalan.prompt.messages[-1].text
+    # Health is said so that it fits a man or a woman, since nothing on record says which.
+    assert "you are wounded: tienes heridas." in prompt and "con heridas" not in prompt
+    assert "you are wounded: tens ferides." in catalan.prompt.messages[-1].text
+    system = asked.prompt.system
+    assert "never with an adjective that takes a gender" in system
+    assert "none comes back in English" in system
 
 
 def test_a_line_the_model_changed_or_left_out_stays_in_english(fake, make_client):
@@ -532,11 +609,11 @@ def test_a_thread_of_the_storys_own_comes_back_under_the_title_it_keeps(fake, ma
         return saying.lines_of(Resolution(steps=[]), plan, Language.ES, {"feud": feud})
 
     own = returning("La valla de Bram")
-    assert own.title_kept and own.texts() == []
+    assert own.kept == {"La valla de Bram"} and own.texts() == []
     assert own.reworded(str.upper).event_title == "La valla de Bram"
 
     old = returning("A rival")
-    assert not old.title_kept and old.texts() == ["A rival"]
+    assert not old.kept and old.texts() == ["A rival"]
 
     async def begun():
         return saying.begin(make_client(), old.texts(), Language.ES)
