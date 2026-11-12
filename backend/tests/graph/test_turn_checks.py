@@ -1,9 +1,11 @@
 """The code checks that run before narration (C5): intent, resolution (A2, R6) and plan."""
 
+from engine.apply import DeltaSource, apply_delta
 from engine.context import ContentPrefs, GoreLevel, ImageSetting, Rating, StorySettings, TurnContext
 from engine.contracts import (
     ActionKind,
     Aim,
+    CharacterChange,
     DirectorPlan,
     EventKind,
     EventSource,
@@ -51,6 +53,7 @@ from graph.turn.check import (
     BEYOND_TERMS,
     BREAKTHROUGH,
     CLOCK_SCENE_END,
+    LOOKS_UNSEEN,
     MAX_STEPS,
     check_intent,
     check_plan,
@@ -794,6 +797,34 @@ def test_the_scene_end_keeps_its_last_moment_and_leaves_out_the_dead():
     assert checked.summary is None
     assert [i.code for i in issues] == ["blank_scene_end", "dead_present"]
     assert delta.scene_end.present_ids == ["luca", "bartender", "new_guard"]  # never mutated
+
+
+def test_a_scene_written_without_the_appearance_never_rewrites_it():
+    """R9, C9: a scene that wasn't handed the player character's appearance made up whatever
+    it writes for one, so the kept appearance stands. A lasting change it names is still
+    added to the kept one, and other people's appearances are theirs to write."""
+    state = grounded_world()
+    kept = state.player.appearance
+    delta = StateDelta(
+        characters=[
+            CharacterChange(
+                id="luca", appearance="Tall, blond, blue eyes.", look_change="a broken nose"
+            ),
+            CharacterChange(id="carmine", appearance="Sixties, stooped, a cane."),
+        ]
+    )
+
+    checked, issues = check_update(delta, state, looks=False)
+    luca, carmine = checked.characters
+    assert luca.appearance is None and luca.look_change == "a broken nose"
+    assert carmine.appearance == "Sixties, stooped, a cane."
+    assert [(i.code, i.subject) for i in issues] == [(LOOKS_UNSEEN, "luca")]
+    applied = apply_delta(state, checked, ctx(), source=DeltaSource.NARRATOR).state
+    assert applied.player.appearance == f"{kept} A broken nose."
+    assert applied.player.look_version == state.player.look_version + 1
+    # A scene that was handed it may write it again, as before.
+    checked, issues = check_update(delta, state)
+    assert checked.characters[0].appearance == "Tall, blond, blue eyes." and issues == []
 
 
 def test_a_scene_end_that_gives_only_the_time_takes_the_scenes_last_sentence():

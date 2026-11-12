@@ -340,6 +340,136 @@ async def length_follows_weight(ev: Eval) -> None:
     )
 
 
+# --- Looks and stock phrases (R9) ---------------------------------------------------------------
+
+# Miki's long story, read on 2026-11-10: "deep black eyes" in 16 scenes of 187 and the leather
+# boots in 17, because the narrator had the character's looks on every turn.
+PLAIN_QUESTIONS = (
+    "I ask Old Hu what the draught is for",
+    "I ask Old Hu where he gathers his herbs",
+    "I ask Old Hu how long he has kept this stall",
+)
+TIE_HAIR = "I tie my hair back and ask Old Hu what he wants for the draught"
+# What a scripted scene leans on, three scenes running.
+STOCK = "Old Hu strokes his thin beard. Your steady eyes hold his gaze."
+
+
+def ask_old_hu(text: str) -> Intent:
+    return plan(
+        step(
+            text.removeprefix("I "),
+            ActionKind.CONVERSATION,
+            20,
+            verb="ask",
+            target_ids=["old-hu"],
+        )
+    )
+
+
+def scripted_scene(n: int, *, rewrites_looks: bool = False) -> dict:
+    """A scripted scene that leans on the same wording as the others and, when asked, writes
+    Lin an appearance it was never handed, as a live one can."""
+    looks = CharacterChange(id="lin", appearance="Tall, with golden hair and green eyes.")
+    update = StateDelta(characters=[looks] if rewrites_looks else [])
+    return {
+        "narration": f"(scripted scene {n}) {STOCK}",
+        "suggestions": [],
+        "update": update.model_dump(mode="json"),
+    }
+
+
+def player_record(prompt: str) -> str:
+    return prompt.split("## PLAYER CHARACTER\n", 1)[-1].split("\n\n## ", 1)[0]
+
+
+@scenario(
+    "t18.looks-and-stock-phrases",
+    suite="T18",
+    title="Looks and stock phrases",
+    requirements=("R9", "C9", "T18"),
+    passes_when=(
+        "The plain scenes are written without the character's appearance and don't describe "
+        "how they look, a scene that writes them one leaves the kept appearance as it was, the "
+        "hair they tie back is the hair on record, and wording three scenes repeated is handed "
+        "to the narrator as worn (R9)"
+    ),
+)
+async def looks_and_stock_phrases(ev: Eval) -> None:
+    for seed in ev.seeds(3, live=2):
+        story = ev.story(worlds.potion_stall(), seed=seed, under_way=True)
+        kept = story.state.player.appearance
+        plain: list[Played] = []
+        for n, question in enumerate(PLAIN_QUESTIONS):
+            scripted = None if ev.live else scripted_scene(n, rewrites_looks=n == 2)
+            played = await story.act(question, ask_old_hu(question), narration=scripted)
+            handed = played.result is not None and played.result.looks
+            picture = played.plan.picture
+            shown = picture is not None and (
+                picture.kind is PictureKind.SCENE or picture.subject_id == "lin"
+            )
+            ev.check(
+                "a plain scene is handed no appearance, unless its picture shows them",
+                handed is shown,
+                f"{seed}: turn {played.turn}",
+            )
+            ev.check(
+                "and its brief carries none",
+                ('"appearance"' in player_record(story.prompt(Node.NARRATOR))) is handed,
+                f"{seed}: turn {played.turn}",
+                live=False,
+            )
+            if not handed:
+                plain.append(played)
+        ev.check(
+            "the appearance on record is the one the story keeps (C9)",
+            story.state.player.appearance == kept,
+            seed,
+        )
+        tied = await story.act(TIE_HAIR, ask_old_hu(TIE_HAIR))
+        ev.check(
+            "an action about their hair is handed the appearance",
+            tied.result is not None and tied.result.looks,
+            seed,
+        )
+        prompt = story.prompt(Node.NARRATOR)
+        ev.check(
+            "with the hair on record",
+            "black hair tied back" in player_record(prompt),
+            seed,
+            live=False,
+        )
+        worn = (
+            prompt.split("## WORN\n", 1)[-1].split("\n\n## ", 1)[0] if "## WORN" in prompt else ""
+        )
+        ev.check(
+            "wording three scenes repeated is handed over as worn",
+            "eyes hold his gaze" in worn and "hu" not in words(worn).split(),
+            f"{seed}: {worn}",
+            live=False,
+        )
+        if plain:
+            await ev.judge(
+                "plain scenes that don't describe the character",
+                Rubric(
+                    must=("Each scene tells Lin's question and Old Hu's answer",),
+                    must_not=(
+                        "A scene describes Lin's own eyes, hair, face, build or clothes",
+                        "A scene names one of Lin's traits or powers, such as his past life's "
+                        "memories or his weak body, though the action doesn't use it",
+                    ),
+                ),
+                plain,
+            )
+        await ev.judge(
+            "the hair on record",
+            Rubric(
+                must=("The scene shows Lin tying his hair back before Old Hu answers",),
+                must_not=("Lin's hair is any colour but black",),
+            ),
+            tied,
+        )
+
+
 # --- Where the character is (R8) ----------------------------------------------------------------
 
 # Miki, 2026-11-08: a Spanish story took the character from a temple under the earth to "un claro",

@@ -48,7 +48,7 @@ from engine.visibility import clock_view
 from graph.llm import BadKey, ByokKey, LLMError, LLMUnavailable, TurnTelemetry, build_client
 from graph.turn import (
     MAX_CHAPTER_TURNS,
-    RECENT_SCENES,
+    WORN_SCENES,
     EndingRefused,
     NarrationDelta,
     NarrationReset,
@@ -195,10 +195,11 @@ def _choice_label(story: Story, turn: int, choice_id: str | None) -> str:
 
 def _past_scenes(story: Story, state: WorldState) -> tuple[PastScene, ...]:
     """The scenes the next chapter covers (at most `MAX_CHAPTER_TURNS` since the last chapter,
-    C3), and never fewer than the last `RECENT_SCENES`, which the narrator reads in full."""
+    C3), and never fewer than the last `WORN_SCENES`: the narrator reads the latest few in
+    full, and code reads them all for the wording they repeated (R9)."""
     last_chapter = max((chapter.to_turn for chapter in state.chapters), default=0)
     chapter = Q(turn__gt=last_chapter, turn__lte=last_chapter + MAX_CHAPTER_TURNS)
-    recent = Q(turn__gt=state.turn - RECENT_SCENES)
+    recent = Q(turn__gt=state.turn - WORN_SCENES)
     rows = (
         Scene.objects.live()
         .filter(story=story, turn__lte=state.turn)
@@ -666,6 +667,10 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
         # R3: the scene's weight and how many words it came to, since its length follows it.
         "weight": result.weight.value if result else None,
         "words": len(result.scene.narration.split()) if result else None,
+        # R9: whether the scene was handed the player character's appearance, and how many worn
+        # phrases it was handed to say another way.
+        "looks": result.looks if result else None,
+        "worn": result.worn if result else None,
         **tally,
     } | telemetry.summary()
     logger.info("Turn %s", run.outcome, extra={"turn": fields})

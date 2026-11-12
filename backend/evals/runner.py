@@ -81,7 +81,7 @@ from graph.llm.telemetry import CallRecord
 from graph.llm.types import Backend
 from graph.turn import (
     MAX_CHAPTER_TURNS,
-    RECENT_SCENES,
+    WORN_SCENES,
     NarrationDelta,
     NarrationReset,
     PastScene,
@@ -585,9 +585,9 @@ class Story:
         )
 
     def _past_scenes(self) -> tuple[PastScene, ...]:
-        """As the endpoint reads them: those the next chapter covers, and the latest few."""
+        """As the endpoint reads them: those the next chapter covers, and the latest dozen."""
         last_chapter = max((c.to_turn for c in self.state.chapters), default=0)
-        latest = self.state.turn - RECENT_SCENES
+        latest = self.state.turn - WORN_SCENES
         return tuple(
             s
             for s in self.scenes

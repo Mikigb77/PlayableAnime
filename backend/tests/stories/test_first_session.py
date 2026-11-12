@@ -104,7 +104,7 @@ def test_a_new_players_first_story_draws_its_first_pictures_on_the_house(
     spent = -sum((e.amount_cents for e in entries.exclude(kind=EntryKind.STARTER)), Decimal(0))
     assert spent + account.balance_cents == 50
     assert account.balance_cents < 5  # less than a turn's hold is left
-    # About 3.7 cents a turn and a key scene or two: the $0.50 lasts about 12 turns. Both
+    # About 4 cents a turn and a key scene or two: the $0.50 lasts about 11 turns. Both
     # models' system text, with the narrator's guide to the brief (T5) and every rule the
     # interpret step reads by (the last ones W2's crowd and V3's unnamed "him"), bills in full
     # here: the scripted model has no prompt cache, and this small world's start is under Vertex

@@ -41,6 +41,9 @@ CHAPTER_TURNS = 20
 MAX_CHAPTER_TURNS = 3 * CHAPTER_TURNS
 # The narrator reads this many of the latest scenes in full.
 RECENT_SCENES = 3
+# R9: code reads this many of the latest scenes for the wording they repeated
+# (`graph.turn.worn`).
+WORN_SCENES = 12
 
 NarrationMode = Literal["full", "cutaway", "template"]
 ResetReason = Literal["cutaway", "template", "retry"]
@@ -85,8 +88,8 @@ class TurnInput:
     (B12). `ctx.turn` is the turn being played, one more than `state.turn`. `action` is the
     player's text, or the label of the suggestion they picked. `scenes` are saved scenes, oldest
     first: every one the next chapter summary covers (C3: those since the last chapter, at most
-    `MAX_CHAPTER_TURNS` of them), and never fewer than the last `RECENT_SCENES`, which the
-    narrator reads in full.
+    `MAX_CHAPTER_TURNS` of them), and never fewer than the last `WORN_SCENES`: the narrator
+    reads the last `RECENT_SCENES` in full, and code reads them all for worn wording (R9).
     """
 
     state: WorldState
@@ -325,6 +328,10 @@ class TurnResult:
     issues: tuple[Issue, ...]
     timings_ms: dict[str, int] = field(default_factory=dict)
     ending: Ending | None = None
+    # R9: whether the scene was handed the player character's appearance, and how many worn
+    # phrases it was handed to say another way.
+    looks: bool = True
+    worn: int = 0
 
     @property
     def narration_mode(self) -> NarrationMode:
