@@ -272,7 +272,7 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
         log_block("interpret", list(block.categories), stage=block.stage, source="model")
         raise UnreadableAction(categories=block.categories, stage=block.stage) from None
     # F3, G12, F2: a step over a hard limit never plays, so nothing is resolved or narrated.
-    hits = limits.check_action(world, checked.intent, turn.ctx.rating)
+    hits = limits.check_action(world, checked.intent, turn.ctx.rating, turn.ctx.settings.language)
     gravest = limits.gravest(hits)
     if gravest is not None:
         categories = list(dict.fromkeys(h.category.value for h in hits))

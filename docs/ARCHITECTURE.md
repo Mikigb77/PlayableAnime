@@ -1557,14 +1557,31 @@ Gemini's filters back them (F5, above), and the code enforces what it can see, s
 nor a player can talk past a hard limit.
 
 **Hard limits in code (`engine/limits.py`, F3, F2, G12).** Plain Python with unit tests, called
-by the turn graph:
+by the turn graph. Romance, sex and a child's body or age are read in English, Spanish and
+Catalan (S10); the Spanish and Catalan words are in `engine/limit_words.py`:
 
 | Limit | What the code does | Category |
 | --- | --- | --- |
-| Adults only in romance (F3) | A romantic or sexual step (read from the intent's verb, text and beats) never plays unless the actor and every character it targets have an age of 18 or more recorded and nothing childlike in their appearance or description, whatever age they are given. A partner the story doesn't know yet is the narrator's to introduce as an adult with an age; once known, the check holds them to it. | `minor` |
+| Adults only in romance (F3) | A romantic or sexual step (read from the intent's verb, text and beats, in English and in the story's language) never plays unless the actor and every character it targets have an age of 18 or more recorded and nothing childlike in their appearance or description, whatever age they are given. A description is read in the three languages whatever the story's, since a world may be written in any. A partner the story doesn't know yet is the narrator's to introduce as an adult with an age; once known, the check holds them to it. | `minor` |
 | Teen's line (F2) | In a Teen story a step beyond a kiss, or a sexual assault, never plays. Mature plays both within the table. | `sexual`, `sexual_violence` |
 | Fictional people (G12) | A step that targets a real living person never plays, and a new character or faction named after a real person or organisation is left out of the narrator's update (a known one keeps its name). Drafting does the same: a premise, revision or edit that names a real person is refused, and the drafted world and character are cleaned ([Drafting](#drafting-a-world-and-a-character)). The names are a curated backstop in `engine/real_entities.py`; naming a real organisation in an action is allowed, as a backdrop. | `real_person` |
 | No instructions (F3) | A narration with real-world drug, weapon or hacking know-how that reads like a procedure (code or commands, numbered steps, or lab amounts with things to do with them) counts as blocked, so it is retold as a cut-away. It is checked before each streamed piece is sent, so the stream stops at the piece that would complete the recipe. Know-how told as an outcome passes. | `harm_instructions` |
+
+**The words of each language (S10).** `limits.intimacy(step, language)` reads a step's words.
+In an English story they are English. In a Spanish or a Catalan story the reading names the
+verb in English and may word the rest in the story's language, so both sets of words are
+read and the graver reading stands. Each language keeps its own list, because a word means
+different things in each: Catalan "petó" is a kiss and Spanish "peto" a breastplate, and
+the story's words that only look English (Spanish "molestar", to bother someone) are taken
+out before the English words are read. As in English, a word with an everyday sense is tied
+to the words around it: "violar la ley" breaks a law, "besar la mano" is a greeting,
+"acostarse con fiebre" is going to bed ill and "acariciar al perro" is petting a dog. A kiss
+the story's words put on a hand or a ring stays a greeting although the reading's English verb
+is "kiss". A false reading costs a refused step, so the tests hold both sides: what must be
+caught, and ordinary lines that must pass. A child or an age in a description counts when the
+words are about the character, in figures or in words ("Tiene quince años", "16 anys, prima",
+"Lia, de 15 años", "aparenta unos doce años"), and not about their family, their past or a
+span of time ("madre de un niño de cinco años", "parecía un niño cuando llegó", "fa 10 anys").
 
 A step that never plays ends the turn with `LimitReached`, before anything resolves, so nothing is
 narrated, saved or charged, and the app shows its message like an unreadable action with a
@@ -1602,7 +1619,9 @@ Add a moderator by making them staff and putting them in the group.
 ratings table, both ratings, a grounded story and the hard limits, with a judge rubric, and
 `moderation.evals` loads them and builds each case's world. Each case is also a `t15.content.*`
 scenario in the story evals ([below](#story-evals)): the deterministic ones run in CI on every PR
-(and in `tests/graph/test_turn_limits.py`), the rest in the live run.
+(and in `tests/graph/test_turn_limits.py`), the rest in the live run. A case with a `language`
+plays in a story in it (S10): its cast is described and its action written in Spanish or
+Catalan, so the live run has the real model read such an action and the engine refuse it.
 
 ## Story evals
 

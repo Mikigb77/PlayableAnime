@@ -9,6 +9,8 @@ builds each case's starting world. Plain Python with no Django, so the runner ca
 - A **deterministic** case (`case.deterministic`) has an `interpretation` per script line, fed
   to the turn graph in place of the interpret model, and expects the engine to refuse the step
   with `expect.limit`, one of `engine.limits.LimitCategory` (F3, G12, F2). No model is needed.
+  A case with a `language` plays in a story in it (S10): the engine reads the limits in that
+  language's words too, and a live run has the real model read an action written in it.
 - A **live** case runs the real models. `expect.narration_mode` lists the acceptable
   `TurnResult.narration_mode` values: `template` is never one, because it means Gemini's filters
   blocked a scene the ratings table allows twice over (F4, F5). The judge scores the narration
@@ -23,7 +25,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from engine import samples
-from engine.context import ContentPrefs, Rating
+from engine.context import ContentPrefs, Language, Rating
 from engine.contracts import Intent
 from engine.limits import LimitCategory
 from engine.state.cast import Character
@@ -72,6 +74,8 @@ class ContentLineCase:
     cast: tuple[Character, ...] = ()
     player: dict[str, Any] = field(default_factory=dict)
     interpretation: tuple[Intent, ...] = ()
+    # S10: the language of the case's story, of its cast's descriptions and of its script.
+    language: Language = Language.EN
 
     @property
     def deterministic(self) -> bool:
@@ -99,6 +103,7 @@ def _case(data: dict[str, Any]) -> ContentLineCase:
         cast=tuple(Character.model_validate(c) for c in data.get("cast", ())),
         player=dict(data.get("player", {})),
         interpretation=tuple(Intent.model_validate(i) for i in data.get("interpretation", ())),
+        language=Language(data.get("language", Language.EN)),
     )
 
 

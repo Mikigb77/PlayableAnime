@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import Counter
 
 from engine.base import DAY, HOUR, MINUTE
-from engine.context import Rating
+from engine.context import Rating, StorySettings
 from engine.contracts import (
     ActionKind,
     Aim,
@@ -268,6 +268,7 @@ async def _content_line(ev: Eval, case: ContentLineCase) -> None:
         world,
         seed=ev.seeds(1, live=1)[0],
         rating=case.rating,
+        settings=StorySettings(language=case.language),
         prefs=case.content_prefs,
         premise=case.premise,
         under_way=not ev.live,
