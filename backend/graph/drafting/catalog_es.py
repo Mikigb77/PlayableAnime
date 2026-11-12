@@ -320,7 +320,7 @@ TEMPLATE_SPANISH: dict[str, str] = {
         "llenan sus pisos."
     ),
     "Magic is real, and the royal academy teaches it to nobles.": (
-        "La magia es real, y la academia real se la enseña a los nobles."
+        "La magia existe, y la academia real se la enseña a los nobles."
     ),
     "Grounded: no magic and nothing supernatural, and that won't change.": (
         "Realista: sin magia ni nada sobrenatural, y eso no cambiará."
@@ -350,7 +350,8 @@ TEMPLATE_SPANISH: dict[str, str] = {
         "Los muertos pueden quedarse entre los vivos, y casi nadie lo cree."
     ),
     "Magic is rare: a few storm-callers can speak to wind and wave.": (
-        "La magia es rara: unos pocos invocadores de tormentas saben hablar al viento y a las olas."
+        "La magia es escasa: unos pocos invocadores de tormentas saben hablar al viento y a "
+        "las olas."
     ),
     "Cybernetic implants are everywhere, and anyone with a neural jack can dive into the net.": (
         "Los implantes cibernéticos están por todas partes, y cualquiera con un conector neural "
@@ -385,7 +386,7 @@ TEMPLATE_SPANISH: dict[str, str] = {
     "sea magic": "magia del mar",
     "cybernetics": "cibernética",
     "Implants push a body past its limits, at a price.": (
-        "Los implantes llevan el cuerpo más allá de sus límites, a un precio."
+        "Los implantes llevan el cuerpo más allá de sus límites, pero tienen un precio."
     ),
     "magic and dragons": "magia y dragones",
     "superpowers": "superpoderes",

@@ -338,7 +338,7 @@ TEMPLATE_CATALAN: dict[str, str] = {
         "Els morts es poden quedar entre els vius, i gairebé ningú no s'ho creu."
     ),
     "Magic is rare: a few storm-callers can speak to wind and wave.": (
-        "La màgia és rara: uns pocs invocadors de tempestes saben parlar al vent i a les onades."
+        "La màgia és escassa: uns pocs invocadors de tempestes saben parlar al vent i a les onades."
     ),
     "Cybernetic implants are everywhere, and anyone with a neural jack can dive into the net.": (
         "Els implants cibernètics són a tot arreu, i qualsevol amb un connector neural pot "
@@ -372,7 +372,7 @@ TEMPLATE_CATALAN: dict[str, str] = {
     "sea magic": "màgia del mar",
     "cybernetics": "cibernètica",
     "Implants push a body past its limits, at a price.": (
-        "Els implants porten el cos més enllà dels seus límits, a un preu."
+        "Els implants porten el cos més enllà dels seus límits, però tenen un preu."
     ),
     "magic and dragons": "màgia i dracs",
     "superpowers": "superpoders",
