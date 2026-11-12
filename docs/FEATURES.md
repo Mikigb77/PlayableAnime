@@ -47,7 +47,8 @@ The first version's state, checked against the code in WS18.
 - [x] Discover feed of starter premises, the signature worlds first (S1), under the latest story
       to continue
 - [x] Create a story from your own premise: a drafted world and character to review and change (G1, G2)
-- [x] The draft keeps how the story starts a surprise: its first deadline, people and goal show only when your own words name them (G1, G2)
+- [x] The draft keeps how the story starts a surprise: its first deadline, people and goal, and what your character wants, show only when your own words name them (G1, G2)
+- [x] A deadline your premise gives a time comes at exactly that time: "the exam is in 3 days" is three days (G1, E2)
 - [x] The server changes a draft's plain fields at once, with no AI call and at no cost: the title, the tone, and the character's name, age, looks and manner (G1, G2)
 - [x] The draft's screen leads with your character and marks every row with how it changes: typed by you at once and free (name, age, looks, title, rules), or told to the storyteller at that row, with the cost said first; how it plays is on the same screen (G1, G2)
 - [x] The first step shows what a premise can decide, with an example of each, and that the rest stays a surprise (G1)
@@ -65,9 +66,9 @@ The first version's state, checked against the code in WS18.
       before its outcome (R1 to R7)
 - [x] Scenes sized to what happened: a passing moment is told short and a turning point gets
       room, within the length the player set (R3, S6)
-- [x] Looks and stock phrases that don't keep coming back: the character's appearance is told
-      when a scene has reason to show it, and code hands the narrator the wording the last scenes
-      repeated, to say another way (R9)
+- [x] Looks and stock phrases that don't keep coming back: the character's appearance, and how
+      they come across, are told when a scene has reason to show them, and code hands the
+      narrator the wording the last scenes repeated, to say another way (R9)
 - [x] Whereabouts that stay clear: every scene records the place it ends in, places know whether
       they are outdoors, indoors, underground or underwater, and a way out is told, never guessed (R8)
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever

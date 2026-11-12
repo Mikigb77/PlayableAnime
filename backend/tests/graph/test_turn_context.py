@@ -670,12 +670,18 @@ def test_the_appearance_is_handed_only_to_a_scene_with_reason_to_show_it():
 
     assert looks and not quiet.looks
     assert "appearance" not in player_record(quiet) and looks not in quiet.user
+    # Nor the line on how they come across, which says how they look too: in the live check
+    # (2026-11-12) "a patched grey robe" came back from it in two plain scenes of six.
+    comes_across = grounded_world().player.description
+    assert "dark suit" in comes_across
+    assert "description" not in player_record(quiet) and comes_across not in quiet.user
     # Who they are and everything on their sheet stay.
-    assert player_record(quiet)["description"] and player_record(quiet)["sheet"]["traits"]
+    assert player_record(quiet)["name"] and player_record(quiet)["sheet"]["traits"]
 
     def handed(state=None, **change) -> bool:
         told = brief(state, **(asked() | change))
         assert ("appearance" in player_record(told)) is told.looks
+        assert ("description" in player_record(told)) is told.looks
         return told.looks
 
     # The scene that introduces them, and the one that ends their story.

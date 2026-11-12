@@ -595,7 +595,7 @@ JsonMap _drafted(JsonMap? starter, String premise) {
         _part('rank', 'Qi Condensation, early stage.'),
         _part('skills', 'Fair: the sword, herb lore. Novice: footwork.'),
         if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
-        _part('nature', 'Stubborn, patient. Wants a place nobody can take from him.'),
+        _part('nature', 'Stubborn, patient.'),
         _part('belongings', 'Carries a cracked jade pendant. 3 spirit stones.'),
         _part('goal', 'Goal: Keep your place on the mountain.', named: ['my goal', 'i want']),
       ],
@@ -650,7 +650,7 @@ JsonMap _drafted(JsonMap? starter, String premise) {
         _part('rank', 'Qi Condensation, early stage.'),
         _part('skills', 'Skilled: logic and numbers. Novice: the sword.'),
         if (genius) _part('talents', 'Genius: Formations (patterns and their flaws).'),
-        _part('nature', 'Calm, curious. Wants to know why he is here.'),
+        _part('nature', 'Calm, curious.'),
         _part(
           'power',
           'Time stop: the world holds still for three heartbeats. Needs a breath to recharge. '
@@ -759,7 +759,7 @@ JsonMap _drafted(JsonMap? starter, String premise) {
       },
       'parts': [
         _part('skills', 'Skilled: pistols, knives. Fair: reading a room.'),
-        _part('nature', 'Steady, hot-tempered. Wants the truth more than the chair.'),
+        _part('nature', 'Steady, hot-tempered.'),
         _part('power', 'No powers, since this world has none.'),
         _part('belongings', 'Carries his father\'s lighter and a pistol. 40,000 lire.'),
         _part('connections', 'Three loyal soldiers.', named: ['soldiers', 'loyal']),

@@ -641,7 +641,11 @@ class CharacterProposal(Proposal):
     aliases: list[str] = Field(default_factory=list)
     age: int | None = None
     people_id: str = ""
-    description: str = Field(default="", description="How they come across.")
+    description: str = Field(
+        default="",
+        description="How they come across, in one line: their bearing and manner. Their face, "
+        "build, hair and clothes go in appearance, not here.",
+    )
     appearance: str = Field(default="", description=APPEARANCE)
     location_id: str = ""
     attributes: AttributesP = Field(default_factory=AttributesP)
@@ -675,7 +679,9 @@ class CharacterProposal(Proposal):
     axes: AxesP = Field(default_factory=AxesP)
     reserves: list[ReserveP] = Field(default_factory=list)
     goals: list[str] = Field(
-        default_factory=list, description="Goals the premise gives the player, in their words."
+        default_factory=list,
+        description="The aims the premise gives the character, each one short line in the "
+        "premise's words for what it names. Empty when the premise gives none.",
     )
     backstory: list[str] = Field(default_factory=list)
     hidden_past: list[str] = Field(

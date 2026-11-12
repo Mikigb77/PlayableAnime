@@ -18,7 +18,10 @@ disciple") fits half the people around them, so a description names nobody.
 """
 
 import re
+from collections.abc import Iterator
+from dataclasses import dataclass
 
+from engine.base import DAY, HOUR, WEEK, YEAR
 from engine.context import Language
 from graph.words import FILLER, WORD, alike, content, core
 
@@ -29,7 +32,8 @@ _SENTENCE = re.compile(r"[.!?¿¡…\n]+")
 
 # A time ahead, by language: "in three days", "nine days left", "tomorrow". A time gone by
 # ("three days ago", "hace tres días") is none, and neither is a bare "for ten years".
-_AMOUNT = r"(?:[\w']+\s+){1,2}?"
+_AMOUNT = r"(?:[\w'’-]+\s+){1,2}?"
+_NOT_MORNING = "".join(rf"(?<!\b{word}\s)" for word in "esta la una cada aquella esa toda".split())
 _UNITS = {
     Language.EN: r"(?:hour|day|night|week|month|year|moon)s?",
     Language.ES: r"(?:horas?|d[ií]as?|noches?|semanas?|mes(?:es)?|años?|lunas?)",
@@ -46,7 +50,8 @@ _AHEAD = {
         r"\b(?:faltan?|quedan?)\s+{amount}{unit}\b",
         r"\b(?:{amount})?{unit}\s+(?:para|hasta|antes)\b",
         r"\ba\s+{amount}{unit}\s+del?\b",
-        r"\b(?:mañana|esta noche)\b",
+        # "esta mañana" and "por la mañana" are the morning, not the day after.
+        rf"(?:{_NOT_MORNING}\bmañana|\besta noche)\b",
     ),
     Language.CA: (
         r"(?:\bd'aquí a|\ben|\bdins de)\s+{amount}{unit}\b",
@@ -105,25 +110,190 @@ def called(said: str, name: str, language: Language) -> bool:
     return len(theirs) > 1 and theirs <= {core(word) for word in words}
 
 
-def timed(said: str, text: str, language: Language) -> bool:
-    """Whether `said`, the player's own words, set a time for the event `text` names: a clause
-    of theirs gives a time ahead and holds a word of it. When the time is all its clause says,
-    it is for the rest of the sentence ("The tax collector comes with the first snow, in thirty
-    days"). "I take the knight exam in 3 days" times "The trial of knighthood"; "my father was
-    killed three days ago" times nothing; and "I'm sure the killer is in the family, and the
-    council names the next boss in ten days" times the council's vote, not "The killer strikes
-    again"."""
-    its = content(text, language)
+# How long the time ahead is, where code can read it: an amount and a unit. What each unit
+# lasts, and the numbers a premise writes out. A month and a moon are thirty days, as "in a
+# month" is meant. Anything else, such as "a few days" or "tomorrow", is a time ahead with no
+# length code can tell.
+MONTH = 30 * DAY
+_SPANS = {
+    Language.EN: (
+        ("hour", HOUR),
+        ("day", DAY),
+        ("night", DAY),
+        ("week", WEEK),
+        ("month", MONTH),
+        ("moon", MONTH),
+        ("year", YEAR),
+    ),
+    Language.ES: (
+        ("hora", HOUR),
+        ("día", DAY),
+        ("dia", DAY),
+        ("noche", DAY),
+        ("semana", WEEK),
+        ("mes", MONTH),
+        ("luna", MONTH),
+        ("año", YEAR),
+    ),
+    Language.CA: (
+        ("hor", HOUR),
+        ("di", DAY),
+        ("nit", DAY),
+        ("setman", WEEK),
+        ("mes", MONTH),
+        ("llun", MONTH),
+        ("any", YEAR),
+    ),
+}
+# The numbers a premise writes out. From one to twenty, each place holds its words.
+_COUNT = {
+    Language.EN: """a|an|one two three four five six seven eight nine ten eleven twelve thirteen
+        fourteen fifteen sixteen seventeen eighteen nineteen twenty""",
+    Language.ES: """un|una|uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece
+        catorce quince dieciséis diecisiete dieciocho diecinueve veinte""",
+    Language.CA: """un|una|u dos|dues tres quatre cinc sis set vuit nou deu onze dotze tretze
+        catorze quinze setze disset divuit dinou vint""",
+}
+_TENS = {
+    Language.EN: "twenty thirty forty fifty sixty seventy eighty ninety",
+    Language.ES: "veinte treinta cuarenta cincuenta sesenta setenta ochenta noventa",
+    Language.CA: "vint trenta quaranta cinquanta seixanta setanta vuitanta noranta",
+}
+_MORE = {
+    Language.EN: {"hundred": 100},
+    Language.ES: {
+        "veintiún": 21,
+        "veintiuno": 21,
+        "veintiuna": 21,
+        "veintidós": 22,
+        "veintitrés": 23,
+        "veinticuatro": 24,
+        "veinticinco": 25,
+        "veintiséis": 26,
+        "veintisiete": 27,
+        "veintiocho": 28,
+        "veintinueve": 29,
+        "cien": 100,
+    },
+    Language.CA: {"cent": 100},
+}
+# The words a time ends on when it counts down to what comes after it: "three days before the
+# exam" is the exam's, and "the caravan left a day before you" is not the caravan's.
+_TOWARDS = {
+    Language.EN: ("until", "till", "before", "for the"),
+    Language.ES: ("para", "hasta", "antes"),
+    Language.CA: ("per", "fins", "abans"),
+}
+# The words that only hedge an amount, and the ones that join a ten to its unit ("treinta y
+# un", "vint-i-un").
+_HEDGES = {
+    Language.EN: "about around roughly nearly almost only just exactly barely another more the",
+    Language.ES: "unos unas solo sólo apenas casi exactamente justo otros otras más los las",
+    Language.CA: "uns unes només gairebé exactament just altres més els les",
+}
+_JOINS = ("y", "i")
+_TOKEN = re.compile(rf"\d+|{WORD.pattern}")
+_UNIT = {language: re.compile(rf"\b{unit}\b", re.IGNORECASE) for language, unit in _UNITS.items()}
+
+
+def _numbers(language: Language) -> dict[str, int]:
+    numbers = {
+        word: at
+        for at, words in enumerate(_COUNT[language].split(), start=1)
+        for word in words.split("|")
+    }
+    numbers |= {word: 10 * at for at, word in enumerate(_TENS[language].split(), start=2)}
+    return numbers | _MORE[language]
+
+
+_NUMBER = {language: _numbers(language) for language in Language}
+
+
+@dataclass(frozen=True)
+class Ahead:
+    """A time ahead the player's own words set: the words it is said of, and how long it is in
+    seconds, or None where code can't tell ("in a few days", "tomorrow")."""
+
+    about: tuple[str, ...]
+    seconds: int | None = None
+
+    def says(self, text: str, language: Language) -> int:
+        """How many of the words of `text`, an event's name, the time is said of."""
+        return sum(
+            any(alike(word, other) for other in self.about) for word in content(text, language)
+        )
+
+
+def times_ahead(said: str, language: Language) -> Iterator[Ahead]:
+    """Each time ahead `said` sets, clause by clause. A time is said of the rest of its clause,
+    or, when it is all its clause says, of the rest of the sentence ("The tax collector comes
+    with the first snow, in thirty days"); one that counts down to something ("three days
+    before the exam") is said of what follows it. A clause that sets two times ("the exam in
+    three days and the wedding in a week") gives no length, since code can't tell whose each
+    is."""
     ahead = _TIME_AHEAD[language]
     for sentence in _SENTENCE.split(said):
         clauses = _BREAK.split(sentence)
         for at, clause in enumerate(clauses):
-            found = ahead.search(clause)
-            if found is None:
+            found = list(ahead.finditer(clause))
+            if not found:
                 continue
-            about = content(f"{clause[: found.start()]} {clause[found.end() :]}", language)
-            if not about:
-                about = content(" ".join(clauses[:at] + clauses[at + 1 :]), language)
-            if any(alike(word, other) for word in about for other in its):
-                return True
-    return False
+            first = found[0]
+            if first.group(0).casefold().endswith(_TOWARDS[language]):
+                about = content(clause[first.end() :], language)
+            else:
+                about = content(f"{clause[: first.start()]} {clause[first.end() :]}", language)
+                if not about:
+                    about = content(" ".join(clauses[:at] + clauses[at + 1 :]), language)
+            seconds = _span(first.group(0), language) if len(found) == 1 else None
+            yield Ahead(tuple(about), seconds)
+
+
+def timed(said: str, text: str, language: Language) -> bool:
+    """Whether `said`, the player's own words, set a time for the event `text` names: a clause
+    of theirs gives a time ahead and holds a word of it. "I take the knight exam in 3 days"
+    times "The trial of knighthood"; "my father was killed three days ago" times nothing; and
+    "I'm sure the killer is in the family, and the council names the next boss in ten days"
+    times the council's vote, not "The killer strikes again"."""
+    return any(time.says(text, language) for time in times_ahead(said, language))
+
+
+def _span(text: str, language: Language) -> int | None:
+    """How long the time ahead `text` is, in seconds: its amount times its unit, "in 3 days",
+    "dentro de cinco días", "d'aquí a dues setmanes". None for an amount code can't read, and
+    for "tomorrow" and "tonight", whose length hangs on the hour the story opens at."""
+    unit = _UNIT[language].search(text)
+    if unit is None:
+        return None
+    name = unit.group(0).casefold()
+    size = next(seconds for stem, seconds in _SPANS[language] if name.startswith(stem))
+    amount = _amount(text[: unit.start()], language)
+    if amount is None or not 0 < amount * size <= 10 * YEAR:
+        return None
+    return amount * size
+
+
+def _amount(text: str, language: Language) -> int | None:
+    """The number `text` ends on, in figures or in words: "3", "three", "twenty-one",
+    "vint-i-un", "a hundred". None when the word before the unit is no number ("a few")."""
+    numbers, hedges = _NUMBER[language], _HEDGES[language].split()
+    words = [core(word) for token in _TOKEN.findall(text) for word in token.split("-")]
+    values: list[int] = []
+    for word in reversed(words):
+        if word in hedges or (values and word in _JOINS):
+            continue
+        if word.isdigit():
+            values.insert(0, int(word))
+        elif word in numbers:
+            values.insert(0, numbers[word])
+        else:
+            break
+    match values:
+        case [value]:
+            return value
+        # "twenty one": a ten and what is added to it.
+        case [ten, one] if ten >= 20 and ten % 10 == 0 and one < 10:
+            return ten + one
+        case [1, 100]:
+            return 100
+    return None

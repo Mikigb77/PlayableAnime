@@ -108,6 +108,45 @@ def test_what_the_players_words_name_is_in_the_summary():
     assert not any(line.startswith("Carmine Esposito:") for line in shown)
 
 
+def test_what_the_character_wants_is_a_surprise_until_the_players_words_say_it():
+    # G1: "Wants revenge for his father" gives the character a goal the premise never spoke of.
+    state = _naples()
+    nature = "Hot-headed and loyal."
+    assert f"{nature} Wants revenge for his father." in character_lines(state)
+
+    kept_back = character_lines(state, said=Said(samples.NAPLES_PREMISE))
+    assert nature in kept_back and not any("Wants" in line for line in kept_back)
+    # Their own words say it, in the premise or in a change they asked for later.
+    said = Said(samples.NAPLES_PREMISE + " I want revenge for my father.")
+    assert f"{nature} Wants revenge for his father." in character_lines(state, said=said)
+    told = Said(samples.NAPLES_PREMISE, frozenset({"want:revenge for his father"}))
+    assert f"{nature} Wants revenge for his father." in character_lines(state, said=told)
+    # With nothing else to say of their nature, the line is gone, not left empty.
+    state.player.sheet.disposition.temperament.traits = []
+    bare = character_parts(state, Language.EN, Said(samples.NAPLES_PREMISE))
+    assert PartKind.NATURE not in {part.kind for part in bare}
+
+
+def test_everyone_the_players_words_name_is_in_the_summary():
+    # Without the player's say, the summary names the first two key people with a line on who
+    # they are. With it, it names whoever their words name, with or without that line.
+    world = samples.cultivation_world()
+    world.npcs.append(NpcP(id="wei", name="Wei Shan", location_id="well"))
+    world.npcs.append(NpcP(id="old-hu", name="Old Hu", description="The well keeper."))
+    state = _cultivation(world)
+    assert [line for line in world_lines(state) if line.startswith(("Wei", "Old Hu"))] == []
+
+    premise = samples.CULTIVATION_PREMISE + " Zhao Kun, Elder Mo and Wei Shan all know my name."
+    people = [
+        part.text
+        for part in world_parts(state, Language.EN, Said(premise))
+        if part.kind is PartKind.PERSON
+    ]
+    assert [text.partition(":")[0] for text in people] == ["Zhao Kun", "Elder Mo", "Wei Shan."]
+    # Old Hu is still the story's to introduce.
+    assert not any("Old Hu" in text for text in people)
+
+
 def test_the_world_summary_names_the_ladder_and_the_known_people():
     lines = world_lines(_cultivation())
 
