@@ -43,6 +43,7 @@ from engine.invariants import InvariantError
 from engine.labels import scene_time
 from engine.looks import place_looks
 from engine.state.world import WorldState
+from engine.tally import turn_tally
 from engine.visibility import clock_view
 from graph.llm import BadKey, ByokKey, LLMError, LLMUnavailable, TurnTelemetry, build_client
 from graph.turn import (
@@ -638,6 +639,8 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
     turn = prepared.input
     result = run.result
     throws = run.decided.throws if run.decided is not None else []
+    # What the turn counts about the logic of play, for a turn that finished.
+    tally = turn_tally(turn.state, result.state, result.resolution, result.plan) if result else {}
     fields: dict[str, Any] = {
         "turn": turn.ctx.turn,
         "kind": turn.kind.value,
@@ -660,5 +663,6 @@ def _log(prepared: PreparedTurn, run: _Run, telemetry: TurnTelemetry) -> None:
         "steps": [[s.kind.value if s.kind else None, s.duration_s] for s in result.resolution.steps]
         if result
         else [],
+        **tally,
     } | telemetry.summary()
     logger.info("Turn %s", run.outcome, extra={"turn": fields})

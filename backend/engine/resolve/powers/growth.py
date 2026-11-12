@@ -278,7 +278,7 @@ def check(
             if stop.Settlements().get(power, setting.key) == setting.value:
                 return _ruled_out(f"{cap(who)} can already do that.")
         elif training.power_id and actor.sheet.power(training.power_id) is None:
-            return _ruled_out(f"{cap(who)} {_have(state, actor)} no power like that.")
+            return _ruled_out(f"{cap(who)} {_have(state, actor)} no power like that.", not_own=True)
     if training.kind is GrowthKind.SKILL:
         skill = actor.sheet.skill(training.what)
         if skill is not None and skill.level is SkillLevel.MASTER:
@@ -433,8 +433,8 @@ def _rule_text(text: str) -> str:
     return text if text.endswith((".", "!", "?")) else f"{text}."
 
 
-def _ruled_out(reason: str) -> Settled:
-    return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
+def _ruled_out(reason: str, *, not_own: bool = False) -> Settled:
+    return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason, not_own=not_own)
 
 
 @dataclass(frozen=True)

@@ -167,6 +167,7 @@ these functions and saves the result.
 | `engine/possessions.py` | What everyone has, gains and loses (C10): `move` makes one `ItemChange` from someone to someone (a character, or `world`), refusing what the player character doesn't hold (their belongings are the complete record; an NPC's are only what the story told, N7) and an item someone else holds, cutting a loss to what the player character holds, keeping money in the holder's currency, and recording each move as a `Transfer` (the latest 200) with who saw it. `holding` counts what a character holds of a thing, `prompt_lines` and `gone_to` say where it went, and `already_given` whether letting someone keep it moves nothing. |
 | `engine/text.py` | Word matching shared by resolve and possessions: `stems` and `mentions`, so "the knives" matches "knife" and nothing reads more than the model wrote. Spanish and Catalan articles and prepositions count for nothing, like English ones, and accented letters stay in their word (S10). `normalize` folds a text to lowercase ASCII words, for matching whole words and names as they are written. |
 | `engine/naming.py` | Who words name, among the people on record (V3, W1, F3): a name or alias of several words wherever the words carry it, and one word of a name only with a capital that doesn't just open a sentence, so "Mo" is Elder Mo and the "sol" of "under the sun" is nobody. `named_in` singles someone out or names nobody, which is how the reading's check aims a blow (`graph.turn.check`); `everyone_called` and `everyone_named` give everyone the words could mean, the nearest first, which is how the hard limits find who a kiss is with (`engine.limits`). |
+| `engine/tally.py` | `turn_tally`: what a turn's log line counts about the logic of play (T5), in numbers only: steps refused, moves refused as not the character's own, searches thrown for and those that came up empty, rumors heard and those no scene told, and goals still open. Pure: it reads two states, a resolution and a plan. |
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and the appearance a stated lasting change (`look_change`) leaves a character with. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar and its heading when hours or days passed ("Three days later", `passage_label`), and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). `date_label` is the date alone ("Day 3"), for the day a goal was set or closed. |
@@ -1210,7 +1211,15 @@ filled in, are not served.
    line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
    `abandoned` when the player left before it was saved, or the error code), `sent` (false for a
    turn saved after its player left), the time to the first text (S3), each node's time, the issue
-   codes and the telemetry summary (calls, models, tokens, cost, retries, blocks). Never the
+   codes, the telemetry summary (calls, models, tokens, cost, retries, blocks) and, for a turn
+   that finished, what says whether play is logical (`engine.tally.turn_tally`, from the state
+   the turn started on, the state it saves, the resolution and the director's plan): `refused`
+   (steps ruled out) and `moves_refused` (those refused because a power or technique they named
+   is on no record of the character's: the sheet check, a beat's and training's mark them
+   `not_own`), `searches` (things a throw decided the place holds) and `searches_empty`,
+   `rumors_heard` (rumors the character heard this turn) and `rumors_unvoiced` (those that
+   aren't the talk the director gave the scene, so zero unless something marks a rumor heard
+   that no scene told), and `goals_open`. Never the
    action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
    values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
 
@@ -1254,7 +1263,8 @@ URLs from `media.lookups`).
 
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
 meter and picture planner: every event, each error before and after the stream starts, a lost
-version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
+version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line
+with its counts.
 `test_unfinished_turns.py` covers the decided steps and a kept turn: the event before the telling,
 the same dice whatever is sent next, the settings it was decided under, two actions at once, and a
 story never stuck.

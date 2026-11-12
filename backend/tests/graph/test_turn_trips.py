@@ -9,6 +9,7 @@ from engine.contracts import ActionKind, Intent, IntentStep, StandingAction
 from engine.director import rules
 from engine.samples import farm_world
 from engine.state import Journey, Place, Route, Rumor
+from engine.tally import turn_tally
 from engine.visibility import memory_view
 from graph.drafting import prompts as drafting_prompts
 from graph.drafting.schema import DraftProposal
@@ -123,27 +124,32 @@ def look_on(fake, make_client, **told):
     fake.script(Node.NARRATOR, Reply(json=scene("village", present=("tomas",), **told)))
     turn = turn_input(state, kind=TurnKind.STANDING, standing=StandingAction.OBSERVE)
     result = play(make_client(), turn)[1]
-    return fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text, result
+    # T5: what the turn's log line counts, from the state the turn started on.
+    tally = turn_tally(turn.state, result.state, result.resolution, result.plan)
+    return fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text, result, tally
 
 
 def test_a_quiet_scene_is_offered_the_talk_of_the_place_and_what_it_told_is_heard(
     fake, make_client
 ):
-    brief, result = look_on(fake, make_client, told_talk=True)
+    brief, result, tally = look_on(fake, make_client, told_talk=True)
 
     assert json.loads(section(brief, "TALK")) == {"saying": BARN}
     heard = result.state.rumors["barn"].heard_at
     assert heard == {"tomas": result.state.world_s}
     assert [r.text for r in memory_view(result.state).rumors] == [BARN]  # C6
+    # T5: it is heard because the scene told it, so the turn's log counts none as unvoiced.
+    assert (tally["rumors_heard"], tally["rumors_unvoiced"]) == (1, 0)
 
 
 def test_talk_the_scene_left_out_is_not_heard(fake, make_client):
     """They can miss it: it stays the talk of the place, and Memory never lists it."""
-    brief, result = look_on(fake, make_client)  # the narrator answers no told_talk
+    brief, result, tally = look_on(fake, make_client)  # the narrator answers no told_talk
 
     assert json.loads(section(brief, "TALK")) == {"saying": BARN}
     assert result.state.rumors["barn"].heard_at == {}
     assert memory_view(result.state).rumors == []
+    assert (tally["rumors_heard"], tally["rumors_unvoiced"]) == (0, 0)
 
 
 def test_a_place_never_seen_is_shown_for_the_first_time(fake, make_client, monkeypatch):
