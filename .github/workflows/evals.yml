@@ -128,6 +128,8 @@ jobs:
           if [ -f evals-out/summary.md ]; then tee -a "$GITHUB_STEP_SUMMARY" <evals-out/summary.md; fi
           # A styles run plays no scenario, so it has no trend to show.
           if [ -f evals-history/history.jsonl ] && [ "$STYLES" != "true" ]; then
+            # A run that broke before it wrote anything has no folder yet.
+            mkdir -p evals-out
             cp evals-history/history.jsonl evals-out/
             {
               echo

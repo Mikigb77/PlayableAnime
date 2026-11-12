@@ -1797,7 +1797,8 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   wrote each step and its beats in the story's language: none holds a word only English has.
   The eval of a draft's summary (`t17.start-is-a-surprise`, G1) drafts made-up premises with
   the real drafter (`Eval.draft`, `Eval.revised`) and sends the judge each premise beside the
-  summary the screen would show for it (`judge.judge_summary`).
+  summary the screen would show for it (`judge.judge_summary`); a judgement of a summary that
+  fails lists the premise and the summary the judge read in the run's log.
   Its stories name the troll, the courtyard
   and the stone in their own language, as a story's world does, and a judgement of lines that
   fails lists the lines the judge read in the run's log, since its reasons only point at them

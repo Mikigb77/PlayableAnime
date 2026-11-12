@@ -788,6 +788,12 @@ class ScenarioResult:
             if rows:
                 read = " | ".join(f"{was} => {said}" for was, said in rows)
                 lines.append(f"judge {judgement.name} read: {read}")
+            # And the summary a judge of a draft read, against the premise it was drafted from
+            # (G1).
+            summary = judgement.subject.get("summary") or []
+            if summary:
+                premise = judgement.subject.get("premise", "")
+                lines.append(f"judge {judgement.name} read: {premise} => {' | '.join(summary)}")
         if lines:
             lines += self._refusals()
         return lines
@@ -994,7 +1000,8 @@ class Eval:
         if not self.live:
             return None
         judgement = await judge_summary(self.judge_client(), name, rubric, premise, lines)
-        judgement = replace(judgement, subject={"premise": premise, "lines": list(lines)})
+        # Kept with the judgement, so a failed run's log shows the summary the judge read.
+        judgement = replace(judgement, subject={"premise": premise, "summary": list(lines)})
         self.judged.append(judgement)
         return judgement
 

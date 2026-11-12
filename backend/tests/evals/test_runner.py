@@ -716,6 +716,40 @@ def test_a_failed_judgement_of_lines_shows_the_lines_it_read():
     assert play(script, mode=Mode.LIVE, models=models(passing_judge)).failures() == []
 
 
+def test_a_failed_judgement_of_a_summary_shows_the_summary_it_read():
+    """G1, T18: the judge reads a draft's summary against the premise it was drafted from, and
+    the run's log is all that can be read of a live run afterwards. So a failed judgement of a
+    summary lists both."""
+    premise = "I'm a squire about to take the knight exam in 3 days."
+    summary = ["The knight exam: in 3 days", "Ser Aldric: the knight who wants you gone"]
+    rubric = Rubric(must_not=("A line names a person the premise doesn't name",))
+
+    def strict(request: Request) -> Reply:
+        answer = {"id": "N1", "verdict": "fail", "reason": "Line 2 names Ser Aldric."}
+        return Reply(json=JudgeOutput(answers=[answer]))
+
+    def models(judge) -> Models:
+        return Models(
+            backend=FakeBackend(default=offline_reply, keep_requests=False),
+            judge_backend=FakeBackend(default=judge, keep_requests=False),
+        )
+
+    async def script(ev: Eval) -> None:
+        ev.check("drafted", True)
+        await ev.judge_summary("the summary", rubric, premise, summary)
+
+    result = play(script, mode=Mode.LIVE, models=models(strict))
+
+    assert result.status == "failed"
+    assert result.failures() == [
+        "judge the summary: N1 (A line names a person the premise doesn't name) failed: Line 2 "
+        "names Ser Aldric.",
+        "judge the summary read: I'm a squire about to take the knight exam in 3 days. => "
+        "The knight exam: in 3 days | Ser Aldric: the knight who wants you gone",
+    ]
+    assert play(script, mode=Mode.LIVE, models=models(passing_judge)).failures() == []
+
+
 def test_a_failed_live_scenario_says_which_turns_were_refused_and_why():
     """T18: a story whose first action can't be read fails every check after it, and the run's
     log is all that can be read of it afterwards. So a failed scenario lists the turns that
