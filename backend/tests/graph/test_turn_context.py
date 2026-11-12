@@ -484,10 +484,13 @@ def test_the_interpret_step_is_told_who_someone_meant_but_not_named_is():
 
 def test_the_reading_names_a_steps_verb_in_english_whatever_the_story_speaks():
     """S10, B5: code reads a verb, to tell a deed (G16), to know a defence, a threat or what
-    a bout allows, so a Spanish or a Catalan story's reading still names it in English."""
+    a bout allows, so a Spanish or a Catalan story's reading still names it in English. The
+    step and its beats are the player's to read, under "How it played out", so they are in the
+    story's language like the rest of what the reading notes."""
     system = prompts.INTERPRET_SYSTEM
 
-    assert "the summary) in the language LANGUAGE names (S10)." in system
+    assert "in your own words (each step's text and its beats, which the player reads" in system
+    assert "outcome claims and the summary) in the language LANGUAGE names (S10)." in system
     assert "Code reads a step's verb, so it is a plain English verb in any language" in system
 
 
