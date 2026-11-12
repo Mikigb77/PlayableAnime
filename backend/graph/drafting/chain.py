@@ -17,9 +17,10 @@ from typing import Literal
 
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
+from graph.drafting import direct
 from graph.drafting.assemble import DraftOptions, assemble, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
-from graph.drafting.openers import Said, carried, named_by
+from graph.drafting.openers import Said, carried, moved, named_by
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -107,7 +108,8 @@ class RuleEdit:
 
 @dataclass(frozen=True)
 class Edits:
-    """Direct edits (API.md `PATCH /v1/drafts/{id}`). `None` leaves a part as it is."""
+    """Direct edits (API.md `PATCH /v1/drafts/{id}`). `None` leaves a part as it is. `fields`
+    are the plain fields, which code writes in without the model (`graph.drafting.direct`)."""
 
     world_lines: list[str] | None = None
     character_lines: list[str] | None = None
@@ -115,6 +117,7 @@ class Edits:
     physics: PhysicsMode | None = None
     gift: GiftStrength | None = None
     rating: str | None = None
+    fields: direct.Fields | None = None
 
 
 async def create(
@@ -169,14 +172,18 @@ async def create(
     return draft
 
 
-async def revise(llm: ModelClient, draft: Draft, target: Target, instruction: str) -> Draft:
+async def revise(
+    llm: ModelClient, draft: Draft, target: Target, instruction: str, about: str = ""
+) -> Draft:
     """A change in plain words, such as "add hidden vampires" (G1, G2). The request is the
     player's own words, so what it names of how the story starts shows in the summary from
-    here on."""
+    here on. `about` is the part of the summary they asked it at, in the summary's own words,
+    so "make me better at this" says what "this" is; it is the drafter's text, and names
+    nothing."""
     if target == "world":
-        revised = await _revise_world(llm, draft, instruction)
+        revised = await _revise_world(llm, draft, instruction, about)
     else:
-        revised = await _revise_character(llm, draft, instruction)
+        revised = await _revise_character(llm, draft, instruction, about)
     return _noting(revised, [instruction])
 
 
@@ -198,10 +205,16 @@ class EditPlan:
 
 
 def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
-    """Physics, a rule's fixed flag, `gift: none` and raising the rating are code alone;
-    rewritten summary lines, rewritten rules, a new gift strength and lowering the rating to Teen
-    need the model to make the world or the character match, in one call for each
-    (`finish_edit`)."""
+    """The plain fields (`direct`), physics, a rule's fixed flag, `gift: none` and raising the
+    rating are code alone; rewritten summary lines, rewritten rules, a new gift strength and
+    lowering the rating to Teen need the model to make the world or the character match, in one
+    call for each (`finish_edit`)."""
+    read = draft
+    if edits.fields:
+        before = draft.state()
+        draft = replace(draft, proposal=direct.apply(draft.proposal, edits.fields))
+        # A goal that said the old name is the same goal under the new one (G1).
+        draft = _telling(draft, moved(before, draft.state(), draft.told, draft.language))
     state = draft.state()
     world_asks: list[str] = []
     character_asks: list[str] = []
@@ -233,18 +246,20 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in shown + hidden]:
             world_asks.append(rules_instruction(forced_rules))
     written: list[str] = []
-    if edits.world_lines is not None:
-        before = world_lines(state, draft.language, draft.said)
-        after = _clean_lines(edits.world_lines)
-        if after != before:
-            world_asks.append(lines_instruction("world", before, after))
-            written += own_words(before, after)
-    if edits.character_lines is not None:
-        before = character_lines(state, draft.language, draft.said)
-        after = _clean_lines(edits.character_lines)
-        if after != before:
-            character_asks.append(lines_instruction("character", before, after))
-            written += own_words(before, after)
+    for lines, sent, asks, target in (
+        (world_lines, edits.world_lines, world_asks, "world"),
+        (character_lines, edits.character_lines, character_asks, "character"),
+    ):
+        if sent is None:
+            continue
+        before = lines(state, draft.language, draft.said)
+        after = _clean_lines(sent)
+        # Lines sent back as the player read them, before the plain fields of the same edit
+        # changed a name in them, are no rewriting.
+        if after == before or (read is not draft and after == _read(read, lines)):
+            continue
+        asks.append(lines_instruction(target, before, after))
+        written += own_words(before, after)
     if edits.gift is not None:
         changed = edits.gift is not gift_strength(state)
         draft = replace(draft, gift=edits.gift)
@@ -258,6 +273,11 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         tuple(forced_rules) if forced_rules is not None else None,
         tuple(written),
     )
+
+
+def _read(draft: Draft, lines) -> list[str]:
+    """The summary lines of `draft` as its screen shows them."""
+    return lines(draft.state(), draft.language, draft.said)
 
 
 async def finish_edit(llm: ModelClient, plan: EditPlan) -> Draft:
@@ -291,10 +311,10 @@ async def edit(llm: ModelClient, draft: Draft, edits: Edits) -> Draft:
     return await finish_edit(llm, plan_edit(draft, edits))
 
 
-async def _revise_world(llm: ModelClient, draft: Draft, instruction: str) -> Draft:
+async def _revise_world(llm: ModelClient, draft: Draft, instruction: str, about: str = "") -> Draft:
     state = draft.state()
     change = await llm.structured(
-        Node.DRAFTER, _revise_prompt(draft, state, "world", instruction), WorldChange
+        Node.DRAFTER, _revise_prompt(draft, state, "world", instruction, about), WorldChange
     )
     world, let_go = apply_change(draft.proposal.world, current_rules(state), change)
     world = without_real_names(world)
@@ -306,16 +326,22 @@ async def _revise_world(llm: ModelClient, draft: Draft, instruction: str) -> Dra
     )
 
 
-async def _revise_character(llm: ModelClient, draft: Draft, instruction: str) -> Draft:
+async def _revise_character(
+    llm: ModelClient, draft: Draft, instruction: str, about: str = ""
+) -> Draft:
     state = draft.state()
     character = await llm.structured(
-        Node.DRAFTER, _revise_prompt(draft, state, "character", instruction), CharacterProposal
+        Node.DRAFTER,
+        _revise_prompt(draft, state, "character", instruction, about),
+        CharacterProposal,
     )
     character = without_real_names(character)
     return replace(draft, proposal=DraftProposal(world=draft.proposal.world, character=character))
 
 
-def _revise_prompt(draft: Draft, state: WorldState, target: Target, instruction: str) -> Prompt:
+def _revise_prompt(
+    draft: Draft, state: WorldState, target: Target, instruction: str, about: str = ""
+) -> Prompt:
     return Prompt.build(
         system_prompt(draft.rating, draft.language),
         revise_prompt(
@@ -324,6 +350,7 @@ def _revise_prompt(draft: Draft, state: WorldState, target: Target, instruction:
             state,
             target=target,
             instruction=instruction,
+            about=about,
             template=draft.template,
             gift=_gift_hint(draft),
             released=draft.released_rules,
@@ -540,11 +567,16 @@ def _noting(draft: Draft, words: Iterable[str]) -> Draft:
     words themselves are not kept."""
     state = draft.state()
     told = carried(state, draft.told, draft.language)
-    told |= named_by(state, "\n".join(words), draft.language)
+    return _telling(draft, told | named_by(state, "\n".join(words), draft.language))
+
+
+def _telling(draft: Draft, told: frozenset[str]) -> Draft:
+    """The draft keeping `told`, the keys of the openers the player's words named, with the
+    state it has already built."""
     if told == draft.told:
         return draft
     noted = replace(draft, told=told)
-    object.__setattr__(noted, "_state", state)
+    object.__setattr__(noted, "_state", draft.state())
     return noted
 
 

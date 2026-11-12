@@ -1401,7 +1401,32 @@ flowchart LR
   languages (`catalog.wordings`), so a draft made before this still holds its starter's rules.
 - **What the player reads is written by code** (`view.py`) from public fields only: the summary
   lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
-  more words of hidden text, or names someone the character doesn't know, is dropped.
+  more words of hidden text, or names someone the character doesn't know, is dropped. Each line
+  is a `view.Part` with its `PartKind` (`world_parts`, `character_parts`; the plain lines are
+  their texts, cut to one screen), so the app labels and groups a line by what it tells of and
+  points a change in plain words at it: `chain.revise(..., about=)` hands the drafter the part
+  the player asked it at, as they read it. `view.identity` gives the character's plain fields
+  as values, `view.ladder_view` the first ladder rung by rung with the character's place on
+  it, and `view.kept` the count of the openers the summary keeps back.
+- **The plain fields are changed by code, at once** (G1, G2, Miki 2026-11-10; `direct.py`). The
+  story's title and tone and the character's name, age, looks and manner are plain values, so
+  `chain.plan_edit` writes them into the proposal with no model call (`direct.apply`), and the
+  edit costs nothing. A new name is put wherever the draft says the old one (`direct.renamed`):
+  the whole name, and each capitalised word of it that no person, faction, place, people,
+  creature or rung is called by, in every text of the proposal, hidden parts included, and
+  never in an id. A word stands in for the one in its place when both names have as many
+  words, and for the new name's first word otherwise. What others are called stays theirs
+  beside a name of one word too (`direct.Theirs`): a name that holds the old one as a word of
+  its own, next to another of its capitalised words ("Lin Mei", "Old Lin" beside a character
+  called Lin), is left wherever a text says it, a record called just that keeps its name, and
+  a name that only leans on the character's ("Lin's mother") follows it. Code reads no
+  meaning, so a name that is also a plain word is swapped wherever the draft writes it with a
+  capital. A new age replaces the old one where the looks or the manner give it as a number.
+  `openers.moved` then carries the keys of what the player named to the words those openers
+  have now, so a goal that said the old name stays theirs to see. Summary lines sent in the
+  same edit as they were read before it are no rewriting, so a screen sent back whole with a
+  new name calls no model. The drafter is told, on every later change, that the draft's names
+  are the ones that hold, whatever the premise called them.
 - **The summary keeps how the story starts a surprise** (G1, Miki 2026-11-10; `openers.py`,
   `named.py`). The drafter still writes the first clocks, the key people, the open questions,
   the character's connections and their goals (the openers), and the character knows what they

@@ -10,6 +10,7 @@ from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode
 from graph.drafting import chain, samples
 from graph.drafting.catalog import starter
+from graph.drafting.direct import Fields
 from graph.drafting.prompts import SYSTEM, current_rules
 from graph.drafting.schema import (
     DraftProposal,
@@ -245,7 +246,106 @@ def test_a_character_revision_replaces_only_the_character(fake, llm):
     assert revised.proposal.world == draft.proposal.world
 
 
+def test_a_change_asked_at_a_part_of_the_summary_says_which(fake, llm):
+    # "Better at this" says what "this" is: the line the player asked it at, as they read it.
+    fake.script(Node.DRAFTER, Reply(json=samples.naples_character()))
+    draft = _naples_draft()
+    skills = "Skilled: pistol. Fair: knife, driving."
+
+    run(chain.revise(llm, draft, "character", "Better at this.", about=skills))
+
+    asked = _prompt_text(fake.calls(Node.DRAFTER)[0])
+    about = f"They ask it about this part of the summary they read:\n{skills}"
+    assert f"Better at this.\n\n{about}" in asked
+    # With no part, the request stands alone.
+    fake.script(Node.DRAFTER, Reply(json=samples.naples_character()))
+    run(chain.revise(llm, draft, "character", "Older."))
+    assert "They ask it about" not in _prompt_text(fake.calls(Node.DRAFTER)[1])
+
+
+def test_a_revision_keeps_the_names_the_draft_holds_now(fake, llm):
+    # A name the player changed since the premise is the one in the draft, and the drafter is
+    # told the draft's is the one to keep.
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    plan = chain.plan_edit(_naples_draft(), chain.Edits(fields=Fields(name="Marco Esposito")))
+
+    run(chain.revise(llm, plan.draft, "world", "More rain."))
+
+    asked = _prompt_text(fake.calls(Node.DRAFTER)[0])
+    assert '"name": "Marco Esposito"' in asked
+    assert "the draft's is the one to keep" in asked
+
+
 # Edit.
+
+
+def test_the_plain_fields_are_edits_code_makes_alone(fake, llm):
+    # G1, G2 (Miki, 2026-11-10): a name, an age, a look, a title: no model, at once.
+    draft = _naples_draft()
+    fields = Fields(
+        name="Marco Esposito",
+        age=31,
+        looks="Tall, a broken nose, a camel coat.",
+        manner="Laughs first, counts later.",
+        title="The Long Summer",
+        tone="Dry and tender",
+    )
+
+    plan = chain.plan_edit(draft, chain.Edits(fields=fields))
+    edited = run(chain.finish_edit(llm, plan))
+
+    assert not plan.needs_model
+    assert fake.requests == []
+    state = edited.state()
+    assert (state.player.name, state.player.age) == ("Marco Esposito", 31)
+    assert state.player.appearance == "Tall, a broken nose, a camel coat."
+    assert state.player.description == "Laughs first, counts later."
+    assert (state.bible.title, state.bible.tone) == ("The Long Summer", "Dry and tender")
+    assert character_lines(state)[0] == "Marco Esposito, 31."
+    # Everyone else is who they were.
+    assert [c.name for c in state.npcs()] == [c.name for c in draft.state().npcs()]
+
+
+def test_a_new_name_keeps_what_the_player_named_under_it(fake, llm):
+    # G1: a goal that says the old name is the same goal under the new one.
+    character = samples.cultivation().character
+    named = character.model_copy(update={"goals": ["Show the elders what Lin Feng is worth"]})
+    fake.script(Node.DRAFTER, Reply(json=named))
+    asked = "My goal is to show the elders what Lin Feng is worth."
+    draft = run(chain.revise(llm, _cultivation_draft(), "character", asked))
+    assert draft.told == {"goal:show the elders what lin feng is worth"}
+
+    edited = chain.plan_edit(draft, chain.Edits(fields=Fields(name="Zhang Wei"))).draft
+
+    assert edited.told == {"goal:show the elders what zhang wei is worth"}
+    lines = character_lines(edited.state(), edited.language, edited.said)
+    assert "Goal: Show the elders what Zhang Wei is worth." in lines
+
+
+def test_plain_fields_and_a_rewritten_line_go_together(fake, llm):
+    # The line is compared with the summary as the plain fields left it, so the name alone
+    # asks the model for nothing.
+    draft = _naples_draft()
+    renamed = chain.plan_edit(draft, chain.Edits(fields=Fields(name="Marco Esposito"))).draft
+    lines = character_lines(renamed.state(), renamed.language, renamed.said)
+
+    plan = chain.plan_edit(
+        draft, chain.Edits(fields=Fields(name="Marco Esposito"), character_lines=lines)
+    )
+
+    assert not plan.needs_model
+    assert plan.draft.state().player.name == "Marco Esposito"
+
+    # Nor do the lines as the player read them before the name changed: an app that sends the
+    # whole screen back with a new name asks the model for nothing.
+    read = character_lines(draft.state(), draft.language, draft.said)
+    assert read != lines
+    plan = chain.plan_edit(
+        draft, chain.Edits(fields=Fields(name="Marco Esposito"), character_lines=read)
+    )
+
+    assert not plan.needs_model
+    assert plan.draft.state().player.name == "Marco Esposito"
 
 
 def test_physics_and_gift_none_are_edits_code_makes_alone(fake, llm):

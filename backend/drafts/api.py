@@ -30,14 +30,22 @@ from engine.context import (
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import STARTER_PREMISES, starter
+from graph.drafting.direct import Fields
 from graph.drafting.prompts import current_rules
 from graph.drafting.real_names import real_person_in
 from graph.drafting.view import (
-    character_lines,
+    CHARACTER_LINES,
+    WORLD_LINES,
+    Part,
+    PartKind,
+    character_parts,
     gift_strength,
+    identity,
+    kept,
+    ladder_view,
     public_rules,
     public_text,
-    world_lines,
+    world_parts,
 )
 from lucid import logs
 from lucid.errors import field_error
@@ -51,6 +59,9 @@ drafts_router = Router(tags=["drafts"])
 MAX_LINES = 20
 MAX_RULES = 12
 Line = Annotated[str, Field(max_length=300)]
+# The plain fields (G1, G2): a title, a tone or a name, and a look or a manner.
+Short = Annotated[str, Field(min_length=1, max_length=80)]
+Long = Annotated[str, Field(min_length=1, max_length=300)]
 
 
 # Starter premises (S1).
@@ -126,9 +137,21 @@ class CreateDraftIn(Schema):
         return self
 
 
+class CharacterIn(Schema):
+    """The character's plain fields (G2), which code writes in at once, with no model call."""
+
+    name: Short | None = None
+    age: int | None = Field(default=None, ge=0, le=100_000)
+    looks: Long | None = None
+    manner: Long | None = None
+
+
 class PatchDraftIn(Schema):
     """Direct edits (G1, G2). `expected_version` refuses an edit made on a stale copy (T10)."""
 
+    title: Short | None = None
+    tone: Short | None = None
+    character: CharacterIn | None = None
     world_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
     character_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
     advanced: AdvancedIn | None = None
@@ -141,6 +164,8 @@ class ReviseIn(Schema):
 
     target: Literal["world", "character"]
     instruction: str = Field(min_length=1, max_length=1000)
+    # The part of the summary the player asked it at, so "more of this" says what "this" is.
+    about: PartKind | None = None
     expected_version: int | None = None
 
 
@@ -175,6 +200,34 @@ class AdvancedOut(Schema):
     event_frequency: EventFrequency
 
 
+class PartOut(Schema):
+    kind: PartKind
+    text: str
+
+
+class CharacterOut(Schema):
+    name: str
+    age: int | None
+    people: str
+    standing: str
+    looks: str
+    manner: str
+
+
+class LadderOut(Schema):
+    name: str
+    rungs: list[str]
+    more: bool
+    at: int | None
+    stage: str
+
+
+class KeptOut(Schema):
+    people: int
+    events: int
+    questions: int
+
+
 class DraftOut(Schema):
     id: str
     premise: str
@@ -186,6 +239,11 @@ class DraftOut(Schema):
     tone: str
     world_lines: list[str]
     character_lines: list[str]
+    world_parts: list[PartOut]
+    character_parts: list[PartOut]
+    character: CharacterOut
+    ladder: LadderOut | None
+    kept: KeptOut
     advanced: AdvancedOut
     version: int
     story_id: str | None
@@ -204,6 +262,9 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
     draft = service.to_chain(row)
     state = state or draft.state()
     bible = state.bible
+    # S10: the words code adds come in the draft's language.
+    world = world_parts(state, draft.language, draft.said)
+    character = character_parts(state, draft.language, draft.said)
     return {
         "id": str(row.id),
         "premise": row.premise,
@@ -213,9 +274,13 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "title": public_text(state, bible.title),
         "genre": public_text(state, bible.genre),
         "tone": public_text(state, bible.tone),
-        # S10: the words code adds come in the draft's language.
-        "world_lines": world_lines(state, draft.language, draft.said),
-        "character_lines": character_lines(state, draft.language, draft.said),
+        "world_lines": _lines(world, WORLD_LINES),
+        "character_lines": _lines(character, CHARACTER_LINES),
+        "world_parts": [{"kind": part.kind.value, "text": part.text} for part in world],
+        "character_parts": [{"kind": part.kind.value, "text": part.text} for part in character],
+        "character": identity(state),
+        "ladder": ladder_view(state, draft.language),
+        "kept": kept(state, draft.language, draft.said),
         "advanced": {
             "physics": bible.physics.value,
             "rules": [{"id": r.id, "text": r.text, "fixed": r.fixed} for r in public_rules(state)],
@@ -228,6 +293,50 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+
+
+def _lines(parts: list[Part], limit: int) -> list[str]:
+    """The summary as plain lines, one screen of them, for an app that shows it as a list."""
+    return [part.text for part in parts][:limit]
+
+
+def _plain_fields(body: PatchDraftIn, state: WorldState) -> tuple[Fields, list[tuple[str, str]]]:
+    """The plain fields the edit changes (G1, G2), and the player's own new texts among them,
+    by field, for the real-person check (G12). A field sent back as it is changes nothing."""
+    pc = state.player
+    sent = body.character or CharacterIn()
+    now = {
+        "title": state.bible.title,
+        "tone": state.bible.tone,
+        "character.name": pc.name,
+        "character.looks": pc.appearance,
+        "character.manner": pc.description,
+    }
+    texts = {
+        "title": body.title,
+        "tone": body.tone,
+        "character.name": sent.name,
+        "character.looks": sent.looks,
+        "character.manner": sent.manner,
+    }
+    new: dict[str, str] = {}
+    for field, text in texts.items():
+        if text is None:
+            continue
+        text = " ".join(text.split())
+        if not text:
+            raise field_error(field, "Write something here, or leave it as it is.", type="empty")
+        if text != " ".join(now[field].split()):
+            new[field] = text
+    fields = Fields(
+        title=new.get("title"),
+        tone=new.get("tone"),
+        name=new.get("character.name"),
+        age=sent.age if sent.age != pc.age else None,
+        looks=new.get("character.looks"),
+        manner=new.get("character.manner"),
+    )
+    return fields, list(new.items())
 
 
 def _settings(advanced: AdvancedIn | None) -> dict[str, str]:
@@ -312,8 +421,9 @@ async def get_draft(request, draft_id: str):
 
 @drafts_router.patch("/{draft_id}", response=DraftOut)
 async def edit_draft(request, draft_id: str, body: PatchDraftIn):
-    """Direct edits of the summary lines and the advanced fields (G1, G2, G7, G22, A9, S6).
-    Only the edits that need the world or the character redrafted call the model."""
+    """Direct edits (G1, G2, G7, G22, A9, S6): the plain fields, the summary lines and the
+    advanced fields. Only the edits that need the world or the character redrafted call the
+    model: a new title, tone, name, age, look or manner never does."""
     row = await service.owned_draft(request, draft_id)
     service.refuse_started(row)
     service.check_version(row, body.expected_version)
@@ -322,16 +432,14 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     advanced = body.advanced or AdvancedIn()
     current = service.to_chain(row)
     state = current.state()
+    fields, own = _plain_fields(body, state)
+    world = _lines(world_parts(state, current.language, current.said), WORLD_LINES)
+    character = _lines(character_parts(state, current.language, current.said), CHARACTER_LINES)
     _refuse_real_people(
         [
-            *_new_texts(
-                "world_lines", body.world_lines, world_lines(state, current.language, current.said)
-            ),
-            *_new_texts(
-                "character_lines",
-                body.character_lines,
-                character_lines(state, current.language, current.said),
-            ),
+            *own,
+            *_new_texts("world_lines", body.world_lines, world),
+            *_new_texts("character_lines", body.character_lines, character),
             *_new_texts(
                 "advanced.rules",
                 [r.text for r in advanced.rules or []],
@@ -349,6 +457,7 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
             physics=advanced.physics,
             gift=advanced.gift_strength,
             rating=body.rating,
+            fields=fields or None,
         ),
     )
     settings = _settings(advanced)
@@ -372,12 +481,22 @@ async def revise_draft(request, draft_id: str, body: ReviseIn):
     service.check_version(row, body.expected_version)
     _refuse_real_people([("instruction", body.instruction)])
     draft = service.to_chain(row)
+    about = _about(draft, body.target, body.about)
     async with service.model_call(
         request, rating=draft.rating, action="revise", premise_id=draft.premise_id
     ) as call:
-        draft = await chain.revise(call.client, draft, body.target, body.instruction)
+        draft = await chain.revise(call.client, draft, body.target, body.instruction, about)
         row = await service.save_row(row, draft, call)
     return draft_out(row, draft.state())
+
+
+def _about(draft: chain.Draft, target: str, kind: PartKind | None) -> str:
+    """The lines of the summary of that kind, as the player read them, or "" for none."""
+    if kind is None:
+        return ""
+    parts = world_parts if target == "world" else character_parts
+    lines = parts(draft.state(), draft.language, draft.said)
+    return "\n".join(part.text for part in lines if part.kind is kind)
 
 
 @drafts_router.post("/{draft_id}/start", response=StartOut)

@@ -48,6 +48,7 @@ The first version's state, checked against the code in WS18.
       to continue
 - [x] Create a story from your own premise: a drafted world and character to review and change (G1, G2)
 - [x] The draft keeps how the story starts a surprise: its first deadline, people and goal show only when your own words name them (G1, G2)
+- [x] The server changes a draft's plain fields at once, with no AI call and at no cost: the title, the tone, and the character's name, age, looks and manner (G1, G2)
 - [x] Play screen: streamed narration, suggested choices, Wait and Observe, free-text action (S2, S3)
 - [x] Memory engine: characters (alive, dead, missing, attitudes), factions, places, goals, leads,
       rumors and deeds, with the invariants enforced in code (C1, W1 to W16)

@@ -168,9 +168,15 @@ it and say one word of it ("I take the knight exam in 3 days" names "The trial o
 knighthood"); and they name a person only by that person's name, since what a premise says of
 its own character ("the weakest outer disciple") fits half the people around them. What their
 words name, they can change like any other line. The rest is drafted all the same, and the
-story tells it when it comes. Code reads the player's words for this, never the model, and of a
+story tells it when it comes: of it the player is shown a count (so many people, so many things
+already in motion, so many open questions) and nothing more. Code reads the player's words for
+this, never the model, and of a
 change they asked for the draft keeps only which deadline, question, person, connection or goal
-it named, never the words. A player who wants to set
+it named, never the words. **What is a plain value, the player changes themselves** (Miki,
+2026-11-10): the story's title and its tone are theirs to type, saved at once by code, with no
+model call and at no cost, and so are the character's plain fields (G2). Everything else they
+change in plain words, asked at the part of the summary it is about, so "make this stricter"
+says what "this" is. A player who wants to set
 everything by hand can open the advanced fields. One of them is how strict physics is: fun first by
 default, or strict for players who want things rougher and more physically coherent (A9).
 
@@ -189,7 +195,15 @@ sword, a genius at building, hopeless with words" becomes the sheet's talents (A
 character's summary lists each with what it covers, strongest first, so the player can check them
 and change them in plain words: "One of a kind: The sword (anything fought with a blade). Genius:
 Architecture (structure and geometry). Weakness: Hopeless with words." A talent is set when the
-character is made and is never declared in play. The story then opens on the premise's situation
+character is made and is never declared in play. **The character's name, age, looks and manner
+are the player's to type** (Miki, 2026-11-10: "if you want to edit your character name, you
+cannot do it"): each is a field of its own, saved at once by code, with no model call and at no
+cost. A new name takes the old one's place wherever the draft says it, hidden parts included,
+so the story never meets the character under two names: the whole name, and each word of it
+that is theirs alone ("Luca", but not the "Esposito" his family shares), and what someone or
+something else is called stays theirs ("Lin Mei" beside a character who was called Lin). The
+looks are the ones
+every picture of the character is drawn from (M5). The story then opens on the premise's situation
 (N5).
 
 **G3 Every turn (P0).** Every turn goes through the same steps, in every genre. B5 says how the
