@@ -46,6 +46,7 @@ from engine.invariants import check_state
 from engine.labels import moment
 from engine.state.records import PendingEvent
 from engine.state.world import WorldState
+from engine.tally import turn_tally
 from evals.judge import (
     MILD_PICTURE,
     PICTURE_INSTRUCTIONS,
@@ -258,6 +259,15 @@ class Played:
     def world_seconds(self) -> int:
         return self.state.world_s - self.before.world_s
 
+    @property
+    def tally(self) -> dict[str, int]:
+        """T5: what the turn's log line counts about the logic of play, for a turn that
+        finished."""
+        if self.result is None:
+            return {}
+        result = self.result
+        return turn_tally(self.before, result.state, result.resolution, result.plan)
+
     def outcome(self) -> dict[str, Any]:
         """What code decided, in short, for the judge and the transcript."""
         if self.result is None:
@@ -315,8 +325,33 @@ class Played:
             else None,
             "world_seconds": self.world_seconds,
             "issues": self.issues,
+            "tally": self.tally,
         }
         return data
+
+
+# T5: what a run's report adds up of each turn's counts. The goals still open are where a story
+# stands, not something to add up.
+LOGIC = (
+    "refused",
+    "moves_refused",
+    "searches",
+    "searches_empty",
+    "rumors_heard",
+    "rumors_unvoiced",
+)
+
+
+def counted(turns: Iterable[Played]) -> dict[str, int]:
+    """What the turns that finished counted about the logic of play, added up, with the steps
+    the engine settled in them. Empty when none finished."""
+    done = [played for played in turns if played.result is not None]
+    if not done:
+        return {}
+    tallies = [played.tally for played in done]
+    return {"steps": sum(len(played.steps) for played in done)} | {
+        key: sum(tally[key] for tally in tallies) for key in LOGIC
+    }
 
 
 @dataclass(frozen=True)
@@ -697,6 +732,8 @@ class ScenarioResult:
     # judge and the pictures are the eval's, never a turn's.
     use: list[Use] = field(default_factory=list)
     turn_cost_usd: Decimal = Decimal(0)
+    # T5: what the scenario's turns counted about the logic of play (`counted`).
+    logic: dict[str, int] = field(default_factory=dict)
 
     @property
     def passed(self) -> bool:
@@ -785,6 +822,7 @@ class ScenarioResult:
             "cost_usd": float(self.cost_usd),
             "turn_cost_usd": float(self.turn_cost_usd),
             "use": [u.to_json() for u in self.use],
+            "logic": self.logic,
             "checks": [t.to_json() for t in self.checks],
             "judged": [j.to_json() for j in self.judged],
             "metrics": self.metrics,
@@ -1135,6 +1173,7 @@ class Eval:
             error=error,
             use=Use.of(calls),
             turn_cost_usd=sum((p.cost_usd for s in self.stories for p in s.turns), Decimal(0)),
+            logic=counted(p for s in self.stories for p in s.turns),
         )
 
 

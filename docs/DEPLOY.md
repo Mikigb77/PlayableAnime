@@ -577,11 +577,17 @@ errors:
 ```text
 (empty)                                                        recent warnings and errors
 logging read 'severity>=ERROR AND jsonPayload.message="Model call rejected"' --freshness=1d --limit=20
+logging read 'jsonPayload.turn.moves_refused>0 OR jsonPayload.turn.rumors_unvoiced>0' --freshness=7d --limit=50 '--format=value(timestamp,jsonPayload.turn.turn,jsonPayload.turn.refused,jsonPayload.turn.moves_refused,jsonPayload.turn.searches,jsonPayload.turn.searches_empty,jsonPayload.turn.rumors_unvoiced,jsonPayload.turn.goals_open)'
 run services describe playable-anime-api --region=europe-west3 --format=yaml
 run jobs executions list --job=playable-anime-migrate --region=europe-west3
 projects get-iam-policy playable-anime --format=yaml
 services list --enabled
 ```
+
+The last one reads what each turn counts about the logic of play (T5): the turns where a move was
+refused as not the character's own, or a rumor was marked as heard with no scene telling it. Give a
+log read a `--format` of the fields you need, as here: a whole entry carries the user's and the
+story's ids (T4), and this repository's Actions logs are public.
 
 It reads only. Changes still go through `infra/` in a PR and a re-run of the bootstrap, or through
 the deploy.

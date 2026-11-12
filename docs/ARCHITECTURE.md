@@ -167,6 +167,7 @@ these functions and saves the result.
 | `engine/possessions.py` | What everyone has, gains and loses (C10): `move` makes one `ItemChange` from someone to someone (a character, or `world`), refusing what the player character doesn't hold (their belongings are the complete record; an NPC's are only what the story told, N7) and an item someone else holds, cutting a loss to what the player character holds, keeping money in the holder's currency, and recording each move as a `Transfer` (the latest 200) with who saw it. `holding` counts what a character holds of a thing, `prompt_lines` and `gone_to` say where it went, and `already_given` whether letting someone keep it moves nothing. |
 | `engine/text.py` | Word matching shared by resolve and possessions: `stems` and `mentions`, so "the knives" matches "knife" and nothing reads more than the model wrote. Spanish and Catalan articles and prepositions count for nothing, like English ones, and accented letters stay in their word (S10). `normalize` folds a text to lowercase ASCII words, for matching whole words and names as they are written. |
 | `engine/naming.py` | Who words name, among the people on record (V3, W1, F3): a name or alias of several words wherever the words carry it, and one word of a name only with a capital that doesn't just open a sentence, so "Mo" is Elder Mo and the "sol" of "under the sun" is nobody. `named_in` singles someone out or names nobody, which is how the reading's check aims a blow (`graph.turn.check`); `everyone_called` and `everyone_named` give everyone the words could mean, the nearest first, which is how the hard limits find who a kiss is with (`engine.limits`). |
+| `engine/tally.py` | `turn_tally`: what a turn's log line counts about the logic of play (T5), in numbers only: steps refused, moves refused as not the character's own, searches thrown for and those that came up empty, rumors heard and those no scene told, and goals still open. Pure: it reads two states, a resolution and a plan. |
 | `engine/invariants.py` | `check_state` and `check_transition`: every C1 invariant on one state or between two, however they were made. |
 | `engine/looks.py` | When a place or a face changes for good, so its picture is drawn once more (M1, M4, M5): a place's look version from its status history, and the appearance a stated lasting change (`look_change`) leaves a character with. |
 | `engine/labels.py` | Time in words: dates in the world's calendar, "+8 h", "World: +0 s. You: +40 s.", "2 days ago", the scene's time bar and its heading when hours or days passed ("Three days later", `passage_label`), and the `moment` the models read: the date, the 24-hour time and the part of the day (W10, W10a). `date_label` is the date alone ("Day 3"), for the day a goal was set or closed. |
@@ -301,7 +302,10 @@ a new one.
   thing before a crowd, and anything done in stopped time, stays as seen as it would be
   anywhere. The player character hears word only when a scene tells it (`hearsay`):
   `rumors.on_rumor` and `rumors.start_rumor` leave them out, so word that comes to where they
-  are is the talk of the place, and what they did or saw is a deed in their memory (C6). The
+  are, or starts there, is the talk of the place, and what they did or saw is a deed in their
+  memory (C6). The one thing `start_rumor` marks for them is what they were there to see
+  happen, a clock's end that came with them (`Rumor.seen_by`); a price a faction puts on a
+  head is set off screen, so `arrivals` never counts them among those there. The
   narrator's update moves only the feelings of the scene's people and of whom the turn reached
   (`apply.scene_people`, `pipeline.reached`).
 - **What both sides agreed to is no attack** (W1, W4, W11). A proposed deed that stayed inside
@@ -1110,6 +1114,11 @@ Catalan story:
   lines speak alike. Nothing on record says whether someone is a man or a woman, so the prompt
   asks for wording that fits either and the health words are given that way ("tienes heridas",
   "tens ferides", never "estás herido"). It answers `Said`, each line under its number.
+  Code first runs each article into the preposition before it where the language writes them
+  together and the model left them apart (`saying.contracted`): "de el trol" is "del trol" and
+  "a el pozo" "al pozo", and in Catalan "dels", "als", "pel" and "pels" too. Only the article in
+  small letters, so a name's own stays apart ("a El Paso"), and nothing the engine's own line
+  already holds apart, which is the story's wording.
   `saying.faithful` keeps a said line only when it holds the same numbers, in figures, and
   every word of the English line that is capitalized where no sentence or clause starts (its
   names); it drops a blank one, one that runs on, and the English line handed back as it stood
@@ -1210,7 +1219,16 @@ filled in, are not served.
    line is written, `Turn <outcome>`, with the turn, kind, input mode (V7), outcome (`ok`,
    `abandoned` when the player left before it was saved, or the error code), `sent` (false for a
    turn saved after its player left), the time to the first text (S3), each node's time, the issue
-   codes and the telemetry summary (calls, models, tokens, cost, retries, blocks). Never the
+   codes, the telemetry summary (calls, models, tokens, cost, retries, blocks) and, for a turn
+   that finished, what says whether play is logical (`engine.tally.turn_tally`, from the state
+   the turn started on, the state it saves, the resolution and the director's plan): `refused`
+   (steps ruled out) and `moves_refused` (those refused because a power or technique they named
+   is on no record of the character's: the sheet check, a beat's and training's mark them
+   `not_own`), `searches` (things a throw decided the place holds) and `searches_empty`,
+   `rumors_heard` (rumors the character heard this turn) and `rumors_unvoiced` (those that
+   aren't the talk the director gave the scene, so zero unless something marks a rumor heard
+   that no scene told; what they were there to see happen is in neither count), and
+   `goals_open`. Never the
    action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
    values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
 
@@ -1254,7 +1272,8 @@ URLs from `media.lookups`).
 
 **Tests** in `tests/stories/` play turns over ASGI on the scripted fake model, with the real credit
 meter and picture planner: every event, each error before and after the stream starts, a lost
-version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line.
+version race, a player who leaves mid-turn or mid-save, pending rows both ways, and the T5 line
+with its counts.
 `test_unfinished_turns.py` covers the decided steps and a kept turn: the event before the telling,
 the same dice whatever is sent next, the settings it was decided under, two actions at once, and a
 story never stuck.
@@ -1731,6 +1750,15 @@ the total; then what a turn played cost on average (`turn_cost_usd` over the tur
 judge, the pictures or a reading alone). The same scenarios run with another model for one step
 (`INTERPRET_MODEL`, `INTERPRET_THINKING`, as for any node) are set side by side there, which is
 how a model for the interpret step is chosen (B6, B8). `run.json` holds the same under `use`.
+
+**What the turns counted.** Under it, one row adds up what each turn's log line counts about the
+logic of play (T5, `engine.tally.turn_tally` on each finished turn, `runner.counted`): the steps
+the engine settled, those refused and those refused as a move that isn't the character's own,
+the things a throw decided the place holds and those that came up empty, and the rumors heard and
+those no scene told. So a change that makes play less logical shows in a run's report before it
+is deployed, above all in a live run, where the real model reads the actions. `run.json` holds the
+row under `logic`, for the run and for each scenario, a live run's transcript holds each turn's
+own counts (`tally`), and the history keeps the run's row.
 
 **Results over time.** `run --out <dir>` writes `run.json` (every scenario's status, score,
 checks, judged rubrics, metrics, cost, model steps and open gaps), `summary.md`, and in live mode

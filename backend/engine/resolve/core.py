@@ -984,6 +984,7 @@ def _settle_step(
         duration_s=duration,
         personal_s=personal,
         beats=beats,
+        not_own=settled.not_own,
         strangers=[p.id for p in real],
         chain=chain,
         stopped_at_link=stopped_at_link,
