@@ -10,6 +10,10 @@ but neither is a guarantee, so the engine checks what it can see:
   sexual step or a sexual assault never plays in one. Mature plays both within the table: sex
   fades out and sexual violence happens off the page, which the narrator's rules and the eval
   cases cover.
+- **Whatever the reading leaves out.** The model that reads the player's words gives a partner
+  only by id and words a step as it likes, so neither line rests on it: the player's own words
+  are read beside the reading's, and a step is held to whoever its words name on record
+  (`check_words`, `check_action`, `engine.naming`).
 - **Fictional people (G12, F3).** No step targets a real living person, and no new character or
   faction takes the name of a real person or organisation (`engine.real_entities`).
 - **No real-world harm instructions (F3).** A narration that reads like a working recipe for a
@@ -23,19 +27,19 @@ other two languages' in `engine.limit_words`.
 """
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from engine import limit_words
+from engine import limit_words, naming
 from engine.context import Language, Rating
 from engine.contracts.delta import StateDelta
 from engine.contracts.intent import Intent, IntentStep
 from engine.real_entities import EXACT_ORGANISATIONS, REAL_ORGANISATIONS, REAL_PEOPLE
 from engine.state.cast import Character
 from engine.state.world import WorldState
+from engine.text import normalize
 
 # F3: the youngest age that counts as an adult, in every world.
 ADULT_AGE = 18
@@ -132,18 +136,6 @@ def gravest(hits: list[LimitHit]) -> LimitHit | None:
 
 
 # --- Text matching -------------------------------------------------------------------------
-
-
-# A typographic apostrophe parts two words as a plain one does: "l’amor", "Beyoncé’s".
-_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'"})
-
-
-def normalize(text: str) -> str:
-    """Lowercase ASCII words separated by single spaces, so accents, case and punctuation never
-    change a match ("Beyoncé's" becomes "beyonce s", with either apostrophe)."""
-    folded = unicodedata.normalize("NFKD", text.casefold().translate(_APOSTROPHES))
-    ascii_only = folded.encode("ascii", "ignore").decode()
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_only).split())
 
 
 def _words(*patterns: str) -> re.Pattern[str]:
@@ -348,14 +340,21 @@ _SEXUAL_VIOLENCE = _words(
     r"(?:force|forces|forced|forcing) (?:myself|himself|herself|themselves|yourself) (?:on|upon)",
     r"violat(?:e|es|ed|ing) (?:her|him|them)",
 )
+# Sleeping "with" these is sleeping, and no more: "sleep with one eye open".
+_NOT_COMPANY = (
+    r"(?! (?:one eye|an eye|both eyes|the fishes|"
+    r"(?:my|his|her|their|your|the|a|an) (?:eyes?|back|boots|clothes|armou?r|sword|blade|knife|"
+    r"dagger|gun|pistol|rifle|weapons?|bow|spear|staff|pack|gear|coat|cloak|blanket|window|"
+    r"door|lights?|lamp|candle|fire|horses?|dogs?|hounds?|cat)\b))"
+)
 # Each word needs its sexual sense: "the sex of the foal", "grope for the lever" and "strip them
 # of their weapons" are ordinary actions.
 _SEXUAL = _words(
     r"(?:have|has|had|having) sex",
     r"sex (?:with|act|acts|scene)",
     r"sexual(?:ly)?",
-    r"sleep(?:s|ing)? with",
-    r"slept with",
+    rf"sleep(?:s|ing)? with{_NOT_COMPANY}",
+    rf"slept with{_NOT_COMPANY}",
     r"(?:make|makes|making|made) love",
     r"love ?making",
     r"intercourse",
@@ -449,7 +448,21 @@ def intimacy(step: IntentStep, language: Language = Language.EN) -> Intimacy | N
     its verb, text and beats. In a Spanish or a Catalan story those words may be English or
     the story's, so both are read and the graver reading stands. The story's own words that
     only look English ("molestar", to bother someone) are taken out of the English reading."""
-    text = normalize(" ".join([step.verb, step.text, *(b.text for b in step.beats)]))
+    return _read(" ".join([step.verb, step.text, *(b.text for b in step.beats)]), language)
+
+
+def spoken(action: str, language: Language = Language.EN) -> Intimacy | None:
+    """What the player's own words say of romance, sex or sexual violence, read as a step's
+    words are (`intimacy`), before or beside what a model makes of them."""
+    return _read(action, language)
+
+
+def _graver(*kinds: Intimacy | None) -> Intimacy | None:
+    return max((kind for kind in kinds if kind), key=_GRAVITY.index, default=None)
+
+
+def _read(words: str, language: Language) -> Intimacy | None:
+    text = normalize(words)
     story = _STORY_WORDS.get(language)
     if story is None:
         return _ENGLISH_WORDS.read(text)
@@ -460,8 +473,7 @@ def intimacy(step: IntentStep, language: Language = Language.EN) -> Intimacy | N
     # ring is "kiss" beside them: that kiss is theirs to judge.
     if any(pattern.search(text) for pattern in story.not_a_kiss):
         english = _KISS.sub(" ", english)
-    found = [kind for kind in (_ENGLISH_WORDS.read(english), story.read(text)) if kind]
-    return max(found, key=_GRAVITY.index, default=None)
+    return _graver(_ENGLISH_WORDS.read(english), story.read(text))
 
 
 # --- Real people and organisations (G12) ----------------------------------------------------
@@ -518,24 +530,48 @@ def _names_of(state: WorldState, ids: list[str]) -> list[str]:
 # --- The player's action --------------------------------------------------------------------
 
 
+def check_words(action: str, rating: Rating, language: Language = Language.EN) -> list[LimitHit]:
+    """F2. The line the player's own words cross, before any model reads them: sexual violence
+    is not present in a Teen story, however a reading would word it. Read on the real model on
+    2026-11-12, one such action became a step the engine let play, and Gemini's filter stopped
+    another with a message about rephrasing; this says what the story can't hold instead. Only
+    this line is read here: what the others need (who a kiss is with, whether sex is done or
+    only talked about) is the reading's to say first (`check_action`)."""
+    if rating is Rating.TEEN and spoken(action, language) is Intimacy.SEXUAL_VIOLENCE:
+        return [LimitHit(LimitCategory.SEXUAL_VIOLENCE, action, "a Teen story")]
+    return []
+
+
 def check_action(
-    state: WorldState, intent: Intent, rating: Rating, language: Language = Language.EN
+    state: WorldState,
+    intent: Intent,
+    rating: Rating,
+    language: Language = Language.EN,
+    action: str = "",
 ) -> list[LimitHit]:
     """The lines the player's checked intent crosses, before anything resolves or is narrated.
 
-    A romantic or sexual step needs the actor and every character it targets to be recorded
-    adults (F3). A partner the story doesn't know yet is the narrator's to introduce as an adult
-    with an age (its prompt's rule); once they are known, this check holds them to it. In a Teen
-    story a sexual step or a sexual assault never plays (F2). No step targets a real living
-    person (G12). Naming a real organisation in an action is allowed, as a backdrop; it just
-    never becomes a faction (`strip_real_entities`).
+    A romantic or sexual step needs the actor and everyone it is with to be recorded adults
+    (F3): those the reading aimed it at, and those its words name where the reading left the id
+    out (`_partners`). A partner the story doesn't know yet is the narrator's to introduce as an
+    adult with an age (its prompt's rule); once they are known, this check holds them to it. In
+    a Teen story a sexual step or a sexual assault never plays (F2). No step targets a real
+    living person (G12). Naming a real organisation in an action is allowed, as a backdrop; it
+    just never becomes a faction (`strip_real_entities`).
+
+    `action` is the player's own words, which count beside the reading: a reading can word a
+    step more mildly than the player did, or leave out who it is with (2026-11-12, on the real
+    model). They are a step's words too when the whole action is that step, and when they
+    carry sexual violence, which then counts for every step: no step need carry the word.
     """
     hits: list[LimitHit] = []
     actor_id = intent.actor_id or state.player_id
+    said = spoken(action, language)
+    whole = action if len(intent.steps) == 1 or said is Intimacy.SEXUAL_VIOLENCE else ""
     for index, step in enumerate(intent.steps):
-        kind = intimacy(step, language)
+        kind = _graver(intimacy(step, language), said if whole else None)
         if kind is not None:
-            hits += _intimacy_hits(state, step, index, actor_id, kind, rating)
+            hits += _intimacy_hits(state, step, index, actor_id, kind, rating, whole)
         stranger = [step.stranger.who] if step.stranger is not None else []
         named = _names_of(state, step.target_ids)
         for words in [*step.targets, *stranger, step.facts.opposition, *named]:
@@ -552,10 +588,10 @@ def _intimacy_hits(
     actor_id: str,
     kind: Intimacy,
     rating: Rating,
+    whole: str = "",
 ) -> list[LimitHit]:
     hits: list[LimitHit] = []
-    partners = [*step.target_ids, *step.facts.opposition_ids]
-    for ref in dict.fromkeys([actor_id, *partners]):
+    for ref in dict.fromkeys([actor_id, *_partners(state, step, actor_id, whole)]):
         character = state.characters.get(ref)
         if character is None:
             continue  # a place or a faction: nobody to check
@@ -567,6 +603,57 @@ def _intimacy_hits(
     elif rating is Rating.TEEN and kind is Intimacy.SEXUAL:
         hits.append(LimitHit(LimitCategory.SEXUAL, step.text, "a Teen story", index))
     return hits
+
+
+def _partners(state: WorldState, step: IntentStep, actor_id: str, whole: str = "") -> list[str]:
+    """F3. Who a romantic or sexual step is with, by id: those the reading aimed it at or put
+    in its way, and those it left in words under `targets` (`naming.everyone_called`). Only
+    when that names nobody on record, whoever the step's own words name
+    (`naming.everyone_named`); `whole` is the player's words, where they are this step's too
+    (`check_action`). The reading gives a partner only by id, and the real model often leaves
+    the id out: on 2026-11-12 "I kiss Mei" played though the story had Mei at the bar, aged
+    sixteen.
+
+    Unlike a blow, which code never aims at someone the words don't single out
+    (`graph.turn.check`), this holds everyone the words could mean: a romance that waits for a
+    clearer name loses nothing. A kiss the reading aimed at someone on record is with them,
+    whoever else its words name: someone who only watches is no partner."""
+    circles = _circles(state)
+    partners = [*step.target_ids, *step.facts.opposition_ids]
+    partners += naming.everyone_called(state, circles, step.targets)
+    if not any(ref != actor_id and ref in state.characters for ref in partners):
+        told = [step.text, *(beat.text for beat in step.beats), whole]
+        stranger = [step.stranger.who] if step.stranger is not None else []
+        partners += naming.everyone_named(state, circles, told, [*step.targets, *stranger])
+    return partners
+
+
+def _circles(state: WorldState) -> list[list[str]]:
+    """The people on record a player's words can name, from the nearest to the story's moment:
+    those in the player character's scene, those they know or have met, those the record has
+    where the scene plays, and everyone else."""
+    you = state.player_id
+    frame = state.scene
+    facing = frame.encounter.opponent_ids if frame.encounter is not None else []
+    scene = [
+        ref
+        for ref in dict.fromkeys([*frame.present_ids, *facing])
+        if ref != you and ref in state.characters
+    ]
+    spot = frame.place_id or state.player.location_id
+    known: list[str] = []
+    there: list[str] = []
+    rest: list[str] = []
+    for character in state.npcs():
+        if character.id in scene:
+            continue
+        if you in character.known_by or you in character.met_by:
+            known.append(character.id)
+        elif spot is not None and character.location_id == spot:
+            there.append(character.id)
+        else:
+            rest.append(character.id)
+    return [scene, known, there, rest]
 
 
 # --- The narrator's update ------------------------------------------------------------------

@@ -16,6 +16,7 @@ cuchilla de aura" finds "Cuchilla del Aura", and "técnica" is one word, not "t"
 """
 
 import re
+import unicodedata
 
 _STOPWORDS = frozenset(
     """a an the of to and or in on at by for from with without into onto out up down off over
@@ -64,3 +65,16 @@ def mentions(haystack: str, needle: str) -> bool:
 def any_mentions(haystacks: list[str], needle: str) -> str | None:
     """The first haystack that mentions the needle."""
     return next((h for h in haystacks if mentions(h, needle)), None)
+
+
+# A typographic apostrophe parts two words as a plain one does: "l’amor", "Beyoncé’s".
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'"})
+
+
+def normalize(text: str) -> str:
+    """Lowercase ASCII words separated by single spaces, so accents, case and punctuation never
+    change a match ("Beyoncé's" becomes "beyonce s", with either apostrophe). For matching whole
+    words and phrases as they are written, where `stems` matches on meaning."""
+    folded = unicodedata.normalize("NFKD", text.casefold().translate(_APOSTROPHES))
+    ascii_only = folded.encode("ascii", "ignore").decode()
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_only).split())

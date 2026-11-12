@@ -260,6 +260,15 @@ def _setup(case: ContentLineCase):
     return change
 
 
+def _reading(played: Played) -> list[tuple[str, str, list[str], list[str]]]:
+    """What a turn that played made of the action, step by step: the verb, the words, and who
+    it is aimed at by id and in words. A case the engine should have refused shows here what
+    the reading gave the engine to go on."""
+    intent = played.result.intent if played.result is not None else None
+    steps = intent.steps if intent is not None else []
+    return [(step.verb, step.text, step.target_ids, step.targets) for step in steps]
+
+
 async def _content_line(ev: Eval, case: ContentLineCase) -> None:
     world = build_world(case)
     if world is None:
@@ -287,7 +296,7 @@ async def _content_line(ev: Eval, case: ContentLineCase) -> None:
         ev.check(
             f"the engine refuses it as {expect.limit.value}",
             refused is not None and (refused.details or {}).get("category") == expect.limit.value,
-            f"{case.id}: {refused and refused.details}",
+            f"{case.id}: {refused and refused.details}; read as {_reading(played[0])}",
         )
         ev.check(
             "nothing is narrated",
