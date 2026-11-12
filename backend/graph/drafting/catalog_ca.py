@@ -1,8 +1,9 @@
 """The starter premises in Catalan (S10): what Discover shows a player whose app is in Catalan.
 
 Keyed by the starter's id in `graph.drafting.catalog`, like `catalog_es`. Only the words the player
-reads are here; the genre's template, its rules and its ladder stay with the starter. A test
-checks that every starter has its Catalan, so a new starter needs an entry here too (with "tu").
+reads are here: each premise, and below them the words of its genre's template, which a Catalan
+story is drafted with (`TEMPLATE_CATALAN`). A test checks that every starter has its Catalan, so
+a new starter needs an entry here too (with "tu").
 """
 
 from graph.drafting.catalog_es import PremiseText
@@ -271,4 +272,138 @@ CATALAN: dict[str, PremiseText] = {
             "et va mostrar no és el que van explicar a la policia."
         ),
     ),
+}
+
+# What a starter's template says in words the player reads (S10), by the English it stands for,
+# like `catalog_es.TEMPLATE_SPANISH`. A test checks that every such text is here. They match the
+# premises above: "Condensació del Qi", "mestre de l'aura", "homes bèstia", "armadura de guerra",
+# "l'Agulla".
+TEMPLATE_CATALAN: dict[str, str] = {
+    # Rules.
+    "Qi cultivation is real, and the strong climb the realms.": (
+        "El cultiu del qi és real, i els forts ascendeixen pels reialmes."
+    ),
+    "Aura is real: trained knights draw it to strengthen body and blade.": (
+        "L'aura és real: els cavallers entrenats la invoquen per enfortir el cos i l'espasa."
+    ),
+    "Humans, elves, dwarves and beastkin share this world, and monsters roam its wilds.": (
+        "Humans, elfs, nans i homes bèstia comparteixen aquest món, i els monstres en recorren "
+        "les terres salvatges."
+    ),
+    "Magic is real, and monsters carry it in their cores.": (
+        "La màgia és real, i els monstres la porten als seus nuclis."
+    ),
+    "A rare few can bend time, and almost nobody knows.": (
+        "Uns pocs poden doblegar el temps, i gairebé ningú no ho sap."
+    ),
+    "Magic and monsters are real, and so is the Demon Lord.": (
+        "La màgia i els monstres són reals, i el Senyor Dimoni també."
+    ),
+    "A rare few ancient swords hold a spirit that can speak.": (
+        "Unes poques espases antigues guarden un esperit capaç de parlar."
+    ),
+    "Humans, elves, dwarves and lizardfolk climb the Spire side by side, and monsters fill "
+    "its floors.": (
+        "Humans, elfs, nans i homes llangardaix pugen l'Agulla colze a colze, i els monstres "
+        "n'omplen els pisos."
+    ),
+    "Magic is real, and the royal academy teaches it to nobles.": (
+        "La màgia és real, i l'acadèmia reial l'ensenya als nobles."
+    ),
+    "Grounded: no magic and nothing supernatural, and that won't change.": (
+        "Realista: sense màgia ni res de sobrenatural, i això no canviarà."
+    ),
+    "Nobody can do more than a real person could.": (
+        "Ningú no pot fer més del que podria una persona real."
+    ),
+    "No magic and nothing supernatural: only science, and that won't change.": (
+        "Sense màgia ni res de sobrenatural: només ciència, i això no canviarà."
+    ),
+    "Jump drives carry ships between stars in days, and no message travels faster than a ship.": (
+        "Els motors de salt porten les naus d'una estrella a una altra en dies, i cap missatge "
+        "no viatja més de pressa que una nau."
+    ),
+    "Vampires are real, and they hide among the living.": (
+        "Els vampirs són reals, i s'amaguen entre els vius."
+    ),
+    "Magic is real, and Hollowmere teaches it.": "La màgia és real, i Hollowmere l'ensenya.",
+    "Gods are real, worshipped like pop idols, and mortal.": (
+        "Els déus són reals, se'ls adora com ídols del pop, i són mortals."
+    ),
+    "Giant war-frames are real, and each one bonds with a single pilot for life.": (
+        "Les armadures de guerra gegantines són reals, i cadascuna es vincula a un sol pilot "
+        "per a tota la vida."
+    ),
+    "The dead can linger, and almost nobody believes it.": (
+        "Els morts es poden quedar entre els vius, i gairebé ningú no s'ho creu."
+    ),
+    "Magic is rare: a few storm-callers can speak to wind and wave.": (
+        "La màgia és rara: uns pocs invocadors de tempestes saben parlar al vent i a les onades."
+    ),
+    "Cybernetic implants are everywhere, and anyone with a neural jack can dive into the net.": (
+        "Els implants cibernètics són a tot arreu, i qualsevol amb un connector neural pot "
+        "bussejar a la xarxa."
+    ),
+    "Magic and dragons are real, though most folk never meet either.": (
+        "La màgia i els dracs són reals, tot i que la majoria de la gent no veu mai ni una "
+        "cosa ni l'altra."
+    ),
+    "One person in a hundred gains a power at sixteen, and everyone knows it.": (
+        "Una persona de cada cent es desperta amb un poder als setze anys, i tothom ho sap."
+    ),
+    # Kinds, and how far they reach.
+    "qi cultivation": "cultiu del qi",
+    "Realms from Qi Condensation to Nascent Soul and beyond.": (
+        "Reialmes des de la Condensació del Qi fins a l'Ànima Naixent i més enllà."
+    ),
+    "aura": "aura",
+    "From squire to saint.": "D'escuder a sant.",
+    "magic": "màgia",
+    "powers over time": "poders sobre el temps",
+    "sword spirits": "esperits d'espasa",
+    "magic or anything supernatural": "màgia o qualsevol cosa sobrenatural",
+    "vampires": "vampirs",
+    "gods and their miracles": "déus i els seus miracles",
+    "bonded war-frames": "armadures de guerra vinculades",
+    "A frame stands as tall as a tower and answers only its pilot.": (
+        "Una armadura és tan alta com una torre i només respon al seu pilot."
+    ),
+    "ghosts": "fantasmes",
+    "sea magic": "màgia del mar",
+    "cybernetics": "cibernètica",
+    "Implants push a body past its limits, at a price.": (
+        "Els implants porten el cos més enllà dels seus límits, a un preu."
+    ),
+    "magic and dragons": "màgia i dracs",
+    "superpowers": "superpoders",
+    # Ladders and their rungs.
+    "cultivation realms": "reialmes de cultiu",
+    "Qi Condensation": "Condensació del Qi",
+    "Foundation Establishment": "Establiment de la Base",
+    "Core Formation": "Formació del Nucli",
+    "Nascent Soul": "Ànima Naixent",
+    "Soul Transformation": "Transformació de l'Ànima",
+    "aura ranks": "rangs d'aura",
+    "Squire": "Escuder",
+    "Knight": "Cavaller",
+    "Aura Master": "Mestre de l'Aura",
+    "Sword Saint": "Sant de l'Espasa",
+    "hunter ranks": "rangs de caçador",
+    "Iron": "Ferro",
+    "Bronze": "Bronze",
+    "Silver": "Plata",
+    "Gold": "Or",
+    "Mithril": "Mithril",
+    "adventurer ranks": "rangs d'aventurer",
+    "D-rank": "Rang D",
+    "C-rank": "Rang C",
+    "B-rank": "Rang B",
+    "A-rank": "Rang A",
+    "S-rank": "Rang S",
+    # Peoples.
+    "humans": "humans",
+    "elves": "elfs",
+    "dwarves": "nans",
+    "beastkin": "homes bèstia",
+    "lizardfolk": "homes llangardaix",
 }

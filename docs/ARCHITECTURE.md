@@ -1355,6 +1355,15 @@ flowchart LR
   mystery answers and a body's forgotten past are kept where only code and the narrator see them.
   W15: at most 8 key characters and 4 factions start active. Clocks get `interval_s` and
   `next_step_s` in world seconds, with no pending events yet.
+- **A starter's template speaks the draft's language** (S10). `catalog.py` writes each
+  template in English, and `catalog_es.py` and `catalog_ca.py` hold the Spanish and the Catalan
+  of every text of it the player reads, by the English it stands for: the fixed rules, the kinds
+  and how far they reach, the ladder with its rungs and the peoples (`TEMPLATE_SPANISH`,
+  `TEMPLATE_CATALAN`; a test fails when a template text has no entry). `chain.Draft.template` is
+  the starter's template through `PremiseTemplate.in_language(draft.language)`, so the drafter's
+  prompt and `assemble` both get those words, and ids, tiers, prevalence and the drafter's notes
+  stay as they are. A rule counts as the template's own, not rewritten, in any of the three
+  languages (`catalog.wordings`), so a draft made before this still holds its starter's rules.
 - **What the player reads is written by code** (`view.py`) from public fields only: the summary
   lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
   more words of hidden text, or names someone the character doesn't know, is dropped.
