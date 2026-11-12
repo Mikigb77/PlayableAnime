@@ -8,7 +8,8 @@
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
    update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
-   `settle_trips`, `settle_witnesses` and `settle_picture`, and runs
+   `settle_trips`, `settle_witnesses`, `settle_encounter`, `settle_path` and `settle_picture`,
+   and runs
    `engine.invariants.check_transition` on the turn's first and last states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
@@ -29,7 +30,7 @@ Rules every seam follows:
 
 from dataclasses import dataclass, field
 
-from engine import director, encounters, world
+from engine import director, encounters, path, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.base import DAY
 from engine.context import TurnContext
@@ -61,6 +62,8 @@ __all__ = [
     "record_consequences",
     "record_direction",
     "resolve",
+    "settle_encounter",
+    "settle_path",
     "settle_picture",
     "settle_trips",
     "settle_witnesses",
@@ -437,6 +440,21 @@ def settle_encounter(played: WorldState, state: WorldState) -> tuple[WorldState,
     settled = state.model_copy(deep=True)
     kept = encounters.keep(settled, played)
     return (settled, kept) if kept else (state, [])
+
+
+def settle_path(state: WorldState, told: str) -> tuple[WorldState, list[path.Told]]:
+    """After the narrator's update is applied (step 6; `told` is the scene's own words, blank for
+    a scene the engine wrote). What the story tells of a ladder is what the character knows of it
+    (G18, C6, `engine.path.hear`): a rung above their own that the scene names is heard of from
+    now on, and one they have heard of is known once someone who shows it has stood before them.
+    Returns the state, a new one when the scene added something, and what it added, for the
+    turn's log."""
+    added = path.news(state, told)
+    if not added:
+        return state, []
+    settled = state.model_copy(deep=True)
+    path.keep(settled, added)
+    return settled, added
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

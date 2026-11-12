@@ -19,6 +19,7 @@ from engine.state import (
     Faction,
     FactionStatus,
     Fallen,
+    Gain,
     Goal,
     GoalStatus,
     Lead,
@@ -30,6 +31,7 @@ from engine.state import (
     PlaceStatus,
     Reputation,
     Rumor,
+    RungHeard,
     StatusChange,
     Technique,
     Terms,
@@ -1372,6 +1374,120 @@ def test_the_path_stops_at_their_own_rung():
     state.player.sheet.ladders[0].rung = 9
     assert sheet_of(state).paths == []
     assert sheet_of(grounded_world()).paths == []
+
+
+def test_the_path_says_when_each_rung_was_reached_and_left():
+    # G18: a breakthrough is on record under the rung's name, with its day.
+    state = cultivation_world()
+    state.player.sheet.ladders[0].rung = 2
+    state.player.sheet.growth = [
+        Gain(
+            what="Foundation Establishment",
+            change="broke through to Foundation Establishment",
+            source="breakthrough",
+            reason="nine days alone",
+            world_s=8 * DAY,
+        ),
+        Gain(
+            what="Core Formation",
+            change="broke through to Core Formation",
+            source="breakthrough",
+            reason="the storm",
+            world_s=40 * DAY,
+        ),
+        Gain(what="Core Formation", change="read about it", source="study", reason="a scroll"),
+    ]
+
+    (path,) = sheet_of(state).paths
+    assert [(r.name, r.note) for r in path.rungs] == [
+        ("Qi Condensation", "Left behind, day 9"),
+        ("Foundation Establishment", "Left behind, day 41"),
+        ("Core Formation", "Reached, day 41"),
+    ]
+    (path,) = sheet_of(state, Language.ES).paths
+    assert [r.note for r in path.rungs] == [
+        "Quedó atrás, día 9",
+        "Quedó atrás, día 41",
+        "Lo alcanzaste, día 41",
+    ]
+    (path,) = sheet_of(state, Language.CA).paths
+    assert [r.note for r in path.rungs] == [
+        "Va quedar enrere, dia 9",
+        "Va quedar enrere, dia 41",
+        "Hi vas arribar, dia 41",
+    ]
+    # A rung they began on holds no day.
+    state.player.sheet.growth = []
+    assert [r.note for r in sheet_of(state).paths[0].rungs] == ["", "", ""]
+
+
+def test_the_path_shows_the_rungs_above_as_far_as_the_story_told_them():
+    # G18, C6: heard of once a scene named it, known once the story confirmed it, and room
+    # left open for the rungs nobody has named. Never what a rung is or what it takes.
+    state = cultivation_world()
+    realms = state.bible.ladders[0]
+    realms.rungs[1].description = "The qi settles into a foundation."
+    realms.rungs[1].needs = ["a Foundation Pill"]
+    state.player.sheet.rungs_heard = [
+        RungHeard(ladder_id="realms", rung=1, heard_s=2 * DAY, known_s=5 * DAY, known_from="zhao"),
+        RungHeard(ladder_id="realms", rung=3, heard_s=13 * DAY),
+    ]
+    state.facts["f-pill"] = Fact(
+        id="f-pill",
+        text="Master Wen reached Foundation Establishment with a pill and nine days alone.",
+        known_by=["lin"],
+    )
+
+    (path,) = sheet_of(state).paths
+    assert [r.name for r in path.rungs] == ["Qi Condensation"]
+    assert [(r.name, r.known, r.note, r.gap_below) for r in path.above] == [
+        ("Foundation Establishment", True, "Confirmed before Zhao Kun, day 6", False),
+        ("Nascent Soul", False, "Heard of, day 14", True),
+    ]
+    assert path.above[0].said == [
+        "Master Wen reached Foundation Establishment with a pill and nine days alone."
+    ]
+    assert path.above[1].said == []
+    told = dumped(status_view(state).sheet)
+    for hidden in ("Core Formation", "Soul Transformation", "settles into", "Foundation Pill"):
+        assert hidden not in told
+
+    (path,) = sheet_of(state, Language.ES).paths
+    assert [r.note for r in path.above] == [
+        "Lo comprobaste ante Zhao Kun, día 6",
+        "Oíste hablar de ello, día 14",
+    ]
+    (path,) = sheet_of(state, Language.CA).paths
+    assert [r.note for r in path.above] == [
+        "Ho vas comprovar davant de Zhao Kun, dia 6",
+        "En vas sentir a parlar, dia 14",
+    ]
+
+    # Someone they can't name confirms it all the same, and is not named (C6).
+    state.characters["zhao"].known_by = []
+    assert sheet_of(state).paths[0].above[0].note == "Confirmed, day 6"
+    # A rung they know only from something they learned says so.
+    state.player.sheet.rungs_heard = []
+    (rung,) = sheet_of(state).paths[0].above
+    assert (rung.name, rung.known, rung.note) == (
+        "Foundation Establishment",
+        True,
+        "From what you have learned",
+    )
+
+
+def test_a_ladder_they_do_not_stand_on_shows_once_they_have_heard_of_it():
+    # G18: the world's ladder is a scale beside their own way, as far as they know it.
+    state = cultivation_world()
+    state.player.sheet.ladders = []
+    assert sheet_of(state).paths == []
+
+    state.player.sheet.rungs_heard = [RungHeard(ladder_id="realms", rung=0, heard_s=0)]
+    (path,) = sheet_of(state).paths
+    assert path.rungs == []
+    assert [(r.name, r.known, r.gap_below) for r in path.above] == [
+        ("Qi Condensation", False, False)
+    ]
 
 
 def test_the_sheet_lists_what_they_hold_with_what_they_carry_first():

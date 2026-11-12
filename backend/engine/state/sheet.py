@@ -493,6 +493,20 @@ class LadderPosition(EngineModel):
     )
 
 
+class RungHeard(EngineModel):
+    """G18, C6. A rung above their own that the story named to the character (`engine.path`):
+    heard of from the scene that first said its name, and known from the moment the story
+    confirmed it, when someone who stands on it had stood before them."""
+
+    ladder_id: str
+    rung: int = Field(ge=0, description="Index into the ladder's rungs, lowest first.")
+    heard_s: WorldSeconds
+    known_s: WorldSeconds | None = None
+    known_from: str | None = Field(
+        default=None, description="The character who stood before them on that rung."
+    )
+
+
 class RulingSource(StrEnum):
     """Who raised the question a ruling settles (A9)."""
 
@@ -564,6 +578,10 @@ class CharacterSheet(EngineModel):
     condition: Condition = Field(default_factory=Condition)
     axes: PowerAxes = Field(default_factory=PowerAxes)
     ladders: list[LadderPosition] = Field(default_factory=list)
+    rungs_heard: list[RungHeard] = Field(
+        default_factory=list,
+        description="G18, C6: the rungs above their own that the story has named to them.",
+    )
     rulings: list[Ruling] = Field(default_factory=list)
     growth: list[Gain] = Field(default_factory=list)
     practice: list[Practice] = Field(default_factory=list)

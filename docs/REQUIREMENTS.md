@@ -405,8 +405,9 @@ tells you.
 The Character screen (S5) opens on who they are: their name and portrait, their place in a faction
 they know of, a title, their age, and how they come across. Then how they are: health, each
 wound, each passing state with when it passes, and what is left of each reserve. Then each ladder
-they stand on, from its first rung up to their own with its stage, and nothing above it, since
-what lies higher is the story's to tell (C6, G18). Under that, a part at a time: what they carry
+as far as they know it, their own rung lit with its stage and the day they reached it, the rungs
+they climbed under it, and over it only the rungs the story has named to them, since what lies
+higher is the story's to tell (C6, G18). Under that, a part at a time: what they carry
 and what they keep elsewhere, with their money (C10); their skills, best first; their powers with
 their limits, cost and whether each is ready (W10a), and their techniques with how well they have
 each, the count toward the next mastery and, where the story recorded it, who they have it from
@@ -451,6 +452,26 @@ far below the player character can't hurt them by ordinary means either (N6). A 
 ladder counts one step of power for every two tiers (A8), and three steps as what a body shrugs
 off. The reason names the rungs in the world's words: "two rungs above you, Core Formation over Qi
 Condensation, met head-on".
+**The path shows what the character knows of a ladder, and the story tells it by itself**
+(decided 2026-11-12, from the review of Miki's story, where the world's whole ladder was fixed
+on day one and nothing recorded which rungs the character had heard of; Miki, 2026-11-10: "don't
+give them that much of a guidance", and nothing on that screen is tapped). For the character, a
+rung above their own is hidden until a scene says its name, heard of from then on, and known
+once the story confirms it. Code reads the scene's own words for the names of the rungs they
+don't know yet, so what the player read is what the character heard and no model has to
+remember to say that it told them (`engine.path`). A rung heard of is confirmed when someone
+who stands on it, as far as they let it show (G20), has stood before the character, in that
+scene or an earlier one, and a true thing the character knows that names a rung makes it known
+as well. The Character screen draws the ladder highest first: on top, that nobody has told them
+what lies above, which holds for everyone, whoever stands on the last rung; then the rungs they
+have heard of, dashed while only heard of and solid once confirmed, each with how they know
+("Heard of, day 14", "Confirmed before Elder Han, day 15", naming only someone they know) and
+what they have learned or heard about it in the record's own words, which lists ways there and
+requires none; room left open, as unmeasured, wherever rungs nobody has named lie between two
+they know of; then their own rung with the day they reached it and the rungs they left behind
+with the day. A ladder they don't stand on shows once they have heard of one of its rungs, as a
+scale beside their own way. What a rung is, and what climbing to it takes (G19), is never shown
+before the story tells it.
 
 **G19 Breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers. A breakthrough
 needs what the world says it needs: resources (spirit stones, pills, a beast core), insight, time in
@@ -1684,6 +1705,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10) |
 | Talent | A character one of a kind with the sword and a genius at building practises an aura blade, arguing that both talents cover it, argues the opposite a turn later, starts learning a wall of aura while claiming a talent the sheet doesn't have, then derives a formula to connect the wall to their building, tries the same formula again and then new ground, over many seeds | The engine rules once, in the step that starts the learning, on how each talent stands to the new thing, and the pace follows from that very step. Arguing again changes nothing, and a talent nobody wrote on the sheet rules on nothing. A bridge is thrown for with the character's own skill: one that holds lifts that one thing a step and never past the talent, and ground already tried carries no second one (A4, A9) |
 | Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
+| The path | A cultivator on the first realm asks a senior which realms lie above, hears of a far higher one as a story, and later an elder stops beside them | A rung above the character's own shows on their path from the scene that names it, as heard of, and as known once someone who stands on it has stood before them; no rung shows that neither a scene nor something they know has named (G18, C6) |
 | Strong gift | A reborn character with time stop plays 50 turns | The gift wins the fights it should, the world notices and answers it, and at least one event with stakes can't be solved by fighting (G22) |
 | Race relations | A human walks into an elven city, then a beastkin enters a human town that once fought beastkin | Strangers react according to the races' history before they know the player, and that changes with what the player does (G23) |
 | Monster hunt | The player hunts a forest beast for its core, then passes through its territory again later | The core is worth what the world says, and the pack remembers (G24) |
