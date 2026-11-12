@@ -17,7 +17,9 @@ but neither is a guarantee, so the engine checks what it can see:
 
 Each check returns `LimitHit`s and never raises; the turn graph decides what a hit means for the
 turn and logs it with its category (F4). Nothing here assumes a genre (G5): the words are about
-people, bodies and real-world know-how, never about a setting.
+people, bodies and real-world know-how, never about a setting. Romance, sex and a child's body
+or age are read in English, Spanish and Catalan (S10): the English words are here and the
+other two languages' in `engine.limit_words`.
 """
 
 import re
@@ -27,6 +29,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
+from engine import limit_words
 from engine.context import Language, Rating
 from engine.contracts.delta import StateDelta
 from engine.contracts.intent import Intent, IntentStep
@@ -131,10 +134,14 @@ def gravest(hits: list[LimitHit]) -> LimitHit | None:
 # --- Text matching -------------------------------------------------------------------------
 
 
+# A typographic apostrophe parts two words as a plain one does: "l’amor", "Beyoncé’s".
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'"})
+
+
 def normalize(text: str) -> str:
     """Lowercase ASCII words separated by single spaces, so accents, case and punctuation never
-    change a match ("Beyoncé's" becomes "beyonce s")."""
-    folded = unicodedata.normalize("NFKD", text.casefold())
+    change a match ("Beyoncé's" becomes "beyonce s", with either apostrophe)."""
+    folded = unicodedata.normalize("NFKD", text.casefold().translate(_APOSTROPHES))
     ascii_only = folded.encode("ascii", "ignore").decode()
     return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_only).split())
 
@@ -226,7 +233,41 @@ _LEADING_AGE = re.compile(r"^\s*(\d{1,3})\s*,")
 
 
 def _age_value(value: str) -> int:
-    return int(value) if value.isdigit() else _NUMBERS[value]
+    if value.isdigit():
+        return int(value)
+    return _NUMBERS[value] if value in _NUMBERS else limit_words.NUMBERS[value]
+
+
+def _age_of(match: re.Match[str]) -> int:
+    """The age a phrase gave, in figures or in words, whichever of its groups took it."""
+    return _age_value(next(group for group in match.groups() if group))
+
+
+# S10: the same in Spanish and in Catalan (`engine.limit_words`), read for every character.
+_CHILDLIKE_IN = _words(*limit_words.CHILDLIKE)
+_CHILD_OPENING = tuple(re.compile(pattern) for pattern in limit_words.CHILD_OPENING)
+_AGE_PHRASES_IN = tuple(re.compile(pattern) for pattern in limit_words.AGE_PHRASES)
+_OWN_AGE_OPENING = tuple(re.compile(pattern) for pattern in limit_words.OWN_AGE_OPENING)
+_IS_A_CHILD = tuple(re.compile(pattern) for pattern in limit_words.IS_A_CHILD)
+# Where a clause of a description ends, so that one which opens with the character is found.
+_CLAUSE_END = re.compile(r"[.,;:!?()\u2014\u2013]+")
+
+
+@lru_cache(maxsize=256)
+def _named(
+    names: tuple[str, ...],
+) -> tuple[tuple[re.Pattern[str], ...], tuple[re.Pattern[str], ...]]:
+    """What a Spanish or a Catalan description says after one of the character's names: their
+    age ("Mira tiene quince años", "Lia, de 15 anys") and that they are a child ("Mei es una
+    niña")."""
+    known = "|".join(re.escape(n) for n in names if n)
+    if not known:
+        return (), ()
+
+    def with_names(patterns: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
+        return tuple(re.compile(pattern.replace("NAMES", known)) for pattern in patterns)
+
+    return with_names(limit_words.OWN_AGE_NAMED), with_names(limit_words.IS_A_CHILD_NAMED)
 
 
 @lru_cache(maxsize=256)
@@ -242,7 +283,8 @@ def _own_age(names: tuple[str, ...]) -> re.Pattern[str]:
 def childlike_markers(text: str, names: tuple[str, ...] = ()) -> list[str]:
     """The words in a description that make a character read as a child (F3). `names` are the
     character's own names, so "Mira is 15" counts and "her daughter is 6" doesn't."""
-    own_age = _own_age(tuple(dict.fromkeys(normalize(n) for n in names)))
+    known = tuple(dict.fromkeys(normalize(n) for n in names))
+    own_age = _own_age(known)
     found = []
     for line in text.splitlines():
         leading = _LEADING_AGE.match(line)
@@ -250,9 +292,23 @@ def childlike_markers(text: str, names: tuple[str, ...] = ()) -> list[str]:
             found.append(leading.group(0).strip())
         words = normalize(line)
         found += [m.group(0) for m in _CHILDLIKE.finditer(words)]
-        for pattern in (*_AGE_PHRASES, own_age):
-            for match in pattern.finditer(words):
-                if _age_value(match.group(1)) < ADULT_AGE:
+        found += [m.group(0) for m in _CHILDLIKE_IN.finditer(words)]
+        found += [m.group(0) for pattern in _CHILD_OPENING if (m := pattern.search(words))]
+        clauses = [normalize(clause) for clause in _CLAUSE_END.split(line)]
+        ages_named, child_named = _named(known)
+        found += [m.group(0) for pattern in child_named if (m := pattern.search(words))]
+        found += [
+            m.group(0)
+            for pattern in _IS_A_CHILD
+            for clause in clauses
+            if (m := pattern.search(clause))
+        ]
+        ages = [(pattern, words) for pattern in (*_AGE_PHRASES, own_age, *_AGE_PHRASES_IN)]
+        ages += [(pattern, words) for pattern in ages_named]
+        ages += [(pattern, clause) for pattern in _OWN_AGE_OPENING for clause in clauses]
+        for pattern, where in ages:
+            for match in pattern.finditer(where):
+                if _age_of(match) < ADULT_AGE:
                     found.append(match.group(0))
     return list(dict.fromkeys(found))
 
@@ -350,19 +406,62 @@ _NOT_A_ROMANTIC_KISS = (
 )
 
 
-def intimacy(step: IntentStep) -> Intimacy | None:
+@dataclass(frozen=True)
+class _StepWords:
+    """The words of one language for a romantic or sexual step, compiled."""
+
+    sexual_violence: re.Pattern[str]
+    sexual: re.Pattern[str]
+    romance: re.Pattern[str]
+    not_a_kiss: tuple[re.Pattern[str], ...]
+    not_english: tuple[re.Pattern[str], ...] = ()
+
+    def read(self, text: str) -> Intimacy | None:
+        if self.sexual_violence.search(text):
+            return Intimacy.SEXUAL_VIOLENCE
+        if self.sexual.search(text):
+            return Intimacy.SEXUAL
+        for pattern in self.not_a_kiss:
+            text = pattern.sub(" ", text)
+        if self.romance.search(text):
+            return Intimacy.ROMANCE
+        return None
+
+
+_ENGLISH_WORDS = _StepWords(_SEXUAL_VIOLENCE, _SEXUAL, _ROMANCE, _NOT_A_ROMANTIC_KISS)
+# S10: a Spanish or a Catalan story's reading may word a step in the story's language.
+_STORY_WORDS = {
+    language: _StepWords(
+        sexual_violence=_words(*words.sexual_violence),
+        sexual=_words(*words.sexual),
+        romance=_words(*words.romance),
+        not_a_kiss=tuple(re.compile(pattern) for pattern in words.not_a_kiss),
+        not_english=tuple(re.compile(pattern) for pattern in words.not_english),
+    )
+    for language, words in limit_words.STEP_WORDS.items()
+}
+_GRAVITY = tuple(Intimacy)  # the mildest first
+_KISS = re.compile(r"\bkiss\w*")
+
+
+def intimacy(step: IntentStep, language: Language = Language.EN) -> Intimacy | None:
     """Whether a step is romantic or sexual, read from the interpret step's own words for it:
-    its verb, text and beats."""
+    its verb, text and beats. In a Spanish or a Catalan story those words may be English or
+    the story's, so both are read and the graver reading stands. The story's own words that
+    only look English ("molestar", to bother someone) are taken out of the English reading."""
     text = normalize(" ".join([step.verb, step.text, *(b.text for b in step.beats)]))
-    if _SEXUAL_VIOLENCE.search(text):
-        return Intimacy.SEXUAL_VIOLENCE
-    if _SEXUAL.search(text):
-        return Intimacy.SEXUAL
-    for pattern in _NOT_A_ROMANTIC_KISS:
-        text = pattern.sub(" ", text)
-    if _ROMANCE.search(text):
-        return Intimacy.ROMANCE
-    return None
+    story = _STORY_WORDS.get(language)
+    if story is None:
+        return _ENGLISH_WORDS.read(text)
+    english = text
+    for pattern in story.not_english:
+        english = pattern.sub(" ", english)
+    # The reading names the verb in English, so a kiss the story's words put on a hand or a
+    # ring is "kiss" beside them: that kiss is theirs to judge.
+    if any(pattern.search(text) for pattern in story.not_a_kiss):
+        english = _KISS.sub(" ", english)
+    found = [kind for kind in (_ENGLISH_WORDS.read(english), story.read(text)) if kind]
+    return max(found, key=_GRAVITY.index, default=None)
 
 
 # --- Real people and organisations (G12) ----------------------------------------------------
@@ -419,7 +518,9 @@ def _names_of(state: WorldState, ids: list[str]) -> list[str]:
 # --- The player's action --------------------------------------------------------------------
 
 
-def check_action(state: WorldState, intent: Intent, rating: Rating) -> list[LimitHit]:
+def check_action(
+    state: WorldState, intent: Intent, rating: Rating, language: Language = Language.EN
+) -> list[LimitHit]:
     """The lines the player's checked intent crosses, before anything resolves or is narrated.
 
     A romantic or sexual step needs the actor and every character it targets to be recorded
@@ -432,7 +533,7 @@ def check_action(state: WorldState, intent: Intent, rating: Rating) -> list[Limi
     hits: list[LimitHit] = []
     actor_id = intent.actor_id or state.player_id
     for index, step in enumerate(intent.steps):
-        kind = intimacy(step)
+        kind = intimacy(step, language)
         if kind is not None:
             hits += _intimacy_hits(state, step, index, actor_id, kind, rating)
         stranger = [step.stranger.who] if step.stranger is not None else []

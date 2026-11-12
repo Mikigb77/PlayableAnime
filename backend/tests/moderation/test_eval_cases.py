@@ -59,7 +59,7 @@ def test_a_case_is_well_formed(case):
 def test_a_deterministic_case_is_refused_by_the_engine(case):
     world = build_world(case)
     [intent] = case.interpretation
-    hits = limits.check_action(world, intent, case.rating)
+    hits = limits.check_action(world, intent, case.rating, case.language)
     assert limits.gravest(hits).category is case.expect.limit
 
 
