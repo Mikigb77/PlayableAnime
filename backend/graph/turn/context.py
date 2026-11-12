@@ -50,7 +50,7 @@ from engine.world.geography import routes_from, together
 from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
-from graph.turn import prompts
+from graph.turn import prompts, worn
 from graph.turn.form import Asks
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
 
@@ -118,10 +118,11 @@ def place_name(state: WorldState) -> str | None:
     return place.name if place else None
 
 
-def _player_view(state: WorldState) -> dict[str, Any]:
-    view = {"id": state.player_id} | _dump(
-        state.player, exclude={*_RECORD_NOISE, *_KIN, "personal_offset_s"}
-    )
+def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
+    """The player character as the record has them. `looks` false leaves their appearance out:
+    the narrator is handed it only in a scene with reason to show it (R9, `shows_looks`)."""
+    hidden = {*_RECORD_NOISE, *_KIN, "personal_offset_s", *(() if looks else ("appearance",))}
+    view = {"id": state.player_id} | _dump(state.player, exclude=hidden)
     # C10: what they have is exactly what this lists, so their money and their things show even
     # when they have none.
     resources = state.player.sheet.resources
@@ -673,6 +674,10 @@ class NarrationBrief:
     stable_chars: int = 0
     # The story's language, for the template line (S10).
     language: Language = Language.EN
+    # R9: whether the scene was handed the player character's appearance, and the worn phrases
+    # it was handed to say another way.
+    looks: bool = True
+    worn: tuple[str, ...] = ()
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
         if cutaway:
@@ -684,6 +689,91 @@ class NarrationBrief:
         here, there = prompts.TEMPLATE_PLACE[self.language]
         where = here.format(place=self.place) if self.place else there
         return prompts.TEMPLATE_LINE[self.language].format(where=where)
+
+
+def shows_looks(
+    *,
+    before: WorldState,
+    after: WorldState,
+    intent: Intent | None,
+    resolution: Resolution,
+    plan: DirectorPlan,
+    words: str | None,
+    language: Language,
+    ending: Ending | None = None,
+) -> bool:
+    """R9: whether this scene has reason to show how the player character looks, so the
+    narrator is handed their appearance. In Miki's long story the narrator had it on every
+    turn and kept using it: "deep black eyes" in 16 scenes of 187.
+
+    A scene has reason to when it introduces the character (an opening has no steps) or ends
+    their story, when the turn brings them before someone they have never met, when their look
+    changed this turn, when the player's own words are about how they look (`worn.touches`),
+    and when the scene gets a picture that shows them, a picture of the scene or their own
+    portrait, which is drawn true to their appearance (M5)."""
+    you = after.player
+    if ending is not None or not resolution.steps:
+        return True
+    picture = plan.picture
+    if picture is not None and (
+        picture.kind is PictureKind.SCENE or picture.subject_id == after.player_id
+    ):
+        return True
+    if you.look_version != before.player.look_version or you.appearance != before.player.appearance:
+        return True
+    if _meets_someone(before, after, intent, resolution, plan):
+        return True
+    said = " ".join(
+        [words or "", *(line for step in (intent.steps if intent else ()) for line in step.lines)]
+    )
+    return worn.touches(said, you.appearance, language)
+
+
+def _meets_someone(
+    before: WorldState,
+    after: WorldState,
+    intent: Intent | None,
+    resolution: Resolution,
+    plan: DirectorPlan,
+) -> bool:
+    """Whether the turn brings the player character before someone they have never met and who
+    wasn't in the scene when it began: a stranger a step made real, whom the action names, or
+    someone of an event, a happening or a moment the director planned."""
+    you = after.player_id
+    there = {you, *before.scene.present_ids}
+    new = [i for step in resolution.steps for i in step.strangers]
+    for step in intent.steps if intent is not None else ():
+        new += step.target_ids
+    for planned in (plan.event, plan.moment, *plan.happenings):
+        if planned is not None:
+            new += planned.cast_ids
+    for character_id in dict.fromkeys(new):
+        character = after.characters.get(character_id)
+        if character is None or character_id in there or not character.alive:
+            continue
+        if you not in character.met_by:
+            return True
+    return False
+
+
+def _names(state: WorldState) -> list[str]:
+    """What the story calls its people, its places and the things of its world: people with
+    their aliases, places, factions, peoples, creatures, the ladders with their rungs and the
+    player character's money. A name has no other way to be said, so it is never wording to
+    avoid (R9). What is on the character's own sheet is left to count: a trait or a pair of
+    boots said in scene after scene is the wording that wore."""
+    bible = state.bible
+    names: list[str] = []
+    for character in state.characters.values():
+        names += [character.name, *character.aliases]
+    names += [place.name for place in state.places.values()]
+    names += [faction.name for faction in state.factions.values()]
+    names += [people.name for people in bible.peoples]
+    names += [creature.name for creature in bible.creatures]
+    for ladder in bible.ladders:
+        names += [ladder.name, *(rung.name for rung in ladder.rungs)]
+    names.append(state.player.sheet.resources.currency)
+    return [name for name in names if name]
 
 
 def narration_brief(
@@ -728,6 +818,19 @@ def narration_brief(
         romance=ctx.content_prefs.romance,
         dark_themes=ctx.content_prefs.dark_themes,
     )
+    # R9: their appearance only in a scene with reason to show it, and the wording the last
+    # scenes repeated, to say another way.
+    looks = shows_looks(
+        before=before,
+        after=after,
+        intent=intent,
+        resolution=resolution,
+        plan=plan,
+        words=words,
+        language=settings.language,
+        ending=ending,
+    )
+    tired = worn.worn_phrases(scenes, settings.language, _names(after))
     # The director tells its own events, and the world's events it made the scene's event or a
     # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
     told = {
@@ -758,7 +861,7 @@ def narration_brief(
         # The goals as the director left them, with any the player stated or took up this turn,
         # so the scene can close one it achieves at once (N2).
         ("GOALS AND THREADS", _goals_and_threads(before, goals=after)),
-        ("PLAYER CHARACTER", _player_view(after)),
+        ("PLAYER CHARACTER", _player_view(after, looks=looks)),
         ("CHANGED HANDS", _changed_hands(after)),
         ("KNOWN", _known_view(after)),
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
@@ -794,6 +897,8 @@ def narration_brief(
     weight = scene_weight.told(plan, ending=ending is not None)
     if weight is not SceneWeight.ORDINARY:
         sections.append(("LENGTH", prompts.WEIGHT_LENGTHS[weight][settings.narration_length]))
+    if tired:
+        sections.append(("WORN", tired))
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:
@@ -850,6 +955,8 @@ def narration_brief(
         suggestions=suggestions,
         stable_chars=len(render(stable)),
         language=settings.language,
+        looks=looks,
+        worn=tuple(tired),
     )
 
 

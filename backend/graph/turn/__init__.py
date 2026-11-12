@@ -17,6 +17,7 @@ from graph.turn.types import (
     CHAPTER_TURNS,
     MAX_CHAPTER_TURNS,
     RECENT_SCENES,
+    WORN_SCENES,
     Choice,
     Ending,
     Issue,
@@ -67,6 +68,7 @@ __all__ = [
     "TurnKind",
     "TurnResult",
     "UnreadableAction",
+    "WORN_SCENES",
     "run_turn",
     "turn_graph",
 ]

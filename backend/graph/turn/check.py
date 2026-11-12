@@ -422,7 +422,12 @@ def _stop_reason(step: StepResolution) -> StopReason:
 
 
 def check_update(
-    delta: StateDelta, state: WorldState, moved: Sequence[Transfer] = (), told: str = ""
+    delta: StateDelta,
+    state: WorldState,
+    moved: Sequence[Transfer] = (),
+    told: str = "",
+    *,
+    looks: bool = True,
 ) -> tuple[StateDelta, list[Issue]]:
     """The narrator's scene end, before `engine.apply.apply_delta` applies the rest with C1.
 
@@ -434,9 +439,21 @@ def check_update(
     faction named after a real person or organisation is left out, and a known one keeps its
     name (G12). What the engine already moved this turn (`moved`, the transfers its steps and
     events made, C10) is left out, so a payment told in the scene is never made twice.
+
+    `looks` false says the scene was written without the player character's appearance (R9).
+    An appearance it writes for them all the same was made up, so it is left out and the kept
+    one stands (C9); a lasting change it names is still added to the kept one (`engine.looks`).
     """
     delta, hits = limits.strip_real_entities(delta, state)
     issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
+    if not looks:
+        characters = []
+        for change in delta.characters:
+            if change.id == state.player_id and change.appearance is not None:
+                issues.append(Issue(LOOKS_UNSEEN, "kept the appearance on record", change.id))
+                change = change.model_copy(update={"appearance": None})
+            characters.append(change)
+        delta = delta.model_copy(update={"characters": characters})
     if moved and delta.items:
         kept = [change for change in delta.items if not _already_moved(change, moved)]
         if len(kept) < len(delta.items):
@@ -482,6 +499,9 @@ def _last_sentence(told: str) -> str:
 
 # R1: the issue code for a scene that skipped the player's action and opened on what came of it.
 ACTION_UNTOLD = "action_untold"
+# R9: the issue code for an appearance written for the player character by a scene that was
+# never handed theirs.
+LOOKS_UNSEEN = "looks_unseen"
 
 
 def check_told(told: NarratorOutput, intent: Intent | None) -> list[Issue]:

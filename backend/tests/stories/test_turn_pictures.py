@@ -48,14 +48,14 @@ def change(story: Story, edit) -> None:
     Story.objects.filter(pk=story.pk).update(state=state.model_dump(mode="json"))
 
 
-def act(player, story: Story, model, narration: dict) -> Scene:
+def act(player, story: Story, model, narration: dict, action: str = "I look around.") -> Scene:
     story.refresh_from_db()
     model.backend.script(Node.INTERPRET, Reply(json=LOOK_AROUND))
     model.backend.script(Node.NARRATOR, Reply(json=narration))
     played = play(
         player,
         story,
-        {"kind": "action", "action": "I look around.", "expected_version": story.version},
+        {"kind": "action", "action": action, "expected_version": story.version},
     )
     assert played.names[-1] == "scene.completed", played.events
     return Scene.objects.get(story=story, turn=played.completed["scene"]["turn"])
@@ -104,14 +104,15 @@ def test_a_face_that_changed_for_good_gets_its_portrait_drawn_once_more(player, 
     first = Image.objects.get(story=story, kind="portrait", subject="lin")
     change(story, seen_already)
 
-    # The narrator records the lost eye (C9, G17); the next scene redraws him.
+    # The narrator records the lost eye (C9, G17); the next scene redraws him. The action is
+    # about his face, so the scene is handed his appearance and may write it anew (R9).
     lost_eye = narrated(
         {
             "characters": [{"id": "lin", "appearance": SCARRED, "look_change": "lost an eye"}],
             "scene_end": {"ended_on": "Blood runs down Lin's face."},
         }
     )
-    assert picture_of(act(player, story, model, lost_eye)) is None
+    assert picture_of(act(player, story, model, lost_eye, "I touch my face.")) is None
     story.refresh_from_db()
     assert story.state["characters"]["lin"]["look_version"] == 2
 

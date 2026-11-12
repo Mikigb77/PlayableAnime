@@ -68,7 +68,7 @@ from engine.state.sheet import (
     TalentRuling,
     TalentStrength,
 )
-from engine.state.world import EventSize
+from engine.state.world import EventSize, WorldState
 from graph.turn import prompts
 from graph.turn.context import (
     LAST_SCENE_CHARS,
@@ -632,6 +632,123 @@ def test_a_scenes_length_follows_its_weight_within_the_players_setting():
     ending = brief(plan=DirectorPlan(weight=SceneWeight.LIGHT), ending=chosen)
     assert "A turning point: 250 to 400 words." in ending.user
     assert "unless the brief has a LENGTH (R3)" in prompts.NARRATOR_SYSTEM
+
+
+def asked() -> dict:
+    """A quiet turn in the bar: Luca asks Carmine, whom he knows, about the docks."""
+    step = StepResolution(
+        index=0,
+        text="ask Carmine about the docks",
+        outcome_class=OutcomeClass.CERTAIN,
+        reason="Carmine answers.",
+        result=StepResult.SUCCESS,
+        duration_s=60,
+    )
+    read = IntentStep(
+        text=step.text,
+        verb="ask",
+        kind=ActionKind.CONVERSATION,
+        proposed_duration_s=60,
+        target_ids=["carmine"],
+    )
+    return {
+        "intent": Intent(steps=[read]),
+        "resolution": Resolution(steps=[step]),
+        "words": "I ask Carmine about the docks",
+    }
+
+
+def player_record(told) -> dict:
+    return json.loads(told.user.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+
+
+def test_the_appearance_is_handed_only_to_a_scene_with_reason_to_show_it():
+    """R9: in Miki's long story the narrator had the character's looks on every turn, and
+    "deep black eyes" came back in 16 scenes of 187. Code decides when a scene gets them."""
+    looks = grounded_world().player.appearance
+    quiet = brief(**asked())
+
+    assert looks and not quiet.looks
+    assert "appearance" not in player_record(quiet) and looks not in quiet.user
+    # Who they are and everything on their sheet stay.
+    assert player_record(quiet)["description"] and player_record(quiet)["sheet"]["traits"]
+
+    def handed(state=None, **change) -> bool:
+        told = brief(state, **(asked() | change))
+        assert ("appearance" in player_record(told)) is told.looks
+        return told.looks
+
+    # The scene that introduces them, and the one that ends their story.
+    assert handed(intent=None, resolution=Resolution(), words=None)
+    assert handed(ending=Ending(kind="chosen", character_id="luca"))
+
+    # A picture that shows them is drawn true to their appearance (M5): one of the scene, or
+    # their own portrait. Someone else's portrait, a place and the cover don't show them.
+    def pictured(kind, trigger, subject=None) -> bool:
+        picture = PictureDecision(kind=kind, trigger=trigger, subject_id=subject)
+        return handed(plan=DirectorPlan(picture=picture))
+
+    assert pictured(PictureKind.SCENE, PictureTrigger.BIG_DEED, "d1")
+    assert pictured(PictureKind.PORTRAIT, PictureTrigger.LOOK_CHANGED, "luca")
+    assert not pictured(PictureKind.PORTRAIT, PictureTrigger.FIRST_MEETING, "carmine")
+    assert not pictured(PictureKind.PLACE, PictureTrigger.FIRST_VISIT, "bar")
+    assert not pictured(PictureKind.COVER, PictureTrigger.COVER)
+    # A look that changed this turn.
+    scarred = grounded_world()
+    scarred.player.appearance += " A fresh cut across the cheek."
+    scarred.player.look_version += 1
+    assert handed(after=scarred)
+    # The player's own words are about how they look.
+    assert handed(words="I comb my hair back in the mirror behind the bar")
+    assert handed(words="I straighten up and touch the scar on my eyebrow")
+
+
+def test_meeting_someone_for_the_first_time_shows_the_appearance():
+    def stranger(**record) -> WorldState:
+        state = grounded_world()
+        state.characters["nina"] = Character(
+            id="nina", name="Nina", location_id="bar", description="A courier.", **record
+        )
+        return state
+
+    turn = asked()
+    to_nina = turn["intent"].steps[0].model_copy(update={"target_ids": ["nina"]})
+    walks_up = turn | {"intent": Intent(steps=[to_nina])}
+    assert brief(stranger(), **walks_up).looks
+    # Someone they have met, or who was already in the scene, is no first meeting.
+    assert not brief(stranger(met_by=["luca"]), **walks_up).looks
+    there = stranger()
+    there.scene.present_ids.append("nina")
+    assert not brief(there, **walks_up).looks
+    # A stranger a step made real, and someone an event brings.
+    made = turn["resolution"].steps[0].model_copy(update={"strangers": ["nina"]})
+    assert brief(stranger(), **(turn | {"resolution": Resolution(steps=[made])})).looks
+    arrives = PlannedEvent(
+        kind=EventKind.ARRIVAL,
+        size=EventSize.PERSONAL,
+        source=EventSource.DECK,
+        title="A courier at the door",
+        brief="A courier asks for Luca.",
+        cast_ids=["nina"],
+    )
+    assert brief(stranger(), **(turn | {"plan": DirectorPlan(event=arrives)})).looks
+
+
+def test_the_narrator_is_handed_the_wording_the_last_scenes_repeated():
+    """R9: code reads the last scenes, and the narrator says those things another way."""
+    scene = "Carmine Russo watches you over a thousand lire. Your steady nerves hold."
+    told = [PastScene(turn, f"{scene} Scene {turn}.") for turn in range(1, 4)]
+    plain = brief(**asked())
+    worn = brief(scenes=told, **asked())
+
+    assert "## WORN" not in plain.user and plain.worn == ()
+    assert worn.worn == ("steady nerves hold",)
+    assert '## WORN\n["steady nerves hold"]' in worn.user
+    # Names are no wording, nor is what the world calls its money, and the list stays out of
+    # the cached start.
+    assert not any(name in " ".join(worn.worn) for name in ("carmine", "russo", "lire"))
+    assert worn.stable_chars == plain.stable_chars
+    assert "Never use a phrase WORN lists" in prompts.NARRATOR_SYSTEM
 
 
 def test_suggestions_and_pictures_are_asked_for_only_when_planned():
