@@ -699,7 +699,8 @@ const _seedSheet = <String, Object?>{
         {'name': 'Mortal', 'stage': '', 'description': '', 'note': 'Left behind, day 2'},
         {
           'name': 'Qi Condensation',
-          'stage': 'Third stage',
+          'stage': 'Middle stage',
+          'filled': 0.4,
           'description': 'Qi gathers in the dantian and the body begins to change.',
           'note': 'Reached, day 2',
         },

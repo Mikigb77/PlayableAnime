@@ -741,13 +741,17 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
                    states: [{name, effect, ends_label?}],   # "Passes in 2 hours" (W10)
                    reserves: [{name, level}],          # what is left, 0 to 100
                    expecting_label?},                  # a child on the way and when (N6)
-       paths: [{name, rungs: [{name, stage, description, note}],
+       paths: [{name, rungs: [{name, stage, filled?, description, note}],
                 above: [{name, known, note, said: [string], gap_below}], higher}],
                                           # each ladder as far as they know it (G18, C6).
                                           # rungs: from its first rung up to their own, lowest
-                                          # first: the last is theirs and carries its stage and
-                                          # description; empty for a ladder they don't stand
-                                          # on. note: "Reached, day 9", "Left behind, day 9".
+                                          # first: the last is theirs and carries its
+                                          # description, the stage of their rank ("Late
+                                          # stage", or "At its peak: you can try to break
+                                          # through") and filled, how full the rank is from 0
+                                          # to 1 (G19), absent on a ladder's last rung; empty
+                                          # for a ladder they don't stand on. note: "Reached,
+                                          # day 9", "Left behind, day 9".
                                           # above: the rungs over their own that they have
                                           # heard of, lowest first: the ones everyone in the
                                           # world knows and the ones the story named to them.
@@ -789,10 +793,12 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
        talent_notes: [string],            # each thing ruled on, the bridges that hold and
                                           # what lies outside, as in `lines` (A4)
        grew: [{kind, when, text, how}]}   # how they grew (A4, G17), latest first, at most 30.
-                                          # kind: breakthrough | skill | learned | mastery |
-                                          # new_use. when: the day, "Day 9". text: "Broke
-                                          # through to Qi Condensation", "Swordsmanship:
-                                          # Skilled", "Learned Falling Leaf Palm". how: "With a
+                                          # kind: breakthrough | stage | skill | learned |
+                                          # mastery | new_use. when: the day, "Day 9". text:
+                                          # "Broke through to Qi Condensation", "Qi
+                                          # Condensation: Late stage" (a rank filling, G19),
+                                          # "Swordsmanship: Skilled", "Learned Falling Leaf
+                                          # Palm". how: "With a
                                           # master", "By doing it", or empty where the record
                                           # doesn't say
 ```

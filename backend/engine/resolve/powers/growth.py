@@ -34,12 +34,21 @@ haste counts on the trainer's own clock (W10a), and it adds up across sessions o
   already let them do. Talent sets the pace (`engine.talent`): a move a genius's talent covers
   takes a quarter of the uses, an hour of practice counts four, and it starts at practiced;
   one of a kind's takes an eighth and starts at skilled; a slow learner needs twice the uses.
-- **Breakthroughs** (G19) are events, not counters: the next rung's needs (a pill, a master's
-  guidance) are checked against the state and any missing one is a bottleneck. Otherwise the
-  attempt is thrown for, three dice against a level of 3 (A3): passed climbs a rung, a throw
-  that falls just short shakes the character and a miss wounds them, and how long it takes is
-  drawn too, so the world can interrupt it (W10). A loud rung's breakthrough is seen from afar
-  (W1).
+- **Ranks** (G19) are earned, then thrown for. The sheet keeps the effort put toward the next
+  rung of a ladder (`Rank`, under the key `ladder:<id>`). It fills with use in play, two hours
+  of effort for a turn that used what the ladder measures, four where their own throw decided
+  the step and six for an insight, and with training aimed at the rank, all at the pace their
+  talent gives that ladder. How full it is reads as a stage: early, middle, late, and its peak
+  once it is full. The first rung above the lowest takes about 100 hours and each rung above
+  it twice the last.
+- **Breakthroughs** (G19) are events. Before the peak an attempt is training toward the rung.
+  At the peak it is thrown for, three dice against a level of 3 (A3): a talent that covers the
+  climb adds a green die, two when it is one of a kind, a master's teaching adds one and so
+  does each thing the rung lists that the character has (a pill, a beast core), none of which
+  is required; a weakness throws one die fewer. Passed climbs the rung, so close keeps nine
+  tenths of the rank and a miss three quarters, and they are hurt only when the way they went
+  about it was risky. How long it takes is drawn too, so the world can interrupt it (W10). A
+  loud rung's breakthrough is seen from afar (W1).
 - **Which talent covers what** is ruled once and kept (`engine.resolve.powers.talents`).
 
 A world with nothing extraordinary never grows a power (G6, G8).
@@ -48,7 +57,7 @@ A world with nothing extraordinary never grows a power (G6, G8).
 import re
 import unicodedata
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
 from engine import levels
@@ -68,20 +77,24 @@ from engine.resolve.checks import Move, Settled, same_way
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.words import cap, mentions, name, possessive, stems
 from engine.rng import SeededRng
+from engine.state.bible import PowerLadder, Rung
 from engine.state.cast import Character
-from engine.state.records import RollRecord, StepResult, Trace, TraceKind, Visibility
+from engine.state.records import StepResult, Trace, TraceKind, Visibility
 from engine.state.sheet import (
     Gain,
     Health,
     LadderPosition,
     Mastery,
     Power,
+    PowerAxis,
     Practice,
+    RankStage,
     Ruling,
     RulingSource,
     Skill,
     SkillLevel,
     Technique,
+    stage_named,
 )
 from engine.state.world import WorldState
 
@@ -127,6 +140,21 @@ BREAKTHROUGH_DICE = 3
 BREAKTHROUGH_LEVEL = 3
 MAX_HINDRANCES = 2
 LOUD_STRENGTH = 90
+# G19. Why a talent adds a green die to a breakthrough, and why one of a kind adds a second.
+TALENT_DIE = "a talent for the climb"
+ONE_OF_A_KIND_DIE = "being one of a kind at it"
+MASTER_DIE = "a master's teaching"
+# G19. Hours of ordinary effort a rung takes to fill: stepping onto a ladder from below it, the
+# first rung above its lowest, and each rung above that twice the last.
+FIRST_RUNG_HOURS = 50
+RUNG_HOURS = 100
+# G19. What a use in play is worth toward a rank, in hours of effort (`engine.levels`: one use
+# where nothing resisted, two where their own throw decided the step, three for an insight).
+RANK_HOURS_PER_USE = 2
+# G19. What is left of a full rank after an attempt that fell just short, and after a miss.
+CLOSE_KEEPS = 0.9
+MISS_KEEPS = 0.75
+RANK_KEY = talent_mod.ladder_key("")
 
 _MASTER_STEMS = stems("master teacher guidance mentor")
 # Teachers who must be a living character beside the learner to count (A4).
@@ -170,6 +198,8 @@ def practice_key(step: IntentStep) -> str:
     assert training is not None
     if training.kind is GrowthKind.SKILL:
         return f"skill:{slug(training.what)}"
+    if training.kind is GrowthKind.BREAKTHROUGH:
+        return talent_mod.ladder_key(training.ladder_id)
     if training.kind is GrowthKind.POWER:
         return f"power:{training.power_id or ''}:{training.grants.value}:{slug(training.what)}"
     return f"technique:{slug(training.what)}"
@@ -222,9 +252,9 @@ def check(
     state: WorldState, actor: Character, step: IntentStep, canon: list[str]
 ) -> Settled | None:
     """What settles a training step at once, with no roll: a fixed rule it would break, a power
-    growing where the world has none, a teacher who isn't there, the top of a ladder, or a
-    breakthrough's bottleneck. Practising a technique they already know is never refused
-    (`already_known`)."""
+    growing where the world has none, a teacher who isn't there, or the top of a ladder.
+    Practising a technique they already know is never refused (`already_known`), and nothing a
+    rung lists is ever a bottleneck (G19)."""
     training = step.training
     assert training is not None
     fixed = [r for r in (state.bible.rule(i) for i in training.against_rule_ids) if r and r.fixed]
@@ -254,7 +284,7 @@ def check(
         if skill is not None and skill.level is SkillLevel.MASTER:
             return _ruled_out(f"{cap(who)} {_have(state, actor)} mastered {skill.name} already.")
     if training.kind is GrowthKind.BREAKTHROUGH:
-        return _breakthrough_check(state, actor, step, canon)
+        return _breakthrough_check(state, actor, step)
     return None
 
 
@@ -278,12 +308,11 @@ def already_known(
     return Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, reason), known
 
 
-def _breakthrough_check(
-    state: WorldState, actor: Character, step: IntentStep, canon: list[str]
-) -> Settled | None:
+def _breakthrough_check(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
+    """G19. A ladder that isn't there and a rung with none above it are the only things that
+    stop work toward a rung. What the rung lists is a way there, never a requirement."""
     training = step.training
     assert training is not None
-    who = name(state, actor.id)
     ladder, position = _ladder(state, actor, training.ladder_id)
     if ladder is None:
         return _ruled_out("There is no such ladder to climb here.")
@@ -291,13 +320,6 @@ def _breakthrough_check(
     if current + 1 >= len(ladder.rungs):
         top = ladder.rungs[-1].name
         return _ruled_out(f"There is no rung above {top} here.")
-    rung = ladder.rungs[current + 1]
-    missing = [n for n in rung.needs if not _need_met(state, actor, step, n, canon)]
-    if missing:
-        return _ruled_out(
-            f"Breaking through to {rung.name} takes {missing[0].strip().rstrip('.')}, which"
-            f" {who} {_lack(state, actor)}: a bottleneck."
-        )
     return None
 
 
@@ -318,8 +340,8 @@ def _ladder(state: WorldState, actor: Character, ladder_id: str | None):
 def _need_met(
     state: WorldState, actor: Character, step: IntentStep, need: str, canon: list[str]
 ) -> bool:
-    """G19. A rung's need is met by what the state holds: something carried, a technique, a true
-    fact the character knows, this turn's canon, or a master's guidance."""
+    """G19. A way the rung lists is theirs when the state holds it: something carried, a
+    technique, a true fact the character knows, this turn's canon, or a master's guidance."""
     training = step.training
     assert training is not None
     carried = [
@@ -406,10 +428,6 @@ def _know(state: WorldState, actor: Character) -> str:
     return "know" if actor.id == state.player_id else "knows"
 
 
-def _lack(state: WorldState, actor: Character) -> str:
-    return "lack" if actor.id == state.player_id else "lacks"
-
-
 def _rule_text(text: str) -> str:
     text = text.strip()
     return text if text.endswith((".", "!", "?")) else f"{text}."
@@ -419,7 +437,265 @@ def _ruled_out(reason: str) -> Settled:
     return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
 
 
+@dataclass(frozen=True)
+class Progress:
+    """What a stretch of training did: the reason in words, the engine's changes, and the effort
+    now recorded toward the gain (zero once it is made)."""
+
+    reason: str
+    effects: StateDelta
+    effort_s: float
+    made: bool
+
+
+# --- ranks (G19) -----------------------------------------------------------------------------
+
+
+_STAGE_TOLD = {
+    RankStage.EARLY: "in its early stage",
+    RankStage.MIDDLE: "in its middle stage",
+    RankStage.LATE: "in its late stage",
+    RankStage.PEAK: "at its peak",
+}
+
+
+@dataclass(frozen=True)
+class Rank:
+    """G19. How far a character is toward the next rung of a ladder: that rung, the effort it
+    takes to fill and the effort put in so far. `position` is where they stand now, or None
+    below the ladder's first rung."""
+
+    ladder: PowerLadder
+    position: LadderPosition | None
+    rung: Rung
+    need_s: float
+    effort_s: float
+
+    @property
+    def key(self) -> str:
+        return talent_mod.ladder_key(self.ladder.id)
+
+    @property
+    def full(self) -> bool:
+        return self.effort_s >= self.need_s
+
+    @property
+    def filled(self) -> float:
+        """How full it is, from 0 to 1."""
+        return min(1.0, self.effort_s / self.need_s)
+
+    @property
+    def stage(self) -> RankStage:
+        if self.full:
+            return RankStage.PEAK
+        if 3 * self.effort_s >= 2 * self.need_s:
+            return RankStage.LATE
+        return RankStage.MIDDLE if 3 * self.effort_s >= self.need_s else RankStage.EARLY
+
+    @property
+    def own(self) -> Rung | None:
+        """The rung they stand on."""
+        return self.ladder.rungs[self.position.rung] if self.position is not None else None
+
+
+def rung_need_s(index: int) -> float:
+    """G19. The effort it takes to fill the way to the rung at `index`, in seconds."""
+    hours = FIRST_RUNG_HOURS if index <= 0 else RUNG_HOURS * 2 ** (index - 1)
+    return float(hours * HOUR)
+
+
+def rank_of(actor: Character, ladder: PowerLadder, effort_s: float | None = None) -> Rank | None:
+    """G19. Where the actor stands toward the next rung of `ladder`, or None on its last rung.
+    The effort is what their sheet holds toward that rung, and never less than the stage the
+    story put them on their rung at (`LadderPosition.stage`); a plan that has added to it
+    passes what it holds now as `effort_s`."""
+    position = next((p for p in actor.sheet.ladders if p.ladder_id == ladder.id), None)
+    index = position.rung + 1 if position is not None else 0
+    if index >= len(ladder.rungs):
+        return None
+    rung = ladder.rungs[index]
+    need = rung_need_s(index)
+    if effort_s is None:
+        kept = actor.sheet.practiced(talent_mod.ladder_key(ladder.id))
+        effort_s = float(kept.effort_s) if kept is not None and kept.what == rung.name else 0.0
+        started = stage_named(position.stage) if position is not None else None
+        if started is not None:
+            effort_s = max(effort_s, started.starts * need)
+    return Rank(ladder, position, rung, need, min(effort_s, need))
+
+
+def rank_for(
+    state: WorldState, actor: Character, step: IntentStep, efforts: dict[str, float]
+) -> Rank | None:
+    """The rank a step of training toward a rung works on, with what this plan has added to it
+    so far (`efforts`, by practice key)."""
+    training = step.training
+    assert training is not None
+    ladder, _ = _ladder(state, actor, training.ladder_id)
+    if ladder is None:
+        return None
+    return rank_of(actor, ladder, efforts.get(talent_mod.ladder_key(ladder.id)))
+
+
+def at_peak(state: WorldState, actor: Character, step: IntentStep) -> bool:
+    """G19. Whether an attempt to break through would be thrown for: the rank is full."""
+    rank = rank_for(state, actor, step, {})
+    return rank is not None and rank.full
+
+
+def _rank_words(state: WorldState, actor: Character, rank: Rank) -> str:
+    """The rank as the reason names it: "your Qi Condensation", or the groundwork for a first
+    rung."""
+    whose = possessive(state, actor.id)
+    own = rank.own
+    return f"{whose} {own.name}" if own is not None else f"{whose} groundwork for {rank.rung.name}"
+
+
+def _fill(
+    state: WorldState, actor: Character, rank: Rank, more_s: float, source: str, why: str
+) -> tuple[Rank, list[Practice], list[Gain], str]:
+    """G19. Add effort to a rank, up to its peak: the rank after it, what the sheet keeps, a
+    gain where the stage of a rung they stand on rose, and that rise in words."""
+    after = replace(rank, effort_s=min(rank.need_s, rank.effort_s + max(0.0, more_s)))
+    if after.effort_s <= rank.effort_s:
+        return rank, [], [], ""
+    kept = Practice(key=rank.key, what=rank.rung.name, effort_s=int(after.effort_s))
+    if after.stage is rank.stage:
+        return after, [kept], [], ""
+    gains = []
+    if rank.own is not None:
+        change = f"{rank.stage.value}{TO}{after.stage.value}"
+        gains = [Gain(what=rank.own.name, change=change, source=source, reason=why)]
+    words = cap(_rank_words(state, actor, after))
+    if after.full:
+        told = f"{words} is at its peak: a breakthrough to {rank.rung.name} can be tried."
+    else:
+        told = f"{words} has reached its {after.stage.value} stage."
+    return after, [kept], gains, told
+
+
+def rank_trained(
+    state: WorldState, actor: Character, step: IntentStep, rank: Rank, lived_s: int
+) -> tuple[Progress, float]:
+    """G19. A stretch of training aimed at the rank fills it, at the teacher's pace and the
+    pace their talent gives the ladder (`pace`). At its peak nothing fills it further, and an
+    attempt made before the peak is this training too. What it did, and the pace it went at."""
+    training = step.training
+    assert training is not None
+    teacher = teacher_of(state, actor, step)
+    rate = pace(actor, teacher, rank.key)
+    who = name(state, actor.id)
+    words = _rank_words(state, actor, rank)
+    if rank.full:
+        tries = "try" if actor.id == state.player_id else "tries"
+        reason = (
+            f"{cap(words)} is at its peak: nothing fills it further until {who} {tries} to"
+            f" break through to {rank.rung.name}."
+        )
+        return Progress(reason, StateDelta(), rank.effort_s, made=True), rate
+    after, kept, gains, risen = _fill(
+        state, actor, rank, effort_s(lived_s) * rate, _trained(teacher), step.text
+    )
+    told = risen or (
+        f"{cap(who)} {_make(state, actor)} progress toward {rank.rung.name}:"
+        f" {words} is {_STAGE_TOLD[after.stage]}."
+    )
+    if training.attempt:
+        told = (
+            f"{cap(words)} is not at its peak yet, so this is training toward"
+            f" {rank.rung.name}. {told}"
+        )
+    change = CharacterChange(id=actor.id, practice=kept, gains=gains)
+    effects = StateDelta(characters=[change]) if kept else StateDelta()
+    return Progress(told, effects, after.effort_s, made=after.full), rate
+
+
+def rank_cut(
+    state: WorldState, actor: Character, so_far: TrainingSoFar, lived_s: int, why: str
+) -> StateDelta:
+    """G19. Training toward a rung that an event cut short counts the time it ran, on the rank
+    as the sheet has it now."""
+    ladder = state.bible.ladder(so_far.key.removeprefix(RANK_KEY))
+    rank = rank_of(actor, ladder) if ladder is not None else None
+    if rank is None or rank.rung.name != so_far.what or lived_s <= 0:
+        return StateDelta()
+    effort = so_far.before_s + effort_s(lived_s) * so_far.rate
+    _, kept, gains, _ = _fill(state, actor, rank, effort - rank.effort_s, PRACTICE, why)
+    if not kept:
+        return StateDelta()
+    return StateDelta(characters=[CharacterChange(id=actor.id, practice=kept, gains=gains)])
+
+
+def rank_used(
+    state: WorldState,
+    actor: Character,
+    step: IntentStep,
+    *,
+    axis: PowerAxis | None,
+    own: bool,
+    by_hand: bool,
+    insight: bool,
+    counted: dict[str, int],
+    efforts: dict[str, float],
+) -> tuple[str, StateDelta]:
+    """G19. What a step in play adds to each rank it drew on. A ladder of might fills when the
+    step used a power, a technique or a move of their own (`own`), or was a blow or a clash
+    their own throw decided; any other ladder when their own throw decided a step on its axis.
+    It counts one use where nothing resisted, two where their own throw decided it, however it
+    went, and three for an insight, each `RANK_HOURS_PER_USE` hours of effort at the pace their
+    talent gives the ladder. A turn counts once for a ladder, at its best step (`counted`), and
+    `efforts` holds what the plan has added so far. The reason for a stage that rose, and the
+    engine's change."""
+    kept: list[Practice] = []
+    gains: list[Gain] = []
+    told: list[str] = []
+    for position in actor.sheet.ladders:
+        ladder = state.bible.ladder(position.ladder_id)
+        if ladder is None:
+            continue
+        on_axis = by_hand and axis is ladder.axis
+        if not on_axis and not (own and ladder.axis is PowerAxis.MIGHT):
+            continue
+        count = levels.PLAIN_USE
+        if by_hand:
+            count = levels.INSIGHT_USE if insight else levels.RESISTED_USE
+        more = count - counted.get(ladder.id, 0)
+        if more <= 0:
+            continue
+        counted[ladder.id] = count
+        key = talent_mod.ladder_key(ladder.id)
+        rank = rank_of(actor, ladder, efforts.get(key))
+        if rank is None or rank.full:
+            continue
+        gift = talent_mod.standing(actor, key).pace
+        effort = more * RANK_HOURS_PER_USE * HOUR * gift
+        after, keeps, gained, risen = _fill(state, actor, rank, effort, BY_USE, step.text)
+        efforts[key] = after.effort_s
+        kept += keeps
+        gains += gained
+        told += [risen] if risen else []
+    if not kept:
+        return "", StateDelta()
+    change = CharacterChange(id=actor.id, practice=kept, gains=gains)
+    return " ".join(told), StateDelta(characters=[change])
+
+
 # --- breakthroughs (G19) ---------------------------------------------------------------------
+
+
+def ways(
+    state: WorldState, actor: Character, step: IntentStep, rung: Rung, canon: Sequence[str]
+) -> list[str]:
+    """G19. The ways to the rung that the world knows and the character has, each worth a
+    green die: a pill they carry, a technique, a true thing they know. None is required. A
+    master's guidance is counted as the master's teaching, once."""
+    return [
+        need.strip().rstrip(".")
+        for need in rung.needs
+        if need.strip()
+        and not stems(need) & _MASTER_STEMS
+        and _need_met(state, actor, step, need, list(canon))
+    ]
 
 
 def breakthrough(
@@ -430,13 +706,15 @@ def breakthrough(
     difficulty,
     *,
     greens: list[str] | tuple[str, ...] = (),
+    canon: Sequence[str] = (),
 ) -> Settled:
-    """G19, A3. The attempt is thrown for, never certain: three dice against a level of 3,
-    whoever they are, since every rung is as far from the last. A master's teaching adds a
-    green die, and so does a talent that covers the climb at a genius's pace or better
-    (`engine.talent`), then any advantage of the step that holds (`greens`), two in all. A
-    weakness that slows it adds 5 to the number, and so does each thing in the scene against
-    them, two at most. Passed climbs the rung, so close stalls and a miss wounds."""
+    """G19, A3. An attempt at the peak of a rank is thrown for, never certain: three dice
+    against a level of 3, whoever they are, since every rung is as far from the last. Green
+    dice, two at most: a talent that covers the climb adds one, and a second when it is one of
+    a kind (`engine.talent`); a master's teaching adds one; so does each way the rung lists
+    that the character has (`ways`), and any advantage of the step that holds (`greens`). A
+    weakness that covers the climb throws one die fewer, and each thing in the scene against
+    them adds 5 to the number, two at most."""
     training = step.training
     assert training is not None
     ladder, position = _ladder(state, actor, training.ladder_id)
@@ -444,23 +722,26 @@ def breakthrough(
     rung = ladder.rungs[(position.rung if position is not None else -1) + 1]
     stands = talent_mod.standing(actor, talent_mod.ladder_key(ladder.id))
     reasons: list[str] = []
+    if stands.steps >= talent_mod.ONE_OF_A_KIND_STEPS:
+        reasons += [TALENT_DIE, ONE_OF_A_KIND_DIE]
+    elif stands.steps > 0:
+        reasons.append(TALENT_DIE)
     if teacher_of(state, actor, step) is Teacher.MASTER:
-        reasons.append("a master's teaching")
-    if stands.steps >= talent_mod.GENIUS_STEPS:
-        reasons.append("a gift for learning")
+        reasons.append(MASTER_DIE)
+    reasons += ways(state, actor, step, rung, canon)
     number = dice.level_number(
         BREAKTHROUGH_LEVEL,
         f"breaking through to {rung.name}, level {BREAKTHROUGH_LEVEL}",
         difficulty,
     )
-    if stands.steps < 0:
-        number = number.plus("slow to learn", levels.STEP)
     for hindrance in [h.strip() for h in step.facts.hindrances if h.strip()][:MAX_HINDRANCES]:
         number = number.plus(hindrance, levels.STEP)
-    hand = dice.Hand(BREAKTHROUGH_DICE, f"A breakthrough, {BREAKTHROUGH_DICE} dice")
+    slow = stands.steps < 0
+    count = BREAKTHROUGH_DICE - (1 if slow else 0)
+    what = "A breakthrough against a weakness" if slow else "A breakthrough"
     roll = dice.throw(
         rng.child("outcome"),
-        hand,
+        dice.Hand(count, f"{what}, {count} dice"),
         number,
         label=f"break through to {rung.name}",
         allowed=dice.ALL_RESULTS,
@@ -472,15 +753,19 @@ def breakthrough(
 
 
 def breakthrough_effects(
-    state: WorldState, actor: Character, step: IntentStep, result: StepResult, roll: RollRecord
+    state: WorldState, actor: Character, step: IntentStep, result: StepResult
 ) -> tuple[str, StateDelta, ProposedDeed | None]:
-    """What a breakthrough attempt did: a new rung, a shaken cultivator or a wounded one."""
+    """G19. What an attempt at the peak did. Passed, they stand on the new rung and the rank
+    starts to fill again from nothing. So close keeps nine tenths of the rank and a miss three
+    quarters, so a miss costs time. They are hurt only when the way they went about it was
+    risky (`Training.risky`): shaken by a throw that fell just short, wounded by a miss."""
     training = step.training
     assert training is not None
     ladder, position = _ladder(state, actor, training.ladder_id)
     assert ladder is not None
     current = position.rung if position is not None else -1
     rung = ladder.rungs[current + 1]
+    key = talent_mod.ladder_key(ladder.id)
     who = name(state, actor.id)
     if result is StepResult.SUCCESS:
         shown = position.shown_rung if position is not None else None
@@ -491,22 +776,36 @@ def breakthrough_effects(
             source=GrowthKind.BREAKTHROUGH.value,
             reason=step.text,
         )
-        change = CharacterChange(id=actor.id, ladders=[climbed], gains=[gain])
+        emptied = Practice(key=key, what=rung.name, effort_s=0)
+        change = CharacterChange(id=actor.id, ladders=[climbed], gains=[gain], practice=[emptied])
         deed = _loud_deed(state, actor, rung.name) if rung.loud else None
         return (
             f"{cap(who)} {_break(state, actor)} through to {rung.name}.",
             (StateDelta(characters=[change])),
             deed,
         )
-    if result is StepResult.PARTIAL:
-        hurt = ConditionChange(health=Health.HURT, wounds=["a breakthrough that stalled"])
-        change = CharacterChange(id=actor.id, condition=hurt)
-        why = f"The breakthrough to {rung.name} stalls, leaving {_them(state, actor)} shaken."
-        return why, StateDelta(characters=[change]), None
-    worse = _worse(actor.sheet.condition.health, Health.WOUNDED)
-    wound = ConditionChange(health=worse, wounds=["a breakthrough gone wrong"])
-    change = CharacterChange(id=actor.id, condition=wound)
-    why = f"The breakthrough to {rung.name} goes wrong and wounds {_them(state, actor)}."
+    close = result is StepResult.PARTIAL
+    keeps = CLOSE_KEEPS if close else MISS_KEEPS
+    kept = Practice(key=key, what=rung.name, effort_s=int(rung_need_s(current + 1) * keeps))
+    # The stage the story started them at no longer says where they are.
+    stood = []
+    if position is not None and position.stage:
+        stood = [position.model_copy(update={"stage": ""})]
+    condition = None
+    how = "stalls just short" if close else "fails"
+    if training.risky and close:
+        condition = ConditionChange(health=Health.HURT, wounds=["a breakthrough that stalled"])
+        how = f"stalls, leaving {_them(state, actor)} shaken"
+    elif training.risky:
+        worse = _worse(actor.sheet.condition.health, Health.WOUNDED)
+        condition = ConditionChange(health=worse, wounds=["a breakthrough gone wrong"])
+        how = f"goes wrong and wounds {_them(state, actor)}"
+    rank = Rank(ladder, position, rung, rung_need_s(current + 1), float(kept.effort_s))
+    why = (
+        f"The breakthrough to {rung.name} {how}. {cap(_rank_words(state, actor, rank))} falls"
+        f" back from its peak, and it takes more work before another try."
+    )
+    change = CharacterChange(id=actor.id, practice=[kept], ladders=stood, condition=condition)
     return why, StateDelta(characters=[change]), None
 
 
@@ -542,17 +841,6 @@ def _loud_deed(state: WorldState, actor: Character, rung: str) -> ProposedDeed:
 
 
 # --- skills, techniques and powers (A4, A9) -------------------------------------------------
-
-
-@dataclass(frozen=True)
-class Progress:
-    """What a stretch of training did: the reason in words, the engine's changes, and the effort
-    now recorded toward the gain (zero once it is made)."""
-
-    reason: str
-    effects: StateDelta
-    effort_s: float
-    made: bool
 
 
 def needed_hours(actor: Character, step: IntentStep) -> float:
@@ -996,6 +1284,7 @@ class GainKind(StrEnum):
     """What a gain on the record was."""
 
     BREAKTHROUGH = "breakthrough"  # a rung of one of the world's ladders (G19)
+    STAGE = "stage"  # the rank they stand on filled to its next stage (G19)
     SKILL = "skill"  # a skill rose a level
     LEARNED = "learned"  # a technique, new on the sheet
     MASTERY = "mastery"  # a technique they had, a level better
@@ -1017,10 +1306,10 @@ class GainHow(StrEnum):
 @dataclass(frozen=True)
 class GainRead:
     """A gain as its record tells it: what kind it was, the level it reached for a skill or a
-    technique, the power a new use belongs to, and how it was made."""
+    technique, the stage for a rank, the power a new use belongs to, and how it was made."""
 
     kind: GainKind
-    now: SkillLevel | Mastery | None = None
+    now: SkillLevel | Mastery | RankStage | None = None
     power: str = ""
     how: GainHow | None = None
 
@@ -1042,6 +1331,9 @@ def read_gain(gain: Gain) -> GainRead | None:
     masteries = {words: mastery for mastery, words in MASTERY_WORDS.items()}
     if was in masteries and now in masteries:
         return GainRead(GainKind.MASTERY, now=masteries[now], how=how)
+    stages = {stage.value: stage for stage in RankStage}
+    if was in stages and now in stages:
+        return GainRead(GainKind.STAGE, now=stages[now], how=how)
     return None
 
 

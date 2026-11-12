@@ -3,8 +3,10 @@ G18, G22, C6, W15). The model proposes; these rules decide."""
 
 import pytest
 
+from engine.base import HOUR
 from engine.context import Language
 from engine.invariants import check_state
+from engine.resolve.powers import growth
 from engine.state import (
     Activity,
     GiftStrength,
@@ -364,6 +366,29 @@ def test_a_rung_is_found_by_its_name_inside_longer_words():
     )
 
     assert state.player.sheet.ladders[0].rung == 3
+
+
+@pytest.mark.parametrize(
+    ("said", "stage", "hours"),
+    [
+        ("late", "late", 400 / 3),
+        ("Peak", "peak", 200),
+        ("mid stage", "middle", 200 / 3),
+        ("early", "early", 0),
+        ("", "", 0),
+        # A world's own counting names none of the four, so the rank starts empty.
+        ("third stage", "", 0),
+    ],
+)
+def test_the_stage_a_draft_starts_them_at_is_where_their_rank_starts(said, stage, hours):
+    # G19: one of four stages, which the rank never reads below.
+    position = LadderPositionP(ladder_id="realms", rung="Foundation Establishment", stage=said)
+    state = assemble(_world(), _character(ladders=[position]))
+
+    assert state.player.sheet.ladders[0].stage == stage
+    rank = growth.rank_of(state.player, state.bible.ladders[0])
+    assert rank.rung.name == "Core Formation"
+    assert rank.effort_s == pytest.approx(hours * HOUR)
 
 
 def test_an_unknown_rung_or_ladder_gives_no_position():

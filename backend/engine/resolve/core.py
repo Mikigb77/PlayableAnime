@@ -202,6 +202,8 @@ class _Frame:
     moved: list[ItemChange] = field(default_factory=list)  # C10: what this plan moved so far
     learned: list[Technique] = field(default_factory=list)  # A4: moves this plan made theirs
     moves: growth.Moves = field(default_factory=growth.Moves)  # A4: their mastery as it grows
+    # G19: what this turn has counted for toward each ladder's rank, at its best step so far.
+    rank_counted: dict[str, int] = field(default_factory=dict)
     # A4: what this plan ruled about the actor's talents, and the bridges it tried, which the
     # sheet doesn't hold until the plan is played out.
     talent_rulings: list[TalentRuling] = field(default_factory=list)
@@ -507,6 +509,7 @@ def _settle_step(
         actor = talents_mod.with_rulings(actor, ruled, [])
 
     growing = showing = False
+    breaking = False  # G19: an attempt at the peak of a rank, thrown for
     practising: Technique | None = None  # a technique they know that this step practises
     bridging: talents_mod.Bridging | None = None  # A4: a bridge this step sets out to build
     if settled is None and step.training is not None:
@@ -520,14 +523,22 @@ def _settle_step(
             # toward the technique's mastery.
             (settled, practising), growing = practice, False
         elif settled is None and step.training.kind is GrowthKind.BREAKTHROUGH:
-            settled = growth.breakthrough(
-                state,
-                actor,
-                step,
-                rng,
-                ctx.settings.difficulty,
-                greens=_greens(state, actor, step, drawn, frame, []),
-            )
+            # G19. An attempt is thrown for once the rank is full. Before that, and for work
+            # that sets out to try nothing, the step is training toward the rung.
+            rank = growth.rank_for(state, actor, step, frame.practice)
+            breaking = step.training.attempt and rank is not None and rank.full
+            if breaking:
+                settled = growth.breakthrough(
+                    state,
+                    actor,
+                    step,
+                    rng,
+                    ctx.settings.difficulty,
+                    greens=_greens(state, actor, step, drawn, frame, []),
+                    canon=frame.canon,
+                )
+            else:
+                settled = Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
         elif settled is None:
             settled = Settled(OutcomeClass.CERTAIN, StepResult.SUCCESS, "")
         else:
@@ -625,7 +636,7 @@ def _settle_step(
     if roll is not None:
         duration_rng = SeededRng(roll.seed).child("duration")
     timed_step = step
-    if growing and step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
+    if breaking:
         timed_step = step.model_copy(update={"duration_uncertain": True})  # G19
     tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
     # W10. A trip that is made takes what its way takes: all of a step that is the going
@@ -830,6 +841,21 @@ def _settle_step(
             if insight and techniques:
                 after.append(f"An insight into {techniques[0].name}: this use counts as three")
         why, change = growth.used(state, actor, step, techniques, count, frame.moves)
+        after.append(why)
+        effects = _merge(effects, change)
+    if reached and happened and frame.gone is None and not (growing or showing or practising):
+        # G19. What the step did with what a ladder measures fills the rank they stand on.
+        why, change = growth.rank_used(
+            state,
+            actor,
+            step,
+            axis=_axis(step),
+            own=bool(drawn.powers or drawn.techniques or drawn.moves),
+            by_hand=by_hand,
+            insight=by_hand and (thrown.insight or over_the_top),
+            counted=frame.rank_counted,
+            efforts=frame.practice,
+        )
         after.append(why)
         effects = _merge(effects, change)
     # A3. The one fixed extra effect of a throw over the top.
@@ -1313,15 +1339,28 @@ def _grow(
     actor's skill puts a new move (`_start`)."""
     training = step.training
     assert training is not None
+    lived = personal if personal is not None else duration
+    if training.kind is GrowthKind.BREAKTHROUGH and settled.roll is not None:
+        # G19. An attempt at the peak: a new rung, or what is left of the rank after a miss.
+        why, effects, deed = growth.breakthrough_effects(state, actor, step, settled.result)
+        for change in effects.characters:
+            frame.practice.update({p.key: float(p.effort_s) for p in change.practice})
+        return why, effects, deed
     if training.kind is GrowthKind.BREAKTHROUGH:
-        assert settled.roll is not None
-        return growth.breakthrough_effects(state, actor, step, settled.result, settled.roll)
+        # G19. Training aimed at the rank fills it, and one cut short keeps the time it ran.
+        rank = growth.rank_for(state, actor, step, frame.practice)
+        assert rank is not None
+        trained, rate = growth.rank_trained(state, actor, step, rank, lived)
+        frame.practice[rank.key] = trained.effort_s
+        frame.training = TrainingSoFar(
+            key=rank.key, what=rank.rung.name, before_s=rank.effort_s, rate=rate, need_s=rank.need_s
+        )
+        return trained.reason, trained.effects, None
     key = growth.practice_key(step)
     so_far = frame.practice.get(key)
     if so_far is None:
         recorded = actor.sheet.practiced(key)
         so_far = float(recorded.effort_s) if recorded is not None else 0.0
-    lived = personal if personal is not None else duration
     made = growth.progress(state, actor, step, lived, so_far, frame.settled, start)
     frame.practice[key] = made.effort_s
     # A technique this stretch taught is theirs for the rest of the plan.

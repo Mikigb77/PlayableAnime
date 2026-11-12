@@ -53,6 +53,7 @@ from tests.engine.resolve.worlds import (
     MANY_SEEDS,
     SEEDS,
     add,
+    besides_rank,
     burn_the_hall,
     ctx,
     facts,
@@ -895,4 +896,4 @@ def test_a_chain_setup_that_misses_is_seen_coming():
     assert missed.reason.startswith("Su Yan sees it coming in time. An ordinary hand, 2 dice, ")
     # No link of the chain plays, and nothing happens to her.
     assert missed.chain == []
-    assert [change.id for change in missed.effects.characters] in ([], ["lin"])
+    assert [change.id for change in besides_rank(missed)] in ([], ["lin"])

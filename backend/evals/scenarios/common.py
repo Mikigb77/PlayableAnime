@@ -294,6 +294,11 @@ def as_read(turns: list[Played]) -> str:
                     said += f" stranger={step_.stranger.who!r}"
                 if (show := step_.show_strength) is not None:
                     said += f" shows={show.ladder_id}:{show.shown_rung}"  # G20
+                if (training := step_.training) is not None:
+                    # G19: work toward a rung, an attempt at it, and a risky way of trying.
+                    said += f" trains={training.kind.value}"
+                    said += f"{'/attempt' if training.attempt else ''}"
+                    said += f"{'/risky' if training.risky else ''}"
             how = f"{settled.outcome_class.value}/{settled.result.value}"
             if settled.outcome_class is OutcomeClass.RULED_OUT:
                 how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried

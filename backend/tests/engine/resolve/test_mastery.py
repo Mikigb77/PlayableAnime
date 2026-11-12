@@ -345,7 +345,8 @@ def test_a_technique_they_are_learning_is_theirs_once_it_works_in_play():
     (palm,) = lin.techniques
     assert (palm.name, palm.mastery, palm.uses) == ("Rising Palm", Mastery.LEARNING, 1)
     assert palm.learned_from == "zhao"  # the one who knows it, whose school it is
-    assert [(p.key, p.effort_s) for p in lin.practice] == [("technique:rising-palm", 0)]
+    learning = [(p.key, p.effort_s) for p in lin.practice if p.key.startswith("technique:")]
+    assert learning == [("technique:rising-palm", 0)]
 
     # Training it from here is practice, never "about 2 hours of the 450 it takes".
     more = play(played.state, Intent(steps=[train(GrowthKind.TECHNIQUE, "Rising Palm", 3)]))

@@ -78,7 +78,9 @@ void main() {
     // Their path: their own rung on top with its stage, the one they climbed under it.
     expect(find.text(l10n.sheetPath.toUpperCase()), findsOneWidget);
     expect(find.text('CULTIVATION REALMS'), findsOneWidget);
-    expect(find.text('Third stage'), findsOneWidget);
+    expect(find.text('Middle stage'), findsOneWidget);
+    // How full their rank is, as a bar under the stage (G19).
+    expect(find.byKey(const ValueKey('rank-filled')), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Qi Condensation')).dy,
       lessThan(tester.getTopLeft(find.text('Mortal')).dy),
@@ -259,6 +261,8 @@ void main() {
       lessThan(tester.getTopLeft(find.text('Knight')).dy),
     );
     expect(find.text('First star'), findsOneWidget);
+    // A server from before ranks filled sends no share, so no bar is drawn.
+    expect(find.byKey(const ValueKey('rank-filled')), findsNothing);
   });
 
   testWidgets('a ladder they do not stand on shows the rungs they have heard of', (tester) async {
@@ -443,7 +447,7 @@ void main() {
             'name': 'Realms',
             'rungs': [
               {'name': 'Mortal'},
-              {'name': 'Qi Condensation', 'stage': 'third stage'},
+              {'name': 'Qi Condensation', 'stage': 'Late stage', 'filled': 1.4},
             ],
           },
           {'name': 'Ranks', 'rungs': <Object?>[]},
@@ -507,7 +511,10 @@ void main() {
       expect(sheet.condition.expectingLabel, 'A child due in 3 months');
       // A ladder with no rung to stand on and none heard of is not a path.
       expect([for (final path in sheet.paths) path.name], ['Realms', 'Guild']);
-      expect(sheet.paths.first.rungs.last.stage, 'third stage');
+      expect(sheet.paths.first.rungs.last.stage, 'Late stage');
+      // How full their rank is, never over the whole, and nothing for a rung left behind.
+      expect(sheet.paths.first.rungs.last.filled, 1.0);
+      expect(sheet.paths.first.rungs.first.filled, isNull);
       expect(sheet.paths.first.rungs.last.note, isEmpty);
       expect(sheet.paths.first.above, isEmpty);
       // One they only heard of holds its rungs above: confirmed or not, with what was said.

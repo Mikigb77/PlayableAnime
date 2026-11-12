@@ -355,7 +355,13 @@ class MembershipP(Proposal):
 class LadderPositionP(Proposal):
     ladder_id: str
     rung: str = Field(description="The rung's name, exactly as in the ladder.")
-    stage: str = Field(default="", description="Finer steps in the world's words: 'third stage'.")
+    stage: str = Field(
+        default="",
+        description=(
+            "How far into the rung they are: early, middle, late or peak (ready to try the"
+            " next rung). Empty for early."
+        ),
+    )
 
 
 class AxesP(Proposal):

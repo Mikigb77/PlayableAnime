@@ -29,6 +29,7 @@ from engine.state import (
     OriginKind,
     PendingEvent,
     PlaceStatus,
+    Practice,
     Reputation,
     Rumor,
     RungHeard,
@@ -1360,7 +1361,7 @@ def test_the_path_stops_at_their_own_rung():
     realms = state.bible.ladders[0]
     realms.rungs[2].description = "A core of qi takes shape."
     state.player.sheet.ladders[0].rung = 2
-    state.player.sheet.ladders[0].stage = "early stage"
+    state.player.sheet.ladders[0].stage = "late"
 
     (path,) = sheet_of(state).paths
 
@@ -1368,13 +1369,75 @@ def test_the_path_stops_at_their_own_rung():
     assert [(r.name, r.stage, r.description) for r in path.rungs] == [
         ("Qi Condensation", "", ""),
         ("Foundation Establishment", "", ""),
-        ("Core Formation", "early stage", "A core of qi takes shape."),
+        ("Core Formation", "Late stage", "A core of qi takes shape."),
     ]
+    # G19: only their own rung says how full their rank is.
+    assert [r.filled for r in path.rungs] == [None, None, 0.667]
     assert "Nascent Soul" not in dumped(status_view(state).sheet)
     # A ladder the world no longer has, or a rung past its end, shows no path.
     state.player.sheet.ladders[0].rung = 9
     assert sheet_of(state).paths == []
     assert sheet_of(grounded_world()).paths == []
+
+
+def test_their_own_rung_says_how_full_their_rank_is_in_the_storys_language():
+    # G19: the stage of their rank and how full it is, and at its peak that it can be tried.
+    state = cultivation_world()
+    effort = Practice(key="ladder:realms", what="Foundation Establishment", effort_s=40 * HOUR)
+    state.player.sheet.practice.append(effort)
+
+    def own(language=Language.EN):
+        rung = sheet_of(state, language).paths[0].rungs[-1]
+        return rung.stage, rung.filled
+
+    assert own() == ("Middle stage", 0.4)
+    assert own(Language.ES) == ("Etapa intermedia", 0.4)
+    assert own(Language.CA) == ("Etapa intermèdia", 0.4)
+    assert "Cultivation realms: Qi Condensation, middle stage" in status_view(state).character.lines
+
+    effort.effort_s = 100 * HOUR
+    assert own() == ("At its peak: you can try to break through", 1.0)
+    assert own(Language.ES) == ("En su cima: puedes intentar dar el salto", 1.0)
+    assert own(Language.CA) == ("Al seu cim: pots intentar fer el salt", 1.0)
+    assert "Cultivation realms: Qi Condensation, at its peak" in status_view(state).character.lines
+
+    # Effort kept toward another rung counts for nothing here, and neither does the top rung.
+    effort.what = "Core Formation"
+    assert own() == ("Early stage", 0.0)
+    state.player.sheet.ladders[0].rung = len(state.bible.ladders[0].rungs) - 1
+    assert own() == ("", None)
+    assert "Cultivation realms: " + state.bible.ladders[0].rungs[-1].name in (
+        status_view(state).character.lines
+    )
+
+
+def test_a_stage_their_rank_reached_is_told_among_how_they_grew():
+    # G19, G17: "Qi Condensation: Late stage", with how it was made.
+    state = cultivation_world()
+    state.player.sheet.growth = [
+        Gain(what="Qi Condensation", change="early to middle", source="use in play", reason=""),
+        Gain(
+            what="Qi Condensation",
+            change="middle to peak",
+            source="training (master)",
+            reason="",
+            world_s=3 * DAY,
+        ),
+    ]
+
+    grew = sheet_of(state).grew
+    assert [(g.kind.value, g.when, g.text, g.how) for g in grew] == [
+        ("stage", "Day 4", "Qi Condensation: At its peak", "With a master"),
+        ("stage", "Day 1", "Qi Condensation: Middle stage", "By doing it"),
+    ]
+    assert [g.text for g in sheet_of(state, Language.ES).grew] == [
+        "Qi Condensation: En su cima",
+        "Qi Condensation: Etapa intermedia",
+    ]
+    assert [g.text for g in sheet_of(state, Language.CA).grew] == [
+        "Qi Condensation: Al seu cim",
+        "Qi Condensation: Etapa intermèdia",
+    ]
 
 
 def test_the_path_says_when_each_rung_was_reached_and_left():
