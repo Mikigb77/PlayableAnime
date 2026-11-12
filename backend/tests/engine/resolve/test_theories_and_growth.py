@@ -28,12 +28,14 @@ from engine.contracts import (
 from engine.director import rules
 from engine.resolve.powers import sensing
 from engine.resolve.powers import time_stop as stop
+from engine.resolve.powers.growth import GainHow, GainKind, GainRead, read_gain
 from engine.resolve.powers.theories import NEW_POWER, NOTHING_BEHIND_IT, TOO_BIG
 from engine.state import (
     Character,
     CharacterSheet,
     CharacterStatus,
     Fact,
+    Gain,
     GiftStrength,
     HitMode,
     Item,
@@ -351,6 +353,39 @@ def test_a_copycat_watching_learns_a_technique_at_once():
 
     assert "just by watching" in played.resolution.steps[0].reason
     assert played.state.characters["lin"].sheet.techniques[0].learned_from == "zhao"
+
+
+def test_a_gain_reads_back_as_what_it_was_and_how_it_was_made():
+    # A4, G17: the record keeps a gain in the engine's own words, and a screen reads it back.
+    def last(played):
+        return read_gain(played.state.characters["lin"].sheet.growth[-1])
+
+    first = play(sect(), Intent(steps=[train(GrowthKind.SKILL, "swordsmanship", 20)]))
+    skill = play(first.state, Intent(steps=[train(GrowthKind.SKILL, "swordsmanship", 100)]), turn=4)
+    assert last(skill) == GainRead(GainKind.SKILL, now=SkillLevel.NOVICE, how=GainHow.SELF)
+
+    state = sect()
+    state.characters["zhao"].sheet.techniques.append(Technique(id="iron-fist", name="Iron Fist"))
+    watched = play(state, Intent(steps=[copycat_watch(state)]))
+    assert last(watched) == GainRead(GainKind.LEARNED, how=GainHow.WATCHING)
+
+    release = Intent(steps=[train_power(PowerGrant.CONTROLLED_FORCE)])
+    earned = train_until_done(bandit_camp(sect()), release, 3)
+    assert last(earned) == GainRead(GainKind.NEW_USE, power="time stop", how=GainHow.SELF)
+
+    climbed = next(
+        played
+        for seed in SEEDS
+        if (played := play(sect(), Intent(steps=[seclusion()]), seed))
+        .state.characters["lin"]
+        .sheet.ladders[0]
+        .rung
+        == 1
+    )
+    assert last(climbed) == GainRead(GainKind.BREAKTHROUGH)
+
+    # Words nobody writes are nobody's to read.
+    assert read_gain(Gain(what="luck", change="more of it", source="a wish", reason="")) is None
 
 
 def test_a_copycat_learns_nothing_at_once_from_someone_who_doesnt_know_it_or_from_no_one():

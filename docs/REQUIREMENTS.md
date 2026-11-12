@@ -417,6 +417,18 @@ also shows how many dice it throws (A3), the same number the dice replay shows (
 the only number on the sheet outside a world with a system. Attributes are not listed, as before.
 Every label the engine adds is in the story's language (S10).
 
+**Under the parts, the sheet tells how they grew** (decided 2026-11-12, from the review of Miki's
+story: the path a character walks is their own record of what they have proved they can do, and
+the world's ladders stand beside it as a scale). Every gain on record (A4, G17) is listed, the
+latest first, with its day in the world's calendar and, where the record says, how it was made:
+a rung reached ("Broke through to Qi Condensation"), a skill a level better ("Swordsmanship:
+Skilled"), a technique learned, one they have a level better ("Falling Leaf Palm: Practiced"),
+and a new way to use a power, each with "With a master", "From a manual", "Against a rival", "By
+watching", "On your own", "By doing it" for what came off in play, or "With practice". A
+breakthrough stands out among them. The engine reads its own record back to say it
+(`growth.read_gain`), so the words are the story's language and never the record's. A character
+who climbs none of the world's ladders has this record all the same.
+
 **G17 Characters can lose things too (P1).** Besides growing (A4), a character can lose things: a
 crippling wound, old age, an addiction, a sealed power, a lost fortune, a disgraced name, a crew
 that deserts. Every loss has a cause in the story, like every gain (C1), and some can be won back.
@@ -1702,7 +1714,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | Two realms up it is still a throw, and it fails almost every time; the elder reacts to the insult. Against a gravely wounded elder, the same attack succeeds more often (G18, A8). Using time stop, the result is the same on every seed, with no roll: whatever the world's rules say a disciple's strike can do to a body that strong (A2) |
 | Cause and effect | In a modern city with hidden mages, the player fires a bazooka at an unshielded thug, then at a mage whose force field is stated to stop it, then at one whose field is about as strong as the round, over many seeds | The thug dies and the strong field holds on every seed, with no roll. Only the evenly matched field is a close call, rolled between outcomes the facts allow (A2, A9) |
 | Workaround | A mage three realms up shelters in a hall behind a force field that keeps out blades, bazooka rounds and air, and the player sets the hall on fire from outside, over many seeds; once when she has no way out and once when her sheet has a teleport | With no way out, she dies on every seed once the air runs out, minutes of in-world time later (W10), with no roll and the chain in the scene details. With the teleport, she escapes and hunts for whoever tried (W1). A head-on attack on her stays ruled out (A9, G18) |
-| Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10) |
+| Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10); a rung reached leads how they grew on their sheet (G17) |
 | Talent | A character one of a kind with the sword and a genius at building practises an aura blade, arguing that both talents cover it, argues the opposite a turn later, starts learning a wall of aura while claiming a talent the sheet doesn't have, then derives a formula to connect the wall to their building, tries the same formula again and then new ground, over many seeds | The engine rules once, in the step that starts the learning, on how each talent stands to the new thing, and the pace follows from that very step. Arguing again changes nothing, and a talent nobody wrote on the sheet rules on nothing. A bridge is thrown for with the character's own skill: one that holds lifts that one thing a step and never past the talent, and ground already tried carries no second one (A4, A9) |
 | Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
 | The path | A cultivator on the first realm asks a senior which realms lie above, hears of a far higher one as a story, and later an elder stops beside them | A rung above the character's own shows on their path from the scene that names it, as heard of, and as known once someone who stands on it has stood before them; no rung shows that neither a scene nor something they know has named (G18, C6) |

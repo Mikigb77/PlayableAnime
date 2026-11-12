@@ -41,6 +41,7 @@ from engine.state import (
     WorldState,
 )
 from engine.visibility import (
+    GREW_LIMIT,
     Attitude,
     DeedSeen,
     Dread,
@@ -1419,6 +1420,93 @@ def test_the_path_says_when_each_rung_was_reached_and_left():
     # A rung they began on holds no day.
     state.player.sheet.growth = []
     assert [r.note for r in sheet_of(state).paths[0].rungs] == ["", "", ""]
+
+
+def test_the_sheet_tells_how_they_grew_latest_first_in_the_storys_language():
+    # A4, G17: each gain on record, read back and said with its day.
+    state = cultivation_world()
+    state.player.sheet.growth = [
+        Gain(
+            what="Falling Leaf Palm",
+            change="learned",
+            source="training (master)",
+            reason="lessons at dawn",
+            world_s=2 * DAY,
+        ),
+        Gain(
+            what="swordsmanship",
+            change="novice to fair",
+            source="training (rival)",
+            reason="sparring",
+            world_s=5 * DAY,
+        ),
+        Gain(
+            what="Foundation Establishment",
+            change="broke through to Foundation Establishment",
+            source="breakthrough",
+            reason="nine days alone",
+            world_s=8 * DAY,
+        ),
+        Gain(
+            what="Falling Leaf Palm",
+            change="learning to practiced",
+            source="use in play",
+            reason="the duel",
+            world_s=11 * DAY,
+        ),
+        Gain(
+            what="Gentle Release",
+            change="a new way to use time stop",
+            source="training (self)",
+            reason="eight nights on the roof",
+            world_s=12 * DAY,
+        ),
+        Gain(what="Cloud Step", change="learned", source="pulled off in play", reason="the roofs"),
+        # A loss, and a gain in words nobody writes, are left out.
+        Gain(what="left hand", change="lost", source="the duel", reason="", loss=True),
+        Gain(what="luck", change="more of it", source="a wish", reason=""),
+    ]
+    state.player.sheet.growth[5].world_s = 13 * DAY
+
+    grew = sheet_of(state).grew
+    assert [(g.kind.value, g.when, g.text, g.how) for g in grew] == [
+        ("learned", "Day 14", "Learned Cloud Step", "By doing it"),
+        ("new_use", "Day 13", "Gentle Release: a new way to use time stop", "On your own"),
+        ("mastery", "Day 12", "Falling Leaf Palm: Practiced", "By doing it"),
+        ("breakthrough", "Day 9", "Broke through to Foundation Establishment", ""),
+        ("skill", "Day 6", "Swordsmanship: Fair", "Against a rival"),
+        ("learned", "Day 3", "Learned Falling Leaf Palm", "With a master"),
+    ]
+    assert [(g.when, g.text, g.how) for g in sheet_of(state, Language.ES).grew] == [
+        ("Día 14", "Aprendiste Cloud Step", "Sobre la marcha"),
+        ("Día 13", "Gentle Release: una nueva forma de usar time stop", "Por tu cuenta"),
+        ("Día 12", "Falling Leaf Palm: Practicada", "Sobre la marcha"),
+        ("Día 9", "Alcanzaste Foundation Establishment", ""),
+        ("Día 6", "Swordsmanship: Soltura", "Frente a un rival"),
+        ("Día 3", "Aprendiste Falling Leaf Palm", "Con un maestro"),
+    ]
+    assert [(g.when, g.text, g.how) for g in sheet_of(state, Language.CA).grew] == [
+        ("Dia 14", "Vas aprendre Cloud Step", "Sobre la marxa"),
+        ("Dia 13", "Gentle Release: una nova manera de fer servir time stop", "Pel teu compte"),
+        ("Dia 12", "Falling Leaf Palm: Practicada", "Sobre la marxa"),
+        ("Dia 9", "Vas assolir Foundation Establishment", ""),
+        ("Dia 6", "Swordsmanship: Soltesa", "Davant d'un rival"),
+        ("Dia 3", "Vas aprendre Falling Leaf Palm", "Amb un mestre"),
+    ]
+
+
+def test_how_they_grew_stops_at_the_latest_gains_and_is_empty_for_none():
+    state = cultivation_world()
+    assert sheet_of(state).grew == []
+
+    state.player.sheet.growth = [
+        Gain(what=f"Form {n}", change="learned", source="watching", reason="", world_s=n * DAY)
+        for n in range(GREW_LIMIT + 5)
+    ]
+    grew = sheet_of(state).grew
+    assert len(grew) == GREW_LIMIT
+    assert (grew[0].text, grew[0].how) == (f"Learned Form {GREW_LIMIT + 4}", "By watching")
+    assert grew[-1].text == "Learned Form 5"
 
 
 def test_the_path_shows_the_rungs_above_as_far_as_the_story_told_them():

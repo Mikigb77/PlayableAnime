@@ -165,6 +165,43 @@ void main() {
     );
   });
 
+  testWidgets('tells how they grew, latest first, each gain with its day and how', (tester) async {
+    await openSheet(tester);
+    expect(find.text(l10n.sheetGrew.toUpperCase()), findsOneWidget);
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    final grew = [
+      'Falling Leaf Palm: Skilled',
+      'Herb lore: Fair',
+      'Learned Falling Leaf Palm',
+      'Broke through to Qi Condensation',
+    ];
+    // Under the tabs, the latest gain first.
+    expect(top(grew.first), greaterThan(tester.getTopLeft(tab(SheetTab.carried)).dy));
+    for (final (i, text) in grew.indexed.skip(1)) {
+      expect(top(grew[i - 1]), lessThan(top(text)), reason: '${grew[i - 1]} over $text');
+    }
+    expect(find.text('Day 4 · By doing it'), findsOneWidget);
+    expect(find.text('Day 3 · From a manual'), findsOneWidget);
+    expect(find.text('Day 3 · With a master'), findsOneWidget);
+    // A gain whose record says no more than the day shows the day alone.
+    expect(find.text('Day 2'), findsOneWidget);
+  });
+
+  testWidgets('says nothing of growth where the record holds none', (tester) async {
+    await show(
+      tester,
+      status(
+        sheet: {
+          'items': [
+            {'name': 'Sword', 'kind': 'weapon', 'kind_label': 'Weapon'},
+          ],
+        },
+      ),
+    );
+    expect(find.text('Sword'), findsOneWidget);
+    expect(find.text(l10n.sheetGrew.toUpperCase()), findsNothing);
+  });
+
   testWidgets('offers no tab for a part with nothing in it, and says when they carry nothing', (
     tester,
   ) async {
@@ -443,6 +480,12 @@ void main() {
           {'name': 'Haggling', 'strength': 'slow', 'strength_label': 'Weakness'},
         ],
         'talent_notes': ['Palm: grows twice as fast'],
+        'grew': [
+          {'kind': 'learned', 'when': 'Day 9', 'text': 'Learned Step', 'how': 'By watching'},
+          {'kind': 'breakthrough', 'when': 'Day 2', 'text': 'Broke through to Qi Condensation'},
+          {'kind': 'skill', 'when': 'Day 1', 'text': ' '},
+          'odd',
+        ],
       });
       expect(sheet.about, ['Outer disciple', '17 years old']);
       expect(sheet.description, 'Thin and calm.');
@@ -479,6 +522,14 @@ void main() {
       expect([for (final talent in sheet.talents) talent.weakness], [false, true]);
       expect(sheet.hasMoves, isTrue);
       expect(sheet.hasNature, isTrue);
+      // How they grew, latest first: a gain with no words is dropped.
+      expect(
+        [for (final gain in sheet.grew) gain.text],
+        ['Learned Step', 'Broke through to Qi Condensation'],
+      );
+      expect([for (final gain in sheet.grew) gain.isBreakthrough], [false, true]);
+      expect((sheet.grew.first.when, sheet.grew.first.how), ('Day 9', 'By watching'));
+      expect(sheet.grew.last.how, isEmpty);
     });
 
     test('reads an empty sheet, and one with parts it does not expect', () {
@@ -488,6 +539,7 @@ void main() {
       expect(empty.items, isEmpty);
       expect(empty.hasMoves, isFalse);
       expect(empty.hasNature, isFalse);
+      expect(empty.grew, isEmpty);
 
       final odd = Sheet.fromJson({
         'condition': 'fine',

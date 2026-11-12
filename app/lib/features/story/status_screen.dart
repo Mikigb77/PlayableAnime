@@ -80,6 +80,17 @@ class _StatusView extends StatelessWidget {
                   ),
                 const SizedBox(height: Space.xl),
                 SheetTabs(sheet: sheet),
+                if (sheet.grew.isNotEmpty) ...[
+                  SectionLabel(l10n.sheetGrew, padding: label),
+                  for (final (i, gain) in sheet.grew.indexed)
+                    _SinceRow(
+                      key: ValueKey('grew.$i'),
+                      text: gain.text.asHeading,
+                      ago: [gain.when, gain.how].where((part) => part.isNotEmpty).join(' · '),
+                      last: i == sheet.grew.length - 1,
+                      lit: gain.isBreakthrough,
+                    ),
+                ],
               ] else ...[
                 // A server from before the sheet came in parts sends it as plain lines.
                 if (status.lines.isNotEmpty) const SizedBox(height: Space.xl),
@@ -240,13 +251,21 @@ class _Standing extends StatelessWidget {
   }
 }
 
-/// One key event and how long ago it happened, on a quiet timeline.
+/// A moment on a quiet timeline: a key event and how long ago it happened, or a gain and its
+/// day. The dot is lit unless the moment is one of many, as a gain that is no breakthrough.
 class _SinceRow extends StatelessWidget {
-  const _SinceRow({required this.text, required this.ago, required this.last});
+  const _SinceRow({
+    super.key,
+    required this.text,
+    required this.ago,
+    required this.last,
+    this.lit = true,
+  });
 
   final String text;
   final String ago;
   final bool last;
+  final bool lit;
 
   @override
   Widget build(BuildContext context) {
@@ -264,7 +283,10 @@ class _SinceRow extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(color: colors.accent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: lit ? colors.accent : theme.colorScheme.outline,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 if (!last)
                   Expanded(child: Container(width: 2, color: theme.colorScheme.outlineVariant)),

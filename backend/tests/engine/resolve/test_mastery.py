@@ -24,6 +24,7 @@ from engine.contracts import (
     Teacher,
     UseSource,
 )
+from engine.resolve.powers.growth import GainHow, GainKind, GainRead, read_gain
 from engine.samples import cultivation_world
 from engine.state import (
     Character,
@@ -245,6 +246,7 @@ def test_six_uses_take_a_move_from_learning_to_practiced():
         "learning to practiced",
         "use in play",
     )
+    assert read_gain(gain) == GainRead(GainKind.MASTERY, now=Mastery.PRACTICED, how=GainHow.PLAY)
 
 
 def test_use_alone_stops_at_second_nature():
@@ -563,6 +565,9 @@ def test_a_long_stretch_of_practice_climbs_and_carries_on():
     assert (blade_of(played.state).mastery, blade_of(played.state).uses) == (Mastery.PRACTICED, 8)
     (gain,) = played.state.player.sheet.growth
     assert (gain.change, gain.source) == ("learning to practiced", "practice")
+    assert read_gain(gain) == GainRead(
+        GainKind.MASTERY, now=Mastery.PRACTICED, how=GainHow.PRACTICE
+    )
 
 
 def test_practice_counts_on_top_of_the_turns_use():

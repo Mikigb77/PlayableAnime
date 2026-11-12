@@ -407,6 +407,34 @@ class SheetTalent {
   final String covers;
 }
 
+/// One thing they gained (A4, G17), as the sheet tells how they grew: what, on which day in the
+/// world's calendar, and how it was made where the record says.
+class SheetGain {
+  const SheetGain({required this.text, this.when = '', this.how = '', this.kind = ''});
+
+  factory SheetGain.fromJson(JsonMap json) => SheetGain(
+    text: _text(json['text']),
+    when: _text(json['when']),
+    how: _text(json['how']),
+    kind: _text(json['kind']),
+  );
+
+  /// "Broke through to Qi Condensation", "Swordsmanship: Skilled".
+  final String text;
+
+  /// "Day 9".
+  final String when;
+
+  /// "With a master", "By doing it". Empty where the record doesn't say.
+  final String how;
+
+  /// What kind of gain it was: `breakthrough`, `skill`, `learned`, `mastery` or `new_use`.
+  final String kind;
+
+  /// A rung of one of the world's ladders, which the timeline lights.
+  bool get isBreakthrough => kind == 'breakthrough';
+}
+
 class Sheet {
   const Sheet({
     this.about = const [],
@@ -422,6 +450,7 @@ class Sheet {
     this.temperament = const [],
     this.talents = const [],
     this.talentNotes = const [],
+    this.grew = const [],
   });
 
   factory Sheet.fromJson(JsonMap json) => Sheet(
@@ -444,6 +473,7 @@ class Sheet {
     temperament: _lines(json['temperament']),
     talents: _named(_list(json['talents'], SheetTalent.fromJson), (talent) => talent.name),
     talentNotes: _lines(json['talent_notes']),
+    grew: _named(_list(json['grew'], SheetGain.fromJson), (gain) => gain.text),
   );
 
   /// Who they are in a few words: their place in a faction, a title, their age.
@@ -466,6 +496,9 @@ class Sheet {
 
   /// What the story ruled about each thing a talent reaches, a line each (A4).
   final List<String> talentNotes;
+
+  /// How they grew, latest first. Empty from a server that doesn't send it.
+  final List<SheetGain> grew;
 
   Iterable<SheetItem> get carried => items.where((item) => item.carried);
   Iterable<SheetItem> get elsewhere => items.where((item) => !item.carried);

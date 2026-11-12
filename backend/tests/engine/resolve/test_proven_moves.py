@@ -15,6 +15,7 @@ from engine.contracts import (
     SheetUse,
     UseSource,
 )
+from engine.resolve.powers.growth import GainHow, GainKind, GainRead, read_gain
 from engine.samples import cultivation_world
 from engine.state import (
     Character,
@@ -154,6 +155,7 @@ def test_a_clean_success_makes_the_move_a_technique_of_their_own():
         "Cuchilla de aura",
         "learned",
     )
+    assert read_gain(lin.sheet.growth[-1]) == GainRead(GainKind.LEARNED, how=GainHow.PLAY)
 
     # Next time it is on the sheet: a technique like any other, thrown by its mastery and never
     # recorded twice. Named by its id or in other words, it is the same technique.
