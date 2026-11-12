@@ -11,11 +11,13 @@ from engine.contracts import OutcomeClass, ProposedDeed, Resolution, StepResolut
 from engine.invariants import check_transition
 from engine.rng import SeededRng
 from engine.samples import grounded_world
-from engine.state import Deed, Rumor, StepResult, Visibility, WorldState
+from engine.state import Deed, Faction, Rumor, StepResult, Visibility, WorldState
 from engine.state.records import GARBLED_LEAD
 from engine.state.sheet import Attitude
 from engine.visibility import memory_view, status_view
 from engine.world import hearsay
+from engine.world.answers import Answer, schedule_answer
+from engine.world.arrivals import on_answer
 from engine.world.clocks import on_clock_end
 from engine.world.rumors import Certainty, believes, certainty, start_rumor
 from engine.world.scheduling import Kind, World, schedule
@@ -220,8 +222,11 @@ def test_a_clocks_end_is_confirmed_for_those_there_and_talk_elsewhere():
         is_true=True,
         place_id="questura",
         hops=2,
-        heard_by=["luca"],
+        heard_by=["luca", "bartender"],
     )
+    # What Luca wasn't there to see is talk, his only once a scene tells it (W2).
+    assert elsewhere.heard_by == ["bartender"]
+    assert hearsay.hear(w, "luca", elsewhere.id)
 
     by_text = {r.text: r.certainty for r in memory_view(state).rumors}
     assert by_text == {
@@ -251,6 +256,36 @@ def test_a_clock_that_ends_where_the_player_is_is_seen_not_heard():
         assert rumor.seen_by == rumor.heard_by and rumor.heard_by
         view = {r.text: r.certainty for r in memory_view(state).rumors}
         assert view.get(rumor.text) is sure
+
+
+def test_a_price_set_where_the_player_stands_is_talk_until_a_scene_tells_it():
+    """W2, C6. The turn's count of rumors heard with no scene telling them (T5), run over the
+    eval suite, found it (2026-11-12): a faction with no seat sets its price where its target
+    is, and the player character standing there was marked as having heard it."""
+    for faction_id, at_its_seat in (("carmine-crew", True), ("calabrians", False)):
+        state = grounded_world()
+        state.factions["calabrians"] = Faction(
+            id="calabrians", name="the Calabrians", kind="crime family"
+        )
+        w = at(state)
+        faction = state.factions[faction_id]
+        event = schedule_answer(
+            w, Answer.BOUNTY, target_id="luca", destination_id=None, tier=2, faction=faction
+        )
+
+        assert on_answer(w, event) is False  # it sends nobody: the world changes off screen
+        (rumor,) = state.rumors.values()
+        assert rumor.origin_place_id == "bar"  # the crew's seat, and where Luca is
+        # The people there heard it, and at the seat they know it is so. Nobody showed Luca.
+        assert rumor.heard_by == ["bartender", "carmine"]
+        assert rumor.seen_by == (["bartender", "carmine"] if at_its_seat else [])
+        assert not memory_view(state).rumors
+
+        # It is the talk of the place he is in, his once a scene tells it, and only talk.
+        assert hearsay.talk_of(state, "luca", "bar", state.world_s) == [rumor]
+        assert hearsay.hear(w, "luca", rumor.id)
+        (heard,) = memory_view(state).rumors
+        assert (heard.text, heard.certainty) == (rumor.text, Certainty.UNCONFIRMED)
 
 
 def test_a_retelling_of_a_deed_the_player_saw_is_confirmed_not_false():

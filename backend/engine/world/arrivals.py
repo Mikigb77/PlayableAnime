@@ -188,7 +188,9 @@ def _off_screen(w: World, event, answer, faction, target, insiders, text) -> Non
     if answer is Answer.BOUNTY and faction is not None:
         seat = faction_seat(state, faction)
         where = seat or target.location_id
-        present = [c.id for c in characters_at(state, where)]
+        # It is set off screen: nobody shows it to the player character, even where they stand.
+        # For them it is the talk of the place, heard once a scene tells it (W2, C6).
+        present = [c.id for c in characters_at(state, where) if c.id != state.player_id]
         start_rumor(
             w,
             # S10: a rumor is kept as it is told, so it is told in the story's language.
