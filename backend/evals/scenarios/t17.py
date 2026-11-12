@@ -1047,6 +1047,21 @@ async def interrupted_sleep(ev: Eval) -> None:
 # --- Stop the witness (W2, W11, W13) -----------------------------------------------------------
 
 
+def alone_at_the_well() -> dict:
+    """A scripted scene whose end lists nobody but Lin, as a live one that tells a witness
+    running, or simply leaves him out, does."""
+    end = SceneEnd(
+        ended_on="Lin stands at the well with the sword in his hand.",
+        place_id="well",
+        present_ids=["lin"],
+    )
+    return {
+        "narration": "(scripted) The yard is still.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
 def _witnesses(story: Story) -> list[dict]:
     """Who the narrator's last brief said is off to tell what they saw (deterministic mode)."""
     brief = story.prompt(Node.NARRATOR)
@@ -1077,8 +1092,11 @@ def _leaving(story: Story) -> list[str]:
 )
 async def stop_the_witness(ev: Eval) -> None:
     ends: Counter[str] = Counter()
-    for seed in ev.seeds(8, live=1):
+    for n, seed in enumerate(ev.seeds(8, live=1)):
         story = ev.story(worlds.one_witness(), seed=seed, under_way=True)
+        # Half the scripted stories end their scenes as the real narrator did on 2026-11-11:
+        # without the witness, as if he were already gone. Code decides who runs (W11).
+        without_wei = alone_at_the_well() if not ev.live and n % 4 < 2 else None
         killing = await story.act(
             "I cut Han's throat while he dozes against the well",
             plan(
@@ -1088,6 +1106,7 @@ async def stop_the_witness(ev: Eval) -> None:
                     facts=facts(opposition_ids=["han"], can_respond=False, why_not="asleep"),
                 )
             ),
+            narration=without_wei,
         )
         ev.check(
             "the scene of the killing is told Wei is off to tell of it, still within reach",
@@ -1108,9 +1127,15 @@ async def stop_the_witness(ev: Eval) -> None:
             ),
             killing,
         )
+        ev.check(
+            "a witness who hasn't run is in the scene, whatever its end listed",
+            "wei" in killing.state.scene.present_ids,
+            f"{seed}: {killing.state.scene.present_ids}, {killing.issues}",
+        )
         chase = await story.act(
             "I go after Wei and cut him down before he is out of the yard",
             plan(cut_throat("wei", "sword", facts=facts(opposition_ids=["wei"], can_respond=True))),
+            narration=without_wei,
         )
         ev.check(
             "the next reading is told Wei is leaving, so the player can go after him",
@@ -1121,6 +1146,14 @@ async def stop_the_witness(ev: Eval) -> None:
         wei = chase.state.characters["wei"]
         silenced = wei.status is not CharacterStatus.ALIVE or helpless_state(wei) is not None
         ends["silenced" if silenced else "got away"] += 1
+        if not silenced and chase.state.scene.encounter is not None:
+            ev.check(
+                "a witness still in the fight is told as held by it, and stays in the scene",
+                [(w["id"], w.get("held")) for w in _witnesses(story)] == [("wei", True)]
+                and "wei" in chase.state.scene.present_ids,
+                f"{seed}: {_witnesses(story)}, {chase.state.scene.present_ids}",
+                live=False,
+            )
         night = await story.act(
             "I lie down by the well and sleep for eight hours",
             act("sleep", "sleep", ActionKind.REST, 8 * HOUR),
@@ -1162,23 +1195,39 @@ async def stop_the_witness(ev: Eval) -> None:
         # C6: Memory tells what the character knows became of the killing, and no more.
         entry = next((d for d in memory_view(story.state).deeds if d.id == han.id), None)
         trail = [(t.kind.value, t.text) for t in entry.trail] if entry else []
+        # A live run's log is all that can be read of it: how it was read and who was where.
+        how = (
+            f"{seed}: {trail}; {han.visibility.value}, saw {han.witness_ids}, "
+            f"went {han.went_to_tell}; scenes ended with "
+            f"{[t.state.scene.present_ids for t in (killing, chase, night)]}; "
+            f"{as_read([killing, chase, night])}"
+        )
         if silenced and wei.status is CharacterStatus.DEAD:
             ev.check(
                 "Memory tells that the one who saw it is dead",
                 ("dead", "Someone who saw it is dead") in trail,
-                f"{seed}: {trail}",
+                how,
             )
         if not silenced:
             ev.check(
                 "Memory tells that the one who saw it went to tell the sect",
                 ("went", "Someone went to tell the Azure Cloud Sect") in trail,
-                f"{seed}: {trail}",
+                how,
             )
-        ev.check(
-            "and that who else knows is nothing the character can tell",
-            entry is not None and entry.open_label is not None,
-            f"{seed}: {entry}",
-        )
+        if han.visibility is Visibility.PUBLIC:
+            # The reading had it done before a crowd, which only a live one does here: what
+            # is done in public is known, so who else knows is no open question (C6).
+            ev.check(
+                "what was read as done before a crowd is known, and Memory leaves it at that",
+                ev.live and entry is not None and entry.open_label is None,
+                how,
+            )
+        else:
+            ev.check(
+                "and that who else knows is nothing the character can tell",
+                entry is not None and entry.open_label is not None,
+                f"{how}; {entry}",
+            )
         if silenced:
             await ev.judge(
                 "the night after",

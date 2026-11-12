@@ -183,11 +183,15 @@ def sect_with_a_witness() -> WorldState:
 
 def one_witness() -> WorldState:
     """`sect_with_a_witness` with Zhao away at the inner court, so Wei is the only one at the
-    well to see what is done to Han."""
+    well to see what is done to Han. The scene says the yard is otherwise empty: read on the
+    real model (2026-11-11), a sect's courtyard by day could pass for a place with a crowd."""
     state = sect_with_a_witness()
     state.characters["zhao"].location_id = "inner-court"
     state.scene.present_ids.remove("zhao")
-    state.scene.ended_on = "Han Jie dozes against the well, and Wei draws water beside him."
+    state.scene.ended_on = (
+        "Han Jie dozes against the well, and Wei draws water beside him. "
+        "Nobody else is in the yard."
+    )
     return state
 
 
