@@ -128,6 +128,20 @@ def carried(state: WorldState, told: frozenset[str], language: Language) -> froz
     return kept
 
 
+def moved(
+    before: WorldState, after: WorldState, told: frozenset[str], language: Language
+) -> frozenset[str]:
+    """`told` after a change that only rewords records, such as a new name for the character,
+    which a goal of theirs may say: each key follows its opener to the words it has now. A
+    change that adds or removes an opener is read as any other (`carried`)."""
+    was = [opener.key for opener in openers(before)]
+    now = [opener.key for opener in openers(after)]
+    if len(was) != len(now):
+        return carried(after, told, language)
+    follows = dict(zip(was, now, strict=True))
+    return frozenset(follows[key] for key in told if key in follows)
+
+
 def own_names(state: WorldState, character: Character | None) -> str:
     """What a person is called that is theirs alone: their name and aliases without the words
     someone else is called by too, so Salvatore Esposito of the Esposito family is named by

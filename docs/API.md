@@ -261,8 +261,8 @@ BYOK request is free (K6).
 | --- | --- | --- | --- |
 | POST | `/v1/drafts` | `{premise?, premise_id?, rating, language?, advanced?: DraftAdvancedIn}` | `201 Draft` |
 | GET | `/v1/drafts/{id}` | | `Draft` |
-| PATCH | `/v1/drafts/{id}` | `{world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
-| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires"; the rest stays as it was) |
+| PATCH | `/v1/drafts/{id}` | `{title?, tone?, character?: DraftCharacterIn, world_lines?, character_lines?, advanced?: DraftAdvancedIn, rating?, expected_version?}` | `Draft` (direct edits) |
+| POST | `/v1/drafts/{id}/revise` | `{target: "world"|"character", instruction, about?: DraftPartKind, expected_version?}` | `Draft` (plain-words change, such as "add hidden vampires"; the rest stays as it was) |
 | POST | `/v1/drafts/{id}/start` | `{settings?: StorySettings, expected_version?}` | `{story_id, version}`. The app then opens the play screen and asks for the opening turn (`kind: "opening"`). |
 
 ```text
@@ -270,6 +270,11 @@ Draft            {id, premise, premise_id?, rating, title, genre, tone,
                   language: "en"|"es"|"ca",  # S10: what it is written in, and its story stays in
                   world_lines: [string],       # the one-screen summary in plain words (G1)
                   character_lines: [string],   # the character in the world's words (G2, G16)
+                  world_parts: [DraftPart],    # the same lines, each with what it tells of
+                  character_parts: [DraftPart],
+                  character: DraftCharacter,   # the plain fields the player changes themselves
+                  ladder?: DraftLadder,        # the world's ladder rung by rung; null with none
+                  kept: {people: int, events: int, questions: int},  # G1, see below
                   advanced: DraftAdvanced,
                   version: int,                # bumped by every saved change (T10)
                   story_id?: string,           # set once started
@@ -280,6 +285,15 @@ DraftAdvanced    {physics: "fun_first"|"strict",                     # A9
                   difficulty: "story"|"balanced"|"brutal",            # A5, default balanced
                   event_frequency: "calm"|"normal"|"dramatic"}        # W16, default normal
 DraftAdvancedIn  the same fields, each optional; a rule without an id is a new rule
+DraftPart        {kind: DraftPartKind, text}
+DraftPartKind    "rule"|"era"|"ladder"|"peoples"|"faction"            # the world
+                 |"deadline"|"question"|"person"|"connections"|"goal"  # how the story starts (G1)
+                 |"who"|"manner"|"standing"|"rank"|"skills"|"talents"  # the character
+                 |"traits"|"nature"|"power"|"belongings"
+DraftCharacter   {name, age?: int, people, standing, looks, manner}
+DraftCharacterIn {name?, age?: int, looks?, manner?}                  # each one optional
+DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has heard of (G18)
+                  at?: int, stage}                      # the character's rung among them (G19)
 ```
 
 - **Creating.** `premise` is 10 to 4000 characters. With `premise_id` alone the starter's own text
@@ -299,9 +313,31 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   tell.
   At most 10 lines each. Of the ladder they name the rungs everyone in the world has heard of, five
   at most, with "and beyond" when it goes on (G18, C6): the character's path starts with those.
-- **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
+- **The summary part by part.** `world_parts` and `character_parts` are the same lines, not cut to
+  10, each with its `kind`, so the app can label a line, group it and point a change at it. The
+  app's own words for a kind are fixed text, in its language (S10). The parts of how the story
+  starts (`deadline`, `question`, `person`, `connections`, `goal`) are there only when the
+  player's own words name them, as in the lines. `kept` counts what the story keeps back of its
+  start, and tells none of it: the people, the things already in motion and the open questions
+  the player's words don't name. `ladder` gives the first ladder as `rungs` (the ones the lines
+  name), `more` when it goes on above them, and the character's place: `at`, an index into
+  `rungs`, with its `stage` in words, or null when they stand above the rungs everyone knows.
+  `character` holds the plain fields: `name`, `age`, `looks` (face, build, hair and usual
+  clothes, which every picture of them is drawn from) and `manner` (how they come across), with
+  their `people` and `standing` to tell them by. A text is "" when the draft has none.
+- **Direct edits.** Fields left out stay as they are. The plain fields are the player's to change
+  themselves (G1, G2): `title`, `tone` and `character.name` (1 to 80 characters), `character.age`
+  (0 to 100,000) and `character.looks` and `character.manner` (1 to 300 characters) are written
+  in by code at once, with no model call, and cost nothing. A new name takes the old one's place
+  wherever the draft says it, hidden parts included: the whole name, and each word of it that
+  nobody and nothing else in the draft is called by. A new age takes the old one's place where
+  the looks give it as a number. One left empty or all spaces is a `validation_error` on its
+  field with `type: "empty"`, and one sent back as it is changes nothing; `world_lines` and
+  `character_lines` sent in the same edit as they were read before it change nothing either,
+  so a screen sent back whole with a new name calls no model. Changing `physics`, a
+  rule's `fixed` flag,
   `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
-  model call and costs nothing. Rewriting `world_lines` or `character_lines` (each line up to 300
+  model call and costs nothing either. Rewriting `world_lines` or `character_lines` (each line up to 300
   characters), rewriting or adding rules, or choosing a different gift strength redrafts the world
   or the character to match, in one model call each; lowering `rating` to `teen` redrafts both
   within Teen (F2). `advanced.rules` is the whole list the player sees, kept word for word.
@@ -320,10 +356,14 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   refuses a stale one with `409 version_conflict` like any other change, so a story never starts
   from a copy the player hasn't seen. Starting bumps the version, so a retried start that carries
   the old version still returns the same story.
-- **Real people (G12).** A premise, a revision's `instruction`, an edited summary line or a rule
-  that names a real living person is refused before any model call, at no cost, with `400
-  validation_error`: `details.fields` has the field (`premise`, `instruction`, `world_lines.3`,
-  `advanced.rules.1.text`) with `type: "real_person"`, and the message names who, to show as it
+- **A change in plain words** (`revise`) may say which part of the summary it was asked at:
+  `about`, the `kind` of a part of that `target`. The drafter is then given that part as the
+  player read it, so "make me better at this" says what "this" is. An unknown `about` is a
+  `validation_error`.
+- **Real people (G12).** A premise, a revision's `instruction`, an edited summary line, a plain
+  field or a rule that names a real living person is refused before any model call, at no cost,
+  with `400 validation_error`: `details.fields` has the field (`premise`, `instruction`,
+  `world_lines.3`, `character.name`, `advanced.rules.1.text`) with `type: "real_person"`, and the message names who, to show as it
   is. Real organisations are fine as a backdrop ("a rookie FBI agent"). A line sent back unchanged
   is never refused. Real people and organisations the model drafts are left out of the world.
 - **Model failures** are the usual codes: `422 unreadable_action` when the safety filter blocked the

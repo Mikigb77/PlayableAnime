@@ -15,6 +15,7 @@ from billing.models import CreditHold, EntryKind, LedgerEntry
 from billing.pricing import ModelCall
 from drafts import service
 from drafts.models import Draft
+from engine import real_entities
 from engine.state import WorldState
 from graph.drafting import samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
@@ -875,3 +876,180 @@ def test_each_drafting_request_logs_its_cost_but_never_its_words(player_client, 
     everything = json.dumps(lines)
     assert "bakery" not in everything
     assert "Luca" not in everything
+
+
+# The plain fields (G1, G2): the player changes them at once, with no model call.
+
+
+def test_the_draft_gives_its_summary_part_by_part(player_client, model):
+    model.script(Node.DRAFTER, Reply(json=samples.naples()))
+    draft = _draft(player_client, {"premise": samples.NAPLES_PREMISE, "rating": "mature"})
+
+    assert [part["text"] for part in draft["world_parts"]][:10] == draft["world_lines"]
+    assert [part["text"] for part in draft["character_parts"]][:10] == draft["character_lines"]
+    assert draft["world_parts"][0]["kind"] == "rule"
+    assert draft["character_parts"][0] == {"kind": "who", "text": "Luca Esposito, 24."}
+    assert draft["character"] | {"standing": "", "manner": ""} == {
+        "name": "Luca Esposito",
+        "age": 24,
+        "people": "",
+        "standing": "",
+        "looks": "24, lean, dark hair combed back, a scar through one eyebrow.",
+        "manner": "",
+    }
+    assert draft["character"]["manner"]
+    assert draft["ladder"] is None
+    # G1: of how the story starts, a count and nothing more.
+    state = _state(draft["id"])
+    kept = draft["kept"]
+    assert kept["people"] == len(list(state.npcs()))
+    assert kept["events"] == len(state.clocks)
+    _assert_nothing_hidden(player_client.get(f"/v1/drafts/{draft['id']}"), state)
+
+
+def test_a_cultivation_draft_gives_its_ladder_rung_by_rung(player_client, model):
+    model.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+    draft = _draft(player_client, {"premise": samples.CULTIVATION_PREMISE, "rating": "teen"})
+
+    ladder = draft["ladder"]
+    assert ladder["name"] == "Cultivation realms"
+    assert ladder["rungs"][0] == "Qi Condensation"
+    assert ladder["at"] == 0
+    assert set(ladder) == {"name", "rungs", "more", "at", "stage"}
+
+
+def test_a_name_an_age_and_a_look_change_at_once_and_cost_nothing(player_client, model, player):
+    draft = _draft(player_client)
+    calls = len(model.requests)
+    charged = LedgerEntry.objects.filter(user=player, kind=EntryKind.DRAFT).count()
+
+    response = _patch(
+        player_client,
+        draft["id"],
+        {
+            "title": "The Long Summer",
+            "tone": "Dry and tender",
+            "character": {
+                "name": "Marco Esposito",
+                "age": 31,
+                "looks": "Tall, a broken nose, a camel coat.",
+                "manner": "Laughs first, counts later.",
+            },
+            "expected_version": draft["version"],
+        },
+    )
+
+    assert response.status_code == 200, response.content
+    edited = response.json()
+    assert edited["version"] == draft["version"] + 1
+    assert (edited["title"], edited["tone"]) == ("The Long Summer", "Dry and tender")
+    assert edited["character"] | {"standing": ""} == {
+        "name": "Marco Esposito",
+        "age": 31,
+        "people": "",
+        "standing": "",
+        "looks": "Tall, a broken nose, a camel coat.",
+        "manner": "Laughs first, counts later.",
+    }
+    assert edited["character_lines"][0] == "Marco Esposito, 31."
+    assert edited["world_lines"] == draft["world_lines"]
+    assert len(model.requests) == calls
+    assert LedgerEntry.objects.filter(user=player, kind=EntryKind.DRAFT).count() == charged
+    # The new name is the character's wherever the draft said the old one, hidden parts too.
+    state = _state(draft["id"])
+    assert state.player.name == "Marco Esposito"
+    assert "Luca" not in json.dumps(Draft.objects.get(pk=draft["id"]).proposal)
+    # And the story starts with it.
+    started = _start(player_client, draft["id"]).json()
+    story = Story.objects.get(pk=started["story_id"])
+    assert story.title == "The Long Summer"
+
+
+def test_a_plain_field_sent_back_as_it_is_changes_nothing(player_client, model):
+    draft = _draft(player_client)
+    proposal = Draft.objects.get(pk=draft["id"]).proposal
+
+    response = _patch(
+        player_client,
+        draft["id"],
+        {"title": draft["title"], "character": {"name": "Luca Esposito", "age": 24}},
+    )
+
+    assert response.status_code == 200, response.content
+    assert Draft.objects.get(pk=draft["id"]).proposal == proposal
+
+    # Nor does the whole screen sent back as it was read, with one name changed in it: the
+    # lines that still say the old name are no rewriting, so no model is called.
+    calls = len(model.requests)
+    whole = {key: draft[key] for key in ("title", "tone", "world_lines", "character_lines")}
+    character = {key: draft["character"][key] for key in ("age", "looks", "manner")}
+
+    response = _patch(
+        player_client, draft["id"], whole | {"character": character | {"name": "Marco Rossi"}}
+    )
+
+    assert response.status_code == 200, response.content
+    assert response.json()["character"]["name"] == "Marco Rossi"
+    assert response.json()["character"]["looks"] == draft["character"]["looks"]
+    assert len(model.requests) == calls
+
+
+@pytest.mark.parametrize(
+    ("body", "field"),
+    [
+        ({"character": {"name": "   "}}, "character.name"),
+        ({"title": "  "}, "title"),
+        ({"character": {"name": "x" * 81}}, "character.name"),
+        ({"character": {"looks": "x" * 301}}, "character.looks"),
+        ({"character": {"age": -1}}, "character.age"),
+        ({"tone": ""}, "tone"),
+    ],
+)
+def test_an_empty_or_overlong_plain_field_is_refused(player_client, model, body, field):
+    draft = _draft(player_client)
+
+    response = _patch(player_client, draft["id"], body)
+
+    assert response.status_code == 400, response.content
+    error = _error(response)
+    assert error["code"] == "validation_error"
+    assert field in json.dumps(error["details"])
+    assert _state(draft["id"]).player.name == "Luca Esposito"
+
+
+def test_a_real_persons_name_is_no_name_for_a_character(player_client, model):
+    # G12: refused at its field before anything is saved, as in a premise.
+    draft = _draft(player_client)
+    real = real_entities.REAL_PEOPLE[0]
+
+    response = _patch(player_client, draft["id"], {"character": {"name": real}})
+
+    assert response.status_code == 400, response.content
+    fields = _error(response)["details"]["fields"]
+    assert fields[0]["field"] == "character.name"
+    assert fields[0]["type"] == "real_person"
+    assert _state(draft["id"]).player.name == "Luca Esposito"
+
+
+def test_a_change_asked_at_a_part_tells_the_drafter_which(player_client, model):
+    draft = _draft(player_client)
+    skills = next(p["text"] for p in draft["character_parts"] if p["kind"] == "skills")
+
+    response = _revise(
+        player_client,
+        draft["id"],
+        {"target": "character", "instruction": "Better at this.", "about": "skills"},
+    )
+
+    assert response.status_code == 200, response.content
+    asked = model.requests[-1].prompt.messages[0].text
+    assert f"They ask it about this part of the summary they read:\n{skills}" in asked
+    # A part that isn't one is refused before any model call.
+    calls = len(model.requests)
+    bad = _revise(
+        player_client,
+        draft["id"],
+        {"target": "character", "instruction": "Better at this.", "about": "everything"},
+    )
+    assert bad.status_code == 400
+    assert len(model.requests) == calls

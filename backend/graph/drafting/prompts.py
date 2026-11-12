@@ -211,9 +211,11 @@ def revise_prompt(
     template: PremiseTemplate | None,
     gift: GiftStrength | None,
     released: frozenset[str],
+    about: str = "",
 ) -> str:
     """A change in plain words to the world or the character (G1, G2). The model sees the whole
-    draft, hidden parts included, so the change fits the world."""
+    draft, hidden parts included, so the change fits the world. `about` is the part of the
+    summary the player asked it at, as they read it."""
     world = current.world.model_copy(update={"rules": current_rules(state)})
     # Without the fields left at their defaults: a full dump nearly doubles the prompt.
     draft = {
@@ -222,22 +224,22 @@ def revise_prompt(
     }
     parts = [
         f"Premise, in the player's words:\n{premise.strip()}",
-        "The current draft:\n" + json.dumps(draft, ensure_ascii=False),
+        "The current draft, which is what holds now: the player may have changed a name, an "
+        "age or a look since the premise, and the draft's is the one to keep.\n"
+        + json.dumps(draft, ensure_ascii=False),
     ]
+    asked = f"{instruction.strip()}\n\n"
+    if about.strip():
+        asked += f"They ask it about this part of the summary they read:\n{about.strip()}\n\n"
     if block := template_block(template, released):
         parts.append(block + "\nKeep these unless the player's request changes them.")
     if gift is not None and target == "character":
         parts.append(GIFTS[gift])
     if target == "world":
-        parts.append(
-            "The player asks for this change to the world:\n"
-            f"{instruction.strip()}\n\n"
-            f"{WORLD_CHANGE}"
-        )
+        parts.append(f"The player asks for this change to the world:\n{asked}{WORLD_CHANGE}")
     else:
         parts.append(
-            "The player asks for this change to their character:\n"
-            f"{instruction.strip()}\n\n"
+            f"The player asks for this change to their character:\n{asked}"
             "Return the whole character with the change made and everything else as it was. The "
             "world stays as it is, so a power must still come from a kind it has."
         )
