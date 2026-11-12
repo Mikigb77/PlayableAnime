@@ -13,16 +13,31 @@ own records.
 
 A deadline their words set a time for comes at that time (`clock_times`, E2): the drafter splits
 it into steps, and code makes the steps add up to what the player said.
+
+What the summary kept a surprise, the story's own screens keep back too (C6, `engine.untold`):
+the people the character knows, their goals and the threads already running that the player's
+words don't name (`kept_back`) stay off Memory until a scene's own words name them (`told_by`).
 """
 
+import re
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from engine import untold
 from engine.context import Language
-from engine.state import Character, Clock, Connection, Goal, GoalStatus, Mystery, WorldState
-from graph.drafting.named import called, named, timed, times_ahead
-from graph.words import WORD, core
+from engine.state import (
+    Character,
+    Clock,
+    Connection,
+    Goal,
+    GoalStatus,
+    Mystery,
+    Thread,
+    WorldState,
+)
+from graph.drafting.named import called, named, timed, times_ahead, told_of
+from graph.words import FILLER, WORD, core
 
 # The openers a draft keeps by their words, since they have no id of their own.
 _BY_WORDS = ("connection", "goal", "want")
@@ -91,6 +106,13 @@ def of_want(state: WorldState, want: str) -> Opener:
     return Opener(_worded("want", want), _own_words(state, want))
 
 
+def of_thread(state: WorldState, thread: Thread) -> Opener:
+    """A thread already running when the story starts. The summary never lists one, but its
+    title says what is coming as its deadline does, so the story's screens keep it back the
+    same way (`kept_back`)."""
+    return Opener(f"thread:{thread.id}", _own_words(state, thread.title))
+
+
 def openers(state: WorldState) -> Iterator[Opener]:
     """Every opener of the draft, hidden or not."""
     for clock in state.clocks.values():
@@ -134,6 +156,91 @@ def clock_times(state: WorldState, words: str, language: Language) -> dict[str, 
         if len(best) == 1:
             found[best[0]] = time.seconds
     return found
+
+
+def kept_back(state: WorldState, language: Language, said: Said) -> list[str]:
+    """G1, C6: what a story holds back from the player's screens when it starts, as the keys of
+    `engine.untold`: of the people the character knows, their goals and the threads they know
+    of, each one the player's own words don't name. It is what the draft's summary kept a
+    surprise, so a story never shows on its first screen what the draft wouldn't."""
+    you = state.player_id
+    keys = [untold.key(untold.PERSON, c.id) for c in state.npcs() if you in c.known_by]
+    keys += [
+        untold.key(untold.GOAL, goal.id)
+        for goal in state.goals.values()
+        if goal.status is GoalStatus.ACTIVE
+    ]
+    keys += [untold.key(untold.THREAD, t.id) for t in state.threads.values() if you in t.known_by]
+    return sorted(
+        key
+        for key in keys
+        if not any(said.names(opener, language) for opener in _behind(state, key))
+    )
+
+
+def told_by(state: WorldState, scene: str, language: Language) -> list[str]:
+    """C6: of what the story still holds back (`WorldState.untold`), the keys the words of a
+    turn name (`scene`: what the player wrote, the scene and the choices it offers), so the
+    player's screens show it from then on. A goal and a thread are read as in a premise
+    (`names`): the words say most of what they say, or set a time for the thread's deadline. A
+    person is named when the words call them by a name of their own as prose does (`told_of`),
+    and what a place or a faction is called doesn't: a scene that opens in "Carmine's bar" has
+    named the bar, and Carmine only once it calls him too."""
+    if not state.untold or not scene.strip():
+        return []
+    people = _without_groups(state, scene, language)
+    found = []
+    for key in state.untold:
+        person = key.startswith(f"{untold.PERSON}:")
+        for opener in _behind(state, key):
+            if told_of(people, opener.name, language) if person else names(scene, opener, language):
+                found.append(key)
+                break
+    return found
+
+
+def _behind(state: WorldState, key: str) -> list[Opener]:
+    """The openers that stand for a record the story's screens hold back: the person, the
+    goal, or the thread with the deadline it follows and the questions it carries, since words
+    that name the tournament have named its thread."""
+    kind, _, record_id = key.partition(":")
+    if kind == untold.PERSON:
+        character = state.characters.get(record_id)
+        return [of_person(state, character)] if character is not None else []
+    if kind == untold.GOAL:
+        goal = state.goals.get(record_id)
+        return [of_goal(state, goal)] if goal is not None else []
+    thread = state.threads.get(record_id) if kind == untold.THREAD else None
+    if thread is None:
+        return []
+    found = [of_thread(state, thread)]
+    clock = state.clocks.get(thread.clock_id or "")
+    if clock is not None:
+        found.append(of_clock(state, clock))
+    found += [of_question(state, m) for m in state.bible.mysteries if m.thread_id == thread.id]
+    return found
+
+
+def _without_groups(state: WorldState, text: str, language: Language) -> str:
+    """`text` without what a faction, a place or a people of the world is called, where that is
+    two words or more after its article: "Carmine's bar" and "the Zhao clan" say nothing of
+    Carmine or of Zhao Kun."""
+    names = [f.name for f in state.factions.values()]
+    names += [p.name for p in state.places.values()]
+    names += [p.name for p in state.bible.peoples]
+    filler = FILLER[language]
+    phrases = set()
+    for name in names:
+        words = WORD.findall(name)
+        while words and core(words[0]) in filler:
+            words = words[1:]
+        phrases.add(tuple(words))
+    for words in sorted(phrases, key=lambda words: (-len(" ".join(words)), words)):
+        if len(words) < 2:
+            continue
+        pattern = r"[\s'’-]+".join(re.escape(word).replace("'", "['’]") for word in words)
+        text = re.sub(rf"(?<!\w){pattern}(?!\w)", " ", text, flags=re.IGNORECASE)
+    return text
 
 
 def carried(state: WorldState, told: frozenset[str], language: Language) -> frozenset[str]:

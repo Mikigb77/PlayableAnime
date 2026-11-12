@@ -1,5 +1,6 @@
 """G1: whether the player's own words name a goal, a deadline, a question or a person of a
-draft, read by code. Every premise here is made up or a starter's own."""
+draft, and whether a scene's words call someone by name (C6), read by code. Every premise and
+scene here is made up or a starter's own."""
 
 import pytest
 
@@ -7,7 +8,7 @@ from engine.base import DAY, HOUR, WEEK, YEAR
 from engine.context import Language
 from graph.drafting import samples
 from graph.drafting.catalog import starter
-from graph.drafting.named import MONTH, called, named, timed, times_ahead
+from graph.drafting.named import MONTH, called, named, timed, times_ahead, told_of
 from graph.words import alike, content
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
@@ -224,3 +225,45 @@ def test_a_time_ahead_says_what_it_is_for():
     assert time.says("The trial of knighthood", EN) == 1
     assert time.says("The harvest fair", EN) == 0
     assert list(times_ahead("My father was killed three days ago.", EN)) == []
+
+
+@pytest.mark.parametrize(
+    ("scene", "name"),
+    [
+        # Inside a sentence, one word of the name written with a capital.
+        ("“Move,” says Zhao.", "Zhao Kun Senior Brother Zhao"),
+        ("You bow to Senior Brother Zhao and step aside.", "Zhao Kun Senior Brother Zhao"),
+        ("The bucket is Carmine's, and so is the bar.", "Carmine Russo"),
+        # At the start of one, all the name has, or two of its words together.
+        ("Gennaro polishes a glass.", "Gennaro"),
+        ("Elder Mo opens one eye.", "Elder Mo"),
+        ("“Zhao Kun!” someone shouts.", "Zhao Kun"),
+        # Or the same word starting two sentences: a name comes back, a plain word rarely.
+        ("Carmine smiles. You sit.\nCarmine pours two glasses.", "Carmine Russo"),
+        ("Dentro del bar, el viejo Gennaro seca un vaso.", "Gennaro"),
+        ("—Ara no, Mo —diu l'ancià.", "Elder Mo"),
+    ],
+)
+def test_a_scene_calls_someone_by_name(scene, name):
+    language = ES if "viejo" in scene else CA if "ancià" in scene else EN
+    assert told_of(scene, name, language)
+
+
+@pytest.mark.parametrize(
+    ("scene", "name"),
+    [
+        # The word that starts a sentence has a capital whatever it is.
+        ("Old habits die hard.", "Old Hu"),
+        ("Elder disciples laugh by the well.", "Elder Mo"),
+        ("“Master the breath first,” she says.", "Master Wen"),
+        ("He turns away.\nHope is a thin thing here: hope and rice.", "Hope Ward"),
+        # Lower case is no name in prose.
+        ("An elder dozes in the sun, and a senior brother shoves past.", "Elder Mo"),
+        ("You hope the old master is asleep.", "Old Hu"),
+        # The small words of a name call nobody.
+        ("The gate is shut. You wait by The Anchor.", "Jon the Younger"),
+        ("Nobody is named here.", ""),
+    ],
+)
+def test_a_scene_that_only_looks_like_it_calls_nobody(scene, name):
+    assert not told_of(scene, name, EN)

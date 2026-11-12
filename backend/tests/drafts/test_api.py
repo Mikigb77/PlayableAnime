@@ -621,7 +621,11 @@ def test_starting_creates_the_story_with_its_opening_state(player_client, model,
         "mature",
     )
     assert story.premise == starter("naples-vendetta").premise
-    assert WorldState.model_validate(story.state) == state
+    # The draft's state, with the goal and the people its screen kept a surprise held back
+    # from Memory (G1).
+    held = ["goal:goal-1", "person:bartender", "person:carmine"]
+    assert story.state["untold"] == held
+    assert WorldState.model_validate(story.state | {"untold": []}) == state
     assert story.settings | {} == {
         "narration_length": "short",
         "tone": None,
@@ -653,8 +657,10 @@ def test_a_story_starts_knowing_the_rungs_its_draft_named(player_client, model):
     heard = {(h.ladder_id, h.rung): h for h in state.player.sheet.rungs_heard}
     top = heard[("realms", 4)]
     assert (top.heard_s, top.known_s) == (state.world_s, None)
-    # Nothing else of the story's first state moved.
+    # Nothing else of the story's first state moved, but for what Memory holds back (G1).
     state.player.sheet.rungs_heard = []
+    assert state.untold == ["goal:goal-1", "person:elder-mo", "person:zhao", "thread:tournament"]
+    state.untold = []
     assert state == before
 
 

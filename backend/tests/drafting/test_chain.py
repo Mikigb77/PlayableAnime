@@ -8,6 +8,7 @@ import pytest
 
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode
+from engine.visibility import memory_view
 from graph.drafting import chain, samples
 from graph.drafting.catalog import starter
 from graph.drafting.direct import Fields
@@ -410,6 +411,28 @@ def test_what_the_player_asks_for_is_theirs_to_see(fake, llm):
     fake.script(Node.DRAFTER, Reply(json=WorldChange()))
     again = run(chain.revise(llm, revised, "world", "More rain."))
     assert again.told == named
+
+
+def test_a_story_opens_on_the_drafts_state_with_what_was_read_and_what_was_not():
+    # G1, G18, C6: the rung the draft's rules named is heard of, and the rival, the elder, the
+    # goal and the tournament, which the bare premise never named, are held back from Memory.
+    draft = _cultivation_draft()
+
+    opened = chain.opening(draft)
+
+    assert ("realms", 4) in [(h.ladder_id, h.rung) for h in opened.player.sheet.rungs_heard]
+    assert opened.untold == ["goal:goal-1", "person:elder-mo", "person:zhao", "thread:tournament"]
+    assert (memory_view(opened).people, memory_view(opened).goals) == ([], [])
+    # The draft's own state is the one its screen reads, and is never changed.
+    assert (draft.state().untold, draft.state().player.sheet.rungs_heard) == ([], [])
+    assert [p.name for p in memory_view(draft.state()).people] == ["Elder Mo", "Zhao Kun"]
+
+    # What a change of theirs named is theirs to see from the first moment.
+    asked = _cultivation_draft(told=frozenset({"person:zhao", "clock:tournament"}))
+    assert chain.opening(asked).untold == ["goal:goal-1", "person:elder-mo"]
+    # A draft whose every opener their words named holds nothing back.
+    spoken = "I must survive the ranking tournament. Zhao Kun and Elder Mo are watching me."
+    assert chain.opening(replace(draft, premise=spoken)).untold == []
 
 
 def test_a_deadline_comes_when_the_premise_says_whatever_the_steps_add_up_to(fake, llm):
