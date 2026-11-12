@@ -64,6 +64,9 @@ BOOK: Mapping[Language, Mapping[str, str]] = {
         "It follows.": "Se sostiene.",
         "A close call.": "Va a ir justo.",
         "certain": "segura",
+        "your own step missed": "tu propio paso falló",
+        "one more at their side": "otro más a su lado",
+        "two more at their side": "otros dos a su lado",
         MISS_COSTS[Aim.KILL]: (
             "Fallar por más de 5 te mata. Fallar por poco te deja una herida grave."
         ),
@@ -80,6 +83,9 @@ BOOK: Mapping[Language, Mapping[str, str]] = {
         "It follows.": "Se sosté.",
         "A close call.": "Anirà just.",
         "certain": "segura",
+        "your own step missed": "el teu propi pas ha fallat",
+        "one more at their side": "un altre al seu costat",
+        "two more at their side": "dos més al seu costat",
         MISS_COSTS[Aim.KILL]: (
             "Fallar per més de 5 et mata. Fallar per poc et deixa una ferida greu."
         ),

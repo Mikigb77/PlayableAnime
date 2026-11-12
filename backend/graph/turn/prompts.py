@@ -852,6 +852,8 @@ a short label, starting in upper or lower case as the English does.
 line so that it fits either, the way WORDS says health: with a noun or a verb, never with an \
 adjective that takes a gender.
 - Say every line, even a short one: none comes back in English.
+- Put the words in the order that language puts them, not the order of the English, the way \
+WORDS says where a thing is.
 - For the game's own words, use WORDS.
 
 Answer with every line of LINES, each under its own n.\
@@ -876,7 +878,11 @@ WORDING_WORDS = {
         "you are wounded: tienes heridas. you are badly wounded: tienes heridas graves. you are "
         "maimed, with a wound that will last: te queda una herida para siempre. you are dying: "
         "estás al borde de la muerte. you are brought down: quedas fuera de combate. exhausted: "
-        "sin fuerzas. For someone else the same way: tiene heridas, queda fuera de combate."
+        "sin fuerzas. For someone else the same way: tiene heridas, queda fuera de combate.\n"
+        "Where a thing is, with the thing named as the line names it: There is una cuerda here: "
+        "Aquí hay una cuerda. La cuerda is here: La cuerda está aquí. There is no cuerda to be "
+        "found here: Aquí no hay ninguna cuerda. You have no cuerda on you: No llevas ninguna "
+        "cuerda encima."
     ),
     Language.CA: (
         "die: dau. dice: daus. a green die: un dau verd. a throw of the dice: una tirada. an "
@@ -892,7 +898,11 @@ WORDING_WORDS = {
         "are wounded: tens ferides. you are badly wounded: tens ferides greus. you are maimed, "
         "with a wound that will last: et queda una ferida per sempre. you are dying: estàs a "
         "punt de morir. you are brought down: quedes fora de combat. exhausted: sense forces. "
-        "For someone else the same way: té ferides, queda fora de combat."
+        "For someone else the same way: té ferides, queda fora de combat.\n"
+        "Where a thing is, with the thing named as the line names it: There is una corda here: "
+        "Aquí hi ha una corda. La corda is here: La corda és aquí. There is no corda to be "
+        "found here: Aquí no hi ha cap corda. You have no corda on you: No portes cap corda "
+        "a sobre."
     ),
 }
 
