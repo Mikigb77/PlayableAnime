@@ -23,6 +23,7 @@ from engine.contracts import (
 )
 from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
+from engine.resolve.powers import growth
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus
 from engine.state.records import Goal, GoalStatus, StepResult
@@ -884,6 +885,75 @@ def test_a_second_reading_that_cant_be_had_leaves_the_first_to_stand(fake, make_
     assert read_again(result) == ["beyond_terms.unread"]
     assert result.intent.steps[0].facts.breaks_terms
     assert result.resolution.steps[0].bout is None
+
+
+def at_peak():
+    """Lin with his rank full: an attempt to break through would be thrown for (G19)."""
+    state = cultivation_world()
+    state.player.sheet.ladders[0].stage = "peak"
+    return state
+
+
+def resting(*, attempt: bool) -> dict:
+    """A short rest as a model reads it: a rest, or a breakthrough read into it."""
+    rest = {
+        "text": "rest by the well for a while",
+        "verb": "rest",
+        "kind": "rest",
+        "proposed_duration_s": 3600,
+    }
+    if attempt:
+        rest["training"] = {
+            "kind": "breakthrough",
+            "what": "Foundation Establishment",
+            "ladder_id": "realms",
+            "attempt": True,
+        }
+    return {"summary": "Lin rests by the well.", "steps": [rest]}
+
+
+def test_a_breakthrough_read_into_a_rest_is_read_again_and_nothing_is_thrown(fake, make_client):
+    """B8, G19: in Miki's story a breakthrough was attached to "you propose a short rest". At
+    the peak of a rank an attempt is thrown for, and neither a climb nor a miss can be taken
+    back, so the larger model reads the words once more and its reading stands."""
+    fake.script(Node.INTERPRET, Reply(json=resting(attempt=True)))
+    fake.script(Node.SECOND_READING, Reply(json=resting(attempt=False)))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    _, result = play(make_client(), turn_input(at_peak(), action="I propose a short rest"))
+
+    assert read_again(result) == ["breakthrough.overturned"]
+    assert result.intent.steps[0].training is None
+    assert result.resolution.steps[0].roll is None
+    lin = result.state.player
+    assert lin.sheet.ladders[0].rung == 0
+    assert growth.rank_of(lin, result.state.bible.ladder("realms")).full
+
+
+def test_an_attempt_both_readings_see_is_thrown_for(fake, make_client):
+    for node in (Node.INTERPRET, Node.SECOND_READING):
+        fake.script(node, Reply(json=resting(attempt=True)))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    _, result = play(make_client(), turn_input(at_peak(), action="I sit down to break through"))
+
+    assert read_again(result) == ["breakthrough.confirmed"]
+    thrown = result.resolution.steps[0].roll
+    assert thrown is not None and thrown.throw.hand == 3
+
+
+def test_before_the_peak_an_attempt_is_training_and_is_read_once(fake, make_client):
+    # Nothing is thrown and nothing can be lost, so the larger model is not asked.
+    fake.script(Node.INTERPRET, Reply(json=resting(attempt=True)))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    state = cultivation_world()
+    _, result = play(make_client(), turn_input(state, action="I sit down to break through"))
+
+    assert fake.calls(Node.SECOND_READING) == [] and read_again(result) == []
+    assert result.resolution.steps[0].roll is None
+    rank = growth.rank_of(result.state.player, result.state.bible.ladder("realms"))
+    assert rank.effort_s == 3600
 
 
 def saved_turns(count: int):

@@ -480,10 +480,10 @@ have heard of, dashed while only heard of and solid once confirmed, each with ho
 ("Heard of, day 14", "Confirmed before Elder Han, day 15", naming only someone they know) and
 what they have learned or heard about it in the record's own words, which lists ways there and
 requires none; room left open, as unmeasured, wherever rungs nobody has named lie between two
-they know of; then their own rung with the day they reached it and the rungs they left behind
-with the day. A ladder they don't stand on shows once they have heard of one of its rungs, as a
-scale beside their own way. What a rung is, and what climbing to it takes (G19), is never shown
-before the story tells it.
+they know of; then their own rung with the day they reached it, the stage of their rank and a
+bar of how full it is (G19), and the rungs they left behind with the day. A ladder they don't
+stand on shows once they have heard of one of its rungs, as a scale beside their own way. What a
+rung is, and what climbing to it takes (G19), is never shown before the story tells it.
 **The path starts with the rungs everyone knows and widens when the story does** (decided
 2026-11-12, from Miki's "if the world has 3 or 4 levels, but then you start messing with gods and
 stuff like that, and the power levels scales, then that screen should also widen up or grow").
@@ -506,21 +506,64 @@ did, with their own rung and whatever the story has named to them, and says who 
 still like any other. A ladder that gains rungs in the middle of a story, past the top it was
 drafted with, is not built yet.
 
-**G19 Breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers. A breakthrough
-needs what the world says it needs: resources (spirit stones, pills, a beast core), insight, time in
-seclusion, a master's guidance, or a trial that can fail and wound, such as a heavenly tribulation.
-The attempt is thrown for (A3), and its duration can also be an outcome (W10): a seclusion of a
-month or of three years. Seclusion is a time skip (E7) that the world can interrupt. A loud breakthrough, such
-as lightning over the mountain, is a public deed (W1, W2) that draws attention. Bottlenecks are
-real: a character can be stuck at a rung until they find what they lack (A4).
-Decided in WS9b: a rung lists what climbing to it needs, and each need must be met by something
-carried, a technique, a true fact the character knows, this turn's canon or a living master's
-guidance, or the attempt is a bottleneck with no throw. Otherwise the character throws three dice
-against a level of 3, whoever they are, since every rung is as far from the last (A3). A master's
-teaching adds a green die, a talent that covers the climb at a genius's pace or better adds one
-(A4), and so does any other advantage that holds, two in all; a weakness that covers the climb adds
-5 to the number, and so does each thing in the scene against them. A throw that passes climbs the rung, one that falls just short leaves the character shaken
-and a miss wounds them, and how long it takes is always drawn.
+**G19 Ranks and breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers,
+and it is earned first (decided 2026-11-12, Miki: "Earned in play, then a throw", then "for the
+breakthrough ... we should take into account the talent of the person" and "if you are, for
+example, one of a kind, maybe you can get two dices"; from the review of Miki's story, where a
+breakthrough was a bare throw anyone could ask for on any turn).
+**A rank fills.** The sheet keeps the effort put toward the next rung of each ladder. It fills
+with what the ladder measures, done in play: on a ladder of might, a turn in which the character
+used a power, a technique or a move of their own, or struck or clashed on their own throw, counts
+as two hours of effort where nothing resisted, four where their own throw decided the step,
+however it went, and six on an insight or a throw over the top (A3, A4); on any other ladder, a
+step on its axis that their own throw decided counts the same four or six. A turn counts once
+for a ladder, at its best step. It fills with training aimed at the rank too (cultivating,
+tempering the body, training to rise), by the hour as all training counts (A4): the first twelve
+hours of a stretch in full and the rest at a third, twice as fast beside a living master, and a
+stretch an event cut short keeps the time it ran. Training a technique or a skill grows that
+technique or skill and not the rank; using it when it counts does both. Talent sets the pace as
+it does for everything else (A4): a knack fills a rank twice as fast, a genius four times,
+someone one of a kind eight times, and a weakness at half the pace, in play and in training
+alike. The first rung above a ladder's lowest takes about 100 hours of ordinary effort and each
+rung above it twice the last; stepping onto a ladder from below it takes about 50, by training
+alone.
+**Stages.** How full a rank is reads as a stage: early under a third, middle under two thirds,
+late above that, and its peak once it is full. Each stage reached on a rung they stand on is a
+gain on the sheet with its day (G17), the Character screen says the stage under their own rung
+with a bar of how full it is, and Status says it after the rung's name (G16). A new world's
+draft says which stage the character starts at, in those four words, and the rank starts
+there.
+**The breakthrough.** At its peak nothing fills a rank further, and the climb is theirs to
+try. An attempt is thrown for with three dice against a level of 3, whoever they are, since
+every rung is as far from the last (A3): 27 on Balanced, which three dice reach about 7 times
+in 10. Green dice, two at most: a talent that covers the climb adds one at a knack's or a
+genius's pace and two at one of a kind's, about 9 in 10 and 98 in 100; a master's teaching adds
+one; each thing the rung lists that the character has adds one; and so does any other advantage
+that holds. Two green dice are the most any throw gets, so a master adds nothing to the throw
+of someone one of a kind, only to how fast their rank fills. A weakness that covers the climb
+throws one die fewer, about 1 in 4, and each thing in the scene against them adds 5 to the
+number, two at most. Before the peak an attempt is training toward the rung, certain, with no
+throw, and the reason says so; work on a rank at its peak that sets out to try nothing changes
+nothing.
+**Nothing a rung lists is required** (Miki, 2026-11-10: "Don't necessarily ... fix it on, you
+need to actually have a master. Maybe the character can learn it on their own"). What the world
+says a climb takes, a pill, a beast core, an insight, a master's guidance, is a way there, worth
+a green die to whoever has it (something carried, a technique, a true fact they know, this
+turn's canon, or a living master beside them), and never a bottleneck: the same climb can
+always be earned and tried alone.
+**What a throw costs.** One that passes climbs the rung, and the rank starts to fill again from
+nothing. One that falls just short keeps nine tenths of the rank and a miss three quarters, so
+a miss costs the time it takes to fill it again. It hurts only when the way they went about it
+was risky, which the interpret step says from the player's own words (forcing it, a forbidden
+or unstable aid, a trial that can wound, such as a heavenly tribulation): then so close leaves
+them hurt and a miss wounded. How long an attempt takes is always drawn (W10): a seclusion of a
+month or of three years is a time skip (E7) that the world can interrupt, and one cut short is
+no attempt, with the rank still at its peak. A loud breakthrough, such as lightning over the
+mountain, is a public deed (W1, W2) that draws attention.
+**An attempt is never read into an action** (B8). The interpret step says an attempt only when
+the player's own words set out to break through now, and a reading that has the character try
+at their peak is read once more by the larger model before the dice are thrown, since neither a
+climb nor a miss can be taken back.
 
 **G20 Sensing and hiding power (P1).** Where the world allows it, characters sense each other's
 strength (a cultivator's pressure, the weight of an aura), but only up to about their own rung: a
@@ -1740,7 +1783,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Power gap | A Qi Condensation disciple attacks a Core Formation elder head-on, over many seeds | Two realms up it is still a throw, and it fails almost every time; the elder reacts to the insult. Against a gravely wounded elder, the same attack succeeds more often (G18, A8). Using time stop, the result is the same on every seed, with no roll: whatever the world's rules say a disciple's strike can do to a body that strong (A2) |
 | Cause and effect | In a modern city with hidden mages, the player fires a bazooka at an unshielded thug, then at a mage whose force field is stated to stop it, then at one whose field is about as strong as the round, over many seeds | The thug dies and the strong field holds on every seed, with no roll. Only the evenly matched field is a close call, rolled between outcomes the facts allow (A2, A9) |
 | Workaround | A mage three realms up shelters in a hall behind a force field that keeps out blades, bazooka rounds and air, and the player sets the hall on fire from outside, over many seeds; once when she has no way out and once when her sheet has a teleport | With no way out, she dies on every seed once the air runs out, minutes of in-world time later (W10), with no roll and the chain in the scene details. With the teleport, she escapes and hunts for whoever tried (W1). A head-on attack on her stays ruled out (A9, G18) |
-| Breakthrough | A cultivator goes into seclusion to break through | The attempt can fail or wound, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10); a rung reached leads how they grew on their sheet (G17) |
+| Breakthrough | A cultivator early in their realm sets out to break through, cultivates until the rank is at its peak and then goes into seclusion to break through, alone, with no pill and no master | Before the peak the attempt is training with no throw, and the rank's stage rises as it fills; at the peak it is thrown for with three dice, a miss costs part of the rank and wounds nobody, its length varies with the roll, and the world interrupts it when something needs the player (G19, W10); a rung reached leads how they grew on their sheet, over the stages that led to it (G17) |
 | Talent | A character one of a kind with the sword and a genius at building practises an aura blade, arguing that both talents cover it, argues the opposite a turn later, starts learning a wall of aura while claiming a talent the sheet doesn't have, then derives a formula to connect the wall to their building, tries the same formula again and then new ground, over many seeds | The engine rules once, in the step that starts the learning, on how each talent stands to the new thing, and the pace follows from that very step. Arguing again changes nothing, and a talent nobody wrote on the sheet rules on nothing. A bridge is thrown for with the character's own skill: one that holds lifts that one thing a step and never past the talent, and ground already tried carries no second one (A4, A9) |
 | Hidden strength | A disguised expert is mocked by a young master, then shows their strength in public | NPCs treat them by what they can perceive until the reveal, then attitudes and rumors shift at once (G20) |
 | The path | A cultivator on the first realm asks a senior which realms lie above, hears of a far higher one as a story, and later an elder stops beside them | A rung above the character's own shows on their path from the scene that names it, as heard of, and as known once someone who stands on it has stood before them; no rung shows that neither a scene nor something they know has named; in a world that says which rungs everyone knows, those show from the first moment, and someone above every rung they know of shows as standing higher still, with no rung named (G18, C6) |
@@ -1818,7 +1861,7 @@ Every turn costs credits, the server enforces the balance, and the owner account
 | B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus who it is aimed at, what it would do to them and how long it takes (W10), the beats it takes (R2), the chain of cause and effect behind any beat whose outcome isn't obvious, with the facts each link rests on (A9), and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal. **The form it fills asks only what can apply to the turn** (2026-11-12): a question that can't apply is one more thing to get wrong, and it is paid for on every turn. So nothing about stopped time is asked unless the character holds a power over time or one is at work, nothing about a ladder where the world has none, no ruling on talent where the character has none to rule on, and no goal to give up or thread to take up where there is none; the model is told how to fill in only what its form holds, and code reads a field that wasn't asked as its default. Who acts is never asked: the player plays only their own character (A6). A reading that would end a friendly bout as an attack is read once more, by the larger model, before code acts on it (B8, W1) → (3) resolve and direct: check the beats and every link of a chain against the world, the scene and the sheet (R2, G8, A9), settle each step from the facts and throw the dice only for the ones the facts leave open (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
 | B6 | **Models through Vertex AI** with LangChain's `ChatGoogleGenerativeAI` from `langchain-google-genai`, which calls Vertex AI since version 4 and replaces `langchain-google-vertexai`'s `ChatVertexAI` (deprecated in 3.2.0, removed in 4.0.0). The model for each node is set in config (interpret, the second reading of B8, narrator, checker, tick, summarizer, drafter, the picture and speech models from M8 and V6, the picture note from M5, and the evals' judge from T15 and T18). A BYOK key builds that request's model client and is never stored. A node's response format goes to Gemini as a JSON schema with only the keywords it takes, and a schema Gemini still refuses goes in the system prompt instead, with JSON mode; the full model checks every answer either way. An answer that fails the check is logged with where and how it failed (field names, list positions and error types, never a value, T6). Nothing holds the model to a schema in the prompt, so the drafter's answers are read leniently: a value of the wrong shape is fitted where its meaning is clear (a null, a lone value for a list, a map of records by id, an enum in other case), and one that still fails costs only itself, never the draft (G1, G2). Each repair is logged once per answer without its value; proposals that code builds stay strict. The published app always runs on Gemini through Vertex AI (or a player's own Gemini key, S9): on Cloud Run the API refuses to start with any other provider, and the offline model is only for local runs and tests. | P0 |
 | B7 | **Streaming:** the narrate node streams tokens through LangGraph `astream` to an SSE response (S3). The resolve node sends the steps it decided the same way, before the narrate node starts (A3). | P0 |
-| B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call, which may think longer on a turn whose outcome rests on a chain of cause and effect (A9). **A reading that would do something that can't be taken back is read once more by the large model before code acts on it** (2026-11-12): today that is a blow read as meant to go beyond the terms of a bout (W1), which ends a friendly fight as an attack, for good. The larger model reads the same words with the same form and guide, and its reading stands; when it can't be had, the first one does, so the turn never fails for the lack of it. Measured on the real models before choosing (T18's reading test and three stories of a lesson): the small model read 68 of 80 things right at 2.7 s and about half a cent a reading, the same model thinking harder 72 at 5.1 s, and the large model 73 at 4.7 s and 2.2 cents, which would add half again to what a turn costs and two seconds before every scene begins. The small model's one grave slip was a plain lesson blow read as an attack, 1 time in 36, and the large model made none in 18, so the large model reads the few turns that carry that risk and the small one the rest. The checker and the model part of the world tick use the cheapest model. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
+| B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call, which may think longer on a turn whose outcome rests on a chain of cause and effect (A9). **A reading that would do something that can't be taken back is read once more by the large model before code acts on it** (2026-11-12): today that is a blow read as meant to go beyond the terms of a bout (W1), which ends a friendly fight as an attack, for good, and an attempt to break through at the peak of a rank (G19), whose climb or miss stands. The larger model reads the same words with the same form and guide, and its reading stands; when it can't be had, the first one does, so the turn never fails for the lack of it. Measured on the real models before choosing (T18's reading test and three stories of a lesson): the small model read 68 of 80 things right at 2.7 s and about half a cent a reading, the same model thinking harder 72 at 5.1 s, and the large model 73 at 4.7 s and 2.2 cents, which would add half again to what a turn costs and two seconds before every scene begins. The small model's one grave slip was a plain lesson blow read as an attack, 1 time in 36, and the large model made none in 18, so the large model reads the few turns that carry that risk and the small one the rest. The checker and the model part of the world tick use the cheapest model. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
 | B9 | **Story state stays in our own tables.** A LangGraph checkpointer is used only if we need to resume a run that failed partway. | P1 |
 | B10 | **Cold starts:** Cloud Run startup CPU boost on, and heavy imports kept out of module load. Check that T3 still holds with Django and LangChain loaded. | P0 |
 | B11 | **Credentials: no service-account keys anywhere.** On Cloud Run, Vertex AI is called as the attached service account `playable-anime-api@playable-anime.iam.gserviceaccount.com` (it already has `roles/aiplatform.user`), through Application Default Credentials. For local development, run `gcloud auth application-default login`. GitHub Actions deploys through Workload Identity Federation, not a JSON key. The only API keys in the system are the players' own BYOK keys, which are never stored. | P0 |

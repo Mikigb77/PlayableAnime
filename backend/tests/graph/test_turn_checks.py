@@ -7,6 +7,7 @@ from engine.contracts import (
     DirectorPlan,
     EventKind,
     EventSource,
+    GrowthKind,
     Harm,
     Intent,
     IntentStep,
@@ -28,6 +29,7 @@ from engine.contracts import (
     Stranger,
     SuggestionPlan,
     Theme,
+    Training,
 )
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
@@ -47,6 +49,7 @@ from engine.state.world import EventSize
 from graph.turn.check import (
     ACTION_UNTOLD,
     BEYOND_TERMS,
+    BREAKTHROUGH,
     CLOCK_SCENE_END,
     MAX_STEPS,
     check_intent,
@@ -333,6 +336,50 @@ def test_a_reading_that_breaks_nothing_is_not_read_again():
     insult = blow(Aim.NONE, verb="insult", kind=ActionKind.CONVERSATION)
     assert doubtful(insult, lesson()) is None
     assert doubtful(Intent(standing=None), lesson()) is None
+
+
+def cultivating(*, attempt: bool = True, kind: GrowthKind = GrowthKind.BREAKTHROUGH) -> Intent:
+    """A stretch of work toward the next realm as the interpret step proposes it."""
+    training = Training(kind=kind, what="Foundation Establishment", attempt=attempt)
+    sat = IntentStep(
+        text="sit down to break through",
+        verb="cultivate",
+        kind=ActionKind.TASK,
+        proposed_duration_s=3600,
+        training=training,
+    )
+    return Intent(steps=[sat])
+
+
+def at_peak():
+    state = cultivation_world()
+    state.player.sheet.ladders[0].stage = "peak"
+    return state
+
+
+def test_an_attempt_to_break_through_at_the_peak_is_worth_a_second_reading():
+    # B8, G19: the attempt is thrown for, and neither a climb nor a miss can be taken back. In
+    # Miki's story one was read into "you propose a short rest".
+    assert doubtful(cultivating(), at_peak()) == BREAKTHROUGH
+    plan = Intent(steps=[step("bow to Zhao"), *cultivating().steps])
+    assert doubtful(plan, at_peak()) == BREAKTHROUGH
+    # In the middle of a fight in earnest too: it has no terms left to break, and the attempt
+    # is still thrown for.
+    fighting = lesson(None, in_earnest=True)
+    fighting.player.sheet.ladders[0].stage = "peak"
+    assert doubtful(cultivating(), fighting) == BREAKTHROUGH
+
+
+def test_work_toward_a_rung_that_throws_nothing_is_not_read_again():
+    # Before the peak an attempt is only training, and so is work that sets out to try nothing.
+    assert doubtful(cultivating(), cultivation_world()) is None
+    assert doubtful(cultivating(attempt=False), at_peak()) is None
+    # The flag means nothing on any other training.
+    assert doubtful(cultivating(kind=GrowthKind.SKILL), at_peak()) is None
+    # On a ladder's last rung there is nothing to try.
+    top = at_peak()
+    top.player.sheet.ladders[0].rung = len(top.bible.ladders[0].rungs) - 1
+    assert doubtful(cultivating(), top) is None
 
 
 def test_an_action_that_fits_nothing_still_becomes_a_step():

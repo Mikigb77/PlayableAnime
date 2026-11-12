@@ -36,7 +36,7 @@ from engine.director.goals import GoalKind, GoalOrigin
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, date_label, in_label, number_label, of_name
 from engine.limits import normalize
-from engine.resolve.powers.growth import GainHow, GainKind, read_gain, technique_pace
+from engine.resolve.powers.growth import GainHow, GainKind, rank_of, read_gain, technique_pace
 from engine.state.bible import PowerLadder
 from engine.state.cast import (
     Character,
@@ -65,6 +65,7 @@ from engine.state.sheet import (
     Health,
     ItemKind,
     Mastery,
+    RankStage,
     SkillLevel,
     TalentFit,
     TalentStrength,
@@ -286,10 +287,14 @@ class SheetCondition(EngineModel):
 
 class SheetRung(EngineModel):
     """A rung they climbed, or the one they stand on. `note` is when, where the record holds
-    it: "Reached, day 9" for their own, "Left behind, day 9" for one under it."""
+    it: "Reached, day 9" for their own, "Left behind, day 9" for one under it. Their own says
+    how full their rank is (G19): `stage` in words ("Late stage", or that a breakthrough can
+    be tried once it is at its peak) and `filled` from 0 to 1, None for a rung they left
+    behind and on a ladder's last rung."""
 
     name: str
     stage: str = ""
+    filled: float | None = None
     description: str = ""
     note: str = ""
 
@@ -657,6 +662,34 @@ _HEALTH_WORDS = {
     },
 }
 
+# G19: how full a rank is, as the sheet says it under their own rung.
+RANK_STAGE_WORDS = {
+    EN: {
+        RankStage.EARLY: "Early stage",
+        RankStage.MIDDLE: "Middle stage",
+        RankStage.LATE: "Late stage",
+        RankStage.PEAK: "At its peak",
+    },
+    ES: {
+        RankStage.EARLY: "Etapa inicial",
+        RankStage.MIDDLE: "Etapa intermedia",
+        RankStage.LATE: "Etapa avanzada",
+        RankStage.PEAK: "En su cima",
+    },
+    CA: {
+        RankStage.EARLY: "Etapa inicial",
+        RankStage.MIDDLE: "Etapa intermèdia",
+        RankStage.LATE: "Etapa avançada",
+        RankStage.PEAK: "Al seu cim",
+    },
+}
+
+
+def rank_stage_label(stage: RankStage, language: Language = EN) -> str:
+    """ "Late stage", "Etapa avanzada", "Etapa avançada"."""
+    return RANK_STAGE_WORDS[language][stage]
+
+
 # G16: a skill's level as the sheet says it. In Spanish and Catalan a noun, as "Pericia: espada",
 # so it fits a character of any gender.
 SKILL_LEVEL_WORDS = {
@@ -847,6 +880,7 @@ _WORDS = {
         "higher_one": "{who} stands somewhere up here.",
         "higher_many": "{who} stand somewhere up here.",
         "higher_someone": "Someone you have met stands somewhere up here.",
+        "rank_ready": "At its peak: you can try to break through",
         "grew_breakthrough": "Broke through to {what}",
         "grew_learned": "Learned {what}",
         "grew_level": "{what}: {level}",
@@ -916,6 +950,7 @@ _WORDS = {
         "higher_one": "{who} está en algún punto de aquí arriba.",
         "higher_many": "{who} están en algún punto de aquí arriba.",
         "higher_someone": "Alguien con quien te has cruzado está en algún punto de aquí arriba.",
+        "rank_ready": "En su cima: puedes intentar dar el salto",
         "grew_breakthrough": "Alcanzaste {what}",
         "grew_learned": "Aprendiste {what}",
         "grew_level": "{what}: {level}",
@@ -985,6 +1020,7 @@ _WORDS = {
         "higher_one": "{who} és en algun punt d'aquí dalt.",
         "higher_many": "{who} són en algun punt d'aquí dalt.",
         "higher_someone": "Algú amb qui t'has creuat és en algun punt d'aquí dalt.",
+        "rank_ready": "Al seu cim: pots intentar fer el salt",
         "grew_breakthrough": "Vas assolir {what}",
         "grew_learned": "Vas aprendre {what}",
         "grew_level": "{what}: {level}",
@@ -1497,7 +1533,12 @@ class _Knowledge:
             if ladder is None or position.rung >= len(ladder.rungs):
                 continue
             rung = ladder.rungs[position.rung].name
-            stage = f", {position.stage}" if position.stage else ""
+            rank = rank_of(player, ladder)
+            stage = ""
+            if rank is not None:
+                # G19: how full their rank is, in a word.
+                label = rank_stage_label(rank.stage, self.language)
+                stage = f", {label[:1].lower()}{label[1:]}"
             lines.append(_cap(f"{ladder.name}: {rung}{stage}"))
         return lines
 
@@ -1744,11 +1785,18 @@ class _Knowledge:
             ]
             if own >= 0:
                 here = ladder.rungs[own]
-                position = next(p for p in player.sheet.ladders if p.ladder_id == ladder.id)
+                rank = rank_of(player, ladder)
+                stage = ""
+                if rank is not None:
+                    # G19: the rank fills toward the next rung, and at its peak it can be tried.
+                    stage = rank_stage_label(rank.stage, self.language)
+                    if rank.full:
+                        stage = _WORDS[self.language]["rank_ready"]
                 rungs.append(
                     SheetRung(
                         name=_cap(here.name),
-                        stage=position.stage,
+                        stage=stage,
+                        filled=round(rank.filled, 3) if rank is not None else None,
                         description=here.description,
                         note=self._dated("rung_reached", reached.get(own)),
                     )
@@ -1841,6 +1889,9 @@ class _Knowledge:
                 text = words["grew_new_use"].format(what=what, power=read.power)
             elif isinstance(read.now, SkillLevel):
                 level = skill_level_label(read.now, self.language)
+                text = words["grew_level"].format(what=what, level=level)
+            elif isinstance(read.now, RankStage):
+                level = rank_stage_label(read.now, self.language)
                 text = words["grew_level"].format(what=what, level=level)
             else:
                 level = _cap(_MASTERY_WORDS[self.language][read.now])

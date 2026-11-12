@@ -100,6 +100,7 @@ from engine.state import (
     WorldBible,
     WorldRule,
     WorldState,
+    stage_named,
 )
 from graph.drafting.catalog import PremiseTemplate
 from graph.drafting.schema import (
@@ -956,8 +957,10 @@ class _Assembler:
             index = _rung_index(ladder, proposed.rung)
             if index is None:
                 continue
+            # G19: the stage they start at is one of the engine's four, or none.
+            stage = stage_named(proposed.stage)
             positions[ladder.id] = LadderPosition(
-                ladder_id=ladder.id, rung=index, stage=_text(proposed.stage, 80)
+                ladder_id=ladder.id, rung=index, stage=stage.value if stage is not None else ""
             )
         return list(positions.values())
 

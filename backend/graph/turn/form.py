@@ -56,7 +56,7 @@ _ONLY: dict[str, dict[str, tuple[str, ...]]] = {
     },
     "ladders": {
         "IntentStep": ("show_strength",),
-        "Training": ("ladder_id",),
+        "Training": ("ladder_id", "attempt", "risky"),
     },
     "talents": {"IntentStep": ("talent_cases", "bridge")},
     "goals": {"Intent": ("dropped_goals",)},

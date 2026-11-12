@@ -35,7 +35,7 @@ from engine.state import (
     WorldState,
 )
 
-from .worlds import SEEDS, add, disciple, facts, resolve, sect, step, strike
+from .worlds import SEEDS, add, besides_rank, disciple, facts, resolve, sect, step, strike
 
 NO_HARM, WOUNDS, DEATH = Terms.NO_HARM, Terms.WOUNDS, Terms.DEATH
 
@@ -137,7 +137,7 @@ def test_a_sparring_blow_hurts_nobody_whatever_aim_was_proposed_for_it(aim):
         assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"])
         assert not settled.broke_terms
         # Neither of them is hurt or left helpless, however the exchange went.
-        assert settled.effects.characters == []
+        assert besides_rank(settled) == []
         deed = bout_deed(settled)
         assert (deed.target_ids, deed.terms) == (["bai"], NO_HARM)
         for peril in settled.perils:
@@ -158,7 +158,7 @@ def test_a_mentor_far_above_them_brings_them_down_unhurt():
         found[peril.harm] += 1
         if peril.harm is Harm.SUBDUED:
             assert peril.reason.endswith("You are brought down, unhurt.")
-        assert settled.effects.characters == []
+        assert besides_rank(settled) == []
         bout_deed(settled)
     assert set(found) <= {Harm.SUBDUED, Harm.NONE}
     assert found[Harm.SUBDUED] > 0.9 * SEEDS.stop
@@ -181,7 +181,7 @@ def test_the_terms_hold_for_the_whole_bout_though_later_steps_leave_them_out():
     for seed in SEEDS:
         settled = one(state, strike("bai"), seed=seed)  # "cut down", meant to kill, no terms
         assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"])
-        assert settled.effects.characters == []
+        assert besides_rank(settled) == []
         bout_deed(settled)
 
 
@@ -195,7 +195,7 @@ def test_in_one_plan_the_first_blow_s_terms_cover_the_blows_after_it():
             continue
         both += 1
         assert [s.bout for s in steps] == [Bout(terms=NO_HARM, with_ids=["bai"])] * 2
-        assert all(s.effects.characters == [] for s in steps)
+        assert all(besides_rank(s) == [] for s in steps)
     assert both
 
 
@@ -226,7 +226,7 @@ def test_a_practice_blow_is_a_blow_of_the_bout_however_it_was_read(shape):
     for seed in SEEDS:
         settled = one(state, practice(shape), seed=seed)
         assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"]), seed
-        assert settled.effects.characters == []
+        assert besides_rank(settled) == []
         assert bout_deed(settled).target_ids == ["bai"]
         assert (settled.encounter, settled.opponent_ids) == (EncounterKind.FIGHT, ["bai"])
 
@@ -285,7 +285,7 @@ def test_first_blood_accepts_a_wound_and_holds_a_killing_blow_to_one():
     for seed in SEEDS:
         settled = one(state, spar(aim=Aim.KILL, terms=WOUNDS), seed=seed)
         assert settled.bout == Bout(terms=WOUNDS, with_ids=["bai"])
-        for change in settled.effects.characters:
+        for change in besides_rank(settled):
             assert change.status is None and not change.condition.states
             worst[change.id].add(change.condition.health)
         bout_deed(settled)
@@ -420,7 +420,7 @@ def test_terms_left_out_on_a_first_blow_that_hurt_nobody_can_still_be_agreed():
     for seed in range(40):
         settled = one(state, spar(aim=Aim.WOUND), seed=seed)
         assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"])
-        assert settled.effects.characters == []
+        assert besides_rank(settled) == []
         bout_deed(settled)
 
 
@@ -447,7 +447,7 @@ def test_a_second_partner_joins_the_bout_by_taking_up_its_terms():
 
     joined = one(state, spar("wei", aim=Aim.WOUND))
     assert joined.bout == Bout(terms=NO_HARM, with_ids=["bai", "wei"])
-    assert joined.effects.characters == []
+    assert besides_rank(joined) == []
     assert bout_deed(joined).target_ids == ["wei"]
 
     # A blow at them with no terms proposed is no blow of the bout: it is an attack on them.
@@ -550,7 +550,7 @@ def test_a_mentor_fond_of_their_student_never_goes_beyond_the_terms(meant):
         [peril] = settled.perils
         assert (peril.aim, peril.terms) == (Aim.SUBDUE, NO_HARM)
         assert not settled.broke_terms
-        assert settled.effects.characters == [] and settled.deeds == []
+        assert besides_rank(settled) == [] and settled.deeds == []
         # The step struck nobody, and its answer was still a blow of the bout.
         assert settled.bout == Bout(terms=NO_HARM, with_ids=["bai"])
 

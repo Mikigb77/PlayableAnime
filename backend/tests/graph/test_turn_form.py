@@ -36,8 +36,11 @@ def test_a_plain_turn_is_asked_nothing_that_cannot_apply():
     assert not _fields(form, "PowerTheory") & {"about", "claims_hit_mode"}
     # G18, G20: no ladder to climb, and no strength on one to hide.
     assert "show_strength" not in step
-    assert "ladder_id" not in _fields(form, "Training")
+    assert not _fields(form, "Training") & {"ladder_id", "attempt", "risky"}
     assert "breakthrough" not in form["$defs"]["GrowthKind"]["enum"]
+    # G19: where there is a ladder, the form asks whether it is an attempt, and a risky one.
+    ranked = intent_form(replace(Asks(), ladders=True))
+    assert {"ladder_id", "attempt", "risky"} <= _fields(ranked, "Training")
     # A4: no talent to rule on.
     assert not step & {"talent_cases", "bridge"}
     # N2, W16: no goal to give up, and nothing open to take up.
@@ -111,7 +114,7 @@ def _refs(node) -> list[str]:
 # What the guide says about a field only some turns are asked, by what has to hold.
 TOLD = {
     "time": ["proposed_personal_s", "- contact:", "mass_kg", "full_force", "hit_force", "grants"],
-    "ladders": ["show_strength", "breakthrough", "ladder_id"],
+    "ladders": ["show_strength", "breakthrough", "ladder_id", "attempt is true only", "risky when"],
     "talents": ["- TALENTS", "talent_cases", "- bridge, always"],
     "goals": ["dropped_goals"],
     "threads": ["responds_to"],

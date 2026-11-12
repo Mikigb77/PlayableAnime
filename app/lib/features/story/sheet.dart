@@ -22,6 +22,9 @@ String? _label(Object? json) => _text(json).isEmpty ? null : _text(json);
 
 int _count(Object? json, {int or = 0}) => json is num ? json.toInt() : or;
 
+/// A share from 0 to 1, or nothing where the server sent none.
+double? _share(Object? json) => json is num ? json.toDouble().clamp(0, 1).toDouble() : null;
+
 /// How hurt they are, from fine to dying. A health the app doesn't know reads as hurt.
 enum Health {
   unhurt,
@@ -116,19 +119,31 @@ class SheetCondition {
 }
 
 class SheetRung {
-  const SheetRung({required this.name, this.stage = '', this.description = '', this.note = ''});
+  const SheetRung({
+    required this.name,
+    this.stage = '',
+    this.filled,
+    this.description = '',
+    this.note = '',
+  });
 
   factory SheetRung.fromJson(JsonMap json) => SheetRung(
     name: _text(json['name']),
     stage: _text(json['stage']),
+    filled: _share(json['filled']),
     description: _text(json['description']),
     note: _text(json['note']),
   );
 
   final String name;
 
-  /// Finer steps within the rung, in the world's words: "third stage".
+  /// How full their rank is, in words (G19): "Late stage", or that a breakthrough can be
+  /// tried once it is at its peak.
   final String stage;
+
+  /// How full their rank is, from 0 to 1. Nothing for a rung they left behind, on a ladder's
+  /// last rung, and from a server that doesn't send it.
+  final double? filled;
   final String description;
 
   /// When, where the record holds it: "Reached, day 9" or "Left behind, day 9".
@@ -436,7 +451,8 @@ class SheetGain {
   /// "With a master", "By doing it". Empty where the record doesn't say.
   final String how;
 
-  /// What kind of gain it was: `breakthrough`, `skill`, `learned`, `mastery` or `new_use`.
+  /// What kind of gain it was: `breakthrough`, `stage`, `skill`, `learned`, `mastery` or
+  /// `new_use`.
   final String kind;
 
   /// A rung of one of the world's ladders, which the timeline lights.

@@ -23,6 +23,7 @@ from engine.context import ImageSetting, TurnContext
 from engine.contracts import (
     ActionKind,
     DirectorPlan,
+    GrowthKind,
     Intent,
     IntentStep,
     ItemChange,
@@ -38,7 +39,7 @@ from engine.contracts import (
 from engine.director.themes import allowed_themes, fits
 from engine.labels import only_the_clock
 from engine.resolve import bouts
-from engine.resolve.powers import sensing
+from engine.resolve.powers import growth, sensing
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
@@ -73,6 +74,7 @@ CLOCK_SCENE_END = "clock_scene_end"
 # have done that can't be taken back (W1).
 READ_AGAIN = "read_again"
 BEYOND_TERMS = "beyond_terms"
+BREAKTHROUGH = "breakthrough"
 
 
 @dataclass(frozen=True)
@@ -184,24 +186,41 @@ def doubtful(intent: Intent, state: WorldState) -> str | None:
     """What a reading would do that can't be taken back and rests on the model's word alone, or
     None: such a turn is read once more, by the larger model, before code decides (B8).
 
-    So far one thing (W1): a blow the reading says is meant to go beyond the terms of a bout,
+    Two things so far. A blow the reading says is meant to go beyond the terms of a bout (W1),
     which ends the bout as an attack on a friend, for good. Read on the real model on
     2026-11-12, one plain lesson blow in 36 came back that way, and every blow after it in that
     story was an attack on the teacher. A fight already in earnest has no terms left to break,
     and a blow the terms allow breaks nothing, whatever the reading said of it
-    (`engine.resolve.bouts`)."""
+    (`engine.resolve.bouts`). And an attempt to break through at the peak of a rank (G19), which
+    is thrown for: neither a climb nor what a miss costs can be taken back, and an attempt was
+    once read into "you propose a short rest". Before the peak the same reading is only
+    training, so it is not read again."""
+    if _ends_a_bout(intent, state):
+        return BEYOND_TERMS
+    for step in intent.steps:
+        training = step.training
+        if training is None or training.kind is not GrowthKind.BREAKTHROUGH:
+            continue
+        if training.attempt and growth.at_peak(state, state.player, step):
+            return BREAKTHROUGH
+    return None
+
+
+def _ends_a_bout(intent: Intent, state: WorldState) -> bool:
+    """W1. Whether a blow of the reading is meant to go beyond the terms of a bout that is on,
+    or that the blow itself agrees."""
     encounter = state.scene.encounter
     bout = encounter.bout if encounter is not None else None
     if bout is None and encounter is not None and encounter.in_earnest:
-        return None
+        return False
     for step in intent.steps:
         facts = step.facts
         if not facts.breaks_terms or not bouts.is_blow(step):
             continue
         terms = facts.terms if bout is None else bouts.milder(bout.terms, facts.terms)
         if terms is not None and not bouts.allows(terms, bouts.meant(step)):
-            return BEYOND_TERMS
-    return None
+            return True
+    return False
 
 
 def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str = "") -> None:

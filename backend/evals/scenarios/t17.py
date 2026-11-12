@@ -2825,11 +2825,22 @@ async def friendly_bout(ev: Eval) -> None:
             ),
             seed,
         )
-        after = state.characters["elder-mo"].attitude_toward("lin")
+        mo = state.characters["elder-mo"]
+        after = mo.attitude_toward("lin")
+        # A live lesson (2026-11-12) left him no grudge after such a blow, and the detail
+        # didn't say why: it now says how the blow was read and what went on record.
+        broke = [
+            f"{d.kind} severity {d.severity}, on {d.victim_ids} at {d.target_ids}, seen by "
+            f"{d.witness_ids}, at {d.place_id}"
+            for d in state.deeds.values()
+            if d.broke_terms
+        ]
         ev.check(
             "he remembers it and trusts them less",
             bool(after.grudges) and after.trust < elder.trust,
-            f"{seed}: {after}",
+            f"{seed}: {after} from trust {elder.trust}; he is at {mo.location_id}, "
+            f"{[s.name for s in mo.sheet.condition.states]}; on record {broke}; "
+            f"{as_read([played])}",
         )
 
     # The other way round: Zhao dislikes Lin, so his "friendly" bout can be a lure.

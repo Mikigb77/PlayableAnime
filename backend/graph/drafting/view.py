@@ -18,7 +18,7 @@ from collections.abc import Iterable
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import Language
-from engine.labels import amount, number_label, of_name
+from engine.labels import amount, number_label
 from engine.state import (
     Character,
     GiftStrength,
@@ -29,8 +29,9 @@ from engine.state import (
     TraitKind,
     WorldRule,
     WorldState,
+    stage_named,
 )
-from engine.visibility import TALENT_STRENGTH_WORDS, skill_level_label
+from engine.visibility import TALENT_STRENGTH_WORDS, rank_stage_label, skill_level_label
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
@@ -48,7 +49,6 @@ _WORDS = {
     EN: {
         "beyond": " and beyond",
         "peoples": "Peoples: ",
-        "stage": "{stage} of {rung}",
         "gifts": "Gifts",
         "flaws": "Flaws",
         "quirks": "Quirks",
@@ -66,7 +66,6 @@ _WORDS = {
     ES: {
         "beyond": " y más allá",
         "peoples": "Pueblos: ",
-        "stage": "{stage} de {rung}",
         "gifts": "Dones",
         "flaws": "Defectos",
         "quirks": "Manías",
@@ -84,8 +83,6 @@ _WORDS = {
     CA: {
         "beyond": " i més enllà",
         "peoples": "Pobles: ",
-        # "{of_rung}" is "de Recluta" or "d'Aprenent", as Catalan joins them.
-        "stage": "{stage} {of_rung}",
         "gifts": "Dons",
         "flaws": "Defectes",
         "quirks": "Manies",
@@ -169,10 +166,12 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
         ladder = state.bible.ladder(position.ladder_id)
         if ladder is not None and position.rung < len(ladder.rungs):
             rung = ladder.rungs[position.rung].name
-            stage = words["stage"].format(
-                stage=_capital(position.stage), rung=rung, of_rung=of_name(rung, language)
-            )
-            lines.append(_sentence(stage if position.stage else rung))
+            # G19: the stage the story starts them at, in the words their sheet will use.
+            stage = stage_named(position.stage)
+            if stage is not None:
+                label = rank_stage_label(stage, language)
+                rung = f"{rung}, {label[:1].lower()}{label[1:]}"
+            lines.append(_sentence(rung))
     if sheet.skills:
         by_level = sorted(sheet.skills, key=lambda s: -s.level.rank)
         groups: dict[SkillLevel, list[str]] = {}

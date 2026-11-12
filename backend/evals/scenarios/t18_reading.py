@@ -468,7 +468,7 @@ LINES: tuple[Line, ...] = (
     ),
     # Growth (A4, G19).
     line(
-        worlds.seclusion,
+        lambda: worlds.seclusion(pill=True),
         "I swallow the Foundation Pill and sit down to break through to Foundation Establishment",
         breaking_through_is_the_next_rung_of_its_ladder=some(
             lambda s: (
@@ -476,6 +476,19 @@ LINES: tuple[Line, ...] = (
                 and s.training.kind is GrowthKind.BREAKTHROUGH
                 and s.training.ladder_id == "realms"
             )
+        ),
+        sitting_down_to_break_through_is_an_attempt=some(
+            lambda s: s.training is not None and s.training.attempt
+        ),
+    ),
+    line(
+        worlds.seclusion,
+        "I circulate my qi until dawn, working toward Foundation Establishment",
+        cultivating_is_work_toward_the_next_rung=some(
+            lambda s: s.training is not None and s.training.kind is GrowthKind.BREAKTHROUGH
+        ),
+        work_toward_a_rung_is_no_attempt=every(
+            lambda s: s.training is None or not s.training.attempt
         ),
     ),
     line(

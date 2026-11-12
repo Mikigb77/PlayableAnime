@@ -321,6 +321,12 @@ def _keep_training(
             return []
         delta = growth.practice_cut(actor, so_far, lived_s, step.text)
         return list(apply_in_place(current, delta, ctx, source=DeltaSource.ENGINE).rejected)
+    if so_far.key.startswith(growth.RANK_KEY):
+        # G19. Training toward a rung: the time it ran fills the rank, with any stage it rose.
+        if actor is None:
+            return []
+        delta = growth.rank_cut(current, actor, so_far, lived_s, step.text)
+        return list(apply_in_place(current, delta, ctx, source=DeltaSource.ENGINE).rejected)
     effort = so_far.before_s + growth.effort_s(lived_s) * so_far.rate
     if effort >= so_far.need_s:
         delta = step.effects

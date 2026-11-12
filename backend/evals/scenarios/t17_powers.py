@@ -34,7 +34,7 @@ from engine.contracts import (
     StateDelta,
     TalentCase,
 )
-from engine.resolve.powers import sensing
+from engine.resolve.powers import growth, sensing
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.powers.growth import GainKind
 from engine.resolve.powers.theories import NOTHING_BEHIND_IT
@@ -47,6 +47,7 @@ from engine.state import (
     HitMode,
     Mastery,
     PlaceStatus,
+    RankStage,
     StepResult,
     TalentFit,
     Visibility,
@@ -890,13 +891,35 @@ pending(
 )
 
 
-# --- Breakthrough (G19, W10) -------------------------------------------------------------------
+# --- Ranks and breakthroughs (G19, W10) ----------------------------------------------------------
+
+
+def cultivate(hours: float, *, attempt: bool = False) -> Intent:
+    """Work toward Foundation Establishment, or with `attempt` setting out to break through."""
+    toward = train(
+        GrowthKind.BREAKTHROUGH,
+        "Foundation Establishment",
+        hours,
+        ladder_id="realms",
+        attempt=attempt,
+    )
+    return plan(toward)
 
 
 def seclusion(hours: float = 30) -> Intent:
-    return plan(
-        train(GrowthKind.BREAKTHROUGH, "Foundation Establishment", hours, ladder_id="realms")
-    )
+    return cultivate(hours, attempt=True)
+
+
+# The stretches of cultivating a story test gives a rank to fill: the story may cut each short.
+MONTHS_TO_A_PEAK = 8
+
+
+def rank_of(played: Played) -> growth.Rank:
+    """How far Lin is toward Foundation Establishment."""
+    state = played.state
+    rank = growth.rank_of(state.characters["lin"], state.bible.ladder("realms"))
+    assert rank is not None
+    return rank
 
 
 @scenario(
@@ -905,12 +928,70 @@ def seclusion(hours: float = 30) -> Intent:
     title="Breakthrough",
     requirements=("G19", "W10", "A4", "G17", "T17"),
     passes_when=(
-        "The attempt can fail or wound, its length varies with the roll, and the world "
-        "interrupts it when something needs the player (G19, W10); a rung reached leads how "
-        "they grew on their sheet (G17)"
+        "Before the peak the attempt is training with no throw, and the rank's stage rises as "
+        "it fills; at the peak it is thrown for with three dice, a miss costs part of the rank "
+        "and wounds nobody, its length varies with the roll, and the world interrupts it when "
+        "something needs the player (G19, W10); a rung reached leads how they grew on their "
+        "sheet, over the stages that led to it (G17)"
     ),
 )
 async def breakthrough(ev: Eval) -> None:
+    # Earned first: early in the realm an attempt is training, and the rank fills.
+    for seed in ev.seeds(5, live=1):
+        story = ev.story(worlds.seclusion(stage="early"), seed=f"{seed}/early", under_way=True)
+        played = await story.act(
+            "I sit down by the well and try to break through to Foundation Establishment",
+            seclusion(6),
+        )
+        early = played.step(0)
+        ev.check(
+            "before the peak an attempt is training, with no throw",
+            early.roll is None and early.outcome_class is OutcomeClass.CERTAIN,
+            f"{seed}: {as_read([played])}",
+        )
+        started = rank_of(played)
+        ev.check(
+            "and it fills the rank",
+            0 < started.effort_s < started.need_s,
+            f"{seed}: {started.effort_s / HOUR:.1f} h, {as_read([played])}",
+        )
+        # A month is the story's to grant (E7): what ran of a stretch cut short counts, and
+        # they go back to it until the rank is full.
+        rank = started
+        for _ in range(MONTHS_TO_A_PEAK):
+            before = rank
+            played = await story.act(
+                "I cultivate here for a month, working toward Foundation Establishment",
+                cultivate(24 * 30),
+            )
+            rank = rank_of(played)
+            ev.check(
+                "every stretch of cultivating fills the rank, cut short or not",
+                rank.effort_s > before.effort_s,
+                f"{seed}: {before.effort_s / HOUR:.1f} h to {rank.effort_s / HOUR:.1f} h, "
+                f"{as_read([played])}",
+            )
+            if rank.full:
+                break
+        own = status_view(played.state).sheet.paths[0].rungs[-1]
+        ev.check(
+            "months of cultivating bring the rank to its peak",
+            rank.full and own.filled == 1.0,
+            f"{seed}: {rank.effort_s / HOUR:.1f} h, {own.stage!r}, {as_read([played])}",
+        )
+        grew = status_view(played.state).sheet.grew
+        ev.check(
+            "and the stage it reached leads how they grew (G17)",
+            bool(grew) and grew[0].kind is GainKind.STAGE,
+            f"{seed}: {[g.text for g in grew[:1]]}",
+        )
+        ev.check(
+            "filling a rank climbs no rung",
+            played.state.characters["lin"].sheet.ladders[0].rung == 0,
+            seed,
+        )
+
+    # Then a throw: at the peak, alone, with no pill and no master.
     results: Counter[str] = Counter()
     lengths = set()
     broke_through = []
@@ -921,12 +1002,17 @@ async def breakthrough(ev: Eval) -> None:
         attempt = played.step(0)
         results[attempt.result.value] += 1
         lengths.add(attempt.duration_s)
-        rung = played.state.characters["lin"].sheet.ladders[0].rung
+        lin = played.state.characters["lin"]
+        rung = lin.sheet.ladders[0].rung
         if attempt.interrupted:
             # E7: days of seclusion are the story's to grant. Something that needed them cut
             # this one short, whatever the throw would have made of it.
             cut_short += 1
-            ev.check("a seclusion cut short gains no rung", rung == 0, seed)
+            ev.check(
+                "a seclusion cut short gains no rung and costs nothing",
+                rung == 0 and rank_of(played).full,
+                seed,
+            )
         elif attempt.result is StepResult.SUCCESS:
             broke_through.append(played)
             ev.check("a breakthrough climbs the rung", rung == 1, seed)
@@ -943,17 +1029,27 @@ async def breakthrough(ev: Eval) -> None:
                 played.plan.picture.trigger is PictureTrigger.BREAKTHROUGH,
                 f"{seed}: {played.plan.picture}",
             )
-        else:
-            change = next((c for c in attempt.effects.characters if c.id == "lin"), None)
             ev.check(
-                "a failed attempt leaves its mark and no rung",
-                rung == 0 and change is not None and change.condition is not None,
-                f"{seed}: {attempt.result} {attempt.reason}",
+                "and the rank starts to fill again from nothing",
+                rank_of(played).effort_s == 0,
+                seed,
+            )
+        else:
+            rank = rank_of(played)
+            ev.check(
+                "a miss costs part of the rank and no rung",
+                rung == 0 and rank.stage is RankStage.LATE,
+                f"{seed}: {attempt.result} {rank.effort_s / HOUR:.1f} h",
+            )
+            ev.check(
+                "and wounds nobody, since nothing about it was risky",
+                lin.sheet.condition.health is Health.UNHURT,
+                f"{seed}: {lin.sheet.condition.health} {as_read([played])}",
             )
         ev.check(
-            "the attempt is rolled",
+            "the attempt is thrown for, whatever the world says the climb takes",
             attempt.outcome_class is OutcomeClass.CONTESTED and attempt.roll is not None,
-            f"{seed}: {attempt.outcome_class}",
+            f"{seed}: {attempt.outcome_class} {as_read([played])}",
         )
     ev.metric("results", dict(results))
     ev.metric("cut_short", cut_short)
@@ -964,7 +1060,7 @@ async def breakthrough(ev: Eval) -> None:
             f"{cut_short} of {sum(results.values())} cut short",
         )
         ev.check(
-            "the attempt can succeed, fail or wound",
+            "the attempt can pass, fall just short or miss",
             set(results) == {r.value for r in StepResult},
             str(results),
         )

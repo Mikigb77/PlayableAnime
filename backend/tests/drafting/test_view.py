@@ -115,7 +115,7 @@ def test_the_character_reads_in_the_worlds_words():
 
     assert 3 <= len(lines) <= CHARACTER_LINES
     assert lines[0] == "Lin Feng, 16."
-    assert "Third stage of Qi Condensation." in lines
+    assert "Qi Condensation, early stage." in lines
     assert any(line.startswith("Time stop:") for line in lines)
     assert "Goal: Survive the ranking tournament." in lines
 
@@ -135,7 +135,7 @@ def test_the_words_code_adds_come_in_the_draft_s_language():
     naples = character_lines(_naples(), es)
 
     assert "The ranking tournament: en 2 días." in world
-    assert "Third stage de Qi Condensation." in character
+    assert "Qi Condensation, etapa inicial." in character
     assert "Objetivo: Survive the ranking tournament." in character
     assert any(line.endswith("Nadie lo sabe.") for line in character)
     assert "Sin poderes, porque en este mundo no existen." in naples
@@ -152,7 +152,7 @@ def test_the_words_code_adds_come_in_catalan_too():
     naples = character_lines(_naples(), ca)
 
     assert "The ranking tournament: d'aquí a 2 dies." in world
-    assert "Third stage de Qi Condensation." in character
+    assert "Qi Condensation, etapa inicial." in character
     assert "Objectiu: Survive the ranking tournament." in character
     assert any(line.endswith("Ningú no ho sap.") for line in character)
     assert "Sense poders, perquè en aquest món no n'hi ha." in naples

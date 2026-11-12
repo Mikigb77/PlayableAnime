@@ -366,7 +366,7 @@ def cultivation_world() -> WorldState:
             resources=Resources(rank="outer disciple", family_name="the fallen Lin clan"),
             condition=Condition(reserves=[Reserve(name="qi", level=40, recovery_s=DAY)]),
             axes=PowerAxes(might=2, influence=1, wealth=1, knowledge=3, stealth=2),
-            ladders=[LadderPosition(ladder_id="realms", rung=0, stage="third stage")],
+            ladders=[LadderPosition(ladder_id="realms", rung=0, stage="early")],
         ),
     )
     zhao = Character(
@@ -385,7 +385,7 @@ def cultivation_world() -> WorldState:
             skills=[Skill(name="fist techniques", level=SkillLevel.SKILLED)],
             disposition=Disposition(attitudes={"lin": Attitude(affinity=-30, fear=0)}),
             axes=PowerAxes(might=4, influence=2),
-            ladders=[LadderPosition(ladder_id="realms", rung=1, stage="early stage")],
+            ladders=[LadderPosition(ladder_id="realms", rung=1, stage="early")],
         ),
     )
     elder = Character(
@@ -398,7 +398,7 @@ def cultivation_world() -> WorldState:
         memberships=[Membership(faction_id="inner-court", rank="elder", loyalty=90)],
         sheet=CharacterSheet(
             axes=PowerAxes(might=6, influence=5, knowledge=6),
-            ladders=[LadderPosition(ladder_id="realms", rung=2, stage="late stage")],
+            ladders=[LadderPosition(ladder_id="realms", rung=2, stage="late")],
         ),
     )
     bible = WorldBible(

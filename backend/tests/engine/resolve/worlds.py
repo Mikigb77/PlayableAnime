@@ -20,7 +20,9 @@ from engine.contracts import (
     StepFacts,
     UseSource,
 )
+from engine.contracts.delta import CharacterChange
 from engine.resolve import resolve_intent
+from engine.resolve.powers.growth import RANK_KEY, GainKind, read_gain
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
@@ -351,3 +353,16 @@ def fire_bazooka(target: str, means: MeansVerdict) -> IntentStep:
             means=means,
         ),
     )
+
+
+def besides_rank(settled) -> list[CharacterChange]:
+    """What a step changed about the characters, apart from the rank its doer fills by what
+    they do (G19): a blow, a clash or a move of their own counts toward the next rung."""
+    found = []
+    for change in settled.effects.characters:
+        practice = [p for p in change.practice if not p.key.startswith(RANK_KEY)]
+        gains = [g for g in change.gains if getattr(read_gain(g), "kind", None) != GainKind.STAGE]
+        rest = change.model_copy(update={"practice": practice, "gains": gains})
+        if rest != CharacterChange(id=change.id):
+            found.append(rest)
+    return found

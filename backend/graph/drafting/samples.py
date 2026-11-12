@@ -382,7 +382,7 @@ def cultivation_world() -> WorldProposal:
                 skills=[SkillP(name="fist techniques", level="skilled")],
                 ladders=[
                     LadderPositionP(
-                        ladder_id="realms", rung="Foundation Establishment", stage="early stage"
+                        ladder_id="realms", rung="Foundation Establishment", stage="early"
                     )
                 ],
                 attitude_to_player=AttitudeP(affinity=-30),
@@ -394,9 +394,7 @@ def cultivation_world() -> WorldProposal:
                 description="An inner-court elder who looks like a sleepy old man.",
                 location_id="inner-court",
                 memberships=[MembershipP(faction_id="inner-court", rank="elder", loyalty=90)],
-                ladders=[
-                    LadderPositionP(ladder_id="realms", rung="Core Formation", stage="late stage")
-                ],
+                ladders=[LadderPositionP(ladder_id="realms", rung="Core Formation", stage="late")],
                 secrets=["He felt the ripple of stopped time the night Lin Feng woke."],
                 player_knows="heard_of",
             ),
@@ -463,7 +461,7 @@ def cultivation_character() -> CharacterProposal:
         rank="outer disciple",
         family_name="the fallen Lin clan",
         memberships=[MembershipP(faction_id="outer-court", rank="outer disciple", loyalty=50)],
-        ladders=[LadderPositionP(ladder_id="realms", rung="Qi Condensation", stage="third stage")],
+        ladders=[LadderPositionP(ladder_id="realms", rung="Qi Condensation", stage="early")],
         axes=AxesP(might=1, influence=1, wealth=1, knowledge=3, stealth=2),
         reserves=[ReserveP(name="qi", level=40)],
         goals=["Survive the ranking tournament."],
