@@ -18,6 +18,7 @@ from evals.runner import Read, run_scenario
 from evals.scenario import Mode
 from evals.scenarios import all_scenarios
 from evals.scenarios.common import act
+from evals.scenarios.t18 import in_english
 from evals.scenarios.t18_reading import LINES, SHOWN_CHARS, shown
 from moderation.evals import load_cases
 
@@ -110,6 +111,16 @@ def test_a_reading_is_shown_without_its_words():
     assert shown(Read("I cut Han's throat", None, "blocked", (), 0.1)) == "not read (blocked)"
     intent.steps[0].targets = ["x" * SHOWN_CHARS]
     assert len(shown(Read("I cut", intent, "", (), 0.1))) == SHOWN_CHARS
+
+
+def test_a_step_written_in_english_is_told_from_one_in_the_storys_language():
+    """S10, T18: the live check of the story's language reads each step and beat the model
+    wrote, which the player reads under "How it played out"."""
+    assert in_english("grab a loose stone and throw it at the troll")
+    assert in_english("Throw the stone")
+    assert not in_english("Coger una piedra suelta y lanzársela al trol de las cavernas")
+    assert not in_english("Agafar una pedra solta i llançar-la al trol de les coves")
+    assert not in_english("Atacar a Lin")
 
 
 @pytest.mark.parametrize(

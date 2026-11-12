@@ -748,6 +748,15 @@ THROW_VERBS = frozenset(
     "search crouch get".split()
 )
 
+# Words an English sentence can hardly do without, and Spanish and Catalan don't have.
+ENGLISH_ONLY = frozenset("the and with of at it its his her their from into".split())
+
+
+def in_english(text: str) -> bool:
+    """Whether `text` reads as English: it holds one of the words only English has."""
+    return any(word in ENGLISH_ONLY for word in re.findall(r"[^\W\d_]+", text.casefold()))
+
+
 # A story names its people, its places and its things in its own language (S10), and the engine
 # keeps a name as it is spelled. So each story here has the troll's courtyard under its own
 # names, and the stone as its interpret step would note it.
@@ -821,7 +830,8 @@ def lines_said(played: Played, language: Language) -> list[tuple[str, str]]:
         'In a Spanish and a Catalan story the dice and "How it played out" say every line the '
         "engine wrote in the story's language, as a player would say it, with each number and "
         "name kept; the dice still go out before the telling, the saved scene keeps the lines "
-        "as they were shown, and the reading names each step's verb in English (S10)"
+        "as they were shown, and the reading names each step's verb in English and writes the "
+        "step and its beats in the story's language (S10)"
     ),
 )
 async def story_language(ev: Eval) -> None:
@@ -863,6 +873,15 @@ async def story_language(ev: Eval) -> None:
                 and all(step.verb.casefold().partition(" ")[0] in THROW_VERBS for step in read),
                 f"{where}: {[(step.verb, step.text) for step in read]}",
             )
+            if ev.live:
+                # The script's own steps are in English, so only a model's reading is checked.
+                told = [t for step in read for t in (step.text, *(b.text for b in step.beats))]
+                ev.check(
+                    "and writes each step and its beats in the story's language, as the player "
+                    'reads them under "How it played out" (S10)',
+                    bool(told) and not any(in_english(text) for text in told),
+                    f"{where}: {told}",
+                )
             asked = [call for call in played.calls if call.node == Node.WORDING.value]
             ev.check(
                 "one call to the cheapest model says them all (B8)",

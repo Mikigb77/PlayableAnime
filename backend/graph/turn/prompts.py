@@ -327,10 +327,10 @@ cheers"). They are hopes, not facts, and the step is the attempt (A6).
 - standing: "wait" or "observe" only when that is all the character does, with no time or end \
 given.
 - summary: the action in one plain sentence.
-- Write what you note in your own words (goals, backstory claims, theories, outcome claims and \
-the summary) in the language LANGUAGE names (S10). Code reads a step's verb, so it is a plain \
-English verb in any language (attack, steal, search, persuade). Lines stay exactly as the player \
-gave them.
+- Write what you note in your own words (each step's text and its beats, which the player reads \
+beside the dice, goals, backstory claims, theories, outcome claims and the summary) in the \
+language LANGUAGE names (S10). Code reads a step's verb, so it is a plain English verb in any \
+language (attack, steal, search, persuade). Lines stay exactly as the player gave them.
 """
 # W10: the parts of the day as the clock names them (`engine.labels`), so "until dusk" lands where
 # the player's clock says dusk starts.
