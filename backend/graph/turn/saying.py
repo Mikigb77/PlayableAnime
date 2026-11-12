@@ -13,9 +13,11 @@ wording and never fails for it.
 
 A line the engine always writes the same way is in a small book here, and the director's titles
 are in theirs (`engine.director.titles`), so a turn where nothing stood in the way calls no
-model. What the model said is remembered while the process lives, so a line that comes back,
-such as a foe's level on every exchange of a fight, is said the same way each time and asked
-for once. An English story's lines are the engine's own, untouched.
+model. So is the line of a blow that comes back at the player character, which every exchange
+of a fight brings: who strikes back, and what it did to them (`struck`). What the model said is
+remembered while the process lives, so a line that comes back, such as a foe's level on every
+exchange of a fight, is said the same way each time and asked for once. An English story's
+lines are the engine's own, untouched.
 """
 
 from __future__ import annotations
@@ -64,7 +66,7 @@ BOOK: Mapping[Language, Mapping[str, str]] = {
         "It follows.": "Se sostiene.",
         "A close call.": "Va a ir justo.",
         "certain": "segura",
-        "your own step missed": "tu propio paso falló",
+        "your own step missed": "tu propio intento falló",
         "one more at their side": "otro más a su lado",
         "two more at their side": "otros dos a su lado",
         MISS_COSTS[Aim.KILL]: (
@@ -83,7 +85,7 @@ BOOK: Mapping[Language, Mapping[str, str]] = {
         "It follows.": "Se sosté.",
         "A close call.": "Anirà just.",
         "certain": "segura",
-        "your own step missed": "el teu propi pas ha fallat",
+        "your own step missed": "el teu propi intent ha fallat",
         "one more at their side": "un altre al seu costat",
         "two more at their side": "dos més al seu costat",
         MISS_COSTS[Aim.KILL]: (
@@ -98,6 +100,68 @@ BOOK: Mapping[Language, Mapping[str, str]] = {
         CLAIMED: "Com s'ho prenen els altres i com acaben les coses ho decideix el món.",
     },
 }
+
+
+# A blow that comes back at the player character (`engine.resolve.perils`): who strikes back,
+# then what it did to them, each a sentence the engine always writes the same way. Code says
+# them, in the app's own words for it ("te devuelven el golpe") and the sheet's for health,
+# since every exchange of a fight brings one and the small model got the pair wrong in the live
+# check of 2026-11-12: "strikes back" left in English beside "Tienes heridas", and a "Fallas"
+# nobody wrote. The one who struck is named as the story names them. A test fails when the
+# engine words a blow's outcome another way.
+STRUCK: Mapping[Language, Mapping[str, str]] = {
+    Language.ES: {
+        "strikes back": "{who} te devuelve el golpe.",
+        "It misses you.": "No te alcanza.",
+        "It doesn't hurt you.": "No te hace daño.",
+        "You are hurt.": "Tienes heridas leves.",
+        "You are wounded.": "Tienes heridas.",
+        "You are brought down.": "Quedas fuera de combate.",
+        "You are badly wounded.": "Tienes heridas graves.",
+        "You are maimed, with a wound that will last.": "Te queda una herida para siempre.",
+        "You are dying.": "Estás al borde de la muerte.",
+        "It kills you.": "Te mata.",
+        "You are brought down, unhurt.": "Quedas fuera de combate, sin heridas.",
+        "The blow touches you, pulled.": "El golpe te toca, frenado a tiempo.",
+        "You turn the blow, and your next step against them throws a green die.": (
+            "Desvías el golpe, y tu próximo paso en su contra tira un dado verde."
+        ),
+    },
+    Language.CA: {
+        "strikes back": "{who} et torna el cop.",
+        "It misses you.": "No et toca.",
+        "It doesn't hurt you.": "No et fa mal.",
+        "You are hurt.": "Tens ferides lleus.",
+        "You are wounded.": "Tens ferides.",
+        "You are brought down.": "Quedes fora de combat.",
+        "You are badly wounded.": "Tens ferides greus.",
+        "You are maimed, with a wound that will last.": "Et queda una ferida per sempre.",
+        "You are dying.": "Estàs a punt de morir.",
+        "It kills you.": "Et mata.",
+        "You are brought down, unhurt.": "Quedes fora de combat, sense ferides.",
+        "The blow touches you, pulled.": "El cop et toca, frenat a temps.",
+        "You turn the blow, and your next step against them throws a green die.": (
+            "Desvies el cop, i el teu pròxim pas en contra seva tira un dau verd."
+        ),
+    },
+}
+_STRUCK = re.compile(r"(?P<who>[^.]+) strikes back\.(?: (?P<then>[^.]+\.))?")
+
+
+def struck(text: str, language: Language) -> str | None:
+    """A lone foe's blow back at the player character, said by code: "Elder Mo strikes back.
+    You are wounded." is "Elder Mo te devuelve el golpe. Tienes heridas." None for any other
+    line: several foes, whom the engine joins with its "and", a danger that is no one's blow,
+    and a blow told with its throw or with what ruled it out."""
+    found = _STRUCK.fullmatch(text)
+    words = STRUCK.get(language)
+    if found is None or words is None:
+        return None
+    said = words["strikes back"].format(who=found["who"])
+    if found["then"] is None:
+        return said
+    then = words.get(found["then"])
+    return f"{said} {then}" if then else None
 
 
 # What the model said for a line, by language, kept in memory only and never logged (T6): the
@@ -289,8 +353,8 @@ def _names(text: str) -> list[str]:
 _ENGLISH = frozenset(
     "the is are you your there here and of with against it but their they this that from not "
     "was were have its them what who when which than too by at for if will would level speed "
-    "strength wounded hurt missed own strikes back step task hard easy short above below rung "
-    "rungs".split()
+    "strength wounded hurt missed own strike strikes back step task hard easy short above below "
+    "rung rungs".split()
 )
 
 
@@ -303,12 +367,45 @@ def _left_in_english(english: str, said: str) -> bool:
     return any(word.casefold() in _ENGLISH for word in _WORD.findall(english))
 
 
+def _partly_in_english(english: str, said: str) -> bool:
+    """Whether a part of the engine's line came back as it stood: two words in a row that only
+    English has, as the engine wrote them, such as the "strikes back" of "El trol strikes back.
+    Tienes heridas." Words inside a name are the name's ("Sword of the Dawn")."""
+    engine_words = " ".join(english.casefold().split())
+    words = list(_WORD.finditer(said))
+
+    def joined(i: int) -> bool:
+        """Whether word i and the one after it stand side by side in one sentence."""
+        return 0 <= i < len(words) - 1 and said[words[i].end() : words[i + 1].start()] == " "
+
+    def capital(i: int) -> bool:
+        return 0 <= i < len(words) and words[i].group()[:1].isupper()
+
+    def opens(i: int) -> bool:
+        before = said[: words[i].start()].rstrip()
+        return not before or before[-1] in _OPENERS
+
+    for i in range(len(words) - 1):
+        pair = [words[i].group().casefold(), words[i + 1].group().casefold()]
+        if not joined(i) or not all(word in _ENGLISH for word in pair):
+            continue
+        if capital(i + 1) or (capital(i) and not opens(i)):
+            continue  # a name's own words, capitalized where no sentence starts
+        named = (
+            joined(i + 1) and capital(i + 2) and (capital(i) or (joined(i - 1) and capital(i - 1)))
+        )
+        if not named and " ".join(pair) in engine_words:
+            return True
+    return False
+
+
 def faithful(english: str, said: str) -> bool:
     """Whether `said` can stand for the engine's line: it says something, keeps every number in
-    figures and every name as spelled, doesn't run on, and isn't the English line again."""
+    figures and every name as spelled, doesn't run on, and isn't the English line again, whole
+    or in part."""
     if not said.strip() or len(said) > 3 * len(english) + 40:
         return False
-    if _left_in_english(english, said):
+    if _left_in_english(english, said) or _partly_in_english(english, said):
         return False
     if Counter(_NUMBER.findall(english)) != Counter(_NUMBER.findall(said)):
         return False
@@ -397,9 +494,9 @@ class Wording:
 
 
 def _at_hand(language: Language, text: str) -> str | None:
-    """A line that needs no model: one of the book's, a title the director wrote, which has
-    a book of its own (W16), or one the model has said before."""
-    said = BOOK[language].get(text)
+    """A line that needs no model: one of the book's, a lone foe's blow back, a title the
+    director wrote, which has a book of its own (W16), or one the model has said before."""
+    said = BOOK[language].get(text) or struck(text, language)
     if said is None and titles.written(text):
         said = titles.said(text, language)
     return said or _memory.get((language, text))

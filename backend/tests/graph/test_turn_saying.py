@@ -28,7 +28,7 @@ from engine.resolve import capability, chain, core, perils
 from engine.resolve.core import NOTHING_IN_THE_WAY
 from engine.resolve.perils import MISS_COSTS
 from engine.resolve.throw import told
-from engine.resolve.words import cap
+from engine.resolve.words import cap, is_are
 from engine.samples import grounded_world
 from engine.state.records import Mark, Origin, PendingEvent, StepResult, Thread, ThreadKind
 from engine.state.world import EventSize
@@ -181,6 +181,7 @@ def test_the_book_holds_the_engines_own_lines_in_both_languages():
     fixed = {NOTHING_IN_THE_WAY, "It follows.", "A close call.", "certain", CLAIMED}
     fixed |= {"your own step missed", "one more at their side", "two more at their side"}
     fixed |= set(MISS_COSTS.values())
+    assert saying.BOOK[Language.ES]["your own step missed"] == "tu propio intento falló"
     assert set(saying.BOOK) == {Language.ES, Language.CA}
     for book in saying.BOOK.values():
         assert set(book) == fixed
@@ -247,6 +248,112 @@ def test_a_said_line_keeps_the_engines_numbers_and_names(english, said, kept):
     assert saying.faithful(english, said) is kept
 
 
+def test_a_blow_that_comes_back_is_said_by_code_in_both_languages(fake, make_client):
+    """S10. Every exchange of a fight brings one, and the small model got it wrong in the live
+    check of 2026-11-12 ("El trol de las cavernas strikes back. Tienes heridas.", and a "Fallas"
+    nobody wrote), so code says who struck back and what it did, as the engine words them."""
+    world = grounded_world()
+    you, are = "you", is_are(world, world.player_id)
+    outcomes = {cap(words.format(you=you, are=are)) + "." for words in perils._HARM_WORDS.values()}
+    outcomes |= {
+        "It misses you.",
+        "You are brought down, unhurt.",
+        "The blow touches you, pulled.",
+        "You turn the blow, and your next step against them throws a green die.",
+    }
+    # The engine still words them so: the sheet's harm words and what `_reason` writes inline.
+    source = inspect.getsource(perils._reason)
+    for written in (
+        'f"it misses {you}"',
+        "brought down, unhurt",
+        'f"the blow touches {you}, pulled"',
+        "turn the blow, and {whose} next step against them throws a green die",
+        'f"{lead}. {cap(words)}. {cap(outcome)}."',
+    ):
+        assert written in source, written
+    assert "{'strike' if len(foes) > 1 else 'strikes'} back" in inspect.getsource(perils)
+    assert set(saying.STRUCK) == {Language.ES, Language.CA}
+    for language, words in saying.STRUCK.items():
+        assert set(words) == outcomes | {"strikes back"}
+        assert all(said.strip() and said not in words for said in words.values())
+        for outcome in outcomes:
+            line = saying.struck(f"Elder Mo strikes back. {outcome}", language)
+            assert line == f"{words['strikes back'].format(who='Elder Mo')} {words[outcome]}"
+
+    troll = "El trol de las cavernas"
+    lines = [
+        f"{troll} strikes back.",
+        f"{troll} strikes back. It misses you.",
+        f"{troll} strikes back. You are wounded.",
+    ]
+
+    async def begun(language):
+        return saying.begin(make_client(), lines, language)
+
+    spanish, catalan = run(begun(Language.ES)), run(begun(Language.CA))
+
+    assert spanish.task is None and catalan.task is None and fake.requests == []
+    assert [spanish.word(line) for line in lines] == [
+        f"{troll} te devuelve el golpe.",
+        f"{troll} te devuelve el golpe. No te alcanza.",
+        f"{troll} te devuelve el golpe. Tienes heridas.",
+    ]
+    assert [catalan.word(line) for line in lines] == [
+        f"{troll} et torna el cop.",
+        f"{troll} et torna el cop. No et toca.",
+        f"{troll} et torna el cop. Tens ferides.",
+    ]
+    # The model still says what code can't: several foes, whom the engine joins with its "and",
+    # a danger that is no one's blow, an outcome worded another way, and a blow ruled out.
+    for line in (
+        "Zhao Kun and Elder Mo strike back. You are wounded.",
+        "The long drop. You are wounded.",
+        "Elder Mo strikes back. It hurts you.",
+        "Elder Mo strikes back, but the blow can't get through your aura.",
+        "Elder Mo strikes back. You are wounded. You fall.",
+    ):
+        assert saying.struck(line, Language.ES) is None, line
+    assert saying.struck(lines[1], Language.EN) is None
+
+
+@pytest.mark.parametrize(
+    ("english", "said"),
+    [
+        # The live check of 2026-11-12: half of the line as the engine wrote it.
+        (
+            "El trol de las cavernas strikes back. You are wounded.",
+            "El trol de las cavernas strikes back. Tienes heridas.",
+        ),
+        ("Zhao Kun and Elder Mo strike back. It kills you.", "Zhao Kun y Elder Mo strike back."),
+        ("There is una cuerda here.", "There is una cuerda aquí."),
+        (
+            "El trol de las cavernas strikes back. You are wounded.",
+            "El trol de las cavernas te devuelve el golpe. You are wounded.",
+        ),
+        ("the grey mage's strength and speed, level 2", "strength and speed del mago gris, 2"),
+    ],
+)
+def test_a_line_left_half_in_english_is_not_kept(english, said):
+    assert not saying.faithful(english, said)
+
+
+@pytest.mark.parametrize(
+    ("english", "said"),
+    [
+        # Words inside a name are the name's, wherever the name stands.
+        ("Sword of the Dawn, practiced", "Sword of the Dawn, practicada"),
+        ("against Blade of the Moon, level 3", "contra Blade of the Moon, nivel 3"),
+        ("The Hard Step, practiced", "The Hard Step, practicada"),
+        # One English word alone is no part of the engine's line left as it stood.
+        ("La piedra del suelo is here.", "La piedra del suelo está here."),
+        # English words the engine's line doesn't hold aren't its own left behind.
+        ("A veteran guard, awake.", "Un guardia veterano, of the old school."),
+    ],
+)
+def test_a_name_or_a_stray_word_doesnt_make_a_line_english(english, said):
+    assert saying.faithful(english, said)
+
+
 @pytest.mark.parametrize(
     ("language", "said", "written"),
     [
@@ -279,12 +386,12 @@ def test_an_article_is_run_into_the_preposition_before_it(language, said, writte
 def test_what_the_model_left_apart_is_said_and_remembered_run_together(fake, make_client):
     level = "el trol de las cavernas' toughness, level 2"
     # A name the story itself spells apart stands as it is spelled.
-    named = "la Hija de el Mar strikes back."
+    named = "la Hija de el Mar's speed, level 3"
     says(
         fake,
         {
             level: "el aguante de el trol de las cavernas, nivel 2",
-            named: "la Hija de el Mar contraataca.",
+            named: "velocidad de la Hija de el Mar, nivel 3",
         },
     )
 
@@ -297,7 +404,7 @@ def test_what_the_model_left_apart_is_said_and_remembered_run_together(fake, mak
 
     assert issues == []
     assert first.word(level) == "el aguante del trol de las cavernas, nivel 2"
-    assert first.word(named) == "la Hija de el Mar contraataca."
+    assert first.word(named) == "velocidad de la Hija de el Mar, nivel 3"
     assert again.task is None and again.word(level) == first.word(level)
 
 
