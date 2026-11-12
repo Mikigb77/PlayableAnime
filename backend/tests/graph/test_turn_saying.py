@@ -247,6 +247,60 @@ def test_a_said_line_keeps_the_engines_numbers_and_names(english, said, kept):
     assert saying.faithful(english, said) is kept
 
 
+@pytest.mark.parametrize(
+    ("language", "said", "written"),
+    [
+        (Language.ES, "el aguante de el trol de las cavernas, nivel 2", "el aguante del trol"),
+        (Language.ES, "De el pozo sale humo", "Del pozo sale humo"),
+        (Language.ES, "Vas a el pozo", "Vas al pozo"),
+        (Language.ES, "A el trol le falta un ojo", "Al trol le falta un ojo"),
+        # A name's own article, another word that ends the same, and "él" stay as they are.
+        (Language.ES, "el camino a El Paso", "el camino a El Paso"),
+        (Language.ES, "desde el pozo, para el trol", "desde el pozo, para el trol"),
+        (Language.ES, "lejos de él", "lejos de él"),
+        (Language.ES, "la piel de elefante", "la piel de elefante"),
+        (Language.CA, "la força de el trol", "la força del trol"),
+        (Language.CA, "la força de els trols", "la força dels trols"),
+        (Language.CA, "Vas a el pou", "Vas al pou"),
+        (Language.CA, "dona-ho a els guardes", "dona-ho als guardes"),
+        (Language.CA, "per el camí i per els turons", "pel camí i pels turons"),
+        (Language.CA, "el camí a El Masnou", "el camí a El Masnou"),
+        (Language.CA, "sobre el pou, saber el camí", "sobre el pou, saber el camí"),
+        # Spanish keeps "por el", and English has nothing to run together.
+        (Language.ES, "por el camino", "por el camino"),
+        (Language.EN, "de el trol", "de el trol"),
+    ],
+)
+def test_an_article_is_run_into_the_preposition_before_it(language, said, written):
+    """S10: the small model sometimes writes "de el trol", which nobody says."""
+    assert saying.contracted(said, language).startswith(written)
+
+
+def test_what_the_model_left_apart_is_said_and_remembered_run_together(fake, make_client):
+    level = "el trol de las cavernas' toughness, level 2"
+    # A name the story itself spells apart stands as it is spelled.
+    named = "la Hija de el Mar strikes back."
+    says(
+        fake,
+        {
+            level: "el aguante de el trol de las cavernas, nivel 2",
+            named: "la Hija de el Mar contraataca.",
+        },
+    )
+
+    async def said_twice():
+        first = saying.begin(make_client(), [level, named], Language.ES)
+        issues = await first.settle()
+        return first, issues, saying.begin(make_client(), [level, named], Language.ES)
+
+    first, issues, again = run(said_twice())
+
+    assert issues == []
+    assert first.word(level) == "el aguante del trol de las cavernas, nivel 2"
+    assert first.word(named) == "la Hija de el Mar contraataca."
+    assert again.task is None and again.word(level) == first.word(level)
+
+
 def test_an_english_line_handed_back_counts_as_kept_and_is_asked_again(fake, make_client):
     """S10: the log's `lines_kept` shows it, and the next turn asks for the line again."""
     danger = "el derrumbe del techo"
