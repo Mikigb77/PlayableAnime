@@ -266,19 +266,21 @@ def test_unchanged_lines_need_no_model_call():
     draft = _naples_draft()
     state = draft.state()
 
+    shown = (state, draft.language, draft.said)
     plan = chain.plan_edit(
         draft,
-        chain.Edits(world_lines=world_lines(state), character_lines=character_lines(state)),
+        chain.Edits(world_lines=world_lines(*shown), character_lines=character_lines(*shown)),
     )
 
     assert not plan.needs_model
+    assert plan.written == ()
 
 
 def test_rewritten_lines_ask_the_model_to_match_them(fake, llm):
     draft = _naples_draft()
     fake.script(Node.DRAFTER, Reply(json=WorldChange(era="Naples, 1975: the heat of summer")))
 
-    lines = world_lines(draft.state())
+    lines = world_lines(draft.state(), draft.language, draft.said)
     lines[1] = "Naples, 1975: the heat of summer."
     edited = run(chain.edit(llm, draft, chain.Edits(world_lines=lines)))
 
@@ -287,6 +289,79 @@ def test_rewritten_lines_ask_the_model_to_match_them(fake, llm):
     assert "The player rewrote the world summary" in text
     assert "- Naples, 1975: the heat of summer." in text
     assert edited.state().bible.era == "Naples, 1975: the heat of summer"
+
+
+def test_what_the_player_asks_for_is_theirs_to_see(fake, llm):
+    # G1: the tournament is the story's surprise until the player's own words name it.
+    draft = _cultivation_draft()
+    hidden = world_lines(draft.state(), draft.language, draft.said)
+    assert not any("tournament" in line for line in hidden)
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+
+    revised = run(chain.revise(llm, draft, "world", "The ranking tournament is in two days."))
+
+    # The draft keeps what they named, the deadline and the goal that is about it, never
+    # their words.
+    named = {"clock:tournament", "goal:survive the ranking tournament."}
+    assert revised.told == named
+    shown = world_lines(revised.state(), revised.language, revised.said)
+    assert "The ranking tournament: in 2 days." in shown
+    # It stays through a later change that names nothing.
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    again = run(chain.revise(llm, revised, "world", "More rain."))
+    assert again.told == named
+
+
+def test_a_goal_the_player_asked_for_keeps_its_place_when_a_change_rewords_it(fake, llm):
+    draft = _cultivation_draft()
+    assert not any(
+        line.startswith("Goal:")
+        for line in character_lines(draft.state(), draft.language, draft.said)
+    )
+    character = samples.cultivation().character
+    fake.script(Node.DRAFTER, Reply(json=character.model_copy(update={"goals": ["Avenge Mei"]})))
+    revised = run(chain.revise(llm, draft, "character", "My goal is to avenge Mei."))
+    assert revised.told == {"goal:avenge mei"}
+
+    # The next change says the same goal in other words: it is still the one they asked for.
+    reworded = character.model_copy(update={"goals": ["Avenge Mei's death"], "age": 17})
+    fake.script(Node.DRAFTER, Reply(json=reworded))
+    older = run(chain.revise(llm, revised, "character", "Make him 17."))
+    assert older.told == {"goal:avenge mei's death"}
+    lines = character_lines(older.state(), older.language, older.said)
+    assert "Goal: Avenge Mei's death." in lines
+
+    # And a change that takes the goal away takes its key with it.
+    fake.script(Node.DRAFTER, Reply(json=character.model_copy(update={"goals": []})))
+    gone = run(chain.revise(llm, older, "character", "He has no goal yet."))
+    assert gone.told == frozenset()
+
+
+def test_a_line_the_player_wrote_is_theirs_and_the_drafters_words_in_it_are_not(fake, llm):
+    draft = _naples_draft()
+    lines = world_lines(draft.state(), draft.language, draft.said)
+    family = "The Esposito family: Three crews and a council that picks the boss."
+    assert family in lines and "The council picks the next boss: in 10 days." not in lines
+
+    # A word changed in a drafted line: only that word is the player's, so the council's vote
+    # stays the story's surprise.
+    changed = [line.replace("Three crews", "Four crews") for line in lines]
+    plan = chain.plan_edit(draft, chain.Edits(world_lines=changed))
+    assert plan.written == ("Four",)
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    edited = run(chain.finish_edit(llm, plan))
+    assert edited.told == frozenset()
+    # A line of their own is theirs whole, and what it names shows from then on.
+    added = [*lines, "The council picks the next boss in ten days."]
+    plan = chain.plan_edit(draft, chain.Edits(world_lines=added))
+    assert plan.written == ("The council picks the next boss in ten days",)
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    edited = run(chain.finish_edit(llm, plan))
+    assert edited.told == {"clock:council"}
+    shown = world_lines(edited.state(), edited.language, edited.said)
+    assert "The council picks the next boss: in 10 days." in shown
+    # The model is told what the summary leaves out, so it keeps what the lines don't mention.
+    assert "that neither list mentions stays as it is" in _prompt_text(fake.calls(Node.DRAFTER)[-1])
 
 
 def test_a_stronger_gift_asks_the_model_for_a_new_gift(fake, llm):

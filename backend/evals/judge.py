@@ -49,6 +49,16 @@ LINES_INSTRUCTIONS = (
     "does), and give one sentence of reasoning. When in doubt, fail it."
 )
 
+# G1: the summary a player reads of a drafted world before the story starts.
+SUMMARY_INSTRUCTIONS = (
+    "You judge the summary a story game shows a player of the world it drafted from their "
+    "premise, before the story starts. PREMISE is everything the player wrote. Each row under "
+    "SUMMARY is one line of the summary, in the language of the premise. Judge the summary "
+    "against the criteria below. Read every row before answering. Answer every criterion by its "
+    "id. For each answer, quote the line that decides it word for word (or leave the quote "
+    "empty when none does), and give one sentence of reasoning. When in doubt, fail it."
+)
+
 # M6, from the T15 content-line cases' own picture instructions when a case gives none.
 MILD_PICTURE = (
     "Shows no nudity, nothing sexual or suggestive, no more than a little blood, no real person "
@@ -198,6 +208,12 @@ def lines_prompt(rubric: Rubric, pairs: Sequence[tuple[str, str]], *, language: 
     return Prompt.build(rubric.instructions, "\n\n".join(parts))
 
 
+def summary_prompt(rubric: Rubric, premise: str, lines: Sequence[str]) -> Prompt:
+    rows = "\n".join(f"{n}. {line}" for n, line in enumerate(lines, 1)) or "(no lines)"
+    parts = [f"## PREMISE\n{premise}", f"## SUMMARY\n{rows}", _criteria_block(rubric)]
+    return Prompt.build(rubric.instructions, "\n\n".join(parts))
+
+
 def picture_prompt(
     rubric: Rubric, images: Sequence[tuple[str, bytes, str]], *, context: str = ""
 ) -> Prompt:
@@ -250,6 +266,12 @@ async def judge_lines(
     if not pairs:
         return Judgement(name, error="no_lines")
     return await judge(llm, name, rubric, lines_prompt(rubric, pairs, language=language))
+
+
+async def judge_summary(
+    llm: ModelClient, name: str, rubric: Rubric, premise: str, lines: Sequence[str]
+) -> Judgement:
+    return await judge(llm, name, rubric, summary_prompt(rubric, premise, lines))
 
 
 async def judge_pictures(

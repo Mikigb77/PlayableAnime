@@ -49,6 +49,7 @@ def to_chain(row: Draft) -> chain.Draft:
         gift=GiftStrength(row.gift_strength) if row.gift_strength else None,
         released_rules=frozenset(row.released_rules),
         language=Language(row.language),
+        told=frozenset(row.told),
     )
 
 
@@ -63,6 +64,7 @@ def chain_fields(draft: chain.Draft) -> dict[str, Any]:
         "gift_strength": draft.gift.value if draft.gift is not None else None,
         "released_rules": sorted(draft.released_rules),
         "language": draft.language.value,
+        "told": sorted(draft.told),
     }
 
 
@@ -301,7 +303,7 @@ def start_story(
         # G18, C6: what the player read before starting, the character knows from the first
         # moment: a rung their own premise or the draft's screen named is one they have heard of.
         # The draft's own state is never changed, so this gives a copy when it adds anything.
-        read = f"{row.premise}\n{shown(draft.state(), Language(row.language))}"
+        read = f"{row.premise}\n{shown(draft.state(), Language(row.language), draft.said)}"
         state, _ = pipeline.settle_path(draft.state(), read)
         story = Story.objects.create(
             owner_id=row.owner_id,

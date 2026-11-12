@@ -44,6 +44,11 @@ class Draft(models.Model):
     )
     # The starter template's rules the player let go of while setting up the story (G7).
     released_rules = models.JSONField(default=list, blank=True)
+    # G1: the keys of what a change the player asked for since the premise named of how the
+    # story starts (a clock's, a question's or a person's id, a connection's name, a goal's
+    # text), never their words. The summary shows a goal, a deadline, a question or a person
+    # only when the premise names it or its key is here (graph.drafting.openers).
+    told = models.JSONField(default=list, blank=True)
     # Story settings chosen while drafting, copied into the story on start (S6).
     difficulty = models.CharField(
         max_length=16, choices=_choices(Difficulty), default=Difficulty.BALANCED.value
