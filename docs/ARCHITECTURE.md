@@ -1126,7 +1126,10 @@ Catalan story:
   together and the model left them apart (`saying.contracted`): "de el trol" is "del trol" and
   "a el pozo" "al pozo", and in Catalan "dels", "als", "pel" and "pels" too. Only the article in
   small letters, so a name's own stays apart ("a El Paso"), and nothing the engine's own line
-  already holds apart, which is the story's wording.
+  already holds apart, which is the story's wording. A name the story spells with its article in
+  small letters brings it along ("el trol de las cavernas"), and the model, told to keep a name
+  as spelled, then says the article twice: "del el trol" and Catalan "d'el trol" are "del trol"
+  (live check of 2026-11-12).
   `saying.faithful` keeps a said line only when it holds the same numbers, in figures, and
   every word of the English line that is capitalized where no sentence or clause starts (its
   names); it drops a blank one, one that runs on, and the English line handed back as it stood

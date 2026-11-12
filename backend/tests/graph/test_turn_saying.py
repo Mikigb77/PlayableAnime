@@ -373,6 +373,17 @@ def test_a_name_or_a_stray_word_doesnt_make_a_line_english(english, said):
         (Language.CA, "per el camí i per els turons", "pel camí i pels turons"),
         (Language.CA, "el camí a El Masnou", "el camí a El Masnou"),
         (Language.CA, "sobre el pou, saber el camí", "sobre el pou, saber el camí"),
+        # A name that brings its own article in small letters: the article is said once.
+        (Language.ES, "fuerza del el trol de las cavernas, nivel 2", "fuerza del trol de las"),
+        (Language.ES, "Vas al el pozo", "Vas al pozo"),
+        (Language.ES, "de el el trol", "del trol"),
+        (Language.ES, "cerca del El Paso y del él", "cerca del El Paso y del él"),
+        (Language.CA, "força d'el trol de les coves, nivell 2", "força del trol de les coves"),
+        (Language.CA, "la por d'els trols", "la por dels trols"),
+        (Language.CA, "lluny del el pou i dels els turons", "lluny del pou i dels turons"),
+        (Language.CA, "pel el camí, als els guardes", "pel camí, als guardes"),
+        (Language.CA, "d'ell, d'elles i d'El Masnou", "d'ell, d'elles i d'El Masnou"),
+        (Language.CA, "del els trols", "del els trols"),
         # Spanish keeps "por el", and English has nothing to run together.
         (Language.ES, "por el camino", "por el camino"),
         (Language.EN, "de el trol", "de el trol"),
