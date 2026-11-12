@@ -25,7 +25,7 @@ from engine.world.knowledge import COMRADE, faction_learns, region_learns, ties_
 from engine.world.norms import Nature, deed_nature, is_crime
 from engine.world.rumors import blame, names_actor, start_rumor
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
-from engine.world.telling import account, cap, found, listing, where
+from engine.world.telling import account, cap, found, listing, unexplained, where
 from engine.world.tuning import (
     BODY_NEARBY_STRENGTH,
     CROWD_DELAY_S,
@@ -204,7 +204,7 @@ def name_the_doer(w: World, deed: Deed) -> None:
         deed.word_out_s = w.at_s
     rumor = start_rumor(
         w,
-        text=account(state, deed),
+        text=account(state, deed, language=w.ctx.settings.language),
         is_true=True,
         place_id=deed.place_id,
         hops=hops(deed.severity),
@@ -226,19 +226,20 @@ def _unexplained(w: World, deed: Deed, stream) -> None:
     faction the victims' side already distrusts, which may be wrong (W13). Those who keep the
     law look into a crime."""
     state = w.state
-    what = found(state, deed)
+    language = w.ctx.settings.language  # S10
+    what = found(state, deed, language)
     suspects = _suspects(state, deed)
     choices = ["unknown", "accident"] + (["rival"] if suspects else [])
     pick = stream.choice(choices)
     if pick == "rival":
         blamed = state.factions[suspects[0]]
-        text = f"{what}. {cap(blamed.name)} did it, people say."
+        text = unexplained(what, "blamed", blamed.name, language)
         is_true, about = False, [blamed.id, *deed.victim_ids]
     elif pick == "accident":
-        text = f"{what}: an accident, people say."
+        text = unexplained(what, "accident", language=language)
         is_true, about = False, list(deed.victim_ids)
     else:
-        text = f"{what}, and nobody knows who did it."
+        text = unexplained(what, "unknown", language=language)
         is_true, about = True, list(deed.victim_ids)
     rumor = start_rumor(
         w,

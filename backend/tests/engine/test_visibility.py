@@ -931,6 +931,74 @@ def test_some_died_and_some_lived():
     assert texts["cut"] == "You wounded yourself."
 
 
+def test_memory_tells_deeds_in_the_storys_language():
+    """S10: "you" is said with the verb, and a deed that fell on the player with "te", "et"."""
+    state = cultivation_world()
+    state.places["well"].name = "el pozo"
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    state.characters["zhao"].status_history = [
+        StatusChange(status="dead", from_status="alive", known_by=["lin"], turn=3, world_s=0)
+    ]
+    at_the_well = {"place_id": "well", "severity": 4}
+    own_deed(state, "kill", kind="kill", text="x (it worked)", victim_ids=["zhao"], **at_the_well)
+    own_deed(
+        state,
+        "hit",
+        actor_id="zhao",
+        kind="assault",
+        text="y (it worked)",
+        victim_ids=["lin"],
+        known_by=["lin"],
+        **at_the_well,
+    )
+    own_deed(state, "strike", kind="wound", text="z", victim_ids=["elder-mo"], **at_the_well)
+    own_deed(state, "cut", kind="wound", text="me corto", victim_ids=["lin"], severity=3)
+    own_deed(state, "gift", kind="give", text="un regalo", target_ids=["zhao"])
+    own_deed(state, "bow", text="Me inclino ante el anciano (it partly worked)")
+
+    def told(language: Language) -> dict[str, str]:
+        return {d.id: d.text for d in memory_view(state, language).deeds}
+
+    assert told(ES) == {
+        "kill": "Mataste a Zhao Kun en el pozo.",
+        "hit": "Zhao Kun te atacó en el pozo.",
+        "strike": "Heriste a alguien en el pozo.",  # Elder Mo is a stranger to Lin (C6)
+        "cut": "Te heriste.",
+        "gift": "Hiciste regalos a Zhao Kun.",
+        "bow": "Me inclino ante el anciano (salió a medias)",  # its own words, and how it went
+    }
+    assert told(CA) == {
+        "kill": "Vas matar Zhao Kun al pozo.",
+        "hit": "Zhao Kun et va atacar al pozo.",
+        "strike": "Vas ferir algú al pozo.",
+        "cut": "Et vas ferir.",
+        "gift": "Vas fer regals a Zhao Kun.",
+        "bow": "Me inclino ante el anciano (va sortir a mitges)",
+    }
+    assert told(Language.EN)["bow"] == "Me inclino ante el anciano (it partly worked)"
+    assert "Mataste a Zhao Kun en el pozo." in [s.text for s in status_view(state, ES).since]
+
+
+def test_a_wound_the_engine_named_is_shown_in_the_storys_language():
+    # A4, S10: a breakthrough that went wrong leaves a wound the engine names itself.
+    from engine.state import Wound
+
+    state = cultivation_world()
+    state.player.sheet.condition.wounds = [
+        Wound(text="a breakthrough gone wrong"),
+        Wound(text="un corte en el brazo"),  # the story's own name for it stays
+    ]
+
+    def wounds(language: Language = Language.EN) -> list[str]:
+        return [w.text for w in sheet_of(state, language).condition.wounds]
+
+    assert wounds() == ["A breakthrough gone wrong", "Un corte en el brazo"]
+    assert wounds(ES) == ["Un salto que salió mal", "Un corte en el brazo"]
+    assert wounds(CA) == ["Un salt que va sortir malament", "Un corte en el brazo"]
+    assert "Un salto que salió mal" in lines_of(state, ES)
+    assert "A breakthrough gone wrong" in lines_of(state)
+
+
 # V6: the speech model's custom vocabulary is the names the player character knows (C6).
 
 

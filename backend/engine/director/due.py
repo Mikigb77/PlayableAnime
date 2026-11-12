@@ -21,6 +21,7 @@ from typing import Any
 from engine.context import TurnContext
 from engine.contracts.direction import EventKind, EventSource, PlannedEvent, Theme
 from engine.director.sources import Pick
+from engine.director.titles import COMES_DUE
 from engine.state.records import EventStatus, PendingEvent, ThreadKind
 from engine.state.world import EventSize, WorldState, natural_key
 
@@ -73,7 +74,7 @@ def world_event(event: PendingEvent) -> PlannedEvent:
     arrival told from its title."""
     info = event.payload.get("event")
     info = info if isinstance(info, dict) else {}
-    title = event.title or "Something comes due"
+    title = event.title or COMES_DUE
     return PlannedEvent(
         size=_enum(EventSize, info.get("size"), EventSize.PERSONAL),
         kind=_enum(EventKind, info.get("kind"), EventKind.ARRIVAL),

@@ -310,7 +310,7 @@ def character_learns(
         weight = max(0.0, weight - heard)
     if grounds is Grounds.HEARD and character.id not in stored.known_by:
         stored.known_by.append(character.id)  # nobody has to come and tell them
-    told = account(state, deed)
+    told = account(state, deed, language=w.ctx.settings.language)
     grudge = Grudge(reason=told, deed_id=deed.id, since_turn=w.ctx.turn) if keeps_grudge else None
     new_grudge = shift_attitude(
         character,

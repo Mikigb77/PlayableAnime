@@ -11,14 +11,24 @@ import inspect
 import pytest
 
 from engine.context import Language, Rating, StorySettings, TurnContext
-from engine.contracts import BeatVerdict, Harm, OutcomeClass
+from engine.contracts import (
+    BeatVerdict,
+    DirectorPlan,
+    EventKind,
+    EventSource,
+    Harm,
+    OutcomeClass,
+    PlannedEvent,
+    Resolution,
+)
 from engine.resolve import chain, core
 from engine.resolve.core import NOTHING_IN_THE_WAY
 from engine.resolve.perils import MISS_COSTS
 from engine.resolve.throw import told
 from engine.resolve.words import cap
 from engine.samples import grounded_world
-from engine.state.records import Mark, StepResult
+from engine.state.records import Mark, Origin, PendingEvent, StepResult, Thread, ThreadKind
+from engine.state.world import EventSize
 from graph.llm import Block, Fail, Hang, Node, Reply
 from graph.turn import (
     EndingRefused,
@@ -460,28 +470,80 @@ def test_dice_whose_lines_cant_be_said_go_out_in_english_before_the_telling(
     ]
 
 
-def test_an_events_title_is_said_and_the_scene_carries_it(fake, make_client):
+def in_guillemets(request):
+    """The wording model, scripted to say each line as it stands between « and »."""
+    asked = saying.lines_asked(request.prompt)
+    return Reply(json={"lines": [{"n": n, "text": f"«{text}»"} for n, text in asked]})
+
+
+def test_the_directors_title_comes_from_its_book_and_the_scene_carries_it(fake, make_client):
+    """W16: a card's title, and the thread it opens, with no model."""
     fake.script(Node.INTERPRET, Reply(json=FARMING))
     fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
-    fake.default = lambda request: Reply(
-        json={
-            "lines": [
-                {"n": n, "text": f"«{text}»"} for n, text in saying.lines_asked(request.prompt)
-            ]
-        }
-    )
 
     events, result = play(
         make_client(), turn_input(quiet_farm(), action="Trabajo los campos", settings=SPANISH)
     )
 
     title = result.plan.event.title
-    assert result.scene.event.title == f"«{title}»"
-    assert isinstance(events[0], StepsDecided)
+    assert (title, result.scene.event.title) == ("A rival", "Una rivalidad")
+    assert isinstance(events[0], StepsDecided) and fake.calls(Node.WORDING) == []
     assert [step.reason for step in result.scene.details.steps] == ["Nada lo impide."]
-    # The narrator and the record keep the event as the director wrote it.
+    assert result.state.threads[result.plan.event.thread_id].title == "Una rivalidad"
+    # The narrator is briefed with the event as the director wrote it.
+    assert title in fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
+
+
+def test_an_event_the_world_titled_is_said_by_the_model(fake, make_client):
+    fake.script(Node.INTERPRET, Reply(json=FARMING))
+    fake.script(Node.NARRATOR, Reply(json=QUIET_SCENE))
+    fake.default = in_guillemets
+    state = quiet_farm()
+    state.pending_events["e1"] = PendingEvent(
+        id="e1", kind="arrival", title="The bailiff comes", due_s=state.world_s, needs_player=True
+    )
+
+    _, result = play(
+        make_client(), turn_input(state, action="Trabajo los campos", settings=SPANISH)
+    )
+
+    assert result.plan.event.title == "The bailiff comes"
+    assert result.scene.event.title == "«The bailiff comes»"
     brief = fake.calls(Node.NARRATOR)[0].prompt.messages[-1].text
-    assert title in brief and f"«{title}»" not in brief
+    assert "The bailiff comes" in brief and "«The bailiff comes»" not in brief
+
+
+def test_a_thread_of_the_storys_own_comes_back_under_the_title_it_keeps(fake, make_client):
+    """N1: its title is in the story's words already, so nothing says it again. A thread the
+    director titled itself, before a story kept its titles in its language, goes by the book."""
+
+    def returning(title: str) -> saying.Lines:
+        feud = Thread(id="feud", title=title, kind=ThreadKind.RIVALRY, origin=Origin(kind="event"))
+        event = PlannedEvent(
+            size=EventSize.PERSONAL,
+            kind=EventKind.RIVAL,
+            source=EventSource.THREAD,
+            source_id="feud",
+            title=title,
+            brief="It comes back.",
+            thread_id="feud",
+        )
+        plan = DirectorPlan(event=event)
+        return saying.lines_of(Resolution(steps=[]), plan, Language.ES, {"feud": feud})
+
+    own = returning("La valla de Bram")
+    assert own.title_kept and own.texts() == []
+    assert own.reworded(str.upper).event_title == "La valla de Bram"
+
+    old = returning("A rival")
+    assert not old.title_kept and old.texts() == ["A rival"]
+
+    async def begun():
+        return saying.begin(make_client(), old.texts(), Language.ES)
+
+    wording = run(begun())
+    assert wording.task is None and fake.requests == []
+    assert old.reworded(wording.word).event_title == "Una rivalidad"
 
 
 def test_an_opening_with_nothing_decided_shows_no_steps(fake, make_client, telemetry):

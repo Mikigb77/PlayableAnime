@@ -342,6 +342,25 @@ a new one.
   know the deed caused it, on this timeline. Nameless victims are counted ("massacred three
   people"), and where some died and some lived both are told ("killed Elder Mo and wounded you").
   A deed the world has no words for keeps its own text.
+- **In the story's language** (S10). `telling` tells a deed in English, Spanish or Catalan
+  (`account(..., language=)`, `tell`, `found`, `unexplained`, `garbled`, `listing`): the same
+  facts pick the same kind of sentence, and a book per language says it (`_BOOK`, each kind of
+  deed as anyone did it and as "you" did it; `_WORDS`). Spanish puts "a" before a person and
+  says "you" with the verb ("Mataste a Zhao Kun en el pozo."), Catalan tells the past with "va"
+  ("Lin Feng va matar Han Jie al pou."), a deed that fell on the player or on its own doer is
+  said with "te", "se", "et", "es" ("Zhao Kun te hirió", "Lin Feng se hirió e hirió a Zhao
+  Kun"), a small word runs into a name's article (`with_word`: "al viejo Hu", "d'Olot") and
+  "y" is "e" before the sound of an i. Nothing on record says whether someone is a man or a
+  woman, so no sentence needs to know ("otras dos personas", "apareció sin vida"). The world
+  passes `ctx.settings.language` wherever it keeps a telling: a rumor's text (`carriers.word_out`,
+  `discovery.name_the_doer` and what people make of a find, `rumors._garbled`) and a grudge's
+  reason (`knowledge.character_learns`, an avenger's). Those are stored, so a story under way
+  keeps the English ones it has. Memory tells its deeds at view time
+  (`visibility._Knowledge.deed_text`), so they change at once; a deed with no words in the world
+  keeps its own text with resolve's outcome note in the language (`own_words`: "(salió bien)"),
+  and a wound the engine named itself is shown by `wound_said`. What only the narrator or the
+  engine reads stays English: a trace's text, the titles of the world's pending events, an
+  answer's title, picture prompts.
 - **Threats backed by force** (W5, A3). An intimidation from someone whose might, as the world
   can know it (their rung or sheet, hidden strength as shown, a light-speed time stop once known),
   is above their standing is measured on might after their condition, against the target's own
@@ -386,6 +405,7 @@ what it is given in the world's own form (G9).
 | `pressure.py` | W16's stall pressure: turns since the last decision with stakes, plus half a point for each repeat of the same low-stakes action, plus a point for each running clock one step from its end with that step within two days (at most two). An encounter turn or a decision with stakes resets it. The thresholds are 10, 5 and 3 for calm, normal and dramatic; an event may come early from 60% of the threshold. E6's drift moves the threshold by up to 20% either way: it rises 0.1 a turn while the player is comfortably in control and drops 0.6 after a big event. |
 | `sources.py`, `deck.py` | W16's order once pressure calls for an event: what came due, then key NPCs and factions with plans the player is tied to (E3, W6), then a dormant thread quiet for at least 8 turns, then a character or faction that emerged (W15), then a draw from the seeded deck (E4). The deck has one table per size with good things in each; the size comes from the story's scale (personal, local or world, read from threat, fear and memberships), so a farm never draws a world event. A source used in the last 6 events waits. Titles never name what the player doesn't know (C6). |
 | `clock.py`, `moments.py` | W16, W10: what comes fits the story time that passed. Pressure says when, in the player's quiet turns, and `clock.sizes_in_time` says what there is room for, from `DirectorState.last_event_s`: two hours since the last event for a personal one, two days since the last local or world one for a local one, two weeks since the last world one for a world one (`rules.EVENT_GAP_S`), and every source and the deck keep to those sizes. When no event fits, `moments.draw_moment` draws a moment (`DirectorPlan.moment`): one of twelve small things of here and now, generic like the deck, that opens no thread, schedules nothing and shows no event in the app. A moment and the talk of the place both need ten minutes since the last small thing or event (`clock.small_thing_fits`, `rules.SMALL_GAP_S`, `DirectorState.last_small_s`); sooner than that nothing comes and the quiet goes on counting. A moment starts the quiet over. None comes in an encounter, on the opening, inside stopped time or in a scene that already tells happenings. |
+| `titles.py` | W16, S10: the director's titles in Spanish and Catalan. `said(title, language)` reads a book: every card of the deck and the road, the titles the sources write the same way ("Someone takes an interest in you", "A stranger appears") and the ones built around a name ("Elder Mo seeks you out": "Elder Mo te busca"; "Old Hu's plans": "Los planes del viejo Hu"). The event's own title stays as the director wrote it, in English, for the narrator's brief, its play-out and its origin. What the player keeps of an event is titled in the story's language when it is recorded (`plan._open_event`): the thread it opens (N1) and the lead it offers (N2). A title the director didn't write stands as it is. A test fails when a card or a source's title is missing from the book. |
 | `themes.py` | F7, F2, F3: an event carries only themes the player switched on, gore only in Mature with gore above low, and romance only for a player character with an adult age recorded. A romance event casts only adults. |
 | `plan.py` | `direct` itself, in this order: what came due, play-outs of events the player took up (cancelled), something new if it's time (an event the story time has room for, else a moment, else nothing yet), thread changes and callbacks, suggestions, the talk of the place, the picture, the director's memory, goals and leads. One decision at a time: when two events that need one come due in a turn, the second waits for the next scene. |
 | `threads.py` | N1: a thread nobody touched for 12 turns goes dormant; acting on its people or naming it wakes it; it closes when its mystery is solved, its clock ends (unless it is a mystery), or everyone it pits the player against is dead. One or two dormant threads the player knows are called back each scene. |
@@ -1069,6 +1089,11 @@ Catalan story:
   stands in the way.", "It follows.", "A close call.", "certain", the three fallbacks for what a
   miss costs and why an ending's claim is refused. A test fails when the engine words one of
   them another way.
+- **The director's titles have a book of their own** (`engine/director/titles.py`, below), which
+  `saying.begin` reads before it asks the model: a card's title or "Elder Mo seeks you out"
+  needs no call. An event that brings back one of the story's own threads carries the thread's
+  title, which is in the story's words already, so it is left as it is (`Lines.title_kept`,
+  from `lines_of(..., threads)`). Only an event the living world titled goes to the model.
 - **The `wording` node says the rest**, in one call (`saying.say`): the lines numbered, the
   language, and the app's and the sheet's own words for the dice, the attributes, the levels of
   a skill and of a move, and health (`prompts.WORDING_WORDS`), so the dice, the sheet and these
