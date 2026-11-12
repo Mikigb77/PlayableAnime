@@ -32,8 +32,7 @@ All of it runs on in-world time, and nothing is counted in turns (W10).
 from collections.abc import Collection
 from dataclasses import dataclass
 
-from engine.encounters import still_in_it
-from engine.resolve.power import helpless_state
+from engine.resolve.power import helpless_state, in_the_fray
 from engine.state.cast import Character
 from engine.state.records import Deed, EventStatus, PendingEvent, TraceKind, Visibility
 from engine.state.world import WorldState, natural_key
@@ -76,10 +75,12 @@ def _engaged(state: WorldState, character_id: str) -> bool:
     """In a fight, a chase or talks with the player character that they are still in: whether
     they get away is the encounter's to settle."""
     encounter = state.scene.encounter
+    character = state.characters.get(character_id)
     return (
         encounter is not None
+        and character is not None
         and character_id in encounter.opponent_ids
-        and still_in_it(state, character_id)
+        and in_the_fray(state, character)  # as `engine.encounters.still_in_it` reads it
     )
 
 

@@ -2,6 +2,8 @@
 stabbing yourself and killing a random stranger. Each one is read, resolved and told, and the
 state the turn hands back passes every C1 invariant."""
 
+import json
+
 import pytest
 
 from engine.context import Rating, TurnContext
@@ -16,6 +18,7 @@ from graph.llm import Node, Reply
 from graph.turn import TurnCompleted, TurnInput, TurnKind, run_turn
 from graph.turn.context import narration_brief
 from tests.graph.conftest import collect, run
+from tests.graph.test_turn_graph import section
 
 
 def turn_input(state, action: str, rating=Rating.MATURE) -> TurnInput:
@@ -213,6 +216,56 @@ def test_a_lesson_s_blows_are_a_bout_whatever_the_interpret_step_made_of_them(fa
     # The interpret step saw the bout under way before each later blow.
     later = fake.calls(Node.INTERPRET)[-1].prompt.messages[-1].text
     assert '"bout":{"terms":"no_harm","with_ids":["zhao"]}' in later
+
+
+def test_a_lesson_the_telling_ends_on_its_own_is_still_on(fake, make_client):
+    """W10. On the real model (2026-11-12) a scene had the mentor walk away from a lesson the
+    engine still had going, and the next blow was read as aimed at the bystander. Code ends a
+    bout, never the telling: the narrator is told it is still on, and he is still in the scene."""
+    spar = {
+        "summary": "spar with Zhao",
+        "steps": [
+            {
+                "text": "strike at Zhao with the practice sword",
+                "verb": "strike",
+                "kind": "exchange",
+                "proposed_duration_s": 3,
+                "aim": "subdue",
+                "target_ids": ["zhao"],
+                "facts": {
+                    "opposition_ids": ["zhao"],
+                    "can_respond": True,
+                    "foes_mean": "none",
+                    "terms": "no_harm",
+                },
+            }
+        ],
+    }
+    end = {"ended_on": "Zhao walks away.", "place_id": "well", "present_ids": ["lin"]}
+    walks_off = {"narration": "Zhao walks away.", "update": {"scene_end": end}}
+    client = make_client()
+    fake.script(Node.INTERPRET, Reply(json=spar))
+    fake.script(Node.NARRATOR, Reply(json=walks_off))
+    result = play(client, turn_input(cultivation_world(), "I come at Zhao"))
+
+    brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    outcome = json.loads(section(brief, "OUTCOME"))
+    assert outcome["still_on"] == {"kind": "fight", "with": ["zhao"], "bout": "no_harm"}
+    state = result.state
+    assert state.scene.present_ids == ["lin", "zhao"] and state.scene.encounter is not None
+    assert [i.subject for i in result.issues if i.code == "encounter_kept"] == ["zhao"]
+
+    # An hour of something else ends it before it plays: the scene is told of no fight still
+    # on, and its end stands.
+    rest = {"text": "sit by the well", "verb": "sit", "kind": "task", "proposed_duration_s": 3600}
+    fake.script(Node.INTERPRET, Reply(json={"summary": "sit by the well", "steps": [rest]}))
+    fake.script(Node.NARRATOR, Reply(json=walks_off))
+    result = play(client, turn_input(state, "I sit by the well for an hour"))
+
+    brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    assert "still_on" not in json.loads(section(brief, "OUTCOME"))
+    assert result.state.scene.present_ids == ["lin"] and result.state.scene.encounter is None
+    assert not [i for i in result.issues if i.code == "encounter_kept"]
 
 
 def test_the_first_opening_records_a_wound_the_premise_starts_with(fake, make_client):
