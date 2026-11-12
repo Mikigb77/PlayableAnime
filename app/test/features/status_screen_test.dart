@@ -83,6 +83,26 @@ void main() {
       tester.getTopLeft(find.text('Qi Condensation')).dy,
       lessThan(tester.getTopLeft(find.text('Mortal')).dy),
     );
+    expect(find.text('Reached, day 2'), findsOneWidget);
+    expect(find.text('Left behind, day 2'), findsOneWidget);
+    // Over it, what the story has named to them, highest first: what nobody has told them, a
+    // realm they only heard of, the room nobody measured for them, and a realm confirmed.
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    final upward = [
+      l10n.pathAbove,
+      'Nascent Soul',
+      l10n.pathUnmeasured,
+      'Foundation Establishment',
+      'Qi Condensation',
+    ];
+    for (final (i, name) in upward.indexed.skip(1)) {
+      expect(top(upward[i - 1]), lessThan(top(name)), reason: '${upward[i - 1]} over $name');
+    }
+    expect(find.text(l10n.pathAboveNote), findsOneWidget);
+    expect(find.text('Heard of, day 4'), findsOneWidget);
+    expect(find.text(l10n.pathUnmeasuredNote), findsOneWidget);
+    expect(find.text('Confirmed before Master Hu, day 3'), findsOneWidget);
+    expect(find.text('Master Hu took a pill and sat nine days alone to reach it.'), findsOneWidget);
 
     // The same sheet as plain lines, sent for older apps, is not repeated under it.
     expect(
@@ -167,6 +187,68 @@ void main() {
     expect(find.text(l10n.sheetNothingCarried), findsOneWidget);
     // No ladder in this world, so no path.
     expect(find.text(l10n.sheetPath.toUpperCase()), findsNothing);
+  });
+
+  testWidgets('a path with nothing named above it still says nobody has told them', (tester) async {
+    // Also what a server from before the rungs above sends: the rungs they climbed, no more.
+    await show(
+      tester,
+      status(
+        sheet: {
+          'paths': [
+            {
+              'name': 'Aura ranks',
+              'rungs': [
+                {'name': 'Squire'},
+                {'name': 'Knight', 'stage': 'first star'},
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    expect(find.text('AURA RANKS'), findsOneWidget);
+    expect(find.text(l10n.pathAbove), findsOneWidget);
+    expect(find.text(l10n.pathAboveNote), findsOneWidget);
+    expect(find.text(l10n.pathUnmeasured), findsNothing);
+    expect(
+      tester.getTopLeft(find.text(l10n.pathAbove)).dy,
+      lessThan(tester.getTopLeft(find.text('Knight')).dy),
+    );
+    expect(find.text('First star'), findsOneWidget);
+  });
+
+  testWidgets('a ladder they do not stand on shows the rungs they have heard of', (tester) async {
+    // G18: the world's ladder beside their own way, as far as the story named it to them.
+    await show(
+      tester,
+      status(
+        sheet: {
+          'paths': [
+            {
+              'name': 'Aura ranks',
+              'rungs': <Object?>[],
+              'above': [
+                {'name': 'Squire', 'known': true, 'note': 'Confirmed before Zephyr, day 1'},
+                {'name': 'Aura master', 'note': 'Heard of, day 2', 'gap_below': true},
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    expect(find.text(l10n.sheetPath.toUpperCase()), findsOneWidget);
+    expect(find.text('Squire'), findsOneWidget);
+    expect(find.text('Confirmed before Zephyr, day 1'), findsOneWidget);
+    expect(find.text('Aura master'), findsOneWidget);
+    expect(find.text(l10n.pathUnmeasured), findsOneWidget);
+    // Nothing is lit: no rung of it is theirs.
+    expect(
+      find.byWidgetPredicate((widget) => '${widget.key}'.contains('path.here.')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('path.known.3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('path.heard.1')), findsOneWidget);
   });
 
   testWidgets('needs no tabs for belongings alone', (tester) async {
@@ -320,6 +402,20 @@ void main() {
             ],
           },
           {'name': 'Ranks', 'rungs': <Object?>[]},
+          {
+            'name': 'Guild',
+            'above': [
+              {
+                'name': 'A',
+                'known': true,
+                'note': 'Confirmed, day 3',
+                'said': ['Only six hold it.', 7],
+                'gap_below': true,
+              },
+              {'name': 'S'},
+              {'name': ' '},
+            ],
+          },
         ],
         'money_label': '12 taels',
         'items': [
@@ -357,8 +453,19 @@ void main() {
       // A share is never over the whole.
       expect(sheet.condition.reserves.single.level, 100);
       expect(sheet.condition.expectingLabel, 'A child due in 3 months');
-      // A ladder with no rung to stand on is not a path.
-      expect(sheet.paths.single.rungs.last.stage, 'third stage');
+      // A ladder with no rung to stand on and none heard of is not a path.
+      expect([for (final path in sheet.paths) path.name], ['Realms', 'Guild']);
+      expect(sheet.paths.first.rungs.last.stage, 'third stage');
+      expect(sheet.paths.first.rungs.last.note, isEmpty);
+      expect(sheet.paths.first.above, isEmpty);
+      // One they only heard of holds its rungs above: confirmed or not, with what was said.
+      final guild = sheet.paths.last;
+      expect(guild.rungs, isEmpty);
+      expect([for (final rung in guild.above) rung.name], ['A', 'S']);
+      expect([for (final rung in guild.above) rung.known], [true, false]);
+      expect([for (final rung in guild.above) rung.gapBelow], [true, false]);
+      expect(guild.above.first.note, 'Confirmed, day 3');
+      expect(guild.above.first.said, ['Only six hold it.']);
       expect(sheet.moneyLabel, '12 taels');
       // A thing with no name is dropped, and a kind the app doesn't know is just a thing.
       expect([for (final item in sheet.items) item.kind], [ItemKind.weapon, ItemKind.other]);

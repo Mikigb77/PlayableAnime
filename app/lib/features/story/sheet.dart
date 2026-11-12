@@ -116,12 +116,13 @@ class SheetCondition {
 }
 
 class SheetRung {
-  const SheetRung({required this.name, this.stage = '', this.description = ''});
+  const SheetRung({required this.name, this.stage = '', this.description = '', this.note = ''});
 
   factory SheetRung.fromJson(JsonMap json) => SheetRung(
     name: _text(json['name']),
     stage: _text(json['stage']),
     description: _text(json['description']),
+    note: _text(json['note']),
   );
 
   final String name;
@@ -129,12 +130,51 @@ class SheetRung {
   /// Finer steps within the rung, in the world's words: "third stage".
   final String stage;
   final String description;
+
+  /// When, where the record holds it: "Reached, day 9" or "Left behind, day 9".
+  final String note;
 }
 
-/// One of the world's ladders (G18), from its first rung up to where they stand, lowest first:
-/// the last rung is theirs. The server sends nothing above it (C6).
+/// A rung above their own, as far as they know of it (C6): solid once the story confirmed it,
+/// only heard of until then.
+class SheetRungAbove {
+  const SheetRungAbove({
+    required this.name,
+    this.known = false,
+    this.note = '',
+    this.said = const [],
+    this.gapBelow = false,
+  });
+
+  factory SheetRungAbove.fromJson(JsonMap json) => SheetRungAbove(
+    name: _text(json['name']),
+    known: json['known'] == true,
+    note: _text(json['note']),
+    said: _lines(json['said']),
+    gapBelow: json['gap_below'] == true,
+  );
+
+  final String name;
+
+  /// Whether the story confirmed it. Until then they have only heard its name.
+  final bool known;
+
+  /// How they know of it: "Heard of, day 14", "Confirmed before Elder Han, day 15".
+  final String note;
+
+  /// What they have learned or heard about it, in the record's own words.
+  final List<String> said;
+
+  /// Whether rungs lie under it that nobody has named to them.
+  final bool gapBelow;
+}
+
+/// One of the world's ladders (G18). [rungs] runs from its first rung up to where they stand,
+/// lowest first, so the last one is theirs; it is empty for a ladder they don't stand on.
+/// [above] holds the rungs over their own that the story has named to them, lowest first, and
+/// the server sends nothing else of what lies higher (C6).
 class SheetPath {
-  const SheetPath({required this.name, required this.rungs});
+  const SheetPath({required this.name, this.rungs = const [], this.above = const []});
 
   factory SheetPath.fromJson(JsonMap json) => SheetPath(
     name: _text(json['name']),
@@ -142,10 +182,18 @@ class SheetPath {
       for (final rung in _list(json['rungs'], SheetRung.fromJson))
         if (rung.name.isNotEmpty) rung,
     ],
+    above: [
+      for (final rung in _list(json['above'], SheetRungAbove.fromJson))
+        if (rung.name.isNotEmpty) rung,
+    ],
   );
 
   final String name;
   final List<SheetRung> rungs;
+  final List<SheetRungAbove> above;
+
+  /// A ladder they neither stand on nor have heard a rung of is no path of theirs.
+  bool get isEmpty => rungs.isEmpty && above.isEmpty;
 }
 
 /// What kind of thing a belonging is. One the app doesn't know is just a thing.
@@ -385,7 +433,7 @@ class Sheet {
     },
     paths: [
       for (final path in _list(json['paths'], SheetPath.fromJson))
-        if (path.rungs.isNotEmpty) path,
+        if (!path.isEmpty) path,
     ],
     moneyLabel: _label(json['money_label']),
     items: _named(_list(json['items'], SheetItem.fromJson), (item) => item.name),

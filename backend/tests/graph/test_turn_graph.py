@@ -28,6 +28,7 @@ from engine.state.cast import CharacterStatus
 from engine.state.records import Goal, GoalStatus, StepResult
 from engine.state.sheet import Health
 from engine.state.world import Chapter
+from engine.visibility import status_view
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
     CHAPTER_TURNS,
@@ -1033,6 +1034,40 @@ def test_a_scene_notes_how_a_goal_stands_and_the_next_scene_is_told(fake, make_c
             {"id": "goal-1", "text": "Pass the outer-sect exam"},
             {"id": "goal-2", "text": "Make Zhao pay", "progress": moved[0]["progress"]},
         ]
+
+
+def test_a_rung_a_scene_names_is_heard_of_and_known_once_the_story_confirms_it(
+    fake, make_client, log_lines
+):
+    """G18, C6: code reads the scene's own words for the rungs the character doesn't know yet,
+    so the path grows by itself. Zhao, who stands on Foundation Establishment, is before Lin, so
+    that one is known at once; Core Formation is only heard of."""
+    said = "“Foundation Establishment first,” Zhao sneers. “Core Formation is for elders.”"
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"narration": said}))
+    _, result = play(make_client(), turn_input())
+
+    heard = result.state.player.sheet.rungs_heard
+    assert [(h.ladder_id, h.rung, h.known_from) for h in heard] == [
+        ("realms", 1, "zhao"),
+        ("realms", 2, None),
+    ]
+    codes = [(i.code, i.subject) for i in result.issues if i.code.startswith("rung_")]
+    assert codes == [("rung_heard", "realms"), ("rung_known", "realms"), ("rung_heard", "realms")]
+    (path,) = status_view(result.state).sheet.paths
+    assert [(r.name, r.known) for r in path.above] == [
+        ("Foundation Establishment", True),
+        ("Core Formation", False),
+    ]
+    # T6: the log says a rung was told, never the scene's words.
+    assert not any("Core Formation" in str(line) for line in log_lines())
+
+    # A scene that names nothing new adds nothing.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"narration": said}))
+    _, again = play(make_client(), turn_input(result.state))
+    assert again.state.player.sheet.rungs_heard == heard
+    assert not [i for i in again.issues if i.code.startswith("rung_")]
 
 
 def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines):

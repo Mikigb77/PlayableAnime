@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/l10n.dart';
@@ -112,9 +114,10 @@ class _Bar extends StatelessWidget {
   );
 }
 
-/// Where they stand on one of the world's ladders (G18): their own rung on top, lit, with its
-/// stage, and under it the rungs they climbed. Nothing is drawn above: which rungs lie higher
-/// is the story's to tell (C6).
+/// One of the world's ladders as far as they know it (G18, C6), highest first. On top, what
+/// nobody has told them. Then the rungs over their own that the story named: dashed while only
+/// heard of, solid once confirmed, with room left open where rungs nobody named lie between.
+/// Then their own rung, lit, with its stage, and under it the rungs they climbed.
 class SheetPathCard extends StatelessWidget {
   const SheetPathCard({super.key, required this.path});
 
@@ -122,7 +125,28 @@ class SheetPathCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rungs = path.rungs.reversed.toList();
+    final l10n = context.l10n;
+    final rows = [
+      _Rung(look: _Look.fog, name: l10n.pathAbove, note: l10n.pathAboveNote),
+      for (final rung in path.above.reversed) ...[
+        _Rung(
+          look: rung.known ? _Look.known : _Look.heard,
+          name: rung.name.asHeading,
+          note: rung.note,
+          said: rung.said,
+        ),
+        if (rung.gapBelow)
+          _Rung(look: _Look.gap, name: l10n.pathUnmeasured, note: l10n.pathUnmeasuredNote),
+      ],
+      for (final (i, rung) in path.rungs.reversed.indexed)
+        _Rung(
+          look: i == 0 ? _Look.here : _Look.behind,
+          name: rung.name.asHeading,
+          stage: rung.stage.asHeading,
+          description: rung.description,
+          note: rung.note,
+        ),
+    ];
     return RecordCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,21 +156,64 @@ class SheetPathCard extends StatelessWidget {
             style: context.lucidText.overline.copyWith(color: context.lucid.textMuted),
           ),
           const SizedBox(height: Space.md),
-          for (final (i, rung) in rungs.indexed)
-            _RungRow(rung: rung, here: i == 0, last: i == rungs.length - 1),
+          for (final (i, rung) in rows.indexed)
+            _RungRow(
+              key: ValueKey('path.${rung.look.name}.$i'),
+              rung: rung,
+              last: i == rows.length - 1,
+            ),
         ],
       ),
     );
   }
 }
 
-class _RungRow extends StatelessWidget {
-  const _RungRow({required this.rung, required this.here, required this.last});
+/// How a row of the path is drawn.
+enum _Look {
+  /// What lies above everything they know of.
+  fog,
 
-  final SheetRung rung;
+  /// A rung a scene named, not confirmed yet.
+  heard,
+
+  /// A rung above their own that the story confirmed.
+  known,
+
+  /// Room between two rungs they know of, with what lies in it unknown.
+  gap,
 
   /// The rung they stand on.
-  final bool here;
+  here,
+
+  /// A rung they climbed.
+  behind;
+
+  /// Above their own rung: drawn lighter, on a dashed track.
+  bool get above => index < here.index;
+}
+
+class _Rung {
+  const _Rung({
+    required this.look,
+    required this.name,
+    this.stage = '',
+    this.description = '',
+    this.note = '',
+    this.said = const [],
+  });
+
+  final _Look look;
+  final String name;
+  final String stage;
+  final String description;
+  final String note;
+  final List<String> said;
+}
+
+class _RungRow extends StatelessWidget {
+  const _RungRow({super.key, required this.rung, required this.last});
+
+  final _Rung rung;
   final bool last;
 
   static const double _track = 26;
@@ -156,26 +223,22 @@ class _RungRow extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = context.lucid;
     final scheme = theme.colorScheme;
-    final node = here
-        ? Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: colors.accentGradient(),
-              boxShadow: [BoxShadow(color: colors.accent.withValues(alpha: 0.45), blurRadius: 14)],
-            ),
-          )
-        : Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: scheme.surfaceContainerHigh,
-              border: Border.all(color: scheme.outline),
-            ),
-            child: Icon(Icons.check_rounded, size: 11, color: colors.textMuted),
-          );
+    final look = rung.look;
+    final here = look == _Look.here;
+    final name = switch (look) {
+      _Look.here => theme.textTheme.headlineSmall!.copyWith(color: colors.accent),
+      _Look.fog || _Look.gap => theme.textTheme.titleSmall!.copyWith(color: colors.textMuted),
+      _Look.heard => context.lucidText.narration.copyWith(
+        fontSize: 16,
+        height: 1.35,
+        color: colors.textMuted,
+      ),
+      _Look.known || _Look.behind => context.lucidText.narration.copyWith(
+        fontSize: 16,
+        height: 1.35,
+        color: colors.textSecondary,
+      ),
+    };
     return MergeSemantics(
       child: IntrinsicHeight(
         child: Row(
@@ -187,13 +250,17 @@ class _RungRow extends StatelessWidget {
                 child: Column(
                   children: [
                     SizedBox(height: here ? 5 : 3),
-                    node,
+                    _RungNode(look: look),
                     if (!last)
                       Expanded(
-                        child: Container(
-                          width: 2,
-                          margin: const EdgeInsets.symmetric(vertical: 3),
-                          color: scheme.outlineVariant,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: look.above
+                              ? CustomPaint(
+                                  size: const Size(2, double.infinity),
+                                  painter: _DashedLine(scheme.outlineVariant),
+                                )
+                              : Container(width: 2, color: scheme.outlineVariant),
                         ),
                       ),
                   ],
@@ -207,20 +274,11 @@ class _RungRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      rung.name.asHeading,
-                      style: here
-                          ? theme.textTheme.headlineSmall!.copyWith(color: colors.accent)
-                          : context.lucidText.narration.copyWith(
-                              fontSize: 16,
-                              height: 1.35,
-                              color: colors.textSecondary,
-                            ),
-                    ),
+                    Text(rung.name, style: name),
                     if (rung.stage.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: Space.xxs),
-                        child: Text(rung.stage.asHeading, style: theme.textTheme.bodyLarge),
+                        child: Text(rung.stage, style: theme.textTheme.bodyLarge),
                       ),
                     if (rung.description.isNotEmpty)
                       Padding(
@@ -230,6 +288,8 @@ class _RungRow extends StatelessWidget {
                           style: theme.textTheme.bodyMedium!.copyWith(color: colors.textSecondary),
                         ),
                       ),
+                    for (final line in rung.said) RecordLine(line),
+                    if (rung.note.isNotEmpty) RecordLine(rung.note, quiet: true),
                   ],
                 ),
               ),
@@ -239,6 +299,108 @@ class _RungRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The mark on the track for one row of the path.
+class _RungNode extends StatelessWidget {
+  const _RungNode({required this.look});
+
+  final _Look look;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lucid;
+    final scheme = Theme.of(context).colorScheme;
+    Widget ring({required Color line, bool dashed = false, Widget? child}) => SizedBox(
+      width: 16,
+      height: 16,
+      child: CustomPaint(
+        painter: _Ring(line, dashed: dashed),
+        child: Center(child: child),
+      ),
+    );
+    final unknown = Text(
+      '?',
+      style: context.lucidText.overline.copyWith(color: colors.textMuted, height: 1),
+    );
+    return switch (look) {
+      _Look.here => Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: colors.accentGradient(),
+          boxShadow: [BoxShadow(color: colors.accent.withValues(alpha: 0.45), blurRadius: 14)],
+        ),
+      ),
+      _Look.behind => Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: scheme.surfaceContainerHigh,
+          border: Border.all(color: scheme.outline),
+        ),
+        child: Icon(Icons.check_rounded, size: 11, color: colors.textMuted),
+      ),
+      _Look.known => ring(line: colors.accent),
+      _Look.heard => ring(line: colors.textMuted, dashed: true),
+      _Look.fog => ring(line: scheme.outlineVariant, dashed: true, child: unknown),
+      _Look.gap => SizedBox(width: 16, height: 16, child: Center(child: unknown)),
+    };
+  }
+}
+
+/// A circle on the track: whole for a rung the story confirmed, dashed for one only heard of.
+class _Ring extends CustomPainter {
+  const _Ring(this.color, {this.dashed = false});
+
+  final Color color;
+  final bool dashed;
+
+  static const int _dashes = 8;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final box = Offset.zero & size;
+    final circle = box.deflate(paint.strokeWidth / 2);
+    if (!dashed) {
+      canvas.drawOval(circle, paint);
+      return;
+    }
+    const step = 2 * math.pi / _dashes;
+    for (var i = 0; i < _dashes; i++) {
+      canvas.drawArc(circle, i * step, step * 0.55, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Ring old) => old.color != color || old.dashed != dashed;
+}
+
+/// The track above their own rung: a way nobody has walked them through yet.
+class _DashedLine extends CustomPainter {
+  const _DashedLine(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+    final x = size.width / 2;
+    for (var y = 0.0; y < size.height; y += 7) {
+      canvas.drawLine(Offset(x, y), Offset(x, (y + 3).clamp(0, size.height)), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedLine old) => old.color != color;
 }
 
 /// The parts of the sheet a player looks things up in, one at a time: what they carry, their

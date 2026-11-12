@@ -26,15 +26,18 @@ from functools import cached_property
 from pydantic import Field
 
 from engine import levels, possessions
+from engine import path as path_mod
 from engine import talent as talent_mod
 from engine.base import EngineModel
 from engine.context import Language
+from engine.contracts.intent import GrowthKind
 from engine.director import goals as goals_mod
 from engine.director.goals import GoalKind, GoalOrigin
 from engine.kin import descendants
 from engine.labels import ago_label, clock_label, date_label, in_label, number_label, of_name
 from engine.limits import normalize
 from engine.resolve.powers.growth import technique_pace
+from engine.state.bible import PowerLadder
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -278,18 +281,38 @@ class SheetCondition(EngineModel):
 
 
 class SheetRung(EngineModel):
+    """A rung they climbed, or the one they stand on. `note` is when, where the record holds
+    it: "Reached, day 9" for their own, "Left behind, day 9" for one under it."""
+
     name: str
     stage: str = ""
     description: str = ""
+    note: str = ""
+
+
+class SheetRungAbove(EngineModel):
+    """A rung above their own, as far as they know of it (C6, `engine.path`): `known` once the
+    story confirmed it, only heard of until then. `note` is how they know ("Heard of, day 14",
+    "Confirmed before Elder Han, day 15"), `said` what they have learned or heard about it, in
+    the record's words, and `gap_below` whether rungs lie under it that nobody has named to
+    them. Never what the rung is or what reaching it takes: that is the story's to tell."""
+
+    name: str
+    known: bool = False
+    note: str = ""
+    said: list[str] = Field(default_factory=list)
+    gap_below: bool = False
 
 
 class SheetPath(EngineModel):
-    """One of the world's ladders (G18), from its first rung up to where they stand, lowest
-    first, so the last rung is theirs. Nothing above it: which rungs lie higher is the world's
-    to tell (C6)."""
+    """One of the world's ladders (G18). `rungs` runs from its first rung up to where they
+    stand, lowest first, so the last one is theirs, and is empty for a ladder they don't stand
+    on. `above` holds the rungs over their own that they have heard of, lowest first, and
+    nothing else: which rungs lie higher is the story's to tell (C6)."""
 
     name: str
-    rungs: list[SheetRung] = Field(min_length=1)
+    rungs: list[SheetRung] = Field(default_factory=list)
+    above: list[SheetRungAbove] = Field(default_factory=list)
 
 
 class SheetItem(EngineModel):
@@ -762,6 +785,12 @@ _WORDS = {
         "goal_asked": "Asked of you by {who}",
         "goal_taken": "A lead you took up",
         "goal_on": "{what}, {date}",
+        "rung_reached": "Reached",
+        "rung_left": "Left behind",
+        "rung_heard": "Heard of",
+        "rung_known": "Confirmed",
+        "rung_known_before": "Confirmed before {who}",
+        "rung_learned": "From what you have learned",
     },
     ES: {
         "saw": "Lo viste",
@@ -817,6 +846,12 @@ _WORDS = {
         "goal_asked": "Te lo pidió {who}",
         "goal_taken": "Una pista que seguiste",
         "goal_on": "{what}, {date}",
+        "rung_reached": "Lo alcanzaste",
+        "rung_left": "Quedó atrás",
+        "rung_heard": "Oíste hablar de ello",
+        "rung_known": "Lo comprobaste",
+        "rung_known_before": "Lo comprobaste ante {who}",
+        "rung_learned": "Por lo que has aprendido",
     },
     CA: {
         "saw": "Ho vas veure",
@@ -872,6 +907,12 @@ _WORDS = {
         "goal_asked": "T'ho va demanar {who}",
         "goal_taken": "Una pista que vas seguir",
         "goal_on": "{what}, {date}",
+        "rung_reached": "Hi vas arribar",
+        "rung_left": "Va quedar enrere",
+        "rung_heard": "En vas sentir a parlar",
+        "rung_known": "Ho vas comprovar",
+        "rung_known_before": "Ho vas comprovar davant {of_who}",
+        "rung_learned": "Pel que has après",
     },
 }
 
@@ -1610,19 +1651,76 @@ class _Knowledge:
         )
 
     def paths(self, player: Character) -> list[SheetPath]:
-        """G18. Each ladder they stand on, up to their own rung and no further (C6)."""
+        """G18, C6. Each ladder as far as they know it: the rungs they climbed with when, their
+        own, and over it the rungs the story has named to them (`engine.path`). A ladder they
+        don't stand on shows once they have heard of a rung of it."""
         paths = []
-        for position in player.sheet.ladders:
-            ladder = self.state.bible.ladder(position.ladder_id)
-            if ladder is None or position.rung >= len(ladder.rungs):
+        for ladder in self.state.bible.ladders:
+            own = path_mod.own_rung(player, ladder.id)
+            if own >= len(ladder.rungs):
                 continue
-            rungs = [SheetRung(name=_cap(rung.name)) for rung in ladder.rungs[: position.rung]]
-            here = ladder.rungs[position.rung]
-            rungs.append(
-                SheetRung(name=_cap(here.name), stage=position.stage, description=here.description)
-            )
-            paths.append(SheetPath(name=_cap(ladder.name), rungs=rungs))
+            reached = self._reached(player, ladder)
+            rungs = [
+                SheetRung(name=_cap(rung.name), note=self._dated("rung_left", reached.get(i + 1)))
+                for i, rung in enumerate(ladder.rungs[: max(own, 0)])
+            ]
+            if own >= 0:
+                here = ladder.rungs[own]
+                position = next(p for p in player.sheet.ladders if p.ladder_id == ladder.id)
+                rungs.append(
+                    SheetRung(
+                        name=_cap(here.name),
+                        stage=position.stage,
+                        description=here.description,
+                        note=self._dated("rung_reached", reached.get(own)),
+                    )
+                )
+            above = [
+                SheetRungAbove(
+                    name=_cap(ladder.rungs[standing.rung].name),
+                    known=standing.known,
+                    note=self._rung_note(standing),
+                    said=path_mod.about(self.state, player, ladder.rungs[standing.rung].name),
+                    gap_below=standing.gap_below,
+                )
+                for standing in path_mod.known(self.state, player, ladder)
+            ]
+            if rungs or above:
+                paths.append(SheetPath(name=_cap(ladder.name), rungs=rungs, above=above))
         return paths
+
+    def _reached(self, player: Character, ladder: PowerLadder) -> dict[int, int]:
+        """When they reached each rung of a ladder, by its index, as far as their growth holds
+        it: a breakthrough is recorded under the rung's name (`engine.resolve.powers.growth`)."""
+        index = {rung.name: i for i, rung in enumerate(ladder.rungs)}
+        return {
+            index[gain.what]: gain.world_s
+            for gain in player.sheet.growth
+            if gain.source == GrowthKind.BREAKTHROUGH.value and gain.what in index
+        }
+
+    def _dated(self, key: str, world_s: int | None, **names: str) -> str:
+        """Words of the sheet with the day they hold for ("Reached, day 9"), or nothing where
+        the record holds no day."""
+        if world_s is None:
+            return ""
+        words = _WORDS[self.language]
+        date = date_label(self.state.bible.calendar, world_s, self.language)
+        what = words[key].format(**names)
+        return words["goal_on"].format(what=what, date=date[:1].lower() + date[1:])
+
+    def _rung_note(self, standing: path_mod.Standing) -> str:
+        """How they know of a rung above their own: confirmed before someone they can name, or
+        only confirmed (C6), heard of in a scene, or learned from something they know."""
+        if standing.known_s is not None:
+            who = self.name_of(standing.known_from or "")
+            if who is None:
+                return self._dated("rung_known", standing.known_s)
+            of_who = of_name(who, self.language)
+            return self._dated("rung_known_before", standing.known_s, who=who, of_who=of_who)
+        if standing.known:
+            return _WORDS[self.language]["rung_learned"]
+        return self._dated("rung_heard", standing.heard_s)
 
     def powers(self, player: Character) -> list[SheetPower]:
         """G13. Each power with its limits, what it costs as the sheet says, and whether it is

@@ -434,6 +434,7 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     world = state["world"]
     issues: list[Issue] = []
     ended = False  # whether the narrator said where its scene ends
+    scene_text = ""
     if mode != "template":
         issues += check.check_told(narration, state.get("intent"))
         # C10: what the engine moved this turn, so the scene doesn't move it again.
@@ -490,6 +491,14 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     issues += [
         Issue("encounter_kept", "still in the encounter: still in the scene", subject=who)
         for who in stayed
+    ]
+    # G18, C6: what the scene told of a ladder is what the character knows of it. A rung it
+    # named is heard of from now on, and one they had heard of is known once someone who shows
+    # it has stood before them.
+    world, rungs = pipeline.settle_path(world, scene_text)
+    issues += [
+        Issue("rung_known" if r.known else "rung_heard", "the scene told it", subject=r.ladder_id)
+        for r in rungs
     ]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
     # N6: once told, a successor's opening is done.

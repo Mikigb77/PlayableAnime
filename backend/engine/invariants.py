@@ -210,6 +210,12 @@ def check_state(state: WorldState) -> list[Violation]:
                 found.append(
                     Violation(f"character {c.id}", "reference", f"no rung {position.rung}")
                 )
+        for heard in c.sheet.rungs_heard:
+            ladder = state.bible.ladder(heard.ladder_id)
+            if ladder is None or heard.rung >= len(ladder.rungs):
+                found.append(
+                    Violation(f"character {c.id}", "reference", f"no rung {heard.rung} heard of")
+                )
         for parent_id in c.parent_ids:
             if parent_id == c.id or parent_id not in state.characters:
                 found.append(
