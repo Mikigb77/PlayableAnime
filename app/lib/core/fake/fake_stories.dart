@@ -879,8 +879,35 @@ const _seedMemory = <String, Object?>{
       'standing_label': 'Disliked',
     },
   ],
+  // The thread they follow first, then their own, then the ones on the side (N2).
   'goals': [
-    {'id': 'g1', 'text': 'Find out who cut your meridians'},
+    {
+      'id': 'g2',
+      'text': 'Find out who is stealing from the pill hall',
+      'kind': 'followed',
+      'origin': 'asked',
+      'origin_label': 'Asked of you by Master Hu, day 3',
+      'progress': 'It happens at night, and the east gate guard looks away.',
+    },
+    {
+      'id': 'g1',
+      'text': 'Find out who cut your meridians',
+      'kind': 'own',
+      'origin': 'start',
+      'origin_label': 'Yours from the start',
+    },
+    {
+      'id': 'g3',
+      'text': 'Bring Old Gu his moon-root',
+      'kind': 'side',
+      'origin': 'asked',
+      'origin_label': 'Asked of you by Old Gu, day 2',
+    },
+  ],
+  // The goals that are over come in the order they closed.
+  'goals_done': [
+    {'id': 'g0', 'text': 'Pass the outer disciple test', 'how': 'achieved', 'when_label': 'Day 2'},
+    {'id': 'g4', 'text': 'Win the outer court ranking', 'how': 'failed', 'when_label': 'Day 4'},
   ],
   'leads': [
     {'id': 'l1', 'text': 'The voice says the cut was careful', 'expires_label': null},

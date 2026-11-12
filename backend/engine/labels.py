@@ -143,13 +143,14 @@ def _ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
-def _day_count(calendar: Calendar, world_s: int, language: Language) -> str:
+def _day_count(calendar: Calendar, world_s: int, language: Language) -> tuple[str, str]:
+    """The date and the time of day, apart, as the two below give them."""
     since_midnight = calendar.start_second_of_day + world_s
     day = since_midnight // DAY + 1
-    return f"{_DAY_WORD[language]} {day}, {_time_of_day(calendar, since_midnight, language)}"
+    return f"{_DAY_WORD[language]} {day}", _time_of_day(calendar, since_midnight, language)
 
 
-def _gregorian(calendar: Calendar, world_s: int, language: Language) -> str | None:
+def _gregorian(calendar: Calendar, world_s: int, language: Language) -> tuple[str, str] | None:
     try:
         start = datetime.fromisoformat(calendar.epoch or "")
         moment = start + timedelta(seconds=world_s)
@@ -161,10 +162,10 @@ def _gregorian(calendar: Calendar, world_s: int, language: Language) -> str | No
         date = f"{moment.day} {of_name(month, language)} de {moment.year}"
     else:
         date = f"{moment.day} {MONTH_NAMES[moment.month - 1]} {moment.year}"
-    return f"{date}, {_time_of_day(calendar, second_of_day, language)}"
+    return date, _time_of_day(calendar, second_of_day, language)
 
 
-def _custom(calendar: Calendar, world_s: int, language: Language) -> str | None:
+def _custom(calendar: Calendar, world_s: int, language: Language) -> tuple[str, str] | None:
     months = calendar.months
     if not months:
         return None
@@ -183,8 +184,8 @@ def _custom(calendar: Calendar, world_s: int, language: Language) -> str | None:
     when = _time_of_day(calendar, since_midnight, language)
     if language in _YEAR_WORD:
         day = f"{_DAY_WORD[language]} {day_of_year + 1} {of_name(month.name, language)}"
-        return f"{day}, {_YEAR_WORD[language]} {year}{era}, {when}"
-    return f"{_ordinal(day_of_year + 1)} day of {month.name}, year {year}{era}, {when}"
+        return f"{day}, {_YEAR_WORD[language]} {year}{era}", when
+    return f"{_ordinal(day_of_year + 1)} day of {month.name}, year {year}{era}", when
 
 
 def second_of_day(calendar: Calendar, world_s: int) -> int:
@@ -231,6 +232,16 @@ def clock_label(calendar: Calendar, world_s: int, language: Language = EN) -> st
     1974, 23:10" or "Día 3 de Luna de Escarcha, año 412, atardecer", and in Catalan "Dia 3,
     capvespre", "14 d'abril de 1974, 23:10" or "Dia 3 de Lluna de Gebre, any 412, capvespre"
     (S10). A calendar it can't read falls back to a day count, so a label is never missing."""
+    return ", ".join(_date_and_time(calendar, world_s, language))
+
+
+def date_label(calendar: Calendar, world_s: int, language: Language = EN) -> str:
+    """The date alone, as `clock_label` tells it: "Day 3", "14 May 1974" or "3rd day of the
+    Frost Moon, year 412"."""
+    return _date_and_time(calendar, world_s, language)[0]
+
+
+def _date_and_time(calendar: Calendar, world_s: int, language: Language) -> tuple[str, str]:
     if calendar.style is CalendarStyle.GREGORIAN:
         label = _gregorian(calendar, world_s, language)
     elif calendar.style is CalendarStyle.CUSTOM:

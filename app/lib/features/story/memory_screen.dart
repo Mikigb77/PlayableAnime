@@ -8,7 +8,8 @@ import 'memory.dart';
 import 'record_widgets.dart';
 
 /// What the character knows, in the world's words (C6, G16), a group at a time: what they are
-/// after (their goals, the leads on offer and the story's threads, N1), the people they know
+/// after (the thread they follow, their own goals and the ones on the side, N2; the leads on
+/// offer and the story's threads, N1), the people they know
 /// and how each takes them, where they stand with the world's factions, the places they have
 /// been, what they have heard, marked unconfirmed unless they know for themselves whether it
 /// is so, and what was done and who saw it. The server sends only what the character knows,
@@ -36,8 +37,8 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   /// The groups opened in full among the others.
   final _opened = <MemorySection>{};
 
-  /// Whether the threads that ended are shown.
-  bool _closedShown = false;
+  /// The folds of what they are after that the player turned, by name: open or shut.
+  final _turned = <String, bool>{};
 
   @override
   Widget build(BuildContext context) {
@@ -146,38 +147,59 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
     ];
   }
 
-  /// What the character is after: what they set themselves, what is on offer, and the story's
-  /// threads still running (N1), with the ones that ended folded away under them.
+  /// What the character is after (N2, N1): the thread they follow, their own goals, the ones
+  /// on the side, what is on offer and the story's threads still running. The goals on the
+  /// side, the goals that are over and the threads that ended wait folded away.
   List<Widget> _objectives(MemoryView view) {
     final l10n = context.l10n;
-    final open = view.openThreads.toList();
-    final closed = view.closedThreads.toList();
-    final groups = <(String, List<Widget>)>[
-      if (view.goals.isNotEmpty)
-        (l10n.memoryGoals, [for (final goal in view.goals) _GoalEntry(goal: goal)]),
-      if (view.leads.isNotEmpty)
-        (l10n.memoryLeads, [for (final lead in view.leads) _LeadEntry(lead: lead)]),
-      if (open.isNotEmpty)
-        (l10n.memoryThreads, [for (final thread in open) _ThreadEntry(thread: thread)]),
-    ];
-    return [
-      for (final (i, (label, entries)) in groups.indexed) ...[
-        _Gutter(child: RecordGroupLabel(label, first: i == 0)),
-        for (final entry in entries) _Gutter(child: entry),
-      ],
-      if (closed.isNotEmpty) ...[
+    final followed = view.goalsOf(GoalKind.followed);
+    final own = view.goalsOf(GoalKind.own);
+    final rows = <Widget>[];
+
+    void group(String label, List<Widget> entries) {
+      if (entries.isEmpty) return;
+      rows.add(_Gutter(child: RecordGroupLabel(label, first: rows.isEmpty)));
+      rows.addAll([for (final entry in entries) _Gutter(child: entry)]);
+    }
+
+    void fold(String name, String label, List<Widget> entries, {bool startsOpen = false}) {
+      if (entries.isEmpty) return;
+      final open = _turned[name] ?? startsOpen;
+      rows.add(
         _Gutter(
           child: _Fold(
-            label: l10n.memoryClosed,
-            count: closed.length,
-            open: _closedShown,
-            onTap: () => setState(() => _closedShown = !_closedShown),
+            name: name,
+            label: label,
+            count: entries.length,
+            open: open,
+            onTap: () => setState(() => _turned[name] = !open),
           ),
         ),
-        if (_closedShown)
-          for (final thread in closed) _Gutter(child: _ThreadEntry(thread: thread)),
-      ],
-    ];
+      );
+      if (open) rows.addAll([for (final entry in entries) _Gutter(child: entry)]);
+    }
+
+    group(l10n.memoryFollowed, [for (final goal in followed) _GoalEntry(goal: goal)]);
+    fold('own', l10n.memoryOwn, [for (final goal in own) _GoalEntry(goal: goal)], startsOpen: true);
+    fold(
+      'side',
+      l10n.memorySide,
+      [for (final goal in view.goalsOf(GoalKind.side)) _GoalEntry(goal: goal)],
+      // Open when they are all the character is after.
+      startsOpen: followed.isEmpty && own.isEmpty,
+    );
+    group(l10n.memoryLeads, [for (final lead in view.leads) _LeadEntry(lead: lead)]);
+    group(l10n.memoryThreads, [
+      for (final thread in view.openThreads) _ThreadEntry(thread: thread),
+    ]);
+    // The server sends the goals that are over in the order they closed. The latest leads here.
+    fold('done', l10n.memoryDone, [
+      for (final goal in view.goalsDone.reversed) _GoalDoneEntry(goal: goal),
+    ]);
+    fold('closed', l10n.memoryClosed, [
+      for (final thread in view.closedThreads) _ThreadEntry(thread: thread),
+    ]);
+    return rows;
   }
 }
 
@@ -338,8 +360,16 @@ class _Note extends StatelessWidget {
 /// A header that folds what is under it away: its name, how many it holds, and which way it
 /// is turned.
 class _Fold extends StatelessWidget {
-  const _Fold({required this.label, required this.count, required this.open, required this.onTap});
+  const _Fold({
+    required this.name,
+    required this.label,
+    required this.count,
+    required this.open,
+    required this.onTap,
+  });
 
+  /// What it folds, for a test to find it by: `memory.closed`.
+  final String name;
   final String label;
   final int count;
   final bool open;
@@ -355,7 +385,7 @@ class _Fold extends StatelessWidget {
         button: true,
         expanded: open,
         child: InkWell(
-          key: const ValueKey('memory.closed'),
+          key: ValueKey('memory.$name'),
           onTap: onTap,
           borderRadius: BorderRadius.circular(Radii.md),
           child: ConstrainedBox(
@@ -387,15 +417,48 @@ class _Fold extends StatelessWidget {
   }
 }
 
-/// Something the character means to do (N2).
+/// Something the character means to do (N2): where it stands as far as they know, and where
+/// it came from. The thread they follow is the one lit.
 class _GoalEntry extends StatelessWidget {
   const _GoalEntry({required this.goal});
 
   final MemoryGoal goal;
 
   @override
-  Widget build(BuildContext context) =>
-      RecordEntry(icon: Icons.flag_outlined, lit: true, title: goal.text);
+  Widget build(BuildContext context) => RecordEntry(
+    icon: Icons.flag_outlined,
+    lit: goal.kind == GoalKind.followed,
+    title: goal.text,
+    children: [
+      if (goal.progress case final progress?) RecordLine(progress),
+      if (goal.originLabel case final origin?) _Note(origin),
+    ],
+  );
+}
+
+/// A goal that is over (N2): how it ended, and the day it did.
+class _GoalDoneEntry extends StatelessWidget {
+  const _GoalDoneEntry({required this.goal});
+
+  final MemoryGoalDone goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = context.lucid;
+    final (icon, label, color) = switch (goal.how) {
+      GoalEnd.achieved => (Icons.check_rounded, l10n.goalAchieved, colors.success),
+      GoalEnd.failed => (Icons.close_rounded, l10n.threadFailed, colors.danger),
+      GoalEnd.abandoned => (Icons.remove_rounded, l10n.threadAbandoned, null),
+    };
+    return RecordEntry(
+      icon: icon,
+      title: goal.text,
+      titleStyle: Theme.of(context).textTheme.titleMedium!.copyWith(color: colors.textMuted),
+      trailing: RecordKind(label, color: color),
+      children: [if (goal.whenLabel case final day?) _Note(day)],
+    );
+  }
 }
 
 /// Something on offer (W13), and until when where it runs out.

@@ -317,6 +317,17 @@ class GoalOver(EngineModel):
     )
 
 
+class GoalMoved(EngineModel):
+    """N2, C6. One of the player character's goals that this scene moved forward, and where it
+    stands now as far as they know. The engine keeps the sentence beside the goal; it never
+    rewrites the goal."""
+
+    goal_id: str
+    progress: str = Field(
+        description="Where it stands now, as the character knows it, in one sentence."
+    )
+
+
 class RuleChange(EngineModel):
     """G7. Engine only: an open rule changed by a discovery, for everyone. Fixed rules never
     change."""
@@ -368,6 +379,7 @@ class StateDelta(EngineModel):
     items: list[ItemChange] = Field(default_factory=list)
     leads: list[NewLead] = Field(default_factory=list)
     goals_over: list[GoalOver] = Field(default_factory=list)
+    goals_moved: list[GoalMoved] = Field(default_factory=list)
     rule_changes: list[RuleChange] = Field(default_factory=list, description="Engine only (G7).")
     time_effects: list[ActiveTimeEffect] = Field(
         default_factory=list,

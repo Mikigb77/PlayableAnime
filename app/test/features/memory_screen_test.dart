@@ -58,16 +58,17 @@ void main() {
     expect(find.text('Shen Yu'), findsOneWidget);
     expect(find.text('Carries a sealed scroll that speaks.'), findsOneWidget);
 
-    // What they are after leads: their own goals, what is on offer and until when, and the
-    // story's threads still running.
+    // What they are after leads: the thread they follow, their own goals, what is on offer
+    // and until when, and the story's threads still running.
     expect(find.text(l10n.memoryObjectives.toUpperCase()), findsOneWidget);
-    expect(find.text(l10n.memoryGoals.toUpperCase()), findsOneWidget);
+    expect(find.text(l10n.memoryFollowed.toUpperCase()), findsOneWidget);
+    expect(find.text('Find out who is stealing from the pill hall'), findsOneWidget);
     expect(find.text('Find out who cut your meridians'), findsOneWidget);
     expect(find.text(l10n.memoryLeads.toUpperCase()), findsOneWidget);
     expect(find.text('Ends in 2 hours'), findsOneWidget);
     expect(find.text(l10n.memoryThreads.toUpperCase()), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text(l10n.memoryGoals.toUpperCase())).dy,
+      tester.getTopLeft(find.text(l10n.memoryFollowed.toUpperCase())).dy,
       lessThan(tester.getTopLeft(find.text(l10n.memoryThreads.toUpperCase())).dy),
     );
 
@@ -93,6 +94,89 @@ void main() {
     expect(find.text('Day 1, dawn'), findsOneWidget);
     expect(find.text('No one saw, as far as you know'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('goals show by where they stand: followed, their own, on the side, done', (
+    tester,
+  ) async {
+    await openMemory(tester, AppHarness());
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    Finder fold(String name) => find.byKey(ValueKey('memory.$name'));
+    Finder within(String entry, String text) =>
+        find.descendant(of: find.widgetWithText(RecordEntry, entry), matching: find.text(text));
+
+    // The thread they follow leads, lit, with where it stands and where it came from.
+    const followed = 'Find out who is stealing from the pill hall';
+    expect(top(followed), lessThan(top('Find out who cut your meridians')));
+    expect(
+      within(followed, 'It happens at night, and the east gate guard looks away.'),
+      findsOneWidget,
+    );
+    expect(within(followed, 'Asked of you by Master Hu, day 3'), findsOneWidget);
+    RecordGlyph glyph(String entry) => tester.widget(
+      find.descendant(
+        of: find.widgetWithText(RecordEntry, entry),
+        matching: find.byType(RecordGlyph),
+      ),
+    );
+    expect(glyph(followed).lit, isTrue);
+    expect(glyph('Find out who cut your meridians').lit, isFalse);
+
+    // Their own are open under their fold, with how many.
+    expect(find.descendant(of: fold('own'), matching: find.text(l10n.memoryOwn)), findsOneWidget);
+    expect(find.descendant(of: fold('own'), matching: find.text('1')), findsOneWidget);
+    expect(within('Find out who cut your meridians', 'Yours from the start'), findsOneWidget);
+
+    // The ones on the side and the ones that are over wait until asked for.
+    expect(find.descendant(of: fold('side'), matching: find.text(l10n.memorySide)), findsOneWidget);
+    expect(find.text('Bring Old Gu his moon-root'), findsNothing);
+    await tester.tap(fold('side'));
+    await settle(tester);
+    expect(within('Bring Old Gu his moon-root', 'Asked of you by Old Gu, day 2'), findsOneWidget);
+
+    expect(find.descendant(of: fold('done'), matching: find.text('2')), findsOneWidget);
+    expect(find.text('Pass the outer disciple test'), findsNothing);
+    await tester.tap(fold('done'));
+    await settle(tester);
+    // The latest to close leads, each with how it ended and the day.
+    expect(top('Win the outer court ranking'), lessThan(top('Pass the outer disciple test')));
+    expect(within('Pass the outer disciple test', l10n.goalAchieved.toUpperCase()), findsOneWidget);
+    expect(within('Pass the outer disciple test', 'Day 2'), findsOneWidget);
+    expect(within('Win the outer court ranking', l10n.threadFailed.toUpperCase()), findsOneWidget);
+
+    // Their own fold shuts too.
+    await tester.tap(fold('own'));
+    await settle(tester);
+    expect(find.text('Find out who cut your meridians'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('goals from a server before kinds show as their own, open', (tester) async {
+    await show(tester, const {
+      'goals': [
+        {'id': 'g1', 'text': 'Get home'},
+      ],
+    });
+    expect(find.text(l10n.memoryOwn), findsOneWidget);
+    expect(find.text('Get home'), findsOneWidget);
+    expect(find.text(l10n.memoryFollowed.toUpperCase()), findsNothing);
+  });
+
+  testWidgets('the goals on the side show when they are all the character is after', (
+    tester,
+  ) async {
+    await show(tester, const {
+      'goals': [
+        {
+          'id': 'g1',
+          'text': 'Carry the parcel',
+          'kind': 'side',
+          'origin_label': 'A lead you took up',
+        },
+      ],
+    });
+    expect(find.text('Carry the parcel'), findsOneWidget);
+    expect(find.text('A lead you took up'), findsOneWidget);
   });
 
   testWidgets('the threads that ended stay folded away until asked for', (tester) async {
@@ -150,8 +234,12 @@ void main() {
 
     // Alone, a group shows everyone from the start.
     final people = find.widgetWithText(ChoiceChip, '${l10n.memoryPeople} 6');
+    // The chips scroll sideways, so the one wanted is brought into view.
+    await tester.ensureVisible(people);
+    await tester.pump();
     await tester.tap(people);
     await settle(tester);
+    expect(tester.widget<ChoiceChip>(people).selected, isTrue);
     expect(find.byKey(const ValueKey('memory.more.people')), findsNothing);
   });
 
@@ -457,10 +545,50 @@ void main() {
       // What they are after holds their goals, the leads and the story's threads.
       expect(view.sections, [MemorySection.objectives, MemorySection.people]);
       expect(view.count(MemorySection.objectives), 3);
+      expect(view.goalsDone, isEmpty);
       expect(view.leads.single.expiresLabel, 'Ends in 2 hours');
       expect(view.closedThreads.single.status, ThreadStatus.resolvedWithoutPlayer);
       // A state this app doesn't know is still a thread that runs.
       expect(view.openThreads.single.status, ThreadStatus.open);
+    });
+
+    test('reads where a goal shows, where it came from and how one that is over ended', () {
+      final view = MemoryView.fromJson(const {
+        'goals': [
+          {
+            'id': 'g2',
+            'text': 'Who robs the till',
+            'kind': 'followed',
+            'origin_label': 'Asked of you by Carmine, day 3',
+            'progress': 'It happens at night.',
+          },
+          {'id': 'g1', 'text': 'Leave Naples', 'kind': 'own', 'origin_label': ' ', 'progress': ''},
+          {'id': 'g3', 'text': 'The old ledger', 'kind': 'side'},
+          {'id': 'g4', 'text': 'A kind from a later server', 'kind': 'sworn'},
+        ],
+        'goals_done': [
+          {'id': 'g5', 'text': 'Save Rosa', 'how': 'achieved', 'when_label': 'Day 2'},
+          {'id': 'g6', 'text': 'Keep the bar', 'how': 'failed'},
+          {'id': 'g7', 'text': 'Find the priest', 'how': 'something_new'},
+        ],
+      });
+      expect(
+        [for (final g in view.goals) g.kind],
+        [GoalKind.followed, GoalKind.own, GoalKind.side, GoalKind.own],
+      );
+      final followed = view.goalsOf(GoalKind.followed).single;
+      expect(followed.originLabel, 'Asked of you by Carmine, day 3');
+      expect(followed.progress, 'It happens at night.');
+      expect(view.goals[1].originLabel, isNull);
+      expect(view.goals[1].progress, isNull);
+      expect(
+        [for (final g in view.goalsDone) g.how],
+        [GoalEnd.achieved, GoalEnd.failed, GoalEnd.abandoned],
+      );
+      expect(view.goalsDone.first.whenLabel, 'Day 2');
+      expect(view.goalsDone.last.whenLabel, isNull);
+      // The goals that are over count among what the character is after.
+      expect(view.count(MemorySection.objectives), 7);
     });
 
     test('says what the character knows of each rumor, unconfirmed from an older server', () {

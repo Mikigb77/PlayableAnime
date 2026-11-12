@@ -1009,6 +1009,32 @@ def test_a_scene_closes_the_goals_it_is_over_for_but_never_an_opening(fake, make
     assert refused.count("the player didn't act this turn") == 2
 
 
+def test_a_scene_notes_how_a_goal_stands_and_the_next_scene_is_told(fake, make_client):
+    """N2, C6: where a goal stands is kept beside it, never in its words, and the models of the
+    next scene read it with the goal."""
+    moved = [{"goal_id": "goal-2", "progress": "Zhao trains alone behind the kitchens at dusk."}]
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(
+        Node.NARRATOR, Reply(json=SCENE | {"update": SCENE["update"] | {"goals_moved": moved}})
+    )
+    _, result = play(make_client(), turn_input(two_goals()))
+
+    goal = result.state.goals["goal-2"]
+    assert (goal.text, goal.progress) == ("Make Zhao pay", moved[0]["progress"])
+    assert goal.moved_turn == result.state.turn
+    assert "rejected" not in [i.code for i in result.issues]
+
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    play(make_client(), turn_input(result.state))
+    for node in (Node.INTERPRET, Node.NARRATOR):
+        brief = fake.calls(node)[-1].prompt.messages[-1].text
+        assert json.loads(section(brief, "GOALS AND THREADS"))["goals"] == [
+            {"id": "goal-1", "text": "Pass the outer-sect exam"},
+            {"id": "goal-2", "text": "Make Zhao pay", "progress": moved[0]["progress"]},
+        ]
+
+
 def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines):
     """T6: story text only at DEBUG. An issue's subject can be the player's own words."""
     fake.script(
