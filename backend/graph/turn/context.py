@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from engine import possessions
+from engine import encounters, possessions
 from engine import talent as talent_mod
 from engine.base import DAY
 from engine.context import Language, TurnContext
@@ -971,6 +971,12 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
             view["trip"] = _trip_view(step, state)
         steps.append(view)
     outcome: dict[str, Any] = {"steps": steps}
+    encounter, facing = state.scene.encounter, encounters.facing(state)
+    if encounter is not None and facing:
+        # W10: the fight, chase or talks still on as the scene ends, which the telling never ends.
+        outcome["still_on"] = {"kind": encounter.kind.value, "with": facing}
+        if encounter.bout is not None:
+            outcome["still_on"]["bout"] = encounter.bout.terms.value
     if resolution.stopped_at_step is not None:
         outcome["stopped_at_step"] = resolution.stopped_at_step
         outcome["stop_reason"] = resolution.stop_reason.value if resolution.stop_reason else None

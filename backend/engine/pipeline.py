@@ -426,6 +426,19 @@ def settle_witnesses(
     return settled, carriers.settle(settled), kept
 
 
+def settle_encounter(played: WorldState, state: WorldState) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied to `state` (step 6; `played` is the state the
+    steps left, before it). Code ends an encounter and the telling never does (W10,
+    `engine.encounters.keep`): whoever is still in the scene's fight, chase or talks is still in
+    the scene, whatever its end listed. Returns the state, a new one when someone was put back,
+    and who was, for the turn's log."""
+    if all(i in state.scene.present_ids for i in encounters.facing(state)):
+        return state, []
+    settled = state.model_copy(deep=True)
+    kept = encounters.keep(settled, played)
+    return (settled, kept) if kept else (state, [])
+
+
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:
     """After the narrator's update is applied (step 6): the look version a planned portrait or
     place is drawn at, with the director's memory to match, so a scene that changed the look it
