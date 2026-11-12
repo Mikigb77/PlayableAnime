@@ -316,19 +316,47 @@ def faithful(english: str, said: str) -> bool:
     return all(name.casefold() in heard for name in _names(english))
 
 
+# Where a preposition meets the article after it, the language runs them together, and the
+# small model sometimes leaves them apart ("el aguante de el trol"). Only the article in small
+# letters: a name's own capital article stays apart ("a El Paso").
+_CONTRACTIONS: Mapping[Language, tuple[tuple[re.Pattern[str], str], ...]] = {
+    Language.ES: (
+        (re.compile(r"\b([Dd])e el\b"), r"\1el"),
+        (re.compile(r"\b([Aa]) el\b"), r"\1l"),
+    ),
+    Language.CA: (
+        (re.compile(r"\b([Dd])e el(s?)\b"), r"\1el\2"),
+        (re.compile(r"\b([Aa]) el(s?)\b"), r"\1l\2"),
+        (re.compile(r"\b([Pp])er el(s?)\b"), r"\1el\2"),
+    ),
+}
+
+
+def contracted(said: str, language: Language, english: str = "") -> str:
+    """`said` with each article run into the preposition before it, as the language writes
+    them: "del trol" and "al pozo" in Spanish, and in Catalan "dels turons" and "pel camí"
+    too. What the engine's own line already holds apart is the story's wording, such as a
+    name spelled that way, and stays as it is."""
+    for apart, together in _CONTRACTIONS.get(language, ()):
+        if not apart.search(english):
+            said = apart.sub(together, said)
+    return said
+
+
 def _needs_words(text: str) -> bool:
     return any(char.isalpha() for char in text)
 
 
 async def say(llm: ModelClient, texts: list[str], language: Language) -> dict[str, str]:
-    """The model's wording of each of `texts` that came back faithful, by its English line."""
+    """The model's wording of each of `texts` that came back faithful, by its English line,
+    with the contractions the language requires (`contracted`)."""
     answer = await llm.structured(Node.WORDING, wording_prompt(texts, language), Said)
     said: dict[str, str] = {}
     for line in answer.lines:
         if not 1 <= line.n <= len(texts):
             continue
         english = texts[line.n - 1]
-        worded = " ".join(line.text.split())
+        worded = contracted(" ".join(line.text.split()), language, english)
         if english not in said and faithful(english, worded):
             said[english] = worded
             _remember(language, english, worded)

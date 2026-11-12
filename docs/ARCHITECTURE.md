@@ -1111,6 +1111,11 @@ Catalan story:
   lines speak alike. Nothing on record says whether someone is a man or a woman, so the prompt
   asks for wording that fits either and the health words are given that way ("tienes heridas",
   "tens ferides", never "estás herido"). It answers `Said`, each line under its number.
+  Code first runs each article into the preposition before it where the language writes them
+  together and the model left them apart (`saying.contracted`): "de el trol" is "del trol" and
+  "a el pozo" "al pozo", and in Catalan "dels", "als", "pel" and "pels" too. Only the article in
+  small letters, so a name's own stays apart ("a El Paso"), and nothing the engine's own line
+  already holds apart, which is the story's wording.
   `saying.faithful` keeps a said line only when it holds the same numbers, in figures, and
   every word of the English line that is capitalized where no sentence or clause starts (its
   names); it drops a blank one, one that runs on, and the English line handed back as it stood
