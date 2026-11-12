@@ -26,7 +26,7 @@ from engine.contracts import (
     TheoryAbout,
 )
 from engine.director import rules
-from engine.resolve.powers import sensing
+from engine.resolve.powers import growth, sensing
 from engine.resolve.powers import time_stop as stop
 from engine.resolve.powers.growth import GainHow, GainKind, GainRead, read_gain
 from engine.resolve.powers.theories import NEW_POWER, NOTHING_BEHIND_IT, TOO_BIG
@@ -37,6 +37,7 @@ from engine.state import (
     Fact,
     Gain,
     GiftStrength,
+    Health,
     HitMode,
     Item,
     LadderPosition,
@@ -44,6 +45,7 @@ from engine.state import (
     PlaceStatus,
     Power,
     PowerAxes,
+    RankStage,
     RulingSource,
     SkillLevel,
     StepResult,
@@ -71,11 +73,13 @@ from tests.engine.resolve.power_worlds import (
 from tests.engine.resolve.worlds import (
     add,
     burn_the_hall,
+    disciple,
     facts,
     power,
     sect,
     shielded_mage,
     step,
+    strike,
     with_troll,
 )
 
@@ -376,13 +380,16 @@ def test_a_gain_reads_back_as_what_it_was_and_how_it_was_made():
     climbed = next(
         played
         for seed in SEEDS
-        if (played := play(sect(), Intent(steps=[seclusion()]), seed))
+        if (played := play(at_peak(), Intent(steps=[seclusion()]), seed))
         .state.characters["lin"]
         .sheet.ladders[0]
         .rung
         == 1
     )
     assert last(climbed) == GainRead(GainKind.BREAKTHROUGH)
+
+    filled = play(sect(), Intent(steps=[cultivate(90)]))
+    assert last(filled) == GainRead(GainKind.STAGE, now=RankStage.MIDDLE, how=GainHow.SELF)
 
     # Words nobody writes are nobody's to read.
     assert read_gain(Gain(what="luck", change="more of it", source="a wish", reason="")) is None
@@ -423,40 +430,237 @@ def test_a_dead_master_teaches_nothing():
     assert resolve(state, Intent(steps=[lesson])).steps[0].outcome_class is OutcomeClass.RULED_OUT
 
 
-# --- Breakthrough (T17, G19) ---------------------------------------------------------------------
+# --- Ranks and breakthroughs (T17, G19) -----------------------------------------------------------
+
+RANK = "ladder:realms"
+NEXT = "Foundation Establishment"
 
 
-def seclusion():
-    return train(GrowthKind.BREAKTHROUGH, "Foundation Establishment", 30, ladder_id="realms")
+def cultivate(hours: float = 30, **kw):
+    """Work aimed at the rank: cultivating toward the next realm."""
+    return train(GrowthKind.BREAKTHROUGH, NEXT, hours, ladder_id="realms", **kw)
 
 
-def test_a_missing_need_is_a_bottleneck():
+def seclusion(hours: float = 30, **kw):
+    """Setting out to break through now."""
+    return cultivate(hours, attempt=True, **kw)
+
+
+def at_peak(state=None):
+    """Lin with his rank full: the climb is his to try."""
+    state = state or sect()
+    state.characters["lin"].sheet.ladders = [
+        LadderPosition(ladder_id="realms", rung=0, stage="peak")
+    ]
+    return state
+
+
+def rank(state):
+    lin = state.characters["lin"]
+    return growth.rank_of(lin, state.bible.ladder("realms"))
+
+
+def stage_gains(state):
+    lin = state.characters["lin"]
+    return [
+        (gain.what, read.now, read.how)
+        for gain in lin.sheet.growth
+        if (read := read_gain(gain)) is not None and read.kind is GainKind.STAGE
+    ]
+
+
+def test_a_rung_takes_twice_the_effort_of_the_one_below_it():
+    hours = [growth.rung_need_s(index) / HOUR for index in range(5)]
+
+    assert hours == [50, 100, 200, 400, 800]
+
+
+def test_training_aimed_at_the_rank_fills_it_and_each_stage_is_a_gain():
+    """A hundred hours of effort from Qi Condensation, twelve in full a stretch and the rest
+    at a third: 38 hours for each ninety spent."""
+    first = play(sect(), Intent(steps=[cultivate(90)]))
+
+    settled = first.resolution.steps[0]
+    assert settled.outcome_class is OutcomeClass.CERTAIN and settled.roll is None
+    assert settled.reason == "Your Qi Condensation has reached its middle stage."
+    assert rank(first.state).effort_s == 38 * HOUR
+    assert rank(first.state).stage is RankStage.MIDDLE
+    assert stage_gains(first.state) == [("Qi Condensation", RankStage.MIDDLE, GainHow.SELF)]
+
+    second = play(first.state, Intent(steps=[cultivate(90)]), turn=4)
+    assert rank(second.state).stage is RankStage.LATE
+
+    third = play(second.state, Intent(steps=[cultivate(90)]), turn=5)
+    assert third.resolution.steps[0].reason == (
+        "Your Qi Condensation is at its peak: a breakthrough to Foundation Establishment can be"
+        " tried."
+    )
+    full = rank(third.state)
+    assert full.full and full.filled == 1.0 and full.effort_s == 100 * HOUR
+    assert [now for _, now, _ in stage_gains(third.state)] == [
+        RankStage.MIDDLE,
+        RankStage.LATE,
+        RankStage.PEAK,
+    ]
+    # He still stands where he stood: filling a rank climbs nothing.
+    assert third.state.characters["lin"].sheet.ladders[0].rung == 0
+
+    # At its peak nothing fills it further, and working on it tries nothing.
+    more = play(third.state, Intent(steps=[cultivate(90)]), turn=6)
+    idle = more.resolution.steps[0]
+    assert idle.roll is None and idle.effects.empty
+    assert idle.reason == (
+        "Your Qi Condensation is at its peak: nothing fills it further until you try to break"
+        " through to Foundation Establishment."
+    )
+
+
+def test_a_stretch_that_rises_no_stage_says_where_the_rank_stands():
+    settled = resolve(sect(), Intent(steps=[cultivate(10)])).steps[0]
+
+    assert settled.reason == (
+        "You make progress toward Foundation Establishment: your Qi Condensation is in its"
+        " early stage."
+    )
+
+
+def test_a_master_doubles_the_pace_of_a_rank():
+    state = with_master(sect())
+    guided = cultivate(12, teacher=Teacher.MASTER, teacher_id="elder-mo")
+
+    played = play(state, Intent(steps=[guided]))
+
+    assert rank(played.state).effort_s == 24 * HOUR
+
+
+def test_an_attempt_before_the_peak_is_training_toward_the_rung():
+    played = play(sect(), Intent(steps=[seclusion(12)]))
+
+    settled = played.resolution.steps[0]
+    assert settled.outcome_class is OutcomeClass.CERTAIN and settled.roll is None
+    assert settled.reason == (
+        "Your Qi Condensation is not at its peak yet, so this is training toward Foundation"
+        " Establishment. You make progress toward Foundation Establishment: your Qi Condensation"
+        " is in its early stage."
+    )
+    assert rank(played.state).effort_s == 12 * HOUR
+    assert played.state.characters["lin"].sheet.ladders[0].rung == 0
+
+
+def test_a_stage_the_story_started_them_at_is_where_the_rank_starts():
     state = sect()
-    state.bible.ladders[0].rungs[1].needs = ["a Foundation Pill"]
+    lin = state.characters["lin"].sheet
+    lin.ladders = [LadderPosition(ladder_id="realms", rung=0, stage="late stage")]
 
-    settled = resolve(state, Intent(steps=[seclusion()])).steps[0]
-    assert settled.outcome_class is OutcomeClass.RULED_OUT and "bottleneck" in settled.reason
+    assert rank(state).stage is RankStage.LATE and rank(state).effort_s == 200 * HOUR / 3
+
+    # A world's own counting from before ranks filled names no stage.
+    lin.ladders = [LadderPosition(ladder_id="realms", rung=0, stage="third stage")]
+    assert rank(state).stage is RankStage.EARLY and rank(state).effort_s == 0
 
 
-def test_breakthrough_can_fail_or_wound_and_its_length_varies_with_the_roll():
+def test_stepping_onto_a_ladder_from_below_it_is_filled_by_training_and_then_thrown_for():
     state = sect()
-    state.bible.ladders[0].rungs[1].needs = ["a Foundation Pill"]
-    give_pill = Item(id="pill", name="Foundation Pill")
-    state.characters["lin"].sheet.resources.items.append(give_pill)
+    state.characters["lin"].sheet.ladders = []
+    first = train(GrowthKind.BREAKTHROUGH, "Qi Condensation", 126, ladder_id="realms", attempt=True)
+
+    trained = play(state, Intent(steps=[first]))
+
+    # 12 hours in full and 114 at a third: the 50 it takes.
+    below = rank(trained.state)
+    assert below.rung.name == "Qi Condensation" and below.full
+    assert stage_gains(trained.state) == []  # no rung of theirs to name a stage of
+    assert trained.resolution.steps[0].reason.endswith(
+        "Your groundwork for Qi Condensation is at its peak: a breakthrough to Qi Condensation"
+        " can be tried."
+    )
+    thrown = resolve(trained.state, Intent(steps=[first]), turn=4).steps[0]
+    assert thrown.roll is not None and thrown.roll.throw.hand == 3
+
+
+def test_a_breakthrough_at_the_peak_can_pass_fall_short_or_miss_and_its_length_varies():
+    state = at_peak()
 
     results, lengths = Counter(), set()
     for seed in SEEDS:
         settled = resolve(state, Intent(steps=[seclusion()]), seed).steps[0]
         assert settled.outcome_class is OutcomeClass.CONTESTED and settled.roll is not None
+        assert (settled.roll.throw.hand, settled.roll.throw.number) == (3, 27)
         results[settled.result] += 1
         lengths.add(settled.duration_s)
         (change,) = settled.effects.characters
+        (kept,) = change.practice
+        # A miss costs time, never blood, unless the way they went about it was risky.
+        assert change.condition is None
         if settled.result is StepResult.SUCCESS:
-            assert change.ladders[0].rung == 1
+            assert change.ladders[0].rung == 1 and kept.effort_s == 0
+        elif settled.result is StepResult.PARTIAL:
+            assert kept.effort_s == 90 * HOUR and "stalls just short" in settled.reason
+            assert [(p.rung, p.stage) for p in change.ladders] == [(0, "")]
         else:
-            assert change.condition is not None and not change.ladders
+            assert kept.effort_s == 75 * HOUR and settled.reason.endswith(
+                "The breakthrough to Foundation Establishment fails. Your Qi Condensation falls"
+                " back from its peak, and it takes more work before another try."
+            )
     assert set(results) == set(StepResult)
     assert max(lengths) > 10 * min(lengths)
+
+
+def test_a_miss_leaves_the_rank_in_its_late_stage_and_work_brings_it_back():
+    state = at_peak()
+    seed = next(
+        seed
+        for seed in SEEDS
+        if resolve(state, Intent(steps=[seclusion()]), seed).steps[0].result is StepResult.FAILURE
+    )
+
+    missed = play(state, Intent(steps=[seclusion()]), seed)
+
+    after = rank(missed.state)
+    assert (after.stage, after.effort_s) == (RankStage.LATE, 75 * HOUR)
+    assert missed.state.characters["lin"].sheet.condition.health is Health.UNHURT
+    # Trying again at once is training: the rank has to be full again first.
+    again = resolve(missed.state, Intent(steps=[seclusion(6)]), turn=4).steps[0]
+    assert again.roll is None and "not at its peak yet" in again.reason
+
+
+def test_a_risky_way_hurts_when_it_falls_short_and_wounds_on_a_miss():
+    state = at_peak()
+
+    harm = {}
+    for seed in SEEDS:
+        settled = resolve(state, Intent(steps=[seclusion(risky=True)]), seed).steps[0]
+        (change,) = settled.effects.characters
+        if settled.result is not StepResult.SUCCESS:
+            harm[settled.result] = change.condition.health
+    assert harm == {StepResult.PARTIAL: Health.HURT, StepResult.FAILURE: Health.WOUNDED}
+
+
+def test_nothing_a_rung_lists_is_required_and_what_they_have_adds_a_green_die():
+    """Miki, 2026-11-10: "Don't necessarily ... fix it on, you need to actually have a master.
+    Maybe the character can learn it on their own"."""
+    state = at_peak()
+    state.bible.ladders[0].rungs[1].needs = ["a Foundation Pill.", "a master's guidance"]
+
+    alone = resolve(state, Intent(steps=[seclusion()])).steps[0]
+    assert alone.outcome_class is OutcomeClass.CONTESTED and alone.roll.throw.greens == []
+
+    state.characters["lin"].sheet.resources.items.append(Item(id="pill", name="Foundation Pill"))
+    with_pill = resolve(state, Intent(steps=[seclusion()])).steps[0]
+    assert with_pill.roll.throw.greens == ["a Foundation Pill"]
+    assert "and a green die for a Foundation Pill" in with_pill.reason
+
+    # A master beside them is the master's teaching, counted once.
+    guided = seclusion(teacher=Teacher.MASTER, teacher_id="elder-mo")
+    both = resolve(with_master(state), Intent(steps=[guided])).steps[0]
+    assert both.roll.throw.greens == ["a master's teaching", "a Foundation Pill"]
+
+
+def test_a_master_named_who_is_not_there_teaches_nothing():
+    state = at_peak()
+    guided = seclusion(teacher=Teacher.MASTER)
+
+    assert resolve(state, Intent(steps=[guided])).steps[0].roll.throw.greens == []
 
 
 def test_the_world_interrupts_a_long_seclusion_when_something_needs_the_player():
@@ -464,7 +668,7 @@ def test_the_world_interrupts_a_long_seclusion_when_something_needs_the_player()
     from engine.state import PendingEvent
     from tests.engine.resolve.power_worlds import ctx, rng
 
-    state = sect()
+    state = at_peak()
     state.pending_events["visitor"] = PendingEvent(
         id="visitor",
         kind="director.visit",
@@ -472,18 +676,45 @@ def test_the_world_interrupts_a_long_seclusion_when_something_needs_the_player()
         due_s=HOUR,
         needs_player=True,
     )
-    long_one = train(
-        GrowthKind.BREAKTHROUGH, "Foundation Establishment", 24 * 20, ladder_id="realms"
-    )
-    resolution = resolve(state, Intent(steps=[long_one]), 3)
+    resolution = resolve(state, Intent(steps=[seclusion(24 * 20)]), 3)
     played = pipeline.play_out(state, resolution, ctx(), rng(3))
 
     assert played.interrupted_by is not None and played.resolution.steps[0].interrupted
+    # An attempt that was cut short is no attempt: he stands where he stood, his rank full.
     assert played.state.characters["lin"].sheet.ladders[0].rung == 0
+    assert rank(played.state).full
+
+
+def test_training_toward_a_rung_that_is_cut_short_keeps_the_time_it_ran():
+    from engine import pipeline
+    from engine.state import PendingEvent
+    from tests.engine.resolve.power_worlds import ctx, rng
+
+    state = sect()
+    state.characters["lin"].sheet.ladders = [
+        LadderPosition(ladder_id="realms", rung=0, stage="middle")
+    ]
+    before = rank(state).effort_s
+    state.pending_events["visitor"] = PendingEvent(
+        id="visitor",
+        kind="director.visit",
+        title="Zhao bangs on the door.",
+        due_s=81 * HOUR,
+        needs_player=True,
+    )
+    resolution = resolve(state, Intent(steps=[cultivate(24 * 20)]), 3)
+    played = pipeline.play_out(state, resolution, ctx(), rng(3))
+
+    assert played.resolution.steps[0].interrupted
+    # Eighty-one hours ran: twelve in full and sixty-nine at a third, on top of where he stood.
+    kept = rank(played.state)
+    assert kept.effort_s == pytest.approx(before + 35 * HOUR, abs=1)
+    assert kept.stage is RankStage.LATE
+    assert stage_gains(played.state) == [("Qi Condensation", RankStage.LATE, GainHow.PRACTICE)]
 
 
 def test_a_loud_breakthrough_is_a_public_deed():
-    state = sect()
+    state = at_peak()
     state.bible.ladders[0].rungs[1].loud = True
     for seed in SEEDS:
         settled = resolve(state, Intent(steps=[seclusion()]), seed).steps[0]
@@ -492,6 +723,80 @@ def test_a_loud_breakthrough_is_a_public_deed():
             assert deed.kind == "breakthrough" and deed.visibility is Visibility.PUBLIC
             return
     pytest.fail("no breakthrough succeeded")
+
+
+def test_a_rank_starts_to_fill_again_from_nothing_on_the_new_rung():
+    state = at_peak()
+    seed = next(
+        seed
+        for seed in SEEDS
+        if resolve(state, Intent(steps=[seclusion()]), seed).steps[0].result is StepResult.SUCCESS
+    )
+
+    climbed = play(state, Intent(steps=[seclusion()]), seed)
+
+    above = rank(climbed.state)
+    assert climbed.state.characters["lin"].sheet.ladders[0].rung == 1
+    assert (above.rung.name, above.effort_s, above.need_s) == ("Core Formation", 0, 200 * HOUR)
+
+
+# --- A rank fills in play (G19) ------------------------------------------------------------------
+
+
+def duel(state):
+    """Lin and a disciple of his own realm, who can answer him."""
+    return add(state, disciple("bai", "Bai"))
+
+
+def blow(**kw):
+    return strike("bai", **kw)
+
+
+def test_a_blow_their_own_throw_decided_counts_four_hours_toward_a_rank_of_might():
+    state = duel(sect())
+
+    played = play(state, Intent(steps=[blow()]))
+
+    assert played.resolution.steps[0].roll is not None
+    insight = played.resolution.steps[0].roll.throw.mark.value == "over_the_top"
+    assert rank(played.state).effort_s == (6 if insight else 4) * HOUR
+
+
+def test_a_turn_counts_once_for_a_rank_at_its_best_step():
+    state = duel(sect())
+    two = Intent(steps=[blow(), blow()])
+
+    for seed in SEEDS[:10]:
+        steps = resolve(state, two, seed).steps
+        marks = [s.roll.throw.mark.value == "over_the_top" for s in steps if s.roll is not None]
+        kept = [
+            p.effort_s
+            for s in steps
+            for c in s.effects.characters
+            for p in c.practice
+            if p.key == RANK
+        ]
+        # Whatever each step added, the turn ends at four hours, or six on an insight.
+        assert max(kept) == (6 if any(marks) else 4) * HOUR, seed
+
+
+def test_a_move_of_their_own_with_nothing_resisting_counts_two_hours():
+    state = sect()
+    still = step("hold the falling leaves still", uses=[power("time-stop")])
+
+    played = play(state, Intent(steps=[still]))
+
+    assert played.resolution.steps[0].roll is None
+    assert rank(played.state).effort_s == 2 * HOUR
+
+
+def test_talking_fills_no_rank_of_might_and_a_full_rank_takes_nothing_more():
+    chat = step("ask Zhao about the well", ActionKind.CONVERSATION, target_ids=["zhao"])
+    talked = play(sect(), Intent(steps=[chat]))
+    assert rank(talked.state).effort_s == 0
+
+    full = play(duel(at_peak()), Intent(steps=[blow()]))
+    assert all(not c.practice for s in full.resolution.steps for c in s.effects.characters)
 
 
 # --- Hidden strength (T17, G20) ------------------------------------------------------------------
@@ -748,26 +1053,6 @@ def test_a_theory_about_a_power_the_engine_cant_tell_apart_sets_nothing_in_stone
     named = vague.model_copy(update={"claim": "My spirit flame should melt steel."})
     (ruling,) = resolve(state, Intent(theories=[named])).rulings
     assert ruling.power_id == "flame" and ruling.holds
-
-
-def test_a_rung_that_needs_a_masters_guidance_needs_a_master_who_is_there():
-    state = sect()
-    state.bible.ladders[0].rungs[1].needs = ["a master's guidance"]
-    guided = train(
-        GrowthKind.BREAKTHROUGH,
-        "Foundation Establishment",
-        30,
-        ladder_id="realms",
-        teacher=Teacher.MASTER,
-    )
-    settled = resolve(state, Intent(steps=[guided])).steps[0]
-    assert settled.outcome_class is OutcomeClass.RULED_OUT and "bottleneck" in settled.reason
-
-    with_master(state)
-    named = guided.model_copy(
-        update={"training": guided.training.model_copy(update={"teacher_id": "elder-mo"})}
-    )
-    assert resolve(state, Intent(steps=[named])).steps[0].outcome_class is OutcomeClass.CONTESTED
 
 
 def test_training_cut_short_keeps_the_effort_and_the_next_stretch_finishes_it():

@@ -67,7 +67,7 @@ Every setting comes from an environment variable, then `backend/.env`, then the 
 | `LLM_PROVIDER` | `fake` | `vertex` or `fake`. Must be `vertex` on Cloud Run, or the API refuses to start (B6). |
 | `GCP_PROJECT`, `VERTEX_LOCATION` | `playable-anime`, `global` | Vertex AI, and the trace links in logs. |
 | `NARRATOR_MODEL` | `gemini-3.5-flash` | The narrator's model. Every graph node has its own `<NODE>_MODEL` and `<NODE>_THINKING`, with defaults in `graph/llm/config.py` (B6). |
-| `SECOND_READING_MODEL` | `gemini-3.5-flash` | Reads the player's words once more on the rare turn whose first reading would end a friendly bout as an attack (B8, W1). |
+| `SECOND_READING_MODEL` | `gemini-3.5-flash` | Reads the player's words once more on the rare turn whose first reading would end a friendly bout as an attack or try a breakthrough at the peak of a rank (B8, W1, G19). |
 | `GOOGLE_OAUTH_CLIENT_IDS` | none | Comma-separated OAuth client ids (web, Android, iOS) a Google ID token may be for. Empty turns Google sign-in off (`503 sign_in_unavailable`). Not secrets. |
 | `OWNER_EMAILS` | none | Comma-separated. A verified Google sign-in with one of these gets the owner role and the admin (K7). Set it to your own Google email locally; production gets it from the `OWNER_EMAILS` GitHub secret, so no address is in the repo. |
 | `MIN_SIGNUP_AGE` | `16` | The youngest age that can sign up, as the privacy policy says. Under 17 is Teen only (F8). |

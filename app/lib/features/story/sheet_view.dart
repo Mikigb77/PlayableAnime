@@ -88,7 +88,7 @@ class _ReserveMeter extends StatelessWidget {
 
 /// A rounded bar filled to [share].
 class _Bar extends StatelessWidget {
-  const _Bar({required this.share, required this.color, this.height = 4});
+  const _Bar({super.key, required this.share, required this.color, this.height = 4});
 
   final double share;
   final Color color;
@@ -118,8 +118,8 @@ class _Bar extends StatelessWidget {
 /// nobody has told them, and under it whoever they have seen stand above every rung they know
 /// of, so the ladder widens when the story reaches past it. Then the rungs over their own that
 /// they have heard of: dashed while only heard of, solid once confirmed, with room left open
-/// where rungs nobody named lie between. Then their own rung, lit, with its stage, and under it
-/// the rungs they climbed.
+/// where rungs nobody named lie between. Then their own rung, lit, with the stage of their rank
+/// and a bar of how full it is (G19), and under it the rungs they climbed.
 class SheetPathCard extends StatelessWidget {
   const SheetPathCard({super.key, required this.path});
 
@@ -147,6 +147,7 @@ class SheetPathCard extends StatelessWidget {
           look: i == 0 ? _Look.here : _Look.behind,
           name: rung.name.asHeading,
           stage: rung.stage.asHeading,
+          filled: i == 0 ? rung.filled : null,
           description: rung.description,
           note: rung.note,
         ),
@@ -204,6 +205,7 @@ class _Rung {
     required this.look,
     required this.name,
     this.stage = '',
+    this.filled,
     this.description = '',
     this.note = '',
     this.said = const [],
@@ -212,6 +214,9 @@ class _Rung {
   final _Look look;
   final String name;
   final String stage;
+
+  /// How full the rank on their own rung is, from 0 to 1 (G19).
+  final double? filled;
   final String description;
   final String note;
   final List<String> said;
@@ -288,6 +293,22 @@ class _RungRow extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: Space.xxs),
                         child: Text(rung.stage, style: theme.textTheme.bodyLarge),
+                      ),
+                    if (rung.filled case final filled?)
+                      // G19: the rank fills toward the next rung. The stage says it in words.
+                      Padding(
+                        padding: const EdgeInsets.only(top: Space.xs),
+                        child: ExcludeSemantics(
+                          child: FractionallySizedBox(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: 0.6,
+                            child: _Bar(
+                              key: const ValueKey('rank-filled'),
+                              share: filled,
+                              color: colors.accent,
+                            ),
+                          ),
+                        ),
                       ),
                     if (rung.description.isNotEmpty)
                       Padding(

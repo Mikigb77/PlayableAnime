@@ -295,6 +295,20 @@ class Training(EngineModel):
     effect: str = Field(default="", description="What a new technique does, in plain words.")
     power_id: str | None = Field(default=None, description="The power a new use is for.")
     ladder_id: str | None = Field(default=None, description="The ladder of a breakthrough.")
+    attempt: bool = Field(
+        default=False,
+        description=(
+            "Kind breakthrough only. True when the player's own words set out to break through"
+            " to the next rung now; false for work toward it."
+        ),
+    )
+    risky: bool = Field(
+        default=False,
+        description=(
+            "Kind breakthrough only. The way they go about it can hurt them: forcing it, a"
+            " forbidden or unstable aid, a trial that wounds."
+        ),
+    )
     teacher: Teacher = Teacher.SELF
     teacher_id: str | None = Field(
         default=None, description="The master's or rival's character id, or the manual's item id."

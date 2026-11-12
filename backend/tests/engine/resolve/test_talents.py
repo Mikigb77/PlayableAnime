@@ -21,11 +21,13 @@ from engine.contracts import (
 )
 from engine.state import (
     DieKind,
+    LadderPosition,
     Mastery,
     Skill,
     SkillLevel,
     StepResult,
     Talent,
+    TalentCover,
     TalentFit,
     TalentRuling,
     TalentStrength,
@@ -482,22 +484,86 @@ def test_one_of_a_kind_that_was_ruled_outside_takes_nothing_on_sight():
     assert "just by watching" not in play(state, Intent(steps=[watch])).resolution.steps[0].reason
 
 
-def test_a_climb_their_genius_covers_throws_a_green_die_and_a_weakness_adds_five():
-    climb = train(GrowthKind.BREAKTHROUGH, "Foundation Establishment", 30, ladder_id="realms")
-    gifted = talented(talent("roots", "Heavenly roots", GENIUS))
-    cursed = talented(talent("roots", "Crippled meridians", SLOW))
-    roots = case("roots", INSIDE, what="Foundation Establishment")
+def peaked(state: WorldState) -> WorldState:
+    """Their rank full, so the climb is theirs to try (G19)."""
+    state.player.sheet.ladders = [LadderPosition(ladder_id="realms", rung=0, stage="peak")]
+    return state
 
-    blessed = play(gifted, Intent(steps=[arguing(climb, roots)]))
-    hindered = play(cursed, Intent(steps=[arguing(climb, roots)]))
-    plain = play(talented(), Intent(steps=[climb]))
 
-    assert rulings(blessed.state)[0].key == "ladder:realms"
-    assert blessed.resolution.steps[0].roll.throw.greens == ["a gift for learning"]
-    assert plain.resolution.steps[0].roll.throw.greens == []
-    assert hindered.resolution.steps[0].roll.throw.number == (
-        plain.resolution.steps[0].roll.throw.number + 5
+def climb(hours: float = 30, **kw):
+    kw.setdefault("attempt", True)
+    return train(
+        GrowthKind.BREAKTHROUGH, "Foundation Establishment", hours, ladder_id="realms", **kw
     )
+
+
+ROOTS = case("roots", INSIDE, what="Foundation Establishment")
+
+
+def test_a_talent_that_covers_the_climb_adds_a_green_die_and_one_of_a_kind_two():
+    """Miki, 2026-11-12: "for the breakthrough ... we should take into account the talent of
+    the person", and "if you are, for example, one of a kind, maybe you can get two dices"."""
+    thrown = {}
+    for strength in (None, KNACK, GENIUS, UNIQUE, SLOW):
+        gifts = [talent("roots", "Heavenly roots", strength)] if strength else []
+        played = play(peaked(talented(*gifts)), Intent(steps=[arguing(climb(), ROOTS)]))
+        thrown[strength] = played.resolution.steps[0].roll.throw
+        if strength:
+            assert rulings(played.state)[0].key == "ladder:realms"
+
+    one, both = ["a talent for the climb"], ["a talent for the climb", "being one of a kind at it"]
+    assert [t.greens for t in thrown.values()] == [[], one, one, both, []]
+    # The number is the same for everyone: a weakness throws one die fewer.
+    assert {t.number for t in thrown.values()} == {27}
+    assert [t.hand for t in thrown.values()] == [3, 4, 4, 5, 2]
+    assert thrown[SLOW].hand_why == "A breakthrough against a weakness, 2 dice"
+
+
+def test_two_green_dice_are_the_most_so_a_master_adds_nothing_to_one_of_a_kind():
+    state = peaked(talented(talent("roots", "Heavenly roots", UNIQUE)))
+    state.characters["elder-mo"].location_id = state.player.location_id
+    guided = arguing(climb(teacher=Teacher.MASTER, teacher_id="elder-mo"), ROOTS)
+
+    thrown = play(state, Intent(steps=[guided])).resolution.steps[0].roll.throw
+
+    assert thrown.greens == ["a talent for the climb", "being one of a kind at it"]
+    assert thrown.hand == 5
+
+
+@pytest.mark.parametrize(
+    ("strength", "hours"), [(None, 12), (KNACK, 24), (GENIUS, 48), (UNIQUE, 96), (SLOW, 6)]
+)
+def test_talent_sets_how_fast_a_rank_fills(strength, hours):
+    from engine.base import HOUR
+    from engine.resolve.powers import growth
+
+    gifts = [talent("roots", "Heavenly roots", strength)] if strength else []
+    state = talented(*gifts)
+
+    played = play(state, Intent(steps=[arguing(climb(12, attempt=False), ROOTS)]))
+
+    rank = growth.rank_of(played.state.player, played.state.bible.ladder("realms"))
+    assert rank.effort_s == hours * HOUR
+
+
+def test_a_talent_fills_a_rank_faster_in_play_too():
+    from engine.base import HOUR
+    from engine.resolve.powers import growth
+
+    state = talented(talent("roots", "Heavenly roots", GENIUS))
+    state.player.sheet.talent_rulings = [
+        TalentRuling(
+            key="ladder:realms",
+            what="the cultivation realms",
+            covers=[TalentCover(talent_id="roots", fit=INSIDE)],
+        )
+    ]
+
+    played = play(state, Intent(steps=[cut_the_rope(technique("blade"))]))
+
+    rank = growth.rank_of(played.state.player, played.state.bible.ladder("realms"))
+    # A move of his own with nothing resisting: two hours, four times over.
+    assert rank.effort_s == 8 * HOUR
 
 
 # --- insight ---------------------------------------------------------------------------------

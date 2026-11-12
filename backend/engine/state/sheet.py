@@ -480,12 +480,49 @@ class Condition(EngineModel):
             self.wounds = [w for w in self.wounds if w.lasting]
 
 
+class RankStage(StrEnum):
+    """G19. How full a rank is, as the stage the player reads."""
+
+    EARLY = "early"
+    MIDDLE = "middle"
+    LATE = "late"
+    PEAK = "peak"  # full: the climb is theirs to try
+
+    @property
+    def starts(self) -> float:
+        """The share of the rank the stage starts at."""
+        return _STAGE_STARTS[self]
+
+
+_STAGE_STARTS = {
+    RankStage.EARLY: 0.0,
+    RankStage.MIDDLE: 1 / 3,
+    RankStage.LATE: 2 / 3,
+    RankStage.PEAK: 1.0,
+}
+_STAGE_NAMES = {**{stage.value: stage for stage in RankStage}, "mid": RankStage.MIDDLE}
+
+
+def stage_named(words: str) -> RankStage | None:
+    """G19. The stage a stored word names: one of the four, alone or leading the words ("late
+    stage"). A world's own counting, such as "third stage", names none."""
+    first = words.strip().casefold().split(" ", 1)[0]
+    return _STAGE_NAMES.get(first)
+
+
 class LadderPosition(EngineModel):
     """G18. Where the character stands on one of the world's ladders."""
 
     ladder_id: str
     rung: int = Field(ge=0, description="Index into the ladder's rungs, lowest first.")
-    stage: str = Field(default="", description="Finer steps in the world's words: 'third stage'.")
+    stage: str = Field(
+        default="",
+        description=(
+            "G19: the stage the story put them on this rung at, early, middle, late or peak,"
+            " which their rank never reads below. A story from before ranks filled may hold the"
+            " world's own words, which name no stage."
+        ),
+    )
     shown_rung: int | None = Field(
         default=None,
         ge=0,

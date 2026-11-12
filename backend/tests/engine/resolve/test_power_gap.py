@@ -29,6 +29,7 @@ from .worlds import (
     MANY_SEEDS,
     SEEDS,
     add,
+    besides_rank,
     ctx,
     disciple,
     facts,
@@ -65,7 +66,7 @@ def test_a_head_on_attack_two_realms_up_is_still_a_throw_and_almost_always_misse
     assert settled.roll.odds == pytest.approx(0.075)
     wins = [r for r in results if r.result is StepResult.SUCCESS]
     assert 0 < len(wins) < 0.12 * len(results)
-    assert all(c.status is CharacterStatus.DEAD for w in wins for c in w.effects.characters)
+    assert all(c.status is CharacterStatus.DEAD for w in wins for c in besides_rank(w))
     # The reason is in the world's words, and the attempt is a deed the elder answers (A8, W1).
     missed = next(r for r in results if r.result is StepResult.FAILURE)
     thrown = missed.roll.throw
@@ -74,7 +75,7 @@ def test_a_head_on_attack_two_realms_up_is_still_a_throw_and_almost_always_misse
         "above you, Core Formation over Qi Condensation, met head-on (+20): "
         f"{thrown.total} against 37, missed."
     )
-    assert missed.effects.empty
+    assert besides_rank(missed) == []
     (deed,) = missed.deeds
     assert deed.target_ids == ["elder-mo"] and deed.victim_ids == []
     assert deed.severity >= 3
@@ -92,7 +93,7 @@ def test_against_a_gravely_wounded_elder_the_same_attack_is_a_fair_throw():
     assert "Elder Mo is badly wounded (-10)" in results[0].reason
     wins = [r for r in results if r.result is StepResult.SUCCESS]
     assert 0.2 * len(results) < len(wins) < 0.4 * len(results)
-    assert all(c.status is CharacterStatus.DEAD for w in wins for c in w.effects.characters)
+    assert all(c.status is CharacterStatus.DEAD for w in wins for c in besides_rank(w))
 
 
 def test_with_time_stop_the_attack_ends_the_same_on_every_seed_with_no_roll():

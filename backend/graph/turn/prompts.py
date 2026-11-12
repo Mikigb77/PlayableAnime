@@ -244,7 +244,11 @@ player asks for everything a power can give.
 <<ladders>>
 - training: a step spent learning or practising (drilling forms, studying a manual). kind \
 skill, technique, power (a new way to use a power they have) or breakthrough (the next rung of \
-a ladder, with its ladder_id). Who or what they learn from (self, master, book, rival, \
+a ladder, with its ladder_id): any work meant to raise their rank or realm, such as \
+cultivating, tempering the body or training to rise. attempt is true only when the player's \
+own words set out to break through now; a rest, a meditation or more training is never an \
+attempt. risky when the way they go about it can hurt them: forcing it, a forbidden or \
+unstable aid, a trial that wounds. Who or what they learn from (self, master, book, rival, \
 watching, with its id) and whether they invent it.
 <<else>>
 - training: a step spent learning or practising (drilling forms, studying a manual). kind \

@@ -445,13 +445,21 @@ def insulted(*, temper: bool = True) -> WorldState:
     return state
 
 
-def seclusion(*, summons_in_s: int | None = None) -> WorldState:
-    """Lin ready to break through to Foundation Establishment (G19), which needs a Foundation
-    Pill he has. With `summons_in_s`, the sect sends for him that long into his seclusion, and it
-    needs him (W10)."""
+def seclusion(
+    *, stage: str = "peak", pill: bool = False, summons_in_s: int | None = None
+) -> WorldState:
+    """Lin at the peak of Qi Condensation, ready to try for Foundation Establishment (G19), or
+    at an earlier `stage` of it. The world says the climb takes a Foundation Pill, which he
+    doesn't have unless `pill` is set, and nothing a rung lists is required. With
+    `summons_in_s`, the sect sends for him that long into his seclusion, and it needs him
+    (W10)."""
     state = sect()
     state.bible.ladders[0].rungs[1].needs = ["a Foundation Pill"]
-    give(state, "lin", Item(id="pill", name="Foundation Pill", kind=ItemKind.CONSUMABLE))
+    state.characters["lin"].sheet.ladders = [
+        LadderPosition(ladder_id="realms", rung=0, stage=stage)
+    ]
+    if pill:
+        give(state, "lin", Item(id="pill", name="Foundation Pill", kind=ItemKind.CONSUMABLE))
     if summons_in_s is not None:
         state.pending_events["summons"] = PendingEvent(
             id="summons",

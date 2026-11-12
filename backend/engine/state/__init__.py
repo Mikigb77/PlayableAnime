@@ -101,6 +101,7 @@ from engine.state.sheet import (
     PowerAxis,
     PowerCost,
     Practice,
+    RankStage,
     Reserve,
     Resources,
     Ruling,
@@ -121,6 +122,7 @@ from engine.state.sheet import (
     Trait,
     TraitKind,
     Wound,
+    stage_named,
 )
 from engine.state.world import (
     SCHEMA_VERSION,
@@ -216,6 +218,7 @@ __all__ = [
     "PowerLadder",
     "Prevalence",
     "Prominence",
+    "RankStage",
     "Reputation",
     "Reserve",
     "Resources",
@@ -260,4 +263,5 @@ __all__ = [
     "WorldState",
     "Wound",
     "Zeal",
+    "stage_named",
 ]
