@@ -24,7 +24,7 @@ from engine.contracts import (
     Resolution,
     StepResolution,
 )
-from engine.resolve import chain, core
+from engine.resolve import capability, chain, core, perils
 from engine.resolve.core import NOTHING_IN_THE_WAY
 from engine.resolve.perils import MISS_COSTS
 from engine.resolve.throw import told
@@ -179,6 +179,7 @@ def test_the_lines_are_the_engines_and_never_the_players_words():
 
 def test_the_book_holds_the_engines_own_lines_in_both_languages():
     fixed = {NOTHING_IN_THE_WAY, "It follows.", "A close call.", "certain", CLAIMED}
+    fixed |= {"your own step missed", "one more at their side", "two more at their side"}
     fixed |= set(MISS_COSTS.values())
     assert set(saying.BOOK) == {Language.ES, Language.CA}
     for book in saying.BOOK.values():
@@ -188,6 +189,12 @@ def test_the_book_holds_the_engines_own_lines_in_both_languages():
     assert '"It follows."' in inspect.getsource(chain)
     assert '"A close call."' in inspect.getsource(core)
     assert 'odds_label="certain"' in inspect.getsource(core)
+    for module in (perils, capability):
+        assert '{1: "one more", 2: "two more"}' in inspect.getsource(module)
+        assert "{count} at their side" in inspect.getsource(module)
+    assert "{_your(state, player)} own step missed" in inspect.getsource(perils)
+    world = grounded_world()
+    assert perils._your(world, world.player) == "your"
 
 
 @pytest.mark.parametrize(
@@ -355,6 +362,10 @@ def test_the_model_says_the_rest_once_and_it_is_remembered(fake, make_client):
     system = asked.prompt.system
     assert "never with an adjective that takes a gender" in system
     assert "none comes back in English" in system
+    # Where a thing is comes in the language's own order, with the thing as the line names it.
+    assert "not the order of the English" in system
+    assert "There is una cuerda here: Aquí hay una cuerda." in prompt
+    assert "La corda is here: La corda és aquí." in catalan.prompt.messages[-1].text
 
 
 def test_a_line_the_model_changed_or_left_out_stays_in_english(fake, make_client):
