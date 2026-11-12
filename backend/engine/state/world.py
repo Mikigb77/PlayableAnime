@@ -223,6 +223,12 @@ class WorldState(EngineModel):
         default=None,
         description="W10: the trip the player character is partway through, if any.",
     )
+    untold: list[str] = Field(
+        default_factory=list,
+        description="G1, C6: what the story has yet to tell the player of its own start: the "
+        "keys (`engine.untold`) of the people, goals and threads the draft's screen kept a "
+        "surprise, each held back from the player's screens until the story tells it.",
+    )
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> "WorldState":

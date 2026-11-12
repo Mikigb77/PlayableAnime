@@ -337,7 +337,8 @@ def test_the_draft_shows_of_the_story_s_start_only_what_the_player_named(player_
     assert council not in draft["world_lines"]
     assert not any(line.startswith("Carmine Russo:") for line in draft["world_lines"])
     assert "Who inside the family ordered the killing of my father?" in draft["world_lines"]
-    assert "Goal: Find out who killed my father." in draft["character_lines"]
+    # The premise says what happened, not what the character is after: no goal is shown.
+    assert not any(line.startswith("Goal:") for line in draft["character_lines"])
     # The council is drafted all the same, for the story to tell.
     assert any(
         clock.name.startswith("The council") for clock in _state(draft["id"]).clocks.values()
@@ -352,6 +353,36 @@ def test_the_draft_shows_of_the_story_s_start_only_what_the_player_named(player_
     # The draft keeps which deadline they named, not what they wrote.
     assert Draft.objects.get(pk=draft["id"]).told == ["clock:council"]
     assert council in player_client.get(f"/v1/drafts/{draft['id']}").json()["world_lines"]
+
+
+def test_what_the_character_is_after_shows_once_the_player_says_it_as_an_aim(player_client, model):
+    # G1, G2 (Miki, 2026-11-10): the first goal is the story's surprise unless the player's
+    # own words give it.
+    model.script(Node.DRAFTER, Reply(json=samples.naples()))
+    draft = _draft(player_client, {"premise": samples.NAPLES_PREMISE, "rating": "mature"})
+    nature = "Hot-headed and loyal."
+    wants = f"{nature} Wants revenge for his father."
+    goal = "Goal: Find out who killed my father."
+
+    def ask(words: str, about: str | None = None) -> list[str]:
+        model.script(Node.DRAFTER, Reply(json=samples.naples().character))
+        body = {"target": "character", "instruction": words}
+        response = _revise(player_client, draft["id"], body | ({"about": about} if about else {}))
+        assert response.status_code == 200, response.content
+        return response.json()["character_lines"]
+
+    # Words that tell of it without saying it as an aim leave it the story's.
+    lines = ask("Revenge for his father would cost him the family.")
+    assert nature in lines and wants not in lines
+    # Asked at the nature's own row, the same words are about what the character wants.
+    assert wants in ask("Revenge for his father.", about="nature")
+    # Anywhere else, an aim is said as one.
+    lines = ask("I will find out who killed my father.")
+    assert goal in lines and wants in lines
+    assert Draft.objects.get(pk=draft["id"]).told == [
+        "goal:find out who killed my father.",
+        "want:revenge for his father",
+    ]
 
 
 def test_a_world_revision_redrafts_the_world(player_client, model):
@@ -621,7 +652,11 @@ def test_starting_creates_the_story_with_its_opening_state(player_client, model,
         "mature",
     )
     assert story.premise == starter("naples-vendetta").premise
-    assert WorldState.model_validate(story.state) == state
+    # The draft's state, with the goal and the people its screen kept a surprise held back
+    # from Memory (G1).
+    held = ["goal:goal-1", "person:bartender", "person:carmine"]
+    assert story.state["untold"] == held
+    assert WorldState.model_validate(story.state | {"untold": []}) == state
     assert story.settings | {} == {
         "narration_length": "short",
         "tone": None,
@@ -653,8 +688,10 @@ def test_a_story_starts_knowing_the_rungs_its_draft_named(player_client, model):
     heard = {(h.ladder_id, h.rung): h for h in state.player.sheet.rungs_heard}
     top = heard[("realms", 4)]
     assert (top.heard_s, top.known_s) == (state.world_s, None)
-    # Nothing else of the story's first state moved.
+    # Nothing else of the story's first state moved, but for what Memory holds back (G1).
     state.player.sheet.rungs_heard = []
+    assert state.untold == ["goal:goal-1", "person:elder-mo", "person:zhao", "thread:tournament"]
+    state.untold = []
     assert state == before
 
 

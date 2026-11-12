@@ -15,13 +15,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from engine import pipeline
 from engine.base import HOUR
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import direct
 from graph.drafting.assemble import DraftOptions, assemble, drafted_clocks, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
-from graph.drafting.openers import Said, carried, clock_times, moved, named_by
+from graph.drafting.openers import Said, carried, clock_times, kept_back, moved, named_by
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -42,7 +43,13 @@ from graph.drafting.schema import (
     WorldChange,
     WorldProposal,
 )
-from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
+from graph.drafting.view import (
+    character_lines,
+    gift_strength,
+    public_rules,
+    shown,
+    world_lines,
+)
 from graph.llm import ModelClient, Node, Prompt
 from graph.words import WORD, core
 
@@ -97,6 +104,19 @@ class Draft:
             built = assemble(self.proposal.world, self.proposal.character, self.options())
             object.__setattr__(self, "_state", built)
         return built
+
+
+def opening(draft: Draft) -> WorldState:
+    """The state a story starts on, which is the draft's with what the player has and hasn't
+    read by then (G1, G18, C6). What they read before starting, the character knows from the
+    first moment: a rung their own premise or the draft's screen named is one they have heard
+    of (`engine.path`). What the screen kept a surprise, the story's own screens hold back
+    until a scene tells it (`engine.untold`). The draft's own state is never changed."""
+    state = draft.state()
+    read = f"{draft.premise}\n{shown(state, draft.language, draft.said)}"
+    state, _ = pipeline.settle_path(state, read)
+    kept = kept_back(state, draft.language, draft.said)
+    return state.model_copy(update={"untold": kept}) if kept else state
 
 
 @dataclass(frozen=True)
@@ -176,18 +196,24 @@ async def create(
 
 
 async def revise(
-    llm: ModelClient, draft: Draft, target: Target, instruction: str, about: str = ""
+    llm: ModelClient,
+    draft: Draft,
+    target: Target,
+    instruction: str,
+    about: str = "",
+    aim: bool = False,
 ) -> Draft:
     """A change in plain words, such as "add hidden vampires" (G1, G2). The request is the
     player's own words, so what it names of how the story starts shows in the summary from
     here on. `about` is the part of the summary they asked it at, in the summary's own words,
     so "make me better at this" says what "this" is; it is the drafter's text, and names
-    nothing."""
+    nothing. `aim` says they asked it at the row of what the character is after, their goal
+    or their nature, so a goal or a want the request names is theirs with no "I want to"."""
     if target == "world":
         revised = await _revise_world(llm, draft, instruction, about)
     else:
         revised = await _revise_character(llm, draft, instruction, about)
-    return _noting(_on_time(revised, [instruction]), [instruction])
+    return _noting(_on_time(revised, [instruction]), [instruction], plainly=aim)
 
 
 @dataclass(frozen=True)
@@ -587,13 +613,15 @@ def _on_time(draft: Draft, words: Iterable[str]) -> Draft:
     return replace(draft, proposal=_with_world(draft.proposal, clocks=clocks))
 
 
-def _noting(draft: Draft, words: Iterable[str]) -> Draft:
+def _noting(draft: Draft, words: Iterable[str], plainly: bool = False) -> Draft:
     """G1: the draft after a change the player asked for in `words`, their own. It keeps the
     keys of the openers those words named and of the ones it had that are still there. The
-    words themselves are not kept."""
+    words themselves are not kept. `plainly` is for words asked at the row of what the
+    character is after (`openers.names`)."""
     state = draft.state()
     told = carried(state, draft.told, draft.language)
-    return _telling(draft, told | named_by(state, "\n".join(words), draft.language))
+    named = named_by(state, "\n".join(words), draft.language, plainly=plainly)
+    return _telling(draft, told | named)
 
 
 def _telling(draft: Draft, told: frozenset[str]) -> Draft:

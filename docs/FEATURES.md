@@ -49,9 +49,11 @@ The first version's state, checked against the code in WS18.
 - [x] Create a story from your own premise: a drafted world and character to review and change (G1, G2)
 - [x] The draft keeps how the story starts a surprise: its first deadline, people and goal, and what your character wants, show only when your own words name them (G1, G2)
 - [x] A deadline your premise gives a time comes at exactly that time: "the exam is in 3 days" is three days (G1, E2)
+- [x] A goal is yours to give: it shows when your words say it as an aim ("I must pass the exam", "I came to find my sister"), and a deadline alone gives none (G1, G2)
+- [x] Memory keeps the same surprise once the story starts: the people your character already knows, their goal and what is coming show there when a scene first names them (G1, C6)
 - [x] The server changes a draft's plain fields at once, with no AI call and at no cost: the title, the tone, and the character's name, age, looks and manner (G1, G2)
 - [x] The draft's screen leads with your character and marks every row with how it changes: typed by you at once and free (name, age, looks, title, rules), or told to the storyteller at that row, with the cost said first; how it plays is on the same screen (G1, G2)
-- [x] The first step shows what a premise can decide, with an example of each, and that the rest stays a surprise (G1)
+- [x] The first step shows what a premise can decide (who you are, what makes you special, what is coming, who is in your life, what you are after), with an example of each, and that the rest stays a surprise (G1)
 - [x] Play screen: streamed narration, suggested choices, Wait and Observe, free-text action (S2, S3)
 - [x] Memory engine: characters (alive, dead, missing, attitudes), factions, places, goals, leads,
       rumors and deeds, with the invariants enforced in code (C1, W1 to W16)

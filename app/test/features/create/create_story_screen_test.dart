@@ -76,6 +76,8 @@ void main() {
     // What a premise can settle, with an example of each, and what it leaves a surprise.
     expect(find.text(l10n.createDecideLabel), findsOneWidget);
     expect(find.text(l10n.createDecideComingExample), findsOneWidget);
+    // What the character is after is theirs to give too, said as an aim.
+    expect(find.text(l10n.createDecideAimExample), findsOneWidget);
     expect(find.text(l10n.createDecideNote), findsOneWidget);
 
     // A spark fills the empty box and the sparks go, so a tap never replaces written words.

@@ -13,6 +13,11 @@ a separate projection (P1).
 The same words heard or done more than once show once: a fight of four blows is one rumor and one
 deed on the screen, not four, though the world keeps each blow.
 
+What a drafted story's start holds back shows once the story tells it (G1, `engine.untold`): the
+people the character knew before it began, their goals and the threads already running that the
+player's own words never named are left out, with what the character knows about those people,
+until a scene names them.
+
 URLs for portraits and pictures are left empty here; the API fills them from the scene images.
 
 The fixed words here (attitudes, standing, health, who saw a deed, "Heard 2 days ago") come in the
@@ -28,6 +33,7 @@ from pydantic import Field
 from engine import levels, possessions
 from engine import path as path_mod
 from engine import talent as talent_mod
+from engine import untold as untold_mod
 from engine.base import EngineModel
 from engine.context import Language
 from engine.contracts.intent import GrowthKind
@@ -50,6 +56,7 @@ from engine.state.cast import (
 from engine.state.records import (
     Deed,
     EventStatus,
+    Fact,
     Goal,
     GoalStatus,
     LeadStatus,
@@ -1096,12 +1103,14 @@ class _Knowledge:
         self.player_id = state.player_id
         self.now = state.world_s
         self.timeline = state.timeline_id
+        # G1: what the story's start still holds back from the player's screens.
+        self.untold = untold_mod.held(state)
         # The facts the player character knows, by subject, in the order they were learned.
         known = sorted(
             (
                 f
                 for f in state.facts.values()
-                if self.player_id in f.known_by and f.timeline_id == self.timeline
+                if self.player_id in f.known_by and f.timeline_id == self.timeline and self.told(f)
             ),
             key=lambda f: (f.world_s, natural_key(f.id)),
         )
@@ -1112,6 +1121,11 @@ class _Knowledge:
 
     def knows(self, record) -> bool:
         return self.player_id in record.known_by
+
+    def told(self, fact: Fact) -> bool:
+        """G1: whether a thing the character knows is the player's to read yet. One about
+        someone the story's start still holds back waits for them (`engine.untold`)."""
+        return self.untold.people.isdisjoint(fact.subject_ids)
 
     def name_of(self, record_id: str) -> str | None:
         for collection in (self.state.characters, self.state.places, self.state.factions):
@@ -1195,7 +1209,12 @@ class _Knowledge:
         on the side. Within a group the one set or moved last leads, so a goal the story left
         alone long ago sinks under the ones it is busy with."""
         order = list(GoalKind)
-        active = [g for g in self.state.goals.values() if g.status is GoalStatus.ACTIVE]
+        active = [
+            g
+            for g in self.state.goals.values()
+            # G1: a goal the story's start holds back shows once the story tells it.
+            if g.status is GoalStatus.ACTIVE and g.id not in self.untold.goals
+        ]
         active.sort(key=lambda g: natural_key(g.id))
         active.sort(key=lambda g: max(g.set_turn, g.moved_turn or 0), reverse=True)
         return sorted(map(self.goal, active), key=lambda e: order.index(e.kind))
@@ -2028,7 +2047,11 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     k = _Knowledge(state, language)
     player = state.player
 
-    people = [k.person(c) for c in _by_name(state.npcs()) if k.knows(c)]
+    # G1: who and what the story's start still holds back shows once the story tells it
+    # (`engine.untold`).
+    people = [
+        k.person(c) for c in _by_name(state.npcs()) if k.knows(c) and c.id not in k.untold.people
+    ]
     places = [k.place(p) for p in _by_name(state.places.values()) if k.knows(p)]
     factions = [k.faction(f) for f in _by_name(state.factions.values()) if k.knows(f)]
     leads = []
@@ -2060,7 +2083,7 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     threads = [
         ThreadEntry(id=t.id, title=t.title, status=t.status)
         for t in sorted(state.threads.values(), key=lambda t: (t.opened_turn, natural_key(t.id)))
-        if k.knows(t)
+        if k.knows(t) and t.id not in k.untold.threads
     ]
     return MemoryView(
         character=CharacterCard(name=player.name, lines=k.player_lines(player)),
@@ -2148,7 +2171,7 @@ def status_view(state: WorldState, language: Language = EN) -> StatusView:
     moments += [
         (f.world_s, f.id, f.text)
         for f in state.facts.values()
-        if k.knows(f) and f.importance >= 4 and f.timeline_id == k.timeline
+        if k.knows(f) and f.importance >= 4 and f.timeline_id == k.timeline and k.told(f)
     ]
     # C10: what the player character gained and lost lately, and to whom.
     mine = possessions.involving(state, k.player_id)[-SINCE_TRANSFERS:]

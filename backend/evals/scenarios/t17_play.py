@@ -703,8 +703,9 @@ async def genre_spread(ev: Eval) -> None:
 # --- How the story starts is its surprise (G1, G2) ---------------------------------------------
 
 # Made-up premises for the real drafter. Each of the first sets a deadline in its own words, one
-# in each language a story is written in, with the time the summary must give it; the others
-# name no deadline and nobody.
+# in each language a story is written in, with the time the summary must give it, and says
+# nothing of what the character is after; the next name no deadline and nobody; the last say an
+# aim.
 TIMED_PREMISES = (
     (
         Language.EN,
@@ -735,6 +736,17 @@ BARE_PREMISES = (
         "Soy un detective privado en el Madrid de 1955, sin un duro y con demasiada curiosidad.",
     ),
 )
+AIM_PREMISES = (
+    (
+        Language.EN,
+        "I'm a street thief in a desert city, and I want to steal the sultan's crown.",
+    ),
+    (
+        Language.ES,
+        "Soy la hija de un herrero de frontera y he jurado encontrar al caballero que quemó "
+        "nuestra forja.",
+    ),
+)
 RIVAL = "Add a rival called Zhao Kun who has hated me since the day I arrived."
 # What a summary gives away when it shows what the premise never spoke of.
 GIVEN_AWAY = (
@@ -747,46 +759,70 @@ GIVEN_AWAY = (
 )
 # A goal is an aim in a few words, not what the player wrote handed back to them.
 REPEATED = "A line of the summary is the whole premise repeated"
+# The offline story's opening scene, which names the rival and nobody else.
+MEETS_THE_RIVAL = {
+    "narration": "(scripted) Dawn at the well, and Senior Brother Zhao is already waiting by "
+    "your bucket.",
+    "suggestions": [],
+    "update": {},
+}
 
 
 @scenario(
     "t17.start-is-a-surprise",
     suite="T17",
     title="The start is a surprise",
-    requirements=("G1", "G2", "T17"),
+    requirements=("G1", "G2", "C6", "T17"),
     passes_when=(
-        "The deadline a premise sets is in the summary at the time the premise gives it, a "
-        "premise that names none is shown no deadline, nobody, no goal and no want it doesn't "
-        "speak of, and the rival the player then asks for by name shows from then on (G1, G2, "
-        "E2)"
+        "The deadline a premise sets is in the summary at the time the premise gives it and "
+        "gives the character no goal, an aim a premise says is their goal there, a premise "
+        "that names none is shown no deadline, nobody, no goal and no want it doesn't speak "
+        "of, the story's Memory starts without them too and lists someone only once a scene "
+        "has named them, and the rival the player then asks for by name shows from then on "
+        "(G1, G2, E2, C6)"
     ),
     notes=(
         "Deterministic mode reads the offline drafter's outer disciple against a starter's "
-        "premise, which names its tournament, and against one that doesn't; live mode drafts "
-        "each made-up premise with the real drafter and lets the judge read the summary "
-        "against it."
+        "premise, which names its tournament, against one that says surviving it as an aim "
+        "and against one that does neither, and plays an opening scene that names the rival; "
+        "live mode drafts each made-up premise with the real drafter, lets the judge read the "
+        "summary against it, and plays the real narrator's opening scene."
     ),
 )
 async def start_is_a_surprise(ev: Eval) -> None:
+    from engine.visibility import memory_view
     from graph.drafting import samples
     from graph.drafting.catalog import starter
-    from graph.drafting.openers import named_by, openers
+    from graph.drafting.chain import opening
+    from graph.drafting.openers import named_by, names, of_goal, of_thread, openers
     from graph.drafting.view import PartKind, character_parts, world_parts
+    from graph.words import WORD
 
-    def screen(draft) -> tuple[list, list[str]]:
-        """What the draft's screen shows: the world's parts, and every line of both cards."""
+    def spoken_of(state, thread_id: str, named, premise: str, language: Language) -> bool:
+        """Whether the premise names a thread: its title, its deadline or a question of it."""
+        thread = state.threads[thread_id]
+        behind = [f"clock:{thread.clock_id}"]
+        behind += [f"mystery:{m.id}" for m in state.bible.mysteries if m.thread_id == thread_id]
+        return bool(named & set(behind)) or names(premise, of_thread(state, thread), language)
+
+    def screen(draft) -> tuple[list, list[str], list[str]]:
+        """What the draft's screen shows: the world's parts, the goals on the character's
+        card, and every line of both cards."""
         state = draft.state()
         world = world_parts(state, draft.language, draft.said)
         character = character_parts(state, draft.language, draft.said)
-        return world, [part.text for part in world + character]
+        goals = [part.text for part in character if part.kind is PartKind.GOAL]
+        return world, goals, [part.text for part in world + character]
 
     offline = ((Language.EN, starter("outer-disciple").premise, "in 2 days"),)
     timed = TIMED_PREMISES if ev.live else offline
     bare = BARE_PREMISES if ev.live else ((Language.EN, samples.CULTIVATION_PREMISE),)
+    sworn = f"{samples.CULTIVATION_PREMISE} I must survive the ranking tournament."
+    aims = AIM_PREMISES if ev.live else ((Language.EN, sworn),)
     shown = hidden = 0
     for language, premise, when in timed:
         draft = await ev.draft(premise, language=language)
-        world, lines = screen(draft)
+        world, goals, lines = screen(draft)
         deadlines = [part.text for part in world if part.kind is PartKind.DEADLINE]
         ev.check(
             "a deadline the premise sets is in the summary",
@@ -800,6 +836,12 @@ async def start_is_a_surprise(ev: Eval) -> None:
             any(line.rstrip(".").endswith(when) for line in deadlines),
             f"{language.value}: {when!r} in {deadlines}",
         )
+        # A time set for an event says what is coming, not what the character is after.
+        ev.check(
+            "and a deadline alone gives the character no goal",
+            not goals,
+            f"{language.value}: {goals}",
+        )
         await ev.judge_summary(
             f"a premise that sets a deadline ({language.value})",
             Rubric(
@@ -808,6 +850,25 @@ async def start_is_a_surprise(ev: Eval) -> None:
                     "until it that the premise gives",
                 ),
                 must_not=(*GIVEN_AWAY[1:], REPEATED),
+                instructions=SUMMARY_INSTRUCTIONS,
+            ),
+            premise,
+            lines,
+        )
+    for language, premise in aims:
+        draft = await ev.draft(premise, language=language)
+        _, goals, lines = screen(draft)
+        ev.check(
+            "an aim the premise says is the character's goal in the summary",
+            bool(goals),
+            f"{language.value}: the draft's goals "
+            f"{[goal.text for goal in draft.state().goals.values()]}, the summary {lines}",
+        )
+        await ev.judge_summary(
+            f"a premise that says what the character is after ({language.value})",
+            Rubric(
+                must=("A line of the summary gives the character the aim the premise says",),
+                must_not=(*GIVEN_AWAY[:2], REPEATED),
                 instructions=SUMMARY_INSTRUCTIONS,
             ),
             premise,
@@ -840,10 +901,58 @@ async def start_is_a_surprise(ev: Eval) -> None:
             f"a premise that names no deadline and nobody ({language.value})",
             Rubric(must_not=(*GIVEN_AWAY, REPEATED), instructions=SUMMARY_INSTRUCTIONS),
             premise,
-            screen(draft)[1],
+            screen(draft)[2],
+        )
+        # C6: what the summary kept a surprise, the story's own Memory keeps back too.
+        start = opening(draft)
+        memory = memory_view(start, language)
+        strangers = [p.name for p in memory.people if f"person:{p.id}" not in named]
+        ev.check(
+            "the story's Memory starts with nobody the premise didn't name",
+            not strangers,
+            f"{language.value}: {strangers}",
+        )
+        unspoken = [
+            g.text for g in memory.goals if of_goal(state, state.goals[g.id]).key not in named
+        ]
+        unspoken += [
+            thread.title
+            for thread in memory.threads
+            if not spoken_of(state, thread.id, named, premise, language)
+        ]
+        ev.check(
+            "and with no goal or thread it doesn't speak of",
+            not unspoken,
+            f"{language.value}: {unspoken}",
         )
         if language is not Language.EN:
             continue
+        # The story tells them when it comes to them: whoever Memory lists after the opening
+        # scene, the premise or the scene has called by name.
+        story = ev.story(start, premise=premise, label="bare premise")
+        opened = await story.open(narration=None if ev.live else MEETS_THE_RIVAL)
+        read = "\n".join([premise, opened.narration, *(c.label for c in opened.scene.choices)])
+        after = memory_view(opened.state, language)
+        unmet = [
+            person.name
+            for person in after.people
+            if not any(word in read for word in WORD.findall(person.name) if word[0].isupper())
+        ]
+        ev.check(
+            "after the opening scene Memory lists only whom the story has named",
+            not unmet,
+            f"{unmet} of {[person.name for person in after.people]}",
+        )
+        ev.check(
+            "and someone the scene names is in it from then on",
+            any("Zhao" in person.name for person in after.people),
+            f"{[person.name for person in after.people]}",
+            live=False,
+        )
+        ev.metric("kept from Memory at the start", len(start.untold))
+        ev.metric(
+            "of those, told by the opening scene", len(start.untold) - len(opened.state.untold)
+        )
         # A change the player asks for is their own words too: who it names shows from then on.
         revised = await ev.revised(draft, "world", RIVAL)
         people = revised.state().characters

@@ -71,9 +71,12 @@ when the premise calls for it. \
 Their money is money and currency, such as 12 and "copper coins", never an item, so the engine \
 can count what they pay and lose (C10).
 - What the character is after is the player's to say. Write a goal, or something they want \
-(temperament.wants), only where the premise gives it, each as one short aim that uses the \
-premise's words for what it names ("Pass the knight exam"), never the premise repeated. A \
-premise that gives no aim leaves both empty: the player sets their goals in play.
+(temperament.wants), only where the premise says it as an aim ("I must pass the knight exam", \
+"I came to the city to find my sister"), each as one short line that uses the premise's words \
+for what it names ("Pass the knight exam"), never the premise repeated. What is coming, and \
+what has happened, is no aim: "the knight exam is in 3 days" gives a clock and no goal, and \
+"someone killed my father" gives a mystery and no goal. A premise that says no aim leaves both \
+empty: the player sets their goals in play.
 - Talents say how fast the character learns, and only where the premise says so: most \
 characters have none. Write each from the player's own words, with a short name, what it covers \
 in one plain sentence, and its strength: slow (a weakness, such as "hopeless at fighting": half \
@@ -103,7 +106,8 @@ The player reads the names, descriptions, rules, era, the ladder's rungs everyon
 clocks, threads, mystery questions and the character, but never secrets, agendas, factions' \
 goals and methods, mystery answers and clues, the hidden past, or a ladder's higher rungs. How \
 the story starts is its surprise: before it starts they are shown a clock, a mystery question, a \
-key person, a connection, a goal or a want only when their own words name it. So call what the \
+key person or a connection only when their own words name it, and a goal or a want only when \
+their own words say it as an aim. So call what the \
 premise names by the premise's own words (its "knight exam in three days" is the clock "The \
 knight exam"), and write the rest for the story to tell in play. Keep \
 every description to how things look from outside, and never put a secret, a plan or an answer \

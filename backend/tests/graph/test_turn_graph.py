@@ -30,7 +30,7 @@ from engine.state.records import Goal, GoalStatus, StepResult
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import Health
 from engine.state.world import Chapter
-from engine.visibility import status_view
+from engine.visibility import memory_view, status_view
 from graph.llm import Block, Fail, Hang, LLMUnavailable, Node, Reply
 from graph.turn import (
     CHAPTER_TURNS,
@@ -1259,6 +1259,64 @@ def test_a_rung_a_scene_names_is_heard_of_and_known_once_the_story_confirms_it(
     _, again = play(make_client(), turn_input(result.state))
     assert again.state.player.sheet.rungs_heard == heard
     assert not [i for i in again.issues if i.code.startswith("rung_")]
+
+
+def test_a_scene_tells_what_the_storys_start_held_back(fake, make_client, log_lines):
+    """G1, C6: the rival and the tournament were the draft's surprise, so Memory holds them
+    back until the turn's own words name them. Code reads the words; no model says so."""
+    held = ["person:zhao", "thread:tournament"]
+    start = cultivation_world().model_copy(update={"untold": held})
+    assert (memory_view(start).people, memory_view(start).threads) == ([], [])
+
+    # A scene that names neither tells neither, though the rival stands in it.
+    quiet = SCENE | {"narration": "You stoop for a stone by the well.", "suggestions": []}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=quiet))
+    _, result = play(make_client(), turn_input(start, action="I throw a stone, then run"))
+    assert result.state.untold == held
+    assert not [i for i in result.issues if i.code == "start_told"]
+    assert memory_view(result.state).people == []
+
+    # One that calls him by name tells of him, and Memory shows him from then on.
+    named = quiet | {"narration": "The stone clips the bucket, and Zhao turns, slowly."}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=named))
+    _, result = play(make_client(), turn_input(result.state, action="I throw another stone"))
+    assert result.state.untold == ["thread:tournament"]
+    assert [(i.code, i.subject, i.area) for i in result.issues if i.code == "start_told"] == [
+        ("start_told", "person:zhao", "person")
+    ]
+    assert [p.name for p in memory_view(result.state).people] == ["Zhao Kun"]
+    assert memory_view(result.state).threads == []
+
+    # A choice the scene offers is read too.
+    offered = quiet | {
+        "suggestions": [{"label": "Train for the ranking tournament", "kind": "side"}]
+    }
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=offered))
+    _, result = play(make_client(), turn_input(result.state, action="I throw a third stone"))
+    assert result.state.untold == []
+    assert [t.title for t in memory_view(result.state).threads] == ["The ranking tournament"]
+    # T6: the log says what kind of thing was told, never who or what.
+    told = [line["turn_issue"] for line in log_lines() if line.get("turn_issue")]
+    assert {"code": "start_told", "area": "person"} in told
+    assert {"code": "start_told", "area": "thread"} in told
+    above_debug = [line for line in log_lines() if line["severity"] != "DEBUG"]
+    assert not any("person:zhao" in str(line) for line in above_debug)
+
+
+def test_what_the_player_writes_names_what_was_held_back(fake, make_client):
+    """G1, C6: a name the player types is one they know, wherever they learned it."""
+    start = cultivation_world().model_copy(update={"untold": ["person:zhao"]})
+    quiet = SCENE | {"narration": "You stoop for a stone by the well.", "suggestions": []}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=quiet))
+
+    _, result = play(make_client(), turn_input(start))
+
+    assert "Zhao" in turn_input(start).action
+    assert result.state.untold == []
 
 
 def test_issue_details_stay_out_of_production_logs(fake, make_client, log_lines):

@@ -680,8 +680,9 @@ class CharacterProposal(Proposal):
     reserves: list[ReserveP] = Field(default_factory=list)
     goals: list[str] = Field(
         default_factory=list,
-        description="The aims the premise gives the character, each one short line in the "
-        "premise's words for what it names. Empty when the premise gives none.",
+        description="The aims the premise says the character has, each one short line in the "
+        "premise's words for what it names. Empty when the premise says none: a deadline or "
+        "something that happened is no aim.",
     )
     backstory: list[str] = Field(default_factory=list)
     hidden_past: list[str] = Field(

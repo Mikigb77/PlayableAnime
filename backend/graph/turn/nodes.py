@@ -40,6 +40,7 @@ from engine.pipeline import PlayOut
 from engine.rng import SeededRng
 from engine.state.records import OriginKind
 from engine.state.world import Chapter, WorldState
+from graph.drafting.openers import told_by
 from graph.llm import (
     Completed,
     LLMBlocked,
@@ -642,6 +643,18 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         shown=lines.details,
         event_title=lines.event_title,
     )
+    # G1, C6: what the story's start held back from the player's screens is theirs to see once
+    # the turn's own words name it (what they wrote, the scene, the choices it offers) or play
+    # reached it another way. Only the kind is logged, never who or what.
+    read = [scene.player_action or "", scene.narration, *(c.label for c in scene.choices)]
+    if scene.event is not None:
+        read.append(scene.event.title)
+    named = told_by(world, "\n".join(read), turn.ctx.settings.language)
+    world, told = pipeline.settle_untold(world, named)
+    issues += [
+        Issue("start_told", "the story told it", subject=key, area=key.partition(":")[0])
+        for key in told
+    ]
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 
