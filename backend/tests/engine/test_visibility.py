@@ -10,6 +10,7 @@ from engine.context import Language, TurnContext
 from engine.contracts import CharacterChange, PlaceChange, StateDelta
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
+    Calendar,
     CharacterStatus,
     DeathCertainty,
     Deed,
@@ -17,6 +18,9 @@ from engine.state import (
     Fact,
     Faction,
     FactionStatus,
+    Fallen,
+    Goal,
+    GoalStatus,
     Lead,
     LeadStatus,
     Mastery,
@@ -509,6 +513,123 @@ def test_leads_goals_and_threads():
     ]
     assert [g.id for g in view.goals] == ["find-killer"]
     assert view.threads == []
+
+
+def with_goals() -> WorldState:
+    """Luca's goals twelve days in: one from the start, one he stated, one Carmine asked of him,
+    a lead from nobody in particular, and one from a stranger on a record older than dates."""
+    state = grounded_world()  # 14 May 1974, 21:00
+    state.world_s = 12 * DAY
+    taken = LeadStatus.TAKEN
+    state.leads = {
+        "job": Lead(
+            id="job", text="Who robs the till", from_id="carmine", offered_s=2 * DAY, status=taken
+        ),
+        "ledger": Lead(id="ledger", text="The old ledger", status=taken),
+        "parcel": Lead(id="parcel", text="Carry the parcel", from_id="bartender", status=taken),
+    }
+    state.goals |= {
+        "goal-2": Goal(id="goal-2", text="Leave Naples", set_turn=5, set_s=DAY),
+        "goal-3": Goal(
+            id="goal-3",
+            text="Who robs the till",
+            set_turn=6,
+            set_s=3 * DAY,
+            lead_id="job",
+            moved_turn=9,
+            progress="It happens at night.",
+        ),
+        "goal-4": Goal(
+            id="goal-4", text="The old ledger", set_turn=7, set_s=4 * DAY, lead_id="ledger"
+        ),
+        "goal-5": Goal(id="goal-5", text="Carry the parcel", set_turn=8, lead_id="parcel"),
+    }
+    return state
+
+
+def goals_of(state: WorldState, language: Language = Language.EN) -> list[tuple]:
+    return [(g.id, g.kind.value, g.origin_label) for g in memory_view(state, language).goals]
+
+
+def test_goals_show_the_thread_followed_first_and_where_each_came_from():
+    """N2: the one the story last moved, then the player's own, then the ones on the side, the
+    one set or moved last first in each. Who asked is named on the day they asked; a stranger
+    isn't named (C6)."""
+    state = with_goals()
+
+    assert goals_of(state) == [
+        ("goal-3", "followed", "Asked of you by Carmine Russo, 16 May 1974"),
+        ("goal-2", "own", "You set it yourself, 15 May 1974"),
+        ("find-killer", "own", "Yours from the start"),
+        ("goal-5", "side", "A lead you took up"),
+        ("goal-4", "side", "A lead you took up, 18 May 1974"),
+    ]
+    view = memory_view(state)
+    assert [g.origin.value for g in view.goals] == ["asked", "stated", "start", "taken", "taken"]
+    assert [g.progress for g in view.goals] == ["It happens at night.", None, None, None, None]
+    assert "Gennaro" not in dumped(view)
+
+    state.goals["find-killer"].moved_turn = 8  # a scene moved it, before the thread followed
+    assert [g.id for g in memory_view(state).goals][:3] == ["goal-3", "find-killer", "goal-2"]
+
+    state.bible.calendar = Calendar()  # a day count
+    assert goals_of(state)[0] == ("goal-3", "followed", "Asked of you by Carmine Russo, day 3")
+
+
+def test_goals_say_where_they_came_from_in_the_storys_language():
+    state = with_goals()
+
+    assert [label for _, _, label in goals_of(state, ES)] == [
+        "Te lo pidió Carmine Russo, 16 de mayo de 1974",
+        "Te la marcaste tú, 15 de mayo de 1974",
+        "Tuya desde el principio",
+        "Una pista que seguiste",
+        "Una pista que seguiste, 18 de mayo de 1974",
+    ]
+    assert [label for _, _, label in goals_of(state, CA)] == [
+        "T'ho va demanar Carmine Russo, 16 de maig de 1974",
+        "Te la vas marcar tu, 15 de maig de 1974",
+        "Teva des del principi",
+        "Una pista que vas seguir",
+        "Una pista que vas seguir, 18 de maig de 1974",
+    ]
+    state.bible.calendar = Calendar()
+    assert goals_of(state, ES)[1][2] == "Te la marcaste tú, día 2"
+
+
+def test_goals_that_are_over_are_listed_with_the_day_they_closed():
+    """Achieved, failed or given up, in the order they closed. One that only said another again
+    isn't listed, and neither is one of the character before them (N6)."""
+    state = with_goals()
+    goals = state.goals
+    goals["find-killer"].status, goals["find-killer"].closed_turn = GoalStatus.ACHIEVED, 30
+    goals["find-killer"].closed_s = 9 * DAY
+    goals["goal-2"].status, goals["goal-2"].closed_turn = GoalStatus.ABANDONED, 12
+    goals["goal-4"].status, goals["goal-4"].closed_turn = GoalStatus.FAILED, 20
+    goals["goal-4"].closed_s = 6 * DAY
+    goals["goal-5"].status, goals["goal-5"].merged_into = GoalStatus.MERGED, "goal-3"
+
+    view = memory_view(state)
+
+    assert [g.id for g in view.goals] == ["goal-3"]
+    assert [(g.id, g.how.value, g.when_label) for g in view.goals_done] == [
+        ("goal-2", "abandoned", None),  # closed before closing times were kept
+        ("goal-4", "failed", "20 May 1974"),
+        ("find-killer", "achieved", "23 May 1974"),
+    ]
+    assert memory_view(state, ES).goals_done[-1].when_label == "23 de mayo de 1974"
+
+    state.fallen.append(
+        Fallen(
+            character_id="nonno",
+            name="Nonno",
+            ending="death",
+            turn=25,
+            world_s=7 * DAY,
+            successor_id="luca",
+        )
+    )
+    assert [g.id for g in memory_view(state).goals_done] == []
 
 
 def test_places_and_factions_show_known_status_only():

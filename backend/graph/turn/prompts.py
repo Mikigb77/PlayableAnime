@@ -586,6 +586,12 @@ in as the scene ends.
 - goals_over (N2): goals in GOALS AND THREADS that are now over, by id: achieved (done for good, \
 not a step toward it), failed (it can no longer happen) or repeats (another goal there says the \
 same: its id as same_as). Never close one for progress or for going unmentioned.
+- goals_moved (N2, C6): a goal in GOALS AND THREADS that this scene moved forward and that is \
+still open, by id, with progress: where it stands now in one sentence, in the story's language, \
+holding only what scenes have shown the character ("You know it happens at night, and that the \
+east gate guard looks away."). It replaces the goal's last progress, so keep what still holds \
+from it. Only for a goal this scene brought nearer or changed what the character knows toward: \
+none for a scene that only mentions it, and never the goal's own words again.
 - scene_end: ended_on, the last thing this scene shows, in a sentence that says who is doing \
 what and where ("She sets the cup down and waits for your answer."), never a date or an \
 hour: the next scene starts from it; place_id, the place it stops in (R8): \
@@ -621,8 +627,9 @@ action. Carry on from them; never retell them.
 - CONTINUITY: lines never to contradict: who is dead, which factions are destroyed, which places \
 are no longer thriving, and the key facts the player character knows. A fact the character only \
 believes says so: it is what they believe, not what is true.
-- GOALS AND THREADS: the player character's active goals, the open threads they know of with \
-their stakes, and the leads on offer.
+- GOALS AND THREADS: the player character's active goals, each with its progress where a \
+scene noted how it stands, the open threads they know of with their stakes, and the leads on \
+offer.
 - PLAYER CHARACTER: the player character's record: who they are, how they look and their age, \
 where they are and what they are doing, the groups they belong to, their family by name, and \
 their sheet: attributes, skills, traits, powers and techniques with their costs, disposition, \

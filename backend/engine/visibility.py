@@ -29,8 +29,10 @@ from engine import levels, possessions
 from engine import talent as talent_mod
 from engine.base import EngineModel
 from engine.context import Language
+from engine.director import goals as goals_mod
+from engine.director.goals import GoalKind, GoalOrigin
 from engine.kin import descendants
-from engine.labels import ago_label, clock_label, in_label, number_label, of_name
+from engine.labels import ago_label, clock_label, date_label, in_label, number_label, of_name
 from engine.limits import normalize
 from engine.resolve.powers.growth import technique_pace
 from engine.state.cast import (
@@ -45,6 +47,7 @@ from engine.state.cast import (
 from engine.state.records import (
     Deed,
     EventStatus,
+    Goal,
     GoalStatus,
     LeadStatus,
     OriginKind,
@@ -180,6 +183,20 @@ class FactionEntry(EngineModel):
 class GoalEntry(EngineModel):
     id: str
     text: str
+    kind: GoalKind = GoalKind.OWN
+    origin: GoalOrigin = GoalOrigin.STATED
+    origin_label: str = ""
+    progress: str | None = None
+    """Where it stands as far as the character knows, when a scene said (C6)."""
+
+
+class GoalDoneEntry(EngineModel):
+    """A goal of the player character's that is over, and when it closed."""
+
+    id: str
+    text: str
+    how: GoalStatus
+    when_label: str | None = None
 
 
 class LeadEntry(EngineModel):
@@ -221,6 +238,7 @@ class MemoryView(EngineModel):
     places: list[PlaceEntry] = Field(default_factory=list)
     factions: list[FactionEntry] = Field(default_factory=list)
     goals: list[GoalEntry] = Field(default_factory=list)
+    goals_done: list[GoalDoneEntry] = Field(default_factory=list)
     leads: list[LeadEntry] = Field(default_factory=list)
     rumors: list[RumorEntry] = Field(default_factory=list)
     deeds: list[DeedEntry] = Field(default_factory=list)
@@ -739,6 +757,11 @@ _WORDS = {
         "who_else": "Who else knows? You can't tell until you hear it, or go and find out.",
         "own_move": "Your own",
         "learned_from": "Learned from {who}",
+        "goal_start": "Yours from the start",
+        "goal_stated": "You set it yourself",
+        "goal_asked": "Asked of you by {who}",
+        "goal_taken": "A lead you took up",
+        "goal_on": "{what}, {date}",
     },
     ES: {
         "saw": "Lo viste",
@@ -789,6 +812,11 @@ _WORDS = {
         "who_else": "¿Quién más lo sabe? No lo sabrás hasta que lo oigas o vayas a averiguarlo.",
         "own_move": "Creación tuya",
         "learned_from": "Aprendida {of_who}",
+        "goal_start": "Tuya desde el principio",
+        "goal_stated": "Te la marcaste tú",
+        "goal_asked": "Te lo pidió {who}",
+        "goal_taken": "Una pista que seguiste",
+        "goal_on": "{what}, {date}",
     },
     CA: {
         "saw": "Ho vas veure",
@@ -839,6 +867,11 @@ _WORDS = {
         "who_else": "Qui més ho sap? No ho sabràs fins que ho sentis o ho vagis a esbrinar.",
         "own_move": "Creació teva",
         "learned_from": "Apresa {of_who}",
+        "goal_start": "Teva des del principi",
+        "goal_stated": "Te la vas marcar tu",
+        "goal_asked": "T'ho va demanar {who}",
+        "goal_taken": "Una pista que vas seguir",
+        "goal_on": "{what}, {date}",
     },
 }
 
@@ -977,6 +1010,66 @@ class _Knowledge:
         was and who saw it. Deeds that would read the same in all three show once: a fight of
         four blows is one entry, not four."""
         return [(deeds[0], text, when, known) for deeds, text, when, known in self.deed_groups()]
+
+    def goal(self, goal: Goal) -> GoalEntry:
+        """N2. An active goal: where Memory shows it, where it came from in words ("Asked of you
+        by Master Wen, day 3") and where it stands. Who brought it is named only if the
+        character knows them (C6)."""
+        words = _WORDS[self.language]
+        origin = goals_mod.origin(self.state, goal)
+        lead = self.state.leads.get(goal.lead_id or "")
+        who = self.name_of(lead.from_id) if lead is not None and lead.from_id else None
+        if origin is GoalOrigin.ASKED and who is None:
+            origin = GoalOrigin.TAKEN
+        # Asked on the day the lead was offered; the rest on the day the goal was set.
+        when = lead.offered_s if origin is GoalOrigin.ASKED and lead is not None else goal.set_s
+        label = words[f"goal_{origin.value}"].format(who=who)
+        if origin is not GoalOrigin.START and when is not None:
+            date = date_label(self.state.bible.calendar, when, self.language)
+            label = words["goal_on"].format(what=label, date=date[:1].lower() + date[1:])
+        return GoalEntry(
+            id=goal.id,
+            text=goal.text,
+            kind=goals_mod.kind(self.state, goal),
+            origin=origin,
+            origin_label=label,
+            progress=goal.progress or None,
+        )
+
+    def goals(self) -> list[GoalEntry]:
+        """The active goals: the thread the player follows first, then their own, then the ones
+        on the side. Within a group the one set or moved last leads, so a goal the story left
+        alone long ago sinks under the ones it is busy with."""
+        order = list(GoalKind)
+        active = [g for g in self.state.goals.values() if g.status is GoalStatus.ACTIVE]
+        active.sort(key=lambda g: natural_key(g.id))
+        active.sort(key=lambda g: max(g.set_turn, g.moved_turn or 0), reverse=True)
+        return sorted(map(self.goal, active), key=lambda e: order.index(e.kind))
+
+    def goals_done(self) -> list[GoalDoneEntry]:
+        """The player character's goals that are over, in the order they closed: achieved, failed
+        or given up. One that only repeated another isn't listed, and neither are those of the
+        character before them (N6)."""
+        since = goals_mod.theirs_since(self.state)
+        over = [
+            g
+            for g in self.state.goals.values()
+            if g.status not in (GoalStatus.ACTIVE, GoalStatus.MERGED) and g.set_turn > since
+        ]
+        calendar = self.state.bible.calendar
+        return [
+            GoalDoneEntry(
+                id=g.id,
+                text=g.text,
+                how=g.status,
+                when_label=(
+                    date_label(calendar, g.closed_s, self.language)
+                    if g.closed_s is not None
+                    else None
+                ),
+            )
+            for g in sorted(over, key=lambda g: (g.closed_turn or 0, natural_key(g.id)))
+        ]
 
     def deed_groups(self) -> list[tuple[list[Deed], str, str, str]]:
         """`told_deeds`, each entry with every deed it stands for, the first one first."""
@@ -1650,11 +1743,6 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
     people = [k.person(c) for c in _by_name(state.npcs()) if k.knows(c)]
     places = [k.place(p) for p in _by_name(state.places.values()) if k.knows(p)]
     factions = [k.faction(f) for f in _by_name(state.factions.values()) if k.knows(f)]
-    goals = [
-        GoalEntry(id=g.id, text=g.text)
-        for g in sorted(state.goals.values(), key=lambda g: (g.set_turn, natural_key(g.id)))
-        if g.status is GoalStatus.ACTIVE
-    ]
     leads = []
     for lead in sorted(state.leads.values(), key=lambda le: (le.offered_s, natural_key(le.id))):
         if lead.status is not LeadStatus.OPEN:
@@ -1691,7 +1779,8 @@ def memory_view(state: WorldState, language: Language = EN) -> MemoryView:
         people=people,
         places=places,
         factions=factions,
-        goals=goals,
+        goals=k.goals(),
+        goals_done=k.goals_done(),
         leads=leads,
         rumors=rumors,
         deeds=deeds,

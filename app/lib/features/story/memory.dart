@@ -189,15 +189,77 @@ enum RumorCertainty {
       values.where((c) => c.wire == json['certainty']).firstOrNull ?? unconfirmed;
 }
 
+/// Where a goal shows among the others (N2). The server decides it from the story's record.
+enum GoalKind {
+  /// The one the story last moved: the thread the character follows.
+  followed,
+
+  /// One the player set.
+  own,
+
+  /// A lead the character took up.
+  side;
+
+  /// A server from before kinds sends none, and every goal was the player's own list.
+  static GoalKind fromWire(Object? value) => values.asNameMap()[value] ?? own;
+}
+
 /// Something the character means to do (N2).
 class MemoryGoal {
-  const MemoryGoal({required this.id, required this.text});
+  const MemoryGoal({
+    required this.id,
+    required this.text,
+    this.kind = GoalKind.own,
+    this.originLabel,
+    this.progress,
+  });
 
-  factory MemoryGoal.fromJson(JsonMap json) =>
-      MemoryGoal(id: _text(json['id']), text: _text(json['text']));
+  factory MemoryGoal.fromJson(JsonMap json) => MemoryGoal(
+    id: _text(json['id']),
+    text: _text(json['text']),
+    kind: GoalKind.fromWire(json['kind']),
+    originLabel: _label(json['origin_label']),
+    progress: _label(json['progress']),
+  );
 
   final String id;
   final String text;
+  final GoalKind kind;
+
+  /// Where it came from, in words: "Asked of you by Master Wen, day 3".
+  final String? originLabel;
+
+  /// Where it stands as far as the character knows, when a scene said (C6).
+  final String? progress;
+}
+
+/// How a goal that is over ended.
+enum GoalEnd {
+  achieved,
+  failed,
+  abandoned;
+
+  /// An ending this app doesn't know shows as one that is simply over.
+  static GoalEnd fromWire(Object? value) => values.asNameMap()[value] ?? abandoned;
+}
+
+/// A goal of the character's that is over, and the day it closed.
+class MemoryGoalDone {
+  const MemoryGoalDone({required this.id, required this.text, required this.how, this.whenLabel});
+
+  factory MemoryGoalDone.fromJson(JsonMap json) => MemoryGoalDone(
+    id: _text(json['id']),
+    text: _text(json['text']),
+    how: GoalEnd.fromWire(json['how']),
+    whenLabel: _label(json['when_label']),
+  );
+
+  final String id;
+  final String text;
+  final GoalEnd how;
+
+  /// "Day 3". None for one that closed before the story kept the day.
+  final String? whenLabel;
 }
 
 /// Something on offer that the character could take up, and until when (W13).
@@ -390,6 +452,7 @@ class MemoryView {
     this.places = const [],
     this.factions = const [],
     this.goals = const [],
+    this.goalsDone = const [],
     this.leads = const [],
     this.rumors = const [],
     this.deeds = const [],
@@ -407,6 +470,7 @@ class MemoryView {
     places: _list(json['places'], MemoryPlace.fromJson),
     factions: _list(json['factions'], MemoryFaction.fromJson),
     goals: _list(json['goals'], MemoryGoal.fromJson),
+    goalsDone: _list(json['goals_done'], MemoryGoalDone.fromJson),
     leads: _list(json['leads'], MemoryLead.fromJson),
     rumors: _list(json['rumors'], MemoryRumor.fromJson),
     deeds: _list(json['deeds'], MemoryDeed.fromJson),
@@ -417,7 +481,12 @@ class MemoryView {
   final List<MemoryPerson> people;
   final List<MemoryPlace> places;
   final List<MemoryFaction> factions;
+
+  /// The goals still open, the thread the character follows first (N2).
   final List<MemoryGoal> goals;
+
+  /// The goals that are over, in the order they closed.
+  final List<MemoryGoalDone> goalsDone;
   final List<MemoryLead> leads;
 
   /// What people say that reached the character, each said once: unconfirmed unless they know
@@ -430,10 +499,16 @@ class MemoryView {
   Iterable<MemoryThread> get openThreads => threads.where((thread) => !thread.status.isClosed);
   Iterable<MemoryThread> get closedThreads => threads.where((thread) => thread.status.isClosed);
 
+  /// The open goals Memory shows as [kind].
+  List<MemoryGoal> goalsOf(GoalKind kind) => [
+    for (final goal in goals)
+      if (goal.kind == kind) goal,
+  ];
+
   /// How many entries a group holds. Goals, leads and the story's threads share one: what the
   /// character is after.
   int count(MemorySection section) => switch (section) {
-    MemorySection.objectives => goals.length + leads.length + threads.length,
+    MemorySection.objectives => goals.length + goalsDone.length + leads.length + threads.length,
     MemorySection.people => people.length,
     MemorySection.factions => factions.length,
     MemorySection.places => places.length,

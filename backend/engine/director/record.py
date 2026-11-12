@@ -119,6 +119,7 @@ def record(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> WorldStat
         if goal is not None and goal.status is GoalStatus.ACTIVE:
             goal.status = status
             goal.closed_turn = ctx.turn
+            goal.closed_s = new.world_s
     for goal in updates.new_goals:
         goal = goal.model_copy(deep=True)
         goal.id = _claim(new, goal.id, remap)

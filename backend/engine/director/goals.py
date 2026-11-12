@@ -15,7 +15,14 @@ No goal is ever rewritten, and one closes only once it is over:
   (`engine.apply`, on a turn the player acted).
 
 Leads expire on in-world time (W10) and never overwrite a goal.
+
+Memory tells the goals apart by what the record holds, which no model decides (`kind`,
+`origin`): the one the story last moved is the thread the player follows, the rest are their own
+or on the side, and each says where it came from. A scene may note where a goal stands as far as
+the character knows (`progress`, `engine.apply`), which never changes the goal's words.
 """
+
+from enum import StrEnum
 
 from engine.context import TurnContext
 from engine.contracts.direction import ThreadChange
@@ -33,6 +40,23 @@ _WITH_THREAD = {
     ThreadStatus.RESOLVED_WITHOUT_PLAYER: GoalStatus.FAILED,
     ThreadStatus.ABANDONED: GoalStatus.ABANDONED,
 }
+
+
+class GoalKind(StrEnum):
+    """N2. Where Memory shows an active goal."""
+
+    FOLLOWED = "followed"  # the one the story last moved: the thread the player follows
+    OWN = "own"  # the player stated it
+    SIDE = "side"  # the player took it up from a lead
+
+
+class GoalOrigin(StrEnum):
+    """N2. Where a goal came from."""
+
+    START = "start"  # the character's when the story began
+    STATED = "stated"  # the player stated it in play
+    ASKED = "asked"  # someone brought it to them, and they took it up
+    TAKEN = "taken"  # they took up a lead that came from nobody in particular
 
 
 def same_goal(a: str, b: str) -> bool:
@@ -57,6 +81,42 @@ def carried_by(state: WorldState, goal: Goal) -> Goal | None:
             return None
         goal = into
     return goal if goal.status is GoalStatus.ACTIVE else None
+
+
+def followed(state: WorldState) -> Goal | None:
+    """The thread the player follows: the active goal the story last moved, by the player taking
+    it up or by a scene (`Goal.moved_turn`). The older one when a scene moved two. None while the
+    story has moved none of them."""
+    active = [g for g in state.goals.values() if g.status is GoalStatus.ACTIVE]
+    last = max((g.moved_turn for g in active if g.moved_turn is not None), default=None)
+    if last is None:
+        return None
+    return min(
+        (g for g in active if g.moved_turn == last), key=lambda g: (g.set_turn, natural_key(g.id))
+    )
+
+
+def kind(state: WorldState, goal: Goal) -> GoalKind:
+    """Where Memory shows an active `goal`."""
+    leading = followed(state)
+    if leading is not None and leading.id == goal.id:
+        return GoalKind.FOLLOWED
+    return GoalKind.SIDE if goal.lead_id else GoalKind.OWN
+
+
+def origin(state: WorldState, goal: Goal) -> GoalOrigin:
+    """Where `goal` came from."""
+    if goal.lead_id:
+        lead = state.leads.get(goal.lead_id)
+        asked = lead is not None and lead.from_id in state.characters
+        return GoalOrigin.ASKED if asked else GoalOrigin.TAKEN
+    return GoalOrigin.STATED if goal.set_turn else GoalOrigin.START
+
+
+def theirs_since(state: WorldState) -> int:
+    """The turn the player character's own goals start after: the scene the one before them
+    ended in (N6), whose goals are not theirs. -1 for a story's first character."""
+    return max((fallen.turn for fallen in state.fallen), default=-1)
 
 
 def player_goals(
@@ -84,11 +144,20 @@ def player_goals(
         taken.append(lead_id)
         if any(g.lead_id == lead_id for g in state.goals.values()) or known(lead.text):
             continue
-        new.append(Goal(id=ids.new("goal"), text=lead.text, set_turn=ctx.turn, lead_id=lead_id))
+        new.append(
+            Goal(
+                id=ids.new("goal"),
+                text=lead.text,
+                set_turn=ctx.turn,
+                set_s=state.world_s,
+                lead_id=lead_id,
+                moved_turn=ctx.turn,  # taking it up is following it
+            )
+        )
     for text in intent.goals:
         text = " ".join(text.split())
         if normalize(text) and not known(text):
-            new.append(Goal(id=ids.new("goal"), text=text, set_turn=ctx.turn))
+            new.append(Goal(id=ids.new("goal"), text=text, set_turn=ctx.turn, set_s=state.world_s))
     return new, taken
 
 

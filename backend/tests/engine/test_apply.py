@@ -2,13 +2,20 @@
 
 import pytest
 
-from engine.apply import MAX_PROPS, NARRATOR_ATTITUDE_CAP, DeltaSource, apply_delta
+from engine.apply import (
+    MAX_PROGRESS,
+    MAX_PROPS,
+    NARRATOR_ATTITUDE_CAP,
+    DeltaSource,
+    apply_delta,
+)
 from engine.context import TurnContext
 from engine.contracts import (
     AttitudeShift,
     CharacterChange,
     FactionChange,
     GoalEnd,
+    GoalMoved,
     GoalOver,
     ItemChange,
     NewFact,
@@ -711,6 +718,77 @@ def test_no_goal_closes_on_a_turn_the_player_didnt_act():
     applied = close(state, GoalOver(goal_id="goal-2", how=GoalEnd.ACHIEVED), player_acted=False)
     assert reasons(applied) == ["the player didn't act this turn"]
     assert applied.state.goals == state.goals
+
+
+def move(state: WorldState, *moved: GoalMoved, **more):
+    return apply_delta(state, StateDelta(goals_moved=list(moved), **more), ctx(3), source=NARRATOR)
+
+
+def test_a_scene_notes_where_a_goal_stands_and_never_rewrites_it():
+    """N2, C6: the sentence is kept beside the goal, and the goal the story last moved is the
+    thread the player follows. It needs no action of the player's: news can come to them."""
+    state = with_goals()
+    applied = move(state, GoalMoved(goal_id="goal-2", progress="  The ferry leaves\n at dawn. "))
+
+    goal = applied.state.goals["goal-2"]
+    assert not applied.rejected
+    assert (goal.progress, goal.moved_turn) == ("The ferry leaves at dawn.", 3)
+    assert (goal.text, goal.status) == ("Get out of Naples alive", GoalStatus.ACTIVE)
+
+    later = move(applied.state, GoalMoved(goal_id="goal-2", progress="x" * 400)).state
+    assert later.goals["goal-2"].progress == "x" * MAX_PROGRESS  # the last note replaces it
+
+
+def test_a_note_needs_an_active_goal_and_something_of_its_own_to_say():
+    state = with_goals()
+    state.goals["goal-4"].status = GoalStatus.ABANDONED
+    applied = move(
+        state,
+        GoalMoved(goal_id="ghost", progress="Seen at the docks."),
+        GoalMoved(goal_id="goal-4", progress="Rosa is safe."),
+        GoalMoved(goal_id="goal-2", progress="   "),
+        GoalMoved(goal_id="goal-2", progress="Get out of Naples... ALIVE!"),
+    )
+
+    said_nothing = "it says nothing beyond the goal's own words"
+    assert reasons(applied) == ["not an active goal"] * 2 + [said_nothing] * 2
+    assert applied.state.goals == state.goals
+
+
+def test_a_goal_that_closes_keeps_when_and_takes_no_note_in_the_same_update():
+    state = with_goals()
+    state.world_s = 5000
+    applied = apply_delta(
+        state,
+        StateDelta(
+            goals_over=[GoalOver(goal_id="goal-4", how=GoalEnd.ACHIEVED)],
+            goals_moved=[GoalMoved(goal_id="goal-4", progress="Rosa is on the train.")],
+        ),
+        ctx(3),
+        source=NARRATOR,
+        player_acted=True,
+    )
+
+    goal = applied.state.goals["goal-4"]
+    assert reasons(applied) == ["not an active goal"]
+    assert (goal.status, goal.closed_turn, goal.closed_s) == (GoalStatus.ACHIEVED, 3, 5000)
+    assert goal.progress == ""
+
+
+def test_a_goal_said_again_hands_what_the_story_did_with_it_to_the_one_that_stays():
+    state = with_goals()
+    state.goals["goal-3"].progress = "The ferry leaves at dawn."
+    state.goals["goal-3"].moved_turn = 6
+    merged = close(state, GoalOver(goal_id="goal-3", how=GoalEnd.REPEATS, same_as="goal-2")).state
+    stays = merged.goals["goal-2"]
+    assert (stays.progress, stays.moved_turn) == ("The ferry leaves at dawn.", 6)
+    assert merged.goals["goal-3"].closed_s == state.world_s
+
+    state.goals["goal-2"].progress = "A boat waits at Pozzuoli."
+    state.goals["goal-2"].moved_turn = 9  # the one that stays was moved later: its own holds
+    merged = close(state, GoalOver(goal_id="goal-3", how=GoalEnd.REPEATS, same_as="goal-2")).state
+    stays = merged.goals["goal-2"]
+    assert (stays.progress, stays.moved_turn) == ("A boat waits at Pozzuoli.", 9)
 
 
 def test_the_scene_end_keeps_only_real_people_and_places():
