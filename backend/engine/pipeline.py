@@ -8,8 +8,8 @@
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
    update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
-   `settle_trips`, `settle_witnesses`, `settle_encounter`, `settle_path` and `settle_picture`,
-   and runs
+   `settle_trips`, `settle_witnesses`, `settle_encounter`, `settle_path`, `settle_picture` and
+   `settle_untold`, and runs
    `engine.invariants.check_transition` on the turn's first and last states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
@@ -28,9 +28,10 @@ Rules every seam follows:
   passes (W10).
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from engine import director, encounters, path, world
+from engine import director, encounters, path, untold, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.base import DAY
 from engine.context import TurnContext
@@ -66,6 +67,7 @@ __all__ = [
     "settle_path",
     "settle_picture",
     "settle_trips",
+    "settle_untold",
     "settle_witnesses",
 ]
 
@@ -461,6 +463,19 @@ def settle_path(state: WorldState, told: str) -> tuple[WorldState, list[path.Tol
     settled = state.model_copy(deep=True)
     path.keep(settled, added)
     return settled, added
+
+
+def settle_untold(state: WorldState, named: Iterable[str] = ()) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied (step 6; `named` are the keys the scene's words
+    name, read by `graph.drafting.openers.told_by`). What the story's start held back from the
+    player's screens (G1, C6, `engine.untold`) is theirs to see once the story tells it: a scene
+    names it, or play reaches it another way. Returns the state, a new one when something was
+    told, and what was, for the turn's log."""
+    if not state.untold:
+        return state, []
+    out = {*named, *untold.reached(state)}
+    told = [entry for entry in state.untold if entry in out]
+    return (untold.tell(state, told), told) if told else (state, [])
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

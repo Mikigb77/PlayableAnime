@@ -1,6 +1,7 @@
 """G1: the openers of a draft (its deadlines, questions, people, connections, goals and wants),
-which ones the player's own words name, what a draft keeps of that, and the time their words
-set for a deadline (E2). Every premise is made up."""
+which ones the player's own words name, what a draft keeps of that, the time their words set
+for a deadline (E2), and what a story holds back from Memory until a scene names it (C6). Every
+premise and scene is made up."""
 
 from engine.base import DAY, WEEK
 from engine.context import Language
@@ -10,12 +11,14 @@ from graph.drafting.openers import (
     Said,
     carried,
     clock_times,
+    kept_back,
     named_by,
     names,
     of_clock,
     of_want,
     openers,
     own_names,
+    told_by,
 )
 
 EN = Language.EN
@@ -144,3 +147,81 @@ def test_a_time_goes_to_the_one_deadline_it_says_most_of():
     }
     # "ranking" alone is as much of one as of the other: neither is set.
     assert clock_times(state, "The ranking is in five days.", EN) == {}
+
+
+def _holding(state, premise, told=frozenset()):
+    return state.model_copy(update={"untold": kept_back(state, EN, Said(premise, told))})
+
+
+def test_a_story_holds_back_what_the_players_words_never_named():
+    # The bare premise names nobody and nothing that is coming: the rival, the elder, the goal
+    # about the tournament and the tournament's thread are all the story's to tell.
+    state = _cultivation()
+    assert kept_back(state, EN, Said(samples.CULTIVATION_PREMISE)) == [
+        "goal:goal-1",
+        "person:elder-mo",
+        "person:zhao",
+        "thread:tournament",
+    ]
+
+    # A premise that names the tournament has named its thread and the goal about it, and one
+    # that calls the rival by name has named him.
+    spoken = "I must survive the ranking tournament, and Zhao Kun wants me gone before it."
+    assert kept_back(state, EN, Said(spoken)) == ["person:elder-mo"]
+
+    # A change they asked for counts as their words do, by the keys the draft kept of it.
+    asked = Said(samples.CULTIVATION_PREMISE, frozenset({"person:elder-mo", "clock:tournament"}))
+    assert kept_back(state, EN, asked) == ["goal:goal-1", "person:zhao"]
+
+
+def test_a_thread_is_named_by_the_question_it_carries():
+    # "Someone inside the family killed my father" is the open question of the Naples thread,
+    # and the goal says the same: both show from the start, and the two men don't.
+    state = _naples()
+
+    assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == [
+        "person:bartender",
+        "person:carmine",
+    ]
+    # Someone the character doesn't know is never on the list: Memory doesn't show them anyway.
+    state.characters["bartender"].known_by = []
+    assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == ["person:carmine"]
+
+
+def test_a_scene_tells_what_its_own_words_name():
+    state = _holding(_cultivation(), samples.CULTIVATION_PREMISE)
+
+    def told(scene: str) -> list[str]:
+        return told_by(state, scene, EN)
+
+    # A deadline's thread and the goal about it, by what they say or by a time set for it.
+    dawn = "Dawn over the peak. The ranking tournament is two days away, and the court hums."
+    assert told(dawn) == ["goal:goal-1", "thread:tournament"]
+    assert told("In two days the tournament begins.") == ["thread:tournament"]
+    assert told("In two days you fight.") == []
+    # A person, by a name of their own inside a sentence, or by all of it at its start.
+    assert told("A broad-shouldered senior kicks your bucket over. “Move,” says Zhao.") == [
+        "person:zhao"
+    ]
+    assert told("Zhao Kun kicks your bucket over.") == ["person:zhao"]
+    assert told("“Elder Mo is watching,” someone whispers.") == ["person:elder-mo"]
+    # What only starts a sentence may be no name at all, and lower case never is one.
+    assert told("Elder disciples laugh by the well. An elder dozes in the sun.") == []
+    assert told("A senior brother shoves past you.") == []
+    assert told("") == []
+    # A story that holds nothing back is told nothing.
+    assert told_by(_cultivation(), dawn, EN) == []
+
+
+def test_what_a_place_or_a_faction_is_called_tells_of_nobody():
+    state = _holding(_naples(), samples.NAPLES_PREMISE)
+
+    # The scene opens in the bar that carries his name, among his crew: neither is him.
+    assert told_by(state, "You push open the door of Carmine's bar.", EN) == []
+    assert told_by(state, "Two men of Carmine’s crew look up from their cards.", EN) == []
+    assert told_by(state, "You push open the door of Carmine's bar, and Carmine looks up.", EN) == [
+        "person:carmine"
+    ]
+    assert told_by(state, "Behind the counter, Gennaro polishes a glass.", EN) == [
+        "person:bartender"
+    ]

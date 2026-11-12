@@ -15,13 +15,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from engine import pipeline
 from engine.base import HOUR
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import direct
 from graph.drafting.assemble import DraftOptions, assemble, drafted_clocks, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
-from graph.drafting.openers import Said, carried, clock_times, moved, named_by
+from graph.drafting.openers import Said, carried, clock_times, kept_back, moved, named_by
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -42,7 +43,13 @@ from graph.drafting.schema import (
     WorldChange,
     WorldProposal,
 )
-from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
+from graph.drafting.view import (
+    character_lines,
+    gift_strength,
+    public_rules,
+    shown,
+    world_lines,
+)
 from graph.llm import ModelClient, Node, Prompt
 from graph.words import WORD, core
 
@@ -97,6 +104,19 @@ class Draft:
             built = assemble(self.proposal.world, self.proposal.character, self.options())
             object.__setattr__(self, "_state", built)
         return built
+
+
+def opening(draft: Draft) -> WorldState:
+    """The state a story starts on, which is the draft's with what the player has and hasn't
+    read by then (G1, G18, C6). What they read before starting, the character knows from the
+    first moment: a rung their own premise or the draft's screen named is one they have heard
+    of (`engine.path`). What the screen kept a surprise, the story's own screens hold back
+    until a scene tells it (`engine.untold`). The draft's own state is never changed."""
+    state = draft.state()
+    read = f"{draft.premise}\n{shown(state, draft.language, draft.said)}"
+    state, _ = pipeline.settle_path(state, read)
+    kept = kept_back(state, draft.language, draft.said)
+    return state.model_copy(update={"untold": kept}) if kept else state
 
 
 @dataclass(frozen=True)

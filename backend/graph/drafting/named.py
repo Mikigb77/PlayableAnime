@@ -110,6 +110,43 @@ def called(said: str, name: str, language: Language) -> bool:
     return len(theirs) > 1 and theirs <= {core(word) for word in words}
 
 
+# What can stand between the start of a sentence and its first word: a space, an opening quote,
+# a dash or a bracket. A new line, or the mark that ended the sentence before, comes before it.
+_OPENS = " \t\"'“”‘’«»(¿¡—–-*_"
+_ENDS = ".!?…:\n"
+
+
+def told_of(scene: str, name: str, language: Language) -> bool:
+    """Whether a scene's words call someone by `name`. A scene is prose, which starts every
+    sentence with a capital, so a word of the name written with one calls them inside a
+    sentence, and at the start of one only when it is all the name has, the next word is the
+    name's too, or it starts a second sentence as well: "beside Zhao" and "Elder Mo nods" call
+    them, and "Old habits die hard" doesn't call Old Hu. Lower case never does, since prose
+    writes a name as one."""
+    theirs = {core(word) for word in WORD.findall(name)} - FILLER[language]
+    if not theirs:
+        return False
+    found = list(WORD.finditer(scene))
+    started: set[str] = set()
+    for at, match in enumerate(found):
+        word = core(match.group())
+        if not match.group()[0].isupper() or word not in theirs:
+            continue
+        if len(theirs) == 1 or not _starts_sentence(scene, match.start()):
+            return True
+        if at + 1 < len(found) and core(found[at + 1].group()) in theirs:
+            return True
+        if word in started:
+            return True
+        started.add(word)
+    return False
+
+
+def _starts_sentence(text: str, at: int) -> bool:
+    before = text[:at].rstrip(_OPENS)
+    return not before or before[-1] in _ENDS
+
+
 # How long the time ahead is, where code can read it: an amount and a unit. What each unit
 # lasts, and the numbers a premise writes out. A month and a moon are thirty days, as "in a
 # month" is meant. Anything else, such as "a few days" or "tomorrow", is a time ahead with no

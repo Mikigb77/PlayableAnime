@@ -747,31 +747,50 @@ GIVEN_AWAY = (
 )
 # A goal is an aim in a few words, not what the player wrote handed back to them.
 REPEATED = "A line of the summary is the whole premise repeated"
+# The offline story's opening scene, which names the rival and nobody else.
+MEETS_THE_RIVAL = {
+    "narration": "(scripted) Dawn at the well, and Senior Brother Zhao is already waiting by "
+    "your bucket.",
+    "suggestions": [],
+    "update": {},
+}
 
 
 @scenario(
     "t17.start-is-a-surprise",
     suite="T17",
     title="The start is a surprise",
-    requirements=("G1", "G2", "T17"),
+    requirements=("G1", "G2", "C6", "T17"),
     passes_when=(
         "The deadline a premise sets is in the summary at the time the premise gives it, a "
         "premise that names none is shown no deadline, nobody, no goal and no want it doesn't "
-        "speak of, and the rival the player then asks for by name shows from then on (G1, G2, "
-        "E2)"
+        "speak of, the story's Memory starts without them too and lists someone only once a "
+        "scene has named them, and the rival the player then asks for by name shows from then "
+        "on (G1, G2, E2, C6)"
     ),
     notes=(
         "Deterministic mode reads the offline drafter's outer disciple against a starter's "
-        "premise, which names its tournament, and against one that doesn't; live mode drafts "
-        "each made-up premise with the real drafter and lets the judge read the summary "
-        "against it."
+        "premise, which names its tournament, and against one that doesn't, and plays an "
+        "opening scene that names the rival; live mode drafts each made-up premise with the "
+        "real drafter, lets the judge read the summary against it, and plays the real "
+        "narrator's opening scene."
     ),
 )
 async def start_is_a_surprise(ev: Eval) -> None:
+    from engine.visibility import memory_view
     from graph.drafting import samples
     from graph.drafting.catalog import starter
-    from graph.drafting.openers import named_by, openers
+    from graph.drafting.chain import opening
+    from graph.drafting.openers import named_by, names, of_goal, of_thread, openers
     from graph.drafting.view import PartKind, character_parts, world_parts
+    from graph.words import WORD
+
+    def spoken_of(state, thread_id: str, named, premise: str, language: Language) -> bool:
+        """Whether the premise names a thread: its title, its deadline or a question of it."""
+        thread = state.threads[thread_id]
+        behind = [f"clock:{thread.clock_id}"]
+        behind += [f"mystery:{m.id}" for m in state.bible.mysteries if m.thread_id == thread_id]
+        return bool(named & set(behind)) or names(premise, of_thread(state, thread), language)
 
     def screen(draft) -> tuple[list, list[str]]:
         """What the draft's screen shows: the world's parts, and every line of both cards."""
@@ -842,8 +861,56 @@ async def start_is_a_surprise(ev: Eval) -> None:
             premise,
             screen(draft)[1],
         )
+        # C6: what the summary kept a surprise, the story's own Memory keeps back too.
+        start = opening(draft)
+        memory = memory_view(start, language)
+        strangers = [p.name for p in memory.people if f"person:{p.id}" not in named]
+        ev.check(
+            "the story's Memory starts with nobody the premise didn't name",
+            not strangers,
+            f"{language.value}: {strangers}",
+        )
+        unspoken = [
+            g.text for g in memory.goals if of_goal(state, state.goals[g.id]).key not in named
+        ]
+        unspoken += [
+            thread.title
+            for thread in memory.threads
+            if not spoken_of(state, thread.id, named, premise, language)
+        ]
+        ev.check(
+            "and with no goal or thread it doesn't speak of",
+            not unspoken,
+            f"{language.value}: {unspoken}",
+        )
         if language is not Language.EN:
             continue
+        # The story tells them when it comes to them: whoever Memory lists after the opening
+        # scene, the premise or the scene has called by name.
+        story = ev.story(start, premise=premise, label="bare premise")
+        opened = await story.open(narration=None if ev.live else MEETS_THE_RIVAL)
+        read = "\n".join([premise, opened.narration, *(c.label for c in opened.scene.choices)])
+        after = memory_view(opened.state, language)
+        unmet = [
+            person.name
+            for person in after.people
+            if not any(word in read for word in WORD.findall(person.name) if word[0].isupper())
+        ]
+        ev.check(
+            "after the opening scene Memory lists only whom the story has named",
+            not unmet,
+            f"{unmet} of {[person.name for person in after.people]}",
+        )
+        ev.check(
+            "and someone the scene names is in it from then on",
+            any("Zhao" in person.name for person in after.people),
+            f"{[person.name for person in after.people]}",
+            live=False,
+        )
+        ev.metric("kept from Memory at the start", len(start.untold))
+        ev.metric(
+            "of those, told by the opening scene", len(start.untold) - len(opened.state.untold)
+        )
         # A change the player asks for is their own words too: who it names shows from then on.
         revised = await ev.revised(draft, "world", RIVAL)
         people = revised.state().characters

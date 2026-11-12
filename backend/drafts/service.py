@@ -24,13 +24,12 @@ from django.utils import timezone
 from accounts import rules
 from billing import meter
 from drafts.models import Draft
-from engine import pipeline
 from engine.context import Difficulty, EventFrequency, Language, StorySettings
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
 from graph.drafting.catalog import starter
 from graph.drafting.schema import DraftProposal
-from graph.drafting.view import public_text, shown
+from graph.drafting.view import public_text
 from lucid.errors import ApiError, ErrorCode, field_error
 from stories.models import Engine, Story
 
@@ -299,12 +298,9 @@ def start_story(
         if row.story_id is not None:
             return Story.objects.get(pk=row.story_id)
         check_version(row, expected_version)
-        draft = to_chain(row)
-        # G18, C6: what the player read before starting, the character knows from the first
-        # moment: a rung their own premise or the draft's screen named is one they have heard of.
-        # The draft's own state is never changed, so this gives a copy when it adds anything.
-        read = f"{row.premise}\n{shown(draft.state(), Language(row.language), draft.said)}"
-        state, _ = pipeline.settle_path(draft.state(), read)
+        # G18, G1, C6: the draft's state, with what the player read before starting known to
+        # the character and what the screen kept a surprise held back from Memory.
+        state = chain.opening(to_chain(row))
         story = Story.objects.create(
             owner_id=row.owner_id,
             title=_title(state, row.premise),
