@@ -564,7 +564,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             t for t in world.transfers if t.turn == turn.ctx.turn and t.origin is OriginKind.ENGINE
         ]
         scene_text = f"{narration.action} {narration.narration}"
-        delta, found = check.check_update(narration.update, world, moved, scene_text)
+        delta, found = check.check_update(
+            narration.update, world, moved, scene_text, looks=state["brief"].looks
+        )
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(
                 "narrator", [limits.LimitCategory.REAL_PERSON.value], stage="update", source="code"
@@ -716,6 +718,8 @@ async def after_turn(state: TurnState) -> dict[str, Any]:
         fired=(*state["passage"].fired, *state["played"].fired),
         issues=tuple(issues),
         ending=state.get("ending"),
+        looks=state["brief"].looks,
+        worn=len(state["brief"].worn),
     )
     return {"world": world, "result": result, "issues": issues}
 

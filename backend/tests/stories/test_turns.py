@@ -617,10 +617,33 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     # step around someone is a passing moment unless the director gave the scene more to tell.
     assert fields["weight"] in ("light", "ordinary")
     assert fields["words"] == len(played.completed["scene"]["narration"].split()) > 0
+    # R9: whether the scene was handed the character's appearance, and how many worn phrases.
+    assert isinstance(fields["looks"], bool)
+    assert fields["worn"] == 0
     assert line["story_id"] == str(story.pk)
     logged = str(log_lines())
     assert "I step around Zhao." not in logged
     assert AFTER["narration"] not in logged
+
+
+def test_a_turn_reads_the_last_dozen_scenes_and_those_the_next_chapter_covers(
+    player, make_story, model
+):
+    """C3, R9: the scenes since the last chapter for its summary, and never fewer than the last
+    twelve, which code reads for the wording they repeated."""
+    from engine.state.world import Chapter
+    from graph.turn import WORN_SCENES
+
+    story = opened(player, make_story, model)
+    for turn in range(2, 21):
+        Scene.objects.create(story=story, turn=turn, kind="action", narration=f"Scene {turn}.")
+    state = _state(story)
+    state.turn = 20
+
+    assert [scene.turn for scene in turns._past_scenes(story, state)] == list(range(1, 21))
+    state.chapters.append(Chapter(index=1, from_turn=1, to_turn=18, summary="So far."))
+    assert WORN_SCENES == 12
+    assert [scene.turn for scene in turns._past_scenes(story, state)] == list(range(9, 21))
 
 
 def test_the_t5_line_counts_a_move_refused_as_not_the_characters_own(
