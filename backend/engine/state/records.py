@@ -329,10 +329,26 @@ class Goal(EngineModel):
     text: str
     status: GoalStatus = GoalStatus.ACTIVE
     set_turn: int = Field(default=0, ge=0)
+    set_s: WorldSeconds | None = Field(
+        default=None, description="When it was set, on the world's clock. None on older records."
+    )
     lead_id: str | None = Field(default=None, description="Set when the player accepted a lead.")
     closed_turn: int | None = Field(default=None, ge=0)
+    closed_s: WorldSeconds | None = None
     merged_into: str | None = Field(
         default=None, description="For a merged goal: the older goal that says the same."
+    )
+    progress: str = Field(
+        default="",
+        description=(
+            "Where it stands as far as the character knows, in a sentence (C6). The goal's own "
+            "words never change with it."
+        ),
+    )
+    moved_turn: int | None = Field(
+        default=None,
+        ge=0,
+        description="The last turn the story moved it: the player took it up, or a scene did.",
     )
 
 

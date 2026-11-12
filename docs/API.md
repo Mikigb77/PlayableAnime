@@ -657,7 +657,24 @@ MemoryView {character: {name, lines: [string], portrait_url?},
                                           # their regard (W3): "admired" | "respected" |
                                           # "neutral" | "disliked" | "despised"; their fear:
                                           # "none" | "wary" | "feared"; and both in words
-            goals:    [{id, text}],
+            goals:    [{id, text, kind, origin, origin_label, progress?}],
+                                          # the open goals (N2), the thread the character
+                                          # follows first. kind is where the goal shows:
+                                          # "followed" (the one the story last moved, one at
+                                          # most) | "own" (the player set it) | "side" (a
+                                          # lead they took up). origin is where it came
+                                          # from: "start" | "stated" | "asked" | "taken";
+                                          # origin_label says it in words: "Asked of you by
+                                          # Master Wen, day 3". progress is where it stands
+                                          # as far as the character knows, when a scene
+                                          # said. An app that doesn't know a kind shows the
+                                          # goal as the player's own.
+            goals_done: [{id, text, how, when_label?}],
+                                          # the goals that are over, in the order they
+                                          # closed: how is "achieved" | "failed" |
+                                          # "abandoned", when_label the day it closed
+                                          # ("Day 3"), none on a record from before the
+                                          # day was kept
             leads:    [{id, text, expires_label?}],
             rumors:   [{id, text, heard_label, certainty, unconfirmed}],
                                           # certainty: "unconfirmed", or "confirmed" / "false"

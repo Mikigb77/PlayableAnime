@@ -23,6 +23,7 @@ from engine.contracts import (
     CharacterChange,
     ChoiceKind,
     EventSource,
+    GoalMoved,
     GrowthKind,
     Harm,
     Intent,
@@ -839,6 +840,21 @@ def _closed_rightly(state, goal_id: str) -> bool:
     return any((t := lead_thread(state, g)) is not None and t.status.closed for g in carried)
 
 
+def a_note_on(story: Story, goal_id: str, progress: str) -> dict:
+    """A scripted scene that says where a goal stands, and ends where and with whom the last
+    one did."""
+    scene = story.state.scene
+    end = SceneEnd(
+        ended_on="The glass is empty.", place_id=scene.place_id, present_ids=scene.present_ids
+    )
+    moved = [GoalMoved(goal_id=goal_id, progress=progress)]
+    return {
+        "narration": "(scripted) The talk at the bar turns your way.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end, goals_moved=moved).model_dump(mode="json"),
+    }
+
+
 @scenario(
     "t17.goal-ownership",
     suite="T17",
@@ -847,7 +863,8 @@ def _closed_rightly(state, goal_id: str) -> bool:
     passes_when=(
         "The player's goals are never rewritten and never change without the player's input; "
         "while the player only drinks, a goal closes only as a repeat of another or with its "
-        "lead's thread (N2)"
+        "lead's thread; a scene's word on where a goal stands is kept beside it, and that goal "
+        "is the thread the player follows (N2)"
     ),
 )
 async def goal_ownership(ev: Eval) -> None:
@@ -874,11 +891,24 @@ async def goal_ownership(ev: Eval) -> None:
                 goals=goals,
                 responds_to=answer,
             )
-            played = await story.act(words, intent)
+            # Every ninth scene of a scripted run says where the oldest goal stands.
+            note = f"Word {n}: a grey car waited outside that night." if n % 9 == 0 else None
+            noted = a_note_on(story, "find-killer", note) if note and not ev.live else None
+            played = await story.act(words, intent, narration=noted)
             offered += len(played.plan.updates.new_leads)
             event = played.event
             answer = [event.thread_id] if needs_decision(played) and n % 2 else []
             after = {g.id: g.model_dump() for g in story.state.goals.values()}
+            if noted is not None:
+                first = memory_view(story.state).goals[0]
+                ev.check(
+                    "a scene's word on where a goal stands is kept, and it is the thread followed",
+                    (first.id, first.kind.value, first.progress)
+                    == ("find-killer", "followed", note)
+                    and after["find-killer"]["text"] == before["find-killer"]["text"],
+                    f"{seed} turn {n}: {first.id} {first.kind.value} {first.progress!r}",
+                    live=False,
+                )
             ev.check(
                 "no goal is ever rewritten",
                 all(all(after.get(i, {}).get(k) == g[k] for k in WORDS) for i, g in before.items()),

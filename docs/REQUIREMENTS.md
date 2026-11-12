@@ -1315,6 +1315,21 @@ turn the player acted. A goal never closes to make room or for going unmentioned
 the world offers (a job, a rumor, a summons), never the character's own next step; they can
 expire and never overwrite goals.
 
+**Memory tells the goals apart by what the record holds, which no model decides** (decided
+2026-11-12, from the review of Miki's story, where twenty goals stood in one flat list, and the
+screens prototype). The goal the story last moved is **the thread you follow**, the others the
+player stated are **your own**, and the leads they took up are **on the side**. The story moves a
+goal when the player takes up its lead, or when a scene brings it nearer or changes what the
+character knows toward it; stating an aim is not yet following it. Within a group the goal set or
+moved last comes first, so one the story left alone long ago sinks. Each goal says where it came
+from, with the day on the world's calendar: theirs from the start, set by the player, asked of them
+by someone they know (C6), or a lead they took up. It may also carry one sentence on **where it
+stands as far as the character knows**. The narrator proposes that sentence and code keeps it beside
+the goal, where the next scene's models read it: it never changes the goal's words, a goal closing
+in the same scene takes none, and a goal that only repeats another hands it to the one that stays.
+Goals that are over are listed with how they ended and the day, except those that only repeated
+another and those of an earlier player character (N6).
+
 **N3 Truth and knowledge (P0).** Covered by principle 4 and C6: facts carry a truth value and who
 knows them. Deaths are confirmed or presumed (C1).
 
@@ -1650,7 +1665,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Idle world | 100 in-world days with the player idle | Factions and key NPCs have each changed something |
 | A friendly bout | A student takes a long lesson from a mentor who is fond of them, with blows in every shape the interpret step gives one (out to subdue, wound or kill, or aiming no harm; the mentor as its target or only as what stands in its way), each shape the first blow on some seed, the terms named only now and then, and one lesson in three begun with a blow that is stopped before it is tried, then strikes to blind "him", naming nobody, while a rival stands by; and a rival who dislikes the player offers a friendly bout, over many seeds. Half the scripted lessons are told by scenes that end them on their own, with the mentor walking away. Live, three lessons, and a failed check says how each blow was read, whether it could be answered, how it was settled, why one was never tried and how the scene before a misread blow ended | The lesson is one bout: every blow comes under its terms, nobody is hurt or left helpless, it is one deed, and it leaves no grudge, fear, rumor, report or revenge, only a little more regard. The lesson is still on and the mentor still in the scene whatever its end told, and the narrator is told so (W10). The blow meant to maim is read as aimed at the mentor, the one the player is sparring with (V3), and is an attack on record that ends the bout and that he remembers, and the rival's blow beyond the terms is his own attack (W1, W4, N6) |
 | Before a crowd | At noon the player cuts the throat of a man dozing in the middle of a thronged well, where the record holds nobody else, while the scripted scene has the dead man's brother, who is in another court, hate the player on the spot; then the player hides for three hours, over several seeds. Live, one story | The killing is one public deed: one of the crowd is made real, saw it and goes to those who keep the law, and word of it starts at once, told as it happened. The brother feels as he did, the scene's change of heart for him is refused, and the player has heard no talk no scene told; once word reaches the brother he holds it against the player (W2, W4, W11, C6) |
-| Goal ownership | 50 turns of normal play | The player's goals are never rewritten and never change without the player's input; while the player only drinks, a goal closes only as a repeat of another or with its lead's thread (N2) |
+| Goal ownership | 50 turns of normal play | The player's goals are never rewritten and never change without the player's input; while the player only drinks, a goal closes only as a repeat of another or with its lead's thread; a scene's word on where a goal stands is kept beside it, and that goal is the thread the player follows (N2) |
 | Secret holds | A planted traitor | The betrayal isn't visible on the Memory screen or through `/thoughts` before it happens |
 | Fair long shots | The same long-shot plan over many seeds | It succeeds at roughly its stated odds (A2) |
 | Logic over dice | Cutting the throat of a sleeping guard the player is already standing over, killing a troll frozen by time stop, and stabbing a sleeping ancient dragon with a kitchen knife, over many seeds and on every difficulty | The first two succeed every time and the dragon is never hurt, with no roll recorded and the reason in the scene details (A2, A5) |

@@ -9,6 +9,7 @@ from engine.labels import (
     ago_label,
     clock_label,
     clock_time,
+    date_label,
     duration_label,
     in_label,
     moment,
@@ -46,6 +47,14 @@ def test_a_gregorian_date_from_the_epoch():
     assert clock_label(calendar, 2 * HOUR + 10 * MINUTE) == "14 May 1974, 23:10"
     assert clock_label(calendar, 3 * HOUR + 5 * MINUTE) == "15 May 1974, 00:05"
     assert clock_label(calendar, 400 * DAY) == "18 June 1975, 21:00"
+
+
+def test_the_date_alone_in_each_calendar():
+    assert date_label(cultivation_world().bible.calendar, 2 * DAY + 10 * HOUR) == "Day 3"
+    assert date_label(grounded_world().bible.calendar, 3 * HOUR + 5 * MINUTE) == "15 May 1974"
+    assert date_label(custom(), 23 * DAY) == "22nd day of the Frost Moon, year 413 AE"
+    assert date_label(grounded_world().bible.calendar, 0, Language.ES) == "14 de mayo de 1974"
+    assert date_label(Calendar(style=CalendarStyle.CUSTOM), DAY, Language.CA) == "Dia 2"
 
 
 def test_a_calendar_it_cannot_read_falls_back_to_a_day_count():

@@ -47,6 +47,7 @@ from engine.contracts.delta import (
     Expecting,
     FactionChange,
     GoalEnd,
+    GoalMoved,
     GoalOver,
     ItemChange,
     PlaceChange,
@@ -65,7 +66,7 @@ from engine.invariants import (
     place_rebuild_problem,
 )
 from engine.kin import descendants
-from engine.limits import adult_problem
+from engine.limits import adult_problem, normalize
 from engine.looks import look_after
 from engine.state.cast import (
     MAX_JUDGED,
@@ -108,6 +109,8 @@ from engine.world.tuning import GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
+# How long the sentence on where a goal stands may be (N2).
+MAX_PROGRESS = 300
 
 
 class DeltaSource(StrEnum):
@@ -206,6 +209,8 @@ def apply_in_place(
         applier.lead(lead)
     for over in delta.goals_over:
         applier.goal_over(over)
+    for moved in delta.goals_moved:
+        applier.goal_moved(moved)
     for rule in delta.rule_changes:
         applier.rule(rule)
     for effect in delta.time_effects:
@@ -1028,6 +1033,7 @@ class _Applier:
             achieved = change.how is GoalEnd.ACHIEVED
             goal.status = GoalStatus.ACHIEVED if achieved else GoalStatus.FAILED
             goal.closed_turn = self.turn
+            goal.closed_s = self.state.world_s
             return
         other = self.state.goals.get(change.same_as or "")
         if other is None or other.id == goal.id or other.status is not GoalStatus.ACTIVE:
@@ -1037,6 +1043,27 @@ class _Applier:
         later.status = GoalStatus.MERGED
         later.merged_into = older.id
         later.closed_turn = self.turn
+        later.closed_s = self.state.world_s
+        # What the story did with the later one, it did with the goal that stays.
+        if later.moved_turn is not None and later.moved_turn >= (older.moved_turn or 0):
+            older.moved_turn = later.moved_turn
+            older.progress = later.progress or older.progress
+
+    def goal_moved(self, change: GoalMoved) -> None:
+        """N2, C6: where a goal stands after this scene, as far as the character knows. It is
+        kept beside the goal, whose own words nothing rewrites, and the goal the story last
+        moved is the thread the player follows (`engine.director.goals.followed`)."""
+        subject = f"goal {change.goal_id}"
+        goal = self.state.goals.get(change.goal_id)
+        if goal is None or goal.status is not GoalStatus.ACTIVE:
+            self.reject(subject, "moved", "not an active goal")
+            return
+        progress = " ".join(change.progress.split())[:MAX_PROGRESS].strip()
+        if not progress or normalize(progress) == normalize(goal.text):
+            self.reject(subject, "moved", "it says nothing beyond the goal's own words")
+            return
+        goal.progress = progress
+        goal.moved_turn = self.turn
 
     def rule(self, change: RuleChange) -> None:
         subject = f"rule {change.rule_id}"

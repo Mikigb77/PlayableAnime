@@ -3,7 +3,17 @@
 from engine.base import DAY, HOUR
 from engine.contracts import Theme, ThreadChange
 from engine.director import rules
-from engine.director.goals import closed_goals, expired_leads, player_goals
+from engine.director.goals import (
+    GoalKind,
+    GoalOrigin,
+    closed_goals,
+    expired_leads,
+    followed,
+    kind,
+    origin,
+    player_goals,
+    theirs_since,
+)
 from engine.director.ids import IdProbe
 from engine.director.threads import callbacks, current_thread, lifecycle
 from engine.director.turn import TurnFacts
@@ -12,6 +22,7 @@ from engine.samples import farm_world, grounded_world
 from engine.state import (
     CharacterStatus,
     ClockStatus,
+    Fallen,
     Goal,
     GoalStatus,
     Lead,
@@ -160,6 +171,85 @@ def test_goals_come_only_from_the_player_stating_them_or_taking_a_lead():
     ]
     assert len({g.id for g in new}) == 2
     assert player_goals(state, ctx(4), None, facts(4), IdProbe(state)) == ([], [])
+
+
+def test_a_goal_keeps_when_it_was_set_and_taking_up_a_lead_is_following_it():
+    state = grounded_world()
+    state.world_s = 2 * DAY
+    state.leads["lead-1"] = Lead(id="lead-1", text="Meet the priest at dawn")
+    new, _ = player_goals(
+        state,
+        ctx(4),
+        farming(goals=["Take over the family"]),
+        facts(4, responded_leads=frozenset({"lead-1"})),
+        IdProbe(state),
+    )
+    assert [(g.lead_id, g.set_s, g.moved_turn) for g in new] == [
+        ("lead-1", 2 * DAY, 4),
+        (None, 2 * DAY, None),  # stating an aim is not yet following it
+    ]
+
+
+def test_the_thread_the_player_follows_is_the_goal_the_story_last_moved():
+    state = grounded_world()  # find-killer, theirs from the start
+    goals = state.goals
+    assert followed(state) is None and kind(state, goals["find-killer"]) is GoalKind.OWN
+
+    state.leads["lead-1"] = Lead(id="lead-1", text="Meet the priest")
+    goals["goal-2"] = Goal(
+        id="goal-2", text="Meet the priest", set_turn=3, lead_id="lead-1", moved_turn=3
+    )
+    goals["goal-3"] = Goal(id="goal-3", text="Leave Naples", set_turn=5)
+
+    def kinds() -> list[str]:
+        return [kind(state, g).value for g in goals.values()]
+
+    assert kinds() == ["own", "followed", "own"]
+    goals["find-killer"].moved_turn = 7  # a scene moved it on
+    assert kinds() == ["followed", "side", "own"]
+    goals["goal-3"].moved_turn = 7  # the same scene moved two: the older one leads
+    assert followed(state) is goals["find-killer"]
+    goals["find-killer"].status = GoalStatus.ACHIEVED
+    assert followed(state) is goals["goal-3"]
+
+
+def test_where_a_goal_came_from():
+    state = grounded_world()
+    state.leads["asked"] = Lead(id="asked", text="Meet the priest", from_id="carmine")
+    state.leads["found"] = Lead(id="found", text="The old ledger")
+    state.leads["ghost"] = Lead(id="ghost", text="A boat at midnight", from_id="nobody")
+    goals = [
+        state.goals["find-killer"],
+        Goal(id="goal-2", text="Leave Naples", set_turn=5),
+        Goal(id="goal-3", text="Meet the priest", set_turn=6, lead_id="asked"),
+        Goal(id="goal-4", text="The old ledger", set_turn=6, lead_id="found"),
+        Goal(id="goal-5", text="A boat at midnight", set_turn=6, lead_id="ghost"),
+        Goal(id="goal-6", text="A lead since forgotten", set_turn=6, lead_id="gone"),
+    ]
+    assert [origin(state, g) for g in goals] == [
+        GoalOrigin.START,
+        GoalOrigin.STATED,
+        GoalOrigin.ASKED,
+        GoalOrigin.TAKEN,
+        GoalOrigin.TAKEN,
+        GoalOrigin.TAKEN,
+    ]
+
+
+def test_the_goals_of_the_character_before_are_not_the_heirs():
+    state = grounded_world()
+    assert theirs_since(state) == -1  # the first character's goals from turn 0 are theirs
+    state.fallen.append(
+        Fallen(
+            character_id="old",
+            name="Old",
+            ending="death",
+            turn=40,
+            world_s=DAY,
+            successor_id="luca",
+        )
+    )
+    assert theirs_since(state) == 40
 
 
 def test_a_goal_said_again_with_other_case_accents_or_punctuation_is_not_added():

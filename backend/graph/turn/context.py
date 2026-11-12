@@ -553,13 +553,14 @@ def _changed_hands(state: WorldState) -> list[str]:
 
 
 def _goals_and_threads(state: WorldState, goals: WorldState | None = None) -> dict[str, Any]:
-    """The player's active goals with their ids, so a model can name one that is over or that
-    the player drops, the open threads they know of and the leads on offer (N1, N2). `goals` is
-    the state to take the goals from, when it isn't `state`."""
+    """The player's active goals with their ids, so a model can name one that is over, that the
+    scene moved or that the player drops, each with where it stands when a scene said, the open
+    threads they know of and the leads on offer (N1, N2). `goals` is the state to take the goals
+    from, when it isn't `state`."""
     you = state.player_id
     return {
         "goals": [
-            {"id": g.id, "text": g.text}
+            {"id": g.id, "text": g.text} | ({"progress": g.progress} if g.progress else {})
             for g in sorted(
                 (state if goals is None else goals).goals.values(), key=lambda g: natural_key(g.id)
             )
