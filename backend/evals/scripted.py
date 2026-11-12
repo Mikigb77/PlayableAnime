@@ -3,8 +3,8 @@
 Each story gets its own fake backend (`graph.llm.FakeBackend`) under the real model client, so a
 deterministic turn still goes through the client's parsing, streaming, retries and telemetry.
 The interpret node gets the line's scripted interpretation, the narrator the line's scripted
-answer or a stock scene, the summarizer a stock chapter, and the wording step each line as it
-stands.
+answer or a stock scene, the summarizer a stock chapter, and the wording step each line in a
+made-up tongue (`said`).
 
 Token counts follow the prompts the graph really builds, with fixed answer sizes, so the costs
 a deterministic run reports compare turns fairly (K8) without being real prices.
@@ -12,6 +12,7 @@ a deterministic run reports compare turns fairly (K8) without being real prices.
 
 from __future__ import annotations
 
+import re
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -36,6 +37,17 @@ NARRATION_TOKENS = {
     NarrationLength.LONG: 1600,
 }
 SUMMARY_TOKENS = 300
+
+# A word of small letters standing alone: not a name, a number or a word with a mark in it.
+_SMALL_WORD = re.compile(r"(?<![\w'’-])[a-z]+(?![\w'’-])")
+
+
+def said(text: str) -> str:
+    """An engine's line as the scripted wording step says it (S10): between « and », with each
+    word of small letters backwards and its numbers and names as they stand. A line handed back
+    as it stood, or with a part of it still in English, would not be kept (`saying.faithful`)."""
+    return f"«{_SMALL_WORD.sub(lambda word: word.group()[::-1], text)}»"
+
 
 STOCK_SUGGESTIONS = (
     {"label": "Press on", "kind": "thread"},
@@ -134,9 +146,7 @@ class ScriptedModel:
         if node is Node.SUMMARIZER:
             return self._answer(request, {"summary": STOCK_SUMMARY}, SUMMARY_TOKENS)
         if node is Node.WORDING:
-            # S10: each line between « and », with its numbers and names as they stand. A line
-            # handed back unchanged would count as left in English (`saying.faithful`).
-            lines = [{"n": n, "text": f"«{text}»"} for n, text in lines_asked(prompt)]
+            lines = [{"n": n, "text": said(text)} for n, text in lines_asked(prompt)]
             return self._answer(
                 request, {"lines": lines}, sum(tokens(line["text"]) for line in lines)
             )

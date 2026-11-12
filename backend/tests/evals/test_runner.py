@@ -10,7 +10,7 @@ import pytest
 
 from engine.base import HOUR
 from engine.contracts import ActionKind, IntentStep
-from evals import worlds
+from evals import scripted, worlds
 from evals.__main__ import CallFormatter, main
 from evals.judge import (
     JudgeOutput,
@@ -28,6 +28,7 @@ from evals.scripted import MissingInterpretation
 from graph.llm import Block, Fail, FakeBackend, ModelClient, ModelConfig, Node, Reply
 from graph.llm.fake import TINY_PNG, offline_reply
 from graph.llm.types import Request
+from graph.turn import saying
 from tests.evals.conftest import passing_judge
 
 
@@ -223,6 +224,17 @@ def test_the_scripted_model_shows_what_the_narrator_was_sent():
         ev.check("priced", played.cost_usd > 0)
 
     assert play(script).status == "passed"
+
+
+def test_the_scripted_model_says_a_line_with_no_english_left():
+    """S10: the wording step's stand-in says each line in a made-up tongue, with its numbers
+    and names as they stand, so the turn keeps it as a line said in the story's language."""
+    line = "The cave troll strikes back at Lin. You are wounded, with 2 of your 5 left."
+    said = scripted.said(line)
+    assert said == "«The evac llort sekirts kcab ta Lin. You era dednuow, htiw 2 fo ruoy 5 tfel.»"
+    assert saying.faithful(line, said)
+    assert not saying.faithful(line, f"«{line}»")
+    assert scripted.said("Old Hu's well-kept stall, d20") == "«Old Hu's well-kept llats, d20»"
 
 
 # --- a reading alone, and what each model step came to ------------------------------------------

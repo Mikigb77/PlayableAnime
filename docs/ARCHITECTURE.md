@@ -1099,6 +1099,14 @@ Catalan story:
   miss costs, why an ending's claim is refused, and three parts of a danger's number ("your own
   step missed", "one more at their side", "two more at their side"). A test fails when the
   engine words one of them another way.
+- **Code says a lone foe's blow back** (`saying.struck`, `STRUCK`). The engine writes it as two
+  sentences it always words the same way: who strikes back, then what it did ("Elder Mo strikes
+  back. You are wounded."). Every exchange of a fight brings one, and in the live check of
+  2026-11-12 the small model left half of one in English and added a word to another, so code
+  says both sentences itself, in the app's words for it and the sheet's for health ("Elder Mo te
+  devuelve el golpe. Tienes heridas.", "Elder Mo et torna el cop. Tens ferides."), with the foe
+  named as the story names them. Several foes, a danger that is no one's blow and a blow ruled
+  out still go to the model. A test fails when the engine words an outcome the table lacks.
 - **The director's titles have a book of their own** (`engine/director/titles.py`, below), which
   `saying.begin` reads before it asks the model: a card's title or "Elder Mo seeks you out"
   needs no call. An event that brings back one of the story's own threads carries the thread's
@@ -1122,7 +1130,9 @@ Catalan story:
   `saying.faithful` keeps a said line only when it holds the same numbers, in figures, and
   every word of the English line that is capitalized where no sentence or clause starts (its
   names); it drops a blank one, one that runs on, and the English line handed back as it stood
-  (the same text, with a word only English has, such as "the", "is" or "level"). A line that
+  (the same text, with a word only English has, such as "the", "is" or "level"), or in part:
+  two words in a row that only English has, as the engine wrote them ("strikes back" beside
+  "Tienes heridas"), unless they stand inside a name ("Sword of the Dawn"). A line that
   was the story's own already, such as a danger the player named, comes back the same and is
   kept. A dropped or missing line stays in English (issue `lines_kept`, with how many) and is
   not remembered, so the next turn that has it asks again.
@@ -1701,7 +1711,7 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
 - **Deterministic** (CI, every PR). A scripted model answers each model call through the real
   client: the interpreter gets the intent the script gives for that line (a line without one is an
   error, never a guess), and so does a second reading of it (B8), the narrator a stock scene or the script's own answer (the dead-stays-dead
-  script has the narrator try to bring the dead back), the summarizer a stock chapter, and the wording step each line between « and » (S10: a line handed back unchanged would count as left in English). Everything
+  script has the narrator try to bring the dead back), the summarizer a stock chapter, and the wording step each line between « and » with its words of small letters backwards (S10: a line handed back unchanged, or with a part of it still in English, would count as left in English). Everything
   the engine decides is real: rulings, rolls, the clock, the world tick, the director, rumors and
   the world's answers. The story id seeds every roll (A3), so a scenario plays many seeds, up to 200,
   to check odds and spreads. A full run takes about two minutes with no model, database or key.
