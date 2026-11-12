@@ -415,16 +415,22 @@ def faithful(english: str, said: str) -> bool:
 
 # Where a preposition meets the article after it, the language runs them together, and the
 # small model sometimes leaves them apart ("el aguante de el trol"). Only the article in small
-# letters: a name's own capital article stays apart ("a El Paso").
+# letters: a name's own capital article stays apart ("a El Paso"). A name the story spells with
+# its article in small letters ("el trol de las cavernas") brings that article along, and the
+# model, told to keep a name as spelled, says it twice ("del el trol", in Catalan "d'el trol",
+# live check of 2026-11-12): the article is said once.
 _CONTRACTIONS: Mapping[Language, tuple[tuple[re.Pattern[str], str], ...]] = {
     Language.ES: (
         (re.compile(r"\b([Dd])e el\b"), r"\1el"),
         (re.compile(r"\b([Aa]) el\b"), r"\1l"),
+        (re.compile(r"\b([Dd]el|[Aa]l) el\b"), r"\1"),
     ),
     Language.CA: (
         (re.compile(r"\b([Dd])e el(s?)\b"), r"\1el\2"),
         (re.compile(r"\b([Aa]) el(s?)\b"), r"\1l\2"),
         (re.compile(r"\b([Pp])er el(s?)\b"), r"\1el\2"),
+        (re.compile(r"\b([Dd])'el(s?)\b"), r"\1el\2"),
+        (re.compile(r"\b([Dd]el|[Aa]l|[Pp]el)(s?) el\2\b"), r"\1\2"),
     ),
 }
 
@@ -432,8 +438,9 @@ _CONTRACTIONS: Mapping[Language, tuple[tuple[re.Pattern[str], str], ...]] = {
 def contracted(said: str, language: Language, english: str = "") -> str:
     """`said` with each article run into the preposition before it, as the language writes
     them: "del trol" and "al pozo" in Spanish, and in Catalan "dels turons" and "pel camí"
-    too. What the engine's own line already holds apart is the story's wording, such as a
-    name spelled that way, and stays as it is."""
+    too, with an article said twice said once ("del el trol" is "del trol"). What the
+    engine's own line already holds apart is the story's wording, such as a name spelled that
+    way, and stays as it is."""
     for apart, together in _CONTRACTIONS.get(language, ()):
         if not apart.search(english):
             said = apart.sub(together, said)
