@@ -131,7 +131,7 @@ def test_the_guide_explains_only_what_the_form_holds():
         others = [w for other, told in TOLD.items() if other != needs for w in told]
         assert not [words for words in others if words in with_it]
     # Training is still explained to a turn with no ladder, without the rung to break through to.
-    assert "- training: a step spent learning. kind skill, technique or power" in plain
+    assert "studying a manual). kind skill, technique or power (a new way" in plain
     assert "or breakthrough (the next rung of a ladder" in prompts.INTERPRET_SYSTEM
     assert prompts.interpret_system(WHOLE) == prompts.INTERPRET_SYSTEM
     assert len(plain) < 0.85 * len(prompts.INTERPRET_SYSTEM)

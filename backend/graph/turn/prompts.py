@@ -95,7 +95,8 @@ ride most of a day, "I train here for a year" a year (time_skip). Never shorten 
 the story moving: the player sees the clock.
 <<time>>
 - Inside a time stop the world's clock stands still: set proposed_personal_s to the actor's own \
-lived seconds.
+lived seconds for that step alone, the second or two its own beats take. Stopping time is a \
+step of a second, never the length of the stop.
 <<end>>
 - until: when the player times a step by the clock ("until nightfall", "sleep till dawn", "wait \
 for the evening bell"), that time of day on the 24-hour clock as HH:MM, judged from NOW. The \
@@ -189,10 +190,11 @@ moves nothing: no exchange.
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
-- facts.foes_mean: in a fight, what those fighting the character are out to do to them, from who \
-they are and the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring \
-partner holding back, guards taking them alive, a master testing a student), or none when they \
-won't strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. The \
+- facts.foes_mean: in a fight, and on any step that parries, dodges or gets away from someone \
+coming at them, what those fighting the character are out to do to them, from who they are and \
+the scene: kill (a killer, a beast, an enemy in a war), wound, subdue (a sparring partner \
+holding back, guards taking them alive, a master testing a student), or none when they won't \
+strike back (unarmed, fleeing, too afraid). Leave it empty when there is no fight. The \
 character throws their own defence against them, and code marks it deadly when they mean to \
 kill (N6). A step that tries to get away from a fight (a run, a leap, a dive into the crowd) \
 names the foes it gets away from in facts.opposition_ids, so code can judge whether they catch \
@@ -207,12 +209,14 @@ fight, such as an ambush or a brawl, and for a step that fights nobody.
 - facts.breaks_terms (W1), always: true when the character means to do worse than those terms \
 accept: under no_harm, a blow meant to wound, maim, blind, cripple or kill; under wounds, one \
 meant to kill; under any terms, one struck after the other yielded. Give the bout's terms on \
-that step too: code takes the blow as an attack, and the bout is over. false for every other \
-step.
+that step too: code takes the blow as an attack, and the bout is over. Only when the player's \
+own words say so: a blow of the bout with nothing said of hurting the other ("I come at him \
+again") stays inside its terms. false for every other step.
 - facts.crowd (W2), always: true when people SCENE doesn't name are around and would see the \
 step done (a busy street, a market at noon, a full tavern). false in a private or empty place, \
-and for what is done so that nobody around notices (a hand in a pocket, poison slipped into a \
-cup). Code makes public what is done before a crowd.
+whenever the scene says nobody else is there, and for what is done so that nobody around \
+notices (a hand in a pocket, poison slipped into a cup), however many are around. Code makes \
+public what is done before a crowd.
 - facts.asks_talk (W2), always: true when the step asks or listens for what people are saying: \
 the news, the rumors, the gossip, the talk of the place ("I ask what people are saying", "any \
 news?", "I listen to the talk at the next table"). Code gives the scene what the place is \
@@ -222,7 +226,8 @@ scene embodies: the drop from a bridge, a burning roof, a collapsing tunnel, a r
 danger_class is how surely it hurts an ordinary person (certain, contested, long_shot, or \
 ruled_out when it can't), and danger_harm whether it kills or wounds. Judge it for an ordinary \
 person: code adjusts it for the character's body. A leap from a bridge to get away is a move \
-with a danger, not harm turned on themselves. Leave danger empty when nothing threatens them, and \
+with a danger, not harm turned on themselves, and the drop goes here, never under opposition, \
+which is only who or what could stop them. Leave danger empty when nothing threatens them, and \
 for harm they turn on themselves, where the danger is the means.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
 filler (R7). Empty when the player gives only the gist ("I threaten him").
@@ -237,13 +242,14 @@ for how far away it lands, when the player says or the scene shows. full_force o
 player asks for everything a power can give.
 <<end>>
 <<ladders>>
-- training: a step spent learning. kind skill, technique, power (a new way to use a power they \
-have) or breakthrough (the next rung of a ladder, with its ladder_id). Who or what they learn \
-from (self, master, book, rival, watching, with its id) and whether they invent it.
+- training: a step spent learning or practising (drilling forms, studying a manual). kind \
+skill, technique, power (a new way to use a power they have) or breakthrough (the next rung of \
+a ladder, with its ladder_id). Who or what they learn from (self, master, book, rival, \
+watching, with its id) and whether they invent it.
 <<else>>
-- training: a step spent learning. kind skill, technique or power (a new way to use a power \
-they have). Who or what they learn from (self, master, book, rival, watching, with its id) and \
-whether they invent it.
+- training: a step spent learning or practising (drilling forms, studying a manual). kind \
+skill, technique or power (a new way to use a power they have). Who or what they learn from \
+(self, master, book, rival, watching, with its id) and whether they invent it.
 <<end>>
 <<time>>
 - A new way to use a time stop, such as releasing a stopped-time throw gradually, is training \

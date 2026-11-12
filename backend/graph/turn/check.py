@@ -6,6 +6,8 @@ raises for a bad proposal, and nothing here calls a model. Model nodes propose; 
 (CLAUDE.md rule 2).
 
 - `check_intent`: the interpret step's proposal against the state (V3, B5, W10, N2, N6).
+- `doubtful`: whether that reading would do something that can't be taken back on the model's
+  word alone, so it is read once more before code decides (B8, W1).
 - `check_resolution`: resolve's outcome classes and where a chained plan stops (A2, A3, R6).
 - `check_plan`: the director's pick against the state and the player's settings (M1, M2, F7, N1).
 - `check_update`: the narrator's proposed scene end, before `engine.apply` applies it (R3, C1).
@@ -35,11 +37,12 @@ from engine.contracts import (
 )
 from engine.director.themes import allowed_themes, fits
 from engine.labels import only_the_clock
+from engine.resolve import bouts
 from engine.resolve.powers import sensing
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
-from engine.timekeeping import parse_clock
+from engine.timekeeping import DURATION_BOUNDS, parse_clock
 from engine.world.geography import scene_ids
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import Issue
@@ -49,6 +52,15 @@ from graph.turn.types import Issue
 MAX_STEPS = 8
 # An action that fits no category still becomes a step (B5), taking a few seconds.
 FALLBACK_DURATION_S = 5
+# W10: the kinds of stretch that become a time skip when the player gave one more time than its
+# kind can last: "I train here for a year" read as work would stop at eighteen hours.
+STRETCHES = (
+    ActionKind.REST,
+    ActionKind.WORK,
+    ActionKind.TASK,
+    ActionKind.WAIT,
+    ActionKind.OBSERVE,
+)
 # M1: the only pictures a dead character can be the subject of.
 LAST_PICTURES = (PictureTrigger.DEATH, PictureTrigger.DECISIVE_BLOW)
 # G12: the issue code for a real person or organisation left out of the narrator's update.
@@ -57,6 +69,10 @@ REAL_ENTITY = "real_entity"
 UNRECORDED_HARM = "unrecorded_harm"
 # R3: the issue code for a scene end that gave only the date or the hour.
 CLOCK_SCENE_END = "clock_scene_end"
+# B8: the issue code for a turn the larger model read again, and what its first reading would
+# have done that can't be taken back (W1).
+READ_AGAIN = "read_again"
+BEYOND_TERMS = "beyond_terms"
 
 
 @dataclass(frozen=True)
@@ -75,7 +91,8 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     becomes one step that carries the player's words as they are. An edge or hindrance that
     leans on an injury the record doesn't hold is left out (N6, `engine.injuries`). Hiding or
     showing strength is a step of its own (G20, `_shows_apart`). A step whose reading left out
-    who it is aimed at finds them where the player's words point (V3, W1, `_aimed`).
+    who it is aimed at finds them where the player's words point (V3, W1, `_aimed`). A stretch
+    the player timed for longer than its kind can last is a time skip (W10).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -97,6 +114,14 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
             if step.until.strip():
                 issues.append(Issue("bad_until", "not a time of day, so the seconds stand"))
             step.until = None
+        if (
+            step.timed
+            and step.kind in STRETCHES
+            and step.proposed_duration_s > DURATION_BOUNDS[step.kind][1]
+        ):
+            # W10: the player said how long, so the time stands and the kind gives way.
+            issues.append(Issue("long_stretch", "longer than its kind lasts, so a time skip"))
+            step.kind = ActionKind.TIME_SKIP
         facts = step.facts
         unknown = [ref for ref in facts.opposition_ids if ref not in known]
         if unknown:
@@ -153,6 +178,30 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
         ]
         intent.summary = intent.summary or text
     return CheckedIntent(intent=intent, issues=issues, overflow=overflow)
+
+
+def doubtful(intent: Intent, state: WorldState) -> str | None:
+    """What a reading would do that can't be taken back and rests on the model's word alone, or
+    None: such a turn is read once more, by the larger model, before code decides (B8).
+
+    So far one thing (W1): a blow the reading says is meant to go beyond the terms of a bout,
+    which ends the bout as an attack on a friend, for good. Read on the real model on
+    2026-11-12, one plain lesson blow in 36 came back that way, and every blow after it in that
+    story was an attack on the teacher. A fight already in earnest has no terms left to break,
+    and a blow the terms allow breaks nothing, whatever the reading said of it
+    (`engine.resolve.bouts`)."""
+    encounter = state.scene.encounter
+    bout = encounter.bout if encounter is not None else None
+    if bout is None and encounter is not None and encounter.in_earnest:
+        return None
+    for step in intent.steps:
+        facts = step.facts
+        if not facts.breaks_terms or not bouts.is_blow(step):
+            continue
+        terms = facts.terms if bout is None else bouts.milder(bout.terms, facts.terms)
+        if terms is not None and not bouts.allows(terms, bouts.meant(step)):
+            return BEYOND_TERMS
+    return None
 
 
 def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str = "") -> None:

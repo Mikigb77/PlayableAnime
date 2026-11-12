@@ -29,7 +29,8 @@ Why each line is where it is:
   table allows the deed and only its telling is bounded, such as a character taking their own
   life or sexual violence off the page. The narrator's filters and the code's hard limits
   (`engine.limits`, F3) still bound what is told. Teen keeps the narrator's other settings, and
-  a sexual step never plays there anyway (F2).
+  a sexual step never plays there anyway (F2). A second reading of the same words by the larger
+  model (B8) runs with the same settings.
 - **The narrator in Mature** runs with dangerous content off, so a death the player chose is
   told, not cut away (F1, Miki 2026-11-05). F3's line on real-world instructions is held there by
   code instead: a narration that reads as a working procedure is retold as a cut-away
@@ -102,7 +103,7 @@ def safety_settings(
         raise ValueError(f"Unknown rating {rating!r}")
     if picture:
         return dict(_PICTURES)
-    if node == Node.INTERPRET:
+    if node in (Node.INTERPRET, Node.SECOND_READING):
         return dict(_INTERPRET[rating])
     if node in (Node.SUMMARIZER, Node.PICTURE_NOTE):
         # C3: a chapter only retells what was already told, and a block would ask for it again
