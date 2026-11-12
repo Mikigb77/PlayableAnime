@@ -308,8 +308,11 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
   peoples and the factions the character knows. Of how the story starts they show only what the
   player's own words name (G1): a deadline, an open question or a key person is a line only when
-  the premise, or a change the player asked for, names it (a person by their name), and so are
-  a connection, a goal and what the character wants in `character_lines`. The rest is drafted
+  the premise, or a change the player asked for, names it (a person by their name), and so is
+  a connection in `character_lines`. A goal and what the character wants are there only when
+  those words say it as an aim ("I must pass the knight exam"; "the knight exam is in 3 days"
+  gives the deadline and no goal), or when the change was asked at that row (`about: "goal"`
+  or `"nature"`). The rest is drafted
   and kept for the story to tell. A deadline their words give an amount of time ("in 3 days")
   comes at exactly that time (E2).
   At most 10 lines each. Of the ladder they name the rungs everyone in the world has heard of, five
@@ -360,8 +363,9 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   the old version still returns the same story.
 - **A change in plain words** (`revise`) may say which part of the summary it was asked at:
   `about`, the `kind` of a part of that `target`. The drafter is then given that part as the
-  player read it, so "make me better at this" says what "this" is. An unknown `about` is a
-  `validation_error`.
+  player read it, so "make me better at this" says what "this" is. A change asked at `goal`
+  or at `nature` is about what the character is after, so a goal or a want its words name
+  shows from then on with no "I want to" (G1). An unknown `about` is a `validation_error`.
 - **Real people (G12).** A premise, a revision's `instruction`, an edited summary line, a plain
   field or a rule that names a real living person is refused before any model call, at no cost,
   with `400 validation_error`: `details.fields` has the field (`premise`, `instruction`,

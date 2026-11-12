@@ -8,7 +8,7 @@ from engine.base import DAY, HOUR, WEEK, YEAR
 from engine.context import Language
 from graph.drafting import samples
 from graph.drafting.catalog import starter
-from graph.drafting.named import MONTH, called, named, timed, times_ahead, told_of
+from graph.drafting.named import MONTH, aimed, called, named, timed, times_ahead, told_of
 from graph.words import alike, content
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
@@ -225,6 +225,96 @@ def test_a_time_ahead_says_what_it_is_for():
     assert time.says("The trial of knighthood", EN) == 1
     assert time.says("The harvest fair", EN) == 0
     assert list(times_ahead("My father was killed three days ago.", EN)) == []
+
+
+@pytest.mark.parametrize(
+    ("said", "aim", "language"),
+    [
+        # A word for wanting, having to, meaning to or looking for, beside the aim's own words.
+        ("I'm a squire and I must pass the knight exam in 3 days.", "Pass the knight exam", EN),
+        ("I want to become the Pirate King.", "Become the Pirate King", EN),
+        ("You must find your sister before the snow.", "Find your sister", EN),
+        ("I'm looking for the man who killed my master.", "Find the man who killed my master", EN),
+        ("My dream is to be the strongest swordsman alive.", "Be the strongest swordsman", EN),
+        ("Quiero aprobar el examen de ingreso al gremio.", "Aprobar el examen de ingreso", ES),
+        ("He jurado vengar a mi familia.", "Vengar a mi familia", ES),
+        ("Tienes que encontrar a tu hermana.", "Encontrar a tu hermana", ES),
+        ("Busco al asesino de mi padre.", "Encontrar al asesino de mi padre", ES),
+        ("Vull pagar el deute al recaptador del rei.", "Pagar el deute al recaptador del rei", CA),
+        ("He de trobar la meva germana.", "Trobar la meva germana", CA),
+        ("Has de trobar la teva germana.", "Trobar la teva germana", CA),
+        # What something is done for, said with the aim's own first word.
+        ("I came to the capital to become a knight.", "Become a knight", EN),
+        ("You dive the old net for scrap, to pay off the clinic.", "Pay off the clinic", EN),
+        ("He venido a la capital para vengar a mi padre.", "Vengar a mi padre", ES),
+        ("He vingut a la capital per venjar el meu pare.", "Venjar el meu pare", CA),
+        # The aim said in a sentence of its own, about what the one before it told.
+        (f"{NAPLES} I will find out who.", "Find out who killed my father", EN),
+        (
+            "Mi padre fue asesinado. Voy a descubrir quién lo hizo.",
+            "Descubrir quién asesinó a mi padre",
+            ES,
+        ),
+        # The summary's own labels, in a line of it the player wrote.
+        ("Goal: Protect my sister", "Protect my sister", EN),
+        ("Hot-headed and loyal. Wants to take over the family.", "to take over the family", EN),
+        ("Objetivo: Proteger a mi hermana", "Proteger a mi hermana", ES),
+        ("Objectiu: Protegir la meva germana", "Protegir la meva germana", CA),
+    ],
+)
+def test_the_players_words_say_an_aim(said, aim, language):
+    assert named(said, aim, language)
+    assert aimed(said, aim, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "aim", "language"),
+    [
+        # G1 (a live check, 2026-11-12): a time set for an event says what is coming, not what
+        # the character is after.
+        (
+            "I'm a squire about to take the knight exam in 3 days, and I have never once "
+            "summoned aura.",
+            "Pass the knight exam",
+            EN,
+        ),
+        (
+            "Soy la aprendiz más torpe de una academia de magia, y el examen de ingreso al "
+            "gremio es dentro de cinco días.",
+            "Aprobar el examen de ingreso al gremio",
+            ES,
+        ),
+        (
+            "Soc un pescador d'un poble de la costa, i d'aquí a dos dies arriba el recaptador "
+            "del rei a cobrar un deute que no puc pagar.",
+            "Pagar el deute al recaptador del rei",
+            CA,
+        ),
+        (starter("outer-disciple").premise, "Survive the ranking tournament", EN),
+        # What happened is no aim either.
+        (NAPLES, "Find out who killed my father", EN),
+        # An aim about something else, in another sentence.
+        ("I'm going to the market. The knight exam is in 3 days.", "Pass the knight exam", EN),
+        # "To" after what is no purpose.
+        ("I'm a squire about to take the knight exam in 3 days.", "Take the knight exam", EN),
+        ("I have never been able to summon aura.", "Summon aura", EN),
+        ("Estic a punt de fer l'examen de cavaller.", "Fer l'examen de cavaller", CA),
+    ],
+)
+def test_words_that_only_tell_of_it_say_no_aim(said, aim, language):
+    # Each of these names the aim's words, which is why a goal made of them used to show.
+    assert named(said, aim, language)
+    assert not aimed(said, aim, language)
+
+
+def test_an_aim_is_said_about_what_it_names():
+    # A word for wanting says an aim only of what its own words name.
+    assert not aimed("I want to win the tournament.", "Find out who killed my father", EN)
+    assert not aimed("Someone wants me dead.", "", EN)
+    # Someone else's want, in a sentence that doesn't name the aim, gives none.
+    premise = starter("won-at-cards").premise
+    assert "wants his ship back" in premise
+    assert not aimed(premise, "Find the island on the chart", EN)
 
 
 @pytest.mark.parametrize(

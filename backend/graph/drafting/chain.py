@@ -196,18 +196,24 @@ async def create(
 
 
 async def revise(
-    llm: ModelClient, draft: Draft, target: Target, instruction: str, about: str = ""
+    llm: ModelClient,
+    draft: Draft,
+    target: Target,
+    instruction: str,
+    about: str = "",
+    aim: bool = False,
 ) -> Draft:
     """A change in plain words, such as "add hidden vampires" (G1, G2). The request is the
     player's own words, so what it names of how the story starts shows in the summary from
     here on. `about` is the part of the summary they asked it at, in the summary's own words,
     so "make me better at this" says what "this" is; it is the drafter's text, and names
-    nothing."""
+    nothing. `aim` says they asked it at the row of what the character is after, their goal
+    or their nature, so a goal or a want the request names is theirs with no "I want to"."""
     if target == "world":
         revised = await _revise_world(llm, draft, instruction, about)
     else:
         revised = await _revise_character(llm, draft, instruction, about)
-    return _noting(_on_time(revised, [instruction]), [instruction])
+    return _noting(_on_time(revised, [instruction]), [instruction], plainly=aim)
 
 
 @dataclass(frozen=True)
@@ -607,13 +613,15 @@ def _on_time(draft: Draft, words: Iterable[str]) -> Draft:
     return replace(draft, proposal=_with_world(draft.proposal, clocks=clocks))
 
 
-def _noting(draft: Draft, words: Iterable[str]) -> Draft:
+def _noting(draft: Draft, words: Iterable[str], plainly: bool = False) -> Draft:
     """G1: the draft after a change the player asked for in `words`, their own. It keeps the
     keys of the openers those words named and of the ones it had that are still there. The
-    words themselves are not kept."""
+    words themselves are not kept. `plainly` is for words asked at the row of what the
+    character is after (`openers.names`)."""
     state = draft.state()
     told = carried(state, draft.told, draft.language)
-    return _telling(draft, told | named_by(state, "\n".join(words), draft.language))
+    named = named_by(state, "\n".join(words), draft.language, plainly=plainly)
+    return _telling(draft, told | named)
 
 
 def _telling(draft: Draft, told: frozenset[str]) -> Draft:

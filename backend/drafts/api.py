@@ -485,7 +485,12 @@ async def revise_draft(request, draft_id: str, body: ReviseIn):
     async with service.model_call(
         request, rating=draft.rating, action="revise", premise_id=draft.premise_id
     ) as call:
-        draft = await chain.revise(call.client, draft, body.target, body.instruction, about)
+        # G1: a change asked at the goal or at the nature row speaks of what the character is
+        # after, so the goal or the want it names shows from here on.
+        aim = body.about in (PartKind.GOAL, PartKind.NATURE)
+        draft = await chain.revise(
+            call.client, draft, body.target, body.instruction, about, aim=aim
+        )
         row = await service.save_row(row, draft, call)
     return draft_out(row, draft.state())
 

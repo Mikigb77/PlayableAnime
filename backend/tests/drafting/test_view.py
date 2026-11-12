@@ -70,9 +70,13 @@ def test_the_summary_keeps_how_the_story_starts_a_surprise():
     # What the premise speaks of is there: the killing, and the family it happened in.
     assert "Who inside the family ordered the killing of my father?" in naples
     assert any(line.startswith("The Esposito family:") for line in naples)
+    # What the character is after is theirs to say: the killing is in the premise, and the
+    # goal the drafter made of it shows once their words say it as an aim.
     luca = character_lines(_naples(), said=Said(samples.NAPLES_PREMISE))
-    assert "Goal: Find out who killed my father." in luca
+    assert not any(line.startswith("Goal:") for line in luca)
     assert "Three loyal soldiers." not in luca
+    sworn = Said(f"{samples.NAPLES_PREMISE} I will find out who.")
+    assert "Goal: Find out who killed my father." in character_lines(_naples(), said=sworn)
 
     cultivation = world_lines(_cultivation(), said=Said(samples.CULTIVATION_PREMISE))
     assert not any("tournament" in line for line in cultivation)
@@ -84,8 +88,12 @@ def test_the_summary_keeps_how_the_story_starts_a_surprise():
 
 
 def test_what_the_players_words_name_is_in_the_summary():
+    # A deadline the premise sets a time for is there, and it gives no goal: "the ranking
+    # tournament starts in two days" says what is coming, not what the character is after.
     said = Said(starter("outer-disciple").premise)
     assert "The ranking tournament: in 2 days." in world_lines(_cultivation(), said=said)
+    assert not any(line.startswith("Goal:") for line in character_lines(_cultivation(), said=said))
+    said = Said(samples.CULTIVATION_PREMISE + " I must survive the ranking tournament.")
     assert "Goal: Survive the ranking tournament." in character_lines(_cultivation(), said=said)
     # A person is named by their name.
     said = Said(samples.CULTIVATION_PREMISE + " Zhao Kun has hated me since the day I arrived.")

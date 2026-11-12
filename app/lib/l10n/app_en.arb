@@ -258,6 +258,8 @@
   "createDecideComingExample": "My knight exam is in three days.",
   "createDecidePeople": "Who is in your life",
   "createDecidePeopleExample": "My rival is called Garrick.",
+  "createDecideAim": "What you are after",
+  "createDecideAimExample": "I want to become a knight.",
   "createDecideNote": "What you name here, you see before you start. Everything you leave out stays a surprise.",
   "reviewLegendDirect": "You change it, right away",
   "reviewLegendAsk": "You tell the storyteller",
