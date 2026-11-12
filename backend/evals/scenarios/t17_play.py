@@ -776,7 +776,7 @@ async def start_is_a_surprise(ev: Eval) -> None:
         ev.check(
             "a deadline the premise sets is in the summary",
             any(line.startswith(f"{name}:") for name in clocks for line in world),
-            f"{language.value}: {clocks}",
+            f"{language.value}: the draft's clocks {clocks}, the summary {world}",
         )
         await ev.judge_summary(
             f"a premise that sets a deadline ({language.value})",
