@@ -740,11 +740,21 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
                    states: [{name, effect, ends_label?}],   # "Passes in 2 hours" (W10)
                    reserves: [{name, level}],          # what is left, 0 to 100
                    expecting_label?},                  # a child on the way and when (N6)
-       paths: [{name, rungs: [{name, stage, description}]}],
-                                          # each ladder they stand on (G18), from its first
-                                          # rung up to their own, lowest first: the last is
-                                          # theirs and carries its stage and description.
-                                          # Nothing above it is sent (C6).
+       paths: [{name, rungs: [{name, stage, description, note}],
+                above: [{name, known, note, said: [string], gap_below}]}],
+                                          # each ladder as far as they know it (G18, C6).
+                                          # rungs: from its first rung up to their own, lowest
+                                          # first: the last is theirs and carries its stage and
+                                          # description; empty for a ladder they don't stand
+                                          # on. note: "Reached, day 9", "Left behind, day 9".
+                                          # above: the rungs over their own that the story
+                                          # named to them, lowest first. known: confirmed, or
+                                          # only heard of. note: "Heard of, day 14",
+                                          # "Confirmed before Elder Han, day 15". said: what
+                                          # they learned or heard about it. gap_below: rungs
+                                          # nobody named to them lie under it. Nothing else of
+                                          # what lies higher is sent, and never what a rung is
+                                          # or what reaching it takes.
        money_label?,                      # "12 silver taels"
        items: [{name, kind, kind_label, description, history, quantity, carried}],
                                           # kind: weapon | armour | gear | treasure |

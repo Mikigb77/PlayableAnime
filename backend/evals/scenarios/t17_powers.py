@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from engine import path
 from engine import talent as talent_mod
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import Difficulty, StorySettings
@@ -28,7 +29,9 @@ from engine.contracts import (
     PictureTrigger,
     PowerGrant,
     PowerTheory,
+    SceneEnd,
     ShowStrength,
+    StateDelta,
     TalentCase,
 )
 from engine.resolve.powers import sensing
@@ -47,6 +50,7 @@ from engine.state import (
     TalentFit,
     Visibility,
 )
+from engine.visibility import status_view
 from engine.world import Kind
 from engine.world.answers import Answer, actor_might
 from evals import worlds
@@ -1324,3 +1328,100 @@ async def hidden_strength(ev: Eval) -> None:
             ),
             [hidden, mocked, shown],
         )
+
+
+# --- The path (G18, C6) ------------------------------------------------------------------------
+
+
+def at_the_well(story: Story, words: str, *walks_in: str) -> dict:
+    """A scripted scene that says `words` and ends where the last one did, with its people and
+    whoever walks in."""
+    scene = story.state.scene
+    end = SceneEnd(
+        ended_on="The well's rope creaks.",
+        place_id=scene.place_id,
+        present_ids=[*scene.present_ids, *walks_in],
+    )
+    return {
+        "narration": words,
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
+def path_above(story: Story) -> list[tuple[str, bool, bool]]:
+    """The rungs over their own on the Character screen: each one's name, whether it is known
+    and whether unnamed rungs lie under it."""
+    paths = status_view(story.state).sheet.paths
+    return [(rung.name, rung.known, rung.gap_below) for path in paths for rung in path.above]
+
+
+@scenario(
+    "t17.the-path",
+    suite="T17",
+    title="The path",
+    requirements=("G18", "C6", "T17"),
+    passes_when=(
+        "A rung above the character's own shows on their path from the scene that names it, as "
+        "heard of, and as known once someone who stands on it has stood before them; no rung "
+        "shows that neither a scene nor something they know has named (G18, C6)"
+    ),
+)
+async def the_path(ev: Eval) -> None:
+    asked = "I ask Senior Brother Zhao which realms lie above Qi Condensation"
+    turns = [
+        (asked, "“Foundation Establishment first,” Zhao says. “Core Formation is for elders.”"),
+        ("I draw water from the well", None),
+        ("I ask Zhao how high anyone has ever climbed", "“Soul Transformation? A story.”"),
+        ("I bow as the old man passes", "An old man in grey stops at the well: Elder Mo."),
+    ]
+    script = [
+        [("Foundation Establishment", True, False), ("Core Formation", False, False)],
+        [("Foundation Establishment", True, False), ("Core Formation", False, False)],
+        [
+            ("Foundation Establishment", True, False),
+            ("Core Formation", False, False),
+            ("Soul Transformation", False, True),
+        ],
+        [
+            ("Foundation Establishment", True, False),
+            ("Core Formation", True, False),
+            ("Soul Transformation", False, True),
+        ],
+    ]
+    heard = []
+    for seed in ev.seeds(4, live=1):
+        story = ev.story(worlds.cultivation_world(), seed=seed)
+        played = await story.open()
+        above = story.state.bible.ladder("realms").rungs[1:]
+        said: set[str] = set()
+        ev.check("nothing shows above before a scene names it", not path_above(story), live=False)
+        for n, (words, scene) in enumerate(turns):
+            walks_in = ("elder-mo",) if n == 3 else ()
+            scripted = at_the_well(story, scene, *walks_in) if scene and not ev.live else None
+            played = await story.act(
+                words, act(words, "ask", ActionKind.EXCHANGE, MINUTE), narration=scripted
+            )
+            said |= {rung.name for rung in above if path.named(played.narration, rung.name)}
+            known = [f.text for f in story.state.facts.values() if "lin" in f.known_by]
+            learned = {r.name for r in above if any(path.named(text, r.name) for text in known)}
+            shown = path_above(story)
+            names = {name for name, _, _ in shown}
+            ev.check(
+                "a rung a scene named is on the path from then on",
+                said <= names,
+                f"{seed} turn {n + 1}: said {sorted(said)}, shown {sorted(names)}",
+            )
+            ev.check(
+                "no rung shows that neither a scene nor something they know named",
+                names <= said | learned,
+                f"{seed} turn {n + 1}: shown {sorted(names)}, said {sorted(said)}",
+            )
+            ev.check(
+                "heard of when a scene names it, known once someone on it stood before them",
+                shown == script[n],
+                f"{seed} turn {n + 1}: {shown}",
+                live=False,
+            )
+        heard.append(len(said))
+    ev.metric("rungs_named_by_scenes", heard)

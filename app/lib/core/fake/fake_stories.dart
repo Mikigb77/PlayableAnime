@@ -696,11 +696,30 @@ const _seedSheet = <String, Object?>{
     {
       'name': 'Cultivation realms',
       'rungs': [
-        {'name': 'Mortal', 'stage': '', 'description': ''},
+        {'name': 'Mortal', 'stage': '', 'description': '', 'note': 'Left behind, day 2'},
         {
           'name': 'Qi Condensation',
           'stage': 'Third stage',
           'description': 'Qi gathers in the dantian and the body begins to change.',
+          'note': 'Reached, day 2',
+        },
+      ],
+      // What the story has named to him of the realms above (C6): one confirmed, one only
+      // heard of, with room between that nobody has measured for him.
+      'above': [
+        {
+          'name': 'Foundation Establishment',
+          'known': true,
+          'note': 'Confirmed before Master Hu, day 3',
+          'said': ['Master Hu took a pill and sat nine days alone to reach it.'],
+          'gap_below': false,
+        },
+        {
+          'name': 'Nascent Soul',
+          'known': false,
+          'note': 'Heard of, day 4',
+          'said': <String>[],
+          'gap_below': true,
         },
       ],
     },
