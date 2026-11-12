@@ -24,6 +24,7 @@ from engine.director.sources import Pick
 from engine.director.titles import COMES_DUE
 from engine.state.records import EventStatus, PendingEvent, ThreadKind
 from engine.state.world import EventSize, WorldState, natural_key
+from engine.world.scheduling import Kind
 
 DIRECTOR_PREFIX = "director."
 MONTAGE_KIND = "director.event"
@@ -145,6 +146,50 @@ def came_due(state: WorldState, ctx: TurnContext) -> CameDue:
         e.id for e in found if is_director_event(e) and e.status is EventStatus.PENDING
     )
     return CameDue(world=world, rolled=rolled, plays_out=plays_out, pending_ids=pending_ids)
+
+
+# Word of a deed on its way, and the world's look at what one left behind: about the player
+# character when the deed is theirs, and still nothing they notice. The talk it starts reaches
+# them through the talk of the place (W2).
+_UNSEEN = frozenset({Kind.RUMOR, Kind.WORD, Kind.DISCOVERY})
+# Someone being told of a deed, which shows only where it is done.
+_TOLD_SOMEWHERE = frozenset({Kind.REPORT, Kind.TIDINGS})
+
+
+def noticed(event: PendingEvent, state: WorldState) -> bool:
+    """Whether the player character could notice an event that fired: it needs them, involves
+    them, or happens where they are. Everything else stays off-screen (C6). Word of a deed
+    reaching someone involves them only when they are there to see it: with the witness who
+    tells it on the spot, or where the one who is told is."""
+    if event.kind in _UNSEEN:
+        return False
+    if event.needs_player:
+        return True
+    here = state.scene.place_id or state.player.location_id
+    if event.place_id is not None and event.place_id == here:
+        return True
+    if event.kind in _TOLD_SOMEWHERE:
+        teller = event.payload.get("witness_id")
+        return event.place_id is None and teller in state.scene.present_ids
+    return state.player_id in event.subject_ids
+
+
+def in_sight(state: WorldState, ctx: TurnContext) -> tuple[PendingEvent, ...]:
+    """The world's events that happened this turn where the player character could notice them
+    (`noticed`), in time order: the scene shows them, so it has more to tell than the action
+    (R3). Those that need the player are among them, and the director makes each the scene's
+    event or a happening."""
+    found = [
+        event
+        for event in state.pending_events.values()
+        if event.timeline_id == state.timeline_id
+        and event.status is EventStatus.APPLIED
+        and event.applied_turn == ctx.turn
+        and not is_director_event(event)
+        and noticed(event, state)
+    ]
+    found.sort(key=lambda e: (e.due_s, e.created_turn, e.created_s, natural_key(e.id)))
+    return tuple(found)
 
 
 def open_playouts(state: WorldState) -> list[PendingEvent]:

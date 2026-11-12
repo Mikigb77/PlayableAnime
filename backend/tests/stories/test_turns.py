@@ -585,7 +585,7 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     model.backend.script(Node.INTERPRET, Reply(json=STEP_AROUND))
     model.backend.script(Node.NARRATOR, Reply(json=AFTER))
 
-    play(
+    played = play(
         player,
         story,
         {
@@ -613,6 +613,10 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     assert fields["steps"] == [["move", 3]]
     # What says whether play is logical: nothing refused, searched for or heard in this turn.
     assert {key: fields[key] for key in TALLY} == dict.fromkeys(TALLY, 0)
+    # R3: the scene's weight and how many words it came to, since its length follows it. One
+    # step around someone is a passing moment unless the director gave the scene more to tell.
+    assert fields["weight"] in ("light", "ordinary")
+    assert fields["words"] == len(played.completed["scene"]["narration"].split()) > 0
     assert line["story_id"] == str(story.pk)
     logged = str(log_lines())
     assert "I step around Zhao." not in logged

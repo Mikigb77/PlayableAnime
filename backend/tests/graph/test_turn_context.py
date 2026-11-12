@@ -34,6 +34,7 @@ from engine.contracts import (
     PlannedEvent,
     ProposedDeed,
     Resolution,
+    SceneWeight,
     StepResolution,
     StopReason,
     SuggestionPlan,
@@ -80,7 +81,7 @@ from graph.turn.context import (
 )
 from graph.turn.outputs import NarratorOutput, SuggestionOut
 from graph.turn.scene import choices, fallback_prompt
-from graph.turn.types import PastScene
+from graph.turn.types import Ending, PastScene
 
 SECRET = "He ordered the killing of Luca's father."
 MYSTERY_ANSWER = "Carmine Russo, the underboss."
@@ -604,6 +605,33 @@ def test_the_brief_carries_length_tone_and_the_story_so_far():
     assert "the player asked for: grim" in text
     shown = [t for t in range(1, 6) if f'"narration":"scene {t}"' in text]
     assert shown == list(range(6 - RECENT_SCENES, 6))
+
+
+def test_a_scenes_length_follows_its_weight_within_the_players_setting():
+    """R3: a passing moment is told short and a turning point gets room, each within the
+    length the player set (S6). The weight changes from turn to turn, so it stays out of STYLE,
+    which is cached, and an ordinary scene has STYLE's length alone."""
+    short = ctx(narration_length=NarrationLength.SHORT)
+    ordinary = brief(context=short)
+    light = brief(context=short, plan=DirectorPlan(weight=SceneWeight.LIGHT))
+    heavy = brief(context=short, plan=DirectorPlan(weight=SceneWeight.HEAVY))
+
+    assert "## LENGTH" not in ordinary.user
+    assert "## LENGTH\nA passing moment: 40 to 80 words." in light.user
+    assert "## LENGTH\nA turning point: 120 to 200 words." in heavy.user
+    for told in (ordinary, light, heavy):
+        assert prompts.LENGTHS[NarrationLength.SHORT] in told.user
+        assert told.stable_chars == ordinary.stable_chars
+    long = ctx(narration_length=NarrationLength.LONG)
+    assert (
+        "A turning point: 450 to 650 words."
+        in brief(context=long, plan=DirectorPlan(weight=SceneWeight.HEAVY)).user
+    )
+    # A story's ending is a turning point, whatever the director weighed.
+    chosen = Ending(kind="chosen", character_id="lin")
+    ending = brief(plan=DirectorPlan(weight=SceneWeight.LIGHT), ending=chosen)
+    assert "A turning point: 250 to 400 words." in ending.user
+    assert "unless the brief has a LENGTH (R3)" in prompts.NARRATOR_SYSTEM
 
 
 def test_suggestions_and_pictures_are_asked_for_only_when_planned():

@@ -25,8 +25,11 @@ from engine.contracts import (
     ItemChange,
     PictureKind,
     Resolution,
+    SceneWeight,
 )
 from engine.contracts.resolution import Peril, StepResolution
+from engine.director import due
+from engine.director import weight as scene_weight
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
 from engine.resolve import bouts
@@ -44,7 +47,6 @@ from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
 from engine.world import carriers, journeys
 from engine.world.geography import routes_from, together
-from engine.world.scheduling import Kind
 from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
@@ -736,7 +738,7 @@ def narration_brief(
     seen = [
         e
         for e in fired
-        if _perceived(e, after)
+        if due.noticed(e, after)
         and not e.kind.startswith("director.")
         and e.id not in told
         and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
@@ -787,6 +789,11 @@ def narration_brief(
         if witnesses := _leaving_view(after, turn=ctx.turn, scene=before.scene.present_ids):
             # W11: who runs to tell what they saw, so the scene shows it and the player can act.
             sections.append(("WITNESSES", witnesses))
+    # R3: the length follows the scene's weight. It changes from turn to turn, so it stays out
+    # of STYLE, which is kept cached.
+    weight = scene_weight.told(plan, ending=ending is not None)
+    if weight is not SceneWeight.ORDINARY:
+        sections.append(("LENGTH", prompts.WEIGHT_LENGTHS[weight][settings.narration_length]))
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:
@@ -1071,32 +1078,6 @@ def _time_view(before: WorldState, after: WorldState, language: Language) -> dic
 
 # Bookkeeping in a `PlannedEvent` that the narrator has no use for.
 _PLANNED_HIDDEN = {"source", "source_id", "card_id", "plays_out_s"}
-
-
-# Word of a deed on its way, and the world's look at what one left behind: about the player
-# character when the deed is theirs, and still nothing they notice. The talk it starts reaches
-# them through TALK (W2).
-_UNSEEN = frozenset({Kind.RUMOR, Kind.WORD, Kind.DISCOVERY})
-# Someone being told of a deed, which shows only where it is done.
-_TOLD_SOMEWHERE = frozenset({Kind.REPORT, Kind.TIDINGS})
-
-
-def _perceived(event: PendingEvent, state: WorldState) -> bool:
-    """Whether the player character could notice an event that fired: it needs them, involves
-    them, or happens where they are. Everything else stays off-screen (C6). Word of a deed
-    reaching someone involves them only when they are there to see it: with the witness who
-    tells it on the spot, or where the one who is told is."""
-    if event.kind in _UNSEEN:
-        return False
-    if event.needs_player:
-        return True
-    here = state.scene.place_id or state.player.location_id
-    if event.place_id is not None and event.place_id == here:
-        return True
-    if event.kind in _TOLD_SOMEWHERE:
-        teller = event.payload.get("witness_id")
-        return event.place_id is None and teller in state.scene.present_ids
-    return state.player_id in event.subject_ids
 
 
 def _event_view(event: PendingEvent) -> dict[str, Any]:

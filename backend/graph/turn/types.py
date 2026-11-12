@@ -23,8 +23,10 @@ from engine.contracts import (
     OutcomeClass,
     PictureKind,
     Resolution,
+    SceneWeight,
     StandingAction,
 )
+from engine.director import weight as scene_weight
 from engine.pipeline import PlayOut, TimePassage
 from engine.state.records import DieKind, Mark, PendingEvent, StepResult
 from engine.state.world import EventSize, WorldState
@@ -327,6 +329,11 @@ class TurnResult:
     @property
     def narration_mode(self) -> NarrationMode:
         return self.scene.narration_mode
+
+    @property
+    def weight(self) -> SceneWeight:
+        """R3: the scene's weight as it was told, which its length follows."""
+        return scene_weight.told(self.plan, ending=self.ending is not None)
 
 
 @dataclass(frozen=True)
