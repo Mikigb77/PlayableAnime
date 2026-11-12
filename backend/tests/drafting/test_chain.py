@@ -6,8 +6,10 @@ from dataclasses import replace
 
 import pytest
 
+from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode
 from graph.drafting import chain, samples
+from graph.drafting.catalog import starter
 from graph.drafting.prompts import SYSTEM, current_rules
 from graph.drafting.schema import (
     DraftProposal,
@@ -344,6 +346,72 @@ def test_opening_up_a_genre_rule_releases_it_with_no_model_call(fake, llm):
     assert plan.draft.released_rules == {"human-limits"}
     rule = next(r for r in plan.draft.state().bible.rules if r.id == "human-limits")
     assert not rule.fixed
+
+
+# A starter's own words in the story's language (S10).
+
+
+def test_a_starters_template_is_drafted_in_the_storys_language(fake, llm):
+    """S10: the drafter is given the starter's fixed rules in the language it writes in, and
+    code holds the draft to them in that language, so a Spanish world has no English rule."""
+    fake.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+
+    draft = run(
+        chain.create(
+            llm,
+            samples.CULTIVATION_PREMISE,
+            rating="teen",
+            premise_id="three-heartbeats",
+            language=Language.ES,
+        )
+    )
+
+    [request] = fake.calls(Node.DRAFTER)
+    text = _prompt_text(request)
+    qi = "El cultivo del qi es real, y los fuertes ascienden por los reinos."
+    time = "Unos pocos pueden doblegar el tiempo, y casi nadie lo sabe."
+    assert f"qi-exists: {qi}" in text and f"time-powers-exist: {time}" in text
+    assert "Qi cultivation is real" not in text
+    assert "Condensación de Qi, Establecimiento de la Base, Formación del Núcleo" in text
+    rules = {r.id: r.text for r in draft.state().bible.rules}
+    assert (rules["qi-exists"], rules["time-powers-exist"]) == (qi, time)
+    assert draft.released_rules == frozenset()
+    # The same starter in English is as it was.
+    english = _cultivation_draft()
+    assert english.template is starter("three-heartbeats").template
+    assert "Qi cultivation is real, and the strong climb the realms." in {
+        r.text for r in english.state().bible.rules
+    }
+
+
+def test_a_starters_rule_held_in_english_is_still_held_in_a_spanish_draft():
+    """A draft made before the template spoke its language shows the starter's rules in
+    English. Sending them back as they are must not let them go (G7)."""
+    draft = _naples_draft(language=Language.ES)
+    shown = public_rules(draft.state())
+    spanish = {r.id: r.text for r in shown}
+    assert spanish["human-limits"] == "Nadie puede hacer más de lo que podría una persona real."
+    english = {r.id: r.text for r in starter("naples-vendetta").template.rules}
+    as_before = [
+        chain.RuleEdit(id=r.id, text=english.get(r.id, r.text), fixed=r.fixed) for r in shown
+    ]
+
+    held = chain.plan_edit(draft, chain.Edits(rules=as_before)).draft
+
+    assert held.released_rules == frozenset()
+    assert held.state().bible.grounded
+    # Its own words are another matter: a rewritten rule is the player's, and is let go.
+    rewritten = [
+        chain.RuleEdit(
+            id=r.id,
+            text="Casi nadie puede hacer más." if r.id == "human-limits" else r.text,
+            fixed=r.fixed,
+        )
+        for r in shown
+    ]
+    assert chain.plan_edit(draft, chain.Edits(rules=rewritten)).draft.released_rules == {
+        "human-limits"
+    }
 
 
 # Merging a change (G1).

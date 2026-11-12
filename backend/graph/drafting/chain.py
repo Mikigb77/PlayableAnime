@@ -17,7 +17,7 @@ from typing import Literal
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting.assemble import DraftOptions, assemble, slug
-from graph.drafting.catalog import PremiseTemplate, starter
+from graph.drafting.catalog import PremiseTemplate, starter, wordings
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -59,8 +59,9 @@ class Draft:
 
     @property
     def template(self) -> PremiseTemplate | None:
+        """The starter's template, in the words of the draft's language (S10)."""
         found = starter(self.premise_id) if self.premise_id else None
-        return found.template if found is not None else None
+        return found.template.in_language(self.language) if found is not None else None
 
     def options(self) -> DraftOptions:
         return DraftOptions(
@@ -465,7 +466,9 @@ def _player_rules(edits: list[RuleEdit], current: list[RuleP]) -> list[RuleP]:
 
 
 def _released_by(template: PremiseTemplate | None, rules: list[RuleP]) -> frozenset[str]:
-    """G7: the template rules the player removed, rewrote or opened up."""
+    """G7: the template rules the player removed, rewrote or opened up. A rule that says the
+    template's own words in another of the app's languages isn't rewritten (S10): a draft made
+    before the template spoke its language holds it in English."""
     if template is None:
         return frozenset()
     by_id = {r.id: r for r in rules}
@@ -474,7 +477,7 @@ def _released_by(template: PremiseTemplate | None, rules: list[RuleP]) -> frozen
         for rule in template.rules
         if rule.id not in by_id
         or not by_id[rule.id].fixed
-        or " ".join(by_id[rule.id].text.split()) != rule.text
+        or " ".join(by_id[rule.id].text.split()) not in wordings(rule.text)
     )
 
 
