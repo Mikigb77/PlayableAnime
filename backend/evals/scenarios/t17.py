@@ -30,6 +30,7 @@ from engine.contracts import (
     MeansVerdict,
     OutcomeClass,
     PictureTrigger,
+    PlaceChange,
     SceneEnd,
     StandingAction,
     StateDelta,
@@ -39,6 +40,7 @@ from engine.director import rules
 from engine.director.deck import CARDS
 from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
+from engine.invariants import ancestry
 from engine.labels import clock_time, second_of_day
 from engine.resolve.bouts import against
 from engine.resolve.power import helpless_state
@@ -1277,11 +1279,52 @@ def _came_for(story: Story, avenger_id: str) -> list:
     ]
 
 
+def _whereabouts(story: Story, avenger_id: str) -> str:
+    """Where the player character and someone who would come for them are, how long each turn
+    took and what became of each time they set out, for the detail of a failed check: a live
+    run's log is all that can be read of it. The story is the eval's own (T16)."""
+    state = story.state
+
+    def chain(place_id: str | None) -> str:
+        return " in ".join(ancestry(state.places, place_id)) or "nowhere"
+
+    answers = [
+        f"{e.payload.get('answer')} {e.status.value} at {e.place_id} due {e.due_s / HOUR:.1f}h"
+        f"{' found' if e.needs_player else ''} try {e.payload.get('attempt', 0)}"
+        for e in sorted(state.pending_events.values(), key=lambda e: e.due_s)
+        if e.kind == Kind.ANSWER and e.payload.get("avenger_id") == avenger_id
+    ]
+    gone = [f.text for f in state.facts.values() if "found them gone" in f.text]
+    took = [round(t.world_seconds / HOUR, 1) for t in story.turns]
+    return (
+        f"clock {state.world_s / HOUR:.1f}h, turns took {took}h; the player at "
+        f"{chain(state.player.location_id)}, the scene at {state.scene.place_id}; "
+        f"{avenger_id} at {chain(state.characters[avenger_id].location_id)}; "
+        f"answers {answers}; {gone}"
+    )
+
+
 def a_day_in_millbrook() -> Intent:
     return plan(
         step("Help with the harvest in Millbrook", ActionKind.WORK, 12 * HOUR, verb="work"),
         step("Sleep at the inn", ActionKind.REST, 12 * HOUR, verb="sleep"),
     )
+
+
+def outside_the_inn() -> dict:
+    """A scripted scene that ends at an inn it adds without saying where it lies, as a live
+    one can: code puts it in the village the character was in (R8)."""
+    inn = PlaceChange(id="millbrook-inn", name="the Millbrook inn", kind="inn")
+    end = SceneEnd(
+        ended_on="Tomas sits on the bench outside the inn.",
+        place_id="millbrook-inn",
+        present_ids=["tomas"],
+    )
+    return {
+        "narration": "(scripted) Tomas rests on the bench outside the Millbrook inn.",
+        "suggestions": [],
+        "update": StateDelta(places=[inn], scene_end=end).model_dump(mode="json"),
+    }
 
 
 def bram_at_his_fence() -> dict:
@@ -1337,10 +1380,25 @@ async def one_mans_word(ev: Eval) -> None:
                 )
             ),
         )
+        # Half the scripted stories read the inn as where the step goes and end this scene at
+        # an inn it adds without saying where it lies, as the real model can: whoever comes to
+        # Millbrook still finds Tomas (R8).
+        at_the_inn = not ev.live and n % 4 >= 2
+        rest = step("rest outside the inn for an hour", ActionKind.TASK, HOUR, verb="rest")
+        if at_the_inn:
+            rest.destination = "the Millbrook inn"
         await story.act(
             "I take a seat outside the Millbrook inn and rest there for an hour",
-            act("rest outside the inn for an hour", "rest", ActionKind.TASK, HOUR),
+            plan(rest),
+            narration=outside_the_inn() if at_the_inn else None,
         )
+        if at_the_inn:
+            inn = story.state.places.get("millbrook-inn")
+            ev.check(
+                "a spot the scene added without saying where it lies is in the village",
+                inn is not None and inn.parent_id == "village",
+                f"{seed}: {inn}",
+            )
         deed = next((d for d in story.state.deeds.values() if "jorn" in d.victim_ids), None)
         ev.check("the killing is a deed", deed is not None, seed)
         if deed is None:
@@ -1449,8 +1507,9 @@ async def one_mans_word(ev: Eval) -> None:
             )
 
         # Kasper, the dead man's brother, is sent word by someone who knows. He takes up to two
-        # days to come and face Tomas, and up to a week to come for revenge (W10).
-        for _ in range(9 if two_saw else 4):
+        # days to come and face Tomas, and up to a week to come for revenge (W10). A live
+        # reading may make a day shorter, so a live story is given as many as the longest.
+        for _ in range(9 if two_saw or ev.live else 4):
             if _came_for(story, "kasper"):
                 break
             await story.act(
@@ -1480,7 +1539,11 @@ async def one_mans_word(ev: Eval) -> None:
             only_heard == [],
             f"{seed}: {only_heard}",
         )
-        ev.check("the brother comes to the player", bool(came), f"{seed}: nobody came")
+        ev.check(
+            "the brother comes to the player",
+            bool(came),
+            f"{seed}: nobody came; {_whereabouts(story, 'kasper')}; {as_read(story.turns[-3:])}",
+        )
         if not came:
             continue
         first = came[0].payload

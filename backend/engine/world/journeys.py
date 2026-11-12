@@ -8,8 +8,9 @@ The interpret step says only where a step goes (`IntentStep.destination`). Code 
 - `follow` runs as each step plays out: whoever arrived is there, and the player character's
   unfinished trip is kept (`WorldState.journey`), so the rest of the way takes what is left.
 - `settle` runs once the narrator's update is applied: the scene ends where the engine has the
-  character, and a trip over ground the map didn't cover writes its route, so the same trip
-  takes the same time from then on.
+  character, a trip over ground the map didn't cover writes its route, so the same trip
+  takes the same time from then on, and a spot the scene moved to with no real trip and
+  without saying where it lies is put where the character already was (R8).
 
 A journey that stopped on the way stays the player character's while they stay where it
 stopped (`under_way`): through a night at the inn, a fight, a look at the ruin off the road. It
@@ -20,7 +21,7 @@ from engine.base import HOUR, MINUTE
 from engine.contracts.intent import ActionKind, IntentStep, OutcomeClass
 from engine.contracts.resolution import Resolution, StepResolution, Trip
 from engine.invariants import ancestry
-from engine.state.cast import Character, CharacterStatus, Route
+from engine.state.cast import Character, CharacterStatus, PlaceSetting, Route
 from engine.state.records import StepResult
 from engine.state.scene import SceneFrame
 from engine.state.world import Journey, WorldState
@@ -34,6 +35,9 @@ MIN_ROUTE_S = 10 * MINUTE
 # a look at the ruin off the road, an errand of under an hour. A longer way somewhere else
 # gives the journey up.
 NEARBY_S = HOUR
+
+# R8: the settings of a place that is closed in, so a place under the open sky is never inside it.
+ENCLOSED = (PlaceSetting.INDOORS, PlaceSetting.UNDERGROUND, PlaceSetting.UNDERWATER)
 
 # The kinds of step that are the going itself: a place they target is where they go, and the
 # way is all the time they take. Any other kind that names a destination goes there to do
@@ -288,6 +292,8 @@ def settle(
       the trip set out from. One the player timed over ground no route covers is the
       narrator's to place.
     - A trip over ground the map didn't cover writes its route (`_new_routes`).
+    - A place the scene added and ended in without saying where it lies, reached with no real
+      trip, lies where the player character already was (`_lies_in`).
     - The player character's journey goes with them to the place the scene stopped in on the
       way and through a step aside, and it is dropped once they have set out somewhere else
       or the scene stands at either end of it (`_goes_on`).
@@ -316,11 +322,16 @@ def settle(
                 f"the scene ended in {place!r}, which the trip didn't reach: now {start!r}"
             )
     ended_at = move_to or place
+    around = _lies_in(played, state, trips, ended_at)
+    if around is not None and ended_at is not None:
+        state = state.model_copy(deep=True)
+        state.places[ended_at].parent_id = around
+        notes.append(f"the scene added {ended_at!r} and not where it lies: within {around!r}")
     routes = _new_routes(played, state, trips, ended_at)
     astray = state.journey is not None and under_way(state, ended_at) is None
     if move_to is None and not routes and not astray:
         return state, notes
-    new = state.model_copy(deep=True)
+    new = state if around is not None else state.model_copy(deep=True)
     if move_to is not None and last is not None:
         # A scene nobody ended says nothing of who went along, so nobody does.
         with_them = _travellers(played, new, start, arrived=bool(last.arrived)) if told else set()
@@ -334,6 +345,72 @@ def settle(
             new.journey = None
             new.director.road_stops = 0  # W16: another way starts afresh
     return new, notes
+
+
+def _lies_in(
+    played: WorldState, state: WorldState, trips: list[StepResolution], ended_at: str | None
+) -> str | None:
+    """R8. Where a place the scene added and ended in lies, when the scene didn't say. The
+    player character got there with no trip to speak of, so it is a spot of where they
+    already were (`_was_at`). On the real model (2026-11-11) such a place lay nowhere, and
+    whoever came to the village for the character would not find them at its inn.
+
+    - Where they were is under the open sky: the new place lies within it (the inn in the
+      village, a clearing in the forest). So does a place that isn't under the open sky when
+      the one they were in has no setting (the barn on the farm, a cellar of the house).
+    - Where they were is closed in (`ENCLOSED`) and so is the new place: it lies beside it
+      within the same walls when the record has those (another room of the house), else
+      within it (a chamber of the temple).
+    - Otherwise they may have come out into the open: from a place that is closed in, or
+      from one with no setting to one under the open sky. A place under the sky is never put
+      inside one that may have a roof, so it lies within the nearest place around the one
+      they left that isn't closed in (out of the temple into the forest it lies in), and
+      nowhere when the record has none.
+
+    None when the scene said where it lies or how far it is, when the place was on record
+    before the turn, and when a trip of the turn took them off the record: that place is
+    apart, and the narrator's to put on the map."""
+    places = state.places
+    place = places.get(ended_at) if ended_at is not None else None
+    if place is None or ended_at in played.places or place.parent_id is not None:
+        return None
+    if place.routes or any(r.to_id == ended_at for p in places.values() for r in p.routes):
+        return None
+    was_at = _was_at(played, trips)
+    if was_at not in places or was_at == ended_at:
+        return None
+    was, now = places[was_at].setting, place.setting
+    if was is PlaceSetting.OUTDOORS or (was is None and now is not PlaceSetting.OUTDOORS):
+        return was_at
+    if was in ENCLOSED and now in ENCLOSED:
+        walls = places[was_at].parent_id
+        return walls if walls in places and places[walls].setting in ENCLOSED else was_at
+    for place_id in ancestry(places, was_at)[1:]:
+        if places[place_id].setting not in ENCLOSED:
+            return place_id
+    return None
+
+
+def _was_at(played: WorldState, trips: list[StepResolution]) -> str | None:
+    """R8. The place on record the player character was at as the turn's steps ended: the one
+    the scene left, or the one their last trip reached. A step that names a place the record
+    doesn't hold and takes them no real way there, a few steps to the bench outside the inn or
+    an hour's rest at it, leaves them where they were: the clock charged nothing for the way
+    (`first_visit` reads a trip the same way). None once a trip took them off the record: one
+    that stopped on the way, and a real trip to somewhere the record didn't hold."""
+    was_at = played.scene.place_id or played.player.location_id
+    for step in trips:
+        trip = step.trip
+        assert trip is not None
+        if step.outcome_class is OutcomeClass.RULED_OUT or step.result is StepResult.FAILURE:
+            continue  # it never got going
+        if not trip.arrived:
+            was_at = None
+        elif trip.to_id is not None:
+            was_at = trip.to_id
+        elif step.kind in GOING and step.duration_s >= MIN_ROUTE_S:
+            was_at = None
+    return was_at
 
 
 def _goes_on(

@@ -31,6 +31,7 @@ from engine.state import (
     Mark,
     PendingEvent,
     Place,
+    PlaceSetting,
     Route,
     StepResult,
     WorldState,
@@ -585,7 +586,10 @@ def test_a_scene_the_telling_moves_a_little_keeps_the_journey():
 
     after, notes = journeys.settle(state, moved, Resolution(steps=[settled(0, 60)]), told=True)
 
-    assert notes == [] and after.journey.at_id == "lane" and after.journey.left_s == 12 * HOUR
+    # The lane is a spot of the camp they were in (R8), which is where the journey stopped.
+    assert notes == ["the scene added 'lane' and not where it lies: within 'camp'"]
+    assert after.scene.place_id == "lane" and journeys.under_way(after, "lane") == after.journey
+    assert after.journey.at_id == "camp" and after.journey.left_s == 12 * HOUR
 
 
 def test_a_place_inside_the_one_they_stopped_in_is_still_on_the_way():
@@ -692,6 +696,148 @@ def test_a_scene_that_ends_in_a_corner_of_the_place_they_left_is_put_where_they_
     state, _ = journeys.settle(played.state, after, played.resolution, told=True)
 
     assert state.scene.place_id == "village"
+
+
+def moved_to(state: WorldState, change: PlaceChange, *steps) -> tuple[WorldState, list[str]]:
+    """The state once a scene that played `steps` added a place and ended in it."""
+    played = play(state, *steps) if steps else None
+    before = played.state if played else state
+    resolution = played.resolution if played else Resolution(steps=[settled(0, 60)])
+    return journeys.settle(before, told(before, change.id, places=[change]), resolution, told=True)
+
+
+def spot(place_id: str, name: str, setting: str | None = None, **more) -> PlaceChange:
+    return PlaceChange(id=place_id, name=name, kind="spot", setting=setting, **more)
+
+
+def test_a_spot_the_scene_moves_to_without_saying_where_it_lies_is_where_they_were():
+    """R8. On the real model (2026-11-11) a place a scene added could lie nowhere, and whoever
+    came to the village for the character would not find them at its inn."""
+    state = valley()
+    state.scene.place_id = state.player.location_id = "village"
+
+    after, notes = moved_to(state, spot("inn", "the Plough", "indoors"))
+
+    assert after.places["inn"].parent_id == "village" and after.scene.place_id == "inn"
+    assert notes == ["the scene added 'inn' and not where it lies: within 'village'"]
+    assert state.places.get("inn") is None  # the state passed in is never touched
+    # So is a place with no setting, and a place under the sky where they were under it too.
+    assert moved_to(state, spot("inn", "the Plough"))[0].places["inn"].parent_id == "village"
+    state.places["village"].setting = PlaceSetting.OUTDOORS
+    square = moved_to(state, spot("square", "the square", "outdoors"))[0]
+    assert square.places["square"].parent_id == "village"
+
+
+def test_a_place_the_scene_put_on_the_map_itself_is_left_where_it_said():
+    state = valley()
+    state.scene.place_id = state.player.location_id = "village"
+
+    # It said where the place lies, or how far it is.
+    told_where = spot("inn", "the Plough", "indoors", parent_id="valley")
+    after, notes = moved_to(state, told_where)
+    assert after.places["inn"].parent_id == "valley" and notes == []
+    far = spot("shrine", "the hill shrine", routes=[Route(to_id="village", travel_s=HOUR)])
+    after, notes = moved_to(state, far)
+    assert after.places["shrine"].parent_id is None and notes == []
+
+    # A place that was on record before the turn stays as it was.
+    state.places["hut"] = Place(id="hut", name="a hut", known_by=["tomas"])
+    after, notes = journeys.settle(
+        state, told(state, "hut"), Resolution(steps=[settled(0, 60)]), told=True
+    )
+    assert after.places["hut"].parent_id is None and notes == []
+
+
+def test_a_new_place_at_the_end_of_a_trip_lies_where_the_trip_went_or_is_the_tellings():
+    # The trip reached the village, and the scene ended at a new spot there.
+    after, notes = moved_to(
+        valley(), spot("inn", "the Plough", "indoors"), go("walk to the village", "village", 60)
+    )
+    assert after.places["inn"].parent_id == "village" and after.scene.place_id == "inn"
+
+    # A trip to somewhere the record didn't hold: the new place is where it went, apart.
+    after, _ = moved_to(
+        valley(), spot("mine", "the old mine"), go("walk to the old mine", "the old mine", HOUR)
+    )
+    assert after.scene.place_id == "mine" and after.places["mine"].parent_id is None
+
+    # A trip that stopped on the way: the place it stopped in is the telling's to put.
+    played = stopped_on_the_road()
+    camp = spot("camp", "a camp by the road", "outdoors")
+    after, _ = journeys.settle(
+        played.state, told(played.state, "camp", places=[camp]), played.resolution, told=True
+    )
+    assert after.places["camp"].parent_id is None
+
+
+def test_a_place_a_step_names_and_takes_no_real_way_to_is_a_spot_of_where_they_were():
+    """R8. "I take a seat outside the Plough and rest there for an hour": the step names a
+    place the record doesn't hold, and the hour is the rest, not the way."""
+    state = at_the_village()
+    inn = spot("inn", "the Plough", "indoors")
+    roads = list(state.places["village"].routes)
+
+    rest = step("rest outside the Plough", ActionKind.REST, HOUR, destination="the Plough")
+    after, notes = moved_to(state, inn, rest)
+    assert after.places["inn"].parent_id == "village"
+    assert notes == ["the scene added 'inn' and not where it lies: within 'village'"]
+    # An hour's rest is no hour's road.
+    assert after.places["inn"].routes == [] and after.places["village"].routes == roads
+
+    # A few steps over to it are no trip either.
+    stroll = go("walk over to the Plough", "the Plough", 2 * MINUTE, MOVE)
+    assert moved_to(state, inn, stroll)[0].places["inn"].parent_id == "village"
+
+    # A real walk there is: the inn is apart, as far as the walk took.
+    after, notes = moved_to(state, inn, go("walk to the Plough", "the Plough", HOUR))
+    assert after.places["inn"].parent_id is None and notes == []
+    assert route_s(after, "village", "inn") == HOUR
+
+    # After a real walk off the record, a few steps more are still off it.
+    after, _ = moved_to(
+        state,
+        inn,
+        go("walk to the old mine", "the old mine", HOUR),
+        go("step into its hut", "the hut", MINUTE, MOVE),
+    )
+    assert after.places["inn"].parent_id is None
+
+
+def test_a_place_under_the_sky_is_never_put_inside_one_that_may_have_a_roof():
+    """R8: out of the temple into the forest it lies in, never a clearing inside the temple."""
+    state = valley()
+    state.places["forest"] = Place(id="forest", name="the forest", setting="outdoors")
+    state.places["temple"] = Place(
+        id="temple", name="the temple", setting="underground", parent_id="forest"
+    )
+    state.places["crypt"] = Place(
+        id="crypt", name="the crypt", setting="underground", parent_id="temple"
+    )
+    state.scene.place_id = state.player.location_id = "crypt"
+
+    out = moved_to(state, spot("clearing", "a clearing", "outdoors"))[0]
+    assert out.places["clearing"].parent_id == "forest"
+    # Nor one with no setting, which may be under the sky.
+    assert moved_to(state, spot("ledge", "a ledge"))[0].places["ledge"].parent_id == "forest"
+    # Another chamber lies beside the crypt, within the temple's walls, and a chamber reached
+    # from the temple itself lies within it.
+    deeper = moved_to(state, spot("vault", "the vault", "underground"))[0]
+    assert deeper.places["vault"].parent_id == "temple"
+    state.scene.place_id = state.player.location_id = "temple"
+    hall = moved_to(state, spot("hall", "the hall", "underground"))[0]
+    assert hall.places["hall"].parent_id == "temple"
+
+    # From a place with no setting, a place under the sky lies around it, not in it.
+    state.scene.place_id = state.player.location_id = "farm"
+    yard = moved_to(state, spot("yard", "the yard", "outdoors"))[0]
+    assert yard.places["yard"].parent_id == "valley"
+    barn = moved_to(state, spot("barn", "the barn", "indoors"))[0]
+    assert barn.places["barn"].parent_id == "farm"
+    # With nothing around that isn't closed in, it lies nowhere.
+    state.places["temple"].parent_id = None
+    state.scene.place_id = state.player.location_id = "crypt"
+    lost = moved_to(state, spot("clearing", "a clearing", "outdoors"))
+    assert lost[0].places["clearing"].parent_id is None and lost[1] == []
 
 
 def test_a_scene_nobody_ended_is_put_where_the_trip_went_with_who_is_there():
