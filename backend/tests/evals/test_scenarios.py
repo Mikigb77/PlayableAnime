@@ -11,9 +11,14 @@ from pathlib import Path
 
 import pytest
 
-from evals.runner import run_scenario
+from engine.context import Language
+from engine.contracts import ActionKind, Aim
+from engine.invariants import check_state
+from evals.runner import Read, run_scenario
 from evals.scenario import Mode
 from evals.scenarios import all_scenarios
+from evals.scenarios.common import act
+from evals.scenarios.t18_reading import LINES, SHOWN_CHARS, shown
 from moderation.evals import load_cases
 
 REQUIREMENTS = Path(__file__).resolve().parents[3] / "docs" / "REQUIREMENTS.md"
@@ -78,6 +83,33 @@ def test_a_deterministic_scenario_passes_through_the_turn_graph(scenario_id):
     result = asyncio.run(run_scenario(SCENARIOS[scenario_id], Mode.DETERMINISTIC))
     assert result.status == "passed", result.failures()
     assert result.turns > 0 and result.checks
+
+
+def test_the_first_reading_names_each_thing_it_reads_once():
+    """T18: the results keep each thing a line must read right by its name, run after run."""
+    names = [name for said in LINES for name, _ in said.reads]
+    assert len(names) == len(set(names)) and all(said.reads for said in LINES)
+    assert len(LINES) >= 50
+    # S10: some lines are read in each of the app's languages.
+    assert {said.language for said in LINES} == set(Language)
+    # Every world a line is read in holds (C1), and the reading can name whom it expects.
+    for said in LINES:
+        assert check_state(said.world()) == [], said.says
+
+
+def test_a_reading_is_shown_without_its_words():
+    """T18: a line read wrong shows what code decides from, cut short."""
+    intent = act("cut Han's throat", "cut", ActionKind.EXCHANGE, 2)
+    intent.steps[0].target_ids = ["han"]
+    intent.steps[0].aim = Aim.KILL
+    text = shown(Read("I cut Han's throat", intent, "", (), 0.1))
+    assert text == (
+        '{"steps":[{"verb":"cut","target_ids":["han"],"aim":"kill","kind":"exchange",'
+        '"proposed_duration_s":2}]}'
+    )
+    assert shown(Read("I cut Han's throat", None, "blocked", (), 0.1)) == "not read (blocked)"
+    intent.steps[0].targets = ["x" * SHOWN_CHARS]
+    assert len(shown(Read("I cut", intent, "", (), 0.1))) == SHOWN_CHARS
 
 
 @pytest.mark.parametrize(

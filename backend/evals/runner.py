@@ -35,6 +35,7 @@ from engine.context import (
 from engine.contracts import (
     DirectorPlan,
     Intent,
+    IntentStep,
     PictureKind,
     PlannedEvent,
     Resolution,
@@ -66,6 +67,7 @@ from evals.pictures import (
 from evals.scenario import Mode, Scenario
 from evals.scripted import Line, Narration, ScriptedModel
 from graph.llm import (
+    LLMError,
     ModelClient,
     ModelConfig,
     Node,
@@ -90,6 +92,7 @@ from graph.turn import (
     run_turn,
 )
 from graph.turn.errors import LimitReached
+from graph.turn.nodes import read_action
 from media.briefs import THREAD_SUBJECTS
 from media.notes import SceneText
 
@@ -159,6 +162,12 @@ class Models:
     def models_used(self) -> dict[str, str]:
         config = self.resolved()
         return {node.value: config.node(node).model for node in Node}
+
+    def thinking_used(self) -> dict[str, str]:
+        """How hard each step that takes the setting is told to think (B6)."""
+        config = self.resolved()
+        levels = {node.value: config.node(node).options.thinking for node in Node}
+        return {node: level for node, level in levels.items() if level}
 
 
 # --- turns -------------------------------------------------------------------------------------
@@ -305,6 +314,101 @@ class Played:
         return data
 
 
+@dataclass(frozen=True)
+class Read:
+    """One line as the first model read it where a story stands (V3, B5), with no turn played:
+    the intent a turn would go on to play, or why there is none (the model's filter stopped it,
+    or it didn't answer in time)."""
+
+    action: str
+    intent: Intent | None
+    failed: str
+    calls: tuple[CallRecord, ...]
+    seconds: float
+
+    @property
+    def steps(self) -> list[IntentStep]:
+        return self.intent.steps if self.intent is not None else []
+
+
+@dataclass(frozen=True)
+class Use:
+    """What one model step came to over a scenario's stories (T5, K8): how often it was called,
+    on which model, and the tokens, the time and the money of it. Tokens out include thinking,
+    and cached tokens are part of the tokens in, as the provider counts them."""
+
+    node: str
+    model: str
+    calls: int = 0
+    input_tokens: int = 0
+    cached_tokens: int = 0
+    output_tokens: int = 0
+    thinking_tokens: int = 0
+    latency_ms: int = 0
+    retries: int = 0
+    failed: int = 0
+    cost_usd: Decimal = Decimal(0)
+
+    @classmethod
+    def of(cls, calls: Iterable[CallRecord]) -> list[Use]:
+        """The calls by step and model, in the order each first ran."""
+        return merged(
+            cls(
+                node=c.node,
+                model=c.model,
+                calls=1,
+                input_tokens=c.input_tokens,
+                cached_tokens=c.cached_tokens,
+                output_tokens=c.output_tokens,
+                thinking_tokens=c.thinking_tokens,
+                latency_ms=c.latency_ms,
+                retries=c.retries,
+                failed=int(c.outcome != "ok"),
+                cost_usd=c.cost_usd,
+            )
+            for c in calls
+        )
+
+    def plus(self, other: Use) -> Use:
+        return Use(
+            self.node,
+            self.model,
+            self.calls + other.calls,
+            self.input_tokens + other.input_tokens,
+            self.cached_tokens + other.cached_tokens,
+            self.output_tokens + other.output_tokens,
+            self.thinking_tokens + other.thinking_tokens,
+            self.latency_ms + other.latency_ms,
+            self.retries + other.retries,
+            self.failed + other.failed,
+            self.cost_usd + other.cost_usd,
+        )
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "node": self.node,
+            "model": self.model,
+            "calls": self.calls,
+            "input_tokens": self.input_tokens,
+            "cached_tokens": self.cached_tokens,
+            "output_tokens": self.output_tokens,
+            "thinking_tokens": self.thinking_tokens,
+            "latency_ms": self.latency_ms,
+            "retries": self.retries,
+            "failed": self.failed,
+            "cost_usd": float(self.cost_usd),
+        }
+
+
+def merged(uses: Iterable[Use]) -> list[Use]:
+    """One line per step and model, in the order each first appears."""
+    by_step: dict[tuple[str, str], Use] = {}
+    for use in uses:
+        key = (use.node, use.model)
+        by_step[key] = by_step[key].plus(use) if key in by_step else use
+    return list(by_step.values())
+
+
 class Story:
     """A story played turn after turn, each from the state the last one left."""
 
@@ -412,6 +516,32 @@ class Story:
         """Wait or observe (S2): no model reads it."""
         return await self._play(
             TurnKind.STANDING, None, None, narration=narration, standing=standing
+        )
+
+    async def read(self, action: str, interpretation: Intent | None = None) -> Read:
+        """Only the first model's step on `action` (V3, B5): the player's words read where the
+        story stands and checked as a turn checks them (`graph.turn.nodes.read_action`). No turn
+        is played and nothing moves, so a scenario about the reading alone pays for no telling.
+        A line the model's filter stops, or doesn't answer in time, is a line it didn't read."""
+        if self._scripted is not None:
+            self._scripted.line = Line.of(self.state.turn + 1, action, interpretation, None)
+        calls_before = len(self.telemetry.calls)
+        last_scene = self.scenes[-1].narration if self.scenes else ""
+        intent, failed = None, ""
+        started = time.perf_counter()
+        try:
+            checked = await read_action(
+                self.client, self.state, action, self.settings.language, last_scene
+            )
+            intent = checked.intent
+        except LLMError as error:
+            failed = error.code
+        return Read(
+            action=action,
+            intent=intent,
+            failed=failed,
+            calls=tuple(self.telemetry.calls[calls_before:]),
+            seconds=time.perf_counter() - started,
         )
 
     def _past_scenes(self) -> tuple[PastScene, ...]:
@@ -552,6 +682,10 @@ class ScenarioResult:
     transcripts: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
     waits_for: str = ""
+    # What the stories' own model steps came to, and of that what the turns played cost: the
+    # judge and the pictures are the eval's, never a turn's.
+    use: list[Use] = field(default_factory=list)
+    turn_cost_usd: Decimal = Decimal(0)
 
     @property
     def passed(self) -> bool:
@@ -632,6 +766,8 @@ class ScenarioResult:
             "seconds": round(self.seconds, 3),
             "turns": self.turns,
             "cost_usd": float(self.cost_usd),
+            "turn_cost_usd": float(self.turn_cost_usd),
+            "use": [u.to_json() for u in self.use],
             "checks": [t.to_json() for t in self.checks],
             "judged": [j.to_json() for j in self.judged],
             "metrics": self.metrics,
@@ -935,8 +1071,9 @@ class Eval:
 
     def result(self, status: str, seconds: float, error: str | None = None) -> ScenarioResult:
         scenario = self.scenario
+        calls = [c for s in self.stories for c in s.telemetry.calls]
         cost = (
-            sum((c.cost_usd for s in self.stories for c in s.telemetry.calls), Decimal(0))
+            sum((c.cost_usd for c in calls), Decimal(0))
             + self.judge_telemetry.cost_usd
             + self.picture_telemetry.cost_usd
         )
@@ -966,6 +1103,8 @@ class Eval:
             if self.live
             else [],
             error=error,
+            use=Use.of(calls),
+            turn_cost_usd=sum((p.cost_usd for s in self.stories for p in s.turns), Decimal(0)),
         )
 
 

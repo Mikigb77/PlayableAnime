@@ -308,8 +308,8 @@ _NOT_A_ROMANTIC_KISS = (
 
 def intimacy(step: IntentStep) -> Intimacy | None:
     """Whether a step is romantic or sexual, read from the interpret step's own words for it:
-    its verb, method, text and beats."""
-    text = normalize(" ".join([step.verb, step.method, step.text, *(b.text for b in step.beats)]))
+    its verb, text and beats."""
+    text = normalize(" ".join([step.verb, step.text, *(b.text for b in step.beats)]))
     if _SEXUAL_VIOLENCE.search(text):
         return Intimacy.SEXUAL_VIOLENCE
     if _SEXUAL.search(text):

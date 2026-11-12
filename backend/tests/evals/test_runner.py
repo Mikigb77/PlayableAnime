@@ -25,7 +25,7 @@ from evals.runner import MAX_TURNS, Eval, LiveUnavailable, Models, RunawayStory,
 from evals.scenario import BOTH, LIVE_ONLY, Mode, Registry, Scenario
 from evals.scenarios.common import act
 from evals.scripted import MissingInterpretation
-from graph.llm import Block, FakeBackend, ModelClient, ModelConfig, Node, Reply
+from graph.llm import Block, Fail, FakeBackend, ModelClient, ModelConfig, Node, Reply
 from graph.llm.fake import TINY_PNG, offline_reply
 from graph.llm.types import Request
 from tests.evals.conftest import passing_judge
@@ -223,6 +223,113 @@ def test_the_scripted_model_shows_what_the_narrator_was_sent():
         ev.check("priced", played.cost_usd > 0)
 
     assert play(script).status == "passed"
+
+
+# --- a reading alone, and what each model step came to ------------------------------------------
+
+
+def test_a_reading_alone_plays_no_turn():
+    """T18: a scenario about the first model's reading runs that step only, checked as a turn
+    checks it, and nothing of the story moves."""
+    seen = {}
+
+    async def script(ev: Eval) -> None:
+        story = ev.story(worlds.sect(), seed="s", under_way=True)
+        before = story.state.model_dump_json()
+        scripted = act("bow to Zhao", "bow", ActionKind.INSTANT, 5)
+        scripted.steps[0].target_ids = ["zhao", "nobody-here"]
+        read = await story.read("I bow to Zhao", scripted)
+        seen["read"] = read
+        ev.check("read", read.intent is not None and read.failed == "")
+        # V3: an id the state doesn't hold is kept as words, as on any turn.
+        ev.check("checked", read.steps[0].target_ids == ["zhao"])
+        ev.check("nothing moved", story.state.model_dump_json() == before and not story.turns)
+
+    result = play(script)
+
+    assert result.status == "passed", result.failures()
+    assert result.turns == 0 and result.turn_cost_usd == 0
+    (use,) = result.use
+    assert (use.node, use.calls) == ("interpret", 1) and use.cost_usd == result.cost_usd > 0
+    assert [call.node for call in seen["read"].calls] == ["interpret"]
+
+
+def test_a_line_the_model_cant_read_is_no_reading(offline_models):
+    """A line the filter stops, or the model never answers, is a line read wrong, not a broken
+    run: on a larger model a deadline missed is part of what the reading costs."""
+    read = {}
+
+    def answers(request: Request):
+        if request.node is not Node.INTERPRET:
+            return offline_reply(request)
+        said = request.prompt.messages[-1].text
+        return Block(categories=("violence",)) if "I stab Zhao" in said else Fail()
+
+    async def script(ev: Eval) -> None:
+        story = ev.story(worlds.sect(), seed="s", under_way=True)
+        read["blocked"] = await story.read("I stab Zhao")
+        read["late"] = await story.read("I bow to Zhao")
+        ev.check("ran", True)
+
+    models = Models(backend=FakeBackend(default=answers, keep_requests=False))
+    result = play(script, mode=Mode.LIVE, models=models)
+
+    assert result.status == "passed", result.error
+    assert (read["blocked"].intent, read["blocked"].failed) == (None, "blocked")
+    assert (read["late"].intent, read["late"].failed) == (None, "llm_unavailable")
+    assert read["late"].steps == []
+    (use,) = result.use
+    assert use.failed == use.calls > 0
+
+
+def test_the_summary_says_what_each_model_step_came_to():
+    """B6, B8, K8: a run says what each model step of its stories took a call, and what a turn
+    played cost, so the same scenarios on another model can be set beside it."""
+
+    async def script(ev: Eval) -> None:
+        story = ev.story(worlds.farm(), seed="s", under_way=True)
+        mend = act("mend the fence", "mend", ActionKind.TASK, HOUR)
+        await story.act("I mend the fence", mend)
+        await story.act("I mend the gate", mend)
+        await story.read("I mend the barn", mend)
+        ev.check("played", len(story.turns) == 2)
+
+    result = play(script)
+    run = Run(mode=Mode.DETERMINISTIC, started_at=datetime(2026, 11, 12, tzinfo=UTC))
+    run.results = [result, play(script)]
+
+    by_step = {use.node: use for use in run.use()}
+    assert (by_step["interpret"].calls, by_step["narrator"].calls) == (6, 4)
+    assert run.turns == 4 and 0 < run.turn_cost_usd < run.cost_usd  # the readings aren't turns
+    text = summary(run)
+    assert "### What each model step would come to" in text
+    assert "| interpret | gemini-3.5-flash-lite | 6 |" in text
+    assert f"A turn played would cost ${run.turn_cost_usd / 4:.4f} on average (4 turns)." in text
+
+    run.mode = Mode.LIVE
+    run.thinking = {"interpret": "medium"}
+    text = summary(run)
+    assert "### What each model step came to" in text
+    assert "| interpret | gemini-3.5-flash-lite (medium) | 6 |" in text
+    assert "A turn played cost $" in text
+    data = run.to_json()
+    assert data["thinking"] == {"interpret": "medium"} and data["turns"] == 4
+    assert [use["node"] for use in data["use"]] == ["interpret", "narrator"]
+    assert data["scenarios"][0]["use"][0]["calls"] == 3
+
+
+def test_a_run_with_no_model_call_lists_no_step():
+    assert "What each model step" not in summary(a_run(None))
+
+
+def test_a_live_run_says_how_hard_each_step_thinks(monkeypatch):
+    monkeypatch.setenv("INTERPRET_THINKING", "high")
+    monkeypatch.setenv("INTERPRET_MODEL", "gemini-3.5-flash")
+    models = Models(config=ModelConfig.from_env())
+    assert models.models_used()["interpret"] == "gemini-3.5-flash"
+    thinking = models.thinking_used()
+    assert thinking["interpret"] == "high" and thinking["narrator"] == "low"
+    assert "picture" not in thinking  # a picture model takes no such setting
 
 
 # --- the judge ---------------------------------------------------------------------------------

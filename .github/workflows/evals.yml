@@ -5,7 +5,9 @@
 # nothing else, which infra/bootstrap.sh sets up (docs/ARCHITECTURE.md, "Story evals").
 #
 # A run by hand can draw its pictures with another model, to weigh it against today's on T18's
-# picture evals before any switch (M8): run the same scenarios once with each and compare.
+# picture evals before any switch (M8): run the same scenarios once with each and compare. The
+# same goes for the model that reads the player's words and how hard it thinks (B6): the summary
+# lists what each model step came to, a call and a turn, so two runs are set side by side.
 #
 # Each run uploads its results (run.json, summary.md, transcripts, pictures) and appends a line to
 # history.jsonl, which is carried from run to run in the Actions cache and shown as a trend.
@@ -17,7 +19,7 @@
 # round, today's style next to the JSON list it gives, with no code change.
 
 name: Evals
-run-name: "Evals${{ inputs.styles && ', house style candidates' || '' }}${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}"
+run-name: "Evals${{ inputs.styles && ', house style candidates' || '' }}${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}${{ inputs.interpret_model && format(', read by {0}', inputs.interpret_model) || '' }}${{ inputs.interpret_thinking && format(', thinking {0}', inputs.interpret_thinking) || '' }}"
 
 on:
   schedule:
@@ -30,6 +32,14 @@ on:
         default: ""
       picture_model:
         description: The picture model to draw with, such as gemini-nano-banana-2.1 (blank is the default, M8)
+        type: string
+        default: ""
+      interpret_model:
+        description: The model that reads the player's words, such as gemini-3.5-flash (blank is the default, B6)
+        type: string
+        default: ""
+      interpret_thinking:
+        description: How hard that model thinks, minimal, low, medium or high (blank is the default)
         type: string
         default: ""
       styles:
@@ -88,8 +98,10 @@ jobs:
         if: ${{ !inputs.styles }}
         env:
           ONLY: ${{ inputs.only }}
-          # Blank keeps the configured picture model (graph.llm.config).
+          # Blank keeps the configured model and thinking (graph.llm.config).
           PICTURE_MODEL: ${{ inputs.picture_model }}
+          INTERPRET_MODEL: ${{ inputs.interpret_model }}
+          INTERPRET_THINKING: ${{ inputs.interpret_thinking }}
         run: |
           args=()
           for scenario in $ONLY; do args+=(--only "$scenario"); done

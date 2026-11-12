@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from engine import injuries, limits, pipeline
 from engine.apply import DeltaSource, apply_delta
+from engine.context import Language
 from engine.contracts import Intent, Resolution, SuggestionPlan
 from engine.invariants import InvariantError, check_transition
 from engine.labels import passage_label
@@ -40,14 +41,16 @@ from graph.llm import (
     LLMBlocked,
     LLMError,
     LLMUnavailable,
+    ModelClient,
     Node,
     StreamRestart,
     TextDelta,
 )
 from graph.turn import check
 from graph.turn import ending as ending_mod
-from graph.turn.context import chapter_prompt, interpret_prompt, narration_brief
+from graph.turn.context import asks, chapter_prompt, interpret_prompt, narration_brief
 from graph.turn.errors import EndingRefused, LimitReached, UnreadableAction
+from graph.turn.form import intent_form
 from graph.turn.outputs import ChapterOutput, NarratorOutput
 from graph.turn.scene import details, scene_draft
 from graph.turn.types import (
@@ -198,6 +201,18 @@ async def catch_up(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, An
     return update
 
 
+async def read_action(
+    llm: ModelClient, world: WorldState, action: str, language: Language, last_scene: str = ""
+) -> check.CheckedIntent:
+    """The player's words as the first model reads them where the story stands, checked in code
+    (V3, B5). The form asks only what can apply to this turn, and the guide explains only that
+    (`graph.turn.form`). A reading the model's filter stops raises `LLMBlocked`."""
+    asked = asks(world)
+    prompt = interpret_prompt(world, action, language, last_scene, asked)
+    intent = await llm.structured(Node.INTERPRET, prompt, Intent, form=intent_form(asked))
+    return check.check_intent(intent, world, action)
+
+
 @timed("interpret")
 async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any]:
     """Step 2: the player's words become an `Intent` (V3). A standing action needs no model, and
@@ -216,13 +231,13 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     action = turn.action or ""
     # R2: the scene the player is answering, so that what it showed counts as there.
     last_scene = turn.scenes[-1].narration if turn.scenes else ""
-    prompt = interpret_prompt(world, action, turn.ctx.settings.language, last_scene)
     try:
-        intent = await runtime.context.llm.structured(Node.INTERPRET, prompt, Intent)
+        checked = await read_action(
+            runtime.context.llm, world, action, turn.ctx.settings.language, last_scene
+        )
     except LLMBlocked as block:
         log_block("interpret", list(block.categories), stage=block.stage, source="model")
         raise UnreadableAction(categories=block.categories, stage=block.stage) from None
-    checked = check.check_intent(intent, world, action)
     # F3, G12, F2: a step over a hard limit never plays, so nothing is resolved or narrated.
     hits = limits.check_action(world, checked.intent, turn.ctx.rating)
     gravest = limits.gravest(hits)

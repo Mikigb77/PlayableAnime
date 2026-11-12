@@ -528,8 +528,8 @@ def attributes_used(
 
 
 def step_words(step: IntentStep) -> frozenset[str]:
-    """The meaningful word stems of what the step does: its words, its verb and its method."""
-    return stems(f"{step.text} {step.verb} {step.method}")
+    """The meaningful word stems of what the step does: its words and its verb."""
+    return stems(f"{step.text} {step.verb}")
 
 
 def skills_for(actor: Character, step: IntentStep) -> list[str]:
