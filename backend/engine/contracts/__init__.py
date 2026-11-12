@@ -10,6 +10,7 @@
 from engine.contracts.delta import (
     WORLD,
     AttitudeShift,
+    BondChange,
     CharacterChange,
     ConditionChange,
     Expecting,
@@ -69,6 +70,7 @@ from engine.contracts.intent import (
     Plausibility,
     PowerGrant,
     PowerTheory,
+    RomanceMove,
     SheetPart,
     SheetUse,
     ShowStrength,
@@ -95,6 +97,7 @@ from engine.contracts.resolution import (
     StopReason,
     TrainingSoFar,
     Trip,
+    WooingSoFar,
 )
 
 __all__ = [
@@ -107,6 +110,7 @@ __all__ = [
     "BeatResolution",
     "BeatUse",
     "BeatVerdict",
+    "BondChange",
     "Bridge",
     "ChainLink",
     "CharacterChange",
@@ -157,6 +161,7 @@ __all__ = [
     "PowerTheory",
     "ProposedDeed",
     "Resolution",
+    "RomanceMove",
     "RuleChange",
     "SceneEnd",
     "SceneWeight",
@@ -179,4 +184,5 @@ __all__ = [
     "TrainingSoFar",
     "Trip",
     "UseSource",
+    "WooingSoFar",
 ]

@@ -90,8 +90,9 @@ from engine.contracts.resolution import (
     StepResolution,
     StopReason,
     TrainingSoFar,
+    WooingSoFar,
 )
-from engine.resolve import bouts, capability, exchanges
+from engine.resolve import bouts, capability, exchanges, romance
 from engine.resolve import perils as perils_mod
 from engine.resolve import strangers as strangers_mod
 from engine.resolve import throw as dice
@@ -215,6 +216,9 @@ class _Frame:
     # no step can make a bout afterwards.
     bout: Bout | None = None
     open_fight: bool = False
+    # W17: where the romances this plan moved stand, by the other person's id, which the
+    # state doesn't hold until the plan is played out.
+    hearts: dict[str, romance.Heart] = field(default_factory=dict)
 
 
 @dataclass
@@ -428,6 +432,7 @@ def _settle_step(
     nature stood in its way, so it was done whatever the roll said (G15)."""
     if frame.met:
         state = _with_people(state, frame.met)
+    began_s = frame.world_s
     actor = talents_mod.with_rulings(actor, frame.talent_rulings, frame.bridges)
     # W1. A blow of a bout both sides agreed to does at most what its terms accept.
     stood = (frame.bout, frame.open_fight)  # the bout as it stood before this step
@@ -553,6 +558,15 @@ def _settle_step(
         settled, bridging = talents_mod.bridge_check(state, actor, step)
         if bridging is not None:
             step = bridging.step
+
+    wooing: romance.Wooing | None = None
+    courted: WooingSoFar | None = None
+    if settled is None and bridging is None:
+        # W17. A move in a romance is ruled on by the bond on record and the other's own
+        # heart first (A2). What they leave open is thrown for like any step of words.
+        wooing = romance.read(state, actor, step, ctx.settings.language, frame.hearts)
+        if wooing is not None:
+            step, settled = wooing.step, wooing.settled
 
     met: strangers_mod.Met | None = None
     if settled is None and step.aim.harmful and step.stranger is not None:
@@ -800,6 +814,17 @@ def _settle_step(
         effects = _merge(effects, shown)
         if deed is not None:
             deeds.append(deed)
+    if wooing is not None and frame.gone is None:
+        # W17. What the move did to the romance: their heart, and the stage it earned.
+        said, moved_on, frame.hearts[wooing.other.id] = romance.settle(
+            actor, wooing, settled, over_the_top=over_the_top, now_s=began_s, lasted_s=duration
+        )
+        after.extend(said)
+        effects = _merge(effects, moved_on)
+        # One an event cuts short keeps what the time it ran earned (E7).
+        courted = romance.so_far(
+            wooing, settled, [_sentence(line) for line in said], over_the_top=over_the_top
+        )
     if chain:
         places, deed = _chain_places(state, actor, step, chain)
         effects = _merge(effects, places)
@@ -991,6 +1016,7 @@ def _settle_step(
         effects=effects,
         deeds=deeds,
         training=frame.training,
+        wooing=courted,
         kind=step.kind,
         trip=trip,
         encounter=encounter,
@@ -1496,6 +1522,7 @@ def _merge(*deltas: StateDelta) -> StateDelta:
                     "leads",
                     "rule_changes",
                     "time_effects",
+                    "bonds",
                 )
             }
         )

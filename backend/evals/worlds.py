@@ -1321,6 +1321,44 @@ def farm() -> WorldState:
     return farm_world()
 
 
+MARA = "mara-voss"
+AT_THE_GATE = (
+    "Mara Voss has stopped at the gate with a sack of flour for the kitchen, and waits to see "
+    "what Tomas wants."
+)
+
+
+def millers_daughter() -> WorldState:
+    """The farm world with Tomas living alone, for a romance (W17): no wife, and nothing on
+    record between him and anyone. Mara Voss, the miller's daughter, has stopped at his gate.
+    She likes him well enough as a neighbour and feels nothing more for him yet, and her heart
+    is one that rests a day after it moves (`engine.bonds.pace`, which follows from her id)."""
+    state = farm_world()
+    del state.characters["ilse"]
+    state.bonds.clear()
+    mara = Character(
+        id=MARA,
+        name="Mara Voss",
+        prominence=Prominence.KEY,
+        description="The miller's daughter, who brings the flour round and speaks her mind.",
+        appearance="29, strong arms, flour in her dark hair.",
+        age=29,
+        location_id="farm",
+        known_by=["tomas"],
+        met_by=["tomas"],
+    )
+    mara.sheet.disposition.attitudes["tomas"] = Attitude(affinity=30, trust=30)
+    state.scene = state.scene.model_copy(
+        update={
+            "present_ids": ["tomas"],
+            "positions": ["Tomas at the gate", "Mara on the lane with a sack of flour"],
+            "ended_on": AT_THE_GATE,
+        }
+    )
+    state.summary = "Tomas Weller farms a small plot in the Long Valley, alone."
+    return add(state, mara)
+
+
 HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."
 
 

@@ -382,6 +382,12 @@ class AttitudeP(Proposal):
     shown_affinity: int | None = Field(
         default=None, description="How warm they act, when it differs from how they feel."
     )
+    attraction: int = Field(
+        default=0,
+        description="W17: how drawn they are to the player character as a lover, 0 to 100. "
+        "0 unless the premise says there is something between the two, or that they love "
+        "the player character.",
+    )
 
 
 class AgendaP(Proposal):
@@ -407,6 +413,8 @@ class AttributesP(Proposal):
 
 
 PlayerKnows = Literal["met", "heard_of", "unknown"]
+# W17: where a romance the premise sets up stands as the story opens.
+BondAtStart = Literal["courting", "together", "promised", "married"]
 
 
 class NpcP(Proposal):
@@ -437,6 +445,13 @@ class NpcP(Proposal):
     ladders: list[LadderPositionP] = Field(default_factory=list)
     axes: AxesP = Field(default_factory=AxesP)
     attitude_to_player: AttitudeP = Field(default_factory=AttitudeP)
+    bond_with_player: BondAtStart | None = Field(
+        default=None,
+        description="W17: only where the premise says this person and the player character "
+        "are in a romance as the story opens: courting, together (a couple), promised "
+        "(betrothed, engaged) or married. Both are adults with an age. null for everyone "
+        "else.",
+    )
     agenda: AgendaP | None = Field(default=None, description="Hidden from the player.")
     secrets: list[str] = Field(default_factory=list)
     player_knows: PlayerKnows = Field(

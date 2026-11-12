@@ -30,7 +30,7 @@ plan, with workstreams, file ownership and the rules for parallel threads, is in
    (`neon checkout <feature> --create`). Never test against the `production` branch. **Every PR
    targets `dev`, never `main`**: merging `dev` into `main` is the deploy (docs/DEPLOY.md), and CI
    fails any PR into `main` that doesn't come from `dev`.
-2. Engine rules (A2–A9, C1, C10, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are
+2. Engine rules (A2–A9, C1, C10, W1–W17, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are
    enforced in code with unit tests, not only in the prompt. Model nodes propose; code nodes decide.
    Logic comes first: a roll is used only where the facts leave the outcome open (A2). Outcomes
    follow cause and effect in any genre, so a clever workaround can beat a stronger foe, and that

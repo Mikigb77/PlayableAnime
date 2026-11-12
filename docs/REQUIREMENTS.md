@@ -51,7 +51,7 @@ enforces them, and the narrator never moralizes.
 | F4 | **A blocked description never blocks the deed.** The engine resolves and records the action in code (A2, A3, W1) before narration, so a refusal or safety block only affects how it is told. The narration first retries as a cut-away, then falls back to a neutral template line ("What happened in the alley stays off the page. Its consequences won't."). Only when the action itself can't be read (the interpret step in B5 is blocked) does the player get a clear message with a rephrase or retry option, never an error. Every block is logged with its category. | P0 |
 | F5 | Gemini safety settings are set per rating, at the most permissive level that the policy allows. Dangerous content, where Gemini files a character's self-harm, is off wherever it would stop the story rather than an instruction: the interpret step and chapter summaries in both ratings, and the narrator in Mature, where code holds F3's line on instructions (2026-11-05: it had blocked "I stab myself" and a knife to a stranger). | P0 |
 | F6 | Report and block on every scene, with reports reviewed in the Django admin. Apple requires this for AI content apps (guideline 1.2). | P0 |
-| F7 | **Player content preferences:** gore level (low, medium or high), romance on or off, and dark themes on or off. The world and NPCs only start themes that are switched on. The player's own actions are bounded only by the rating. | P1 |
+| F7 | **Player content preferences:** gore level (low, medium or high), romance on or off, and dark themes on or off. The world and NPCs only start themes that are switched on. The player's own actions are bounded only by the rating, so a romance the player starts is played and kept on record with the switch off (W17). | P1 |
 | F8 | **Age gate:** a declared birth date at sign-up, plus the store's 17+ rating. Apple 1.2.1 accepts verified or declared age. Under-17 accounts get Teen only, and their limit lifts on the 17th birthday. Nobody under `MIN_SIGNUP_AGE` can sign up: 16 (Miki, 2026-11-08), the age the privacy policy states, since at 16 no EU country asks for a parent's consent and the app collects none. | P0 |
 
 Where the lines fall, so that the narrator prompts and the evals (T15) use the same scale:
@@ -1400,6 +1400,86 @@ how often events come, but never turns them off. The details:
 - The director decides that something happens and what it is, never how it ends. Outcomes stay with
   A2, A3 and the player.
 
+**W17 A romance is on record (P0).** A romance between two people is a bond the world keeps, the
+way it keeps deeds (Miki asked on 2026-11-11 whether the game keeps a romance: it didn't, so a
+lover and a good friend looked the same to the engine, and only the narrator's summaries
+remembered who was together). Code decides every step of it, logic first (A2), and nothing in it
+assumes a genre (G5): a stage is a fact between two people, and what a courtship, a betrothal or
+a wedding looks like is the world's. The details:
+
+- **Stages.** Interest, courting, together, promised, married, over. A bond moves forward a
+  stage at a time, save that an ask answered with a yes makes a couple of two who were only
+  interested, and it can end from any stage. It never moves back, and a bond that is over stays
+  over: a romance that starts again is a new bond. Each stage is kept with when the bond came
+  to it, who brought it there and how, so the romance's history is on record.
+- **What a stage needs.** Interest opens with the first move someone makes, whatever came of
+  it. Courting: an advance came off, and their heart is at 30 or more. Together: they were
+  asked and said yes. Promised: the same, asked of a partner. Married: the two were promised,
+  and wed. Over: one of them ended it, or one of them died. Only a death beyond doubt ends it:
+  someone merely presumed dead is still bound.
+- **A heart of their own.** The other person has a heart of their own: how drawn they are to
+  someone as a lover, from 0 to 100, apart from how much they like or trust them. Only the
+  engine moves it, by what happened between the two. An advance that was answered moves it one
+  notch (10), or half a notch when it only half came off. Two things add to that once: 5 more
+  for someone who already likes and trusts them, and a notch more for a throw over the top.
+  Then their heart rests, for as long as that person's own pace says (eight hours, a day or
+  three days, a pace that is theirs for the whole story and follows from who they are, never
+  from a throw). Nothing moves it while it rests, so sweet words three times in one scene count
+  once, and a romance is won over days of the story, never in one scene. Nothing moves the
+  heart of someone who neither likes nor trusts the character. The player character's own
+  feelings are the player's (G15), so no record holds them.
+- **A move in a romance.** The interpret step says of every step whether it is itself a move in
+  a romance, and which: an advance (flirting, courting, a gift meant to win them, a kiss, a
+  night together), asking to be a couple, asking for a promise, a wedding, or ending it. The
+  step's own words count beside that reading, as they do for F3: a kiss, a flirt or a night
+  together is an advance whatever the reading left out. Only the player character's own steps
+  are read this way, toward a living person on record, and everyone in one is a recorded adult
+  (F3). The form asks nothing about romance while the player character is no recorded adult or
+  nobody else on record is one (B5). The Romance switch is about what the world starts (F7):
+  the player's own moves play with it off.
+- **An advance** is thrown for like any step of words, and someone drawn to the character (40
+  or more) is easier to move. With a partner whose heart is still in it (40) nothing is thrown:
+  nobody throws to kiss their own wife. Beyond a kiss it is certain with a partner whose heart
+  is in it (50) or with anyone in love (70), and never open with someone barely drawn (under
+  30) who is no partner. How far the telling goes is still the rating's (F2).
+- **An ask is answered by their heart.** Asked to be a couple, they say yes with nothing thrown
+  when they are in love (70 or more) and no with nothing thrown when their heart isn't there
+  (under 40). In between it is thrown for like any step of words: a near miss and they ask for
+  time, and a miss sets their heart back a little (5), so asking again and again only digs the
+  hole. Asking for a promise is the same, asked of a partner, at 85 and 60. A wedding takes two
+  who are promised, and then nothing is thrown.
+- **Ending it** is always the character's to do. It costs the one who was left some of what
+  they felt: 15 of their liking and trust and 30 of their heart for a couple, 5 and 10 for two
+  who were courting. So getting back together has to be won again.
+- **A closed heart.** Close family by blood (one descends from the other, or they share a
+  parent), someone who wants nothing to do with the character (liking at -40 or worse) and
+  someone too afraid of them (the fear that keeps a witness silent, W2) are moved by nothing of
+  the kind: an advance or an ask fails with nothing thrown, since nothing is freely given.
+  Toward close family nothing of it is ever on record, not even that it was tried, and code
+  opens no bond between two who are.
+- **A long stretch of courting** ("I court her through the spring") is one step and one throw
+  (E7). It counts for each time their heart had rested while it ran, up to six notches, so a
+  season brings someone a long way and the asking is still played. One that an event cut short
+  keeps the days it ran, as training keeps its effort (A4): a fortnight stopped on the fourth
+  day counts four days, and one stopped before their heart could move once didn't happen.
+- **Only the engine moves a bond or a heart.** The narrator is told where each person stands
+  with the character: the stage, since when, their heart in words ("curious about you, and no
+  more than that yet", "drawn to you", "in love with you") and their pace. It plays them that
+  way and can't change it: its update has no place for a bond or a heart, and one that tries is
+  refused (C1). A scene that says "she says yes" changes nothing unless the step's outcome
+  said so.
+- **A premise's romance is recorded at the draft.** "I farm with my wife" starts the story with
+  the two married on record and her heart in it (G4): the drafter marks a wife, a husband, a
+  betrothed, a lover or someone they are courting, and code writes the bond, between recorded
+  adults only.
+- **A partner is a close tie.** Whoever is promised or married to someone counts as their
+  family, and a partner as a friend at least, wherever the world asks who is close to whom: who
+  keeps quiet about what they saw them do, whom word of them reaches, who takes their death as
+  their own to avenge (W2, W4).
+- **Still to build:** the bond on the Memory screen (C6); the world reacting when a partner or
+  a rival learns of another romance through who saw it and told (W2, W4); romances between
+  other people; and someone falling for the character first (W16's admirer).
+
 We don't know exactly how OOC handles this. Its public coverage describes memory layers and stats but
 no retaliation system, so this is one place we can be better rather than just match it.
 
@@ -1825,6 +1905,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Themes off | Quiet life again, with romance and dark themes switched off (F7) | No romance or dark events are drawn |
 | Time skip | "I farm here for a year", and "I train for a week" over many seeds | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap. Some weeks of training pass whole and some are cut short, with the effort put in kept (E7, A4) |
 | The same hour | The player plays 60 quiet scenes of a minute each, then scenes of half an hour, on calm, normal and dramatic | Inside the hour one of life's events comes at most, with a few small moments ten minutes or more apart and no event marked for them, and a way to let time pass among the suggestions once in twelve scenes at most, never beside a decision (S2); once two hours of story time have passed since the event, the next one comes (W16, W10) |
+| Slow romance | On the farm with no wife, the player asks Mara, a neighbour who likes them and feels nothing more, to be their sweetheart on the first day, while the scripted narrator says she agrees and writes the couple into its update. They pay her court twice in one evening, then a week at a time until she is in love, ask again, kiss her, try to marry her the same day, court on, ask for a promise and wed, over 12 seeds | The first ask is turned down with nothing thrown and makes them no couple, whatever the narrator tells, and nothing it writes moves her heart. Sweet words twice in one day move her heart once. A week of courting moves it as far as its days allow, never when it came to nothing, and a week the valley cut short keeps the days it ran. It is a courtship only once an advance came off and her heart is far enough. Each ask is answered by her heart: yes with nothing thrown once she is in love. A kiss with a partner needs no throw, a wedding takes two who are promised, and the bond comes to married one stage at a time, over a week or more of the story. Live, the judge reads whether she turns the first ask down, whether the yes and the kiss are told as such, and whether she is ever told as a partner, a betrothed or a wife before the record makes her one (W17, A2, E7, F3) |
 | Ignored hook | The player ignores the premise's hook for 20 turns | The hook's clock advances and resolves without the player (the exam happens) |
 | Walk away | "I leave the academy and open a noodle shop" | The story follows the noodle shop, and the academy threads go on off-screen |
 | Divergence | Same premise and same actions, 5 seeds, 50 turns | The worlds differ in events, threads and new characters |
@@ -1930,7 +2011,7 @@ Every turn costs credits, the server enforces the balance, and the owner account
 | B2 | **Neon with Django:** psycopg 3, the pooled URL with `DISABLE_SERVER_SIDE_CURSORS = True` and `CONN_MAX_AGE = 0` (PgBouncer transaction mode), and the direct URL for `migrate`. Django migrations replace `backend/migrations/*.sql`. | P0 |
 | B3 | **Logging:** Django `LOGGING` sends JSON to stdout, with a middleware that adds request id, trace id, user and story to every line (T4–T6). | P0 |
 | B4 | **Story engine as its own package**, with no Django imports. Invariants, state updates, reputation and escalation are deterministic Python with unit tests. Django views only load the story, run the graph and save the result. | P0 |
-| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus who it is aimed at, what it would do to them and how long it takes (W10), the beats it takes (R2), the chain of cause and effect behind any beat whose outcome isn't obvious, with the facts each link rests on (A9), and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal. **The form it fills asks only what can apply to the turn** (2026-11-12): a question that can't apply is one more thing to get wrong, and it is paid for on every turn. So nothing about stopped time is asked unless the character holds a power over time or one is at work, nothing about a ladder where the world has none, no ruling on talent where the character has none to rule on, and no goal to give up or thread to take up where there is none; the model is told how to fill in only what its form holds, and code reads a field that wasn't asked as its default. Who acts is never asked: the player plays only their own character (A6). A reading that would end a friendly bout as an attack is read once more, by the larger model, before code acts on it (B8, W1) → (3) resolve and direct: check the beats and every link of a chain against the world, the scene and the sheet (R2, G8, A9), settle each step from the facts and throw the dice only for the ones the facts leave open (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code; in a Spanish or a Catalan story the cheapest model then says the engine's own lines in the story's language, beside the narrator (S10) → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
+| B5 | **LangGraph turn graph:** (1) load and catch up: apply pending events and run the deterministic world tick for the in-world time that has passed (W6, code) → (2) interpret: a cheap model turns the free text, typed or dictated (V3), into an open intent, a free-form verb plus who it is aimed at, what it would do to them and how long it takes (W10), the beats it takes (R2), the chain of cause and effect behind any beat whose outcome isn't obvious, with the facts each link rests on (A9), and any backstory claim (N4); an intent that fits no category goes to the narrator, never to a refusal. **The form it fills asks only what can apply to the turn** (2026-11-12): a question that can't apply is one more thing to get wrong, and it is paid for on every turn. So nothing about stopped time is asked unless the character holds a power over time or one is at work, nothing about a ladder where the world has none, no ruling on talent where the character has none to rule on, no goal to give up or thread to take up where there is none, and no move in a romance while the player character is no recorded adult or nobody else on record is one (W17); the model is told how to fill in only what its form holds, and code reads a field that wasn't asked as its default. Who acts is never asked: the player plays only their own character (A6). A reading that would end a friendly bout as an attack is read once more, by the larger model, before code acts on it (B8, W1) → (3) resolve and direct: check the beats and every link of a chain against the world, the scene and the sheet (R2, G8, A9), settle each step from the facts and throw the dice only for the ones the facts leave open (A2, A3), stop a chained plan at its first step that doesn't cleanly succeed (R6), advance the clock and clocks (W10, E2), let the director pick an event and callbacks (W16, E4, N1), and decide whether the scene gets a picture (M1), all in code; in a Spanish or a Catalan story the cheapest model then says the engine's own lines in the story's language, beside the narrator (S10) → (4) build context (retrieval, C4), including the moment the last scene ended on (R3) → (5) narrate: one large structured-output model call, streamed, that plays the action and then its outcome (R1) → (6) apply the state update, validated against C1 (code) → (7) after the turn: the prose continuity check (C5) and summaries. Model nodes propose; code nodes decide. | P0 |
 | B6 | **Models through Vertex AI** with LangChain's `ChatGoogleGenerativeAI` from `langchain-google-genai`, which calls Vertex AI since version 4 and replaces `langchain-google-vertexai`'s `ChatVertexAI` (deprecated in 3.2.0, removed in 4.0.0). The model for each node is set in config (interpret, the second reading of B8, narrator, the wording step of S10, checker, tick, summarizer, drafter, the picture and speech models from M8 and V6, the picture note from M5, and the evals' judge from T15 and T18). A BYOK key builds that request's model client and is never stored. A node's response format goes to Gemini as a JSON schema with only the keywords it takes, and a schema Gemini still refuses goes in the system prompt instead, with JSON mode; the full model checks every answer either way. An answer that fails the check is logged with where and how it failed (field names, list positions and error types, never a value, T6). Nothing holds the model to a schema in the prompt, so the drafter's answers are read leniently: a value of the wrong shape is fitted where its meaning is clear (a null, a lone value for a list, a map of records by id, an enum in other case), and one that still fails costs only itself, never the draft (G1, G2). Each repair is logged once per answer without its value; proposals that code builds stay strict. The published app always runs on Gemini through Vertex AI (or a player's own Gemini key, S9): on Cloud Run the API refuses to start with any other provider, and the offline model is only for local runs and tests. | P0 |
 | B7 | **Streaming:** the narrate node streams tokens through LangGraph `astream` to an SSE response (S3). The resolve node sends the steps it decided the same way, before the narrate node starts (A3). Where the lines of those steps are still being said in a Spanish or a Catalan story's language (S10), the narrator starts all the same, the steps go out as soon as their lines are said, and the narration's first words wait for them. | P0 |
 | B8 | **Latency budget:** at most one large-model call per turn on the critical path, plus the cheap interpret call, which may think longer on a turn whose outcome rests on a chain of cause and effect (A9). **A reading that would do something that can't be taken back is read once more by the large model before code acts on it** (2026-11-12): today that is a blow read as meant to go beyond the terms of a bout (W1), which ends a friendly fight as an attack, for good, and an attempt to break through at the peak of a rank (G19), whose climb or miss stands. The larger model reads the same words with the same form and guide, and its reading stands; when it can't be had, the first one does, so the turn never fails for the lack of it. Measured on the real models before choosing (T18's reading test and three stories of a lesson): the small model read 68 of 80 things right at 2.7 s and about half a cent a reading, the same model thinking harder 72 at 5.1 s, and the large model 73 at 4.7 s and 2.2 cents, which would add half again to what a turn costs and two seconds before every scene begins. The small model's one grave slip was a plain lesson blow read as an attack, 1 time in 36, and the large model made none in 18, so the large model reads the few turns that carry that risk and the small one the rest. The checker and the model part of the world tick use the cheapest model. **A Spanish or a Catalan story's turn may add one call to the cheapest model, beside the narrator** (2026-11-12, S10): it says the engine's own lines in the story's language, a few hundred tokens in and out, about a twentieth of a cent. It never delays the narrator. The dice wait for it, about a second, and never more than 4 s; a turn whose lines code already holds, or that were said before, makes no such call. Nothing relies on running after the response is sent: with request-based billing, Cloud Run throttles the CPU once the response ends, so off-screen work runs as catch-up at the start of the next turn. If catch-up adds noticeable latency, move it to Cloud Tasks (an API that would need enabling). | P0 |
@@ -1948,7 +2029,7 @@ Any Claude thread that changes this repo follows these rules. They are repeated 
    on in the PR description.
 2. One feature per branch and per PR, and one Neon branch per feature
    (`neon checkout <feature> --create`). Never test against `production`.
-3. Engine rules (A2–A9, C1, C10, W1–W16, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are enforced
+3. Engine rules (A2–A9, C1, C10, W1–W17, E2–E7, N1, N2, G7, G8, G14, G15, G18, R2, R6, M1) are enforced
    in backend code, with unit tests, not only in the prompt. Logic comes first: a roll is used only
    where the facts leave the outcome open (A2).
 4. CI must be green: ruff and pytest for the backend, and dart format, analyze and test for the app.

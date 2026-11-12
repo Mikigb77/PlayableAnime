@@ -44,7 +44,7 @@ import re
 from dataclasses import dataclass
 from statistics import mean
 
-from engine import levels
+from engine import bonds, levels
 from engine import talent as talent_mod
 from engine.context import Difficulty
 from engine.contracts.intent import Challenge, Edge, EdgeSource, IntentStep, SheetPart
@@ -399,6 +399,9 @@ def number_for(
             if attitude.fear >= ATTITUDE_AT:
                 help_.append((f"{them} fears {'you' if player else actor.name}", -STEP))
         else:
+            if step.romance is not None and attitude.attraction >= bonds.DRAWN_AT:
+                # W17. Their own heart moves a step that is a move in a romance.
+                help_.append((f"{them} is drawn to {'you' if player else actor.name}", -STEP))
             warmth = (attitude.affinity + attitude.trust) / 2
             if warmth >= ATTITUDE_AT:
                 help_.append((f"{them} likes and trusts {'you' if player else actor.name}", -STEP))

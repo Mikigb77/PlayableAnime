@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from engine import pipeline
+from engine import bonds, pipeline
 from engine.base import DAY, HOUR, MINUTE
 from engine.context import (
     ContentPrefs,
@@ -45,6 +45,10 @@ from engine.rng import SeededRng
 from engine.samples import cultivation_world, farm_world, grounded_world
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy, Prominence
 from engine.state.records import (
+    Bond,
+    BondEnd,
+    BondStage,
+    BondStep,
     Deed,
     Die,
     DieKind,
@@ -60,6 +64,7 @@ from engine.state.records import (
 )
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import (
+    Attitude,
     Power,
     Talent,
     TalentBridge,
@@ -71,6 +76,7 @@ from engine.state.sheet import (
 from engine.state.world import EventSize, WorldState
 from graph.turn import prompts
 from graph.turn.context import (
+    _PACE,
     LAST_SCENE_CHARS,
     RECENT_SCENES,
     asks,
@@ -1117,6 +1123,73 @@ def test_a_deed_s_fallback_picture_is_told_in_the_world_s_words():
     )
 
     assert fallback_prompt(state, decision) == "Lin Feng killed Zhao Kun at the outer-court well."
+
+
+def test_the_narrator_reads_a_romance_as_the_record_has_it():
+    """W17: the bond between someone and the player character, since when, and their own heart
+    and pace in words. The number stays the engine's. A partner is family by name."""
+    state = farm_world()
+    state.world_s = 12 * DAY
+    state.scene.present_ids = ["tomas", "ilse", "bram", "mara", "greta"]
+    felt = Attitude(affinity=20, attraction=45, heart_moved_s=11 * DAY)
+    state.characters["mara"] = Character(id="mara", name="Mara", age=29, location_id="farm")
+    state.characters["mara"].sheet.disposition.attitudes["tomas"] = felt
+    state.bonds["bond-2"] = Bond(
+        id="bond-2",
+        a_id="tomas",
+        b_id="mara",
+        stage=BondStage.COURTING,
+        steps=[BondStep(stage=BondStage.COURTING, turn=9, world_s=9 * DAY)],
+    )
+    ended = [
+        BondStep(stage=BondStage.TOGETHER, turn=2, world_s=DAY),
+        BondStep(stage=BondStage.OVER, turn=4, world_s=5 * DAY, how="Tomas Weller ended it."),
+    ]
+    state.characters["greta"] = Character(id="greta", name="Greta", age=31, location_id="farm")
+    state.bonds["bond-3"] = Bond(
+        id="bond-3",
+        a_id="tomas",
+        b_id="greta",
+        stage=BondStage.OVER,
+        end=BondEnd.PARTED,
+        steps=ended,
+    )
+
+    text = brief(state).user
+    present = json.loads(text.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"]
+    you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+    ilse, bram, mara, greta = present
+
+    assert ilse["bond_with_you"] == {
+        "stage": "married",
+        "since": "before the story began",
+        "their_heart": "in love with you",
+        "their_pace": _PACE[bonds.pace("ilse")],
+    }
+    assert mara["bond_with_you"] == {
+        "stage": "courting",
+        "since": "3 days ago",
+        "their_heart": "drawn to you",
+        "their_pace": _PACE[bonds.pace("mara")],
+    }
+    assert greta["bond_with_you"] == {
+        "stage": "over",
+        "ended": "Tomas Weller ended it.",
+        "since": "7 days ago",
+        "their_heart": "not drawn to you",
+        "their_pace": _PACE[bonds.pace("greta")],
+    }
+    assert "bond_with_you" not in bram
+    # The heart is told in words only.
+    assert mara["toward_you"] == {"affinity": 20}
+    assert '"attraction"' not in text and "heart_moved_s" not in text
+    assert you["family"] == {"partners": [{"id": "ilse", "name": "Ilse Weller", "bond": "married"}]}
+    assert ilse["family"]["partners"] == [
+        {"id": "tomas", "name": "Tomas Weller", "bond": "married"}
+    ]
+    # The interpret step reads the same people, so "I kiss my wife" finds a wife.
+    read = interpret_prompt(state, "I kiss my wife").messages[-1].text
+    assert '"bond_with_you":{"stage":"married"' in read
 
 
 def test_the_narrator_reads_family_by_name_and_a_child_on_the_way():
