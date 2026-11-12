@@ -456,8 +456,15 @@ kills them (N6). Foes act as they would, but never beyond what struck says.
 - bout under a step in OUTCOME means it was fought in a bout both sides agreed to (W1): no_harm \
 is a friendly bout, where a touch, a throw or a pin decides each exchange and nobody is \
 wounded, so subdued under struck is the character thrown or pinned for the point; wounds \
-accepts wounds, and death is to the death. Nobody takes a blow inside the terms as an attack \
-or resents it. broke_terms means a blow went beyond them: an attack, and the bout is over.
+accepts wounds, and death is to the death. Nobody takes a blow inside the terms as an attack, \
+and nobody resents or fears the character for one: a good blow may surprise them or win their \
+respect. broke_terms means a blow went beyond them: an attack, and the bout is over.
+- A fight, a chase, a duel of words, talks or a bout is the engine's to end, never the scene's \
+(W10). still_on in OUTCOME is the one still on as the scene ends, and whom the character faces \
+in it: they are still present and still in it when the scene ends. None of them walks off, \
+gets clean away, calls it done, yields for good, sends the character away or is called away. \
+Between exchanges the scene may show a breath, a word or a correction, and no more. Without \
+still_on, an encounter SCENE showed is over: show how it ended, from what the steps did.
 - When a step in OUTCOME lists its beats, play them in that order. made_canon is something the \
 place turned out to hold, so it is there now. empty is a search that comes up empty or a thing \
 that isn't there: play the reach for it, and the step stops at that beat (R2).
@@ -662,8 +669,9 @@ from whom to whom), beats, chain (the links of cause and effect it weighed, each
 it holds), interrupted, met, struck, bout or broke_terms, and trip (where the step took them, \
 whether they \
 arrived, and whether it is their first visit). Then stopped_at_step, stop_reason and unplayed \
-when the plan stopped early, now_canon for what became true, rulings, and backstory with \
-whether each claim was recorded.
+when the plan stopped early, still_on for the fight, chase, duel of words or talks under way \
+as the scene ends (its kind, with for whom the character faces in it, and bout for its terms), \
+now_canon for what became true, rulings, and backstory with whether each claim was recorded.
 - TIME: when the scene began and what time it is now, each as date and hour, how long passed in \
 words and in world seconds, your_seconds_lived when the player character lived through a \
 different span from the world, and heading when the player reads one above the scene.

@@ -2567,6 +2567,30 @@ def lesson_blow(n: int, shape: int = 0) -> Intent:
     )
 
 
+def the_elder_walks_off() -> dict:
+    """A scripted scene that ends the lesson on its own, as a live one did (2026-11-12): its end
+    has Elder Mo walk away and lists only Lin and Zhao. Code ends a bout, never the telling."""
+    end = SceneEnd(
+        ended_on="Elder Mo walks away, leaving Lin alone with a seething Zhao.",
+        place_id="well",
+        present_ids=["lin", "zhao"],
+    )
+    return {
+        "narration": "(scripted) Elder Mo lowers his sword and walks away.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
+def _still_on(story: Story) -> dict | None:
+    """The encounter the narrator's last brief said is still on as the scene ends
+    (deterministic mode)."""
+    brief = story.prompt(Node.NARRATOR)
+    if "## OUTCOME\n" not in brief:
+        return None
+    return json.loads(brief.split("## OUTCOME\n", 1)[1].split("\n", 1)[0]).get("still_on")
+
+
 def never_comes_off(shape: int) -> bool:
     """Whether a scripted lesson begins with a blow that is stopped before it is tried."""
     return shape % 3 == 2
@@ -2614,19 +2638,38 @@ async def friendly_bout(ev: Eval) -> None:
         await story.open()
         story.change(lesson_begins)
         before = story.state.characters["elder-mo"].attitude_toward("lin").model_copy(deep=True)
+        # Half the scripted lessons are told by scenes that end them on their own, with the
+        # mentor walking away, as the real narrator did: the lesson is still on (W10).
+        walks_off = the_elder_walks_off() if not ev.live and shape % 2 else None
         lesson = [
             await story.act(
                 "I bow, take up the practice sword and come at Elder Mo as he asked",
                 lesson_blow(0, shape),
+                narration=walks_off,
             )
         ]
         for n in range(1, 6 if ev.live else LESSON_BLOWS):
             lesson.append(
                 await story.act(
-                    "I come at Elder Mo again with the practice sword", lesson_blow(n, shape)
+                    "I come at Elder Mo again with the practice sword",
+                    lesson_blow(n, shape),
+                    narration=walks_off,
                 )
             )
         state = story.state
+        fight = state.scene.encounter
+        ev.check(
+            "the lesson is still on and the mentor still in the scene, whatever its end told",
+            fight is not None and fight.bout is not None and "elder-mo" in state.scene.present_ids,
+            f"{seed}: {fight}, with {state.scene.present_ids}",
+            live=False,
+        )
+        ev.check(
+            "the narrator is told the lesson is still on as the scene ends",
+            _still_on(story) == {"kind": "fight", "with": ["elder-mo"], "bout": "no_harm"},
+            f"{seed}: {_still_on(story)}",
+            live=False,
+        )
         blows = [s for played in lesson for s in played.steps]
         read = f"{seed}: {as_read(lesson)}"
         ev.check(
@@ -2704,7 +2747,11 @@ async def friendly_bout(ev: Eval) -> None:
                 must_not=(
                     "A blow of the lesson wounds Lin or Elder Mo, draws blood or knocks one of "
                     "them senseless (being worn out, winded, disarmed or bested is none of these)",
-                    "Elder Mo turns hostile, afraid or resentful over a blow of the lesson",
+                    # A start at a good blow is no fear of his student: the fifth live lessons
+                    # (2026-11-12) failed for a moment of alarm at one.
+                    "Elder Mo turns hostile, resentful or afraid of his student over a blow of "
+                    "the lesson (surprise or a start at a blow that nearly lands is none of "
+                    "these)",
                 ),
             ),
             lesson,

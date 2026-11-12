@@ -32,6 +32,9 @@ these on its working copy before and after each step, and `settle` once the plan
   skip, or a step as long as that which doesn't fight or carry on the encounter itself, such as a
   night's sleep, ends it before it plays, so the stretch gets its events (E7). A time skip is a
   montage and never starts one. Nothing here is timed in turns (W10).
+- **The telling never ends one.** Once the narrator's update is applied, whoever is still in the
+  encounter is in the scene, whatever its end listed (`keep`), and the narrator is told which
+  encounter is still on as its scene ends (`facing`).
 
 Plain Python, like the rest of the engine (B4).
 """
@@ -40,6 +43,7 @@ from engine.base import MINUTE
 from engine.context import TurnContext
 from engine.contracts.intent import ActionKind
 from engine.contracts.resolution import StepResolution
+from engine.invariants import ancestry
 from engine.resolve.power import helpless_state, in_the_fray
 from engine.state.cast import Prominence
 from engine.state.scene import Encounter, EncounterKind
@@ -175,6 +179,35 @@ def settle(state: WorldState) -> None:
     )
     if over:
         state.scene.encounter = None
+
+
+def facing(state: WorldState) -> list[str]:
+    """Those the encounter still has the player character facing: its opponents who are still in
+    it. Empty when no encounter is on."""
+    encounter = state.scene.encounter
+    if encounter is None:
+        return []
+    return [i for i in encounter.opponent_ids if still_in_it(state, i)]
+
+
+def keep(state: WorldState, played: WorldState) -> list[str]:
+    """W10. Once the narrator's update is applied to `state`, in place (`played` is the state
+    the steps left, before it): code ends an encounter and the telling never does, so whoever is
+    still in it is in the scene, whatever its end listed. Returns those put back.
+
+    On the real model (2026-11-12) a scene ended with the mentor walking away from a lesson the
+    engine still had going, and the next blow was read as aimed at the bystander.
+
+    A scene that ended in another place, even out in the place around the one it was in, left
+    them behind: whether the encounter goes on is `settle`'s to say once the next step has
+    played. Someone the update moved away, felled or bound is out of it (`still_in_it`)."""
+    here = state.scene.place_id or state.player.location_id
+    before = played.scene.place_id or played.player.location_id
+    if before is not None and before not in ancestry(state.places, here):
+        return []
+    kept = [i for i in facing(state) if i not in state.scene.present_ids]
+    state.scene.present_ids.extend(kept)
+    return kept
 
 
 def still_in_it(state: WorldState, character_id: str) -> bool:

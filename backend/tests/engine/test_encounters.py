@@ -545,6 +545,66 @@ def test_the_fight_ends_when_the_foe_is_somewhere_the_player_is_not():
     assert turn(state, strike())[0].scene.encounter is not None
 
 
+def ended(played: WorldState, *present: str, place_id: str = "well", **more) -> WorldState:
+    """The state once a narrator's update that ends the scene with `present` is applied."""
+    end = SceneEnd(ended_on="Dust settles.", place_id=place_id, present_ids=list(present))
+    delta = StateDelta(scene_end=end, **more)
+    return apply_delta(played, delta, ctx(), source=DeltaSource.NARRATOR).state
+
+
+def test_a_scenes_end_takes_nobody_out_of_the_fight_they_are_still_in():
+    """W10. On the real model (2026-11-12) a scene ended with the mentor walking away from a
+    lesson the engine still had going, and the next blow was read as aimed at the bystander."""
+    played = fight_on(cultivation_world())
+    told = ended(played, "lin")
+    assert told.scene.present_ids == ["lin"] and encounters.facing(told) == ["zhao"]
+
+    after, kept = pipeline.settle_encounter(played, told)
+
+    assert kept == ["zhao"] and after.scene.present_ids == ["lin", "zhao"]
+    assert told.scene.present_ids == ["lin"]  # the state passed in is never touched
+    assert after.scene.encounter is not None
+
+    # A scene that still lists him changes nothing, and neither does one with no fight on.
+    listed = ended(played, "lin", "zhao")
+    assert pipeline.settle_encounter(played, listed) == (listed, [])
+    quiet = ended(cultivation_world(), "lin")
+    assert pipeline.settle_encounter(cultivation_world(), quiet) == (quiet, [])
+
+
+def test_someone_out_of_the_fight_is_not_put_back_in_the_scene():
+    # The update felled him, or sent him somewhere the player character isn't.
+    played = fight_on(cultivation_world())
+    down = CharacterChange(id="zhao", condition=ConditionChange(states=["knocked out"]))
+    told = ended(played, "lin", characters=[down])
+    assert pipeline.settle_encounter(played, told) == (told, [])
+    gone = CharacterChange(id="zhao", location_id="inner-court")
+    told = ended(played, "lin", characters=[gone])
+    assert pipeline.settle_encounter(played, told) == (told, [])
+
+    # Of two in it, only the one still in it is kept.
+    played = fight_on(cultivation_world(), "zhao", "wei")
+    played.characters["wei"] = Character(id="wei", name="Wei", location_id="well")
+    told = ended(played, "lin", characters=[down])
+    assert pipeline.settle_encounter(played, told)[1] == ["wei"]
+
+
+def test_a_scene_that_ends_somewhere_else_leaves_the_fight_behind():
+    """The player character went, by the telling: whether the fight goes on is `settle`'s to say
+    once the next step has played."""
+    played = fight_on(cultivation_world())
+    # Another place, and the place around the one the fight was in.
+    for place_id in ("inner-court", "azure-peak"):
+        told = ended(played, "lin", place_id=place_id)
+        assert pipeline.settle_encounter(played, told) == (told, []), place_id
+
+    # A spot inside the place it was in is still there.
+    spot = Place(id="well-steps", name="the well's steps", parent_id="well")
+    played.places["well-steps"] = spot
+    told = ended(played, "lin", place_id="well-steps")
+    assert pipeline.settle_encounter(played, told)[1] == ["zhao"]
+
+
 def test_getting_cleanly_away_from_everyone_in_it_ends_the_fight():
     """N6: a run that leaves the foe behind ends the fight; one that fails or partly works keeps
     it on."""

@@ -484,6 +484,13 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     issues += [
         Issue("witness_kept", "hasn't got away: still in the scene", subject=who) for who in kept
     ]
+    # W10: code ends a fight, a chase or talks, never the telling: whoever is still in the
+    # scene's encounter is still in the scene.
+    world, stayed = pipeline.settle_encounter(state["world"], world)
+    issues += [
+        Issue("encounter_kept", "still in the encounter: still in the scene", subject=who)
+        for who in stayed
+    ]
     # apply_delta stamps records with ctx.turn but leaves the turn counter to the graph.
     # N6: once told, a successor's opening is done.
     world = world.model_copy(update={"turn": turn.ctx.turn, "opening_due": False})
