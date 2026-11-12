@@ -511,7 +511,7 @@ def word_out(w: World, deed: Deed) -> None:
         there = [c.id for c in characters_at(state, deed.place_id) if c.id != deed.actor_id]
         start_rumor(
             w,
-            text=account(state, deed),
+            text=account(state, deed, language=w.ctx.settings.language),
             is_true=True,
             place_id=deed.place_id,
             hops=RUMOR_HOPS[deed.severity] + (1 if public else 0),

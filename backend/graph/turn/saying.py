@@ -11,10 +11,11 @@ each one. A line that lost a number or a name of the English one is dropped, and
 stands, as it does when the model is late, blocked or down. A turn never waits long for its
 wording and never fails for it.
 
-A line the engine always writes the same way is in a small book here, so a turn where nothing
-stood in the way calls no model. What the model said is remembered while the process lives, so
-a line that comes back, such as a foe's level on every exchange of a fight, is said the same way
-each time and asked for once. An English story's lines are the engine's own, untouched.
+A line the engine always writes the same way is in a small book here, and the director's titles
+are in theirs (`engine.director.titles`), so a turn where nothing stood in the way calls no
+model. What the model said is remembered while the process lives, so a line that comes back,
+such as a foe's level on every exchange of a fight, is said the same way each time and asked
+for once. An English story's lines are the engine's own, untouched.
 """
 
 from __future__ import annotations
@@ -31,8 +32,10 @@ from pydantic import BaseModel, Field
 
 from engine.context import Language
 from engine.contracts import Aim, DirectorPlan, Resolution
+from engine.director import titles
 from engine.resolve.core import NOTHING_IN_THE_WAY
 from engine.resolve.perils import MISS_COSTS
+from engine.state.records import Thread
 from graph.language import written_in
 from graph.llm import LLMError, Node, Prompt
 from graph.turn import prompts
@@ -128,6 +131,8 @@ class Lines:
 
     details: SceneDetails
     event_title: str | None = None
+    # The title is a thread's own, which the story keeps in its language already (N1).
+    title_kept: bool = False
 
     def reworded(self, word: Callable[[str], str]) -> Lines:
         """These lines with each one the engine wrote passed through `word`. What the player
@@ -187,9 +192,11 @@ class Lines:
             chain = [
                 link.model_copy(update={"reason": word(link.reason)}) for link in self.details.chain
             ]
+        title = self.event_title
         return Lines(
             details=self.details.model_copy(update={"steps": steps, "chain": chain}),
-            event_title=word(self.event_title) if self.event_title else self.event_title,
+            event_title=word(title) if title and not self.title_kept else title,
+            title_kept=self.title_kept,
         )
 
     def texts(self) -> list[str]:
@@ -204,12 +211,23 @@ class Lines:
         return list(seen)
 
 
-def lines_of(resolution: Resolution, plan: DirectorPlan, language: Language) -> Lines:
+def lines_of(
+    resolution: Resolution,
+    plan: DirectorPlan,
+    language: Language,
+    threads: Mapping[str, Thread] | None = None,
+) -> Lines:
     """The turn's lines as the engine wrote them. Outside English each reason comes without the
-    sentence that tells its throw, which the dice show (`graph.turn.scene.details`)."""
+    sentence that tells its throw, which the dice show (`graph.turn.scene.details`). An event
+    that brings back one of the story's `threads` under the thread's own title is in the
+    story's words already, unless the director titled that thread itself."""
+    event = plan.event
+    thread = (threads or {}).get(event.thread_id or "") if event else None
+    own = thread is not None and thread.title == event.title and not titles.written(event.title)
     return Lines(
         details=details(resolution, throws_told=language is Language.EN),
-        event_title=plan.event.title if plan.event else None,
+        event_title=event.title if event else None,
+        title_kept=own,
     )
 
 
@@ -317,15 +335,25 @@ class Wording:
         return [Issue(KEPT, f"{kept} of {self.asked}")] if kept else []
 
 
+def _at_hand(language: Language, text: str) -> str | None:
+    """A line that needs no model: one of the book's, a title the director wrote, which has
+    a book of its own (W16), or one the model has said before."""
+    said = BOOK[language].get(text)
+    if said is None and titles.written(text):
+        said = titles.said(text, language)
+    return said or _memory.get((language, text))
+
+
 def begin(llm: ModelClient, texts: Iterable[str], language: Language) -> Wording:
-    """Starts saying `texts` in `language`. The book's lines, and those the model has said
-    before, are said at once. The rest go to the model in one call that runs alongside the turn:
-    the caller cancels `task` when the turn ends, if it is still running."""
+    """Starts saying `texts` in `language`. The book's lines, the director's titles and the
+    lines the model has said before are said at once. The rest go to the model in one call that
+    runs alongside the turn: the caller cancels `task` when the turn ends, if it is still
+    running."""
     book = BOOK.get(language)
     if book is None:
         return Wording()
     wanted = list(dict.fromkeys(text for text in texts if _needs_words(text)))
-    known = {text: book.get(text) or _memory.get((language, text)) for text in wanted}
+    known = {text: _at_hand(language, text) for text in wanted}
     wording = Wording(said={text: said for text, said in known.items() if said})
     left = [text for text in wanted if text not in wording.said]
     if left:

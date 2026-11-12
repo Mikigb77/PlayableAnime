@@ -76,7 +76,7 @@ from engine.state.world import WorldState, natural_key
 from engine.world.answers import ARRIVING, Answer
 from engine.world.rumors import Certainty, certainty
 from engine.world.scheduling import Kind
-from engine.world.telling import cap, tell
+from engine.world.telling import YOU, own_words, tell, wound_said
 from engine.world.tuning import RUMOR_MIN_SEVERITY
 
 SINCE_LIMIT = 6
@@ -1062,7 +1062,7 @@ class _PlayerTeller:
 
     def name(self, record: Character | Place | Faction) -> str | None:
         if record.id == self.k.player_id:
-            return "you"
+            return YOU
         return record.name if self.k.knows(record) else None
 
     def believes_dead(self, victim_id: str, deed: Deed) -> bool:
@@ -1146,7 +1146,8 @@ class _Knowledge:
         """A deed in the world's words (G16), naming only whom the player character knows and
         telling a death only where they know of it (C6): "You killed Zhao Kun at the well." A
         deed the world has no words for keeps its own."""
-        return tell(self.state, deed, teller=_PlayerTeller(self)) or cap(deed.text)
+        told = tell(self.state, deed, teller=_PlayerTeller(self), language=self.language)
+        return told or own_words(deed, self.language)
 
     def deeds(self) -> list[Deed]:
         deeds = [
@@ -1545,7 +1546,7 @@ class _Knowledge:
     def condition_lines(self, player: Character) -> list[str]:
         condition = player.sheet.condition
         lines = [_HEALTH_WORDS[self.language][condition.health]]
-        lines += [_cap(w.text) for w in condition.wounds]
+        lines += [_cap(wound_said(w.text, self.language)) for w in condition.wounds]
         lines += [_cap(s.name) for s in condition.states]
         lines += [_cap(f"{r.name}: {r.level}%") for r in condition.reserves]
         expecting = player.expecting
@@ -1762,7 +1763,10 @@ class _Knowledge:
         return SheetCondition(
             health=condition.health,
             health_label=_HEALTH_WORDS[self.language][condition.health],
-            wounds=[SheetWound(text=_cap(w.text), lasting=w.lasting) for w in condition.wounds],
+            wounds=[
+                SheetWound(text=_cap(wound_said(w.text, self.language)), lasting=w.lasting)
+                for w in condition.wounds
+            ],
             states=states,
             reserves=[SheetReserve(name=_cap(r.name), level=r.level) for r in condition.reserves],
             expecting_label=expecting,

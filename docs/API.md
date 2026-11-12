@@ -718,6 +718,12 @@ MemoryView {character: {name, lines: [string], portrait_url?},
 # Every *_label is in the story's language (S10) and comes with the value it says, so the app
 # marks and tints an entry by the value and never reads the words. An app from before the
 # values shows the labels alone.
+#
+# What code words of the world's record is in the story's language too (S10): a deed's `text`
+# ("Mataste a Zhao Kun en el pozo."), a rumor's `text` and a thread's `title` or a lead's `text`
+# when the director wrote it ("Una vieja amistad en apuros"), and on the sheet a wound the engine
+# named. Rumors and titles are kept as first told, so a story started before 2026-11-12 keeps
+# the English ones it has.
 
 StatusView {character: {name, lines: [string], portrait_url?},   # portrait once drawn (M4);
                                           # lines are the sheet as plain text, kept for apps

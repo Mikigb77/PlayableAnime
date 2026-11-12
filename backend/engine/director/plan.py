@@ -28,7 +28,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution
-from engine.director import rules
+from engine.director import rules, titles
 from engine.director.clock import clock_after, clock_is_slow, sizes_in_time, small_thing_fits
 from engine.director.due import (
     MONTAGE_KIND,
@@ -83,13 +83,15 @@ def _open_event(
     """Record what a new event that needs a decision brings: its thread (a new one, or the one it
     continues), its play-out if nobody takes it up, and a lead for an offer (N1, N2, W16)."""
     event = pick.event
+    # S10: what the player keeps of it, a thread and a lead, is titled in the story's language.
+    language = ctx.settings.language
     thread_id = event.thread_id
     if thread_id is None and pick.thread_kind is not None:
         thread_id = ids.new("thread")
         updates.new_threads.append(
             Thread(
                 id=thread_id,
-                title=pick.thread_title or event.title,
+                title=titles.said(pick.thread_title or event.title, language),
                 kind=pick.thread_kind,
                 stakes=event.brief,
                 involved_ids=list(dict.fromkeys([*pick.involved_ids, *event.cast_ids])),
@@ -133,7 +135,7 @@ def _open_event(
         updates.new_leads.append(
             Lead(
                 id=ids.new("lead"),
-                text=event.title,
+                text=titles.said(event.title, language),
                 kind=event.kind.value,
                 place_id=event.place_id,
                 offered_turn=ctx.turn,

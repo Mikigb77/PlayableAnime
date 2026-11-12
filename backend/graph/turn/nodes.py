@@ -345,7 +345,7 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     # S10: the engine's own lines, in the story's language. The fixed ones are said at once;
     # the rest by the cheapest model, in a call that runs beside the narrator (B8).
     language = turn.ctx.settings.language
-    lines = saying.lines_of(played.resolution, plan, language)
+    lines = saying.lines_of(played.resolution, plan, language, played.state.threads)
     wording = saying.begin(runtime.context.llm, lines.texts(), language)
     if wording.task is not None:
         runtime.context.tasks.append(wording.task)
