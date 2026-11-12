@@ -215,6 +215,12 @@ def test_ordinary_adult_descriptions_pass(text):
         ("check the sex of the foal", None),
         ("bed them down in the barn", None),
         ("fondle the hilt of my sword", None),
+        ("sleep with her", Intimacy.SEXUAL),
+        ("sleep with the barmaid", Intimacy.SEXUAL),
+        ("sleep with one eye open", None),
+        ("sleep with my sword under the pillow", None),
+        ("sleep with her knife in reach", None),
+        ("slept with the window open", None),
     ],
 )
 def test_romantic_and_sexual_steps_are_recognised(text, kind):
@@ -456,6 +462,180 @@ def test_a_partner_the_story_doesnt_know_yet_is_left_to_the_narrator():
     # The narrator introduces them as an adult with an age; once known, the check holds them.
     intent = Intent(steps=[step("flirt with the barmaid", targets=["the barmaid"])])
     assert limits.check_action(grounded_world(), intent, Rating.MATURE) == []
+
+
+# --- What a reading leaves out (F3, F2) -------------------------------------------------
+# On the real model (2026-11-12) "I kiss Mei" played though the story had Mei at the bar, aged
+# sixteen, and a sexual assault in a Teen story became a step the engine let play. A reading
+# gives a partner only by id and words a step as it likes, so the check reads the rest itself.
+
+
+def at_the_bar(ref: str = "mei", name: str = "Mei", **fields) -> Character:
+    """Someone the record has where the scene plays, whom the scene doesn't show and the player
+    character hasn't met: the interpret step isn't shown them, so it has no id to give."""
+    return Character(id=ref, name=name, location_id="bar", **fields)
+
+
+@pytest.mark.parametrize(
+    ("reading", "action"),
+    [
+        (step("kiss Mei", verb="kiss"), ""),  # the step's own words name her
+        (step("kiss her", verb="kiss"), "I kiss Mei"),  # only the player's do
+        (step("kiss her", verb="kiss", targets=["Mei"]), ""),  # she is left in words
+        (step("fer-li un petó", verb="kiss", targets=["la Mei"]), "Faig un petó a la Mei"),
+        (step("besar a Mei", verb="kiss"), "Beso a Mei"),
+        (
+            step(
+                "kiss the girl",
+                verb="kiss",
+                stranger=Stranger(
+                    who="Mei, a girl at the bar", plausibility=Plausibility.PLAUSIBLE
+                ),
+            ),
+            "",
+        ),
+    ],
+)
+def test_a_kiss_the_reading_aimed_at_nobody_is_held_to_whom_its_words_name(reading, action):
+    state = with_character(grounded_world(), at_the_bar(age=16))
+
+    [hit] = limits.check_action(state, Intent(steps=[reading]), Rating.MATURE, action=action)
+
+    assert (hit.category, hit.subject, hit.detail) == (LimitCategory.MINOR, "mei", "aged 16")
+
+
+def test_a_childlike_adult_named_only_in_words_is_held_too():
+    ysolde = at_the_bar("ysolde", "Ysolde", age=300, appearance="Looks about twelve, pale.")
+    state = with_character(grounded_world(), ysolde)
+    intent = Intent(steps=[step("seduce Ysolde", verb="seduce")])
+
+    [hit] = limits.check_action(state, intent, Rating.MATURE, action="I seduce Ysolde")
+
+    assert (hit.subject, hit.detail) == ("ysolde", "described as childlike")
+
+
+def test_a_named_adult_plays_and_so_does_someone_the_story_doesnt_know():
+    state = with_character(grounded_world(), at_the_bar("lia", "Lia Conti", age=27))
+    for name in ("Lia", "Lia Conti", "Anna"):
+        intent = Intent(steps=[step(f"kiss {name}", verb="kiss", targets=[name])])
+        assert limits.check_action(state, intent, Rating.MATURE, action=f"I kiss {name}") == []
+
+
+def test_whom_the_reading_aimed_the_step_at_is_its_partner():
+    state = with_character(grounded_world(), at_the_bar("lia", "Lia", age=27))
+    state = with_character(state, at_the_bar(age=16))
+    # A kiss between adults is one whoever else the words name: Mei only watches.
+    action = "I kiss Lia while Mei watches"
+    watched = Intent(steps=[step("kiss Lia while Mei watches", verb="kiss", target_ids=["lia"])])
+    assert limits.check_action(state, watched, Rating.MATURE, action=action) == []
+    # Nor is a place whose name holds hers: the Mei Garden is where they kiss.
+    garden = step("kiss Lia", verb="kiss", target_ids=["lia"], targets=["the Mei Garden"])
+    assert limits.check_action(state, Intent(steps=[garden]), Rating.MATURE) == []
+    # Someone the reading left in words beside her is a partner too.
+    both = Intent(steps=[step("kiss them both", verb="kiss", target_ids=["lia"], targets=["Mei"])])
+    [hit] = limits.check_action(state, both, Rating.MATURE)
+    assert hit.subject == "mei"
+
+
+def test_the_nearest_of_a_name_is_the_one_meant():
+    state = with_character(grounded_world(), person(id="mei", name="Mei", age=30))
+    state.scene.present_ids.append("mei")
+    state = with_character(state, person(id="mei-2", name="Mei", age=16))  # somewhere else
+    intent = Intent(steps=[step("kiss Mei", verb="kiss")])
+
+    assert limits.check_action(state, intent, Rating.MATURE, action="I kiss Mei") == []
+
+    # With both in the scene either could be meant, so both are held.
+    state.scene.present_ids.append("mei-2")
+    [hit] = limits.check_action(state, intent, Rating.MATURE, action="I kiss Mei")
+    assert hit.subject == "mei-2"
+
+
+def test_the_players_words_are_the_steps_words_when_the_action_is_one_step():
+    state = with_character(grounded_world(), at_the_bar(age=16))
+    softened = Intent(steps=[step("lean in close to Mei", verb="approach", target_ids=["mei"])])
+    assert limits.check_action(state, softened, Rating.MATURE) == []  # the reading alone
+    [hit] = limits.check_action(state, softened, Rating.MATURE, action="I kiss Mei")
+    assert (hit.category, hit.subject) == (LimitCategory.MINOR, "mei")
+
+    adults = with_character(grounded_world(), at_the_bar("lia", "Lia", age=27))
+    rest = Intent(steps=[step("rest beside Lia", verb="rest", target_ids=["lia"])])
+    [hit] = limits.check_action(adults, rest, Rating.TEEN, action="I sleep with Lia")
+    assert hit.category is LimitCategory.SEXUAL
+    assert limits.check_action(adults, rest, Rating.MATURE, action="I sleep with Lia") == []
+    for language, action in (
+        (Language.ES, "Me acuesto con Lia"),
+        (Language.CA, "Faig l'amor amb la Lia"),
+    ):
+        [hit] = limits.check_action(adults, rest, Rating.TEEN, language, action)
+        assert hit.category is LimitCategory.SEXUAL
+
+
+def test_romance_in_one_step_doesnt_make_the_others_romantic():
+    state = with_character(grounded_world(), at_the_bar(age=16))
+    intent = Intent(
+        steps=[
+            step("kiss my wife goodbye", verb="kiss", targets=["my wife"]),
+            step("ask Mei to mind the shop", verb="ask", target_ids=["mei"]),
+        ]
+    )
+    action = "I kiss my wife goodbye and ask Mei to mind the shop"
+
+    assert limits.check_action(state, intent, Rating.MATURE, action=action) == []
+
+
+def test_sexual_violence_in_the_players_words_counts_for_every_step():
+    action = "I drag Mei into the alley and force myself on her"
+    softened = Intent(
+        steps=[
+            step("drag Mei into the alley", verb="drag", targets=["Mei"]),
+            step("overpower her", verb="overpower"),
+        ]
+    )
+    state = with_character(grounded_world(), at_the_bar(age=16))
+
+    hits = limits.check_action(state, softened, Rating.MATURE, action=action)
+
+    # Each step is held to her: the second says "her", and the player's words say who.
+    assert [(h.category, h.subject, h.step) for h in hits] == [
+        (LimitCategory.MINOR, "mei", 0),
+        (LimitCategory.MINOR, "mei", 1),
+    ]
+    # With an adult, Mature plays it as the table says, and Teen never does.
+    adults = with_character(grounded_world(), at_the_bar(age=30))
+    assert limits.check_action(adults, softened, Rating.MATURE, action=action) == []
+    teen = limits.check_action(adults, softened, Rating.TEEN, action=action)
+    assert {h.category for h in teen} == {LimitCategory.SEXUAL_VIOLENCE}
+
+
+@pytest.mark.parametrize(
+    ("language", "action"),
+    [
+        (Language.EN, "I drag Rosa into the alley and force myself on her"),
+        (Language.ES, "Arrastro a Rosa al callejón y la violo"),
+        (Language.CA, "Arrossego la Rosa al carreró i la violo"),
+    ],
+)
+def test_a_teen_story_refuses_sexual_violence_on_the_players_own_words(language, action):
+    [hit] = limits.check_words(action, Rating.TEEN, language)
+    assert hit.category is LimitCategory.SEXUAL_VIOLENCE
+    # Mature plays it off the page, so there the reading says who it is with first.
+    assert limits.check_words(action, Rating.MATURE, language) == []
+
+
+@pytest.mark.parametrize(
+    ("language", "action"),
+    [
+        (Language.EN, "I kiss Lia"),
+        (Language.EN, "I sleep with Lia"),  # talked about or done: the reading's to say
+        (Language.EN, "I punch Rosa and drag her into the alley"),
+        (Language.ES, "Molesto al guardia hasta que me deja pasar"),
+        (Language.ES, "Violo la ley del toque de queda"),
+        (Language.CA, "Toco la viola a la plaça"),
+    ],
+)
+def test_nothing_else_is_refused_before_the_reading(language, action):
+    assert limits.check_words(action, Rating.TEEN, language) == []
 
 
 def test_the_limits_hold_in_a_spanish_and_a_catalan_story():

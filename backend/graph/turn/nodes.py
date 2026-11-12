@@ -262,31 +262,36 @@ async def interpret(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, A
     if turn.kind is TurnKind.STANDING:
         return {"intent": Intent(standing=turn.standing, summary=str(turn.standing))}
     action = turn.action or ""
+    rating, language = turn.ctx.rating, turn.ctx.settings.language
+    # F2: what a Teen story never holds is refused on the player's own words, before a model
+    # words them more mildly or its filter stops them with nothing said of why.
+    _hold(limits.check_words(action, rating, language), "words", language)
     # R2: the scene the player is answering, so that what it showed counts as there.
     last_scene = turn.scenes[-1].narration if turn.scenes else ""
     try:
-        checked = await read_action(
-            runtime.context.llm, world, action, turn.ctx.settings.language, last_scene
-        )
+        checked = await read_action(runtime.context.llm, world, action, language, last_scene)
     except LLMBlocked as block:
         log_block("interpret", list(block.categories), stage=block.stage, source="model")
         raise UnreadableAction(categories=block.categories, stage=block.stage) from None
     # F3, G12, F2: a step over a hard limit never plays, so nothing is resolved or narrated.
-    hits = limits.check_action(world, checked.intent, turn.ctx.rating, turn.ctx.settings.language)
-    gravest = limits.gravest(hits)
-    if gravest is not None:
-        categories = list(dict.fromkeys(h.category.value for h in hits))
-        log_block("interpret", categories, stage="action", source="code")
-        _limit_detail(hits)
-        raise LimitReached(
-            gravest.category.value,
-            limits.message(gravest.category, turn.ctx.settings.language),  # S10
-        )
+    _hold(limits.check_action(world, checked.intent, rating, language, action), "action", language)
     return {
         "intent": checked.intent,
         "overflow": checked.overflow,
         "issues": _issues(state, checked.issues),
     }
+
+
+def _hold(hits: list[limits.LimitHit], stage: str, language: Language) -> None:
+    """F4. A hard limit crossed ends the turn before it plays: logged with its categories, and
+    told to the player in their story's language (S10)."""
+    gravest = limits.gravest(hits)
+    if gravest is None:
+        return
+    categories = list(dict.fromkeys(h.category.value for h in hits))
+    log_block("interpret", categories, stage=stage, source="code")
+    _limit_detail(hits)
+    raise LimitReached(gravest.category.value, limits.message(gravest.category, language))
 
 
 @timed("resolve")

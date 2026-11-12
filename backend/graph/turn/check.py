@@ -18,7 +18,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from engine import injuries, limits, possessions
+from engine import injuries, limits, naming, possessions
 from engine.context import ImageSetting, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -243,7 +243,7 @@ def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str
     ]
     words = []
     for said in step.targets:
-        match = _called(state, said, scene) or _called(state, said, known)
+        match = naming.called(state, said, scene) or naming.called(state, said, known)
         if match is None:
             words.append(said)
         elif match not in step.target_ids:
@@ -252,7 +252,7 @@ def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str
     step.targets = words
     if not step.aim.harmful or step.stranger is not None or step.target_ids:
         return
-    named = _named_in(state, [step.text, *step.targets, action], scene)
+    named = naming.named_in(state, [step.text, *step.targets, action], scene)
     in_way = [i for i in dict.fromkeys(step.facts.opposition_ids) if i != you and i in people]
     encounter = state.scene.encounter
     fought = [i for i in (encounter.opponent_ids if encounter else []) if i in scene]
@@ -267,61 +267,6 @@ def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str
         return
     step.target_ids = list(found)
     issues.append(Issue("target_found", how, ", ".join(found)))
-
-
-def _names(state: WorldState, character_id: str) -> list[str]:
-    character = state.characters[character_id]
-    return [
-        n for n in (limits.normalize(name) for name in (character.name, *character.aliases)) if n
-    ]
-
-
-def _called(state: WorldState, said: str, among: list[str]) -> str | None:
-    """The one person of `among` whose name or alias is exactly these words, whatever their
-    case, accents or punctuation. None when nobody is, or more than one."""
-    words = limits.normalize(said)
-    found = [i for i in among if words and words in _names(state, i)]
-    return found[0] if len(found) == 1 else None
-
-
-def _named_in(state: WorldState, texts: list[str], among: list[str]) -> list[str]:
-    """Those of `among` some text names: by a name or alias of several words, or by one word
-    that is theirs alone there (a one-word name, or a word of their name nobody else shares),
-    written with a capital inside a sentence, as names are: "Mo" for Elder Mo, never the "sol"
-    of "under the sun" for someone called Sol, nor the "Old" a sentence opens with for Old
-    Bram."""
-    whole = [f" {limits.normalize(text)} " for text in texts if text]
-    capitals = {word for text in texts for word in _capitals(text or "")}
-    parts: dict[str, set[str]] = {}
-    for character_id in among:
-        character = state.characters[character_id]
-        for name in (character.name, *character.aliases):
-            for word in re.findall(_WORD, name):
-                if word[:1].isupper():
-                    parts.setdefault(limits.normalize(word), set()).add(character_id)
-    found = []
-    for character_id in among:
-        phrases = [name for name in _names(state, character_id) if " " in name]
-        own = {word for word, whose in parts.items() if whose == {character_id}}
-        if any(f" {name} " in text for name in phrases for text in whole) or own & capitals:
-            found.append(character_id)
-    return found
-
-
-# A word of letters, in any script.
-_WORD = r"[^\W\d_]+"
-# What a sentence can open after: its capital is no sign of a name.
-_OPENS_AFTER = '.!?:;\u00a1\u00bf"\u201c\u00ab(\u2014'
-
-
-def _capitals(text: str) -> set[str]:
-    """The words of a text written with a capital that doesn't just open a sentence, folded."""
-    found = set()
-    for match in re.finditer(_WORD, text):
-        before = text[: match.start()].rstrip()
-        if match.group()[:1].isupper() and before and before[-1] not in _OPENS_AFTER:
-            found.add(limits.normalize(match.group()))
-    return found - {""}
 
 
 def _shows_apart(
