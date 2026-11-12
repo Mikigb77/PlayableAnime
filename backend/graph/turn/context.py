@@ -30,12 +30,19 @@ from engine.contracts.resolution import Peril, StepResolution
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
 from engine.resolve import bouts
-from engine.state.cast import Character, CharacterStatus, FactionStatus, Place, PlaceStatus
+from engine.state.cast import (
+    Character,
+    CharacterStatus,
+    FactionStatus,
+    Place,
+    PlaceStatus,
+    Prominence,
+)
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
-from engine.state.sheet import TalentStrength
+from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.world import carriers, journeys
-from engine.world.geography import routes_from
+from engine.world.geography import routes_from, together
 from engine.world.scheduling import Kind
 from engine.world.telling import account
 from graph.language import written_in
@@ -334,6 +341,92 @@ def _scene_view(state: WorldState) -> dict[str, Any]:
     return view
 
 
+# How many people outside the scene a brief shows as the record has them: those the turn
+# names or brings first, then those the record has at the place.
+_WHO_ELSE = 8
+
+
+def _who_else_view(
+    before: WorldState,
+    after: WorldState,
+    intent: Intent | None,
+    resolution: Resolution,
+    plan: DirectorPlan,
+    seen: Sequence[PendingEvent],
+) -> list[dict[str, Any]]:
+    """W4, C6, E4. The living people this turn may bring into the scene who weren't in it when
+    it began, each as SCENE shows its own, so they are who the record says from their first
+    line. Under KNOWN the narrator has such people by name alone: in the first live story
+    about it (2026-11-11) the player character walked over to a neighbour who had heard talk
+    of a killing, and the scene played him as a friend.
+
+    First those the turn is about, wherever they are: whom the action names, who stood in its
+    way or struck back, and the people of an event, a happening or a moment the director
+    planned and of a fired event the scene tells. Then those the record has where the scene
+    plays (`here`), which is where a trip of this turn took the character, and nowhere on
+    record while a trip is still on its way: whoever feels something about the player
+    character or has heard talk of them, then whom they know, then the place's key people.
+    `stranger` marks someone the player character neither knows nor has met. Where someone is
+    stays out unless they are here (C6). Someone a step made real is told under OUTCOME's
+    met."""
+    you = after.player_id
+    people = after.characters
+    shown = {you, *(c.id for c in present_characters(before))}
+    shown |= {i for step in resolution.steps for i in step.strangers}
+    # A trip that stopped on the way ends the scene in a place only the narrator's scene names.
+    on_the_way = any(
+        step.trip is not None and (step.trip.to_id or step.trip.to) and not step.trip.arrived
+        for step in resolution.steps
+    )
+    spot = None if on_the_way else after.player.location_id or after.scene.place_id
+
+    def here(character: Character) -> bool:
+        where = character.location_id
+        return spot is not None and where is not None and together(after, where, spot)
+
+    about: list[str] = []
+    for step in intent.steps if intent is not None else []:
+        about += [*step.target_ids, *step.facts.opposition_ids]
+        about += [exchange.with_id for exchange in step.exchanges if exchange.with_id]
+        if step.training is not None and step.training.teacher_id:
+            about.append(step.training.teacher_id)
+    for done in resolution.steps:
+        about += [*done.opponent_ids, *(i for peril in done.perils for i in peril.by_ids)]
+    for planned in (plan.event, plan.moment, *plan.happenings):
+        if planned is not None:
+            about += planned.cast_ids
+    for event in seen:
+        about += event.subject_ids
+
+    def weight(character: Character) -> int | None:
+        attitude = character.sheet.disposition.attitudes.get(you)
+        if (attitude is not None and attitude != Attitude()) or _heard_said(after, character.id):
+            return 0
+        if you in character.known_by or you in character.met_by:
+            return 1
+        return 2 if character.prominence is Prominence.KEY else None
+
+    around = [(weight(c), natural_key(c.id), c.id) for c in after.npcs() if here(c)]
+    about += [i for rank, _, i in sorted(a for a in around if a[0] is not None)]
+
+    others = []
+    for character_id in dict.fromkeys(about):
+        character = people.get(character_id)
+        if character is None or character_id in shown:
+            continue
+        if character.status is not CharacterStatus.ALIVE:
+            continue
+        view = _npc_view(character, after)
+        if here(character):
+            view["here"] = True
+        else:
+            view.pop("location_id", None)
+        if you not in character.known_by and you not in character.met_by:
+            view["stranger"] = True
+        others.append(view)
+    return others[:_WHO_ELSE]
+
+
 def _leaving_view(
     state: WorldState, *, turn: int | None = None, scene: Sequence[str] = ()
 ) -> list[dict[str, Any]]:
@@ -341,7 +434,8 @@ def _leaving_view(
     to when the player character knows of that faction (C6). With `turn`, for the scene that
     tells that turn, of those it began with (`scene`) and those who saw what it did: each by
     name, since it may not have listed them yet, and whether they got away while it played
-    (`gone`)."""
+    (`gone`). That scene is also told who would run and is held by its fight (`held`,
+    `carriers.held`): they are going nowhere while it lasts."""
     leaving = []
     for runner in carriers.runners(state, turn=turn, scene=scene):
         entry: dict[str, Any] = {"id": runner.witness_id}
@@ -352,6 +446,15 @@ def _leaving_view(
         if turn is not None:
             entry["gone"] = runner.sets_off_s <= state.world_s
         leaving.append(entry)
+    if turn is not None:
+        shown = {entry["id"] for entry in leaving}
+        for runner in carriers.held(state):
+            if runner.witness_id in shown:
+                continue
+            entry = {"id": runner.witness_id, "who": state.characters[runner.witness_id].name}
+            if state.player_id in state.factions[runner.faction_id].known_by:
+                entry["to_tell"] = state.factions[runner.faction_id].name
+            leaving.append(entry | {"gone": False, "held": True})
     return leaving
 
 
@@ -596,6 +699,21 @@ def narration_brief(
         romance=ctx.content_prefs.romance,
         dark_themes=ctx.content_prefs.dark_themes,
     )
+    # The director tells its own events, and the world's events it made the scene's event or a
+    # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
+    told = {
+        e.source_id
+        for e in (plan.event, *plan.happenings)
+        if e is not None and e.source is EventSource.DUE
+    }
+    seen = [
+        e
+        for e in fired
+        if _perceived(e, after)
+        and not e.kind.startswith("director.")
+        and e.id not in told
+        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
+    ]
     # What stays the same from turn to turn comes first, so the backend can keep it cached with
     # the system text and Gemini bills it at its cached rate (`Prompt.stable_chars`).
     stable: list[tuple[str, Any]] = [
@@ -617,6 +735,9 @@ def narration_brief(
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
     ]
+    if others := _who_else_view(before, after, intent, resolution, plan, seen):
+        # W4, E4: whom the turn may bring into the scene, as the record has them.
+        sections.append(("WHO ELSE", others))
     if fallen := _fallen_view(after):
         sections.append(("FALLEN", fallen))
 
@@ -639,21 +760,6 @@ def narration_brief(
         if witnesses := _leaving_view(after, turn=ctx.turn, scene=before.scene.present_ids):
             # W11: who runs to tell what they saw, so the scene shows it and the player can act.
             sections.append(("WITNESSES", witnesses))
-    # The director tells its own events, and the world's events it made the scene's event or a
-    # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
-    told = {
-        e.source_id
-        for e in (plan.event, *plan.happenings)
-        if e is not None and e.source is EventSource.DUE
-    }
-    seen = [
-        e
-        for e in fired
-        if _perceived(e, after)
-        and not e.kind.startswith("director.")
-        and e.id not in told
-        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
-    ]
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if plan.event is not None:

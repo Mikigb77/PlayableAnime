@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
+from typing import Any
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import ContentPrefs, Difficulty, EventFrequency, Rating, StorySettings
@@ -29,6 +30,7 @@ from engine.contracts import (
     MeansVerdict,
     OutcomeClass,
     PictureTrigger,
+    PlaceChange,
     SceneEnd,
     StandingAction,
     StateDelta,
@@ -38,6 +40,7 @@ from engine.director import rules
 from engine.director.deck import CARDS
 from engine.director.goals import lead_thread
 from engine.director.montage import montage_steps
+from engine.invariants import ancestry
 from engine.labels import clock_time, second_of_day
 from engine.resolve.bouts import against
 from engine.resolve.power import helpless_state
@@ -1046,6 +1049,21 @@ async def interrupted_sleep(ev: Eval) -> None:
 # --- Stop the witness (W2, W11, W13) -----------------------------------------------------------
 
 
+def alone_at_the_well() -> dict:
+    """A scripted scene whose end lists nobody but Lin, as a live one that tells a witness
+    running, or simply leaves him out, does."""
+    end = SceneEnd(
+        ended_on="Lin stands at the well with the sword in his hand.",
+        place_id="well",
+        present_ids=["lin"],
+    )
+    return {
+        "narration": "(scripted) The yard is still.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
 def _witnesses(story: Story) -> list[dict]:
     """Who the narrator's last brief said is off to tell what they saw (deterministic mode)."""
     brief = story.prompt(Node.NARRATOR)
@@ -1076,8 +1094,11 @@ def _leaving(story: Story) -> list[str]:
 )
 async def stop_the_witness(ev: Eval) -> None:
     ends: Counter[str] = Counter()
-    for seed in ev.seeds(8, live=1):
+    for n, seed in enumerate(ev.seeds(8, live=1)):
         story = ev.story(worlds.one_witness(), seed=seed, under_way=True)
+        # Half the scripted stories end their scenes as the real narrator did on 2026-11-11:
+        # without the witness, as if he were already gone. Code decides who runs (W11).
+        without_wei = alone_at_the_well() if not ev.live and n % 4 < 2 else None
         killing = await story.act(
             "I cut Han's throat while he dozes against the well",
             plan(
@@ -1087,6 +1108,7 @@ async def stop_the_witness(ev: Eval) -> None:
                     facts=facts(opposition_ids=["han"], can_respond=False, why_not="asleep"),
                 )
             ),
+            narration=without_wei,
         )
         ev.check(
             "the scene of the killing is told Wei is off to tell of it, still within reach",
@@ -1107,9 +1129,15 @@ async def stop_the_witness(ev: Eval) -> None:
             ),
             killing,
         )
+        ev.check(
+            "a witness who hasn't run is in the scene, whatever its end listed",
+            "wei" in killing.state.scene.present_ids,
+            f"{seed}: {killing.state.scene.present_ids}, {killing.issues}",
+        )
         chase = await story.act(
             "I go after Wei and cut him down before he is out of the yard",
             plan(cut_throat("wei", "sword", facts=facts(opposition_ids=["wei"], can_respond=True))),
+            narration=without_wei,
         )
         ev.check(
             "the next reading is told Wei is leaving, so the player can go after him",
@@ -1120,6 +1148,14 @@ async def stop_the_witness(ev: Eval) -> None:
         wei = chase.state.characters["wei"]
         silenced = wei.status is not CharacterStatus.ALIVE or helpless_state(wei) is not None
         ends["silenced" if silenced else "got away"] += 1
+        if not silenced and chase.state.scene.encounter is not None:
+            ev.check(
+                "a witness still in the fight is told as held by it, and stays in the scene",
+                [(w["id"], w.get("held")) for w in _witnesses(story)] == [("wei", True)]
+                and "wei" in chase.state.scene.present_ids,
+                f"{seed}: {_witnesses(story)}, {chase.state.scene.present_ids}",
+                live=False,
+            )
         night = await story.act(
             "I lie down by the well and sleep for eight hours",
             act("sleep", "sleep", ActionKind.REST, 8 * HOUR),
@@ -1161,23 +1197,39 @@ async def stop_the_witness(ev: Eval) -> None:
         # C6: Memory tells what the character knows became of the killing, and no more.
         entry = next((d for d in memory_view(story.state).deeds if d.id == han.id), None)
         trail = [(t.kind.value, t.text) for t in entry.trail] if entry else []
+        # A live run's log is all that can be read of it: how it was read and who was where.
+        how = (
+            f"{seed}: {trail}; {han.visibility.value}, saw {han.witness_ids}, "
+            f"went {han.went_to_tell}; scenes ended with "
+            f"{[t.state.scene.present_ids for t in (killing, chase, night)]}; "
+            f"{as_read([killing, chase, night])}"
+        )
         if silenced and wei.status is CharacterStatus.DEAD:
             ev.check(
                 "Memory tells that the one who saw it is dead",
                 ("dead", "Someone who saw it is dead") in trail,
-                f"{seed}: {trail}",
+                how,
             )
         if not silenced:
             ev.check(
                 "Memory tells that the one who saw it went to tell the sect",
                 ("went", "Someone went to tell the Azure Cloud Sect") in trail,
-                f"{seed}: {trail}",
+                how,
             )
-        ev.check(
-            "and that who else knows is nothing the character can tell",
-            entry is not None and entry.open_label is not None,
-            f"{seed}: {entry}",
-        )
+        if han.visibility is Visibility.PUBLIC:
+            # The reading had it done before a crowd, which only a live one does here: what
+            # is done in public is known, so who else knows is no open question (C6).
+            ev.check(
+                "what was read as done before a crowd is known, and Memory leaves it at that",
+                ev.live and entry is not None and entry.open_label is None,
+                how,
+            )
+        else:
+            ev.check(
+                "and that who else knows is nothing the character can tell",
+                entry is not None and entry.open_label is not None,
+                f"{how}; {entry}",
+            )
         if silenced:
             await ev.judge(
                 "the night after",
@@ -1206,8 +1258,8 @@ def _scene_person(story: Story, character_id: str) -> dict | None:
     return next((c for c in scene["present"] if c["id"] == character_id), None)
 
 
-def _section(story: Story, name: str) -> dict | None:
-    """A section of the narrator's last brief that is one JSON object (deterministic mode)."""
+def _section(story: Story, name: str) -> Any:
+    """A section of the narrator's last brief that is one line of JSON (deterministic mode)."""
     brief = story.prompt(Node.NARRATOR)
     if f"## {name}\n" not in brief:
         return None
@@ -1227,11 +1279,52 @@ def _came_for(story: Story, avenger_id: str) -> list:
     ]
 
 
+def _whereabouts(story: Story, avenger_id: str) -> str:
+    """Where the player character and someone who would come for them are, how long each turn
+    took and what became of each time they set out, for the detail of a failed check: a live
+    run's log is all that can be read of it. The story is the eval's own (T16)."""
+    state = story.state
+
+    def chain(place_id: str | None) -> str:
+        return " in ".join(ancestry(state.places, place_id)) or "nowhere"
+
+    answers = [
+        f"{e.payload.get('answer')} {e.status.value} at {e.place_id} due {e.due_s / HOUR:.1f}h"
+        f"{' found' if e.needs_player else ''} try {e.payload.get('attempt', 0)}"
+        for e in sorted(state.pending_events.values(), key=lambda e: e.due_s)
+        if e.kind == Kind.ANSWER and e.payload.get("avenger_id") == avenger_id
+    ]
+    gone = [f.text for f in state.facts.values() if "found them gone" in f.text]
+    took = [round(t.world_seconds / HOUR, 1) for t in story.turns]
+    return (
+        f"clock {state.world_s / HOUR:.1f}h, turns took {took}h; the player at "
+        f"{chain(state.player.location_id)}, the scene at {state.scene.place_id}; "
+        f"{avenger_id} at {chain(state.characters[avenger_id].location_id)}; "
+        f"answers {answers}; {gone}"
+    )
+
+
 def a_day_in_millbrook() -> Intent:
     return plan(
         step("Help with the harvest in Millbrook", ActionKind.WORK, 12 * HOUR, verb="work"),
         step("Sleep at the inn", ActionKind.REST, 12 * HOUR, verb="sleep"),
     )
+
+
+def outside_the_inn() -> dict:
+    """A scripted scene that ends at an inn it adds without saying where it lies, as a live
+    one can: code puts it in the village the character was in (R8)."""
+    inn = PlaceChange(id="millbrook-inn", name="the Millbrook inn", kind="inn")
+    end = SceneEnd(
+        ended_on="Tomas sits on the bench outside the inn.",
+        place_id="millbrook-inn",
+        present_ids=["tomas"],
+    )
+    return {
+        "narration": "(scripted) Tomas rests on the bench outside the Millbrook inn.",
+        "suggestions": [],
+        "update": StateDelta(places=[inn], scene_end=end).model_dump(mode="json"),
+    }
 
 
 def bram_at_his_fence() -> dict:
@@ -1287,10 +1380,25 @@ async def one_mans_word(ev: Eval) -> None:
                 )
             ),
         )
+        # Half the scripted stories read the inn as where the step goes and end this scene at
+        # an inn it adds without saying where it lies, as the real model can: whoever comes to
+        # Millbrook still finds Tomas (R8).
+        at_the_inn = not ev.live and n % 4 >= 2
+        rest = step("rest outside the inn for an hour", ActionKind.TASK, HOUR, verb="rest")
+        if at_the_inn:
+            rest.destination = "the Millbrook inn"
         await story.act(
             "I take a seat outside the Millbrook inn and rest there for an hour",
-            act("rest outside the inn for an hour", "rest", ActionKind.TASK, HOUR),
+            plan(rest),
+            narration=outside_the_inn() if at_the_inn else None,
         )
+        if at_the_inn:
+            inn = story.state.places.get("millbrook-inn")
+            ev.check(
+                "a spot the scene added without saying where it lies is in the village",
+                inn is not None and inn.parent_id == "village",
+                f"{seed}: {inn}",
+            )
         deed = next((d for d in story.state.deeds.values() if "jorn" in d.victim_ids), None)
         ev.check("the killing is a deed", deed is not None, seed)
         if deed is None:
@@ -1331,6 +1439,15 @@ async def one_mans_word(ev: Eval) -> None:
                     )
                 ),
                 narration=None if ev.live else bram_at_his_fence(),
+            )
+            met = next((c for c in _section(story, "WHO ELSE") or [] if c["id"] == "bram"), None)
+            ev.check(
+                "walking over to someone, the narrator is told how they are before they speak",
+                met is not None
+                and met.get("here") is True
+                and len(met["toward_you"].get("heard_said", [])) == 1,
+                f"{seed}: {met and met.get('toward_you')}",
+                live=False,
             )
             talk = await story.act(
                 "I ask Bram how his fences are holding, and what people are saying in the "
@@ -1390,8 +1507,9 @@ async def one_mans_word(ev: Eval) -> None:
             )
 
         # Kasper, the dead man's brother, is sent word by someone who knows. He takes up to two
-        # days to come and face Tomas, and up to a week to come for revenge (W10).
-        for _ in range(9 if two_saw else 4):
+        # days to come and face Tomas, and up to a week to come for revenge (W10). A live
+        # reading may make a day shorter, so a live story is given as many as the longest.
+        for _ in range(9 if two_saw or ev.live else 4):
             if _came_for(story, "kasper"):
                 break
             await story.act(
@@ -1421,7 +1539,11 @@ async def one_mans_word(ev: Eval) -> None:
             only_heard == [],
             f"{seed}: {only_heard}",
         )
-        ev.check("the brother comes to the player", bool(came), f"{seed}: nobody came")
+        ev.check(
+            "the brother comes to the player",
+            bool(came),
+            f"{seed}: nobody came; {_whereabouts(story, 'kasper')}; {as_read(story.turns[-3:])}",
+        )
         if not came:
             continue
         first = came[0].payload

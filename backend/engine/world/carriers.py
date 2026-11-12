@@ -8,7 +8,8 @@ tells nobody.
 - **A report** (W11). A witness with someone to tell (the faction that holds the place, those
   who keep the law there, their own when it is serious) sets off after `FLEE_S`, and the faction
   learns when they get there (W10). From the moment they set off they are gone from the player
-  character's scene (`settle`), and until then the scene shows them going (`runners`). The report
+  character's scene (`settle`), and until then they are in it and it shows them going
+  (`runners`, `keep`): code decides who runs, whatever a scene's end listed. The report
   lands only if they can still bring it when it is due: alive, able to act, still willing, and
   not in a fight or a chase with the player character. If they can't, another witness who can
   takes it up from then, and where one who would is only kept from it, it waits for them. What
@@ -39,7 +40,15 @@ from engine.state.world import WorldState, natural_key
 from engine.world.aftermath import on_attributed
 from engine.world.answers import law_at
 from engine.world.discovery import body_trace, schedule_look, ties_trace
-from engine.world.geography import ancestors, characters_at, faction_seat, region_of, travel_s
+from engine.world.geography import (
+    ancestors,
+    characters_at,
+    faction_seat,
+    is_within,
+    region_of,
+    together,
+    travel_s,
+)
 from engine.world.knowledge import faction_learns, protects, region_learns, would_talk
 from engine.world.norms import Nature, deed_nature, is_beast, is_crime
 from engine.world.rumors import start_rumor
@@ -327,6 +336,79 @@ def leave(state: WorldState) -> list[str]:
     return gone
 
 
+def held(state: WorldState) -> list[Runner]:
+    """W11. Who would be off to tell a faction what they saw and is kept from it by a fight, a
+    chase or talks with the player character that they are still in: they are going nowhere
+    while it lasts, and the scene shows them still there. Each with the report they would set
+    off on first."""
+    found: dict[str, Runner] = {}
+    for event in pending(state, Kind.REPORT):
+        runner = _would_run(state, event)
+        if runner is None or not _engaged(state, runner.witness_id):
+            continue
+        first = found.get(runner.witness_id)
+        if first is None or runner.sets_off_s < first.sets_off_s:
+            found[runner.witness_id] = runner
+    return sorted(found.values(), key=lambda r: (r.sets_off_s, natural_key(r.witness_id)))
+
+
+def _would_run(state: WorldState, event: PendingEvent) -> Runner | None:
+    """The runner a pending report has: a witness the player character noticed who set off, or
+    is to, and who would still bring it, alive, able and willing."""
+    sets_off = event.payload.get("sets_off_s")
+    witness_id = str(event.payload.get("witness_id"))
+    faction_id = str(event.payload.get("faction_id"))
+    deed = state.deeds.get(str(event.payload.get("deed_id")))
+    witness = state.characters.get(witness_id)
+    if sets_off is None or deed is None or witness is None or faction_id not in state.factions:
+        return None
+    if witness_id in deed.unnoticed_witness_ids:
+        return None  # a watcher nobody noticed is nobody the scene keeps or sees go
+    if not able(witness) or not would_report(state, witness, faction_id, deed):
+        return None
+    return Runner(witness_id, faction_id, deed.id, int(sets_off))
+
+
+def keep(state: WorldState, played: WorldState, turn: int) -> list[str]:
+    """Once a scene has ended, before `settle`. Who runs is code's to decide (W11), so a scene's
+    end takes nobody out of the scene who has word to bring and hasn't gone, and nobody leaves
+    it unseen. `played` is the state the turn's steps left, before the narrator's update: its
+    scene had those its record listed, those in its fight, and whoever saw a deed of that turn
+    done where it is. Of them, while the scene is still where it was, or at a spot inside it:
+
+    - whoever is yet to set off and still there, or is held in a fight with the player
+      character, is in the scene whatever its end listed: within reach, and the next scene
+      shows them;
+    - whoever its end left out and has set off by now, or was sent somewhere else by it, went
+      in front of the player character (`Deed.went_to_tell`, C6).
+
+    A scene that ended somewhere else, even out in the place around the one it was in, left
+    them behind, and what they did then is nothing the player character saw. Returns who was
+    put back in the scene, in order."""
+    here = state.scene.place_id or state.player.location_id
+    before = played.scene.place_id or played.player.location_id
+    if before is not None and not is_within(state, here, before):
+        return []
+    kept: list[str] = []
+    for event in pending(state, Kind.REPORT):
+        runner = _would_run(state, event)
+        if runner is None:
+            continue
+        witness_id = runner.witness_id
+        deed = state.deeds[runner.deed_id]
+        if not (_in_scene(played, deed, witness_id, turn) or _engaged(played, witness_id)):
+            continue  # they weren't in the scene as it played
+        listed = witness_id in state.scene.present_ids
+        there = together(state, state.characters[witness_id].location_id, here)
+        if _engaged(state, witness_id) or (runner.sets_off_s > state.world_s and there):
+            if not listed:
+                state.scene.present_ids.append(witness_id)
+                kept.append(witness_id)
+        elif not listed:
+            _seen_going(deed, witness_id, runner.faction_id)
+    return list(dict.fromkeys(kept))
+
+
 def unsettled(state: WorldState) -> bool:
     """Whether `settle` could have anything to do: someone is setting off, or waiting to."""
     return any(
@@ -335,10 +417,10 @@ def unsettled(state: WorldState) -> bool:
 
 
 def settle(state: WorldState) -> list[str]:
-    """Once a scene has ended. Whoever has set off by now to tell what they saw is out of it,
-    whatever its end listed: code decides who runs (W11). And where it let go of a witness who
-    was kept from telling, the world asks again now instead of at its next time, so word gets
-    out when they get away and not hours later (W2). Returns who left, in order."""
+    """Once a scene has ended, after `keep`. Whoever has set off by now to tell what they saw is
+    out of it, whatever its end listed: code decides who runs (W11). And where it let go of a
+    witness who was kept from telling, the world asks again now instead of at its next time, so
+    word gets out when they get away and not hours later (W2). Returns who left, in order."""
     gone = leave(state)
     for event in pending(state, Kind.WORD):
         deed = state.deeds.get(str(event.payload.get("deed_id")))

@@ -117,9 +117,12 @@ def test_one_witnesss_word_brings_a_friend_of_the_dead_to_face_the_doer_and_reve
     assert "not to attack" in comes.title and "Zhao" in comes.title
 
     # She finds him at the well and puts it to his face. Only then is revenge on its way.
+    before_she_came = after.characters["mei"].location_id
     after, fired = idle(after, comes.due_s)
     (faced,) = [e for e in fired if e.id == comes.id]
     assert faced.status is EventStatus.APPLIED and faced.needs_player
+    # She is at the well now, on record: the scene that meets her has her at its place.
+    assert before_she_came == "inner-court" and after.characters["mei"].location_id == "well"
     (revenge,) = coming(after)
     assert revenge.payload["answer"] == Answer.REVENGE.value and revenge.payload["faced"]
     assert revenge.due_s >= comes.due_s + 6 * HOUR
@@ -193,6 +196,7 @@ def test_revenge_that_finds_the_doer_gone_is_still_called_off_once_they_let_it_r
 
     after, _ = idle(after, revenge.due_s)
 
+    assert after.characters["mei"].location_id == "well"  # where she came looking
     (again,) = coming(after)  # she goes on looking for him
     assert again.payload["answer"] == Answer.REVENGE.value and again.payload["faced"]
     feels(after, "mei", affinity=10, grudges=toward_lin(after, "mei").grudges)

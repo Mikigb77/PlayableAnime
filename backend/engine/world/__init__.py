@@ -8,8 +8,8 @@ The pipeline seams call in here:
   at a turn's start and during every step (`passage`).
 - `apply_event(state, event, ctx, rng)`: one due event (`events`).
 - `record_consequences(state, resolution, step, ctx, rng)`: a finished step's deeds (`deeds`).
-- `settle_witnesses(state)`: once a scene has ended, who has left it to tell what they saw
-  (`carriers.settle`).
+- `settle_witnesses(played, state, turn)`: once a scene has ended, who is still in it with word
+  to bring and who has left it to tell what they saw (`carriers.keep`, `carriers.settle`).
 
 Everything the world does later is a pending event at an in-world time (`scheduling.Kind`):
 reports, word getting out, answers, rumors, tidings, discovery, clock steps and ends, emergence,
