@@ -229,6 +229,14 @@ class PlannedMoment(EngineModel):
     )
 
 
+class SceneWeight(StrEnum):
+    """R3. How much a scene holds, which its length follows (`engine.director.weight`)."""
+
+    LIGHT = "light"  # a passing moment, told short
+    ORDINARY = "ordinary"
+    HEAVY = "heavy"  # a turning point, which gets room
+
+
 class DirectorPlan(EngineModel):
     event: PlannedEvent | None = None
     moment: PlannedMoment | None = Field(
@@ -251,4 +259,8 @@ class DirectorPlan(EngineModel):
         description="W2: talk of the place that a quiet scene may carry, now and then.",
     )
     stall_pressure: float = Field(default=0.0, ge=0.0, description="W16, for logs and tuning.")
+    weight: SceneWeight = Field(
+        default=SceneWeight.ORDINARY,
+        description="R3: how much the scene holds. The narrator is told the length it gets.",
+    )
     updates: DirectorUpdates = Field(default_factory=DirectorUpdates)

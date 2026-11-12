@@ -9,7 +9,8 @@ It runs after the player's steps played out (B5 step 3) and decides, in code, fr
    the time that passed on the story's clock: an event of a size it has room for, or else a
    moment, a small thing of here and now, or nothing yet (W10, `clock`, `moments`).
 3. What the player took up, so a taken-up event stops waiting to play out (W16).
-4. Thread changes, callbacks, the suggestions' shape and the picture.
+4. Thread changes, callbacks, the suggestions' shape, the picture and the scene's weight, which
+   its length follows (R3, `weight`).
 5. The director's memory for next turn, goals the player stated and leads that expired (N2).
 
 It never changes the state: `record` writes the plan's `updates` back. The director decides that
@@ -34,6 +35,7 @@ from engine.director.due import (
     MONTAGE_KIND,
     PLAYS_OUT_KIND,
     came_due,
+    in_sight,
     open_playouts,
     pick_payload,
     playout_event,
@@ -43,7 +45,7 @@ from engine.director.due import (
 from engine.director.goals import closed_goals, expired_leads, player_goals
 from engine.director.ids import IdProbe
 from engine.director.moments import draw_moment, recent_after
-from engine.director.pictures import decide_picture
+from engine.director.pictures import decide_picture, key_moment
 from engine.director.pressure import in_control, measure, next_drift
 from engine.director.sources import Pick, pick_event
 from engine.director.suggestions import plan_suggestions
@@ -51,6 +53,7 @@ from engine.director.talk import plan_talk
 from engine.director.themes import allowed_themes
 from engine.director.threads import callbacks, current_thread, lifecycle
 from engine.director.turn import TurnFacts, player_deeds, read_turn
+from engine.director.weight import weigh
 from engine.rng import SeededRng
 from engine.state.records import (
     Lead,
@@ -293,8 +296,11 @@ def direct(
         state, resolution, rng.child("talk"), pressure=pressure, busy=busy, small=small, asked=asked
     )
 
-    # 5. The picture.
+    # 5. The picture, and the scene's weight, which reads the same key scenes (R3).
+    key = key_moment(state, ctx, facts, memory, event=event, closed_threads=closed) is not None
     picture = decide_picture(state, ctx, facts, memory, event=event, closed_threads=closed)
+    planned = busy or talk is not None or bool(in_sight(state, ctx))
+    weight = weigh(state, resolution, facts, pressure, intent, key=key, planned=planned)
 
     # 6. The director's memory for next turn.
     # Something came in, so the quiet starts over: an event that needs a decision, or a moment.
@@ -341,6 +347,7 @@ def direct(
         suggestions=suggestions,
         talk=talk,
         stall_pressure=max(0.0, pressure.value),
+        weight=weight,
         updates=updates,
     )
 

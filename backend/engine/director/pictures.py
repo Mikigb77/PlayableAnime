@@ -359,6 +359,37 @@ def candidates(
     return found
 
 
+def key_moment(
+    state: WorldState,
+    ctx: TurnContext,
+    facts: TurnFacts,
+    memory: DirectorState,
+    *,
+    event: PlannedEvent | None,
+    closed_threads: list[str],
+) -> PictureTrigger | None:
+    """The key scene this turn is (triggers 2 to 9), if it is one, whether or not it gets a
+    picture: with pictures off or no credit left, a turning point is still one, and the scene's
+    length follows it (R3, `engine.director.weight`). It only reads, so it is asked before
+    `decide_picture` marks a fight's decisive blow."""
+    fight, started, struck, _ = _follow_fight(state, memory, facts)
+    found = candidates(
+        state,
+        ctx,
+        facts,
+        memory,
+        event=event,
+        closed_threads=closed_threads,
+        fight=fight,
+        fight_started=started,
+        struck=struck,
+    )
+    for candidate in found:
+        if candidate.kind is PictureKind.SCENE and candidate.budget in (SCENE, FIGHT):
+            return candidate.trigger
+    return None
+
+
 def decide_picture(
     state: WorldState,
     ctx: TurnContext,

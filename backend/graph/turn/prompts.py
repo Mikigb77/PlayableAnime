@@ -8,6 +8,7 @@ proposal (C1, C5) and decides every outcome (A2, A3). No prompt text is ever log
 from functools import lru_cache
 
 from engine.context import GoreLevel, Language, NarrationLength, Rating
+from engine.contracts import SceneWeight
 from engine.labels import DAY_PARTS
 from graph.turn.form import WHOLE, Asks
 
@@ -368,7 +369,9 @@ action leads to. You never decide an outcome: you show it.
 
 The scene (R1 to R8):
 - Second person ("you"), present tense. Tone: the world's tone under STYLE (G5). Length: as \
-STYLE says.
+STYLE says, action and narration together, unless the brief has a LENGTH (R3): the engine \
+weighed this scene, and a passing moment is told short while a turning point gets room. A \
+short scene still opens on the action and ends on something to act on.
 - Language: write the narration, the suggestions and every text in update in STYLE's language \
 (S10), even when earlier scenes, the world, the player's words or other parts of the brief are in \
 another. Keep every name as it is spelled, and the character's own lines in the words the player \
@@ -755,6 +758,8 @@ different span from the world, and heading when the player reads one above the s
 knows). gone false: they are making to leave as the scene ends, still within reach. held: the \
 scene's fight keeps them from leaving. gone true: they got away while it played, and they are \
 not there when it ends.
+- LENGTH: how long this scene is, action and narration together, in place of the length under \
+STYLE: the engine weighed what it holds. Absent for a scene of ordinary weight.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
@@ -922,6 +927,21 @@ LENGTHS = {
     NarrationLength.SHORT: "60 to 120 words, more only for a montage",
     NarrationLength.MEDIUM: "120 to 250 words",
     NarrationLength.LONG: "250 to 450 words",
+}
+# R3: a scene's length follows its weight (`engine.director.weight`), within the player's own
+# setting (S6): a passing moment gets about half of it and a turning point up to about half as
+# much again. An ordinary scene has no LENGTH: STYLE's holds.
+WEIGHT_LENGTHS = {
+    SceneWeight.LIGHT: {
+        NarrationLength.SHORT: "A passing moment: 40 to 80 words.",
+        NarrationLength.MEDIUM: "A passing moment: 60 to 120 words.",
+        NarrationLength.LONG: "A passing moment: 120 to 220 words.",
+    },
+    SceneWeight.HEAVY: {
+        NarrationLength.SHORT: "A turning point: 120 to 200 words.",
+        NarrationLength.MEDIUM: "A turning point: 250 to 400 words.",
+        NarrationLength.LONG: "A turning point: 450 to 650 words.",
+    },
 }
 
 _TEEN = """\
