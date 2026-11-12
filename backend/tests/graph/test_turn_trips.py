@@ -50,6 +50,12 @@ TO_THE_VILLAGE = {
 }
 
 
+LOOK_AROUND = {
+    "summary": "Tomas looks around.",
+    "steps": [{"text": "look around", "verb": "look", "kind": "task", "proposed_duration_s": 30}],
+}
+
+
 def scene(place_id: str | None, present=("tomas", "bram"), told_talk=False, **update) -> dict:
     end = {"ended_on": "Old Bram looks up from his fence.", "present_ids": list(present)}
     if place_id is not None:
@@ -189,6 +195,29 @@ def test_a_scene_that_stays_behind_is_put_where_the_trip_went(fake, make_client,
     # T6: the issue is logged by its code; what it says stays at DEBUG.
     above_debug = [line for line in log_lines() if line["severity"] != "DEBUG"]
     assert any(line.get("turn_issue") == {"code": "trip_place"} for line in above_debug)
+
+
+def test_a_spot_the_scene_adds_at_the_end_of_the_trip_lies_where_the_trip_went(fake, make_client):
+    """R8. The narrator ends the scene at an inn it adds, and says neither where it lies nor
+    what kind of place it is: it is in the village the walk reached, so whoever is in the
+    village is around and whoever comes there finds the character."""
+    inn = {"id": "the_plough", "name": "the Plough"}
+    _, result = walk(fake, make_client, scene("the_plough", present=("tomas",), places=[inn]))
+
+    after = result.state
+    assert after.scene.place_id == after.player.location_id == "the_plough"
+    assert after.places["the_plough"].parent_id == "village"
+    assert [i.code for i in result.issues if i.code == "trip_place"] == ["trip_place"]
+    assert "the_plough" not in [r.to_id for r in after.places["farm"].routes]
+
+    # The next brief has the village's people as here.
+    fake.script(Node.INTERPRET, Reply(json=LOOK_AROUND))
+    fake.script(Node.NARRATOR, Reply(json=scene("the_plough", present=("tomas",))))
+    play(make_client(), turn_input(after, action="I look around"))
+    brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    here = {c["id"]: c.get("here") for c in json.loads(section(brief, "WHO ELSE"))}
+    assert here == {"bram": True}
+    assert json.loads(section(brief, "SCENE"))["place"]["within"][0]["id"] == "village"
 
 
 def test_a_scene_with_no_end_is_put_where_the_trip_went(fake, make_client):
