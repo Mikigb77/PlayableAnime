@@ -60,8 +60,11 @@ def test_what_the_character_wants_is_theirs_once_their_words_say_it():
 def test_words_name_openers_by_what_they_say_a_name_or_a_time_ahead():
     state = _cultivation()
 
-    # The deadline, and the goal that is about it.
-    assert named_by(state, "The ranking tournament is in two days.", EN) == {
+    # The deadline alone: a time set for the tournament says nothing of what the character is
+    # after, so the goal the drafter made of it stays the story's.
+    assert named_by(state, "The ranking tournament is in two days.", EN) == {"clock:tournament"}
+    # Said as an aim, the goal is the player's too.
+    assert named_by(state, "I have to survive the ranking tournament in two days.", EN) == {
         "clock:tournament",
         "goal:survive the ranking tournament.",
     }
@@ -176,16 +179,21 @@ def test_a_story_holds_back_what_the_players_words_never_named():
 
 def test_a_thread_is_named_by_the_question_it_carries():
     # "Someone inside the family killed my father" is the open question of the Naples thread,
-    # and the goal says the same: both show from the start, and the two men don't.
+    # which shows from the start. The two men don't, and neither does the goal the drafter made
+    # of it: the premise says what happened, not what the character is after.
     state = _naples()
 
     assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == [
+        "goal:goal-1",
         "person:bartender",
         "person:carmine",
     ]
+    # Said as an aim, the goal is in Memory from the start too.
+    sworn = Said(f"{samples.NAPLES_PREMISE} I will find out who.")
+    assert kept_back(state, EN, sworn) == ["person:bartender", "person:carmine"]
     # Someone the character doesn't know is never on the list: Memory doesn't show them anyway.
     state.characters["bartender"].known_by = []
-    assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == ["person:carmine"]
+    assert kept_back(state, EN, sworn) == ["person:carmine"]
 
 
 def test_a_scene_tells_what_its_own_words_name():

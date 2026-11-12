@@ -1433,8 +1433,9 @@ flowchart LR
   are the ones that hold, whatever the premise called them.
 - **The summary keeps how the story starts a surprise** (G1, Miki 2026-11-10; `openers.py`,
   `named.py`). The drafter still writes the first clocks, the key people, the open questions
-  and the character's connections, and a goal or a want of theirs where the premise gives one
-  (the openers), and the character knows what they know. The draft's screen shows an opener
+  and the character's connections, and a goal or a want of theirs where the premise says one
+  as an aim (the openers), and the character knows what they know. The draft's screen shows an
+  opener
   only when the player's own words name it, and everyone they name whatever the drafter made of
   them. The
   premise is kept, so it is read each time. A change the player asks for is not: when it is
@@ -1450,10 +1451,25 @@ flowchart LR
   forms, "killed" and "killing"). `named.named`: the words name a thing when they say more than
   two thirds of it, or all of it but one word where two of those words stand together in them,
   and what a faction, a place or a people is called counts for nothing, so a premise that
-  speaks of the Azure Cloud Sect doesn't name "the Azure Cloud Sect's tournament". So "Find out
-  who killed my father" shows for "someone inside the family killed my father", and "The
-  council picks the next boss" doesn't, though both speak of a boss, nor does "The heroine
-  tells the prince" for a premise that speaks of both. `named.timed`: a deadline is also named
+  speaks of the Azure Cloud Sect doesn't name "the Azure Cloud Sect's tournament". So "Who
+  inside the family ordered the killing of my father?" shows for "someone inside the family
+  killed my father", and "The council picks the next boss" doesn't, though both speak of a
+  boss, nor does "The heroine tells the prince" for a premise that speaks of both. **A goal or a want is named
+  only where the words say it as an aim** (`named.aimed`, 2026-11-12; `Opener.aim`): a live
+  check found "I'm a squire about to take the knight exam in 3 days" shown "Goal: Pass the
+  knight exam", which the premise's words named and never said. So a sentence of theirs has to
+  say an aim, by a word for wanting, having to, meaning to or looking for, or by a name of an
+  aim ("my goal", "mi sueño"; the lists are in `named.py` by language, in the persons a
+  premise is written in), or by saying the aim's own first word as what something is done for
+  ("to find my sister", "para pagar la deuda", "per trobar la meva germana"; in English not
+  after "about", "able" and the like, which are no purpose), and that sentence has to name the
+  aim, or say its first word where their words as a whole name it ("Someone killed my father.
+  I will find out who."). "The knight exam is in 3 days" then names the clock alone, and
+  "someone inside the family killed my father" the question alone. A change asked at the goal's
+  row or at the nature's (`ReviseIn.about`, passed as `chain.revise(aim=True)`) is already
+  about what the character is after, so there naming is enough (`names(plainly=True)`), and so
+  it is for a scene of the story read for what Memory holds back (`told_by`). `named.timed`: a
+  deadline is also named
   by a clause that sets a time ahead ("in 3 days", "dentro de tres días", "d'aquí a tres dies",
   "tomorrow"; "three days ago" is none, and "esta mañana" is this morning) and holds a word of
   it, or by the rest of its sentence when the time is all the clause says; a time that counts
@@ -1859,7 +1875,9 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   summary the screen would show for it, part by part (`judge.judge_summary`); a judgement of a
   summary that fails lists the premise and the summary the judge read in the run's log. Code
   checks that the deadline is there at the time the premise gives it ("in 3 days", "en 5
-  días", "d'aquí a 2 dies"), that the story's Memory starts with nobody, no goal and no thread
+  días", "d'aquí a 2 dies") and puts no goal on the screen, that a premise that says an aim
+  ("I want to steal the sultan's crown") is shown it as the character's goal, that the story's
+  Memory starts with nobody, no goal and no thread
   the premise doesn't name (`chain.opening`), and, after the opening scene is played, that
   whoever Memory lists by then the premise or the scene has called by name.
   Its stories name the troll, the courtyard

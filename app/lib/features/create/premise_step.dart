@@ -232,8 +232,9 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
 }
 
 /// What a premise can settle before the story starts, each with an example in plain words: who
-/// the character is, what sets them apart, what is coming and who is in their life. What the
-/// premise names, the draft shows; the rest stays the story's surprise (G1).
+/// the character is, what sets them apart, what is coming, who is in their life and what they
+/// are after. What the premise names, the draft shows; the rest stays the story's surprise
+/// (G1). A goal shows only when the premise says it as an aim, as the example does.
 class _Decide extends StatelessWidget {
   const _Decide();
 
@@ -247,6 +248,7 @@ class _Decide extends StatelessWidget {
       (Icons.auto_awesome_outlined, l10n.createDecideSpecial, l10n.createDecideSpecialExample),
       (Icons.hourglass_bottom_rounded, l10n.createDecideComing, l10n.createDecideComingExample),
       (Icons.group_outlined, l10n.createDecidePeople, l10n.createDecidePeopleExample),
+      (Icons.flag_outlined, l10n.createDecideAim, l10n.createDecideAimExample),
     ];
     return Card(
       margin: EdgeInsets.zero,

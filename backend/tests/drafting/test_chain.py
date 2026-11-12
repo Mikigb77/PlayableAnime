@@ -401,9 +401,9 @@ def test_what_the_player_asks_for_is_theirs_to_see(fake, llm):
 
     revised = run(chain.revise(llm, draft, "world", "The ranking tournament is in two days."))
 
-    # The draft keeps what they named, the deadline and the goal that is about it, never
-    # their words.
-    named = {"clock:tournament", "goal:survive the ranking tournament."}
+    # The draft keeps what they named, the deadline, never their words. The goal the drafter
+    # made of it is still the story's: a time set for the tournament says no aim.
+    named = {"clock:tournament"}
     assert revised.told == named
     shown = world_lines(revised.state(), revised.language, revised.said)
     assert "The ranking tournament: in 2 days." in shown
@@ -411,6 +411,29 @@ def test_what_the_player_asks_for_is_theirs_to_see(fake, llm):
     fake.script(Node.DRAFTER, Reply(json=WorldChange()))
     again = run(chain.revise(llm, revised, "world", "More rain."))
     assert again.told == named
+
+
+def test_a_goal_is_theirs_once_their_words_say_it_as_an_aim(fake, llm):
+    # G1, G2 (Miki, 2026-11-10): the first goal is the story's surprise unless the player's
+    # words give it. Words that only tell of the tournament give no goal about it.
+    draft = _cultivation_draft()
+
+    def goals(words: str = "", **how) -> list[str]:
+        asked = draft
+        if words:
+            fake.script(Node.DRAFTER, Reply(json=draft.proposal.character))
+            asked = run(chain.revise(llm, draft, "character", words, **how))
+        lines = character_lines(asked.state(), asked.language, asked.said)
+        return [line for line in lines if line.startswith("Goal:")]
+
+    survive = ["Goal: Survive the ranking tournament."]
+    assert goals() == []
+    assert goals("The ranking tournament is brutal, and few survive it.") == []
+    assert goals("I have to survive the ranking tournament.") == survive
+    assert goals("I entered the sect to survive the ranking tournament.") == survive
+    # Asked at the goal's own row, the words are about what the character is after.
+    assert goals("Survive the ranking tournament, whatever it takes.") == []
+    assert goals("Survive the ranking tournament, whatever it takes.", aim=True) == survive
 
 
 def test_a_story_opens_on_the_drafts_state_with_what_was_read_and_what_was_not():

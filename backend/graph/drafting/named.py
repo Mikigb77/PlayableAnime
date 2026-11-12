@@ -14,7 +14,10 @@ boss, and neither is "The heroine tells the prince" by a premise that speaks of 
 is also named by a clause that sets a time ahead and holds one word of it (`timed`), so "the
 knight exam is in 3 days" names "The trial of knighthood". A person is named by their name and
 nothing else (`called`): what a premise says of its own character ("the weakest outer
-disciple") fits half the people around them, so a description names nobody.
+disciple") fits half the people around them, so a description names nobody. And what the
+character is after, a goal or a want, is theirs only where a sentence of theirs says it as an
+aim (`aimed`): "the knight exam is in 3 days" names "Pass the knight exam" and says no aim, so
+the goal stays the story's until "I must pass the knight exam" makes it the player's.
 """
 
 import re
@@ -108,6 +111,92 @@ def called(said: str, name: str, language: Language) -> bool:
     if capitals & theirs:
         return True
     return len(theirs) > 1 and theirs <= {core(word) for word in words}
+
+
+# G1, G2: the words that say a thing as something the character is after, by language: wanting,
+# having to, meaning to, looking for, and the names of an aim, in the first, second and third
+# person a premise is written in. The summary's own labels for a goal and a want are among
+# them, so a line of it the player rewrote says one too. They count only beside the aim's own
+# words (`aimed`), so "going to the market" says none.
+_AIMS = {
+    Language.EN: """want(?:s|ed|ing)? wanna wish(?:es|ed)? desires? long(?:s|ing)?_to
+        need(?:s|ed)?_to must ha(?:ve|s|d)_to got_to gotta (?:i|we|you)['’]ll
+        (?:i|we|you)_will going_to gonna aim(?:s|ed|ing)? hop(?:e|es|ed|ing)
+        plan(?:s|ned|ning)? intend(?:s|ed)? mean(?:s|t)?_to tr(?:y|ies|ied|ying)_to determined
+        resolved decided set_out swor[en] swears? vow(?:s|ed)? oath promis(?:e|es|ed)
+        looking_for search(?:ing)?_for seek(?:s|ing)? sought hunt(?:s|ing)? chas(?:e|es|ing)
+        dream(?:s|ed|t)? goals? ambitions? mission quest purpose objective in_order_to
+        so_as_to so_(?:that_)?(?:i|we|you)_can""",
+    Language.ES: """quier[oea]s? queremos quería quisiera dese[oa]s? ansí[oa]s? necesit[oa]s?
+        deb[oe]s? t(?:engo|ienes?)_que h(?:e|as?)_de v(?:oy|as?)_a piens[oa]s? pretend[oe]s?
+        intent[oa]s? busc[oa]s? buscando persig[oa] persigues? jur[éoó] juraste jurado
+        promet[íoe] prometiste prometido espero sueñ[oa]s? objetivos? metas? ambici[oó]n
+        misi[oó]n prop[oó]sito decidid[oa] con_el_fin_de a_fin_de""",
+    Language.CA: """vull vols? volem volia voldria desitj[oa] desitges anhel[oa] anheles
+        necessit[oa] necessites h(?:e|as?)_de haig_de tinc_de tens_de cal_que penso penses
+        pretenc pretens pretén intent[oa] intentes busc[oa] busques buscant persegueix(?:o|es)?
+        juro jures jurat vaig_jurar vas_jurar prometo promets promès espero somi[oa] somies
+        somnis? objectius? metes? meta ambició missió propòsit decidi[td]a? per_tal_de a_fi_de""",
+}
+# Each marker stands as whole words; a `_` in one is the space between two of its words.
+_AIM = {
+    language: re.compile(
+        rf"(?<!\w)(?:{'|'.join(words.replace('_', r'\s+').split())})(?!\w)", re.IGNORECASE
+    )
+    for language, words in _AIMS.items()
+}
+# What an aim is done for, said with its own first word: "I came to the city to become a
+# knight", "para pagar la deuda", "per trobar la meva germana". In English "to" follows much
+# that is no purpose ("about to take the exam", "never able to draw aura"), so those don't
+# count.
+_FOR = {
+    Language.EN: (("to",),),
+    Language.ES: (("para",),),
+    Language.CA: (("per", "a"), ("per",)),
+}
+_NOT_FOR = frozenset(
+    """about able unable used supposed due forced made said known how yet fail fails failed bound
+    likely seem seems seemed""".split()
+)
+
+
+def aimed(said: str, text: str, language: Language) -> bool:
+    """Whether `said`, the player's own words, say the thing `text` tells of as something the
+    character is after: a sentence of theirs says an aim ("I want to", "I must", "my goal is",
+    "looking for", or "to" before the aim's own first word) and names it (`named`), or says its
+    first word where their words as a whole name it, as "Someone killed my father. I will find
+    out who." does for "Find out who killed my father". "I take the knight exam in 3 days" sets
+    a deadline and says no aim, so the goal a drafter makes of it is theirs, not the
+    player's."""
+    its = content(text, language)
+    if not its:
+        return False
+    lead = its[0]
+    whole: bool | None = None
+    for sentence in _SENTENCE.split(said):
+        words = [core(word) for word in WORD.findall(sentence)]
+        if not (_AIM[language].search(sentence) or _done_for(words, lead, language)):
+            continue
+        if named(sentence, text, language):
+            return True
+        if any(alike(word, lead) for word in words):
+            if whole is None:
+                whole = named(said, text, language)
+            if whole:
+                return True
+    return False
+
+
+def _done_for(words: list[str], lead: str, language: Language) -> bool:
+    """Whether the words say `lead`, an aim's own first word, as what something is done for."""
+    for phrase in _FOR[language]:
+        size = len(phrase)
+        for at in range(len(words) - size):
+            if tuple(words[at : at + size]) != phrase or not alike(words[at + size], lead):
+                continue
+            if language is not Language.EN or at == 0 or words[at - 1] not in _NOT_FOR:
+                return True
+    return False
 
 
 # What can stand between the start of a sentence and its first word: a space, an opening quote,

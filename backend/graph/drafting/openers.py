@@ -3,7 +3,9 @@
 An opener is one of the things that give a story's start away: a deadline, an open question, a
 key person, a connection of the character's, or a goal or a want of theirs. The drafter writes
 them and the story tells them in play; the summary shows one only when the player's own words
-name it (`graph.drafting.named`).
+name it (`graph.drafting.named`). A goal or a want is named only where those words say it as
+something the character is after: "the knight exam is in 3 days" sets a deadline, and the goal a
+drafter makes of it ("Pass the knight exam") is the story's to tell.
 
 The premise is the player's own words, and the draft keeps it, so it is read each time. A change
 they ask for later is not kept: when it is made, code notes which openers its words named
@@ -36,7 +38,7 @@ from engine.state import (
     Thread,
     WorldState,
 )
-from graph.drafting.named import called, named, timed, times_ahead, told_of
+from graph.drafting.named import aimed, called, named, timed, times_ahead, told_of
 from graph.words import FILLER, WORD, core
 
 # The openers a draft keeps by their words, since they have no id of their own.
@@ -50,12 +52,14 @@ class Opener:
     premise that speaks of the Azure Cloud Sect doesn't name "the Azure Cloud Sect's
     tournament". `name` is the own name of the person it is or is about; a person has no
     `text`, since only their name names them. A `deadline` is also named by a time set for
-    it."""
+    it. An `aim` is what the character is after, a goal or a want: the player's words name it
+    only where they say it as one."""
 
     key: str
     text: str
     name: str = ""
     deadline: bool = False
+    aim: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,10 +74,18 @@ class Said:
         return opener.key in self.told or names(self.premise, opener, language)
 
 
-def names(words: str, opener: Opener, language: Language) -> bool:
+def names(words: str, opener: Opener, language: Language, *, plainly: bool = False) -> bool:
     """Whether `words`, the player's own, name the opener: they call its person by name, say
-    what it tells of, or set a time for it when it is a deadline."""
-    if called(words, opener.name, language) or named(words, opener.text, language):
+    what it tells of, or set a time for it when it is a deadline. An aim has to be said as one
+    (`aimed`): "I must pass the knight exam" names the goal, and "the knight exam is in 3 days"
+    names the deadline alone. `plainly` is for words already known to speak of what the
+    character is after, such as a change asked at the goal's own row: there, saying what the
+    aim tells of names it."""
+    if called(words, opener.name, language):
+        return True
+    if opener.aim and not plainly:
+        return aimed(words, opener.text, language)
+    if named(words, opener.text, language):
         return True
     return opener.deadline and timed(words, opener.text, language)
 
@@ -97,13 +109,13 @@ def of_connection(state: WorldState, connection: Connection) -> Opener:
 
 
 def of_goal(state: WorldState, goal: Goal) -> Opener:
-    return Opener(_worded("goal", goal.text), _own_words(state, goal.text))
+    return Opener(_worded("goal", goal.text), _own_words(state, goal.text), aim=True)
 
 
 def of_want(state: WorldState, want: str) -> Opener:
     """What the character wants is a goal by another name: "Wants to prove that the sword can
     stand equal to aura" is the drafter's, and the player's only once their own words say it."""
-    return Opener(_worded("want", want), _own_words(state, want))
+    return Opener(_worded("want", want), _own_words(state, want), aim=True)
 
 
 def of_thread(state: WorldState, thread: Thread) -> Opener:
@@ -130,11 +142,14 @@ def openers(state: WorldState) -> Iterator[Opener]:
         yield of_want(state, want)
 
 
-def named_by(state: WorldState, words: str, language: Language) -> frozenset[str]:
-    """The keys of the openers that `words`, the player's own, name."""
+def named_by(
+    state: WorldState, words: str, language: Language, *, plainly: bool = False
+) -> frozenset[str]:
+    """The keys of the openers that `words`, the player's own, name. `plainly` is for words
+    asked at the row of what the character is after (`names`)."""
     if not words.strip():
         return frozenset()
-    return frozenset(o.key for o in openers(state) if names(words, o, language))
+    return frozenset(o.key for o in openers(state) if names(words, o, language, plainly=plainly))
 
 
 def clock_times(state: WorldState, words: str, language: Language) -> dict[str, int]:
@@ -181,11 +196,13 @@ def kept_back(state: WorldState, language: Language, said: Said) -> list[str]:
 def told_by(state: WorldState, scene: str, language: Language) -> list[str]:
     """C6: of what the story still holds back (`WorldState.untold`), the keys the words of a
     turn name (`scene`: what the player wrote, the scene and the choices it offers), so the
-    player's screens show it from then on. A goal and a thread are read as in a premise
-    (`names`): the words say most of what they say, or set a time for the thread's deadline. A
-    person is named when the words call them by a name of their own as prose does (`told_of`),
-    and what a place or a faction is called doesn't: a scene that opens in "Carmine's bar" has
-    named the bar, and Carmine only once it calls him too."""
+    player's screens show it from then on. A thread is read as in a premise (`names`): the
+    words say most of what it says, or set a time for its deadline. A goal is told once the
+    words say most of what it says, with no need to say it as an aim: a scene that tells of the
+    knight exam has told the player what "Pass the knight exam" is about. A person is named
+    when the words call them by a name of their own as prose does (`told_of`), and what a place
+    or a faction is called doesn't: a scene that opens in "Carmine's bar" has named the bar,
+    and Carmine only once it calls him too."""
     if not state.untold or not scene.strip():
         return []
     people = _without_groups(state, scene, language)
@@ -193,7 +210,11 @@ def told_by(state: WorldState, scene: str, language: Language) -> list[str]:
     for key in state.untold:
         person = key.startswith(f"{untold.PERSON}:")
         for opener in _behind(state, key):
-            if told_of(people, opener.name, language) if person else names(scene, opener, language):
+            if person:
+                told = told_of(people, opener.name, language)
+            else:
+                told = names(scene, opener, language, plainly=True)
+            if told:
                 found.append(key)
                 break
     return found

@@ -144,6 +144,8 @@
   "createDecideComingExample": "Mi examen de caballero es dentro de tres días.",
   "createDecidePeople": "Quién hay en tu vida",
   "createDecidePeopleExample": "Mi rival se llama Garrick.",
+  "createDecideAim": "Qué buscas",
+  "createDecideAimExample": "Quiero llegar a ser caballero.",
   "createDecideNote": "Lo que nombres aquí lo verás antes de empezar. Todo lo que dejes fuera seguirá siendo una sorpresa.",
   "reviewLegendDirect": "Lo cambias tú, al momento",
   "reviewLegendAsk": "Se lo dices al narrador",

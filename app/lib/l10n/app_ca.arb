@@ -144,6 +144,8 @@
   "createDecideComingExample": "El meu examen de cavaller és d'aquí a tres dies.",
   "createDecidePeople": "Qui hi ha a la teva vida",
   "createDecidePeopleExample": "El meu rival es diu Garrick.",
+  "createDecideAim": "Què busques",
+  "createDecideAimExample": "Vull arribar a ser cavaller.",
   "createDecideNote": "El que anomenis aquí ho veuràs abans de començar. Tot el que deixis fora continuarà sent una sorpresa.",
   "reviewLegendDirect": "Ho canvies tu, a l'instant",
   "reviewLegendAsk": "L'hi dius al narrador",
