@@ -134,8 +134,9 @@ class ScriptedModel:
         if node is Node.SUMMARIZER:
             return self._answer(request, {"summary": STOCK_SUMMARY}, SUMMARY_TOKENS)
         if node is Node.WORDING:
-            # S10: each line back as it stands, as a line already in the story's language is.
-            lines = [{"n": n, "text": text} for n, text in lines_asked(prompt)]
+            # S10: each line between « and », with its numbers and names as they stand. A line
+            # handed back unchanged would count as left in English (`saying.faithful`).
+            lines = [{"n": n, "text": f"«{text}»"} for n, text in lines_asked(prompt)]
             return self._answer(
                 request, {"lines": lines}, sum(tokens(line["text"]) for line in lines)
             )
