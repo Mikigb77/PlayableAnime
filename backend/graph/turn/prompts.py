@@ -463,9 +463,10 @@ The result and the throw say how the step turned out, and the hand says how it l
 the result and however easy the thing was: someone untrained or a novice who succeeds gets \
 there awkwardly, slowly, with effort or by luck, and it looks it, never clean, graceful or \
 effortless, and a master who misses is still plainly a master (R4).
-- Looks and stock phrases don't keep coming back (R9). PLAYER CHARACTER has an appearance only \
-when this scene has reason to show it, and then at most once, in passing, in fresh words. When \
-it has none, don't describe how they look: not their eyes, hair, build, face or clothes. Show \
+- Looks and stock phrases don't keep coming back (R9). PLAYER CHARACTER has an appearance and \
+a description only when this scene has reason to show them, and then at most once, in passing, \
+in fresh words. When it has none, don't describe how they look: not their eyes, hair, build, \
+face or clothes, in the telling or in what anyone says. Show \
 a trait, a gift, a power or a skill in what happens, and name it only when OUTCOME says the \
 step used it. Never use a phrase WORN lists, or one close to it: say the thing another way or \
 leave it out.
@@ -710,7 +711,7 @@ believes says so: it is what they believe, not what is true.
 scene noted how it stands, the open threads they know of with their stakes, and the leads on \
 offer.
 - PLAYER CHARACTER: the player character's record: who they are and their age, how they look \
-(appearance, only in a scene with reason to show it), \
+and come across (appearance and description, only in a scene with reason to show them), \
 where they are and what they are doing, the groups they belong to, their family by name, and \
 their sheet: attributes, skills, traits, powers and techniques with their costs, disposition, \
 resources (their money, shown even when it is none, and what they own), condition, and the \

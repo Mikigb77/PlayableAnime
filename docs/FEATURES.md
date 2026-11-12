@@ -66,9 +66,9 @@ The first version's state, checked against the code in WS18.
       before its outcome (R1 to R7)
 - [x] Scenes sized to what happened: a passing moment is told short and a turning point gets
       room, within the length the player set (R3, S6)
-- [x] Looks and stock phrases that don't keep coming back: the character's appearance is told
-      when a scene has reason to show it, and code hands the narrator the wording the last scenes
-      repeated, to say another way (R9)
+- [x] Looks and stock phrases that don't keep coming back: the character's appearance, and how
+      they come across, are told when a scene has reason to show them, and code hands the
+      narrator the wording the last scenes repeated, to say another way (R9)
 - [x] Whereabouts that stay clear: every scene records the place it ends in, places know whether
       they are outdoors, indoors, underground or underwater, and a way out is told, never guessed (R8)
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever

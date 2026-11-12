@@ -118,10 +118,16 @@ def place_name(state: WorldState) -> str | None:
     return place.name if place else None
 
 
+# R9: how the player character looks, on their record: their appearance, and the line on how
+# they come across, which says it too ("a thin disciple in a patched grey robe").
+_LOOKS = ("appearance", "description")
+
+
 def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
-    """The player character as the record has them. `looks` false leaves their appearance out:
-    the narrator is handed it only in a scene with reason to show it (R9, `shows_looks`)."""
-    hidden = {*_RECORD_NOISE, *_KIN, "personal_offset_s", *(() if looks else ("appearance",))}
+    """The player character as the record has them. `looks` false leaves out how they look,
+    their appearance and how they come across: the narrator is handed those only in a scene
+    with reason to show them (R9, `shows_looks`)."""
+    hidden = {*_RECORD_NOISE, *_KIN, "personal_offset_s", *(() if looks else _LOOKS)}
     view = {"id": state.player_id} | _dump(state.player, exclude=hidden)
     # C10: what they have is exactly what this lists, so their money and their things show even
     # when they have none.
