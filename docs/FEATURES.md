@@ -85,8 +85,9 @@ The first version's state, checked against the code in WS18.
 - [x] Romance the world keeps on record: a bond between two people that moves in stages
       (interest, courting, together, promised, married, over), and a heart of their own for the
       other person, which moves at their own pace. An ask is answered by their heart, nobody
-      throws to kiss their own partner, and no scene can make a couple the record doesn't hold
-      (W17). *(Memory doesn't show the bond yet, and nobody reacts to another romance yet.)*
+      throws to kiss their own partner, and no scene can make a couple the record doesn't hold.
+      Memory tells where the two stand under a heart on that person's entry, as far as the
+      character knows (W17, C6). *(Nobody reacts to another romance yet.)*
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)
