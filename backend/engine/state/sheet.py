@@ -324,6 +324,11 @@ class Attitude(EngineModel):
 
     `apparent_affinity` is how warm they act when it differs from how they feel, such as a planted
     traitor. The player only ever sees the apparent side (C6).
+
+    `attraction` is their own heart (W17): how drawn they are to the other as a lover, which
+    only the engine moves, by what happened between the two (`engine.bonds`). It rests after it
+    moves: `heart_moved_s` is the world second it last did. The player character's own
+    feelings are the player's (G15), so nobody's record holds them.
     """
 
     affinity: Affinity = 0
@@ -331,6 +336,8 @@ class Attitude(EngineModel):
     trust: Trust = 0
     apparent_affinity: Affinity | None = None
     grudges: list[Grudge] = Field(default_factory=list)
+    attraction: Percent = 0
+    heart_moved_s: WorldSeconds | None = None
 
     @property
     def shown_affinity(self) -> int:

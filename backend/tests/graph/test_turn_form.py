@@ -45,6 +45,9 @@ def test_a_plain_turn_is_asked_nothing_that_cannot_apply():
     assert not step & {"talent_cases", "bridge"}
     # N2, W16: no goal to give up, and nothing open to take up.
     assert not _fields(form, "Intent") & {"dropped_goals", "responds_to"}
+    # W17: nobody to be in a romance with.
+    assert "romance" not in step
+    assert "romance" in _fields(intent_form(replace(Asks(), romance=True)), "IntentStep")
     # What is left is what every turn is asked.
     assert {"text", "verb", "target_ids", "aim", "uses", "beats", "facts", "kind"} <= step
     assert {"destination", "proposed_duration_s", "until", "timed", "training"} <= step
@@ -97,6 +100,8 @@ def test_every_form_is_whole_and_reads_as_an_intent(asked):
         assert all(step.talent_cases == [] and step.bridge is None for step in intent.steps)
     if not asked.ladders:
         assert all(step.show_strength is None for step in intent.steps)
+    if not asked.romance:
+        assert all(step.romance is None for step in intent.steps)
     # The form handed out is the caller's own copy.
     form["properties"].clear()
     assert json.dumps(intent_form(asked)) == text
@@ -118,6 +123,7 @@ TOLD = {
     "talents": ["- TALENTS", "talent_cases", "- bridge, always"],
     "goals": ["dropped_goals"],
     "threads": ["responds_to"],
+    "romance": ["- romance, always (W17)", "advance: flirting", "part: ending it"],
 }
 
 
@@ -176,6 +182,16 @@ def test_what_a_turn_is_asked_is_read_from_the_state():
     assert asks(farm).threads
     farm.leads["lead-1"].status = LeadStatus.TAKEN
     assert not asks(farm).threads
+    # W17, F3: a step can be a move in a romance where the player character and someone else
+    # on record are adults. Lin Feng is sixteen; Tomas and his wife are grown.
+    assert not asks(lin).romance
+    assert asks(farm).romance
+    for npc in farm.npcs():
+        npc.age = None
+    assert not asks(farm).romance
+    farm.characters["ilse"].age = 32
+    farm.player.age = 15
+    assert not asks(farm).romance
 
 
 def test_the_interpret_prompt_explains_only_what_its_turn_is_asked():

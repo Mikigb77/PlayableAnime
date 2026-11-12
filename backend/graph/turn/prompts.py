@@ -298,6 +298,16 @@ counted from 0 for the lowest of that ladder's rungs in WORLD's ladders, never a
 rung, and 0 when the player names none. To let their true strength show: shown_rung null. \
 Hiding or showing is a step of its own, before whatever they do next.
 <<end>>
+<<romance>>
+- romance, always (W17): null unless the step is itself a move in a romance between the \
+character and someone it is aimed at, who goes in target_ids. advance: flirting, courting, a \
+gift or a word meant to win them, a kiss, a night together. declare: asking them to be a \
+couple, or saying yes when they ask. propose: asking them to promise marriage, or the world's \
+own lasting union, or saying yes to it. wed: marrying them. part: ending it with them. A step \
+that only talks about love, with them or with anyone else, is no move. bond_with_you under a \
+person in SCENE is where the romance between the two stands on record. Code decides what the \
+move does, from that bond and from the other person's own heart.
+<<end>>
 
 Also record:
 - theories: when the player reasons about how their own power works, the claim, a stable topic \
@@ -561,6 +571,18 @@ curious than they would otherwise be, they watch, keep their distance, hint or a
 neither accuse outright nor act as if it were known (W4). Someone who comes to face the \
 player character over what they were told puts it to them and hears the answer before \
 anything else.
+- A romance is on record, and only the engine moves it (W17). bond_with_you under a person \
+is the romance between them and the player character: the stage it stands at (interest: one \
+of them has made it plain and nothing is answered; courting: it is answered, and they are \
+finding out where it goes; together: a couple; promised: betrothed; married; over: it ended, \
+with how), since when, their own heart (their_heart) and how quickly it moves (their_pace). \
+Tell each person as exactly that: a partner as a partner, someone courted as someone still \
+making up their mind, someone who isn't drawn as not drawn, however sweet the player's words, \
+and someone it ended with as that. Nobody becomes a couple, promised or married, and nothing \
+between two people ends, unless the reason of a step in OUTCOME says so. When a step asks and \
+its reason says their heart isn't there, they turn it down in their own way, and the scene \
+never has them agree, hint that they will or kiss back. When the reason says they are more \
+drawn than before, show it in something small they do, never as a declaration.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom \
 an EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is \
@@ -712,7 +734,8 @@ scene noted how it stands, the open threads they know of with their stakes, and 
 offer.
 - PLAYER CHARACTER: the player character's record: who they are and their age, how they look \
 and come across (appearance and description, only in a scene with reason to show them), \
-where they are and what they are doing, the groups they belong to, their family by name, and \
+where they are and what they are doing, the groups they belong to, their family by name, \
+whom they are a couple with (partners, W17), and \
 their sheet: attributes, skills, traits, powers and techniques with their costs, disposition, \
 resources (their money, shown even when it is none, and what they own), condition, and the \
 ladders they climb. rulings and growth record what was settled \
@@ -728,8 +751,10 @@ takes from SCENE's place, where the map knows it. Use these names as spelled.
 - LAST MOMENT: the exact moment the last scene stopped on. This scene starts there.
 - SCENE: the place, with its setting and the places it lies within (within), nearest first; the \
 people present with the player character, each without their secrets, with toward_you (its \
-grudges are deeds they know of, its heard_said deeds they have only heard talk of) and \
-sometimes apparent_affinity; where everyone stands (positions); the things that matter (props); \
+grudges are deeds they know of, its heard_said deeds they have only heard talk of), sometimes \
+apparent_affinity, and bond_with_you where there is or was a romance between the two, or \
+they are drawn to the player character; where everyone stands (positions); the things that \
+matter (props); \
 and the fight, chase, duel of words or negotiation under way, if any (encounter), with its \
 terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \
 where it was going and how much of the way is left. A power someone keeps secret is left out \

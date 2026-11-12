@@ -12,7 +12,7 @@ from pydantic import Field
 from engine.base import EngineModel, Severity
 from engine.contracts.delta import StateDelta
 from engine.contracts.intent import ActionKind, Aim, OutcomeClass, UseSource
-from engine.state.records import RollRecord, StepResult, Trace, Visibility
+from engine.state.records import BondStage, RollRecord, StepResult, Trace, Visibility
 from engine.state.scene import Bout, EncounterKind, Terms
 from engine.state.sheet import CostKind, Ruling
 
@@ -157,6 +157,25 @@ class TrainingSoFar(EngineModel):
     practising: bool = False
 
 
+class WooingSoFar(EngineModel):
+    """W17. An advance in a romance that was answered, as the step began: whom it was made to,
+    how it came off, and where the romance stood. A step an event cuts short didn't happen, and
+    courting that ran for days is no single moment, so one cut short keeps what the time it
+    ran earned (`engine.resolve.romance.cut_short`)."""
+
+    other_id: str
+    whole: bool = Field(description="It came off whole, not by half.")
+    over_the_top: bool = False
+    stage: BondStage | None = None
+    attraction: int = 0
+    moved_s: int | None = None
+    said: list[str] = Field(
+        default_factory=list,
+        description="What the step's reason tells of the romance, as it stands there, so a "
+        "step cut short tells only what it kept.",
+    )
+
+
 class Harm(StrEnum):
     """N6. What a peril did to the player character, worst last."""
 
@@ -243,6 +262,11 @@ class StepResolution(EngineModel):
     )
     training: TrainingSoFar | None = Field(
         default=None, description="A4: a training step's effort so far, kept if it is cut short."
+    )
+    wooing: WooingSoFar | None = Field(
+        default=None,
+        description="W17: an advance in a romance that was answered, so one cut short keeps "
+        "what the time it ran earned.",
     )
     kind: ActionKind | None = Field(default=None, description="W10: the kind of action.")
     trip: Trip | None = Field(

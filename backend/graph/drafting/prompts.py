@@ -51,7 +51,12 @@ world's size.
 inside a sect) and two to eight key characters, each with a \
 temperament, what they want and, where it fits, an agenda and a secret. Give every adult an age. \
 Where key characters are family, record it with parent_ids: a child names their parents, the \
-player character included. A parentage the player character doesn't know of is a secret instead.
+player character included. A parentage the player character doesn't know of is a secret instead. \
+Where the premise gives the player character a wife, a husband, someone they are promised to, \
+a lover or someone they are courting, record it on that person with bond_with_player, and how \
+drawn that person is to them with attitude_to_player.attraction (a love match is high, an \
+arranged one may be low). Give nobody else a bond or attraction: a romance the premise \
+doesn't set up is the story's to find (W17).
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \

@@ -566,7 +566,21 @@ class _PersonEntry extends StatelessWidget {
         final attitude? when !gone => RecordChip(attitude, tone: tone),
         _ => null,
       },
-      children: [for (final line in person.lines) RecordLine(line)],
+      children: [
+        // W17: the romance between the two leads their lines, under a heart: whole for a
+        // couple, an outline while it is only starting, and broken once one of them ended it.
+        if (person.bondLine case final line?)
+          _Note(
+            line,
+            icon: switch (person.bond) {
+              BondStage.over => gone ? Icons.favorite_border : Icons.heart_broken_outlined,
+              final stage? when stage.couple => Icons.favorite,
+              _ => Icons.favorite_border,
+            },
+            color: gone || person.bond == BondStage.over ? null : colors.accent,
+          ),
+        for (final line in person.lines) RecordLine(line),
+      ],
     );
   }
 }

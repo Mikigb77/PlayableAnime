@@ -6,6 +6,7 @@ from evals.scenarios import (  # noqa: F401  (registers them)
     t17,
     t17_play,
     t17_powers,
+    t17_romance,
     t18,
     t18_reading,
 )

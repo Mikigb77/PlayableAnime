@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from engine import encounters, possessions
+from engine import bonds, encounters, possessions
 from engine import talent as talent_mod
 from engine.base import DAY
 from engine.context import Language, TurnContext
@@ -32,6 +32,7 @@ from engine.director import due
 from engine.director import weight as scene_weight
 from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
+from engine.limits import is_adult
 from engine.resolve import bouts
 from engine.state.cast import (
     Character,
@@ -188,8 +189,9 @@ def _talents_view(state: WorldState) -> dict[str, Any] | None:
 def _family_view(
     state: WorldState, character: Character, *, knower: str | None = None
 ) -> dict[str, Any]:
-    """N6: a character's parents and children by name, and a child they carry, when due. With
-    `knower`, kin that character doesn't know of are marked so."""
+    """N6, W17: a character's parents and children by name, whom they are a couple with, and a
+    child they carry, when due. With `knower`, kin that character doesn't know of are marked
+    so."""
     children = [c for c in state.characters.values() if character.id in c.parent_ids]
     family: dict[str, Any] = {}
     for key, ids in (
@@ -199,6 +201,14 @@ def _family_view(
         named = [_kin_name(state, i, knower) for i in ids if i in state.characters]
         if named:
             family[key] = named
+    # W17: whom they are a couple with, and how far it has come.
+    partners = []
+    for other_id in bonds.partners(state, character.id):
+        bond = bonds.live(state, character.id, other_id)
+        if other_id in state.characters and bond is not None:
+            partners.append(_kin_name(state, other_id, knower) | {"bond": bond.stage.value})
+    if partners:
+        family["partners"] = partners
     expecting = character.expecting
     if expecting is not None and character.alive:
         other = state.characters.get(expecting.other_parent_id or "")
@@ -232,10 +242,46 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
             del sheet["powers"]
     attitude = character.sheet.disposition.attitudes.get(state.player_id)
     if attitude is not None:
-        view["toward_you"] = _dump(attitude)
+        # W17: their heart is told in words, with the bond it belongs to.
+        view["toward_you"] = _dump(attitude, exclude=_HEART)
     if heard := _heard_said(state, character.id):
         # W4: what they have only heard said of the player character, and half believe.
         view.setdefault("toward_you", {})["heard_said"] = heard
+    if bond := _bond_view(state, character):
+        view["bond_with_you"] = bond
+    return view
+
+
+_HEART = {"attraction": True, "heart_moved_s": True}
+_PACE = {
+    bonds.Pace.SLOW: "slow to give their heart",
+    bonds.Pace.STEADY: "neither quick nor slow to give their heart",
+    bonds.Pace.QUICK: "quick to give their heart",
+}
+
+
+def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None:
+    """W17. The romance between someone and the player character as the record has it: the
+    stage it stands at and since when, or how the last one ended, and their own heart and pace
+    in words. None when there has been nothing between the two and they aren't drawn to the
+    player character."""
+    you = state.player_id
+    drawn = character.attitude_toward(you).attraction
+    bond = bonds.live(state, character.id, you)
+    view: dict[str, Any] = {}
+    if bond is not None:
+        view["stage"] = bond.stage.value
+        begun = bool(bond.steps) and bond.steps[-1].turn > 0
+        since = ago_label(max(0, state.world_s - bond.since_s))
+        view["since"] = since if begun else "before the story began"
+    elif (over := bonds.last_over(state, character.id, you)) is not None:
+        view["stage"] = "over"
+        view["ended"] = over.steps[-1].how if over.steps else ""
+        view["since"] = ago_label(max(0, state.world_s - over.since_s))
+    elif drawn == 0:
+        return None
+    view["their_heart"] = bonds.heart_words(drawn, "you")
+    view["their_pace"] = _PACE[bonds.pace(character.id)]
     return view
 
 
@@ -598,7 +644,8 @@ def asks(state: WorldState) -> Asks:
     """B5. What this turn's form asks the interpret step beyond what every turn's does
     (`graph.turn.form`), read from the state: a power over time the player character holds or
     one at work (W10a), a ladder in the world (G18, G20), talents of theirs to rule on (A4), a
-    goal they could give up (N2), and a thread or a lead open to take up (W16, N1)."""
+    goal they could give up (N2), a thread or a lead open to take up (W16, N1), and a romance
+    that could be: the player character and someone else on record are adults (W17, F3)."""
     you = state.player
     open_to_them = _goals_and_threads(state)
     return Asks(
@@ -608,6 +655,7 @@ def asks(state: WorldState) -> Asks:
         talents=_talents_view(state) is not None,
         goals=bool(open_to_them["goals"]),
         threads=bool(open_to_them["threads"] or open_to_them["leads"]),
+        romance=is_adult(you) and any(c.alive and is_adult(c) for c in state.npcs()),
     )
 
 

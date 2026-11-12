@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
+from engine import bonds
 from engine.kin import ancestors
 from engine.state.bible import Resurrection
 from engine.state.cast import (
@@ -243,6 +244,29 @@ def check_state(state: WorldState) -> list[Violation]:
         for i in sorted(state.characters)
         if i in ancestors(state.characters, i)
     )
+    found.extend(_bonds(state))
+    return found
+
+
+def _bonds(state: WorldState) -> list[Violation]:
+    """W17. A romance is between two people on record, an ended one says how it ended, and no
+    two people have more than one that isn't over."""
+    found: list[Violation] = []
+    pairs: set[frozenset[str]] = set()
+    for bond_id in sorted(state.bonds):
+        bond = state.bonds[bond_id]
+        subject = f"bond {bond.id}"
+        people = (bond.a_id, bond.b_id)
+        if bond.a_id == bond.b_id or any(i not in state.characters for i in people):
+            found.append(Violation(subject, "reference", "it isn't between two people on record"))
+            continue
+        if bond.stage.live == (bond.end is not None):
+            found.append(Violation(subject, "W17", "only a romance that is over has an end"))
+        if bond.stage.live:
+            pair = frozenset(people)
+            if pair in pairs:
+                found.append(Violation(subject, "W17", "the two already have a romance"))
+            pairs.add(pair)
     return found
 
 
@@ -328,6 +352,15 @@ def check_transition(before: WorldState, after: WorldState) -> list[Violation]:
             found.append(Violation(f"rule {rid}", "G7", "a fixed rule never changes"))
     for rid in sorted(set(fixed_after) - set(fixed_before)):
         found.append(Violation(f"rule {rid}", "G7", "no fixed rule is added after the start"))
+
+    for bond_id, old in before.bonds.items():
+        new = after.bonds.get(bond_id)
+        if new is None:
+            found.append(Violation(f"bond {bond_id}", "C1", "records are archived, never deleted"))
+        elif not old.stage.live and new.stage.live:
+            found.append(Violation(f"bond {bond_id}", "W17", "a romance that is over stays over"))
+        elif bonds.ORDER.index(new.stage) < bonds.ORDER.index(old.stage):
+            found.append(Violation(f"bond {bond_id}", "W17", "a romance never goes back a stage"))
 
     for cid, old in before.characters.items():
         new = after.characters.get(cid)

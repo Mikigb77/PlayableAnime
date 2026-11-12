@@ -5,8 +5,9 @@ One shape serves both proposers. The narrator's structured output (B5 step 5) fi
 fields; it replaces `legacy`'s `StateUpdate`. Some fields are **engine only** and are rejected when
 the narrator proposes them, because the engine owns the truth: terminal changes (a death, a
 destroyed faction, a ruined place), anything that needs a `Cause` (C1), faction reputation (W3),
-rulings (A9), gains (A4), accepted backstory (N4), rule changes (G7), and the state of powers,
-skills, techniques, ladders, practice and time effects (A4, G19, W10a). The narrator moves an
+rulings (A9), gains (A4), accepted backstory (N4), rule changes (G7), the state of powers,
+skills, techniques, ladders, practice and time effects (A4, G19, W10a), and a romance: the
+bond between two people and how drawn someone is to another (W17). The narrator moves an
 attitude by at most `engine.apply.NARRATOR_ATTITUDE_CAP` per delta (W4). Resolve puts the
 engine's changes for each step in `StepResolution.effects`.
 
@@ -31,7 +32,7 @@ from engine.state.cast import (
     Prominence,
     Route,
 )
-from engine.state.records import Cause, FactKind
+from engine.state.records import BondStage, Cause, FactKind
 from engine.state.sheet import (
     Attributes,
     Gain,
@@ -58,6 +59,21 @@ class AttitudeShift(EngineModel):
     fear: int = Field(default=0, ge=-100, le=100)
     trust: int = Field(default=0, ge=-100, le=100)
     grudge: str | None = Field(default=None, description="A new grudge, with its reason.")
+    attraction: SkipJsonSchema[int] = Field(
+        default=0, ge=-100, le=100, description="Engine only (W17): their own heart."
+    )
+
+
+class BondChange(EngineModel):
+    """W17. Engine only: the romance between two people comes to a stage. The first such change
+    between a pair opens their bond. `by_id` is who made the move and `how` what happened, in
+    the world's words."""
+
+    a_id: str
+    b_id: str
+    stage: BondStage
+    by_id: str | None = None
+    how: str = ""
 
 
 class ConditionChange(EngineModel):
@@ -384,6 +400,10 @@ class StateDelta(EngineModel):
     time_effects: list[ActiveTimeEffect] = Field(
         default_factory=list,
         description="Engine only: a time power taking hold, such as a stop that outlasts the turn.",
+    )
+    bonds: SkipJsonSchema[list[BondChange]] = Field(
+        default_factory=list,
+        description="Engine only (W17): a romance on record coming to a stage.",
     )
     scene_end: SceneEnd | None = Field(
         default=None, description="R3, R8: the moment this scene stops on, and where."

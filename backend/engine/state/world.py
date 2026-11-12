@@ -9,6 +9,7 @@ from engine.base import MAIN_TIMELINE, EngineModel, WorldSeconds
 from engine.state.bible import WorldBible
 from engine.state.cast import Character, Faction, Place
 from engine.state.records import (
+    Bond,
     Clock,
     Deed,
     EventStatus,
@@ -181,6 +182,9 @@ class WorldState(EngineModel):
     places: dict[str, Place] = Field(default_factory=dict)
     deeds: dict[str, Deed] = Field(default_factory=dict)
     rumors: dict[str, Rumor] = Field(default_factory=dict)
+    bonds: dict[str, Bond] = Field(
+        default_factory=dict, description="W17: the romances on record, by id."
+    )
     facts: dict[str, Fact] = Field(default_factory=dict)
     goals: dict[str, Goal] = Field(default_factory=dict)
     leads: dict[str, Lead] = Field(default_factory=dict)
@@ -295,6 +299,7 @@ _KEYED_COLLECTIONS = (
     "places",
     "deeds",
     "rumors",
+    "bonds",
     "facts",
     "goals",
     "leads",

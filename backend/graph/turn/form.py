@@ -37,10 +37,13 @@ class Asks:
     goals: bool = False
     # W16, N1: a thread they know of or a lead is open to take up.
     threads: bool = False
+    # W17, F3: the player character and someone else on record are adults, so a step can be
+    # a move in a romance.
+    romance: bool = False
 
 
 # Everything, as the contract has it: what the guide's tests read, and a form for any turn.
-WHOLE = Asks(time=True, ladders=True, talents=True, goals=True, threads=True)
+WHOLE = Asks(time=True, ladders=True, talents=True, goals=True, threads=True, romance=True)
 
 # The fields no turn's form asks, by the model that holds them.
 _NEVER: dict[str, tuple[str, ...]] = {
@@ -61,6 +64,7 @@ _ONLY: dict[str, dict[str, tuple[str, ...]]] = {
     "talents": {"IntentStep": ("talent_cases", "bridge")},
     "goals": {"Intent": ("dropped_goals",)},
     "threads": {"Intent": ("responds_to",)},
+    "romance": {"IntentStep": ("romance",)},
 }
 assert set(_ONLY) == {f.name for f in fields(Asks)}
 

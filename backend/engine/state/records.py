@@ -388,6 +388,66 @@ class Lead(EngineModel):
     thread_id: str | None = None
 
 
+class BondStage(StrEnum):
+    """W17. Where a romance between two people stands, in the order it can move. Each stage
+    needs something to have happened in the story, and code decides it (`engine.bonds`)."""
+
+    INTEREST = "interest"  # one of them has made it plain, and nothing is answered yet
+    COURTING = "courting"  # it is answered: they are finding out where it goes
+    TOGETHER = "together"  # a couple
+    PROMISED = "promised"  # promised to each other: betrothed, engaged
+    MARRIED = "married"
+    OVER = "over"
+
+    @property
+    def live(self) -> bool:
+        return self is not BondStage.OVER
+
+    @property
+    def couple(self) -> bool:
+        """Together or beyond: each is the other's partner."""
+        return self in (BondStage.TOGETHER, BondStage.PROMISED, BondStage.MARRIED)
+
+
+class BondEnd(StrEnum):
+    PARTED = "parted"  # one of them ended it
+    DEATH = "death"  # one of them died
+
+
+class BondStep(EngineModel):
+    """W17, C1. One move of a bond to a stage: when, by whose doing and, in the world's words,
+    how."""
+
+    stage: BondStage
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+    by_id: str | None = Field(default=None, description="Who made the move, if someone did.")
+    how: str = ""
+
+
+class Bond(EngineModel):
+    """W17. A romance between two people, on record. `a_id` made the first move. A bond that
+    is over stays over: a romance that starts again is a new bond."""
+
+    id: str
+    a_id: str
+    b_id: str
+    stage: BondStage = BondStage.INTEREST
+    end: BondEnd | None = None
+    steps: list[BondStep] = Field(default_factory=list)
+
+    def holds(self, character_id: str) -> bool:
+        return character_id in (self.a_id, self.b_id)
+
+    def other(self, character_id: str) -> str:
+        return self.b_id if character_id == self.a_id else self.a_id
+
+    @property
+    def since_s(self) -> int:
+        """The world second it came to the stage it stands at."""
+        return self.steps[-1].world_s if self.steps else 0
+
+
 class ThreadKind(StrEnum):
     MYSTERY = "mystery"
     THREAT = "threat"

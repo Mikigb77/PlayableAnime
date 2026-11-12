@@ -323,6 +323,85 @@ void main() {
     expect(chip('Neutral').tone, isNull);
   });
 
+  testWidgets('a romance leads their lines under a heart for where it stands (W17)', (
+    tester,
+  ) async {
+    JsonMap person(String name, {String? bond, String? line, String status = 'alive'}) => {
+      'id': name,
+      'name': name,
+      'lines': ['About $name.'],
+      'status': status,
+      'status_label': switch (status) {
+        'alive' => 'Alive',
+        'dead' => 'Dead',
+        _ => 'Missing',
+      },
+      'bond': bond,
+      'bond_line': line,
+    };
+    await show(tester, {
+      'character': {'name': 'Tomas', 'lines': <String>[]},
+      'people': [
+        person('Mara', bond: 'married', line: 'You married, day 40.'),
+        person('Nell', bond: 'interest', line: 'You made your interest plain, day 3.'),
+        person('Odile', bond: 'over', line: 'You were a couple until you ended it, day 9.'),
+        person('Piet', bond: 'courting', line: 'You began courting, day 5.', status: 'missing'),
+        person('Quin', bond: 'over', line: 'You were married until their death.', status: 'dead'),
+        // A stage from a newer server still tells its line.
+        person('Rhea', bond: 'eloped', line: 'You eloped, day 2.'),
+        person('Sam'),
+      ],
+    });
+    final colors = colorsOf(tester);
+    Finder within(String name, Finder what) => find.descendant(
+      of: find.ancestor(of: find.text(name), matching: find.byType(RecordEntry)),
+      matching: what,
+    );
+    Icon heart(String name) => tester.widget(
+      within(
+        name,
+        find.byWidgetPredicate(
+          (w) =>
+              w is Icon &&
+              (w.icon == Icons.favorite ||
+                  w.icon == Icons.favorite_border ||
+                  w.icon == Icons.heart_broken_outlined),
+        ),
+      ),
+    );
+    Color? ink(String line) => tester.widget<Text>(find.text(line)).style!.color;
+
+    // A couple: a whole heart, in the accent, above who they are.
+    expect((heart('Mara').icon, heart('Mara').color), (Icons.favorite, colors.accent));
+    expect(ink('You married, day 40.'), colors.accent);
+    expect(
+      tester.getTopLeft(find.text('You married, day 40.')).dy,
+      lessThan(tester.getTopLeft(find.text('About Mara.')).dy),
+    );
+    // Only starting: an outline.
+    expect((heart('Nell').icon, heart('Nell').color), (Icons.favorite_border, colors.accent));
+    expect(heart('Piet').icon, Icons.favorite_border);
+    expect(within('Piet', find.text('MISSING')), findsOneWidget);
+    expect(heart('Rhea').icon, Icons.favorite_border);
+    // Ended by one of them: a broken heart, quiet.
+    expect(
+      (heart('Odile').icon, heart('Odile').color),
+      (Icons.heart_broken_outlined, colors.textMuted),
+    );
+    expect(ink('You were a couple until you ended it, day 9.'), colors.textMuted);
+    // Ended by a death: quiet, and nothing broke it.
+    expect((heart('Quin').icon, heart('Quin').color), (Icons.favorite_border, colors.textMuted));
+    expect(find.text('You were married until their death.'), findsOneWidget);
+    // Someone with no romance has no heart.
+    expect(
+      within('Sam', find.byWidgetPredicate((w) => w is Icon && w.icon == Icons.favorite_border)),
+      findsNothing,
+    );
+    expect(find.byIcon(Icons.favorite), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_border), findsNWidgets(4));
+    expect(find.byIcon(Icons.heart_broken_outlined), findsOneWidget);
+  });
+
   testWidgets('a deed says who saw it, and how someone else\'s reached them', (tester) async {
     await show(tester, {
       'character': {'name': 'Mara', 'lines': <String>[]},
@@ -511,6 +590,24 @@ void main() {
       expect(person({'status_label': 'Dead'}).fate, Fate.dead);
       expect(person({'status_label': 'Presumed dead'}).fate, Fate.presumedDead);
       expect(person({'status_label': 'Bound to the scroll'}).fate, Fate.other);
+    });
+
+    test('reads where a romance stands, and keeps the line of a stage it doesn\'t know', () {
+      final courting = person({'bond': 'courting', 'bond_line': 'Us esteu coneixent.'});
+      expect((courting.bond, courting.bondLine), (BondStage.courting, 'Us esteu coneixent.'));
+      expect(courting.bond!.couple, isFalse);
+      expect(
+        [
+          for (final stage in BondStage.values)
+            if (stage.couple) stage,
+        ],
+        [BondStage.together, BondStage.promised, BondStage.married],
+      );
+      final newer = person({'bond': 'eloped', 'bond_line': 'You eloped, day 2.'});
+      expect((newer.bond, newer.bondLine), (null, 'You eloped, day 2.'));
+      // Someone with no romance has neither, as from a server older than it.
+      expect((person({}).bond, person({}).bondLine), (null, null));
+      expect(person({'bond': null, 'bond_line': null}).bondLine, isNull);
     });
 
     test('reads how people and factions take the character, and nothing it doesn\'t know', () {

@@ -3,12 +3,15 @@ G18, G22, C6, W15). The model proposes; these rules decide."""
 
 import pytest
 
+from engine import bonds
 from engine.base import HOUR
 from engine.context import Language
 from engine.invariants import check_state
 from engine.resolve.powers import growth
 from engine.state import (
     Activity,
+    BondStage,
+    BondStep,
     GiftStrength,
     HitMode,
     PhysicsMode,
@@ -34,6 +37,7 @@ from graph.drafting.assemble import (
 from graph.drafting.catalog import starter
 from graph.drafting.schema import (
     PLAYER_ID,
+    AttitudeP,
     AttributesP,
     CharacterProposal,
     ExtraordinaryP,
@@ -521,6 +525,71 @@ def test_drafted_families_link_parents_and_children_by_id_or_name():
     assert state.characters["little-bao"].parent_ids == [PLAYER_ID, "mei"]
     assert state.characters["wu"].parent_ids == ["little-bao", "zhao"]
     assert check_state(state) == []
+
+
+# W17.
+
+
+def _grown(**changes) -> CharacterProposal:
+    """Lin Feng at twenty-four: the sample has him at sixteen, too young for a romance (F3)."""
+    look = "24, lean, black hair tied back, steady eyes."
+    return _character(age=24, appearance=look, **changes)
+
+
+def test_a_romance_the_premise_sets_up_is_on_record_as_the_story_opens():
+    """A wife is a wife from the first scene: the bond, and how drawn she is to them. Someone
+    the draft bound to them and gave no heart is as drawn as they are fond."""
+    zhao, mo = _world().npcs
+    world = _world(
+        npcs=[
+            zhao,
+            mo,
+            NpcP(
+                id="mei",
+                name="Su Mei",
+                age=23,
+                bond_with_player="married",
+                attitude_to_player=AttitudeP(affinity=70, trust=80),
+            ),
+            NpcP(
+                id="lan",
+                name="Lan Yue",
+                age=21,
+                bond_with_player="promised",
+                attitude_to_player=AttitudeP(affinity=10, attraction=5),  # an arranged match
+            ),
+            NpcP(id="hua", name="Hua", age=30, attitude_to_player=AttitudeP(attraction=60)),
+        ]
+    )
+
+    state = assemble(world, _grown())
+
+    wife = bonds.live(state, PLAYER_ID, "mei")
+    assert (wife.id, wife.a_id, wife.b_id, wife.stage) == ("bond-1", PLAYER_ID, "mei", "married")
+    assert wife.steps == [BondStep(stage=BondStage.MARRIED, how="As the story opens.")]
+    assert state.characters["mei"].attitude_toward(PLAYER_ID).attraction == 70
+    assert bonds.live(state, PLAYER_ID, "lan").stage is BondStage.PROMISED
+    assert state.characters["lan"].attitude_toward(PLAYER_ID).attraction == 5
+    # Someone who only loves them from afar has a heart on record and no bond.
+    assert bonds.live(state, PLAYER_ID, "hua") is None
+    assert state.characters["hua"].attitude_toward(PLAYER_ID).attraction == 60
+    assert state.new_id("bond") == "bond-3"
+    assert check_state(state) == []
+
+
+def test_a_drafted_romance_is_between_recorded_adults_who_arent_family():
+    zhao, mo = _world().npcs
+    npcs = [
+        zhao,
+        mo,
+        NpcP(id="mei", name="Su Mei", age=23, bond_with_player="together"),
+        NpcP(id="pia", name="Pia", age=16, bond_with_player="together"),
+        NpcP(id="bao", name="Bao", age=40, bond_with_player="married", parent_ids=["pc"]),
+    ]
+    # F3: a player character of sixteen is in no romance, whatever the draft says.
+    assert assemble(_world(npcs=npcs), _character()).bonds == {}
+    state = assemble(_world(npcs=npcs), _grown())
+    assert [bond.b_id for bond in state.bonds.values()] == ["mei"]
 
 
 # W15.
