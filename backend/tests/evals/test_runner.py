@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 import pytest
 
 from engine.base import HOUR
-from engine.contracts import ActionKind
+from engine.contracts import ActionKind, IntentStep
 from evals import worlds
 from evals.__main__ import CallFormatter, main
 from evals.judge import (
@@ -23,7 +23,7 @@ from evals.judge import (
 from evals.results import Run, read_history, summary, trend, write
 from evals.runner import MAX_TURNS, Eval, LiveUnavailable, Models, RunawayStory, run_scenario
 from evals.scenario import BOTH, LIVE_ONLY, Mode, Registry, Scenario
-from evals.scenarios.common import act
+from evals.scenarios.common import act, plan, power
 from evals.scripted import MissingInterpretation
 from graph.llm import Block, Fail, FakeBackend, ModelClient, ModelConfig, Node, Reply
 from graph.llm.fake import TINY_PNG, offline_reply
@@ -320,6 +320,46 @@ def test_the_summary_says_what_each_model_step_came_to():
 
 def test_a_run_with_no_model_call_lists_no_step():
     assert "What each model step" not in summary(a_run(None))
+
+
+def test_the_summary_says_what_the_turns_counted():
+    """T5, T18: a run adds up what each turn's log line counts about the logic of play, so a
+    change that brings back refusals of a character's own moves, or throws for ordinary
+    things, shows in the report before it is deployed."""
+
+    async def script(ev: Eval) -> None:
+        # A world with powers: where nothing extraordinary exists, the world refuses the step.
+        story = ev.story(worlds.sect(), seed="s", under_way=True)
+        await story.act("I sweep the yard", act("sweep the yard", "sweep", ActionKind.TASK, HOUR))
+        lightning = IntentStep(
+            text="call down lightning",
+            verb="call",
+            kind=ActionKind.EXCHANGE,
+            proposed_duration_s=2,
+            uses=[power("lightning")],
+        )
+        refused = await story.act("I call down lightning", plan(lightning))
+        ev.check("refused as no power of theirs", refused.tally["moves_refused"] == 1)
+
+    result = play(script)
+    assert result.status == "passed", result.failures()
+    counts = {"steps": 2, "refused": 1, "moves_refused": 1} | dict.fromkeys(
+        ("searches", "searches_empty", "rumors_heard", "rumors_unvoiced"), 0
+    )
+    assert result.logic == counts
+    run = Run(mode=Mode.DETERMINISTIC, started_at=datetime(2026, 11, 12, tzinfo=UTC))
+    run.results = [result, play(script)]
+
+    assert run.logic() == {key: 2 * n for key, n in counts.items()}
+    text = summary(run)
+    assert "### What the turns counted" in text
+    assert "| 4 | 2 | 2 | 0 | 0 | 0 | 0 |" in text
+    data = run.to_json()
+    assert data["logic"] == run.logic() and data["scenarios"][0]["logic"] == counts
+    assert run.history_line()["logic"] == run.logic()
+    # A run that played no turn has nothing to count.
+    assert "What the turns counted" not in summary(a_run(None))
+    assert a_run(None).to_json()["logic"] == {}
 
 
 def test_a_live_run_says_how_hard_each_step_thinks(monkeypatch):

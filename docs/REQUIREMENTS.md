@@ -1835,7 +1835,11 @@ spot-check:
 The T15, T17 and T18 scenarios are in `backend/evals/` ([ARCHITECTURE.md](ARCHITECTURE.md#story-evals)).
 Those the engine alone decides run in CI on every PR, with scripted model answers; all of them run
 on the real models and the judge in the nightly live run, which stays off until Vertex access for
-it is set up.
+it is set up. Every run's report adds up what its turns counted about the logic of play, the same
+counts each turn logs in production (T5): steps refused and those refused as a move that isn't
+the character's own, things a throw decided the place holds and those that came up empty, and
+rumors heard and those no scene told. A change that makes play less logical shows there before it
+is deployed.
 
 ### Credits and billing
 
