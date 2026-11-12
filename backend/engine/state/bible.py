@@ -126,6 +126,13 @@ class PowerLadder(EngineModel):
         description="G18, A2: from how many rungs below harm can't get through by ordinary "
         "means, which is the one thing a gap alone rules out.",
     )
+    known_to_all: int = Field(
+        default=0,
+        ge=0,
+        description="G18, C6: how many of its rungs, counted from the lowest, everyone in the "
+        "world has heard of. The rungs above are known to few, as legend or secret, so a "
+        "character knows of one only once the story names it (`engine.path`).",
+    )
 
 
 class ForceScale(EngineModel):

@@ -85,13 +85,16 @@ void main() {
     );
     expect(find.text('Reached, day 2'), findsOneWidget);
     expect(find.text('Left behind, day 2'), findsOneWidget);
-    // Over it, what the story has named to them, highest first: what nobody has told them, a
-    // realm they only heard of, the room nobody measured for them, and a realm confirmed.
+    // Over it, what they know of the realms above, highest first: what nobody has told them,
+    // where someone they have seen stands above all the rest, a realm a scene named, the room
+    // nobody measured for them, a realm everyone has heard of, and a realm confirmed.
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     final upward = [
       l10n.pathAbove,
-      'Nascent Soul',
+      l10n.pathHigher,
+      'Soul Transformation',
       l10n.pathUnmeasured,
+      'Core Formation',
       'Foundation Establishment',
       'Qi Condensation',
     ];
@@ -99,7 +102,10 @@ void main() {
       expect(top(upward[i - 1]), lessThan(top(name)), reason: '${upward[i - 1]} over $name');
     }
     expect(find.text(l10n.pathAboveNote), findsOneWidget);
+    expect(find.text('Elder Wei stands somewhere up here.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('path.higher.1')), findsOneWidget);
     expect(find.text('Heard of, day 4'), findsOneWidget);
+    expect(find.text('Everyone has heard of it'), findsOneWidget);
     expect(find.text(l10n.pathUnmeasuredNote), findsOneWidget);
     expect(find.text('Confirmed before Master Hu, day 3'), findsOneWidget);
     expect(find.text('Master Hu took a pill and sat nine days alone to reach it.'), findsOneWidget);
@@ -286,6 +292,8 @@ void main() {
     );
     expect(find.byKey(const ValueKey('path.known.3')), findsOneWidget);
     expect(find.byKey(const ValueKey('path.heard.1')), findsOneWidget);
+    // Nobody they have seen stands above what they know of, so no such row is drawn.
+    expect(find.text(l10n.pathHigher), findsNothing);
   });
 
   testWidgets('needs no tabs for belongings alone', (tester) async {
@@ -452,6 +460,7 @@ void main() {
               {'name': 'S'},
               {'name': ' '},
             ],
+            'higher': 'The guild master stands somewhere up here.',
           },
         ],
         'money_label': '12 taels',
@@ -509,6 +518,9 @@ void main() {
       expect([for (final rung in guild.above) rung.gapBelow], [true, false]);
       expect(guild.above.first.note, 'Confirmed, day 3');
       expect(guild.above.first.said, ['Only six hold it.']);
+      // Who they have seen stand above all of those comes in the server's words, or not at all.
+      expect(guild.higher, 'The guild master stands somewhere up here.');
+      expect(sheet.paths.first.higher, isEmpty);
       expect(sheet.moneyLabel, '12 taels');
       // A thing with no name is dropped, and a kind the app doesn't know is just a thing.
       expect([for (final item in sheet.items) item.kind], [ItemKind.weapon, ItemKind.other]);

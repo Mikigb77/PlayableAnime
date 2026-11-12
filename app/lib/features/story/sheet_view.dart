@@ -115,9 +115,11 @@ class _Bar extends StatelessWidget {
 }
 
 /// One of the world's ladders as far as they know it (G18, C6), highest first. On top, what
-/// nobody has told them. Then the rungs over their own that the story named: dashed while only
-/// heard of, solid once confirmed, with room left open where rungs nobody named lie between.
-/// Then their own rung, lit, with its stage, and under it the rungs they climbed.
+/// nobody has told them, and under it whoever they have seen stand above every rung they know
+/// of, so the ladder widens when the story reaches past it. Then the rungs over their own that
+/// they have heard of: dashed while only heard of, solid once confirmed, with room left open
+/// where rungs nobody named lie between. Then their own rung, lit, with its stage, and under it
+/// the rungs they climbed.
 class SheetPathCard extends StatelessWidget {
   const SheetPathCard({super.key, required this.path});
 
@@ -128,6 +130,8 @@ class SheetPathCard extends StatelessWidget {
     final l10n = context.l10n;
     final rows = [
       _Rung(look: _Look.fog, name: l10n.pathAbove, note: l10n.pathAboveNote),
+      if (path.higher.isNotEmpty)
+        _Rung(look: _Look.higher, name: l10n.pathHigher, note: path.higher),
       for (final rung in path.above.reversed) ...[
         _Rung(
           look: rung.known ? _Look.known : _Look.heard,
@@ -172,6 +176,9 @@ class SheetPathCard extends StatelessWidget {
 enum _Look {
   /// What lies above everything they know of.
   fog,
+
+  /// Where someone they have seen stands, above every rung they know of: a rung with no name.
+  higher,
 
   /// A rung a scene named, not confirmed yet.
   heard,
@@ -227,7 +234,9 @@ class _RungRow extends StatelessWidget {
     final here = look == _Look.here;
     final name = switch (look) {
       _Look.here => theme.textTheme.headlineSmall!.copyWith(color: colors.accent),
-      _Look.fog || _Look.gap => theme.textTheme.titleSmall!.copyWith(color: colors.textMuted),
+      _Look.fog ||
+      _Look.higher ||
+      _Look.gap => theme.textTheme.titleSmall!.copyWith(color: colors.textMuted),
       _Look.heard => context.lucidText.narration.copyWith(
         fontSize: 16,
         height: 1.35,
@@ -346,12 +355,14 @@ class _RungNode extends StatelessWidget {
       _Look.known => ring(line: colors.accent),
       _Look.heard => ring(line: colors.textMuted, dashed: true),
       _Look.fog => ring(line: scheme.outlineVariant, dashed: true, child: unknown),
+      _Look.higher => ring(line: colors.textMuted, child: unknown),
       _Look.gap => SizedBox(width: 16, height: 16, child: Center(child: unknown)),
     };
   }
 }
 
-/// A circle on the track: whole for a rung the story confirmed, dashed for one only heard of.
+/// A circle on the track: whole for a rung the story confirmed or one someone stands on,
+/// dashed for one only heard of.
 class _Ring extends CustomPainter {
   const _Ring(this.color, {this.dashed = false});
 

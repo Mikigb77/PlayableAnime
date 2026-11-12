@@ -538,6 +538,7 @@
   "sheetPath": "Tu camino",
   "pathAbove": "¿Qué hay más arriba?",
   "pathAboveNote": "Nadie te lo ha contado.",
+  "pathHigher": "Más arriba aún",
   "pathUnmeasured": "Sin medir",
   "pathUnmeasuredNote": "Nadie te ha contado qué hay en medio.",
   "sheetGrew": "Cómo has crecido",

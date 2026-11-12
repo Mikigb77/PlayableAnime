@@ -7,7 +7,7 @@ from engine.state import GiftStrength
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
 from graph.drafting.catalog import starter
-from graph.drafting.schema import FactionP, NpcP, RuleP, TalentP
+from graph.drafting.schema import FactionP, NpcP, RuleP, RungP, TalentP
 from graph.drafting.view import (
     CHARACTER_LINES,
     WORLD_LINES,
@@ -17,6 +17,7 @@ from graph.drafting.view import (
     hidden_texts,
     public_rules,
     public_text,
+    shown,
     unknown_names,
     world_lines,
 )
@@ -58,6 +59,55 @@ def test_the_world_summary_names_the_ladder_and_the_known_people():
 
     assert any(line.startswith("Cultivation realms: Qi Condensation") for line in lines)
     assert any(line.startswith("Zhao Kun:") for line in lines)
+
+
+def test_the_world_summary_names_only_the_rungs_everyone_has_heard_of():
+    # G18, C6: the summary names what the character's path starts with, and the rungs above
+    # are the story's to name.
+    assert (
+        "Cultivation realms: Qi Condensation, Foundation Establishment, Core Formation, "
+        "Nascent Soul and beyond."
+    ) in world_lines(_cultivation())
+
+    few = samples.cultivation_world()
+    few.ladders[0].known_to_all = 2
+    lines = world_lines(_cultivation(few))
+    assert "Cultivation realms: Qi Condensation, Foundation Establishment and beyond." in lines
+    assert "Core Formation" not in "\n".join(lines)
+
+    # A ladder everyone knows whole has nothing beyond, and a long one names its first five.
+    whole = samples.cultivation_world()
+    whole.ladders[0].known_to_all = 5
+    assert any(
+        line.endswith("Nascent Soul, Soul Transformation.")
+        for line in world_lines(_cultivation(whole))
+    )
+    long = samples.cultivation_world()
+    long.ladders[0].rungs += [RungP(name="Void Refinement"), RungP(name="Immortal Ascension")]
+    long.ladders[0].known_to_all = 7
+    assert any(
+        line.endswith("Nascent Soul, Soul Transformation and beyond.")
+        for line in world_lines(_cultivation(long))
+    )
+
+    # A ladder drafted before the world said which rungs everyone knows names its first ones.
+    old = _cultivation()
+    old.bible.ladders[0].known_to_all = 0
+    assert any(line.endswith("Nascent Soul, Soul Transformation.") for line in world_lines(old))
+
+
+def test_everything_the_draft_shows_reads_as_one_text():
+    # What the player read before starting, the character knows (`engine.path`).
+    state = _cultivation()
+
+    text = shown(state)
+
+    for line in world_lines(state) + character_lines(state):
+        assert line in text
+    assert all(rule.text in text for rule in public_rules(state))
+    assert state.bible.title in text and state.bible.genre in text
+    for hidden in hidden_texts(state):
+        assert hidden not in text
 
 
 def test_the_character_reads_in_the_worlds_words():

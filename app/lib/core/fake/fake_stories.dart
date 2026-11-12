@@ -704,8 +704,9 @@ const _seedSheet = <String, Object?>{
           'note': 'Reached, day 2',
         },
       ],
-      // What the story has named to him of the realms above (C6): one confirmed, one only
-      // heard of, with room between that nobody has measured for him.
+      // What he knows of the realms above (C6): one confirmed, one everyone has heard of,
+      // one a scene named, with room under it that nobody has measured for him, and someone
+      // he has seen who stands above all of those.
       'above': [
         {
           'name': 'Foundation Establishment',
@@ -715,13 +716,21 @@ const _seedSheet = <String, Object?>{
           'gap_below': false,
         },
         {
-          'name': 'Nascent Soul',
+          'name': 'Core Formation',
+          'known': false,
+          'note': 'Everyone has heard of it',
+          'said': <String>[],
+          'gap_below': false,
+        },
+        {
+          'name': 'Soul Transformation',
           'known': false,
           'note': 'Heard of, day 4',
           'said': <String>[],
           'gap_below': true,
         },
       ],
+      'higher': 'Elder Wei stands somewhere up here.',
     },
   ],
   'money_label': '3 spirit stones',

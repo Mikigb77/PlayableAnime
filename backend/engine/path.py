@@ -7,7 +7,9 @@ tap. For the character, a rung above their own is one of three things:
 - **Hidden**, until a scene says its name.
 - **Heard of**, from the scene that first names it (`hear`). Code reads the scene's own words for
   the names of the rungs they don't know yet, so nothing depends on a model remembering to say
-  that it told them: what the player read is what the character heard.
+  that it told them: what the player read is what the character heard. The rungs everyone in the
+  world has heard of (`PowerLadder.known_to_all`, the lowest ones) are heard of from the start,
+  and the summary the player reads before the story begins names the same ones (G1).
 - **Known**, once the story confirms it: someone who stands on that rung, as far as they let it
   show (G20), has stood before the character, in that scene or an earlier one. A rung the
   character reaches is known from then on, and so is every rung under their own.
@@ -19,6 +21,11 @@ The sheet keeps only what play added (`CharacterSheet.rungs_heard`): the rung, w
 heard of and when it was confirmed. `known` reads the rest from the state each time, so a ladder
 shows from its first rung up to the highest one the character has heard of, with the rungs
 between that nobody has named to them left out.
+
+Someone can stand above every rung the character knows of. Once they have stood before the
+character, the path says that they stand somewhere higher still and nothing else, neither the
+rung's name nor how far up it lies (`higher_still`), so a ladder widens when the story reaches
+past what the character knew.
 
 Names are matched as whole words, whatever their case or accents, and in the plural too ("two
 knights" names the rank Knight). A name of one or two letters, such as the A and S of a guild's
@@ -33,7 +40,7 @@ from functools import lru_cache
 from engine.limits import normalize
 from engine.resolve.powers.sensing import position, shown_rung
 from engine.state.bible import PowerLadder
-from engine.state.cast import Character
+from engine.state.cast import Character, Prominence
 from engine.state.records import FactKind
 from engine.state.sheet import RungHeard
 from engine.state.world import WorldState
@@ -84,21 +91,29 @@ def own_rung(character: Character, ladder_id: str) -> int:
     return theirs.rung if theirs is not None else -1
 
 
-def _stands_before(state: WorldState, player: Character, ladder_id: str, rung: int) -> str:
-    """Someone who has stood before the player character and shows that rung (G20: their own,
-    unless they hide under it): the id of one of them, someone they know by name before a
-    stranger, or nothing. Whoever they have met has, and so has everyone in the scene, which is
-    theirs."""
+def _shown_before(
+    state: WorldState, player: Character, ladder_id: str
+) -> list[tuple[int, Character]]:
+    """Everyone who has stood before the player character and stands on that ladder, each with
+    the rung they show (G20: their own, unless they hide under it), those the character knows
+    by name before strangers and the story's key people before the rest. Whoever they have met
+    has stood before them, and so has everyone in the scene, which is theirs."""
     met = []
     for other in state.characters.values():
         if other.id == player.id:
             continue
         seen = player.id in other.met_by or other.id in state.scene.present_ids
         theirs = position(other, ladder_id)
-        if seen and theirs is not None and shown_rung(theirs) == rung:
-            met.append(other)
-    met.sort(key=lambda other: (player.id not in other.known_by, other.id))
-    return met[0].id if met else ""
+        if seen and theirs is not None:
+            met.append((shown_rung(theirs), other))
+    met.sort(
+        key=lambda shown: (
+            player.id not in shown[1].known_by,
+            shown[1].prominence is not Prominence.KEY,
+            shown[1].id,
+        )
+    )
+    return met
 
 
 @dataclass(frozen=True)
@@ -115,23 +130,28 @@ class Told:
 def news(state: WorldState, text: str) -> list[Told]:
     """What a scene adds to what the player character knows of the world's ladders, changing
     nothing: each rung above their own that the scene's words name is heard of, and each rung
-    they have heard of is known once someone who shows it has stood before them."""
+    they have heard of is known once someone who shows it has stood before them. A rung
+    everyone has heard of is no news when a scene names it, and is known the same way."""
     player = state.player
     found: list[Told] = []
     for ladder in state.bible.ladders:
         own = own_rung(player, ladder.id)
         heard = {h.rung: h for h in player.sheet.rungs_heard if h.ladder_id == ladder.id}
+        met: list[tuple[int, Character]] | None = None
         for index, rung in enumerate(ladder.rungs):
             if index <= own:
                 continue
             entry = heard.get(index)
-            if entry is None:
+            if entry is None and index >= ladder.known_to_all:
                 if not (text and named(text, rung.name)):
                     continue
                 found.append(Told(ladder.id, index, known=False))
-            elif entry.known_s is not None:
+            elif entry is not None and entry.known_s is not None:
                 continue
-            before = _stands_before(state, player, ladder.id, index)
+            if met is None:
+                met = _shown_before(state, player, ladder.id)
+            # Someone they know by name before a stranger.
+            before = next((other.id for shown, other in met if shown == index), "")
             if before:
                 found.append(Told(ladder.id, index, known=True, before=before))
     return found
@@ -170,12 +190,14 @@ class Standing:
     known_s: int | None = None
     known_from: str | None = None
     gap_below: bool = False
+    common: bool = False
 
 
 def known(state: WorldState, character: Character, ladder: PowerLadder) -> list[Standing]:
-    """C6. The rungs above the character's own that they know of, lowest first: the ones the
-    story named to them, and the ones a thing they know names. `gap_below` marks a rung with
-    rungs under it that nobody has named to them, so a screen can leave that room open."""
+    """C6. The rungs above the character's own that they know of, lowest first: the ones
+    everyone in the world has heard of (`common`), the ones the story named to them, and the
+    ones a thing they know names. `gap_below` marks a rung with rungs under it that nobody has
+    named to them, so a screen can leave that room open."""
     own = own_rung(character, ladder.id)
     heard = {h.rung: h for h in character.sheet.rungs_heard if h.ladder_id == ladder.id}
     facts = [
@@ -191,7 +213,8 @@ def known(state: WorldState, character: Character, ladder: PowerLadder) -> list[
         entry = heard.get(index)
         naming = [fact for fact in facts if named(fact.text, rung.name)]
         sure = any(fact.is_true and fact.kind is not FactKind.BELIEF for fact in naming)
-        if entry is None and not naming:
+        common = index < ladder.known_to_all
+        if entry is None and not naming and not common:
             continue
         found.append(
             Standing(
@@ -201,10 +224,23 @@ def known(state: WorldState, character: Character, ladder: PowerLadder) -> list[
                 known_s=entry.known_s if entry is not None else None,
                 known_from=entry.known_from if entry is not None else None,
                 gap_below=index != last + 1,
+                common=common,
             )
         )
         last = index
     return found
+
+
+def higher_still(state: WorldState, player: Character, ladder: PowerLadder, top: int) -> list[str]:
+    """C6, G20. Who has stood before the player character and shows a rung above `top`, the
+    highest rung they know of on that ladder (`known`, or their own): the ids of the living
+    ones, those they know by name first. The character knows that these stand higher still,
+    and neither the rung's name nor how far up it lies."""
+    return [
+        other.id
+        for shown, other in _shown_before(state, player, ladder.id)
+        if shown > top and other.alive
+    ]
 
 
 def about(state: WorldState, character: Character, name: str, *, limit: int = 3) -> list[str]:

@@ -593,6 +593,28 @@ def test_starting_creates_the_story_with_its_opening_state(player_client, model,
     assert Draft.objects.get(pk=draft["id"]).story_id == story.id
 
 
+def test_a_story_starts_knowing_the_rungs_its_draft_named(player_client, model):
+    # G18, C6: what the player read before starting, the character knows from the first
+    # moment. The draft's rules name Soul Transformation, above the rungs everyone has heard
+    # of, and the player's own premise names nothing more.
+    model.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+    draft = _draft(player_client, {"premise": samples.CULTIVATION_PREMISE, "rating": "teen"})
+    before = _state(draft["id"])
+    assert before.bible.ladders[0].known_to_all == 4
+    assert before.player.sheet.rungs_heard == []
+    assert any("Soul Transformation" in rule["text"] for rule in draft["advanced"]["rules"])
+
+    story = Story.objects.get(pk=_start(player_client, draft["id"]).json()["story_id"])
+
+    state = WorldState.model_validate(story.state)
+    heard = {(h.ladder_id, h.rung): h for h in state.player.sheet.rungs_heard}
+    top = heard[("realms", 4)]
+    assert (top.heard_s, top.known_s) == (state.world_s, None)
+    # Nothing else of the story's first state moved.
+    state.player.sheet.rungs_heard = []
+    assert state == before
+
+
 def test_a_draft_in_spanish_is_written_and_started_in_spanish(player_client, model):
     # S10: the drafter writes in the app's language, a starter alone is drafted from its own
     # Spanish words, and the story starts in the draft's language.

@@ -33,7 +33,11 @@ come from a kind the world lists.
 rule could change through a discovery made in the story. Whether something extraordinary exists \
 is usually fixed; how far it can go is usually open. Link each rule to the kinds it is about.
 - Give a power ladder only where the premise has one (cultivation realms, aura ranks, adventurer \
-ranks, levels), lowest rung first. The gaps between rungs are large and felt.
+ranks, levels), lowest rung first. The gaps between rungs are large and felt. Write the ladder \
+whole, up to the rung its strongest beings stand on, the legends, ancients and gods the world \
+has included, however far above the character they are. known_to_all says how many of its \
+rungs, counted from the lowest, everyone in the world has heard of: the player is told those \
+at the start, and learns of each one above only when the story names it.
 - Two to ten places, each with the place it lies within (parent_id) and its setting: outdoors, \
 indoors, underground or underwater (R8). Draw the map between them (W7, W10): link the \
 places people travel between through routes, a farm to its village, a town to the next town, a \
@@ -90,11 +94,13 @@ breath to recharge unless the premise says otherwise.
 remember of that body's past, and the character doesn't, goes in hidden_past.
 
 WHAT THE PLAYER SEES
-The player reads the names, descriptions, rules, era, ladder, clocks, threads, mystery questions \
-and the character, but never secrets, agendas, factions' goals and methods, mystery answers and \
-clues, or the hidden past. Keep every description to how things look from outside, and never put \
-a secret, a plan or an answer into a name, a description, a rule, a fact or the summary. Mark \
-whether the character knows each place, faction, clock, thread and person.
+The player reads the names, descriptions, rules, era, the ladder's rungs everyone has heard of, \
+clocks, threads, mystery questions and the character, but never secrets, agendas, factions' \
+goals and methods, mystery answers and clues, the hidden past, or a ladder's higher rungs. Keep \
+every description to how things look from outside, and never put a secret, a plan or an answer \
+into a name, a description, a rule, a fact or the summary: a rule or a description names no \
+rung above the ones everyone has heard of. Mark whether the character knows each place, \
+faction, clock, thread and person.
 
 IDS
 Use short lowercase ids such as "carmine" or "outer-court", and refer to records by them. The \
