@@ -405,7 +405,7 @@ which model answered, or Vertex AI's reason it didn't, such as a model name that
 missing permission or no quota:
 
 ```text
-gemini-3.5-flash (narrator, drafter): ok in 1.4 s
+gemini-3.5-flash (narrator, second_reading, drafter): ok in 1.4 s
 gemini-3.1-flash-lite-image (picture): FAILED (invalid): GoogleModelNotFoundError: ...
 ```
 

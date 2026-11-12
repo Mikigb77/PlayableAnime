@@ -72,6 +72,7 @@ from speech.voices import DEFAULT_VOICE, reading_locale
 TEXT_NODES = (
     Node.INTERPRET,
     Node.NARRATOR,
+    Node.SECOND_READING,
     Node.CHECKER,
     Node.TICK,
     Node.SUMMARIZER,
@@ -136,6 +137,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
 
     return (
         (Node.INTERPRET, Intent),
+        (Node.SECOND_READING, Intent),  # B8: the same form, on the larger model
         (Node.NARRATOR, NarratorOutput),
         (Node.SUMMARIZER, ChapterOutput),
         (Node.DRAFTER, DraftProposal),

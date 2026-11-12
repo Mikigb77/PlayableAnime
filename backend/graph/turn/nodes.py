@@ -1,7 +1,8 @@
 """The seven nodes of the turn graph (B5), in the order they run.
 
 1. `catch_up` (code): the world catches up on what fell due (W6, W10, B12).
-2. `interpret` (model): the player's words become an `Intent`, checked in code (V3, R2, A9).
+2. `interpret` (model): the player's words become an `Intent`, checked in code (V3, R2, A9). A
+   reading that would do what can't be taken back is read once more by the larger model (B8).
 3. `resolve` (code): resolve, play out, direct and record the director's plan, then the plan is
    checked (A2, R6, W16, M1, C5). The decided steps go out at once, before the telling (A3).
 4. `build_context` (code): the narrator's brief (R3, C3).
@@ -206,11 +207,39 @@ async def read_action(
 ) -> check.CheckedIntent:
     """The player's words as the first model reads them where the story stands, checked in code
     (V3, B5). The form asks only what can apply to this turn, and the guide explains only that
-    (`graph.turn.form`). A reading the model's filter stops raises `LLMBlocked`."""
+    (`graph.turn.form`). A reading the model's filter stops raises `LLMBlocked`.
+
+    A reading that would do something that can't be taken back on the model's word alone
+    (`check.doubtful`) is read once more, by the larger model and from the same prompt, and that
+    second reading stands (B8, W1). When it can't be had, the first one does: the player's turn
+    never fails for the lack of it."""
     asked = asks(world)
     prompt = interpret_prompt(world, action, language, last_scene, asked)
-    intent = await llm.structured(Node.INTERPRET, prompt, Intent, form=intent_form(asked))
-    return check.check_intent(intent, world, action)
+    form = intent_form(asked)
+    intent = await llm.structured(Node.INTERPRET, prompt, Intent, form=form)
+    checked = check.check_intent(intent, world, action)
+    doubt = check.doubtful(checked.intent, world)
+    if doubt is None:
+        return checked
+    try:
+        # A call this rare isn't worth a prompt cache of its own on the larger model.
+        again = await llm.structured(
+            Node.SECOND_READING, replace(prompt, stable_chars=0), Intent, form=form
+        )
+    except LLMError:
+        checked.issues.append(_read_again(doubt, "unread", "the first reading stands"))
+        return checked
+    second = check.check_intent(again, world, action)
+    if check.doubtful(second.intent, world) == doubt:
+        second.issues.insert(0, _read_again(doubt, "confirmed", "both readings say so"))
+    else:
+        second.issues.insert(0, _read_again(doubt, "overturned", "the second reading stands"))
+    return second
+
+
+def _read_again(doubt: str, verdict: str, detail: str) -> Issue:
+    # The doubt and what became of it hold no story text, so they are logged with the code (T6).
+    return Issue(check.READ_AGAIN, detail, area=f"{doubt}.{verdict}")
 
 
 @timed("interpret")

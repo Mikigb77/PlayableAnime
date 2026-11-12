@@ -41,11 +41,12 @@ from engine.state.records import (
     ThreadStatus,
     Transfer,
 )
-from engine.state.scene import Encounter, EncounterKind
+from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import LadderPosition
 from engine.state.world import EventSize
 from graph.turn.check import (
     ACTION_UNTOLD,
+    BEYOND_TERMS,
     CLOCK_SCENE_END,
     MAX_STEPS,
     check_intent,
@@ -53,6 +54,7 @@ from graph.turn.check import (
     check_resolution,
     check_told,
     check_update,
+    doubtful,
 )
 from graph.turn.outputs import NarratorOutput
 
@@ -235,6 +237,102 @@ def test_a_time_of_day_that_cant_be_read_leaves_the_proposed_seconds():
     checked = check_intent(Intent(steps=steps), cultivation_world(), "x")
     assert [s.until for s in checked.intent.steps] == ["19:00", None, None]
     assert [i.code for i in checked.issues] == ["bad_until"]
+
+
+def test_a_stretch_the_player_timed_for_longer_than_its_kind_lasts_is_a_time_skip():
+    # W10: read on the real model (2026-11-12), "I train with the sword here for a year" came
+    # back as work, which stops at eighteen hours. The player said how long, so the time stands.
+    year = 365 * 24 * 3600
+
+    def stretch(kind: ActionKind, seconds: int, *, timed: bool = True) -> IntentStep:
+        return IntentStep(
+            text="train", verb="train", kind=kind, proposed_duration_s=seconds, timed=timed
+        )
+
+    steps = [
+        stretch(ActionKind.WORK, year),
+        stretch(ActionKind.REST, 7 * 24 * 3600),
+        stretch(ActionKind.WORK, 2 * 3600),  # within what work lasts
+        stretch(ActionKind.WORK, year, timed=False),  # the model's own guess is held to the kind
+        stretch(ActionKind.EXCHANGE, 3600),  # a fight is never skipped
+    ]
+    checked = check_intent(Intent(steps=steps), cultivation_world(), "x")
+    assert [s.kind for s in checked.intent.steps] == [
+        ActionKind.TIME_SKIP,
+        ActionKind.TIME_SKIP,
+        ActionKind.WORK,
+        ActionKind.WORK,
+        ActionKind.EXCHANGE,
+    ]
+    assert [s.proposed_duration_s for s in checked.intent.steps[:2]] == [year, 7 * 24 * 3600]
+    assert [i.code for i in checked.issues] == ["long_stretch", "long_stretch"]
+
+
+def lesson(terms: Terms | None = Terms.NO_HARM, *, in_earnest: bool = False):
+    """Lin and Zhao in a fight: a bout under `terms`, or with none, an open fight."""
+    state = cultivation_world()
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT,
+        opponent_ids=["zhao"],
+        started_turn=2,
+        started_s=0,
+        bout=Bout(terms=terms, with_ids=["zhao"]) if terms is not None else None,
+        in_earnest=in_earnest,
+    )
+    return state
+
+
+def blow(
+    aim: Aim = Aim.WOUND,
+    *,
+    beyond: bool = True,
+    terms: Terms | None = None,
+    verb: str = "strike",
+    kind: ActionKind = ActionKind.EXCHANGE,
+) -> Intent:
+    """A blow at Zhao as the interpret step proposes it."""
+    facts = StepFacts(terms=terms, breaks_terms=beyond, opposition_ids=["zhao"])
+    struck = IntentStep(
+        text="come at Zhao",
+        verb=verb,
+        kind=kind,
+        aim=aim,
+        target_ids=["zhao"],
+        proposed_duration_s=2,
+        facts=facts,
+    )
+    return Intent(steps=[struck])
+
+
+def test_a_blow_read_as_beyond_a_bouts_terms_is_worth_a_second_reading():
+    # B8, W1: read on the real model (2026-11-12), one plain lesson blow in 36 came back as a
+    # wounding meant to go beyond the terms, which ends the bout as an attack, for good.
+    assert doubtful(blow(), lesson()) == BEYOND_TERMS
+    assert doubtful(blow(Aim.KILL), lesson(Terms.WOUNDS)) == BEYOND_TERMS
+    # A blow with no aim is judged by its verb, as the resolver judges it: a stab wounds.
+    assert doubtful(blow(Aim.NONE, verb="stab"), lesson()) == BEYOND_TERMS
+    # A first blow that agrees the terms and goes beyond them at once.
+    assert doubtful(blow(terms=Terms.NO_HARM), cultivation_world()) == BEYOND_TERMS
+    # The bout's terms only get milder: a duel to first blood the reading now calls a lesson.
+    assert doubtful(blow(terms=Terms.NO_HARM), lesson(Terms.WOUNDS)) == BEYOND_TERMS
+    # Any step of the plan is enough.
+    plan = Intent(steps=[step("bow to Zhao"), *blow().steps])
+    assert doubtful(plan, lesson()) == BEYOND_TERMS
+
+
+def test_a_reading_that_breaks_nothing_is_not_read_again():
+    # What the resolver would not take as a break needs no second reading (`engine.resolve.bouts`).
+    assert doubtful(Intent(steps=[step()]), cultivation_world()) is None
+    assert doubtful(blow(beyond=False), lesson()) is None  # held to the terms, breaks nothing
+    assert doubtful(blow(Aim.SUBDUE), lesson()) is None  # the terms allow it, whatever was said
+    assert doubtful(blow(Aim.WOUND), lesson(Terms.WOUNDS)) is None
+    assert doubtful(blow(), cultivation_world()) is None  # no bout, and none agreed
+    # A fight already in earnest has no terms left to break, whatever the reading proposes.
+    assert doubtful(blow(terms=Terms.NO_HARM), lesson(None, in_earnest=True)) is None
+    # A step that isn't a blow, such as an insult, is that deed whatever goes on around it.
+    insult = blow(Aim.NONE, verb="insult", kind=ActionKind.CONVERSATION)
+    assert doubtful(insult, lesson()) is None
+    assert doubtful(Intent(standing=None), lesson()) is None
 
 
 def test_an_action_that_fits_nothing_still_becomes_a_step():

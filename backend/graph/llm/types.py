@@ -33,6 +33,9 @@ class Node(StrEnum):
     """The model roles, each with its own model in config (B6)."""
 
     INTERPRET = "interpret"
+    # B8: reads the player's words once more, on the rare turn whose first reading would do
+    # something that can't be taken back, such as ending a friendly bout as an attack (W1).
+    SECOND_READING = "second_reading"
     NARRATOR = "narrator"
     CHECKER = "checker"
     TICK = "tick"

@@ -252,7 +252,14 @@ __all__ = [
 
 REASON_CHARS = 90  # of a ruled-out step's reason, in a failed check's detail
 # What code put right in a reading (`graph.turn.check`), told with the reading it changed.
-READING_FIXES = ("target_found", "target_by_name", "no_target", "show_apart", "idle_show")
+READING_FIXES = (
+    "target_found",
+    "target_by_name",
+    "no_target",
+    "show_apart",
+    "idle_show",
+    "read_again",  # B8: the larger model read the turn once more, and what came of it
+)
 
 
 def as_read(turns: list[Played]) -> str:
@@ -292,7 +299,11 @@ def as_read(turns: list[Played]) -> str:
                 how += f" ({settled.reason[:REASON_CHARS]})"  # why it was never tried
             bout = settled.bout.terms.value if settled.bout is not None else "none"
             deeds = [d.kind for d in settled.deeds]
-            fixed = [code for code in played.issues if code in READING_FIXES]
+            fixed = [
+                f"{issue.code}({issue.area})" if issue.area else issue.code
+                for issue in played.result.issues
+                if issue.code in READING_FIXES
+            ]
             lines.append(
                 f"t{played.turn}.{settled.index} {said} -> {how} bout={bout} deeds={deeds}"
                 f"{f' fixed={fixed}' if fixed else ''}"
