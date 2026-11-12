@@ -35,17 +35,22 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from engine import bonds
 from engine import talent as talent_mod
 from engine.base import HOUR, MINUTE, TIER_MAX, YEAR
 from engine.context import Language
 from engine.invariants import InvariantError, check_state, is_real_name
 from engine.kin import ancestors
+from engine.limits import is_adult
 from engine.state import (
     Activity,
     Agenda,
     Attitude,
     Attributes,
     BackstoryClaim,
+    Bond,
+    BondStage,
+    BondStep,
     Calendar,
     CalendarStyle,
     Character,
@@ -350,6 +355,7 @@ class _Assembler:
         player = self._player()
         characters = {PLAYER_ID: player, **{c.id: c for c in npcs}}
         self._link_parents(characters)
+        romances = self._bonds(characters)
         clocks = self._clocks()
         threads = self._threads()
         self._link_threads(clocks, threads, bible.mysteries)
@@ -372,7 +378,8 @@ class _Assembler:
             clocks={c.id: c for c in clocks},
             scene=scene,
             summary=_text(self.world.summary, 1200) or _text(self.options.premise, 1200),
-            id_counters={"fact": len(facts), "goal": len(goals)},
+            bonds={bond.id: bond for bond in romances},
+            id_counters={"fact": len(facts), "goal": len(goals), "bond": len(romances)},
         )
 
     def _reserve_ids(self) -> None:
@@ -777,6 +784,7 @@ class _Assembler:
                 apparent_affinity=None
                 if attitude.shown_affinity is None
                 else _clamp(attitude.shown_affinity, -100, 100, 0),
+                attraction=_clamp(attitude.attraction, 0, 100, 0),
             )
             agenda = None
             if proposed.agenda is not None and _text(proposed.agenda.goal):
@@ -825,6 +833,36 @@ class _Assembler:
                 if child_id in ancestors(characters, parent_id):
                     continue  # it would make them their own ancestor
                 child.parent_ids.append(parent_id)
+
+    def _bonds(self, characters: dict[str, Character]) -> list[Bond]:
+        """W17: the romances the premise sets up between the player character and someone,
+        as they stand when the story opens. Only between recorded adults (F3) who aren't
+        close family. Someone the draft bound to the player character and left with no heart
+        of their own is as drawn to them as they are fond of them."""
+        player = characters[PLAYER_ID]
+        romances: list[Bond] = []
+        for npc_id, proposed in self.npc_list:
+            other = characters[npc_id]
+            if proposed.bond_with_player is None:
+                continue
+            if not (is_adult(player) and is_adult(other)):
+                continue
+            if bonds.kin(characters, PLAYER_ID, npc_id):
+                continue
+            stage = BondStage(proposed.bond_with_player)
+            romances.append(
+                Bond(
+                    id=f"bond-{len(romances) + 1}",
+                    a_id=PLAYER_ID,
+                    b_id=npc_id,
+                    stage=stage,
+                    steps=[BondStep(stage=stage, how="As the story opens.")],
+                )
+            )
+            attitude = other.sheet.disposition.attitudes[PLAYER_ID]
+            if attitude.attraction == 0:
+                attitude.attraction = max(0, attitude.affinity)
+        return romances
 
     def _player(self) -> Character:
         c = self.character

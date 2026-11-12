@@ -41,7 +41,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
-from engine.resolve import resolve_intent
+from engine.resolve import resolve_intent, romance
 from engine.resolve.powers import growth
 from engine.rng import SeededRng
 from engine.state.records import PendingEvent
@@ -162,8 +162,9 @@ def play_out(
 
     The first event that needs the player stops the plan at its time. A step it cuts short gets
     only the time it ran for (lived time in proportion) and is marked `interrupted`; its effects
-    and deeds don't happen, since resolve settled them for the whole step. The steps after it go
-    to `unplayed`, so the narrator hands the scene back there. A step in a time stop takes no
+    and deeds don't happen, since resolve settled them for the whole step: only training keeps
+    the effort put in (A4), and courting what the time it ran earned (W17). The steps after it
+    go to `unplayed`, so the narrator hands the scene back there. A step in a time stop takes no
     world time (resolve gives it none), and while a stop holds the world, the world clock never
     moves (W10a).
 
@@ -252,6 +253,12 @@ def play_out(
             # A4. Training cut short keeps the effort put in, and makes the gain if that was
             # enough before the interruption.
             rejected.extend(_keep_training(current, actor_id, step, lived - frozen_part, ctx))
+        if cut and step.wooing is not None:
+            # W17. Courting cut short keeps what the time it ran earned, and tells only that.
+            reason, kept = romance.cut_short(current, actor_id, step, start_s, elapsed)
+            timed = played[-1] = timed.model_copy(update={"reason": reason})
+            applied = apply_in_place(current, kept, ctx, source=DeltaSource.ENGINE)
+            rejected.extend(applied.rejected)
         if not cut:
             if not step.effects.empty:
                 applied = apply_in_place(current, step.effects, ctx, source=DeltaSource.ENGINE)

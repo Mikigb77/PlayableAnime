@@ -47,6 +47,17 @@ class OutcomeClass(StrEnum):
     RULED_OUT = "ruled_out"
 
 
+class RomanceMove(StrEnum):
+    """W17. A move in a romance between the character and someone the step is aimed at. The
+    interpret step proposes it; code decides what it does to their bond (`engine.bonds`)."""
+
+    ADVANCE = "advance"  # flirting, courting, a kiss, a night together
+    DECLARE = "declare"  # asking them to be a couple, or saying yes to it
+    PROPOSE = "propose"  # asking them to promise marriage, or saying yes to it
+    WED = "wed"  # marrying them
+    PART = "part"  # ending it
+
+
 class MeansVerdict(StrEnum):
     """A2. When nothing can push back, whether the character's means are enough. Only a genuinely
     close call is rolled."""
@@ -587,8 +598,10 @@ def _step_required(schema: dict[str, Any]) -> None:
     `target_ids` and `aim` (V3, F4), an empty list and none for a step that is aimed at nobody:
     "I cut Han's throat" was read as a killing with no target (2026-11-11), so nobody died on
     record. Where a reading still names nobody, `graph.turn.check` finds who the words point
-    at. A turn that one of these can't apply to, such as a ruling on talent for a character
-    with none, is asked a form without it (`graph.turn.form`), and it keeps its default."""
+    at. And so is `romance` (W17), null on any step that is no move in a romance: a bond moves
+    only on a move the reading named, so one it left out would leave a couple unrecorded. A
+    turn that one of these can't apply to, such as a ruling on talent for a character with
+    none, is asked a form without it (`graph.turn.form`), and it keeps its default."""
     must = [
         "target_ids",
         "aim",
@@ -598,6 +611,7 @@ def _step_required(schema: dict[str, Any]) -> None:
         "bridge",
         "destination",
         "show_strength",
+        "romance",
     ]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
@@ -722,6 +736,13 @@ class IntentStep(EngineModel):
         description=(
             "G20: always given. null unless the step hides how strong the character is, or"
             " lets it show again."
+        ),
+    )
+    romance: RomanceMove | None = Field(
+        default=None,
+        description=(
+            "W17: always given. null unless the step is itself a move in a romance between"
+            " the character and someone it is aimed at."
         ),
     )
 

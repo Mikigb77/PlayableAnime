@@ -28,7 +28,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from engine import possessions
+from engine import bonds, possessions
 from engine.base import (
     AFFINITY_MAX,
     AFFINITY_MIN,
@@ -43,6 +43,7 @@ from engine.context import TurnContext
 from engine.contracts.delta import (
     WORLD,
     AttitudeShift,
+    BondChange,
     CharacterChange,
     Expecting,
     FactionChange,
@@ -82,6 +83,10 @@ from engine.state.cast import (
     Prominence,
 )
 from engine.state.records import (
+    Bond,
+    BondEnd,
+    BondStage,
+    BondStep,
     Cause,
     CauseMechanism,
     Fact,
@@ -215,6 +220,8 @@ def apply_in_place(
         applier.rule(rule)
     for effect in delta.time_effects:
         applier.time_effect(effect)
+    for moved in delta.bonds:
+        applier.bond(moved)
     if delta.scene_end is not None:
         end = delta.scene_end
         new = applier.state
@@ -801,6 +808,10 @@ class _Applier:
         )
         if shift.grudge:
             current.grudges.append(Grudge(reason=shift.grudge, since_turn=self.turn))
+        if shift.attraction and self.engine_only(f"character {character.id}", "attraction"):
+            # W17. Their own heart, which rests from the moment it moves.
+            current.attraction = _clamp(current.attraction + shift.attraction, 0, 100)
+            current.heart_moved_s = self.state.world_s
 
     def allowed(self, character_id: str, toward: str, axis: str, amount: int) -> int:
         """How much of a shift sticks. The engine moves attitudes freely; the narrator by at most
@@ -868,6 +879,7 @@ class _Applier:
             character.status_history.append(
                 self.history("dead", cause, known=known, from_status="dead")
             )
+            self.widowed(character)
             return
         if before is CharacterStatus.DEAD:
             if not self.engine_only(subject, "return from death"):
@@ -897,6 +909,24 @@ class _Applier:
                 target.value, cause, known=known, from_status=before.value, presumed=presumed
             )
         )
+        self.widowed(character)
+
+    def widowed(self, character: Character) -> None:
+        """W17. A death ends the romances of the dead. One that is only presumed ends none:
+        the record still holds that they may be alive."""
+        if character.alive or character.death_certainty is not DeathCertainty.CONFIRMED:
+            return
+        for bond in self.state.bonds.values():
+            if bond.stage.live and bond.holds(character.id):
+                bond.stage, bond.end = BondStage.OVER, BondEnd.DEATH
+                bond.steps.append(
+                    BondStep(
+                        stage=BondStage.OVER,
+                        turn=self.turn,
+                        world_s=self.state.world_s,
+                        how=f"{character.name} died.",
+                    )
+                )
 
     def rulings(self, character: Character, change: CharacterChange) -> None:
         sheet = character.sheet
@@ -975,6 +1005,55 @@ class _Applier:
             self.state.time_effects.append(effect.model_copy())
 
     # --- records ----------------------------------------------------------------------------
+
+    def bond(self, change: BondChange) -> None:
+        """W17. A romance comes to a stage, which only the engine decides. The first change
+        between two people opens their bond, between living adults (F3) who aren't close
+        family. After that it moves
+        forward, or to its end, and one that is over stays over (`bonds.can_move`)."""
+        subject = f"bond {change.a_id}/{change.b_id}"
+        if not self.engine_only(subject, "romance"):
+            return
+        first = self.state.characters.get(change.a_id)
+        second = self.state.characters.get(change.b_id)
+        if first is None or second is None or first.id == second.id:
+            self.reject(subject, "romance", "no such two people")
+            return
+        step = BondStep(
+            stage=change.stage,
+            turn=self.turn,
+            world_s=self.state.world_s,
+            by_id=change.by_id,
+            how=change.how,
+        )
+        current = bonds.live(self.state, first.id, second.id)
+        if current is None:
+            if change.stage is BondStage.OVER:
+                self.reject(subject, "romance", "there is nothing between them to end")
+            elif not (first.alive and second.alive):
+                self.reject(subject, "romance", "the dead start no romance")
+            elif problem := adult_problem(first) or adult_problem(second):
+                self.reject(subject, "romance", f"a romance is between adults ({problem})")
+            elif bonds.kin(self.state.characters, first.id, second.id):
+                self.reject(subject, "romance", "the two are close family")
+            else:
+                bond_id = self.state.new_id("bond")
+                self.state.bonds[bond_id] = Bond(
+                    id=bond_id, a_id=first.id, b_id=second.id, stage=change.stage, steps=[step]
+                )
+            return
+        if current.stage is change.stage:
+            return
+        if not bonds.can_move(current, change.stage):
+            self.reject(
+                subject,
+                "romance",
+                f"a romance doesn't go from {current.stage.value} to {change.stage.value}",
+            )
+            return
+        current.stage = change.stage
+        current.end = BondEnd.PARTED if change.stage is BondStage.OVER else None
+        current.steps.append(step)
 
     def fact(self, change) -> None:
         known_by = [i for i in change.known_by if i in self.state.characters]

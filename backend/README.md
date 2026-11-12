@@ -244,7 +244,7 @@ evals/            The story evals (T15, T17, T18): scripted scenarios through th
   judge.py        The model judge and its rubrics (scenes and pictures)
   pictures.py     Live mode's pictures, drawn as the picture endpoint draws them (M5, M6)
   worlds.py       The worlds the scenarios play in
-  scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t18, t18_reading
+  scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t17_romance, t18, t18_reading
   results.py      run.json, summary.md, the history file and the trend
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
   premise_covers.py  The starter premises' covers on Discover, drawn once by the house (S1)

@@ -13,6 +13,9 @@ from engine.state import (
     Agenda,
     Attitude,
     Attributes,
+    Bond,
+    BondStage,
+    BondStep,
     Calendar,
     CalendarStyle,
     Character,
@@ -588,7 +591,9 @@ def farm_world() -> WorldState:
         known_by=["tomas"],
         met_by=["tomas"],
         sheet=CharacterSheet(
-            disposition=Disposition(attitudes={"tomas": Attitude(affinity=80, trust=80)})
+            disposition=Disposition(
+                attitudes={"tomas": Attitude(affinity=80, trust=80, attraction=80)}
+            )
         ),
     )
     bram = Character(
@@ -632,6 +637,15 @@ def farm_world() -> WorldState:
         bible=bible,
         player_id="tomas",
         characters={c.id: c for c in (tomas, ilse, bram)},
+        bonds={
+            "bond-1": Bond(
+                id="bond-1",
+                a_id="tomas",
+                b_id="ilse",
+                stage=BondStage.MARRIED,
+                steps=[BondStep(stage=BondStage.MARRIED, how="As the story opens.")],
+            )
+        },
         places={
             "valley": Place(id="valley", name="the Long Valley", kind="region", known_by=["tomas"]),
             "farm": Place(

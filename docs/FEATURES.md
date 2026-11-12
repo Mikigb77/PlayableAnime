@@ -56,7 +56,7 @@ The first version's state, checked against the code in WS18.
 - [x] The first step shows what a premise can decide (who you are, what makes you special, what is coming, who is in your life, what you are after), with an example of each, and that the rest stays a surprise (G1)
 - [x] Play screen: streamed narration, suggested choices, Wait and Observe, free-text action (S2, S3)
 - [x] Memory engine: characters (alive, dead, missing, attitudes), factions, places, goals, leads,
-      rumors and deeds, with the invariants enforced in code (C1, W1 to W16)
+      rumors, deeds and romances, with the invariants enforced in code (C1, W1 to W17)
 - [x] Memory screen, read-only, showing only what the character knows (C6)
 - [x] Library of your stories, saved on the server
 - [x] Bring your own Gemini key, stored on the device (K6, S9)
@@ -82,6 +82,11 @@ The first version's state, checked against the code in WS18.
       is told as what stood in the way, never the ability fizzling (A3, A4, G14, G25)
 - [x] Injuries only from what happened: the engine makes every wound the player character carries,
       and no scene or odds lean on a wound they never had (N6, G13)
+- [x] Romance the world keeps on record: a bond between two people that moves in stages
+      (interest, courting, together, promised, married, over), and a heart of their own for the
+      other person, which moves at their own pace. An ask is answered by their heart, nobody
+      throws to kiss their own partner, and no scene can make a couple the record doesn't hold
+      (W17). *(Memory doesn't show the bond yet, and nobody reacts to another romance yet.)*
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

@@ -553,7 +553,7 @@ def check_action(
 
     A romantic or sexual step needs the actor and everyone it is with to be recorded adults
     (F3): those the reading aimed it at, and those its words name where the reading left the id
-    out (`_partners`). A partner the story doesn't know yet is the narrator's to introduce as an
+    out (`partners`). A partner the story doesn't know yet is the narrator's to introduce as an
     adult with an age (its prompt's rule); once they are known, this check holds them to it. In
     a Teen story a sexual step or a sexual assault never plays (F2). No step targets a real
     living person (G12). Naming a real organisation in an action is allowed, as a backdrop; it
@@ -591,7 +591,7 @@ def _intimacy_hits(
     whole: str = "",
 ) -> list[LimitHit]:
     hits: list[LimitHit] = []
-    for ref in dict.fromkeys([actor_id, *_partners(state, step, actor_id, whole)]):
+    for ref in dict.fromkeys([actor_id, *partners(state, step, actor_id, whole)]):
         character = state.characters.get(ref)
         if character is None:
             continue  # a place or a faction: nobody to check
@@ -605,7 +605,7 @@ def _intimacy_hits(
     return hits
 
 
-def _partners(state: WorldState, step: IntentStep, actor_id: str, whole: str = "") -> list[str]:
+def partners(state: WorldState, step: IntentStep, actor_id: str, whole: str = "") -> list[str]:
     """F3. Who a romantic or sexual step is with, by id: those the reading aimed it at or put
     in its way, and those it left in words under `targets` (`naming.everyone_called`). Only
     when that names nobody on record, whoever the step's own words name
