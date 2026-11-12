@@ -54,8 +54,11 @@ void main() {
     expect(stages, [CreateStage.drafting, CreateStage.review]);
     expect(draft.premiseId, 'outer-disciple');
     expect(draft.title, 'The Last Outer Disciple');
-    expect(draft.worldLines, isNotEmpty);
-    expect(draft.characterLines, isNotEmpty);
+    expect(draft.worldParts, isNotEmpty);
+    expect(draft.characterParts.first, const DraftLine(LineKind.who, 'Lin Feng, 16.'));
+    expect(draft.character.name, 'Lin Feng');
+    expect(draft.character.age, 16);
+    expect(draft.ladder!.rungs.first, 'Qi Condensation');
     expect(flow.hasUnsavedDraft, isTrue);
     expect(await balance(), before - 3);
     final sent = backend.requests.lastWhere((r) => r.uri.path == '/v1/drafts').json;
@@ -82,11 +85,9 @@ void main() {
       const DraftEdit(physics: Physics.strict),
       DraftEdit(rules: [for (final rule in rules) rule.copyWith(fixed: !rule.fixed)]),
       const DraftEdit(difficulty: Difficulty.brutal, eventFrequency: EventFrequency.calm),
-      DraftEdit.lines(DraftPart.world, [...draft.worldLines.skip(1)]),
-      DraftEdit.lines(DraftPart.character, [
-        ...draft.characterLines,
-        'Hates the smell of incense.',
-      ]),
+      const DraftEdit(title: 'The Ninth Peak', tone: 'Cold and patient'),
+      const DraftEdit(name: 'Shen Yu', age: 17),
+      const DraftEdit(looks: 'Tall, with a scar through one brow.', manner: 'Says little.'),
       DraftEdit(
         rules: [
           ...rules,
@@ -138,7 +139,95 @@ void main() {
     expect(await flow.revise(DraftPart.character, 'Make me older, with a scar'), isNull);
     expect(seen.first, const Redraft(character: true));
     expect(flow.redrafting, Redraft.none);
-    expect(flow.draft!.characterLines.last, 'Me older, with a scar.');
+    expect(
+      flow.draft!.linesOf(DraftPart.character, LineKind.nature).last,
+      'Me older, with a scar.',
+    );
+  });
+
+  test('the plain fields change at once, with no model call (G1, G2)', () async {
+    final draft = await drafted(premiseId: 'ashen-squire');
+    final before = await balance();
+    final seen = <Redraft>[];
+    flow.addListener(() => seen.add(flow.redrafting));
+
+    expect(await flow.edit(const DraftEdit(name: 'Mara Quill', age: 23)), isNull);
+    expect(await flow.edit(const DraftEdit(title: 'Ash and Oath')), isNull);
+    expect(await flow.edit(const DraftEdit(looks: 'Tall, with a burn across one hand.')), isNull);
+    expect(await balance(), before);
+    // Nothing is redrafted, so no part shows as being rewritten.
+    expect(seen, everyElement(Redraft.none));
+
+    final now = flow.draft!;
+    expect(now.version, draft.version + 3);
+    expect(now.title, 'Ash and Oath');
+    expect(now.character.name, 'Mara Quill');
+    expect(now.character.age, 23);
+    expect(now.character.looks, 'Tall, with a burn across one hand.');
+    expect(now.characterParts.first, const DraftLine(LineKind.who, 'Mara Quill, 23.'));
+    final sent = backend.requests.where((r) => r.method == 'PATCH').first.json;
+    expect(sent, {
+      'character': {'name': 'Mara Quill', 'age': 23},
+      'expected_version': draft.version,
+    });
+  });
+
+  test(
+    'a blank or overlong plain field is refused at its own field, and nothing changes',
+    () async {
+      final draft = await drafted();
+      final blank = await flow.edit(const DraftEdit(name: '   '));
+      expect(
+        (blank! as ApiException).fields.single,
+        allOf(containsPair('field', 'character.name'), containsPair('type', 'empty')),
+      );
+      final long = await flow.edit(DraftEdit(title: 'x' * (DraftLimits.short + 1)));
+      expect((long! as ApiException).fields.single, containsPair('field', 'title'));
+      final old = await flow.edit(const DraftEdit(age: DraftLimits.ageMax + 1));
+      expect((old! as ApiException).fields.single, containsPair('field', 'character.age'));
+      expect(flow.draft!.version, draft.version);
+      expect(flow.draft!.character.name, 'Lin Feng');
+    },
+  );
+
+  test('a change asked at one line of the summary says which, and lands there', () async {
+    final draft = await drafted();
+    final skills = draft.linesOf(DraftPart.character, LineKind.skills).single;
+    expect(await flow.revise(DraftPart.character, 'Add archery', about: LineKind.skills), isNull);
+    final sent = backend.requests.lastWhere((r) => r.uri.path.endsWith('/revise')).json;
+    expect(sent, {
+      'target': 'character',
+      'instruction': 'Add archery',
+      'about': 'skills',
+      'expected_version': draft.version,
+    });
+    expect(flow.draft!.linesOf(DraftPart.character, LineKind.skills), ['$skills Archery.']);
+    // Asked of the whole part, nothing names a line.
+    expect(await flow.revise(DraftPart.world, 'Add a hidden demonic cult'), isNull);
+    final whole = backend.requests.lastWhere((r) => r.uri.path.endsWith('/revise')).json;
+    expect(whole.containsKey('about'), isFalse);
+  });
+
+  test('how the story starts shows only when the player\'s own words name it (G1)', () async {
+    // The starter's own words name the trial and the dead master, so both show. Nothing in them
+    // names Ser Garrick: he is counted among the people kept back, never told.
+    final draft = await drafted(premiseId: 'ashen-squire');
+    List<LineKind> shown(Draft draft) => [for (final (_, line) in draft.openers) line.kind];
+    expect(shown(draft), [LineKind.deadline, LineKind.question]);
+    expect(draft.kept.people, 5);
+    expect(draft.kept.events, 2);
+    expect(draft.kept.questions, 1);
+    expect([
+      for (final part in DraftPart.values)
+        for (final line in draft.partsOf(part)) line.text,
+    ], everyElement(isNot(contains('Garrick'))));
+
+    // Named in a change, he shows from then on, and one person fewer is kept back.
+    expect(await flow.revise(DraftPart.world, 'Make Garrick my oldest friend'), isNull);
+    final now = flow.draft!;
+    expect(shown(now), [LineKind.deadline, LineKind.question, LineKind.person]);
+    expect(now.kept.people, 4);
+    expect(now.kept.events, 2);
   });
 
   test('a stale copy is refused before any charge, and the latest draft is loaded', () async {
@@ -237,7 +326,7 @@ void main() {
     expect(summary.coverUrl, isNotNull);
     final memory = MemoryView.fromJson(await api.get('/v1/stories/$storyId/memory') as JsonMap);
     expect(memory.character!.name, 'Lin Feng');
-    expect(memory.character!.lines, draft.characterLines);
+    expect(memory.character!.lines, [for (final line in draft.characterParts) line.text]);
     expect(memory.sections, isEmpty);
   });
 
@@ -289,9 +378,8 @@ void main() {
           .having((e) => (e.fields.single as Map)['field'], 'field', 'instruction')
           .having((e) => (e.fields.single as Map)['type'], 'type', 'real_person'),
     );
-    final lines = [...draft.worldLines]..[2] = 'Ruled by [fail:real_person].';
-    final edit = await flow.edit(DraftEdit.lines(DraftPart.world, lines));
-    expect((edit! as ApiException).fields.single, containsPair('field', 'world_lines.2'));
+    final edit = await flow.edit(const DraftEdit(name: '[fail:real_person]'));
+    expect((edit! as ApiException).fields.single, containsPair('field', 'character.name'));
     final rules = [...draft.advanced.rules, const DraftRule(text: '[fail:real_person] is a god.')];
     final rule = await flow.edit(DraftEdit(rules: rules));
     expect(

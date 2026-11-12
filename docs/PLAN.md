@@ -625,7 +625,10 @@ memory page in `app/lib/features/story/`.
   `out_of_credits` error while drafting or changing a draft opens WS13's `showOutOfCreditsSheet`
   through `offerOwnKey`, and once the player adds their own key the same request runs again on it
   (K6). Each paid drafting call refreshes `meProvider`'s balance, and the rating choice follows
-  `meProvider`'s limit (F8).
+  `meProvider`'s limit (F8). Since 2026-11-12 the review leads with the character and marks
+  every row with how it changes (typed at once, or told to the storyteller at that row), with
+  the rules in the world's card and how it plays on the same screen (app/DESIGN.md, "Creating a
+  story"); the app no longer rewrites a drafted line by hand.
 
 ### WS16 Safety, ratings and reports (wave 3, after WS6 and WS3's PR 2)
 

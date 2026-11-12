@@ -270,6 +270,36 @@ dark figure.
 - **Store-safe:** like the screenshots, the icon stays 4+ in the stores (REQUIREMENTS.md, Apple
   2.3.8).
 
+## Creating a story
+
+`/create` is two steps (G1, G2): the idea, then the drafted story to change or start
+(`features/create/`).
+
+- **The idea** is one box, typed or dictated. Under it a card says what a premise can decide
+  before the story starts, each with an example in plain words (who you are, what makes you
+  special, what is coming, who is in your life), and ends on the rule: what you name, you see
+  before you start, and everything you leave out stays a surprise. An empty page also offers
+  whole ideas to start from, which go once there are words a tap would replace.
+- **The drafted story leads with the character**, then the world with its rules, then "From
+  your own words" (what the premise named of how the story starts), "The story keeps the rest"
+  (a count of the people, the things in motion and the open questions it holds back, and
+  nothing more), and how it plays.
+- **Every row says how it changes** (Miki, 2026-11-10: "it's very difficult to edit stuff"),
+  with a mark at its end and a legend above the cards. A pencil is a plain value the player
+  types: the title, the tone, the name and age, the looks, how they come across, a rule. It is
+  saved at once and is free. A wand is something the storyteller wrote: a tap opens the box
+  where the player says what to change, already pointed at that row ("About: Good at"), with
+  what it costs said first. Each card ends on the same box for the part as a whole.
+- **Rules** sit in the world's card in two groups, "Never changes" with a shut lock and "True
+  for now" with an open one. A rule's sheet holds its words and one switch, "Holds for the
+  whole story": flipping it is free, and new words redraft the world.
+- **How it plays** is on the same screen as chips with the chosen one's meaning under them. A
+  choice that redrafts nothing is saved as it is picked; one that does (lowering the rating to
+  Teen, a new gift) opens a sheet that says what it means and costs first. Mature is locked
+  for an account under 17, with when it opens.
+- **While a part is redrafted** its card shows skeleton lines and what is happening, and when
+  the change ends a snackbar says how: only the latest outcome, never a queue of older ones.
+
 ## The play screen
 
 The story reads as one page of scenes, like a book that writes itself.

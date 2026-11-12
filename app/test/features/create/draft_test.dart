@@ -14,8 +14,33 @@ void main() {
     'title': 'The Door in the Sea',
     'genre': 'Mystery',
     'tone': 'Quiet and strange',
-    'world_lines': ['The sea keeps its doors shut.', 'The lighthouse has burned for a century.'],
-    'character_lines': ['Ada, 40, the keeper.'],
+    'world_parts': [
+      {'kind': 'rule', 'text': 'The dead stay dead.'},
+      {'kind': 'era', 'text': 'The lighthouse has burned for a century.'},
+      {'kind': 'deadline', 'text': 'The door opens at the spring tide, in nine days.'},
+      {'kind': 'omen', 'text': 'A kind a later server tells of.'},
+    ],
+    'character_parts': [
+      {'kind': 'who', 'text': 'Ada, 40, the keeper.'},
+      {'kind': 'skills', 'text': 'Knots, tides and lamp oil.'},
+      {'kind': 'goal', 'text': 'She wants the door open.'},
+    ],
+    'character': {
+      'name': 'Ada',
+      'age': 40,
+      'people': 'Islander',
+      'standing': 'Keeper of the light',
+      'looks': 'Grey braid, oilskin coat.',
+      'manner': 'Dry and watchful.',
+    },
+    'ladder': {
+      'name': 'Keepers',
+      'rungs': ['Hand', 'Keeper', 'Warden'],
+      'more': true,
+      'at': 1,
+      'stage': 'early',
+    },
+    'kept': {'people': 2, 'events': 1, 'questions': 3},
     'advanced': {
       'physics': 'fun_first',
       'rules': [
@@ -33,8 +58,6 @@ void main() {
   group('Draft.fromJson', () {
     test('reads every field', () {
       expect(draft.rating, Rating.mature);
-      expect(draft.worldLines, hasLength(2));
-      expect(draft.linesOf(DraftPart.character), ['Ada, 40, the keeper.']);
       expect(draft.advanced.rules.first, const DraftRule(id: 'r1', text: 'The dead stay dead.'));
       expect(draft.advanced.rules.last.fixed, isFalse);
       expect(draft.advanced.physics, Physics.funFirst);
@@ -42,7 +65,62 @@ void main() {
       expect(draft.storyId, isNull);
     });
 
-    test('unknown values fall back to the defaults', () {
+    test('reads the summary line by line, each with what it tells of', () {
+      expect(
+        draft.partsOf(DraftPart.character).first,
+        const DraftLine(LineKind.who, 'Ada, 40, the keeper.'),
+      );
+      expect(draft.linesOf(DraftPart.character, LineKind.skills), ['Knots, tides and lamp oil.']);
+      expect(draft.linesOf(DraftPart.world, LineKind.faction), isEmpty);
+      // A kind this app doesn't know is left out, not shown under a wrong label.
+      expect(draft.worldParts.map((line) => line.kind), [
+        LineKind.rule,
+        LineKind.era,
+        LineKind.deadline,
+      ]);
+    });
+
+    test('reads the plain fields, the ladder and what is kept back', () {
+      expect(draft.character.name, 'Ada');
+      expect(draft.character.age, 40);
+      expect(draft.character.people, 'Islander');
+      expect(draft.character.standing, 'Keeper of the light');
+      expect(draft.character.looks, 'Grey braid, oilskin coat.');
+      expect(draft.character.manner, 'Dry and watchful.');
+      expect(draft.ladder!.rungs, ['Hand', 'Keeper', 'Warden']);
+      expect(draft.ladder!.more, isTrue);
+      expect(draft.ladder!.at, 1);
+      expect(draft.ladder!.stage, 'early');
+      expect(draft.kept.people, 2);
+      expect(draft.kept.events, 1);
+      expect(draft.kept.questions, 3);
+      expect(draft.kept.isEmpty, isFalse);
+    });
+
+    test('what the premise named of the start comes in the order the summary tells it', () {
+      expect(draft.openers, [
+        (
+          DraftPart.world,
+          const DraftLine(LineKind.deadline, 'The door opens at the spring tide, in nine days.'),
+        ),
+        (DraftPart.character, const DraftLine(LineKind.goal, 'She wants the door open.')),
+      ]);
+    });
+
+    test('a started draft keeps everything, its language too', () {
+      final started = Draft.fromJson(const {
+        'id': 'd',
+        'language': 'ca',
+        'character': {'name': 'Ona'},
+        'kept': {'people': 1},
+      }).started('story_9');
+      expect(started.storyId, 'story_9');
+      expect(started.language, 'ca');
+      expect(started.character.name, 'Ona');
+      expect(started.kept.people, 1);
+    });
+
+    test('unknown and missing values fall back to the defaults', () {
       final odd = Draft.fromJson(const {
         'id': 'd',
         'rating': 'adult',
@@ -54,6 +132,12 @@ void main() {
       expect(odd.advanced.difficulty, Difficulty.balanced);
       expect(odd.advanced.eventFrequency, EventFrequency.normal);
       expect(odd.version, 1);
+      expect(odd.worldParts, isEmpty);
+      expect(odd.character.name, '');
+      expect(odd.character.age, isNull);
+      expect(odd.ladder, isNull);
+      expect(odd.kept.isEmpty, isTrue);
+      expect(odd.openers, isEmpty);
     });
   });
 
@@ -63,8 +147,19 @@ void main() {
         'advanced': {'physics': 'strict'},
         'expected_version': 4,
       });
-      expect(DraftEdit.lines(DraftPart.character, ['Ada.']).toJson(expectedVersion: 2), {
-        'character_lines': ['Ada.'],
+    });
+
+    test('sends the plain fields, the character\'s together', () {
+      expect(
+        const DraftEdit(title: 'Low Tide', tone: 'Salt and quiet').toJson(expectedVersion: 2),
+        {'title': 'Low Tide', 'tone': 'Salt and quiet', 'expected_version': 2},
+      );
+      expect(const DraftEdit(name: 'Ida', age: 41).toJson(expectedVersion: 2), {
+        'character': {'name': 'Ida', 'age': 41},
+        'expected_version': 2,
+      });
+      expect(const DraftEdit(looks: 'Short hair.', manner: 'Blunt.').toJson(expectedVersion: 2), {
+        'character': {'looks': 'Short hair.', 'manner': 'Blunt.'},
         'expected_version': 2,
       });
     });
@@ -160,25 +255,10 @@ void main() {
       );
     });
 
-    test('a rewritten line redrafts its own part, and spacing alone is not a change', () {
-      expect(
-        cost(DraftEdit.lines(DraftPart.world, ['The sea keeps its doors open.', 'Lit.'])),
-        const Redraft(world: true),
-      );
-      expect(
-        cost(DraftEdit.lines(DraftPart.character, ['Ada, 41, the keeper.'])),
-        const Redraft(character: true),
-      );
-      expect(
-        cost(
-          DraftEdit.lines(DraftPart.world, [
-            '  The sea keeps   its doors shut. ',
-            'The lighthouse has burned for a century.',
-            '',
-          ]),
-        ),
-        Redraft.none,
-      );
+    test('the plain fields are free: the server writes them in with no model call', () {
+      expect(cost(const DraftEdit(title: 'Low Tide', tone: 'Salt and quiet')), Redraft.none);
+      expect(cost(const DraftEdit(name: 'Ida', age: 41)), Redraft.none);
+      expect(cost(const DraftEdit(looks: 'Short hair.', manner: 'Blunt.')), Redraft.none);
     });
 
     test('a new gift redrafts the character', () {
@@ -196,9 +276,21 @@ void main() {
     });
   });
 
-  test('lines are kept as the server keeps them', () {
+  test('a line is kept as the server keeps it', () {
     expect(normalizeLine('  a \n b\tc  '), 'a b c');
-    expect(cleanLines(['one', '   ', ' two  lines ']), ['one', 'two lines']);
+  });
+
+  test('every kind goes by the name the API gives it', () {
+    expect(LineKind.fromWire('belongings'), LineKind.belongings);
+    expect(LineKind.fromWire('omen'), isNull);
+    expect(LineKind.connections.wire, 'connections');
+    expect(
+      [
+        for (final kind in LineKind.values)
+          if (kind.isOpener) kind,
+      ],
+      [LineKind.deadline, LineKind.question, LineKind.person, LineKind.connections, LineKind.goal],
+    );
   });
 
   group('CodePointLimit', () {

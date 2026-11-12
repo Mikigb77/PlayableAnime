@@ -107,6 +107,7 @@ void main() {
       'languageSpanish',
       'languageCatalan',
       'memoryRumors',
+      'rowTalents',
       'settingsBrutal',
       'settingsColor',
       'settingsNormal',

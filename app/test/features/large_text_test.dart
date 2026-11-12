@@ -11,10 +11,6 @@ import 'harness.dart';
 /// Every new screen at twice the text size, on a phone: nothing clips or overflows (DESIGN.md,
 /// Accessibility).
 void main() {
-  late AppLocalizations l10n;
-
-  setUpAll(() async => l10n = await english());
-
   /// Scrolls the screen's main list to its end, a page at a time, so every part is laid out.
   Future<void> scrollThrough(WidgetTester tester) async {
     final list = find.byType(Scrollable).first;
@@ -56,27 +52,57 @@ void main() {
     });
   }
 
-  testWidgets('the review and its sheets at 2× text', (tester) async {
-    await AppHarness().launch(tester, location: '/create?premise=outer-disciple', textScale: 2);
-    final draft = find.text(l10n.createDraftAction);
-    await tester.scrollUntilVisible(draft, 400, scrollable: find.byType(Scrollable).first);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(draft);
-    await settle(tester, frames: 12);
-    expect(find.text(l10n.reviewTitle), findsOneWidget);
-    await scrollThrough(tester);
-    expect(tester.takeException(), isNull);
+  // The review and each kind of sheet it opens, in English and in Spanish, whose words run
+  // longer.
+  for (final language in ['en', 'es']) {
+    testWidgets('the review and its sheets at 2× text ($language)', (tester) async {
+      tester.platformDispatcher.localesTestValue = [Locale(language)];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final words = await AppLocalizations.delegate.load(Locale(language));
+      await AppHarness().launch(tester, location: '/create?premise=outer-disciple', textScale: 2);
+      final list = find.byType(Scrollable).first;
+      final draft = find.text(words.createDraftAction);
+      await tester.scrollUntilVisible(draft, 400, scrollable: list);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(draft);
+      await settle(tester, frames: 12);
+      expect(find.text(words.reviewTitle), findsOneWidget);
+      await scrollThrough(tester);
+      expect(tester.takeException(), isNull);
 
-    final advanced = find.text(l10n.reviewAdvanced);
-    await tester.tap(advanced);
-    await settle(tester, frames: 8);
-    final sheet = find.descendant(of: find.byType(BottomSheet), matching: find.byType(Scrollable));
-    for (var i = 0; i < 8; i++) {
-      await tester.drag(sheet.first, const Offset(0, -500), warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 400));
-    }
-    expect(tester.takeException(), isNull);
-  });
+      // Back to the top, then each sheet: opened, scrolled through, and closed.
+      for (var i = 0; i < 12; i++) {
+        await tester.drag(list, const Offset(0, 600), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      final rows = {
+        'the name and the age': find.text('Lin Feng'),
+        'a rule, with its switch and Remove': find.text('The dead stay dead.'),
+        'a row the storyteller changes': find.textContaining('Fair: the sword'),
+        'a choice that costs': find.widgetWithText(ChoiceChip, words.giftRare),
+      };
+      for (final MapEntry(key: what, value: row) in rows.entries) {
+        await tester.scrollUntilVisible(row, 300, scrollable: list);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.tap(row);
+        await settle(tester, frames: 8);
+        expect(find.byType(BottomSheet), findsOneWidget, reason: what);
+        final sheet = find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        );
+        for (var i = 0; i < 6; i++) {
+          await tester.drag(sheet.first, const Offset(0, -500), warnIfMissed: false);
+          await tester.pump(const Duration(milliseconds: 400));
+        }
+        expect(tester.takeException(), isNull, reason: what);
+        // At this size a sheet can fill the screen, with no scrim left to tap.
+        Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+        await settle(tester, frames: 10);
+        expect(find.byType(BottomSheet), findsNothing, reason: what);
+      }
+    });
+  }
 
   // Memory with every group opened, in English and in Spanish, whose words run longer.
   for (final language in ['en', 'es']) {
