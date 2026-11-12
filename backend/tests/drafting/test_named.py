@@ -3,10 +3,11 @@ draft, read by code. Every premise here is made up or a starter's own."""
 
 import pytest
 
+from engine.base import DAY, HOUR, WEEK, YEAR
 from engine.context import Language
 from graph.drafting import samples
 from graph.drafting.catalog import starter
-from graph.drafting.named import called, named, timed
+from graph.drafting.named import MONTH, called, named, timed, times_ahead
 from graph.words import alike, content
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
@@ -124,6 +125,9 @@ def test_names_are_read_in_spanish_and_catalan():
         ("Soc escuder i l'examen és d'aquí a tres dies.", "L'examen de cavaller", CA),
         ("Falten nou dies per a la prova.", "La prova de cavalleria", CA),
         ("Demà comença el torneig.", "El torneig de classificació", CA),
+        ("Mañana empieza el torneo.", "El torneo de clasificación", ES),
+        ("Three days before the exam, my master vanished.", "The knight exam", EN),
+        ("Quedan tres días para el examen.", "El examen de caballero", ES),
     ],
 )
 def test_a_sentence_that_sets_a_time_ahead_names_the_deadline(said, event, language):
@@ -143,6 +147,13 @@ def test_a_sentence_that_sets_a_time_ahead_names_the_deadline(said, event, langu
         # Nor does the rest of the sentence, when the time's own clause says what it is for.
         (starter("naples-vendetta").premise, "The killer strikes again", EN),
         (starter("outer-disciple").premise, "Zhao Kun's patience with the disciples", EN),
+        # A time that counts down to something is that thing's, not what comes before it.
+        ("The caravan left a day before you.", "The lost caravan runs dry", EN),
+        ("La caravana salió un día antes que vosotros.", "La caravana perdida", ES),
+        ("La caravana va sortir un dia abans que vosaltres.", "La caravana perduda", CA),
+        # "esta mañana" is this morning.
+        ("Esta mañana han encontrado a tu maestro muerto.", "El asesino del maestro", ES),
+        ("Por la mañana entrenas con el maestro.", "El maestro se marcha", ES),
         # A time ahead with no word of the event.
         ("The exam is in three days.", "The ranking tournament", EN),
         ("The exam is in three days.", "", EN),
@@ -150,3 +161,66 @@ def test_a_sentence_that_sets_a_time_ahead_names_the_deadline(said, event, langu
 )
 def test_a_time_gone_by_or_another_event_names_no_deadline(said, event, language):
     assert not timed(said, event, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "seconds", "language"),
+    [
+        ("I'm a squire about to take the knight exam in 3 days.", 3 * DAY, EN),
+        ("The tax collector comes with the first snow, in thirty days.", 30 * DAY, EN),
+        ("Only nine days left until the trial.", 9 * DAY, EN),
+        ("I have nine days left until the trial.", 9 * DAY, EN),
+        ("The fleet sails in 3 more days.", 3 * DAY, EN),
+        ("The seal on the vault breaks in a hundred days.", 100 * DAY, EN),
+        ("The ship sails within 48 hours.", 48 * HOUR, EN),
+        ("The tournament is in about two weeks.", 2 * WEEK, EN),
+        ("The tournament is in twenty-one days.", 21 * DAY, EN),
+        ("The fleet arrives in a month.", MONTH, EN),
+        ("The comet returns in a year.", YEAR, EN),
+        ("El examen de ingreso al gremio es dentro de cinco días.", 5 * DAY, ES),
+        ("Faltan nueve días para la prueba.", 9 * DAY, ES),
+        ("Estoy a dos semanas del torneo.", 2 * WEEK, ES),
+        ("El juicio es en veintiún días.", 21 * DAY, ES),
+        ("El juicio es en unos diez días.", 10 * DAY, ES),
+        ("D'aquí a dos dies arriba el recaptador del rei.", 2 * DAY, CA),
+        ("Falten dues setmanes per al torneig.", 2 * WEEK, CA),
+        ("El judici és d'aquí a vint-i-un dies.", 21 * DAY, CA),
+    ],
+)
+def test_a_time_ahead_is_read_as_its_length(said, seconds, language):
+    [time] = times_ahead(said, language)
+
+    assert time.seconds == seconds
+
+
+@pytest.mark.parametrize(
+    ("said", "language"),
+    [
+        # An amount that is no number.
+        ("The exam is in a few days.", EN),
+        ("The exam is in three long days.", EN),
+        ("The fleet arrives next month.", EN),
+        ("El torneo es en unos días.", ES),
+        # How long until tomorrow or tonight hangs on the hour the story opens at.
+        ("The tournament starts tomorrow, and I am not ready.", EN),
+        ("The duel is tonight.", EN),
+        ("El torneo empieza mañana.", ES),
+        ("Demà comença el torneig.", CA),
+        # Two times in one clause: code can't tell whose each is.
+        ("The exam in three days and the wedding in a week.", EN),
+    ],
+)
+def test_a_time_ahead_code_cant_read_has_no_length(said, language):
+    [time] = times_ahead(said, language)
+
+    assert time.seconds is None and time.about
+
+
+def test_a_time_ahead_says_what_it_is_for():
+    [time] = times_ahead("I take the knight exam in 3 days, and I have no aura.", EN)
+
+    assert time.about == ("take", "knight", "exam")
+    assert time.says("The knight exam", EN) == 2
+    assert time.says("The trial of knighthood", EN) == 1
+    assert time.says("The harvest fair", EN) == 0
+    assert list(times_ahead("My father was killed three days ago.", EN)) == []

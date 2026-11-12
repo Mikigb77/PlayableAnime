@@ -1,14 +1,18 @@
 """G1, G2: how the story starts, which a draft's summary keeps a surprise.
 
 An opener is one of the things that give a story's start away: a deadline, an open question, a
-key person, a connection of the character's, or a goal of theirs. The drafter writes them and
-the story tells them in play; the summary shows one only when the player's own words name it
-(`graph.drafting.named`).
+key person, a connection of the character's, or a goal or a want of theirs. The drafter writes
+them and the story tells them in play; the summary shows one only when the player's own words
+name it (`graph.drafting.named`).
 
 The premise is the player's own words, and the draft keeps it, so it is read each time. A change
 they ask for later is not kept: when it is made, code notes which openers its words named
 (`named_by`), and the draft keeps those as keys (`Said.told`): a clock's, a question's or a
-person's id, a connection's name, a goal's text, all of it already in the draft's own records.
+person's id, a connection's name, a goal's or a want's text, all of it already in the draft's
+own records.
+
+A deadline their words set a time for comes at that time (`clock_times`, E2): the drafter splits
+it into steps, and code makes the steps add up to what the player said.
 """
 
 from collections import Counter
@@ -17,11 +21,11 @@ from dataclasses import dataclass
 
 from engine.context import Language
 from engine.state import Character, Clock, Connection, Goal, GoalStatus, Mystery, WorldState
-from graph.drafting.named import called, named, timed
+from graph.drafting.named import called, named, timed, times_ahead
 from graph.words import WORD, core
 
 # The openers a draft keeps by their words, since they have no id of their own.
-_BY_WORDS = ("connection", "goal")
+_BY_WORDS = ("connection", "goal", "want")
 
 
 @dataclass(frozen=True)
@@ -81,6 +85,12 @@ def of_goal(state: WorldState, goal: Goal) -> Opener:
     return Opener(_worded("goal", goal.text), _own_words(state, goal.text))
 
 
+def of_want(state: WorldState, want: str) -> Opener:
+    """What the character wants is a goal by another name: "Wants to prove that the sword can
+    stand equal to aura" is the drafter's, and the player's only once their own words say it."""
+    return Opener(_worded("want", want), _own_words(state, want))
+
+
 def openers(state: WorldState) -> Iterator[Opener]:
     """Every opener of the draft, hidden or not."""
     for clock in state.clocks.values():
@@ -94,6 +104,8 @@ def openers(state: WorldState) -> Iterator[Opener]:
     for goal in state.goals.values():
         if goal.status is GoalStatus.ACTIVE:
             yield of_goal(state, goal)
+    for want in state.player.sheet.disposition.temperament.wants:
+        yield of_want(state, want)
 
 
 def named_by(state: WorldState, words: str, language: Language) -> frozenset[str]:
@@ -103,10 +115,31 @@ def named_by(state: WorldState, words: str, language: Language) -> frozenset[str
     return frozenset(o.key for o in openers(state) if names(words, o, language))
 
 
+def clock_times(state: WorldState, words: str, language: Language) -> dict[str, int]:
+    """E2, G1: how far ahead `words`, the player's own, set each deadline they give a time, in
+    seconds by clock id: "the knight exam is in 3 days" sets three days for "The knight exam",
+    whatever the drafter's steps add up to. Each time goes to the one deadline it says most of,
+    and to none where two share that or code can't read its length ("in a few days")."""
+    found: dict[str, int] = {}
+    for time in times_ahead(words, language):
+        if time.seconds is None:
+            continue
+        said = {
+            clock.id: count
+            for clock in state.clocks.values()
+            if (count := time.says(of_clock(state, clock).text, language))
+        }
+        most = max(said.values(), default=0)
+        best = [clock_id for clock_id, count in said.items() if count == most]
+        if len(best) == 1:
+            found[best[0]] = time.seconds
+    return found
+
+
 def carried(state: WorldState, told: frozenset[str], language: Language) -> frozenset[str]:
-    """`told` after a change to the draft: the keys of the openers that are still there. A goal
-    and a connection are kept by their words, so one the change only reworded keeps its place
-    under its new words."""
+    """`told` after a change to the draft: the keys of the openers that are still there. A
+    goal, a want and a connection are kept by their words, so one the change only reworded
+    keeps its place under its new words."""
     now = list(openers(state))
     kept = told & {o.key for o in now}
     for key in sorted(told - kept):

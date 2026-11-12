@@ -412,6 +412,50 @@ def test_what_the_player_asks_for_is_theirs_to_see(fake, llm):
     assert again.told == named
 
 
+def test_a_deadline_comes_when_the_premise_says_whatever_the_steps_add_up_to(fake, llm):
+    # E2, G1: the drafter wrote three steps of 16 hours, two days in all, for a tournament the
+    # premise sets in five days.
+    premise = samples.CULTIVATION_PREMISE + " The ranking tournament is in five days."
+    fake.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+
+    draft = run(chain.create(llm, premise, rating="teen"))
+
+    # The same three steps, spread over the time the player gave, on the draft's own record.
+    [clock] = draft.proposal.world.clocks
+    assert len(clock.steps) == 3 and clock.step_every_hours == 40
+    tournament = draft.state().clocks["tournament"]
+    assert tournament.interval_s * tournament.remaining == 5 * 24 * 3600
+    shown = world_lines(draft.state(), draft.language, draft.said)
+    assert "The ranking tournament: in 5 days." in shown
+    # A premise that sets it no time leaves the drafter's steps as they are.
+    fake.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+    plain = run(chain.create(llm, samples.CULTIVATION_PREMISE, rating="teen"))
+    assert plain.proposal.world.clocks[0].step_every_hours == 16
+
+
+def test_a_deadline_the_player_moves_stays_where_they_moved_it(fake, llm):
+    premise = samples.CULTIVATION_PREMISE + " The ranking tournament is in five days."
+    fake.script(Node.DRAFTER, Reply(json=samples.cultivation()))
+    draft = run(chain.create(llm, premise, rating="teen"))
+
+    # A change that gives it a new time: the drafter answers with nothing, and code sets it.
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    moved = run(chain.revise(llm, draft, "world", "Make the tournament in a week."))
+    assert "The ranking tournament: in 7 days." in world_lines(
+        moved.state(), moved.language, moved.said
+    )
+    # A later change says nothing of it, and the premise's five days don't come back.
+    fake.script(Node.DRAFTER, Reply(json=WorldChange()))
+    later = run(chain.revise(llm, moved, "world", "More rain."))
+    assert later.proposal.world.clocks == moved.proposal.world.clocks
+    # A time asked for at the character's box is the player's word all the same.
+    fake.script(Node.DRAFTER, Reply(json=samples.cultivation().character))
+    sooner = run(chain.revise(llm, later, "character", "I fight in the tournament in 3 days."))
+    assert "The ranking tournament: in 3 days." in world_lines(
+        sooner.state(), sooner.language, sooner.said
+    )
+
+
 def test_a_goal_the_player_asked_for_keeps_its_place_when_a_change_rewords_it(fake, llm):
     draft = _cultivation_draft()
     assert not any(

@@ -54,6 +54,7 @@ from graph.drafting.openers import (
     of_goal,
     of_person,
     of_question,
+    of_want,
 )
 
 
@@ -169,7 +170,8 @@ def world_parts(state: WorldState, language: Language = EN, said: Said | None = 
     """G1: genre and what never changes, then where and when, the ladder and peoples, then the
     factions, deadlines and questions the character knows, then the key people they know.
     With `said`, the player's say, a deadline, a question and a person are in it only when
-    their own words name them; without, everything the character knows is."""
+    their own words name them, and everyone they name is; without, everything the character
+    knows is, with the first two key people."""
 
     spoken = partial(_spoken, said, language)
 
@@ -212,15 +214,14 @@ def world_parts(state: WorldState, language: Language = EN, said: Said | None = 
         known = thread is not None and _known(state, thread.known_by)
         if known and spoken(of_question(state, mystery)):
             add(PartKind.QUESTION, mystery.question)
-    people = [
-        c
-        for c in state.npcs()
-        if _known(state, c.known_by)
-        and c.prominence.value == "key"
-        and c.description
-        and spoken(of_person(state, c))
-    ]
-    for npc in people[:2]:
+    met = [c for c in state.npcs() if _known(state, c.known_by)]
+    if said is None:
+        people = [c for c in met if c.prominence.value == "key" and c.description][:2]
+    else:
+        # Someone the player's own words name is theirs to see, however small the drafter made
+        # them and with or without a line on who they are.
+        people = [c for c in met if spoken(of_person(state, c))]
+    for npc in people:
         add(PartKind.PERSON, _entry(npc.name, npc.description))
     return _guarded(state, parts)
 
@@ -237,8 +238,8 @@ def character_parts(
     state: WorldState, language: Language = EN, said: Said | None = None
 ) -> list[Part]:
     """G2, G16: who the character is, in the world's own words rather than numbers. With
-    `said`, the player's say, a connection and a goal are in it only when their own words name
-    them."""
+    `said`, the player's say, a connection, a goal and what the character wants are in it only
+    when their own words name them."""
 
     spoken = partial(_spoken, said, language)
 
@@ -297,7 +298,8 @@ def character_parts(
         add(PartKind.TRAITS, " ".join(traits))
     temperament = sheet.disposition.temperament
     mood = _capital(_join(temperament.traits, language)) if temperament.traits else ""
-    wants = words["wants"] + _join(temperament.wants, language) if temperament.wants else ""
+    wanted = [want for want in temperament.wants if spoken(of_want(state, want))]
+    wants = words["wants"] + _join(wanted, language) if wanted else ""
     if mood or wants:
         add(PartKind.NATURE, " ".join(_sentence(part) for part in (mood, wants) if part))
     if sheet.powers:

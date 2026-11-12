@@ -28,6 +28,7 @@ from graph.drafting.assemble import (
     STOP_RECHARGE_S,
     DraftOptions,
     assemble,
+    drafted_clocks,
     slug,
 )
 from graph.drafting.catalog import starter
@@ -538,6 +539,39 @@ def test_at_most_eight_key_characters_and_four_factions_start_active():
     assert len(active_npcs) == ACTIVE_NPCS
     assert len(active_factions) == ACTIVE_FACTIONS
     assert check_state(state) == []
+
+
+def test_a_goal_is_an_aim_never_the_premise_handed_back():
+    # G2: a drafter asked for the player's own words can copy all of them.
+    premise = "I'm a squire about to take the knight exam in 3 days, and I never summoned aura."
+    character = samples.cultivation_character()
+    character.goals = [f"  {premise.upper()} ", "Pass the knight exam.", premise[:-1]]
+
+    state = assemble(samples.cultivation_world(), character, DraftOptions(premise=premise))
+
+    assert [goal.text for goal in state.goals.values()] == ["Pass the knight exam."]
+    # A premise that is one aim in whole is still that aim in the drafter's shorter words.
+    character.goals = ["Become the pirate king."]
+    options = DraftOptions(premise="I want to become the pirate king.")
+    state = assemble(samples.cultivation_world(), character, options)
+    assert [goal.text for goal in state.goals.values()] == ["Become the pirate king."]
+
+
+def test_the_clocks_a_proposal_gives_are_the_states_in_its_order():
+    world = samples.cultivation_world()
+    tournament = world.clocks[0]
+    world.clocks = [
+        tournament.model_copy(update={"id": "empty", "steps": [" "]}),
+        tournament.model_copy(update={"id": "The Tournament!", "name": "The tournament"}),
+        tournament,
+    ]
+
+    kept = drafted_clocks(world)
+    state = assemble(world, samples.cultivation_character(), DraftOptions(premise="A story."))
+
+    # A clock with no steps is none, and each of the others is the state's clock in its place.
+    assert [clock.id for clock in kept] == ["The Tournament!", "tournament"]
+    assert list(state.clocks) == ["the-tournament", "tournament"]
 
 
 def test_clocks_step_in_world_time_with_no_turns():
