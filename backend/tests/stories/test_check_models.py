@@ -109,9 +109,9 @@ def test_each_model_in_use_is_called_once_and_the_judge_never(backend, capsys):
     [picture] = [request for request in backend.requests if request.image is not None]
     assert picture.node is Node.PICTURE
     out = capsys.readouterr().out
-    assert f"{DEFAULT_NODES[Node.NARRATOR].model} (narrator, drafter): ok in" in out
+    assert f"{DEFAULT_NODES[Node.NARRATOR].model} (narrator, second_reading, drafter): ok in" in out
     assert f"{DEFAULT_NODES[Node.SPEECH].model} (speech): ok in" in out
-    assert f"All {len(in_use)} models answered, and Gemini took all 7 response formats." in out
+    assert f"All {len(in_use)} models answered, and Gemini took all 8 response formats." in out
 
 
 def test_the_speech_model_gets_a_recording_with_dictations_settings(backend):
@@ -227,6 +227,7 @@ def test_each_response_format_is_sent_as_its_node_asks_for_it(backend, capsys):
     ]
     assert formats_sent(backend) == [
         (Node.INTERPRET, "Intent"),
+        (Node.SECOND_READING, "Intent"),  # B8: the same form, on the larger model
         (Node.NARRATOR, "NarratorOutput"),
         (Node.SUMMARIZER, "ChapterOutput"),
         (Node.DRAFTER, "DraftProposal"),
@@ -251,7 +252,7 @@ def test_a_format_refused_even_in_the_prompt_fails_the_check(backend, capsys):
         call_command("check_models")
 
     assert str(failed.value).startswith(
-        "1 of 7 response formats were refused (drafter DraftProposal)"
+        "1 of 8 response formats were refused (drafter DraftProposal)"
     )
     out = capsys.readouterr().out
     assert "(drafter) DraftProposal format: FAILED (invalid_400): fake invalid failure" in out
@@ -330,7 +331,10 @@ def test_a_model_vertex_refuses_fails_with_vertex_ais_reason(backend, capsys):
     assert "response formats" not in str(failed.value)
     assert narrator in str(failed.value) and picture in str(failed.value)
     out = capsys.readouterr().out
-    assert f"{narrator} (narrator, drafter): FAILED (invalid): fake invalid failure" in out
+    assert (
+        f"{narrator} (narrator, second_reading, drafter): FAILED (invalid): fake invalid failure"
+        in out
+    )
     assert f"{picture} (picture): FAILED (transient_503): fake transient failure" in out
     # Every model is still checked after the first failure.
     assert len(set(models_called(backend))) == 6
@@ -409,7 +413,7 @@ def test_a_prompt_cache_is_made_on_the_narrators_model_read_once_and_deleted(mon
     assert call.prompt.stable_split() == (check_models.CACHE_START, check_models.CACHE_PROMPT)
     out = capsys.readouterr().out
     assert f"{narrator} (narrator) prompt cache: Gemini read 6,000 of 6,100 prompt tokens" in out
-    assert "All 6 models answered, and Gemini took all 7 response formats." in out
+    assert "All 6 models answered, and Gemini took all 8 response formats." in out
 
 
 def test_a_prompt_cache_that_doesnt_work_is_reported_without_failing_the_check(monkeypatch, capsys):

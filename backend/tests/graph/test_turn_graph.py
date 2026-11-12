@@ -26,6 +26,7 @@ from engine.pipeline import TimePassage
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus
 from engine.state.records import Goal, GoalStatus, StepResult
+from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import Health
 from engine.state.world import Chapter
 from engine.visibility import status_view
@@ -314,6 +315,8 @@ def test_the_interpret_step_reads_the_players_words(fake, make_client):
     )
     [narration] = fake.calls(Node.NARRATOR)
     assert "## OUTCOME" in narration.prompt.messages[-1].text
+    # B8: a plain turn is read once, by the small model.
+    assert fake.calls(Node.SECOND_READING) == []
 
 
 def test_the_interpret_step_reads_the_scene_the_player_is_answering(fake, make_client):
@@ -767,6 +770,120 @@ def test_a_killing_the_reading_aimed_at_nobody_still_has_its_victim(fake, make_c
     assert zhao.status is CharacterStatus.DEAD or zhao.sheet.condition.health is not Health.UNHURT
     (deed,) = result.state.deeds.values()
     assert "zhao" in (*deed.victim_ids, *deed.target_ids)
+
+
+def lesson():
+    """Lin in a lesson with Zhao, agreed on an earlier turn: a bout nobody is to be hurt in."""
+    state = cultivation_world()
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT,
+        opponent_ids=["zhao"],
+        started_turn=state.turn,
+        started_s=state.world_s,
+        bout=Bout(terms=Terms.NO_HARM, with_ids=["zhao"]),
+    )
+    return state
+
+
+def lesson_blow(aim: str, *, beyond: bool) -> dict:
+    """A blow of the lesson as a model reads it: inside the terms, or meant to go beyond them."""
+    return {
+        "summary": "Lin comes at Zhao with the practice sword.",
+        "steps": [
+            {
+                "text": "come at Zhao again with the practice sword",
+                "verb": "strike",
+                "kind": "exchange",
+                "aim": aim,
+                "target_ids": ["zhao"],
+                "proposed_duration_s": 3,
+                "facts": {
+                    "opposition_ids": ["zhao"],
+                    "can_respond": True,
+                    "terms": "no_harm",
+                    "breaks_terms": beyond,
+                },
+            }
+        ],
+    }
+
+
+LESSON_ACTION = "I come at Zhao again with the practice sword"
+
+
+def read_again(result) -> list[str | None]:
+    return [i.area for i in result.issues if i.code == "read_again"]
+
+
+def test_a_lessons_blow_read_as_an_attack_is_read_again_by_the_larger_model(
+    fake, make_client, telemetry, log_lines
+):
+    """B8, W1: on the real model one plain lesson blow in 36 came back as a wounding meant to go
+    beyond the terms (2026-11-12), and from then on every blow of that story was an attack on
+    the teacher. Such a reading is read once more by the larger model, whose reading stands."""
+    fake.script(Node.INTERPRET, Reply(json=lesson_blow("wound", beyond=True)))
+    fake.script(Node.SECOND_READING, Reply(json=lesson_blow("subdue", beyond=False)))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    _, result = play(make_client(), turn_input(lesson(), action=LESSON_ACTION))
+
+    [first] = fake.calls(Node.INTERPRET)
+    [second] = fake.calls(Node.SECOND_READING)
+    # The same words, guide, form and filters, on the larger model.
+    assert (first.model, second.model) == ("gemini-3.5-flash-lite", "gemini-3.5-flash")
+    assert second.prompt.system == first.prompt.system
+    assert second.prompt.messages == first.prompt.messages
+    assert second.json_schema == first.json_schema
+    assert second.safety == first.safety
+    # A call this rare keeps no prompt cache of its own.
+    assert first.prompt.stable_chars > 0
+    assert second.prompt.stable_chars == 0
+
+    # The second reading stands: the blow is one of the lesson's, and the lesson goes on.
+    blow = result.intent.steps[0]
+    assert (blow.aim.value, blow.facts.breaks_terms) == ("subdue", False)
+    encounter = result.state.scene.encounter
+    assert encounter.bout is not None and not encounter.in_earnest
+    assert result.resolution.steps[0].bout is not None
+    # So it is no attack on record: the lesson is the one deed, and nobody was wronged in it.
+    assert [(deed.kind, deed.victim_ids) for deed in result.state.deeds.values()] == [("bout", [])]
+
+    assert read_again(result) == ["beyond_terms.overturned"]
+    logged = [line.get("turn_issue") for line in log_lines() if line["severity"] != "DEBUG"]
+    assert {"code": "read_again", "area": "beyond_terms.overturned"} in logged
+    # T5, K2: the turn's calls and cost count the second reading.
+    assert [call.node for call in telemetry.calls] == ["interpret", "second_reading", "narrator"]
+
+
+def test_a_blow_both_readings_put_beyond_the_terms_ends_the_bout(fake, make_client):
+    # W1: the player did mean it. The blow is an attack and the lesson is over.
+    for node in (Node.INTERPRET, Node.SECOND_READING):
+        fake.script(node, Reply(json=lesson_blow("wound", beyond=True)))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    _, result = play(make_client(), turn_input(lesson(), action="I drive the point at his eye"))
+
+    assert read_again(result) == ["beyond_terms.confirmed"]
+    encounter = result.state.scene.encounter
+    assert encounter.bout is None and encounter.in_earnest
+    assert result.resolution.steps[0].bout is None
+    assert any(deed.broke_terms for deed in result.state.deeds.values())
+
+
+@pytest.mark.parametrize(
+    "failure", [(Fail(), Fail()), (Block(categories=("harassment",), stage="prompt"),)]
+)
+def test_a_second_reading_that_cant_be_had_leaves_the_first_to_stand(fake, make_client, failure):
+    # B8, T7: the turn never fails for the lack of it, and a block there never reaches the player.
+    fake.script(Node.INTERPRET, Reply(json=lesson_blow("wound", beyond=True)))
+    fake.script(Node.SECOND_READING, *failure)
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": {}}))
+
+    _, result = play(make_client(), turn_input(lesson(), action=LESSON_ACTION))
+
+    assert read_again(result) == ["beyond_terms.unread"]
+    assert result.intent.steps[0].facts.breaks_terms
+    assert result.resolution.steps[0].bout is None
 
 
 def saved_turns(count: int):

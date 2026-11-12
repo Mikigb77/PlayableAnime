@@ -96,6 +96,20 @@ def clean(settled) -> bool:
     )
 
 
+def timed(played: Played) -> str:
+    """How each step of a turn in stopped time was read: its kind, the world's seconds and the
+    actor's own, and what of the sheet it draws on. A stop lasts a few lived seconds, so a
+    reading that gives a step one too many lets it lapse; a live run's log is all that can be
+    read of it afterwards (T18). The story is the eval's own (T16)."""
+    read = played.result.intent.steps if played.result and played.result.intent else []
+    return "; ".join(
+        f"{s.verb}/{s.kind.value} {s.proposed_duration_s}s"
+        f"{'' if s.proposed_personal_s is None else f' lived {s.proposed_personal_s}s'}"
+        f" uses={[u.ref for u in s.uses]}"
+        for s in read
+    )
+
+
 def answers(story: Story, *, faction_prefix: str = "") -> list[dict]:
     """Every faction answer the world fired or still has coming, in this story."""
     fired = [e.payload for e in story.fired(Kind.ANSWER)]
@@ -141,7 +155,7 @@ async def time_stop(ev: Eval) -> None:
             plan(stop_time(), cut_throat("gao", "sword", proposed_personal_s=2)),
         )
         kill = played.step(-1)
-        where = f"{seed}: {kill.outcome_class} {kill.reason}"
+        where = f"{seed}: {kill.outcome_class} {kill.reason} | {timed(played)}"
         ev.check(
             "the kill happens on every seed, with no roll",
             dead(played, "gao") and clean(kill),
@@ -161,9 +175,12 @@ async def time_stop(ev: Eval) -> None:
             deed is not None and deed.in_stopped_time and not deed.witness_ids,
             f"{seed}: {deed and deed.witness_ids}",
         )
+        # The body is found a few minutes on, so the words give the walk its time. Live, no
+        # rumor had started after "I walk off through the crowd" in five of six stories
+        # (2026-11-12), most likely because a walk across a yard is read as a minute or two.
         later = await story.act(
-            "I walk off through the crowd",
-            act("walk off through the crowd", "walk", ActionKind.TASK, 10 * MINUTE),
+            "I walk off into the crowd and watch from the edge of the yard for ten minutes",
+            act("walk off into the crowd and watch", "walk", ActionKind.TASK, 10 * MINUTE),
         )
         rumors = [r for r in story.state.rumors.values() if deed and r.deed_id == deed.id]
         ev.check("the body still starts rumors once time runs again", bool(rumors), seed)

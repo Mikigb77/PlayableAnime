@@ -31,7 +31,7 @@ from engine.contracts import (
     SheetPart,
     StandingAction,
 )
-from engine.contracts.intent import Challenge
+from engine.contracts.intent import Challenge, UseSource
 from engine.samples import grounded_world
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import TalentFit
@@ -46,8 +46,8 @@ scenario = REGISTRY.scenario
 
 type Test = Callable[[Intent], bool]
 
-# How much of a reading a line read wrong shows.
-SHOWN_CHARS = 700
+# How much of a reading a line read wrong shows: enough for a plan of two or three steps.
+SHOWN_CHARS = 1500
 # What a reading's words are left out of when it is shown: only what code decides from is.
 WORDS = {"text", "summary", "up_against", "miss_costs", "why_not", "lines", "reason", "effect"}
 
@@ -108,9 +108,17 @@ def uses(*words: str, part: SheetPart | None = None) -> Callable[[IntentStep], b
     return found
 
 
-def things(step: IntentStep, word: str) -> list[Plausibility | None]:
-    """How a step judged everything its beats use whose name holds `word`."""
-    return [u.plausibility for b in step.beats for u in b.uses if word in u.thing.casefold()]
+def things(
+    step: IntentStep, word: str, source: UseSource | None = None
+) -> list[Plausibility | None]:
+    """How a step judged everything its beats use whose name holds `word`, from `source` when
+    one is given."""
+    return [
+        u.plausibility
+        for b in step.beats
+        for u in b.uses
+        if word in u.thing.casefold() and source in (None, u.source)
+    ]
 
 
 def clock(step: IntentStep, hhmm: str) -> bool:
@@ -233,8 +241,9 @@ LINES: tuple[Line, ...] = (
     line(
         worlds.throne_room,
         "I grab a stone from the floor and throw it at Elder Mo",
+        # Whatever the reading calls what they reach for: the stone, or the bare floor.
         a_stone_in_a_polished_marble_hall_is_absent=some(
-            lambda s: Plausibility.ABSENT in things(s, "stone")
+            lambda s: Plausibility.ABSENT in things(s, "", UseSource.SCENE)
         ),
     ),
     line(
@@ -266,9 +275,14 @@ LINES: tuple[Line, ...] = (
         worlds.born_to_the_blade,
         "I send aura into my feet and leap onto the roof of the well house",
         a_move_made_with_their_aura_draws_on_it=some(uses("aura")),
-        a_move_not_on_the_sheet_is_a_technique_by_its_name=some(
+        # Named as a technique, or filed under the power with a name of its own ("aura-jump"),
+        # which code takes as a move all the same (`engine.resolve.checks`).
+        a_move_not_on_the_sheet_is_named_as_a_move=some(
             lambda s: any(
-                u.part is SheetPart.TECHNIQUE and not named(u.ref, "aura", "blade") for u in s.uses
+                u.part in (SheetPart.TECHNIQUE, SheetPart.POWER)
+                and not named(u.ref, "aura", "blade")
+                and (u.ref or "").casefold() != "aura"
+                for u in s.uses
             )
         ),
     ),
@@ -343,8 +357,10 @@ LINES: tuple[Line, ...] = (
     line(
         worlds.sect,
         "I wait by the well until midday",
-        waiting_until_a_time_is_a_step_with_that_time=lambda i: (
-            i.standing is None and any(clock(s, "11:00") for s in i.steps)
+        # Midday starts at eleven on the clock the guide gives, and twelve is midday too. A
+        # standing action given beside the step changes nothing: code plays the step.
+        waiting_until_a_time_is_a_step_with_that_time=some(
+            lambda s: clock(s, "11:00") or clock(s, "12:00")
         ),
     ),
     line(

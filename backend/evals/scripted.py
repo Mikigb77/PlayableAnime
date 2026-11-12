@@ -111,7 +111,8 @@ class ScriptedModel:
         node = request.node
         prompt = request.prompt
         self.prompts[node] = "\n".join([prompt.system, *(m.text for m in prompt.messages)])
-        if node is Node.INTERPRET:
+        if node in (Node.INTERPRET, Node.SECOND_READING):
+            # B8: a turn read twice is read the same both times, as its script wrote it.
             intent = self.line.interpretation
             if intent is None:
                 raise MissingInterpretation(
