@@ -452,10 +452,16 @@ async def looks_and_stock_phrases(ev: Eval) -> None:
                 "plain scenes that don't describe the character",
                 Rubric(
                     must=("Each scene tells Lin's question and Old Hu's answer",),
+                    # What the first live run showed (2026-11-12) is none of R9's: an expression
+                    # ("your face serene") is no look, and Old Hu calling the sect's weakest
+                    # disciple a weakling is the world answering, not the telling crediting a trait.
                     must_not=(
-                        "A scene describes Lin's own eyes, hair, face, build or clothes",
-                        "A scene names one of Lin's traits or powers, such as his past life's "
-                        "memories or his weak body, though the action doesn't use it",
+                        "The telling describes how Lin himself looks: the colour or shape of his "
+                        "eyes, his hair, his build, the features of his face or his clothes. An "
+                        "expression or a gesture is not a look",
+                        "The telling itself brings up one of Lin's own traits or powers, such as "
+                        "his past life's memories, though the action doesn't use it. What Old Hu "
+                        "says of Lin in his answer is not the telling",
                     ),
                 ),
                 plain,

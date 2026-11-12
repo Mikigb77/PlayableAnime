@@ -23,10 +23,11 @@ from collections.abc import Callable, Iterable, Sequence
 from contextlib import aclosing
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from engine.context import (
     ContentPrefs,
+    Language,
     NarrationLength,
     Rating,
     StorySettings,
@@ -56,6 +57,7 @@ from evals.judge import (
     judge_lines,
     judge_pictures,
     judge_scenes,
+    judge_summary,
 )
 from evals.pictures import (
     NotDrawn,
@@ -98,6 +100,9 @@ from graph.turn.errors import LimitReached
 from graph.turn.nodes import read_action
 from media.briefs import THREAD_SUBJECTS
 from media.notes import SceneText
+
+if TYPE_CHECKING:
+    from graph.drafting.chain import Draft, Target
 
 # How much of a missed criterion a failure line repeats before the judge's reason.
 CRITERION_CHARS = 80
@@ -981,6 +986,18 @@ class Eval:
         self.judged.append(judgement)
         return judgement
 
+    async def judge_summary(
+        self, name: str, rubric: Rubric, premise: str, lines: Sequence[str]
+    ) -> Judgement | None:
+        """Scores the summary a draft shows of its world against the premise it was drafted
+        from (G1, live mode only)."""
+        if not self.live:
+            return None
+        judgement = await judge_summary(self.judge_client(), name, rubric, premise, lines)
+        judgement = replace(judgement, subject={"premise": premise, "lines": list(lines)})
+        self.judged.append(judgement)
+        return judgement
+
     async def judge_pictures(
         self,
         name: str,
@@ -1122,20 +1139,43 @@ class Eval:
 
     # Drafting a world from a premise (G1), for a case whose world isn't a sample.
 
-    async def drafted(
-        self, premise: str, *, rating: Rating = Rating.TEEN, premise_id: str | None = None
-    ) -> WorldState:
-        from graph.drafting.chain import create
+    def _drafter(self, rating: Rating) -> ModelClient:
         from graph.drafting.samples import offline_backend
 
         if self.live:
-            client = self.models.client(rating.value, self.judge_telemetry)
-        else:
-            client = ModelClient(
-                offline_backend(grounded=False), ModelConfig(), rating=rating.value
-            )
-        draft = await create(client, premise, rating=rating.value, premise_id=premise_id)
-        return draft.state()
+            return self.models.client(rating.value, self.judge_telemetry)
+        return ModelClient(offline_backend(grounded=False), ModelConfig(), rating=rating.value)
+
+    async def draft(
+        self,
+        premise: str,
+        *,
+        rating: Rating = Rating.TEEN,
+        premise_id: str | None = None,
+        language: Language = Language.EN,
+    ) -> Draft:
+        """A draft of the world a premise asks for, by the real drafter in live mode and the
+        offline one otherwise, which drafts the outer disciple whatever the premise says."""
+        from graph.drafting.chain import create
+
+        return await create(
+            self._drafter(rating),
+            premise,
+            rating=rating.value,
+            premise_id=premise_id,
+            language=language,
+        )
+
+    async def revised(self, draft: Draft, target: Target, instruction: str) -> Draft:
+        """The draft after a change the player asks for in plain words (G1, G2)."""
+        from graph.drafting.chain import revise
+
+        return await revise(self._drafter(Rating(draft.rating)), draft, target, instruction)
+
+    async def drafted(
+        self, premise: str, *, rating: Rating = Rating.TEEN, premise_id: str | None = None
+    ) -> WorldState:
+        return (await self.draft(premise, rating=rating, premise_id=premise_id)).state()
 
     def result(self, status: str, seconds: float, error: str | None = None) -> ScenarioResult:
         scenario = self.scenario

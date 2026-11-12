@@ -11,6 +11,7 @@ cleaned of real people and organisations before it is kept (G12, `real_names`).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Literal
 
@@ -18,6 +19,7 @@ from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting.assemble import DraftOptions, assemble, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
+from graph.drafting.openers import Said, carried, named_by
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -39,6 +41,7 @@ from graph.drafting.schema import (
 )
 from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
 from graph.llm import ModelClient, Node, Prompt
+from graph.words import WORD, core
 
 Target = Literal["world", "character"]
 
@@ -56,6 +59,17 @@ class Draft:
     gift: GiftStrength | None = None
     released_rules: frozenset[str] = frozenset()
     language: Language = Language.EN
+    # G1: the keys of the openers (a deadline, a question, a person, a connection, a goal) that
+    # a change the player asked for since the premise named. The words of the change are not
+    # kept (`graph.drafting.openers`).
+    told: frozenset[str] = frozenset()
+
+    @property
+    def said(self) -> Said:
+        """The player's say in how the story starts: the premise, and what their later changes
+        named. The summary shows a goal, a deadline, a question or a person only when these
+        name it."""
+        return Said(self.premise, self.told)
 
     @property
     def template(self) -> PremiseTemplate | None:
@@ -156,21 +170,27 @@ async def create(
 
 
 async def revise(llm: ModelClient, draft: Draft, target: Target, instruction: str) -> Draft:
-    """A change in plain words, such as "add hidden vampires" (G1, G2)."""
+    """A change in plain words, such as "add hidden vampires" (G1, G2). The request is the
+    player's own words, so what it names of how the story starts shows in the summary from
+    here on."""
     if target == "world":
-        return await _revise_world(llm, draft, instruction)
-    return await _revise_character(llm, draft, instruction)
+        revised = await _revise_world(llm, draft, instruction)
+    else:
+        revised = await _revise_character(llm, draft, instruction)
+    return _noting(revised, [instruction])
 
 
 @dataclass(frozen=True)
 class EditPlan:
     """Direct edits with the code-only changes made (`plan_edit`), and what is left for the
-    model: the requests that make the world or the character match the player's edits."""
+    model: the requests that make the world or the character match the player's edits.
+    `written` is what the player wrote into the summary lines themselves (`own_words`)."""
 
     draft: Draft
     world_asks: tuple[str, ...] = ()
     character_asks: tuple[str, ...] = ()
     forced_rules: tuple[RuleP, ...] | None = None
+    written: tuple[str, ...] = ()
 
     @property
     def needs_model(self) -> bool:
@@ -212,16 +232,19 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         )
         if [(r.id, r.text) for r in forced_rules] != [(r.id, r.text) for r in shown + hidden]:
             world_asks.append(rules_instruction(forced_rules))
+    written: list[str] = []
     if edits.world_lines is not None:
-        before = world_lines(state, draft.language)
+        before = world_lines(state, draft.language, draft.said)
         after = _clean_lines(edits.world_lines)
         if after != before:
             world_asks.append(lines_instruction("world", before, after))
+            written += own_words(before, after)
     if edits.character_lines is not None:
-        before = character_lines(state, draft.language)
+        before = character_lines(state, draft.language, draft.said)
         after = _clean_lines(edits.character_lines)
         if after != before:
             character_asks.append(lines_instruction("character", before, after))
+            written += own_words(before, after)
     if edits.gift is not None:
         changed = edits.gift is not gift_strength(state)
         draft = replace(draft, gift=edits.gift)
@@ -233,12 +256,17 @@ def plan_edit(draft: Draft, edits: Edits) -> EditPlan:
         tuple(world_asks),
         tuple(character_asks),
         tuple(forced_rules) if forced_rules is not None else None,
+        tuple(written),
     )
 
 
 async def finish_edit(llm: ModelClient, plan: EditPlan) -> Draft:
-    """The model's part of a direct edit. Makes no call when the plan doesn't need one."""
+    """The model's part of a direct edit. Makes no call when the plan doesn't need one. What
+    the player wrote into a line is their own words, so what it names of how the story starts
+    shows in the summary from here on (G1)."""
     draft = plan.draft
+    if not plan.needs_model:
+        return draft
     if plan.world_asks:
         draft = await _revise_world(llm, draft, "\n\n".join(plan.world_asks))
         if plan.forced_rules is not None:
@@ -255,7 +283,7 @@ async def finish_edit(llm: ModelClient, plan: EditPlan) -> Draft:
             )
     if plan.character_asks:
         draft = await _revise_character(llm, draft, "\n\n".join(plan.character_asks))
-    return draft
+    return _noting(draft, plan.written)
 
 
 async def edit(llm: ModelClient, draft: Draft, edits: Edits) -> Draft:
@@ -485,6 +513,39 @@ def _with_world(proposal: DraftProposal, **changes: object) -> DraftProposal:
     return DraftProposal(
         world=proposal.world.model_copy(update=changes), character=proposal.character
     )
+
+
+def own_words(before: list[str], after: list[str]) -> list[str]:
+    """What the player wrote themselves when they rewrote a summary: a line that is new, whole,
+    and of a line they only changed, the words it didn't have. The drafter's words in a line
+    the player touched are still the drafter's, so they name nothing (G1)."""
+    had = [{core(word) for word in WORD.findall(line)} for line in before]
+    theirs: list[str] = []
+    for line in after:
+        if line in before:
+            continue
+        words = WORD.findall(line)
+        cores = {core(word) for word in words}
+        kept = max(had, key=lambda old: len(cores & old), default=set())
+        if 2 * len(cores & kept) > len(cores):
+            words = [word for word in words if core(word) not in kept]
+        if words:
+            theirs.append(" ".join(words))
+    return theirs
+
+
+def _noting(draft: Draft, words: Iterable[str]) -> Draft:
+    """G1: the draft after a change the player asked for in `words`, their own. It keeps the
+    keys of the openers those words named and of the ones it had that are still there. The
+    words themselves are not kept."""
+    state = draft.state()
+    told = carried(state, draft.told, draft.language)
+    told |= named_by(state, "\n".join(words), draft.language)
+    if told == draft.told:
+        return draft
+    noted = replace(draft, told=told)
+    object.__setattr__(noted, "_state", state)
+    return noted
 
 
 def _clean_lines(lines: list[str]) -> list[str]:

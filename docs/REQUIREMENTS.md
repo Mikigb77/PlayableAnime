@@ -150,20 +150,34 @@ what is real in it (G6), which rules never change (G7), places and the routes be
 how long each takes (W7, W10), factions and the factions inside
 them (G10), key NPCs with their temperaments and agendas (E3), the first clocks (E2), and the answer
 to any major mystery (N7). The player sees a short summary in plain words ("Grounded: no magic and
-nothing supernatural, and that won't change. Naples, 1974. The Esposito family has three crews, and
-its council picks the next boss in ten days." Or: "Cultivation world, realms from Qi Condensation to
-Nascent Soul and beyond. The Azure Cloud Sect, its outer and inner courts, and a ranking tournament
-in two days.") and can change any line, ask for something different, or just start. A change in
+nothing supernatural, and that won't change. Naples, 1974. The Esposito family and its three
+crews." Or: "Cultivation world, realms from Qi Condensation to Nascent Soul and beyond. The Azure
+Cloud Sect, its outer and inner courts.") and can change any line, ask for something different,
+or just start. A change in
 plain words ("add vampires, orcs and demons as races") changes only what it touches, and the rest
 of the world stays exactly as it was. Whatever the character doesn't know stays hidden, such as who
-ordered the killing (C6). A player who wants to set
+ordered the killing (C6). **The summary never gives away how the story starts** (Miki,
+2026-11-10): its first goal, its first event and the first people in the character's life are
+the story's surprise, so the player meets them in play and has no say in them beforehand. A
+deadline, an open question, a goal, a person or a connection is in the summary only when the
+player's own words name it: the premise ("the trial of knighthood is in three days", so the
+summary says "The trial of knighthood: in 3 days", and a starter whose premise says the ranking
+tournament starts in two days shows that), or a change they asked for. Their words name a thing
+when they say most of what it says; they name a deadline also when they set a time ahead for
+it and say one word of it ("I take the knight exam in 3 days" names "The trial of
+knighthood"); and they name a person only by that person's name, since what a premise says of
+its own character ("the weakest outer disciple") fits half the people around them. What their
+words name, they can change like any other line. The rest is drafted all the same, and the
+story tells it when it comes. Code reads the player's words for this, never the model, and of a
+change they asked for the draft keeps only which deadline, question, person, connection or goal
+it named, never the words. A player who wants to set
 everything by hand can open the advanced fields. One of them is how strict physics is: fun first by
 default, or strict for players who want things rougher and more physically coherent (A9).
 
 **G2 Making the character (P0).** The AI drafts the opening character from the premise and the
 world, with the parts in G13, and shows it in the world's words (G16): "Luca Esposito, 24. Steady
 nerves, good with a pistol and a knife, a hot temper. No powers, since this world has none. His
-father's name, three loyal soldiers and a grudge." Or: "Lin Feng, 16. Third stage of Qi
+father's name and a grudge." Or: "Lin Feng, 16. Third stage of Qi
 Condensation, the lowest in the outer court. A past life's memories, a calm temperament, and time
 stop that lasts three heartbeats." The player can change any of it: what they're good at, their
 temperament, their backstory and what they carry. A strong start is fine when the premise calls for
@@ -1797,6 +1811,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Grounded world | A mafia story in which the player tries to throw a fireball and claims to be a secret wizard | Nothing supernatural happens, the people present react to the gesture, the scene details give the reason, and nothing fantastic (magic, levels, monsters) appears in 50 turns (G7, G8) |
 | Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
 | Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
+| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, and ones that name no deadline and nobody; then the player asks for a rival by name | The deadline a premise sets is in the summary, a premise that names none is shown no deadline, nobody and no goal it doesn't speak of, and the rival the player then asks for by name shows from then on (G1, G2) |
 | Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
 | The throw | A practiced move used with nothing resisting; a cut at a swordsman two rungs up; a cut with three advantages claimed, one the scene shows and two it doesn't; and holding ground against three thugs who mean to kill, over many seeds | The practiced move is never thrown for. Two rungs up is still a throw. Only the advantage that holds gives a green die. The defence is marked Deadly before the dice with what a miss costs, and how far it fell short is exactly what it costs: nothing, a bad wound, or death (A2, A3, N6) |
 

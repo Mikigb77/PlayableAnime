@@ -328,6 +328,31 @@ def test_a_teen_account_drafts_teen_stories_only(teen_client, model):
 # Revising in plain words (G1, G2).
 
 
+def test_the_draft_shows_of_the_story_s_start_only_what_the_player_named(player_client, model):
+    # G1 (Miki, 2026-11-10): the first event and the first people are the story's surprise.
+    model.script(Node.DRAFTER, Reply(json=samples.naples()))
+    draft = _draft(player_client, {"premise": samples.NAPLES_PREMISE, "rating": "mature"})
+    council = "The council picks the next boss: in 10 days."
+    assert council not in draft["world_lines"]
+    assert not any(line.startswith("Carmine Russo:") for line in draft["world_lines"])
+    assert "Who inside the family ordered the killing of my father?" in draft["world_lines"]
+    assert "Goal: Find out who killed my father." in draft["character_lines"]
+    # The council is drafted all the same, for the story to tell.
+    assert any(
+        clock.name.startswith("The council") for clock in _state(draft["id"]).clocks.values()
+    )
+
+    # Asking for it in plain words is the player's say: it shows from then on, and stays.
+    model.script(Node.DRAFTER, Reply(json=WorldChange()))
+    asked = "The council picks the next boss in ten days."
+    revised = _revise(player_client, draft["id"], {"target": "world", "instruction": asked})
+
+    assert council in revised.json()["world_lines"]
+    # The draft keeps which deadline they named, not what they wrote.
+    assert Draft.objects.get(pk=draft["id"]).told == ["clock:council"]
+    assert council in player_client.get(f"/v1/drafts/{draft['id']}").json()["world_lines"]
+
+
 def test_a_world_revision_redrafts_the_world(player_client, model):
     draft = _draft(player_client)
     model.script(Node.DRAFTER, Reply(json=WorldChange(title="Blood on the Bay")))
@@ -478,6 +503,23 @@ def test_rewritten_summary_lines_redraft_the_world_to_match(player_client, model
     assert "The player rewrote the world summary" in model.requests[-1].prompt.messages[0].text
 
 
+def test_a_line_the_player_writes_names_what_it_speaks_of(player_client, model):
+    # G1: a line of their own is their own words, so the deadline it names shows from then on,
+    # and the draft keeps which one it was, not the line.
+    model.script(Node.DRAFTER, Reply(json=samples.naples()))
+    draft = _draft(player_client, {"premise": samples.NAPLES_PREMISE, "rating": "mature"})
+    council = "The council picks the next boss: in 10 days."
+    assert council not in draft["world_lines"]
+    model.script(Node.DRAFTER, Reply(json=WorldChange()))
+    lines = [*draft["world_lines"], "The council picks the next boss in ten days."]
+
+    response = _patch(player_client, draft["id"], {"world_lines": lines})
+
+    assert response.status_code == 200, response.content
+    assert council in response.json()["world_lines"]
+    assert Draft.objects.get(pk=draft["id"]).told == ["clock:council"]
+
+
 def test_the_players_rules_are_kept_word_for_word(player_client, model):
     draft = _draft(player_client)
     rules = [
@@ -625,7 +667,6 @@ def test_a_draft_in_spanish_is_written_and_started_in_spanish(player_client, mod
     assert draft["language"] == "es"
     assert draft["premise"] == SPANISH["naples-vendetta"].premise
     # The words code adds to the summary come in Spanish too.
-    assert any(line.startswith("Objetivo: ") for line in draft["character_lines"])
     assert "Sin poderes, porque en este mundo no existen." in draft["character_lines"]
     [request] = model.calls(Node.DRAFTER)
     assert "Spanish from Spain" in request.prompt.system
@@ -646,7 +687,7 @@ def test_a_draft_in_catalan_is_written_and_started_in_catalan(player_client, mod
 
     assert draft["language"] == "ca"
     assert draft["premise"] == CATALAN["naples-vendetta"].premise
-    assert any(line.startswith("Objectiu: ") for line in draft["character_lines"])
+    assert "Sense poders, perquè en aquest món no n'hi ha." in draft["character_lines"]
     assert "Catalan, speaking to the player as tu" in model.calls(Node.DRAFTER)[0].prompt.system
 
     started = _start(player_client, draft["id"], {"settings": {"language": "en"}})

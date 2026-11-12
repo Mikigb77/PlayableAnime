@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import Counter
 
 from engine.base import HOUR, MINUTE
-from engine.context import Rating
+from engine.context import Language, Rating
 from engine.contracts import (
     ActionKind,
     Aim,
@@ -26,7 +26,7 @@ from engine.contracts import (
 from engine.state import CharacterStatus, Health, Mark, StepResult
 from engine.world import Kind
 from evals import worlds
-from evals.judge import Rubric
+from evals.judge import SUMMARY_INSTRUCTIONS, Rubric
 from evals.runner import Eval, Played
 from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import (
@@ -698,3 +698,148 @@ async def genre_spread(ev: Eval) -> None:
             context=f"The premise: {starter.premise}",
             rating=Rating.MATURE,
         )
+
+
+# --- How the story starts is its surprise (G1, G2) ---------------------------------------------
+
+# Made-up premises for the real drafter. Each of the first sets a deadline in its own words, one
+# in each language a story is written in; the others name no deadline and nobody.
+TIMED_PREMISES = (
+    (
+        Language.EN,
+        "I'm a squire about to take the knight exam in 3 days, and I have never once summoned "
+        "aura.",
+    ),
+    (
+        Language.ES,
+        "Soy la aprendiz más torpe de una academia de magia, y el examen de ingreso al gremio "
+        "es dentro de cinco días.",
+    ),
+    (
+        Language.CA,
+        "Soc un pescador d'un poble de la costa, i d'aquí a dos dies arriba el recaptador del "
+        "rei a cobrar un deute que no puc pagar.",
+    ),
+)
+BARE_PREMISES = (
+    (
+        Language.EN,
+        "I'm reborn as the weakest outer disciple of a sword sect, with my past life's memories.",
+    ),
+    (
+        Language.ES,
+        "Soy un detective privado en el Madrid de 1955, sin un duro y con demasiada curiosidad.",
+    ),
+)
+RIVAL = "Add a rival called Zhao Kun who has hated me since the day I arrived."
+# What a summary gives away when it shows what the premise never spoke of.
+GIVEN_AWAY = (
+    "A line of the summary is a deadline or a coming event, with the time until it, that the "
+    "premise doesn't speak of",
+    "A line of the summary introduces a person other than the player's own character by name "
+    "and says who they are, though the premise doesn't name them",
+    "A line of the summary gives the character a goal the premise doesn't speak of",
+)
+
+
+@scenario(
+    "t17.start-is-a-surprise",
+    suite="T17",
+    title="The start is a surprise",
+    requirements=("G1", "G2", "T17"),
+    passes_when=(
+        "The deadline a premise sets is in the summary, a premise that names none is shown no "
+        "deadline, nobody and no goal it doesn't speak of, and the rival the player then asks "
+        "for by name shows from then on (G1, G2)"
+    ),
+    notes=(
+        "Deterministic mode reads the offline drafter's outer disciple against a starter's "
+        "premise, which names its tournament, and against one that doesn't; live mode drafts "
+        "each made-up premise with the real drafter and lets the judge read the summary "
+        "against it."
+    ),
+)
+async def start_is_a_surprise(ev: Eval) -> None:
+    from graph.drafting import samples
+    from graph.drafting.catalog import starter
+    from graph.drafting.openers import named_by, openers
+    from graph.drafting.view import character_lines, world_lines
+
+    timed = TIMED_PREMISES if ev.live else ((Language.EN, starter("outer-disciple").premise),)
+    bare = BARE_PREMISES if ev.live else ((Language.EN, samples.CULTIVATION_PREMISE),)
+    shown = hidden = 0
+    for language, premise in timed:
+        draft = await ev.draft(premise, language=language)
+        state = draft.state()
+        world = world_lines(state, language, draft.said)
+        clocks = [clock.name.rstrip(".") for clock in state.clocks.values()]
+        ev.check(
+            "a deadline the premise sets is in the summary",
+            any(line.startswith(f"{name}:") for name in clocks for line in world),
+            f"{language.value}: {clocks}",
+        )
+        await ev.judge_summary(
+            f"a premise that sets a deadline ({language.value})",
+            Rubric(
+                must=(
+                    "A line of the summary is the deadline the premise sets, with the time "
+                    "until it",
+                ),
+                must_not=GIVEN_AWAY[1:],
+                instructions=SUMMARY_INSTRUCTIONS,
+            ),
+            premise,
+            world + character_lines(state, language, draft.said),
+        )
+    for language, premise in bare:
+        draft = await ev.draft(premise, language=language)
+        state = draft.state()
+        named = named_by(state, premise, language)
+        drafted = [opener.key for opener in openers(state)]
+        shown += len(named)
+        hidden += len(drafted) - len(named)
+        ev.check(
+            "a premise that sets no deadline is shown none",
+            not any(key.startswith("clock:") for key in named),
+            f"{language.value}: {sorted(named)}",
+        )
+        ev.check(
+            "and one that names nobody is shown nobody",
+            not any(key.startswith("person:") for key in named),
+            f"{language.value}: {sorted(named)}",
+        )
+        ev.check(
+            "the drafter still writes how the story starts",
+            any(key.startswith("clock:") for key in drafted)
+            and any(key.startswith("person:") for key in drafted),
+            f"{language.value}: {sorted(drafted)}",
+        )
+        world = world_lines(state, language, draft.said)
+        await ev.judge_summary(
+            f"a premise that names no deadline and nobody ({language.value})",
+            Rubric(must_not=GIVEN_AWAY, instructions=SUMMARY_INSTRUCTIONS),
+            premise,
+            world + character_lines(state, language, draft.said),
+        )
+        if language is not Language.EN:
+            continue
+        # A change the player asks for is their own words too: who it names shows from then on.
+        revised = await ev.revised(draft, "world", RIVAL)
+        people = revised.state().characters
+        ev.check(
+            "someone a change of theirs names is kept as theirs to see",
+            any(
+                key.startswith("person:") and "Zhao" in people[key.removeprefix("person:")].name
+                for key in revised.told
+            ),
+            f"{sorted(revised.told)}",
+        )
+        ev.check(
+            "and is in the summary from then on",
+            any(
+                line.startswith("Zhao Kun")
+                for line in world_lines(revised.state(), language, revised.said)
+            ),
+        )
+    ev.metric("openers of the bare premises shown", shown)
+    ev.metric("openers of the bare premises kept a surprise", hidden)

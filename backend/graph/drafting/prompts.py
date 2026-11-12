@@ -96,7 +96,11 @@ remember of that body's past, and the character doesn't, goes in hidden_past.
 WHAT THE PLAYER SEES
 The player reads the names, descriptions, rules, era, the ladder's rungs everyone has heard of, \
 clocks, threads, mystery questions and the character, but never secrets, agendas, factions' \
-goals and methods, mystery answers and clues, the hidden past, or a ladder's higher rungs. Keep \
+goals and methods, mystery answers and clues, the hidden past, or a ladder's higher rungs. How \
+the story starts is its surprise: before it starts they are shown a clock, a mystery question, a \
+key person, a connection or a goal only when their own words name it. So call what the premise \
+names by the premise's own words (its "knight exam in three days" is the clock "The knight \
+exam"), and write the rest for the story to tell in play. Keep \
 every description to how things look from outside, and never put a secret, a plan or an answer \
 into a name, a description, a rule, a fact or the summary: a rule or a description names no \
 rung above the ones everyone has heard of. Mark whether the character knows each place, \
@@ -260,7 +264,9 @@ def lines_instruction(what: str, before: list[str], after: list[str]) -> str:
         f"The player rewrote the {what} summary. It said:\n{said}\n"
         f"The player wants it to say:\n{wants}\n"
         f"Change the {what} so that its summary says what the player wrote, adding, changing or "
-        "removing whatever that takes. Keep everything else."
+        "removing whatever that takes. Keep everything else. The summary leaves out how the "
+        "story starts unless the player named it, so a clock, a question, a person, a connection "
+        "or a goal that neither list mentions stays as it is."
     )
 
 
