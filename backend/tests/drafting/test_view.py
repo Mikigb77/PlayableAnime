@@ -12,15 +12,21 @@ from graph.drafting.schema import FactionP, NpcP, RuleP, RungP, TalentP
 from graph.drafting.view import (
     CHARACTER_LINES,
     WORLD_LINES,
+    PartKind,
     character_lines,
+    character_parts,
     duration,
     gift_strength,
     hidden_texts,
+    identity,
+    kept,
+    ladder_view,
     public_rules,
     public_text,
     shown,
     unknown_names,
     world_lines,
+    world_parts,
 )
 
 
@@ -374,3 +380,108 @@ def test_a_character_with_no_talents_has_no_talent_line():
     assert not any(
         line.startswith(("One of a kind", "Genius:", "A knack", "Weakness")) for line in lines
     )
+
+
+# The summary part by part (G1, G2): what the app labels, groups and points a change at.
+
+
+def test_every_line_of_the_summary_is_a_part_with_its_kind():
+    state = _naples()
+    world = world_parts(state)
+    character = character_parts(state)
+
+    assert [part.text for part in world][:WORLD_LINES] == world_lines(state)
+    assert [part.text for part in character][:CHARACTER_LINES] == character_lines(state)
+    kinds = [part.kind for part in world]
+    assert kinds[:2] == [PartKind.RULE, PartKind.ERA]
+    assert {PartKind.FACTION, PartKind.DEADLINE, PartKind.QUESTION} <= set(kinds)
+    assert character[0].kind is PartKind.WHO
+    assert {PartKind.MANNER, PartKind.SKILLS, PartKind.POWER, PartKind.GOAL} <= {
+        part.kind for part in character
+    }
+    by_kind = {part.kind: part.text for part in character}
+    assert by_kind[PartKind.POWER] == "No powers, since this world has none."
+
+
+def test_the_parts_keep_how_the_story_starts_a_surprise():
+    # G1: the parts are the lines, so what the player's words don't name is in neither. The
+    # premise asks who killed the father, and names no deadline and nobody.
+    state = _naples()
+    said = Said(samples.NAPLES_PREMISE)
+    kinds = {part.kind for part in world_parts(state, Language.EN, said)}
+
+    assert PartKind.QUESTION in kinds
+    assert not {PartKind.DEADLINE, PartKind.PERSON} & kinds
+    told = Said(samples.NAPLES_PREMISE, frozenset({"clock:council"}))
+    shown_now = world_parts(state, Language.EN, told)
+    assert [part.text for part in shown_now if part.kind is PartKind.DEADLINE] == [
+        "The council picks the next boss: in 10 days."
+    ]
+
+
+def test_the_story_counts_what_it_keeps_and_tells_none_of_it():
+    state = _naples()
+    people, clocks = len(list(state.npcs())), len(state.clocks)
+    questions = len(state.bible.mysteries)
+    assert people and clocks and questions
+
+    # The premise asks who killed the father, so that question is shown, not kept.
+    by_premise = kept(state, Language.EN, Said(samples.NAPLES_PREMISE))
+    assert by_premise == {"people": people, "events": clocks, "questions": questions - 1}
+    # What a change of theirs names is shown from then on, so it is no longer kept either.
+    one_more = kept(state, Language.EN, Said(samples.NAPLES_PREMISE, frozenset({"clock:council"})))
+    assert one_more == {"people": people, "events": clocks - 1, "questions": questions - 1}
+    assert kept(state, Language.EN, Said("A story.")) == {
+        "people": people,
+        "events": clocks,
+        "questions": questions,
+    }
+    # Read with no say of the player's, the summary keeps nothing back.
+    assert kept(state) == {"people": 0, "events": 0, "questions": 0}
+
+
+def test_the_characters_plain_fields_are_given_as_values():
+    who = identity(_naples())
+
+    assert who == {
+        "name": "Luca Esposito",
+        "age": 24,
+        "people": "",
+        "standing": who["standing"],
+        "looks": "24, lean, dark hair combed back, a scar through one eyebrow.",
+        "manner": who["manner"],
+    }
+    assert who["manner"] and who["manner"] == _naples().player.description
+    cultivation = identity(_cultivation())
+    assert cultivation["name"] == "Lin Feng"
+    assert "outer disciple" in cultivation["standing"].casefold()
+
+
+def test_the_ladder_is_given_rung_by_rung_with_the_characters_place():
+    state = _cultivation()
+    ladder = ladder_view(state)
+    position = state.player.sheet.ladders[0]
+
+    assert ladder["name"] == "Cultivation realms"
+    assert ladder["rungs"][0] == "Qi Condensation"
+    assert len(ladder["rungs"]) <= 5
+    assert ladder["more"] is (len(state.bible.ladders[0].rungs) > len(ladder["rungs"]))
+    assert ladder["at"] == position.rung
+    # A world with no ladder has none to show.
+    assert ladder_view(_naples()) is None
+
+
+def test_a_place_above_the_rungs_everyone_knows_is_not_marked_on_them():
+    world = samples.cultivation_world()
+    ladder = world.ladders[0].model_copy(update={"known_to_all": 2})
+    world = world.model_copy(update={"ladders": [ladder]})
+    character = samples.cultivation_character()
+    top = ladder.rungs[2].name
+    position = character.ladders[0].model_copy(update={"rung": top})
+    character = character.model_copy(update={"ladders": [position]})
+
+    seen = ladder_view(_cultivation(world, character))
+
+    assert seen["rungs"] == [rung.name for rung in ladder.rungs[:2]]
+    assert seen["more"] is True
+    assert (seen["at"], seen["stage"]) == (None, "")

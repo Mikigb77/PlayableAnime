@@ -13,13 +13,21 @@ rest is the world's own text, which the drafter wrote in it.
 The summary never gives away how the story starts (G1, Miki 2026-11-10): given the player's say
 (`said`: the premise, and what a change they asked for later named), a deadline, an open
 question, a goal, a person and a connection are shown only when their own words name them
-(`graph.drafting.openers`). The rest is the story's surprise, drafted and kept out of sight.
+(`graph.drafting.openers`). The rest is the story's surprise, drafted and kept out of sight;
+of it the screen gets a count and nothing more (`kept`).
+
+Each line is a part with its kind (`world_parts`, `character_parts`), so the app can label it,
+group it and point a change in plain words at it. The plain fields the player changes themselves
+are given as values (`identity`, `graph.drafting.direct`), and the ladder as its rungs with the
+character's place on it (`ladder_view`).
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
+from enum import StrEnum
 from functools import partial
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
@@ -47,6 +55,43 @@ from graph.drafting.openers import (
     of_person,
     of_question,
 )
+
+
+class PartKind(StrEnum):
+    """What a line of the summary tells of. The app labels a line by it (S10)."""
+
+    # The world.
+    RULE = "rule"  # what is real in it, first what never changes
+    ERA = "era"
+    LADDER = "ladder"
+    PEOPLES = "peoples"
+    FACTION = "faction"
+    # How the story starts, shown only when the player's own words name it (G1).
+    DEADLINE = "deadline"
+    QUESTION = "question"
+    PERSON = "person"
+    CONNECTIONS = "connections"
+    GOAL = "goal"
+    # The character.
+    WHO = "who"
+    MANNER = "manner"
+    STANDING = "standing"
+    RANK = "rank"
+    SKILLS = "skills"
+    TALENTS = "talents"
+    TRAITS = "traits"
+    NATURE = "nature"
+    POWER = "power"
+    BELONGINGS = "belongings"
+
+
+@dataclass(frozen=True)
+class Part:
+    """One line of the summary, with what it tells of."""
+
+    kind: PartKind
+    text: str
+
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
@@ -116,6 +161,11 @@ _WORDS = {
 
 
 def world_lines(state: WorldState, language: Language = EN, said: Said | None = None) -> list[str]:
+    """G1: the world's summary as plain lines, one screen of them (`world_parts`)."""
+    return [part.text for part in world_parts(state, language, said)][:WORLD_LINES]
+
+
+def world_parts(state: WorldState, language: Language = EN, said: Said | None = None) -> list[Part]:
     """G1: genre and what never changes, then where and when, the ladder and peoples, then the
     factions, deadlines and questions the character knows, then the key people they know.
     With `said`, the player's say, a deadline, a question and a person are in it only when
@@ -125,38 +175,43 @@ def world_lines(state: WorldState, language: Language = EN, said: Said | None = 
 
     words = _WORDS[language]
     bible = state.bible
-    lines: list[str] = []
+    parts: list[Part] = []
+
+    def add(kind: PartKind, text: str) -> None:
+        parts.append(Part(kind, text))
+
     existence = [r for r in bible.rules if r.topic is RuleTopic.EXISTENCE]
-    lines += [r.text for r in sorted(existence, key=lambda r: not r.fixed)[:3]]
+    for rule in sorted(existence, key=lambda r: not r.fixed)[:3]:
+        add(PartKind.RULE, rule.text)
     if bible.era:
-        lines.append(_sentence(bible.era))
+        add(PartKind.ERA, _sentence(bible.era))
     for ladder in bible.ladders[:1]:
         # G18, C6: only the rungs everyone has heard of, which the character's path starts
         # with (`engine.path`). A ladder drafted before the world said which those are names
         # its first ones, as it did then.
         names = [r.name for r in ladder.rungs]
-        told = names[: min(ladder.known_to_all or SUMMARY_RUNGS, SUMMARY_RUNGS)]
+        told = names[: _told_rungs(ladder.known_to_all)]
         rungs = ", ".join(told) + (words["beyond"] if len(names) > len(told) else "")
-        lines.append(_sentence(f"{_capital(ladder.name)}: {rungs}"))
+        add(PartKind.LADDER, _sentence(f"{_capital(ladder.name)}: {rungs}"))
     if bible.peoples:
         peoples = _join([p.name for p in bible.peoples[:6]], language)
-        lines.append(_sentence(words["peoples"] + peoples))
+        add(PartKind.PEOPLES, _sentence(words["peoples"] + peoples))
     factions = sorted(
         (f for f in state.factions.values() if _known(state, f.known_by)),
         key=lambda f: (f.parent_id is not None, f.id),
     )
     for faction in factions[:3]:
-        lines.append(_entry(faction.name, faction.description))
+        add(PartKind.FACTION, _entry(faction.name, faction.description))
     for clock in sorted(state.clocks.values(), key=lambda c: c.id):
-        known = _known(state, clock.known_by) and spoken(of_clock(state, clock))
-        if known and len(lines) < WORLD_LINES:
-            lines.append(_clock_line(clock.name, clock.interval_s, clock.remaining, language))
+        if _known(state, clock.known_by) and spoken(of_clock(state, clock)):
+            line = _clock_line(clock.name, clock.interval_s, clock.remaining, language)
+            add(PartKind.DEADLINE, line)
     threads = state.threads
     for mystery in bible.mysteries:
         thread = threads.get(mystery.thread_id or "")
         known = thread is not None and _known(state, thread.known_by)
         if known and spoken(of_question(state, mystery)):
-            lines.append(mystery.question)
+            add(PartKind.QUESTION, mystery.question)
     people = [
         c
         for c in state.npcs()
@@ -166,13 +221,21 @@ def world_lines(state: WorldState, language: Language = EN, said: Said | None = 
         and spoken(of_person(state, c))
     ]
     for npc in people[:2]:
-        lines.append(_entry(npc.name, npc.description))
-    return _guard(state, lines)[:WORLD_LINES]
+        add(PartKind.PERSON, _entry(npc.name, npc.description))
+    return _guarded(state, parts)
 
 
 def character_lines(
     state: WorldState, language: Language = EN, said: Said | None = None
 ) -> list[str]:
+    """G2, G16: the character's summary as plain lines, one screen of them
+    (`character_parts`)."""
+    return [part.text for part in character_parts(state, language, said)][:CHARACTER_LINES]
+
+
+def character_parts(
+    state: WorldState, language: Language = EN, said: Said | None = None
+) -> list[Part]:
     """G2, G16: who the character is, in the world's own words rather than numbers. With
     `said`, the player's say, a connection and a goal are in it only when their own words name
     them."""
@@ -182,48 +245,45 @@ def character_lines(
     words = _WORDS[language]
     pc = state.player
     sheet = pc.sheet
-    lines = [_who(state, pc)]
+    parts = [Part(PartKind.WHO, _who(state, pc))]
+
+    def add(kind: PartKind, text: str) -> None:
+        parts.append(Part(kind, text))
+
     if pc.description:
-        lines.append(_sentence(pc.description))
-    standing = [
-        _join_words(m.rank, state.factions[m.faction_id].name)
-        for m in pc.memberships
-        if m.faction_id in state.factions
-    ]
-    if sheet.resources.rank and not standing:
-        standing.append(sheet.resources.rank)
-    if standing:
-        lines.append(_sentence(_capital("; ".join(standing))))
+        add(PartKind.MANNER, _sentence(pc.description))
+    if standing := _standing(state, pc):
+        add(PartKind.STANDING, _sentence(_capital(standing)))
     for position in sheet.ladders:
         ladder = state.bible.ladder(position.ladder_id)
         if ladder is not None and position.rung < len(ladder.rungs):
             rung = ladder.rungs[position.rung].name
             # G19: the stage the story starts them at, in the words their sheet will use.
-            stage = stage_named(position.stage)
-            if stage is not None:
-                label = rank_stage_label(stage, language)
-                rung = f"{rung}, {label[:1].lower()}{label[1:]}"
-            lines.append(_sentence(rung))
+            if stage := _stage_words(position.stage, language):
+                rung = f"{rung}, {stage}"
+            add(PartKind.RANK, _sentence(rung))
     if sheet.skills:
         by_level = sorted(sheet.skills, key=lambda s: -s.level.rank)
         groups: dict[SkillLevel, list[str]] = {}
         for skill in by_level:
             groups.setdefault(skill.level, []).append(skill.name)
-        lines.append(
+        add(
+            PartKind.SKILLS,
             " ".join(
                 _sentence(f"{skill_level_label(level, language)}: {_join(names, language)}")
                 for level, names in groups.items()
-            )
+            ),
         )
     if sheet.talents:
         # A4: how fast they learn each thing, so the player can check it and change it in
         # plain words: "One of a kind: The sword (anything fought with a blade)."
-        lines.append(
+        add(
+            PartKind.TALENTS,
             " ".join(
                 _sentence(f"{label}: {'; '.join(named)}")
                 for strength, label in TALENT_STRENGTH_WORDS[language].items()
                 if (named := [_talent(t) for t in sheet.talents if t.strength is strength])
-            )
+            ),
         )
     gifts = [t.name for t in sheet.traits if t.kind is TraitKind.GIFT]
     flaws = [t.name for t in sheet.traits if t.kind is TraitKind.FLAW]
@@ -234,12 +294,12 @@ def character_lines(
         if names
     ]
     if traits:
-        lines.append(" ".join(traits))
+        add(PartKind.TRAITS, " ".join(traits))
     temperament = sheet.disposition.temperament
     mood = _capital(_join(temperament.traits, language)) if temperament.traits else ""
     wants = words["wants"] + _join(temperament.wants, language) if temperament.wants else ""
     if mood or wants:
-        lines.append(" ".join(_sentence(part) for part in (mood, wants) if part))
+        add(PartKind.NATURE, " ".join(_sentence(part) for part in (mood, wants) if part))
     if sheet.powers:
         for power in sheet.powers[:3]:
             detail = power.description or power.name
@@ -248,11 +308,12 @@ def character_lines(
             costs = power.costs_text
             cost = f" {_sentence(words['costs'] + _capital(costs))}" if costs else ""
             secret = words["secret"] if power.secret else ""
-            lines.append(
-                _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + cost + secret
+            add(
+                PartKind.POWER,
+                _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + cost + secret,
             )
     elif state.bible.grounded:
-        lines.append(words["no_powers"])
+        add(PartKind.POWER, words["no_powers"])
     resources = sheet.resources
     carried = [i.name for i in resources.items if i.carried]
     owned = [i.name for i in resources.items if not i.carried]
@@ -265,18 +326,72 @@ def character_lines(
         money = number_label(resources.money, language)
         held.append(_sentence(f"{money} {resources.currency}".strip()))
     if held:
-        lines.append(" ".join(held))
+        add(PartKind.BELONGINGS, " ".join(held))
     known = [c.name for c in resources.connections if spoken(of_connection(state, c))]
     if known:
-        lines.append(_sentence(_capital(_join(known, language))))
+        add(PartKind.CONNECTIONS, _sentence(_capital(_join(known, language))))
     active = [
         g
         for g in state.goals.values()
         if g.status is GoalStatus.ACTIVE and spoken(of_goal(state, g))
     ]
     for goal in sorted(active, key=lambda g: g.id)[:2]:
-        lines.append(_sentence(words["goal"] + goal.text.rstrip(".")))
-    return _guard(state, lines)[:CHARACTER_LINES]
+        add(PartKind.GOAL, _sentence(words["goal"] + goal.text.rstrip(".")))
+    return _guarded(state, parts)
+
+
+def identity(state: WorldState) -> dict[str, object]:
+    """G2: the plain fields of the character, which the player changes themselves
+    (`graph.drafting.direct`): their name, their age, their looks and how they come across,
+    with their people and their standing to tell them by."""
+    pc = state.player
+    people = next((p for p in state.bible.peoples if p.id == pc.people_id), None)
+    return {
+        "name": pc.name,
+        "age": pc.age,
+        "people": people.name if people is not None else "",
+        "standing": public_text(state, _capital(_standing(state, pc))),
+        "looks": public_text(state, pc.appearance),
+        "manner": public_text(state, pc.description),
+    }
+
+
+def ladder_view(state: WorldState, language: Language = EN) -> dict[str, object] | None:
+    """G18, G19: the world's first ladder as the summary tells it, rung by rung: the rungs
+    everyone has heard of, whether it goes on above them, and where the character stands when
+    that is one of them. None in a world with no ladder."""
+    for ladder in state.bible.ladders[:1]:
+        names = [r.name for r in ladder.rungs]
+        told = names[: _told_rungs(ladder.known_to_all)]
+        if not _guard(state, [", ".join([ladder.name, *told])]):
+            return None
+        at = next((p for p in state.player.sheet.ladders if p.ladder_id == ladder.id), None)
+        here = at is not None and at.rung < len(told)
+        return {
+            "name": _capital(ladder.name),
+            "rungs": told,
+            "more": len(names) > len(told),
+            "at": at.rung if here else None,
+            "stage": _stage_words(at.stage, language) if here else "",
+        }
+    return None
+
+
+def kept(state: WorldState, language: Language = EN, said: Said | None = None) -> dict[str, int]:
+    """G1: how much of the story's start the summary keeps out of sight, as counts and nothing
+    more: the people, the things already in motion and the open questions the player's own
+    words don't name. With no `said`, nothing is kept."""
+    if said is None:
+        return {"people": 0, "events": 0, "questions": 0}
+
+    def unsaid(openers: Iterable[Opener]) -> int:
+        return sum(not said.names(opener, language) for opener in openers)
+
+    return {
+        "people": unsaid(of_person(state, c) for c in state.npcs()),
+        "events": unsaid(of_clock(state, c) for c in state.clocks.values()),
+        "questions": unsaid(of_question(state, m) for m in state.bible.mysteries),
+    }
 
 
 def public_text(state: WorldState, text: str) -> str:
@@ -337,6 +452,18 @@ def unknown_names(state: WorldState) -> list[str]:
     return names
 
 
+def _guarded(state: WorldState, parts: list[Part]) -> list[Part]:
+    """The parts whose lines pass the guard, each line once."""
+    kept_lines = set(_guard(state, (part.text for part in parts)))
+    seen: set[str] = set()
+    passed = []
+    for part in parts:
+        if part.text in kept_lines and part.text not in seen:
+            seen.add(part.text)
+            passed.append(part)
+    return passed
+
+
 def _guard(state: WorldState, lines: Iterable[str]) -> list[str]:
     hidden = [h for h in map(_words, hidden_texts(state)) if len(h.split()) >= HIDDEN_MIN_WORDS]
     names = [n for n in map(_words, unknown_names(state)) if len(n) >= 4]
@@ -364,6 +491,34 @@ def _spoken(said: Said | None, language: Language, opener: Opener) -> bool:
     """Whether the player's own words name this opener, or True when the lines aren't read
     against them (G1)."""
     return said is None or said.names(opener, language)
+
+
+def _told_rungs(known_to_all: int | None) -> int:
+    """How many rungs of a ladder the summary names: the ones everyone has heard of, five at
+    most."""
+    return min(known_to_all or SUMMARY_RUNGS, SUMMARY_RUNGS)
+
+
+def _standing(state: WorldState, pc: Character) -> str:
+    """Where the character stands: their rank in each faction they belong to, or failing that
+    their rank in the world."""
+    standing = [
+        _join_words(m.rank, state.factions[m.faction_id].name)
+        for m in pc.memberships
+        if m.faction_id in state.factions
+    ]
+    if pc.sheet.resources.rank and not standing:
+        standing.append(pc.sheet.resources.rank)
+    return "; ".join(standing)
+
+
+def _stage_words(stage: str, language: Language) -> str:
+    """G19: a stage of a rung in the words the sheet uses, in lower case, or ""."""
+    found = stage_named(stage)
+    if found is None:
+        return ""
+    label = rank_stage_label(found, language)
+    return f"{label[:1].lower()}{label[1:]}"
 
 
 def _who(state: WorldState, pc: Character) -> str:
