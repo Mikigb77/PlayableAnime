@@ -712,11 +712,21 @@ MemoryView {character: {name, lines: [string], portrait_url?},
                         attitude?, attitude_label?,   # how they come across (W4), for someone the
                                           # character met: "warm" | "friendly" | "neutral" |
                                           # "cold" | "hostile", and the same in words
-                        status, presumed, status_label}],
+                        status, presumed, status_label,
                                           # whether they live as far as the character knows
                                           # (C1, C6): "alive" | "missing" | "dead", a death only
                                           # presumed, and the same in words. Family comes
                                           # first: "Your child." (N6)
+                        bond?, bond_line?}],
+                                          # a romance between the two as the character
+                                          # knows it (W17): "interest" | "courting" |
+                                          # "together" | "promised" | "married" | "over",
+                                          # and one line on how it came there: "You became
+                                          # a couple, day 9." Both are null with none. A
+                                          # death the character hasn't learned of ended
+                                          # nothing they know of, and how drawn the other
+                                          # is never shows. An app that doesn't know a
+                                          # stage still shows the line.
             places:   [{id, name, lines: [string], image_url?}],
             factions: [{id, name, lines: [string],
                         esteem, dread, standing_label}],

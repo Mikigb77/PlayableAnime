@@ -1476,9 +1476,21 @@ a wedding looks like is the world's. The details:
   family, and a partner as a friend at least, wherever the world asks who is close to whom: who
   keeps quiet about what they saw them do, whom word of them reaches, who takes their death as
   their own to avenge (W2, W4).
-- **Still to build:** the bond on the Memory screen (C6); the world reacting when a partner or
-  a rival learns of another romance through who saw it and told (W2, W4); romances between
-  other people; and someone falling for the character first (W16's admirer).
+- **Memory shows it** (C6). A person's entry on the Memory screen leads with one line under a
+  heart that tells where the two stand and how it came there, with its day: "You made your
+  interest plain, day 3.", "You became a couple, day 9.", "You married, day 40." A romance the
+  premise set up is told as it stands, with no day ("You are married."), and one that ended
+  tells what it had come to and whose doing it was ("You were a couple until you ended it,
+  day 12.", "You were married until their death."). The heart is whole for a couple, an outline
+  while it is only starting, and broken once one of them ended it. Code words the line in the
+  story's language, with nothing that says whether anyone is a man or a woman (S10). It shows
+  only what the character knows: a death they haven't learned of ended nothing as far as they
+  know, so the romance shows as it stood, and how drawn the other person is never shows, since
+  that is theirs to find out in the story. An interest that ended before anything began is
+  nothing to remember, and two other people's romance isn't shown.
+- **Still to build:** the world reacting when a partner or a rival learns of another romance
+  through who saw it and told (W2, W4); romances between other people; and someone falling for
+  the character first (W16's admirer).
 
 We don't know exactly how OOC handles this. Its public coverage describes memory layers and stats but
 no retaliation system, so this is one place we can be better rather than just match it.
@@ -1905,7 +1917,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Themes off | Quiet life again, with romance and dark themes switched off (F7) | No romance or dark events are drawn |
 | Time skip | "I farm here for a year", and "I train for a week" over many seeds | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap. Some weeks of training pass whole and some are cut short, with the effort put in kept (E7, A4) |
 | The same hour | The player plays 60 quiet scenes of a minute each, then scenes of half an hour, on calm, normal and dramatic | Inside the hour one of life's events comes at most, with a few small moments ten minutes or more apart and no event marked for them, and a way to let time pass among the suggestions once in twelve scenes at most, never beside a decision (S2); once two hours of story time have passed since the event, the next one comes (W16, W10) |
-| Slow romance | On the farm with no wife, the player asks Mara, a neighbour who likes them and feels nothing more, to be their sweetheart on the first day, while the scripted narrator says she agrees and writes the couple into its update. They pay her court twice in one evening, then a week at a time until she is in love, ask again, kiss her, try to marry her the same day, court on, ask for a promise and wed, over 12 seeds | The first ask is turned down with nothing thrown and makes them no couple, whatever the narrator tells, and nothing it writes moves her heart. Sweet words twice in one day move her heart once. A week of courting moves it as far as its days allow, never when it came to nothing, and a week the valley cut short keeps the days it ran. It is a courtship only once an advance came off and her heart is far enough. Each ask is answered by her heart: yes with nothing thrown once she is in love. A kiss with a partner needs no throw, a wedding takes two who are promised, and the bond comes to married one stage at a time, over a week or more of the story. Live, the judge reads whether she turns the first ask down, whether the yes and the kiss are told as such, and whether she is ever told as a partner, a betrothed or a wife before the record makes her one (W17, A2, E7, F3) |
+| Slow romance | On the farm with no wife, the player asks Mara, a neighbour who likes them and feels nothing more, to be their sweetheart on the first day, while the scripted narrator says she agrees and writes the couple into its update. They pay her court twice in one evening, then a week at a time until she is in love, ask again, kiss her, try to marry her the same day, court on, ask for a promise and wed, over 12 seeds | The first ask is turned down with nothing thrown and makes them no couple, whatever the narrator tells, and nothing it writes moves her heart. Sweet words twice in one day move her heart once. A week of courting moves it as far as its days allow, never when it came to nothing, and a week the valley cut short keeps the days it ran. It is a courtship only once an advance came off and her heart is far enough. Each ask is answered by her heart: yes with nothing thrown once she is in love. A kiss with a partner needs no throw, a wedding takes two who are promised, and the bond comes to married one stage at a time, over a week or more of the story. After the first ask, after the yes and after the wedding, Memory shows the two as the record holds them (C6). Live, the judge reads whether she turns the first ask down, whether the yes and the kiss are told as such, and whether she is ever told as a partner, a betrothed or a wife before the record makes her one (W17, A2, E7, F3, C6) |
 | Ignored hook | The player ignores the premise's hook for 20 turns | The hook's clock advances and resolves without the player (the exam happens) |
 | Walk away | "I leave the academy and open a noodle shop" | The story follows the noodle shop, and the academy threads go on off-screen |
 | Divergence | Same premise and same actions, 5 seeds, 50 turns | The worlds differ in events, threads and new characters |

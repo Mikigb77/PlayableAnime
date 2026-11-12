@@ -30,7 +30,7 @@ from functools import cached_property
 
 from pydantic import Field
 
-from engine import levels, possessions
+from engine import bonds, levels, possessions
 from engine import path as path_mod
 from engine import talent as talent_mod
 from engine import untold as untold_mod
@@ -54,6 +54,8 @@ from engine.state.cast import (
     Reputation,
 )
 from engine.state.records import (
+    BondEnd,
+    BondStage,
     Deed,
     EventStatus,
     Fact,
@@ -166,7 +168,9 @@ class CharacterCard(EngineModel):
 
 class PersonEntry(EngineModel):
     """Someone the player character knows. `attitude`, `status` and `presumed` are the values
-    the two labels say, so a screen can mark a death or tint a feeling without reading words."""
+    the two labels say, so a screen can mark a death or tint a feeling without reading words.
+    `bond` is where a romance between the two stands as the character knows it (W17), and
+    `bond_line` tells how it came there."""
 
     id: str
     name: str
@@ -177,6 +181,8 @@ class PersonEntry(EngineModel):
     status: str = CharacterStatus.ALIVE.value
     presumed: bool = False
     status_label: str
+    bond: BondStage | None = None
+    bond_line: str | None = None
 
 
 class PlaceEntry(EngineModel):
@@ -1036,6 +1042,98 @@ _WORDS = {
 }
 
 
+# W17, S10. A romance between someone and the player character, in words: how it came to each
+# stage, told with the day ("You became a couple, day 9"), how it stands when it was so as the
+# story opened, and what it had come to when it ended. Nothing here says whether anyone is a
+# man or a woman.
+_BOND_WORDS = {
+    EN: {
+        "came": {
+            BondStage.INTEREST: "You made your interest plain",
+            BondStage.COURTING: "You began courting",
+            BondStage.TOGETHER: "You became a couple",
+            BondStage.PROMISED: "You promised yourselves to each other",
+            BondStage.MARRIED: "You married",
+        },
+        "came_theirs": "{who} made their interest in you plain",
+        "is": {
+            BondStage.INTEREST: "You have made your interest plain",
+            BondStage.COURTING: "You are courting",
+            BondStage.TOGETHER: "You are a couple",
+            BondStage.PROMISED: "You are promised to each other",
+            BondStage.MARRIED: "You are married",
+        },
+        "is_theirs": "{who} has made their interest in you plain",
+        "was": {
+            BondStage.COURTING: "You were courting",
+            BondStage.TOGETHER: "You were a couple",
+            BondStage.PROMISED: "You were promised to each other",
+            BondStage.MARRIED: "You were married",
+        },
+        "until_you": "{was} until you ended it",
+        "until_them": "{was} until they ended it",
+        "until_over": "{was} until it ended",
+        "until_death": "{was} until their death",
+    },
+    ES: {
+        "came": {
+            BondStage.INTEREST: "Le dejaste claro tu interés",
+            BondStage.COURTING: "Empezó algo entre {who} y tú",
+            BondStage.TOGETHER: "Os hicisteis pareja",
+            BondStage.PROMISED: "Os prometisteis",
+            BondStage.MARRIED: "Os casasteis",
+        },
+        "came_theirs": "{who} te dejó claro su interés",
+        "is": {
+            BondStage.INTEREST: "Le has dejado claro tu interés",
+            BondStage.COURTING: "Hay algo entre {who} y tú",
+            BondStage.TOGETHER: "Sois pareja",
+            BondStage.PROMISED: "Os habéis prometido",
+            BondStage.MARRIED: "Sois un matrimonio",
+        },
+        "is_theirs": "{who} te ha dejado claro su interés",
+        "was": {
+            BondStage.COURTING: "Hubo algo entre {who} y tú",
+            BondStage.TOGETHER: "Fuisteis pareja",
+            BondStage.PROMISED: "Tuvisteis un compromiso",
+            BondStage.MARRIED: "Fuisteis un matrimonio",
+        },
+        "until_you": "{was} hasta que lo dejaste",
+        "until_them": "{was} hasta que te dejó",
+        "until_over": "{was} hasta que se acabó",
+        "until_death": "{was} hasta su muerte",
+    },
+    CA: {
+        "came": {
+            BondStage.INTEREST: "Li vas deixar clar el teu interès",
+            BondStage.COURTING: "Va començar alguna cosa entre {who} i tu",
+            BondStage.TOGETHER: "Us vau fer parella",
+            BondStage.PROMISED: "Us vau prometre",
+            BondStage.MARRIED: "Us vau casar",
+        },
+        "came_theirs": "{who} et va deixar clar el seu interès",
+        "is": {
+            BondStage.INTEREST: "Li has deixat clar el teu interès",
+            BondStage.COURTING: "Hi ha alguna cosa entre {who} i tu",
+            BondStage.TOGETHER: "Sou parella",
+            BondStage.PROMISED: "Us heu promès",
+            BondStage.MARRIED: "Sou un matrimoni",
+        },
+        "is_theirs": "{who} t'ha deixat clar el seu interès",
+        "was": {
+            BondStage.COURTING: "Hi va haver alguna cosa entre {who} i tu",
+            BondStage.TOGETHER: "Vau ser parella",
+            BondStage.PROMISED: "Vau tenir un compromís",
+            BondStage.MARRIED: "Vau ser un matrimoni",
+        },
+        "until_you": "{was} fins que ho vas deixar",
+        "until_them": "{was} fins que et va deixar",
+        "until_over": "{was} fins que es va acabar",
+        "until_death": "{was} fins a la seva mort",
+    },
+}
+
+
 def _status_words(status: str, presumed: bool = False, language: Language = EN) -> str:
     if words := _STATUS_WORDS.get(language):
         if status == CharacterStatus.DEAD.value and presumed:
@@ -1472,15 +1570,17 @@ class _Knowledge:
 
     def person(self, c: Character) -> PersonEntry:
         lines = [c.description] if c.description else []
+        status, presumed = believed_status(
+            c.status_history, c.status.value, self.player_id, initial=CharacterStatus.ALIVE.value
+        )
+        presumed = presumed and status == CharacterStatus.DEAD.value
+        stage, bond_line = self.bond(c, dead=status == CharacterStatus.DEAD.value and not presumed)
         if kin := self.kin_line(c):
             lines.insert(0, kin)
         lines += self.facts_about(c.id)
         attitude = None
         if self.player_id in c.met_by:
             attitude = attitude_of(c.attitude_toward(self.player_id).shown_affinity)
-        status, presumed = believed_status(
-            c.status_history, c.status.value, self.player_id, initial=CharacterStatus.ALIVE.value
-        )
         return PersonEntry(
             id=c.id,
             name=c.name,
@@ -1490,9 +1590,55 @@ class _Knowledge:
                 None if attitude is None else _ATTITUDES[self.language][_ATTITUDE_AT[attitude]]
             ),
             status=status,
-            presumed=presumed and status == CharacterStatus.DEAD.value,
+            presumed=presumed,
             status_label=_status_words(status, presumed, self.language),
+            bond=stage,
+            bond_line=bond_line,
         )
+
+    def bond(self, c: Character, *, dead: bool) -> tuple[BondStage | None, str | None]:
+        """W17, C6. The romance between someone and the player character as the character
+        knows it: its stage, and one line on how it came there. The one that still stands, or
+        else the latest that ended.
+
+        The character took part in every step of it, so they know them all but one: a death
+        they haven't learned of (`dead` is whether they know the other died) ended nothing as
+        far as they know, and the romance shows as it stood. How drawn the other is to them
+        is hidden truth and never shows. An interest that ended before anything began is
+        nothing to remember."""
+        state, me = self.state, self.player_id
+        bond = bonds.live(state, me, c.id) or bonds.last_over(state, me, c.id)
+        steps = [] if bond is None else list(bond.steps)
+        if bond is not None and bond.end is BondEnd.DEATH and not dead:
+            steps = steps[:-1]
+        if bond is None or not steps:
+            return None, None
+        words = _BOND_WORDS[self.language]
+        last = steps[-1]
+        if last.stage is not BondStage.OVER:
+            theirs = last.stage is BondStage.INTEREST and bond.a_id != me
+            if last.by_id is None:
+                # As the story opened: how it stands, with no day to give.
+                text = words["is_theirs"] if theirs else words["is"][last.stage]
+                line = text.format(who=c.name)
+            else:
+                text = words["came_theirs"] if theirs else words["came"][last.stage]
+                line = self._on(text.format(who=c.name), last.world_s)
+            return last.stage, f"{line}."
+        was = words["was"].get(steps[-2].stage) if len(steps) > 1 else None
+        if was is None:
+            return None, None
+        was = was.format(who=c.name)
+        if bond.end is BondEnd.DEATH:
+            return BondStage.OVER, words["until_death"].format(was=was) + "."
+        key = {me: "until_you", c.id: "until_them"}.get(last.by_id, "until_over")
+        line = self._on(words[key].format(was=was), last.world_s)
+        return BondStage.OVER, f"{line}."
+
+    def _on(self, what: str, world_s: int) -> str:
+        """Words with the day they happened: "You became a couple, day 9"."""
+        date = date_label(self.state.bible.calendar, world_s, self.language)
+        return _WORDS[self.language]["goal_on"].format(what=what, date=date[:1].lower() + date[1:])
 
     @cached_property
     def descendants(self) -> dict[str, int]:
@@ -1870,10 +2016,7 @@ class _Knowledge:
         the record holds no day."""
         if world_s is None:
             return ""
-        words = _WORDS[self.language]
-        date = date_label(self.state.bible.calendar, world_s, self.language)
-        what = words[key].format(**names)
-        return words["goal_on"].format(what=what, date=date[:1].lower() + date[1:])
+        return self._on(_WORDS[self.language][key].format(**names), world_s)
 
     def _rung_note(self, standing: path_mod.Standing) -> str:
         """How they know of a rung above their own: confirmed before someone they can name, or

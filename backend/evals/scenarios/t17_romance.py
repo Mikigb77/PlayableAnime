@@ -23,6 +23,7 @@ from engine.contracts import (
     StateDelta,
 )
 from engine.state import BondStage, PowerAxis, StepResult
+from engine.visibility import memory_view
 from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval, Played, Story
@@ -129,6 +130,12 @@ def stage(story: Story) -> BondStage | None:
     return bond.stage if bond is not None else None
 
 
+def remembered(story: Story) -> BondStage | None:
+    """Where Memory says the two stand (C6): what the player reads on Mara's entry."""
+    mara = next((p for p in memory_view(story.state).people if p.id == MARA), None)
+    return mara.bond if mara is not None else None
+
+
 def by_her_heart(drawn: int, no: int, sure: int) -> OutcomeClass | None:
     """How an ask is answered, from how drawn she is: None where it is thrown for."""
     if drawn >= sure:
@@ -189,14 +196,15 @@ async def courted(ev: Eval, story: Story, until: int) -> list[Played]:
     "t17.slow-romance",
     suite="T17",
     title="Slow romance",
-    requirements=("W17", "A2", "E7", "F3", "T17"),
+    requirements=("W17", "A2", "E7", "F3", "C6", "T17"),
     passes_when=(
         "Asked on the first day, she turns it down with nothing thrown and they are no couple, "
         "whatever the narrator tells. Sweet words twice in one day move her heart once. Weeks "
         "of courting move it as far as their days allow, and a week something cuts short keeps "
         "the days it ran. Asked again, she answers by her heart: yes with nothing thrown once "
         "she is in love. A kiss with a partner needs no throw, a wedding takes two who are "
-        "promised, and the bond comes to married one stage at a time, over weeks of the story"
+        "promised, and the bond comes to married one stage at a time, over weeks of the "
+        "story. Memory shows the two as the record holds them at each point"
     ),
 )
 async def slow_romance(ev: Eval) -> None:
@@ -222,6 +230,11 @@ async def slow_romance(ev: Eval) -> None:
             heart(story) == 0,
             f"{seed}: {heart(story)}",
             live=False,
+        )
+        ev.check(
+            "Memory tells the romance as the record holds it",
+            remembered(story) is stage(story),
+            f"{seed}: after the first ask, {remembered(story)} for {stage(story)}",
         )
         await ev.judge(
             "an ask before anything was won",
@@ -273,6 +286,11 @@ async def slow_romance(ev: Eval) -> None:
             f"{seed}: at {heart(story)}, {as_read([yes])}",
         )
         ev.check("a yes makes them a couple", stage(story) is BondStage.TOGETHER, seed)
+        ev.check(
+            "Memory tells the romance as the record holds it",
+            remembered(story) is stage(story),
+            f"{seed}: after the yes, {remembered(story)} for {stage(story)}",
+        )
         kissed = await story.act(KISS, kiss())
         ev.check(
             "a kiss with a partner needs no throw",
@@ -327,6 +345,11 @@ async def slow_romance(ev: Eval) -> None:
             and came[-1] is BondStage.MARRIED
             and all(b in bonds.FORWARD[a] for a, b in zip(came, came[1:], strict=False)),
             f"{seed}: {[s.value for s in came]}",
+        )
+        ev.check(
+            "Memory tells the romance as the record holds it",
+            remembered(story) is BondStage.MARRIED,
+            f"{seed}: after the wedding, {remembered(story)}",
         )
         days = (story.state.world_s - began_s) / DAY
         ev.check(

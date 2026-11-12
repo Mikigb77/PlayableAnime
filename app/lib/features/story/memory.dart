@@ -51,6 +51,21 @@ enum Attitude {
   static Attitude? parse(Object? json) => values.where((a) => a.name == json).firstOrNull;
 }
 
+/// Where a romance between someone and the character stands (W17), in the order it moves.
+enum BondStage {
+  interest,
+  courting,
+  together,
+  promised,
+  married,
+  over;
+
+  static BondStage? parse(Object? json) => values.where((b) => b.name == json).firstOrNull;
+
+  /// Together or beyond: the two are a couple.
+  bool get couple => this == together || this == promised || this == married;
+}
+
 class MemoryPerson {
   const MemoryPerson({
     required this.id,
@@ -62,6 +77,8 @@ class MemoryPerson {
     this.status,
     this.presumed = false,
     this.statusLabel = '',
+    this.bond,
+    this.bondLine,
   });
 
   factory MemoryPerson.fromJson(JsonMap json) => MemoryPerson(
@@ -74,6 +91,8 @@ class MemoryPerson {
     status: _label(json['status']),
     presumed: json['presumed'] == true,
     statusLabel: _text(json['status_label']),
+    bond: BondStage.parse(json['bond']),
+    bondLine: _label(json['bond_line']),
   );
 
   final String id;
@@ -97,6 +116,15 @@ class MemoryPerson {
   /// "Alive", "Dead", "Presumed dead", "Missing" and so on, as the character believes, in the
   /// story's language.
   final String statusLabel;
+
+  /// Where a romance between the two stands as the character knows it (W17), for picking the
+  /// mark of [bondLine]. Null with none, for a stage this app doesn't know, and from a server
+  /// older than it.
+  final BondStage? bond;
+
+  /// How that romance came to where it stands, such as "You became a couple, day 9.", in the
+  /// story's language. Null with none.
+  final String? bondLine;
 
   /// Read from [status], which says the same in every language. A server from before it sent
   /// only the label, which it worded in English.
