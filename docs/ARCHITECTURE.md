@@ -1751,6 +1751,15 @@ judge, the pictures or a reading alone). The same scenarios run with another mod
 (`INTERPRET_MODEL`, `INTERPRET_THINKING`, as for any node) are set side by side there, which is
 how a model for the interpret step is chosen (B6, B8). `run.json` holds the same under `use`.
 
+**What the turns counted.** Under it, one row adds up what each turn's log line counts about the
+logic of play (T5, `engine.tally.turn_tally` on each finished turn, `runner.counted`): the steps
+the engine settled, those refused and those refused as a move that isn't the character's own,
+the things a throw decided the place holds and those that came up empty, and the rumors heard and
+those no scene told. So a change that makes play less logical shows in a run's report before it
+is deployed, above all in a live run, where the real model reads the actions. `run.json` holds the
+row under `logic`, for the run and for each scenario, a live run's transcript holds each turn's
+own counts (`tally`), and the history keeps the run's row.
+
 **Results over time.** `run --out <dir>` writes `run.json` (every scenario's status, score,
 checks, judged rubrics, metrics, cost, model steps and open gaps), `summary.md`, and in live mode
 `transcripts/` and `pictures/`. `--history <file>` appends one line per run, and `report --history <file>` shows

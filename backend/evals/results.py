@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from evals.pictures import NotDrawn, Picture
-from evals.runner import ScenarioResult, Use, merged
+from evals.runner import LOGIC, ScenarioResult, Use, merged
 from evals.scenario import Mode
 
 STATUSES = ("passed", "failed", "error", "pending", "skipped")
@@ -93,6 +93,13 @@ class Run:
         """What each model step of the stories came to over the whole run."""
         return merged(use for r in self.results for use in r.use)
 
+    def logic(self) -> dict[str, int]:
+        """What the turns of the whole run counted about the logic of play (T5)."""
+        total: Counter[str] = Counter()
+        for result in self.results:
+            total.update(result.logic)
+        return dict(total)
+
     def gaps(self) -> list[tuple[str, str]]:
         return [(r.id, gap) for r in self.results for gap in r.gaps()]
 
@@ -111,6 +118,7 @@ class Run:
             "turns": self.turns,
             "turn_cost_usd": float(self.turn_cost_usd),
             "use": [u.to_json() for u in self.use()],
+            "logic": self.logic(),
             "gaps": [{"scenario": s, "gap": g} for s, g in self.gaps()],
             "scenarios": [r.to_json() for r in self.results],
         }
@@ -125,6 +133,7 @@ class Run:
             "score": self.score,
             "cost_usd": float(self.cost_usd),
             "counts": self.counts,
+            "logic": self.logic(),
             "scenarios": {
                 r.id: {
                     "status": r.status,
@@ -198,6 +207,7 @@ def summary(run: Run) -> str:
     if skipped:
         lines += ["", f"Skipped in {run.mode.value} mode: {', '.join(skipped)}."]
     lines += _steps(run)
+    lines += _logic(run)
     gaps = run.gaps()
     if gaps:
         lines += ["", "### Known gaps still open", ""]
@@ -245,6 +255,27 @@ def _steps(run: Run) -> list[str]:
             played = f"A turn played would cost ${cost:.4f} on average ({run.turns} turns)."
         note = f"{note} {played}"
     return [*lines, "", note]
+
+
+def _logic(run: Run) -> list[str]:
+    """What the run's turns counted about the logic of play, as each turn's log line counts it
+    in production (T5): steps refused and those refused as a move that isn't the character's
+    own, things a throw decided the place holds and those that came up empty, and rumors heard
+    and those no scene told. A change that makes play less logical shows here, run after run,
+    before it is deployed."""
+    logic = run.logic()
+    if not logic.get("steps"):
+        return []
+    shown = ("steps", *LOGIC)
+    return [
+        "",
+        "### What the turns counted",
+        "",
+        "| Steps settled | Refused | As a move not their own | Things thrown for | Came up empty "
+        "| Rumors heard | No scene told |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| " + " | ".join(f"{logic[key]:,}" for key in shown) + " |",
+    ]
 
 
 def _pictures(run: Run) -> list[str]:
