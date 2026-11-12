@@ -41,6 +41,7 @@ from engine.state.cast import (
 from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
+from engine.timekeeping import effect_over
 from engine.world import carriers, journeys
 from engine.world.geography import routes_from, together
 from engine.world.scheduling import Kind
@@ -48,6 +49,7 @@ from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts
+from graph.turn.form import Asks
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
 
 # Facts this important, which the player character knows, always reach the narrator.
@@ -583,14 +585,37 @@ def _goals_and_threads(state: WorldState, goals: WorldState | None = None) -> di
 LAST_SCENE_CHARS = 6000
 
 
+def asks(state: WorldState) -> Asks:
+    """B5. What this turn's form asks the interpret step beyond what every turn's does
+    (`graph.turn.form`), read from the state: a power over time the player character holds or
+    one at work (W10a), a ladder in the world (G18, G20), talents of theirs to rule on (A4), a
+    goal they could give up (N2), and a thread or a lead open to take up (W16, N1)."""
+    you = state.player
+    open_to_them = _goals_and_threads(state)
+    return Asks(
+        time=any(power.time is not None for power in you.sheet.powers)
+        or any(not effect_over(state, effect) for effect in state.time_effects),
+        ladders=bool(state.bible.ladders),
+        talents=_talents_view(state) is not None,
+        goals=bool(open_to_them["goals"]),
+        threads=bool(open_to_them["threads"] or open_to_them["leads"]),
+    )
+
+
 def interpret_prompt(
-    state: WorldState, action: str, language: Language = Language.EN, last_scene: str = ""
+    state: WorldState,
+    action: str,
+    language: Language = Language.EN,
+    last_scene: str = "",
+    asked: Asks | None = None,
 ) -> Prompt:
     """B5 step 2: what the interpret model reads to turn the player's words into an `Intent`,
     with the story's language for its notes (S10). `last_scene` is the text of the scene the
     player is answering, so that what it showed counts as there (R2) and "the one she is holding
-    out" means something: the scene's record lists only a few things."""
+    out" means something: the scene's record lists only a few things. `asked` is what the turn's
+    form asks (`asks`, worked out here when it isn't given): the guide explains only that."""
     frame = state.scene
+    asked = asks(state) if asked is None else asked
     told = last_scene.strip()[-LAST_SCENE_CHARS:]
     # The world comes first and alone: it stays the same from turn to turn, so the backend can
     # keep it cached with the system text (`Prompt.stable_chars`).
@@ -630,7 +655,8 @@ def interpret_prompt(
             ("ACTION", action.strip()),
         ]
     )
-    return Prompt.build(prompts.INTERPRET_SYSTEM, user, stable_chars=len(render([world])))
+    system = prompts.interpret_system(asked)
+    return Prompt.build(system, user, stable_chars=len(render([world])))
 
 
 @dataclass(frozen=True)

@@ -573,7 +573,8 @@ def _step_required(schema: dict[str, Any]) -> None:
     `target_ids` and `aim` (V3, F4), an empty list and none for a step that is aimed at nobody:
     "I cut Han's throat" was read as a killing with no target (2026-11-11), so nobody died on
     record. Where a reading still names nobody, `graph.turn.check` finds who the words point
-    at."""
+    at. A turn that one of these can't apply to, such as a ruling on talent for a character
+    with none, is asked a form without it (`graph.turn.form`), and it keeps its default."""
     must = [
         "target_ids",
         "aim",
@@ -595,7 +596,6 @@ class IntentStep(EngineModel):
 
     text: str = Field(description="The step in plain words.")
     verb: str = Field(description="Free-form: attack, persuade, search, stop time, flee.")
-    method: str = ""
     target_ids: list[str] = Field(default_factory=list)
     targets: list[str] = Field(default_factory=list, description="Targets in words.")
     aim: Aim = Field(default=Aim.NONE, description="What success does to the targets (F4).")
@@ -630,7 +630,6 @@ class IntentStep(EngineModel):
         default_factory=list,
         description="R7: the player's own words for the character, cleaned of dictation filler.",
     )
-    gist: str = Field(default="", description="R7: what to say, when the player gave only gist.")
     kind: ActionKind
     destination: str = Field(
         default="",
@@ -667,7 +666,6 @@ class IntentStep(EngineModel):
         ge=0,
         description="W10a: the actor's own lived seconds, when they differ, as in a time stop.",
     )
-    stakes: str = ""
     encounter: EncounterKind | None = Field(
         default=None,
         description=(

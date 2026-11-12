@@ -11,11 +11,12 @@ failed or not, leaves one `CallRecord` with its recorder.
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import re
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import aclosing
 from dataclasses import dataclass
 from functools import lru_cache
@@ -164,10 +165,20 @@ class ModelClient:
             await self._backend.aclose()
 
     async def structured[T: BaseModel](
-        self, node: Node, prompt: Prompt, schema: type[T], *, options: CallOptions | None = None
+        self,
+        node: Node,
+        prompt: Prompt,
+        schema: type[T],
+        *,
+        form: Mapping[str, Any] | None = None,
+        options: CallOptions | None = None,
     ) -> T:
-        """One structured-output call, validated against `schema`."""
-        return cast(T, await self._complete(node, prompt, schema=schema, options=options))
+        """One structured-output call, validated against `schema`. `form` is the JSON schema
+        the model is asked for when a call asks for less than the whole of `schema`'s: what it
+        leaves out keeps the model's defaults."""
+        return cast(
+            T, await self._complete(node, prompt, schema=schema, form=form, options=options)
+        )
 
     async def text(self, node: Node, prompt: Prompt, *, options: CallOptions | None = None) -> str:
         """One plain-text call."""
@@ -265,6 +276,7 @@ class ModelClient:
         prompt: Prompt,
         *,
         schema: type[BaseModel] | None = None,
+        form: Mapping[str, Any] | None = None,
         stream_fields: tuple[str, ...] = (),
         image: ImageSpec | None = None,
         audio: AudioPart | None = None,
@@ -282,7 +294,7 @@ class ModelClient:
             safety={}
             if transcription is not None or reading is not None
             else safety_settings(self._rating, picture=image is not None, node=node),
-            json_schema=_json_schema(schema) if schema is not None else None,
+            json_schema=_asked(schema, form),
             image=image,
             audio=audio,
             transcription=transcription,
@@ -472,6 +484,14 @@ def _json_schema(schema: type[BaseModel]) -> dict[str, Any]:
     """The schema's JSON schema, built once per class. A fresh copy each call, since the SDK
     may rewrite it in place."""
     return json.loads(_schema_text(schema))
+
+
+def _asked(schema: type[BaseModel] | None, form: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """The JSON schema a call sends: the caller's form where it gave one, else the class's own.
+    A fresh copy either way."""
+    if schema is None:
+        return None
+    return copy.deepcopy(dict(form)) if form is not None else _json_schema(schema)
 
 
 # How many of an answer's validation errors are logged, and how a place in it is written: field

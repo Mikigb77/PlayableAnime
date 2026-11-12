@@ -170,6 +170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(error, file=sys.stderr)
             return 2
         started.models = models.models_used()
+        started.thinking = models.thinking_used()
     started.sha = git_sha()
     finished = finish(started, asyncio.run(run(scenarios, mode, models)))
     counts = ", ".join(f"{n} {s}" for s, n in finished.counts.items() if n)
