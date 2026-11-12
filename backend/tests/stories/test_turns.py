@@ -8,6 +8,7 @@ from django.db.models import F
 from billing.models import CreditHold, LedgerEntry
 from engine import limits
 from engine.context import Language, StorySettings
+from engine.state import Goal, GoalStatus
 from graph.llm import Block, Fail, Node, Reply
 from graph.turn import UnreadableAction
 from media.models import Image, ScenePicture
@@ -52,6 +53,18 @@ AFTER = {
     "suggestions": [{"label": "Keep walking", "kind": "thread"}],
     "update": {"scene_end": {"ended_on": "Zhao scowls.", "present_ids": ["lin", "zhao"]}},
 }
+
+
+# T5: what each turn counts about the logic of play (`engine.tally`).
+TALLY = (
+    "refused",
+    "moves_refused",
+    "searches",
+    "searches_empty",
+    "rumors_heard",
+    "rumors_unvoiced",
+    "goals_open",
+)
 
 
 def opened(player, make_story, model, **fields) -> Story:
@@ -598,10 +611,52 @@ def test_one_t5_line_per_turn_with_numbers_and_never_the_story(
     # W10: how far the clock moved and what each step took, to tell a clock that drifts.
     assert fields["world_s"] == 3
     assert fields["steps"] == [["move", 3]]
+    # What says whether play is logical: nothing refused, searched for or heard in this turn.
+    assert {key: fields[key] for key in TALLY} == dict.fromkeys(TALLY, 0)
     assert line["story_id"] == str(story.pk)
     logged = str(log_lines())
     assert "I step around Zhao." not in logged
     assert AFTER["narration"] not in logged
+
+
+def test_the_t5_line_counts_a_move_refused_as_not_the_characters_own(
+    player, make_story, model, log_lines
+):
+    story = opened(player, make_story, model)
+    state = _state(story)
+    state.goals = {
+        "inner": Goal(id="inner", text="Reach the inner sect."),
+        "herbs": Goal(id="herbs", text="Bring the herbs.", status=GoalStatus.ACHIEVED),
+    }
+    Story.objects.filter(pk=story.pk).update(state=state.model_dump(mode="json"))
+    lightning = {
+        **STEP_AROUND["steps"][0],
+        "text": "call down lightning on Zhao",
+        "verb": "strike",
+        "uses": [{"part": "power", "ref": "lightning"}],
+    }
+    model.backend.script(Node.INTERPRET, Reply(json={**STEP_AROUND, "steps": [lightning]}))
+    model.backend.script(Node.NARRATOR, Reply(json=AFTER))
+
+    played = play(
+        player,
+        story,
+        {"kind": "action", "action": "I call down lightning on Zhao.", "expected_version": 2},
+    )
+
+    [step] = played.completed["scene"]["details"]["steps"]
+    assert step["reason"] == "You have no power like that."
+    [fields] = [
+        line["turn"]
+        for line in log_lines()
+        if line["message"].startswith("Turn ") and line["turn"]["turn"] == 2
+    ]
+    assert {key: fields[key] for key in TALLY} == dict.fromkeys(TALLY, 0) | {
+        "refused": 1,
+        "moves_refused": 1,
+        "goals_open": 1,
+    }
+    assert "not_own" not in step  # the log's marker is no part of what the app is sent
 
 
 def test_a_turn_saved_after_its_player_left_is_logged_as_saved(

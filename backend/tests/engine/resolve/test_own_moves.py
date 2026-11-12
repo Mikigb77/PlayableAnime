@@ -106,6 +106,30 @@ def test_an_energy_they_never_touched_is_still_refused():
     )
 
 
+def test_a_move_refused_as_not_theirs_is_marked_for_the_turns_log():
+    """T5 counts the refusals of a power or technique as not the character's own, whichever
+    check made them, and nothing else: a move the story let them do must not come back here."""
+    state = with_aura(cultivation_world())
+    training = Intent(steps=[train(GrowthKind.POWER, "aura", 2, power_id="aura")])
+    refused = [
+        attempt(state, power("aura")),
+        attempt(state, technique("aura leap")),
+        in_a_beat(state, UseSource.POWER, "aura around my fist"),
+        *resolve(state, training).steps,
+    ]
+    assert [settled.outcome_class for settled in refused] == [OutcomeClass.RULED_OUT] * 4
+    assert all(settled.not_own for settled in refused)
+    assert in_a_beat(state, UseSource.POWER, "aura around my fist").beats[0].not_own
+
+    # An object they don't carry is no move refused, nor a power of theirs that isn't ready,
+    # nor a move that is theirs to try.
+    assert not in_a_beat(state, UseSource.CARRIED, "an aura blade").not_own
+    state.player.sheet.powers[0].ready_at_personal_s = 5
+    tired = attempt(state, power("time-stop"))
+    assert (tired.outcome_class, tired.not_own) == (OutcomeClass.RULED_OUT, False)
+    assert not attempt(squire(), technique("aura leap")).not_own
+
+
 def test_the_energy_they_hold_or_a_ladder_they_stand_on_makes_a_move_theirs():
     state = cultivation_world()  # a reserve of qi, and the first of the realms: Qi Condensation
     lin = state.player.sheet

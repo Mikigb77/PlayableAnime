@@ -55,6 +55,10 @@ class BeatResolution(EngineModel):
     verdict: BeatVerdict
     reason: str = ""
     roll: RollRecord | None = Field(default=None, description="When the place might hold it.")
+    not_own: bool = Field(
+        default=False,
+        description="G14: empty because the power it names is on no record of the actor's.",
+    )
 
 
 class Trip(EngineModel):
@@ -217,6 +221,12 @@ class StepResolution(EngineModel):
         default=None, ge=0, description="The actor's lived seconds, when they differ (W10a)."
     )
     beats: list[BeatResolution] = Field(default_factory=list, description="R2's beat check.")
+    not_own: bool = Field(
+        default=False,
+        description="G14: ruled out because a power or technique the step named is on no "
+        "record of the actor's. T5 counts these: a move the story let them do is theirs (A4), "
+        "so it must not come back here.",
+    )
     strangers: list[str] = Field(
         default_factory=list,
         description="F1, W2: the ids of people this step made real, the stranger it aimed at "

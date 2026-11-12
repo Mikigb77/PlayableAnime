@@ -65,12 +65,14 @@ def find_roll(label: str, ctx: TurnContext, rng: SeededRng) -> RollRecord:
 @dataclass(frozen=True)
 class Settled:
     """A check that settled the step: its class, result and reason, with the roll that decided it
-    if one did."""
+    if one did. `not_own` marks the one refusal T5 counts: a power or technique the step named
+    is on no record of the actor's (G14)."""
 
     outcome_class: OutcomeClass
     result: StepResult
     reason: str
     roll: RollRecord | None = None
+    not_own: bool = False
 
 
 @dataclass(frozen=True)
@@ -174,6 +176,7 @@ def sheet_check(
                     OutcomeClass.RULED_OUT,
                     StepResult.FAILURE,
                     f"{cap(who)} {_have(state, actor)} no power like that.",
+                    not_own=True,
                 )
             if not _ready(state, actor, power):
                 return Settled(
@@ -202,6 +205,7 @@ def sheet_check(
                     OutcomeClass.RULED_OUT,
                     StepResult.FAILURE,
                     f"{cap(who)} never learned that technique.",
+                    not_own=True,
                 )
             if not _ready(state, actor, power):
                 return Settled(
@@ -558,6 +562,7 @@ def beat_check(
                     StepResult.FAILURE,
                     check.reason,
                     check.roll,
+                    not_own=check.not_own,
                 )
                 return BeatOutcome(checks, canon, settled)
     return BeatOutcome(checks, canon)
@@ -573,9 +578,17 @@ def _check_use(
     ctx: TurnContext,
     rng: SeededRng,
 ) -> BeatResolution:
-    def verdict(v: BeatVerdict, reason: str = "", roll: RollRecord | None = None):
+    def verdict(
+        v: BeatVerdict, reason: str = "", roll: RollRecord | None = None, *, not_own: bool = False
+    ):
         return BeatResolution(
-            text=beat, thing=use.thing, source=use.source, verdict=v, reason=reason, roll=roll
+            text=beat,
+            thing=use.thing,
+            source=use.source,
+            verdict=v,
+            reason=reason,
+            roll=roll,
+            not_own=not_own,
         )
 
     if use.source is UseSource.POWER:
@@ -601,6 +614,7 @@ def _check_use(
             return verdict(
                 BeatVerdict.EMPTY,
                 f"{cap(name(state, actor.id))} {_have(state, actor)} no power like that.",
+                not_own=True,
             )
         if not _ready(state, actor, power):
             return verdict(BeatVerdict.EMPTY, _not_recovered(state, actor, power))
