@@ -3,8 +3,9 @@
 A run writes, under its output directory:
 
 - `run.json`: the run and every scenario's result: status, score, checks, judged rubrics,
-  metrics, cost and the known gaps still open.
-- `summary.md`: the same as a table, for a CI job summary.
+  metrics, cost, what each model step came to and the known gaps still open.
+- `summary.md`: the same as a table, for a CI job summary, with what each model step of the
+  stories came to (calls, tokens, seconds, cost) and what a turn played cost on average.
 - `transcripts/<scenario>.json` (live): each story's turns, for staff to spot-check the judge.
 - `pictures/<scenario>/<name>.<ext>` (live): every picture drawn.
 
@@ -28,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from evals.pictures import NotDrawn, Picture
-from evals.runner import ScenarioResult
+from evals.runner import ScenarioResult, Use, merged
 from evals.scenario import Mode
 
 STATUSES = ("passed", "failed", "error", "pending", "skipped")
@@ -54,6 +55,8 @@ class Run:
     finished_at: datetime | None = None
     sha: str = ""
     models: dict[str, str] = field(default_factory=dict)
+    # How hard each step that takes the setting was told to think (B6), in a live run.
+    thinking: dict[str, str] = field(default_factory=dict)
     results: list[ScenarioResult] = field(default_factory=list)
 
     @property
@@ -77,6 +80,19 @@ class Run:
         scores = [r.score for r in self.results if r.score is not None]
         return round(sum(scores) / len(scores), 4) if scores else None
 
+    @property
+    def turns(self) -> int:
+        return sum(r.turns for r in self.results)
+
+    @property
+    def turn_cost_usd(self) -> Decimal:
+        """What the turns played cost, without the judge, the pictures or a reading alone."""
+        return sum((r.turn_cost_usd for r in self.results), Decimal(0))
+
+    def use(self) -> list[Use]:
+        """What each model step of the stories came to over the whole run."""
+        return merged(use for r in self.results for use in r.use)
+
     def gaps(self) -> list[tuple[str, str]]:
         return [(r.id, gap) for r in self.results for gap in r.gaps()]
 
@@ -88,9 +104,13 @@ class Run:
             "started_at": self.started_at.isoformat(),
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "models": self.models,
+            "thinking": self.thinking,
             "counts": self.counts,
             "score": self.score,
             "cost_usd": float(self.cost_usd),
+            "turns": self.turns,
+            "turn_cost_usd": float(self.turn_cost_usd),
+            "use": [u.to_json() for u in self.use()],
             "gaps": [{"scenario": s, "gap": g} for s, g in self.gaps()],
             "scenarios": [r.to_json() for r in self.results],
         }
@@ -177,11 +197,54 @@ def summary(run: Run) -> str:
         )
     if skipped:
         lines += ["", f"Skipped in {run.mode.value} mode: {', '.join(skipped)}."]
+    lines += _steps(run)
     gaps = run.gaps()
     if gaps:
         lines += ["", "### Known gaps still open", ""]
         lines += [f"- **{scenario}**: {_cell(gap)}" for scenario, gap in gaps]
     return "\n".join(lines) + "\n"
+
+
+def _steps(run: Run) -> list[str]:
+    """What each model step of the stories came to, a call: on which model, how many tokens went
+    in (and how many of those the provider had cached) and came out (and how many of those were
+    thinking), how long it took and what it cost; and what a turn played cost on average. Two
+    runs of the same scenarios with a different model for one step are weighed side by side
+    here (B6, B8, K8). The judge and the pictures are the eval's own and aren't listed."""
+    uses = run.use()
+    if not uses:
+        return []
+    live = run.mode is Mode.LIVE
+    lines = [
+        "",
+        "### What each model step came to" if live else "### What each model step would come to",
+        "",
+        "| Step | Model | Calls | Tokens in | Cached | Tokens out | Thinking | Seconds | A call "
+        "| In all |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for use in uses:
+        thinking = run.thinking.get(use.node)
+        model = f"{use.model} ({thinking})" if thinking else use.model
+        failed = f" ({use.failed} failed)" if use.failed else ""
+        lines.append(
+            f"| {use.node} | {model} | {use.calls}{failed} | {use.input_tokens / use.calls:,.0f} "
+            f"| {use.cached_tokens / use.calls:,.0f} | {use.output_tokens / use.calls:,.0f} "
+            f"| {use.thinking_tokens / use.calls:,.0f} | {use.latency_ms / use.calls / 1000:.1f} "
+            f"| ${use.cost_usd / use.calls:.4f} | ${use.cost_usd:.2f} |"
+        )
+    note = "Tokens and seconds are a call's average."
+    if not live:
+        # Scripted answers of fixed sizes to the real prompts and forms, priced as the models
+        # would be: prompt growth shows here run after run, and nothing was spent.
+        note = "Scripted answers of fixed sizes to the real prompts: tokens are a call's average."
+    if run.turns:
+        cost = run.turn_cost_usd / run.turns
+        played = f"A turn played cost ${cost:.4f} on average ({run.turns} turns)."
+        if not live:
+            played = f"A turn played would cost ${cost:.4f} on average ({run.turns} turns)."
+        note = f"{note} {played}"
+    return [*lines, "", note]
 
 
 def _pictures(run: Run) -> list[str]:

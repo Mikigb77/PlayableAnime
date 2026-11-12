@@ -72,6 +72,7 @@ from graph.turn import prompts
 from graph.turn.context import (
     LAST_SCENE_CHARS,
     RECENT_SCENES,
+    asks,
     chapter_prompt,
     interpret_prompt,
     narration_brief,
@@ -142,7 +143,7 @@ def test_the_interpret_prompt_reads_the_scene_and_the_known_names():
     state = cultivation_world()
     prompt = interpret_prompt(state, "  I throw a stone at Senior Brother Jo ")
     text = prompt.messages[-1].text
-    assert prompt.system == prompts.INTERPRET_SYSTEM
+    assert prompt.system == prompts.interpret_system(asks(state))
     assert "## ACTION\nI throw a stone at Senior Brother Jo" in text
     assert "Zhao grins and draws back his foot" in text  # the last moment (R3)
     assert '"aliases":["Senior Brother Zhao"]' in text  # misheard names map to ids (V3)

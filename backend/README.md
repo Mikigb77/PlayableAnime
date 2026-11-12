@@ -130,7 +130,12 @@ uv run python -m evals run --only t17.time-stop  # one scenario, or every id wit
 LLM_PROVIDER=vertex GCP_PROJECT=playable-anime \
   uv run python -m evals run --mode live --out evals-out --history evals-out/history.jsonl
 uv run python -m evals report --history evals-out/history.jsonl
+# The first model's reading alone (T18), on another model, to set beside today's:
+LLM_PROVIDER=vertex GCP_PROJECT=playable-anime INTERPRET_MODEL=gemini-3.5-flash \
+  uv run python -m evals run --mode live --only t18.first-reading --out evals-out
 ```
+
+A run's summary lists what each model step came to, a call, and what a turn played cost.
 
 How it works, the known gaps and how to switch on the nightly live run are in
 [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#story-evals).
@@ -227,15 +232,17 @@ stories/          Story, Scene and PendingEvent models, admin, the story API
   management/     seed_story: a story from an example world, for development
 graph/            Model calls and the turn graph, with no Django imports (B4)
   llm/            The model layer: per-node models, retries, typed errors, telemetry, the fake
-  turn/           The LangGraph turn graph (B5): nodes, prompts, checks before narration (C5)
+  turn/           The LangGraph turn graph (B5): nodes, prompts, the form a turn's first
+                  model fills, checks before narration (C5)
 evals/            The story evals (T15, T17, T18): scripted scenarios through the turn graph
   scenario.py     Scenario, the registry, the two modes
-  runner.py       run_scenario, Story and Eval: turns, checks, known gaps, the judge's calls
+  runner.py       run_scenario, Story and Eval: turns, a reading alone, checks, known gaps,
+                  the judge's calls, what each model step came to
   scripted.py     The scripted model: interpretations and narrations a scenario gives
   judge.py        The model judge and its rubrics (scenes and pictures)
   pictures.py     Live mode's pictures, drawn as the picture endpoint draws them (M5, M6)
   worlds.py       The worlds the scenarios play in
-  scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t18
+  scenarios/      One module per suite: t15, t17, t17_powers, t17_play, t18, t18_reading
   results.py      run.json, summary.md, the history file and the trend
 media/            Pictures (M1 to M8): Image records, planning, drawing, storage, the picture API
   premise_covers.py  The starter premises' covers on Discover, drawn once by the house (S1)

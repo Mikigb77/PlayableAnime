@@ -46,6 +46,8 @@ from graph.turn import (
     prompts,
     run_turn,
 )
+from graph.turn.context import asks
+from graph.turn.form import intent_form
 from tests.graph.conftest import collect, run
 
 STONE = {
@@ -303,8 +305,10 @@ def test_the_interpret_step_reads_the_players_words(fake, make_client):
     fake.script(Node.NARRATOR, Reply(json=SCENE))
     play(make_client(), turn_input())
     [request] = fake.calls(Node.INTERPRET)
-    assert request.prompt.system == prompts.INTERPRET_SYSTEM
-    assert request.json_schema is not None
+    # B5: the form asks what can apply to this turn, and the guide explains only that.
+    asked = asks(cultivation_world())
+    assert request.prompt.system == prompts.interpret_system(asked)
+    assert request.json_schema == intent_form(asked)
     assert request.prompt.messages[-1].text.endswith(
         "## ACTION\nI throw a stone at Zhao, then run for the gate"
     )

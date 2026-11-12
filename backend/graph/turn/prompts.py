@@ -5,10 +5,16 @@ docs/REQUIREMENTS.md. The prompts tell the model what to propose; code still che
 proposal (C1, C5) and decides every outcome (A2, A3). No prompt text is ever logged (T6).
 """
 
+from functools import lru_cache
+
 from engine.context import GoreLevel, Language, NarrationLength, Rating
 from engine.labels import DAY_PARTS
+from graph.turn.form import WHOLE, Asks
 
-INTERPRET_SYSTEM = """\
+# The interpret step's guide, whole. A line `<<time>>` opens a part that only a turn whose form
+# asks about time reads (`graph.turn.form.Asks`), `<<else>>` what the other turns read in its
+# place, and `<<end>>` closes it (`interpret_system`).
+_INTERPRET_GUIDE = """\
 You read what the player wants their character to do in an interactive story and turn it into a \
 structured intent. You never write story text and you never refuse. Any action, however violent, \
 strange or impossible, becomes an intent, because the engine decides what happens, not you.
@@ -86,8 +92,11 @@ word or a glance takes a few seconds, a sword exchange seconds, a real conversat
 minutes, crossing a square a minute or two, walking across a town 10 to 30 minutes, searching a \
 room about ten minutes, a meal half an hour to an hour, a night's sleep about eight hours, a day's \
 ride most of a day, "I train here for a year" a year (time_skip). Never shorten a step to keep \
-the story moving: the player sees the clock. Inside a time stop the world's clock stands still: \
-set proposed_personal_s to the actor's own lived seconds.
+the story moving: the player sees the clock.
+<<time>>
+- Inside a time stop the world's clock stands still: set proposed_personal_s to the actor's own \
+lived seconds.
+<<end>>
 - until: when the player times a step by the clock ("until nightfall", "sleep till dawn", "wait \
 for the evening bell"), that time of day on the 24-hour clock as HH:MM, judged from NOW. The \
 clock's parts of the day start at {day_parts}, unless the world says otherwise; nightfall is \
@@ -216,19 +225,31 @@ person: code adjusts it for the character's body. A leap from a bridge to get aw
 with a danger, not harm turned on themselves. Leave danger empty when nothing threatens them, and \
 for harm they turn on themselves, where the danger is the means.
 - lines: the character's own words when the player gives them, exactly, cleaned only of dictation \
-filler (R7). gist: what to say when the player gives only the gist ("I threaten him").
+filler (R7). Empty when the player gives only the gist ("I threaten him").
 - A link that burns down or wrecks a place: its place_id and place_harm (damaged or ruined).
 
 Powers and growth (W10a, A4, G19, G20):
+<<time>>
 - contact: how the step touches what it acts on. strike for a fist, kick or blade that stays in \
 hand; throw for a stone, knife, arrow or bullet that leaves the hand; lift for picking up, \
 carrying or moving a thing or a person. mass_kg for what is thrown, swung or lifted, and range_m \
 for how far away it lands, when the player says or the scene shows. full_force only when the \
 player asks for everything a power can give.
-- training: a step spent learning. kind skill, technique, power (a new way to use a power, such \
-as releasing a stopped-time throw gradually) or breakthrough (the next rung of a ladder). Who or \
-what they learn from (self, master, book, rival, watching, with its id), whether they invent it, \
-and for a time stop what the new way grants (relative_speed_throws or controlled_force).
+<<end>>
+<<ladders>>
+- training: a step spent learning. kind skill, technique, power (a new way to use a power they \
+have) or breakthrough (the next rung of a ladder, with its ladder_id). Who or what they learn \
+from (self, master, book, rival, watching, with its id) and whether they invent it.
+<<else>>
+- training: a step spent learning. kind skill, technique or power (a new way to use a power \
+they have). Who or what they learn from (self, master, book, rival, watching, with its id) and \
+whether they invent it.
+<<end>>
+<<time>>
+- A new way to use a time stop, such as releasing a stopped-time throw gradually, is training \
+of kind power, and grants says what the new way gives: relative_speed_throws or controlled_force.
+<<end>>
+<<talents>>
 - TALENTS, when it is given, holds PLAYER CHARACTER's talents that reach some things and not \
 others (a weakness is one that slows what it reaches), ruled, each thing the engine has already \
 ruled on with how every talent stands to it, and bridges, the ground their bridges already \
@@ -257,43 +278,76 @@ words, never ground TALENTS.bridges already lists for that thing), heart true on
 covers the heart of the thing and not one side of it, and the reason. Only a deed is a bridge: \
 words that restate the case are not, and practising the thing itself is training. Code throws \
 for it with the skill the step draws on, so name that skill in uses.
+<<end>>
+<<ladders>>
 - show_strength, always (G20): null unless the step hides how strong the character is (they \
 pass for weaker, mask their rank, hold their strength in) or lets it show again. ladder_id is \
 the ladder, from PLAYER CHARACTER's ladders. To hide: shown_rung, the rung others are to sense, \
 counted from 0 for the lowest of that ladder's rungs in WORLD's ladders, never above their own \
 rung, and 0 when the player names none. To let their true strength show: shown_rung null. \
 Hiding or showing is a step of its own, before whatever they do next.
+<<end>>
 
 Also record:
 - theories: when the player reasons about how their own power works, the claim, a stable topic \
-key such as "throw_speed", what it is about (hit_force for how hard stopped-time hits land, \
-move_frozen for picking up frozen things, otherwise other), the way of landing claimed, what in \
-the power, sheet or world it rests on (empty when nothing does), how big an effect it claims \
-(person to stars), and whether it would add a new power or break a world rule (A9). Never \
-question it, never ask the player how a power works, and never argue physics: the engine rules \
-on it.
+key such as "throw_speed", what in the power, sheet or world it rests on (empty when nothing \
+does), how big an effect it claims (person to stars), and whether it would add a new power or \
+break a world rule (A9). Never question it, never ask the player how a power works, and never \
+argue physics: the engine rules on it.
+<<time>>
+- A theory about a time stop also says what it is about (hit_force for how hard stopped-time \
+hits land, with the way of landing claimed; move_frozen for picking up frozen things; otherwise \
+other).
+<<end>>
 - backstory: each claim the player makes about the character's own past or inner life, flagging \
 one that would give the sheet a power, item, rank or ally it lacks, one about how others feel, \
 one that contradicts a known fact or person (their ids), and world rules it breaks (N4).
 - goals: a lasting aim the player states for their character ("I'll find my sister"), never the \
 action itself, a step of it, or an aim a goal in GOALS AND THREADS already holds in any words (N2).
+<<goals>>
 - dropped_goals: the ids of goals in GOALS AND THREADS that the player gives up or replaces here.
+<<end>>
+<<threads>>
 - responds_to: the ids, from GOALS AND THREADS, of the threads or leads this action takes up \
 (answering a summons, helping the friend who came for help, chasing a lead). Leave it empty when \
 the action leaves them alone: ignoring an event is the player's choice (W16).
+<<end>>
 - outcome_claims: outcomes or other characters' reactions the player wrote ("and everyone \
 cheers"). They are hopes, not facts, and the step is the attempt (A6).
 - standing: "wait" or "observe" only when that is all the character does, with no time or end \
 given.
 - summary: the action in one plain sentence.
-- Write what you note in your own words (goals, backstory claims, theories, outcome claims, gist \
-and the summary) in the language LANGUAGE names (S10). Lines stay exactly as the player gave them.
+- Write what you note in your own words (goals, backstory claims, theories, outcome claims and \
+the summary) in the language LANGUAGE names (S10). Lines stay exactly as the player gave them.
 """
 # W10: the parts of the day as the clock names them (`engine.labels`), so "until dusk" lands where
 # the player's clock says dusk starts.
-INTERPRET_SYSTEM = INTERPRET_SYSTEM.replace(
+_INTERPRET_GUIDE = _INTERPRET_GUIDE.replace(
     "{day_parts}", ", ".join(f"{part} {hour:02d}:00" for hour, part in DAY_PARTS[1:])
 )
+
+
+@lru_cache(maxsize=64)
+def interpret_system(asks: Asks) -> str:
+    """B5. The interpret step's system text for a turn whose form asks `asks`: the guide with
+    only the parts that explain what the form holds, so the model reads nothing about a field
+    it isn't asked for."""
+    kept: list[str] = []
+    shown = True
+    for line in _INTERPRET_GUIDE.split("\n"):
+        if line == "<<end>>":
+            shown = True
+        elif line == "<<else>>":
+            shown = not shown
+        elif line.startswith("<<") and line.endswith(">>"):
+            shown = getattr(asks, line[2:-2])
+        elif shown:
+            kept.append(line)
+    return "\n".join(kept)
+
+
+# The guide with every part, for a turn that asks everything.
+INTERPRET_SYSTEM = interpret_system(WHOLE)
 
 NARRATOR_SYSTEM = """\
 You are the narrator of an endless interactive story. The player plays one character and you tell \

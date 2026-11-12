@@ -47,6 +47,26 @@ def test_a_structured_call_returns_the_validated_result(fake, make_client, telem
     assert record.cost_usd > 0 and record.price_known
 
 
+def test_a_call_can_ask_for_less_than_its_schema_holds(fake, make_client):
+    """B5: a caller's own form goes to the model in place of the class's schema, and the answer
+    is still read as the class, with its defaults for what the form left out."""
+    whole = Narration.model_json_schema()
+    form = {**whole, "properties": {k: v for k, v in whole["properties"].items() if k != "title"}}
+    form["required"] = [name for name in whole.get("required", []) if name != "title"]
+    fake.script(Node.NARRATOR, Reply(json={"narration": "The stone flies.", "choices": ["Run"]}))
+
+    result = run(make_client().structured(Node.NARRATOR, PROMPT, Narration, form=form))
+
+    [request] = fake.requests
+    assert request.json_schema == form and request.json_schema is not form
+    assert "title" not in request.json_schema["properties"]
+    assert result == Narration(narration="The stone flies.", choices=["Run"])
+    # Without one, the class's own schema is sent.
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    run(make_client().structured(Node.NARRATOR, PROMPT, Narration))
+    assert fake.requests[-1].json_schema == whole
+
+
 def test_the_request_carries_the_nodes_model_settings_and_the_ratings_safety(fake, make_client):
     fake.script(Node.INTERPRET, Reply(json=SCENE))
 
