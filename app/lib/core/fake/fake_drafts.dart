@@ -14,8 +14,13 @@ import 'fake_stories.dart';
 /// backend's `chain.plan_edit`. To try the app's error handling, put a trigger in the premise or
 /// the instruction: `[fail:out_of_credits]`, `[fail:rate_limited]`, `[fail:quota_exceeded]`,
 /// `[fail:unreadable_action]`, `[fail:bad_key]`, `[fail:llm_unavailable]` or
-/// `[fail:version_conflict]`. `[fail:real_person]` in a premise, an instruction, a line or a rule
-/// is refused at that field as naming a real person (G12), at no cost.
+/// `[fail:version_conflict]`. `[fail:real_person]` in a premise, an instruction, a plain field or
+/// a rule is refused at that field as naming a real person (G12), at no cost.
+///
+/// A draft is kept as its records (`_world`, `_character`, `_said`, `_hidden`), and what the app
+/// gets is written from them each time ([draftView]), as the backend writes its summary from the
+/// world: the plain fields change at once (G1, G2), and how the story starts shows only when the
+/// player's own words name it (G1).
 class FakeDraftState {
   final drafts = <String, (String ownerId, JsonMap draft)>{};
 
@@ -82,6 +87,7 @@ void registerDraftRoutes(FakeBackend b) {
       'rating': rating,
       'language': language,
       ...drafted,
+      '_said': premise,
       'version': 1,
       'story_id': null,
       'created_at': now,
@@ -90,33 +96,28 @@ void registerDraftRoutes(FakeBackend b) {
     if (r.json['advanced'] case final JsonMap advanced) _applyAdvanced(draft, advanced);
     state.drafts[id] = (r.userId!, draft);
     _charge(b, r, calls: 1);
-    return FakeResponse.json(draft, status: 201);
+    return FakeResponse.json(draftView(draft), status: 201);
   });
 
-  b.route('GET', '/v1/drafts/:id', (r) => FakeResponse.json(state.get(r.param('id'), r.userId!)));
+  b.route(
+    'GET',
+    '/v1/drafts/:id',
+    (r) => FakeResponse.json(draftView(state.get(r.param('id'), r.userId!))),
+  );
 
   b.route('PATCH', '/v1/drafts/:id', (r) async {
     final draft = state.editable(r);
     final body = r.json;
     if (body['rating'] case final String rating) _checkRating(b, r, rating);
-    for (final key in ['world_lines', 'character_lines']) {
-      final lines = body[key] as List?;
-      if (lines != null && (lines.length > 20 || lines.any((l) => (l as String).length > 300))) {
-        throw const FakeError.validation('Up to 20 lines of 300 characters each.');
-      }
-    }
     final advanced = body['advanced'] as JsonMap? ?? const {};
     if (advanced['rules'] case final List rules
         when rules.any((rule) => ((rule as JsonMap)['text'] as String? ?? '').isEmpty)) {
       throw const FakeError.validation('A rule is 1 to 300 characters.');
     }
+    final fields = _plainFields(draft, body);
     _refuseRealPeople([
-      ..._newTexts('world_lines', body['world_lines'] as List?, draft['world_lines'] as List),
-      ..._newTexts(
-        'character_lines',
-        body['character_lines'] as List?,
-        draft['character_lines'] as List,
-      ),
+      for (final MapEntry(:key, :value) in fields.entries)
+        if (value is String) (key, value),
       ..._newTexts(
         'advanced.rules',
         [for (final rule in advanced['rules'] as List? ?? const []) (rule as JsonMap)['text']],
@@ -128,38 +129,46 @@ void registerDraftRoutes(FakeBackend b) {
       ),
     ]);
     final calls = _editCalls(draft, body, advanced);
-    final words = [
-      ...?body['world_lines'] as List?,
-      ...?body['character_lines'] as List?,
-    ].join(' ');
+    final words = fields.values.whereType<String>().join(' ');
     _failOn(words);
     await _meter(b, r, calls: calls);
     _failOn(words, model: true);
 
-    for (final key in ['world_lines', 'character_lines']) {
-      if (body[key] case final List lines) draft[key] = _clean(lines);
-    }
+    _applyFields(draft, fields);
     if (body['rating'] case final String rating) draft['rating'] = rating;
     _applyAdvanced(draft, advanced);
     _charge(b, r, calls: calls);
-    return FakeResponse.json(_saved(b, draft));
+    return FakeResponse.json(draftView(_saved(b, draft)));
   });
 
   b.route('POST', '/v1/drafts/:id/revise', (r) async {
     final draft = state.editable(r);
-    final key = r.json['target'] == 'character' ? 'character_lines' : 'world_lines';
+    final character = r.json['target'] == 'character';
     final instruction = (r.json['instruction'] as String? ?? '').trim();
     if (instruction.isEmpty || instruction.length > 1000) {
       throw const FakeError.validation('Say what to change, in up to 1000 characters.');
+    }
+    final about = r.json['about'] as String?;
+    if (about != null && !_kinds.contains(about)) {
+      throw const FakeError.validation('No part of the summary is called that.');
     }
     _refuseRealPeople([('instruction', instruction)]);
     _failOn(instruction);
     await _meter(b, r, calls: 1);
     _failOn(instruction, model: true);
-    final lines = [...draft[key] as List, _asLine(instruction)];
-    draft[key] = lines.length > 10 ? [lines.first, ...lines.skip(lines.length - 9)] : lines;
+    // What the change names of how the story starts shows from here on (G1).
+    draft['_said'] = '${draft['_said']}\n$instruction';
+    final parts = (draft[character ? '_character' : '_world'] as List).cast<JsonMap>();
+    final line = _asLine(instruction);
+    // Asked at a part, the change lands there; else it is a new line of its own.
+    final at = parts.where((part) => part['kind'] == about).firstOrNull;
+    if (at != null) {
+      at['text'] = '${at['text']} $line';
+    } else {
+      parts.add({'kind': character ? 'nature' : 'faction', 'text': line});
+    }
     _charge(b, r, calls: 1);
-    return FakeResponse.json(_saved(b, draft));
+    return FakeResponse.json(draftView(_saved(b, draft)));
   });
 
   b.route('POST', '/v1/drafts/:id/start', (r) {
@@ -196,7 +205,7 @@ void registerDraftRoutes(FakeBackend b) {
     };
     story.version = 1;
     draft['story_id'] = story.id;
-    state.byStory[story.id] = draft;
+    state.byStory[story.id] = draftView(draft);
     return FakeResponse.json({'story_id': story.id, 'version': story.version});
   });
 }
@@ -294,13 +303,8 @@ void _charge(FakeBackend b, FakeRequest r, {required int calls}) {
 
 String _normal(Object? text) => (text as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
 
-List<String> _clean(List<Object?> lines) => [
-  for (final line in lines)
-    if (_normal(line).isNotEmpty) _normal(line),
-];
-
 /// How many model calls an edit needs, by the backend's rules (`chain.plan_edit`): rewritten
-/// lines, rules or gift, and lowering the rating to Teen.
+/// rules, a new gift, and lowering the rating to Teen. The plain fields need none.
 int _editCalls(JsonMap draft, JsonMap body, JsonMap advanced) {
   var world = false;
   var character = false;
@@ -316,14 +320,6 @@ int _editCalls(JsonMap draft, JsonMap body, JsonMap advanced) {
         '${rule['id']}|${rule['text']}',
     ];
     if (after.join('\n') != before.join('\n')) world = true;
-  }
-  if (body['world_lines'] case final List lines
-      when _clean(lines).join('\n') != (draft['world_lines'] as List).join('\n')) {
-    world = true;
-  }
-  if (body['character_lines'] case final List lines
-      when _clean(lines).join('\n') != (draft['character_lines'] as List).join('\n')) {
-    character = true;
   }
   final gift = advanced['gift_strength'];
   if (gift != null && gift != 'none' && gift != (draft['advanced'] as JsonMap)['gift_strength']) {
@@ -351,11 +347,9 @@ void _applyAdvanced(JsonMap draft, JsonMap advanced) {
   }
   if (advanced['gift_strength'] case final String gift when gift != current['gift_strength']) {
     current['gift_strength'] = gift;
-    final lines = [
-      for (final line in draft['character_lines'] as List)
-        if (!(line as String).startsWith('Gift:')) line,
-    ];
-    draft['character_lines'] = [...lines, ?_giftLine(gift)];
+    final parts = (draft['_character'] as List).cast<JsonMap>()
+      ..removeWhere((part) => part['kind'] == 'power');
+    if (_giftLine(gift) case final line?) parts.add({'kind': 'power', 'text': line});
   }
 }
 
@@ -399,29 +393,220 @@ JsonMap _rule(String id, String text, {bool fixed = true}) => {
   'fixed': fixed,
 };
 
+/// The kinds a line of the summary has (docs/API.md, `DraftPartKind`).
+const _kinds = {
+  ...{'rule', 'era', 'ladder', 'peoples', 'faction'},
+  ...{'deadline', 'question', 'person', 'connections', 'goal'},
+  ...{'who', 'manner', 'standing', 'rank', 'skills', 'talents', 'traits', 'nature', 'power'},
+  'belongings',
+};
+
+/// What tells of how the story starts, and what each kind counts as when it is kept back (G1).
+const _openers = {
+  'deadline': 'events',
+  'question': 'questions',
+  'person': 'people',
+  'connections': 'people',
+  'goal': null,
+};
+
+/// One screen of lines (G1).
+const _screen = 10;
+
+/// The draft as the app gets it: the summary written from the draft's records, part by part and
+/// as plain lines, the character's plain fields, the ladder, and a count of what the story keeps
+/// back of its start. A line of how the story starts is in it only when the player's own words
+/// name it (`named`, G1).
+JsonMap draftView(JsonMap draft) {
+  final said = (draft['_said'] as String).toLowerCase();
+  final kept = {...draft['_hidden'] as JsonMap};
+  List<JsonMap> shown(String key) {
+    final parts = <JsonMap>[];
+    for (final part in (draft[key] as List).cast<JsonMap>()) {
+      final opener = _openers.containsKey(part['kind']);
+      if (!opener || (part['named'] as List).any((word) => said.contains(word as String))) {
+        parts.add({'kind': part['kind'], 'text': part['text']});
+      } else if (_openers[part['kind']] case final count?) {
+        // Kept back: counted, never told.
+        kept[count] = (kept[count] as int) + 1;
+      }
+    }
+    return parts;
+  }
+
+  final character = draft['character'] as JsonMap;
+  final rules = ((draft['advanced'] as JsonMap)['rules'] as List).cast<JsonMap>();
+  final world = [
+    for (final rule in [...rules.where((r) => r['fixed'] == true)].take(3))
+      {'kind': 'rule', 'text': rule['text']},
+    ...shown('_world'),
+  ];
+  final who = [character['name'], if (character['age'] != null) character['age']].join(', ');
+  final person = [
+    {'kind': 'who', 'text': '$who.'},
+    if (character['manner'] case final String manner when manner.isNotEmpty)
+      {'kind': 'manner', 'text': manner},
+    if (character['standing'] case final String standing when standing.isNotEmpty)
+      {'kind': 'standing', 'text': '$standing.'},
+    ...shown('_character'),
+  ];
+  return {
+    for (final MapEntry(:key, :value) in draft.entries)
+      if (!key.startsWith('_')) key: value,
+    'world_parts': world,
+    'character_parts': person,
+    'world_lines': [for (final part in world.take(_screen)) part['text']],
+    'character_lines': [for (final part in person.take(_screen)) part['text']],
+    'kept': kept,
+  };
+}
+
+/// The plain fields an edit changes (G1, G2), by field as the API names them: the texts
+/// normalized, a blank one refused at its field, and one sent back as it is left out.
+Map<String, Object> _plainFields(JsonMap draft, JsonMap body) {
+  final character = draft['character'] as JsonMap;
+  final sent = body['character'] as JsonMap? ?? const {};
+  final now = <String, Object?>{
+    'title': draft['title'],
+    'tone': draft['tone'],
+    'character.name': character['name'],
+    'character.looks': character['looks'],
+    'character.manner': character['manner'],
+  };
+  final texts = <String, Object?>{
+    'title': body['title'],
+    'tone': body['tone'],
+    'character.name': sent['name'],
+    'character.looks': sent['looks'],
+    'character.manner': sent['manner'],
+  };
+  final fields = <String, Object>{};
+  for (final MapEntry(key: field, value: text) in texts.entries) {
+    if (text == null) continue;
+    final words = _normal(text);
+    final most = field.endsWith('looks') || field.endsWith('manner') ? 300 : 80;
+    if (words.isEmpty) {
+      throw _fieldError(field, 'Write something here, or leave it as it is.', 'empty');
+    }
+    if (words.runes.length > most) {
+      throw _fieldError(field, 'At most $most characters.', 'string_too_long');
+    }
+    if (words != now[field]) fields[field] = words;
+  }
+  if (sent['age'] case final Object age) {
+    if (age is! int || age < 0 || age > 100000) {
+      throw _fieldError('character.age', 'An age is a whole number from 0 up.', 'int_range');
+    }
+    if (age != character['age']) fields['character.age'] = age;
+  }
+  return fields;
+}
+
+FakeError _fieldError(String field, String message, String type) =>
+    FakeError(400, 'validation_error', message, {
+      'fields': [
+        {'field': field, 'source': 'body', 'message': message, 'type': type},
+      ],
+    });
+
+/// Writes the plain fields in, at once (G1, G2). A new name takes the old one's place wherever
+/// the draft says it, and a new age where the looks give the old one as a number.
+void _applyFields(JsonMap draft, Map<String, Object> fields) {
+  final character = draft['character'] as JsonMap;
+  if (fields['character.name'] case final String name) {
+    final old = character['name'] as String;
+    final first = old.split(' ').first;
+    String renamed(String text) {
+      text = text.replaceAll(old, name);
+      // Their own first name too, but not a family's ("the Esposito family").
+      return first.length >= 3 && first != old
+          ? text.replaceAll(RegExp('\\b${RegExp.escape(first)}\\b'), name.split(' ').first)
+          : text;
+    }
+
+    for (final key in ['_world', '_character']) {
+      for (final part in (draft[key] as List).cast<JsonMap>()) {
+        part['text'] = renamed(part['text'] as String);
+      }
+    }
+    character['name'] = name;
+  }
+  if (fields['character.age'] case final int age) {
+    if (character['age'] case final int old) {
+      character['looks'] = (character['looks'] as String).replaceAll(RegExp('\\b$old\\b'), '$age');
+    }
+    character['age'] = age;
+  }
+  if (fields['title'] case final String title) draft['title'] = title;
+  if (fields['tone'] case final String tone) draft['tone'] = tone;
+  if (fields['character.looks'] case final String looks) character['looks'] = looks;
+  if (fields['character.manner'] case final String manner) character['manner'] = manner;
+}
+
+JsonMap _part(String kind, String text, {List<String> named = const []}) => {
+  'kind': kind,
+  'text': text,
+  'named': named,
+};
+
 /// The drafted world and character: written out for the flagship starters and the Naples story,
-/// and a general draft that follows the premise for the rest.
+/// and a general draft that follows the premise for the rest. `named` are the words that name a
+/// line of how the story starts, in lower case: it shows once the player's own words say one.
 JsonMap _drafted(JsonMap? starter, String premise) {
+  final genius = RegExp(r'\b(genius|prodigy)\b', caseSensitive: false).hasMatch(premise);
   final drafted = switch (starter?['id']) {
     'outer-disciple' => <String, dynamic>{
       'tone': 'Hungry, proud and a little desperate',
-      'world_lines': [
-        'Cultivation world: qi is real and everywhere, and that won\'t change.',
-        'Realms run from Qi Condensation through Foundation Establishment and Core Formation to '
-            'Nascent Soul and beyond.',
-        'The Azure Cloud Sect rules the eastern ranges from nine peaks: an outer court, an inner '
-            'court and the elders above them.',
-        'The ranking tournament starts in two days. The last ten outer disciples are sent down '
-            'the mountain.',
-        'Rival sects test the Azure Cloud for weakness while its patriarch stays in seclusion.',
-        'Senior Brother Zhao leads the outer court\'s strongest clique, and he has noticed you.',
+      'world': [
+        _part('era', 'The eastern ranges, ruled from the nine peaks of the Azure Cloud Sect.'),
+        _part(
+          'ladder',
+          'Cultivation realms: Qi Condensation, Foundation Establishment, Core Formation, '
+              'Nascent Soul and beyond.',
+        ),
+        _part(
+          'faction',
+          'The Azure Cloud Sect: an outer court, an inner court and the elders above them.',
+        ),
+        _part(
+          'faction',
+          'The rival sects: they test the Azure Cloud for weakness while its patriarch stays in '
+              'seclusion.',
+        ),
+        _part('deadline', 'The ranking tournament: in 2 days', named: ['tournament']),
+        _part(
+          'person',
+          'Senior Brother Zhao: he leads the outer court\'s strongest clique, and he has noticed '
+              'you.',
+          named: ['zhao'],
+        ),
       ],
-      'character_lines': [
-        'Lin Feng, 16. Third stage of Qi Condensation, the lowest in the outer court.',
-        'Stubborn and patient, better at reading people than at fighting them.',
-        'Knows every shortcut on the outer peak and every cook in the kitchens.',
-        'Carries a cracked jade pendant from a mother he never met.',
+      'character': {
+        'name': 'Lin Feng',
+        'age': 16,
+        'people': 'Human',
+        'standing': 'Outer disciple of the Azure Cloud Sect',
+        'looks':
+            'Thin and sharp-eyed, with a topknot gone loose and grey outer-court robes patched '
+            'at both elbows.',
+        'manner': 'Stubborn and patient, better at reading people than at fighting them.',
+      },
+      'parts': [
+        _part('rank', 'Qi Condensation, early stage.'),
+        _part('skills', 'Fair: the sword, herb lore. Novice: footwork.'),
+        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
+        _part('nature', 'Stubborn, patient. Wants a place nobody can take from him.'),
+        _part('belongings', 'Carries a cracked jade pendant. 3 spirit stones.'),
+        _part('goal', 'Goal: Keep your place on the mountain.', named: ['my goal', 'i want']),
       ],
+      'ladder': {
+        'name': 'Cultivation realms',
+        'rungs': ['Qi Condensation', 'Foundation Establishment', 'Core Formation', 'Nascent Soul'],
+        'more': true,
+        'at': 0,
+        'stage': 'early stage',
+      },
+      'hidden': {'people': 4, 'events': 2, 'questions': 2},
       'rules': [
         _rule('qi-is-real', 'Qi cultivation is real, and everyone knows it.'),
         _rule(
@@ -435,20 +620,52 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     },
     'three-heartbeats' => <String, dynamic>{
       'tone': 'Quiet menace with flashes of wonder',
-      'world_lines': [
-        'Cultivation world: qi is real and everywhere, and that won\'t change.',
-        'Nobody here knows that souls can cross between worlds. Nobody would believe you.',
-        'The Moonfall Sect trains disciples from Qi Condensation up, and its outer court is cruel '
-            'to the weak.',
-        'The boy whose body you woke in made enemies, and one of them waits for you by the well.',
-        'As far as anyone knows, time stop exists only in you.',
+      'world': [
+        _part('era', 'The Moonfall ranges, where nobody knows that souls can cross worlds.'),
+        _part(
+          'ladder',
+          'Cultivation realms: Qi Condensation, Foundation Establishment, Core Formation and '
+              'beyond.',
+        ),
+        _part(
+          'faction',
+          'The Moonfall Sect: it trains disciples from Qi Condensation up, and its outer court '
+              'is cruel to the weak.',
+        ),
+        _part(
+          'person',
+          'The boy by the well: an enemy the body you woke in made.',
+          named: ['well', 'enemy'],
+        ),
       ],
-      'character_lines': [
-        'Wei Lan, 16. Second stage of Qi Condensation, in a borrowed body.',
-        'Every memory of a past life in our world, as a programmer who died at thirty-one.',
-        'Calm under pressure, curious, and short on patience for bullies.',
-        'Gift: time stop that lasts three heartbeats and needs a breath to recharge.',
+      'character': {
+        'name': 'Wei Lan',
+        'age': 16,
+        'people': 'Human',
+        'standing': 'Outer disciple of the Moonfall Sect',
+        'looks': 'Slight, with ink-stained fingers and a borrowed body\'s bruises still fading.',
+        'manner': 'Calm under pressure, curious, and short on patience for bullies.',
+      },
+      'parts': [
+        _part('rank', 'Qi Condensation, early stage.'),
+        _part('skills', 'Skilled: logic and numbers. Novice: the sword.'),
+        if (genius) _part('talents', 'Genius: Formations (patterns and their flaws).'),
+        _part('nature', 'Calm, curious. Wants to know why he is here.'),
+        _part(
+          'power',
+          'Time stop: the world holds still for three heartbeats. Needs a breath to recharge. '
+              'Nobody knows of it.',
+        ),
+        _part('belongings', 'Carries a dead boy\'s sect token.'),
       ],
+      'ladder': {
+        'name': 'Cultivation realms',
+        'rungs': ['Qi Condensation', 'Foundation Establishment', 'Core Formation'],
+        'more': true,
+        'at': 0,
+        'stage': 'early stage',
+      },
+      'hidden': {'people': 3, 'events': 2, 'questions': 3},
       'rules': [
         _rule('qi-is-real', 'Qi cultivation is real, and everyone knows it.'),
         _rule(
@@ -462,18 +679,49 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     },
     'ashen-squire' => <String, dynamic>{
       'tone': 'Grim chivalry with a stubborn heart',
-      'world_lines': [
-        'Knights and aura: aura is real and ranks every knight, and that won\'t change.',
-        'Ranks run from squire to knight, aura master and sword saint.',
-        'The kingdom of Valdmark, its royal order, and three ducal houses that hate each other.',
-        'The trial of knighthood is in nine days.',
-        'Your master was found dead in the stables this morning, his sword still sheathed.',
+      'world': [
+        _part('era', 'The kingdom of Valdmark, three generations after the great fire.'),
+        _part('ladder', 'Aura ranks: Squire, Knight, Aura master, Sword saint.'),
+        _part('faction', 'The royal order: it grants knighthood and holds the trial.'),
+        _part('faction', 'The three ducal houses: old, proud, and at each other\'s throats.'),
+        _part('deadline', 'The trial of knighthood: in 9 days', named: ['trial']),
+        _part(
+          'question',
+          'Who killed your master, and why was his sword still sheathed?',
+          named: ['master'],
+        ),
+        _part(
+          'person',
+          'Ser Garrick: a knight of the order who wants you gone before the trial.',
+          named: ['garrick'],
+        ),
       ],
-      'character_lines': [
-        'Edric Vale, 19. A squire who has never drawn a spark of aura.',
-        'Quick with a sword, quicker with excuses, loyal to a fault.',
-        'Owns a borrowed horse, a dead man\'s sword and a debt to the quartermaster.',
+      'character': {
+        'name': 'Edric Vale',
+        'age': 19,
+        'people': 'Human',
+        'standing': 'Squire of the royal order',
+        'looks':
+            'Wiry and sunburnt, with cropped brown hair, a split lip that never quite heals and '
+            'a gambeson handed down twice.',
+        'manner': 'Quick with a sword, quicker with excuses, loyal to a fault.',
+      },
+      'parts': [
+        _part('rank', 'Squire.'),
+        _part('skills', 'Skilled: the sword. Fair: riding, mending tack.'),
+        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
+        _part('nature', 'Loyal, proud. Slow to ask for help.'),
+        _part('belongings', 'Carries a dead man\'s sword. Owns a borrowed horse. 4 copper marks.'),
+        _part('goal', 'Goal: Earn your knighthood.', named: ['my goal', 'i want']),
       ],
+      'ladder': {
+        'name': 'Aura ranks',
+        'rungs': ['Squire', 'Knight', 'Aura master', 'Sword saint'],
+        'more': false,
+        'at': 0,
+        'stage': '',
+      },
+      'hidden': {'people': 4, 'events': 2, 'questions': 1},
       'rules': [
         _rule('aura-is-real', 'Aura is real, and every knight is ranked by it.'),
         _rule(
@@ -487,19 +735,37 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     },
     'naples-vendetta' => <String, dynamic>{
       'tone': 'Slow-burning noir',
-      'world_lines': [
-        'Grounded: no magic and nothing supernatural, and that won\'t change.',
-        'Naples, 1974. Phones, cars and pistols, and police who can mostly be bought.',
-        'The Esposito family has three crews, and its council names the next boss in ten days.',
-        'Your father was shot outside his own club a week ago. The family says it was an '
-            'outsider.',
-        'Carmine, the underboss, already acts as if the chair is his.',
+      'world': [
+        _part(
+          'era',
+          'Naples, 1974. Phones, cars and pistols, and police who can mostly be bought.',
+        ),
+        _part('faction', 'The Esposito family: three crews, and a council that names its boss.'),
+        _part('deadline', 'The council names the next boss: in 10 days', named: ['council']),
+        _part('question', 'Who inside the family killed your father?', named: ['killer', 'killed']),
+        _part(
+          'person',
+          'Carmine: the underboss, who already acts as if the chair is his.',
+          named: ['carmine'],
+        ),
       ],
-      'character_lines': [
-        'Luca Esposito, 24. Steady nerves, good with a pistol and a knife, a hot temper.',
-        'No powers, since this world has none.',
-        'His father\'s name, three loyal soldiers and a grudge.',
+      'character': {
+        'name': 'Luca Esposito',
+        'age': 24,
+        'people': '',
+        'standing': 'Son of the boss of the Esposito family',
+        'looks': '24, lean, dark hair combed back, a grey suit a size too sharp for a funeral.',
+        'manner': 'Steady nerves and a hot temper he keeps on a short leash.',
+      },
+      'parts': [
+        _part('skills', 'Skilled: pistols, knives. Fair: reading a room.'),
+        _part('nature', 'Steady, hot-tempered. Wants the truth more than the chair.'),
+        _part('power', 'No powers, since this world has none.'),
+        _part('belongings', 'Carries his father\'s lighter and a pistol. 40,000 lire.'),
+        _part('connections', 'Three loyal soldiers.', named: ['soldiers', 'loyal']),
       ],
+      'ladder': null,
+      'hidden': {'people': 5, 'events': 1, 'questions': 1},
       'rules': [
         _rule('no-supernatural', 'Nothing supernatural exists.'),
         _rule('slow-healing', 'Wounds heal the way they do in our world: slowly.'),
@@ -509,17 +775,31 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     },
     _ => <String, dynamic>{
       'tone': 'Tense, with room for wonder',
-      'world_lines': [
-        'Where it starts: ${_firstSentence(premise)}',
-        'What is real in this world holds for the whole story; how far it goes can still change.',
-        'Three factions want the same thing, and only one of them knows you exist.',
-        'News travels at the speed of a fast horse, and rumours travel faster.',
+      'world': [
+        _part('era', 'Where it starts: ${_firstSentence(premise)}'),
+        _part(
+          'faction',
+          'Three factions: they want the same thing, and only one of them knows you exist.',
+        ),
+        _part('deadline', 'The reckoning: in 3 days', named: ['three days', '3 days']),
+        _part('person', 'Garrick: your rival.', named: ['garrick']),
       ],
-      'character_lines': [
-        'Someone with more nerve than standing.',
-        'Owes a favour to the wrong person.',
-        'Carries one thing they would die before losing.',
+      'character': {
+        'name': 'Rowan',
+        'age': 19,
+        'people': '',
+        'standing': '',
+        'looks': 'Lean and weathered, with watchful eyes and a coat that has seen better roads.',
+        'manner': 'More nerve than standing.',
+      },
+      'parts': [
+        _part('skills', 'Fair: getting out of trouble. Novice: staying out of it.'),
+        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
+        _part('nature', 'Restless, stubborn. Owes a favour to the wrong person.'),
+        _part('belongings', 'Carries one thing they would die before losing.'),
       ],
+      'ladder': null,
+      'hidden': {'people': 3, 'events': 2, 'questions': 2},
       'rules': [
         _rule('dead-stay-dead', 'The dead stay dead.'),
         _rule('power-has-a-price', 'Power grows through effort, teachers and luck.', fixed: false),
@@ -531,8 +811,11 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     'title': starter?['title'] ?? 'A story of your own',
     'genre': starter?['genre'] ?? 'Your own',
     'tone': drafted['tone'],
-    'world_lines': drafted['world_lines'],
-    'character_lines': drafted['character_lines'],
+    'character': drafted['character'],
+    'ladder': drafted['ladder'],
+    '_world': drafted['world'],
+    '_character': drafted['parts'],
+    '_hidden': drafted['hidden'],
     'advanced': {
       'physics': 'fun_first',
       'rules': drafted['rules'],

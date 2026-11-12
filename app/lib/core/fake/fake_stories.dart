@@ -1007,8 +1007,8 @@ const _seedMemory = <String, Object?>{
 /// A story just started from a draft knows only its character.
 JsonMap _newMemory(JsonMap? draft) {
   final lines = [for (final line in draft?['character_lines'] as List? ?? const []) line as String];
-  final name = switch (lines.firstOrNull?.split(RegExp(r'[,.]')).first.trim()) {
-    final name? when name.isNotEmpty && name.split(' ').length <= 4 => name,
+  final name = switch ((draft?['character'] as JsonMap?)?['name']) {
+    final String name when name.isNotEmpty => name,
     _ => 'You',
   };
   return {

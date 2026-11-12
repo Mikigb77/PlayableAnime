@@ -117,8 +117,8 @@ class FieldLabel extends StatelessWidget {
   );
 }
 
-/// One choice out of a few (physics, difficulty, events, gift), as chips with the chosen one's
-/// meaning spelled out underneath.
+/// One choice out of a few (rating, physics, difficulty, events, gift), as chips with the chosen
+/// one's meaning spelled out underneath.
 class ChoiceField<T> extends StatelessWidget {
   const ChoiceField({
     super.key,
@@ -128,6 +128,9 @@ class ChoiceField<T> extends StatelessWidget {
     required this.labelOf,
     required this.bodyOf,
     required this.onChanged,
+    this.enabledOf,
+    this.note,
+    this.top = Space.xl,
   });
 
   final String label;
@@ -137,13 +140,23 @@ class ChoiceField<T> extends StatelessWidget {
   final String Function(T) bodyOf;
   final ValueChanged<T>? onChanged;
 
+  /// Which options can be picked at all (all of them when null). The chosen one always shows.
+  final bool Function(T)? enabledOf;
+
+  /// A line under the meaning, such as why an option is locked.
+  final String? note;
+
+  /// The space above the label.
+  final double top;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final secondary = theme.textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FieldLabel(label),
+        FieldLabel(label, top: top),
         Wrap(
           spacing: Space.sm,
           runSpacing: Space.sm,
@@ -153,19 +166,21 @@ class ChoiceField<T> extends StatelessWidget {
                 label: Text(labelOf(option)),
                 selected: option == value,
                 showCheckmark: false,
-                onSelected: onChanged == null ? null : (_) => onChanged!(option),
+                onSelected: onChanged == null || !(enabledOf?.call(option) ?? true)
+                    ? null
+                    : (_) => onChanged!(option),
               ),
           ],
         ),
         const SizedBox(height: Space.sm),
         AnimatedSwitcher(
           duration: Motion.of(context, Motion.fast),
-          child: Text(
-            bodyOf(value),
-            key: ValueKey(value),
-            style: theme.textTheme.bodyMedium!.copyWith(color: context.lucid.textSecondary),
-          ),
+          child: Text(bodyOf(value), key: ValueKey(value), style: secondary),
         ),
+        if (note case final note?) ...[
+          const SizedBox(height: Space.xs),
+          Text(note, style: theme.textTheme.bodySmall!.copyWith(color: context.lucid.textMuted)),
+        ],
       ],
     );
   }

@@ -160,7 +160,21 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
                     ),
                   ),
                 ),
-                if (starter == null) _Sparks(onPick: (text) => _tracker.controller.text = text),
+                const SizedBox(height: Space.lg),
+                const _Decide(),
+                // Whole ideas for an empty page, gone once there are words a tap would replace.
+                if (starter == null)
+                  ListenableBuilder(
+                    listenable: _premise,
+                    builder: (context, _) => AnimatedSize(
+                      duration: Motion.of(context, Motion.base),
+                      curve: Motion.standard,
+                      alignment: Alignment.topCenter,
+                      child: _premise.text.trim().isEmpty
+                          ? _Sparks(onPick: (text) => _tracker.controller.text = text)
+                          : const SizedBox(width: double.infinity),
+                    ),
+                  ),
                 FieldLabel(l10n.createRatingLabel),
                 RatingChoice(
                   value: rating,
@@ -213,6 +227,85 @@ class _PremiseStepState extends ConsumerState<PremiseStep> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// What a premise can settle before the story starts, each with an example in plain words: who
+/// the character is, what sets them apart, what is coming and who is in their life. What the
+/// premise names, the draft shows; the rest stays the story's surprise (G1).
+class _Decide extends StatelessWidget {
+  const _Decide();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = context.lucid;
+    final examples = [
+      (Icons.person_outline_rounded, l10n.createDecideWho, l10n.createDecideWhoExample),
+      (Icons.auto_awesome_outlined, l10n.createDecideSpecial, l10n.createDecideSpecialExample),
+      (Icons.hourglass_bottom_rounded, l10n.createDecideComing, l10n.createDecideComingExample),
+      (Icons.group_outlined, l10n.createDecidePeople, l10n.createDecidePeopleExample),
+    ];
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.sm),
+            child: Semantics(
+              header: true,
+              child: Text(l10n.createDecideLabel, style: theme.textTheme.titleSmall),
+            ),
+          ),
+          for (final (icon, kind, example) in examples)
+            MergeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.xxs),
+                      child: ExcludeSemantics(child: Icon(icon, size: 20, color: colors.accent)),
+                    ),
+                    const SizedBox(width: Space.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(kind, style: theme.textTheme.labelLarge),
+                          const SizedBox(height: Space.xxs),
+                          Text(
+                            example,
+                            style: context.lucidText.playerAction.copyWith(
+                              fontSize: 15,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: Space.sm),
+          ColoredBox(
+            color: colors.accentSoft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
+              child: Text(
+                l10n.createDecideNote,
+                style: theme.textTheme.bodySmall!.copyWith(color: colors.onAccentSoft),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

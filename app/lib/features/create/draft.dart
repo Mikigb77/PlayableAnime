@@ -130,6 +130,155 @@ class DraftAdvanced {
   final EventFrequency eventFrequency;
 }
 
+/// What a line of the summary tells of (docs/API.md, `DraftPartKind`). The app labels and groups
+/// the lines by it, and points a change in plain words at it.
+enum LineKind {
+  // The world.
+  rule,
+  era,
+  ladder,
+  peoples,
+  faction,
+  // How the story starts, shown only when the player's own words name it (G1).
+  deadline,
+  question,
+  person,
+  connections,
+  goal,
+  // The character.
+  who,
+  manner,
+  standing,
+  rank,
+  skills,
+  talents,
+  traits,
+  nature,
+  power,
+  belongings;
+
+  /// The kind as the API names it, and the `about` of a revision.
+  String get wire => name;
+
+  /// Null for a kind this app doesn't know, whose line is then left out.
+  static LineKind? fromWire(Object? value) => values.where((k) => k.name == value).firstOrNull;
+
+  /// Whether it tells of how the story starts.
+  bool get isOpener => switch (this) {
+    deadline || question || person || connections || goal => true,
+    _ => false,
+  };
+}
+
+/// One line of a draft's summary, with what it tells of.
+@immutable
+class DraftLine {
+  const DraftLine(this.kind, this.text);
+
+  final LineKind kind;
+  final String text;
+
+  static List<DraftLine> listFromJson(Object? json) => [
+    for (final part in json as List? ?? const [])
+      if (LineKind.fromWire((part as JsonMap)['kind']) case final kind?)
+        DraftLine(kind, part['text'] as String? ?? ''),
+  ];
+
+  @override
+  bool operator ==(Object other) => other is DraftLine && other.kind == kind && other.text == text;
+
+  @override
+  int get hashCode => Object.hash(kind, text);
+
+  @override
+  String toString() => 'DraftLine(${kind.name}: $text)';
+}
+
+/// The character's plain fields, which the player changes themselves (G2), with their people
+/// and their standing to tell them by.
+@immutable
+class DraftCharacter {
+  const DraftCharacter({
+    this.name = '',
+    this.age,
+    this.people = '',
+    this.standing = '',
+    this.looks = '',
+    this.manner = '',
+  });
+
+  factory DraftCharacter.fromJson(JsonMap json) => DraftCharacter(
+    name: json['name'] as String? ?? '',
+    age: (json['age'] as num?)?.toInt(),
+    people: json['people'] as String? ?? '',
+    standing: json['standing'] as String? ?? '',
+    looks: json['looks'] as String? ?? '',
+    manner: json['manner'] as String? ?? '',
+  );
+
+  final String name;
+  final int? age;
+  final String people;
+  final String standing;
+
+  /// Face, build, hair and usual clothes, which every picture of them is drawn from (M5).
+  final String looks;
+
+  /// How they come across.
+  final String manner;
+}
+
+/// The world's first ladder as the summary tells it (G18, G19): the rungs everyone has heard of,
+/// and where the character stands when that is one of them.
+@immutable
+class DraftLadder {
+  const DraftLadder({
+    required this.name,
+    this.rungs = const [],
+    this.more = false,
+    this.at,
+    this.stage = '',
+  });
+
+  factory DraftLadder.fromJson(JsonMap json) => DraftLadder(
+    name: json['name'] as String? ?? '',
+    rungs: [for (final rung in json['rungs'] as List? ?? const []) rung as String],
+    more: json['more'] as bool? ?? false,
+    at: (json['at'] as num?)?.toInt(),
+    stage: json['stage'] as String? ?? '',
+  );
+
+  final String name;
+  final List<String> rungs;
+
+  /// Whether the ladder goes on above the rungs named.
+  final bool more;
+
+  /// The character's rung, an index into [rungs], or null when they stand above them.
+  final int? at;
+
+  /// Their stage of that rung, in words, or "".
+  final String stage;
+}
+
+/// How much of the story's start the summary keeps out of sight (G1), as counts and nothing more.
+@immutable
+class DraftKept {
+  const DraftKept({this.people = 0, this.events = 0, this.questions = 0});
+
+  factory DraftKept.fromJson(JsonMap json) => DraftKept(
+    people: (json['people'] as num? ?? 0).toInt(),
+    events: (json['events'] as num? ?? 0).toInt(),
+    questions: (json['questions'] as num? ?? 0).toInt(),
+  );
+
+  final int people;
+  final int events;
+  final int questions;
+
+  bool get isEmpty => people == 0 && events == 0 && questions == 0;
+}
+
 @immutable
 class Draft {
   const Draft({
@@ -142,8 +291,11 @@ class Draft {
     this.premiseId,
     this.language = 'en',
     this.tone = '',
-    this.worldLines = const [],
-    this.characterLines = const [],
+    this.worldParts = const [],
+    this.characterParts = const [],
+    this.character = const DraftCharacter(),
+    this.ladder,
+    this.kept = const DraftKept(),
     this.advanced = const DraftAdvanced(),
     this.storyId,
   });
@@ -157,10 +309,14 @@ class Draft {
     title: json['title'] as String? ?? '',
     genre: json['genre'] as String? ?? '',
     tone: json['tone'] as String? ?? '',
-    worldLines: [for (final line in json['world_lines'] as List? ?? const []) line as String],
-    characterLines: [
-      for (final line in json['character_lines'] as List? ?? const []) line as String,
-    ],
+    worldParts: DraftLine.listFromJson(json['world_parts']),
+    characterParts: DraftLine.listFromJson(json['character_parts']),
+    character: DraftCharacter.fromJson(json['character'] as JsonMap? ?? const {}),
+    ladder: switch (json['ladder']) {
+      final JsonMap ladder => DraftLadder.fromJson(ladder),
+      _ => null,
+    },
+    kept: DraftKept.fromJson(json['kept'] as JsonMap? ?? const {}),
     advanced: DraftAdvanced.fromJson(json['advanced'] as JsonMap? ?? const {}),
     version: (json['version'] as num? ?? 1).toInt(),
     storyId: json['story_id'] as String?,
@@ -178,12 +334,21 @@ class Draft {
   final String genre;
   final String tone;
 
-  /// The one-screen summary of the world, in plain words (G1). Code writes it from the world's
-  /// public parts, so it always matches the draft.
-  final List<String> worldLines;
+  /// The summary of the world, line by line, each with what it tells of (G1). Code writes it
+  /// from the world's public parts, so it always matches the draft.
+  final List<DraftLine> worldParts;
 
   /// The character in the world's words (G2, G16).
-  final List<String> characterLines;
+  final List<DraftLine> characterParts;
+
+  /// The character's plain fields, which the player changes themselves (G2).
+  final DraftCharacter character;
+
+  /// The world's first ladder, or null in a world with none.
+  final DraftLadder? ladder;
+
+  /// What the story keeps back of its start, as counts (G1).
+  final DraftKept kept;
   final DraftAdvanced advanced;
 
   /// Sent back as `expected_version` with every change (T10).
@@ -192,10 +357,44 @@ class Draft {
   /// Set once the draft has started a story.
   final String? storyId;
 
-  List<String> linesOf(DraftPart part) => switch (part) {
-    DraftPart.world => worldLines,
-    DraftPart.character => characterLines,
+  List<DraftLine> partsOf(DraftPart part) => switch (part) {
+    DraftPart.world => worldParts,
+    DraftPart.character => characterParts,
   };
+
+  /// The lines of [part] that tell of [kind], in order.
+  List<String> linesOf(DraftPart part, LineKind kind) => [
+    for (final line in partsOf(part))
+      if (line.kind == kind) line.text,
+  ];
+
+  /// What the player's own words named of how the story starts (G1), in the order the summary
+  /// tells it, each with the half of the draft it belongs to.
+  List<(DraftPart, DraftLine)> get openers => [
+    for (final part in DraftPart.values)
+      for (final line in partsOf(part))
+        if (line.kind.isOpener) (part, line),
+  ];
+
+  /// This draft once it has started [storyId].
+  Draft started(String storyId) => Draft(
+    id: id,
+    premise: premise,
+    premiseId: premiseId,
+    rating: rating,
+    language: language,
+    title: title,
+    genre: genre,
+    tone: tone,
+    worldParts: worldParts,
+    characterParts: characterParts,
+    character: character,
+    ladder: ladder,
+    kept: kept,
+    advanced: advanced,
+    version: version,
+    storyId: storyId,
+  );
 }
 
 /// The two halves of a draft that the player reviews and can ask to change.
@@ -235,8 +434,12 @@ class DraftChoices {
 @immutable
 class DraftEdit {
   const DraftEdit({
-    this.worldLines,
-    this.characterLines,
+    this.title,
+    this.tone,
+    this.name,
+    this.age,
+    this.looks,
+    this.manner,
     this.rating,
     this.physics,
     this.rules,
@@ -245,14 +448,13 @@ class DraftEdit {
     this.eventFrequency,
   });
 
-  /// Lines of one part replaced.
-  factory DraftEdit.lines(DraftPart part, List<String> lines) => switch (part) {
-    DraftPart.world => DraftEdit(worldLines: lines),
-    DraftPart.character => DraftEdit(characterLines: lines),
-  };
-
-  final List<String>? worldLines;
-  final List<String>? characterLines;
+  /// The plain fields (G1, G2): the server writes them in at once, with no model call.
+  final String? title;
+  final String? tone;
+  final String? name;
+  final int? age;
+  final String? looks;
+  final String? manner;
   final Rating? rating;
   final Physics? physics;
 
@@ -263,6 +465,12 @@ class DraftEdit {
   final EventFrequency? eventFrequency;
 
   JsonMap toJson({required int expectedVersion}) {
+    final character = <String, Object?>{
+      'name': ?name,
+      'age': ?age,
+      'looks': ?looks,
+      'manner': ?manner,
+    };
     final advanced = <String, Object?>{
       'physics': ?physics?.wire,
       if (rules case final rules?) 'rules': [for (final rule in rules) rule.toJson()],
@@ -271,8 +479,9 @@ class DraftEdit {
       'event_frequency': ?eventFrequency?.wire,
     };
     return {
-      'world_lines': ?worldLines,
-      'character_lines': ?characterLines,
+      'title': ?title,
+      'tone': ?tone,
+      if (character.isNotEmpty) 'character': character,
       'rating': ?rating?.wire,
       if (advanced.isNotEmpty) 'advanced': advanced,
       'expected_version': expectedVersion,
@@ -307,10 +516,11 @@ class Redraft {
   String toString() => 'Redraft(world: $world, character: $character)';
 }
 
-/// What [edit] would cost on [draft], by the server's own rules: physics, a rule's fixed flag, no
-/// gift, difficulty, event frequency and raising the rating are free. Rewritten lines, rewritten,
-/// added or removed rules and a new gift strength redraft the world or the character, and lowering
-/// the rating to Teen redrafts both (F2).
+/// What [edit] would cost on [draft], by the server's own rules: the plain fields (a title, a
+/// tone, a name, an age, a look, a manner), physics, a rule's fixed flag, no gift, difficulty,
+/// event frequency and raising the rating are free. Rewritten, added or removed rules redraft
+/// the world, a new gift strength redrafts the character, and lowering the rating to Teen
+/// redrafts both (F2).
 Redraft redraftFor(Draft draft, DraftEdit edit) {
   var world = false;
   var character = false;
@@ -327,13 +537,6 @@ Redraft redraftFor(Draft draft, DraftEdit edit) {
     final before = [for (final rule in draft.advanced.rules) '${rule.id}\u0000${rule.text}'];
     if (!listEquals(after, before)) world = true;
   }
-  if (edit.worldLines case final lines? when !listEquals(cleanLines(lines), draft.worldLines)) {
-    world = true;
-  }
-  if (edit.characterLines case final lines?
-      when !listEquals(cleanLines(lines), draft.characterLines)) {
-    character = true;
-  }
   if (edit.giftStrength case final gift?
       when gift != GiftStrength.none && gift != draft.advanced.giftStrength) {
     character = true;
@@ -345,12 +548,6 @@ Redraft redraftFor(Draft draft, DraftEdit edit) {
 String normalizeLine(String line) =>
     line.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).join(' ');
 
-/// Lines as the server keeps them: normalized, blanks dropped.
-List<String> cleanLines(Iterable<String> lines) => [
-  for (final line in lines)
-    if (normalizeLine(line).isNotEmpty) normalizeLine(line),
-];
-
 /// Limits from docs/API.md.
 abstract final class DraftLimits {
   static const premiseMin = 10;
@@ -358,4 +555,11 @@ abstract final class DraftLimits {
   static const line = 300;
   static const instruction = 1000;
   static const rules = 12;
+
+  /// A title, a tone or a name.
+  static const short = 80;
+
+  /// A look or a manner.
+  static const long = 300;
+  static const ageMax = 100000;
 }

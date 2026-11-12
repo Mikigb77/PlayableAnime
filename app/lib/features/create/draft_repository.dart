@@ -44,15 +44,18 @@ class DraftRepository {
         as JsonMap,
   );
 
-  /// A change in plain words, such as "add hidden vampires".
-  Future<Draft> revise(Draft draft, DraftPart part, String instruction) async => Draft.fromJson(
-    await _api.post('/v1/drafts/${Uri.encodeComponent(draft.id)}/revise', {
-          'target': part.wire,
-          'instruction': instruction,
-          'expected_version': draft.version,
-        })
-        as JsonMap,
-  );
+  /// A change in plain words, such as "add hidden vampires". [about] is the part of the summary
+  /// the player asked it at, so "more of this" says what "this" is.
+  Future<Draft> revise(Draft draft, DraftPart part, String instruction, {LineKind? about}) async =>
+      Draft.fromJson(
+        await _api.post('/v1/drafts/${Uri.encodeComponent(draft.id)}/revise', {
+              'target': part.wire,
+              'instruction': instruction,
+              'about': ?about?.wire,
+              'expected_version': draft.version,
+            })
+            as JsonMap,
+      );
 
   /// Creates the story at turn 0, with no scenes; the play screen asks for the opening. A stale
   /// copy is refused with `409 version_conflict` (T10), and starting again returns the same

@@ -152,8 +152,8 @@ them (G10), key NPCs with their temperaments and agendas (E3), the first clocks 
 to any major mystery (N7). The player sees a short summary in plain words ("Grounded: no magic and
 nothing supernatural, and that won't change. Naples, 1974. The Esposito family and its three
 crews." Or: "Cultivation world, realms from Qi Condensation to Nascent Soul and beyond. The Azure
-Cloud Sect, its outer and inner courts.") and can change any line, ask for something different,
-or just start. A change in
+Cloud Sect, its outer and inner courts.") and can change any part of it, ask for something
+different, or just start. A change in
 plain words ("add vampires, orcs and demons as races") changes only what it touches, and the rest
 of the world stays exactly as it was. Whatever the character doesn't know stays hidden, such as who
 ordered the killing (C6). **The summary never gives away how the story starts** (Miki,
@@ -176,9 +176,17 @@ it named, never the words. **What is a plain value, the player changes themselve
 2026-11-10): the story's title and its tone are theirs to type, saved at once by code, with no
 model call and at no cost, and so are the character's plain fields (G2). Everything else they
 change in plain words, asked at the part of the summary it is about, so "make this stricter"
-says what "this" is. A player who wants to set
-everything by hand can open the advanced fields. One of them is how strict physics is: fun first by
-default, or strict for players who want things rougher and more physically coherent (A9).
+says what "this" is. **The screen says how each thing changes**: the character comes first,
+then the world with its rules, and every row carries a mark, a pencil for what the player types
+(saved at once, free) and a wand for what they tell the storyteller (the cost is said before
+they ask). A rule is locked for the whole story or true for now with one switch, which is free;
+its words redraft the world. Where the player writes the premise, the screen says what a
+premise can decide (who they are, what makes them special, what is coming, who is in their
+life), with an example of each, and that everything they leave out stays a surprise. How the
+story plays is on the same screen as the draft: the rating, difficulty, world events, the gift
+and how strict physics is, fun first by default, or strict for players who want things rougher
+and more physically coherent (A9). A choice that redrafts nothing is saved as it is picked, and
+one that does says what it costs first.
 
 **G2 Making the character (P0).** The AI drafts the opening character from the premise and the
 world, with the parts in G13, and shows it in the world's words (G16): "Luca Esposito, 24. Steady
