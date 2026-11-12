@@ -113,6 +113,11 @@ def test_a_rumor_a_scene_told_is_heard_and_any_other_is_unvoiced():
     assert tally(before, marked) == tally(before) | {"rumors_heard": 1, "rumors_unvoiced": 1}
     other = DirectorPlan(talk=PlannedTalk(rumor_id="old"))
     assert tally(before, marked, plan=other)["rumors_unvoiced"] == 1
+    # What they were there to see happen is what they saw, not talk they heard.
+    seen = before.model_copy(deep=True)
+    seen.rumors["granary"].heard_at[seen.player_id] = seen.world_s
+    seen.rumors["granary"].seen_by.append(seen.player_id)
+    assert tally(before, seen) == tally(before)
     # What someone else heard is the world's business, not the scene's.
     elsewhere = before.model_copy(deep=True)
     someone = next(i for i in elsewhere.characters if i != elsewhere.player_id)

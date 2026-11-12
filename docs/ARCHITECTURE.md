@@ -302,7 +302,10 @@ a new one.
   thing before a crowd, and anything done in stopped time, stays as seen as it would be
   anywhere. The player character hears word only when a scene tells it (`hearsay`):
   `rumors.on_rumor` and `rumors.start_rumor` leave them out, so word that comes to where they
-  are is the talk of the place, and what they did or saw is a deed in their memory (C6). The
+  are, or starts there, is the talk of the place, and what they did or saw is a deed in their
+  memory (C6). The one thing `start_rumor` marks for them is what they were there to see
+  happen, a clock's end that came with them (`Rumor.seen_by`); a price a faction puts on a
+  head is set off screen, so `arrivals` never counts them among those there. The
   narrator's update moves only the feelings of the scene's people and of whom the turn reached
   (`apply.scene_people`, `pipeline.reached`).
 - **What both sides agreed to is no attack** (W1, W4, W11). A proposed deed that stayed inside
@@ -1224,7 +1227,8 @@ filled in, are not served.
    `not_own`), `searches` (things a throw decided the place holds) and `searches_empty`,
    `rumors_heard` (rumors the character heard this turn) and `rumors_unvoiced` (those that
    aren't the talk the director gave the scene, so zero unless something marks a rumor heard
-   that no scene told), and `goals_open`. Never the
+   that no scene told; what they were there to see happen is in neither count), and
+   `goals_open`. Never the
    action, the narration or a prompt (T6): an unexpected Pydantic error, whose text quotes the
    values it rejected, is logged with its traceback and field names only, and in full at DEBUG.
 

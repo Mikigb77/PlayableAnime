@@ -28,7 +28,9 @@ def turn_tally(
       there with no throw, so these stay rare.
     - `rumors_heard`: the rumors the character who played the turn has now heard (W2), and
       `rumors_unvoiced`, those of them that aren't the talk the director gave the scene to
-      tell. Only what a scene told is heard (C6), so this one stays at zero.
+      tell. Only what a scene told is heard (C6), so this one stays at zero. What they were
+      there to see happen, such as a clock's end, is what they saw and no talk, so it is in
+      neither count.
     - `goals_open`: the goals still open after the turn (N2).
     """
     steps = resolution.steps
@@ -47,7 +49,12 @@ def turn_tally(
 
 
 def _newly_heard(before: WorldState, after: WorldState) -> list[str]:
-    """The rumors the character who played the turn hadn't heard when it started and has now."""
+    """The rumors the character who played the turn hadn't heard when it started and has now,
+    leaving out what they were there to see happen (`Rumor.seen_by`, C6)."""
     player = before.player_id
     already = {i for i, rumor in before.rumors.items() if player in rumor.heard_at}
-    return [i for i, rumor in after.rumors.items() if player in rumor.heard_at and i not in already]
+    return [
+        i
+        for i, rumor in after.rumors.items()
+        if player in rumor.heard_at and player not in rumor.seen_by and i not in already
+    ]
