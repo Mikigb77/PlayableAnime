@@ -176,6 +176,23 @@ def test_the_interpret_prompt_names_the_rungs_of_the_worlds_ladders():
     assert "ladders" not in _section(grounded, "WORLD")
 
 
+def test_the_narrator_is_told_which_rungs_of_a_ladder_everyone_has_heard_of():
+    """G18, C6: people speak of a rung above those as legend, rumor or secret, if at all, so the
+    narrator reads how many of a ladder's rungs everyone knows, where the world says it."""
+    state = cultivation_world()
+    state.bible.ladders[0].known_to_all = 3
+
+    told = brief(state)
+
+    [ladder] = _section(told.user, "WORLD")["ladders"]
+    assert ladder["known_to_all"] == 3
+    assert [rung["name"] for rung in ladder["rungs"]][3:] == ["Nascent Soul", "Soul Transformation"]
+    assert "known_to_all is how many of a ladder's rungs" in told.system
+    # A world from before it says nothing, and the narrator is told nothing of it.
+    [ladder] = _section(brief(cultivation_world()).user, "WORLD")["ladders"]
+    assert "known_to_all" not in ladder
+
+
 def test_the_interpret_prompt_reads_the_scene_the_player_is_answering():
     """R2: what the last scene showed counts as there, so the interpret step reads it. The
     scene's record lists only a few things, and the trunk the scene told of is on no list."""

@@ -538,6 +538,7 @@
   "sheetPath": "El teu camí",
   "pathAbove": "Què hi ha més amunt?",
   "pathAboveNote": "Ningú t'ho ha explicat.",
+  "pathHigher": "Més amunt encara",
   "pathUnmeasured": "Sense mesurar",
   "pathUnmeasuredNote": "Ningú t'ha explicat què hi ha enmig.",
   "sheetGrew": "Com has crescut",

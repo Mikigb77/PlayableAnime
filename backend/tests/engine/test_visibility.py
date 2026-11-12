@@ -1564,6 +1564,59 @@ def test_the_path_shows_the_rungs_above_as_far_as_the_story_told_them():
     )
 
 
+def test_the_path_starts_with_what_everyone_knows_and_says_who_stands_higher_still():
+    # G18, C6: the rungs everyone has heard of show from the start. Someone who stands above
+    # every rung they know of widens the path, with no rung named and no distance told.
+    state = cultivation_world()
+    realms = state.bible.ladders[0]
+    realms.known_to_all = 2
+    mo = state.characters["elder-mo"]
+    mo.met_by, mo.known_by = ["lin"], ["lin"]
+
+    (path,) = sheet_of(state).paths
+    assert [(r.name, r.known, r.note, r.gap_below) for r in path.above] == [
+        ("Foundation Establishment", False, "Everyone has heard of it", False)
+    ]
+    assert path.higher == "Elder Mo stands somewhere up here."
+    assert "Core Formation" not in dumped(status_view(state).sheet)
+    (path,) = sheet_of(state, Language.ES).paths
+    assert path.above[0].note == "Todo el mundo ha oído hablar de ello"
+    assert path.higher == "Elder Mo está en algún punto de aquí arriba."
+    (path,) = sheet_of(state, Language.CA).paths
+    assert path.above[0].note == "Tothom n'ha sentit a parlar"
+    assert path.higher == "Elder Mo és en algun punt d'aquí dalt."
+
+    # Several are named together, and someone they can't name is only someone (C6).
+    state.characters["zhao"].sheet.ladders[0].rung = 3
+    assert sheet_of(state).paths[0].higher == "Elder Mo and Zhao Kun stand somewhere up here."
+    assert (
+        sheet_of(state, Language.ES).paths[0].higher
+        == "Elder Mo y Zhao Kun están en algún punto de aquí arriba."
+    )
+    assert (
+        sheet_of(state, Language.CA).paths[0].higher
+        == "Elder Mo i Zhao Kun són en algun punt d'aquí dalt."
+    )
+    state.characters["zhao"].sheet.ladders[0].rung = 1
+    mo.known_by = []
+    assert sheet_of(state).paths[0].higher == "Someone you have met stands somewhere up here."
+    assert sheet_of(state, Language.ES).paths[0].higher == (
+        "Alguien con quien te has cruzado está en algún punto de aquí arriba."
+    )
+    assert sheet_of(state, Language.CA).paths[0].higher == (
+        "Algú amb qui t'has creuat és en algun punt d'aquí dalt."
+    )
+
+    # Once the story names the elder's rung, it is his, confirmed, and nobody stands higher.
+    mo.known_by = ["lin"]
+    state.player.sheet.rungs_heard = [
+        RungHeard(ladder_id="realms", rung=2, heard_s=DAY, known_s=DAY, known_from="elder-mo")
+    ]
+    (path,) = sheet_of(state).paths
+    assert path.above[-1].note == "Confirmed before Elder Mo, day 2"
+    assert path.higher == ""
+
+
 def test_a_ladder_they_do_not_stand_on_shows_once_they_have_heard_of_it():
     # G18: the world's ladder is a scale beside their own way, as far as they know it.
     state = cultivation_world()
@@ -1576,6 +1629,8 @@ def test_a_ladder_they_do_not_stand_on_shows_once_they_have_heard_of_it():
     assert [(r.name, r.known, r.gap_below) for r in path.above] == [
         ("Qi Condensation", False, False)
     ]
+    # Zhao, whom they have met, stands above the one rung they have heard of.
+    assert path.higher == "Zhao Kun stands somewhere up here."
 
 
 def test_the_sheet_lists_what_they_hold_with_what_they_carry_first():

@@ -15,7 +15,8 @@ decides, and every rule here has a unit test.
   same goes when a starter's kinds are the only ones its world may have, such as implants in a
   world without magic.
 - **G18.** Ladder rungs map to A8 tiers two apart, lowest first, and a character's rung sets their
-  tier on the ladder's axis.
+  tier on the ladder's axis. The rungs everyone has heard of (C6) are as many as the model says,
+  the first at least, and the ones the summary would name where it doesn't say.
 - **G22.** The gift strength the player picked wins over the premise's and the model's, and `none`
   removes the gift. Time stop lasts three heartbeats and recharges in a breath unless the draft
   says otherwise, and hits at relative speed when overpowered and with normal force when not.
@@ -116,6 +117,7 @@ from graph.drafting.schema import (
     TimeP,
     WorldProposal,
 )
+from graph.drafting.view import SUMMARY_RUNGS
 
 ACTIVE_NPCS = 8  # W15, K8: the active cast to start
 ACTIVE_FACTIONS = 4
@@ -606,6 +608,11 @@ class _Assembler:
                 ],
                 standing_follows=proposed.standing_follows,
                 sensing=proposed.sensing,
+                # G18, C6: the rungs everyone has heard of, which the summary names (G1) and
+                # the character's path starts with. At least the first, at most all of them.
+                known_to_all=_clamp(
+                    proposed.known_to_all, 1, len(rungs), min(len(rungs), SUMMARY_RUNGS)
+                ),
             )
         return self.ladders.by_id
 

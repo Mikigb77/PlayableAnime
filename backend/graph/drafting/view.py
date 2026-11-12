@@ -34,6 +34,9 @@ from engine.visibility import TALENT_STRENGTH_WORDS, skill_level_label
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
+# The most rungs of a ladder the world's summary names. It names the ones everyone has heard
+# of (G18, C6), so this is also how many those are where the drafter doesn't say.
+SUMMARY_RUNGS = 5
 HIDDEN_MIN_WORDS = 5  # shorter hidden strings, such as a name, are too common to match on
 
 EN = Language.EN
@@ -111,8 +114,12 @@ def world_lines(state: WorldState, language: Language = EN) -> list[str]:
     if bible.era:
         lines.append(_sentence(bible.era))
     for ladder in bible.ladders[:1]:
+        # G18, C6: only the rungs everyone has heard of, which the character's path starts
+        # with (`engine.path`). A ladder drafted before the world said which those are names
+        # its first ones, as it did then.
         names = [r.name for r in ladder.rungs]
-        rungs = ", ".join(names[:5]) + (words["beyond"] if len(names) > 5 else "")
+        told = names[: min(ladder.known_to_all or SUMMARY_RUNGS, SUMMARY_RUNGS)]
+        rungs = ", ".join(told) + (words["beyond"] if len(names) > len(told) else "")
         lines.append(_sentence(f"{_capital(ladder.name)}: {rungs}"))
     if bible.peoples:
         peoples = _join([p.name for p in bible.peoples[:6]], language)
@@ -240,6 +247,17 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
 def public_text(state: WorldState, text: str) -> str:
     """A short public field, such as the title or the tone, or "" if it quotes hidden text."""
     return text if _guard(state, [text]) else ""
+
+
+def shown(state: WorldState, language: Language = EN) -> str:
+    """Everything the draft's screen says of the world and the character: the title, the genre
+    and the tone, the two summaries and the rules of the advanced fields. What the player read
+    there, the character knows from the story's first moment (`engine.path`)."""
+    bible = state.bible
+    lines = [public_text(state, text) for text in (bible.title, bible.genre, bible.tone)]
+    lines += world_lines(state, language) + character_lines(state, language)
+    lines += [rule.text for rule in public_rules(state)]
+    return "\n".join(line for line in lines if line)
 
 
 def public_rules(state: WorldState) -> list[WorldRule]:

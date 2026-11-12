@@ -39,6 +39,7 @@ from graph.drafting.schema import (
     NpcP,
     PowerP,
     RuleP,
+    RungP,
     TalentP,
     TimeP,
     WorldProposal,
@@ -334,6 +335,24 @@ def test_ladder_rungs_are_tiers_two_apart_and_a_rung_sets_its_axis():
     assert state.player.sheet.axes.might == 6
     zhao = state.characters["zhao"]
     assert zhao.sheet.axes.might == 4  # Foundation Establishment
+
+
+def test_a_ladder_says_how_many_of_its_rungs_everyone_has_heard_of():
+    # G18, C6: as many as the model says, the first at least and never more than there are.
+    def known_to_all(said, *more):
+        world = samples.cultivation_world()
+        world.ladders[0].known_to_all = said
+        world.ladders[0].rungs += [RungP(name=name) for name in more]
+        return assemble(world, _character()).bible.ladders[0].known_to_all
+
+    assert [known_to_all(said) for said in (4, 3, 0, -2, 99)] == [4, 3, 1, 1, 5]
+    # Where the model doesn't say, the ones the summary would name (G1).
+    assert known_to_all(None) == 5
+    assert known_to_all(None, "Void Refinement", "Immortal Ascension") == 5
+    short = samples.cultivation_world()
+    short.ladders[0].known_to_all = None
+    short.ladders[0].rungs = short.ladders[0].rungs[:3]
+    assert assemble(short, _character()).bible.ladders[0].known_to_all == 3
 
 
 def test_a_rung_is_found_by_its_name_inside_longer_words():

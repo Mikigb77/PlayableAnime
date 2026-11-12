@@ -293,7 +293,8 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
   peoples, the factions, deadlines and questions the character knows, and the key people they know.
-  At most 10 lines each.
+  At most 10 lines each. Of the ladder they name the rungs everyone in the world has heard of, five
+  at most, with "and beyond" when it goes on (G18, C6): the character's path starts with those.
 - **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
   `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
   model call and costs nothing. Rewriting `world_lines` or `character_lines` (each line up to 300
@@ -741,20 +742,25 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
                    reserves: [{name, level}],          # what is left, 0 to 100
                    expecting_label?},                  # a child on the way and when (N6)
        paths: [{name, rungs: [{name, stage, description, note}],
-                above: [{name, known, note, said: [string], gap_below}]}],
+                above: [{name, known, note, said: [string], gap_below}], higher}],
                                           # each ladder as far as they know it (G18, C6).
                                           # rungs: from its first rung up to their own, lowest
                                           # first: the last is theirs and carries its stage and
                                           # description; empty for a ladder they don't stand
                                           # on. note: "Reached, day 9", "Left behind, day 9".
-                                          # above: the rungs over their own that the story
-                                          # named to them, lowest first. known: confirmed, or
-                                          # only heard of. note: "Heard of, day 14",
+                                          # above: the rungs over their own that they have
+                                          # heard of, lowest first: the ones everyone in the
+                                          # world knows and the ones the story named to them.
+                                          # known: confirmed, or only heard of. note:
+                                          # "Everyone has heard of it", "Heard of, day 14",
                                           # "Confirmed before Elder Han, day 15". said: what
                                           # they learned or heard about it. gap_below: rungs
-                                          # nobody named to them lie under it. Nothing else of
-                                          # what lies higher is sent, and never what a rung is
-                                          # or what reaching it takes.
+                                          # nobody named to them lie under it. higher: "" or
+                                          # who they have seen stand above all of those
+                                          # ("Elder Mo stands somewhere up here."), with no
+                                          # rung named. Nothing else of what lies higher is
+                                          # sent, and never what a rung is or what reaching
+                                          # it takes.
        money_label?,                      # "12 silver taels"
        items: [{name, kind, kind_label, description, history, quantity, carried}],
                                           # kind: weapon | armour | gear | treasure |

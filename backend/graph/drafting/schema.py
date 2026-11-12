@@ -133,7 +133,15 @@ class LadderP(Proposal):
     id: str
     name: str = Field(description="Such as 'cultivation realms' or 'aura ranks'.")
     axis: PowerAxis = PowerAxis.MIGHT
-    rungs: list[RungP] = Field(description="Lowest rung first, three to ten of them.")
+    rungs: list[RungP] = Field(
+        description="Lowest rung first, three to ten of them, up to the rung the strongest "
+        "beings of this world stand on."
+    )
+    known_to_all: int | None = Field(
+        default=None,
+        description="How many of the rungs, counted from the lowest, everyone in this world "
+        "has heard of. The ones above are known to few, as legend or secret.",
+    )
     sensing: bool = Field(
         default=False, description="Whether people sense strength up to their own rung (G20)."
     )

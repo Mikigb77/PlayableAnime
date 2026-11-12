@@ -642,6 +642,14 @@ def test_a_draft_builds_its_state_once():
     assert replace(draft, physics=PhysicsMode.STRICT).state() is not draft.state()
 
 
+def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows():
+    """G18, C6: the ladder reaches the world's strongest beings, and only its common rungs are
+    told at the start."""
+    assert "up to the rung its strongest beings stand on" in SYSTEM
+    assert "known_to_all says how many of its rungs, counted from the lowest" in SYSTEM
+    assert "or a ladder's higher rungs" in SYSTEM
+
+
 def test_the_drafter_is_asked_for_talents_only_from_the_players_own_words():
     """A4: how fast the character learns each thing, written when they are made."""
     assert "- Talents say how fast the character learns, and only where the premise says so" in (

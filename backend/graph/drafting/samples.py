@@ -310,6 +310,7 @@ def cultivation_world() -> WorldProposal:
                 id="realms",
                 name="cultivation realms",
                 sensing=True,
+                known_to_all=4,
                 rungs=[
                     RungP(name="Qi Condensation"),
                     RungP(name="Foundation Establishment"),

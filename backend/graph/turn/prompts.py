@@ -617,9 +617,12 @@ runs and the language to write in.
 anything else in the brief.
 - WORLD: the world's bible. Its genre, era and tone; what is extraordinary in it; its peoples, \
 creatures and nature; how strict physics is (physics) and how power tiers compare with raw force \
-(force); its power ladders; its calendar; how people travel and whether news travels instantly \
-(travel); how wounds heal and whether the dead can come back (medicine); its laws, norms and \
-rules. It holds no hidden answers: what the world keeps secret is never in the brief.
+(force); its power ladders, where known_to_all is how many of a ladder's rungs, counted from \
+the lowest, everyone has heard of (the rungs above those are known to few: people speak of one \
+as legend, rumor or secret, if they know of it at all); its calendar; how people travel and \
+whether news travels instantly (travel); how wounds heal and whether the dead can come back \
+(medicine); its laws, norms and rules. It holds no hidden answers: what the world keeps secret \
+is never in the brief.
 - PREMISE: on the opening only, the story the player asked for.
 - STORY SO FAR: chapters, each a summary of a stretch of turns; summary, the whole story so far \
 in brief; and recent_scenes, the last few scenes in full, each with the turn and the player's \
