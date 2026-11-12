@@ -199,8 +199,10 @@ class StartOut(Schema):
 
 
 def draft_out(row: Draft, state: WorldState | None = None) -> dict:
-    """The `Draft` shape, from the state's public parts only (N7, C6)."""
-    state = state or service.to_chain(row).state()
+    """The `Draft` shape, from the state's public parts only (N7, C6), and of how the story
+    starts only what the player's own words name (G1)."""
+    draft = service.to_chain(row)
+    state = state or draft.state()
     bible = state.bible
     return {
         "id": str(row.id),
@@ -212,8 +214,8 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "genre": public_text(state, bible.genre),
         "tone": public_text(state, bible.tone),
         # S10: the words code adds come in the draft's language.
-        "world_lines": world_lines(state, Language(row.language)),
-        "character_lines": character_lines(state, Language(row.language)),
+        "world_lines": world_lines(state, draft.language, draft.said),
+        "character_lines": character_lines(state, draft.language, draft.said),
         "advanced": {
             "physics": bible.physics.value,
             "rules": [{"id": r.id, "text": r.text, "fixed": r.fixed} for r in public_rules(state)],
@@ -322,9 +324,13 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     state = current.state()
     _refuse_real_people(
         [
-            *_new_texts("world_lines", body.world_lines, world_lines(state, current.language)),
             *_new_texts(
-                "character_lines", body.character_lines, character_lines(state, current.language)
+                "world_lines", body.world_lines, world_lines(state, current.language, current.said)
+            ),
+            *_new_texts(
+                "character_lines",
+                body.character_lines,
+                character_lines(state, current.language, current.said),
             ),
             *_new_texts(
                 "advanced.rules",

@@ -9,12 +9,18 @@ dropped.
 
 The few words code adds ("Peoples:", "Wants", "Goal:") come in the draft's language (S10); the
 rest is the world's own text, which the drafter wrote in it.
+
+The summary never gives away how the story starts (G1, Miki 2026-11-10): given the player's say
+(`said`: the premise, and what a change they asked for later named), a deadline, an open
+question, a goal, a person and a connection are shown only when their own words name them
+(`graph.drafting.openers`). The rest is the story's surprise, drafted and kept out of sight.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from functools import partial
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import Language
@@ -32,6 +38,15 @@ from engine.state import (
     stage_named,
 )
 from engine.visibility import TALENT_STRENGTH_WORDS, rank_stage_label, skill_level_label
+from graph.drafting.openers import (
+    Opener,
+    Said,
+    of_clock,
+    of_connection,
+    of_goal,
+    of_person,
+    of_question,
+)
 
 WORLD_LINES = 10  # one screen (G1)
 CHARACTER_LINES = 10
@@ -100,9 +115,14 @@ _WORDS = {
 }
 
 
-def world_lines(state: WorldState, language: Language = EN) -> list[str]:
+def world_lines(state: WorldState, language: Language = EN, said: Said | None = None) -> list[str]:
     """G1: genre and what never changes, then where and when, the ladder and peoples, then the
-    factions, deadlines and questions the character knows, then the key people they know."""
+    factions, deadlines and questions the character knows, then the key people they know.
+    With `said`, the player's say, a deadline, a question and a person are in it only when
+    their own words name them; without, everything the character knows is."""
+
+    spoken = partial(_spoken, said, language)
+
     words = _WORDS[language]
     bible = state.bible
     lines: list[str] = []
@@ -128,25 +148,37 @@ def world_lines(state: WorldState, language: Language = EN) -> list[str]:
     for faction in factions[:3]:
         lines.append(_entry(faction.name, faction.description))
     for clock in sorted(state.clocks.values(), key=lambda c: c.id):
-        if _known(state, clock.known_by) and len(lines) < WORLD_LINES:
+        known = _known(state, clock.known_by) and spoken(of_clock(state, clock))
+        if known and len(lines) < WORLD_LINES:
             lines.append(_clock_line(clock.name, clock.interval_s, clock.remaining, language))
     threads = state.threads
     for mystery in bible.mysteries:
         thread = threads.get(mystery.thread_id or "")
-        if thread is not None and _known(state, thread.known_by):
+        known = thread is not None and _known(state, thread.known_by)
+        if known and spoken(of_question(state, mystery)):
             lines.append(mystery.question)
     people = [
         c
         for c in state.npcs()
-        if _known(state, c.known_by) and c.prominence.value == "key" and c.description
+        if _known(state, c.known_by)
+        and c.prominence.value == "key"
+        and c.description
+        and spoken(of_person(state, c))
     ]
     for npc in people[:2]:
         lines.append(_entry(npc.name, npc.description))
     return _guard(state, lines)[:WORLD_LINES]
 
 
-def character_lines(state: WorldState, language: Language = EN) -> list[str]:
-    """G2, G16: who the character is, in the world's own words rather than numbers."""
+def character_lines(
+    state: WorldState, language: Language = EN, said: Said | None = None
+) -> list[str]:
+    """G2, G16: who the character is, in the world's own words rather than numbers. With
+    `said`, the player's say, a connection and a goal are in it only when their own words name
+    them."""
+
+    spoken = partial(_spoken, said, language)
+
     words = _WORDS[language]
     pc = state.player
     sheet = pc.sheet
@@ -234,10 +266,14 @@ def character_lines(state: WorldState, language: Language = EN) -> list[str]:
         held.append(_sentence(f"{money} {resources.currency}".strip()))
     if held:
         lines.append(" ".join(held))
-    if resources.connections:
-        connections = _join([c.name for c in resources.connections], language)
-        lines.append(_sentence(_capital(connections)))
-    active = [g for g in state.goals.values() if g.status is GoalStatus.ACTIVE]
+    known = [c.name for c in resources.connections if spoken(of_connection(state, c))]
+    if known:
+        lines.append(_sentence(_capital(_join(known, language))))
+    active = [
+        g
+        for g in state.goals.values()
+        if g.status is GoalStatus.ACTIVE and spoken(of_goal(state, g))
+    ]
     for goal in sorted(active, key=lambda g: g.id)[:2]:
         lines.append(_sentence(words["goal"] + goal.text.rstrip(".")))
     return _guard(state, lines)[:CHARACTER_LINES]
@@ -248,13 +284,14 @@ def public_text(state: WorldState, text: str) -> str:
     return text if _guard(state, [text]) else ""
 
 
-def shown(state: WorldState, language: Language = EN) -> str:
+def shown(state: WorldState, language: Language = EN, said: Said | None = None) -> str:
     """Everything the draft's screen says of the world and the character: the title, the genre
     and the tone, the two summaries and the rules of the advanced fields. What the player read
-    there, the character knows from the story's first moment (`engine.path`)."""
+    there, the character knows from the story's first moment (`engine.path`). `said` is the
+    player's say, as the summaries take it."""
     bible = state.bible
     lines = [public_text(state, text) for text in (bible.title, bible.genre, bible.tone)]
-    lines += world_lines(state, language) + character_lines(state, language)
+    lines += world_lines(state, language, said) + character_lines(state, language, said)
     lines += [rule.text for rule in public_rules(state)]
     return "\n".join(line for line in lines if line)
 
@@ -321,6 +358,12 @@ def _words(text: str) -> str:
 
 def _known(state: WorldState, known_by: list[str]) -> bool:
     return state.player_id in known_by
+
+
+def _spoken(said: Said | None, language: Language, opener: Opener) -> bool:
+    """Whether the player's own words name this opener, or True when the lines aren't read
+    against them (G1)."""
+    return said is None or said.names(opener, language)
 
 
 def _who(state: WorldState, pc: Character) -> str:

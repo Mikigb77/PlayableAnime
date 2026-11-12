@@ -7,6 +7,7 @@ from engine.state import GiftStrength
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
 from graph.drafting.catalog import starter
+from graph.drafting.openers import Said
 from graph.drafting.schema import FactionP, NpcP, RuleP, RungP, TalentP
 from graph.drafting.view import (
     CHARACTER_LINES,
@@ -52,6 +53,53 @@ def test_the_world_summary_fits_one_screen_in_plain_words():
     assert "Naples, 1974: pistols, cars, telephones and the morning papers." in lines
     assert "The council picks the next boss: in 10 days." in lines
     assert "Who inside the family ordered the killing of my father?" in lines
+
+
+def test_the_summary_keeps_how_the_story_starts_a_surprise():
+    # G1 (Miki, 2026-11-10): the first event, the first people and the first goal are shown
+    # only when the player's own words name them. Neither premise names a deadline or anyone.
+    naples = world_lines(_naples(), said=Said(samples.NAPLES_PREMISE))
+    assert "The council picks the next boss: in 10 days." not in naples
+    assert not any(line.startswith(("Carmine Russo:", "Gennaro:")) for line in naples)
+    # What the premise speaks of is there: the killing, and the family it happened in.
+    assert "Who inside the family ordered the killing of my father?" in naples
+    assert any(line.startswith("The Esposito family:") for line in naples)
+    luca = character_lines(_naples(), said=Said(samples.NAPLES_PREMISE))
+    assert "Goal: Find out who killed my father." in luca
+    assert "Three loyal soldiers." not in luca
+
+    cultivation = world_lines(_cultivation(), said=Said(samples.CULTIVATION_PREMISE))
+    assert not any("tournament" in line for line in cultivation)
+    assert not any(line.startswith(("Zhao Kun:", "Elder Mo:")) for line in cultivation)
+    lin = character_lines(_cultivation(), said=Said(samples.CULTIVATION_PREMISE))
+    assert not any(line.startswith("Goal:") for line in lin)
+    # Who the character is stays whole.
+    assert lin[0] == "Lin Feng, 16." and any(line.startswith("Time stop:") for line in lin)
+
+
+def test_what_the_players_words_name_is_in_the_summary():
+    said = Said(starter("outer-disciple").premise)
+    assert "The ranking tournament: in 2 days." in world_lines(_cultivation(), said=said)
+    assert "Goal: Survive the ranking tournament." in character_lines(_cultivation(), said=said)
+    # A person is named by their name.
+    said = Said(samples.CULTIVATION_PREMISE + " Zhao Kun has hated me since the day I arrived.")
+    people = world_lines(_cultivation(), said=said)
+    assert any(line.startswith("Zhao Kun:") for line in people)
+    assert not any(line.startswith("Elder Mo:") for line in people)
+    # What a change they asked for later named is kept by its key, and shows like the rest.
+    said = Said(samples.CULTIVATION_PREMISE, frozenset({"clock:tournament", "person:elder-mo"}))
+    told = world_lines(_cultivation(), said=said)
+    assert "The ranking tournament: in 2 days." in told
+    assert any(line.startswith("Elder Mo:") for line in told)
+    assert not any(line.startswith("Zhao Kun:") for line in told)
+    # A family the premise speaks of names nobody in it: Carmine Esposito is still a surprise.
+    world = samples.naples_world()
+    carmine = next(npc for npc in world.npcs if npc.id == "carmine")
+    carmine.name = "Carmine Esposito"
+    premise = starter("naples-vendetta").premise
+    assert "Esposito family" in premise
+    shown = world_lines(_naples(world), said=Said(premise))
+    assert not any(line.startswith("Carmine Esposito:") for line in shown)
 
 
 def test_the_world_summary_names_the_ladder_and_the_known_people():

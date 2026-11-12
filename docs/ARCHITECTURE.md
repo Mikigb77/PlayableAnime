@@ -1087,7 +1087,7 @@ whether the brief carries the player character's `appearance` (above); who they 
 and their whole sheet are always there. `worn.worn_phrases` reads the last `WORN_SCENES` (12)
 saved scenes, which every turn loads (`stories.turns._past_scenes`: those since the last chapter
 and never fewer than these), for phrases of two to four words that at least three of them used.
-A phrase starts and ends on a word that says something (`worn.FILLER` lists each language's
+A phrase starts and ends on a word that says something (`graph/words.py` lists each language's
 small words), never runs across a clause, and is cut at every name: a word with a capital
 inside a sentence, a word of a name on the record at a sentence's start, and a name on the
 record written whole, in capitals or not. Those names (`context._names`) are what the story
@@ -1402,14 +1402,45 @@ flowchart LR
 - **What the player reads is written by code** (`view.py`) from public fields only: the summary
   lines, the character lines, the rules, and the title, genre and tone. As a last guard, any line or rule that quotes five or
   more words of hidden text, or names someone the character doesn't know, is dropped.
+- **The summary keeps how the story starts a surprise** (G1, Miki 2026-11-10; `openers.py`,
+  `named.py`). The drafter still writes the first clocks, the key people, the open questions,
+  the character's connections and their goals (the openers), and the character knows what they
+  know. The draft's screen shows an opener only when the player's own words name it. The
+  premise is kept, so it is read each time. A change the player asks for is not: when it is
+  made (`chain.revise`, `chain.finish_edit`), `openers.named_by` reads its words (the request
+  in plain words, or what they wrote into a line themselves: `chain.own_words` takes a new line
+  whole, and of a line they only changed the words it didn't have, so the drafter's words in it
+  name nothing) against the changed draft, and the draft keeps the keys of the openers they
+  named in its `told` column: a clock's, a question's or a person's id, a connection's name, a
+  goal's text, none of it the player's writing. `openers.carried` drops the keys of what a
+  later change removed, and moves a goal's or a connection's key to its new words when the
+  change only reworded it. `chain.Draft.said` is both, as `openers.Said`. The reading is plain
+  Python over `graph/words.py` (each language's small words, and `alike` for a word in two
+  forms, "killed" and "killing"). `named.named`: the words name a thing when they say more than
+  two thirds of it, or all of it but one word where two of those words stand together in them,
+  and what a faction, a place or a people is called counts for nothing, so a premise that
+  speaks of the Azure Cloud Sect doesn't name "the Azure Cloud Sect's tournament". So "Find out
+  who killed my father" shows for "someone inside the family killed my father", and "The
+  council picks the next boss" doesn't, though both speak of a boss, nor does "The heroine
+  tells the prince" for a premise that speaks of both. `named.timed`: a deadline is also named
+  by a clause that sets a time ahead ("in 3 days", "dentro de tres días", "d'aquí a tres dies",
+  "tomorrow"; "three days ago" is none) and holds a word of it, or by the rest of its sentence
+  when the time is all the clause says. `named.called`: a person
+  is named only by their name, one word of it with a capital or all of it in any case, without
+  the words someone else is called by too, so the Esposito family in a premise names nobody in
+  it (`openers.own_names`); a description names nobody. `view.world_lines`,
+  `view.character_lines` and `view.shown` take `said`; without it they show everything the
+  character knows, as an heir's preview does. The drafter is told what the screen shows, to call
+  what the premise names by the premise's own words, and, when the player rewrites a summary
+  line, that what neither list mentions stays as it is (`prompts.lines_instruction`).
 - **A ladder is drafted whole, and says which rungs everyone knows** (G18, C6). The drafter is
   asked for the ladder up to the rung the world's strongest beings stand on and for
   `known_to_all`, how many of its rungs, counted from the lowest, everyone has heard of.
   `assemble` keeps that between one and the ladder's length, and takes `view.SUMMARY_RUNGS`
   (five) where the model doesn't say; a starter's own ladder is known whole, except the
   cultivation realms, known up to Nascent Soul. The summary names those rungs, and
-  `view.shown(state)` is everything the draft's screen says, which the story's character knows
-  from its first moment (`engine.path`).
+  `view.shown(state, language, said)` is everything the draft's screen says, which the story's
+  character knows from its first moment (`engine.path`).
 - **Revisions and edits.** `revise(target, instruction)` sends the whole draft, hidden parts
   included and fields left at their defaults left out, so the change fits the world. A change to
   the world comes back as only what it touches (`schema.WorldChange`): the records it adds or
@@ -1764,6 +1795,9 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   the engine wrote beside how the saved scene has it (`judge.judge_lines`), and its row of the
   results says what the `wording` step took and cost. A live run also checks that the reading
   wrote each step and its beats in the story's language: none holds a word only English has.
+  The eval of a draft's summary (`t17.start-is-a-surprise`, G1) drafts made-up premises with
+  the real drafter (`Eval.draft`, `Eval.revised`) and sends the judge each premise beside the
+  summary the screen would show for it (`judge.judge_summary`).
   Its stories name the troll, the courtyard
   and the stone in their own language, as a story's world does, and a judgement of lines that
   fails lists the lines the judge read in the run's log, since its reasons only point at them

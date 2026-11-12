@@ -292,7 +292,11 @@ DraftAdvancedIn  the same fields, each optional; a rule without an id is a new r
   keep it.
 - **The summary is written by code** from the world's public parts, never by the model, so it always
   matches the draft. `world_lines` lead with what never changes, then the era, the power ladder and
-  peoples, the factions, deadlines and questions the character knows, and the key people they know.
+  peoples and the factions the character knows. Of how the story starts they show only what the
+  player's own words name (G1): a deadline, an open question or a key person is a line only when
+  the premise, or a change the player asked for, names it (a person by their name), and so are
+  a connection and a goal in `character_lines`. The rest is drafted and kept for the story to
+  tell.
   At most 10 lines each. Of the ladder they name the rungs everyone in the world has heard of, five
   at most, with "and beyond" when it goes on (G18, C6): the character's path starts with those.
 - **Direct edits.** Fields left out stay as they are. Changing `physics`, a rule's `fixed` flag,
