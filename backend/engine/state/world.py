@@ -22,6 +22,7 @@ from engine.state.records import (
     Rumor,
     Thread,
     Transfer,
+    WorldChange,
 )
 from engine.state.scene import SceneFrame
 from engine.state.sheet import TimeEffect
@@ -197,6 +198,17 @@ class WorldState(EngineModel):
         "years from the first time the world counted (`engine.world.lives.grow_older`). None "
         "until then.",
     )
+    changes: dict[str, WorldChange] = Field(
+        default_factory=dict,
+        description="W6: what the years did to the wider world while the story was elsewhere, "
+        "by id, the latest `engine.world.tuning.CHANGES_KEPT` of them.",
+    )
+    strife_s: dict[str, WorldSeconds] = Field(
+        default_factory=dict,
+        description="W6: for two factions at war, by their ids joined with '|' in order, when "
+        "the world first saw them at war or when they last fought it out "
+        "(`engine.world.strife`).",
+    )
     facts: dict[str, Fact] = Field(default_factory=dict)
     goals: dict[str, Goal] = Field(default_factory=dict)
     leads: dict[str, Lead] = Field(default_factory=dict)
@@ -313,6 +325,7 @@ _KEYED_COLLECTIONS = (
     "rumors",
     "bonds",
     "lives",
+    "changes",
     "facts",
     "goals",
     "leads",

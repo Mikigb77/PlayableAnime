@@ -49,7 +49,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import carriers, hearsay, journeys, lives
+from engine.world import carriers, hearsay, journeys, lives, strife
 from engine.world.geography import region_of
 from engine.world.scheduling import World
 
@@ -64,6 +64,7 @@ __all__ = [
     "record_consequences",
     "record_direction",
     "resolve",
+    "settle_changes",
     "settle_encounter",
     "settle_lives",
     "settle_path",
@@ -444,7 +445,12 @@ def hear_talk(
         return state
     heard = state.model_copy(deep=True)
     w = World(state=heard, ctx=ctx, at_s=heard.world_s, rng=rng.child("talk", talk.rumor_id))
-    return heard if hearsay.hear(w, heard.player_id, talk.rumor_id) else state
+    if not hearsay.hear(w, heard.player_id, talk.rumor_id):
+        return state
+    # W6: word of what the years did to the wider world is that change heard.
+    for change_id in strife.by_rumor(heard, talk.rumor_id):
+        strife.learn(heard, heard.changes[change_id])
+    return heard
 
 
 def settle_trips(
@@ -550,6 +556,24 @@ def settle_lives(
         began = played.scene.present_ids if played is not None else ()
         told = lives.borne_out(state, told, scene, there=[*began, *state.scene.present_ids])
     return lives.settle(state, told)
+
+
+def settle_changes(
+    state: WorldState, told: Iterable[str] = (), *, scene: str | None = None
+) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied (step 6). `told` is the news the scene was handed
+    and says it showed or said (`NarratorOutput.told_news`), by id: that much of what the
+    years did to the wider world the player character now knows (W6, C6,
+    `engine.world.strife`), with the turns of status it brought, so Memory shows a fallen
+    faction as fallen. What a scene left out stays news.
+
+    `scene` is the scene as the player reads it: of what it says it told, only what its words
+    bear out counts, which is a change that names a faction or a place it came to
+    (`strife.borne_out`). Returns the state, a new one when anything changed, and the ids of
+    the changes now known, for the turn's log."""
+    if scene is not None:
+        told = strife.borne_out(state, told, scene)
+    return strife.hear(state, told)
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

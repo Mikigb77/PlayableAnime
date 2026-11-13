@@ -23,7 +23,7 @@ from engine.state.world import WorldState
 from engine.world.geography import faction_seat, is_within, region_of, travel_s
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
 from engine.world.telling import account
-from engine.world.tuning import ANSWER_GATHER_S, UNKNOWN_TRIP_S, ZEAL_GATHER_FACTOR
+from engine.world.tuning import ANSWER_GATHER_S, UNKNOWN_TRIP_S, WAR_AT, ZEAL_GATHER_FACTOR
 
 
 class Answer(StrEnum):
@@ -167,11 +167,11 @@ def law_at(state: WorldState, faction_id: str, place_id: str | None) -> Law | No
 
 
 def rival_at_war(state: WorldState, faction: Faction) -> str | None:
-    """Another faction it is at war with, if any (relations of -60 or worse)."""
+    """Another faction it is at war with, if any (relations of `WAR_AT` or worse)."""
     enemies = [
         fid
         for fid, stance in sorted(faction.relations.items())
-        if stance <= -60
+        if stance <= WAR_AT
         and fid in state.factions
         and state.factions[fid].status is not FactionStatus.DESTROYED
     ]

@@ -82,6 +82,8 @@ from engine.state.records import (
     Trace,
     TraceKind,
     Visibility,
+    WorldChange,
+    WorldChangeKind,
 )
 from engine.state.scene import Bout, Encounter, EncounterKind, SceneFrame, Terms
 from engine.state.sheet import (
@@ -275,6 +277,8 @@ __all__ = [
     "Unions",
     "Visibility",
     "WorldBible",
+    "WorldChange",
+    "WorldChangeKind",
     "WorldRule",
     "WorldState",
     "Wound",

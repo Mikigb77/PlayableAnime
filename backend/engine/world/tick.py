@@ -13,7 +13,9 @@ P1) to tell as what they actually did. Dormant characters and factions don't mov
 
 Each tick also has everyone grow older with the world's years, and gives the people the story
 knows what the stretch brought their own lives: a partner, a wedding, a child, a parting, a
-friend or a foe (`engine.world.lives`, W6, W10).
+friend or a foe (`engine.world.lives`, W6, W10). And it gives the wider world what the stretch
+brought its wars: one that has had its time may come to a head, a side may fall, and land
+changes hands (`engine.world.strife`, W6, W7).
 """
 
 import math
@@ -38,6 +40,7 @@ from engine.world.knowledge import shift_attitude
 from engine.world.lives import live_on
 from engine.world.returns import left, trip_of
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
+from engine.world.strife import strive
 from engine.world.tuning import (
     AGENDA_FACTS_KEPT,
     FACTION_MOVE_MEAN_S,
@@ -91,6 +94,8 @@ def on_tick(w: World, event: PendingEvent) -> None:
     _prune_agenda_facts(w)
     # W6, W10: everyone grows older, and the people the story knows lead lives of their own.
     live_on(w, last_s)
+    # W6, W7: wars between factions come to a head over the years, and land changes hands.
+    strive(w, last_s)
     schedule(
         w,
         Kind.TICK,

@@ -245,6 +245,33 @@ TIE_AGE = 14  # nobody younger makes a friend or a foe for life by the world's d
 PRIME = 0.55  # the part of a lifespan that is the prime of life, for a partner and children
 LIFESPAN_YEARS = 80  # where a people's own isn't on record
 
+# --- The wider world over the years (W6, W7) -----------------------------------------------------
+
+# Two factions are at war while either's stance toward the other is this or worse.
+WAR_AT = -60
+# A war comes to a head no sooner than this after the world first saw it, or after the two
+# last fought it out: a month away is no time for a kingdom to fall (Miki, 2026-11-13: "If a
+# month went by, obviously there is no time for such things").
+WAR_PAUSE_S = YEAR
+# From then on, the chance in one year that it comes to a head. Most wars are fought out
+# within ten years, some more than once, and some never: nothing is made to happen.
+WAR_RATE = 0.3
+# A side this many steps of might above the other wins with no throw (A2). Closer than that
+# a throw decides, each step worth this much to the mightier side's chances.
+WAR_SURE = 2
+WAR_EDGE = 0.2
+WAR_SPENT = 0.25  # how often an even fight leaves both sides the weaker and neither the winner
+WAR_UNREST = 30  # how much less steady a place is once it has changed hands in a war (W7)
+WAR_WASTE = 40  # and once nobody holds it
+# A place nobody holds since a war is taken by a faction that can reach it: the chance in one
+# year.
+SEIZE_RATE = 0.15
+# Whoever lives this near a place a war touched knows of it as it happens, by the map's travel
+# times. Further off it is word that travels (W2), or what they find when they come back.
+WAR_NEAR_S = DAY
+WAR_NEWS_HOPS = 6  # how far word of it travels, place to place
+CHANGES_KEPT = 100  # the latest news of the wider world kept on record (K8)
+
 # --- Agendas in the world tick (W6) --------------------------------------------------------
 
 # On average, how long an active faction or key NPC goes between moves of their own.

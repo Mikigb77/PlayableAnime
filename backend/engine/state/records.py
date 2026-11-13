@@ -492,6 +492,38 @@ class LifeEvent(EngineModel):
         return next((i for i in self.subject_ids if i != character_id), None)
 
 
+class WorldChangeKind(StrEnum):
+    """W6. What a stretch of years did to the wider world, by the world's own doing."""
+
+    BEATEN = "beaten"  # one faction beat another it was at war with, and took a place from it
+    FELL = "fell"  # a faction fell to the one it was at war with, which took what it held
+    SPENT = "spent"  # two at war wore each other down: each is the weaker for it
+    BOTH_FELL = "both_fell"  # two at war destroyed each other: what they held is nobody's
+    SEIZED = "seized"  # a faction took a place nobody held since a war
+
+
+class WorldChange(EngineModel):
+    """W6, W7, C1, C6. Something that changed the wider world while the story was elsewhere: a
+    war between two factions that came to a head, or land that nobody held taken by a third.
+    The change itself is on the records it touched (a faction's status, who holds a place, how
+    steady it is); this is the news of it, for whoever hasn't heard. `faction_ids` has the one
+    that came out on top first. Word of it travels as a rumor (`rumor_id`), and it is worded
+    where it is read, so nothing here is a sentence."""
+
+    id: str
+    kind: WorldChangeKind
+    faction_ids: list[str] = Field(min_length=1, max_length=2)
+    place_ids: list[str] = Field(
+        default_factory=list, description="The places that changed hands or lost their holder."
+    )
+    origin_place_id: str | None = Field(default=None, description="Where word of it starts.")
+    rumor_id: str | None = None
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+    timeline_id: str = MAIN_TIMELINE
+    known_by: list[str] = Field(default_factory=list)
+
+
 class ThreadKind(StrEnum):
     MYSTERY = "mystery"
     THREAT = "threat"
