@@ -265,6 +265,13 @@ class WorldBible(EngineModel):
     norms: list[str] = Field(
         default_factory=list, description="What the world finds monstrous or normal (W12)."
     )
+    several_partners: bool = Field(
+        default=False,
+        description=(
+            "W17: having several partners at once is the custom here, so another romance"
+            " wrongs no partner. False where a couple are held to each other."
+        ),
+    )
     rules: list[WorldRule] = Field(default_factory=list)
     mysteries: list[Mystery] = Field(default_factory=list)
 

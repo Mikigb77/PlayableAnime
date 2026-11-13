@@ -143,7 +143,10 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
     targets: list[str] = []
     if deed.agreed:
         return targets  # W1: what both sides agreed to is nobody's to report
-    if deed_nature(state, deed) is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
+    what = deed_nature(state, deed)
+    if what is Nature.ROMANCE:
+        return targets  # W17: whom someone courts is no faction's business
+    if what is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
         return targets
     for place_id in ancestors(state, deed.place_id):
         holder = state.places[place_id].controller_id

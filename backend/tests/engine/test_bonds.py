@@ -333,3 +333,103 @@ def test_a_wife_keeps_what_she_saw_her_husband_do_to_herself():
     assert knowledge.protects(state, ilse, deed)
     assert not knowledge.would_talk(state, ilse, deed)
     assert knowledge.would_talk(state, state.characters["mara"], deed)
+
+
+# --- another romance, and whom it wrongs ------------------------------------------------------
+
+
+def paired(state: WorldState, a: str, b: str, stage: BondStage, world_s: int = 0) -> Bond:
+    number = len(state.bonds) + 1
+    bond = Bond(
+        id=f"bond-{number}",
+        a_id=a,
+        b_id=b,
+        stage=stage,
+        steps=[BondStep(stage=stage, world_s=world_s)],
+    )
+    state.bonds[bond.id] = bond
+    return bond
+
+
+def test_a_couple_dates_from_the_first_stage_that_made_them_one():
+    assert bonds.couple_since(None) is None
+    courting = Bond(id="b", a_id="a", b_id="b", stage=BondStage.COURTING, steps=[])
+    assert bonds.couple_since(courting) is None
+    married = Bond(
+        id="b",
+        a_id="a",
+        b_id="b",
+        stage=BondStage.MARRIED,
+        steps=[
+            BondStep(stage=BondStage.COURTING, world_s=DAY),
+            BondStep(stage=BondStage.TOGETHER, world_s=3 * DAY),
+            BondStep(stage=BondStage.MARRIED, world_s=90 * DAY),
+        ],
+    )
+    assert bonds.couple_since(married) == 3 * DAY
+    # A record with no steps is as old as the story.
+    married.steps = []
+    assert bonds.couple_since(married) == 0
+
+
+def test_a_move_wrongs_whoever_is_a_couple_with_either_of_the_two():
+    state = farm()
+    assert bonds.wronged(state, "tomas", "mara") == ["ilse"]
+    assert bonds.wronged(state, "tomas", "ilse") == []  # nobody is wronged by their own kiss
+    state.characters["jorn"] = Character(id="jorn", name="Jorn", age=33, location_id="village")
+    paired(state, "jorn", "mara", BondStage.TOGETHER)
+    assert bonds.wronged(state, "tomas", "mara") == ["ilse", "jorn"]
+    # Someone only courted, or it is over with, has no claim, and neither have the dead.
+    state.bonds["bond-2"].stage = BondStage.COURTING
+    assert bonds.wronged(state, "tomas", "mara") == ["ilse"]
+    state.characters["ilse"].status = CharacterStatus.DEAD
+    assert bonds.wronged(state, "tomas", "mara") == []
+
+
+def test_whoever_came_later_or_at_the_same_time_has_no_claim_on_the_older_couple():
+    state = farm()
+    paired(state, "tomas", "mara", BondStage.TOGETHER, world_s=30 * DAY)
+    # Mara knew he was married: his nights with his wife wrong nobody, and hers do wrong Ilse.
+    assert bonds.wronged(state, "tomas", "ilse") == []
+    assert bonds.wronged(state, "tomas", "mara") == ["ilse"]
+    # Two who were his from the day the story opened mind neither kiss.
+    both = farm()
+    paired(both, "tomas", "mara", BondStage.MARRIED)
+    assert bonds.wronged(both, "tomas", "ilse") == []
+    assert bonds.wronged(both, "tomas", "mara") == []
+
+
+def test_where_several_partners_are_the_custom_another_romance_wrongs_nobody():
+    state = farm()
+    state.bible.several_partners = True
+    assert bonds.wronged(state, "tomas", "mara") == []
+
+
+def test_how_grave_it_is_follows_how_far_it_went():
+    def of(**kw) -> int:
+        given = {"asked": False, "intimate": False, "answered": True, "before": None, "after": None}
+        return bonds.gravity(**(given | kw))
+
+    interest, courting = BondStage.INTEREST, BondStage.COURTING
+    together, promised, married = BondStage.TOGETHER, BondStage.PROMISED, BondStage.MARRIED
+    assert of(after=interest) == bonds.SLIGHT
+    assert of(answered=False) == bonds.SLIGHT
+    assert of(before=interest, after=courting) == bonds.AFFAIR
+    assert of(asked=True, answered=False, before=interest, after=interest) == bonds.AFFAIR
+    assert of(intimate=True, answered=False) == bonds.AFFAIR
+    assert of(before=together, after=together) == bonds.AFFAIR  # one more evening with them
+    assert of(intimate=True, before=courting, after=courting) == bonds.BETRAYAL
+    assert of(asked=True, before=courting, after=together) == bonds.BETRAYAL
+    assert of(asked=True, before=together, after=promised) == bonds.BETRAYAL
+    assert of(before=promised, after=married) == bonds.BETRAYAL
+
+
+def test_an_end_is_recorded_with_who_ended_it_and_when():
+    state = farm()
+    bond = bonds.live(state, "tomas", "ilse")
+    bonds.end(bond, by_id="ilse", how="Ilse Weller ended it.", turn=7, world_s=4 * DAY)
+    assert (bond.stage, bond.end) == (BondStage.OVER, BondEnd.PARTED)
+    last = bond.steps[-1]
+    assert (last.stage, last.by_id, last.turn, last.world_s) == (BondStage.OVER, "ilse", 7, 4 * DAY)
+    assert bonds.live(state, "tomas", "ilse") is None and bonds.partners(state, "tomas") == []
+    assert check_state(state) == []

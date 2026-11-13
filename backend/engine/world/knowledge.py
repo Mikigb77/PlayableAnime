@@ -23,6 +23,12 @@ in stages, and each needs its own evidence.
   crowd, or two who saw it are alive and would say so), which even talk of it carries, or they
   put it to the doer's face and nothing changed their mind. Then they come for revenge.
 
+A move in a romance that wrongs someone (W17, `Deed.wronged_ids`) is no harm and no crime. It
+is something to whoever is a couple with either of the two, who loses liking, trust and heart
+by how far it went, holds it against whoever did it and comes to have it out with them, and a
+little to those close to them. A partner whose heart is gone by then ends it. Nobody else
+thinks anything of it.
+
 What both sides of a fight agreed to is no attack (W1, `engine.resolve.bouts`). A bout leaves a
 little more regard between those who fought it (`fought_bout`). A death both accepted is a loss
 to those close to the dead, who may still hold it against the one who killed them, and nothing
@@ -177,10 +183,87 @@ def would_talk(state: WorldState, witness: Character, deed: Deed) -> bool:
     and beasts don't talk (G24)."""
     if witness.id == state.player_id or not witness.alive or is_beast(state, witness.id):
         return False
-    if protects(state, witness, deed):
+    if protects(state, witness, deed) or in_it(state, witness, deed):
         return False
     toward = witness.sheet.disposition.attitudes.get(deed.actor_id)
     return toward is None or toward.fear < SILENT_FEAR
+
+
+def in_it(state: WorldState, witness: Character, deed: Deed) -> bool:
+    """W17. Whether a move in a romance was made toward this witness and they are in it too:
+    the two are courting or more, or the witness is drawn to whoever made it. They tell
+    nobody. Someone who wanted none of it tells like any witness."""
+    if witness.id not in deed.target_ids or deed_nature(state, deed) is not Nature.ROMANCE:
+        return False
+    bond = bonds.live(state, witness.id, deed.actor_id)
+    if bond is not None and bond.stage is not BondStage.INTEREST:
+        return True
+    return witness.attitude_toward(deed.actor_id).attraction >= bonds.DRAWN_AT
+
+
+def partner_of(state: WorldState, character_id: str, other_id: str) -> bool:
+    """W17. Whether two people are a couple, or were one in the latest romance between them."""
+    bond = bonds.live(state, character_id, other_id) or bonds.last_over(
+        state, character_id, other_id
+    )
+    return bond is not None and any(step.stage.couple for step in bond.steps)
+
+
+def _news(state: WorldState, character: Character, deed: Deed) -> float:
+    """W17. How much of a move in a romance is news to someone who learns of it, in steps of
+    how grave it is: all of it the first time, only what it went further than what they
+    already know between the same two after that, and `bonds.AGAIN` of a step when it tells
+    them nothing new, only that it goes on. So a season of courting isn't a new wound every
+    week, and learning that it came to a night together is."""
+    known = max(
+        (
+            other.severity
+            for other in state.deeds.values()
+            if other.id != deed.id
+            and other.actor_id == deed.actor_id
+            and other.timeline_id == deed.timeline_id
+            and other.wronged_ids
+            and character.id in other.known_by
+            and set(other.target_ids) & set(deed.target_ids)
+        ),
+        default=0,
+    )
+    return deed.severity - known if deed.severity > known else bonds.AGAIN
+
+
+def _wronged(
+    state: WorldState, character: Character, deed: Deed
+) -> tuple[float, float, float, bool]:
+    """W17. What a move in a romance is to someone who learns of it: what it takes from how
+    they like and trust whoever made it and from their heart, and whether they hold it
+    against them. It counts by how much of it is news to them (`_news`). Their own partner
+    loses on all three. To someone whose partner was courted, the one who made the move is a
+    rival: no heart to lose there. Either holds it against them from an affair up
+    (`bonds.FACED_FROM`), once for each time it went further. Those close to someone it
+    wronged think less of whoever did it, and anyone else thinks nothing of it: it is no harm
+    done to anyone."""
+    sev = deed.severity
+    news = _news(state, character, deed)
+    if character.id in deed.wronged_ids:
+        held = sev >= bonds.FACED_FROM and news >= 1
+        if partner_of(state, character.id, deed.actor_id):
+            liking, trust = bonds.WRONGED_LIKING * news, bonds.WRONGED_TRUST * news
+            return -liking, -trust, -bonds.WRONGED_HEART * news, held
+        return -bonds.RIVAL_LIKING * news, -bonds.RIVAL_TRUST * news, 0, held
+    if character.id in deed.target_ids:
+        return 0, 0, 0, False  # whoever it was made toward has their own part in it
+    tie = max((closeness(state, character, who) for who in deed.wronged_ids), default=0)
+    liking = bonds.TIE_LIKING * news * tie
+    return -liking, -liking / 2, 0, False
+
+
+def _had_enough(state: WorldState, character: Character, deed: Deed) -> bool:
+    """W17. Whether a partner who learns of one more move in an affair they already know of
+    has had enough: their heart is under `bonds.LEAVES_UNDER` now."""
+    bond = bonds.live(state, character.id, deed.actor_id)
+    if bond is None or not bond.stage.couple or deed.severity < bonds.FACED_FROM:
+        return False
+    return character.attitude_toward(deed.actor_id).attraction < bonds.LEAVES_UNDER
 
 
 # --- People ---------------------------------------------------------------------------------
@@ -193,14 +276,18 @@ def shift_attitude(
     affinity: float = 0,
     fear: float = 0,
     trust: float = 0,
+    attraction: float = 0,
     grudge: Grudge | None = None,
 ) -> bool:
-    """Move how a character feels about someone, within bounds. True if a new grudge was kept."""
+    """Move how a character feels about someone, within bounds. True if a new grudge was kept.
+    `attraction` is their heart (W17), which only loses here: what wins it is a romance's own
+    moves (`engine.resolve.romance`)."""
     attitudes = character.sheet.disposition.attitudes
     attitude = attitudes.setdefault(toward_id, Attitude())
     attitude.affinity = _clamp(attitude.affinity + affinity, AFFINITY_MIN, AFFINITY_MAX)
     attitude.fear = _clamp(attitude.fear + fear, FEAR_MIN, FEAR_MAX)
     attitude.trust = _clamp(attitude.trust + trust, TRUST_MIN, TRUST_MAX)
+    attitude.attraction = _clamp(attitude.attraction + min(0, attraction), 0, 100)
     if attitude.apparent_affinity is not None:
         attitude.apparent_affinity = _clamp(
             attitude.apparent_affinity + affinity, AFFINITY_MIN, AFFINITY_MAX
@@ -246,7 +333,7 @@ def character_learns(
     harmful = kind in (Nature.HARM, Nature.HUNT)
     affected = [*deed.victim_ids, *deed.target_ids] if harmful else deed.target_ids
     tie = max((closeness(state, character, v) for v in affected if v != character.id), default=0)
-    affinity = fear = trust = 0.0
+    affinity = fear = trust = heart = 0.0
     keeps_grudge = False
     # W1. Whoever stood in a fight both sides agreed to wasn't attacked in it.
     struck = not deed.agreed and (
@@ -292,6 +379,8 @@ def character_learns(
             affinity = 2 * sev
     elif kind is Nature.DISPLAY:
         fear = 3 * sev
+    elif kind is Nature.ROMANCE:
+        affinity, trust, heart, keeps_grudge = _wronged(state, character, deed)
     elif sev >= 3:
         fear = sev
     if deed.broke_terms:
@@ -310,6 +399,7 @@ def character_learns(
             affinity=affinity * weight,
             fear=fear * weight,
             trust=trust * weight,
+            attraction=heart * weight,
         )
         return
     if heard is not None:
@@ -326,8 +416,16 @@ def character_learns(
         affinity=affinity * weight,
         fear=fear * weight,
         trust=trust * weight,
+        attraction=heart * weight,
         grudge=grudge,
     )
+    if kind is Nature.ROMANCE:
+        # W17. Whoever it wronged comes to have it out with whoever did it, with words: when
+        # they first know of it, each time they learn it went further, and when their heart
+        # has had all it can take. What they do then is theirs (`arrivals.on_answer`).
+        if character.id in deed.wronged_ids and (new_grudge or _had_enough(state, character, deed)):
+            schedule_confrontation(w, character, deed)
+        return
     if not new_grudge:
         return
     victim_fell = any(

@@ -103,6 +103,12 @@ ANSWER_TEXT = {
 }
 
 
+# W17. Someone a move in a romance wronged comes to whoever made it, and what a partner whose
+# heart is gone by then has come to say instead (`arrivals.on_answer`).
+HAVE_IT_OUT = "comes to have it out with {target}"
+ENDS_IT = "comes to tell {target} it is over between them"
+
+
 def _might(state: WorldState, character: Character) -> int:
     """The might the world can measure them by (A8, W5): a light-speed time stop once the world
     could know of it, hidden strength as what it shows (G20), less any weakening."""
@@ -300,6 +306,8 @@ def schedule_answer(
     text = ANSWER_TEXT[answer].format(target=target.name if target else "them")
     if answer is Answer.CONFRONT and deed is not None:
         # The narrator has only the title to go by: what it is over, and that it is no attack.
+        if deed.wronged_ids:
+            text = HAVE_IT_OUT.format(target=target.name if target else "them")  # W17
         text = f"{text}, to hear it answered and not to attack: {account(state, deed)}"
     return schedule(
         w,

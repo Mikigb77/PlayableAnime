@@ -137,6 +137,13 @@ class Deed(EngineModel):
     place_id: str | None = None
     victim_ids: list[str] = Field(default_factory=list)
     target_ids: list[str] = Field(default_factory=list)
+    wronged_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "W17: whom a move in a romance wrongs: whoever is a couple with either of the two"
+            " (`engine.bonds.wronged`). Such a deed harms nobody, and it is theirs to mind."
+        ),
+    )
     severity: Severity = 1
     visibility: Visibility = Visibility.SECRET
     witness_ids: list[str] = Field(default_factory=list)

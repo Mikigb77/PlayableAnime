@@ -1487,10 +1487,62 @@ a wedding looks like is the world's. The details:
   only what the character knows: a death they haven't learned of ended nothing as far as they
   know, so the romance shows as it stood, and how drawn the other person is never shows, since
   that is theirs to find out in the story. An interest that ended before anything began is
-  nothing to remember, and two other people's romance isn't shown.
-- **Still to build:** the world reacting when a partner or a rival learns of another romance
-  through who saw it and told (W2, W4); romances between other people; and someone falling for
-  the character first (W16's admirer).
+  nothing to remember, and two other people's romance isn't shown. An interest nothing has
+  answered doesn't take the place of a romance that ended: someone the character was married
+  to shows as that, with who ended it, until something between the two is answered again.
+- **Another romance is a deed (W1).** A move in a romance with someone else, made by or with
+  someone who is a couple with another, is recorded as a deed that names whom it wrongs: the
+  partner of either of the two. It is graver the further it went. A flirt that went nowhere is
+  slight (1). An affair (2) is a move that made it a courtship or was made within one, an ask
+  to be a couple or for a promise whatever the answer, a night together that was refused, and
+  one more evening with someone they are already a couple with. A night together, or becoming
+  a couple, promised or married with them, is a betrayal (3). Whoever became a couple later
+  has no claim on the older couple, and neither have two who shared someone since before the
+  story began, so a second wife is not wronged by the first. Nobody is wronged by their own
+  partner's kiss, the dead mind nothing, and ending a romance wrongs nobody. Where several
+  partners are the custom of the world, another romance wrongs nobody at all.
+- **It is no crime, and nobody's errand.** No law is broken, nobody reports it, no faction
+  hears of it and bystanders think no less of the character (W11). It is something to whoever
+  it wronged, and a little to those close to them (3 of their liking for each step of how far
+  it went, by how close they are).
+- **They learn of it as of any deed (W2).** By seeing it, or from someone who saw it and is
+  free and willing to talk: nobody still in the character's scene has told anyone. The one
+  courted who is in it (a courtship or more with the character, or their heart at 40 or more)
+  tells nobody. A flirt that went nowhere is nobody's errand. From an affair up, a witness
+  carries it to whoever it wronged when they are within a day's travel of where it happened,
+  or however far when the witness is someone of theirs, and it takes the road's time to arrive
+  (W10). Talk that reaches them without a witness's word is suspicion: it costs by how much of
+  it they believe, it is held against nobody, and a devoted partner (liking at 50 or more)
+  won't hear it.
+- **What it costs.** Their own partner loses 8 of their liking, 10 of their trust and 10 of
+  their heart for each step of how far it went, so 30 of their heart for a betrayal. Only what
+  is new to them counts in full: a second evening of the same costs half a step, and going
+  further costs the difference. A heart is only ever lost this way, never won. To the partner
+  of the one courted the character is a rival: 10 of their liking and 6 of their trust for
+  each step, and nothing of their heart. What they feel for their own partner is theirs, and
+  the engine leaves it alone. An affair or worse is held as a grudge, one for each time it
+  went further.
+- **Having it out (W4).** Whoever knows of an affair or worse comes to have it out with the
+  character, when they can get there (W10), and only being too afraid of them keeps them away:
+  they come however much they still like them. They come over the gravest of it they know by
+  then. Their own partner whose heart is under 40 by the time they find the character has come
+  to end it: the romance is over on record, by their doing, and nothing said in the scene
+  changes that. One whose heart holds has it out and stays, and if the character goes on, a
+  heart that falls under 40 brings them back. Nobody comes for revenge on their own partner. A
+  rival comes for revenge afterwards only when what they know of went as far as a betrayal,
+  and not when by then they no longer think ill of the character. Someone coming for the
+  character who is already at the very place the character is has found them, wherever they
+  had meant to look.
+- **The telling.** The narrator is told whose partner a step's move was made with or by, and
+  who of them saw it happen; anyone else knows nothing yet. Whoever comes is the scene's event,
+  which says what they came to do: to hear it answered and not to attack, or to say it is
+  over. The narrator is also told of a romance between two people that ended before the one
+  that stands, so someone who left is still someone who left after the character asks again.
+- **Still to build:** partners among the cast at the draft, and worlds where several partners
+  are the custom, so that rivals exist in drafted stories; a move in a romance aimed at
+  someone who isn't where the character is; the one courted minding that the character is
+  bound to someone else; suitors as rivals before they are a couple; romances between other
+  people; and someone falling for the character first (W16's admirer).
 
 We don't know exactly how OOC handles this. Its public coverage describes memory layers and stats but
 no retaliation system, so this is one place we can be better rather than just match it.
@@ -1918,6 +1970,9 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Time skip | "I farm here for a year", and "I train for a week" over many seeds | The skip stops early when an event needs a decision, and the turn's cost stays within K8's cap. Some weeks of training pass whole and some are cut short, with the effort put in kept (E7, A4) |
 | The same hour | The player plays 60 quiet scenes of a minute each, then scenes of half an hour, on calm, normal and dramatic | Inside the hour one of life's events comes at most, with a few small moments ten minutes or more apart and no event marked for them, and a way to let time pass among the suggestions once in twelve scenes at most, never beside a decision (S2); once two hours of story time have passed since the event, the next one comes (W16, W10) |
 | Slow romance | On the farm with no wife, the player asks Mara, a neighbour who likes them and feels nothing more, to be their sweetheart on the first day, while the scripted narrator says she agrees and writes the couple into its update. They pay her court twice in one evening, then a week at a time until she is in love, ask again, kiss her, try to marry her the same day, court on, ask for a promise and wed, over 12 seeds | The first ask is turned down with nothing thrown and makes them no couple, whatever the narrator tells, and nothing it writes moves her heart. Sweet words twice in one day move her heart once. A week of courting moves it as far as its days allow, never when it came to nothing, and a week the valley cut short keeps the days it ran. It is a courtship only once an advance came off and her heart is far enough. Each ask is answered by her heart: yes with nothing thrown once she is in love. A kiss with a partner needs no throw, a wedding takes two who are promised, and the bond comes to married one stage at a time, over a week or more of the story. After the first ask, after the yes and after the wedding, Memory shows the two as the record holds them (C6). Live, the judge reads whether she turns the first ask down, whether the yes and the kiss are told as such, and whether she is ever told as a partner, a betrothed or a wife before the record makes her one (W17, A2, E7, F3, C6) |
+| An affair comes home | Tomas is married to Ilse, who is at home on the farm with her heart at 60, or at 80 on every third seed. In Millbrook, with old Bram looking on, he walks Mara home and spends the night with her, then goes home and works his fields for up to six days. Where Ilse ends it he asks her to stay his wife, while the scripted narrator has her forgive him and writes the marriage back into its update, over 12 seeds | Each move is a deed on record that wrongs his wife, as grave as how far it went, and no crime: nobody reports it and Bram thinks no less of him. At home she knows nothing and feels as before. Word reaches her from someone who saw it, she loses heart by how far it went and a little more for the second evening, and she comes to have it out, never for revenge. A wife whose heart is under 40 by then ends the marriage when she finds him and the scene is told it is over; one whose heart holds stays and the scene is told she came to hear it answered. Asked to take him back she answers by her heart, and what she ended stays ended whatever the scene tells. Memory shows the marriage as the record holds it and who came over it. Both ends are seen across the seeds. Live, the judge reads whether Ilse is kept out of the evening's scenes, and whether she comes knowing of it and ends it or has it out as the record says (W17, W1, W2, W4, W10, C6) |
+| A rival | Tomas lives alone and Mara is married to Jorn, the Millbrook smith. On a third of the seeds Jorn stands in the forge door while Tomas kisses her and Tomas stays in the village. On a third old Bram sees Tomas walk her home, and on a third Bram also sees them spend the night; Tomas then goes home and up to six days pass, over 12 seeds | The move wrongs her husband on record, and the scene is told whose partner it was and whether he saw it. A husband who saw it holds it against Tomas at once, by how far it went, and what he feels for his own wife is untouched; one who was elsewhere feels as before until Bram tells him. Knowing of an affair, he comes to have it out and the scene is told he came to hear it answered and not to attack. He comes for revenge afterwards only when what he knows of went as far as a night together, and never without having had it out first. It is no crime, and Memory says who came over it. Both ends are seen across the seeds. Live, the judge reads whether the scene shows what a kiss he saw is to him, and whether he puts it to Tomas without attacking (W17, W1, W2, W4, W10, C6) |
+| A breakup | Tomas and Mara are a couple, with her heart at 75. He tells her it is over, while the scripted narrator mends it and writes the couple back into its update. Then he kisses her, and asks her to be his sweetheart again, over 12 seeds | Ending it is his to do, with nothing thrown: it is over on record by his doing whatever the scene tells, and it costs her 15 of her liking and trust and 30 of her heart. Memory says the two were a couple until he ended it. A kiss afterwards is no partner's kiss and is thrown for, and nothing less than an ask makes a couple. Asked again, she answers by her heart as it now stands, and a yes is a new romance on record beside the one that ended. Live, the judge reads whether she takes it as an ending and answers him afterwards as someone he left (W17, A2, C6) |
 | Ignored hook | The player ignores the premise's hook for 20 turns | The hook's clock advances and resolves without the player (the exam happens) |
 | Walk away | "I leave the academy and open a noodle shop" | The story follows the noodle shop, and the academy threads go on off-screen |
 | Divergence | Same premise and same actions, 5 seeds, 50 turns | The worlds differ in events, threads and new characters |

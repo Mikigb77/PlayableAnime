@@ -87,7 +87,13 @@ The first version's state, checked against the code in WS18.
       other person, which moves at their own pace. An ask is answered by their heart, nobody
       throws to kiss their own partner, and no scene can make a couple the record doesn't hold.
       Memory tells where the two stand under a heart on that person's entry, as far as the
-      character knows (W17, C6). *(Nobody reacts to another romance yet.)*
+      character knows (W17, C6).
+- [x] A romance that wrongs someone: courting or bedding someone else is a deed on record that
+      wrongs the partner of either of the two, and no crime. They learn of it by seeing it or
+      from someone who saw it, lose liking, trust and heart by how far it went, and come to
+      have it out. A partner whose heart is gone ends it, and a rival comes for revenge only
+      over a night together (W17, W1, W2, W4). *(A drafted story gives only the player's own
+      premise partner so far, so rivals wait for the next change.)*
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

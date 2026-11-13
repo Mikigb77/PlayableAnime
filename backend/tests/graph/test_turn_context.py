@@ -1180,6 +1180,24 @@ def test_the_narrator_reads_a_romance_as_the_record_has_it():
         "their_pace": _PACE[bonds.pace("greta")],
     }
     assert "bond_with_you" not in bram
+    # A new start doesn't undo what ended before it: the narrator reads both.
+    again = state.model_copy(deep=True)
+    again.bonds["bond-4"] = Bond(
+        id="bond-4",
+        a_id="tomas",
+        b_id="greta",
+        stage=BondStage.INTEREST,
+        steps=[BondStep(stage=BondStage.INTEREST, turn=11, world_s=11 * DAY, by_id="tomas")],
+    )
+    retold = brief(again).user
+    present = json.loads(retold.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"]
+    assert present[3]["bond_with_you"] == {
+        "stage": "interest",
+        "since": "a day ago",
+        "earlier": {"ended": "Tomas Weller ended it.", "since": "7 days ago"},
+        "their_heart": "not drawn to you",
+        "their_pace": _PACE[bonds.pace("greta")],
+    }
     # The heart is told in words only.
     assert mara["toward_you"] == {"affinity": 20}
     assert '"attraction"' not in text and "heart_moved_s" not in text

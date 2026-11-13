@@ -20,6 +20,8 @@ from engine.state import (
     BondStep,
     Character,
     CharacterSheet,
+    CharacterStatus,
+    DeathCertainty,
     Disposition,
     PendingEvent,
     PowerAxis,
@@ -503,3 +505,134 @@ def test_a_step_that_is_no_move_leaves_every_romance_alone():
     done = one(state, chat)
     assert done.effects.bonds == []
     assert heart(after(state, done)) == 50
+
+
+# --- a move that wrongs a partner is a deed (W1, W17) ------------------------------------------
+
+
+def wrong(done):
+    """The step's deed that wrongs someone, if it left one."""
+    return next((d for d in done.deeds if d.wronged_ids), None)
+
+
+def lie_with(who: str = "mara"):
+    return to(who, f"sleep with {who}", RomanceMove.ADVANCE, verb="sleep", duration_s=8 * HOUR)
+
+
+def married_to(state: WorldState, who: str, partner: Character) -> WorldState:
+    """Someone on record married to `who` since before the story, and not in the scene."""
+    add(state, partner, present=False)
+    wed_long_ago = BondStep(stage=BondStage.MARRIED, how="As the story opens.")
+    state.bonds[f"bond-{partner.id}"] = Bond(
+        id=f"bond-{partner.id}",
+        a_id=partner.id,
+        b_id=who,
+        stage=BondStage.MARRIED,
+        steps=[wed_long_ago],
+    )
+    return state
+
+
+def since(state: WorldState, world_s: int) -> WorldState:
+    """The world with what stands between Tomas and Mara begun at `world_s`, after his
+    marriage, and some days gone by."""
+    state.bonds["bond-9"].steps[0].world_s = world_s
+    state.world_s = world_s + 4 * DAY
+    return state
+
+
+def jorn() -> Character:
+    return Character(id="jorn", name="Jorn", age=33, location_id="village")
+
+
+def test_a_move_toward_someone_else_is_a_deed_that_wrongs_a_partner():
+    state = world(0)  # Tomas is married to Ilse
+    done = one(state, flirt(), seed_for(state, flirt(), StepResult.FAILURE))
+    deed = wrong(done)
+    assert deed is not None and len(done.deeds) == 1  # in place of the step's plain deed
+    assert (deed.kind, deed.target_ids, deed.wronged_ids) == ("court", ["mara"], ["ilse"])
+    assert deed.victim_ids == [] and deed.actor_id is None
+    assert deed.severity == bonds.SLIGHT  # it went nowhere
+
+
+def test_how_grave_it_is_follows_how_far_it_went():
+    # Courting by now: an affair, whatever came of this evening.
+    courting = world(50, BondStage.COURTING)
+    assert wrong(one(courting, flirt())).severity == bonds.AFFAIR
+    # An ask is an affair when the answer is no, and a betrayal when it makes them a couple.
+    cold = world(0)
+    assert wrong(one(cold, ask())).severity == bonds.AFFAIR
+    won = one(world(90, BondStage.COURTING), ask())
+    assert wrong(won).severity == bonds.BETRAYAL and wrong(won).kind == "court"
+    # A night together is a betrayal, and told as what it was.
+    night = one(world(90), lie_with())
+    assert night.outcome_class is OutcomeClass.CERTAIN
+    assert (wrong(night).kind, wrong(night).severity) == ("lie_with", bonds.BETRAYAL)
+    # One that wasn't is an affair.
+    refused = one(world(0), lie_with())
+    assert refused.outcome_class is OutcomeClass.RULED_OUT
+    assert (wrong(refused).kind, wrong(refused).severity) == ("court", bonds.AFFAIR)
+    # A wedding is one once the two are wed, and nothing while it can't be.
+    wedding = one(since(world(90, BondStage.PROMISED), DAY), wed())
+    assert (wrong(wedding).kind, wrong(wedding).severity) == ("wed", bonds.BETRAYAL)
+    assert wrong(one(since(world(90, BondStage.TOGETHER), DAY), wed())) is None
+
+
+def test_a_couple_already_is_an_affair_each_time_and_no_new_betrayal():
+    lovers = since(world(90, BondStage.TOGETHER), DAY)
+    kiss = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(lovers, kiss)).severity == bonds.AFFAIR
+    assert wrong(one(lovers, ask())).severity == bonds.AFFAIR  # they are together already
+
+
+def test_a_move_that_wrongs_nobody_is_no_such_deed():
+    alone = world(0)
+    alone.bonds.clear()
+    assert wrong(one(alone, flirt())) is None
+    # A kiss with his own wife wrongs nobody, and needs no deed at all.
+    home = world(0)
+    kiss = to("ilse", "kiss Ilse", RomanceMove.ADVANCE, verb="kiss")
+    assert one(home, kiss).deeds == []
+    # Ending it is no wrong, and nor is anything toward close family.
+    assert wrong(one(world(50, BondStage.COURTING), part())) is None
+    kin = world(0)
+    kin.characters["mara"].parent_ids = [YOU]
+    assert wrong(one(kin, flirt())) is None
+
+
+def test_where_several_partners_are_the_custom_nobody_is_wronged():
+    state = world(50, BondStage.COURTING)
+    state.bible.several_partners = True
+    assert wrong(one(state, flirt())) is None
+
+
+def test_someone_left_earlier_in_the_plan_is_not_wronged_by_what_comes_after():
+    state = world(0)
+    plan = Intent(steps=[part("ilse"), flirt()])
+    left, flirted = resolve(state, plan).steps
+    assert left.effects.bonds and wrong(flirted) is None
+
+
+def test_whoever_came_after_is_not_wronged_by_the_first_two():
+    state = since(world(90, BondStage.TOGETHER), 5 * DAY)  # Mara came after Ilse
+    kiss_wife = to("ilse", "kiss Ilse", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(state, kiss_wife)) is None
+    kiss_mara = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(state, kiss_mara)).wronged_ids == ["ilse"]
+
+
+def test_two_who_shared_someone_as_the_story_opened_mind_neither_kiss():
+    state = world(90, BondStage.MARRIED)  # two wives, both from the premise
+    for who in ("ilse", "mara"):
+        kiss = to(who, f"kiss {who}", RomanceMove.ADVANCE, verb="kiss")
+        assert one(state, kiss).deeds == []
+
+
+def test_the_partner_of_whoever_is_courted_is_wronged_too():
+    state = married_to(world(0), "mara", jorn())
+    assert wrong(one(state, flirt())).wronged_ids == ["ilse", "jorn"]  # the actor's own first
+    state.bonds.pop("bond-1")  # Tomas is no longer married
+    assert wrong(one(state, flirt())).wronged_ids == ["jorn"]
+    state.characters["jorn"].status = CharacterStatus.DEAD
+    state.characters["jorn"].death_certainty = DeathCertainty.CONFIRMED
+    assert wrong(one(state, flirt())) is None  # the dead mind nothing

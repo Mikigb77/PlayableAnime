@@ -37,7 +37,7 @@ from enum import StrEnum
 from engine.base import DAY, HOUR
 from engine.kin import ancestors
 from engine.state.cast import Character
-from engine.state.records import Bond, BondStage
+from engine.state.records import Bond, BondEnd, BondStage, BondStep
 from engine.state.world import WorldState, natural_key
 
 # How far one answered advance moves a heart, and what more it moves one that already likes
@@ -72,6 +72,26 @@ PARTED_HEART_COUPLE, PARTED_HEART_COURTING = 30, 10
 # it sets things back, so asking again and again only digs the hole.
 TURNED_DOWN = 5
 
+# How grave a move in a romance is to whoever is a couple with either of the two, on the
+# scale every deed is weighed on (W1), which also says how far word of it travels (W2): a
+# flirt that went nowhere is a trifle, courting that is going somewhere or an ask is an
+# affair, and a night together, a new couple, a promise or a wedding is a betrayal.
+SLIGHT, AFFAIR, BETRAYAL = 1, 2, 3
+# From here whoever was wronged is sent word of it, and comes to face whoever did it.
+FACED_FROM = AFFAIR
+# What learning of it costs, for each step of how grave it was: how whoever was wronged likes
+# and trusts their own partner who did it, and what it takes from their heart.
+WRONGED_LIKING, WRONGED_TRUST, WRONGED_HEART = 8, 10, 10
+# Learning of one more move between the same two, no graver than what they already know,
+# counts as this much of a step: it tells them nothing new, only that it goes on.
+AGAIN = 0.5
+# The same toward someone else who courted their partner, a rival: no heart to lose there.
+RIVAL_LIKING, RIVAL_TRUST = 10, 6
+# What those close to whoever was wronged hold against the one who did it, for each step.
+TIE_LIKING = 3
+# Once they have faced their partner over it, they end it when their heart is under this.
+LEAVES_UNDER = 40
+
 FORWARD = {
     BondStage.INTEREST: (BondStage.COURTING, BondStage.TOGETHER),
     BondStage.COURTING: (BondStage.TOGETHER,),
@@ -84,6 +104,7 @@ FORWARD = {
 
 # The stages in the order a romance comes to them, its end last.
 ORDER = tuple(FORWARD)
+COUPLE = (BondStage.TOGETHER, BondStage.PROMISED, BondStage.MARRIED)
 
 
 class Pace(StrEnum):
@@ -147,6 +168,70 @@ def partners(state: WorldState, character_id: str) -> list[str]:
 def _sorted(state: WorldState) -> list[Bond]:
     # Never by the map's own order, which Postgres doesn't keep.
     return sorted(state.bonds.values(), key=lambda bond: natural_key(bond.id))
+
+
+def couple_since(bond: Bond | None) -> int | None:
+    """The world second two people became a couple, or None while they aren't one."""
+    if bond is None or not bond.stage.couple:
+        return None
+    return next((step.world_s for step in bond.steps if step.stage.couple), 0)
+
+
+def wronged(state: WorldState, actor_id: str, other_id: str) -> list[str]:
+    """Whom a move in a romance between two people wrongs: whoever is a couple with either of
+    them (together, promised or married) and alive, the actor's own partners first. Where the
+    two are a couple themselves, only those who were one with either of them first: a kiss
+    between husband and wife is nothing new to whoever came after, nor to someone who has
+    shared them since the story opened. Nobody where having several partners is the world's
+    custom (`WorldBible.several_partners`)."""
+    if state.bible.several_partners:
+        return []
+    pair = (actor_id, other_id)
+    ours = couple_since(live(state, actor_id, other_id))
+    found: list[str] = []
+    for who in pair:
+        for partner in partners(state, who):
+            person = state.characters.get(partner)
+            if partner in pair or person is None or not person.alive:
+                continue
+            theirs = couple_since(live(state, who, partner))
+            if ours is not None and theirs is not None and theirs >= ours:
+                continue
+            found.append(partner)
+    return list(dict.fromkeys(found))
+
+
+def gravity(
+    *,
+    asked: bool,
+    intimate: bool,
+    answered: bool,
+    before: BondStage | None,
+    after: BondStage | None,
+) -> int:
+    """How grave a move in a romance is to whoever it wrongs (`SLIGHT`, `AFFAIR`, `BETRAYAL`),
+    by what was done and by where it took the two (from `before` to `after`). `asked` is an ask
+    to be a couple or for a promise, `intimate` a move beyond a kiss, and `answered` that the
+    move came off at least in part. A betrayal is a move that made them a couple, promised or
+    married, and a night together. An affair is an ask that got no yes, a night that wasn't,
+    and anything between two who are courting by now or more. A flirt with someone it went
+    nowhere with is a slight."""
+    further = after is not None and after.couple and after is not before
+    if further or (intimate and answered):
+        return BETRAYAL
+    if asked or intimate or after in (BondStage.COURTING, *COUPLE):
+        return AFFAIR
+    return SLIGHT
+
+
+def end(bond: Bond, *, by_id: str | None, how: str, turn: int, world_s: int) -> None:
+    """One of the two ends a romance (`BondEnd.PARTED`), on the record itself. The engine's
+    own doing, for what the world decides (`engine.world`): a move the player character makes
+    goes through the engine's delta."""
+    bond.stage, bond.end = BondStage.OVER, BondEnd.PARTED
+    bond.steps.append(
+        BondStep(stage=BondStage.OVER, turn=turn, world_s=world_s, by_id=by_id, how=how)
+    )
 
 
 def kin(characters: dict[str, Character], a: str, b: str) -> bool:

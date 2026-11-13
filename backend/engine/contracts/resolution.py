@@ -115,6 +115,10 @@ class ProposedDeed(EngineModel):
     actor_id: str | None = Field(default=None, description="None means the player character.")
     victim_ids: list[str] = Field(default_factory=list)
     target_ids: list[str] = Field(default_factory=list)
+    wronged_ids: list[str] = Field(
+        default_factory=list,
+        description="W17: whom a move in a romance wrongs (`engine.bonds.wronged`).",
+    )
     place_id: str | None = None
     severity: Severity = 1
     visibility: Visibility | None = Field(

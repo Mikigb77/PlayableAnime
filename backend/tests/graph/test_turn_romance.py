@@ -156,3 +156,108 @@ def test_a_step_that_is_no_move_reads_and_plays_as_before(fake, make_client):
 
     assert bonds.live(result.state, "tomas", "mara").stage is BondStage.COURTING
     assert result.state.characters["mara"].attitude_toward("tomas").attraction == 60
+
+
+# --- the world reacting: a partner who is wronged ---------------------------------------------
+
+
+def outcome(fake) -> dict:
+    """The OUTCOME section the narrator was last given."""
+    return json.loads(section(fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text, "OUTCOME"))
+
+
+def feels(state: WorldState, who: str = "ilse") -> tuple[int, int, int]:
+    toward = state.characters[who].attitude_toward("tomas")
+    return toward.affinity, toward.trust, toward.attraction
+
+
+def test_a_partner_who_is_there_sees_it_and_the_scene_is_told_so(fake, make_client):
+    """Tomas kisses Mara with his wife standing by: it is a deed that wrongs her, she saw it,
+    and the narrator reads both."""
+    state = farm(60, BondStage.COURTING)
+    state.scene.present_ids.append("ilse")
+    reading = asked("advance", "kiss Mara", "kiss")
+    result = play(fake, make_client, state, reading, scene(), "I kiss Mara")
+
+    [step] = outcome(fake)["steps"]
+    assert step["wrongs"] == [{"id": "ilse", "who": "Ilse Weller", "saw_it": True}]
+    (deed,) = result.state.deeds.values()
+    assert (deed.kind, deed.target_ids, deed.wronged_ids) == ("court", ["mara"], ["ilse"])
+    assert "ilse" in deed.witness_ids and "ilse" in deed.known_by
+    # Courting someone else is an affair: liking, trust and heart, by how far it went.
+    assert feels(result.state) == (
+        80 - bonds.WRONGED_LIKING * bonds.AFFAIR,
+        80 - bonds.WRONGED_TRUST * bonds.AFFAIR,
+        80 - bonds.WRONGED_HEART * bonds.AFFAIR,
+    )
+    (grudge,) = result.state.characters["ilse"].attitude_toward("tomas").grudges
+    assert grudge.reason == "Tomas Weller courted Mara at the Weller farm."
+    assert bonds.live(result.state, "tomas", "ilse").stage is BondStage.MARRIED
+    system = fake.calls(Node.NARRATOR)[-1].prompt.system
+    assert "A partner minds another romance" in system
+
+
+def test_a_partner_who_is_elsewhere_is_named_and_knows_nothing_yet(fake, make_client):
+    state = farm(60, BondStage.COURTING)  # Ilse is about the farm, and not at the gate
+    reading = asked("advance", "kiss Mara", "kiss")
+    result = play(fake, make_client, state, reading, scene(), "I kiss Mara")
+
+    [step] = outcome(fake)["steps"]
+    assert step["wrongs"] == [{"id": "ilse", "who": "Ilse Weller"}]
+    (deed,) = result.state.deeds.values()
+    assert "ilse" not in deed.known_by and feels(result.state) == (80, 80, 80)
+
+
+def test_a_move_that_wrongs_nobody_names_nobody(fake, make_client):
+    state = farm(60, BondStage.COURTING)
+    bonds.end(state.bonds["bond-1"], by_id="ilse", how="She left.", turn=0, world_s=0)
+    reading = asked("advance", "kiss Mara", "kiss")
+    result = play(fake, make_client, state, reading, scene(), "I kiss Mara")
+
+    assert "wrongs" not in outcome(fake)["steps"][0]
+    assert not [d for d in result.state.deeds.values() if d.wronged_ids]
+
+
+def test_a_partner_whose_heart_is_gone_comes_to_end_it_and_no_scene_mends_it(fake, make_client):
+    """The whole of it over two turns: she sees the kiss, and a day later she comes to say it
+    is over. The scene is given that as its event, and the record holds whatever it tells."""
+    state = farm(60, BondStage.COURTING)
+    state.scene.present_ids.append("ilse")
+    state.characters["ilse"].sheet.disposition.attitudes["tomas"].attraction = 50
+    reading = asked("advance", "kiss Mara", "kiss")
+    seen = play(fake, make_client, state, reading, scene(), "I kiss Mara").state
+    assert feels(seen)[2] == 30 < bonds.LEAVES_UNDER
+    assert bonds.live(seen, "tomas", "ilse").stage is BondStage.MARRIED  # not in the moment
+
+    days = {
+        "summary": "Tomas works his fields.",
+        "steps": [
+            {
+                "text": "work the fields for three days",
+                "verb": "work",
+                "kind": "time_skip",
+                "proposed_duration_s": 3 * 86400,
+                "timed": True,
+            }
+        ],
+    }
+    mended = scene(
+        characters=[{"id": "ilse", "attitudes": [{"toward_id": "tomas", "affinity": 90}]}],
+        bonds=[{"a_id": "tomas", "b_id": "ilse", "stage": "married"}],
+    )
+    result = play(fake, make_client, seen, days, mended, "I work the fields for three days")
+
+    told = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    event = json.loads(section(told, "EVENT"))
+    assert event["title"] == (
+        "Ilse Weller comes to tell Tomas Weller it is over between them: Tomas Weller courted "
+        "Mara at the Weller farm."
+    )
+    assert outcome(fake)["stop_reason"] == "interrupted"  # she found him on the second day
+    [ilse] = [p for p in json.loads(section(told, "WHO ELSE")) if p["id"] == "ilse"]
+    assert ilse["bond_with_you"]["stage"] == "over"
+    assert ilse["bond_with_you"]["ended"].startswith("Ilse Weller ended it: ")
+    bond = result.state.bonds["bond-1"]
+    assert (bond.stage, bond.steps[-1].by_id, bond.steps[-1].turn) == (BondStage.OVER, "ilse", 2)
+    assert bonds.partners(result.state, "tomas") == []
+    assert feels(result.state)[2] == 30

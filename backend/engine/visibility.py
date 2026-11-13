@@ -54,6 +54,7 @@ from engine.state.cast import (
     Reputation,
 )
 from engine.state.records import (
+    Bond,
     BondEnd,
     BondStage,
     Deed,
@@ -1599,7 +1600,9 @@ class _Knowledge:
     def bond(self, c: Character, *, dead: bool) -> tuple[BondStage | None, str | None]:
         """W17, C6. The romance between someone and the player character as the character
         knows it: its stage, and one line on how it came there. The one that still stands, or
-        else the latest that ended.
+        else the latest that ended. An interest nothing has answered doesn't take the place
+        of a romance that ended: that one shows until something between the two is answered
+        again.
 
         The character took part in every step of it, so they know them all but one: a death
         they haven't learned of (`dead` is whether they know the other died) ended nothing as
@@ -1607,7 +1610,19 @@ class _Knowledge:
         is hidden truth and never shows. An interest that ended before anything began is
         nothing to remember."""
         state, me = self.state, self.player_id
-        bond = bonds.live(state, me, c.id) or bonds.last_over(state, me, c.id)
+        live = bonds.live(state, me, c.id)
+        shown = self._romance(live, c, dead=dead)
+        if live is None or live.stage is BondStage.INTEREST:
+            ended = self._romance(bonds.last_over(state, me, c.id), c, dead=dead)
+            if ended[0] is not None:
+                return ended
+        return shown
+
+    def _romance(
+        self, bond: Bond | None, c: Character, *, dead: bool
+    ) -> tuple[BondStage | None, str | None]:
+        """One romance on record as the player character knows it: its stage and its line."""
+        me = self.player_id
         steps = [] if bond is None else list(bond.steps)
         if bond is not None and bond.end is BondEnd.DEATH and not dead:
             steps = steps[:-1]

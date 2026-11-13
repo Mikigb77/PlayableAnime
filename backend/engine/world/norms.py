@@ -6,6 +6,9 @@ treats as monstrous (killing children, sexual violence, a massacre) are severity
 fear and hostility faster and spread further (W12). Kinds are free-form verbs; nothing here
 assumes a genre (G5).
 
+A move in a romance that wrongs a partner (W17) is its own kind of act: it harms nobody, no law
+is broken by it, and nobody but those it wrongs and those close to them minds it.
+
 A beast or monster (G24) isn't a person: harm done only to beasts is a hunt, no crime in the law's
 eyes, weighed by how notable the beast was rather than by the floors for harming people. Its own
 kin, its pack or its mate, still remember (W4).
@@ -26,6 +29,7 @@ class Nature(StrEnum):
     HUNT = "hunt"  # harm done only to beasts or monsters (G24)
     HELP = "help"
     DISPLAY = "display"  # a public show of power: fear, not hostility
+    ROMANCE = "romance"  # a move in a romance that wrongs a partner (W17): theirs to mind
     OTHER = "other"
 
 
@@ -86,6 +90,10 @@ HELP_KINDS = frozenset(
     {"save", "heal", "protect", "defend", "free", "feed", "give", "help", "spare", "pardon"}
 )
 DISPLAY_KINDS = frozenset({"display", "reveal", "breakthrough"})
+# W17. A move in a romance, as the engine records one that wrongs someone
+# (`engine.resolve.romance.deed`): courting, a night together, a wedding.
+COURT, LIE_WITH, WED = "court", "lie_with", "wed"
+ROMANCE_KINDS = frozenset({COURT, LIE_WITH, WED})
 KILLING = frozenset({"kill", "massacre"})
 SEXUAL_VIOLENCE = frozenset({"rape"})
 
@@ -147,6 +155,8 @@ def nature(
         return Nature.HELP
     elif word in DISPLAY_KINDS:
         return Nature.DISPLAY
+    elif word in ROMANCE_KINDS and not victim_ids:
+        return Nature.ROMANCE
     else:
         harmful = bool(victim_ids or (target_ids and severity >= 2))
     if not harmful:
@@ -158,6 +168,8 @@ def nature(
 
 
 def deed_nature(state: WorldState, deed: Deed) -> Nature:
+    if deed.wronged_ids and not deed.victim_ids:
+        return Nature.ROMANCE  # W17: it harmed nobody, and it is the wronged's to mind
     return nature(state, deed.kind, deed.victim_ids, deed.target_ids, deed.severity)
 
 

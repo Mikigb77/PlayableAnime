@@ -86,7 +86,8 @@ def _ca(infinitive: str, before: str = "") -> _Verb:
 
 # Each kind of deed, and what it reads as when it harmed nobody (`try:`), in each language. A
 # bout both sides agreed to is told by its terms (W1), "hurt" is harm the world has no word for,
-# and "went_after" an attempt of a kind it has none for.
+# and "went_after" an attempt of a kind it has none for. "court", "lie_with" and "wed" are the
+# moves in a romance the engine records as deeds (W17).
 _BOOK: dict[Language, dict[str, _Verb]] = {
     EN: {
         "kill": _Verb("killed"),
@@ -121,6 +122,9 @@ _BOOK: dict[Language, dict[str, _Verb]] = {
         "help": _Verb("helped"),
         "spare": _Verb("spared"),
         "pardon": _Verb("pardoned"),
+        "court": _Verb("courted"),
+        "lie_with": _Verb("slept", before="with"),
+        "wed": _Verb("married"),
         "try:kill": _Verb("tried to kill"),
         "try:massacre": _Verb("tried to kill"),
         "try:rape": _Verb("tried to rape"),
@@ -173,6 +177,9 @@ _BOOK: dict[Language, dict[str, _Verb]] = {
         "help": _Verb("ayudó", "ayudaste"),
         "spare": _Verb("perdonó la vida", "perdonaste la vida"),
         "pardon": _Verb("indultó", "indultaste"),
+        "court": _Verb("cortejó", "cortejaste"),
+        "lie_with": _Verb("se acostó", "te acostaste", before="con"),
+        "wed": _Verb("se casó", "te casaste", before="con"),
         "try:kill": _Verb("intentó matar", "intentaste matar"),
         "try:massacre": _Verb("intentó matar", "intentaste matar"),
         "try:rape": _Verb("intentó violar", "intentaste violar"),
@@ -227,6 +234,9 @@ _BOOK: dict[Language, dict[str, _Verb]] = {
         "help": _ca("ajudar"),
         "spare": _ca("perdonar la vida", "a"),
         "pardon": _ca("indultar"),
+        "court": _ca("fer la cort", "a"),
+        "lie_with": _Verb("se'n va anar al llit", "te'n vas anar al llit", before="amb"),
+        "wed": _Verb("es va casar", "et vas casar", before="amb"),
         "try:kill": _ca("intentar matar"),
         "try:massacre": _ca("intentar matar"),
         "try:rape": _ca("intentar violar"),
