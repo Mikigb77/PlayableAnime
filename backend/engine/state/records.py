@@ -465,6 +465,7 @@ class LifeKind(StrEnum):
     CHILD = "child"  # a child was born to them
     FRIENDS = "friends"  # they and someone became close friends
     FELL_OUT = "fell_out"  # they and someone fell out for good
+    DIED = "died"  # they died of old age, leaving a partner where they had one
 
 
 class LifeEvent(EngineModel):

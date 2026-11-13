@@ -44,6 +44,7 @@ from graph.drafting.schema import (
     CharacterProposal,
     ExtraordinaryP,
     FactionP,
+    LadderP,
     LadderPositionP,
     NpcP,
     PowerP,
@@ -396,6 +397,51 @@ def test_the_stage_a_draft_starts_them_at_is_where_their_rank_starts(said, stage
     rank = growth.rank_of(state.player, state.bible.ladders[0])
     assert rank.rung.name == "Core Formation"
     assert rank.effort_s == pytest.approx(hours * HOUR)
+
+
+def test_a_ladder_that_lengthens_life_says_how_long_each_rung_lives():
+    """W6, G19: the world's dice read it (`engine.world.old_age`), so whoever breaks through
+    outlives those who never did."""
+
+    def lifespans(lengthens, *years):
+        world = samples.cultivation_world()
+        ladder = world.ladders[0]
+        ladder.lengthens_life = lengthens
+        ladder.rungs = [RungP(name=f"Realm {i}", lifespan_years=y) for i, y in enumerate(years)]
+        return [r.lifespan_years for r in assemble(world, _character()).bible.ladders[0].rungs]
+
+    assert lifespans(True, 120, 250, 500) == [120, 250, 500]
+    # A rung never lives shorter than the one below it, and one left out lives as long.
+    assert lifespans(True, 120, None, 500, 300) == [120, 120, 500, 500]
+    # The lowest rungs of a ladder may lengthen nothing yet.
+    assert lifespans(True, None, 0, 200) == [0, 0, 200]
+    # Ranks that only measure skill or standing lengthen no life, whatever a rung says.
+    assert lifespans(False, None, None, None) == [0, 0, 0]
+    assert lifespans(False, 120, 250, 500) == [0, 0, 0]
+    # Where the draft doesn't say, the rungs tell.
+    assert lifespans(None, 120, 250, 500) == [120, 250, 500]
+    # Said to lengthen life with no years given, or nothing said at all: the record can't
+    # say how long its rungs live, and the dice take nobody who climbed it (A2).
+    assert lifespans(True, None, None, None) == [None, None, None]
+    assert lifespans(None, None, None, None) == [None, None, None]
+    # Nonsense is clamped.
+    assert lifespans(True, -5, 10**9) == [0, 1_000_000]
+
+
+def test_the_sample_realms_lengthen_life_rung_by_rung():
+    state = assemble(_world(), _character())
+
+    assert [r.lifespan_years for r in state.bible.ladders[0].rungs] == [120, 250, 500, 1000, 2000]
+
+
+def test_a_ladder_is_always_asked_whether_it_lengthens_life():
+    """Gemini answers only what a schema requires as often as not: left unsaid, the dice
+    couldn't tell a cultivator who lives five hundred years from a ranked adventurer."""
+    schema = LadderP.model_json_schema()
+
+    assert "lengthens_life" in schema["required"]
+    # An answer may still leave it out.
+    assert LadderP(id="ranks", name="ranks", rungs=[]).lengthens_life is None
 
 
 def test_an_unknown_rung_or_ladder_gives_no_position():

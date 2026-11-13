@@ -1057,17 +1057,7 @@ class _Applier:
         the record still holds that they may be alive."""
         if character.alive or character.death_certainty is not DeathCertainty.CONFIRMED:
             return
-        for bond in self.state.bonds.values():
-            if bond.stage.live and bond.holds(character.id):
-                bond.stage, bond.end = BondStage.OVER, BondEnd.DEATH
-                bond.steps.append(
-                    BondStep(
-                        stage=BondStage.OVER,
-                        turn=self.turn,
-                        world_s=self.state.world_s,
-                        how=f"{character.name} died.",
-                    )
-                )
+        bonds.end_by_death(self.state, character, turn=self.turn, world_s=self.state.world_s)
 
     def rulings(self, character: Character, change: CharacterChange) -> None:
         sheet = character.sheet

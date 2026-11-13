@@ -434,6 +434,14 @@ async def years_away(ev: Eval) -> None:
                 f"{seed}: {[e.id for e in heard(state)]}",
             )
         names = dict(zip(unnamed_in(story.state, news), SPARE_NAMES, strict=False))
+        # Whom Memory names for the news the scene tells: the child of a birth, and
+        # otherwise whoever it came with.
+        with_whom = [
+            e.child_id if e.kind is LifeKind.CHILD else e.other(most)
+            for e in news
+            if e.id in handed
+        ]
+        shown = [names[who] for who in with_whom if who in names]
         was = len(story.state.characters)
         knew = {e.id for e in heard(story.state)}
         told_of = [e for e in news if e.id in handed]
@@ -482,7 +490,7 @@ async def years_away(ev: Eval) -> None:
                 for who, name in names.items()
             )
             and len(state.characters) == was
-            and all(name in " ".join(told) for name in list(names.values())[:1]),
+            and all(name in " ".join(told) for name in shown),
             f"{seed}: {names}, {told}",
             live=False,
         )

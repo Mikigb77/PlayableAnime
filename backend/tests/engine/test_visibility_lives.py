@@ -12,7 +12,7 @@ from engine.state import Character, LifeEvent, LifeKind, Origin, OriginKind, Wor
 from engine.visibility import memory_view
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
-PAIRED, MARRIED, PARTED, CHILD, FRIENDS, FELL_OUT = LifeKind
+PAIRED, MARRIED, PARTED, CHILD, FRIENDS, FELL_OUT, DIED = LifeKind
 
 
 def known(cid: str, name: str, **more) -> Character:
@@ -186,6 +186,43 @@ def test_another_timeline_keeps_its_own_lives():
     assert lines(state, "mara") == []
 
 
+@pytest.mark.parametrize(
+    ("language", "died", "lost"),
+    [
+        (EN, "Died of old age, day 3654.", "Lost their partner: Edrik, day 3654."),
+        (ES, "Murió de vejez, día 3654.", "Perdió a su pareja: Edrik, día 3654."),
+        (CA, "Va morir de vellesa, dia 3654.", "Va perdre la seva parella: Edrik, dia 3654."),
+    ],
+    ids=["en", "es", "ca"],
+)
+def test_a_death_of_old_age_is_told_under_the_dead_and_under_the_partner_they_left(
+    language, died, lost
+):
+    """The one who died has that they died, and the partner they left that they lost them:
+    one piece of news, told of each as it came to them."""
+    state = years_on()
+    state.lives["life-9"] = LifeEvent(
+        id="life-9",
+        kind=DIED,
+        subject_ids=["edrik", "mara"],
+        world_s=10 * YEAR + 3 * DAY,
+        known_by=["edrik", "mara", "tomas"],
+    )
+
+    assert lines(state, "edrik", language)[-1] == died
+    assert lines(state, "mara", language)[-1] == lost
+
+    # Someone who left nobody: the one line, under them.
+    state.lives["life-9"].subject_ids = ["edrik"]
+    assert lines(state, "edrik", language)[-1] == died
+    assert lost not in lines(state, "mara", language)
+
+    # A partner the player character doesn't know by name is left unnamed.
+    state.lives["life-9"].subject_ids = ["edrik", "mara"]
+    state.characters["edrik"].known_by = []
+    assert lines(state, "mara", language)[-1] == lost.replace(": Edrik", "")
+
+
 def test_every_language_has_every_line_and_none_is_left_in_english():
     english = visibility._LIFE_WORDS[EN]
     assert set(english) == set(LifeKind)
@@ -197,3 +234,5 @@ def test_every_language_has_every_line_and_none_is_left_in_english():
             assert named != english[kind][0] and bare != english[kind][1], (language, kind)
     for named, bare in english.values():
         assert named.count("{who}") == 1 and "{" not in bare
+    died = visibility._OLD_AGE_WORDS
+    assert set(died) == {EN, ES, CA} and len(set(died.values())) == 3

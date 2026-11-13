@@ -37,7 +37,7 @@ from engine.state import (
     WorldState,
 )
 from engine.succession import carry_on
-from engine.world import lives, returns
+from engine.world import lives, old_age, returns
 from engine.world.scheduling import World
 from engine.world.tuning import LIFE_QUIET_S, LIVES_KEPT, MOST_CHILDREN
 
@@ -78,10 +78,16 @@ def sure(monkeypatch, **odds) -> None:
         monkeypatch.setattr(lives, name, value)
 
 
+def ageless(monkeypatch) -> None:
+    """Old age takes nobody, so a test of something else reads the same at any age."""
+    monkeypatch.setattr(old_age, "OLD_AGE_FROM", 100.0)
+
+
 def quiet(monkeypatch) -> None:
     """Nothing comes to anyone unless a test says so, and nobody is settled as they are by
     the luck of their id."""
     never = {"for_life": 0.0, "held": 0.0, "easy": 0.0}
+    ageless(monkeypatch)
     sure(
         monkeypatch,
         LIFE_SETTLED=0,
@@ -602,9 +608,10 @@ def test_a_couple_part_by_the_custom_of_the_world_and_the_colder_heart_ends_it(m
     )
 
 
-def test_nobody_leaves_a_marriage_that_is_for_life():
+def test_nobody_leaves_a_marriage_that_is_for_life(monkeypatch):
     """A2: the facts settle it, whatever the hearts. The custom's own numbers, over a
-    lifetime."""
+    lifetime: only a death ends it, which is no leaving."""
+    ageless(monkeypatch)
     for seed in range(20):
         state = pair(stage=BondStage.MARRIED)
         state.bible.unions = Unions.FOR_LIFE

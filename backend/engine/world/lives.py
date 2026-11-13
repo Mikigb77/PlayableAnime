@@ -42,8 +42,19 @@ How long the two have been apart (`apart_s`) counts from the last scene they sha
 when they last lived near each other (`_beside`), so neighbours of ten years are nobody to
 meet again, and someone left behind for ten years is, until a scene has the two together.
 
-Nobody dies of old age yet. Until that is built, whoever has outlived their people's span
-gets no new partner, friend or foe (`_spent`).
+Old age takes people too (`engine.world.old_age`, Miki, 2026-11-13: after a hundred years
+"either they are dead of old age or some of them might actually successfully improved").
+Anyone on record with an age may die of it, whether the story knows them well or not, the
+player character aside, whose own end is the story's (N6), and beasts aside. Nothing is made
+to happen: the chance over a stretch follows from how old someone is against how long they
+live, so a month takes next to nobody and a hundred years every mortal. Nobody dies in the
+season after the player character was last with them. The record then has them dead for
+certain, at home, and their romances ended by it, as for any death (C1, W17). The news of it
+is a `LifeEvent` like the rest: the player character knows at once when they live near, and
+otherwise hears it from the partner the dead left, or in a scene where the dead lived
+(`gone`), once the scene says by name who died. Whoever has outlived their span, and whom the
+dice can't take because the record doesn't say how long they live, gets no new partner,
+friend or foe (`_spent`).
 """
 
 import re
@@ -62,9 +73,11 @@ from engine.state.records import (
     LifeKind,
     Origin,
     OriginKind,
+    StatusChange,
 )
 from engine.state.sheet import Attitude
 from engine.state.world import WorldState, natural_key
+from engine.world import old_age
 from engine.world.births import NAME_ROOM, is_placeholder, placeholder_name
 from engine.world.geography import scene_ids, together, travel_s
 from engine.world.knowledge import closeness, shift_attitude
@@ -80,7 +93,6 @@ from engine.world.tuning import (
     LIFE_NEAR_S,
     LIFE_QUIET_S,
     LIFE_SETTLED,
-    LIFESPAN_YEARS,
     LIVES_KEPT,
     LIVES_PEOPLE,
     MARRY_RATE,
@@ -116,8 +128,12 @@ _SAID = {
     LifeKind.CHILD: "had a child",
     LifeKind.FRIENDS: "became close friends with someone",
     LifeKind.FELL_OUT: "fell out with someone for good",
+    LifeKind.DIED: "died of old age",
 }
 _LEFT, _WAS_LEFT = "left their partner", "was left by their partner"
+_WIDOWED = "lost their partner, who died of old age"
+# How a death of old age is noted on the record of the dead.
+_OLD_AGE = "Died of old age."
 
 
 # --- growing older (W10) ---------------------------------------------------------------------
@@ -282,23 +298,18 @@ def _years(person: Character, since_s: int, now_s: int) -> float:
     return max(0, now_s - start) / YEAR
 
 
-def _lifespan(state: WorldState, person: Character) -> int:
-    """How long someone's people live (G23), or a human span where the world doesn't say."""
-    people = next((p for p in state.bible.peoples if p.id == person.people_id), None)
-    return (people.lifespan_years if people is not None else None) or LIFESPAN_YEARS
-
-
 def _prime(state: WorldState, person: Character) -> bool:
-    """Whether someone is in the prime of life, by their people's lifespan."""
-    return person.age is not None and person.age < _lifespan(state, person) * PRIME
+    """Whether someone is in the prime of life, by how long someone like them lives
+    (`old_age.natural_span`)."""
+    return person.age is not None and person.age < old_age.natural_span(state, person) * PRIME
 
 
 def _spent(state: WorldState, person: Character) -> bool:
-    """Whether someone has outlived their people's span. The world brings them no new
-    partner, friend or foe: what a hundred years does to the people left behind is still to
-    build (deaths of old age), and until then nobody starts a new life at a hundred and
-    thirty."""
-    return person.age is not None and person.age >= _lifespan(state, person)
+    """Whether someone has outlived the span of someone like them. The world brings them no
+    new partner, friend or foe: most are dead by then, and whoever lives on, by a span of
+    their own or because the dice couldn't take them (`old_age.open_ended`), starts no new
+    life at a hundred and thirty."""
+    return person.age is not None and person.age >= old_age.natural_span(state, person)
 
 
 # --- the tick --------------------------------------------------------------------------------
@@ -314,6 +325,7 @@ def live_on(w: World, since_s: int) -> None:
     _beside(state, homes, since_s, w.at_s)
     if w.at_s <= since_s:
         return
+    _grow_old(w, homes, since_s)
     people = living(state)
     years = {p.id: _years(p, since_s, w.at_s) for p in people}
     whole = (w.at_s - since_s) / YEAR
@@ -372,6 +384,74 @@ def _last_with(person: Character) -> int | None:
     """When the player character and someone were last together: in a scene, or living near
     each other, whichever came later."""
     return max((s for s in (person.seen_s, person.near_s) if s is not None), default=None)
+
+
+def _grow_old(w: World, homes: _Homes, since_s: int) -> None:
+    """Old age takes whom it takes over the stretch from `since_s` to now
+    (`engine.world.old_age`): anyone on record with an age, the player character and beasts
+    aside, by the chance their years in the stretch give them, less the season after the
+    player character was last with them. Whoever the world counts for the first time and
+    finds older than they would live gets a span of their own, by the age the stretch found
+    them at. Whom the record can't say how long they live is left alone."""
+    state = w.state
+    here = set(scene_ids(state))
+    for person in by_id(state.characters.values()):
+        if person.id == state.player_id or is_beast(state, person.id):
+            continue
+        now = old_age.age_at(state, person, w.at_s)
+        if now is None or _died_s(person) is not None:
+            continue
+        if person.lifespan_years is None:
+            found_at = now - (w.at_s - since_s) / YEAR
+            person.lifespan_years = old_age.own_span(state, person, found_at)
+        if old_age.open_ended(state, person):
+            continue
+        if person.id in here and person.seen_s is None:
+            continue  # in the scene, and no scene has ended with them in it: the story's
+        years = _years(person, since_s, w.at_s)
+        if years <= 0:
+            continue
+        odds = old_age.chance(old_age.span(state, person), now - years, now)
+        if odds > 0 and w.roll("life", "old age", person.id).chance(odds):
+            _pass_away(w, homes, person)
+
+
+def _pass_away(w: World, homes: _Homes, person: Character) -> None:
+    """Someone dies of old age: the record has them dead for certain, where they lived, and
+    their romances ended by it (C1, W17). The news of it is the partner's they leave too.
+    It is on record only where the player character knows of one of the two: a stranger's
+    death is no news of theirs (C6). Someone missing or only presumed dead is dead for
+    certain from here on, which is news to nobody: no one saw it."""
+    state = w.state
+    you = state.player
+    before = person.status
+    left = [i for i in bonds.partners(state, person.id) if i in state.characters][:1]
+    person.location_id = homes.of(person)
+    known = False
+    if before is CharacterStatus.ALIVE:
+        whom = [state.characters[i] for i in (person.id, *left)]
+        if any(you.id in c.known_by or you.id in c.met_by for c in whom):
+            event = _news(w, homes, LifeKind.DIED, [person.id, *left])
+            if you.id in left and not homes.near(you, person):
+                # Their own partner, who died far from them: nobody has told them yet.
+                event.known_by = [i for i in event.known_by if i != you.id]
+            known = you.id in event.known_by
+    person.status = CharacterStatus.DEAD
+    person.death_certainty = DeathCertainty.CONFIRMED
+    person.status_history.append(
+        StatusChange(
+            status=CharacterStatus.DEAD.value,
+            from_status=before.value,
+            turn=w.ctx.turn,
+            world_s=w.at_s,
+            timeline_id=state.timeline_id,
+            note=_OLD_AGE,
+            known_by=[you.id] if known else [],
+        )
+    )
+    bonds.end_by_death(state, person, turn=w.ctx.turn, world_s=w.at_s)
+    # Years have passed since the scene they were in: they died at home, not in it.
+    state.scene.present_ids = [i for i in state.scene.present_ids if i != person.id]
 
 
 def _news(
@@ -624,12 +704,15 @@ def _tie(w: World, homes: _Homes, person: Character, years: float, known: Iterab
 
 def _prune(state: WorldState) -> None:
     """Keep the latest news only, so a long story's state stays flat (K8). What it told of
-    stays on the records it changed (C1)."""
+    stays on the records it changed (C1). A death the player character hasn't heard of is
+    kept however old: it is the one way they come to hear it."""
     if len(state.lives) <= LIVES_KEPT:
         return
+    you = state.player_id
     oldest = sorted(state.lives.values(), key=lambda e: (e.world_s, natural_key(e.id)))
     for event in oldest[:-LIVES_KEPT]:
-        del state.lives[event.id]
+        if event.kind is not LifeKind.DIED or you in event.known_by:
+            del state.lives[event.id]
 
 
 # --- who has heard (C6) ----------------------------------------------------------------------
@@ -661,6 +744,82 @@ def news_of(state: WorldState, character: Character) -> list[LifeEvent]:
     return [e for e in unheard(state, character.id) if e.world_s > since]
 
 
+def died(event: LifeEvent) -> str | None:
+    """Who died, for the news of a death of old age: the first of those it came to. The
+    other is the partner they left. None for any other news."""
+    return event.subject_ids[0] if event.kind is LifeKind.DIED else None
+
+
+def of_old_age(character: Character) -> bool:
+    """Whether someone on record as dead died of old age, as their history has it."""
+    death = next((c for c in reversed(character.status_history) if c.status == "dead"), None)
+    return not character.alive and death is not None and death.note == _OLD_AGE
+
+
+def gone(
+    state: WorldState,
+    place_id: str | None,
+    most: int | None = None,
+    *,
+    there: Iterable[str] = (),
+) -> list[LifeEvent]:
+    """W6, C6. The deaths of old age the player character hasn't heard of that a scene can
+    show or tell: of people they know of who lived at the scene's place or within
+    `LIFE_NEAR_S` of it by the map, or whose close family is in the scene (`there`). Oldest
+    first, and where there are more than `most`, those who were closest to the player
+    character. The dead are in no scene, so this news is the place's to tell, or their
+    family's: a grave, an empty house, a word from whoever is about. Someone the story never
+    named is told like any other, by the scene that gives them a name (`told_by_naming`)."""
+    you = state.player_id
+    family = [i for i in there if i in state.characters]
+    found = []
+    for event in state.lives.values():
+        dead = state.characters.get(died(event) or "")
+        if dead is None or event.timeline_id != state.timeline_id or you in event.known_by:
+            continue
+        if not (you in dead.known_by or you in dead.met_by):
+            continue
+        if _lived_near(state, dead, place_id) or any(
+            bonds.kin(state.characters, dead.id, i) for i in family
+        ):
+            found.append(event)
+    if most is not None and len(found) > most:
+        near = {e.id: closeness(state, state.player, e.subject_ids[0]) for e in found}
+        found = sorted(found, key=lambda e: (-near[e.id], natural_key(e.id)))[:most]
+    return sorted(found, key=lambda e: (e.world_s, natural_key(e.id)))
+
+
+def _lived_near(state: WorldState, dead: Character, place_id: str | None) -> bool:
+    """Whether someone who died lived at a place, or within `LIFE_NEAR_S` of it by the map:
+    the record has the dead where they lived (`_pass_away`)."""
+    home = dead.location_id
+    if place_id is None or home is None:
+        return False
+    away = travel_s(state, place_id, home)
+    return together(state, place_id, home) or (away is not None and away <= LIFE_NEAR_S)
+
+
+def _is_news(state: WorldState, event: LifeEvent) -> bool:
+    """Whether a piece of news is still news the player character can come to hear: news of
+    someone they know (`news_of`), or a death of someone they know of (`gone`)."""
+    if state.player_id in event.known_by:
+        return False
+    dead = state.characters.get(died(event) or "")
+    if dead is not None and (state.player_id in dead.known_by or state.player_id in dead.met_by):
+        return True
+    of_whom = [state.characters[i] for i in event.subject_ids if i in state.characters]
+    return any(event in news_of(state, person) for person in of_whom)
+
+
+def _knows_dead(dead: Character, who: str) -> None:
+    """Someone knows that a person on record as dead for certain is dead."""
+    if dead.status is not CharacterStatus.DEAD:
+        return
+    entry = next((c for c in reversed(dead.status_history) if c.status == "dead"), None)
+    if entry is not None and who not in entry.known_by:
+        entry.known_by.append(who)
+
+
 def heard_in(state: WorldState, turn: int) -> list[LifeEvent]:
     """What came to people in turn `turn` that the player character knows of already, being
     where it happened: oldest first."""
@@ -676,6 +835,8 @@ def said(event: LifeEvent, of_id: str) -> str:
     """What came to someone, in the engine's own words, as it is told of them."""
     if event.kind is LifeKind.PARTED and event.by_id is not None:
         return _LEFT if event.by_id == of_id else _WAS_LEFT
+    if event.kind is LifeKind.DIED and of_id != died(event):
+        return _WIDOWED
     return _SAID[event.kind]
 
 
@@ -692,6 +853,7 @@ def hand_over(state: WorldState) -> None:
         character.met_s = None
         if theirs:
             met.add(character.id)
+            _knows_dead(character, you)  # they grew up knowing who of their people died
     for event in state.lives.values():
         if you not in event.known_by and met & set(event.subject_ids):
             event.known_by.append(you)
@@ -701,9 +863,9 @@ def told_by_naming(before: WorldState, after: WorldState, shown: Iterable[str]) 
     """The news among `shown`, by id, that a scene says it told by naming whom it brought:
     someone who went by the world's placeholder before the scene (`unnamed`) and has a name
     of their own after it. A scene names a partner or a child when it first tells of them,
-    so the news of a partner found, or of a child born, comes with the name, whatever else
-    the scene's answer lists. Whether the scene's words say that name is `borne_out`'s to
-    read."""
+    so the news of a partner found, of a child born, or of a partner the years took before
+    the story ever named them, comes with the name, whatever else the scene's answer lists.
+    Whether the scene's words say that name is `borne_out`'s to read."""
 
     def named(character_id: str | None) -> bool:
         was, now = before.characters.get(character_id), after.characters.get(character_id)
@@ -718,6 +880,8 @@ def told_by_naming(before: WorldState, after: WorldState, shown: Iterable[str]) 
             told.append(key)
         elif event.kind is LifeKind.PAIRED and any(named(i) for i in event.subject_ids):
             told.append(key)
+        elif event.kind is LifeKind.DIED and named(died(event)):
+            told.append(key)
     return told
 
 
@@ -726,11 +890,12 @@ def borne_out(
 ) -> list[str]:
     """Of the news a scene says it told, by id, what its words bear out (C6): a piece is told
     where the scene names whoever it came with, by a name of their own (`naming.named_in`).
-    For a birth that is the child. Otherwise it is whoever of the two wasn't in the scene
-    (`there`, or by default whoever the scene ended with): the other one where one of them
-    was in it, both where neither was, and either of them where both were. Someone still
-    under the name the world gave them can't be named by it: a scene that gives them a name
-    of their own, and says it, has told the news that brought them (`told_by_naming`).
+    For a birth that is the child, and for a death the one who died. Otherwise it is whoever
+    of the two wasn't in the scene (`there`, or by default whoever the scene ended with): the
+    other one where one of them was in it, both where neither was, and either of them where
+    both were. Someone still under the name the world gave them can't be named by it: a scene
+    that gives them a name of their own, and says it, has told the news that brought them
+    (`told_by_naming`).
 
     In the second live story of a homecoming (2026-11-13) the narrator listed all the news it
     was handed under a scene that said none of it, so Memory held what no scene had told. In
@@ -742,6 +907,8 @@ def borne_out(
     def of(event: LifeEvent) -> list[str]:
         if event.kind is LifeKind.CHILD:
             return [event.child_id] if event.child_id else []
+        if event.kind is LifeKind.DIED:
+            return event.subject_ids[:1]
         return list(event.subject_ids)
 
     people = state.characters
@@ -752,7 +919,7 @@ def borne_out(
 
     def told_in_words(event: LifeEvent) -> bool:
         whom = of(event)
-        if event.kind is LifeKind.CHILD:
+        if event.kind in (LifeKind.CHILD, LifeKind.DIED):
             return bool(whom) and said.issuperset(whom)
         absent = [i for i in whom if i not in here]
         return said.issuperset(absent) if absent else bool(said.intersection(whom))
@@ -763,28 +930,32 @@ def borne_out(
 def settle(state: WorldState, told: Iterable[str] = ()) -> tuple[WorldState, list[str]]:
     """A scene ended. Whoever was in it, the player character has now been with
     (`Character.seen_s`). `told` is the news the scene was shown and says it showed or said,
-    by the ids of its `LifeEvent`s: what of it is news of someone they know (`news_of`) the
-    player character has now heard. News a scene left out stays news, however long the two
-    were together (C6: Memory holds only what the story told). The ids of the news now heard
-    come back with the state, which is a new one where anything changed."""
+    by the ids of its `LifeEvent`s: what of it is news of someone they know (`news_of`), or a
+    death of someone they know of (`gone`), the player character has now heard, and they know
+    the dead are dead. News a scene left out stays news, however long the two were together
+    (C6: Memory holds only what the story told). The ids of the news now heard come back with
+    the state, which is a new one where anything changed."""
     you = state.player_id
     there = [
         c
         for i in dict.fromkeys(state.scene.present_ids)
         if i != you and (c := state.characters.get(i)) is not None and c.alive
     ]
-    seen = {c.id: c.model_copy(update={"seen_s": state.world_s}) for c in there}
+    changed = {c.id: c.model_copy(update={"seen_s": state.world_s}) for c in there}
     heard = {}
     for key in dict.fromkeys(told):
         event = state.lives.get(key)
-        if event is None:
+        if event is None or not _is_news(state, event):
             continue
-        of_whom = [state.characters[i] for i in event.subject_ids if i in state.characters]
-        if any(event in news_of(state, person) for person in of_whom):
-            heard[key] = event.model_copy(update={"known_by": [*event.known_by, you]})
-    if not seen and not heard:
+        heard[key] = event.model_copy(update={"known_by": [*event.known_by, you]})
+        dead = state.characters.get(died(event) or "")
+        if dead is not None:
+            dead = dead.model_copy(deep=True)
+            _knows_dead(dead, you)
+            changed[dead.id] = dead
+    if not changed and not heard:
         return state, []
-    update: dict = {"characters": state.characters | seen}
+    update: dict = {"characters": state.characters | changed}
     if heard:
         update["lives"] = state.lives | heard
     return state.model_copy(update=update), sorted(heard, key=natural_key)

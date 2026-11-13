@@ -55,6 +55,7 @@ from engine.state.records import (
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
+from engine.visibility import believed_status
 from engine.world import carriers, journeys, lives, returns, strife
 from engine.world.geography import routes_from, scene_ids, together
 from engine.world.telling import account, world_change
@@ -92,6 +93,7 @@ _RECORD_NOISE = {
     "near_s",
     "born_s",
     "solitary",
+    "lifespan_years",
 }
 # Shown by name in a character's `family` (N6) instead of as ids and in-world seconds.
 _KIN = {"parent_ids", "expecting"}
@@ -347,14 +349,16 @@ def _life_named(state: WorldState, character_id: str) -> dict[str, Any]:
 
 def _life_view(state: WorldState, event: LifeEvent, of_id: str) -> dict[str, Any]:
     """W6. Something that came to someone in their own life (`engine.world.lives`), as it is
-    told of them: what, how long ago, with whom, and the child for a birth."""
+    told of them: what, how long ago, with whom, the child for a birth, and for a death of
+    old age the partner they left."""
     view: dict[str, Any] = {
         "what": lives.said(event, of_id),
         "when": ago_label(max(0, state.world_s - event.world_s)),
     }
     other = event.other(of_id)
     if other in state.characters:
-        view["with"] = _life_named(state, other)
+        # Whoever died left the other; anything else came to the two together.
+        view["leaving" if lives.died(event) == of_id else "with"] = _life_named(state, other)
     if event.child_id in state.characters:
         view["child"] = _life_named(state, event.child_id)
     return view
@@ -380,6 +384,7 @@ def _lives_view(after: WorldState, turn: int) -> list[dict[str, Any]]:
 # second live story of a homecoming, 2026-11-13), and words that come with the news cost
 # nothing in the scenes that have none.
 _CHANGES = 5
+_GONE = 8
 _LIVED_TELL = (
     "lived came in the time this scene covers, near where the player character lives: they "
     "know of it, so the scene tells it in passing, as part of the time going by."
@@ -398,6 +403,14 @@ _HERE_TELL = (
     "whoever holds it, and the player character finding it so."
 )
 _BACK_TELL = "This scene has them back after years: it tells at least one piece of it."
+_GONE_TELL = (
+    "gone are people the player character knew who have died of old age, which they haven't "
+    "heard: they lived here, or their family is in the scene. They are dead, so nobody meets "
+    "them. The scene shows it or someone says it, a grave, an empty house, another at their "
+    "work, when the player character is back after a long time, asks after them or looks for "
+    "them, and they learn it there. Under told_news, list the id of each one the scene said "
+    "by name had died."
+)
 # Beside a faction or a place such news changed, wherever the brief shows it as it is now.
 _NEWS_TO_YOU = "the player character hasn't heard what became of it: to them it is as it was"
 
@@ -411,8 +424,11 @@ def _changes_view(
     of it already. `news` is what they haven't heard and this scene can show or tell, each
     under its id so the scene can say which of it it told (`told_news`): what touched the
     place the scene is in (`here`), and what word has reached it. The latest `_CHANGES` of
-    each, oldest first. `tell` says what the scene owes them, and with `back`, a scene that
-    has the player character meet people again after years, that it tells some of it."""
+    each, oldest first. `gone` is who died of old age where the scene is, or whose family is
+    in it, of the people the player character knew, which they haven't heard either
+    (`lives.gone`): up to `_GONE`, those closest to them first. `tell` says what the scene
+    owes them, and with `back`, a scene that has the player character meet people again
+    after years, that it tells some of it."""
     place_id = after.player.location_id or after.scene.place_id
 
     def said(change: WorldChange) -> dict[str, Any]:
@@ -426,7 +442,17 @@ def _changes_view(
     for change in strife.to_tell(after, place_id)[-_CHANGES:]:
         here = {"here": True} if strife.touched(after, change, place_id) else {}
         news.append({"id": change.id} | said(change) | here)
-    if not lived and not news:
+    gone = []
+    family = [c.id for c in present_characters(after)]
+    for event in lives.gone(after, place_id, most=_GONE, there=family):
+        dead = after.characters[event.subject_ids[0]]
+        gone.append(
+            {"id": event.id, "who": _life_named(after, dead.id)}
+            | _life_view(after, event, dead.id)
+            # How old they lived to be: the record keeps the age they died at.
+            | ({"aged": dead.age} if dead.age is not None else {})
+        )
+    if not lived and not news and not gone:
         return None
     view: dict[str, Any] = {}
     tell = []
@@ -438,9 +464,31 @@ def _changes_view(
         tell.append(_NEWS_TELL)
         if any("here" in piece for piece in news):
             tell.append(_HERE_TELL)
-        if back:
-            tell.append(_BACK_TELL)
+    if gone:
+        view["gone"] = gone
+        tell.append(_GONE_TELL)
+    if back and (news or gone):
+        tell.append(_BACK_TELL)
     return view | {"tell": " ".join(tell)}
+
+
+def _dead_to_you(state: WorldState) -> dict[str, str]:
+    """W6, C6. Who is dead on record while the player character, who knows of them, takes them
+    to be alive or missing, with which: someone old age took far from them, say, whose death
+    no scene has told yet (`visibility.believed_status`, as Memory has it)."""
+    you = state.player_id
+    found = {}
+    for c in state.npcs():
+        if c.status is not CharacterStatus.DEAD or not (you in c.known_by or you in c.met_by):
+            continue
+        believed, _ = believed_status(c.status_history, c.status.value, you, initial="alive")
+        if believed != CharacterStatus.DEAD.value:
+            found[c.id] = believed
+    return found
+
+
+# Beside someone dead whose death the player character hasn't heard of, in KNOWN.
+_DEAD_TO_YOU = "dead, which the player character hasn't heard: to them they are {}"
 
 
 def _news_to_you(state: WorldState) -> set[str]:
@@ -782,12 +830,14 @@ def _known_view(state: WorldState) -> dict[str, Any]:
     present = {c.id for c in present_characters(state)}
     away = routes_from(state, state.scene.place_id or state.player.location_id)
     news = _news_to_you(state)
+    unheard = _dead_to_you(state)
     people = [
         {
             "id": c.id,
             "name": c.name,
             **({"aliases": c.aliases} if c.aliases else {}),
             **({"status": c.status.value} if c.status is not CharacterStatus.ALIVE else {}),
+            **({"status": _DEAD_TO_YOU.format(unheard[c.id])} if c.id in unheard else {}),
         }
         for c in sorted(state.npcs(), key=lambda c: c.id)
         if c.id not in present and (you in c.known_by or you in c.met_by)
@@ -829,15 +879,32 @@ def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str,
         view.setdefault("medicine", {})["resurrection"] = bible.medicine.resurrection.value
     if include is None or "travel" in include:
         view.setdefault("travel", {})["instant_messages"] = bible.travel.instant_messages
+    for ladder in view.get("ladders", ()):
+        for rung in ladder.get("rungs", ()):
+            # W6: how long a rung lives is said where climbing lengthens life, nowhere else.
+            if not rung.get("lifespan_years"):
+                rung.pop("lifespan_years", None)
     return view
 
 
 def _continuity(state: WorldState) -> list[str]:
     """Lines the narrator must never contradict (C1), worked out in code."""
     lines = []
+    # W6, C6: whose death the player character hasn't heard of is dead all the same, and to
+    # them alive, or missing. One line names them all: a hundred years leave many.
+    dead_to_you = _dead_to_you(state)
     for c in sorted(state.npcs(), key=lambda c: c.id):
-        if c.status is CharacterStatus.DEAD:
+        if c.status is CharacterStatus.DEAD and c.id not in dead_to_you:
             lines.append(f"{c.name} ({c.id}) is dead.")
+    if dead_to_you:
+        names = ", ".join(
+            f"{c.name} ({c.id})"
+            for c in sorted(state.npcs(), key=lambda c: c.id)
+            if c.id in dead_to_you
+        )
+        lines.append(
+            f"Dead, though the player character hasn't heard, so to them not dead: {names}."
+        )
     # W6, C6: what the years did that the player character hasn't heard of is so, and news.
     news = _news_to_you(state)
     unheard = " The player character hasn't heard: to them it is as it was."
@@ -1247,7 +1314,8 @@ def narration_brief(
     if moved := _changes_view(after, ctx.turn, settings.language, back=again is not None):
         # W6: what the years did to the wider world, and of it the news this scene can tell.
         sections.append(("WIDER WORLD", moved))
-        news = (*news, *(change["id"] for change in moved.get("news", ())))
+        told = (*moved.get("news", ()), *moved.get("gone", ()))
+        news = (*news, *(piece["id"] for piece in told))
     if plan.event is not None:
         sections.append(("EVENT", _dump(plan.event, exclude=_PLANNED_HIDDEN)))
     if plan.happenings:

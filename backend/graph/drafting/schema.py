@@ -129,9 +129,24 @@ class CreatureP(Proposal):
 class RungP(Proposal):
     name: str
     description: str = ""
+    lifespan_years: int | None = Field(
+        default=None,
+        description="How many years someone who has reached this rung lives, on a ladder "
+        "that lengthens life. Left out on a ladder that doesn't.",
+    )
+
+
+def _says_if_it_lengthens_life(schema: dict[str, Any]) -> None:
+    """W6. Gemini answers only what a schema requires as often as not, so a ladder is always
+    asked whether climbing it lengthens life: left unsaid, the world's dice could not tell a
+    cultivator who lives five hundred years from a ranked adventurer who lives eighty. The
+    model's answer may still leave it out, and then code takes it from the rungs."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "lengthens_life"]))
 
 
 class LadderP(Proposal):
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_if_it_lengthens_life)
+
     id: str
     name: str = Field(description="Such as 'cultivation realms' or 'aura ranks'.")
     axis: PowerAxis = PowerAxis.MIGHT
@@ -149,6 +164,11 @@ class LadderP(Proposal):
     )
     standing_follows: bool = Field(
         default=True, description="Whether a higher rung earns a senior's respect (G18)."
+    )
+    lengthens_life: bool | None = Field(
+        default=None,
+        description="Whether reaching a higher rung lengthens life, as cultivation realms do "
+        "and adventurer ranks don't. When it does, every rung gives lifespan_years.",
     )
 
 

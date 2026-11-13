@@ -37,7 +37,10 @@ ranks, levels), lowest rung first. The gaps between rungs are large and felt. Wr
 whole, up to the rung its strongest beings stand on, the legends, ancients and gods the world \
 has included, however far above the character they are. known_to_all says how many of its \
 rungs, counted from the lowest, everyone in the world has heard of: the player is told those \
-at the start, and learns of each one above only when the story names it.
+at the start, and learns of each one above only when the story names it. lengthens_life says \
+whether a higher rung means a longer life, as with cultivation realms: then every rung gives \
+lifespan_years, how long someone who has reached it lives. Ranks that only measure skill or \
+standing lengthen no life.
 - Two to ten places, each with the place it lies within (parent_id) and its setting: outdoors, \
 indoors, underground or underwater (R8). Draw the map between them (W7, W10): link the \
 places people travel between through routes, a farm to its village, a town to the next town, a \
