@@ -62,6 +62,7 @@ GLIMPSE = (
     "The barrier does not give. Yet for one breath Lin feels what lies past it, vast and "
     f"still, and knows the name the oldest texts gave it: {VOID}."
 )
+ASK = "I rise, greet the one who came out of the sky, and ask their name and their realm"
 RIFT = (
     "The sky splits over the summit and a stranger steps down out of it, calm, unhurried, and "
     "stronger than anyone this world has known: an envoy of a realm above Soul Transformation."
@@ -465,7 +466,7 @@ async def ladder_grows(ev: Eval) -> None:
         shown = in_scene(story.prompt(Node.NARRATOR), ENVOY)
         ev.check(
             "the next scene's narrator reads them on that realm",
-            [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == [TOP + 1]
+            [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == [VOID]
             and "added_s" not in story.prompt(Node.NARRATOR),
             f"{seed}: {shown.get('sheet', {}).get('ladders')}",
         )
@@ -556,7 +557,7 @@ async def ladder_grows(ev: Eval) -> None:
         ev.check(
             "the scene of his reach names the realm above the top, and the ladder has it",
             len(named) == 1,
-            f"{seed}: {named}, {_stopped(seen)}, {seen.issues}; told: {seen.streamed}",
+            f"{seed}: {named}, {_stopped(seen)}, {seen.findings}; told: {seen.streamed}",
         )
         ev.check(
             "reaching past the top lifts him onto nothing",
@@ -615,26 +616,12 @@ async def ladder_grows(ev: Eval) -> None:
         )
         ev.metric(f"realms told above the top when the envoy came, {seed}", named)
         ev.metric(f"who came standing above the old top, {seed}", came)
-        new = sorted(who for who in state.characters if who not in before.characters)
         ev.check(
             "the scene of the arrival names the realm the envoy is of, and the ladder has it",
             len(named) == 1,
-            f"{seed}: {named}, {seen.issues}; told: {seen.streamed}",
+            f"{seed}: {named}, {seen.findings}; told: {seen.streamed}",
         )
-        ev.check(
-            "someone the scene brought in stands on that realm, above the old top",
-            bool(came),
-            f"{seed}: came {came} of {new}, {standing(state)}, {seen.issues}",
-        )
-        ev.check(
-            "whatever the scene of the arrival named, nobody on record before it was lifted",
-            all(
-                now == standing(before).get(who, now) or who in came
-                for who, now in standing(state).items()
-            )
-            and not [who for who in came if who in before.characters],
-            f"{seed}: {came}",
-        )
+        arrival = seen
         await ev.judge(
             "a being from above the highest realm arrives",
             Rubric(
@@ -651,6 +638,36 @@ async def ladder_grows(ev: Eval) -> None:
             ),
             seen,
             context=on_record(state),
+        )
+
+        # A scene may leave a stranger without a name, and nobody nameless is on record (C1).
+        # Once the character has asked who they are, the record has them, on their realm.
+        seen = await story.act(ASK, None)
+        state = story.state
+        came = sorted(
+            who for who, rung in standing(state).items() if rung is not None and rung > TOP
+        )
+        new = sorted(who for who in state.characters if who not in before.characters)
+        ev.metric(f"who stood above the old top once he had asked, {seed}", came)
+        ev.check(
+            "someone the story brought in stands on that realm, above the old top",
+            bool(came),
+            f"{seed}: came {came} of {new}, {standing(state)}; the arrival: "
+            f"{arrival.findings}; asked: {seen.findings}; told: {seen.streamed}",
+        )
+        ev.check(
+            "whatever the scenes named, nobody on record before the arrival was lifted",
+            all(
+                now == standing(before).get(who, now) or who in came
+                for who, now in standing(state).items()
+            )
+            and not [who for who in came if who in before.characters],
+            f"{seed}: {came}",
+        )
+        ev.check(
+            "the two scenes with the envoy add one realm, not two",
+            len(told_above(state)) <= 1,
+            f"{seed}: {told_above(state)}; asked: {seen.findings}",
         )
 
 

@@ -316,6 +316,23 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     return view
 
 
+def _stands_named(view: dict[str, Any], state: WorldState) -> dict[str, Any]:
+    """G18: where someone stands on a ladder, told the narrator by the rung's name, and the rung
+    they pass for (G20) by its name too. A place counted from 0 was read one rung low: in the
+    first live story that brought in an elder on Core Formation, he said he had reached
+    Foundation Establishment (2026-11-13). The interpret step keeps the number: its form
+    answers with one."""
+    for stand in view.get("sheet", {}).get("ladders", ()):
+        ladder = state.bible.ladder(stand["ladder_id"])
+        if ladder is None:
+            continue
+        for key in ("rung", "shown_rung"):
+            index = stand.get(key)
+            if index is not None and index < len(ladder.rungs):
+                stand[key] = ladder.rungs[index].name
+    return view
+
+
 # W6. From how long apart a brief says when the player character last saw someone, from how
 # long it says outright that the two meet again (MEETING AGAIN), how much news of one person's
 # life it carries, and how much of what the scene's own time brought.
@@ -777,7 +794,7 @@ def _who_else_view(
             continue
         if character.status is not CharacterStatus.ALIVE:
             continue
-        view = _npc_view(character, after)
+        view = _stands_named(_npc_view(character, after), after)
         if here(character):
             view["here"] = True
         else:
@@ -1305,6 +1322,8 @@ def narration_brief(
         ("WORLD", _narrator_world(before)),
     ]
     scene = _scene_view(before)
+    for person in scene["present"]:
+        _stands_named(person, before)
     sections: list[tuple[str, Any]] = [
         *stable,
         *([("PREMISE", premise)] if premise and ctx.turn <= 1 else []),
@@ -1313,7 +1332,7 @@ def narration_brief(
         # The goals as the director left them, with any the player stated or took up this turn,
         # so the scene can close one it achieves at once (N2).
         ("GOALS AND THREADS", _goals_and_threads(before, goals=after)),
-        ("PLAYER CHARACTER", _player_view(after, looks=looks)),
+        ("PLAYER CHARACTER", _stands_named(_player_view(after, looks=looks), after)),
         ("CHANGED HANDS", _changed_hands(after)),
         ("KNOWN", _known_view(after)),
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),

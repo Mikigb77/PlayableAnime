@@ -168,8 +168,8 @@ async def newcomers_stand(ev: Eval) -> None:
         )
         shown = in_scene(story.prompt(Node.NARRATOR), ELDER)
         ev.check(
-            "the next scene's narrator reads him on that realm",
-            [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == [CORE],
+            "the next scene's narrator reads him on that realm, by its name",
+            [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == ["Core Formation"],
             f"{seed}: {shown.get('sheet', {}).get('ladders')}",
         )
 
@@ -222,17 +222,7 @@ async def newcomers_stand(ev: Eval) -> None:
         ev.metric(
             f"who came into the story, and where the record has them, {seed}", came(before, state)
         )
-        higher = [
-            who
-            for who in state.characters
-            if who not in before.characters and (rung_of(state, who) or 0) > 0
-        ]
-        # The story is the eval's own, so a check that fails says what the scene told (T16).
-        ev.check(
-            "someone the scene brought in is on record on a realm above the outer disciples'",
-            bool(higher),
-            f"{seed}: {came(before, state)}, {seen.issues}; told: {seen.streamed}",
-        )
+        arrival = seen
         ev.check(
             "nobody the story already had changed realm when the elder came",
             {who: rung for who, rung in standing(state).items() if who in before.characters}
@@ -240,13 +230,14 @@ async def newcomers_stand(ev: Eval) -> None:
             f"{seed}: {standing(state)}",
         )
         ev.check("the record holds together (C1)", check_state(state) == [], f"{seed}/live")
+        never = (
+            "The scene says outright that someone who came into the story in these scenes "
+            "stands on a realm other than the one CONTEXT gives them",
+            "Lin, or anyone the story already knew, is said to have reached a new realm",
+        )
         rubric = Rubric(
             must=("Someone of the inner court, senior to the outer disciples, is in the scene",),
-            must_not=(
-                "The scene says outright that someone who came into the story in these scenes "
-                "stands on a realm other than the one CONTEXT gives them",
-                "Lin, or anyone the story already knew, is said to have reached a new realm",
-            ),
+            must_not=never,
         )
         await ev.judge("an elder comes down", rubric, seen, context=on_record(before, state))
 
@@ -256,12 +247,28 @@ async def newcomers_stand(ev: Eval) -> None:
         )
         state = story.state
         ev.metric(f"where the record has them after he asked, {seed}", came(before, state))
+        higher = [
+            who
+            for who in state.characters
+            if who not in before.characters and (rung_of(state, who) or 0) > 0
+        ]
+        # A scene may leave the elder without a name, and nobody nameless is on record (C1):
+        # once the character has spoken to him, the record has him. The story is the eval's
+        # own, so a check that fails says what the scene told (T16).
+        ev.check(
+            "someone the story brought in is on record on a realm above the outer disciples'",
+            bool(higher),
+            f"{seed}: {came(before, state)}; the arrival: {arrival.findings}; asked: "
+            f"{seen.findings}; told: {seen.streamed}",
+        )
         ev.check(
             "nobody the story already had changed realm when he asked",
             {who: rung for who, rung in standing(state).items() if who in before.characters}
             == standing(before),
             f"{seed}: {standing(state)}",
         )
-        await ev.judge(
-            "he asks the elder his realm", rubric, seen, context=on_record(before, state)
+        asked = Rubric(
+            must=("Lin speaks to an elder, someone senior to the outer disciples",),
+            must_not=never,
         )
+        await ev.judge("he asks the elder his realm", asked, seen, context=on_record(before, state))
