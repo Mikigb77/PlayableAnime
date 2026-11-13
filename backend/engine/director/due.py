@@ -160,7 +160,11 @@ def noticed(event: PendingEvent, state: WorldState) -> bool:
     """Whether the player character could notice an event that fired: it needs them, involves
     them, or happens where they are. Everything else stays off-screen (C6). Word of a deed
     reaching someone involves them only when they are there to see it: with the witness who
-    tells it on the spot, or where the one who is told is."""
+    tells it on the spot, or where the one who is told is. People who came for them to a place
+    and found them gone are there, looking, and nothing of it shows where the player
+    character is: told as an event of the scene, with the title it was sent out under, the
+    real model had a husband who was asking after the man in the village walk in on him at
+    his farm (2026-11-13)."""
     if event.kind in _UNSEEN:
         return False
     if event.needs_player:
@@ -171,7 +175,20 @@ def noticed(event: PendingEvent, state: WorldState) -> bool:
     if event.kind in _TOLD_SOMEWHERE:
         teller = event.payload.get("witness_id")
         return event.place_id is None and teller in state.scene.present_ids
+    if event.kind == Kind.ANSWER and event.place_id is not None:
+        return False  # they came to that place, and didn't find them there
     return state.player_id in event.subject_ids
+
+
+def brings(event: PendingEvent, state: WorldState) -> bool:
+    """W10. Whether an event that fired brought the people it is about to the player
+    character: they came for them and found them (`needs_player`), or it happened at the
+    very place the scene plays in. An event that is only about the player character, such
+    as an answer someone gave from afar, brings nobody."""
+    if event.needs_player:
+        return True
+    here = {state.scene.place_id, state.player.location_id} - {None}
+    return event.place_id in here
 
 
 def in_sight(state: WorldState, ctx: TurnContext) -> tuple[PendingEvent, ...]:

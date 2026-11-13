@@ -213,6 +213,22 @@ def test_a_kiss_with_a_partner_whose_heart_has_gone_is_thrown_for_again():
     assert one(state, kiss).roll is not None
 
 
+@pytest.mark.parametrize("named", ["aimed at her", "in its words alone"])
+def test_a_move_is_a_step_of_words_to_them_whatever_the_reading_gave(named):
+    """A2. On the real model (2026-11-13) a kiss after a breakup was read with no axis and
+    nobody in its way, so nobody answered it and it was certain. Code says what a move in a
+    romance is measured on and whom it is made to: their own heart stands in its way."""
+    state = world(bonds.TENDER_SURE - 1, BondStage.TOGETHER)
+    targets = ["mara"] if named == "aimed at her" else []
+    kiss = step("kiss Mara", ActionKind.EXCHANGE, 60, verb="kiss", target_ids=targets)
+    assert kiss.axis is None and not kiss.facts.opposition_ids
+
+    done = one(state, kiss)
+
+    assert done.roll is not None
+    assert done.opponent_ids == ["mara"]
+
+
 def test_beyond_a_kiss_takes_a_partner_or_someone_surely_drawn():
     night = to("mara", "make love to Mara", verb="make love", kind=ActionKind.REST)
     stranger = one(world(bonds.INTIMATE_NO - 1), night)
