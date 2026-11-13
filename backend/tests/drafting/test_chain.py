@@ -12,7 +12,7 @@ from engine.visibility import memory_view
 from graph.drafting import chain, samples
 from graph.drafting.catalog import starter
 from graph.drafting.direct import Fields
-from graph.drafting.prompts import SYSTEM, current_rules
+from graph.drafting.prompts import SYSTEM, WORLD_CHANGE, current_rules
 from graph.drafting.schema import (
     DraftProposal,
     ExtraordinaryP,
@@ -697,6 +697,21 @@ def test_an_empty_change_leaves_the_world_exactly_as_it_was():
     assert let_go == frozenset()
 
 
+def test_a_change_sets_the_custom_of_several_partners_only_when_it_says_so():
+    """W17: a change that says nothing of it leaves the custom as it was, whichever way."""
+    draft = _naples_draft()
+    assert draft.proposal.world.several_partners is False
+
+    custom, _ = _merge(WorldChange(several_partners=True), draft)
+    assert custom.several_partners is True
+    kept, _ = chain.apply_change(custom, current_rules(draft.state()), WorldChange(tone="noir"))
+    assert kept.several_partners is True and kept.tone == "noir"
+    back, _ = chain.apply_change(
+        kept, current_rules(draft.state()), WorldChange(several_partners=False)
+    )
+    assert back.several_partners is False
+
+
 def test_a_change_replaces_records_by_id_adds_new_ones_and_removes_what_it_lists():
     draft = _naples_draft()
     places = draft.proposal.world.places
@@ -973,6 +988,16 @@ def test_a_draft_builds_its_state_once():
 
     assert draft.state() is draft.state()
     assert replace(draft, physics=PhysicsMode.STRICT).state() is not draft.state()
+
+
+def test_the_drafter_is_asked_for_the_cast_s_couples_and_no_romance_of_its_own_making():
+    """W17: who among the key characters is a couple is the world's, so a rival can exist. A
+    romance with the player character is the premise's to set up or the story's to find."""
+    assert "Give nobody else a romance with the player character or any attraction" in SYSTEM
+    assert "Record each couple on one of the two, with partner_id and partner_bond." in SYSTEM
+    assert "A couple that hides it is a secret instead." in SYSTEM
+    assert "several_partners only where having several partners at once is the custom" in SYSTEM
+    assert "medicine, opening or several_partners only if the change alters them" in WORLD_CHANGE
 
 
 def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows():

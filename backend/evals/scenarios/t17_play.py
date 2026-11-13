@@ -772,14 +772,15 @@ MEETS_THE_RIVAL = {
     "t17.start-is-a-surprise",
     suite="T17",
     title="The start is a surprise",
-    requirements=("G1", "G2", "C6", "T17"),
+    requirements=("G1", "G2", "C6", "W17", "T17"),
     passes_when=(
         "The deadline a premise sets is in the summary at the time the premise gives it and "
         "gives the character no goal, an aim a premise says is their goal there, a premise "
         "that names none is shown no deadline, nobody, no goal and no want it doesn't speak "
         "of, the story's Memory starts without them too and lists someone only once a scene "
-        "has named them, and the rival the player then asks for by name shows from then on "
-        "(G1, G2, E2, C6)"
+        "has named them, and the rival the player then asks for by name shows from then on. "
+        "A premise that sets up no romance gives the character none and draws nobody to "
+        "them, whoever among the cast is a couple (G1, G2, E2, C6, W17)"
     ),
     notes=(
         "Deterministic mode reads the offline drafter's outer disciple against a starter's "
@@ -814,6 +815,23 @@ async def start_is_a_surprise(ev: Eval) -> None:
         goals = [part.text for part in character if part.kind is PartKind.GOAL]
         return world, goals, [part.text for part in world + character]
 
+    couples = 0
+
+    def no_romance(draft, language: Language) -> None:
+        """W17: none of these premises sets up a romance, so the character starts with none
+        and nobody is drawn to them. Couples among the cast are the world's own."""
+        nonlocal couples
+        state = draft.state()
+        you = state.player_id
+        theirs = [bond.other(you) for bond in state.bonds.values() if bond.holds(you)]
+        drawn = [c.id for c in state.npcs() if c.attitude_toward(you).attraction > 0]
+        ev.check(
+            "a premise that sets up no romance gives the character none",
+            not theirs and not drawn,
+            f"{language.value}: bound to {theirs}, drawn to them {drawn}",
+        )
+        couples += any(not bond.holds(you) for bond in state.bonds.values())
+
     offline = ((Language.EN, starter("outer-disciple").premise, "in 2 days"),)
     timed = TIMED_PREMISES if ev.live else offline
     bare = BARE_PREMISES if ev.live else ((Language.EN, samples.CULTIVATION_PREMISE),)
@@ -822,6 +840,7 @@ async def start_is_a_surprise(ev: Eval) -> None:
     shown = hidden = 0
     for language, premise, when in timed:
         draft = await ev.draft(premise, language=language)
+        no_romance(draft, language)
         world, goals, lines = screen(draft)
         deadlines = [part.text for part in world if part.kind is PartKind.DEADLINE]
         ev.check(
@@ -857,6 +876,7 @@ async def start_is_a_surprise(ev: Eval) -> None:
         )
     for language, premise in aims:
         draft = await ev.draft(premise, language=language)
+        no_romance(draft, language)
         _, goals, lines = screen(draft)
         ev.check(
             "an aim the premise says is the character's goal in the summary",
@@ -876,6 +896,7 @@ async def start_is_a_surprise(ev: Eval) -> None:
         )
     for language, premise in bare:
         draft = await ev.draft(premise, language=language)
+        no_romance(draft, language)
         state = draft.state()
         named = named_by(state, premise, language)
         drafted = [opener.key for opener in openers(state)]
@@ -977,5 +998,6 @@ async def start_is_a_surprise(ev: Eval) -> None:
                 f"{revised.state().player_id in rival.known_by}"
             ),
         )
+    ev.metric("drafts with a couple among the cast", couples)
     ev.metric("openers of the bare premises shown", shown)
     ev.metric("openers of the bare premises kept a surprise", hidden)

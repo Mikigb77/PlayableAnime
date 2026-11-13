@@ -92,8 +92,10 @@ The first version's state, checked against the code in WS18.
       wrongs the partner of either of the two, and no crime. They learn of it by seeing it or
       from someone who saw it, lose liking, trust and heart by how far it went, and come to
       have it out. A partner whose heart is gone ends it, and a rival comes for revenge only
-      over a night together (W17, W1, W2, W4). *(A drafted story gives only the player's own
-      premise partner so far, so rivals wait for the next change.)*
+      over a night together (W17, W1, W2, W4).
+- [x] Couples among the cast: a new world records who among its key people is married,
+      promised or together, so courting someone's wife wrongs a husband who is on record, and
+      whether having several partners is the custom there (W17).
 - [x] They have to be there: a move in a romance reaches someone in the scene or at the place.
       Toward someone a short walk away the character goes to them first and the scene plays
       where they are, and toward someone far off it reaches nobody, so nobody says yes from

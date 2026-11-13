@@ -405,8 +405,9 @@ class _Assembler:
         self.npc_list = _with_ids(
             self.chars, [n for n in w.npcs[: MAX["npcs"]] if is_real_name(_name(n.name))], "name"
         )
-        # After the NPCs, so an NPC's own id always wins over the player's name.
-        for key in (self.character.name, "pc", "you", "me"):
+        # After the NPCs, so an NPC's own id always wins over the player's name. The prompt
+        # gives the player character's id, so a reference by it has to resolve too.
+        for key in (PLAYER_ID, self.character.name, "pc", "you", "me"):
             self.chars.alias(key, PLAYER_ID)
             self.chars.alias(slug(key), PLAYER_ID)
         self.clock_list = _with_ids(self.clocks, drafted_clocks(w), "name")
@@ -489,6 +490,7 @@ class _Assembler:
             ),
             laws=self._laws(),
             norms=_texts(w.norms, 8, 300),
+            several_partners=bool(w.several_partners),
             rules=list(rules.values()),
             mysteries=self._mysteries(),
         )
@@ -835,33 +837,46 @@ class _Assembler:
                 child.parent_ids.append(parent_id)
 
     def _bonds(self, characters: dict[str, Character]) -> list[Bond]:
-        """W17: the romances the premise sets up between the player character and someone,
-        as they stand when the story opens. Only between recorded adults (F3) who aren't
-        close family. Someone the draft bound to the player character and left with no heart
-        of their own is as drawn to them as they are fond of them."""
-        player = characters[PLAYER_ID]
+        """W17: the romances that stand as the story opens: those the premise sets up between
+        the player character and someone, and then the couples among the key characters, so
+        that courting someone's wife wrongs a husband who is on record. One for each pair, and
+        only between recorded adults (F3) who aren't close family. Someone the draft bound to
+        the player character and left with no heart of their own is as drawn to them as they
+        are fond of them."""
         romances: list[Bond] = []
-        for npc_id, proposed in self.npc_list:
-            other = characters[npc_id]
-            if proposed.bond_with_player is None:
-                continue
-            if not (is_adult(player) and is_adult(other)):
-                continue
-            if bonds.kin(characters, PLAYER_ID, npc_id):
-                continue
-            stage = BondStage(proposed.bond_with_player)
+        paired: set[frozenset[str]] = set()
+
+        def bind(a_id: str, b_id: str, stage: BondStage) -> bool:
+            pair = frozenset((a_id, b_id))
+            if len(pair) < 2 or pair in paired:
+                return False
+            if not (is_adult(characters[a_id]) and is_adult(characters[b_id])):
+                return False
+            if bonds.kin(characters, a_id, b_id):
+                return False
+            paired.add(pair)
+            step = BondStep(stage=stage, how="As the story opens.")
             romances.append(
                 Bond(
-                    id=f"bond-{len(romances) + 1}",
-                    a_id=PLAYER_ID,
-                    b_id=npc_id,
-                    stage=stage,
-                    steps=[BondStep(stage=stage, how="As the story opens.")],
+                    id=f"bond-{len(romances) + 1}", a_id=a_id, b_id=b_id, stage=stage, steps=[step]
                 )
             )
-            attitude = other.sheet.disposition.attitudes[PLAYER_ID]
-            if attitude.attraction == 0:
-                attitude.attraction = max(0, attitude.affinity)
+            return True
+
+        partners = {npc_id: self.chars.get(npc.partner_id) for npc_id, npc in self.npc_list}
+        for npc_id, proposed in self.npc_list:
+            # A partner_id that names the player character is their romance in the other field.
+            stage = proposed.bond_with_player
+            if stage is None and partners[npc_id] == PLAYER_ID:
+                stage = proposed.partner_bond
+            if stage is not None and bind(PLAYER_ID, npc_id, BondStage(stage)):
+                attitude = characters[npc_id].sheet.disposition.attitudes[PLAYER_ID]
+                if attitude.attraction == 0:
+                    attitude.attraction = max(0, attitude.affinity)
+        for npc_id, proposed in self.npc_list:
+            partner_id = partners[npc_id]
+            if partner_id in characters and partner_id != PLAYER_ID:
+                bind(npc_id, partner_id, BondStage(proposed.partner_bond))
         return romances
 
     def _player(self) -> Character:

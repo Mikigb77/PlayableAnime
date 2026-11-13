@@ -48,15 +48,19 @@ most people travel here (0.5, 6, or 72 for three days on the road) and mode how 
 foot, by cart, by train). The story takes a trip's time from these, so make them true to the \
 world's size.
 - Up to eight factions (a faction can sit inside a larger one: a crew inside a family, a court \
-inside a sect) and two to eight key characters, each with a \
-temperament, what they want and, where it fits, an agenda and a secret. Give every adult an age. \
-Where key characters are family, record it with parent_ids: a child names their parents, the \
-player character included. A parentage the player character doesn't know of is a secret instead. \
-Where the premise gives the player character a wife, a husband, someone they are promised to, \
-a lover or someone they are courting, record it on that person with bond_with_player, and how \
-drawn that person is to them with attitude_to_player.attraction (a love match is high, an \
-arranged one may be low). Give nobody else a bond or attraction: a romance the premise \
-doesn't set up is the story's to find (W17).
+inside a sect) and two to eight key characters, each with a temperament, what they want and, where \
+it fits, an agenda and a secret. Give every adult an age. Where key characters are family, record \
+it with parent_ids: a child names their parents, the player character included. A parentage the \
+player character doesn't know of is a secret instead. Where the premise gives the player character \
+a wife, a husband, someone they are promised to, a lover or someone they are courting, record it \
+on that person with bond_with_player, and how drawn that person is to them with \
+attitude_to_player.attraction (a love match is high, an arranged one may be low). Give nobody else \
+a romance with the player character or any attraction to them: a romance the premise doesn't set \
+up is the story's to find (W17). Among the key characters themselves, some may well be a couple as \
+the story opens, as people in such a world would be: a husband and wife, two who are betrothed, \
+lovers. Record each couple on one of the two, with partner_id and partner_bond. A couple that \
+hides it is a secret instead. Set several_partners only where having several partners at once is \
+the custom of this world.
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \
@@ -151,16 +155,16 @@ GIFTS = {
 
 
 WORLD_CHANGE = """\
-Reply with only what the change touches, and leave everything else out: it stays exactly as it \
-is. Write each record the change adds or changes in full, in its list: one with an id already in \
-the world replaces that record, and one with a new id is added. Put each record the change \
-removes in removed, with its list as section and its id, and remove whatever the change makes \
-untrue: a world that gains vampires loses its "magic or anything supernatural" kind with \
-prevalence none and drops the rules that say nothing supernatural exists. A fixed rule goes only \
-when its id is in dropped_rule_ids, so list every fixed rule the request removes or changes \
-there. Write the title, genre, tone, era, summary, nature, norms, known facts, calendar, travel, \
-medicine or opening only if the change alters them, each in full. The character stays as it is, \
-so keep what they belong to and where they are unless the change removes it.\
+Reply with only what the change touches, and leave everything else out: it stays exactly as it is. \
+Write each record the change adds or changes in full, in its list: one with an id already in the \
+world replaces that record, and one with a new id is added. Put each record the change removes in \
+removed, with its list as section and its id, and remove whatever the change makes untrue: a world \
+that gains vampires loses its "magic or anything supernatural" kind with prevalence none and drops \
+the rules that say nothing supernatural exists. A fixed rule goes only when its id is in \
+dropped_rule_ids, so list every fixed rule the request removes or changes there. Write the title, \
+genre, tone, era, summary, nature, norms, known facts, calendar, travel, medicine, opening or \
+several_partners only if the change alters them, each in full. The character stays as it is, so \
+keep what they belong to and where they are unless the change removes it.\
 """
 
 
