@@ -712,8 +712,15 @@ class _Applier:
             )
         for attr in ("description", "appearance", "age", "people_id", "prominence"):
             value = getattr(change, attr)
-            if value is not None:
-                setattr(character, attr, value)
+            if value is None:
+                continue
+            if attr == "age" and not created and character.age not in (None, value):
+                # W10: an age on record moves with the world's years (`engine.world.lives`),
+                # never by a scene's word: a scene that tells ten years gone by would count
+                # them twice.
+                if not self.engine_only(subject, "age"):
+                    continue
+            setattr(character, attr, value)
         if look is not None:
             character.appearance = look
             character.look_version += 1  # M5: the portrait is drawn once more
@@ -742,11 +749,17 @@ class _Applier:
             # W10. Nobody meets someone who isn't there.
             self.reject(subject, "meeting", _ELSEWHERE)
         elif change.meets_player:
+            if player not in character.met_by:
+                # W6: a first meeting. What comes to them from here on is news, and what came
+                # before is who they are (`engine.world.lives`). A scene that says again of
+                # someone already known that the two met leaves this alone: the news they
+                # have is still theirs to tell (the first live story of a homecoming lost it
+                # all this way, 2026-11-13).
+                character.met_s = self.state.world_s
+            # The two are together now, wherever the scene goes on to end.
+            character.seen_s = self.state.world_s
             _add(character.met_by, player)
             _add(character.known_by, player)
-            # W6: the two are together now, wherever the scene goes on to end
-            # (`engine.world.lives`): what comes to them from here on is news.
-            character.seen_s = self.state.world_s
         if change.known_to_player:
             _add(character.known_by, player)
         if change.rulings and self.engine_only(subject, "rulings"):

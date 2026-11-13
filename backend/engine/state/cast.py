@@ -152,6 +152,12 @@ class Character(EngineModel):
         "they were with lately leads no life of the world's making: those days are the "
         "story's to tell (`engine.world.lives`).",
     )
+    met_s: WorldSeconds | None = Field(
+        default=None,
+        description="W6: when the player character first met them, for someone they met in "
+        "the story. What came to them before that is who they are, never news. None for "
+        "someone they have always known, and for someone they have yet to meet (`met_by`).",
+    )
 
     @model_validator(mode="after")
     def _death_has_certainty(self) -> "Character":

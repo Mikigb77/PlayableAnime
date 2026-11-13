@@ -282,8 +282,11 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
         # W6: how long the two have been apart, so years that went by show on them.
         view["last_seen"] = ago_label(state.world_s - seen)
     if news := lives.news_of(state, character):
-        # W6, C6: what those years brought them that the player character hasn't heard.
-        view["news"] = [_life_view(state, event, character.id) for event in news[-_NEWS:]]
+        # W6, C6: what those years brought them that the player character hasn't heard, each
+        # piece under its id, so the scene can say which of it it told (`told_news`).
+        view["news"] = [
+            {"id": event.id} | _life_view(state, event, character.id) for event in news[-_NEWS:]
+        ]
     return view
 
 
@@ -865,6 +868,9 @@ class NarrationBrief:
     # it was handed to say another way.
     looks: bool = True
     worn: tuple[str, ...] = ()
+    # W6: the news of people's lives the scene was handed to tell, by id: only that can it
+    # say it told.
+    news: tuple[str, ...] = ()
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
         if cutaway:
@@ -1048,6 +1054,7 @@ def narration_brief(
         ("CONTENT", content),
         ("WORLD", _world_view(before)),
     ]
+    scene = _scene_view(before)
     sections: list[tuple[str, Any]] = [
         *stable,
         *([("PREMISE", premise)] if premise and ctx.turn <= 1 else []),
@@ -1060,11 +1067,15 @@ def narration_brief(
         ("CHANGED HANDS", _changed_hands(after)),
         ("KNOWN", _known_view(after)),
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
-        ("SCENE", _scene_view(before)),
+        ("SCENE", scene),
     ]
-    if others := _who_else_view(before, after, intent, resolution, plan, seen, ctx.turn):
+    others = _who_else_view(before, after, intent, resolution, plan, seen, ctx.turn)
+    if others:
         # W4, E4: whom the turn may bring into the scene, as the record has them.
         sections.append(("WHO ELSE", others))
+    # W6: the news this scene has to tell, of whoever it shows.
+    shown = (*scene["present"], *others)
+    news = tuple(dict.fromkeys(n["id"] for view in shown for n in view.get("news", ())))
     if fallen := _fallen_view(after):
         sections.append(("FALLEN", fallen))
 
@@ -1112,7 +1123,7 @@ def narration_brief(
         sections.append(
             ("CALLBACKS", [{"id": t.id, "title": t.title, "stakes": t.stakes} for t in callbacks])
         )
-    talk = _talk_view(plan, after)
+    talk = _talk_view(plan, after, news=bool(news))
     if talk is not None:
         sections.append(("TALK", talk))
     suggestions = plan.suggestions.count
@@ -1154,6 +1165,7 @@ def narration_brief(
         language=settings.language,
         looks=looks,
         worn=tuple(tired),
+        news=news,
     )
 
 
@@ -1233,17 +1245,24 @@ def _trip_view(step: StepResolution, state: WorldState) -> dict[str, Any]:
     return view
 
 
-def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
+def _talk_view(
+    plan: DirectorPlan, state: WorldState, *, news: bool = False
+) -> dict[str, Any] | None:
     """W2. The talk of the place this scene may carry, if it has room for it: something the
     place is saying that the character hasn't heard, in the world's words (`saying`), or, when
     the record holds nothing new to them, talk of the narrator's own making (`own`). `asked`
-    marks talk the player character asked or listened for this turn, which the scene tells."""
+    marks talk the player character asked or listened for this turn, which the scene tells.
+
+    With `news`, someone the scene shows has news of their own life the player character
+    hasn't heard (W6), and that is what there is to hear in place of talk made up: in the first
+    live story of a homecoming (2026-11-13) a man asked his neighbours how the ten years had
+    been, and the scene answered with talk of its own making about him."""
     talk = plan.talk
     if talk is None:
         return None
     asked = {"asked": True} if talk.asked else {}
     if talk.rumor_id is None:
-        return {"own": True} | asked
+        return ({"news": True} if news else {"own": True}) | asked
     rumor = state.rumors.get(talk.rumor_id)
     return {"saying": rumor.text} | asked if rumor is not None else None
 

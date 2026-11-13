@@ -27,9 +27,10 @@ class SuggestionOut(BaseModel):
 def _action_required(schema: dict[str, Any]) -> None:
     """R1, R8. Gemini answers only what a schema requires as often as not (see `Intent`), so the
     model is always asked for `action`, though code may leave it empty (an opening, a template
-    line), for `told_talk`, so talk a scene told is never left unrecorded (W2), and for
-    `update`, whose scene end says where the next scene starts (R3, R8)."""
-    required = ["action", *schema.get("required", []), "told_talk", "update"]
+    line), for `told_talk` and `told_news`, so talk and news a scene told are never left
+    unrecorded (W2, W6), and for `update`, whose scene end says where the next scene starts
+    (R3, R8)."""
+    required = ["action", *schema.get("required", []), "told_talk", "told_news", "update"]
     schema["required"] = list(dict.fromkeys(required))
 
 
@@ -64,6 +65,13 @@ class NarratorOutput(BaseModel):
         description=(
             "W2: true only when the brief has TALK and the scene let the character catch it."
             " False when there is no TALK, or the scene had no room for it."
+        ),
+    )
+    told_news: list[str] = Field(
+        default_factory=list,
+        description=(
+            "W6: the id of every piece of news (news under a person in the brief) that this"
+            " scene showed or said. Empty when the brief has no news, or the scene told none."
         ),
     )
     suggestions: list[SuggestionOut] = Field(
