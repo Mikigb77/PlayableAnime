@@ -101,7 +101,14 @@ _NPC_HIDDEN = {
     "secrets": True,
     "personal_offset_s": True,
     "agenda": {"secret"},
-    "sheet": {"rulings": True, "growth": True, "backstory": True, "disposition": {"attitudes"}},
+    "sheet": {
+        "rulings": True,
+        "growth": True,
+        "backstory": True,
+        "disposition": {"attitudes"},
+        # W6: how fast the world takes them to climb is its own bookkeeping.
+        "ladders": {"__all__": {"yearly_s"}},
+    },
 }
 
 
@@ -272,6 +279,15 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
             sheet["powers"] = shown
         else:
             del sheet["powers"]
+    climbs = {talent_mod.ladder_key(position.ladder_id) for position in character.sheet.ladders}
+    if "practice" in sheet and climbs:
+        # W6: the hours the world counts toward their next rung are its own bookkeeping too,
+        # and their stage on the ladder says how far along they are.
+        kept = [work for work in sheet["practice"] if work.get("key") not in climbs]
+        if kept:
+            sheet["practice"] = kept
+        else:
+            del sheet["practice"]
     attitude = character.sheet.disposition.attitudes.get(state.player_id)
     if attitude is not None:
         # W17: their heart is told in words, with the bond it belongs to.

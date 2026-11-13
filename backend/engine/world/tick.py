@@ -76,11 +76,16 @@ def plan_ticks(w: World, until_s: int) -> None:
 
 
 def on_tick(w: World, event: PendingEvent) -> None:
+    """One tick, for the time since the last one up to now. A tick runs at its due time, or
+    later: a long stretch cut short leaves it spaced for the short scene that follows, due in
+    the past, and it runs at once. Either way the next one starts from now, or the world
+    would live the time between twice."""
     state = w.state
-    last_s = int(event.payload.get("last_s", event.due_s))
+    now_s = w.at_s
+    last_s = int(event.payload.get("last_s", now_s))
     stride = int(event.payload.get("stride_s", TICK_INTERVAL_S))
-    span = max(0, event.due_s - last_s)
-    schedule_revivals(w, last_s, event.due_s)
+    span = max(0, now_s - last_s)
+    schedule_revivals(w, last_s, now_s)
     ensure_clock_events(w)
     enforce_caps(state)
     for faction in by_id(state.factions.values()):
@@ -99,9 +104,9 @@ def on_tick(w: World, event: PendingEvent) -> None:
     schedule(
         w,
         Kind.TICK,
-        event.due_s + stride,
+        now_s + stride,
         title="The world moves on",
-        payload={"last_s": event.due_s, "stride_s": stride},
+        payload={"last_s": now_s, "stride_s": stride},
     )
 
 

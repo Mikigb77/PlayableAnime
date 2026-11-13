@@ -159,6 +159,14 @@ The first version's state, checked against the code in WS18.
       the partner they left in it, is handed who is gone, nobody who died walks into a scene,
       and Memory has them dead, with the day, once a scene said by name who died (W6, W10,
       G19, C6).
+- [x] Others climb over the years: whoever stands on one of the world's ladders goes on
+      climbing it while the story is elsewhere, by the character's own rule and at the pace
+      their own record shows, so the young and the gifted rise, an elder on a low rung dies on
+      it, and nobody is lifted to keep pace with the character. A rare stroke of fortune
+      lifts one named person a rung. Every rise is on the riser's sheet with its reason.
+      Living near, the character knows as it happens. Far away it is news under the person,
+      told once a scene names them, and Memory then says which rung they rose to, with the
+      day (W6, W10, G19, C6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

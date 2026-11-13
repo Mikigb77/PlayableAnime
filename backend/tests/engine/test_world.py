@@ -52,7 +52,7 @@ from engine.state import (
     WorldState,
 )
 from engine.visibility import memory_view
-from engine.world import Kind, carriers, hearsay
+from engine.world import Kind, carriers, hearsay, tick
 from engine.world.answers import Answer, choose_answer
 from engine.world.discovery import name_the_doer
 from engine.world.geography import travel_s
@@ -723,6 +723,32 @@ def test_the_world_rolls_the_same_however_time_is_split():
         split = pipeline.catch_up(split, day * DAY, ctx(), rng()).state
 
     assert split.model_dump() == whole.model_dump()
+
+
+def test_a_stretch_cut_short_has_the_world_live_no_part_of_it_twice(monkeypatch):
+    """W10. The tick is spaced for the stretch a time skip plans. When something that needs
+    the player cuts the stretch short, the scene that follows spaces the tick for its own
+    short time, which leaves it due in the past: it runs at once, for the time up to now, and
+    the next one starts from there."""
+    lived: list[tuple[int, int]] = []
+    monkeypatch.setattr(tick, "live_on", lambda w, since_s: lived.append((since_s, w.at_s)))
+    spans: list[int] = []
+    monkeypatch.setattr(tick, "_odds", lambda span_s, mean_s: spans.append(span_s) or 0.0)
+    state = cultivation_world()
+    state.pending_events["knock"] = PendingEvent(
+        id="knock", kind="story.knock", due_s=200 * DAY, needs_player=True
+    )
+
+    cut = pipeline.catch_up(state, 3650 * DAY, ctx(), rng())
+    assert cut.interrupted_by is not None and cut.state.world_s == 200 * DAY
+    scene = pipeline.catch_up(cut.state, 200 * DAY + HOUR, ctx(3), rng(3)).state
+    after = pipeline.catch_up(scene, 230 * DAY, ctx(4), rng(4)).state
+
+    assert len(lived) > 3 and lived[0][0] == 0 and 200 * DAY < lived[-1][1] <= after.world_s
+    assert (200 * DAY) in [upto for _, upto in lived]  # the scene's tick caught the world up
+    assert all(upto == since for (_, upto), (since, _) in zip(lived, lived[1:], strict=False))
+    # And whoever moves on their own has as much time to as the tick covers.
+    assert set(spans) == {upto - since for since, upto in lived}
 
 
 def test_events_the_world_doesnt_own_are_only_marked_applied():

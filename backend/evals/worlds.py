@@ -52,6 +52,9 @@ from engine.state import (
     Skill,
     SkillLevel,
     Talent,
+    TalentCover,
+    TalentFit,
+    TalentRuling,
     TalentStrength,
     Technique,
     Trait,
@@ -1685,4 +1688,64 @@ def noodle_road() -> WorldState:
     state.places["well"].routes.append(
         Route(to_id="market-town", travel_s=6 * 60 * MINUTE, mode="on foot")
     )
+    return state
+
+
+WEN, SU, OLD_HE, COOK_MA, ZHAO, ELDER_MO = (
+    "wen-jie",
+    "su-lan",
+    "old-he",
+    "cook-ma",
+    "zhao",
+    "elder-mo",
+)
+REALM_YEARS = (120, 250, 500, 1000, 2000)
+OUTER_COURT = (
+    (WEN, "Wen Jie", 16, 0, "A junior who came up the mountain the same spring as Lin."),
+    (SU, "Su Lan", 15, 0, "A quiet junior the elders watch: qi gathers to her as if called."),
+    (OLD_HE, "Old He", 90, 0, "The outer court's gatekeeper, at Qi Condensation all his life."),
+    (COOK_MA, "Cook Ma", 40, None, "The outer court's cook, a mortal who never touched qi."),
+)
+
+
+def azure_peak_he_leaves(*, rung: int = 0) -> WorldState:
+    """`sect` as a mountain to leave for years (W6, G19). The realms lengthen life, from 120
+    years at Qi Condensation to 2,000 at Soul Transformation. Lin knows the outer court: Zhao
+    Kun, at Foundation Establishment at nineteen, the juniors Wen Jie and Su Lan on the
+    lowest realm, Su Lan with a knack for it, Old He the gatekeeper, still on it at ninety,
+    and Cook Ma, a mortal on no realm at all. Elder Mo he has never met. The tournament is
+    over and nothing is under way. Greywater lies five days down the river, far enough that
+    no word of the mountain reaches someone who lives there. Lin stands on `rung`."""
+    state = sect()
+    for step, years in zip(state.bible.ladders[0].rungs, REALM_YEARS, strict=True):
+        step.lifespan_years = years
+    state.threads.clear()
+    state.clocks.clear()
+    state.characters["lin"].sheet.ladders = [LadderPosition(ladder_id="realms", rung=rung)]
+    for character_id, name, age, on_rung, about in OUTER_COURT:
+        ladders = [] if on_rung is None else [LadderPosition(ladder_id="realms", rung=on_rung)]
+        state.characters[character_id] = Character(
+            id=character_id,
+            name=name,
+            age=age,
+            description=about,
+            location_id="well",
+            known_by=["lin"],
+            met_by=["lin"],
+            sheet=CharacterSheet(ladders=ladders),
+        )
+    gift = Talent(id="spirit-root", name="a clear spirit root", covers="gathering qi")
+    cover = TalentCover(talent_id=gift.id, fit=TalentFit.INSIDE)
+    sheet = state.characters[SU].sheet
+    sheet.talents = [gift]
+    sheet.talent_rulings = [TalentRuling(key="ladder:realms", covers=[cover])]
+    state.places["town"] = Place(
+        id="town",
+        name="Greywater",
+        kind="town",
+        setting=PlaceSetting.OUTDOORS,
+        routes=[Route(to_id="well", travel_s=5 * DAY, mode="on foot")],
+        known_by=["lin"],
+    )
+    state.summary = "Lin Feng is an outer disciple of the Azure Cloud Sect, on Azure Peak."
     return state
