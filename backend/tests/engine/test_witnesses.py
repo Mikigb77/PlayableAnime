@@ -4,7 +4,7 @@ forest or a whole city, and being somewhere in it is not seeing what happens in 
 it. What is done before a crowd is public, and everyone there saw it."""
 
 from engine.base import HOUR
-from engine.contracts import ProposedDeed, Trip
+from engine.contracts import ActionKind, ProposedDeed, Trip
 from engine.samples import grounded_world
 from engine.state import Character, Encounter, EncounterKind, PassingState, Visibility, WorldState
 from engine.world import Kind
@@ -101,6 +101,21 @@ def test_where_no_scene_has_shown_who_is_around_everyone_there_saw_it():
     )
 
     assert seen_by(bar(), arrived) == ["bartender", "carmine", "nico"]
+
+
+def test_what_is_done_on_setting_out_is_seen_by_the_scene_they_leave():
+    """A step that is the going itself does what it does as they set out, where the scene has
+    shown who is around: its people saw it, and Nico, somewhere in the bar, didn't. Before a
+    crowd it is public there, like anything else."""
+    went = {"kind": ActionKind.TRAVEL, "trip": Trip(from_id="bar", to_id="questura", arrived=True)}
+
+    assert seen_by(bar(), deed_step(punch()).model_copy(update=went)) == ["bartender", "carmine"]
+    public = deed_step(punch(visibility=Visibility.PUBLIC)).model_copy(update=went)
+    assert seen_by(bar(), public) == ["bartender", "carmine", "nico"]
+    # What a step did where it went has a place of its own, which no scene has shown: it is
+    # everyone the record puts there.
+    there = deed_step(punch(place_id="questura")).model_copy(update=went)
+    assert seen_by(bar(), there) == ["rosa"]
 
 
 def test_what_someone_does_elsewhere_is_seen_by_everyone_the_record_puts_there():

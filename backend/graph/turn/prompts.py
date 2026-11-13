@@ -213,8 +213,9 @@ meant to kill; under any terms, one struck after the other yielded. Give the bou
 that step too: code takes the blow as an attack, and the bout is over. Only when the player's \
 own words say so: a blow of the bout with nothing said of hurting the other ("I come at him \
 again") stays inside its terms. false for every other step.
-- facts.crowd (W2), always: true when people SCENE doesn't name are around and would see the \
-step done (a busy street, a market at noon, a full tavern). false in a private or empty place, \
+- facts.crowd (W2), always: true when many people SCENE doesn't name are right there and would \
+see the step done (a busy street, a market at noon, a full tavern). false in a private or empty \
+place, in a quiet one with only a few people about (a lane of an evening, a road, a field), \
 whenever the scene says nobody else is there, and for what is done so that nobody around \
 notices (a hand in a pocket, poison slipped into a cup), however many are around. Code makes \
 public what is done before a crowd.
@@ -586,13 +587,19 @@ someone it ended with as that. Nobody becomes a couple, promised or married, and
 two people ends, unless the reason of a step in OUTCOME, the EVENT or an event under FIRED says \
 so. When a step asks and its reason says their heart isn't there, they turn it down in their own \
 way, and the scene never has them agree, hint that they will or kiss back. When the reason says \
-they are more drawn than before, show it in something small they do, never as a declaration. A \
+they are more drawn than before, show it in something small they do, never as a declaration. \
+When a step that asked for a night together succeeded, the two spent it together, and the scene \
+says so in plain words: it shows what the rating shows of it, cuts to afterwards for the rest, \
+and never tells an evening of talk or a head on a shoulder in its place. A \
 step toward someone who was a short way off goes to them first: it has a trip, they are where it \
 ends, and what they answer is told there. When a step's reason says they aren't here, it reached \
 nobody: the player character finds they are not around, and the scene never has them turn up, \
 answer or send word. A partner minds another romance, their own partner's or one with their \
 partner. wrongs under a step lists them. saw_it true: they were there and saw it happen, and the \
-scene shows what it is to them. saw_it false: they were not there, and they know nothing of it. \
+scene shows what it is to them. With stayed_in, that place is where they saw it, from among the \
+people around, before the step took the scene elsewhere: they are shown seeing it there, and \
+they stay there, so they don't follow and are not where the scene ends. saw_it false: they were \
+not there, and they know nothing of it. \
 They are not in this scene and never come into it: nobody has them walk in, look on from a \
 distance, find out or send word while it plays, however well that would suit the story. What they \
 come to know reaches them later, through the world, and the engine brings them then. When the \
@@ -803,7 +810,8 @@ they did it with and how well they have it), drew_on (their own powers, techniqu
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
 it holds), interrupted, met, struck, wrongs (whose partner a move in a romance was made with \
-or by, with saw_it: whether they were there to see it), bout or broke_terms, and trip (where the \
+or by, with saw_it: whether they were there to see it, and stayed_in: the place they saw it at \
+and stay in), bout or broke_terms, and trip (where the \
 step \
 took them, whether they arrived, and whether it is their first visit). Then stopped_at_step, \
 stop_reason and unplayed when the plan stopped early, still_on for the fight, chase, duel of \
