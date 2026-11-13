@@ -19,6 +19,7 @@ from engine.world.carriers import on_report, on_word
 from engine.world.cast import on_emergence, on_revival
 from engine.world.clocks import on_clock_end, on_clock_step
 from engine.world.discovery import on_discovery
+from engine.world.returns import on_return
 from engine.world.rumors import on_rumor
 from engine.world.scheduling import Kind, World, event_rng
 from engine.world.tick import on_tick
@@ -33,6 +34,7 @@ _QUIET = {
     Kind.EMERGENCE: on_emergence,
     Kind.REVIVAL: on_revival,
     Kind.TICK: on_tick,
+    Kind.RETURN: on_return,
 }
 _MAY_NEED_PLAYER = {
     Kind.ANSWER: on_answer,

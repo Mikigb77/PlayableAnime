@@ -43,7 +43,15 @@ from engine.contracts import (
 from engine.labels import DAY_PARTS
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, farm_world, grounded_world
-from engine.state.cast import Character, CharacterStatus, DeathCertainty, Pregnancy, Prominence
+from engine.state.cast import (
+    Character,
+    CharacterStatus,
+    DeathCertainty,
+    Place,
+    Pregnancy,
+    Prominence,
+    Route,
+)
 from engine.state.records import (
     Bond,
     BondEnd,
@@ -74,6 +82,8 @@ from engine.state.sheet import (
     TalentStrength,
 )
 from engine.state.world import EventSize, WorldState
+from engine.world import returns
+from engine.world.scheduling import World
 from graph.turn import prompts
 from graph.turn.context import (
     _PACE,
@@ -1788,6 +1798,48 @@ def test_the_narrator_is_told_who_a_turn_may_bring_into_the_scene_as_the_record_
     assert "never warmer, colder or better informed than it says" in system
     assert "use one of these who fits before making anyone up" in system
     assert "Nobody is in the scene just for being listed" in system
+
+
+def _outing(state, who: str, to: str, stay_s: int):
+    """The world takes `who` to `to` for `stay_s`: a round trip (`engine.world.returns`)."""
+    person = state.characters[who]
+    was, person.location_id = person.location_id, to
+    w = World(state=state, ctx=ctx(), at_s=state.world_s, rng=SeededRng.for_turn("s", "main", 2))
+    return returns.left(w, person, was, (stay_s, stay_s))
+
+
+def test_the_narrator_is_told_a_neighbour_is_away_and_about_when_they_are_back():
+    """W6: whoever the world sent somewhere comes back, so the scene has something true to say
+    of a neighbour it can't show: that they are gone, about when they are back, and where to
+    when the player character knows of that place (C6)."""
+    state = farm_world()
+    state.characters["mara"] = Character(
+        id="mara", name="Mara", location_id="farm", known_by=["tomas"]
+    )
+    state.places["town"] = Place(id="town", name="Harrow", kind="town")  # news to Tomas
+    state.places["village"].routes.append(Route(to_id="town", travel_s=DAY))
+
+    def named(who: str) -> dict:
+        (view,) = _section(brief(state, intent=_to(who)).user, "WHO ELSE")
+        return view
+
+    # Mara of the farm is in Millbrook for two days, and then the walk home.
+    _outing(state, "mara", "village", 2 * DAY)
+    mara = named("mara")
+    assert mara["away"] == {"back": "in 2 days", "to": "Millbrook"}
+    assert not {"here", "location_id"} & mara.keys()
+    # She went on to a town Tomas has never heard of: gone, and nothing on where.
+    _outing(state, "mara", "town", 2 * DAY)
+    assert named("mara")["away"] == {"back": "in 3 days"}
+    # Bram is away from Millbrook, which is not where this scene is: he is only elsewhere.
+    _outing(state, "bram", "town", 2 * DAY)
+    assert "away" not in named("bram")
+    # At the farm on an errand of his own he is here, and nobody's absent neighbour.
+    state.characters["bram"].location_id = "farm"
+    bram = named("bram")
+    assert bram["here"] is True and "away" not in bram
+
+    assert "away: they belong here and are off somewhere for now." in prompts.NARRATOR_SYSTEM
 
 
 def test_who_else_is_those_the_turn_is_about_and_then_whoever_matters_at_the_place():

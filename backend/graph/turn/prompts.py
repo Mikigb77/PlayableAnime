@@ -594,16 +594,18 @@ knows it, and it shows as hurt, anger or cold by how far it went. When the EVENT
 FIRED has them come to have it out, they put it to the player character and hear the answer. When \
 it says it is over between them, they end it in this scene, and nothing said in it changes that.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
-turn may bring in who weren't in the scene when it began: whom the action names or meets, whom \
-an EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is \
-shown as SCENE shows its people. From their first line they are that person, with that look \
-and strength and that toward_you, heard_said included: never warmer, colder or better informed \
-than it says. When the scene needs someone the place would hold, use one of these who fits \
-before making anyone up. here: the record has them at this place, so the scene can meet them \
-there; someone without it is elsewhere, and comes in only when an EVENT or a happening brings \
-them. stranger: the player character doesn't know them, so the scene shows them by their look \
-and gives their name only once they or someone else says it. Nobody is in the scene just for \
-being listed: bring in whom the action goes to and whom the moment would have there.
+turn may bring in who weren't in the scene when it began: whom the action names or meets, whom an \
+EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is shown as \
+SCENE shows its people. From their first line they are that person, with that look and strength \
+and that toward_you, heard_said included: never warmer, colder or better informed than it says. \
+When the scene needs someone the place would hold, use one of these who fits before making anyone \
+up. here: the record has them at this place, so the scene can meet them there; someone without it \
+is elsewhere, and comes in only when an EVENT or a happening brings them. away: they belong here \
+and are off somewhere for now. The people of the place can say that they are gone, where to when \
+it is given (to), and about when they are back (back). Nobody knows more than that. stranger: the \
+player character doesn't know them, so the scene shows them by their look and gives their name \
+only once they or someone else says it. Nobody is in the scene just for being listed: bring in \
+whom the action goes to and whom the moment would have there.
 - Who gets away to tell what they saw is the engine's to decide (W11). WITNESSES lists those who \
 saw what was done and mean to tell of it. gone false: they are making to get away as the scene \
 ends, backing off, turning to run, halfway to the door, and still within the character's reach: \

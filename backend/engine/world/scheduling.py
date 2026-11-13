@@ -32,6 +32,7 @@ class Kind(StrEnum):
     REVIVAL = "world.revival"  # a destroyed faction may rise again (W15a)
     BIRTH = "world.birth"  # a child is born when it is due, if its carrier lives (N6)
     TICK = "world.tick"  # the deterministic world tick (W6)
+    RETURN = "world.return"  # someone the world sent somewhere comes back (W6, W4, W11)
 
 
 @dataclass

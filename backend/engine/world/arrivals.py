@@ -3,10 +3,11 @@
 An answer that sends people arrives where they believe the target to be: if the target is there,
 it needs them and the scene starts there (the guards kick in the door at 3 a.m.); if not, they
 search, and may track the target down later. Someone who comes on their own account is at that
-place from then on, on record. Answers that don't send anyone (a bounty, a
-coalition, keeping clear) change the world off-screen, and the player runs into them in later
-scenes. What sets an answer going is a faction learning of a deed, which a witness's report
-brings (`engine.world.carriers`).
+place once they get there, on record, and goes back to where they came from afterwards
+(`engine.world.returns`). Answers that don't send anyone (a bounty, a coalition, keeping clear)
+change the world off-screen, and the player runs into them in later scenes. What sets an answer
+going is a faction learning of a deed, which a witness's report brings
+(`engine.world.carriers`).
 
 Two answers are steps on the way to knowing (W4, W11, `engine.world.knowledge`). Those who came
 to look into a crime ask whoever saw it and is still there to tell, then read what it left
@@ -39,10 +40,12 @@ from engine.world.carriers import carries
 from engine.world.discovery import attribution_odds, name_the_doer, out
 from engine.world.geography import characters_at, faction_seat, is_within
 from engine.world.knowledge import faction_learns, partner_of, shift_attitude
+from engine.world.returns import left
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import World, by_id, cancel
 from engine.world.telling import account, bounty
 from engine.world.tuning import (
+    ERRAND_STAY_S,
     FIND_ODDS,
     FORGIVEN_AFFINITY,
     HUNT_ATTEMPTS,
@@ -118,8 +121,10 @@ def on_answer(w: World, event: PendingEvent) -> bool:
         destination = event.place_id = avenger.location_id
     if avenger is not None and destination in state.places:
         # Whoever comes is there now, on record, whether or not they find who they came for:
-        # the scene that meets them has them at its place (W4, W10).
-        avenger.location_id = destination
+        # the scene that meets them has them at its place (W4, W10). And they go back to
+        # where they came from once they are done there (`engine.world.returns`).
+        came_from, avenger.location_id = avenger.location_id, destination
+        left(w, avenger, came_from, ERRAND_STAY_S)
     if destination is not None and is_within(state, target.location_id, destination):
         here = [c.id for c in characters_at(state, destination, within=True)]
         if affair and answer is Answer.CONFRONT:

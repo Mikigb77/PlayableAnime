@@ -98,6 +98,10 @@ The first version's state, checked against the code in WS18.
       Toward someone a short walk away the character goes to them first and the scene plays
       where they are, and toward someone far off it reaches nobody, so nobody says yes from
       another town (W17, W10).
+- [x] Whoever the world sends somewhere comes back: an important person's outing, a witness
+      who rode off to report and someone who came to have it out all go home again after a
+      while, and the way takes its time. The scene can say that a neighbour is away and about
+      when they are back (W6, W4, W11).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

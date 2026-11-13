@@ -36,7 +36,7 @@ from engine.state import (
     WorldState,
 )
 from engine.visibility import memory_view
-from engine.world import Kind
+from engine.world import Kind, returns
 from engine.world.answers import Answer
 from engine.world.geography import together
 from engine.world.norms import is_crime
@@ -833,7 +833,7 @@ RIVALS = ("told of it all", "saw it", "told of the walk")
     "t17.a-rival",
     suite="T17",
     title="A rival",
-    requirements=("W17", "W1", "W2", "W4", "W10", "C6", "T17"),
+    requirements=("W17", "W1", "W2", "W4", "W6", "W10", "C6", "T17"),
     passes_when=(
         "A man courts the smith's wife. The move wrongs her husband on record, and the scene "
         "is told whether he saw it. A husband who saw it holds it against the man at once, by "
@@ -841,11 +841,13 @@ RIVALS = ("told of it all", "saw it", "told of the walk")
         "tells him. Knowing of an affair, he comes to have it out, and the scene is told he "
         "came to hear it answered and not to attack. He comes for revenge afterwards only "
         "when what he knows of went as far as a night together. It is no crime, and Memory "
-        "says who came over it"
+        "says who came over it. Wherever he has gone, to the farm to have it out or on an "
+        "outing of his own, he is due back in Millbrook"
     ),
 )
 async def a_rival(ev: Eval) -> None:
     ends: Counter[str] = Counter()
+    away = 0
     for index, seed in enumerate(ev.seeds(12, live=1)):
         how = RIVALS[index % len(RIVALS)]
         saw = how == "saw it"
@@ -930,6 +932,13 @@ async def a_rival(ev: Eval) -> None:
             and not story.fired(Kind.REPORT),
             f"{seed}: {[e.title for e in story.fired(Kind.REPORT)]}",
         )
+        is_at, home = story.state.characters[JORN].location_id, returns.trip_of(story.state, JORN)
+        ev.check(
+            "wherever the smith has gone, he is due back in Millbrook",
+            is_at == "village" or (home is not None and home.place_id == "village"),
+            f"{seed}, he {how}: he is at {is_at}, due back at {home.place_id if home else None}",
+        )
+        away += is_at != "village"
         if not faced:
             ends["he never came"] += 1
             ev.check(
@@ -978,6 +987,13 @@ async def a_rival(ev: Eval) -> None:
         "some husbands come for revenge afterwards and some have it out and no more",
         ends["revenge after having it out"] > 0 and ends["had it out, and no more"] > 0,
         str(dict(ends)),
+        live=False,
+    )
+    ev.metric("away from Millbrook as the story stops", away)
+    ev.check(
+        "some husbands are away from Millbrook as the story stops, with the way home ahead",
+        away > 0,
+        str(away),
         live=False,
     )
 
