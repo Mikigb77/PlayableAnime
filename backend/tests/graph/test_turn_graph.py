@@ -12,6 +12,7 @@ from contextlib import aclosing
 import pytest
 
 from engine import pipeline
+from engine.base import YEAR
 from engine.context import ImageSetting, Rating, StorySettings, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -26,7 +27,7 @@ from engine.pipeline import TimePassage
 from engine.resolve.powers import growth
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus
-from engine.state.records import Goal, GoalStatus, StepResult
+from engine.state.records import Goal, GoalStatus, LifeEvent, LifeKind, StepResult
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import Health
 from engine.state.world import Chapter
@@ -1323,6 +1324,59 @@ def test_a_scene_tells_what_the_storys_start_held_back(fake, make_client, log_li
     assert {"code": "start_told", "area": "thread"} in told
     above_debug = [line for line in log_lines() if line["severity"] != "DEBUG"]
     assert not any("person:zhao" in str(line) for line in above_debug)
+
+
+def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years(
+    fake, make_client, log_lines
+):
+    """W6, C6: Lin hasn't seen Zhao in three years, and nobody told him Zhao made a friend of
+    Elder Mo. The narrator reads both for the scene the two meet in, and once it is told the
+    record has them as met and the news as heard. Code keeps that; no model says so."""
+    start = cultivation_world()
+    start.world_s = 3 * YEAR
+    start.characters["zhao"].seen_s = 0
+    start.lives["life-1"] = LifeEvent(
+        id="life-1",
+        kind=LifeKind.FRIENDS,
+        subject_ids=["zhao", "elder-mo"],
+        world_s=YEAR,
+        known_by=["zhao", "elder-mo"],
+    )
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+
+    _, result = play(make_client(), turn_input(start))
+
+    [request] = fake.calls(Node.NARRATOR)
+    brief = request.prompt.messages[-1].text
+    zhao = json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
+    assert zhao["last_seen"] == "3 years ago"
+    assert zhao["news"] == [
+        {
+            "what": "became close friends with someone",
+            "when": "2 years ago",
+            "with": {"id": "elder-mo", "name": "Elder Mo"},
+        }
+    ]
+    after = result.state
+    assert after.characters["zhao"].seen_s == after.world_s > start.world_s
+    assert after.characters["elder-mo"].seen_s is None  # he wasn't there
+    assert after.lives["life-1"].known_by == ["zhao", "elder-mo", "lin"]
+    assert [(i.code, i.subject) for i in result.issues if i.code == "life_heard"] == [
+        ("life_heard", "life-1")
+    ]
+    # T6: the log counts it and names nobody.
+    told = [line["turn_issue"] for line in log_lines() if line.get("turn_issue")]
+    assert {"code": "life_heard"} in told
+
+    # The next scene with him has nothing new to tell.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    _, again = play(make_client(), turn_input(after))
+    brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    zhao = json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
+    assert not {"last_seen", "news"} & zhao.keys()
+    assert not [i for i in again.issues if i.code == "life_heard"]
 
 
 def test_what_the_player_writes_names_what_was_held_back(fake, make_client):

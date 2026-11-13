@@ -1013,6 +1013,8 @@ def test_the_drafter_is_asked_for_the_cast_s_couples_and_no_romance_of_its_own_m
     # says it (Miki, 2026-11-13).
     assert "Set unions to how couples hold in this world" in SYSTEM
     assert "Give a key character faith only where the premise or who they plainly are" in SYSTEM
+    # People lead lives of their own, so the draft only says who never would (W6).
+    assert "anyone single may find a partner in time: set solitary only for someone" in SYSTEM
 
 
 def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows():

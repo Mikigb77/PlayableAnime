@@ -578,6 +578,26 @@ def test_the_steadfast_keep_to_a_partner_while_that_bond_holds():
     assert bonds.keeps_to(state, mara, "tomas") is None
 
 
+def test_an_answer_from_before_they_were_a_couple_is_no_answer_to_this():
+    """W6, W17: someone the player character courted, left for years and who married since
+    keeps to the partner they have now. Only an answer given while they had that partner
+    puts them past keeping to anyone, and the latest one is what counts."""
+    state = farm()
+    courted = paired(state, "tomas", "mara", BondStage.COURTING, world_s=DAY)
+    state.characters["jorn"] = Character(id="jorn", name="Jorn", age=33, location_id="village")
+    paired(state, "jorn", "mara", BondStage.MARRIED, world_s=400 * DAY)
+    mara = state.characters["mara"]
+    mara.sheet.disposition.attitudes["jorn"] = Attitude(attraction=70)
+
+    assert bonds.keeps_to(state, mara, "tomas") == "jorn"
+    assert bonds.closed_to(state, mara, "tomas") is bonds.Closed.BOUND
+
+    # She answers him again all the same, years into the marriage: that one is an answer.
+    courted.steps.append(BondStep(stage=BondStage.TOGETHER, world_s=900 * DAY))
+    courted.stage = BondStage.TOGETHER
+    assert bonds.keeps_to(state, mara, "tomas") is None
+
+
 def test_a_partner_stands_in_a_suitors_way_by_how_much_they_are_loved():
     state = farm()
     mara = state.characters["mara"]

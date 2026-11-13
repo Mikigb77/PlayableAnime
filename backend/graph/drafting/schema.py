@@ -474,6 +474,12 @@ class NpcP(Proposal):
         "roving: a flirt or a philanderer, a partner stands in nobody's way. null for "
         "everyone else: code gives each person their own, most of them steadfast.",
     )
+    solitary: bool = Field(
+        default=False,
+        description="W6: true only for someone who takes no partner by a vow, a calling or "
+        "their nature: a celibate monk, a construct, a ghost. Over the years the world may "
+        "bring anyone else a partner of their own.",
+    )
     agenda: AgendaP | None = Field(default=None, description="Hidden from the player.")
     secrets: list[str] = Field(default_factory=list)
     player_knows: PlayerKnows = Field(

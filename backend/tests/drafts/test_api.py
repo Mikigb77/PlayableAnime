@@ -886,7 +886,7 @@ def test_out_of_credits_drafts_nothing(make_user, model, settings):
     assert model.requests == []
 
 
-def test_too_many_drafts_a_minute_are_rate_limited(player_client, model, settings):
+def test_too_many_drafts_a_minute_are_rate_limited(player_client, model, settings, steady_minute):
     settings.BILLING = {**settings.BILLING, "PER_MINUTE": {"turn": 100, "draft": 1, "image": 100}}
     _draft(player_client)
 

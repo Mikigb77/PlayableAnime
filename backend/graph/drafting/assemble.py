@@ -815,6 +815,7 @@ class _Assembler:
                     agenda=agenda,
                     secrets=_texts(proposed.secrets, 6),
                     faith=proposed.faith,
+                    solitary=proposed.solitary,
                     activity=Activity.ACTIVE if index < ACTIVE_NPCS else Activity.DORMANT,
                     origin=Origin(kind=OriginKind.PREMISE),
                     known_by=[PLAYER_ID] if knows in ("met", "heard_of") else [],

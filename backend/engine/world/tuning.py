@@ -4,7 +4,8 @@ Rough figures, as A9 asks: news takes about an hour to get around a district, no
 times are in-world seconds (W10), never turns. The T15 and T17 evals tune them.
 """
 
-from engine.base import DAY, HOUR, MINUTE, WEEK
+from engine.base import DAY, HOUR, MINUTE, WEEK, YEAR
+from engine.state.bible import Unions
 
 # --- K8: a living world doesn't inflate the bill ---------------------------------------------
 
@@ -190,6 +191,54 @@ SUCCESSOR_ODDS = 0.4  # otherwise the same faction returns, rebuilding
 # --- Families (N6) ---------------------------------------------------------------------------
 
 GESTATION_S = 270 * DAY  # how long a child is carried; the same for every people for now (G23)
+
+# --- Lives of their own (W6, W10) --------------------------------------------------------------
+
+# Whom the world gives a life of their own: the key people and those the player character has
+# met, those closest to the story first, up to this many, and the latest news of such lives
+# kept on record, so a long story's state stays flat (K8).
+LIVES_PEOPLE = 30
+LIVES_KEPT = 200
+# Nothing of the world's making comes to someone for this long after the player character was
+# last in a scene with them: those days are the story's to tell, and a month away is no time
+# for a wedding (Miki, 2026-11-13).
+LIFE_QUIET_S = 90 * DAY
+# How near the player character must live to hear what comes to someone as it happens, by the
+# map's travel times: a farm outside the village hears of the village's weddings.
+LIFE_NEAR_S = DAY
+# What a year brings, each as the chance of it in one year. The chance over any stretch
+# follows from it, so a month brings next to nothing and ten years a great deal, and nothing
+# is made to happen: many are found as they were left.
+# Out of a hundred people, how many are settled as they are: nothing of the world's making
+# comes to them alone, neither a partner nor a friend nor a foe, however long it has been
+# (Miki, 2026-11-13: "maybe 10 years go by and the person is exactly the same"). It is theirs
+# by who they are, for the whole story. A couple's life goes on whoever the two are.
+LIFE_SETTLED = 25
+PAIR_RATE = 0.08  # someone single finds a partner: about half do within ten years
+PAIR_LATE = 0.25  # how much of that is left past the prime of life
+PAIR_FROM_CAST = 0.5  # how often it is someone on record, where one of them fits
+PAIR_AGE_GAP = 0.25  # how far apart in age two of the cast may be, as a part of the older...
+PAIR_AGE_ROOM = 8  # ...and never less than this many years
+NEWCOMER_AGE_ROOM = 4  # how many years older or younger a partner the record didn't have is
+MARRY_RATE = 0.3  # a couple marry: most within a few years
+CHILD_RATE_MARRIED, CHILD_RATE_TOGETHER = 0.2, 0.04
+CHILD_GAP_S = YEAR  # at least this long between two children of a couple
+MOST_CHILDREN = 3  # of one couple, by the world's doing
+# A couple part, by the custom of the world: first a marriage, then two who are together or
+# promised. A marriage that is for life is never left. The numbers lean on our own world
+# (docs/REQUIREMENTS.md, W17): where couples part easily about four marriages in ten end, and
+# where a marriage holds about one in five.
+PART_RATE_MARRIED = {Unions.FOR_LIFE: 0.0, Unions.HELD: 0.008, Unions.EASY: 0.025}
+PART_RATE_TOGETHER = {Unions.FOR_LIFE: 0.03, Unions.HELD: 0.04, Unions.EASY: 0.06}
+PART_COLD = 3  # as many times likelier where one of the two hearts has gone cold
+TIE_RATE = 0.03  # someone and another of the same place become close friends, or fall out
+TIE_WARM = 0.65  # how often it is a friendship, between two with no ill will...
+TIE_SOUR = 0.25  # ...and between two who already dislike each other
+FRIEND_AT, FOE_AT = 50, -40  # how they feel about each other from then on, at the least
+TIE_ROOM = 20  # and up to this much further
+TIE_AGE = 14  # nobody younger makes a friend or a foe for life by the world's doing
+PRIME = 0.55  # the part of a lifespan that is the prime of life, for a partner and children
+LIFESPAN_YEARS = 80  # where a people's own isn't on record
 
 # --- Agendas in the world tick (W6) --------------------------------------------------------
 

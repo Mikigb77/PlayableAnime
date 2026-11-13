@@ -65,7 +65,9 @@ its people are: for_life where a marriage is for life and leaving one is all but
 where couples part and take up with others often, held between the two and when unsure. Give a \
 key character faith only where the premise or who they plainly are says how they hold to a \
 partner (a devoted wife is steadfast, a flirt or a philanderer roving), and null otherwise: each \
-person has their own, and most are steadfast.
+person has their own, and most are steadfast. People lead lives of their own over the years, so \
+anyone single may find a partner in time: set solitary only for someone who never would, by a \
+vow, a calling or their nature.
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \
