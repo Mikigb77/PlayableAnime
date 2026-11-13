@@ -1527,6 +1527,47 @@ def millbrook_he_knows() -> WorldState:
     return state
 
 
+GRETA, ALDER, RUNA, EDDA, OSRIC = (
+    "greta-marsh",
+    "alder-fenn",
+    "runa-fenn",
+    "edda-marsh",
+    "osric-fenn",
+)
+ELDERS = (
+    (GRETA, "Greta Marsh", 79, "The old baker, Edda's grandmother, who still minds the ovens."),
+    (ALDER, "Alder Fenn", 77, "Osric's father, who drove the Harrowgate road before him."),
+    (RUNA, "Runa Fenn", 58, "Alder's wife and Osric's mother, who keeps the carter's books."),
+)
+
+
+def millbrook_grown_old() -> WorldState:
+    """`millbrook_he_knows` with its old people (W6): Greta Marsh at seventy-nine, Alder Fenn
+    at seventy-seven, married to Runa, nineteen years younger, the two of them Osric's
+    parents, and Old Bram at seventy-one. Where people live eighty years, ten years take
+    most of the three old ones and nobody else."""
+    state = millbrook_he_knows()
+    for character_id, name, age, about in ELDERS:
+        state.characters[character_id] = Character(
+            id=character_id,
+            name=name,
+            age=age,
+            description=about,
+            location_id="village",
+            known_by=["tomas"],
+            met_by=["tomas"],
+        )
+    state.characters[OSRIC].parent_ids = [ALDER, RUNA]
+    state.bonds["bond-2"] = Bond(
+        id="bond-2",
+        a_id=ALDER,
+        b_id=RUNA,
+        stage=BondStage.MARRIED,
+        steps=[BondStep(stage=BondStage.MARRIED, how="As the story opens.")],
+    )
+    return state
+
+
 HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."
 
 

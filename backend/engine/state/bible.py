@@ -96,6 +96,14 @@ class Rung(EngineModel):
     description: str = ""
     needs: list[str] = Field(default_factory=list, description="What climbing to it takes (G19).")
     loud: bool = Field(default=False, description="Its breakthrough is a public deed (G19, W1).")
+    lifespan_years: int | None = Field(
+        default=None,
+        ge=0,
+        description="W6, G19: how long someone who has reached this rung lives, where that is "
+        "longer than their people do: 0 where the rung lengthens no life, and None where the "
+        "record doesn't say, as on a ladder drafted before rungs carried it, so that old age "
+        "takes nobody who stands on it (`engine.world.old_age`).",
+    )
 
 
 class PowerLadder(EngineModel):

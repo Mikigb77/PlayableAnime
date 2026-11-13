@@ -146,6 +146,14 @@ class Character(EngineModel):
         description="W10, N6: when they were born, for someone born in the story, so their "
         "age is the years since (`engine.world.lives.grow_older`).",
     )
+    lifespan_years: int | None = Field(
+        default=None,
+        ge=0,
+        description="W6: a span of their own, in years, for someone the world first found "
+        "older than their people and their rung live. The world settles it once, when it "
+        "first counts their years (`engine.world.old_age.own_span`): 0 for someone who lives "
+        "as long as anyone like them, None for someone it hasn't counted yet.",
+    )
     seen_s: WorldSeconds | None = Field(
         default=None,
         description="W6: when the player character was last in a scene with them. Whoever "

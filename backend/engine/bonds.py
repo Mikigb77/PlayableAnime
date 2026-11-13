@@ -364,6 +364,23 @@ def end(bond: Bond, *, by_id: str | None, how: str, turn: int, world_s: int) -> 
     )
 
 
+def end_by_death(state: WorldState, character: Character, *, turn: int, world_s: int) -> None:
+    """A death ends the romances of the dead (`BondEnd.DEATH`), on the records themselves. The
+    caller makes sure it is one for certain: a death only presumed ends none, since the
+    record still holds that they may be alive."""
+    for bond in _sorted(state):
+        if bond.stage.live and bond.holds(character.id):
+            bond.stage, bond.end = BondStage.OVER, BondEnd.DEATH
+            bond.steps.append(
+                BondStep(
+                    stage=BondStage.OVER,
+                    turn=turn,
+                    world_s=world_s,
+                    how=f"{character.name} died.",
+                )
+            )
+
+
 def kin(characters: dict[str, Character], a: str, b: str) -> bool:
     """Whether two people are close family by blood, as far as the record has it: one descends
     from the other, or they share a parent."""
