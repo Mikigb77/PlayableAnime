@@ -7,9 +7,10 @@ answered moves their heart at their own pace, and the bond comes to the stage th
 
 import pytest
 
-from engine import bonds, pipeline
+from engine import bonds, limits, pipeline
 from engine.apply import DeltaSource, apply_delta
 from engine.base import DAY, HOUR
+from engine.context import Language, Rating
 from engine.contracts import ActionKind, Aim, Intent, OutcomeClass, RomanceMove
 from engine.samples import farm_world
 from engine.state import (
@@ -258,6 +259,37 @@ def test_the_reason_says_that_two_slept_together_only_when_they_did():
     evening = to("mara", "spend the night with Mara", RomanceMove.ADVANCE, verb="romance")
     sure = world(bonds.INTIMATE_SURE)
     assert said not in one(sure, evening, seed_for(sure, evening, StepResult.SUCCESS)).reason
+
+
+def test_a_night_together_is_a_move_of_its_own_whatever_its_words():
+    """W17: the reading says a night as lovers as a move of its own, and code takes it as an
+    advance beyond a kiss however the step is worded. On the real model (2026-11-13) "I spend
+    the night with Mara, and we sleep together" came back as an advance with the verb
+    "romance" although the guide asked for the verb "sleep with": the record held courting,
+    and the scene told a night."""
+    words = "spend the night with Mara, and we sleep together"
+    night = to("mara", words, RomanceMove.NIGHT, verb="romance")
+    assert limits.intimacy(night) is limits.Intimacy.SEXUAL
+    assert limits.intimacy(night, Language.ES) is limits.Intimacy.SEXUAL
+    # The same words as an advance name no act, so they stay an evening in her company.
+    evening = to("mara", words, RomanceMove.ADVANCE, verb="romance")
+    assert limits.intimacy(evening) is limits.Intimacy.ROMANCE
+
+    # It is ruled on as a night together: sure with someone this drawn, ruled out with
+    # someone barely drawn, and on record as what it was.
+    sure = one(world(bonds.INTIMATE_SURE), night)
+    assert (sure.outcome_class, sure.roll) == (OutcomeClass.CERTAIN, None)
+    assert "You and Mara sleep together." in sure.reason
+    stranger = one(world(bonds.INTIMATE_NO - 1), night)
+    assert stranger.outcome_class is OutcomeClass.RULED_OUT
+    assert "sleep together" not in stranger.reason
+    deed = wrong(sure)  # Tomas is married to Ilse
+    assert (deed.kind, deed.severity) == ("lie_with", bonds.BETRAYAL)
+
+    # A Teen story stops at a kiss, whatever the words (F2).
+    hits = limits.check_action(world(bonds.INTIMATE_SURE), Intent(steps=[night]), Rating.TEEN)
+    assert [hit.category for hit in hits] == [limits.LimitCategory.SEXUAL]
+    assert not limits.check_action(world(bonds.INTIMATE_SURE), Intent(steps=[night]), Rating.MATURE)
 
 
 def test_a_night_together_an_event_cut_short_didnt_happen():

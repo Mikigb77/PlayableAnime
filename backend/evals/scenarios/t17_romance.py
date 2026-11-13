@@ -570,9 +570,9 @@ NIGHT_AS_DECIDED = (
 
 
 def night() -> Intent:
-    return to_mara(
-        "spend the night with Mara", RomanceMove.ADVANCE, verb="sleep with", duration_s=8 * HOUR
-    )
+    """A night as lovers, as the reading says it: a move of its own (`RomanceMove.NIGHT`),
+    with words that name no act."""
+    return to_mara("spend the night with Mara", RomanceMove.NIGHT, verb="stay", duration_s=8 * HOUR)
 
 
 def part() -> Intent:

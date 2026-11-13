@@ -35,7 +35,7 @@ from typing import Literal
 from engine import limit_words, naming
 from engine.context import Language, Rating
 from engine.contracts.delta import StateDelta
-from engine.contracts.intent import Intent, IntentStep
+from engine.contracts.intent import Intent, IntentStep, RomanceMove
 from engine.real_entities import EXACT_ORGANISATIONS, REAL_ORGANISATIONS, REAL_PEOPLE
 from engine.state.cast import Character
 from engine.state.world import WorldState
@@ -447,8 +447,13 @@ def intimacy(step: IntentStep, language: Language = Language.EN) -> Intimacy | N
     """Whether a step is romantic or sexual, read from the interpret step's own words for it:
     its verb, text and beats. In a Spanish or a Catalan story those words may be English or
     the story's, so both are read and the graver reading stands. The story's own words that
-    only look English ("molestar", to bother someone) are taken out of the English reading."""
-    return _read(" ".join([step.verb, step.text, *(b.text for b in step.beats)]), language)
+    only look English ("molestar", to bother someone) are taken out of the English reading.
+    A step the reading itself calls a night together (`RomanceMove.NIGHT`) is beyond a kiss
+    whatever its words: "we sleep together" names no act."""
+    read = _read(" ".join([step.verb, step.text, *(b.text for b in step.beats)]), language)
+    if step.romance is RomanceMove.NIGHT:
+        return _graver(read, Intimacy.SEXUAL)
+    return read
 
 
 def spoken(action: str, language: Language = Language.EN) -> Intimacy | None:
