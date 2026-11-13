@@ -244,6 +244,8 @@ TIE_ROOM = 20  # and up to this much further
 TIE_AGE = 14  # nobody younger makes a friend or a foe for life by the world's doing
 PRIME = 0.55  # the part of a lifespan that is the prime of life, for a partner and children
 LIFESPAN_YEARS = 80  # where a people's own isn't on record
+# A people old age never takes (G23: a lifespan of 0 on record) lives as good as for ever.
+AGELESS_YEARS = 1_000_000
 # Old age (W6): from this part of someone's span on, the years may take them, the likelier the
 # older, so that half of those who get that far are gone at the full span and next to nobody
 # sees a fifth more than it. Nothing takes anyone younger.

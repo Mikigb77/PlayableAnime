@@ -916,6 +916,10 @@ _OPEN_ABOVE = (
 )
 
 
+# How a people the record gives a lifespan of 0 reads to a model (W6, G23).
+_AGELESS = "none: old age never takes them"
+
+
 def _narrator_world(state: WorldState) -> dict[str, Any]:
     """WORLD as the narrator reads it: the bible, and on each ladder the story can reach past,
     that it is open above its highest rung."""
@@ -937,6 +941,10 @@ def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str,
         view.setdefault("medicine", {})["resurrection"] = bible.medicine.resurrection.value
     if include is None or "travel" in include:
         view.setdefault("travel", {})["instant_messages"] = bible.travel.instant_messages
+    for people in view.get("peoples", ()):
+        # W6, G23: a lifespan of 0 on record is a people old age never takes.
+        if people.get("lifespan_years") == 0:
+            people["lifespan_years"] = _AGELESS
     for ladder in view.get("ladders", ()):
         for rung in ladder.get("rungs", ()):
             # W6: how long a rung lives is said where climbing lengthens life, nowhere else.

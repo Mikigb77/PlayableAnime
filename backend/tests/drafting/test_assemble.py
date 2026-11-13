@@ -47,6 +47,7 @@ from graph.drafting.schema import (
     LadderP,
     LadderPositionP,
     NpcP,
+    PeopleP,
     PowerP,
     RuleP,
     RungP,
@@ -432,6 +433,33 @@ def test_the_sample_realms_lengthen_life_rung_by_rung():
     state = assemble(_world(), _character())
 
     assert [r.lifespan_years for r in state.bible.ladders[0].rungs] == [120, 250, 500, 1000, 2000]
+
+
+def test_a_people_is_always_asked_how_long_it_lives():
+    """Gemini answers only what a schema requires as often as not: left unsaid, the dice
+    take a people for a human one, and old age would take an elf at eighty."""
+    schema = PeopleP.model_json_schema()
+
+    assert "lifespan_years" in schema["required"]
+    asked = schema["properties"]["lifespan_years"]["description"]
+    assert "0 for a people old age never takes" in asked
+    # An answer may still leave it out.
+    assert PeopleP(id="elves", name="elves").lifespan_years is None
+
+
+def test_a_peoples_lifespan_is_on_record_as_the_draft_says_it():
+    """W6, G23: years, 0 for a people old age never takes, and nothing where it wasn't said."""
+
+    def lifespan(years):
+        people = PeopleP(id="kin", name="the kin", lifespan_years=years)
+        state = assemble(_world(peoples=[people]), _character())
+        return state.bible.peoples[0].lifespan_years
+
+    assert lifespan(600) == 600
+    assert lifespan(0) == 0
+    assert lifespan(None) is None
+    # Nonsense is clamped.
+    assert lifespan(-5) == 0 and lifespan(10**9) == 1_000_000
 
 
 def test_a_ladder_is_always_asked_whether_it_lengthens_life():
