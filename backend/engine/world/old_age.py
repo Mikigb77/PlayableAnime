@@ -86,6 +86,15 @@ def natural_span(state: WorldState, person: Character) -> int:
     return max([peoples_span(state, person), *rungs])
 
 
+def on_record(state: WorldState, person: Character) -> bool:
+    """Whether the record itself says how long someone lives, with nothing assumed: their
+    people has a lifespan on record, a rung up to theirs carries one, or they have a span of
+    their own. Where none does, `span` is the human one the world assumes."""
+    if person.lifespan_years or _lifespan(state, person) is not None:
+        return True
+    return any(years for spans in _rungs(state, person) for years in spans)
+
+
 def span(state: WorldState, person: Character) -> int:
     """How long someone lives, in years: as long as someone like them does (`natural_span`),
     or their own span where the world gave them one."""
@@ -132,3 +141,14 @@ def chance(lives: float, from_age: float, to_age: float) -> float:
     if to_age <= from_age:
         return 0.0
     return 1 - math.exp(worn(from_age, lives) - worn(to_age, lives))
+
+
+def taken_at(lives: float, from_age: float, luck: float) -> float:
+    """The age at which old age takes someone who has reached `from_age`, for a `luck` drawn
+    evenly from 0 to 1: the same odds as `chance`, turned round, so the chance of being taken
+    before any age is the chance `chance` gives the stretch up to it. Never before the start
+    of old age, and never before `from_age`."""
+    luck = min(max(luck, 0.0), 1 - 1e-12)
+    behind = worn(from_age, lives) - math.log(1 - luck)
+    at = lives * (OLD_AGE_FROM + (1 - OLD_AGE_FROM) * (behind / math.log(2)) ** (1 / 3))
+    return max(at, from_age)

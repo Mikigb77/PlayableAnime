@@ -248,7 +248,7 @@ def test_catch_up_sets_the_worlds_own_processes_going_and_apply_event_settles_on
 
     assert passage.elapsed_s == 0 and passage.fired == ()
     kinds = sorted(e.kind for e in passage.state.pending_events.values())
-    assert kinds == ["clock_end", "world.clock_step", "world.tick"]
+    assert kinds == ["clock_end", "world.clock_step", "world.old_age", "world.tick"]
     assert fired.pending_events["council-meets"].status is EventStatus.APPLIED
     assert fired.pending_events["council-meets"].applied_turn == 2
     assert state.pending_events["council-meets"].status is EventStatus.PENDING

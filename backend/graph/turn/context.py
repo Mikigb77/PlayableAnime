@@ -61,7 +61,7 @@ from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
 from engine.visibility import believed_status
-from engine.world import carriers, journeys, lives, returns, strife
+from engine.world import carriers, journeys, last_years, lives, returns, strife
 from engine.world.geography import routes_from, scene_ids, together
 from engine.world.telling import account, world_change
 from graph.language import written_in
@@ -99,6 +99,7 @@ _RECORD_NOISE = {
     "born_s",
     "solitary",
     "lifespan_years",
+    "old_age_span",  # said in words on the player character, once old age has set in
 }
 # Shown by name in a character's `family` (N6) instead of as ids and in-world seconds.
 _KIN = {"parent_ids", "expecting"}
@@ -159,6 +160,14 @@ def place_name(state: WorldState) -> str | None:
 _LOOKS = ("appearance", "description")
 
 
+# N6, W6: the player character's old age, as every scene after its warning reads it.
+_OLD_AGE = (
+    "set in: {age} of the about {span} years someone like them lives. It shows in their "
+    "body, and their years are running out. A scene in which something lengthens their life "
+    "says so in its update (lifespan_years)."
+)
+
+
 def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
     """The player character as the record has them. `looks` false leaves out how they look,
     their appearance and how they come across: the narrator is handed those only in a scene
@@ -181,6 +190,11 @@ def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
     condition = view["sheet"].setdefault("condition", {})
     condition["health"] = state.player.sheet.condition.health.value
     condition.setdefault("wounds", [])
+    # N6, W6: their old age, once a scene has told them it set in, so every scene after it
+    # shows them old. Nothing before: how old someone is says enough.
+    years = last_years.years_of(state, state.world_s)
+    if years is not None and years.set_in:
+        view["old_age"] = _OLD_AGE.format(age=int(years.age), span=years.span)
     # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
 
@@ -1440,6 +1454,8 @@ def narration_brief(
             told_ending["left_out"] = list(left_out)
         sections.append(("ENDING", told_ending))
         task = prompts.DEATH_TASK if ending.kind == "death" else prompts.EPILOGUE_TASK
+        if ending.kind == "death" and lives.of_old_age(after.player):
+            task = prompts.OLD_AGE_TASK  # their years ran out: nothing in OUTCOME killed them
         sections.append(("TASK", task))
     return NarrationBrief(
         system=prompts.NARRATOR_SYSTEM,

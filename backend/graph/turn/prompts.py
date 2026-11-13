@@ -924,6 +924,16 @@ them to act on: the story ends here for them. When ENDING has a wish, it is how 
 the story would end, and only what OUTCOME settled of it happened; its left_out never happens.\
 """
 
+OLD_AGE_TASK = """\
+ENDING: the player character dies of old age in this scene (N6, W6): their years have run out, \
+as FIRED says, and nothing else kills them. It is their last scene. What OUTCOME shows of their \
+action is as far as they got with it. Tell the end of their life where they are, quiet or not \
+as the scene stands and as CONTENT allows, then close on what their death leaves behind around \
+them: who is with them, what stays unfinished. No hook, no question, nothing left for them to \
+act on: the story ends here for them. When ENDING has a wish, it is how the player hoped the \
+story would end, and only what OUTCOME settled of it happened; its left_out never happens.\
+"""
+
 EPILOGUE_TASK = """\
 ENDING: the player has chosen to end the story here (N6), and this scene is its epilogue. Play \
 what OUTCOME settled of their wish, if ENDING has one, then tell where this leaves the player \

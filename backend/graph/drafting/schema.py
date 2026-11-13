@@ -737,10 +737,31 @@ class ReserveP(Proposal):
     level: int = Field(default=100, description="0 to 100, as a share of what they can hold.")
 
 
+def _says_their_years(schema: dict[str, Any]) -> None:
+    """N6, W6. Gemini answers only what a schema requires as often as not, so the character is
+    always asked their age and how long they live: their own old age comes by the two
+    (`engine.world.last_years`), and left unsaid a god or a machine would die at eighty. The
+    model's answer may still leave either out."""
+    asked = ["age", "lifespan_years"]
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), *asked]))
+
+
 class CharacterProposal(Proposal):
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_their_years)
+
     name: str
     aliases: list[str] = Field(default_factory=list)
-    age: int | None = None
+    age: int | None = Field(
+        default=None,
+        description="Their age in years: the premise's, or one that fits them where it "
+        "doesn't say.",
+    )
+    lifespan_years: int | None = Field(
+        default=None,
+        description="How many years someone like them lives before old age takes them, by "
+        "their people and their own nature: about 80 for a human. 0 only where old age never "
+        "takes them, such as a god, a spirit, a machine or one of the undead.",
+    )
     people_id: str = ""
     description: str = Field(
         default="",

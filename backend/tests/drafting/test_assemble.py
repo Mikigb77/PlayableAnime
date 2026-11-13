@@ -462,6 +462,38 @@ def test_a_peoples_lifespan_is_on_record_as_the_draft_says_it():
     assert lifespan(-5) == 0 and lifespan(10**9) == 1_000_000
 
 
+def test_the_character_is_always_asked_their_age_and_how_long_they_live():
+    """N6, W6: their own old age comes by the two, and Gemini answers only what a schema
+    requires as often as not: left unsaid, a god or a machine would die at eighty."""
+    schema = CharacterProposal.model_json_schema()
+
+    assert {"age", "lifespan_years"} <= set(schema["required"])
+    asked = schema["properties"]["lifespan_years"]["description"]
+    assert "about 80 for a human" in asked and "0 only where old age never takes them" in asked
+    # An answer may still leave either out.
+    left_out = _character().model_dump(exclude={"age", "lifespan_years"})
+    said = CharacterProposal.model_validate(left_out)
+    assert said.age is None and said.lifespan_years is None
+
+
+def test_how_long_the_character_lives_is_on_record_as_the_draft_says_it():
+    """As good as for ever where old age never takes them, a span of their own where the
+    draft gives more years than they have lived, and nothing where it doesn't say or says no
+    more than their age: the world settles that when it first counts their years."""
+
+    def lifespan(years, age=16):
+        state = assemble(_world(), _character(age=age, lifespan_years=years))
+        return state.player.lifespan_years
+
+    assert lifespan(None) is None
+    assert lifespan(0) == 1_000_000 and lifespan(-3) == 1_000_000
+    assert lifespan(80) == 80 and lifespan(10**9) == 1_000_000
+    # Three hundred years old, of "about eighty": a span the draft didn't think through.
+    assert lifespan(80, age=300) is None and lifespan(300, age=300) is None
+    assert lifespan(500, age=300) == 500
+    assert lifespan(80, age=None) == 80
+
+
 def test_a_ladder_is_always_asked_whether_it_lengthens_life():
     """Gemini answers only what a schema requires as often as not: left unsaid, the dice
     couldn't tell a cultivator who lives five hundred years from a ranked adventurer."""
