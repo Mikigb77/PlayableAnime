@@ -103,11 +103,25 @@ class RuleP(Proposal):
     )
 
 
+def _says_how_long_it_lives(schema: dict[str, Any]) -> None:
+    """W6, G23. Gemini answers only what a schema requires as often as not, so a people is
+    always asked how long it lives: left unsaid, the world's dice take it for a human one,
+    and old age would take an elf or one of the undead at eighty. The model's answer may
+    still leave it out."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "lifespan_years"]))
+
+
 class PeopleP(Proposal):
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_how_long_it_lives)
+
     id: str
     name: str
     description: str = ""
-    lifespan_years: int | None = None
+    lifespan_years: int | None = Field(
+        default=None,
+        description="How many years its people live before old age takes them: about 80 for "
+        "humans. 0 for a people old age never takes, such as the undead, spirits or machines.",
+    )
     gifts: list[str] = Field(default_factory=list)
     culture: str = ""
     relations: list[str] = Field(

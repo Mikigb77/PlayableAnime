@@ -16,12 +16,15 @@ from engine.state import (
     LifeKind,
     Origin,
     OriginKind,
+    People,
     PowerLadder,
     Rung,
     StatusChange,
     WorldState,
 )
 from engine.world import old_age
+from graph.turn.context import _AGELESS as AGELESS
+from graph.turn.context import interpret_prompt
 from graph.turn.outputs import NarratorOutput
 from tests.engine.test_world import ctx
 from tests.engine.test_world_lives import NARRATOR, YOU, a_year, couple, news, valley, villager
@@ -288,6 +291,27 @@ def test_the_narrator_reads_how_long_a_rung_lives_where_climbing_lengthens_life(
     ]
     elder = _section(told.user, "SCENE")["present"][-1]
     assert elder["age"] == 301 and "lifespan_years" not in elder
+
+
+def test_a_people_old_age_never_takes_reads_so_to_the_models():
+    """G23: a lifespan of 0 on record would read as no life at all."""
+    state = valley()
+    state.bible.peoples = [
+        People(id="undead", name="the undead", lifespan_years=0),
+        People(id="elves", name="elves", lifespan_years=600),
+        People(id="ghouls", name="ghouls"),
+    ]
+
+    told = brief(state)
+    asked = interpret_prompt(state, "I ask the lich how old he is").messages[-1].text
+
+    for world in (_section(told.system + told.user, "WORLD"), _section(asked, "WORLD")):
+        assert world["peoples"] == [
+            {"id": "undead", "name": "the undead", "lifespan_years": AGELESS},
+            {"id": "elves", "name": "elves", "lifespan_years": 600},
+            {"id": "ghouls", "name": "ghouls"},
+        ]
+    assert AGELESS == "none: old age never takes them"
 
 
 def test_the_narrator_is_told_what_to_list_for_someone_who_died():

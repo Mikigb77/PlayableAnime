@@ -67,7 +67,13 @@ class People(EngineModel):
     id: str
     name: Name
     description: str = ""
-    lifespan_years: int | None = Field(default=None, ge=0)
+    lifespan_years: int | None = Field(
+        default=None,
+        ge=0,
+        description="W6, G23: how many years its people live. 0 for a people old age never "
+        "takes, and None where the record doesn't say, which the world's dice read as a "
+        "human span (`engine.world.old_age`).",
+    )
     gifts: list[str] = Field(default_factory=list)
     culture: str = ""
     relations: list[str] = Field(default_factory=list)

@@ -336,3 +336,83 @@ async def old_age_takes(ev: Eval) -> None:
             f"{seed}: {len(told)} briefs for {gone_ids}",
             live=False,
         )
+
+
+# --- How long each people lives (G23, W6) ------------------------------------------------------
+
+HUNDRED = 100 * YEAR + MONTH
+# A made-up premise for the real drafter: a people that lives long, and one old age never
+# takes.
+THREE_PEOPLES = (
+    "I am a human courier in Ashmere, a harbour city that humans share with elves, who live "
+    "for centuries, and with the risen dead of the Bone Quarter, who never age. I carry "
+    "letters between their quarters."
+)
+# What a human life never reaches, and what is as good as never dying, in years.
+FAR_LONGER, AS_GOOD_AS_NEVER = 150, 10_000
+
+
+@scenario(
+    "t17.long-lived-peoples",
+    suite="T17",
+    title="How long each people lives",
+    requirements=("G23", "W6", "A2", "T17"),
+    passes_when=(
+        "An elf beekeeper and one of the unsleeping dead live in Millbrook among its people. "
+        "Tomas stays away a hundred years: old age takes every villager he knew, and neither "
+        "the elf, whose people live six hundred years, nor the dead man, whose people old age "
+        "never takes. Live, the real drafter is given a premise with humans, elves who live "
+        "for centuries and risen dead who never age, and every people it writes says how long "
+        "it lives: one far longer than a human life, and one that old age never takes or "
+        "that lives ten thousand years and more"
+    ),
+    notes="Live mode drafts one world and plays no scene.",
+)
+async def long_lived_peoples(ev: Eval) -> None:
+    for seed in ev.seeds(6, live=0):
+        story = ev.story(
+            worlds.millbrook_of_three_peoples(), seed=seed, settings=CALM, under_way=True
+        )
+        story.change(in_harrowgate)
+        humans = [
+            i
+            for i, c in story.state.characters.items()
+            if i != YOU and c.age is not None and c.people_id == "humans"
+        ]
+        await live_there(story, HUNDRED, where="in Harrowgate", turns=TURNS)
+        state = story.state
+        gone_ids = dead(state)
+        ev.check(
+            "a hundred years take every villager he knew",
+            set(humans) <= set(gone_ids),
+            f"{seed}: {sorted(set(humans) - set(gone_ids))} still live",
+        )
+        sael, wick = state.characters[worlds.SAEL], state.characters[worlds.WICK]
+        ev.check(
+            "and neither the elf nor the dead man, each a hundred years older",
+            sael.alive and wick.alive and (sael.age, wick.age) == (240, 171),
+            f"{seed}: Sael {sael.status.value} at {sael.age}, Wick {wick.status.value} "
+            f"at {wick.age}",
+        )
+        ev.check("the record holds together (C1)", check_state(state) == [], f"{seed}")
+    if not ev.live:
+        return
+    world = await ev.drafted(THREE_PEOPLES)
+    spans = {p.name: p.lifespan_years for p in world.bible.peoples}
+    ev.metric("how long each people lives, as the real drafter wrote it", spans)
+    ev.check("the draft has the peoples of the premise", len(spans) >= 2, str(spans))
+    ev.check(
+        "every people says how long it lives",
+        all(years is not None for years in spans.values()),
+        str(spans),
+    )
+    ev.check(
+        "one of them lives far longer than a human life",
+        any(years and FAR_LONGER <= years < AS_GOOD_AS_NEVER for years in spans.values()),
+        str(spans),
+    )
+    ev.check(
+        "and one old age never takes, or as good as never",
+        any(years == 0 or (years or 0) >= AS_GOOD_AS_NEVER for years in spans.values()),
+        str(spans),
+    )

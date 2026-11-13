@@ -38,7 +38,7 @@ from engine.succession import carry_on
 from engine.visibility import memory_view
 from engine.world import lives, old_age
 from engine.world.scheduling import World
-from engine.world.tuning import LIFE_QUIET_S, LIVES_KEPT
+from engine.world.tuning import AGELESS_YEARS, LIFE_QUIET_S, LIVES_KEPT
 
 from .test_world import ctx, idle, rng
 from .test_world_lives import NARRATOR, YOU, a_year, couple, news, quiet, valley, villager
@@ -151,6 +151,37 @@ def test_someone_lives_as_long_as_their_people_or_a_human_span_where_the_world_d
 
     assert state.characters["elf"].alive and state.characters["elf"].age == 200
     assert not state.characters["bram"].alive
+
+
+def test_old_age_never_takes_one_of_a_people_the_record_calls_ageless():
+    """G23: a lifespan of 0 on record. Before, the dice read it as a human one, and one of
+    the undead died of old age at eighty."""
+    state = valley(
+        villager("lich", "Varn", 40, people_id="undead"),
+        villager("elder", "Old Varn", 3000, people_id="undead"),
+        villager("ghoul", "Mok", 40, people_id="ghouls"),
+    )
+    state.bible.peoples = [
+        People(id="undead", name="the undead", lifespan_years=0),
+        People(id="ghouls", name="ghouls"),
+    ]
+    lich, elder, ghoul = (state.characters[i] for i in ("lich", "elder", "ghoul"))
+
+    assert old_age.ageless(state, lich) and not old_age.ageless(state, ghoul)
+    assert not old_age.ageless(state, state.characters["bram"])  # of no people on record
+    assert old_age.span(state, lich) == AGELESS_YEARS
+    # A people the record says nothing of lives a human span, as before.
+    assert old_age.span(state, ghoul) == 80
+    # However old, they are within their span: none of their own, and never past their prime.
+    assert old_age.own_span(state, elder, 3000) == 0
+    assert lives._prime(state, elder) and not lives._spent(state, elder)
+
+    state, _ = idle(state, 1000 * YEAR)
+
+    assert state.characters["lich"].alive and state.characters["lich"].age == 1040
+    assert state.characters["elder"].alive and state.characters["elder"].lifespan_years == 0
+    assert not state.characters["ghoul"].alive and not state.characters["bram"].alive
+    assert check_state(state) == []
 
 
 def test_whoever_reached_a_higher_rung_outlives_those_who_never_did():
