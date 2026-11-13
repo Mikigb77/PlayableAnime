@@ -97,7 +97,7 @@ from graph.turn import (
     UnreadableAction,
     run_turn,
 )
-from graph.turn.context import wronged_view
+from graph.turn.context import fired_in_sight, wronged_view
 from graph.turn.errors import LimitReached
 from graph.turn.nodes import read_action
 from media.briefs import THREAD_SUBJECTS
@@ -302,6 +302,13 @@ class Played:
             outcome["unplayed"] = resolution.unplayed
         if self.result.plan.event is not None:
             outcome["event"] = self.result.plan.event.title
+        seen = fired_in_sight(self.result.fired, self.result.state, self.result.plan)
+        if seen:
+            # What the world did while the scene played, where the character could notice it
+            # from where the scene ended, as the narrator is told under FIRED: a scene that
+            # shows it is no flaw (the judge failed one for a wife who knew, after word had
+            # reached her, 2026-11-13).
+            outcome["meanwhile"] = [e.title or e.kind for e in seen]
         # W10: when the scene began and ended on the world's clock, to the minute whatever the
         # calendar shows, so the telling can be scored against it.
         calendar = self.result.state.bible.calendar

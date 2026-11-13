@@ -118,6 +118,9 @@ The first version's state, checked against the code in WS18.
       partner who was out of sight learns of it only as word reaches them. A quiet lane with a
       few people about is no crowd, and someone who did see it from a real crowd stays behind
       where they saw it (W2, W17).
+- [x] A night together is on record as one however the player asks for it, and the scene tells
+      as much of it as the record holds: the step's reason says that the two sleep together,
+      or the scene has nobody spend a night as lovers (W17).
 - [x] Whoever ended a romance has made up their mind: for a while, by their own pace, nothing
       of the kind moves them, so nobody is won back in the scene they were left in (W17).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending

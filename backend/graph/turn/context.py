@@ -871,6 +871,28 @@ def _names(state: WorldState) -> list[str]:
     return [name for name in names if name]
 
 
+def fired_in_sight(
+    fired: Sequence[PendingEvent], after: WorldState, plan: DirectorPlan
+) -> list[PendingEvent]:
+    """The events that came due while the scene played and that the player character could
+    notice (`due.noticed`): what the narrator is told under FIRED. The director tells its own
+    events, and the world's events it made the scene's event or a happening, as EVENT and
+    HAPPENINGS (W16, E7), so nothing is told twice."""
+    told = {
+        e.source_id
+        for e in (plan.event, *plan.happenings)
+        if e is not None and e.source is EventSource.DUE
+    }
+    return [
+        e
+        for e in fired
+        if due.noticed(e, after)
+        and not e.kind.startswith("director.")
+        and e.id not in told
+        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
+    ]
+
+
 def narration_brief(
     *,
     before: WorldState,
@@ -926,21 +948,7 @@ def narration_brief(
         ending=ending,
     )
     tired = worn.worn_phrases(scenes, settings.language, _names(after))
-    # The director tells its own events, and the world's events it made the scene's event or a
-    # happening, as EVENT and HAPPENINGS (W16, E7), so nothing is told twice.
-    told = {
-        e.source_id
-        for e in (plan.event, *plan.happenings)
-        if e is not None and e.source is EventSource.DUE
-    }
-    seen = [
-        e
-        for e in fired
-        if due.noticed(e, after)
-        and not e.kind.startswith("director.")
-        and e.id not in told
-        and e.status is not EventStatus.CANCELLED  # it came to nothing, such as a birth
-    ]
+    seen = fired_in_sight(fired, after, plan)
     # What stays the same from turn to turn comes first, so the backend can keep it cached with
     # the system text and Gemini bills it at its cached rate (`Prompt.stable_chars`).
     stable: list[tuple[str, Any]] = [

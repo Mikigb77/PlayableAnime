@@ -9,6 +9,7 @@ import json
 from engine import bonds
 from engine.context import Rating, StorySettings, TurnContext
 from engine.contracts import OutcomeClass
+from engine.resolve.romance import SLEPT
 from engine.samples import farm_world
 from engine.state.cast import Character, Place, Route
 from engine.state.records import Bond, BondStage, BondStep, StepResult
@@ -103,6 +104,9 @@ def test_an_ask_their_heart_is_there_for_makes_a_couple_on_record(fake, make_cli
     assert asks(state).romance
     assert read.json_schema == intent_form(asks(state))
     assert "- romance, always (W17)" in read.prompt.system
+    # A night together is read as one however the player words it: code reads the verb (on the
+    # real model, 2026-11-13, "we sleep together" was read with the verb "romance").
+    assert 'is an advance whose verb is "sleep with"' in " ".join(read.prompt.system.split())
     assert read.prompt.system == prompts.interpret_system(asks(state))
     # The narrator reads the scene as it began, with the two still courting, and is told what
     # came of the ask. The next scene begins with a couple.
@@ -110,11 +114,16 @@ def test_an_ask_their_heart_is_there_for_makes_a_couple_on_record(fake, make_cli
     told = narration.prompt.messages[-1].text
     assert "You and Mara are together now." in section(told, "OUTCOME")
     assert "A romance is on record, and only the engine moves it (W17)" in narration.prompt.system
-    # A night together that succeeded is told as one, within the rating (on the real model,
-    # 2026-11-13, one was told as the two of them sitting together).
-    assert "never tells an evening of talk or a head on a shoulder in its place" in " ".join(
-        narration.prompt.system.split()
-    )
+    # A night together is told as one where the step's reason says it, within the rating, and
+    # nowhere else (on the real model, 2026-11-13, one was told as the two of them sitting
+    # together, and one the record held as courting as a night in the hayloft).
+    rules = " ".join(narration.prompt.system.split())
+    assert "When a step's reason says the two sleep together, they did" in rules
+    assert SLEPT.endswith("sleep together")  # the engine's own words for it
+    assert "never tells an evening of talk or a head on a shoulder in its place" in rules
+    assert "Where no reason says it, the player character makes love or spends a night" in rules
+    # Someone wronged who didn't see it comes into the scene only when the world brings them.
+    assert "or an event under FIRED that says word of it reached them" in rules
     mara = next(p for p in json.loads(section(told, "SCENE"))["present"] if p["id"] == "mara")
     assert mara["bond_with_you"]["stage"] == "courting"
     after = interpret_prompt(result.state, "I kiss Mara").messages[-1].text
