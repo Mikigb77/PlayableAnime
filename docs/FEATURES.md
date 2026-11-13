@@ -104,6 +104,12 @@ The first version's state, checked against the code in WS18.
       who rode off to report and someone who came to have it out all go home again after a
       while, and the way takes its time. The scene can say that a neighbour is away and about
       when they are back (W6, W4, W11).
+- [x] Code keeps the scene's door: a scene has the people who were in it, those the record has
+      at the place and those the world brought, and nobody the narrator walks in from
+      elsewhere. Whoever a move in a romance wrongs and who didn't see it has no part in that
+      scene, so a partner learns of an affair only as the world carries it (W4, W10, W17).
+- [x] Whoever ended a romance has made up their mind: for a while, by their own pace, nothing
+      of the kind moves them, so nobody is won back in the scene they were left in (W17).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

@@ -24,6 +24,8 @@ What a stage needs:
 - **Over**: one of them ended it, which is always theirs to do, or one of them died. A bond
   that is over stays over, and a romance that starts again is a new bond. Being left costs the
   one who was left some of what they felt, so getting back together has to be won again.
+  Whoever ended it has made up their mind: for a good while after, nothing of the kind moves
+  them (`Closed.ENDED`, by their own pace), so nobody is won back in the scene they left in.
 
 Nothing here assumes a genre (G5): a stage is a fact between two people, and what a wedding or
 a betrothal looks like is the world's.
@@ -91,6 +93,11 @@ RIVAL_LIKING, RIVAL_TRUST = 10, 6
 TIE_LIKING = 3
 # Once they have faced their partner over it, they end it when their heart is under this.
 LEAVES_UNDER = 40
+# How long the heart of someone who ended it stays closed to whoever they left, in rests of
+# their own pace (`REST_S`): ten days for a quick heart, a month for a steady one and a season
+# for a slow one. The first live story about it (2026-11-13) had a wife end her marriage over
+# an affair and answer his next advance: one good throw, and the two were courting again.
+ENDED_RESTS = 30
 
 FORWARD = {
     BondStage.INTEREST: (BondStage.COURTING, BondStage.TOGETHER),
@@ -201,6 +208,17 @@ def wronged(state: WorldState, actor_id: str, other_id: str) -> list[str]:
     return list(dict.fromkeys(found))
 
 
+def unseen(state: WorldState, turn: int) -> list[str]:
+    """Whom a move in a romance made on `turn` wrongs who wasn't there to see it
+    (`Deed.wronged_ids` without `Deed.witness_ids`), by id. They know nothing of it until a
+    witness or word reaches them (W2), so the scene that tells the move has no part for them."""
+    found: list[str] = []
+    for deed in sorted(state.deeds.values(), key=lambda deed: natural_key(deed.id)):
+        if deed.turn == turn and deed.timeline_id == state.timeline_id:
+            found += [who for who in deed.wronged_ids if who not in deed.witness_ids]
+    return list(dict.fromkeys(found))
+
+
 def gravity(
     *,
     asked: bool,
@@ -251,12 +269,13 @@ class Closed(StrEnum):
     FAMILY = "family"
     AVERSE = "averse"  # they want nothing to do with them
     AFRAID = "afraid"  # too afraid of them for anything to be freely given
+    ENDED = "ended"  # they ended it with them, and it is too soon
 
 
 def closed_to(state: WorldState, other: Character, suitor_id: str) -> Closed | None:
     """Why someone's heart is closed to another, or None when it is open: they are family,
-    they want nothing to do with them, or they are too afraid of them for anything to be
-    freely given."""
+    they want nothing to do with them, they are too afraid of them for anything to be freely
+    given, or they ended it with them not long ago (`ended_by`)."""
     if kin(state.characters, other.id, suitor_id):
         return Closed.FAMILY
     attitude = other.attitude_toward(suitor_id)
@@ -264,7 +283,21 @@ def closed_to(state: WorldState, other: Character, suitor_id: str) -> Closed | N
         return Closed.AVERSE
     if attitude.fear >= AFRAID_AT:
         return Closed.AFRAID
+    since_s = ended_by(state, other.id, suitor_id)
+    if since_s is not None and state.world_s - since_s < REST_S[pace(other.id)] * ENDED_RESTS:
+        return Closed.ENDED
     return None
+
+
+def ended_by(state: WorldState, character_id: str, other_id: str) -> int | None:
+    """The world second `character_id` ended the latest romance between the two that is over,
+    or None when none ended by their doing. A romance the other has opened since, by asking
+    again, changes nothing of it."""
+    bond = last_over(state, character_id, other_id)
+    if bond is None or bond.end is not BondEnd.PARTED or not bond.steps:
+        return None
+    last = bond.steps[-1]
+    return last.world_s if last.by_id == character_id else None
 
 
 def gain(

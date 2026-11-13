@@ -1148,7 +1148,8 @@ def test_a_scene_moves_only_the_feelings_of_its_people_and_of_whom_the_turn_reac
 ):
     """W4: Zhao, struck at in the scene, can come out of it angrier. Elder Mo is in the inner
     court and saw none of it, so the scene can't turn him against Lin: that change is refused,
-    and code moves how he feels once word reaches him (W2)."""
+    and code moves how he feels once word reaches him (W2). Nor can the scene have him there
+    by listing him at its end (W10)."""
     feelings = [
         {"id": "zhao", "attitudes": [{"affinity": -5}]},
         {"id": "elder-mo", "attitudes": [{"affinity": -5, "grudge": "Lin struck Zhao"}]},
@@ -1165,12 +1166,30 @@ def test_a_scene_moves_only_the_feelings_of_its_people_and_of_whom_the_turn_reac
     assert refused == [("character elder-mo: attitude", "character.attitude")]
     assert result.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin") == before
 
-    # In a scene that ends with him there, he is one of its people.
+    # A scene that ends with him there, by its own word alone, doesn't have him either: the
+    # record has him in the inner court, and only the world brings him over (W10).
     with_him = update | {"scene_end": SCENE["update"]["scene_end"] | {"present_ids": ["elder-mo"]}}
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": with_him}))
     _, result = play(make_client(), turn_input())
+    refused = [(i.subject, i.area) for i in result.issues if i.code == "rejected"]
+    assert refused == [
+        ("character elder-mo: attitude", "character.attitude"),
+        ("character elder-mo: presence", "character.presence"),
+    ]
+    assert "elder-mo" not in result.state.scene.present_ids
+    assert result.state.characters["elder-mo"].location_id == "inner-court"
+    assert result.state.characters["elder-mo"].sheet.disposition.attitudes.get("lin") == before
+
+    # Where the record has him by the well, the scene can bring him in, and he is one of its
+    # people.
+    turn = turn_input()
+    turn.state.characters["elder-mo"].location_id = "well"
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"update": with_him}))
+    _, result = play(make_client(), turn)
     assert "rejected" not in [i.code for i in result.issues]
+    assert "elder-mo" in result.state.scene.present_ids
     assert result.state.characters["elder-mo"].sheet.disposition.attitudes["lin"].grudges
 
 

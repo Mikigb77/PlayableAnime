@@ -577,6 +577,8 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         # this turn caused it: a power's toll in health or blood, or the first opening's premise.
         first_opening = turn.kind is TurnKind.OPENING and not turn.state.opening_due
         hurts = first_opening or injuries.pays_in_body(state["resolution"])
+        # W10: whom the world itself brought into this scene, wherever the record had them.
+        came = pipeline.brought(world, state["plan"], turn.ctx)
         applied = apply_delta(
             world,
             delta,
@@ -590,6 +592,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             # W4: the scene moves only the feelings of its own people and of whom the turn
             # reached; anyone else hears of it through the world.
             reached=pipeline.reached(world, state["resolution"], state["plan"]),
+            # W10, W17: the scene has nobody else in it that the record has elsewhere, and
+            # nobody a move in a romance wronged who didn't see it.
+            brought=came,
+            barred=pipeline.kept_out(world, turn.ctx, came),
         )
         world = applied.state
         issues += [_rejected("rejected", r) for r in applied.rejected]

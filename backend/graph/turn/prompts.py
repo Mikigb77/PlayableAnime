@@ -299,14 +299,16 @@ rung, and 0 when the player names none. To let their true strength show: shown_r
 Hiding or showing is a step of its own, before whatever they do next.
 <<end>>
 <<romance>>
-- romance, always (W17): null unless the step is itself a move in a romance between the \
-character and someone it is aimed at, who goes in target_ids. advance: flirting, courting, a \
-gift or a word meant to win them, a kiss, a night together. declare: asking them to be a \
-couple, or saying yes when they ask. propose: asking them to promise marriage, or the world's \
-own lasting union, or saying yes to it. wed: marrying them. part: ending it with them. A step \
-that only talks about love, with them or with anyone else, is no move. bond_with_you under a \
-person in SCENE is where the romance between the two stands on record. Code decides what the \
-move does, from that bond and from the other person's own heart.
+- romance, always (W17): null unless the step is itself a move in a romance between the character \
+and someone it is aimed at, who goes in target_ids. advance: flirting, courting, a gift or a word \
+meant to win them, a kiss, a night together. declare: asking them to be a couple, or saying yes \
+when they ask. propose: asking them to promise marriage, or the world's own lasting union, or \
+saying yes to it. wed: marrying them. part: ending it with them. Give the move the player's words \
+make, never the one the bond would allow: marrying someone they aren't promised to is still wed, \
+and asking someone who is no partner yet for a promise is still propose. A step that only talks \
+about love, with them or with anyone else, is no move. bond_with_you under a person in SCENE is \
+where the romance between the two stands on record. Code decides what the move does, from that \
+bond and from the other person's own heart.
 <<end>>
 
 Also record:
@@ -576,23 +578,29 @@ romance between them and the player character: the stage it stands at (interest:
 made it plain and nothing is answered; courting: it is answered, and they are finding out where it \
 goes; together: a couple; promised: betrothed; married; over: it ended, with how), since when, \
 earlier for one between them that ended before this one, their own heart (their_heart) and how \
-quickly it moves (their_pace). Tell each person as exactly that: a partner as a partner, someone \
-courted as someone still making up their mind, someone who isn't drawn as not drawn, however sweet \
-the player's words, and someone it ended with as that. Nobody becomes a couple, promised or \
-married, and nothing between two people ends, unless the reason of a step in OUTCOME, the EVENT or \
-an event under FIRED says so. When a step asks and its reason says their heart isn't there, they \
-turn it down in their own way, and the scene never has them agree, hint that they will or kiss \
-back. When the reason says they are more drawn than before, show it in something small they do, \
-never as a declaration. A step toward someone who was a short way off goes to them first: it has a \
-trip, they are where it ends, and what they answer is told there. When a step's reason says they \
-aren't here, it reached nobody: the player character finds they are not around, and the scene \
-never has them turn up, answer or send word. A partner minds another romance, their own partner's \
-or one with their partner. Someone a step's wrongs lists with saw_it saw it happen, and the scene \
-shows what it is to them; anyone else it lists knows nothing yet. When the grudges under \
-toward_you tell that the player character courted, slept with or married someone else, that person \
-knows it, and it shows as hurt, anger or cold by how far it went. When the EVENT or an event under \
-FIRED has them come to have it out, they put it to the player character and hear the answer. When \
-it says it is over between them, they end it in this scene, and nothing said in it changes that.
+quickly it moves (their_pace). A heart that is closed since they ended it answers nothing of the \
+kind for now, whatever is said or done: they don't soften, hint at another chance or take anyone \
+back. Tell each person as exactly that: a partner as a partner, someone courted as someone still \
+making up their mind, someone who isn't drawn as not drawn, however sweet the player's words, and \
+someone it ended with as that. Nobody becomes a couple, promised or married, and nothing between \
+two people ends, unless the reason of a step in OUTCOME, the EVENT or an event under FIRED says \
+so. When a step asks and its reason says their heart isn't there, they turn it down in their own \
+way, and the scene never has them agree, hint that they will or kiss back. When the reason says \
+they are more drawn than before, show it in something small they do, never as a declaration. A \
+step toward someone who was a short way off goes to them first: it has a trip, they are where it \
+ends, and what they answer is told there. When a step's reason says they aren't here, it reached \
+nobody: the player character finds they are not around, and the scene never has them turn up, \
+answer or send word. A partner minds another romance, their own partner's or one with their \
+partner. wrongs under a step lists them. saw_it true: they were there and saw it happen, and the \
+scene shows what it is to them. saw_it false: they were not there, and they know nothing of it. \
+They are not in this scene and never come into it: nobody has them walk in, look on from a \
+distance, find out or send word while it plays, however well that would suit the story. What they \
+come to know reaches them later, through the world, and the engine brings them then. When the \
+grudges under toward_you tell that the player character courted, slept with or married someone \
+else, that person knows it, and it shows as hurt, anger or cold by how far it went. When the EVENT \
+or an event under FIRED has them come to have it out, they put it to the player character and hear \
+the answer. When it says it is over between them, they end it in this scene, and nothing said in \
+it changes that.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom an \
 EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is shown as \
@@ -600,12 +608,15 @@ SCENE shows its people. From their first line they are that person, with that lo
 and that toward_you, heard_said included: never warmer, colder or better informed than it says. \
 When the scene needs someone the place would hold, use one of these who fits before making anyone \
 up. here: the record has them at this place, so the scene can meet them there; someone without it \
-is elsewhere, and comes in only when an EVENT or a happening brings them. away: they belong here \
-and are off somewhere for now. The people of the place can say that they are gone, where to when \
-it is given (to), and about when they are back (back). Nobody knows more than that. stranger: the \
-player character doesn't know them, so the scene shows them by their look and gives their name \
-only once they or someone else says it. Nobody is in the scene just for being listed: bring in \
-whom the action goes to and whom the moment would have there.
+is elsewhere, and comes in only when an EVENT, a happening or an event under FIRED brings them. So \
+is anyone under KNOWN who is in neither SCENE nor WHO ELSE: they can be thought of, spoken of or \
+missed, and never seen, met or heard from in this scene. The engine keeps that record whatever a \
+scene tells: someone it has elsewhere is not in the scene when it ends, and stays where they were. \
+away: they belong here and are off somewhere for now. The people of the place can say that they \
+are gone, where to when it is given (to), and about when they are back (back). Nobody knows more \
+than that. stranger: the player character doesn't know them, so the scene shows them by their look \
+and gives their name only once they or someone else says it. Nobody is in the scene just for being \
+listed: bring in whom the action goes to and whom the moment would have there.
 - Who gets away to tell what they saw is the engine's to decide (W11). WITNESSES lists those who \
 saw what was done and mean to tell of it. gone false: they are making to get away as the scene \
 ends, backing off, turning to run, halfway to the door, and still within the character's reach: \
@@ -652,22 +663,22 @@ everyone's appearance.
 
 update: what this scene changed, for the engine to check and apply (C1):
 - characters: new characters, each with a stable snake_case id, a name, a description and an \
-appearance (an adult gets an age; their looks and usual clothes, never what they carry, which \
-are items), and changes to known ones: where they are, their condition, \
-how they feel about the player, meeting the player. Only the people in the scene change how \
-they feel (W4): someone elsewhere saw none of it, however much it concerns them, and code \
-moves how they feel once a witness or word reaches them. Reuse the ids given. Never hurt the \
-player character here, not even for what struck them: the engine already recorded every wound \
-and every worse health, and refuses yours. Only two harms are yours to record, as the scene \
-shows them: a health or blood cost under OUTCOME's costs, and on the first opening a PREMISE \
-that has them start hurt. Otherwise their condition may only get better, by the rest and care \
-the world's medicine needs, or take on a passing state such as drunk, never a drawback of your \
-own. When a known \
-character's look changes for good, such as a lost eye, a scar or grey hair after years, say what \
-changed in look_change and write their whole appearance again with it (the player \
-character's only when PLAYER CHARACTER has one). Never for mud, blood, a \
-disguise or anything else that passes, which is their condition. Never set a death, a cause, \
-rulings, gains or backstory: the engine records those.
+appearance (an adult gets an age; their looks and usual clothes, never what they carry, which are \
+items), and changes to known ones: where they are, their condition, how they feel about the \
+player, meeting the player. Where someone is changes only for the people of the scene, when they \
+leave it for somewhere or come along: only the world moves anyone else (W10). Only the people in \
+the scene change how they feel (W4): someone elsewhere saw none of it, however much it concerns \
+them, and code moves how they feel once a witness or word reaches them. Reuse the ids given. Never \
+hurt the player character here, not even for what struck them: the engine already recorded every \
+wound and every worse health, and refuses yours. Only two harms are yours to record, as the scene \
+shows them: a health or blood cost under OUTCOME's costs, and on the first opening a PREMISE that \
+has them start hurt. Otherwise their condition may only get better, by the rest and care the \
+world's medicine needs, or take on a passing state such as drunk, never a drawback of your own. \
+When a known character's look changes for good, such as a lost eye, a scar or grey hair after \
+years, say what changed in look_change and write their whole appearance again with it (the player \
+character's only when PLAYER CHARACTER has one). Never for mud, blood, a disguise or anything else \
+that passes, which is their condition. Never set a death, a cause, rulings, gains or backstory: \
+the engine records those.
 - family (N6): parent_ids names someone's parents when the scene shows or reveals it, such as a \
 child met with their mother. When a scene makes someone pregnant, set expecting on whoever \
 carries the child, with the other parent: the child is born when it is due, if they live, and \
@@ -703,13 +714,13 @@ holding only what scenes have shown the character ("You know it happens at night
 east gate guard looks away."). It replaces the goal's last progress, so keep what still holds \
 from it. Only for a goal this scene brought nearer or changed what the character knows toward: \
 none for a scene that only mentions it, and never the goal's own words again.
-- scene_end: ended_on, the last thing this scene shows, in a sentence that says who is doing \
-what and where ("She sets the cup down and waits for your answer."), never a date or an \
-hour: the next scene starts from it; place_id, the place it stops in (R8): \
-SCENE's place while the character is still there, else the place they reached, from KNOWN or \
-added under places; who is present and where they stand; and the things in hand or in the scene \
-that matter next. The next scene starts in that place, so a move the scene tells but place_id \
-doesn't name never happened.
+- scene_end: ended_on, the last thing this scene shows, in a sentence that says who is doing what \
+and where ("She sets the cup down and waits for your answer."), never a date or an hour: the next \
+scene starts from it; place_id, the place it stops in (R8): SCENE's place while the character is \
+still there, else the place they reached, from KNOWN or added under places; who is present and \
+where they stand, of the people the scene had, those WHO ELSE let it bring in and anyone it made \
+up; and the things in hand or in the scene that matter next. The next scene starts in that place, \
+so a move the scene tells but place_id doesn't name never happened.
 - summary: the whole story so far in at most 150 words.
 """
 
@@ -792,7 +803,8 @@ they did it with and how well they have it), drew_on (their own powers, techniqu
 it used), costs, changed_hands (what the step moved, \
 from whom to whom), beats, chain (the links of cause and effect it weighed, each with whether \
 it holds), interrupted, met, struck, wrongs (whose partner a move in a romance was made with \
-or by, with saw_it for those who were there), bout or broke_terms, and trip (where the step \
+or by, with saw_it: whether they were there to see it), bout or broke_terms, and trip (where the \
+step \
 took them, whether they arrived, and whether it is their first visit). Then stopped_at_step, \
 stop_reason and unplayed when the plan stopped early, still_on for the fight, chase, duel of \
 words or talks under way \
