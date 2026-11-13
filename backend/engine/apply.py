@@ -1147,6 +1147,14 @@ class _Applier:
             return
         tier = path_mod.above_tier(ladder)
         assert tier is not None  # `beyond_problem` found room on the scale
+        # G7: the discovery breaks the open rules that held the ladder at its old top, for
+        # everyone. They are struck: from now on the ladder itself says how far it goes, and
+        # a rule that nobody passes the old top would rule out every climb to the new rung.
+        struck = {rule.id for rule in path_mod.ceilings(self.state, ladder)}
+        bible = self.state.bible
+        bible.rules = [rule for rule in bible.rules if rule.id not in struck]
+        for kind in bible.extraordinary:
+            kind.rule_ids = [rule_id for rule_id in kind.rule_ids if rule_id not in struck]
         ladder.rungs.append(
             Rung(
                 name=new.name,

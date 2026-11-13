@@ -2,8 +2,10 @@
 
 The narrator's update names the rung and code decides whether it holds (`engine.apply`,
 `engine.path.beyond_problem`). The scene's own words have to name it (`check_update`), and
-from that scene on the character has heard of it. The one moment the narrator is told that a
-ladder can grow is a climb that stopped at its top, beside that step's outcome.
+from that scene on the character has heard of it. The narrator is told that a ladder can grow
+on the ladder itself, in WORLD, and beside a step that stopped at its top, however the model
+that reads the player's words filed it. The open rule that held the ladder there is struck
+once a rung above is told (G7).
 """
 
 import json
@@ -13,10 +15,11 @@ from engine.base import HOUR
 from engine.contracts import NewRung, OutcomeClass, Resolution, StateDelta, StepResolution
 from engine.resolve.powers import growth
 from engine.samples import cultivation_world
-from engine.state import LadderPosition, StepResult
+from engine.state import LadderPosition, RuleTopic, StepResult
 from engine.visibility import status_view
 from graph.llm import Node, Reply
 from graph.turn.check import RUNG_UNTOLD, check_update
+from graph.turn.context import interpret_prompt
 from tests.graph.test_turn_context import _section, brief
 from tests.graph.test_turn_graph import SCENE, play, section, turn_input
 
@@ -106,6 +109,79 @@ def test_a_scene_that_names_a_rung_above_the_top_widens_the_ladder(fake, make_cl
     assert shown.rungs[-1].stage  # a stage again, where the top had none
     # T6: the log holds no word of the scene, the rung's name included.
     assert not any(VOID in str(line) for line in log_lines())
+
+
+def test_a_reach_filed_against_the_worlds_open_rule_is_told_the_same(fake, make_client):
+    # The model that reads the player's words may file the reach as a plain step against the
+    # rule that nobody is known to have passed the top: the world check stops it with the
+    # rule's own words, and the narrator is still told that the ladder is open.
+    filed = {
+        "summary": REACH["summary"],
+        "steps": [
+            {
+                "text": "reach past Soul Transformation in seclusion",
+                "verb": "cultivate",
+                "kind": "task",
+                "proposed_duration_s": 12 * HOUR,
+                "facts": {"against_rule_ids": ["realm-ceiling"]},
+            }
+        ],
+    }
+    fake.script(Node.INTERPRET, Reply(json=filed))
+    fake.script(Node.NARRATOR, Reply(json=scene(rungs=[{"ladder_id": "realms", "name": VOID}])))
+
+    _, result = play(make_client(), turn_input(at_the_top()))
+
+    told = json.loads(section(fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text, "OUTCOME"))
+    (step,) = told["steps"]
+    assert step["why"] == "Nobody is known to have passed Soul Transformation."
+    assert "update.rungs" in step["beyond"]
+    state = result.state
+    assert rungs(state)[-1] == VOID
+    # G7: the discovery broke the rule, so nothing reads it any more.
+    assert "realm-ceiling" not in [rule.id for rule in state.bible.rules]
+    assert (
+        "Nobody is known to have passed" not in interpret_prompt(state, "I train").messages[-1].text
+    )
+    assert "Nobody is known to have passed" not in brief(state).user
+
+
+def test_a_step_another_rule_stopped_says_nothing_of_the_ladder():
+    # An open rule about something else that names the top rung is no word on how far it goes.
+    state = at_the_top()
+    law = next(rule for rule in state.bible.rules if rule.id == "realm-ceiling")
+    stopped = stopped_at_the_top(state)
+    stopped.steps[0].reason = law.text
+
+    (step,) = _section(brief(state, resolution=stopped).user, "OUTCOME")["steps"]
+    assert "beyond" in step
+
+    law.topic = RuleTopic.LAW
+    (step,) = _section(brief(state, resolution=stopped).user, "OUTCOME")["steps"]
+    assert "beyond" not in step
+
+
+def test_the_narrator_reads_on_the_ladder_itself_that_it_is_open():
+    # Beings from above the top can come into a scene with no climb to stop beside, so WORLD
+    # says it too, for the narrator alone and only where the story can pass the top.
+    state = at_the_top()
+
+    (seen,) = _section(brief(state).user, "WORLD")["ladders"]
+
+    assert seen["above"] == (
+        "Open: nobody on record stands above Soul Transformation. Only if beings stronger than "
+        "Soul Transformation come into the story, or someone finds what lies beyond it, the "
+        "scene gives the rung above a name and update.rungs lists it, with whoever this update "
+        "brings in who stands on it."
+    )
+    assert "update.rungs" not in interpret_prompt(state, "I wait").messages[-1].text
+    # Lin on the lowest realm has not been told of the top: the world's own rungs come first.
+    (low,) = _section(brief(cultivation_world()).user, "WORLD")["ladders"]
+    assert "above" not in low
+    # G7: nor under a rule that never changes.
+    next(rule for rule in state.bible.rules if rule.id == "realm-ceiling").fixed = True
+    (fixed,) = _section(brief(state).user, "WORLD")["ladders"]
+    assert "above" not in fixed
 
 
 def test_a_rung_the_scenes_words_never_named_is_left_out():

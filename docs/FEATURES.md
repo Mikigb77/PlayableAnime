@@ -172,9 +172,11 @@ The first version's state, checked against the code in WS18.
       scene that names a rung above it adds that rung, and the Path screen grows with it.
       Code decides whether it holds: the scene's own words name it, no rule that never
       changes ends the ladder there, the character has been told of the old top, and a rung
-      the story added is climbed before the ladder grows again. Nobody on record is lifted
-      onto it: the character's rank starts to fill toward it, others climb toward it at their
-      own pace, and only beings that same scene brought in stand on it (G18, G7, G19, W6).
+      the story added is climbed before the ladder grows again. The open rule that nobody
+      passes the old top is struck then, so the new rung can be climbed. Nobody on record is
+      lifted onto it: the character's rank starts to fill toward it, others climb toward it
+      at their own pace, and only beings that same scene brought in stand on it (G18, G7,
+      G19, W6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

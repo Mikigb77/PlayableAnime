@@ -124,10 +124,10 @@ def world_check(state: WorldState, actor: Character, step: IntentStep) -> Settle
         use.source is UseSource.POWER for beat in step.beats for use in beat.uses
     )
     if rules:
-        return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, _rule_reason(rules[0].text))
+        return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, rule_reason(rules[0].text))
     if uses_power and state.bible.grounded:
         grounded = [r for r in state.bible.rules if r.fixed]
-        reason = _rule_reason(grounded[0].text) if grounded else "Nothing like that exists here."
+        reason = rule_reason(grounded[0].text) if grounded else "Nothing like that exists here."
         return Settled(OutcomeClass.RULED_OUT, StepResult.FAILURE, reason)
     if not step.facts.world_allows:
         return Settled(
@@ -136,7 +136,8 @@ def world_check(state: WorldState, actor: Character, step: IntentStep) -> Settle
     return None
 
 
-def _rule_reason(text: str) -> str:
+def rule_reason(text: str) -> str:
+    """G8. The reason of a step one of the world's rules stopped: the rule's own words."""
     text = text.strip()
     return text if text.endswith((".", "!", "?")) else f"{text}."
 
