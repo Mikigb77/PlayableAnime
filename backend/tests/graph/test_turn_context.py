@@ -32,6 +32,7 @@ from engine.contracts import (
     PictureKind,
     PictureTrigger,
     PlannedEvent,
+    PlannedMoment,
     PlannedTalk,
     ProposedDeed,
     Resolution,
@@ -2150,6 +2151,80 @@ def test_the_narrator_reads_what_the_years_brought_someone_met_again():
     state.characters["char-9"].name = "Edrik"
     mara = _section(brief(state).user, "SCENE")["present"][-1]
     assert mara["news"][0]["with"] == {"id": "char-9", "name": "Edrik"}
+
+
+def test_the_brief_says_outright_that_the_two_meet_again_after_years():
+    """W6: in the second live story of a homecoming (2026-11-13) a man came back to his
+    village after nine years, `last_seen` stood under each neighbour, and one of them said
+    they hadn't expected him back so soon. So the brief says it on its own: whom this scene
+    has the player character meet again after a year or more, how long it has been, and that
+    the scene is told as that, with some of their news where the years brought any."""
+    state = _ten_years_on()
+
+    again = _section(brief(state).user, "MEETING AGAIN")
+
+    assert again["people"] == [{"who": "Mara", "last_seen": "10 years ago"}]  # not Ilse
+    assert "first time the player character is with them since" in again["tell"]
+    assert "nobody talks as if it had been days" in again["tell"]
+    assert "at least one piece of the news under them" in again["tell"]
+
+    # Someone the years brought nothing is met again all the same, with no news owed.
+    state.lives.clear()
+    quiet = _section(brief(state).user, "MEETING AGAIN")
+    assert quiet["people"] == again["people"] and "news" not in quiet["tell"]
+
+    # Under a year apart is no reunion, and neither is the scene after the one they met in.
+    state.characters["mara"].seen_s = state.world_s - 300 * DAY
+    assert "## MEETING AGAIN" not in brief(state).user
+    met, _ = pipeline.settle_lives(_ten_years_on())
+    assert "## MEETING AGAIN" not in brief(met).user
+
+    # The section carries its own instruction, so the rules only say what it is.
+    system = " ".join(prompts.NARRATOR_SYSTEM.split())
+    assert "- MEETING AGAIN: whom this scene has the player character meet again" in system
+
+
+def test_someone_far_away_brings_no_news_of_theirs_into_a_scene():
+    """W6, C6: the years show, and their news is told, when the two meet. In the second live
+    story of a homecoming (2026-11-13) a man heard in a city three days off what had come to
+    two of his village. Someone a scene only thinks of, speaks of or has a moment about is
+    far away, and so is their news: the brief hands it only of someone who is in the scene,
+    who is at its place, or whom an event of the world's brings."""
+    state = _ten_years_on()
+    state.scene.present_ids = ["tomas", "ilse"]
+    state.characters["mara"].location_id = "village"
+    asks = Intent(
+        steps=[
+            IntentStep(
+                text="ask Ilse about Mara",
+                verb="ask",
+                kind=ActionKind.CONVERSATION,
+                proposed_duration_s=60,
+                target_ids=["ilse", "mara"],
+            )
+        ]
+    )
+    thought = DirectorPlan(moment=PlannedMoment(id="m1", brief="A-MEMORY", cast_ids=["mara"]))
+
+    for told in (brief(state, intent=asks), brief(state, plan=thought)):
+        (mara,) = _section(told.user, "WHO ELSE")
+        assert mara["id"] == "mara" and not {"here", "last_seen", "news"} & mara.keys()
+        assert told.news == () and "## MEETING AGAIN" not in told.user
+
+    # An event of the world's brings her: she is met, years and news with her.
+    comes = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.VISITOR,
+        source=EventSource.DECK,
+        title="Mara comes up the lane",
+        brief="MARA-COMES",
+        cast_ids=["mara"],
+    )
+    told = brief(state, plan=DirectorPlan(event=comes))
+    (mara,) = _section(told.user, "WHO ELSE")
+    assert mara["last_seen"] == "10 years ago" and len(mara["news"]) == 3
+    assert told.news == ("life-1", "life-2", "life-3")
+    assert _section(told.user, "MEETING AGAIN")["people"][0]["who"] == "Mara"
 
 
 def test_news_stays_under_someone_until_a_scene_says_it_told_it():
