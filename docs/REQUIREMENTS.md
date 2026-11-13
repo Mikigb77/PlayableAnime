@@ -618,8 +618,10 @@ come, and how high, is the story's to say (Miki, 2026-11-13: "if it's a story, w
 just leave it be"), three at most on a rung the same scene told; what code holds is that
 nobody the story already had gets stronger by it. The narrator's standing text has no room
 for this (K1), so the field of its form says it, with that most people a story brings in
-stand on the lowest rungs or on none. Not built yet: in a world with no ladder, someone the
-story brings in is still an ordinary person on record.
+stand on the lowest rungs or on none, and the form asks for it of every character an update
+lists, empty for whoever stands on none, because the model answers only what its form
+requires as often as not. Not built yet: in a world with no ladder, someone the story brings
+in is still an ordinary person on record.
 
 **G19 Ranks and breakthroughs (P1).** Climbing a rung is an event, not a slow drift of numbers,
 and it is earned first (decided 2026-11-12, Miki: "Earned in play, then a throw", then "for the

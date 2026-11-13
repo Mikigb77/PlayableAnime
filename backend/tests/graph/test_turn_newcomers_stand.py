@@ -70,3 +70,21 @@ def test_the_narrators_form_says_when_a_character_comes_with_a_rung():
 
     assert "only for someone new" in rung["description"]
     assert "nobody is lifted" in rung["description"]
+    # Gemini answers only what a form requires as often as not, so it is always asked: a
+    # string, empty for whoever stands on no rung.
+    assert "rung" in form["$defs"]["CharacterChange"]["required"]
+    assert rung["type"] == "string"
+
+
+def test_a_change_that_leaves_the_rung_empty_puts_nobody_anywhere(fake, make_client):
+    tao = {"id": "gate_boy", "name": "Little Tao", "age": 9, "location_id": "well", "rung": ""}
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(
+        Node.NARRATOR, Reply(json=scene(tao, {"id": "zhao", "rung": ""}, present=("gate_boy",)))
+    )
+
+    _, result = play(make_client(), turn_input())
+
+    assert "rejected" not in [i.code for i in result.issues]
+    assert result.state.characters["gate_boy"].sheet.ladders == []
+    assert on_realms(result.state, "zhao") == 1
