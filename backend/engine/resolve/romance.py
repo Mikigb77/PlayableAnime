@@ -2,8 +2,10 @@
 
 The interpret step proposes the move (`IntentStep.romance`), and the step's own words count
 beside it: a kiss, a flirt or a night together is an advance whatever the reading left out
-(`engine.limits.intimacy`). Code decides what the move does, from the bond on record and from
-the other person's own heart (`engine.bonds`), logic first (A2):
+(`engine.limits.intimacy`). A night together is an advance beyond a kiss, which the reading
+says as a move of its own (`RomanceMove.NIGHT`) or the step's words do. Code decides what
+the move does, from the bond on record and from the other person's own heart
+(`engine.bonds`), logic first (A2):
 
 - An **advance** on a partner whose heart is in it is certain, so nobody throws to kiss their
   own wife. Beyond a kiss it is certain with a partner whose heart is in it or with anyone drawn
@@ -132,6 +134,8 @@ def read(
     move = step.romance or (RomanceMove.ADVANCE if words is not None else None)
     if move is None:
         return None
+    if move is RomanceMove.NIGHT:
+        move = RomanceMove.ADVANCE  # one that goes beyond a kiss (`words`)
     other = _with(state, actor, step)
     if other is None or not (is_adult(actor) and is_adult(other)):
         return None
@@ -142,7 +146,7 @@ def read(
     # Code says what the move is measured on and whom it is made to, whatever the reading
     # gave: a step of words to the other, whose own heart stands in its way (A2). On the real
     # model a kiss read with no axis had nobody in its way, and was certain (2026-11-13).
-    told = {"romance": move, "axis": PowerAxis.INFLUENCE}
+    told = {"romance": step.romance or move, "axis": PowerAxis.INFLUENCE}
     if other.id not in step.target_ids:
         told["target_ids"] = [other.id, *step.target_ids]
     wooing = Wooing(

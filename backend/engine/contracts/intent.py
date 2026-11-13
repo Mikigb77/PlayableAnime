@@ -51,7 +51,10 @@ class RomanceMove(StrEnum):
     """W17. A move in a romance between the character and someone the step is aimed at. The
     interpret step proposes it; code decides what it does to their bond (`engine.bonds`)."""
 
-    ADVANCE = "advance"  # flirting, courting, a kiss, a night together
+    ADVANCE = "advance"  # flirting, courting, a kiss
+    # Making love, a night as lovers: an advance beyond a kiss. Its own answer, since a
+    # reading asked to say it through the step's verb left it an advance (2026-11-13).
+    NIGHT = "night_together"
     DECLARE = "declare"  # asking them to be a couple, or saying yes to it
     PROPOSE = "propose"  # asking them to promise marriage, or saying yes to it
     WED = "wed"  # marrying them
