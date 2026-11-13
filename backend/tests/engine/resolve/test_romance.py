@@ -20,9 +20,15 @@ from engine.state import (
     BondStep,
     Character,
     CharacterSheet,
+    CharacterStatus,
+    DeathCertainty,
     Disposition,
+    Encounter,
+    EncounterKind,
     PendingEvent,
+    Place,
     PowerAxis,
+    Route,
     StepResult,
     WorldState,
 )
@@ -503,3 +509,336 @@ def test_a_step_that_is_no_move_leaves_every_romance_alone():
     done = one(state, chat)
     assert done.effects.bonds == []
     assert heart(after(state, done)) == 50
+
+
+# --- a move that wrongs a partner is a deed (W1, W17) ------------------------------------------
+
+
+def wrong(done):
+    """The step's deed that wrongs someone, if it left one."""
+    return next((d for d in done.deeds if d.wronged_ids), None)
+
+
+def lie_with(who: str = "mara"):
+    return to(who, f"sleep with {who}", RomanceMove.ADVANCE, verb="sleep", duration_s=8 * HOUR)
+
+
+def married_to(state: WorldState, who: str, partner: Character) -> WorldState:
+    """Someone on record married to `who` since before the story, and not in the scene."""
+    add(state, partner, present=False)
+    wed_long_ago = BondStep(stage=BondStage.MARRIED, how="As the story opens.")
+    state.bonds[f"bond-{partner.id}"] = Bond(
+        id=f"bond-{partner.id}",
+        a_id=partner.id,
+        b_id=who,
+        stage=BondStage.MARRIED,
+        steps=[wed_long_ago],
+    )
+    return state
+
+
+def since(state: WorldState, world_s: int) -> WorldState:
+    """The world with what stands between Tomas and Mara begun at `world_s`, after his
+    marriage, and some days gone by."""
+    state.bonds["bond-9"].steps[0].world_s = world_s
+    state.world_s = world_s + 4 * DAY
+    return state
+
+
+def jorn() -> Character:
+    return Character(id="jorn", name="Jorn", age=33, location_id="village")
+
+
+def test_a_move_toward_someone_else_is_a_deed_that_wrongs_a_partner():
+    state = world(0)  # Tomas is married to Ilse
+    done = one(state, flirt(), seed_for(state, flirt(), StepResult.FAILURE))
+    deed = wrong(done)
+    assert deed is not None and len(done.deeds) == 1  # in place of the step's plain deed
+    assert (deed.kind, deed.target_ids, deed.wronged_ids) == ("court", ["mara"], ["ilse"])
+    assert deed.victim_ids == [] and deed.actor_id is None
+    assert deed.severity == bonds.SLIGHT  # it went nowhere
+
+
+def test_how_grave_it_is_follows_how_far_it_went():
+    # Courting by now: an affair, whatever came of this evening.
+    courting = world(50, BondStage.COURTING)
+    assert wrong(one(courting, flirt())).severity == bonds.AFFAIR
+    # An ask is an affair when the answer is no, and a betrayal when it makes them a couple.
+    cold = world(0)
+    assert wrong(one(cold, ask())).severity == bonds.AFFAIR
+    won = one(world(90, BondStage.COURTING), ask())
+    assert wrong(won).severity == bonds.BETRAYAL and wrong(won).kind == "court"
+    # A night together is a betrayal, and told as what it was.
+    night = one(world(90), lie_with())
+    assert night.outcome_class is OutcomeClass.CERTAIN
+    assert (wrong(night).kind, wrong(night).severity) == ("lie_with", bonds.BETRAYAL)
+    # One that wasn't is an affair.
+    refused = one(world(0), lie_with())
+    assert refused.outcome_class is OutcomeClass.RULED_OUT
+    assert (wrong(refused).kind, wrong(refused).severity) == ("court", bonds.AFFAIR)
+    # A wedding is one once the two are wed, and nothing while it can't be.
+    wedding = one(since(world(90, BondStage.PROMISED), DAY), wed())
+    assert (wrong(wedding).kind, wrong(wedding).severity) == ("wed", bonds.BETRAYAL)
+    assert wrong(one(since(world(90, BondStage.TOGETHER), DAY), wed())) is None
+
+
+def test_a_couple_already_is_an_affair_each_time_and_no_new_betrayal():
+    lovers = since(world(90, BondStage.TOGETHER), DAY)
+    kiss = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(lovers, kiss)).severity == bonds.AFFAIR
+    assert wrong(one(lovers, ask())).severity == bonds.AFFAIR  # they are together already
+
+
+def test_a_move_that_wrongs_nobody_is_no_such_deed():
+    alone = world(0)
+    alone.bonds.clear()
+    assert wrong(one(alone, flirt())) is None
+    # A kiss with his own wife wrongs nobody, and needs no deed at all.
+    home = world(0)
+    kiss = to("ilse", "kiss Ilse", RomanceMove.ADVANCE, verb="kiss")
+    assert one(home, kiss).deeds == []
+    # Ending it is no wrong, and nor is anything toward close family.
+    assert wrong(one(world(50, BondStage.COURTING), part())) is None
+    kin = world(0)
+    kin.characters["mara"].parent_ids = [YOU]
+    assert wrong(one(kin, flirt())) is None
+
+
+def test_where_several_partners_are_the_custom_nobody_is_wronged():
+    state = world(50, BondStage.COURTING)
+    state.bible.several_partners = True
+    assert wrong(one(state, flirt())) is None
+
+
+def test_someone_left_earlier_in_the_plan_is_not_wronged_by_what_comes_after():
+    state = world(0)
+    plan = Intent(steps=[part("ilse"), flirt()])
+    left, flirted = resolve(state, plan).steps
+    assert left.effects.bonds and wrong(flirted) is None
+
+
+def test_whoever_came_after_is_not_wronged_by_the_first_two():
+    state = since(world(90, BondStage.TOGETHER), 5 * DAY)  # Mara came after Ilse
+    kiss_wife = to("ilse", "kiss Ilse", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(state, kiss_wife)) is None
+    kiss_mara = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    assert wrong(one(state, kiss_mara)).wronged_ids == ["ilse"]
+
+
+def test_two_who_shared_someone_as_the_story_opened_mind_neither_kiss():
+    state = world(90, BondStage.MARRIED)  # two wives, both from the premise
+    for who in ("ilse", "mara"):
+        kiss = to(who, f"kiss {who}", RomanceMove.ADVANCE, verb="kiss")
+        assert one(state, kiss).deeds == []
+
+
+def test_the_partner_of_whoever_is_courted_is_wronged_too():
+    state = married_to(world(0), "mara", jorn())
+    assert wrong(one(state, flirt())).wronged_ids == ["ilse", "jorn"]  # the actor's own first
+    state.bonds.pop("bond-1")  # Tomas is no longer married
+    assert wrong(one(state, flirt())).wronged_ids == ["jorn"]
+    state.characters["jorn"].status = CharacterStatus.DEAD
+    state.characters["jorn"].death_certainty = DeathCertainty.CONFIRMED
+    assert wrong(one(state, flirt())) is None  # the dead mind nothing
+
+
+# --- they have to be there (W10) --------------------------------------------------------------
+
+WALK = 40 * 60  # the farm to Millbrook, by the map
+
+
+def gone_home(state: WorldState, where: str | None = "village") -> WorldState:
+    """Mara has gone home: out of the scene, and on record in Millbrook."""
+    state.characters["mara"].location_id = where
+    state.scene.present_ids = [i for i in state.scene.present_ids if i != "mara"]
+    return state
+
+
+def in_town(state: WorldState, away_s: int = 3 * HOUR) -> WorldState:
+    """Mara has gone to Harrow, a market town `away_s` down the road that Tomas knows."""
+    state.places["town"] = Place(id="town", name="Harrow", kind="town", known_by=[YOU])
+    state.places["farm"].routes.append(Route(to_id="town", travel_s=away_s))
+    return gone_home(state, "town")
+
+
+def week_of_courting():
+    return to(
+        "mara",
+        "court her for a week",
+        RomanceMove.ADVANCE,
+        verb="court",
+        kind=ActionKind.TIME_SKIP,
+        duration_s=7 * DAY,
+    )
+
+
+def kiss():
+    return to("mara", "kiss her", RomanceMove.ADVANCE, verb="kiss", duration_s=60)
+
+
+def test_a_move_goes_to_someone_who_is_a_short_way_off():
+    state = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING))
+    done = one(state, ask())
+    # He walks over to Millbrook and asks her there: the way is the least the step takes.
+    assert done.trip is not None and (done.trip.from_id, done.trip.to_id) == ("farm", "village")
+    assert done.trip.arrived and done.trip.takes_s == WALK
+    assert done.outcome_class is OutcomeClass.CERTAIN and done.duration_s == WALK
+    played = pipeline.play_out(state, resolve(state, Intent(steps=[ask()]), 0), ctx(), rng(0))
+    assert played.state.characters[YOU].location_id == "village"
+    assert stage(played.state) is BondStage.TOGETHER
+
+
+def test_the_way_is_made_whatever_they_answer():
+    state = gone_home(world(0))
+    whole = resolve(state, Intent(steps=[ask()]), 0)
+    [done] = whole.steps
+    # Her heart isn't there, and it was at her door that she said so.
+    assert (done.outcome_class, done.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+    assert "heart isn't there" in done.reason
+    assert done.trip is not None and done.trip.arrived and done.duration_s == WALK
+    played = pipeline.play_out(state, whole, ctx(), rng(0))
+    assert played.state.characters[YOU].location_id == "village"
+    assert played.state.world_s - state.world_s == WALK
+
+
+def test_a_move_toward_someone_far_off_reaches_nobody():
+    state = in_town(world(bonds.DECLARE_SURE, BondStage.COURTING))
+    for made in (ask(), flirt(), kiss(), propose(), wed()):
+        done = one(state, made)
+        assert (done.outcome_class, done.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+        assert done.reason == "Mara isn't here." and done.roll is None
+        # He went nowhere, and nothing of it is on record: no heart moved, no stage, and no
+        # deed that wrongs Ilse.
+        assert done.trip is None and not done.deeds and done.wooing is None
+        told = after(state, done)
+        assert heart(told) == bonds.DECLARE_SURE and stage(told) is BondStage.COURTING
+    # And nothing opens with someone who never heard it.
+    fresh = in_town(world(50))
+    assert stage(after(fresh, one(fresh, flirt()))) is None
+
+
+def test_someone_at_the_place_or_in_the_scene_is_there():
+    # About the farm and out of the scene: the scene can bring her in (W4).
+    about = world(bonds.DECLARE_SURE, BondStage.COURTING)
+    about.scene.present_ids = [YOU]
+    assert one(about, ask()).outcome_class is OutcomeClass.CERTAIN
+    assert one(about, ask()).trip is None
+    # In the scene, whatever the record says of where she is.
+    here = world(bonds.DECLARE_SURE, BondStage.COURTING)
+    here.characters["mara"].location_id = "village"
+    assert one(here, ask()).trip is None
+    # Nowhere on record: she is the scene's to place.
+    unplaced = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING), None)
+    assert one(unplaced, ask()).outcome_class is OutcomeClass.CERTAIN
+    assert one(unplaced, ask()).trip is None
+
+
+def test_going_to_them_first_finds_them():
+    state = in_town(world(bonds.DECLARE_SURE, BondStage.COURTING))
+    ride = step("ride to Harrow", ActionKind.TRAVEL, 3 * HOUR, destination="town")
+    went, asked = resolve(state, Intent(steps=[ride, ask()]), 0).steps
+    assert went.trip is not None and went.trip.arrived
+    assert asked.outcome_class is OutcomeClass.CERTAIN and asked.trip is None
+    assert stage(after(state, went, asked)) is BondStage.TOGETHER
+
+
+def test_a_step_that_goes_somewhere_else_finds_nobody_there():
+    state = in_town(gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING)))
+    there = to("mara", "ask her to be with me", RomanceMove.DECLARE, destination="village")
+    done = one(state, there)
+    # He went to Millbrook, as he said, and she is in Harrow.
+    assert done.reason == "Mara isn't here." and done.outcome_class is OutcomeClass.RULED_OUT
+    assert done.trip is not None and done.trip.to_id == "village" and done.trip.arrived
+    assert stage(after(state, done)) is BondStage.COURTING
+    # Where the step goes is where she is: asked there.
+    town = to("mara", "ask her to be with me", RomanceMove.DECLARE, destination="town")
+    found = one(state, town)
+    assert found.outcome_class is OutcomeClass.CERTAIN and found.trip.to_id == "town"
+
+
+def test_a_stretch_of_courting_goes_further_than_a_moment_does():
+    state = in_town(world(30), DAY)
+    assert one(state, kiss()).reason == "Mara isn't here."
+    week = one(state, week_of_courting())
+    # A day's ride is a small part of a week: he goes to her, and the week is spent there.
+    assert week.outcome_class is not OutcomeClass.RULED_OUT
+    assert week.trip is not None and week.trip.to_id == "town" and week.trip.arrived
+    assert week.duration_s >= 7 * DAY
+    # Two days of it are no time for a day's ride each way with anything left.
+    days = to("mara", "court her", RomanceMove.ADVANCE, verb="court", duration_s=2 * DAY)
+    assert one(state, days).reason == "Mara isn't here."
+
+
+def test_courting_cut_short_on_the_way_to_them_didnt_happen():
+    """E7, W10: the way to her is no time with her. Stopped on the road, a fortnight of
+    courting moved no heart, and stopped later it keeps the time he was there."""
+    rest, ride = bonds.REST_S[bonds.pace("mara")], 12 * HOUR
+    fortnight = flirt(kind=ActionKind.TIME_SKIP, duration_s=14 * DAY)
+
+    def stopped_after(due_s: int) -> pipeline.PlayOut:
+        state = cut_at(in_town(world(), ride), due_s)
+        seed = seed_for(state, fortnight, StepResult.SUCCESS)
+        whole = resolve(state, Intent(steps=[fortnight]), seed)
+        return pipeline.play_out(state, whole, ctx(), rng(seed))
+
+    early, late = stopped_after(ride - HOUR), stopped_after(ride + 2 * rest + HOUR)
+
+    (on_the_road,) = early.resolution.steps
+    assert on_the_road.interrupted and not on_the_road.trip.arrived
+    assert heart(early.state) == 0 and stage(early.state) is None
+    assert early.state.characters[YOU].location_id == "farm"
+    (courted,) = late.resolution.steps
+    assert courted.interrupted and courted.duration_s == ride + 2 * rest + HOUR
+    assert courted.trip.arrived and late.state.characters[YOU].location_id == "town"
+    assert heart(late.state) == bonds.NOTCH * 2
+
+
+def test_nobody_goes_to_someone_they_have_no_way_to_find():
+    # Nothing on the map joins the two.
+    state = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING), "isle")
+    state.places["isle"] = Place(id="isle", name="the Isle", kind="island", known_by=[YOU])
+    assert one(state, week_of_courting()).reason == "Mara isn't here."
+    # A cave in the valley that he has never heard of: a short walk, to nowhere he knows.
+    hidden = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING), "cave")
+    hidden.places["cave"] = Place(id="cave", name="the cave", kind="cave", parent_id="valley")
+    done = one(hidden, ask())
+    assert done.reason == "Mara isn't here." and done.trip is None
+    hidden.places["cave"].known_by = [YOU]
+    found = one(hidden, ask())
+    assert found.trip is not None and found.trip.to_id == "cave" and found.trip.arrived
+
+
+def test_nobody_walks_off_from_a_fight_to_find_them():
+    state = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING))
+    state.scene.encounter = Encounter(
+        kind=EncounterKind.FIGHT, opponent_ids=["bram"], started_turn=1, started_s=state.world_s
+    )
+    done = one(state, ask())
+    assert done.reason == "Mara isn't here." and done.trip is None
+
+
+def test_what_wrongs_someone_is_done_where_the_step_went():
+    """W1, W2: his wife is at the gate with him, and Mara is in Millbrook. The kiss he walks
+    over for is done in Millbrook: old Bram, who is there, sees it, and Ilse doesn't."""
+    state = gone_home(world(bonds.DECLARE_SURE, BondStage.COURTING))
+    assert "ilse" in state.scene.present_ids
+    whole = resolve(state, Intent(steps=[kiss()]), 0)
+    [done] = whole.steps
+    assert done.trip is not None and done.trip.to_id == "village"
+    assert [d.place_id for d in done.deeds] == ["village"]
+    played = pipeline.play_out(state, whole, ctx(), rng(0))
+    [deed] = [d for d in played.state.deeds.values() if "ilse" in d.wronged_ids]
+    assert deed.place_id == "village"
+    assert "bram" in deed.witness_ids and "ilse" not in deed.witness_ids
+    # Read as a few steps over to her, it is the same walk and the same place.
+    over = to("mara", "walk over and kiss her", RomanceMove.ADVANCE, kind=ActionKind.MOVE)
+    stepped = one(state, over)
+    assert stepped.trip.to_id == "village" and stepped.duration_s == WALK
+    assert [d.place_id for d in stepped.deeds] == ["village"]
+
+
+def test_ending_it_needs_nobody_there():
+    state = in_town(world(60, BondStage.TOGETHER))
+    done = one(state, part())
+    assert done.outcome_class is OutcomeClass.CERTAIN and done.trip is None
+    assert after(state, done).bonds["bond-9"].stage is BondStage.OVER

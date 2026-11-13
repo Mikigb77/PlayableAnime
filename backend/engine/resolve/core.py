@@ -561,12 +561,25 @@ def _settle_step(
 
     wooing: romance.Wooing | None = None
     courted: WooingSoFar | None = None
+    affair: ProposedDeed | None = None
     if settled is None and bridging is None:
         # W17. A move in a romance is ruled on by the bond on record and the other's own
         # heart first (A2). What they leave open is thrown for like any step of words.
-        wooing = romance.read(state, actor, step, ctx.settings.language, frame.hearts)
+        wooing = romance.read(
+            state,
+            actor,
+            step,
+            ctx.settings.language,
+            frame.hearts,
+            frame.place_id,
+            trip,
+            held=frozen or state.scene.encounter is not None,
+        )
         if wooing is not None:
             step, settled = wooing.step, wooing.settled
+            if wooing.goes is not None:
+                # W10. They are elsewhere and not far, so the step goes to them first.
+                trip, route_s = wooing.goes, wooing.goes.route_s
 
     met: strangers_mod.Met | None = None
     if settled is None and step.aim.harmful and step.stranger is not None:
@@ -655,10 +668,14 @@ def _settle_step(
     tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
     # W10. A trip that is made takes what its way takes: all of a step that is the going
     # itself, and the least of one that goes somewhere to do something there.
-    made = (
-        trip is not None
-        and settled.outcome_class is not OutcomeClass.RULED_OUT
-        and settled.result is not StepResult.FAILURE
+    # A move in a romance that went somewhere got there whatever came of it (W17): the one it
+    # went to turned it down there, or wasn't there to be found.
+    made = trip is not None and (
+        wooing is not None
+        or (
+            settled.outcome_class is not OutcomeClass.RULED_OUT
+            and settled.result is not StepResult.FAILURE
+        )
     )
     way_s = route_s if made else None
     fixed_s = way_s if going else None
@@ -825,6 +842,16 @@ def _settle_step(
         courted = romance.so_far(
             wooing, settled, [_sentence(line) for line in said], over_the_top=over_the_top
         )
+        # A move that wrongs a partner of either is a deed of its own (W1).
+        affair = romance.deed(
+            state,
+            actor,
+            wooing,
+            settled,
+            frame.hearts[wooing.other.id],
+            {k: v for k, v in frame.hearts.items() if k != wooing.other.id},
+            in_stopped_time=frozen_now,
+        )
     if chain:
         places, deed = _chain_places(state, actor, step, chain)
         effects = _merge(effects, places)
@@ -931,7 +958,10 @@ def _settle_step(
     else:
         perils, escaped = [], []
 
-    if opposition is not None:
+    if affair is not None:
+        # W17. The move is the deed, with whom it wrongs, in place of the step's plain one.
+        deeds.insert(0, affair)
+    elif opposition is not None:
         # Harm to oneself is no deed against anyone (W1): only others are its victims.
         others_hit = [t for t in targets if t.id != actor.id]
         deed = proposed_deed(
@@ -996,6 +1026,12 @@ def _settle_step(
         )
         if arrived and trip.to_id is not None:
             frame.place_id = trip.to_id
+            if not going or (wooing is not None and wooing.goes is not None):
+                # W1, W2. What a step did where it went was done there, before whoever is there.
+                deeds = [
+                    d if d.place_id else d.model_copy(update={"place_id": trip.to_id})
+                    for d in deeds
+                ]
     resolution = StepResolution(
         index=index,
         text=step.text,

@@ -452,6 +452,18 @@ class NpcP(Proposal):
         "(betrothed, engaged) or married. Both are adults with an age. null for everyone "
         "else.",
     )
+    partner_id: str = Field(
+        default="",
+        description="W17: the other key character this person is in a romance with as the "
+        "story opens, by id: their wife, husband, betrothed or lover. Written on one of the "
+        "two; both are adults with an age. Empty for everyone else, and for a romance with "
+        "the player character, which is bond_with_player.",
+    )
+    partner_bond: BondAtStart = Field(
+        default="together",
+        description="How far it has come with partner_id: courting, together (a couple), "
+        "promised (betrothed, engaged) or married.",
+    )
     agenda: AgendaP | None = Field(default=None, description="Hidden from the player.")
     secrets: list[str] = Field(default_factory=list)
     player_knows: PlayerKnows = Field(
@@ -534,6 +546,12 @@ class WorldProposal(Proposal):
     laws: list[LawP] = Field(default_factory=list)
     norms: list[str] = Field(
         default_factory=list, description="What the world finds monstrous or normal."
+    )
+    several_partners: bool = Field(
+        default=False,
+        description="W17: true only where having several partners at once is the custom of "
+        "this world, as with plural marriage or a harem, so another romance wrongs no "
+        "partner. false where a couple are held to each other, which is most worlds.",
     )
     places: list[PlaceP] = Field(default_factory=list, description="Two to ten places.")
     factions: list[FactionP] = Field(default_factory=list, description="At most eight.")
@@ -618,6 +636,11 @@ class WorldChange(Proposal):
     )
     norms: list[str] = Field(
         default_factory=list, description="Only if the change alters it: the whole new list."
+    )
+    several_partners: bool | None = Field(
+        default=None,
+        description="Only if the change alters whether having several partners at once is "
+        "the custom of this world (W17): true or false. null otherwise.",
     )
     known_facts: list[str] = Field(
         default_factory=list, description="Only if the change alters it: the whole new list."

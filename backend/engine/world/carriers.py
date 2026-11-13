@@ -50,12 +50,14 @@ from engine.world.geography import (
 )
 from engine.world.knowledge import faction_learns, protects, region_learns, would_talk
 from engine.world.norms import Nature, deed_nature, is_beast, is_crime
+from engine.world.returns import left
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
 from engine.world.telling import account
 from engine.world.tuning import (
     CALL_S,
     CHATTER_S,
+    ERRAND_STAY_S,
     FLEE_S,
     RUMOR_HOPS,
     RUMOR_MIN_SEVERITY,
@@ -143,7 +145,10 @@ def _report_targets(state: WorldState, deed: Deed) -> list[str]:
     targets: list[str] = []
     if deed.agreed:
         return targets  # W1: what both sides agreed to is nobody's to report
-    if deed_nature(state, deed) is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
+    what = deed_nature(state, deed)
+    if what is Nature.ROMANCE:
+        return targets  # W17: whom someone courts is no faction's business
+    if what is Nature.HUNT and deed.severity < RUMOR_MIN_SEVERITY:
         return targets
     for place_id in ancestors(state, deed.place_id):
         holder = state.places[place_id].controller_id
@@ -256,7 +261,9 @@ def on_report(w: World, event: PendingEvent) -> None:
                 _seen_going(deed, witness.id, faction_id)
             _out_of_scene(state, [witness.id])
         if moves:
-            witness.location_id = event.place_id
+            # They are where they brought it, and go back once it is told (W11).
+            came_from, witness.location_id = witness.location_id, event.place_id
+            left(w, witness, came_from, ERRAND_STAY_S)
     if brings or (deed.visibility is Visibility.PUBLIC and not event.payload.get("waits")):
         faction_learns(w, faction_id, deed)
         return

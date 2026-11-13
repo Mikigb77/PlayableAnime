@@ -6,7 +6,8 @@ number of steps (E7, K8). Each tick covers the in-world time since the last one.
 factions destroyed in that window for a later revival (W15a), keeps clocks moving (E2), keeps the
 active cast within its caps (W15), and lets each active faction and key NPC make a move of their
 own: mend or sour a relation, consolidate what they hold, recover, travel, heal, or pursue their
-goal, which advances a clock of theirs that moves only by effort. Each move is recorded as a fact
+goal, which advances a clock of theirs that moves only by effort. Travel is an outing: they come
+back from it (`engine.world.returns`). Each move is recorded as a fact
 with an agenda origin, for the director to draw on (W16) and for the model part of the tick (W6,
 P1) to tell as what they actually did. Dormant characters and factions don't move.
 """
@@ -30,12 +31,14 @@ from engine.world.cast import enforce_caps, schedule_revivals
 from engine.world.clocks import advance, ensure_clock_events
 from engine.world.geography import news_neighbours
 from engine.world.knowledge import shift_attitude
+from engine.world.returns import left, trip_of
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
 from engine.world.tuning import (
     AGENDA_FACTS_KEPT,
     FACTION_MOVE_MEAN_S,
     MAX_TICKS_PER_PASSAGE,
     NPC_MOVE_MEAN_S,
+    OUTING_STAY_S,
     TICK_INTERVAL_S,
 )
 
@@ -196,7 +199,8 @@ def _npc_move(w: World, npc: Character) -> None:
     if npc.sheet.condition.health is not Health.UNHURT:
         moves.append("heal")
     if npc.id not in state.scene.present_ids and npc.location_id in state.places:
-        if news_neighbours(state, npc.location_id):
+        # Someone already away on a trip of the world's making goes no further from home.
+        if news_neighbours(state, npc.location_id) and trip_of(state, npc.id) is None:
             moves.append("travel")
     peers = [
         c
@@ -214,8 +218,9 @@ def _npc_move(w: World, npc: Character) -> None:
         _record(w, npc.id, f"{npc.name}'s wounds mend.", [npc.id])
     elif move == "travel":
         place_id, _ = stream.choice(news_neighbours(state, npc.location_id))
-        npc.location_id = place_id
+        was, npc.location_id = npc.location_id, place_id
         _record(w, npc.id, f"{npc.name} goes to {state.places[place_id].name}.", [npc.id])
+        left(w, npc, was, OUTING_STAY_S)  # an outing: they come back
     elif move == "bond":
         other = stream.choice(peers)
         change = stream.choice([1, -1]) * stream.randint(5, 15)

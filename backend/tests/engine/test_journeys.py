@@ -9,6 +9,7 @@ from engine.apply import DeltaSource, apply_delta
 from engine.base import DAY, HOUR, MINUTE
 from engine.contracts import (
     ActionKind,
+    Aim,
     Challenge,
     Intent,
     OutcomeClass,
@@ -32,6 +33,7 @@ from engine.state import (
     PendingEvent,
     Place,
     PlaceSetting,
+    PowerAxis,
     Route,
     StepResult,
     WorldState,
@@ -954,3 +956,32 @@ def test_no_route_is_written_from_what_their_own_means_took():
 
     assert played.resolution.steps[0].trip.by_own_means
     assert not has_route(state, "farm", "mill")  # the mare's time says nothing of the road
+
+
+def test_what_a_step_does_where_it_went_is_done_there():
+    """W1, W2: Tomas walks to Millbrook and knocks old Bram down. It was done in Millbrook,
+    before whoever is there, and Ilse, who watched him leave the farm, saw none of it."""
+    blow = step(
+        "walk to Millbrook and knock old Bram down",
+        verb="attack",
+        aim=Aim.SUBDUE,
+        target_ids=["bram"],
+        axis=PowerAxis.MIGHT,
+        facts=facts(opposition_ids=["bram"], can_respond=True),
+        destination="village",
+    )
+    state = valley()
+    state.characters["bram"].location_id = "village"
+    assert "ilse" in state.scene.present_ids
+    seed = next(s for s in SEEDS if one(state, blow, seed=s).result is StepResult.SUCCESS)
+    played = play(state, blow, seed=seed)
+
+    [done] = played.resolution.steps
+    assert done.trip.arrived and [d.place_id for d in done.deeds] == ["village"]
+    [deed] = played.state.deeds.values()
+    assert deed.place_id == "village" and "ilse" not in deed.witness_ids
+    assert played.state.player.location_id == "village"
+    # The going itself is done on the way, wherever the record has them when it is recorded.
+    ride = go("ride through Millbrook, knocking old Bram down", "village", WALK, verb="attack")
+    ride = ride.model_copy(update={"aim": Aim.SUBDUE, "target_ids": ["bram"]})
+    assert [d.place_id for d in one(state, ride).deeds] == [None]

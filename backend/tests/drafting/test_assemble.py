@@ -592,6 +592,111 @@ def test_a_drafted_romance_is_between_recorded_adults_who_arent_family():
     assert [bond.b_id for bond in state.bonds.values()] == ["mei"]
 
 
+def test_couples_among_the_cast_are_on_record_so_a_rival_exists():
+    """W17: a husband the draft names is a husband from the first scene, so courting his wife
+    wrongs someone who is on record. One bond for each pair, between recorded adults who
+    aren't family, and nobody is drawn to the player character by it."""
+    zhao, mo = _world().npcs
+    world = _world(
+        npcs=[
+            zhao,
+            mo,
+            NpcP(id="mei", name="Su Mei", age=23, partner_id="han", partner_bond="married"),
+            NpcP(id="han", name="Han Bo", age=30, partner_id="Su Mei"),  # the same two, once
+            NpcP(id="lan", name="Lan Yue", age=21, partner_id="zhao"),  # a couple, no vows said
+            NpcP(id="pia", name="Pia", age=16, partner_id="elder-mo"),  # F3
+            NpcP(id="qin", name="Qin", age=40, partner_id="qin"),
+            NpcP(id="rou", name="Rou", age=33, partner_id="nobody"),
+            NpcP(id="son", name="Han Yi", age=19, parent_ids=["han"], partner_id="han"),
+        ]
+    )
+
+    state = assemble(world, _grown())
+
+    assert [(b.id, b.a_id, b.b_id, b.stage.value) for b in state.bonds.values()] == [
+        ("bond-1", "mei", "han", "married"),
+        ("bond-2", "lan", "zhao", "together"),
+    ]
+    assert all(b.steps[0].how == "As the story opens." for b in state.bonds.values())
+    assert bonds.partners(state, "han") == ["mei"]
+    assert bonds.wronged(state, PLAYER_ID, "mei") == ["han"]
+    assert bonds.wronged(state, PLAYER_ID, "rou") == []
+    assert state.characters["mei"].attitude_toward(PLAYER_ID).attraction == 0
+    assert state.new_id("bond") == "bond-3"
+    assert check_state(state) == []
+
+
+def test_a_partner_who_is_the_player_character_is_their_romance():
+    """The draft may write the player character's own wife as a partner by their id, which the
+    prompt gives, or by their name. It is the same romance, written once, and the field that
+    is theirs wins."""
+    zhao, mo = _world().npcs
+    world = _world(
+        npcs=[
+            zhao,
+            mo,
+            NpcP(
+                id="mei",
+                name="Su Mei",
+                age=23,
+                partner_id=PLAYER_ID,
+                partner_bond="married",
+                attitude_to_player=AttitudeP(affinity=60),
+            ),
+            NpcP(
+                id="lan",
+                name="Lan Yue",
+                age=21,
+                bond_with_player="courting",
+                partner_id="Lin Feng",
+                partner_bond="married",
+            ),
+        ]
+    )
+
+    state = assemble(world, _grown())
+
+    assert [(b.a_id, b.b_id, b.stage.value) for b in state.bonds.values()] == [
+        (PLAYER_ID, "mei", "married"),
+        (PLAYER_ID, "lan", "courting"),
+    ]
+    assert state.characters["mei"].attitude_toward(PLAYER_ID).attraction == 60
+    assert check_state(state) == []
+
+
+def test_several_partners_is_the_custom_only_where_the_draft_says_so():
+    zhao, mo = _world().npcs
+    npcs = [
+        zhao,
+        mo,
+        NpcP(id="mei", name="Su Mei", age=23, bond_with_player="married"),
+        NpcP(id="lan", name="Lan Yue", age=21, bond_with_player="married"),
+        NpcP(id="hua", name="Hua", age=30),
+    ]
+
+    held = assemble(_world(npcs=npcs), _grown())
+    custom = assemble(_world(npcs=npcs, several_partners=True), _grown())
+
+    # Two wives from the story's first day have no claim on each other, and a third romance
+    # wrongs both, unless the world's custom is that it wrongs nobody.
+    assert held.bible.several_partners is False and custom.bible.several_partners is True
+    assert bonds.wronged(held, PLAYER_ID, "mei") == []
+    assert bonds.wronged(held, PLAYER_ID, "hua") == ["mei", "lan"]
+    assert bonds.wronged(custom, PLAYER_ID, "hua") == []
+
+
+def test_a_reference_to_the_player_character_by_their_id_holds():
+    """The prompt gives the player character's id, so a child who names them by it is theirs.
+    Before 2026-11-13 only their name resolved, and the id the prompt asks for was dropped."""
+    zhao, mo = _world().npcs
+    child = NpcP(id="little-bao", name="Little Bao", age=4, parent_ids=[PLAYER_ID])
+
+    state = assemble(_world(npcs=[zhao, mo, child]), _grown())
+
+    assert state.characters["little-bao"].parent_ids == [PLAYER_ID]
+    assert check_state(state) == []
+
+
 # W15.
 
 

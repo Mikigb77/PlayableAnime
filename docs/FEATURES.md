@@ -87,7 +87,23 @@ The first version's state, checked against the code in WS18.
       other person, which moves at their own pace. An ask is answered by their heart, nobody
       throws to kiss their own partner, and no scene can make a couple the record doesn't hold.
       Memory tells where the two stand under a heart on that person's entry, as far as the
-      character knows (W17, C6). *(Nobody reacts to another romance yet.)*
+      character knows (W17, C6).
+- [x] A romance that wrongs someone: courting or bedding someone else is a deed on record that
+      wrongs the partner of either of the two, and no crime. They learn of it by seeing it or
+      from someone who saw it, lose liking, trust and heart by how far it went, and come to
+      have it out. A partner whose heart is gone ends it, and a rival comes for revenge only
+      over a night together (W17, W1, W2, W4).
+- [x] Couples among the cast: a new world records who among its key people is married,
+      promised or together, so courting someone's wife wrongs a husband who is on record, and
+      whether having several partners is the custom there (W17).
+- [x] They have to be there: a move in a romance reaches someone in the scene or at the place.
+      Toward someone a short walk away the character goes to them first and the scene plays
+      where they are, and toward someone far off it reaches nobody, so nobody says yes from
+      another town (W17, W10).
+- [x] Whoever the world sends somewhere comes back: an important person's outing, a witness
+      who rode off to report and someone who came to have it out all go home again after a
+      while, and the way takes its time. The scene can say that a neighbour is away and about
+      when they are back (W6, W4, W11).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

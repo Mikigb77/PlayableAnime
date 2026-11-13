@@ -46,7 +46,7 @@ from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEve
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
-from engine.world import carriers, journeys
+from engine.world import carriers, journeys, returns
 from engine.world.geography import routes_from, together
 from engine.world.telling import account
 from graph.language import written_in
@@ -262,22 +262,30 @@ _PACE = {
 
 def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None:
     """W17. The romance between someone and the player character as the record has it: the
-    stage it stands at and since when, or how the last one ended, and their own heart and pace
-    in words. None when there has been nothing between the two and they aren't drawn to the
-    player character."""
+    stage it stands at and since when, or how the last one ended, the one that ended before
+    it (`earlier`), and their own heart and pace in words. None when there has been nothing
+    between the two and they aren't drawn to the player character."""
     you = state.player_id
     drawn = character.attitude_toward(you).attraction
     bond = bonds.live(state, character.id, you)
+    over = bonds.last_over(state, character.id, you)
+    ended = None
+    if over is not None:
+        ended = {
+            "ended": over.steps[-1].how if over.steps else "",
+            "since": ago_label(max(0, state.world_s - over.since_s)),
+        }
     view: dict[str, Any] = {}
     if bond is not None:
         view["stage"] = bond.stage.value
         begun = bool(bond.steps) and bond.steps[-1].turn > 0
         since = ago_label(max(0, state.world_s - bond.since_s))
         view["since"] = since if begun else "before the story began"
-    elif (over := bonds.last_over(state, character.id, you)) is not None:
-        view["stage"] = "over"
-        view["ended"] = over.steps[-1].how if over.steps else ""
-        view["since"] = ago_label(max(0, state.world_s - over.since_s))
+        if ended is not None:
+            # What was between the two before this one began, which a new start doesn't undo.
+            view["earlier"] = ended
+    elif ended is not None:
+        view |= {"stage": "over"} | ended
     elif drawn == 0:
         return None
     view["their_heart"] = bonds.heart_words(drawn, "you")
@@ -424,8 +432,8 @@ def _who_else_view(
     record while a trip is still on its way: whoever feels something about the player
     character or has heard talk of them, then whom they know, then the place's key people.
     `stranger` marks someone the player character neither knows nor has met. Where someone is
-    stays out unless they are here (C6). Someone a step made real is told under OUTCOME's
-    met."""
+    stays out unless they are here (C6), save for someone of this place who is away from it
+    and coming back (`_away_view`). Someone a step made real is told under OUTCOME's met."""
     you = after.player_id
     people = after.characters
     shown = {you, *(c.id for c in present_characters(before))}
@@ -478,10 +486,28 @@ def _who_else_view(
             view["here"] = True
         else:
             view.pop("location_id", None)
+            away = _away_view(after, character, spot)
+            if away is not None:
+                view["away"] = away
         if you not in character.known_by and you not in character.met_by:
             view["stranger"] = True
         others.append(view)
     return others[:_WHO_ELSE]
+
+
+def _away_view(state: WorldState, character: Character, spot: str | None) -> dict | None:
+    """W6. Someone who belongs at the scene's place and is off on a round trip of the world's
+    making (`engine.world.returns`): about when they are back, and where they went when the
+    player character knows of that place (C6). The people of the place know that much of a
+    neighbour, so the scene has something true to say of someone it can't show."""
+    trip = returns.trip_of(state, character.id)
+    if trip is None or spot is None or not together(state, trip.place_id, spot):
+        return None
+    away = {"back": in_label(max(0, trip.due_s - state.world_s))}
+    place = state.places.get(character.location_id or "")
+    if place is not None and _knows_place(state, place):
+        away["to"] = place.name
+    return away
 
 
 def _leaving_view(
@@ -1105,6 +1131,30 @@ def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
     return {"saying": rumor.text} | asked if rumor is not None else None
 
 
+def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]]:
+    """W17. Whom a step's move in a romance wrongs (`Deed.wronged_ids`): whoever is a couple
+    with either of the two, by name, and `saw_it` for those who were there to see it, by the
+    deed as the world recorded it. The others know nothing of it yet (W2)."""
+    proposed = next((d for d in step.deeds if d.wronged_ids), None)
+    if proposed is None:
+        return []
+    recorded = max(
+        (
+            d
+            for d in state.deeds.values()
+            if d.text == proposed.text and d.wronged_ids == proposed.wronged_ids
+        ),
+        key=lambda d: (d.world_s, natural_key(d.id)),
+        default=None,
+    )
+    saw = set(recorded.witness_ids) if recorded is not None else set()
+    return [
+        {"id": who, "who": state.characters[who].name} | ({"saw_it": True} if who in saw else {})
+        for who in proposed.wronged_ids
+        if who in state.characters
+    ]
+
+
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
@@ -1155,6 +1205,9 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
         if step.perils:
             # N6: what struck back at the player character after their step, in order.
             view["struck"] = [_struck_view(p) for p in step.perils]
+        if wronged := _wronged_view(step, state):
+            # W17: whose partner the move was made with or by, and who of them saw it.
+            view["wrongs"] = wronged
         if step.bout is not None:
             # W1: fought in a bout both sides agreed to, under these terms: no attack on anyone.
             view["bout"] = step.bout.terms.value

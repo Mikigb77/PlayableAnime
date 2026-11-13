@@ -3,24 +3,34 @@
 An answer that sends people arrives where they believe the target to be: if the target is there,
 it needs them and the scene starts there (the guards kick in the door at 3 a.m.); if not, they
 search, and may track the target down later. Someone who comes on their own account is at that
-place from then on, on record. Answers that don't send anyone (a bounty, a
-coalition, keeping clear) change the world off-screen, and the player runs into them in later
-scenes. What sets an answer going is a faction learning of a deed, which a witness's report
-brings (`engine.world.carriers`).
+place once they get there, on record, and goes back to where they came from afterwards
+(`engine.world.returns`). Answers that don't send anyone (a bounty, a coalition, keeping clear)
+change the world off-screen, and the player runs into them in later scenes. What sets an answer
+going is a faction learning of a deed, which a witness's report brings
+(`engine.world.carriers`).
 
 Two answers are steps on the way to knowing (W4, W11, `engine.world.knowledge`). Those who came
 to look into a crime ask whoever saw it and is still there to tell, then read what it left
 behind, and come to arrest only once that gives them the doer. Someone who came to face the doer
 with what they were told comes for revenge after, unless by then they are too afraid of the
 doer or no longer think ill of them.
+
+Someone a move in a romance wronged comes to have it out with whoever made it (W17), whatever
+they still feel for them: only fear keeps them away. A partner whose heart is gone by then
+(`bonds.LEAVES_UNDER`) has come to end it, and the romance is over on record from that moment,
+by their doing. Nobody comes for revenge on their own partner. A rival does, after, for a
+betrayal, unless they let it rest.
 """
 
+from engine import bonds
 from engine.state.cast import Character, Faction, FactionStatus
 from engine.state.records import Deed, Fact, FactKind, Origin, OriginKind, PendingEvent
 from engine.state.world import natural_key
 from engine.world.answers import (
     ANSWER_TEXT,
     ARRIVING,
+    ENDS_IT,
+    HAVE_IT_OUT,
     Answer,
     members,
     schedule_answer,
@@ -29,11 +39,13 @@ from engine.world.answers import (
 from engine.world.carriers import carries
 from engine.world.discovery import attribution_odds, name_the_doer, out
 from engine.world.geography import characters_at, faction_seat, is_within
-from engine.world.knowledge import faction_learns, shift_attitude
+from engine.world.knowledge import faction_learns, partner_of, shift_attitude
+from engine.world.returns import left
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import World, by_id, cancel
-from engine.world.telling import bounty
+from engine.world.telling import account, bounty
 from engine.world.tuning import (
+    ERRAND_STAY_S,
     FIND_ODDS,
     FORGIVEN_AFFINITY,
     HUNT_ATTEMPTS,
@@ -82,28 +94,51 @@ def on_answer(w: World, event: PendingEvent) -> bool:
     )
     if target is None or not target.alive or gone:
         return False
-    if avenger is not None and _lets_it_rest(avenger, target, answer, faced=payload.get("faced")):
+    # W17. Someone a move in a romance wronged, come to have it out with whoever made it.
+    affair = avenger is not None and deed is not None and bool(deed.wronged_ids)
+    if avenger is not None and _lets_it_rest(
+        avenger, target, answer, faced=payload.get("faced"), affair=affair
+    ):
         cancel(w, event)
         return False
     text = ANSWER_TEXT[answer].format(target=target.name)
+    if affair and answer is Answer.CONFRONT:
+        text = HAVE_IT_OUT.format(target=target.name)
 
     if answer not in ARRIVING:
         _off_screen(w, event, answer, faction, target, insiders, f"{source_name} {text}.")
         return False
 
     destination = event.place_id
+    if (
+        avenger is not None
+        and avenger.location_id in state.places
+        and target.location_id == avenger.location_id
+        and not is_within(state, target.location_id, destination)
+    ):
+        # Whoever is already at the very place the one they are after is has found them,
+        # wherever they had meant to look (A2).
+        destination = event.place_id = avenger.location_id
     if avenger is not None and destination in state.places:
         # Whoever comes is there now, on record, whether or not they find who they came for:
-        # the scene that meets them has them at its place (W4, W10).
-        avenger.location_id = destination
+        # the scene that meets them has them at its place (W4, W10). And they go back to
+        # where they came from once they are done there (`engine.world.returns`).
+        came_from, avenger.location_id = avenger.location_id, destination
+        left(w, avenger, came_from, ERRAND_STAY_S)
     if destination is not None and is_within(state, target.location_id, destination):
         here = [c.id for c in characters_at(state, destination, within=True)]
+        if affair and answer is Answer.CONFRONT:
+            text, deed = _has_it_out(w, event, avenger, target, deed)
         _fact(w, f"{source_name} {text}.", [*insiders, *here], [target.id], event.id)
         if answer is Answer.INVESTIGATE and deed is not None:
             _look_closer(w, deed, faction)
         if answer is Answer.CONFRONT and avenger is not None and deed is not None:
-            # They have put it to the doer's face. What they do about it comes after (W4).
-            schedule_revenge(w, avenger, deed, faced=True)
+            # They have put it to the doer's face. What they do about it comes after (W4):
+            # over a romance, nothing from their own partner, and from a rival only for a
+            # betrayal.
+            rival = affair and not partner_of(state, avenger.id, target.id)
+            if not affair or (rival and deed.severity >= bonds.BETRAYAL):
+                schedule_revenge(w, avenger, deed, faced=True)
         return target.id == state.player_id
 
     # They came and the target wasn't there.
@@ -147,15 +182,64 @@ def on_answer(w: World, event: PendingEvent) -> bool:
 
 
 def _lets_it_rest(
-    avenger: Character, target: Character, answer: Answer, *, faced: object = None
+    avenger: Character,
+    target: Character,
+    answer: Answer,
+    *,
+    faced: object = None,
+    affair: bool = False,
 ) -> bool:
     """W4. Whether someone who was coming to face the doer, or for revenge after they had,
     comes no more: by now they are too afraid of the doer, or no longer think ill of them.
-    Revenge for what they saw, or for what is beyond one person's word, isn't called off."""
+    Revenge for what they saw, or for what is beyond one person's word, isn't called off.
+    Someone a move in a romance wronged (`affair`, W17) comes to have it out however much they
+    still like whoever made it: only fear keeps them away."""
     if answer is not Answer.CONFRONT and not (answer is Answer.REVENGE and faced):
         return False
     toward = avenger.attitude_toward(target.id)
+    if affair and answer is Answer.CONFRONT:
+        return toward.fear >= SILENT_FEAR
     return toward.fear >= SILENT_FEAR or toward.affinity >= FORGIVEN_AFFINITY
+
+
+def _has_it_out(
+    w: World, event: PendingEvent, partner: Character, target: Character, deed: Deed
+) -> tuple[str, Deed]:
+    """W17. Someone a move in a romance wronged has found whoever made it. Their own partner
+    whose heart is under `bonds.LEAVES_UNDER` by now has come to end it: the romance is over
+    on record, by their doing, and the event's title says so for the scene that tells it.
+    Anyone else has it out with them and no more. Returns what they came to do, and the deed
+    it is over: the gravest of it they know by now."""
+    state = w.state
+    # What they have it out over is the gravest of it they know by now, the latest first.
+    known = [
+        d
+        for d in state.deeds.values()
+        if d.actor_id == deed.actor_id
+        and d.timeline_id == deed.timeline_id
+        and partner.id in d.wronged_ids
+        and partner.id in d.known_by
+    ]
+    worst = max(known, key=lambda d: (d.severity, d.world_s, natural_key(d.id)), default=deed)
+    told = account(state, worst)
+    bond = bonds.live(state, partner.id, target.id)
+    text = HAVE_IT_OUT.format(target=target.name)
+    title = f"{partner.name} {text}, to hear it answered and not to attack: {told}"
+    heart = partner.attitude_toward(target.id).attraction
+    if bond is not None and bond.stage.couple and heart < bonds.LEAVES_UNDER:
+        bonds.end(
+            bond,
+            by_id=partner.id,
+            how=f"{partner.name} ended it: {told}",
+            turn=w.ctx.turn,
+            world_s=w.at_s,
+        )
+        text = ENDS_IT.format(target=target.name)
+        title = f"{partner.name} {text}: {told}"
+    event.title = title
+    # Memory files who came under the deed they came over (C6).
+    event.payload["deed_id"] = worst.id
+    return text, worst
 
 
 def _look_closer(w: World, deed: Deed, faction: Faction | None) -> None:
