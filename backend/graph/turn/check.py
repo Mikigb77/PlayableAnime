@@ -27,6 +27,7 @@ from engine.contracts import (
     Intent,
     IntentStep,
     ItemChange,
+    NewRung,
     OutcomeClass,
     PictureTrigger,
     Resolution,
@@ -37,6 +38,7 @@ from engine.contracts import (
     SuggestionPlan,
 )
 from engine.director.themes import allowed_themes, fits
+from engine.invariants import is_real_name
 from engine.labels import only_the_clock
 from engine.resolve import bouts
 from engine.resolve.powers import growth, sensing
@@ -45,6 +47,7 @@ from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult,
 from engine.state.world import WorldState
 from engine.timekeeping import DURATION_BOUNDS, names_a_span, parse_clock
 from engine.world.geography import scene_ids
+from graph.turn.form import Above
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import Issue
 
@@ -72,6 +75,9 @@ UNRECORDED_HARM = "unrecorded_harm"
 CLOCK_SCENE_END = "clock_scene_end"
 # G18: the update listed a rung above a ladder's top that the scene's words never named.
 RUNG_UNTOLD = "rung_untold"
+# G18: the longest answer to the form's question about the rung above an open top
+# (`NarratorOutput.rung_above`) that is read as a rung's name. A sentence is not one.
+MAX_RUNG_NAME = 60
 # B8: the issue code for a turn the larger model read again, and what its first reading would
 # have done that can't be taken back (W1).
 READ_AGAIN = "read_again"
@@ -428,6 +434,22 @@ def _stop_reason(step: StepResolution) -> StopReason:
     if step.result is StepResult.SUCCESS and step.hurt_by_peril:
         return StopReason.STRUCK  # it worked, but something struck back and hurt them (N6)
     return StopReason.FAILED
+
+
+def with_rung_above(delta: StateDelta, name: str, above: Above | None) -> StateDelta:
+    """G18. The update with the rung the narrator named where its form asked for one above an
+    open top (`NarratorOutput.rung_above`, `form.narrator_form`): one of its `rungs`, on the
+    ladder the form asked about, unless the update lists a rung of that name already. An answer
+    that is blank, isn't a name, or that no form asked for changes nothing. Whether the rung
+    holds is still `check_update`'s to say, by the scene's own words, and then the engine's."""
+    name = name.strip()
+    if above is None or not is_real_name(name) or len(name) > MAX_RUNG_NAME:
+        return delta
+    said = limits.normalize(name)
+    if any(limits.normalize(rung.name) == said for rung in delta.rungs):
+        return delta
+    rung = NewRung(ladder_id=above.ladder_id, name=name)
+    return delta.model_copy(update={"rungs": [*delta.rungs, rung]})
 
 
 def check_update(

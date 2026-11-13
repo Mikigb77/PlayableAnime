@@ -67,7 +67,7 @@ from engine.world.telling import account, world_change
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts, worn
-from graph.turn.form import Asks
+from graph.turn.form import Above, Asks, narrator_form
 from graph.turn.types import RECENT_SCENES, Ending, PastScene
 
 # Facts this important, which the player character knows, always reach the narrator.
@@ -893,9 +893,9 @@ def _known_view(state: WorldState) -> dict[str, Any]:
 # narrator alone: beings from above its top can come into a scene with no climb to stop
 # beside. It stays the same from turn to turn, so it costs the cache nothing.
 _OPEN_ABOVE = (
-    "Open: nobody on record stands above {top}. Only if beings stronger than {top} come into "
-    "the story, or someone finds what lies beyond it, the scene gives the rung above a name "
-    "and update.rungs lists it, with whoever this update brings in who stands on it."
+    "Open: nobody on record stands above {top}. When beings stronger than {top} come into the "
+    "story, or someone finds what lies beyond it, the scene gives the rung above a name: "
+    "rung_above asks for it."
 )
 
 
@@ -1113,6 +1113,13 @@ class NarrationBrief:
     # W6: the news the scene was handed to tell, by id, of people's lives and of the wider
     # world: only that can it say it told.
     news: tuple[str, ...] = ()
+    # G18: the ladder the story can pass the top of this turn, which the form asks about.
+    above: Above | None = None
+
+    @property
+    def form(self) -> dict[str, Any] | None:
+        """The form this turn's scene is asked with, or None for `NarratorOutput`'s own."""
+        return narrator_form(self.above)
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
         if cutaway:
@@ -1289,6 +1296,7 @@ def narration_brief(
     )
     tired = worn.worn_phrases(scenes, settings.language, _names(after))
     seen = fired_in_sight(fired, after, plan)
+    above = open_above(after, resolution)
     # What stays the same from turn to turn comes first, so the backend can keep it cached with
     # the system text and Gemini bills it at its cached rate (`Prompt.stable_chars`).
     stable: list[tuple[str, Any]] = [
@@ -1338,7 +1346,7 @@ def narration_brief(
     else:
         if intent is not None:
             sections.append(("ACTION", _action_view(_as_held(intent, resolution), words)))
-        sections.append(("OUTCOME", _outcome_view(resolution, after)))
+        sections.append(("OUTCOME", _outcome_view(resolution, after, above)))
         sections.append(("TIME", _time_view(before, after, settings.language)))
         if witnesses := _leaving_view(after, turn=ctx.turn, scene=before.scene.present_ids):
             # W11: who runs to tell what they saw, so the scene shows it and the player can act.
@@ -1416,6 +1424,7 @@ def narration_brief(
         looks=looks,
         worn=tuple(tired),
         news=news,
+        above=above,
     )
 
 
@@ -1559,9 +1568,11 @@ def wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]
 # reach past it (`engine.path.top_problem`): the moment the narrator has to know that it can.
 # The rung is the scene's to name and the engine's to accept (`engine.apply`).
 _BEYOND_TELL = (
-    "How far {ladder} goes is open: nobody on record stands above {top}. This step still "
-    "fails. If the scene shows that something lies above {top} and gives that rung a name, "
-    "list it under update.rungs. Reaching it would be a climb of its own."
+    "How far {ladder} goes is open: nobody on record stands above {top}, and nothing says "
+    "nobody can. This step still fails, since no rung above {top} has a name yet, but the "
+    "reach shows the character that one lies there. Never tell {top} as the end of the path. "
+    "Answer rung_above with a name for that rung and say it in the scene. Reaching it will be "
+    "a climb of its own."
 )
 
 
@@ -1578,20 +1589,45 @@ def _stopped_at_top(reason: str, state: WorldState, ladder: PowerLadder) -> bool
     )
 
 
-def _beyond(step: StepResolution, state: WorldState) -> str | None:
-    """G18, G7. What the narrator is told beside a step that stopped at the top of a ladder
-    the story can pass, or None for any other step."""
-    if step.outcome_class is not OutcomeClass.RULED_OUT:
+def open_above(state: WorldState, resolution: Resolution | None = None) -> Above | None:
+    """G18. The ladder the narrator's form asks about this turn (`form.narrator_form`): one the
+    story can pass the top of (`engine.path.top_problem`), the one a step of this turn stopped
+    at before any other. None where the story can pass no ladder's top, which is almost every
+    turn of almost every story."""
+    could = [
+        ladder for ladder in state.bible.ladders if path_mod.top_problem(state, ladder) is None
+    ]
+    if not could:
         return None
-    for ladder in state.bible.ladders:
-        if not _stopped_at_top(step.reason, state, ladder):
-            continue
-        if path_mod.top_problem(state, ladder) is None:
-            return _BEYOND_TELL.format(ladder=ladder.name, top=ladder.rungs[-1].name)
-    return None
+    steps = resolution.steps if resolution is not None else ()
+    stopped = [
+        ladder
+        for ladder in could
+        if any(
+            step.outcome_class is OutcomeClass.RULED_OUT
+            and _stopped_at_top(step.reason, state, ladder)
+            for step in steps
+        )
+    ]
+    ladder = (stopped or could)[0]
+    return Above(ladder_id=ladder.id, ladder=ladder.name, top=ladder.rungs[-1].name)
 
 
-def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
+def _beyond(step: StepResolution, state: WorldState, above: Above | None) -> str | None:
+    """G18, G7. What the narrator is told beside a step that stopped at the top of the ladder
+    its form asks about (`open_above`), or None for any other step: the reach finds that a rung
+    lies there, and the scene names it."""
+    if above is None or step.outcome_class is not OutcomeClass.RULED_OUT:
+        return None
+    ladder = state.bible.ladder(above.ladder_id)
+    if ladder is None or not _stopped_at_top(step.reason, state, ladder):
+        return None
+    return _BEYOND_TELL.format(ladder=above.ladder, top=above.top)
+
+
+def _outcome_view(
+    resolution: Resolution, state: WorldState, above: Above | None = None
+) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
         view: dict[str, Any] = {
@@ -1600,7 +1636,7 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
             "result": step.result.value,
             "why": step.reason,
         }
-        if beyond := _beyond(step, state):
+        if beyond := _beyond(step, state, above):
             view["beyond"] = beyond
         thrown = _throw_view(step.roll)
         if thrown:

@@ -491,6 +491,7 @@ async def _narrate(
             brief.prompt(cutaway=cutaway),
             NarratorOutput,
             field=("action", "narration"),
+            form=brief.form,
         )
         told = ""
         async with aclosing(stream) as events:
@@ -565,8 +566,12 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             t for t in world.transfers if t.turn == turn.ctx.turn and t.origin is OriginKind.ENGINE
         ]
         scene_text = f"{narration.action} {narration.narration}"
+        # G18: the rung the scene named where its form asked for one above an open top.
+        proposed = check.with_rung_above(
+            narration.update, narration.rung_above, state["brief"].above
+        )
         delta, found = check.check_update(
-            narration.update, world, moved, scene_text, looks=state["brief"].looks
+            proposed, world, moved, scene_text, looks=state["brief"].looks
         )
         if any(issue.code == check.REAL_ENTITY for issue in found):
             log_block(

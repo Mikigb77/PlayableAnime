@@ -72,7 +72,7 @@ from engine.invariants import (
 from engine.kin import descendants
 from engine.limits import adult_problem, normalize
 from engine.looks import look_after
-from engine.state.bible import Rung
+from engine.state.bible import PowerLadder, Rung
 from engine.state.cast import (
     MAX_JUDGED,
     Character,
@@ -122,6 +122,8 @@ NARRATOR_ATTITUDE_CAP = 10
 MAX_PROGRESS = 300
 # W10: why a narrated scene's word about someone it can't have in it is refused.
 _ELSEWHERE = "the record has them elsewhere, and only the world brings them here"
+# G18, A4: a rung is come standing on only by someone the same delta brings into the story.
+_NOBODY_LIFTED = "only someone this scene brought in comes standing on it: nobody is lifted"
 
 
 class DeltaSource(StrEnum):
@@ -304,6 +306,7 @@ def apply_in_place(
         applier.family(change)
     for rung in delta.rungs:
         applier.rung(rung)
+    applier.stand()
     for fact in delta.facts:
         applier.fact(fact)
     for item in delta.items:
@@ -468,8 +471,11 @@ class _Applier:
         # W10: whom the narrator's scene may have in it and move (`Door`); None means anyone.
         self.door = door
         self.rejected: list[Rejection] = []
-        # G18: who this delta brought into the story.
+        # G18: who this delta brought into the story, the rung each character's change says
+        # they stand on, and how many came standing on each rung this delta added.
         self.created: set[str] = set()
+        self.claimed: dict[str, str] = {}
+        self.came: dict[tuple[str, int], int] = {}
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
         self.nudged: dict[tuple[str, str, str], int] = {}
@@ -794,6 +800,9 @@ class _Applier:
         if change.ladders and self.engine_only(subject, "ladders"):
             for position in change.ladders:
                 self.ladder(character, position)
+        if change.rung:
+            # G18: settled once the delta's own rungs are in (`stand`).
+            self.claimed[character.id] = change.rung
         if change.practice and self.engine_only(subject, "practice"):
             for practice in change.practice:
                 kept = [p for p in character.sheet.practice if p.key != practice.key]
@@ -1165,25 +1174,52 @@ class _Applier:
             )
         )
         index = len(ladder.rungs) - 1
-        came = list(dict.fromkeys(new.stands))
-        for character_id in came[: path_mod.CAME_WITH]:
+        self.came[ladder.id, index] = 0
+        for character_id in dict.fromkeys(new.stands):
             character = self.state.characters.get(character_id)
-            if character is None or character_id not in self.created:
-                self.reject(
-                    f"character {character_id}",
-                    f"rung {new.name}",
-                    "only someone this scene brought in comes standing on it: nobody is lifted",
-                )
+            if character is None:
+                self.reject(f"character {character_id}", f"rung {new.name}", _NOBODY_LIFTED)
                 continue
-            sheet = character.sheet
-            kept = [p for p in sheet.ladders if p.ladder_id != ladder.id]
-            sheet.ladders = [*kept, LadderPosition(ladder_id=ladder.id, rung=index)]
-            # G18: a rung is the world's name for a tier on its axis.
-            setattr(sheet.axes, ladder.axis.value, max(sheet.axes.on(ladder.axis), tier))
-        for character_id in came[path_mod.CAME_WITH :]:
-            self.reject(
-                f"character {character_id}", f"rung {new.name}", "three come with a rung at most"
-            )
+            self.stands(character, ladder, index)
+
+    def stand(self) -> None:
+        """G18, A4. Someone the story brings in comes standing where their change says: on a
+        rung the world's ladders have, this delta's own included, by its name or by a few words
+        that hold that one name (`path.rung_said`). Only someone this delta created, since
+        nobody on record is lifted: they climb, the player character by their own work (G19)
+        and everyone else over the years (W6). For someone on record, a change that says their
+        own rung or one under it says nothing new, and moves nobody down."""
+        for character_id, name in self.claimed.items():
+            character = self.state.characters.get(character_id)
+            if character is None:
+                continue
+            found = path_mod.rung_said(self.state, name)
+            if found is None:
+                self.reject(f"character {character_id}", f"rung {name}", "no ladder has that rung")
+                continue
+            ladder, index = found
+            if path_mod.own_rung(character, ladder.id) >= index:
+                continue
+            self.stands(character, ladder, index)
+
+    def stands(self, character: Character, ladder: PowerLadder, index: int) -> None:
+        """Puts someone this delta brought into the story on a rung, with the ladder's axis at
+        the rung's tier: a rung is the world's name for a tier on its axis (G18). At most
+        `CAME_WITH` come standing on a rung this same delta added."""
+        subject, rung = f"character {character.id}", ladder.rungs[index]
+        if character.id not in self.created:
+            self.reject(subject, f"rung {rung.name}", _NOBODY_LIFTED)
+            return
+        new = (ladder.id, index)
+        if new in self.came:
+            if self.came[new] >= path_mod.CAME_WITH:
+                self.reject(subject, f"rung {rung.name}", "three come with a rung at most")
+                return
+            self.came[new] += 1
+        sheet = character.sheet
+        kept = [p for p in sheet.ladders if p.ladder_id != ladder.id]
+        sheet.ladders = [*kept, LadderPosition(ladder_id=ladder.id, rung=index)]
+        setattr(sheet.axes, ladder.axis.value, max(sheet.axes.on(ladder.axis), rung.tier))
 
     def time_effect(self, effect: ActiveTimeEffect) -> None:
         """W10a. A time power taking hold, replacing the same power's earlier effect. Effects that
