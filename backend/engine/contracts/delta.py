@@ -119,8 +119,20 @@ class Expecting(EngineModel):
     )
 
 
+def _rung_required(schema: dict[str, Any]) -> None:
+    """G18. Gemini answers only what a schema requires as often as not (see `Intent`), and
+    someone a scene brought in whose rung went unsaid is an ordinary person on record, whatever
+    the scene told of them. So the model is always asked for it, empty for whoever stands on
+    none, though code may leave it out."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "rung"]))
+    rung = schema["properties"]["rung"]
+    schema["properties"]["rung"] = {"type": "string", "description": rung["description"]}
+
+
 class CharacterChange(EngineModel):
     """A new character (a name is required) or a change to a known one."""
+
+    model_config = ConfigDict(json_schema_extra=_rung_required)
 
     id: str
     name: Name | None = None
@@ -156,6 +168,13 @@ class CharacterChange(EngineModel):
     condition: ConditionChange | None = None
     faction_id: str | None = Field(default=None, description="Joins this faction, or re-ranks.")
     rank: str | None = None
+    rung: str | None = Field(
+        default=None,
+        description="G18: only for someone new, where the world has a ladder and they are "
+        "someone who stands on it: the name of their rung, as WORLD lists it. Most people the "
+        "story brings in stand on the lowest rungs or on none. Empty for whoever stands on "
+        "none, and for someone already on record: nobody is lifted, they climb.",
+    )
     meets_player: bool = False
     known_to_player: bool = False
     parent_ids: list[str] = Field(

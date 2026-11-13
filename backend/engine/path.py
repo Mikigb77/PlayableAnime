@@ -270,6 +270,33 @@ def about(state: WorldState, character: Character, name: str, *, limit: int = 3)
     return list(dict.fromkeys(text for _, text in said))[:limit]
 
 
+def rung_called(state: WorldState, name: str) -> tuple[PowerLadder, int] | None:
+    """The ladder and the index of the rung of that name, whatever its case or accents, or
+    None where no ladder of the world has one."""
+    said = normalize(name)
+    for ladder in state.bible.ladders:
+        for index, rung in enumerate(ladder.rungs):
+            if normalize(rung.name) == said:
+                return ladder, index
+    return None
+
+
+def rung_said(state: WorldState, words: str) -> tuple[PowerLadder, int] | None:
+    """The rung a few words name: the one called exactly that (`rung_called`), or else the only
+    rung of the world whose name they hold, as "late Core Formation" does. None where they
+    hold no rung's name, or more than one."""
+    exact = rung_called(state, words)
+    if exact is not None:
+        return exact
+    held = [
+        (ladder, index)
+        for ladder in state.bible.ladders
+        for index, rung in enumerate(ladder.rungs)
+        if named(words, rung.name)
+    ]
+    return held[0] if len(held) == 1 else None
+
+
 # --- A rung above the top (G18, G7) --------------------------------------------------------
 
 # How many people a new rung may bring into the story standing on it.
@@ -357,8 +384,7 @@ def beyond_problem(state: WorldState, ladder: PowerLadder, name: str) -> str | N
     already, and the story has reached the ladder's top (`top_problem`)."""
     if not is_real_name(name):
         return f"{name!r} isn't a name"
-    said = normalize(name)
-    for other in state.bible.ladders:
-        if any(normalize(rung.name) == said for rung in other.rungs):
-            return f"{other.name} already has a rung called {name}"
+    taken = rung_called(state, name)
+    if taken is not None:
+        return f"{taken[0].name} already has a rung called {name}"
     return top_problem(state, ladder)

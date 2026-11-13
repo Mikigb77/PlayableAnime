@@ -1024,6 +1024,20 @@ proposes it and code decides. Nobody on record is put on it.
 `evals/scenarios/t17_ladder.py` plays it end to end as `t17.ladder-grows`, in
 `worlds.azure_peak_he_leaves`.
 
+**Someone the story brings in comes standing on their rung (G18, A4).** The narrator says, on
+a character its update creates, which rung of the world's ladders they stand on, and code
+decides. Nobody on record is lifted.
+
+| Piece | What |
+| --- | --- |
+| `CharacterChange.rung` (`engine/contracts/delta.py`) | The name of the rung someone new stands on. The field's description is all the narrator is told of it, since its standing text and the brief have no room (K1): only for someone new, most people stand on the lowest rungs or on none, and nobody is lifted. The form always asks for it, empty for whoever stands on none (`_rung_required`), because Gemini answers only what a form requires as often as not. `ladders` and `axes` stay the engine's. |
+| `engine/path.py` | `rung_called(state, name)` is the ladder and index of the rung called exactly that, whatever its case or accents; `beyond_problem` uses it for a new rung's name. `rung_said(state, words)` is that rung, or else the only rung whose name the words hold (`named`), so "late Core Formation" is Core Formation, and None where they hold none or more than one. |
+| `engine/apply.py` | `_Applier.character` notes the claim (`claimed`), and `stand()` settles the claims once the update's own `rungs` are in, so a newcomer can name the rung the same update adds. A rung no ladder has is refused (`Rejection`, area `character.rung`). For someone on record, their own rung or a lower one changes nothing, and a higher one goes to `stands` like any other. `stands(character, ladder, index)`, which `rung()` uses for `NewRung.stands` too, refuses anyone not in `created` ("nobody is lifted"), counts who comes on a rung this update added (`came`, `CAME_WITH` at most, once for someone named both ways), and otherwise sets their `LadderPosition` and raises the ladder's axis to the rung's tier. The engine's own changes are held to the same. |
+| What follows by the standing rules | `power.base_tier` and `rungs_above` read them by the rung. The next brief's SCENE shows them on it like anyone the world was drafted with. `lives._climb` reads their pace at the age they have and takes them on, and `old_age` counts them by the rung's lifespan. The player character learns where they stand as of anyone (C6, G20): a rung they have heard of is known once someone who shows it has stood before them (`pipeline.settle_path`), and someone above every rung they know of shows on the Path screen as "Higher still" (`path.higher_still`). |
+
+`evals/scenarios/t17_newcomers.py` plays it end to end as `t17.newcomers-stand`, in
+`worlds.azure_peak_he_leaves`.
+
 **The wider world moves (W6, W7).** Wars between factions come to a head over the years, by
 code alone: the facts decide where they can (A2), a seeded throw where they leave it open
 (A3), and nothing is timed in turns (W10).
