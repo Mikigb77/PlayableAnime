@@ -395,6 +395,59 @@ def test_played_out_the_top_stops_a_breakthrough_and_a_rung_above_it_takes_the_w
     assert played.state.player.sheet.ladders[0].rung == TOP  # earned first, then thrown for
 
 
+def against_the_ceiling(state):
+    """The same climb as a model that reads the player's words may file it: against the open
+    rule that nobody is known to have passed the top."""
+    step = train(GrowthKind.BREAKTHROUGH, "the next realm", 12, ladder_id="realms", attempt=True)
+    facts = step.facts.model_copy(update={"against_rule_ids": ["realm-ceiling"]})
+    return play(state, Intent(steps=[step.model_copy(update={"facts": facts})]))
+
+
+def test_the_open_rule_that_held_the_ladder_is_struck_once_a_rung_is_told():
+    # G7: the discovery breaks the open rule, for everyone. Left standing, it would rule out
+    # every climb to the new rung.
+    state = at_the_top()
+    ladder = realms(state)
+    state.bible.rules += [
+        WorldRule(
+            id="vault",
+            text="Only elders of Soul Transformation enter the vault.",
+            fixed=False,
+            topic=RuleTopic.LAW,
+        ),
+        WorldRule(
+            id="core-toll",
+            text="Core Formation costs a decade of life.",
+            fixed=False,
+            topic=RuleTopic.LIMITS,
+        ),
+    ]
+    assert [rule.id for rule in path.ceilings(state, ladder)] == ["realm-ceiling"]
+    stopped = against_the_ceiling(state).resolution.steps[0]
+    assert stopped.outcome_class is OutcomeClass.RULED_OUT
+    assert stopped.reason == "Nobody is known to have passed Soul Transformation."
+
+    after = told(state).state
+
+    kept = [rule.id for rule in after.bible.rules]
+    assert "realm-ceiling" not in kept and {"vault", "core-toll", "qi-exists"} <= set(kept)
+    assert all("realm-ceiling" not in kind.rule_ids for kind in after.bible.extraordinary)
+    assert path.ceilings(after, realms(after)) == []
+    # Filed against the rule that is gone, the climb is training toward the new rung.
+    settled = against_the_ceiling(after).resolution.steps[0]
+    assert settled.outcome_class is OutcomeClass.CERTAIN
+    assert "this is training toward Void Refinement" in settled.reason
+
+
+def test_a_rung_that_was_refused_strikes_no_rule():
+    state = cultivation_world()  # Lin Feng on the lowest rung: the top is not his to pass yet
+
+    refused = told(state)
+
+    assert refused.rejected
+    assert "realm-ceiling" in [rule.id for rule in refused.state.bible.rules]
+
+
 def test_the_engine_too_holds_to_the_ladders_rules():
     state = cultivation_world()
     delta = StateDelta(rungs=[NewRung(ladder_id="realms", name=VOID, stands=["elder-mo"])])

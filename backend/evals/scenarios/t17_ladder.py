@@ -42,7 +42,7 @@ from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval, Played, Story
 from evals.scenario import REGISTRY
-from evals.scenarios.common import act, plan, step
+from evals.scenarios.common import act, facts, plan, step
 from evals.scenarios.t17_lives import CALM, MONTH, TURNS, live_there
 from graph.llm import Node
 from graph.turn.check import RUNG_UNTOLD
@@ -53,6 +53,7 @@ YOU = "lin"
 TOP = 4  # Soul Transformation, the highest realm the mountain's world started with
 VOID, INTEGRATION = "Void Refinement", "Body Integration"
 ENVOY = "envoy_shen"
+CEILING = "realm-ceiling"  # the open rule that nobody is known to have passed the top
 PATRIARCH = "patriarch_yun"
 ON_THE_SUMMIT = "Lin sits alone on the summit of Azure Peak, at the height of his realm."
 REACH = "I sit in seclusion on the summit and reach for whatever lies above my realm"
@@ -95,8 +96,10 @@ def standing(state: WorldState) -> dict[str, int | None]:
     return {who: rung_of(state, who) for who in sorted(state.characters)}
 
 
-def reach() -> Intent:
-    """Setting out to break through to whatever lies above his realm."""
+def reach(*, against_the_rule: bool = False) -> Intent:
+    """Setting out to break through to whatever lies above his realm. A model that reads the
+    player's words may file it `against_the_rule` that nobody is known to have passed the
+    top, as the live one did on the first run of this eval."""
     return plan(
         step(
             "reach in seclusion for the realm above his own",
@@ -109,6 +112,7 @@ def reach() -> Intent:
                 ladder_id="realms",
                 attempt=True,
             ),
+            **({"facts": facts(against_rule_ids=[CEILING])} if against_the_rule else {}),
         )
     )
 
@@ -145,6 +149,18 @@ def outcome(brief: str) -> dict:
         return {}  # a live run keeps no brief
     told = json.loads(brief.split("## OUTCOME\n", 1)[1].split("\n\n## ", 1)[0])
     return told["steps"][0] if told.get("steps") else {}
+
+
+def open_above(brief: str) -> str:
+    """What WORLD tells the narrator on the realms about growing past their top, if anything."""
+    if "## WORLD\n" not in brief:
+        return ""
+    told = json.loads(brief.split("## WORLD\n", 1)[1].split("\n\n## ", 1)[0])
+    return next((ladder.get("above", "") for ladder in told.get("ladders", [])), "")
+
+
+def rules(state: WorldState) -> list[str]:
+    return [rule.id for rule in state.bible.rules]
 
 
 def in_scene(brief: str, who: str) -> dict:
@@ -209,42 +225,55 @@ def told_above(state: WorldState) -> list[str]:
     requirements=("G18", "G7", "G19", "A4", "W6", "C6", "T17"),
     passes_when=(
         "A cultivator on his world's highest realm reaches for what lies above it. The climb "
-        "stops there, and the narrator is told beside it that the ladder is open. A rung the "
-        "update lists and the scene never named changes nothing. Once a scene names a realm "
-        "above the top and lists it, the ladder has it, as far above the last realm as the "
-        "realms lie apart, with no way there listed and no lifespan; he has heard of it from "
-        "that scene, stands where he stood, and his rank fills toward it at twice the effort "
-        "of the realm before. A second realm above that one is refused until someone has "
-        "climbed to the first, and holds once he has broken through. Beings the scene brings "
-        "in can come standing on the new realm, a rung above him and beyond old age, and it "
-        "is confirmed before them; nobody already on record is lifted onto it, and over a "
-        "hundred years whoever else stands on it climbed there, as a patriarch young for the "
-        "old top does in some stories and not in others. A cultivator who has not "
-        "heard of the highest realm can be told of nothing above it, and a rule that never "
-        "changes holds a ladder where it is. Live, a scene that names a realm above the top "
-        "has it on record, and reaching past the top lifts him onto nothing"
+        "stops there, whether it is filed as a breakthrough or against the world's open rule "
+        "that nobody has passed that realm, and the narrator is told that the ladder is open, "
+        "beside the step and on the ladder itself. A rung the update lists and the scene "
+        "never named changes nothing. Once a scene names a realm above the top and lists it, "
+        "the ladder has it, as far above the last realm as the realms lie apart, with no way "
+        "there listed and no lifespan, and the open rule that held the ladder is struck; he "
+        "has heard of it from that scene, stands where he stood, and his rank fills toward it "
+        "at twice the effort of the realm before. A second realm above that one is refused "
+        "until someone has climbed to the first, and holds once he has broken through. Beings "
+        "the scene brings in can come standing on the new realm, a rung above him and beyond "
+        "old age, and it is confirmed before them; nobody already on record is lifted onto "
+        "it, and over a hundred years whoever else stands on it climbed there, as a patriarch "
+        "young for the old top does in some stories and not in others. A cultivator who has "
+        "not heard of the highest realm can be told of nothing above it, and a rule that "
+        "never changes holds a ladder where it is. Live, a scene that names a realm above the "
+        "top has it on record, and reaching past the top lifts him onto nothing"
     ),
 )
 async def ladder_grows(ev: Eval) -> None:
     tries: Counter[int] = Counter()
     reached: Counter[int] = Counter()
-    for seed in ev.seeds(6, live=0):
-        # He reaches past the top, and the scene has nothing to show him.
+    for number, seed in enumerate(ev.seeds(6, live=0)):
+        # He reaches past the top, and the scene has nothing to show him. In every other
+        # story the reach is filed against the world's open rule, as a live model may.
+        filed = number % 2 == 1
         story = at_the_top(ev, seed)
         first = realms(story.state)
         gap = path.above_tier(first)
-        played = await story.act(REACH, reach(), narration=scene(BARRIER, rungs=[void()]))
+        had = rules(story.state)
+        ceiling = next(rule.text for rule in story.state.bible.rules if rule.id == CEILING)
+        played = await story.act(
+            REACH, reach(against_the_rule=filed), narration=scene(BARRIER, rungs=[void()])
+        )
         stopped = played.step(0)
         ev.check(
             "a climb stops on the highest realm, with the reason in the world's words",
             stopped.outcome_class is OutcomeClass.RULED_OUT
-            and stopped.reason == growth.no_rung_above(first),
+            and stopped.reason == (ceiling if filed else growth.no_rung_above(first)),
             f"{seed}: {stopped.outcome_class.value}, {stopped.reason}",
         )
         ev.check(
-            "the narrator is told beside it that the ladder can grow",
+            "the narrator is told beside it that the ladder can grow, however it was filed",
             "update.rungs" in outcome(story.prompt(Node.NARRATOR)).get("beyond", ""),
             f"{seed}: {outcome(story.prompt(Node.NARRATOR))}",
+        )
+        ev.check(
+            "and reads on the ladder itself that it is open above its top",
+            "update.rungs" in open_above(story.prompt(Node.NARRATOR)),
+            f"{seed}: {open_above(story.prompt(Node.NARRATOR))!r}",
         )
         ev.check(
             "a rung the update lists and the scene never named changes nothing",
@@ -253,7 +282,9 @@ async def ladder_grows(ev: Eval) -> None:
         )
 
         # Again, and this time the scene names what lies above.
-        played = await story.act(REACH, reach(), narration=scene(GLIMPSE, rungs=[void()]))
+        played = await story.act(
+            REACH, reach(against_the_rule=filed), narration=scene(GLIMPSE, rungs=[void()])
+        )
         state = played.state
         ladder = realms(state)
         new = ladder.rungs[-1]
@@ -275,13 +306,18 @@ async def ladder_grows(ev: Eval) -> None:
             and "rung_heard" in played.issues,
             f"{seed}: {above(state)}, rung {rung_of(state, YOU)}",
         )
+        ev.check(
+            "the open rule that held the ladder there is struck, and no other (G7)",
+            CEILING in had and rules(state) == [rule for rule in had if rule != CEILING],
+            f"{seed}: {rules(state)}",
+        )
         ev.check("the record holds together (C1)", check_state(state) == [], seed)
 
-        # He works toward it by the standing rule, and a realm above it is not yet the
-        # story's to tell.
+        # He works toward it by the standing rule, even filed against the rule that is gone,
+        # and a realm above it is not yet the story's to tell.
         played = await story.act(
             REACH,
-            reach(),
+            reach(against_the_rule=filed),
             narration=scene(
                 f"Past {VOID} he thinks he feels another shore: {INTEGRATION}.",
                 rungs=[void(name=INTEGRATION)],
@@ -295,7 +331,8 @@ async def ladder_grows(ev: Eval) -> None:
             and rank is not None
             and 0 < rank.effort_s < rank.need_s
             and rank.need_s == 2 * growth.rung_need_s(TOP)
-            and "beyond" not in outcome(story.prompt(Node.NARRATOR)),
+            and "beyond" not in outcome(story.prompt(Node.NARRATOR))
+            and not open_above(story.prompt(Node.NARRATOR)),
             f"{seed}: {played.step(0).reason}",
         )
         ev.check(
@@ -479,7 +516,7 @@ async def ladder_grows(ev: Eval) -> None:
     ev.metric("others on the new realm after a hundred years, in how many stories", dict(reached))
 
     # Live: he reaches past the top, and the story may or may not show him what lies there.
-    for seed in ev.seeds(0, live=1):
+    for seed in ev.seeds(0, live=3):
         story = at_the_top(ev, f"{seed}/reach")
         seen = await story.act(REACH, reach())
         state = story.state
