@@ -131,7 +131,8 @@ def test_a_month_brings_next_to_nothing_and_ten_years_a_great_deal():
     assert sum(len(state.lives) for state in month) == 0
     assert all(len(state.lives) >= 2 for state in decade)
     kinds = {event.kind for state in decade for event in state.lives.values()}
-    assert kinds == set(LifeKind)
+    # Everything a life can bring, but a rise: nobody in the village stands on a ladder.
+    assert kinds == set(LifeKind) - {LifeKind.ROSE}
 
 
 def test_nothing_is_made_to_happen_and_many_are_found_as_they_were_left():
