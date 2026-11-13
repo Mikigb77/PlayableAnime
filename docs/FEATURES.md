@@ -107,7 +107,12 @@ The first version's state, checked against the code in WS18.
 - [x] Code keeps the scene's door: a scene has the people who were in it, those the record has
       at the place and those the world brought, and nobody the narrator walks in from
       elsewhere. Whoever a move in a romance wrongs and who didn't see it has no part in that
-      scene, so a partner learns of an affair only as the world carries it (W4, W10, W17).
+      scene, so a partner learns of an affair only as the world carries it. Someone who goes
+      looking for the character where they no longer are is there, and no scene has them
+      arrive (W4, W10, W17).
+- [x] A move in a romance is always the other person's to answer: a kiss, an ask or a night is
+      a step of words to them whatever the reading made of it, so nothing of the kind is
+      certain just because nobody was named as standing in its way (W17, A2).
 - [x] Whoever ended a romance has made up their mind: for a while, by their own pace, nothing
       of the kind moves them, so nobody is won back in the scene they were left in (W17).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending

@@ -406,16 +406,17 @@ def reached(state: WorldState, resolution: Resolution, plan: DirectorPlan) -> li
 def brought(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> list[str]:
     """W4, W10. Whom this turn brings into the scene from wherever the record has them: the
     people an event, a happening or a moment the director planned is about, and those of an
-    event of the world that fired where the player character could notice it
-    (`director.due.in_sight`), such as someone who comes to have it out with them. Nobody else
-    comes from elsewhere: the narrator's scene has the people the record puts where it plays
-    (`engine.apply.Door`). `state` is the world the steps left."""
+    event of the world that came to the player character or fired at the very place the scene
+    plays in (`director.due.brings`), such as someone who comes to have it out with them.
+    Nobody else comes from elsewhere: the narrator's scene has the people the record puts
+    where it plays (`engine.apply.Door`). `state` is the world the steps left."""
     ids: list[str] = []
     for planned in (plan.event, plan.moment, *plan.happenings):
         if planned is not None:
             ids += planned.cast_ids
     for event in due.in_sight(state, ctx):
-        ids += event.subject_ids
+        if due.brings(event, state):
+            ids += event.subject_ids
     return [i for i in dict.fromkeys(ids) if i in state.characters]
 
 
