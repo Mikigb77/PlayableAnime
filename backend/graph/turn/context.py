@@ -263,8 +263,9 @@ _PACE = {
 def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None:
     """W17. The romance between someone and the player character as the record has it: the
     stage it stands at and since when, or how the last one ended, the one that ended before
-    it (`earlier`), and their own heart and pace in words. None when there has been nothing
-    between the two and they aren't drawn to the player character."""
+    it (`earlier`), and their own heart and pace in words: closed, while someone who ended it
+    stays so (`bonds.Closed.ENDED`). None when there has been nothing between the two and they
+    aren't drawn to the player character."""
     you = state.player_id
     drawn = character.attitude_toward(you).attraction
     bond = bonds.live(state, character.id, you)
@@ -289,6 +290,9 @@ def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None
     elif drawn == 0:
         return None
     view["their_heart"] = bonds.heart_words(drawn, "you")
+    if bonds.closed_to(state, character, you) is bonds.Closed.ENDED:
+        # They made up their mind, and for a good while nothing of the kind moves them.
+        view["their_heart"] = "closed to you since they ended it"
     view["their_pace"] = _PACE[bonds.pace(character.id)]
     return view
 
@@ -418,6 +422,7 @@ def _who_else_view(
     resolution: Resolution,
     plan: DirectorPlan,
     seen: Sequence[PendingEvent],
+    turn: int,
 ) -> list[dict[str, Any]]:
     """W4, C6, E4. The living people this turn may bring into the scene who weren't in it when
     it began, each as SCENE shows its own, so they are who the record says from their first
@@ -433,11 +438,21 @@ def _who_else_view(
     character or has heard talk of them, then whom they know, then the place's key people.
     `stranger` marks someone the player character neither knows nor has met. Where someone is
     stays out unless they are here (C6), save for someone of this place who is away from it
-    and coming back (`_away_view`). Someone a step made real is told under OUTCOME's met."""
+    and coming back (`_away_view`). Someone a step made real is told under OUTCOME's met.
+
+    Whoever a move in a romance made this turn (`turn`) wrongs who didn't see it is left out,
+    wherever the record has them (W17, `bonds.unseen`): this scene can't have them walk in on
+    it, and OUTCOME's wrongs says so. Only an event, a happening or a moment that is about
+    them brings them, as the world's own doing."""
     you = after.player_id
     people = after.characters
     shown = {you, *(c.id for c in present_characters(before))}
     shown |= {i for step in resolution.steps for i in step.strangers}
+    came = [
+        i for p in (plan.event, plan.moment, *plan.happenings) if p is not None for i in p.cast_ids
+    ]
+    came += [i for event in seen for i in event.subject_ids]
+    shown |= set(bonds.unseen(after, turn)) - set(came)
     # A trip that stopped on the way ends the scene in a place only the narrator's scene names.
     on_the_way = any(
         step.trip is not None and (step.trip.to_id or step.trip.to) and not step.trip.arrived
@@ -947,7 +962,7 @@ def narration_brief(
         ("LAST MOMENT", before.scene.ended_on or "(the story is just beginning)"),
         ("SCENE", _scene_view(before)),
     ]
-    if others := _who_else_view(before, after, intent, resolution, plan, seen):
+    if others := _who_else_view(before, after, intent, resolution, plan, seen, ctx.turn):
         # W4, E4: whom the turn may bring into the scene, as the record has them.
         sections.append(("WHO ELSE", others))
     if fallen := _fallen_view(after):
@@ -1133,8 +1148,9 @@ def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
 
 def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]]:
     """W17. Whom a step's move in a romance wrongs (`Deed.wronged_ids`): whoever is a couple
-    with either of the two, by name, and `saw_it` for those who were there to see it, by the
-    deed as the world recorded it. The others know nothing of it yet (W2)."""
+    with either of the two, by name, and `saw_it`: whether they were there to see it, by the
+    deed as the world recorded it. The others know nothing of it yet (W2), and the scene is
+    told so of each in as many words: left unsaid, the real model walked a wife in on it."""
     proposed = next((d for d in step.deeds if d.wronged_ids), None)
     if proposed is None:
         return []
@@ -1149,7 +1165,7 @@ def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any
     )
     saw = set(recorded.witness_ids) if recorded is not None else set()
     return [
-        {"id": who, "who": state.characters[who].name} | ({"saw_it": True} if who in saw else {})
+        {"id": who, "who": state.characters[who].name, "saw_it": who in saw}
         for who in proposed.wronged_ids
         if who in state.characters
     ]

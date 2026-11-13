@@ -484,28 +484,159 @@ def test_the_narrator_moves_only_the_feelings_of_people_in_the_scene():
     assert "aren't in the scene" in refused.reason
 
 
-@pytest.mark.parametrize("way", ["listed", "meets", "comes", "fight", "reached"])
+@pytest.mark.parametrize("way", ["listed", "meets", "comes", "fight", "reached", "brought"])
 def test_whoever_comes_into_the_scene_or_the_turn_reached_can_be_moved(way):
     state = cultivation_world()
-    change, end, reached = resents("elder-mo"), None, []
+    change, end, reached, brought = resents("elder-mo"), None, [], []
+    there = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+    if way in ("listed", "meets", "comes"):
+        # The record has him by the well, out of the scene: the scene can bring him into it.
+        state.characters["elder-mo"].location_id = "well"
     if way == "listed":  # this scene's end lists him: he walked into it
-        end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+        end = there
     elif way == "meets":  # the scene has him meet the player character
         change = resents("elder-mo", meets_player=True)
-    elif way == "comes":  # the scene has him come to where it is
+    elif way == "comes":  # the scene says he is where it is
         change = resents("elder-mo", location_id="well")
     elif way == "fight":  # he is in the scene's fight, whatever its last end listed
         state.scene.encounter = Encounter(
             kind=EncounterKind.FIGHT, opponent_ids=["elder-mo"], started_turn=2, started_s=0
         )
-    else:  # a step of the turn faced him, or an event was about him
+    elif way == "reached":  # a step of the turn faced him, or an event was about him
         reached = ["elder-mo"]
+    else:  # the world brought him over from the inner court, and the scene ends with him there
+        brought, end = ["elder-mo"], there
 
     delta = StateDelta(characters=[change], scene_end=end)
-    applied = apply_delta(state, delta, ctx(3), source=NARRATOR, reached=reached)
+    applied = apply_delta(state, delta, ctx(3), source=NARRATOR, reached=reached, brought=brought)
 
     assert not applied.rejected
     assert feelings(applied.state, "elder-mo").grudges
+    if end is not None:
+        assert "elder-mo" in applied.state.scene.present_ids
+
+
+@pytest.mark.parametrize("way", ["listed", "meets", "comes"])
+def test_a_scene_brings_in_nobody_the_record_has_elsewhere(way):
+    """W10, W4. In the first stories about an affair on the real model (2026-11-13) the
+    narrator walked the wronged wife into the scene from a farm forty minutes away: its end
+    listed her, the record took its word, and she had seen the next move. Only the world
+    moves people between places, so the scene's word about someone the record has elsewhere
+    is refused: they aren't in it, they stay where they were, and it moves nothing in them."""
+    state = cultivation_world()  # Lin and Zhao at the well; Elder Mo is in the inner court
+    before = feelings(state, "elder-mo")
+    change, end = resents("elder-mo"), None
+    if way == "listed":
+        end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+    elif way == "meets":
+        change = resents("elder-mo", meets_player=True)
+    else:
+        change = resents("elder-mo", location_id="well")
+
+    applied = apply(state, characters=[change], scene_end=end)
+
+    elder = applied.state.characters["elder-mo"]
+    assert elder.location_id == "inner-court"
+    assert "elder-mo" not in applied.state.scene.present_ids
+    assert "lin" not in elder.met_by
+    assert feelings(applied.state, "elder-mo") == before
+    refused = {(r.subject, r.change) for r in applied.rejected}
+    what = {"listed": "presence", "meets": "meeting", "comes": "location"}[way]
+    assert refused == {("character elder-mo", what), ("character elder-mo", "attitude")}
+    assert "only the world brings them here" in " ".join(reasons(applied))
+
+
+@pytest.mark.parametrize("named", ["inner-court", "the Inner Court"])
+def test_a_scene_that_ends_somewhere_else_has_the_people_the_record_puts_there(named):
+    """The scene walks Lin to the inner court, where Elder Mo is: he is in it as it ends,
+    whether the end names the place by its id or by its name."""
+    state = cultivation_world()
+    end = SceneEnd(
+        ended_on="Elder Mo looks up from his tea.",
+        place_id=named,
+        present_ids=["lin", "elder-mo"],
+    )
+
+    applied = apply(state, characters=[resents("elder-mo")], scene_end=end)
+
+    assert not applied.rejected
+    assert applied.state.scene.present_ids == ["lin", "elder-mo"]
+    assert feelings(applied.state, "elder-mo").grudges
+
+
+def test_someone_the_record_places_nowhere_is_the_scene_s_to_place():
+    state = cultivation_world()
+    state.characters["elder-mo"].location_id = None
+    end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+
+    applied = apply(
+        state, characters=[CharacterChange(id="elder-mo", location_id="well")], scene_end=end
+    )
+
+    assert not applied.rejected
+    assert applied.state.characters["elder-mo"].location_id == "well"
+    assert "elder-mo" in applied.state.scene.present_ids
+
+
+def test_the_scene_says_where_its_own_people_go():
+    """Zhao is in the scene, so the scene can send him off to the inner court."""
+    state = cultivation_world()
+
+    applied = apply(state, characters=[CharacterChange(id="zhao", location_id="inner-court")])
+
+    assert not applied.rejected
+    assert applied.state.characters["zhao"].location_id == "inner-court"
+
+
+def test_whoever_the_scene_is_barred_from_has_no_part_in_it():
+    """W17. Whoever a move in a romance wrongs and who didn't see it has no part in the scene
+    that tells it (`engine.pipeline.kept_out`): not by standing near, not by being reached,
+    and the scene moves nothing in them. Someone it finds in the scene stays there."""
+    state = cultivation_world()
+    state.characters["elder-mo"].location_id = "well"  # by the well, and out of the scene
+    before = feelings(state, "elder-mo")
+    end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+    delta = StateDelta(
+        characters=[resents("elder-mo", meets_player=True, location_id="well"), resents("zhao")],
+        scene_end=end,
+    )
+
+    applied = apply_delta(
+        state,
+        delta,
+        ctx(3),
+        source=NARRATOR,
+        reached=["elder-mo", "zhao"],
+        barred=["elder-mo", "zhao"],
+    )
+
+    assert applied.state.scene.present_ids == ["lin", "zhao"]
+    assert feelings(applied.state, "elder-mo") == before
+    assert not feelings(applied.state, "zhao").grudges
+    assert {(r.subject, r.change) for r in applied.rejected} == {
+        ("character elder-mo", "location"),
+        ("character elder-mo", "meeting"),
+        ("character elder-mo", "attitude"),
+        ("character elder-mo", "presence"),
+        ("character zhao", "attitude"),
+    }
+
+
+def test_the_engine_s_own_changes_pass_no_door():
+    """Only a narrated scene is held to it: the world moves whom it moves."""
+    state = cultivation_world()
+    end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+
+    applied = apply(
+        state,
+        ENGINE,
+        characters=[CharacterChange(id="elder-mo", location_id="well", meets_player=True)],
+        scene_end=end,
+    )
+
+    assert not applied.rejected
+    assert applied.state.characters["elder-mo"].location_id == "well"
+    assert "elder-mo" in applied.state.scene.present_ids
 
 
 def test_someone_new_in_the_scene_feels_as_the_scene_says():

@@ -451,6 +451,69 @@ def test_nothing_moves_someone_who_wants_none_of_it_or_is_too_afraid(who, reason
         assert done.reason == reason
 
 
+def she_ended_it(attraction: int = 35, *, ago_s: int = 0) -> WorldState:
+    """Mara ended her marriage to Tomas `ago_s` ago, and still feels something for him."""
+    state = world(attraction, BondStage.MARRIED, affinity=50, trust=45)
+    state.world_s = 400 * DAY
+    bonds.end(
+        state.bonds["bond-9"],
+        by_id="mara",
+        how="Mara ended it.",
+        turn=3,
+        world_s=state.world_s - ago_s,
+    )
+    return state
+
+
+def test_someone_who_ended_it_is_moved_by_nothing_of_the_kind_for_a_good_while():
+    """The first live story about it (2026-11-13): a wife ended her marriage over an affair,
+    he took her hands and asked her to stay, the step was read as an advance and thrown for,
+    and one good throw later the two were courting again. Whoever ended it has made up their
+    mind: for a good while nothing of the kind moves them, however the step is read."""
+    state = she_ended_it()
+    for move in (flirt(), ask(), propose()):
+        for seed in SEEDS:
+            done = one(state, move, seed)
+            assert (done.outcome_class, done.roll) == (OutcomeClass.RULED_OUT, None)
+            assert done.reason.startswith(
+                "Mara ended it with you, and it is too soon for anything to mend it."
+            )
+            told = after(state, done)
+            assert heart(told) == 35
+            assert stage(told) in (None, BondStage.INTEREST)
+    assert bonds.closed_to(state, state.characters["mara"], YOU) is bonds.Closed.ENDED
+    # Asking makes it plain and opens nothing in them: their heart stays closed after it.
+    asked = after(state, one(state, ask()))
+    assert stage(asked) is BondStage.INTEREST
+    assert bonds.closed_to(asked, asked.characters["mara"], YOU) is bonds.Closed.ENDED
+    assert one(asked, flirt()).outcome_class is OutcomeClass.RULED_OUT
+
+
+def test_a_heart_that_closed_opens_again_at_their_own_pace():
+    rest = bonds.REST_S[bonds.pace("mara")] * bonds.ENDED_RESTS
+    still = she_ended_it(ago_s=rest - HOUR)
+    assert one(still, flirt()).outcome_class is OutcomeClass.RULED_OUT
+    later = she_ended_it(ago_s=rest)
+    assert bonds.closed_to(later, later.characters["mara"], YOU) is None
+    assert one(later, flirt()).roll is not None  # to be won again, from where their heart stands
+    assert bonds.REST_S[bonds.Pace.QUICK] * bonds.ENDED_RESTS == 10 * DAY
+    assert bonds.REST_S[bonds.Pace.SLOW] * bonds.ENDED_RESTS == 90 * DAY
+
+
+def test_only_the_one_who_ended_it_closed_their_heart():
+    """Someone who was left answers by their heart as it now stands, as before: it was never
+    theirs to end. And whoever ended it is free to ask again themselves."""
+    state = world(90, BondStage.MARRIED, affinity=60, trust=60)
+    left = after(state, one(state, part()))  # Tomas ended it
+    assert bonds.closed_to(left, left.characters["mara"], YOU) is None
+    assert bonds.ended_by(left, YOU, "mara") == left.world_s
+    assert bonds.ended_by(left, "mara", YOU) is None
+    assert one(left, ask()).roll is not None
+
+    widowed = world(90, BondStage.MARRIED)
+    assert bonds.ended_by(widowed, "mara", YOU) is None  # nothing between them is over
+
+
 def test_family_is_never_drawn_that_way():
     state = world(90)
     state.characters["mara"].parent_ids = [YOU]

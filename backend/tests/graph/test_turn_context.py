@@ -1907,3 +1907,71 @@ def test_who_else_leaves_out_whom_a_step_made_real_and_stops_at_a_handful():
     others = _section(brief(state, resolution=Resolution(steps=[made])).user, "WHO ELSE")
 
     assert [c["id"] for c in others] == [f"disciple-{n}" for n in range(1, 9)]
+
+
+def test_the_narrator_is_not_offered_whoever_a_move_wronged_and_who_did_not_see_it():
+    """W17, W10. In the first stories about an affair on the real model (2026-11-13) the
+    narrator walked the wronged partner into the scene of a move the engine had decided they
+    didn't see. Whoever this turn's move wrongs and who wasn't there is not among those the
+    scene may bring in, even from the same place, and OUTCOME says of each whether they saw
+    it. An event that is about them brings them, as the world's own doing."""
+    state = farm_world()
+    state.scene.present_ids = ["tomas"]  # Ilse is about the farm, and not at the gate
+
+    (ilse,) = _section(brief(state).user, "WHO ELSE")
+    assert ilse["id"] == "ilse" and ilse["here"] is True
+
+    state.deeds["deed-1"] = Deed(
+        id="deed-1",
+        actor_id="tomas",
+        kind="court",
+        text="kiss Mara (it worked)",
+        turn=2,
+        world_s=state.world_s,
+        place_id="farm",
+        wronged_ids=["ilse"],
+    )
+    assert "## WHO ELSE" not in brief(state).user
+    # An earlier turn's move keeps her out of nothing now.
+    assert "## WHO ELSE" in brief(state, context=ctx(turn=3)).user
+    # The world brings her: an event of this turn is about her.
+    comes = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.VISITOR,
+        source=EventSource.DECK,
+        title="Ilse comes round the barn",
+        brief="ILSE-COMES",
+        cast_ids=["ilse"],
+    )
+    (brought,) = _section(brief(state, plan=DirectorPlan(event=comes)).user, "WHO ELSE")
+    assert brought["id"] == "ilse"
+
+    system = " ".join(prompts.NARRATOR_SYSTEM.split())
+    assert "They are not in this scene and never come into it" in system
+    assert "So is anyone under KNOWN who is in neither SCENE nor WHO ELSE" in system
+    assert "only the world moves anyone else (W10)" in system
+
+
+def test_the_narrator_reads_a_heart_that_closed_when_they_ended_it():
+    """W17. Whoever ended it has made up their mind, and the narrator is told so in place of
+    how drawn they still are: otherwise a wife who left yesterday reads as "starting to be
+    drawn to you". Once the while has passed, their heart is told as it stands again."""
+    state = farm_world()
+    state.world_s = 400 * DAY
+    state.characters["ilse"].attitude_toward("tomas").attraction = 35
+    bonds.end(
+        state.bonds["bond-1"], by_id="ilse", how="Ilse Weller ended it.", turn=1, world_s=399 * DAY
+    )
+
+    def heart(of: WorldState) -> str:
+        scene = json.loads(brief(of).user.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])
+        (ilse,) = [p for p in scene["present"] if p["id"] == "ilse"]
+        assert ilse["bond_with_you"]["stage"] == "over"
+        return ilse["bond_with_you"]["their_heart"]
+
+    assert heart(state) == "closed to you since they ended it"
+    state.world_s += bonds.REST_S[bonds.pace("ilse")] * bonds.ENDED_RESTS
+    assert heart(state) == "starting to be drawn to you"
+    assert "A heart that is closed since they ended it answers nothing of the kind" in " ".join(
+        prompts.NARRATOR_SYSTEM.split()
+    )
