@@ -344,6 +344,19 @@ def test_the_rung_the_scene_named_where_the_form_asked_widens_the_ladder(fake, m
     assert [p.rung for p in state.player.sheet.ladders] == [TOP]
 
 
+def test_a_realm_the_scene_names_between_dashes_widens_the_ladder(fake, make_client):
+    # As the first live scene to lose its realm wrote it (2026-11-13): the dashes ran the name
+    # into the words beside it, and the rung was dropped as one the scene never named.
+    told = "A blinding glimpse of a higher realm—Void Refinement—shimmers beyond your grasp."
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene(told) | {"rung_above": VOID}))
+
+    _, result = play(make_client(), turn_input(at_the_top()))
+
+    assert rungs(result.state)[-2:] == ["Soul Transformation", VOID]
+    assert "rung_untold" not in [i.code for i in result.issues]
+
+
 def test_whoever_the_scene_brings_in_stands_on_the_rung_it_named(fake, make_client):
     envoy = {"id": "envoy", "name": "Envoy Shen", "location_id": "well", "rung": VOID}
     fake.script(Node.INTERPRET, Reply(json=REACH))
