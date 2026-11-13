@@ -30,6 +30,7 @@ from engine.state import (
     Deed,
     EventStatus,
     PendingEvent,
+    Place,
     PowerAxis,
     StepResult,
     WorldState,
@@ -37,6 +38,7 @@ from engine.state import (
 from engine.visibility import memory_view
 from engine.world import Kind
 from engine.world.answers import Answer
+from engine.world.geography import together
 from engine.world.norms import is_crime
 from evals import worlds
 from evals.judge import Rubric
@@ -151,6 +153,61 @@ def remembered(story: Story, who: str = MARA) -> BondStage | None:
     return person.bond if person is not None else None
 
 
+def home_at_the_mill(state: WorldState) -> None:
+    """Mara has gone home to the mill in Millbrook, forty minutes off, and Tomas is alone at
+    his own gate."""
+    state.characters[MARA].location_id = "village"
+    state.characters[YOU].location_id = "farm"
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": "farm",
+            "present_ids": [YOU],
+            "positions": ["Tomas at his own gate"],
+            "props": [],
+            "ended_on": "Tomas is at his own gate. Mara went home to the mill an hour ago.",
+        }
+    )
+
+
+def gone_to_harrow(state: WorldState) -> None:
+    """Mara has gone to her aunt's in Harrow, a town beyond the hills that no road on the map
+    reaches, and Tomas is alone on the mill lane."""
+    state.places["harrow"] = Place(id="harrow", name="Harrow", kind="town", known_by=[YOU])
+    state.characters[MARA].location_id = "harrow"
+    where = state.characters[YOU].location_id
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": where,
+            "present_ids": [YOU],
+            "positions": ["Tomas on the mill lane"],
+            "props": [],
+            "ended_on": "Tomas is on the mill lane. Mara left for her aunt's in Harrow at dawn.",
+        }
+    )
+
+
+def back_from_harrow(state: WorldState) -> None:
+    """Mara is back, and the two are on the mill lane."""
+    where = state.characters[YOU].location_id
+    state.characters[MARA].location_id = where
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": where,
+            "present_ids": [YOU, MARA],
+            "positions": ["Tomas and Mara on the mill lane"],
+            "props": [],
+            "ended_on": "Mara is back from Harrow, and the two are on the mill lane.",
+        }
+    )
+
+
+def with_her(story: Story) -> bool:
+    """Whether the record has Tomas where Mara is (W10)."""
+    state = story.state
+    spot, hers = state.characters[YOU].location_id, state.characters[MARA].location_id
+    return spot in state.places and hers in state.places and together(state, spot, hers)
+
+
 def by_her_heart(drawn: int, no: int, sure: int) -> OutcomeClass | None:
     """How an ask is answered, from how drawn she is: None where it is thrown for."""
     if drawn >= sure:
@@ -211,15 +268,17 @@ async def courted(ev: Eval, story: Story, until: int) -> list[Played]:
     "t17.slow-romance",
     suite="T17",
     title="Slow romance",
-    requirements=("W17", "A2", "E7", "F3", "C6", "T17"),
+    requirements=("W17", "A2", "E7", "W10", "F3", "C6", "T17"),
     passes_when=(
         "Asked on the first day, she turns it down with nothing thrown and they are no couple, "
         "whatever the narrator tells. Sweet words twice in one day move her heart once. Weeks "
         "of courting move it as far as their days allow, and a week something cuts short keeps "
         "the days it ran. Asked again, she answers by her heart: yes with nothing thrown once "
-        "she is in love. A kiss with a partner needs no throw, a wedding takes two who are "
-        "promised, and the bond comes to married one stage at a time, over weeks of the "
-        "story. Memory shows the two as the record holds them at each point"
+        "she is in love, and when she has gone home the ask starts with going to her. A kiss "
+        "with a partner needs no throw, and one for a partner who is far away reaches nobody. "
+        "A wedding takes two who are promised, and the bond comes to married one stage at a "
+        "time, over weeks of the story. Memory shows the two as the record holds them at each "
+        "point"
     ),
 )
 async def slow_romance(ev: Eval) -> None:
@@ -293,12 +352,29 @@ async def slow_romance(ev: Eval) -> None:
             )
             continue
 
-        # She is in love: asked, the answer is yes with nothing thrown.
+        # She is in love, and she has gone home: asking her starts with going to her (W10),
+        # and the answer is yes with nothing thrown.
+        story.change(home_at_the_mill)
         yes = await story.act(ASK, ask())
         ev.check(
             "an ask is answered by her heart",
             answered_as(yes, OutcomeClass.CERTAIN),
             f"{seed}: at {heart(story)}, {as_read([yes])}",
+        )
+        trip = yes.steps[0].trip if yes.completed and yes.steps else None
+        ev.check(
+            "an ask to someone a short walk away goes to her",
+            with_her(story),
+            f"{seed}: Tomas in {story.state.characters[YOU].location_id}, "
+            f"Mara in {story.state.characters[MARA].location_id}",
+        )
+        ev.check(
+            "the step that went to her is the trip there, and takes the walk at the least",
+            trip is not None
+            and (trip.to_id, trip.arrived) == ("village", True)
+            and yes.steps[0].duration_s >= 40 * MINUTE,
+            f"{seed}: {trip}",
+            live=False,
         )
         ev.check("a yes makes them a couple", stage(story) is BondStage.TOGETHER, seed)
         ev.check(
@@ -316,6 +392,7 @@ async def slow_romance(ev: Eval) -> None:
             "a yes and a kiss",
             Rubric(
                 must=(
+                    "Tomas goes to where Mara is before he asks, and she answers him there",
                     "Mara says yes, in her own way, and from here the two are told as a couple",
                     "The kiss is welcome and returned",
                 ),
@@ -326,6 +403,32 @@ async def slow_romance(ev: Eval) -> None:
             ),
             [yes, kissed],
         )
+
+        # She has gone to her aunt's, beyond the hills: a kiss for someone who isn't here.
+        story.change(gone_to_harrow)
+        was = (heart(story), stage(story))
+        missed = await story.act(KISS, kiss())
+        done = missed.steps[0] if missed.completed and missed.steps else None
+        ev.check(
+            "a move toward someone far off reaches nobody",
+            done is not None
+            and done.outcome_class is OutcomeClass.RULED_OUT
+            and done.trip is None
+            and (heart(story), stage(story)) == was,
+            f"{seed}: {as_read([missed])}, {was} to {(heart(story), stage(story))}",
+        )
+        await ev.judge(
+            "a kiss for someone who isn't here",
+            Rubric(
+                must=("Tomas finds that Mara isn't around, and no kiss takes place",),
+                must_not=(
+                    "Mara appears, answers, kisses him or sends word in this scene",
+                    "The narrator lectures the player or refuses to play the scene",
+                ),
+            ),
+            [missed],
+        )
+        story.change(back_from_harrow)
 
         # A wedding takes two who are promised.
         hasty = await story.act(MARRY, marry())
@@ -378,7 +481,8 @@ async def slow_romance(ev: Eval) -> None:
                 must=(
                     "In every scene, how warm Mara is toward Tomas fits what OUTCOME says of "
                     "her heart and of where the two stand",
-                    "When Tomas wants to marry her the same day, no wedding takes place",
+                    "In a scene whose OUTCOME says the two aren't promised yet, no wedding "
+                    "takes place, whatever Tomas asks for",
                     "The wedding is told once the two are promised, and not before",
                 ),
                 must_not=(

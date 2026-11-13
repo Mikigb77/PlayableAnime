@@ -26,6 +26,7 @@ from engine.state.records import StepResult
 from engine.state.scene import SceneFrame
 from engine.state.world import Journey, WorldState
 from engine.world.geography import find_place, has_route, route_s, routes_from
+from engine.world.geography import travel_s as way_between
 
 # A trip shorter than this writes no route: crossing a yard or going down to the cellar is a
 # move the interpret step times each time, and the map stays a map of journeys.
@@ -112,6 +113,22 @@ def heading(
     return Trip(from_id=at_id, to_id=to_id, to="" if to_id is not None else named, route_s=way)
 
 
+def to_someone(
+    state: WorldState, actor: Character, other: Character, at_id: str | None
+) -> Trip | None:
+    """W10. The trip from `at_id` to where the record has someone, for a step that goes to
+    them to do something there, timed by the map. None when the actor couldn't find the way:
+    the record has them nowhere, or in a place the actor has no way to know of from there
+    (`_near`), or one that nothing on the map connects to it."""
+    where = other.location_id
+    if where is None or where not in state.places or where not in _near(state, actor, at_id):
+        return None
+    way = way_between(state, at_id, where)
+    if not way:
+        return None
+    return Trip(from_id=at_id, to_id=where, route_s=way)
+
+
 def on_the_road(state: WorldState, actor_id: str, step: StepResolution) -> bool:
     """W16. Whether a step is a trip of the player character's that got going, so the road may
     bring something on the way (`engine.director.schedule_road`). A night at the inn they
@@ -133,6 +150,15 @@ def cut_short(step: StepResolution, elapsed_s: int) -> bool:
     if step.kind in GOING:
         return True
     return trip.takes_s is not None and elapsed_s < trip.takes_s
+
+
+def way_s(step: StepResolution) -> int:
+    """W10. How much of a step's time was the way there, for a step that went somewhere to do
+    something: nothing for one that stayed where it was, and for the going itself."""
+    trip = step.trip
+    if trip is None or step.kind in GOING or trip.takes_s is None:
+        return 0
+    return trip.takes_s
 
 
 def first_visit(state: WorldState, step: StepResolution) -> bool:
@@ -161,15 +187,17 @@ def follow(state: WorldState, actor_id: str, step: StepResolution, *, planned_s:
     trip = step.trip
     if trip is None:
         return
-    if step.outcome_class is OutcomeClass.RULED_OUT or step.result is StepResult.FAILURE:
-        return
     actor = state.characters.get(actor_id)
     player = actor_id == state.player_id
     if trip.arrived:
+        # Whatever came of what they went there to do: someone who went to ask and was
+        # turned down is there all the same (W17).
         if actor is not None and trip.to_id in state.places:
             actor.location_id = trip.to_id
         if player:
             _arrive(state, trip)
+        return
+    if step.outcome_class is OutcomeClass.RULED_OUT or step.result is StepResult.FAILURE:
         return
     if player:
         if step.interrupted:

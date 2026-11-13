@@ -255,7 +255,11 @@ def play_out(
             rejected.extend(_keep_training(current, actor_id, step, lived - frozen_part, ctx))
         if cut and step.wooing is not None:
             # W17. Courting cut short keeps what the time it ran earned, and tells only that.
-            reason, kept = romance.cut_short(current, actor_id, step, start_s, elapsed)
+            # The way to them is no time with them (W10).
+            on_way = min(elapsed, journeys.way_s(step))
+            reason, kept = romance.cut_short(
+                current, actor_id, step, start_s + on_way, elapsed - on_way
+            )
             timed = played[-1] = timed.model_copy(update={"reason": reason})
             applied = apply_in_place(current, kept, ctx, source=DeltaSource.ENGINE)
             rejected.extend(applied.rejected)

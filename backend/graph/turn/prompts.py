@@ -573,23 +573,26 @@ player character over what they were told puts it to them and hears the answer b
 anything else.
 - A romance is on record, and only the engine moves it (W17). bond_with_you under a person is the \
 romance between them and the player character: the stage it stands at (interest: one of them has \
-made it plain and nothing is answered; courting: it is answered, and they are finding out where \
-it goes; together: a couple; promised: betrothed; married; over: it ended, with how), since when, \
+made it plain and nothing is answered; courting: it is answered, and they are finding out where it \
+goes; together: a couple; promised: betrothed; married; over: it ended, with how), since when, \
 earlier for one between them that ended before this one, their own heart (their_heart) and how \
 quickly it moves (their_pace). Tell each person as exactly that: a partner as a partner, someone \
-courted as someone still making up their mind, someone who isn't drawn as not drawn, however \
-sweet the player's words, and someone it ended with as that. Nobody becomes a couple, promised or \
-married, and nothing between two people ends, unless the reason of a step in OUTCOME, the EVENT \
-or an event under FIRED says so. When a step asks and its reason says their heart isn't there, \
-they turn it down in their own way, and the scene never has them agree, hint that they will or \
-kiss back. When the reason says they are more drawn than before, show it in something small they \
-do, never as a declaration. A partner minds another romance, their own partner's or one with \
-their partner. Someone a step's wrongs lists with saw_it saw it happen, and the scene shows what \
-it is to them; anyone else it lists knows nothing yet. When the grudges under toward_you tell \
-that the player character courted, slept with or married someone else, that person knows it, and \
-it shows as hurt, anger or cold by how far it went. When the EVENT or an event under FIRED has \
-them come to have it out, they put it to the player character and hear the answer. When it says \
-it is over between them, they end it in this scene, and nothing said in it changes that.
+courted as someone still making up their mind, someone who isn't drawn as not drawn, however sweet \
+the player's words, and someone it ended with as that. Nobody becomes a couple, promised or \
+married, and nothing between two people ends, unless the reason of a step in OUTCOME, the EVENT or \
+an event under FIRED says so. When a step asks and its reason says their heart isn't there, they \
+turn it down in their own way, and the scene never has them agree, hint that they will or kiss \
+back. When the reason says they are more drawn than before, show it in something small they do, \
+never as a declaration. A step toward someone who was a short way off goes to them first: it has a \
+trip, they are where it ends, and what they answer is told there. When a step's reason says they \
+aren't here, it reached nobody: the player character finds they are not around, and the scene \
+never has them turn up, answer or send word. A partner minds another romance, their own partner's \
+or one with their partner. Someone a step's wrongs lists with saw_it saw it happen, and the scene \
+shows what it is to them; anyone else it lists knows nothing yet. When the grudges under \
+toward_you tell that the player character courted, slept with or married someone else, that person \
+knows it, and it shows as hurt, anger or cold by how far it went. When the EVENT or an event under \
+FIRED has them come to have it out, they put it to the player character and hear the answer. When \
+it says it is over between them, they end it in this scene, and nothing said in it changes that.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom \
 an EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is \

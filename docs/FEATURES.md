@@ -94,6 +94,10 @@ The first version's state, checked against the code in WS18.
       have it out. A partner whose heart is gone ends it, and a rival comes for revenge only
       over a night together (W17, W1, W2, W4). *(A drafted story gives only the player's own
       premise partner so far, so rivals wait for the next change.)*
+- [x] They have to be there: a move in a romance reaches someone in the scene or at the place.
+      Toward someone a short walk away the character goes to them first and the scene plays
+      where they are, and toward someone far off it reaches nobody, so nobody says yes from
+      another town (W17, W10).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

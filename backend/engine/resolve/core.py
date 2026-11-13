@@ -565,9 +565,21 @@ def _settle_step(
     if settled is None and bridging is None:
         # W17. A move in a romance is ruled on by the bond on record and the other's own
         # heart first (A2). What they leave open is thrown for like any step of words.
-        wooing = romance.read(state, actor, step, ctx.settings.language, frame.hearts)
+        wooing = romance.read(
+            state,
+            actor,
+            step,
+            ctx.settings.language,
+            frame.hearts,
+            frame.place_id,
+            trip,
+            held=frozen or state.scene.encounter is not None,
+        )
         if wooing is not None:
             step, settled = wooing.step, wooing.settled
+            if wooing.goes is not None:
+                # W10. They are elsewhere and not far, so the step goes to them first.
+                trip, route_s = wooing.goes, wooing.goes.route_s
 
     met: strangers_mod.Met | None = None
     if settled is None and step.aim.harmful and step.stranger is not None:
@@ -656,10 +668,14 @@ def _settle_step(
     tempo, tempo_left = (None, None) if frozen else _rate(new_tempo, frame)
     # W10. A trip that is made takes what its way takes: all of a step that is the going
     # itself, and the least of one that goes somewhere to do something there.
-    made = (
-        trip is not None
-        and settled.outcome_class is not OutcomeClass.RULED_OUT
-        and settled.result is not StepResult.FAILURE
+    # A move in a romance that went somewhere got there whatever came of it (W17): the one it
+    # went to turned it down there, or wasn't there to be found.
+    made = trip is not None and (
+        wooing is not None
+        or (
+            settled.outcome_class is not OutcomeClass.RULED_OUT
+            and settled.result is not StepResult.FAILURE
+        )
     )
     way_s = route_s if made else None
     fixed_s = way_s if going else None
@@ -1010,6 +1026,12 @@ def _settle_step(
         )
         if arrived and trip.to_id is not None:
             frame.place_id = trip.to_id
+            if not going or (wooing is not None and wooing.goes is not None):
+                # W1, W2. What a step did where it went was done there, before whoever is there.
+                deeds = [
+                    d if d.place_id else d.model_copy(update={"place_id": trip.to_id})
+                    for d in deeds
+                ]
     resolution = StepResolution(
         index=index,
         text=step.text,
