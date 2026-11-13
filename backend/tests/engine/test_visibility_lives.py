@@ -100,8 +100,8 @@ def test_a_persons_entry_tells_what_came_to_them_with_its_day(language, told):
 
 
 def test_what_nobody_told_the_player_character_stays_out():
-    """C6: news of someone travels to the player character when they live near or when the two
-    next meet. Until then Memory holds nothing of it, and nothing of when it happened."""
+    """C6: news of someone travels to the player character when they live near, or when a
+    scene tells it. Until then Memory holds nothing of it, and nothing of when it happened."""
     state = years_on()
     for event in state.lives.values():
         event.known_by.remove("tomas")
@@ -109,10 +109,17 @@ def test_what_nobody_told_the_player_character_stays_out():
     assert lines(state, "mara") == []
     assert "day 734" not in json.dumps(memory_view(state).model_dump(mode="json"))
 
-    # The scene the two next share is where he hears it (`pipeline.settle_lives`).
+    # A scene the two share that tells none of it leaves Memory as it was.
     state.scene.present_ids = ["tomas", "mara"]
-    met, heard = pipeline.settle_lives(state)
-    assert len(heard) == 6 and len(lines(met, "mara")) == 6
+    silent, heard = pipeline.settle_lives(state)
+    assert heard == [] and lines(silent, "mara") == []
+
+    # What a scene told is heard (`pipeline.settle_lives`), piece by piece.
+    some, heard = pipeline.settle_lives(silent, ["life-2", "life-3"])
+    assert heard == ["life-2", "life-3"]
+    assert lines(some, "mara") == ["Married Edrik, day 1464.", "Had a child: Lena, day 2194."]
+    met, heard = pipeline.settle_lives(some, list(state.lives))
+    assert len(heard) == 4 and len(lines(met, "mara")) == 6
     assert lines(met, "bram") == lines(years_on(), "bram")  # what he heard was about Bram too
 
 

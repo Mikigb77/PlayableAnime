@@ -53,11 +53,12 @@ def test_a_lasting_change_to_a_face_moves_the_look_on_once():
     assert state.characters["lin"].appearance == scarred
     # The narrator writes the appearance again, in other words or not, without a change: none.
     state = look(state, appearance="Slight, 16: black hair tied back, one eye lost to a blade.")
-    state = look(state, appearance="16, slight, a patch over one eye, a scar.", age=17)
+    state = look(state, appearance="16, slight, a patch over one eye, a scar.")
     state = look(state, location_id="well")
     assert state.characters["lin"].look_version == 2
-    # Years later, old age is a change of its own.
-    state = look(state, age=61, look_change="white-haired and stooped with age")
+    # Years later, old age is a change of its own. The years themselves are the world's to
+    # count (W10, `engine.world.lives`): the scene tells only how they show.
+    state = look(state, look_change="white-haired and stooped with age")
     assert state.characters["lin"].look_version == 3
     assert state.characters["lin"].appearance.endswith("White-haired and stooped with age.")
 

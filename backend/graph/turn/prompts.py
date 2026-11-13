@@ -438,22 +438,23 @@ what goes on there and who is about, as far as their way through it lets them se
 first_visit: they have never been here, so show it for the first time. Arriving is no moment \
 for news: unless an EVENT brings someone to them, nobody stops them to tell them things, and \
 they get where they were going.
-- Talk of the place (W2). TALK, when the brief has it, is something the place is saying that \
-the character hasn't heard: saying is a rumor, in the world's words, and own means what the \
-place talks about is yours to make up, fitting this world and what has happened in it (news, \
-a rumor, a job going, a stranger come to town). It is an offer and never a task. When the \
-scene has a natural opening for it, let it reach them the way talk does, as part of what is \
-already happening: a word from someone they are dealing with, something said at the next \
-table, a notice, a broadcast, whatever carries word in this world. One thing, once, in \
-passing, as people tell it and never as fact, and never a list of things heard. When they \
-are hurrying, fighting, hiding or deep in something, when nobody is about, or when it would \
-have to be pushed in, leave it out: they can miss it, and it may come up another day. With \
-asked, the player character asked what people are saying or listened for it this turn, so the \
-scene tells it: whoever they asked, or the talk around them, gives them this, in their own \
-words and as talk, never anything else in its place. When the talk is about the player \
-character, whoever tells it says it as what is being said, plainly or around it as they would \
-dare to their face. Set told_talk true only when the scene told it. Talk of your own making \
-that they could follow up goes under leads.
+- Talk of the place (W2). TALK, when the brief has it, is something the place is saying that the \
+character hasn't heard: saying is a rumor, in the world's words, and own means what the place \
+talks about is yours to make up, fitting this world and what has happened in it (news, a rumor, a \
+job going, a stranger come to town). It is an offer and never a task. When the scene has a natural \
+opening for it, let it reach them the way talk does, as part of what is already happening: a word \
+from someone they are dealing with, something said at the next table, a notice, a broadcast, \
+whatever carries word in this world. One thing, once, in passing, as people tell it and never as \
+fact, and never a list of things heard. When they are hurrying, fighting, hiding or deep in \
+something, when nobody is about, or when it would have to be pushed in, leave it out: they can \
+miss it, and it may come up another day. With asked, the player character asked what people are \
+saying or listened for it this turn, so the scene tells it: whoever they asked, or the talk around \
+them, gives them this, in their own words and as talk, never anything else in its place. news in \
+place of saying or own: someone in SCENE or WHO ELSE has news of their own life (W6), and that is \
+what there is to hear here, so the scene makes up no talk of its own: with asked, whoever they \
+asked tells them that news. When the talk is about the player character, whoever tells it says it \
+as what is being said, plainly or around it as they would dare to their face. Set told_talk true \
+only when the scene told it. Talk of your own making that they could follow up goes under leads.
 - A moment (W16). MOMENT, when the brief has it, is a small thing that happens around the \
 character during the scene, of this place and this minute: give it this world's own form and \
 let it happen where it fits what they are doing, in a line or two, with cast_ids as whoever \
@@ -625,18 +626,25 @@ else, that person knows it, and it shows as hurt, anger or cold by how far it we
 or an event under FIRED has them come to have it out, they put it to the player character and hear \
 the answer. When it says it is over between them, they end it in this scene, and nothing said in \
 it changes that.
-- People lead lives of their own while the story is elsewhere (W6, W10). last_seen under a \
-person is how long ago the player character was last with them: after years they are that much \
-older, and it shows on them. news under a person is what that time brought them that the player \
-character hasn't heard: a partner, a wedding, a child, a parting, a close friend, a falling-out, \
-with when and with whom. Let it show or be said as the two meet, the way anyone learns it of \
-someone they haven't seen in years: a ring, a child at their side, a word about it. It is on \
-record: never undo it, and never make up a wedding, a child or a parting for someone the scene \
-only speaks of. Someone marked unnamed is a partner or a child the world brought, under a \
-placeholder: give them a name when the scene first tells of them. LIVES is what the time this \
-scene covers brought the people the player character lives among, which they saw or heard as it \
-happened: tell what matters to them in passing, as part of the time going by. Someone with no \
-news is as they were left, a little older: time changes some people and not others.
+- People lead lives of their own while the story is elsewhere (W6, W10). last_seen under a person \
+is how long ago the player character was last with them: after years they are that much older, and \
+it shows on them. news under a person is what that time brought them that the player character \
+hasn't heard: a partner, a wedding, a child, a parting, a close friend, a falling-out, each with \
+its id, when and with whom. Let it show or be said as the two meet, the way anyone learns it of \
+someone they haven't seen in years: a ring, a child at their side, a word about it. When the two \
+meet again after a long time, or the player character asks after them or how they have been, the \
+scene shows or says at least one piece of that news before anything of your own making, and what \
+they are told of those years is this news and nothing made up in its place. Under told_news, list \
+the id of every piece of news the scene showed or said: the record then has the player character \
+knowing it. News a scene left out stays under them for another scene, so never list a piece the \
+scene didn't tell, and never leave out one it did. It is on record: never undo it, and never make \
+up a wedding, a child or a parting for someone the scene only speaks of. An age on record is the \
+world's to move: the years have been counted already, so never set age for someone who has one. \
+Someone marked unnamed is a partner or a child the world brought, under a placeholder: give them a \
+name when the scene first tells of them. LIVES is what the time this scene covers brought the \
+people the player character lives among, which they saw or heard as it happened: tell what matters \
+to them in passing, as part of the time going by. Someone with no news is as they were left, a \
+little older: time changes some people and not others.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom an \
 EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is shown as \
@@ -869,8 +877,9 @@ it needs a decision, and what follows from it.
 asks nothing of them: brief, what it is, and cast_ids, someone they know whom it is about.
 - CALLBACKS: open threads to touch on.
 - TALK: something the place is saying that the scene may let the character catch, if it has \
-room: saying, a rumor in the world's words, or own, talk of your own making. asked: they asked \
-or listened for it this turn, so the scene tells it.
+room: saying, a rumor in the world's words, own, talk of your own making, or news, the news \
+under the people of this scene and nothing of your own making. asked: they asked or listened \
+for it this turn, so the scene tells it.
 - SUGGESTIONS: how many suggestions to write and of which kinds (thread, personal, side, wild, \
 and now and then time), and the thread a thread suggestion follows.
 - PICTURE: a picture comes with this scene: its kind, its subject and why.

@@ -26,8 +26,16 @@ from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
 from engine.resolve.powers import growth
 from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import CharacterStatus
-from engine.state.records import Goal, GoalStatus, LifeEvent, LifeKind, StepResult
+from engine.state.cast import Character, CharacterStatus
+from engine.state.records import (
+    Goal,
+    GoalStatus,
+    LifeEvent,
+    LifeKind,
+    Origin,
+    OriginKind,
+    StepResult,
+)
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import Health
 from engine.state.world import Chapter
@@ -1330,8 +1338,10 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     fake, make_client, log_lines
 ):
     """W6, C6: Lin hasn't seen Zhao in three years, and nobody told him Zhao made a friend of
-    Elder Mo. The narrator reads both for the scene the two meet in, and once it is told the
-    record has them as met and the news as heard. Code keeps that; no model says so."""
+    Elder Mo. The narrator reads both for the scene the two meet in. A scene that tells none
+    of it leaves it news, and the next one is handed it again; once a scene says it told it,
+    the record has it heard. Code holds the answer to the news the brief handed the scene:
+    what the narrator lists beyond it counts for nothing."""
     start = cultivation_world()
     start.world_s = 3 * YEAR
     start.characters["zhao"].seen_s = 0
@@ -1342,26 +1352,49 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
         world_s=YEAR,
         known_by=["zhao", "elder-mo"],
     )
+    # Old Wei, whom Lin knows, is nowhere near: his news is no scene's to tell here.
+    start.characters["wei"] = Character(id="wei", name="Old Wei", known_by=["lin"], met_by=["lin"])
+    start.lives["life-2"] = LifeEvent(
+        id="life-2",
+        kind=LifeKind.FELL_OUT,
+        subject_ids=["wei", "elder-mo"],
+        world_s=2 * YEAR,
+        known_by=["wei", "elder-mo"],
+    )
+
+    def zhao_in_the_brief() -> dict:
+        brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+        return json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
+
+    news = {
+        "id": "life-1",
+        "what": "became close friends with someone",
+        "when": "2 years ago",
+        "with": {"id": "elder-mo", "name": "Elder Mo"},
+    }
+    # A scene that tells none of it, and says so.
     fake.script(Node.INTERPRET, Reply(json=STONE))
     fake.script(Node.NARRATOR, Reply(json=SCENE))
-
     _, result = play(make_client(), turn_input(start))
 
-    [request] = fake.calls(Node.NARRATOR)
-    brief = request.prompt.messages[-1].text
-    zhao = json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
-    assert zhao["last_seen"] == "3 years ago"
-    assert zhao["news"] == [
-        {
-            "what": "became close friends with someone",
-            "when": "2 years ago",
-            "with": {"id": "elder-mo", "name": "Elder Mo"},
-        }
-    ]
+    zhao = zhao_in_the_brief()
+    assert zhao["last_seen"] == "3 years ago" and zhao["news"] == [news]
+    silent = result.state
+    assert silent.characters["zhao"].seen_s == silent.world_s > start.world_s
+    assert silent.characters["elder-mo"].seen_s is None  # he wasn't there
+    assert silent.lives["life-1"].known_by == ["zhao", "elder-mo"]
+    assert not [i for i in result.issues if i.code == "life_heard"]
+
+    # The next scene with him is handed it again, and tells it.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1", "life-2", "life-9"]}))
+    _, result = play(make_client(), turn_input(silent))
+
+    zhao = zhao_in_the_brief()
+    assert "last_seen" not in zhao and zhao["news"] == [news]
     after = result.state
-    assert after.characters["zhao"].seen_s == after.world_s > start.world_s
-    assert after.characters["elder-mo"].seen_s is None  # he wasn't there
     assert after.lives["life-1"].known_by == ["zhao", "elder-mo", "lin"]
+    assert after.lives["life-2"].known_by == ["wei", "elder-mo"]  # the brief never held it
     assert [(i.code, i.subject) for i in result.issues if i.code == "life_heard"] == [
         ("life_heard", "life-1")
     ]
@@ -1369,14 +1402,47 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     told = [line["turn_issue"] for line in log_lines() if line.get("turn_issue")]
     assert {"code": "life_heard"} in told
 
-    # The next scene with him has nothing new to tell.
+    # The scene after that has nothing new to tell.
     fake.script(Node.INTERPRET, Reply(json=STONE))
-    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1"]}))
     _, again = play(make_client(), turn_input(after))
-    brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
-    zhao = json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
-    assert not {"last_seen", "news"} & zhao.keys()
+    assert not {"last_seen", "news"} & zhao_in_the_brief().keys()
     assert not [i for i in again.issues if i.code == "life_heard"]
+
+
+def test_a_scene_that_names_a_partner_the_world_brought_has_told_of_them(fake, make_client):
+    """W6, C6: the narrator gives "Zhao Kun's partner" a name when its scene first tells of
+    her. The name is the telling, so Lin has heard that Zhao found someone though the scene's
+    answer lists no news."""
+    start = cultivation_world()
+    start.world_s = 3 * YEAR
+    start.characters["zhao"].seen_s = 0
+    start.characters["char-9"] = Character(
+        id="char-9",
+        name="Zhao Kun's partner",
+        age=19,
+        location_id="well",
+        known_by=["zhao"],
+        origin=Origin(kind=OriginKind.ENGINE, ref_id="zhao", text="Found a life with Zhao Kun."),
+    )
+    start.lives["life-1"] = LifeEvent(
+        id="life-1",
+        kind=LifeKind.PAIRED,
+        subject_ids=["zhao", "char-9"],
+        world_s=YEAR,
+        known_by=["zhao", "char-9"],
+    )
+    naming = {"id": "char-9", "name": "Su Lan", "known_to_player": True}
+    told = SCENE | {"update": SCENE["update"] | {"characters": [naming]}}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input(start))
+
+    after = result.state
+    assert after.characters["char-9"].name == "Su Lan"
+    assert after.lives["life-1"].known_by == ["zhao", "char-9", "lin"]
+    assert [i.subject for i in result.issues if i.code == "life_heard"] == ["life-1"]
 
 
 def test_what_the_player_writes_names_what_was_held_back(fake, make_client):

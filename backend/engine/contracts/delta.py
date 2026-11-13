@@ -136,7 +136,12 @@ class CharacterChange(EngineModel):
         "such as 'lost his left eye' or 'grey-haired with the years', with the whole appearance "
         "written again. Never for mud, blood, clothes or anything else that passes.",
     )
-    age: int | None = Field(default=None, ge=0)
+    age: int | None = Field(
+        default=None,
+        ge=0,
+        description="W10: only for someone new, or whose age the record doesn't have. An age on "
+        "record moves with the world's years, never by a scene.",
+    )
     people_id: str | None = Field(
         default=None,
         description="The bible's id of their people (G23), or of their kind for a beast (G24).",

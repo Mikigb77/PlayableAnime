@@ -32,6 +32,7 @@ from engine.contracts import (
     PictureKind,
     PictureTrigger,
     PlannedEvent,
+    PlannedTalk,
     ProposedDeed,
     Resolution,
     SceneWeight,
@@ -1353,9 +1354,11 @@ def test_the_narrator_tells_the_action_first_in_its_own_part():
 def test_the_narrators_answer_asks_for_the_action_first_and_joins_the_scene():
     schema = NarratorOutput.model_json_schema()
     assert list(schema["properties"])[:2] == ["action", "narration"]
-    # W2: whether the scene told the talk it was offered is always answered, as `update` is.
-    assert schema["required"] == ["action", "narration", "told_talk", "update"]
-    assert list(schema["properties"])[2] == "told_talk"
+    # W2, W6: whether the scene told the talk it was offered, and which news of people's lives
+    # it told, is always answered, as `update` is.
+    assert schema["required"] == ["action", "narration", "told_talk", "told_news", "update"]
+    assert list(schema["properties"])[2:4] == ["told_talk", "told_news"]
+    assert NarratorOutput(narration="You wake.").told_news == []
     assert NarratorOutput(narration=" You wake. ").text == "You wake."
     told = NarratorOutput(action=" You hold out the coin. ", narration="\nHe takes it.")
     assert told.text == "You hold out the coin.\n\nHe takes it."
@@ -2123,9 +2126,10 @@ def test_the_narrator_reads_what_the_years_brought_someone_met_again():
     partner = {"id": "char-9", "name": "Mara's partner", "unnamed": True}
     assert mara["last_seen"] == "10 years ago"
     assert mara["news"] == [
-        {"what": "found a partner", "when": "8 years ago", "with": partner},
-        {"what": "married", "when": "6 years ago", "with": partner},
+        {"id": "life-1", "what": "found a partner", "when": "8 years ago", "with": partner},
+        {"id": "life-2", "what": "married", "when": "6 years ago", "with": partner},
         {
+            "id": "life-3",
             "what": "had a child",
             "when": "4 years ago",
             "with": partner,
@@ -2148,19 +2152,58 @@ def test_the_narrator_reads_what_the_years_brought_someone_met_again():
     assert mara["news"][0]["with"] == {"id": "char-9", "name": "Edrik"}
 
 
-def test_news_of_someone_is_told_once_and_the_two_have_then_met():
-    """C6: the scene the two meet in is where the player character hears it. After it, the
-    record has them as seen, the news is heard, and the next brief carries neither."""
+def test_news_stays_under_someone_until_a_scene_says_it_told_it():
+    """C6: a scene the two share is where the player character can hear it, and has heard
+    only what the scene told. After a scene that told none of it the record has them as seen
+    and the next brief still carries the news; each piece leaves the brief once a scene told
+    it. The brief keeps which news it handed the scene, for code to hold the answer to."""
     state = _ten_years_on()
+    assert brief(state).news == ("life-1", "life-2", "life-3")
 
-    after, heard = pipeline.settle_lives(state)
+    silent, heard = pipeline.settle_lives(state)
 
-    assert heard == ["life-1", "life-2", "life-3"]
+    assert heard == []
+    mara = _section(brief(silent).user, "SCENE")["present"][-1]
+    assert "last_seen" not in mara and [n["id"] for n in mara["news"]] == [
+        "life-1",
+        "life-2",
+        "life-3",
+    ]
+
+    some, heard = pipeline.settle_lives(silent, ["life-2"])
+
+    assert heard == ["life-2"] and brief(some).news == ("life-1", "life-3")
+
+    after, heard = pipeline.settle_lives(some, ["life-1", "life-3"])
+
+    assert heard == ["life-1", "life-3"] and brief(after).news == ()
     mara = _section(brief(after).user, "SCENE")["present"][-1]
     assert not {"last_seen", "news"} & mara.keys()
     assert mara["family"]["partners"][0]["name"] == "Mara's partner"  # what is, stays told
     # The state the scene began in is untouched (B4).
     assert state.characters["mara"].seen_s == 0 and state.lives["life-1"].known_by[-1] == "char-9"
+
+
+def test_someone_with_news_in_the_scene_is_what_there_is_to_hear_in_place_of_made_up_talk():
+    """W6, W2: in the first live story of a homecoming (2026-11-13) a man asked his neighbours
+    how the ten years had been, the brief offered talk of the narrator's own making, and the
+    scene told that in place of the news it had under them. With news of someone the scene
+    shows, that is the talk on offer; a rumor on record is still the place's own saying."""
+    state = _ten_years_on()
+    asked = DirectorPlan(talk=PlannedTalk(asked=True))
+
+    assert _section(brief(state, plan=asked).user, "TALK") == {"news": True, "asked": True}
+    passing = DirectorPlan(talk=PlannedTalk())
+    assert _section(brief(state, plan=passing).user, "TALK") == {"news": True}
+
+    # Mara isn't in the scene, and may come into it: her news is still what there is to hear.
+    state.scene.present_ids = ["tomas", "ilse"]
+    assert brief(state, plan=asked).news == ("life-1", "life-2", "life-3")
+    assert _section(brief(state, plan=asked).user, "TALK") == {"news": True, "asked": True}
+
+    # Once it is told, talk is the narrator's to make up again.
+    told, _ = pipeline.settle_lives(state, ["life-1", "life-2", "life-3"])
+    assert _section(brief(told, plan=asked).user, "TALK") == {"own": True, "asked": True}
 
 
 def test_no_more_than_the_latest_news_of_someone_is_read():
@@ -2289,5 +2332,13 @@ def test_the_narrator_is_told_people_lead_lives_of_their_own():
     assert "never undo it, and never make up a wedding, a child or a parting" in system
     assert "Someone marked unnamed is a partner or a child the world brought" in system
     assert "Someone with no news is as they were left, a little older" in system
+    # What the first live homecoming showed was missing (2026-11-13): the news is told before
+    # anything made up, the scene says which of it it told, and the years are counted once.
+    assert "shows or says at least one piece of that news before anything of your own" in system
+    assert "Under told_news, list the id of every piece of news the scene showed or said" in system
+    assert "never list a piece the scene didn't tell, and never leave out one it did" in system
+    assert "never set age for someone who has one" in system
+    assert "news in place of saying or own: someone in SCENE or WHO ELSE has news" in system
+    assert "so the scene makes up no talk of its own" in system
     assert 'does a partner it gave someone ("Mara\'s partner")' in system
     assert "last_seen and news where time has gone by" in system

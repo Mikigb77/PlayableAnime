@@ -519,13 +519,26 @@ def settle_untold(state: WorldState, named: Iterable[str] = ()) -> tuple[WorldSt
     return (untold.tell(state, told), told) if told else (state, [])
 
 
-def settle_lives(state: WorldState) -> tuple[WorldState, list[str]]:
+def settle_lives(
+    state: WorldState,
+    told: Iterable[str] = (),
+    *,
+    played: WorldState | None = None,
+    shown: Iterable[str] = (),
+) -> tuple[WorldState, list[str]]:
     """After the narrator's update is applied (step 6). Whoever the scene ended with, the
-    player character has now been with, and has heard what the years brought each of them
-    (W6, C6, `engine.world.lives`): the narrator was shown that news to tell. Returns the
-    state, a new one when anything changed, and the ids of the news now heard, for the
-    turn's log."""
-    return lives.settle(state)
+    player character has now been with. `told` is the news the scene was handed and says it
+    showed or said (`NarratorOutput.told_news`), by id: that much of what the years brought
+    people the player character has now heard (W6, C6, `engine.world.lives`), and news the
+    scene left out stays news.
+
+    `played` is the state the steps left, before the update, and `shown` the news the scene
+    was handed: of that, a scene that gave a partner or a child the world brought a name of
+    their own has told the news that brought them, whether its answer lists it or not.
+    Returns the state, a new one when anything changed, and the ids of the news now heard,
+    for the turn's log."""
+    named = lives.told_by_naming(played, state, shown) if played is not None else []
+    return lives.settle(state, [*told, *named])
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:
