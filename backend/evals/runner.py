@@ -17,6 +17,7 @@ carries its own pending events (B12), and the endpoint's table only mirrors them
 
 from __future__ import annotations
 
+import json
 import time
 import traceback
 from collections.abc import Callable, Iterable, Sequence
@@ -96,6 +97,7 @@ from graph.turn import (
     UnreadableAction,
     run_turn,
 )
+from graph.turn.context import wronged_view
 from graph.turn.errors import LimitReached
 from graph.turn.nodes import read_action
 from media.briefs import THREAD_SUBJECTS
@@ -110,6 +112,9 @@ CRITERION_CHARS = 80
 ACTION_CHARS = 80
 # How many failures a check keeps the details of. The count covers them all.
 KEPT_DETAILS = 5
+# How much of a scene a failed judgement's line shows: what the engine decided, and the telling.
+DECIDED_CHARS = 1000
+TOLD_CHARS = 2600
 
 
 # No script plays more turns than this in one story: a loop waiting on something a live model
@@ -278,17 +283,21 @@ class Played:
         if self.result is None:
             return {}
         resolution = self.result.resolution
-        outcome: dict[str, Any] = {
-            "steps": [
-                {
-                    "step": s.text,
-                    "class": s.outcome_class.value,
-                    "result": s.result.value,
-                    "why": s.reason,
-                }
-                for s in resolution.steps
-            ]
-        }
+        steps = []
+        for s in resolution.steps:
+            step: dict[str, Any] = {
+                "step": s.text,
+                "class": s.outcome_class.value,
+                "result": s.result.value,
+                "why": s.reason,
+            }
+            if wronged := wronged_view(s, self.result.state):
+                # W17: whose partner a move was made with or by, and whether they saw it, as
+                # the narrator was told: a rubric about who is in the scene needs it (the judge
+                # failed a scene for showing a husband the engine had seeing it, 2026-11-13).
+                step["wrongs"] = wronged
+            steps.append(step)
+        outcome: dict[str, Any] = {"steps": steps}
         if resolution.unplayed:
             outcome["unplayed"] = resolution.unplayed
         if self.result.plan.event is not None:
@@ -782,8 +791,18 @@ class ScenarioResult:
                         f"judge {judgement.name}: {v.id} ({_clip(v.criterion, CRITERION_CHARS)}) "
                         f"failed: {' '.join(v.reason.split()) or 'no reason given'}"
                     )
-            # The rows a judge of lines read (S10), which the reasons above only point at. Eval
-            # stories are made up, so they can be printed.
+            # The scenes a judge of a telling read, each with what the engine decided, which
+            # the reasons above only point at. Eval stories are made up, so they can be printed.
+            for number, scene in enumerate(judgement.subject.get("scenes") or [], 1):
+                decided = json.dumps(scene["outcome"], ensure_ascii=False, default=str)
+                lines.append(
+                    f"judge {judgement.name} read scene {number} "
+                    f"({_clip(scene['action'] or '', ACTION_CHARS)}): decided "
+                    f"{_clip(decided, DECIDED_CHARS)} told "
+                    f"{_clip(' '.join(scene['narration'].split()), TOLD_CHARS)}"
+                )
+            # The rows a judge of lines read (S10). Eval stories are made up, so they can be
+            # printed.
             rows = judgement.subject.get("lines") or []
             if rows:
                 read = " | ".join(f"{was} => {said}" for was, said in rows)
@@ -970,11 +989,19 @@ class Eval:
             rating=shown_rating.value,
             context=context,
         )
+        # The scenes are kept with the judgement, so a failed run's log shows what the judge
+        # read.
         judgement = Judgement(
             judgement.name,
             judgement.verdicts,
             judgement.error,
-            {"turns": [p.turn for _, p in (i if isinstance(i, tuple) else ("", i) for i in items)]},
+            {
+                "turns": [(i[1] if isinstance(i, tuple) else i).turn for i in items],
+                "scenes": [
+                    {"action": scene.action, "outcome": scene.outcome, "narration": scene.narration}
+                    for scene in to_judge
+                ],
+            },
         )
         self.judged.append(judgement)
         return judgement

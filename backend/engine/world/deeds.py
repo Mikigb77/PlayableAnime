@@ -27,6 +27,7 @@ from engine.world.cast import maybe_resistance
 from engine.world.clocks import deed_moves_clocks
 from engine.world.discovery import body_trace, schedule_look, ties_trace
 from engine.world.geography import characters_at, onlookers, perceives
+from engine.world.journeys import GOING
 from engine.world.knowledge import character_learns, faction_learns, fought_bout
 from engine.world.norms import assess_severity, canonical
 from engine.world.scheduling import World
@@ -51,22 +52,29 @@ def record_consequences(
     # W2: whoever the step brought on stage or faced is in the scene, and a scene the player
     # character has only just walked into hasn't shown who is around.
     onstage = [*step.strangers, *step.opponent_ids]
-    shown = not _just_arrived(resolution, step)
     for i, proposed in enumerate(step.deeds):
         if _bout_recorded(new, resolution, proposed):
             continue  # W1: the bout is one deed, however many blows it has
         w = World(state=new, ctx=ctx, at_s=new.world_s, rng=rng.child("deed", i))
+        shown = _shown(resolution, step, proposed)
         deed = record_deed(w, resolution, proposed, onstage=onstage, shown=shown)
         react(w, deed)
     return new
 
 
-def _just_arrived(resolution: Resolution, step: StepResolution) -> bool:
-    """Whether the actor got somewhere in this plan, by this step: no scene has been told
-    there yet, so nothing says who of the place is around them."""
-    return any(
-        s.trip is not None and s.trip.arrived for s in resolution.steps if s.index <= step.index
-    )
+def _shown(resolution: Resolution, step: StepResolution, proposed: ProposedDeed) -> bool:
+    """W2. Whether a scene has shown who is around where a deed of this step was done. None
+    has where the actor got to in this plan: by an earlier step, or by this one for what it
+    did where it went. What a step that is the going itself does (`journeys.GOING`) is done
+    as they set out, where the scene has them, and resolve gives it no place of its own: the
+    scene's people see it, and the rest of the place they leave doesn't (in a live story a
+    walk home with someone's wife was seen by her husband at his forge, 2026-11-13)."""
+    if any(s.trip is not None and s.trip.arrived for s in resolution.steps if s.index < step.index):
+        return False
+    trip = step.trip
+    if trip is None or not trip.arrived:
+        return True
+    return step.kind in GOING and proposed.place_id is None
 
 
 def _bout_recorded(state: WorldState, resolution: Resolution, proposed: ProposedDeed) -> bool:

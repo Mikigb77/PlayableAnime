@@ -12,7 +12,7 @@ import pytest
 from engine import bonds
 from engine.base import DAY, HOUR
 from engine.context import Language
-from engine.contracts import ProposedDeed
+from engine.contracts import ActionKind, ProposedDeed, Trip
 from engine.director import due
 from engine.samples import farm_world
 from engine.state import (
@@ -194,6 +194,31 @@ def test_a_partner_elsewhere_knows_nothing_until_someone_who_saw_it_tells_them()
     assert feels(state)[2] == 80 - bonds.WRONGED_HEART * bonds.AFFAIR
     (grudge,) = state.characters["ilse"].attitude_toward(YOU).grudges
     assert grudge.reason == "Tomas Weller courted Mara in Millbrook."
+
+
+def test_a_walk_away_with_someones_wife_is_seen_by_the_scene_they_leave_and_no_one_else():
+    """W2. The walk home as one step that goes somewhere, which is how the real model read it
+    (2026-11-13). It is done as they set out, before the people of the scene. Jorn is in
+    Millbrook and not in the scene: he saw nothing and feels as before, where he used to count
+    as having seen it with the whole village. Before a crowd, he is one of the crowd."""
+    took = {"kind": ActionKind.TRAVEL, "trip": Trip(from_id="village", to_id="farm", arrived=True)}
+
+    walk = deed_step(move(wronged=("jorn",))).model_copy(update=took)
+    state = play(with_husband(valley()), walk).state
+
+    (deed,) = state.deeds.values()
+    assert (deed.place_id, deed.witness_ids) == ("village", ["bram", "mara"])
+    assert "jorn" not in deed.known_by
+    assert YOU not in state.characters["jorn"].sheet.disposition.attitudes
+    assert state.player.location_id == "farm" and not answers(pending_of(state, Kind.ANSWER))
+
+    seen = deed_step(move(wronged=("jorn",), visibility=Visibility.PUBLIC)).model_copy(update=took)
+    state = play(with_husband(valley()), seen).state
+
+    (deed,) = state.deeds.values()
+    assert deed.witness_ids == ["bram", "jorn", "mara"]
+    assert feels(state, "jorn")[0] == -bonds.RIVAL_LIKING * bonds.AFFAIR
+    assert [e.place_id for e in answers(pending_of(state, Kind.ANSWER))] == ["village"]
 
 
 def test_while_the_witnesses_are_still_with_them_nobody_has_told():

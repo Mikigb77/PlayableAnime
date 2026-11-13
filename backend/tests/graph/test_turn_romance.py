@@ -110,6 +110,11 @@ def test_an_ask_their_heart_is_there_for_makes_a_couple_on_record(fake, make_cli
     told = narration.prompt.messages[-1].text
     assert "You and Mara are together now." in section(told, "OUTCOME")
     assert "A romance is on record, and only the engine moves it (W17)" in narration.prompt.system
+    # A night together that succeeded is told as one, within the rating (on the real model,
+    # 2026-11-13, one was told as the two of them sitting together).
+    assert "never tells an evening of talk or a head on a shoulder in its place" in " ".join(
+        narration.prompt.system.split()
+    )
     mara = next(p for p in json.loads(section(told, "SCENE"))["present"] if p["id"] == "mara")
     assert mara["bond_with_you"]["stage"] == "courting"
     after = interpret_prompt(result.state, "I kiss Mara").messages[-1].text
@@ -214,6 +219,64 @@ def test_a_partner_who_is_elsewhere_is_named_and_knows_nothing_yet(fake, make_cl
     assert "saw_it false: they were not there, and they know nothing of it." in " ".join(
         system.split()
     )
+
+
+def walked(*, crowd: bool) -> dict:
+    """The walk as the real model read it (2026-11-13): one step that goes to Millbrook, and
+    is a move toward Mara on the way."""
+    reading = asked("advance", "walk Mara to the village and tell her I like her", "walk")
+    reading["steps"][0] |= {
+        "kind": "travel",
+        "destination": "village",
+        "proposed_duration_s": 2400,
+        "facts": {"opposition_ids": ["mara"], "can_respond": True, "crowd": crowd},
+    }
+    return reading
+
+
+def in_the_village(*present: str) -> dict:
+    told = scene()
+    told["update"]["scene_end"] |= {"place_id": "village", "present_ids": ["tomas", *present]}
+    return told
+
+
+def test_a_partner_left_where_a_walk_set_out_saw_nothing_of_it(fake, make_client):
+    """Ilse is about the farm, and not at the gate. A step that walks off with Mara is done as
+    they set out, before the scene's people: the farm it leaves didn't all look on (W2)."""
+    state = farm(60, BondStage.COURTING)
+    told = in_the_village("mara")
+    result = play(fake, make_client, state, walked(crowd=False), told, "I walk Mara home")
+
+    [step] = outcome(fake)["steps"]
+    assert step["trip"]["arrived"] and result.state.player.location_id == "village"
+    assert step["wrongs"] == [{"id": "ilse", "who": "Ilse Weller", "saw_it": False}]
+    (deed,) = result.state.deeds.values()
+    assert deed.place_id == "farm" and deed.witness_ids == ["mara"]
+    assert feels(result.state) == (80, 80, 80)
+
+
+def test_a_partner_who_saw_it_from_the_crowd_stays_where_it_was_done(fake, make_client):
+    """On the real model (2026-11-13) the walk was read as done before a crowd, so by W2 the
+    husband in the village had seen it. The narrator was told only that he saw it, wrote him
+    watching and listed him where the scene ended, forty minutes on. The scene is told where
+    he saw it and that he stays there, and the door keeps him there (W4)."""
+    state = farm(60, BondStage.COURTING)
+    followed = in_the_village("mara", "ilse")
+    result = play(fake, make_client, state, walked(crowd=True), followed, "I walk Mara home")
+
+    [step] = outcome(fake)["steps"]
+    assert step["wrongs"] == [
+        {"id": "ilse", "who": "Ilse Weller", "saw_it": True, "stayed_in": "the Weller farm"}
+    ]
+    (deed,) = result.state.deeds.values()
+    assert deed.visibility.value == "public" and "ilse" in deed.witness_ids
+    assert feels(result.state)[2] == 80 - bonds.WRONGED_HEART * bonds.AFFAIR
+    assert result.state.scene.present_ids == ["tomas", "mara"]
+    assert result.state.characters["ilse"].location_id == "farm"
+    assert [i.area for i in result.issues if i.code == "rejected"] == ["character.presence"]
+    system = " ".join(fake.calls(Node.NARRATOR)[-1].prompt.system.split())
+    assert "With stayed_in, that place is where they saw it, from among the people around" in system
+    assert "they stay there, so they don't follow and are not where the scene ends" in system
 
 
 def test_a_scene_that_walks_the_wronged_partner_in_changes_nothing_on_record(fake, make_client):

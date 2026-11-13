@@ -512,12 +512,15 @@ def test_the_reading_names_a_steps_verb_in_english_whatever_the_story_speaks():
 
 
 def test_the_models_are_told_who_saw_what_is_done_and_whose_feelings_a_scene_moves():
-    """W2, W4: the interpret step says of every step whether a crowd is around, and not for
-    what is done so that nobody notices; the narrator moves only the feelings of the scene's
-    people."""
+    """W2, W4: the interpret step says of every step whether a crowd is around, not for a
+    quiet place with a few people about (the real model called a walk along a village lane of
+    an evening one) and not for what is done so that nobody notices; the narrator moves only
+    the feelings of the scene's people."""
     reading, telling = prompts.INTERPRET_SYSTEM, prompts.NARRATOR_SYSTEM
+    reading = " ".join(reading.split())
 
-    assert "- facts.crowd (W2), always: true when people SCENE doesn't name are around" in reading
+    assert "- facts.crowd (W2), always: true when many people SCENE doesn't name are" in reading
+    assert "in a quiet one with only a few people about (a lane of an evening, a road, a" in reading
     assert "and for what is done so that nobody around notices" in reading
     assert "Code makes public what is done before a crowd." in reading
     assert "Only the people in the scene change how they feel (W4)" in telling
