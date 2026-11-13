@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine import bonds, encounters, possessions
+from engine import path as path_mod
 from engine import talent as talent_mod
 from engine.base import DAY, YEAR
 from engine.context import Language, TurnContext
@@ -23,6 +24,7 @@ from engine.contracts import (
     EventSource,
     Intent,
     ItemChange,
+    OutcomeClass,
     PictureKind,
     Resolution,
     SceneWeight,
@@ -34,6 +36,7 @@ from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
 from engine.limits import is_adult
 from engine.resolve import bouts
+from engine.resolve.powers import growth
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -900,6 +903,8 @@ def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str,
             # W6: how long a rung lives is said where climbing lengthens life, nowhere else.
             if not rung.get("lifespan_years"):
                 rung.pop("lifespan_years", None)
+            # G18: when the story put a rung above the top is the record's own.
+            rung.pop("added_s", None)
     return view
 
 
@@ -1528,6 +1533,29 @@ def wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]
     return wronged
 
 
+# G18, G7. Said beside a climb that stopped on a ladder's highest rung, where the story can
+# reach past it (`engine.path.top_problem`): the one moment the narrator has to know that it
+# can. The rung is the scene's to name and the engine's to accept (`engine.apply`).
+_BEYOND_TELL = (
+    "How far {ladder} goes is open: nobody on record stands above {top}. This step still "
+    "fails. If the scene shows that something lies above {top} and gives that rung a name, "
+    "list it under update.rungs. Reaching it would be a climb of its own."
+)
+
+
+def _beyond(step: StepResolution, state: WorldState) -> str | None:
+    """G18, G7. What the narrator is told beside a climb that stopped at the top of a ladder
+    the story can pass, or None for any other step."""
+    if step.outcome_class is not OutcomeClass.RULED_OUT:
+        return None
+    for ladder in state.bible.ladders:
+        if step.reason != growth.no_rung_above(ladder):
+            continue
+        if path_mod.top_problem(state, ladder) is None:
+            return _BEYOND_TELL.format(ladder=ladder.name, top=ladder.rungs[-1].name)
+    return None
+
+
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
@@ -1537,6 +1565,8 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
             "result": step.result.value,
             "why": step.reason,
         }
+        if beyond := _beyond(step, state):
+            view["beyond"] = beyond
         thrown = _throw_view(step.roll)
         if thrown:
             # A3: how the dice fell and what they were up against, never the odds.

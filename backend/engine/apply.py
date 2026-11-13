@@ -30,6 +30,7 @@ from enum import StrEnum
 from typing import Self
 
 from engine import bonds, possessions
+from engine import path as path_mod
 from engine.base import (
     AFFINITY_MAX,
     AFFINITY_MIN,
@@ -52,6 +53,7 @@ from engine.contracts.delta import (
     GoalMoved,
     GoalOver,
     ItemChange,
+    NewRung,
     PlaceChange,
     PowerChange,
     RuleChange,
@@ -70,6 +72,7 @@ from engine.invariants import (
 from engine.kin import descendants
 from engine.limits import adult_problem, normalize
 from engine.looks import look_after
+from engine.state.bible import Rung
 from engine.state.cast import (
     MAX_JUDGED,
     Character,
@@ -299,6 +302,8 @@ def apply_in_place(
         applier.character(change)
     for change in delta.characters:
         applier.family(change)
+    for rung in delta.rungs:
+        applier.rung(rung)
     for fact in delta.facts:
         applier.fact(fact)
     for item in delta.items:
@@ -463,6 +468,8 @@ class _Applier:
         # W10: whom the narrator's scene may have in it and move (`Door`); None means anyone.
         self.door = door
         self.rejected: list[Rejection] = []
+        # G18: who this delta brought into the story.
+        self.created: set[str] = set()
         # How far the narrator has moved each attitude in this delta, so several small shifts
         # can't add up past the cap: (character, toward, axis) -> total so far.
         self.nudged: dict[tuple[str, str, str], int] = {}
@@ -842,6 +849,7 @@ class _Applier:
             origin=self.origin,
         )
         self.state.characters[character.id] = character
+        self.created.add(character.id)
         return character
 
     def family(self, change: CharacterChange) -> None:
@@ -1115,6 +1123,59 @@ class _Applier:
             return
         kept = [p for p in character.sheet.ladders if p.ladder_id != position.ladder_id]
         character.sheet.ladders = [*kept, position.model_copy()]
+
+    def rung(self, new: NewRung) -> None:
+        """G18, G7. A rung the story put above a ladder's highest, where the story has reached
+        that far (`engine.path.beyond_problem`). It stands as far above the last rung as the
+        ladder's rungs usually lie apart, is as loud to break through to, and lists no way
+        there: nobody has told one. How long whoever stands on it lives the record can't say,
+        so old age takes none of them (`engine.world.old_age`). A second rung in the same
+        delta is refused like any other above a top nobody has heard of or climbed to.
+
+        Whoever came into the story in this same delta can stand on it, three at most: that
+        is who they are. Nobody already on record is put there (A4): they climb to it like
+        anyone, the player character by their own work (G19) and everyone else over the
+        years (W6)."""
+        subject = f"ladder {new.ladder_id}"
+        ladder = self.state.bible.ladder(new.ladder_id)
+        if ladder is None:
+            self.reject(subject, "rung", "no such ladder")
+            return
+        problem = path_mod.beyond_problem(self.state, ladder, new.name)
+        if problem:
+            self.reject(subject, f"rung {new.name}", problem)
+            return
+        tier = path_mod.above_tier(ladder)
+        assert tier is not None  # `beyond_problem` found room on the scale
+        ladder.rungs.append(
+            Rung(
+                name=new.name,
+                tier=tier,
+                description=new.description.strip(),
+                loud=ladder.rungs[-1].loud,
+                added_s=self.state.world_s,
+            )
+        )
+        index = len(ladder.rungs) - 1
+        came = list(dict.fromkeys(new.stands))
+        for character_id in came[: path_mod.CAME_WITH]:
+            character = self.state.characters.get(character_id)
+            if character is None or character_id not in self.created:
+                self.reject(
+                    f"character {character_id}",
+                    f"rung {new.name}",
+                    "only someone this scene brought in comes standing on it: nobody is lifted",
+                )
+                continue
+            sheet = character.sheet
+            kept = [p for p in sheet.ladders if p.ladder_id != ladder.id]
+            sheet.ladders = [*kept, LadderPosition(ladder_id=ladder.id, rung=index)]
+            # G18: a rung is the world's name for a tier on its axis.
+            setattr(sheet.axes, ladder.axis.value, max(sheet.axes.on(ladder.axis), tier))
+        for character_id in came[path_mod.CAME_WITH :]:
+            self.reject(
+                f"character {character_id}", f"rung {new.name}", "three come with a rung at most"
+            )
 
     def time_effect(self, effect: ActiveTimeEffect) -> None:
         """W10a. A time power taking hold, replacing the same power's earlier effect. Effects that
