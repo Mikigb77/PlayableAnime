@@ -1488,7 +1488,16 @@ a wedding looks like is the world's. The details:
 - **A premise's romance is recorded at the draft.** "I farm with my wife" starts the story with
   the two married on record and her heart in it (G4): the drafter marks a wife, a husband, a
   betrothed, a lover or someone they are courting, and code writes the bond, between recorded
-  adults only.
+  adults only. The drafter gives the character no romance the premise doesn't set up, and draws
+  nobody to them: that is the story's to find.
+- **The cast has couples of its own** (decided 2026-11-13, so that a rival exists in a drafted
+  story and not only in a scripted one). The drafter records who among the key characters is a
+  couple as the story opens, married, promised, together or courting, on one of the two, and
+  code writes one bond for each pair, between recorded adults who aren't close family. Courting
+  someone's wife then wrongs a husband who is on record. A couple that hides it is a secret
+  instead, as a hidden parentage is. The draft also says whether having several partners at
+  once is the custom of the world, which only a premise of that kind makes true, and a change
+  to the world can set it either way.
 - **A partner is a close tie.** Whoever is promised or married to someone counts as their
   family, and a partner as a friend at least, wherever the world asks who is close to whom: who
   keeps quiet about what they saw them do, whom word of them reaches, who takes their death as
@@ -1555,13 +1564,12 @@ a wedding looks like is the world's. The details:
   which says what they came to do: to hear it answered and not to attack, or to say it is
   over. The narrator is also told of a romance between two people that ended before the one
   that stands, so someone who left is still someone who left after the character asks again.
-- **Still to build:** partners among the cast at the draft, and worlds where several partners
-  are the custom, so that rivals exist in drafted stories; going to find someone who is far
-  off (today a move toward them only says they aren't here; the world brings back whoever it
-  sent away, and the scene can say a neighbour is away and about when they are back, W6); the
-  one courted minding that the character is bound to someone else; suitors as rivals before
-  they are a couple; romances between other people; and someone falling for the character
-  first (W16's admirer).
+- **Still to build:** going to find someone who is far off (today a move toward them only says
+  they aren't here; the world brings back whoever it sent away, and the scene can say a
+  neighbour is away and about when they are back, W6); the one courted minding that the
+  character is bound to someone else, or that they are bound themselves; suitors as rivals
+  before they are a couple; romances between other people that begin, change or end in play;
+  and someone falling for the character first (W16's admirer).
 
 We don't know exactly how OOC handles this. Its public coverage describes memory layers and stats but
 no retaliation system, so this is one place we can be better rather than just match it.
@@ -2025,7 +2033,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Grounded world | A mafia story in which the player tries to throw a fireball and claims to be a secret wizard | Nothing supernatural happens, the people present react to the gesture, the scene details give the reason, and nothing fantastic (magic, levels, monsters) appears in 50 turns (G7, G8) |
 | Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
 | Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
-| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, ones that say what the character is after, and ones that name no deadline and nobody, whose story is then started and its opening scene played; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it and gives the character no goal, an aim a premise says is their goal there, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of, the story's Memory starts without them too and lists someone only once a scene has named them, and the rival the player then asks for by name shows from then on (G1, G2, E2, C6) |
+| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, ones that say what the character is after, and ones that name no deadline and nobody, whose story is then started and its opening scene played; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it and gives the character no goal, an aim a premise says is their goal there, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of, the story's Memory starts without them too and lists someone only once a scene has named them, and the rival the player then asks for by name shows from then on. A premise that sets up no romance gives the character none and draws nobody to them, whoever among the cast is a couple, and the run counts the drafts whose cast has one (G1, G2, E2, C6, W17) |
 | Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
 | The throw | A practiced move used with nothing resisting; a cut at a swordsman two rungs up; a cut with three advantages claimed, one the scene shows and two it doesn't; and holding ground against three thugs who mean to kill, over many seeds | The practiced move is never thrown for. Two rungs up is still a throw. Only the advantage that holds gives a green die. The defence is marked Deadly before the dice with what a miss costs, and how far it fell short is exactly what it costs: nothing, a bad wound, or death (A2, A3, N6) |
 

@@ -38,6 +38,17 @@ def _npc(**fields) -> NpcP:
     return _read(NpcP, {"id": "rosa", "name": SECRET_NAME, **fields})
 
 
+def test_a_couple_written_loosely_is_still_read():
+    """W17: the partner as a record or a list, the stage in any case, and a custom left null."""
+    wife = _npc(partner_id={"id": "carmine", "name": "Carmine Russo"}, partner_bond="Married")
+    assert (wife.partner_id, wife.partner_bond) == ("carmine", "married")
+    lover = _npc(partner_id=["carmine"], partner_bond="engaged to be wed")
+    assert (lover.partner_id, lover.partner_bond) == ("carmine", "together")  # the default
+    assert _npc(partner_id=None, partner_bond=None).partner_id == ""
+    world = samples.naples().world.model_dump(mode="json") | {"several_partners": None}
+    assert _read(WorldProposal, world).several_partners is False
+
+
 def _sloppy_naples() -> dict:
     """The Naples sample as Gemini writes it with the schema in the prompt: every property
     written out, nulls for what it has nothing for, and family the way people say it."""
