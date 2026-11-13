@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from engine.base import DAY, HOUR, MINUTE, YEAR
+from engine.context import Language
 from engine.contracts.intent import ActionKind, IntentStep, SheetPart
 from engine.labels import second_of_day
 from engine.state.bible import Calendar
@@ -60,6 +61,37 @@ _CLOCK = re.compile(
 # A time of day that came less than this long ago has come: "until nightfall" a few minutes after
 # it is now, not tomorrow. The clock the models read shows no seconds.
 JUST_PASSED_S = 30 * MINUTE
+
+
+# W10: the words a player gives a step its length with, in the languages a story is told in
+# (S10): "for two hours", "the next week", "tres días", "un any".
+_SPAN_WORDS = {
+    Language.EN: (
+        r"minutes?|hours?|days?|nights?|weeks?|fortnights?|months?|seasons?|years?|decades?|"
+        r"centur(?:y|ies)"
+    ),
+    Language.ES: (
+        r"minutos?|horas?|d[ií]as?|noches?|semanas?|quincenas?|mes(?:es)?|años?|d[eé]cadas?|"
+        r"siglos?"
+    ),
+    Language.CA: (
+        r"minuts?|hora|hores|dia|dies|nit|nits|setmana|setmanes|quinzena|quinzenes|mes|mesos|"
+        r"anys?|d[eè]cada|d[eè]cades|segles?"
+    ),
+}
+_SPANS = {
+    language: re.compile(rf"\b(?:{words})\b", re.IGNORECASE)
+    for language, words in _SPAN_WORDS.items()
+}
+
+
+def names_a_span(words: str, language: Language = Language.EN) -> bool:
+    """W10. Whether the player's own words name a span of time, in English or in the story's
+    language: a player may type English in any story. It says only that they spoke of how
+    long, never how long: the length is the reading's."""
+    return any(
+        _SPANS[told].search(words) is not None for told in dict.fromkeys((Language.EN, language))
+    )
 
 
 def parse_clock(text: str | None) -> int | None:

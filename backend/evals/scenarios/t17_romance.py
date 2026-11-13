@@ -124,6 +124,20 @@ def court() -> Intent:
     )
 
 
+def court_as_work() -> Intent:
+    """The week as the real model read it once (2026-11-13): a week of work, which the
+    reading didn't mark as timed by the player. Their own words say "the next week", so the
+    time stands and the week is a week (W10); held to what work lasts, it stopped at eighteen
+    hours and the story's clock ran to midnight."""
+    return to_mara(
+        "court Mara for a week",
+        RomanceMove.ADVANCE,
+        verb="court",
+        kind=ActionKind.WORK,
+        duration_s=7 * DAY,
+    )
+
+
 def kiss() -> Intent:
     return to_mara("kiss Mara", RomanceMove.ADVANCE, verb="kiss", duration_s=MINUTE)
 
@@ -261,18 +275,25 @@ def answered_as(played: Played, expected: OutcomeClass | None) -> bool:
 
 async def courted(ev: Eval, story: Story, until: int) -> list[Played]:
     """Weeks of courting, until her heart is at `until` or the script gives up: each week is
-    one stretch, which the valley may cut short (E7)."""
+    one stretch, which the valley may cut short (E7). Every second week is read as the real
+    model once read it, as a week of work with no mark that the player timed it."""
     played = []
     for _ in range(WEEKS):
         if heart(story) >= until:
             break
         before, was = heart(story), stage(story)
-        week = await story.act(COURT, court())
+        week = await story.act(COURT, court_as_work() if len(played) % 2 else court())
         played.append(week)
         more = heart(story) - before
         seed = f"{story.seed}: {before} to {heart(story)}, {as_read([week])}"
         done = week.steps[0] if week.completed and week.steps else None
         ran = done.duration_s if done is not None else 0
+        ev.check(
+            "a week the player asked for is a week of the story, unless something cuts it short",
+            week.completed
+            and (week.world_seconds >= 6 * DAY or any(s.interrupted for s in week.steps)),
+            f"{seed}, {week.world_seconds / DAY:.1f} days",
+        )
         ev.check(
             "a stretch of courting moves her heart no further than its days allow",
             0 <= more <= MOST and (more == 0 or ran >= REST or not done.interrupted),

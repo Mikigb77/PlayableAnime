@@ -410,7 +410,10 @@ is now; NOW says when the opening takes place. The light, the sky, meals, crowds
 anything else that shows the hour match it, and the scene ends at TIME's now. Never let night \
 fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
 later"), and never take the character further than that time could carry them. An action that \
-would need longer plays only as far as the time allows. When TIME has a heading ("Three days \
+would need longer plays only as far as the time allows. What OUTCOME says is done was done \
+within that time, at whatever hour it is: when the hour is a strange one for it (a wedding in \
+the dead of night), tell how it came about then, and never put it off to a morning the clock \
+doesn't reach. When TIME has a heading ("Three days \
 later"), the player reads it above the scene: tell how that time went by, and never say the \
 heading's words again.
 - A trip (W10). trip under a step in OUTCOME is where that step took the character: to, the \
