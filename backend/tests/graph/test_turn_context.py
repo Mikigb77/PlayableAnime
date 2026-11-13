@@ -2167,11 +2167,15 @@ def test_the_brief_says_outright_that_the_two_meet_again_after_years():
     assert "first time the player character is with them since" in again["tell"]
     assert "nobody talks as if it had been days" in again["tell"]
     assert "at least one piece of the news under them" in again["tell"]
+    # In the third live story the narration gave a wedding as something he already knew.
+    assert "The player character learns it there" in again["tell"]
+    assert "never gives it as something they already know" in again["tell"]
 
     # Someone the years brought nothing is met again all the same, with no news owed.
     state.lives.clear()
     quiet = _section(brief(state).user, "MEETING AGAIN")
     assert quiet["people"] == again["people"] and "news" not in quiet["tell"]
+    assert "already know" not in quiet["tell"]
 
     # Under a year apart is no reunion, and neither is the scene after the one they met in.
     state.characters["mara"].seen_s = state.world_s - 300 * DAY

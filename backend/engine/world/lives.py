@@ -703,11 +703,12 @@ def hand_over(state: WorldState) -> None:
 
 
 def told_by_naming(before: WorldState, after: WorldState, shown: Iterable[str]) -> list[str]:
-    """The news among `shown`, by id, that a scene told by naming whom it brought: someone
-    who went by the world's placeholder before the scene (`unnamed`) and has a name of their
-    own after it. A scene names a partner or a child when it first tells of them, so the
-    news of a partner found, or of a child born, is told with the name, whatever else the
-    scene's answer lists."""
+    """The news among `shown`, by id, that a scene says it told by naming whom it brought:
+    someone who went by the world's placeholder before the scene (`unnamed`) and has a name
+    of their own after it. A scene names a partner or a child when it first tells of them,
+    so the news of a partner found, or of a child born, comes with the name, whatever else
+    the scene's answer lists. Whether the scene's words say that name is `borne_out`'s to
+    read."""
 
     def named(character_id: str | None) -> bool:
         was, now = before.characters.get(character_id), after.characters.get(character_id)
@@ -730,27 +731,38 @@ def borne_out(
 ) -> list[str]:
     """Of the news a scene says it told, by id, what its words bear out (C6): a piece is told
     where the scene names whoever it came with, by a name of their own (`naming.named_in`).
-    For a birth that is the child. Otherwise it is whichever of the two wasn't in the scene
-    (`there`, or whoever the scene ended with), or either of them where both were. Someone
-    still under the name the world gave them can't be named by it: a scene that gives them a
-    name of their own has told the news that brought them (`told_by_naming`).
+    For a birth that is the child. Otherwise it is whoever of the two wasn't in the scene
+    (`there`, or by default whoever the scene ended with): the other one where one of them
+    was in it, both where neither was, and either of them where both were. Someone still
+    under the name the world gave them can't be named by it: a scene that gives them a name
+    of their own, and says it, has told the news that brought them (`told_by_naming`).
 
     In the second live story of a homecoming (2026-11-13) the narrator listed all the news it
-    was handed under a scene that said none of it, so Memory held what no scene had told."""
+    was handed under a scene that said none of it, so Memory held what no scene had told. In
+    the third, a scene far from home that told none of it still had him hear a piece, most
+    likely by a name the narrator gave in its update and the scene never said."""
     here = set(state.scene.present_ids if there is None else there)
     events = [e for key in dict.fromkeys(told) if (e := state.lives.get(key)) is not None]
 
-    def came_with(event: LifeEvent) -> list[str]:
+    def of(event: LifeEvent) -> list[str]:
         if event.kind is LifeKind.CHILD:
             return [event.child_id] if event.child_id else []
-        return [i for i in event.subject_ids if i not in here] or list(event.subject_ids)
+        return list(event.subject_ids)
 
     people = state.characters
-    named = {i for e in events for i in came_with(e) if i in people and not unnamed(people[i])}
+    named = {i for e in events for i in of(e) if i in people and not unnamed(people[i])}
     # The people of the scene share the words of their names with whoever the news names.
     among = sorted(named | {i for i in here if i in people}, key=natural_key)
     said = named.intersection(naming.named_in(state, [scene], among, anywhere=True))
-    return [e.id for e in events if said.intersection(came_with(e))]
+
+    def told_in_words(event: LifeEvent) -> bool:
+        whom = of(event)
+        if event.kind is LifeKind.CHILD:
+            return bool(whom) and said.issuperset(whom)
+        absent = [i for i in whom if i not in here]
+        return said.issuperset(absent) if absent else bool(said.intersection(whom))
+
+    return [e.id for e in events if told_in_words(e)]
 
 
 def settle(state: WorldState, told: Iterable[str] = ()) -> tuple[WorldState, list[str]]:
