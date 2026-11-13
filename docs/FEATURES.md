@@ -139,8 +139,9 @@ The first version's state, checked against the code in WS18.
       or fall out, and everyone grows older. Nothing is made to happen, so a month brings
       nothing and after ten years many are still just as they were left. The character hears
       of it when they live near, or when a scene tells it: the scene of meeting again is told
-      what the years brought them, the news stays theirs to tell until a scene does, and
-      Memory then shows it with its day (W6, W10, C6).
+      that it is one, after how long, and what the years brought them, the news stays theirs
+      to tell until a scene does, naming whom it came with, and Memory then shows it with its
+      day (W6, W10, C6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

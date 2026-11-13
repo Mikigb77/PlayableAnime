@@ -206,6 +206,11 @@ LIFE_QUIET_S = 90 * DAY
 # How near the player character must live to hear what comes to someone as it happens, by the
 # map's travel times: a farm outside the village hears of the village's weddings.
 LIFE_NEAR_S = DAY
+# Living that near, the two aren't apart, however long since a scene had them together, as
+# long as nothing broke it: a few weeks away and back changes nothing, and coming home after
+# years does not make old neighbours people seen yesterday. They are together again once a
+# scene has them so.
+LIFE_APART_S = 30 * DAY
 # What a year brings, each as the chance of it in one year. The chance over any stretch
 # follows from it, so a month brings next to nothing and ten years a great deal, and nothing
 # is made to happen: many are found as they were left.

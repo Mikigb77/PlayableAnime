@@ -525,6 +525,7 @@ def settle_lives(
     *,
     played: WorldState | None = None,
     shown: Iterable[str] = (),
+    scene: str | None = None,
 ) -> tuple[WorldState, list[str]]:
     """After the narrator's update is applied (step 6). Whoever the scene ended with, the
     player character has now been with. `told` is the news the scene was handed and says it
@@ -532,11 +533,18 @@ def settle_lives(
     people the player character has now heard (W6, C6, `engine.world.lives`), and news the
     scene left out stays news.
 
-    `played` is the state the steps left, before the update, and `shown` the news the scene
-    was handed: of that, a scene that gave a partner or a child the world brought a name of
-    their own has told the news that brought them, whether its answer lists it or not.
-    Returns the state, a new one when anything changed, and the ids of the news now heard,
-    for the turn's log."""
+    `scene` is the scene as the player reads it: of what the scene says it told, only what its
+    words bear out counts, which is a piece that names whoever it came with
+    (`lives.borne_out`), so a list the narrator filled in under a scene that said none of it
+    tells nothing. `played` is the state the steps left, before the update, and `shown` the
+    news the scene was handed: of that, a scene that gave a partner or a child the world
+    brought a name of their own has told the news that brought them, whether its answer
+    lists it or not. Returns the state, a new one when anything changed, and the ids of the
+    news now heard, for the turn's log."""
+    if scene is not None:
+        # Whoever was in the scene when it began or when it ended.
+        began = played.scene.present_ids if played is not None else ()
+        told = lives.borne_out(state, told, scene, there=[*began, *state.scene.present_ids])
     named = lives.told_by_naming(played, state, shown) if played is not None else []
     return lives.settle(state, [*told, *named])
 

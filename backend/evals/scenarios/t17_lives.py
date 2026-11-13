@@ -96,6 +96,20 @@ async def live_there(
     return played
 
 
+def heard_there(played: list[tuple[Played, str]]) -> list[tuple[Played, list[LifeEvent]]]:
+    """The scenes of a stretch in which the player character heard news of someone's life, each
+    with what it had him hear: the record after it against the record before."""
+    found = []
+    for turn, _ in played:
+        if turn.result is None:
+            continue
+        before = {e.id for e in heard(turn.before)}
+        new = [e for e in heard(turn.result.state) if e.id not in before]
+        if new:
+            found.append((turn, new))
+    return found
+
+
 def ruled_out(played: list[tuple[Played, str]]) -> list[str]:
     """Why the engine ruled a stretch out with no throw, for a live run's report: the first
     live story (2026-11-13) lost a year of its ten to refusals nobody could read."""
@@ -197,18 +211,28 @@ def passing_scene(present: list[str]) -> dict:
     }
 
 
-def named_scene(present: list[str], names: dict[str, str], told: list[str]) -> dict:
-    """A scripted scene of the meeting that tells the news `told`, by id, and gives each
-    partner or child the world brought a name, under their own id, as the narrator is told
-    to."""
+def named_scene(
+    present: list[str], names: dict[str, str], told: list[str], said: list[str]
+) -> dict:
+    """A scripted scene of the meeting that tells the news `told`, by id, saying the names
+    `said` of whoever it came with, and gives each partner or child the world brought a name,
+    under their own id, as the narrator is told to."""
     naming = [CharacterChange(id=i, name=n, known_to_player=True) for i, n in names.items()]
     end = on_the_lane(present, "The lane has filled with people who want a look at him.")
+    spoken = f" They tell him of {', '.join(said)}." if said else ""
     return {
-        "narration": "(scripted) Ten years show on every face that turns toward Tomas.",
+        "narration": f"(scripted) Ten years show on every face that turns toward Tomas.{spoken}",
         "told_news": told,
         "suggestions": [],
         "update": StateDelta(characters=naming, scene_end=end).model_dump(mode="json"),
     }
+
+
+def came_with(state: WorldState, events: list[LifeEvent], who: str, names: dict[str, str]) -> list:
+    """The names a scene says to tell `who` the news `events`: whoever each came with, by the
+    name the scene gives them where the world brought them without one."""
+    ids = dict.fromkeys(i for e in events for i in (*e.subject_ids, e.child_id) if i and i != who)
+    return [names.get(i, state.characters[i].name) for i in ids]
 
 
 def reads_the_years(brief: str, who: str, away: str | None, news: list[str]) -> bool:
@@ -221,34 +245,44 @@ def reads_the_years(brief: str, who: str, away: str | None, news: list[str]) -> 
     return person.get("last_seen") == away and [n["id"] for n in person.get("news", [])] == news
 
 
+def told_of(state: WorldState, who: str) -> str:
+    """What the record holds of what the years brought someone, in a line for the judge."""
+    person = state.characters[who]
+    told = []
+    for event in came(state, who):
+        other = state.characters.get(event.other(who) or "")
+        said = lives.said(event, who)
+        when = ago_label(state.world_s - event.world_s)
+        if other is not None and event.kind is not LifeKind.CHILD:
+            name = "someone the scene may name" if lives.unnamed(other) else other.name
+            said += f" ({name})"
+        child = state.characters.get(event.child_id or "")
+        if child is not None:
+            said += f" (the child is {child.age} now)"
+        told.append(f"{said}, {when}")
+    age = f", {person.age} now" if person.age is not None else ""
+    return f"{person.name}{age}: {'; '.join(told) or 'nothing came to them'}."
+
+
 def on_record(state: WorldState, present: list[str], others: list[str]) -> str:
     """What the record holds of the people in the scene, and of the `others` of the village it
     may bring in or speak of, for the judge: the story is the eval's own (T16)."""
-    away = ago_label(state.world_s - (state.characters[present[0]].seen_s or 0))
+    away = ago_label(lives.apart_s(state, state.characters[present[0]]) or 0)
     lines = [f"Tomas last saw the people of Millbrook {away}, and nobody sent word since."]
-
-    def told_of(who: str) -> str:
-        person = state.characters[who]
-        told = []
-        for event in came(state, who):
-            other = state.characters.get(event.other(who) or "")
-            said = lives.said(event, who)
-            when = ago_label(state.world_s - event.world_s)
-            if other is not None and event.kind is not LifeKind.CHILD:
-                name = "someone the scene may name" if lives.unnamed(other) else other.name
-                said += f" ({name})"
-            child = state.characters.get(event.child_id or "")
-            if child is not None:
-                said += f" (the child is {child.age} now)"
-            told.append(f"{said}, {when}")
-        age = f", {person.age} now" if person.age is not None else ""
-        return f"{person.name}{age}: {'; '.join(told) or 'nothing came to them'}."
-
-    lines += [told_of(who) for who in present]
+    lines += [told_of(state, who) for who in present]
     around = [who for who in others if who not in present and came(state, who)]
     if around:
         lines.append("Others in the village, whom the scene may bring in or speak of:")
-        lines += [told_of(who) for who in around]
+        lines += [told_of(state, who) for who in around]
+    lines.append("Nothing of the kind came to anyone else in Millbrook, nor to Tomas.")
+    return "\n".join(lines)
+
+
+def far_from_home(state: WorldState, known: list[str]) -> str:
+    """What the record holds of the people of Millbrook while Tomas is in Harrowgate, for the
+    judge of a scene there in which news of them reached him."""
+    lines = ["Tomas is in Harrowgate, three days from Millbrook, where these people live:"]
+    lines += [told_of(state, who) for who in known if came(state, who)]
     lines.append("Nothing of the kind came to anyone else in Millbrook, nor to Tomas.")
     return "\n".join(lines)
 
@@ -268,10 +302,10 @@ def on_record(state: WorldState, present: list[str], others: list[str]) -> str:
         "nothing of the kind. Far away he hears none of it, and Memory holds none of it. The "
         "scene he meets someone in is told how long it has been and what the years brought "
         "them. A scene that tells none of it leaves it news for the next, and once a scene "
-        "told it he has heard what it told, no more, and Memory tells it with its day. A "
-        "partner or a child the world brought is named by the story under their own id. "
-        "Someone who stays in the valley instead hears what comes to his neighbours as it "
-        "happens"
+        "told it, naming whom it came with, he has heard what it told, no more, and Memory "
+        "tells it with its day. A partner or a child the world brought is named by the story "
+        "under their own id. Someone who stays in the valley instead hears what comes to his "
+        "neighbours as it happens, and has nobody there to meet again"
     ),
 )
 async def years_away(ev: Eval) -> None:
@@ -323,7 +357,28 @@ async def years_away(ev: Eval) -> None:
             "far away he hears none of it, and Memory holds none of it",
             not heard(state) and not any(life_lines(state, who) for who in known),
             f"{seed}: {[e.id for e in heard(state)]}",
+            live=False,
         )
+        # A live scene may have the world bring someone of Millbrook to him, and what they
+        # tell him he has heard: the record is held to what the judge reads in that scene.
+        for turn, new in heard_there(stretches) if ev.live else ():
+            told_there = await ev.judge(
+                f"news that reached him far from home, turn {turn.turn}",
+                Rubric(
+                    must=(
+                        "Someone of Millbrook is with Tomas in the scene, or sends him word, "
+                        "and tells him at least one thing CONTEXT says came to someone",
+                    ),
+                ),
+                turn,
+                context=far_from_home(turn.result.state, list(known)),
+            )
+            if told_there is not None and told_there.error is None:
+                ev.check(
+                    "far from home he hears only what a scene told him",
+                    all(v.passed for v in told_there.verdicts),
+                    f"{seed} t{turn.turn}: heard {[e.id for e in new]}",
+                )
         ev.check(
             "the world gives the player character no partner, child, friend or foe of its own",
             not any(YOU in (*e.subject_ids, e.by_id) for e in events)
@@ -352,7 +407,7 @@ async def years_away(ev: Eval) -> None:
         news = came(state, most)
         story.change(home_again(present))
         before = story.state
-        away = ago_label(before.world_s - (before.characters[most].seen_s or 0))
+        away = ago_label(lives.apart_s(before, before.characters[most]) or 0)
         # What a brief hands a scene of someone's news: the latest five.
         handed = [e.id for e in lives.news_of(before, before.characters[most])[-5:]]
 
@@ -380,10 +435,13 @@ async def years_away(ev: Eval) -> None:
             )
         names = dict(zip(unnamed_in(story.state, news), SPARE_NAMES, strict=False))
         was = len(story.state.characters)
+        knew = {e.id for e in heard(story.state)}
+        told_of = [e for e in news if e.id in handed]
+        said = came_with(story.state, told_of, most, names)
         met = await story.act(
             "I greet the people on the mill lane and ask how they have all been",
             greet(present),
-            narration=None if ev.live else named_scene(present, names, handed),
+            narration=None if ev.live else named_scene(present, names, handed, said),
         )
         state = story.state
         ev.check(
@@ -392,7 +450,7 @@ async def years_away(ev: Eval) -> None:
             f"{seed}: {len(news)} for {most}",
             live=False,
         )
-        now_heard = heard(state)
+        now_heard = [e for e in heard(state) if e.id not in knew]
         ev.check(
             "after the scene that told it he has heard what it told, and no more",
             sorted(e.id for e in now_heard) == sorted(handed),
@@ -432,7 +490,8 @@ async def years_away(ev: Eval) -> None:
             still = unnamed_in(state, news)
             ev.metric(f"named in the scene, {seed}", f"{len(names) - len(still)} of {len(names)}")
             ev.metric(f"people the scene added, {seed}", len(state.characters) - was)
-            ev.metric(f"news heard in the scene, {seed}", f"{len(now_heard)} of {len(events)}")
+            ev.metric(f"news heard in the scene, {seed}", f"{len(now_heard)} of {len(handed)}")
+            ev.metric(f"news heard far from home, {seed}", len(knew))
         must = [
             "The scene is told as a return after the years CONTEXT says: the people Tomas "
             "meets are older or changed by the time, or the years are spoken of",
@@ -503,6 +562,18 @@ async def years_away(ev: Eval) -> None:
             "Memory tells it without a meeting",
             all(life_lines(state, who) for who in known if came(state, who)),
             f"{seed}",
+            live=False,
+        )
+        apart = {
+            who: gone
+            for who in known
+            if state.characters[who].alive
+            and ((gone := lives.apart_s(state, state.characters[who])) is None or gone >= MONTH)
+        }
+        ev.check(
+            "nobody he lived beside all those years is someone he meets again",
+            not apart and not any("## MEETING AGAIN" in brief for _, brief in played),
+            f"{seed}: {apart}",
             live=False,
         )
         for turn, brief in played:

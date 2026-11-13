@@ -667,7 +667,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     # the next time. Each is logged by its code only (T6), never who or what.
     shown = state["brief"].news
     told_news = [] if mode == "template" else [i for i in narration.told_news if i in shown]
-    world, heard = pipeline.settle_lives(world, told_news, played=state["world"], shown=shown)
+    world, heard = pipeline.settle_lives(
+        world, told_news, played=state["world"], shown=shown, scene=scene_text
+    )
     issues += [Issue("life_heard", "the scene told it", subject=key) for key in heard]
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 

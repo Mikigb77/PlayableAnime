@@ -43,26 +43,32 @@ def called(state: WorldState, said: str, among: Sequence[str]) -> str | None:
     return found[0] if len(found) == 1 else None
 
 
-def capitals(text: str, *, opening: bool = False) -> set[str]:
+def capitals(text: str, *, opening: bool = False, anywhere: bool = False) -> set[str]:
     """The words of a text written with a capital that doesn't just open a sentence, folded.
     With `opening` its first word counts too, unless it is an article: the text is a few words
-    for someone, such as a step's `targets`, and not a sentence."""
+    for someone, such as a step's `targets`, and not a sentence. With `anywhere` every capital
+    counts, a sentence's first word too, unless it is an article."""
     found = set()
     for match in re.finditer(_WORD, text):
         before = text[: match.start()].rstrip()
         folded = normalize(match.group())
         inside = before and before[-1] not in _OPENS_AFTER
-        first = opening and not before and folded not in _OPENERS
+        first = (anywhere or (opening and not before)) and folded not in _OPENERS
         if match.group()[:1].isupper() and (inside or first):
             found.add(folded)
     return found - {""}
 
 
-def named_in(state: WorldState, texts: Iterable[str], among: Sequence[str]) -> list[str]:
+def named_in(
+    state: WorldState, texts: Iterable[str], among: Sequence[str], *, anywhere: bool = False
+) -> list[str]:
     """Those of `among` some text names: by a name or alias of several words, or by one word
     that is theirs alone there (a one-word name, or a word of their name nobody else shares),
-    written with a capital inside a sentence, as names are."""
-    whole, spoken = _read(texts)
+    written with a capital inside a sentence, as names are. With `anywhere`, a capital that
+    opens a sentence counts too ('"Osric and I wed in spring"'): for reading whether a scene
+    named someone it was handed, where a name missed costs more than a word mistaken for
+    one."""
+    whole, spoken = _read(texts, anywhere=anywhere)
     parts = _parts(state, among)
     found = []
     for character_id in among:
@@ -122,11 +128,13 @@ def everyone_named(
     return found
 
 
-def _read(texts: Iterable[str], labels: Iterable[str] = ()) -> tuple[list[str], set[str]]:
+def _read(
+    texts: Iterable[str], labels: Iterable[str] = (), *, anywhere: bool = False
+) -> tuple[list[str], set[str]]:
     """The texts folded whole, each between spaces, and the capitals they carry."""
     texts, labels = [t for t in texts if t], [t for t in labels if t]
     whole = [f" {normalize(text)} " for text in (*texts, *labels)]
-    spoken = {word for text in texts for word in capitals(text)}
+    spoken = {word for text in texts for word in capitals(text, anywhere=anywhere)}
     spoken |= {word for label in labels for word in capitals(label, opening=True)}
     return whole, spoken
 

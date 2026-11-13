@@ -90,6 +90,21 @@ def test_named_in_singles_someone_out_or_names_nobody():
     assert naming.named_in(state, ["I rest beside Sol"], among) == ["sol"]
 
 
+def test_a_capital_that_opens_a_sentence_counts_where_a_missed_name_costs_more():
+    """Reading whether a scene named someone it was handed (`lives.borne_out`): people open
+    what they say with a name, so there a capital counts wherever it stands."""
+    state = world(BRAM, TESS, SOL, person("osric", "Osric Fenn"))
+    among = ["bram", "tess", "sol", "osric"]
+    said = '"Osric and I wed in spring," she says. Sol laughs. The lane is quiet.'
+    assert naming.named_in(state, [said], among) == []
+    assert naming.named_in(state, [said], among, anywhere=True) == ["sol", "osric"]
+    # An article that opens a sentence is no name, a word two of them share still singles out
+    # neither, and a name that is also a word still needs its capital.
+    assert naming.capitals("The mill turns. Old habits.", anywhere=True) == {"old"}
+    assert naming.named_in(state, ["Old habits die hard."], among, anywhere=True) == []
+    assert naming.named_in(state, ["the sol tree"], among, anywhere=True) == []
+
+
 def test_everyone_named_takes_the_nearest_who_carry_the_word():
     state = world(MEI_LIN, MEI_HUA, MEI)
     near, far = ["mei-lin"], ["mei-hua", "mei"]

@@ -634,17 +634,18 @@ its id, when and with whom. Let it show or be said as the two meet, the way anyo
 someone they haven't seen in years: a ring, a child at their side, a word about it. When the two \
 meet again after a long time, or the player character asks after them or how they have been, the \
 scene shows or says at least one piece of that news before anything of your own making, and what \
-they are told of those years is this news and nothing made up in its place. Under told_news, list \
-the id of every piece of news the scene showed or said: the record then has the player character \
-knowing it. News a scene left out stays under them for another scene, so never list a piece the \
-scene didn't tell, and never leave out one it did. It is on record: never undo it, and never make \
-up a wedding, a child or a parting for someone the scene only speaks of. An age on record is the \
-world's to move: the years have been counted already, so never set age for someone who has one. \
-Someone marked unnamed is a partner or a child the world brought, under a placeholder: give them a \
-name when the scene first tells of them. LIVES is what the time this scene covers brought the \
-people the player character lives among, which they saw or heard as it happened: tell what matters \
-to them in passing, as part of the time going by. Someone with no news is as they were left, a \
-little older: time changes some people and not others.
+they are told of those years is this news and nothing made up in its place. A piece is told when \
+the scene names whoever it came with: the partner, the friend, the one they fell out with, the \
+child. Under told_news, list the id of every piece of news the scene showed or said that way: the \
+record then has the player character knowing it. News a scene left out stays under them for \
+another scene, so never list a piece the scene didn't tell, and never leave out one it did. It is \
+on record: never undo it, and never make up a wedding, a child or a parting for someone the scene \
+only speaks of. An age on record is the world's to move: the years have been counted already, so \
+never set age for someone who has one. Someone marked unnamed is a partner or a child the world \
+brought, under a placeholder: give them a name when the scene first tells of them. LIVES is what \
+the time this scene covers brought the people the player character lives among, which they saw or \
+heard as it happened: tell what matters to them in passing, as part of the time going by. Someone \
+with no news is as they were left, a little older: time changes some people and not others.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom an \
 EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is shown as \
@@ -868,6 +869,8 @@ STYLE: the engine weighed what it holds. Absent for a scene of ordinary weight.
 - WORN: phrases that several of the last scenes used, to say another way or leave out.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
+- MEETING AGAIN: whom this scene has the player character meet again after a year or more (W6), \
+and tell: what the scene owes that.
 - LIVES: what the time this scene covers brought the people the player character lives among: \
 who, what, when, with whom, and the child for a birth (W6).
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \

@@ -768,6 +768,148 @@ def test_far_away_they_hear_it_once_a_scene_tells_it(monkeypatch):
     assert heard == [] and again.lives == met.lives
 
 
+def test_news_a_scene_says_it_told_counts_only_where_its_words_name_whom_it_came_with(
+    monkeypatch,
+):
+    """C6: in the second live story of a homecoming (2026-11-13) the narrator listed all the
+    news it was handed under a scene that said none of it, and Memory held what no scene had
+    told. A piece is told where the scene's words name whoever it came with: whichever of the
+    two isn't in the scene, or the child of a birth."""
+    quiet(monkeypatch)
+    sure(monkeypatch, MARRY_RATE=1.0, CHILD_RATE_MARRIED=1.0)
+    state = pair()
+    state.characters[YOU].location_id = "city"
+    state.scene.present_ids = [YOU]
+    state = a_year(a_year(state), 2)  # a wedding, and then a child
+    (wed,), (born,) = news(state, LifeKind.MARRIED), news(state, LifeKind.CHILD)
+    state.characters[born.child_id].name = "Tobin"
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "jorn"]
+    listed = [wed.id, born.id]
+
+    # A scene that names nobody the news came with told none of it, whatever its answer lists.
+    silent = "Jorn looks up from the fence and nods, as if he had seen you yesterday."
+    assert lives.borne_out(state, listed, silent) == []
+    after, heard = pipeline.settle_lives(state, listed, scene=silent)
+    assert heard == [] and lives.news_of(after, after.characters["jorn"]) == [wed, born]
+    assert after.characters["jorn"].seen_s == state.world_s  # they have been together
+
+    # One that names his wife has told the wedding, and no more than that.
+    wedding = 'Jorn leans on the fence. "Mara and I wed, the spring after you left."'
+    assert lives.borne_out(state, listed, wedding) == [wed.id]
+    after, heard = pipeline.settle_lives(state, listed, scene=wedding)
+    assert heard == [wed.id] and lives.news_of(after, after.characters["jorn"]) == [born]
+
+    # The child is told by the child's own name, never by a parent's.
+    both = wedding + ' A boy peers round his leg. "This is Tobin."'
+    assert lives.borne_out(state, listed, both) == listed
+    assert lives.borne_out(state, [born.id], "Mara waves from the door.") == []
+    # A name the scene never wrote with its capital is no name, and what isn't on record is
+    # nothing a scene can tell.
+    assert lives.borne_out(state, listed, "the mara fields lie fallow") == []
+    assert lives.borne_out(state, ["life-99"], both) == []
+
+    # With both of the two in the scene, the scene that has them has shown them together.
+    state.scene.present_ids = [YOU, "jorn", "mara"]
+    assert lives.borne_out(state, [wed.id], "Jorn nods, and Mara beside him.") == [wed.id]
+
+    # No scene, no check: code that settles a scene it wrote itself vouches for what it told.
+    assert pipeline.settle_lives(state, listed)[1] == listed
+
+
+def test_someone_under_the_worlds_name_for_them_is_told_by_being_named(monkeypatch):
+    """A partner the world brought goes by "Mara's partner" until a scene names them: those
+    words in a scene name nobody, so the news of them is told by the naming (`told_by_naming`)
+    and never by the list alone."""
+    quiet(monkeypatch)
+    sure(monkeypatch, PAIR_RATE=1.0, PAIR_FROM_CAST=0.0)
+    state = valley(villager("mara", "Mara", 29))
+    state.characters[YOU].location_id = "city"
+    state.scene.place_id, state.scene.present_ids = "city", [YOU]
+    state = a_year(state, 2)
+    (found,) = news(state, LifeKind.PAIRED)
+    partner = state.characters[found.other("mara")]
+    assert lives.unnamed(partner)
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "mara"]
+
+    scene = f"Mara smiles. {partner.name} is out with the sheep, she says."
+    assert lives.borne_out(state, [found.id], scene) == []
+    assert (
+        pipeline.settle_lives(state, [found.id], played=state, shown=[found.id], scene=scene)[1]
+        == []
+    )
+
+    named = apply_delta(
+        state,
+        StateDelta(characters=[CharacterChange(id=partner.id, name="Edrik Hale")]),
+        ctx(),
+        source=NARRATOR,
+    ).state
+    told = pipeline.settle_lives(
+        named, [found.id], played=state, shown=[found.id], scene="Mara smiles. Edrik is out."
+    )
+    assert told[1] == [found.id]
+
+
+def ticks(state: WorldState, span_s: int, n: int = 1) -> WorldState:
+    """The world's part in people's lives over `n` stretches of `span_s`, one after the other,
+    as the world tick runs it."""
+    for _ in range(n):
+        since = state.world_s
+        state.world_s = since + span_s
+        lives.live_on(World(state=state, ctx=ctx(), at_s=state.world_s, rng=rng()), since)
+    return state
+
+
+def test_neighbours_of_years_have_not_been_apart_and_someone_left_behind_has(monkeypatch):
+    """W6: how long two have been apart is since they last shared a scene or last lived near
+    each other. Old Bram, forty minutes down the lane for ten years, is nobody to meet again.
+    After ten years in a city five days off he is, and being back in the valley doesn't
+    change that until a scene has the two together. A few weeks away breaks nothing."""
+    quiet(monkeypatch)
+    state = valley()
+    bram = state.characters["bram"]
+    bram.seen_s = state.world_s
+    assert lives.apart_s(state, state.characters["ilse"]) is None  # together at neither, so far
+
+    home = ticks(state.model_copy(deep=True), 150 * DAY, 24)  # ten years, as a long skip runs
+    assert home.characters["bram"].near_s == home.world_s
+    assert lives.apart_s(home, home.characters["bram"]) == 0
+    assert home.characters["bram"].seen_s == bram.seen_s  # no scene had them together
+
+    away = state.model_copy(deep=True)
+    away.characters[YOU].location_id = "city"
+    away = ticks(away, 150 * DAY, 24)
+    assert away.characters["bram"].near_s is None
+    assert lives.apart_s(away, away.characters["bram"]) == away.world_s - bram.seen_s
+
+    # Back in the valley they are neighbours again, and still ten years apart: old neighbours
+    # are nobody he saw yesterday. A scene with Bram is what ends it.
+    away.characters[YOU].location_id = "farm"
+    back = ticks(away, DAY, 40)
+    assert back.characters["bram"].near_s is None
+    assert lives.apart_s(back, back.characters["bram"]) > 9 * YEAR
+    back.scene.present_ids = [YOU, "bram"]
+    met, _ = pipeline.settle_lives(back)
+    on = ticks(met, 150 * DAY, 8)
+    assert lives.apart_s(on, on.characters["bram"]) == 0
+
+    # Three weeks in the city and back: nothing broke.
+    trip = home.model_copy(deep=True)
+    trip.characters[YOU].location_id = "city"
+    trip = ticks(trip, DAY, 21)
+    assert lives.apart_s(trip, trip.characters["bram"]) == 21 * DAY
+    trip.characters[YOU].location_id = "farm"
+    assert lives.apart_s(ticks(trip, DAY), trip.characters["bram"]) == 0
+    # Two months away is being apart, until a scene has them together again.
+    long = home.model_copy(deep=True)
+    long.characters[YOU].location_id = "city"
+    long = ticks(long, DAY, 60)
+    long.characters[YOU].location_id = "farm"
+    assert lives.apart_s(ticks(long, DAY, 5), long.characters["bram"]) == 65 * DAY
+
+
 def test_a_scene_that_says_again_that_two_met_keeps_their_news(monkeypatch):
     """The first live story of a homecoming (2026-11-13): the narrator marked old neighbours
     as met once more, the record took that for the two having just been together, and ten

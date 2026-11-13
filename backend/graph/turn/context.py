@@ -14,7 +14,7 @@ from typing import Any
 
 from engine import bonds, encounters, possessions
 from engine import talent as talent_mod
-from engine.base import DAY
+from engine.base import DAY, YEAR
 from engine.context import Language, TurnContext
 from engine.contracts import (
     BeatResolution,
@@ -88,6 +88,7 @@ _RECORD_NOISE = {
     "look_version",
     # W6: the engine's own bookkeeping of people's lives. `last_seen` says the first in words.
     "seen_s",
+    "near_s",
     "born_s",
     "solitary",
 }
@@ -277,10 +278,11 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
         view.setdefault("toward_you", {})["heard_said"] = heard
     if bond := _bond_view(state, character):
         view["bond_with_you"] = bond
-    seen = character.seen_s
-    if seen is not None and state.world_s - seen >= _APART_S:
-        # W6: how long the two have been apart, so years that went by show on them.
-        view["last_seen"] = ago_label(state.world_s - seen)
+    apart = lives.apart_s(state, character)
+    if apart is not None and apart >= _APART_S:
+        # W6: how long the two have been apart, so years that went by show on them. Whoever
+        # they lived near all the while they haven't been apart from.
+        view["last_seen"] = ago_label(apart)
     if news := lives.news_of(state, character):
         # W6, C6: what those years brought them that the player character hasn't heard, each
         # piece under its id, so the scene can say which of it it told (`told_news`).
@@ -290,11 +292,45 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     return view
 
 
-# W6. From how long apart a brief says when the player character last saw someone, how much
-# news of one person's life it carries, and how much of what the scene's own time brought.
+# W6. From how long apart a brief says when the player character last saw someone, from how
+# long it says outright that the two meet again (MEETING AGAIN), how much news of one person's
+# life it carries, and how much of what the scene's own time brought.
 _APART_S = 30 * DAY
+_LONG_APART_S = YEAR
 _NEWS = 5
 _LIVES = 12
+
+
+def _meeting_again(after: WorldState, shown: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
+    """W6. Whom this scene has the player character meet again after a year or more
+    (`_LONG_APART_S`), with how long it has been, and what the scene owes that: it is told as
+    a meeting after that long, and where the years brought them news it tells some of it.
+
+    The brief says so on its own, in as many words. `last_seen` under each person wasn't
+    enough: in the second live story of a homecoming (2026-11-13) a man came back to his
+    village after nine years and a neighbour said they hadn't expected him back so soon."""
+    apart, news = [], False
+    for view in shown:
+        person = after.characters.get(view.get("id", ""))
+        gone = lives.apart_s(after, person) if person is not None else None
+        if gone is None or "last_seen" not in view:
+            continue
+        if gone >= _LONG_APART_S:
+            apart.append({"who": person.name, "last_seen": ago_label(gone)})
+            news = news or bool(view.get("news"))
+    if not apart:
+        return None
+    tell = (
+        "This scene is the first time the player character is with them since. Tell it as a "
+        "meeting after that long: they are that much older and it shows, the time is spoken "
+        "of, and nobody talks as if it had been days."
+    )
+    if news:
+        tell += (
+            " The scene shows or says at least one piece of the news under them, naming "
+            "whoever it came with."
+        )
+    return {"people": apart, "tell": tell}
 
 
 def _life_named(state: WorldState, character_id: str) -> dict[str, Any]:
@@ -535,6 +571,9 @@ def _who_else_view(
     stays out unless they are here (C6), save for someone of this place who is away from it
     and coming back (`_away_view`). Someone a step made real is told under OUTCOME's met.
 
+    How long the two have been apart and the news of someone's own life (W6) come only with
+    someone the scene can meet: who is here, or whom an event brings.
+
     Whoever a move in a romance made this turn (`turn`) wrongs who didn't see it is left out,
     wherever the record has them (W17, `bonds.unseen`): this scene can't have them walk in on
     it, and OUTCOME's wrongs says so. Only an event, a happening or a moment that is about
@@ -543,10 +582,11 @@ def _who_else_view(
     people = after.characters
     shown = {you, *(c.id for c in present_characters(before))}
     shown |= {i for step in resolution.steps for i in step.strangers}
-    came = [
-        i for p in (plan.event, plan.moment, *plan.happenings) if p is not None for i in p.cast_ids
-    ]
-    came += [i for event in seen if due.brings(event, after) for i in event.subject_ids]
+    # Whom the world itself brings to the scene: an event's people, never a moment's, which
+    # may be about someone far away.
+    brought = [i for p in (plan.event, *plan.happenings) if p is not None for i in p.cast_ids]
+    brought += [i for event in seen if due.brings(event, after) for i in event.subject_ids]
+    came = [*(plan.moment.cast_ids if plan.moment is not None else ()), *brought]
     shown |= set(bonds.unseen(after, turn)) - set(came)
     # A trip that stopped on the way ends the scene in a place only the narrator's scene names.
     on_the_way = any(
@@ -599,6 +639,13 @@ def _who_else_view(
             away = _away_view(after, character, spot)
             if away is not None:
                 view["away"] = away
+            if character_id not in brought:
+                # W6, C6: the years show, and their news is told, when the two meet. Someone
+                # the scene only thinks or speaks of is far away, and so is their news: in the
+                # second live story of a homecoming (2026-11-13) a man heard in a city three
+                # days off what had come to two of his village.
+                view.pop("last_seen", None)
+                view.pop("news", None)
         if you not in character.known_by and you not in character.met_by:
             view["stranger"] = True
         others.append(view)
@@ -1073,9 +1120,12 @@ def narration_brief(
     if others:
         # W4, E4: whom the turn may bring into the scene, as the record has them.
         sections.append(("WHO ELSE", others))
-    # W6: the news this scene has to tell, of whoever it shows.
+    # W6: the news this scene has to tell, of whoever it shows, and whom it meets again
+    # after years.
     shown = (*scene["present"], *others)
     news = tuple(dict.fromkeys(n["id"] for view in shown for n in view.get("news", ())))
+    if again := _meeting_again(after, shown):
+        sections.append(("MEETING AGAIN", again))
     if fallen := _fallen_view(after):
         sections.append(("FALLEN", fallen))
 
