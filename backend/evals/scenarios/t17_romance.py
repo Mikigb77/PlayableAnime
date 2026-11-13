@@ -572,6 +572,7 @@ async def an_affair(ev: Eval) -> None:
                 "how grave it is follows how far it went",
                 [d.severity for d in deeds] == expected,
                 f"{seed}: {[(d.kind, d.severity) for d in deeds]} for {expected}",
+                live=False,  # it reads the scripted steps' own words
             )
         ev.check(
             "it is no crime, and nobody reports it",
