@@ -55,15 +55,28 @@ otherwise hears it from the partner the dead left, or in a scene where the dead 
 (`gone`), once the scene says by name who died. Whoever has outlived their span, and whom the
 dice can't take because the record doesn't say how long they live, gets no new partner,
 friend or foe (`_spent`).
+
+And whoever stands on one of the world's ladders goes on climbing it (`engine.world.climbing`,
+`_climb`), at the pace their own record shows and by the player character's own rule: the
+rank fills over the years and the climb is thrown for at its peak, so most rise slowly, an
+elder on a low rung dies on it, and whoever broke through lives the longer for it. Nobody is
+lifted to keep up with the player character, and nobody steps onto a ladder. Rarely a stroke
+of fortune lifts one named person a rung. Every rise is on their record with its reason, and
+the news of it is a `LifeEvent` like the rest.
 """
 
+import math
 import re
 import zlib
 from collections.abc import Iterable
 
 from engine import bonds, naming
+from engine import talent as talent_mod
 from engine.base import YEAR
+from engine.contracts.intent import GrowthKind
 from engine.limits import ADULT_AGE, is_adult
+from engine.resolve.powers import growth
+from engine.state.bible import PowerLadder
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Prominence
 from engine.state.records import (
     Bond,
@@ -75,9 +88,9 @@ from engine.state.records import (
     OriginKind,
     StatusChange,
 )
-from engine.state.sheet import Attitude
+from engine.state.sheet import Attitude, Gain, LadderPosition, Practice, RankStage
 from engine.state.world import WorldState, natural_key
-from engine.world import old_age
+from engine.world import climbing, old_age
 from engine.world.births import NAME_ROOM, is_placeholder, placeholder_name
 from engine.world.geography import scene_ids, together, travel_s
 from engine.world.knowledge import closeness, shift_attitude
@@ -87,7 +100,10 @@ from engine.world.tuning import (
     CHILD_GAP_S,
     CHILD_RATE_MARRIED,
     CHILD_RATE_TOGETHER,
+    CLIMB_TRIES,
+    CLIMB_TRY_AFTER,
     FOE_AT,
+    FORTUNE_RATE,
     FRIEND_AT,
     LIFE_APART_S,
     LIFE_NEAR_S,
@@ -129,11 +145,21 @@ _SAID = {
     LifeKind.FRIENDS: "became close friends with someone",
     LifeKind.FELL_OUT: "fell out with someone for good",
     LifeKind.DIED: "died of old age",
+    LifeKind.ROSE: "rose a rung",
 }
 _LEFT, _WAS_LEFT = "left their partner", "was left by their partner"
 _WIDOWED = "lost their partner, who died of old age"
 # How a death of old age is noted on the record of the dead.
 _OLD_AGE = "Died of old age."
+# A rise on one of the world's ladders (W6, G19), as the narrator is told it, and the reason
+# the record of whoever rose keeps for it (`Gain.reason`): every gain has one.
+_ROSE = "rose to {}"
+_ROSE_BY_FORTUNE = (
+    "rose to {} by a stroke of fortune, not by the years of work: what it was is this scene's "
+    "to say, a find, a legacy, a meeting"
+)
+_BY_YEARS = "Years of their own work at it, while the story was elsewhere."
+_BY_FORTUNE = "A stroke of fortune, while the story was elsewhere."
 
 
 # --- growing older (W10) ---------------------------------------------------------------------
@@ -325,6 +351,7 @@ def live_on(w: World, since_s: int) -> None:
     _beside(state, homes, since_s, w.at_s)
     if w.at_s <= since_s:
         return
+    _climb(w, homes, since_s)  # before old age: a rung reached may be a longer life
     _grow_old(w, homes, since_s)
     people = living(state)
     years = {p.id: _years(p, since_s, w.at_s) for p in people}
@@ -454,6 +481,132 @@ def _pass_away(w: World, homes: _Homes, person: Character) -> None:
     state.scene.present_ids = [i for i in state.scene.present_ids if i != person.id]
 
 
+def _climb(w: World, homes: _Homes, since_s: int) -> None:
+    """Whoever stands on one of the world's ladders goes on climbing it over the stretch from
+    `since_s` to now (`engine.world.climbing`): anyone on record with an age, the player
+    character, beasts and the dead aside, at the pace their own record shows, less the season
+    after the player character was last with them. The pace of a climb is read the first
+    time the world counts it, by the age the stretch found them at. Rarely, a stroke of
+    fortune lifts one named person a rung. Nobody steps onto a ladder they don't stand on,
+    and nothing here reads the player character's sheet: nobody is lifted to keep up."""
+    state = w.state
+    here = set(scene_ids(state))
+    for person in by_id(state.characters.values()):
+        if person.id == state.player_id or is_beast(state, person.id) or not person.alive:
+            continue
+        now = old_age.age_at(state, person, w.at_s)
+        if now is None:
+            continue
+        if person.id in here and person.seen_s is None:
+            continue  # in the scene, and no scene has ended with them in it: the story's
+        years = _years(person, since_s, w.at_s)
+        for position in list(person.sheet.ladders):
+            ladder = state.bible.ladder(position.ladder_id)
+            if ladder is None or position.rung + 1 >= len(ladder.rungs):
+                continue
+            if position.yearly_s is None:
+                found_at = now - (w.at_s - since_s) / YEAR
+                position.yearly_s = climbing.yearly_s(state, person, ladder, position, found_at)
+            if years <= 0:
+                continue
+            _work(w, homes, person, ladder, position, years * position.yearly_s)
+            lucky = w.roll("life", "fortune", person.id, ladder.id).chance(
+                over(FORTUNE_RATE, years)
+            )
+            if lucky and not unnamed(person) and position.rung + 1 < len(ladder.rungs):
+                _rise(w, homes, person, ladder, position, fortune=True)
+
+
+def _work(
+    w: World,
+    homes: _Homes,
+    person: Character,
+    ladder: PowerLadder,
+    position: LadderPosition,
+    effort_s: float,
+) -> None:
+    """A stretch of someone's work at a climb, as the player character's own goes (G19): the
+    rank fills, and once it is full the attempt at the next rung comes in its own time
+    (`CLIMB_TRY_AFTER`) and is thrown for (`climbing.odds`). Passed, they stand on the rung
+    and start on the next. A throw that fell just short keeps nine tenths of the rank and a
+    miss three quarters, so a miss costs years."""
+    for attempt in range(CLIMB_TRIES):
+        rank = growth.rank_of(person, ladder)
+        if rank is None:
+            return  # the top of the ladder
+        room = rank.need_s - rank.effort_s
+        if effort_s < room:
+            _keep(person, position, rank, rank.effort_s + effort_s)
+            return
+        effort_s -= room
+        _keep(person, position, rank, rank.need_s)
+        roll = w.roll("life", "climb", person.id, ladder.id, attempt)
+        wait_s = -CLIMB_TRY_AFTER * rank.need_s * math.log(1 - roll.random())
+        if wait_s > effort_s:
+            return  # at their peak, and still to try
+        effort_s -= wait_s
+        shares = climbing.odds(person, ladder)
+        fell = roll.random()
+        if fell < shares.passed:
+            _rise(w, homes, person, ladder, position, fortune=False)
+        elif fell < shares.passed + shares.so_close:
+            _keep(person, position, rank, rank.need_s * growth.CLOSE_KEEPS)
+        else:
+            _keep(person, position, rank, rank.need_s * growth.MISS_KEEPS)
+
+
+def _keep(person: Character, position: LadderPosition, rank: growth.Rank, effort_s: float) -> None:
+    """Someone's sheet holds this much toward the next rung, and their stage reads by it."""
+    kept = Practice(key=rank.key, what=rank.rung.name, effort_s=int(effort_s))
+    sheet = person.sheet
+    sheet.practice = [*(p for p in sheet.practice if p.key != rank.key), kept]
+    stage = growth.Rank(rank.ladder, position, rank.rung, rank.need_s, float(kept.effort_s)).stage
+    position.stage = "" if stage is RankStage.EARLY else stage.value
+
+
+def _rise(
+    w: World,
+    homes: _Homes,
+    person: Character,
+    ladder: PowerLadder,
+    position: LadderPosition,
+    *,
+    fortune: bool,
+) -> None:
+    """Someone stands on the next rung of a ladder: by their own years of work, or by a
+    stroke of fortune. Their record keeps the gain with its reason (A4), and the rank starts
+    to fill again from nothing. It is news where the player character knows of them, they
+    aren't missing, and they show the strength they have (G20): known at once when the two
+    live near, and otherwise theirs to show when they meet again (C6). An earlier rise the
+    player character never heard of is behind them: the latest says where they stand."""
+    state = w.state
+    you = state.player_id
+    rung = ladder.rungs[position.rung + 1]
+    key = talent_mod.ladder_key(ladder.id)
+    position.rung += 1
+    position.stage = ""
+    sheet = person.sheet
+    sheet.practice = [p for p in sheet.practice if p.key != key]
+    sheet.growth.append(
+        Gain(
+            what=rung.name,
+            change=f"broke through to {rung.name}",
+            source=GrowthKind.BREAKTHROUGH.value,
+            reason=_BY_FORTUNE if fortune else _BY_YEARS,
+            turn=w.ctx.turn,
+            world_s=w.at_s,
+        )
+    )
+    known = you in person.known_by or you in person.met_by
+    if not known or person.status is not CharacterStatus.ALIVE or position.shown_rung is not None:
+        return
+    for event in list(state.lives.values()):
+        if event.kind is LifeKind.ROSE and event.subject_ids == [person.id]:
+            if you not in event.known_by and event.timeline_id == state.timeline_id:
+                del state.lives[event.id]
+    _news(w, homes, LifeKind.ROSE, [person.id], rung=rung.name, fortune=fortune)
+
+
 def _news(
     w: World,
     homes: _Homes,
@@ -462,6 +615,8 @@ def _news(
     *,
     child_id: str | None = None,
     by_id: str | None = None,
+    rung: str | None = None,
+    fortune: bool = False,
 ) -> LifeEvent:
     """The news of something that came to one or two people: they know it, and so does the
     player character at once when they know one of the two and live near them. What comes to
@@ -478,6 +633,8 @@ def _news(
         subject_ids=list(subject_ids),
         child_id=child_id,
         by_id=by_id,
+        rung=rung,
+        fortune=fortune,
         turn=w.ctx.turn,
         world_s=w.at_s,
         timeline_id=state.timeline_id,
@@ -837,6 +994,8 @@ def said(event: LifeEvent, of_id: str) -> str:
         return _LEFT if event.by_id == of_id else _WAS_LEFT
     if event.kind is LifeKind.DIED and of_id != died(event):
         return _WIDOWED
+    if event.kind is LifeKind.ROSE and event.rung:
+        return (_ROSE_BY_FORTUNE if event.fortune else _ROSE).format(event.rung)
     return _SAID[event.kind]
 
 

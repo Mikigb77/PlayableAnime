@@ -12,7 +12,7 @@ from engine.state import Character, LifeEvent, LifeKind, Origin, OriginKind, Wor
 from engine.visibility import memory_view
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
-PAIRED, MARRIED, PARTED, CHILD, FRIENDS, FELL_OUT, DIED = LifeKind
+PAIRED, MARRIED, PARTED, CHILD, FRIENDS, FELL_OUT, DIED, ROSE = LifeKind
 
 
 def known(cid: str, name: str, **more) -> Character:

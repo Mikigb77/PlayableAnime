@@ -1062,6 +1062,7 @@ _LIFE_WORDS = {
         LifeKind.FRIENDS: ("Became close friends with {who}", "Made a close friend"),
         LifeKind.FELL_OUT: ("Fell out with {who}", "Fell out with someone close to them"),
         LifeKind.DIED: ("Lost their partner: {who}", "Lost their partner"),
+        LifeKind.ROSE: ("Rose to {who}", "Rose a rung"),
     },
     ES: {
         LifeKind.PAIRED: ("Encontró pareja: {who}", "Encontró pareja"),
@@ -1071,6 +1072,7 @@ _LIFE_WORDS = {
         LifeKind.FRIENDS: ("Trabó una gran amistad con {who}", "Trabó una gran amistad"),
         LifeKind.FELL_OUT: ("Se enemistó con {who}", "Se enemistó con alguien de su entorno"),
         LifeKind.DIED: ("Perdió a su pareja: {who}", "Perdió a su pareja"),
+        LifeKind.ROSE: ("Alcanzó {who}", "Subió un peldaño"),
     },
     CA: {
         LifeKind.PAIRED: ("Va trobar parella: {who}", "Va trobar parella"),
@@ -1080,10 +1082,18 @@ _LIFE_WORDS = {
         LifeKind.FRIENDS: ("Va fer una gran amistat amb {who}", "Va fer una gran amistat"),
         LifeKind.FELL_OUT: ("Es va enemistar amb {who}", "Es va enemistar amb algú del seu entorn"),
         LifeKind.DIED: ("Va perdre la seva parella: {who}", "Va perdre la seva parella"),
+        LifeKind.ROSE: ("Va assolir {who}", "Va pujar un graó"),
     },
 }
 # A death of old age, under the one who died: under the partner they left it is the loss above.
 _OLD_AGE_WORDS = {EN: "Died of old age", ES: "Murió de vejez", CA: "Va morir de vellesa"}
+# W6, G19. What follows the words of a rise (`LifeKind.ROSE`, where `{who}` is the rung, in the
+# story's own words) that came by a stroke of fortune and not by the years of work.
+_BY_FORTUNE_WORDS = {
+    EN: "by a stroke of fortune",
+    ES: "por un golpe de fortuna",
+    CA: "per un cop de fortuna",
+}
 # How many of them a person's entry shows, the latest.
 _LIFE_LINES = 6
 # W6: how many lines of what the years did to it a faction's or a place's entry carries.
@@ -1651,6 +1661,13 @@ class _Knowledge:
                 continue
             if lives_mod.died(event) == c.id:
                 lines.append(f"{self._on(_OLD_AGE_WORDS[self.language], event.world_s)}.")
+                continue
+            if event.kind is LifeKind.ROSE:
+                named, bare = _LIFE_WORDS[self.language][event.kind]
+                text = named.format(who=event.rung) if event.rung else bare
+                if event.fortune:
+                    text = f"{text} {_BY_FORTUNE_WORDS[self.language]}"
+                lines.append(f"{self._on(text, event.world_s)}.")
                 continue
             who_id = event.child_id if event.kind is LifeKind.CHILD else event.other(c.id)
             who = self.state.characters.get(who_id or "")

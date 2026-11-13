@@ -466,6 +466,7 @@ class LifeKind(StrEnum):
     FRIENDS = "friends"  # they and someone became close friends
     FELL_OUT = "fell_out"  # they and someone fell out for good
     DIED = "died"  # they died of old age, leaving a partner where they had one
+    ROSE = "rose"  # they climbed a rung of one of the world's ladders
 
 
 class LifeEvent(EngineModel):
@@ -483,6 +484,11 @@ class LifeEvent(EngineModel):
     )
     child_id: str | None = Field(default=None, description="The child born, for a birth.")
     by_id: str | None = Field(default=None, description="Who ended it, for a parting.")
+    rung: str | None = Field(default=None, description="The rung reached, by name, for a rise.")
+    fortune: bool = Field(
+        default=False,
+        description="A rise that came by a stroke of fortune, not by the years of work.",
+    )
     turn: int = Field(default=0, ge=0)
     world_s: WorldSeconds = 0
     timeline_id: str = MAIN_TIMELINE

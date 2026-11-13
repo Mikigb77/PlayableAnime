@@ -251,6 +251,19 @@ OLD_AGE_FROM = 0.85
 # Someone the world first finds older than their span has one of their own: as long again
 # past their age as half of what they have outlived the span by.
 OWN_SPAN = 0.5
+# Climbing the world's ladders over the years (W6, G19). People take a climb up at this part
+# of their people's span (twelve, of eighty years), and nobody is counted as having been at it
+# for less than the second part (two years): from the years since, and how far they have come,
+# the world reads how fast they climb.
+CLIMB_FROM = 0.15
+CLIMB_LEAST = 0.025
+# With a rank full, the attempt at the next rung comes in its own time: on average after this
+# part again of the work the rung took, so nobody at their peak breaks through overnight.
+CLIMB_TRY_AFTER = 0.2
+CLIMB_TRIES = 12  # attempts at most in one pass of the tick
+# The chance in a year that a stroke of fortune lifts one named person a rung: one in a
+# thousand years each, so a decade brings a village none and a century brings the world one.
+FORTUNE_RATE = 0.001
 
 # --- The wider world over the years (W6, W7) -----------------------------------------------------
 

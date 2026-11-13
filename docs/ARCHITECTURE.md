@@ -989,6 +989,23 @@ happen, and the chance over a stretch follows from the two ages it runs between.
 `evals/scenarios/t17_old_age.py` plays it end to end as `t17.old-age`, in
 `worlds.millbrook_grown_old`.
 
+**Climbing over the years (W6, G19).** Whoever stands on one of the world's ladders goes on
+climbing it while the story is elsewhere, by the player character's own rule and at the pace
+their own record shows. Nobody is lifted: nothing here reads the player character's sheet.
+
+| Piece | What |
+| --- | --- |
+| `engine/world/climbing.py` | Pure functions. `behind_s(person, ladder, position)` is the effort behind someone: `growth.rung_need_s` of every rung up to theirs, plus what `growth.rank_of` has toward the next (their stage, or the work their sheet holds). `years_at_it(state, person, age)` counts from `CLIMB_FROM` of their people's span (`old_age.peoples_span`), never less than `CLIMB_LEAST` of it. `yearly_s` is the one over the other, times `talent.standing(...).pace` on the lowest rung only. `odds(person, ladder)` is the breakthrough throw as `dice.Shares`: `growth.BREAKTHROUGH_DICE` against `growth.BREAKTHROUGH_LEVEL` at the balanced number, a green die for a talent that reaches `ladder:<id>` and two at one of a kind, a die fewer under a weakness. |
+| `LadderPosition.yearly_s`, `LifeKind.ROSE`, `LifeEvent.rung`, `LifeEvent.fortune` | The pace of one climb, in seconds of effort a year: None until the world first counts them, and again when the story writes the position anew (`engine.apply` builds a fresh `LadderPosition`). `LifeEvent(kind=rose)` has the riser as its one subject, the name of the rung they reached and whether fortune brought it. Stored state takes the new fields with no migration. |
+| `engine/world/lives.py` | `live_on` calls `_climb` before `_grow_old`, so a rung reached counts for the old age of the same stretch. For everyone alive with an age, the player character and beasts aside, and each ladder they stand on below its top, `_climb` settles `yearly_s` on a first count (by the age at the stretch's start) and hands `_work` their years of the stretch (`_years`, less the quiet season) at that pace. `_work` fills the rank (`_keep` writes `sheet.practice` under `ladder:<id>` and the stage that follows from it); at the peak it waits `CLIMB_TRY_AFTER` of the rung's work on average, drawn memorylessly from `w.roll("life", "climb", id, ladder, attempt)` so the odds don't turn on how the years are cut, then throws the same roll against `climbing.odds`: a pass is `_rise`, so close keeps `growth.CLOSE_KEEPS` and a miss `growth.MISS_KEEPS`, up to `CLIMB_TRIES` attempts a stretch. A named person's `w.roll("life", "fortune", id, ladder)` at `FORTUNE_RATE` a year is `_rise` with `fortune`. `_rise` moves the rung, empties the rank, and appends a `Gain` (`source` breakthrough, with `_BY_YEARS` or `_BY_FORTUNE` as its reason) to their own `sheet.growth`. It writes the news (`_news`, known at once when the two live near) only where the player character knows of them, they are alive and not missing, and they show their true rung (`shown_rung` is None), and drops an earlier rise of theirs that is still unheard. `said` words it "rose to X", and for a rise by fortune adds that what it was is the scene's to say. |
+| `graph/turn/context.py` | `_npc_view` shows the new rung and, through `lives.news_of`, the rise as `news` under the person; LIVES tells a rise the player character lived near. `_NPC_HIDDEN` keeps `yearly_s` out of every brief. |
+| `engine/visibility.py` | `life_lines` writes the `rose` words of `_LIFE_WORDS`, where `{who}` is the rung, and `_BY_FORTUNE_WORDS` after them, in the three languages. |
+| `engine/world/tick.py` | `on_tick` covers the time from the last tick to now (`w.at_s`) and books the next one from now. A tick runs late when a long stretch was cut short and the scene after it spaced the tick anew (`plan_ticks`), which left it due in the past: booked from its due time, the world lived the time between twice. |
+| `engine/world/tuning.py` | `CLIMB_FROM`, `CLIMB_LEAST`, `CLIMB_TRY_AFTER`, `CLIMB_TRIES`, `FORTUNE_RATE`. |
+
+`evals/scenarios/t17_climbing.py` plays it end to end as `t17.others-rise`, in
+`worlds.azure_peak_he_leaves`.
+
 **The wider world moves (W6, W7).** Wars between factions come to a head over the years, by
 code alone: the facts decide where they can (A2), a seeded throw where they leave it open
 (A3), and nothing is timed in turns (W10).

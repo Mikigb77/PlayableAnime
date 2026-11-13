@@ -535,6 +535,14 @@ class LadderPosition(EngineModel):
         ge=0,
         description="G20: the rung others sense while strength is hidden; None if not hiding.",
     )
+    yearly_s: int | None = Field(
+        default=None,
+        ge=0,
+        description="W6: the effort a year, in seconds, that the world takes someone who isn't "
+        "the player character to put into this climb, read once off how far they had come for "
+        "their age (`engine.world.climbing.yearly_s`). None until the world first counts them, "
+        "and again whenever the story itself puts them on a rung.",
+    )
 
 
 class RungHeard(EngineModel):
