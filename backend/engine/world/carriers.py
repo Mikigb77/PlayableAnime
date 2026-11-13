@@ -50,12 +50,14 @@ from engine.world.geography import (
 )
 from engine.world.knowledge import faction_learns, protects, region_learns, would_talk
 from engine.world.norms import Nature, deed_nature, is_beast, is_crime
+from engine.world.returns import left
 from engine.world.rumors import start_rumor
 from engine.world.scheduling import Kind, World, by_id, cancel, pending, schedule
 from engine.world.telling import account
 from engine.world.tuning import (
     CALL_S,
     CHATTER_S,
+    ERRAND_STAY_S,
     FLEE_S,
     RUMOR_HOPS,
     RUMOR_MIN_SEVERITY,
@@ -259,7 +261,9 @@ def on_report(w: World, event: PendingEvent) -> None:
                 _seen_going(deed, witness.id, faction_id)
             _out_of_scene(state, [witness.id])
         if moves:
-            witness.location_id = event.place_id
+            # They are where they brought it, and go back once it is told (W11).
+            came_from, witness.location_id = witness.location_id, event.place_id
+            left(w, witness, came_from, ERRAND_STAY_S)
     if brings or (deed.visibility is Visibility.PUBLIC and not event.payload.get("waits")):
         faction_learns(w, faction_id, deed)
         return

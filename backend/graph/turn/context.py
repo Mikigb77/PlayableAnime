@@ -46,7 +46,7 @@ from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEve
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
-from engine.world import carriers, journeys
+from engine.world import carriers, journeys, returns
 from engine.world.geography import routes_from, together
 from engine.world.telling import account
 from graph.language import written_in
@@ -432,8 +432,8 @@ def _who_else_view(
     record while a trip is still on its way: whoever feels something about the player
     character or has heard talk of them, then whom they know, then the place's key people.
     `stranger` marks someone the player character neither knows nor has met. Where someone is
-    stays out unless they are here (C6). Someone a step made real is told under OUTCOME's
-    met."""
+    stays out unless they are here (C6), save for someone of this place who is away from it
+    and coming back (`_away_view`). Someone a step made real is told under OUTCOME's met."""
     you = after.player_id
     people = after.characters
     shown = {you, *(c.id for c in present_characters(before))}
@@ -486,10 +486,28 @@ def _who_else_view(
             view["here"] = True
         else:
             view.pop("location_id", None)
+            away = _away_view(after, character, spot)
+            if away is not None:
+                view["away"] = away
         if you not in character.known_by and you not in character.met_by:
             view["stranger"] = True
         others.append(view)
     return others[:_WHO_ELSE]
+
+
+def _away_view(state: WorldState, character: Character, spot: str | None) -> dict | None:
+    """W6. Someone who belongs at the scene's place and is off on a round trip of the world's
+    making (`engine.world.returns`): about when they are back, and where they went when the
+    player character knows of that place (C6). The people of the place know that much of a
+    neighbour, so the scene has something true to say of someone it can't show."""
+    trip = returns.trip_of(state, character.id)
+    if trip is None or spot is None or not together(state, trip.place_id, spot):
+        return None
+    away = {"back": in_label(max(0, trip.due_s - state.world_s))}
+    place = state.places.get(character.location_id or "")
+    if place is not None and _knows_place(state, place):
+        away["to"] = place.name
+    return away
 
 
 def _leaving_view(

@@ -196,6 +196,15 @@ GESTATION_S = 270 * DAY  # how long a child is carried; the same for every peopl
 # On average, how long an active faction or key NPC goes between moves of their own.
 FACTION_MOVE_MEAN_S = 7 * DAY
 NPC_MOVE_MEAN_S = 5 * DAY
+# Whoever the world sends somewhere comes back (`engine.world.returns`): how long a key NPC
+# stays where an outing of their own took them, and how long someone stays where an errand
+# took them, to bring word or to face someone, once it is done. The way back comes on top.
+OUTING_STAY_S = (DAY, 4 * DAY)
+ERRAND_STAY_S = (2 * HOUR, DAY)
+# Someone held where they went sets out for home this long after: a day at first, and then as
+# long again as they have been held so far, up to a week, so a year in a cell asks once a week.
+HELD_S = DAY
+HELD_MAX_S = 7 * DAY
 
 # W1, W4: what a bout both sides agreed to adds to affinity and trust between those who fought
 # it, and up to where: bouts alone make nobody a close friend.
