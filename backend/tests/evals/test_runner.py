@@ -841,3 +841,49 @@ def test_the_judge_is_shown_whose_partner_a_move_wronged_and_whether_they_saw_it
     assert told[False]["steps"][0]["wrongs"] == [
         {"id": "jorn-hale", "who": "Jorn Hale", "saw_it": False}
     ]
+
+
+def test_the_judge_is_shown_what_the_world_did_while_the_scene_played():
+    """W17, T18: a rubric that keeps someone out of a scene needs what the narrator was told
+    under FIRED. On the real model (2026-11-13) a married man took someone to his own farm for
+    the night, the neighbour left behind told his wife within it, and the judge failed the
+    scene for a wife who knew: what it was shown of the outcome never said word had reached
+    her."""
+    from engine.base import HOUR
+    from engine.context import Rating
+    from engine.contracts import ActionKind, RomanceMove, SceneEnd, StateDelta
+    from evals.scenarios import t17_romance as romance
+    from evals.scenarios.common import plan, step
+
+    told = {}
+
+    async def script(ev: Eval) -> None:
+        world = worlds.wife_at_home(heart=60)
+        story = ev.story(
+            world, seed="s", settings=romance.CALM, under_way=True, rating=Rating.MATURE
+        )
+        # The scene of the walk ends on the farm, with Mara there.
+        there = SceneEnd(
+            ended_on="By the barn.", place_id="farm", present_ids=[romance.YOU, romance.MARA]
+        )
+        at_the_farm = {
+            "narration": "(scripted) The two reach the farm.",
+            "suggestions": [],
+            "update": StateDelta(scene_end=there).model_dump(mode="json"),
+        }
+        walked = await story.act(romance.WALK, romance.walk_to_the_farm(), narration=at_the_farm)
+        night = step(
+            "spend the night with Mara",
+            ActionKind.REST,
+            8 * HOUR,
+            verb="sleep with",
+            target_ids=[romance.MARA],
+            romance=RomanceMove.ADVANCE,
+        )
+        slept = await story.act(romance.NIGHT, plan(night))
+        told.update(walk=walked.outcome(), night=slept.outcome())
+        ev.check("played", True)
+
+    assert play(script).status == "passed"
+    assert "meanwhile" not in told["walk"]
+    assert told["night"]["meanwhile"] == ["Word of what Tomas Weller did reaches Ilse Weller"]

@@ -279,6 +279,13 @@ def as_left(played: Played, *who: str) -> str:
     return f"{said} refused={refused}" if refused else said
 
 
+def as_steps(played: Played) -> list[IntentStep]:
+    """The steps a turn's action was read as, once checked: none for a turn that was refused."""
+    if played.result is None or played.result.intent is None:
+        return []
+    return list(played.result.intent.steps)
+
+
 def as_read(turns: list[Played]) -> str:
     """How each step of some turns was read and what code made of it, for the detail of a
     failed check: a live run's log is all that can be read of it afterwards (T18). The story
