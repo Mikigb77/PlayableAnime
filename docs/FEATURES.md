@@ -113,6 +113,11 @@ The first version's state, checked against the code in WS18.
 - [x] A move in a romance is always the other person's to answer: a kiss, an ask or a night is
       a step of words to them whatever the reading made of it, so nothing of the kind is
       certain just because nobody was named as standing in its way (W17, A2).
+- [x] What is done on setting out is seen by the scene it leaves: a walk home with someone is
+      seen by the people of the scene, not by everyone the record puts in the village, so a
+      partner who was out of sight learns of it only as word reaches them. A quiet lane with a
+      few people about is no crowd, and someone who did see it from a real crowd stays behind
+      where they saw it (W2, W17).
 - [x] Whoever ended a romance has made up their mind: for a while, by their own pace, nothing
       of the kind moves them, so nobody is won back in the scene they were left in (W17).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending

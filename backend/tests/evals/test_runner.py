@@ -782,3 +782,62 @@ def test_a_failed_live_scenario_says_which_turns_were_refused_and_why():
     # A refusal a passing scenario expected is not worth a line.
     verdicts["read"] = True
     assert play(script, mode=Mode.LIVE, models=models).failures() == []
+
+
+def test_a_failed_judgement_of_scenes_shows_the_scenes_it_read():
+    """T18: the judge's reason only points at a scene, and the run's log is all that can be read
+    of a live run afterwards (the romance stories of 2026-11-13 failed on tellings nobody could
+    read). So a failed judgement of scenes lists them, each with what the engine decided."""
+    rubric = Rubric(must=("Zhao bows back",))
+    seen = {}
+
+    def strict(request: Request) -> Reply:
+        answer = {"id": "M1", "verdict": "fail", "reason": "Scene 1 never has him bow."}
+        return Reply(json=JudgeOutput(answers=[answer]))
+
+    def models(judge) -> Models:
+        return Models(
+            backend=FakeBackend(default=offline_reply, keep_requests=False),
+            judge_backend=FakeBackend(default=judge, keep_requests=False),
+        )
+
+    async def script(ev: Eval) -> None:
+        story = ev.story(worlds.cultivation_world(), seed="s/0", under_way=True)
+        seen["played"] = played = await story.act("I bow to Zhao")
+        ev.check("played", played.completed)
+        await ev.judge("the bow", rubric, played)
+
+    result = play(script, mode=Mode.LIVE, models=models(strict))
+
+    assert result.status == "failed"
+    reason, read = result.failures()
+    assert reason == "judge the bow: M1 (Zhao bows back) failed: Scene 1 never has him bow."
+    played = seen["played"]
+    decided = json.dumps(played.outcome(), ensure_ascii=False, default=str)
+    assert read.startswith(f"judge the bow read scene 1 (I bow to Zhao): decided {decided[:200]}")
+    assert f" told {' '.join(played.narration.split())[:200]}" in read
+    assert play(script, mode=Mode.LIVE, models=models(passing_judge)).failures() == []
+
+
+def test_the_judge_is_shown_whose_partner_a_move_wronged_and_whether_they_saw_it():
+    """W17, T18: a rubric about who is in a scene needs what the narrator was told of it. On
+    the real model (2026-11-13) the judge failed a scene for showing a husband the engine had
+    seeing it, because what it was shown of the outcome never said so."""
+    from evals.scenarios import t17_romance as romance
+
+    told = {}
+
+    async def script(ev: Eval) -> None:
+        for there in (True, False):
+            world = worlds.husband_in_millbrook(there=there)
+            story = ev.story(world, seed=f"s/{there}", under_way=True)
+            told[there] = (await story.act(romance.KISS, romance.kiss())).outcome()
+        ev.check("played", True)
+
+    assert play(script).status == "passed"
+    assert told[True]["steps"][0]["wrongs"] == [
+        {"id": "jorn-hale", "who": "Jorn Hale", "saw_it": True}
+    ]
+    assert told[False]["steps"][0]["wrongs"] == [
+        {"id": "jorn-hale", "who": "Jorn Hale", "saw_it": False}
+    ]

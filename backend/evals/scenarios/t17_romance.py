@@ -97,6 +97,23 @@ def walk_home() -> Intent:
     )
 
 
+def walk_to_the_farm() -> Intent:
+    """The walk as the real model read it once (2026-11-13): one step that goes somewhere, to
+    Tomas's own farm, and is a move toward Mara on the way. What a step does as the going
+    itself is done as they set out, before the scene's people (W2)."""
+    return plan(
+        step(
+            "walk Mara home along the mill lane and tell her I like her company",
+            ActionKind.TRAVEL,
+            40 * MINUTE,
+            verb="walk",
+            target_ids=[MARA],
+            romance=RomanceMove.ADVANCE,
+            destination="farm",
+        )
+    )
+
+
 def court() -> Intent:
     return to_mara(
         "court Mara for a week",
@@ -552,21 +569,21 @@ def mends_it(who: str, stage: BondStage) -> dict:
     }
 
 
-def walks_in(who: str) -> dict:
-    """A scripted scene whose narrator has `who` walk in on it in Millbrook, whatever the
-    engine decided, as the real model did in the first stories about an affair (2026-11-13):
-    its update puts them in the village, among those present, having met Tomas there and
-    taken it badly. Only the world brings someone into a scene (W10), and what a move is to
-    someone who didn't see it is the engine's, once word reaches them (W17, W2)."""
+def walks_in(who: str, at: str = "village") -> dict:
+    """A scripted scene whose narrator has `who` walk in on it, whatever the engine decided,
+    as the real model did in the first stories about an affair (2026-11-13): its update puts
+    them where the scene ends (`at`: Millbrook, or the farm a walk went to), among those
+    present, having met Tomas there and taken it badly. Only the world brings someone into a
+    scene (W10), and what a move is to someone who didn't see it is the engine's, once word
+    reaches them (W17, W2)."""
     seen = AttitudeShift(toward_id=YOU, affinity=-10, trust=-10)
+    there = [YOU, MARA, BRAM, who] if at == "village" else [YOU, MARA, who]
     update = StateDelta(
-        characters=[
-            CharacterChange(id=who, location_id="village", meets_player=True, attitudes=[seen])
-        ],
+        characters=[CharacterChange(id=who, location_id=at, meets_player=True, attitudes=[seen])],
         scene_end=SceneEnd(
-            ended_on="Someone stands at the end of the mill lane, and has seen it all.",
-            place_id="village",
-            present_ids=[YOU, MARA, BRAM, who],
+            ended_on="Someone stands at the end of the lane, and has seen it all.",
+            place_id=at,
+            present_ids=there,
         ),
     )
     return {
@@ -902,7 +919,7 @@ async def an_affair(ev: Eval) -> None:
     )
 
 
-RIVALS = ("told of it all", "saw it", "told of the walk")
+RIVALS = ("told of it all", "saw it", "told of the walk", "walked her to his farm")
 
 
 @scenario(
@@ -914,7 +931,8 @@ RIVALS = ("told of it all", "saw it", "told of the walk")
         "A man courts the smith's wife. The move wrongs her husband on record, and the scene "
         "is told whether he saw it. A husband who saw it holds it against the man at once, by "
         "how far it went, and one who was out of sight feels as before until someone who saw "
-        "it tells him: the scene isn't offered him, and he isn't in it whatever its narrator "
+        "it tells him, also when the walk is one step that takes the two of them to the "
+        "man's farm: the scene isn't offered him, and he isn't in it whatever its narrator "
         "tells. Knowing of an affair, he comes to have it out, and the scene is told he "
         "came to hear it answered and not to attack. He comes for revenge afterwards only "
         "when what he knows of went as far as a night together. It is no crime, and Memory "
@@ -925,18 +943,20 @@ RIVALS = ("told of it all", "saw it", "told of the walk")
 async def a_rival(ev: Eval) -> None:
     ends: Counter[str] = Counter()
     away = 0
-    for index, seed in enumerate(ev.seeds(12, live=1)):
+    for index, seed in enumerate(ev.seeds(16, live=1)):
         how = RIVALS[index % len(RIVALS)]
-        saw = how == "saw it"
+        saw, to_farm = how == "saw it", how == "walked her to his farm"
         world = worlds.husband_in_millbrook(there=saw)
         story = ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
         at_first, his_wife = feels(story, JORN), feels(story, JORN, MARA)
 
-        # Offline, a husband who is out of sight is walked in on it by the narrator, and the
-        # record keeps him out.
-        barges = None if ev.live or saw else walks_in(JORN)
+        # Offline, a husband who is out of sight is walked in on it by the narrator, where its
+        # scene ends, and the record keeps him out.
+        barges = None if ev.live or saw else walks_in(JORN, "farm" if to_farm else "village")
         if saw:
             first = await story.act(KISS, kiss())
+        elif to_farm:
+            first = await story.act(WALK, walk_to_the_farm(), narration=barges)
         else:
             first = await story.act(WALK, walk_home(), narration=barges)
         deeds = wrongs(story, JORN)
@@ -975,6 +995,22 @@ async def a_rival(ev: Eval) -> None:
                 f"{seed}: {at_first} to {feels(story, JORN)} for severity {severity}",
                 live=False,
             )
+        elif ev.live and any(JORN in d.witness_ids for d in deeds):
+            # A live reading may put the walk before a crowd, and then he is one of the crowd
+            # (W2): the record says he saw it, so he knows and thinks the worse of the man,
+            # and no scene has him anywhere but where the record does.
+            now, jorn = feels(story, JORN), first.state.characters[JORN]
+            ev.check(
+                "a husband the record says saw it knows of it and thinks the worse of him",
+                bool(knows(story, JORN)) and now[0] < at_first[0] and now[1] < at_first[1],
+                f"{seed}: {at_first} to {now}, {as_left(first, JORN)}, {as_read([first])}",
+            )
+            ev.check(
+                "a husband who saw it from the crowd is in no scene away from where he is",
+                JORN not in first.state.scene.present_ids
+                or together(first.state, jorn.location_id, first.state.scene.place_id),
+                f"{seed}: {as_left(first, JORN)}, {as_read([first])}",
+            )
         else:
             # A live telling may take the two out of the village, and then whoever saw them
             # may have told him before the turn is over (W2): that is the world's doing.
@@ -1009,8 +1045,9 @@ async def a_rival(ev: Eval) -> None:
             Rubric(
                 must=(
                     "Mara is as warm to Tomas as OUTCOME says of her heart and of each step",
-                    "When OUTCOME says Jorn saw it, the scene shows what it is to him; when it "
-                    "doesn't, Jorn is not in the scene and nobody says he knows",
+                    "When wrongs under a step says Jorn saw it (saw_it true), the scene shows "
+                    "what it is to him, and with stayed_in it leaves him in that place; when it "
+                    "says he didn't, Jorn is not in the scene and nobody says he knows",
                 ),
                 must_not=("The night, if there is one, is told in explicit sexual detail",),
             ),

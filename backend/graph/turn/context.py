@@ -47,7 +47,7 @@ from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
 from engine.world import carriers, journeys, returns
-from engine.world.geography import routes_from, together
+from engine.world.geography import routes_from, scene_ids, together
 from engine.world.telling import account
 from graph.language import written_in
 from graph.llm import Prompt
@@ -1146,11 +1146,16 @@ def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
     return {"saying": rumor.text} | asked if rumor is not None else None
 
 
-def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]]:
+def wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]]:
     """W17. Whom a step's move in a romance wrongs (`Deed.wronged_ids`): whoever is a couple
     with either of the two, by name, and `saw_it`: whether they were there to see it, by the
     deed as the world recorded it. The others know nothing of it yet (W2), and the scene is
-    told so of each in as many words: left unsaid, the real model walked a wife in on it."""
+    told so of each in as many words: left unsaid, the real model walked a wife in on it.
+
+    Someone who saw it from among the people around, while the step took the player character
+    on to another place, gets `stayed_in`, the place it was done at: they saw it there and
+    are still there, and the door keeps them out of the scene where it ends (W4). Told only
+    `saw_it`, the real model listed a husband among those present forty minutes on."""
     proposed = next((d for d in step.deeds if d.wronged_ids), None)
     if proposed is None:
         return []
@@ -1164,11 +1169,19 @@ def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any
         default=None,
     )
     saw = set(recorded.witness_ids) if recorded is not None else set()
-    return [
-        {"id": who, "who": state.characters[who].name, "saw_it": who in saw}
-        for who in proposed.wronged_ids
-        if who in state.characters
-    ]
+    cast, spot = scene_ids(state), state.player.location_id
+    wronged = []
+    for who in proposed.wronged_ids:
+        person = state.characters.get(who)
+        if person is None:
+            continue
+        view: dict[str, Any] = {"id": who, "who": person.name, "saw_it": who in saw}
+        done_at = state.places.get(recorded.place_id or "") if recorded is not None else None
+        behind = spot is not None and not together(state, person.location_id, spot)
+        if who in saw and who not in cast and behind and done_at is not None:
+            view["stayed_in"] = done_at.name
+        wronged.append(view)
+    return wronged
 
 
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
@@ -1221,7 +1234,7 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
         if step.perils:
             # N6: what struck back at the player character after their step, in order.
             view["struck"] = [_struck_view(p) for p in step.perils]
-        if wronged := _wronged_view(step, state):
+        if wronged := wronged_view(step, state):
             # W17: whose partner the move was made with or by, and who of them saw it.
             view["wrongs"] = wronged
         if step.bout is not None:

@@ -544,7 +544,10 @@ class StepFacts(EngineModel):
     )
     crowd: bool = Field(
         default=False,
-        description="W2: people the scene doesn't name are around and would see this step done.",
+        description=(
+            "W2: many people the scene doesn't name are right there and would see this step"
+            " done. A quiet place with a few people about is no crowd."
+        ),
     )
     asks_talk: bool = Field(
         default=False,
