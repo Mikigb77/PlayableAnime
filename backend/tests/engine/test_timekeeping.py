@@ -3,8 +3,9 @@
 import pytest
 
 from engine.base import DAY, HOUR, MINUTE
+from engine.context import Language
 from engine.samples import cultivation_world, grounded_world
-from engine.timekeeping import JUST_PASSED_S, parse_clock, seconds_until
+from engine.timekeeping import JUST_PASSED_S, names_a_span, parse_clock, seconds_until
 
 
 @pytest.mark.parametrize(
@@ -55,3 +56,35 @@ def test_a_time_that_has_only_just_come_takes_no_waiting():
     assert seconds_until(sect, 12 * HOUR + JUST_PASSED_S + 1, 19 * HOUR) == (
         DAY - JUST_PASSED_S - 1
     )
+
+
+@pytest.mark.parametrize(
+    ("words", "language"),
+    [
+        ("I spend the next week courting Mara", Language.EN),
+        ("I train with the sword here for a year", Language.EN),
+        ("I keep watch for three hours", Language.EN),
+        ("Paso la próxima semana cortejando a Mara", Language.ES),
+        ("Entreno aquí con la espada durante un año", Language.ES),
+        ("Passo tres dies treballant al molí", Language.CA),
+        ("M'entreno aquí amb l'espasa durant un any", Language.CA),
+        ("I train for two weeks", Language.CA),  # English is read in any story
+    ],
+)
+def test_the_players_words_name_a_span_of_time(words, language):
+    """W10, S10: the words a player gives a step its length with, in the story's language."""
+    assert names_a_span(words, language)
+
+
+@pytest.mark.parametrize(
+    ("words", "language"),
+    [
+        ("I work on the fence", Language.EN),
+        ("Today I mend the roof", Language.EN),
+        ("I don't have any", Language.EN),  # Catalan's year, read only in a Catalan story
+        ("Trabajo en la valla", Language.ES),
+        ("Treballo a la tanca", Language.CA),
+    ],
+)
+def test_words_that_name_no_span_of_time(words, language):
+    assert not names_a_span(words, language)

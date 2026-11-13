@@ -222,7 +222,7 @@ async def read_action(
     prompt = interpret_prompt(world, action, language, last_scene, asked)
     form = intent_form(asked)
     intent = await llm.structured(Node.INTERPRET, prompt, Intent, form=form)
-    checked = check.check_intent(intent, world, action)
+    checked = check.check_intent(intent, world, action, language)
     doubt = check.doubtful(checked.intent, world)
     if doubt is None:
         return checked
@@ -234,7 +234,7 @@ async def read_action(
     except LLMError:
         checked.issues.append(_read_again(doubt, "unread", "the first reading stands"))
         return checked
-    second = check.check_intent(again, world, action)
+    second = check.check_intent(again, world, action, language)
     if check.doubtful(second.intent, world) == doubt:
         second.issues.insert(0, _read_again(doubt, "confirmed", "both readings say so"))
     else:

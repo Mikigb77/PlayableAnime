@@ -242,6 +242,45 @@ def test_beyond_a_kiss_takes_a_partner_or_someone_surely_drawn():
     assert (partner.outcome_class, partner.roll) == (OutcomeClass.CERTAIN, None)
 
 
+def test_the_reason_says_that_two_slept_together_only_when_they_did():
+    """W17: the scene tells a night together only where the step's reason says it, so the
+    telling and the deed on record hold the same. On the real model (2026-11-13) a night the
+    reading had worded as courting was told as a night in the hayloft."""
+    night = to("mara", "spend the night with Mara", RomanceMove.ADVANCE, verb="sleep with")
+    said = "You and Mara sleep together."
+    assert said in one(world(bonds.INTIMATE_SURE), night).reason
+    # Turned down, it didn't happen, and a throw that missed made it no night either.
+    assert said not in one(world(bonds.INTIMATE_NO - 1), night).reason
+    open_ = world(bonds.INTIMATE_NO)
+    assert said not in one(open_, night, seed_for(open_, night, StepResult.FAILURE)).reason
+    assert said in one(open_, night, seed_for(open_, night, StepResult.SUCCESS)).reason
+    # The same words read as an evening of courting are an evening of courting.
+    evening = to("mara", "spend the night with Mara", RomanceMove.ADVANCE, verb="romance")
+    sure = world(bonds.INTIMATE_SURE)
+    assert said not in one(sure, evening, seed_for(sure, evening, StepResult.SUCCESS)).reason
+
+
+def test_a_night_together_an_event_cut_short_didnt_happen():
+    night = to(
+        "mara",
+        "spend the night with Mara",
+        RomanceMove.ADVANCE,
+        verb="sleep with",
+        kind=ActionKind.REST,
+        duration_s=8 * HOUR,
+    )
+    state = cut_at(world(bonds.INTIMATE_SURE), HOUR)
+    whole = resolve(state, Intent(steps=[night]), 0)
+    assert "You and Mara sleep together." in whole.steps[0].reason
+
+    played = pipeline.play_out(state, whole, ctx(), rng(0))
+
+    (cut,) = played.resolution.steps
+    assert cut.interrupted
+    assert "sleep together" not in cut.reason
+    assert not played.state.deeds and heart(played.state) == bonds.INTIMATE_SURE
+
+
 # --- courting an event cuts short (E7) -------------------------------------------------------
 
 

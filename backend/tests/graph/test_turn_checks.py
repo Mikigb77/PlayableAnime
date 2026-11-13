@@ -1,7 +1,15 @@
 """The code checks that run before narration (C5): intent, resolution (A2, R6) and plan."""
 
 from engine.apply import DeltaSource, apply_delta
-from engine.context import ContentPrefs, GoreLevel, ImageSetting, Rating, StorySettings, TurnContext
+from engine.context import (
+    ContentPrefs,
+    GoreLevel,
+    ImageSetting,
+    Language,
+    Rating,
+    StorySettings,
+    TurnContext,
+)
 from engine.contracts import (
     ActionKind,
     Aim,
@@ -272,6 +280,38 @@ def test_a_stretch_the_player_timed_for_longer_than_its_kind_lasts_is_a_time_ski
     ]
     assert [s.proposed_duration_s for s in checked.intent.steps[:2]] == [year, 7 * 24 * 3600]
     assert [i.code for i in checked.issues] == ["long_stretch", "long_stretch"]
+
+
+def test_the_players_own_words_time_a_stretch_the_reading_left_unmarked():
+    """W10: on the real model (2026-11-13) "I spend the next week courting Mara" came back as
+    a week of work that the reading hadn't marked as timed by the player, so it stopped at
+    eighteen hours and the story's clock ran to midnight. The player's own words say how
+    long, in English or in the story's language (S10), so the time stands."""
+    week = 7 * 24 * 3600
+
+    def read(action: str, language: Language = Language.EN, **step_) -> IntentStep:
+        work = IntentStep(
+            text="court Mara",
+            verb="court",
+            kind=step_.pop("kind", ActionKind.WORK),
+            proposed_duration_s=step_.pop("seconds", week),
+        )
+        checked = check_intent(Intent(steps=[work]), cultivation_world(), action, language)
+        return checked.intent.steps[0]
+
+    courted = read("I spend the next week courting Mara: I walk her home each evening")
+    assert (courted.kind, courted.proposed_duration_s) == (ActionKind.TIME_SKIP, week)
+    spanish = read("Paso la próxima semana cortejando a Mara", Language.ES)
+    assert (spanish.kind, spanish.proposed_duration_s) == (ActionKind.TIME_SKIP, week)
+    catalan = read("Passo la setmana vinent festejant la Mara", Language.CA)
+    assert (catalan.kind, catalan.proposed_duration_s) == (ActionKind.TIME_SKIP, week)
+    # Words that name no time leave the model's own guess held to the kind, as before.
+    assert read("I court Mara").kind is ActionKind.WORK
+    assert read("Festejo la Mara", Language.CA).kind is ActionKind.WORK
+    # A step within what its kind lasts stays that kind, whatever the words say.
+    assert read("I work the week's accounts", seconds=2 * 3600).kind is ActionKind.WORK
+    # A fight is never skipped.
+    assert read("We fight for a week", kind=ActionKind.EXCHANGE).kind is ActionKind.EXCHANGE
 
 
 def lesson(terms: Terms | None = Terms.NO_HARM, *, in_earnest: bool = False):

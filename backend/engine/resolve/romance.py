@@ -258,6 +258,8 @@ def _ruling(state: WorldState, actor: Character, wooing: Wooing) -> Settled | No
 
 
 _WANTS = "{} wants this too."
+# What the reason says of an advance beyond a kiss that was answered.
+SLEPT = "You and {} sleep together"
 
 
 def _answer(them: str, drawn: int, no: int, sure: int) -> Settled | None:
@@ -349,6 +351,12 @@ def settle(
     if wooing.move is RomanceMove.ADVANCE:
         more = _gain(told, won or half, won, over_the_top, now_s, lasted_s)
         _advance(told, more, won, ends_s)
+        if wooing.intimate and (won or half):
+            # Said in so many words, as the deed on record has it (`deed`): the scene tells
+            # that the two slept together only where the reason does, so neither says more
+            # than the other (on the real model, 2026-11-13, a night read as courting was told
+            # as a night in the hayloft).
+            told.said.append(SLEPT.format(them))
         return told.done()
     # An ask: to be a couple, or to be promised to each other.
     if told.stage is None:

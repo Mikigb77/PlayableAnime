@@ -302,7 +302,10 @@ Hiding or showing is a step of its own, before whatever they do next.
 <<romance>>
 - romance, always (W17): null unless the step is itself a move in a romance between the character \
 and someone it is aimed at, who goes in target_ids. advance: flirting, courting, a gift or a word \
-meant to win them, a kiss, a night together. declare: asking them to be a couple, or saying yes \
+meant to win them, a kiss, a night together. Making love or spending the night as lovers, \
+however the player words it, is an advance whose verb is "sleep with": code reads that verb to \
+tell it from an evening in their company. Sharing a room, a camp or a bed only to sleep is no \
+move. declare: asking them to be a couple, or saying yes \
 when they ask. propose: asking them to promise marriage, or the world's own lasting union, or \
 saying yes to it. wed: marrying them. part: ending it with them. Give the move the player's words \
 make, never the one the bond would allow: marrying someone they aren't promised to is still wed, \
@@ -407,7 +410,10 @@ is now; NOW says when the opening takes place. The light, the sky, meals, crowds
 anything else that shows the hour match it, and the scene ends at TIME's now. Never let night \
 fall, a meal come round or a day end that the clock doesn't reach, never skip ahead ("hours \
 later"), and never take the character further than that time could carry them. An action that \
-would need longer plays only as far as the time allows. When TIME has a heading ("Three days \
+would need longer plays only as far as the time allows. What OUTCOME says is done was done \
+within that time, at whatever hour it is: when the hour is a strange one for it (a wedding in \
+the dead of night), tell how it came about then, and never put it off to a morning the clock \
+doesn't reach. When TIME has a heading ("Three days \
 later"), the player reads it above the scene: tell how that time went by, and never say the \
 heading's words again.
 - A trip (W10). trip under a step in OUTCOME is where that step took the character: to, the \
@@ -588,9 +594,11 @@ two people ends, unless the reason of a step in OUTCOME, the EVENT or an event u
 so. When a step asks and its reason says their heart isn't there, they turn it down in their own \
 way, and the scene never has them agree, hint that they will or kiss back. When the reason says \
 they are more drawn than before, show it in something small they do, never as a declaration. \
-When a step that asked for a night together succeeded, the two spent it together, and the scene \
-says so in plain words: it shows what the rating shows of it, cuts to afterwards for the rest, \
-and never tells an evening of talk or a head on a shoulder in its place. A \
+When a step's reason says the two sleep together, they did, and the scene says so in plain \
+words: it shows what the rating shows of it, cuts to afterwards for the rest, and never tells an \
+evening of talk or a head on a shoulder in its place. Where no reason says it, the player \
+character makes love or spends a night as lovers with nobody, whatever the player asked for: \
+the scene tells only as much as the reason of the step holds. A \
 step toward someone who was a short way off goes to them first: it has a trip, they are where it \
 ends, and what they answer is told there. When a step's reason says they aren't here, it reached \
 nobody: the player character finds they are not around, and the scene never has them turn up, \
@@ -602,7 +610,9 @@ they stay there, so they don't follow and are not where the scene ends. saw_it f
 not there, and they know nothing of it. \
 They are not in this scene and never come into it: nobody has them walk in, look on from a \
 distance, find out or send word while it plays, however well that would suit the story. What they \
-come to know reaches them later, through the world, and the engine brings them then. When the \
+come to know reaches them later, through the world, and the engine brings them then: only an \
+EVENT, or an event under FIRED that says word of it reached them, has them know or come within \
+this scene. When the \
 grudges under toward_you tell that the player character courted, slept with or married someone \
 else, that person knows it, and it shows as hurt, anger or cold by how far it went. When the EVENT \
 or an event under FIRED has them come to have it out, they put it to the player character and hear \
