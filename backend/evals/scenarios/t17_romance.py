@@ -568,8 +568,8 @@ DAYS_AT_HOME = 6  # at most, for word to get round and for whoever it wronged to
 # the two didn't.
 NIGHT_AS_DECIDED = (
     "Where the why of a step says the two sleep together, the scene makes plain that they "
-    "spent the night together as lovers (a fade-out counts); where no step's why says it, no "
-    "scene has them make love or spend a night as lovers"
+    "were together as lovers for those hours (a fade-out counts); where no step's why says "
+    "it, no scene has them make love or spend a night as lovers"
 )
 
 

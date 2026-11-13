@@ -1374,7 +1374,11 @@ AT_THE_MILL = (
 
 def _evening_in_millbrook(state: WorldState, *, drawn: int) -> WorldState:
     """Tomas in Millbrook of an evening, with Mara Voss at the mill door and old Bram on his
-    bench, who sees everything on the lane. `drawn` is how drawn Mara is to Tomas."""
+    bench, who sees everything on the lane. `drawn` is how drawn Mara is to Tomas. The story
+    opens at eight in the evening by its own clock: with the farm's dawn on it, a night
+    together ran from dawn into the afternoon, and the real narrator told it as that
+    (2026-11-13)."""
+    state.bible.calendar.start_second_of_day = 20 * HOUR
     mara = state.characters[MARA]
     mara.location_id = "village"
     mara.sheet.disposition.attitudes["tomas"] = Attitude(affinity=40, trust=40, attraction=drawn)

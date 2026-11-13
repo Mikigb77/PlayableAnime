@@ -753,8 +753,10 @@ GIVEN_AWAY = (
     "A line of the summary is a deadline or a coming event, with the time until it, that the "
     "premise doesn't speak of",
     "A line of the summary introduces a person other than the player's own character by name "
-    "and says who they are, though the premise doesn't name them. An office or a title alone, "
-    "such as the king or the baron a garrison serves, is no name",
+    "and says who they are, though the premise doesn't speak of them. Someone the premise "
+    "speaks of without a name, such as a father, a master or a rival, may be shown under the "
+    "name the world gave them. An office or a title alone, such as the king or the baron a "
+    "garrison serves, is no name",
     "A line of the summary gives the character a goal, or says what they want, though the "
     "premise doesn't speak of it",
 )
