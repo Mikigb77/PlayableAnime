@@ -25,6 +25,7 @@ from engine.state import (
     Extraordinary,
     Fact,
     Faction,
+    Faith,
     GiftStrength,
     Health,
     HitMode,
@@ -55,6 +56,7 @@ from engine.state import (
     Technique,
     Trait,
     TraitKind,
+    Unions,
     WorldBible,
     WorldRule,
     WorldState,
@@ -1372,7 +1374,11 @@ AT_THE_MILL = (
 
 def _evening_in_millbrook(state: WorldState, *, drawn: int) -> WorldState:
     """Tomas in Millbrook of an evening, with Mara Voss at the mill door and old Bram on his
-    bench, who sees everything on the lane. `drawn` is how drawn Mara is to Tomas."""
+    bench, who sees everything on the lane. `drawn` is how drawn Mara is to Tomas. The story
+    opens at eight in the evening by its own clock: with the farm's dawn on it, a night
+    together ran from dawn into the afternoon, and the real narrator told it as that
+    (2026-11-13)."""
+    state.bible.calendar.start_second_of_day = 20 * HOUR
     mara = state.characters[MARA]
     mara.location_id = "village"
     mara.sheet.disposition.attitudes["tomas"] = Attitude(affinity=40, trust=40, attraction=drawn)
@@ -1404,11 +1410,22 @@ def wife_at_home(*, heart: int = 60, drawn: int = 70) -> WorldState:
     return _evening_in_millbrook(state, drawn=drawn)
 
 
-def husband_in_millbrook(*, there: bool, drawn: int = 70) -> WorldState:
+def husband_in_millbrook(
+    *,
+    there: bool = False,
+    drawn: int = 70,
+    faith: Faith = Faith.ROVING,
+    theirs: int = 40,
+    unions: Unions = Unions.HELD,
+) -> WorldState:
     """`millers_daughter` for a rival (W17): Tomas lives alone, and Mara Voss is married to Jorn
     Hale, the Millbrook smith, who thinks nothing much of Tomas either way. With `there` he is
-    on the lane with them, and otherwise at his forge, in the village and out of sight."""
+    on the lane with them, and otherwise at his forge, in the village and out of sight. `faith`
+    is how Mara holds to him when someone else courts her: by default her husband stands in
+    nobody's way, so the stories about a rival are about him. `theirs` is how drawn she still
+    is to him, and `unions` what the valley makes of a marriage."""
     state = millers_daughter()
+    state.bible.unions = unions
     jorn = Character(
         id=JORN,
         name="Jorn Hale",
@@ -1432,8 +1449,9 @@ def husband_in_millbrook(*, there: bool, drawn: int = 70) -> WorldState:
     )
     state.characters[JORN] = jorn
     state.characters[MARA].description = "The miller's daughter and the smith's wife."
+    state.characters[MARA].faith = faith
     state.characters[MARA].sheet.disposition.attitudes[JORN] = Attitude(
-        affinity=50, trust=60, attraction=40
+        affinity=50, trust=60, attraction=theirs
     )
     state.bonds["bond-1"] = Bond(
         id="bond-1",

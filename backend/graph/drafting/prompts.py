@@ -60,7 +60,12 @@ up is the story's to find (W17). Among the key characters themselves, some may w
 the story opens, as people in such a world would be: a husband and wife, two who are betrothed, \
 lovers. Record each couple on one of the two, with partner_id and partner_bond. A couple that \
 hides it is a secret instead. Set several_partners only where having several partners at once is \
-the custom of this world.
+the custom of this world. Set unions to how couples hold in this world, which says how faithful \
+its people are: for_life where a marriage is for life and leaving one is all but unheard of, easy \
+where couples part and take up with others often, held between the two and when unsure. Give a \
+key character faith only where the premise or who they plainly are says how they hold to a \
+partner (a devoted wife is steadfast, a flirt or a philanderer roving), and null otherwise: each \
+person has their own, and most are steadfast.
 - One to four first clocks: the deadlines and threats the premise sets, with what happens at \
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \
@@ -162,9 +167,9 @@ removed, with its list as section and its id, and remove whatever the change mak
 that gains vampires loses its "magic or anything supernatural" kind with prevalence none and drops \
 the rules that say nothing supernatural exists. A fixed rule goes only when its id is in \
 dropped_rule_ids, so list every fixed rule the request removes or changes there. Write the title, \
-genre, tone, era, summary, nature, norms, known facts, calendar, travel, medicine, opening or \
-several_partners only if the change alters them, each in full. The character stays as it is, so \
-keep what they belong to and where they are unless the change removes it.\
+genre, tone, era, summary, nature, norms, known facts, calendar, travel, medicine, opening, \
+several_partners or unions only if the change alters them, each in full. The character stays as \
+it is, so keep what they belong to and where they are unless the change removes it.\
 """
 
 

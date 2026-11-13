@@ -27,6 +27,12 @@ What a stage needs:
   Whoever ended it has made up their mind: for a good while after, nothing of the kind moves
   them (`Closed.ENDED`, by their own pace), so nobody is won back in the scene they left in.
 
+Someone who has a partner already has that to weigh, each in their own way (`faith`): most
+keep to their partner and nothing of the kind moves them while that bond holds, some can be
+moved with their partner standing in the way (`hold`), and a few let a partner stand in
+nobody's way. How many are which is the custom of the world (`WorldBible.unions`), and so is
+whether a marriage can be left at all (`for_life`).
+
 Nothing here assumes a genre (G5): a stage is a fact between two people, and what a wedding or
 a betrothal looks like is the world's.
 """
@@ -38,7 +44,8 @@ from enum import StrEnum
 
 from engine.base import DAY, HOUR
 from engine.kin import ancestors
-from engine.state.cast import Character
+from engine.state.bible import Unions
+from engine.state.cast import Character, Faith
 from engine.state.records import Bond, BondEnd, BondStage, BondStep
 from engine.state.world import WorldState, natural_key
 
@@ -99,6 +106,18 @@ LEAVES_UNDER = 40
 # an affair and answer his next advance: one good throw, and the two were courting again.
 ENDED_RESTS = 30
 
+# Of a hundred people, how many keep to a partner whatever comes (steadfast) and how many let
+# a partner of their own stand in nobody's way (roving), by the custom of the world. The rest
+# are torn. The numbers lean on what is known of our own world (docs/REQUIREMENTS.md, W17):
+# where couples part easily about one person in six has strayed, and where a marriage was
+# for life the record that was kept, of children by another father, is several times lower.
+FAITH = {Unions.FOR_LIFE: (70, 5), Unions.HELD: (55, 12), Unions.EASY: (40, 20)}
+# How much of their heart for their own partner stands in a suitor's way: a point for every
+# `HOLD` of it, so a loved partner raises every mark by twenty and a neglected one by ten.
+HOLD = 4
+# The hearts of a couple the record gives none: from here to `SETTLED_TOP`, by who they are.
+SETTLED, SETTLED_TOP = 35, 90
+
 FORWARD = {
     BondStage.INTEREST: (BondStage.COURTING, BondStage.TOGETHER),
     BondStage.COURTING: (BondStage.TOGETHER,),
@@ -130,6 +149,94 @@ def pace(character_id: str) -> Pace:
     """Someone's own pace, which is theirs for the whole story: it follows from who they are
     (their id), never from a throw, so no telling of the story changes it."""
     return _PACES[zlib.crc32(character_id.encode()) % len(_PACES)]
+
+
+def faith(state: WorldState, character: Character) -> Faith:
+    """How someone holds to a partner when another courts them, which is theirs for the whole
+    story: what the story said of them (`Character.faith`), or else what follows from who
+    they are (their id) and from the custom of the world, never from a throw. Whoever is
+    steadfast where couples part easily is steadfast anywhere, and whoever is roving where a
+    marriage is for life is roving anywhere."""
+    if character.faith is not None:
+        return character.faith
+    steadfast, roving = FAITH[state.bible.unions]
+    drawn = zlib.crc32(f"faith:{character.id}".encode()) % 100
+    if drawn < steadfast:
+        return Faith.STEADFAST
+    return Faith.ROVING if drawn >= 100 - roving else Faith.TORN
+
+
+def settled_heart(character_id: str, partner_id: str) -> int:
+    """The heart of someone for a partner the story opened them with, where nothing says how
+    it stands: theirs by who the two are, so some couples are close and a few have gone cold."""
+    spread = SETTLED_TOP - SETTLED + 1
+    return SETTLED + zlib.crc32(f"heart:{character_id}>{partner_id}".encode()) % spread
+
+
+def heart_for(state: WorldState, character: Character, partner_id: str) -> int:
+    """How drawn someone is to their own partner. Between two people who aren't the player
+    character, a heart the record doesn't hold yet is a settled couple's (`settled_heart`):
+    nothing but a romance's own moves has ever touched it."""
+    attitude = character.sheet.disposition.attitudes.get(partner_id)
+    unset = attitude is None or (attitude.attraction == 0 and attitude.heart_moved_s is None)
+    if unset and state.player_id not in (character.id, partner_id):
+        return settled_heart(character.id, partner_id)
+    return 0 if attitude is None else attitude.attraction
+
+
+def kept(state: WorldState, character_id: str, suitor_id: str) -> str | None:
+    """The partner who stands between someone and a suitor, by id: whoever else they are a
+    couple with, alive. Where there are several, the one it has come furthest with and then
+    the one their heart is most with. Nobody where having several partners is the custom."""
+    character = state.characters.get(character_id)
+    if character is None or state.bible.several_partners:
+        return None
+    found: list[tuple[int, int, str]] = []
+    for partner in partners(state, character_id):
+        person = state.characters.get(partner)
+        bond = live(state, character_id, partner)
+        if partner == suitor_id or person is None or not person.alive or bond is None:
+            continue
+        found.append((ORDER.index(bond.stage), heart_for(state, character, partner), partner))
+    return max(found)[2] if found else None
+
+
+def for_life(state: WorldState, a: str, b: str) -> bool:
+    """Whether two people are married where a marriage is for life, so neither leaves it."""
+    bond = live(state, a, b)
+    married = bond is not None and bond.stage is BondStage.MARRIED
+    return married and state.bible.unions is Unions.FOR_LIFE
+
+
+def keeps_to(state: WorldState, other: Character, suitor_id: str) -> str | None:
+    """The partner someone keeps to against a suitor, by id, or None when nothing of the
+    kind closes their heart: they have no other partner, they aren't steadfast, or their own
+    bond no longer holds them, which is a heart for their partner under `LEAVES_UNDER` where
+    the marriage isn't for life. Someone who has answered the suitor already, as the record
+    has it, is past keeping to anyone."""
+    partner = kept(state, other.id, suitor_id)
+    if partner is None or faith(state, other) is not Faith.STEADFAST:
+        return None
+    ours = live(state, other.id, suitor_id)
+    if ours is not None and ours.stage is not BondStage.INTEREST:
+        return None
+    if heart_for(state, other, partner) >= LEAVES_UNDER or for_life(state, other.id, partner):
+        return partner
+    return None
+
+
+def hold(state: WorldState, other: Character, suitor_id: str, *, promise: bool = False) -> int:
+    """How far someone's own partner stands in a suitor's way, in points every mark their
+    heart has to reach is raised by: a part of their heart for that partner (`HOLD`). Nothing
+    for someone roving, and nothing once they are a couple with the suitor too, save for a
+    promise to them (`promise`), which means leaving the other."""
+    partner = kept(state, other.id, suitor_id)
+    if partner is None or faith(state, other) is Faith.ROVING:
+        return 0
+    ours = live(state, other.id, suitor_id)
+    if ours is not None and ours.stage.couple and not promise:
+        return 0
+    return heart_for(state, other, partner) // HOLD
 
 
 def can_move(bond: Bond, stage: BondStage) -> bool:
@@ -270,12 +377,14 @@ class Closed(StrEnum):
     AVERSE = "averse"  # they want nothing to do with them
     AFRAID = "afraid"  # too afraid of them for anything to be freely given
     ENDED = "ended"  # they ended it with them, and it is too soon
+    BOUND = "bound"  # they keep to their own partner
 
 
 def closed_to(state: WorldState, other: Character, suitor_id: str) -> Closed | None:
     """Why someone's heart is closed to another, or None when it is open: they are family,
     they want nothing to do with them, they are too afraid of them for anything to be freely
-    given, or they ended it with them not long ago (`ended_by`)."""
+    given, they ended it with them not long ago (`ended_by`), or they keep to a partner of
+    their own (`keeps_to`)."""
     if kin(state.characters, other.id, suitor_id):
         return Closed.FAMILY
     attitude = other.attitude_toward(suitor_id)
@@ -286,6 +395,8 @@ def closed_to(state: WorldState, other: Character, suitor_id: str) -> Closed | N
     since_s = ended_by(state, other.id, suitor_id)
     if since_s is not None and state.world_s - since_s < REST_S[pace(other.id)] * ENDED_RESTS:
         return Closed.ENDED
+    if keeps_to(state, other, suitor_id) is not None:
+        return Closed.BOUND
     return None
 
 

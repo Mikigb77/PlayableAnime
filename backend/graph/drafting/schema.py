@@ -28,6 +28,7 @@ from engine.state import (
     CalendarStyle,
     ConnectionKind,
     CostKind,
+    Faith,
     GiftStrength,
     ItemKind,
     PlaceSetting,
@@ -40,6 +41,7 @@ from engine.state import (
     ThreadKind,
     TimeEffect,
     TraitKind,
+    Unions,
     Zeal,
 )
 from graph.drafting import lenient
@@ -464,6 +466,14 @@ class NpcP(Proposal):
         description="How far it has come with partner_id: courting, together (a couple), "
         "promised (betrothed, engaged) or married.",
     )
+    faith: Faith | None = Field(
+        default=None,
+        description="W17: how they hold to a partner when someone else courts them, only "
+        "where the premise or who they plainly are says it. steadfast: devoted, nobody else "
+        "moves them. torn: they could be moved, with their partner standing in the way. "
+        "roving: a flirt or a philanderer, a partner stands in nobody's way. null for "
+        "everyone else: code gives each person their own, most of them steadfast.",
+    )
     agenda: AgendaP | None = Field(default=None, description="Hidden from the player.")
     secrets: list[str] = Field(default_factory=list)
     player_knows: PlayerKnows = Field(
@@ -553,6 +563,14 @@ class WorldProposal(Proposal):
         "this world, as with plural marriage or a harem, so another romance wrongs no "
         "partner. false where a couple are held to each other, which is most worlds.",
     )
+    unions: Unions = Field(
+        default=Unions.HELD,
+        description="W17: how couples hold in this world, which sets how faithful its people "
+        "are. for_life: a marriage is for life and leaving one is all but unheard of, as in "
+        "most worlds of old faiths, strict clans or arranged matches. easy: couples part "
+        "and take up with others often and nobody is surprised, as in a modern city. held: "
+        "between the two, some part and it costs them dearly. When unsure, held.",
+    )
     places: list[PlaceP] = Field(default_factory=list, description="Two to ten places.")
     factions: list[FactionP] = Field(default_factory=list, description="At most eight.")
     npcs: list[NpcP] = Field(default_factory=list, description="Two to eight key characters.")
@@ -641,6 +659,11 @@ class WorldChange(Proposal):
         default=None,
         description="Only if the change alters whether having several partners at once is "
         "the custom of this world (W17): true or false. null otherwise.",
+    )
+    unions: Unions | None = Field(
+        default=None,
+        description="Only if the change alters how couples hold in this world (W17): "
+        "for_life, held or easy. null otherwise.",
     )
     known_facts: list[str] = Field(
         default_factory=list, description="Only if the change alters it: the whole new list."

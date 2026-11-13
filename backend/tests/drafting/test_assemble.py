@@ -12,12 +12,14 @@ from engine.state import (
     Activity,
     BondStage,
     BondStep,
+    Faith,
     GiftStrength,
     HitMode,
     PhysicsMode,
     Prevalence,
     RuleTopic,
     TalentStrength,
+    Unions,
 )
 from graph.drafting import samples
 from graph.drafting.assemble import (
@@ -662,6 +664,33 @@ def test_a_partner_who_is_the_player_character_is_their_romance():
     ]
     assert state.characters["mei"].attitude_toward(PLAYER_ID).attraction == 60
     assert check_state(state) == []
+
+
+def test_how_couples_hold_and_a_persons_own_faith_come_from_the_draft():
+    """W17: the custom of the world says how faithful its people are, a key character is
+    what the premise says of them, and a couple the draft makes have a heart for each other,
+    so a partner stands in a suitor's way by how much of it there is."""
+    zhao, mo = _world().npcs
+    npcs = [
+        zhao.model_copy(update={"age": 40, "partner_id": "mei", "partner_bond": "married"}),
+        mo,
+        NpcP(id="mei", name="Su Mei", age=23, faith="steadfast"),
+        NpcP(id="lan", name="Lan Yue", age=21),
+    ]
+
+    held = assemble(_world(npcs=npcs), _grown())
+    strict = assemble(_world(npcs=npcs, unions="for_life"), _grown())
+
+    assert held.bible.unions is Unions.HELD and strict.bible.unions is Unions.FOR_LIFE
+    assert held.characters["mei"].faith is Faith.STEADFAST
+    assert held.characters["lan"].faith is None  # theirs by who they are (`bonds.faith`)
+    for one, other in ((zhao.id, "mei"), ("mei", zhao.id)):
+        heart = held.characters[one].attitude_toward(other).attraction
+        assert heart == bonds.settled_heart(one, other)
+        assert bonds.SETTLED <= heart <= bonds.SETTLED_TOP
+    assert bonds.kept(held, "mei", PLAYER_ID) == zhao.id
+    assert bonds.for_life(strict, "mei", zhao.id) and not bonds.for_life(held, "mei", zhao.id)
+    assert check_state(held) == []
 
 
 def test_several_partners_is_the_custom_only_where_the_draft_says_so():

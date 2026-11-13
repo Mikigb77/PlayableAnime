@@ -938,8 +938,21 @@ the world answers it through the machinery deeds already have:
 | `graph/turn/context.py` | `wronged_view` adds `wrongs` to a step under OUTCOME: who was wronged, each with `saw_it`, whether the recorded deed has them as a witness, and `stayed_in`, the place it was done at, for a witness who is not in the scene and is recorded away from where the step took the player character (someone of a crowd the two walked away from). The evals show the judge the same view (`evals.runner.Played.outcome`), and under `meanwhile` the titles of the events the narrator was told of under FIRED (`fired_in_sight`), so a rubric that keeps someone out of a scene can tell a narrator's slip from the world's own doing. Whoever it wronged who didn't see it is left out of WHO ELSE, wherever the record has them, unless an event, a happening or a moment brings them (`bonds.unseen`), and `engine.apply.Door` keeps them out of the scene whatever it tells. `_bond_view` adds `earlier`, the romance between the two that ended before the one that stands, and tells a heart as closed while someone who ended it stays so (`bonds.Closed.ENDED`). |
 | `engine/visibility.py` | `_Knowledge.bond` shows the romance that ended in place of a live bond that is only an interest (`_romance` words either). |
 
+**Someone who has a partner already (W17).** How a person holds to a partner is theirs, and
+how many hold which way is the custom of the world:
+
+| Piece | What |
+| --- | --- |
+| `WorldBible.unions`, `Character.faith` | `Unions` is `for_life`, `held` (the default) or `easy`. `Faith` is `steadfast`, `torn` or `roving`, and None for almost everyone: only a premise that says it of someone sets it. |
+| `engine/bonds.py` | `faith` gives a person's kind: `Character.faith`, or a draw from their id against the shares of the world's custom (`FAITH`), the same every time and nested, so nobody changes kind under a stricter custom. `kept` is the partner who stands between someone and a suitor, `heart_for` how drawn they are to that partner (`settled_heart`, from 35 to 90 by the two ids, where two of the cast have none on record), `keeps_to` whether a steadfast person's bond still holds them (their heart for the partner at `LEAVES_UNDER` or more, or a marriage that is `for_life`), and `hold` how many points the partner raises every mark by (`HOLD`, a quarter of that heart; nothing for someone roving or already a couple with the suitor, save for a promise). `closed_to` answers `Closed.BOUND` for someone who keeps to a partner. |
+| `engine/resolve/romance.py` | `read` puts the kept partner on the `Wooing` (`kept`, `kept_heart`, `steadfast`, `hold`, `for_life`), and `_ruling` uses it: the closed reason names the partner, `_answer` and the intimate marks are raised by `hold` and say `BETWEEN` where only the partner settles it, a steadfast person who is no couple with the actor refuses a night (`NOT_TWO`), and a promise from someone married for life is ruled out (`FOR_LIFE`). `settle` has them leave (`_Told.leaves`: the other bond to `over` by their doing, the cost of being left to the one left, `LEAVES` in the reason) on a steadfast person's yes and on any promise, and `_advance` and `cut_short` need `COURTING_AT` plus `hold` for a courtship. `Heart.left` carries whom they left through the rest of the plan, so a later step neither leaves them again nor wrongs them (`deed`). |
+| `engine/resolve/capability.py` | A thrown move toward someone whose partner stands in the way is a step harder ("Mara is with Jorn"). |
+| `engine/world/arrivals.py`, `knowledge.py` | Where the two are married for life (`bonds.for_life`), `_has_it_out` ends nothing and `_had_enough` brings nobody back: a wronged wife or husband has it out and stays. |
+| `graph/drafting/` | `WorldProposal.unions`, `WorldChange.unions` and `NpcP.faith`. `assemble._bonds` gives two key characters who are a couple a heart for each other (`bonds.settled_heart`). |
+| `graph/turn/context.py` | `_family_view` adds `faith` in words to anyone but the player character who has a partner, unless several partners are the custom, and `_bond_view` tells a heart that keeps to a partner as "closed to you: they keep to Jorn". The narrator's rules say how each kind is played. |
+
 `evals/scenarios/t17_romance.py` plays it end to end: `t17.slow-romance`, `t17.an-affair`,
-`t17.a-rival` and `t17.a-breakup`.
+`t17.a-rival`, `t17.faithful` and `t17.a-breakup`.
 
 ## Model layer
 

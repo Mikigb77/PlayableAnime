@@ -208,8 +208,10 @@ def _has_it_out(
     """W17. Someone a move in a romance wronged has found whoever made it. Their own partner
     whose heart is under `bonds.LEAVES_UNDER` by now has come to end it: the romance is over
     on record, by their doing, and the event's title says so for the scene that tells it.
-    Anyone else has it out with them and no more. Returns what they came to do, and the deed
-    it is over: the gravest of it they know by now."""
+    Anyone else has it out with them and no more, and so does a wife or a husband where a
+    marriage is for life (`bonds.for_life`): they stay married, with what is left of it.
+    Returns what they came to do, and the deed it is over: the gravest of it they know by
+    now."""
     state = w.state
     # What they have it out over is the gravest of it they know by now, the latest first.
     known = [
@@ -226,7 +228,8 @@ def _has_it_out(
     text = HAVE_IT_OUT.format(target=target.name)
     title = f"{partner.name} {text}, to hear it answered and not to attack: {told}"
     heart = partner.attitude_toward(target.id).attraction
-    if bond is not None and bond.stage.couple and heart < bonds.LEAVES_UNDER:
+    stays = bonds.for_life(state, partner.id, target.id)  # nobody leaves such a marriage
+    if bond is not None and bond.stage.couple and heart < bonds.LEAVES_UNDER and not stays:
         bonds.end(
             bond,
             by_id=partner.id,

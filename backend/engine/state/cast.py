@@ -46,6 +46,14 @@ class Prominence(StrEnum):
     MINOR = "minor"
 
 
+class Faith(StrEnum):
+    """W17. How someone holds to a partner when another courts them."""
+
+    STEADFAST = "steadfast"  # nothing of the kind moves them while their own bond holds
+    TORN = "torn"  # they can be moved, and their partner stands in the way
+    ROVING = "roving"  # a partner of their own stands in nobody's way
+
+
 class Membership(EngineModel):
     """G10, N9. A place in a faction, with its rank and the member's loyalty (W14)."""
 
@@ -122,6 +130,11 @@ class Character(EngineModel):
     )
     expecting: Pregnancy | None = Field(
         default=None, description="N6: a child they carry, born when it is due if they live."
+    )
+    faith: Faith | None = Field(
+        default=None,
+        description="W17: how they hold to a partner, where the story has said. Otherwise it "
+        "follows from who they are and from the custom of the world (`engine.bonds.faith`).",
     )
 
     @model_validator(mode="after")

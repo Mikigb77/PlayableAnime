@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 from engine.context import Language
-from engine.state import GiftStrength, PhysicsMode
+from engine.state import GiftStrength, PhysicsMode, Unions
 from engine.visibility import memory_view
 from graph.drafting import chain, samples
 from graph.drafting.catalog import starter
@@ -712,6 +712,17 @@ def test_a_change_sets_the_custom_of_several_partners_only_when_it_says_so():
     assert back.several_partners is False
 
 
+def test_a_change_sets_how_couples_hold_only_when_it_says_so():
+    """W17: a change that says nothing of the custom leaves it as it was."""
+    draft = _naples_draft()
+    assert draft.proposal.world.unions is Unions.HELD
+
+    strict, _ = _merge(WorldChange(unions=Unions.FOR_LIFE), draft)
+    assert strict.unions is Unions.FOR_LIFE
+    kept, _ = chain.apply_change(strict, current_rules(draft.state()), WorldChange(tone="noir"))
+    assert kept.unions is Unions.FOR_LIFE and kept.tone == "noir"
+
+
 def test_a_change_replaces_records_by_id_adds_new_ones_and_removes_what_it_lists():
     draft = _naples_draft()
     places = draft.proposal.world.places
@@ -997,7 +1008,11 @@ def test_the_drafter_is_asked_for_the_cast_s_couples_and_no_romance_of_its_own_m
     assert "Record each couple on one of the two, with partner_id and partner_bond." in SYSTEM
     assert "A couple that hides it is a secret instead." in SYSTEM
     assert "several_partners only where having several partners at once is the custom" in SYSTEM
-    assert "medicine, opening or several_partners only if the change alters them" in WORLD_CHANGE
+    assert "opening, several_partners or unions only if the change alters them" in WORLD_CHANGE
+    # How faithful its people are is the world's custom, and a person's own where the premise
+    # says it (Miki, 2026-11-13).
+    assert "Set unions to how couples hold in this world" in SYSTEM
+    assert "Give a key character faith only where the premise or who they plainly are" in SYSTEM
 
 
 def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows():
