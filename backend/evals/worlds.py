@@ -1554,6 +1554,72 @@ def long_road() -> WorldState:
     return state
 
 
+CROWN, LEAGUE = "crown", "league"
+ALDRIC = "aldric-vane"
+
+
+def kingdoms_at_war(*, marshal: bool = False) -> WorldState:
+    """`long_road` with two kingdoms at war beyond the valley (W6, W7). The Crown of Harrow
+    sits in Harrowgate, three days by cart from Millbrook. The Eastmark League sits in
+    Eastmark and holds Willow Ford, two days from Harrowgate on the road between them. Tomas
+    has heard of both and of their towns, and lives too far from any of it to see how the war
+    goes. The two are evenly matched, unless the Crown has its `marshal`, a commander nothing
+    the League has can stand against: then the facts settle who wins before any throw (A2)."""
+    state = long_road()
+    places = state.places
+    places["city"].controller_id = CROWN
+    places["city"].routes.append(Route(to_id="ford", travel_s=2 * DAY, mode="by road"))
+    places["ford"] = Place(
+        id="ford",
+        name="Willow Ford",
+        kind="village",
+        description="A toll bridge and a row of inns where the river road crosses.",
+        setting=PlaceSetting.OUTDOORS,
+        controller_id=LEAGUE,
+        routes=[Route(to_id="eastmark", travel_s=2 * DAY, mode="by road")],
+        known_by=["tomas"],
+    )
+    places["eastmark"] = Place(
+        id="eastmark",
+        name="Eastmark",
+        kind="city",
+        setting=PlaceSetting.OUTDOORS,
+        controller_id=LEAGUE,
+        known_by=["tomas"],
+    )
+    state.factions[CROWN] = Faction(
+        id=CROWN,
+        name="the Crown of Harrow",
+        kind="kingdom",
+        description="The old kingdom of the upper river, ruled from Harrowgate.",
+        relations={LEAGUE: -80},
+        known_by=["tomas"],
+    )
+    state.factions[LEAGUE] = Faction(
+        id=LEAGUE,
+        name="the Eastmark League",
+        kind="league of towns",
+        description="The trading towns of the lower river, which take the Crown's tolls ill.",
+        relations={CROWN: -80},
+        known_by=["tomas"],
+    )
+    if marshal:
+        state.characters[ALDRIC] = Character(
+            id=ALDRIC,
+            name="Marshal Aldric Vane",
+            age=44,
+            description="The Crown's marshal, who has never lost a field.",
+            location_id="city",
+            memberships=[Membership(faction_id=CROWN, rank="marshal", loyalty=90)],
+            sheet=CharacterSheet(axes=PowerAxes(might=3)),
+        )
+    state.summary = (
+        "Tomas Weller farms a small plot in the Long Valley. Down the river the Crown of "
+        "Harrow and the Eastmark League have been at war for as long as he remembers."
+    )
+    return state
+
+
 def village_far_off() -> WorldState:
     """The farm world with Millbrook a day's walk off, for a scenario that needs the news to
     travel before anyone can come."""

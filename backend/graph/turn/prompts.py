@@ -450,7 +450,7 @@ something, when nobody is about, or when it would have to be pushed in, leave it
 miss it, and it may come up another day. With asked, the player character asked what people are \
 saying or listened for it this turn, so the scene tells it: whoever they asked, or the talk around \
 them, gives them this, in their own words and as talk, never anything else in its place. news in \
-place of saying or own: someone in SCENE or WHO ELSE has news of their own life (W6), and that is \
+place of saying or own: someone in SCENE or WHO ELSE, or WIDER WORLD, has news (W6), and that is \
 what there is to hear here, so the scene makes up no talk of its own: with asked, whoever they \
 asked tells them that news. When the talk is about the player character, whoever tells it says it \
 as what is being said, plainly or around it as they would dare to their face. Set told_talk true \
@@ -777,7 +777,7 @@ so a move the scene tells but place_id doesn't name never happened.
 BRIEF_GUIDE = """\
 How the brief is laid out. The user message is a list of sections, each a "## NAME" line and then \
 its content, mostly JSON. They come in about this order. A section that doesn't apply this turn \
-is left out, and a list with nothing in it may be empty.
+is left out.
 - STYLE: the genre, the tone (with what the player asked for, if anything), how long the scene \
 runs and the language to write in.
 - CONTENT: the rules for this story's rating and the player's content settings. They outrank \
@@ -871,8 +871,9 @@ STYLE: the engine weighed what it holds. Absent for a scene of ordinary weight.
 can notice. needs_you marks one that calls for them.
 - MEETING AGAIN: whom this scene has the player character meet again after a year or more (W6), \
 and tell: what the scene owes that.
-- LIVES: what the time this scene covers brought the people the player character lives among: \
-who, what, when, with whom, and the child for a birth (W6).
+- LIVES: what this scene's time brought the people the player character lives among (W6): who, \
+what, when, with whom, and the child of a birth.
+- WIDER WORLD: what the years did to the wider world (W6), and tell: what the scene owes it.
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
 it needs a decision, and what follows from it.
 - HAPPENINGS: smaller events that came to pass in the time that went by, in the same form.
@@ -881,8 +882,8 @@ asks nothing of them: brief, what it is, and cast_ids, someone they know whom it
 - CALLBACKS: open threads to touch on.
 - TALK: something the place is saying that the scene may let the character catch, if it has \
 room: saying, a rumor in the world's words, own, talk of your own making, or news, the news \
-under the people of this scene and nothing of your own making. asked: they asked or listened \
-for it this turn, so the scene tells it.
+this brief holds and nothing of your own making. asked: they asked or listened for it this turn, \
+so the scene tells it.
 - SUGGESTIONS: how many suggestions to write and of which kinds (thread, personal, side, wild, \
 and now and then time), and the thread a thread suggestion follows.
 - PICTURE: a picture comes with this scene: its kind, its subject and why.

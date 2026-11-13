@@ -2417,7 +2417,10 @@ def test_the_narrator_is_told_people_lead_lives_of_their_own():
     assert "Under told_news, list the id of every piece of news the scene showed or said" in system
     assert "never list a piece the scene didn't tell, and never leave out one it did" in system
     assert "never set age for someone who has one" in system
-    assert "news in place of saying or own: someone in SCENE or WHO ELSE has news" in system
+    assert (
+        "news in place of saying or own: someone in SCENE or WHO ELSE, or WIDER WORLD, has news"
+        in system
+    )
     assert "so the scene makes up no talk of its own" in system
     assert 'does a partner it gave someone ("Mara\'s partner")' in system
     assert "last_seen and news where time has gone by" in system

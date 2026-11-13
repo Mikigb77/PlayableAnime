@@ -50,13 +50,14 @@ from engine.state.records import (
     LifeEvent,
     PendingEvent,
     RollRecord,
+    WorldChange,
 )
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
-from engine.world import carriers, journeys, lives, returns
+from engine.world import carriers, journeys, lives, returns, strife
 from engine.world.geography import routes_from, scene_ids, together
-from engine.world.telling import account
+from engine.world.telling import account, world_change
 from graph.language import written_in
 from graph.llm import Prompt
 from graph.turn import prompts, worn
@@ -372,6 +373,81 @@ def _lives_view(after: WorldState, turn: int) -> list[dict[str, Any]]:
             who = known[0]
             told.append({"who": _life_named(after, who)} | _life_view(after, event, who))
     return told
+
+
+# W6. How much of what the years did to the wider world a brief carries, of each kind, and
+# what the scene owes it, said with it: a rule far from what it is about was read past (the
+# second live story of a homecoming, 2026-11-13), and words that come with the news cost
+# nothing in the scenes that have none.
+_CHANGES = 5
+_LIVED_TELL = (
+    "lived came in the time this scene covers, near where the player character lives: they "
+    "know of it, so the scene tells it in passing, as part of the time going by."
+)
+_NEWS_TELL = (
+    "news is what the years did to the wider world that the player character hasn't heard. It "
+    "is on record: never undo it or add to it. Someone tells it when the player character is "
+    "back after a long time, when the scene covers a season or more of living here, when they "
+    "ask what has happened or how things stand, or when the talk turns to it, and then it is "
+    "this news before anything of your own making. Under told_news, list the id of each piece "
+    "the scene showed or said, naming a faction or a place it came to: what a scene leaves out "
+    "stays news."
+)
+_HERE_TELL = (
+    "One marked here touched this very place: the scene shows the place as it is now, under "
+    "whoever holds it, and the player character finding it so."
+)
+_BACK_TELL = "This scene has them back after years: it tells at least one piece of it."
+# Beside a faction or a place such news changed, wherever the brief shows it as it is now.
+_NEWS_TO_YOU = "the player character hasn't heard what became of it: to them it is as it was"
+
+
+def _changes_view(
+    after: WorldState, turn: int, language: Language, *, back: bool = False
+) -> dict[str, Any] | None:
+    """W6, C6. What the years did to the wider world by the world's own doing
+    (`engine.world.strife`), as this scene has it, in the world's own words (S10). `lived` is
+    what the time this turn covered brought near where the player character lives: they know
+    of it already. `news` is what they haven't heard and this scene can show or tell, each
+    under its id so the scene can say which of it it told (`told_news`): what touched the
+    place the scene is in (`here`), and what word has reached it. The latest `_CHANGES` of
+    each, oldest first. `tell` says what the scene owes them, and with `back`, a scene that
+    has the player character meet people again after years, that it tells some of it."""
+    place_id = after.player.location_id or after.scene.place_id
+
+    def said(change: WorldChange) -> dict[str, Any]:
+        return {
+            "what": world_change(after, change, language),
+            "when": ago_label(max(0, after.world_s - change.world_s)),
+        }
+
+    lived = [said(change) for change in strife.heard_in(after, turn)[-_CHANGES:]]
+    news = []
+    for change in strife.to_tell(after, place_id)[-_CHANGES:]:
+        here = {"here": True} if strife.touched(after, change, place_id) else {}
+        news.append({"id": change.id} | said(change) | here)
+    if not lived and not news:
+        return None
+    view: dict[str, Any] = {}
+    tell = []
+    if lived:
+        view["lived"] = lived
+        tell.append(_LIVED_TELL)
+    if news:
+        view["news"] = news
+        tell.append(_NEWS_TELL)
+        if any("here" in piece for piece in news):
+            tell.append(_HERE_TELL)
+        if back:
+            tell.append(_BACK_TELL)
+    return view | {"tell": " ".join(tell)}
+
+
+def _news_to_you(state: WorldState) -> set[str]:
+    """W6, C6. The factions and places the years changed in a way the player character hasn't
+    heard of: the record shows the narrator how they are now, and the brief says beside each
+    that it is news (`_NEWS_TO_YOU`)."""
+    return {i for change in strife.unheard(state) for i in (*change.faction_ids, *change.place_ids)}
 
 
 _HEART = {"attraction": True, "heart_moved_s": True}
@@ -705,6 +781,7 @@ def _known_view(state: WorldState) -> dict[str, Any]:
     you = state.player_id
     present = {c.id for c in present_characters(state)}
     away = routes_from(state, state.scene.place_id or state.player.location_id)
+    news = _news_to_you(state)
     people = [
         {
             "id": c.id,
@@ -726,6 +803,7 @@ def _known_view(state: WorldState) -> dict[str, Any]:
             ),
             **({"setting": p.setting.value} if p.setting else {}),
             **({"status": p.status.value} if p.status is not PlaceStatus.THRIVING else {}),
+            **({"news_to_you": _NEWS_TO_YOU} if p.id in news else {}),
             **({"travel_s": away[p.id]} if p.id in away else {}),
         }
         for p in sorted(state.places.values(), key=lambda p: p.id)
@@ -733,6 +811,7 @@ def _known_view(state: WorldState) -> dict[str, Any]:
     ]
     factions = [
         {"id": f.id, "name": f.name, "status": f.status.value}
+        | ({"news_to_you": _NEWS_TO_YOU} if f.id in news else {})
         for f in sorted(state.factions.values(), key=lambda f: f.id)
         if you in f.known_by
     ]
@@ -759,12 +838,17 @@ def _continuity(state: WorldState) -> list[str]:
     for c in sorted(state.npcs(), key=lambda c: c.id):
         if c.status is CharacterStatus.DEAD:
             lines.append(f"{c.name} ({c.id}) is dead.")
+    # W6, C6: what the years did that the player character hasn't heard of is so, and news.
+    news = _news_to_you(state)
+    unheard = " The player character hasn't heard: to them it is as it was."
     for f in sorted(state.factions.values(), key=lambda f: f.id):
         if f.status is FactionStatus.DESTROYED:
-            lines.append(f"{f.name} ({f.id}) is destroyed and no longer acts as one.")
+            line = f"{f.name} ({f.id}) is destroyed and no longer acts as one."
+            lines.append(line + (unheard if f.id in news else ""))
     for p in sorted(state.places.values(), key=lambda p: p.id):
         if p.status is not PlaceStatus.THRIVING:
-            lines.append(f"{p.name} ({p.id}) is {p.status.value}.")
+            line = f"{p.name} ({p.id}) is {p.status.value}."
+            lines.append(line + (unheard if p.id in news else ""))
     you = state.player_id
     for fact in sorted(state.facts.values(), key=lambda f: (-f.importance, f.id)):
         if fact.importance >= KEY_FACT_IMPORTANCE and you in fact.known_by:
@@ -916,8 +1000,8 @@ class NarrationBrief:
     # it was handed to say another way.
     looks: bool = True
     worn: tuple[str, ...] = ()
-    # W6: the news of people's lives the scene was handed to tell, by id: only that can it
-    # say it told.
+    # W6: the news the scene was handed to tell, by id, of people's lives and of the wider
+    # world: only that can it say it told.
     news: tuple[str, ...] = ()
 
     def prompt(self, *, cutaway: bool = False) -> Prompt:
@@ -1160,6 +1244,10 @@ def narration_brief(
         sections.append(("FIRED", [_event_view(e) for e in seen]))
     if years := _lives_view(after, ctx.turn):
         sections.append(("LIVES", years))
+    if moved := _changes_view(after, ctx.turn, settings.language, back=again is not None):
+        # W6: what the years did to the wider world, and of it the news this scene can tell.
+        sections.append(("WIDER WORLD", moved))
+        news = (*news, *(change["id"] for change in moved.get("news", ())))
     if plan.event is not None:
         sections.append(("EVENT", _dump(plan.event, exclude=_PLANNED_HIDDEN)))
     if plan.happenings:

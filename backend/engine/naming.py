@@ -16,7 +16,7 @@ Sol, nor the "Old" a sentence opens with for Old Bram. Nothing here knows a lang
 """
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from engine.state.world import WorldState
 from engine.text import normalize
@@ -76,6 +76,30 @@ def named_in(
         if _in_full(state, character_id, whole) or own & spoken:
             found.append(character_id)
     return found
+
+
+def spoken_of(names: Mapping[str, Iterable[str]], texts: Iterable[str]) -> list[frozenset[str]]:
+    """What a text names among some named things, such as factions and places, by key: for
+    each name it carries, whose it could be. Read as people are when a scene is held to what
+    it was handed (`named_in` with `anywhere`): a name of several words wherever the words
+    carry it, with or without the article it opens with, and one word of a name where it has
+    its capital. A word two of them share comes back as both: "Eastmark" is the city and the
+    Eastmark League, and "the Kingdom" either of two kingdoms."""
+    whole, spoken = _read(texts, anywhere=True)
+    parts: dict[str, set[str]] = {}
+    full: dict[str, set[str]] = {}
+    for key, theirs in names.items():
+        for name in theirs:
+            words = re.findall(_WORD, name)
+            bare = words[1:] if words and normalize(words[0]) in _OPENERS else words
+            if len(bare) > 1 and (folded := normalize(" ".join(bare))):
+                full.setdefault(folded, set()).add(key)
+            for word in bare:
+                if word[:1].isupper() and (folded := normalize(word)):
+                    parts.setdefault(folded, set()).add(key)
+    found = [whose for name, whose in full.items() if any(f" {name} " in text for text in whole)]
+    found += [whose for word, whose in parts.items() if word in spoken]
+    return [frozenset(whose) for whose in found]
 
 
 def everyone_called(

@@ -85,10 +85,11 @@ from engine.state.sheet import (
 )
 from engine.state.world import WorldState, natural_key
 from engine.world import lives as lives_mod
+from engine.world import strife as strife_mod
 from engine.world.answers import ARRIVING, Answer
 from engine.world.rumors import Certainty, certainty
 from engine.world.scheduling import Kind
-from engine.world.telling import YOU, own_words, tell, wound_said
+from engine.world.telling import YOU, own_words, tell, world_change, wound_said
 from engine.world.tuning import RUMOR_MIN_SEVERITY
 
 SINCE_LIMIT = 6
@@ -1080,6 +1081,8 @@ _LIFE_WORDS = {
 }
 # How many of them a person's entry shows, the latest.
 _LIFE_LINES = 6
+# W6: how many lines of what the years did to it a faction's or a place's entry carries.
+_CHANGE_LINES = 4
 
 _BOND_WORDS = {
     EN: {
@@ -1721,6 +1724,17 @@ class _Knowledge:
             return _WORDS[self.language]["parent"]
         return _DESCENDANT_WORDS[self.language].get(self.descendants.get(c.id, 0))
 
+    def change_lines(self, record_id: str) -> list[str]:
+        """W6, C6. What the years did to a faction or a place by the world's own doing
+        (`engine.world.strife`), as far as the player character has heard: the world's
+        sentence for each with its day, oldest first, in Memory's language."""
+        lines = []
+        for change in strife_mod.of(self.state, record_id):
+            if self.player_id in change.known_by:
+                said = world_change(self.state, change, self.language).rstrip(".")
+                lines.append(f"{self._on(said, change.world_s)}.")
+        return lines[-_CHANGE_LINES:]
+
     def place(self, p: Place) -> PlaceEntry:
         lines = [_cap(p.kind)] if p.kind else []
         if p.description:
@@ -1732,6 +1746,7 @@ class _Knowledge:
             lines.append(_status_words(status, language=self.language))
         if self.player_id not in p.visited_by:
             lines.append(_WORDS[self.language]["not_been"])
+        lines += self.change_lines(p.id)
         lines += self.facts_about(p.id)
         return PlaceEntry(id=p.id, name=p.name, lines=lines)
 
@@ -1744,6 +1759,7 @@ class _Knowledge:
         )
         if status != FactionStatus.INTACT.value:
             lines.append(_status_words(status, language=self.language))
+        lines += self.change_lines(f.id)
         lines += self.facts_about(f.id)
         return FactionEntry(
             id=f.id,

@@ -252,6 +252,17 @@ def check_state(state: WorldState) -> list[Violation]:
             found.append(
                 Violation(f"life {event.id}", "reference", "it is about someone not on record")
             )
+    for change_id in sorted(state.changes):
+        change = state.changes[change_id]
+        known = all(i in state.factions for i in change.faction_ids)
+        if not known or any(i not in state.places for i in change.place_ids):
+            found.append(
+                Violation(
+                    f"change {change.id}",
+                    "reference",
+                    "it is about a faction or a place not on record",
+                )
+            )
     return found
 
 
