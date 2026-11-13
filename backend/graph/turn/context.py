@@ -328,7 +328,8 @@ def _meeting_again(after: WorldState, shown: Sequence[dict[str, Any]]) -> dict[s
     if news:
         tell += (
             " The scene shows or says at least one piece of the news under them, naming "
-            "whoever it came with."
+            "whoever it came with. The player character learns it there, from what they see "
+            "or are told: the narration never gives it as something they already know."
         )
     return {"people": apart, "tell": tell}
 

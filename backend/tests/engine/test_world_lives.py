@@ -812,6 +812,21 @@ def test_news_a_scene_says_it_told_counts_only_where_its_words_name_whom_it_came
     # With both of the two in the scene, the scene that has them has shown them together.
     state.scene.present_ids = [YOU, "jorn", "mara"]
     assert lives.borne_out(state, [wed.id], "Jorn nods, and Mara beside him.") == [wed.id]
+    assert lives.borne_out(state, [wed.id], "Mara waves from the door.") == [wed.id]
+
+    # With neither of them in it, a scene tells of the two by naming both. One that speaks of
+    # him for another reason has told nothing of his wedding: in the third live story a scene
+    # far from home, where a neighbour was only gossiped about, had the man hear his news.
+    state.scene.present_ids = [YOU]
+    gossip = '"He never came when Jorn was hurt," someone mutters behind the cottage.'
+    assert lives.borne_out(state, listed, gossip) == []
+    assert lives.borne_out(state, listed, "Mara waves from the door.") == []
+    assert lives.borne_out(state, listed, '"Jorn and Mara wed," the carter says.') == [wed.id]
+    # Whoever was in the scene is `there`, whatever the record now says of who it ended with.
+    assert lives.borne_out(state, listed, wedding, there=[YOU, "jorn"]) == [wed.id]
+    assert lives.borne_out(state, listed, wedding, there=[YOU]) == [wed.id]  # names both
+    assert lives.borne_out(state, listed, "Mara waves.", there=[YOU, "jorn"]) == [wed.id]
+    assert lives.borne_out(state, listed, "Jorn waves.", there=[YOU, "jorn"]) == []
 
     # No scene, no check: code that settles a scene it wrote itself vouches for what it told.
     assert pipeline.settle_lives(state, listed)[1] == listed
@@ -850,6 +865,19 @@ def test_someone_under_the_worlds_name_for_them_is_told_by_being_named(monkeypat
         named, [found.id], played=state, shown=[found.id], scene="Mara smiles. Edrik is out."
     )
     assert told[1] == [found.id]
+    # The name is the scene's to say: one given only in the update tells nothing, listed or
+    # not, and the news is the next scene's to tell of someone who now has a name.
+    for listed in ([], [found.id]):
+        unsaid = pipeline.settle_lives(
+            named, listed, played=state, shown=[found.id], scene="Mara smiles and says nothing."
+        )
+        assert unsaid[1] == []
+        assert lives.news_of(unsaid[0], unsaid[0].characters["mara"]) == [found]
+    assert named.characters[partner.id].name == "Edrik Hale"
+    later = pipeline.settle_lives(
+        named, [found.id], played=named, shown=[found.id], scene="Mara walks in with Edrik."
+    )
+    assert later[1] == [found.id]
 
 
 def ticks(state: WorldState, span_s: int, n: int = 1) -> WorldState:
@@ -1147,6 +1175,16 @@ def test_a_scene_that_names_whom_the_world_brought_has_told_the_news_of_them(mon
     met, heard = pipeline.settle_lives(applied, played=state, shown=shown)
     assert heard == [found.id, born.id]
     assert lives.news_of(met, met.characters["mara"])[0] == wed  # the wedding is still to tell
+    # Read against the scene's words, each name tells what it came with, where the scene
+    # says it. In the third live story (2026-11-13) a scene that never spoke of a child had
+    # the man hear of one.
+    for words, told in (
+        ('Mara smiles. "This is Edrik Hale, and our Tobin."', [found.id, born.id]),
+        ('Mara smiles. "This is Edrik Hale."', [found.id]),
+        ('Mara lifts a boy onto her hip. "Tobin," she says.', [born.id]),
+        ("Mara smiles, and says nothing of her years.", []),
+    ):
+        assert pipeline.settle_lives(applied, played=state, shown=shown, scene=words)[1] == told
     # Only what the scene was handed, and nobody who already had a name.
     assert pipeline.settle_lives(applied, played=state, shown=[wed.id])[1] == []
     assert pipeline.settle_lives(applied, played=applied, shown=shown)[1] == []
