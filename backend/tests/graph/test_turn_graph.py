@@ -1429,7 +1429,9 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
 def test_a_scene_that_names_a_partner_the_world_brought_has_told_of_them(fake, make_client):
     """W6, C6: the narrator gives "Zhao Kun's partner" a name when its scene first tells of
     her. The name is the telling, so Lin has heard that Zhao found someone though the scene's
-    answer lists no news."""
+    answer lists no news. The scene has to say the name: in the third live story of a
+    homecoming (2026-11-13) a scene that told nothing of the kind had a man hear a piece of
+    news, by a name its update gave and its words never said."""
     start = cultivation_world()
     start.world_s = 3 * YEAR
     start.characters["zhao"].seen_s = 0
@@ -1449,10 +1451,23 @@ def test_a_scene_that_names_a_partner_the_world_brought_has_told_of_them(fake, m
         known_by=["zhao", "char-9"],
     )
     naming = {"id": "char-9", "name": "Su Lan", "known_to_player": True}
-    told = SCENE | {"update": SCENE["update"] | {"characters": [naming]}}
-    fake.script(Node.INTERPRET, Reply(json=STONE))
-    fake.script(Node.NARRATOR, Reply(json=told))
+    named = SCENE | {"update": SCENE["update"] | {"characters": [naming]}}
 
+    # A name the update gives and the scene never says: she has it, and the news is untold.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=named | {"told_news": ["life-1"]}))
+    _, result = play(make_client(), turn_input(start))
+
+    unsaid = result.state
+    assert "Su Lan" not in SCENE["narration"]
+    assert unsaid.characters["char-9"].name == "Su Lan"
+    assert unsaid.lives["life-1"].known_by == ["zhao", "char-9"]
+    assert not [i for i in result.issues if i.code == "life_heard"]
+
+    # The scene that says it has told of her, though its answer lists no news.
+    said = named | {"narration": 'Zhao ducks the stone. "Su Lan will laugh at this," he says.'}
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=said))
     _, result = play(make_client(), turn_input(start))
 
     after = result.state

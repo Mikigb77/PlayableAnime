@@ -663,8 +663,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
     ]
     # W6, C6: the player character has now been with whoever the scene ended with, and has
     # heard the news the scene says it told, where the brief gave it that news to tell, and
-    # the news of whoever it gave a name of their own. What a scene left out is still news
-    # the next time. Each is logged by its code only (T6), never who or what.
+    # the news of whoever it gave a name of their own, as far as the scene's own words bear
+    # it out. What a scene left out is still news the next time. Each is logged by its code
+    # only (T6), never who or what.
     shown = state["brief"].news
     told_news = [] if mode == "template" else [i for i in narration.told_news if i in shown]
     world, heard = pipeline.settle_lives(
