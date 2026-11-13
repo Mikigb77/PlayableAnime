@@ -1,10 +1,13 @@
 """G18, A4: someone the story brings in comes standing where the narrator's update says,
 through a turn. Nobody on record is lifted (`engine.apply`)."""
 
+import pytest
+
 from engine import path
 from engine.contracts.intent import ActionKind, Intent, IntentStep
 from engine.samples import cultivation_world
 from graph.llm import Node, Reply
+from graph.turn.check import NAMED_BY_SCENE, REAL_ENTITY, called_in
 from graph.turn.context import interpret_prompt
 from graph.turn.outputs import NarratorOutput
 from tests.graph.test_turn_context import _section, brief
@@ -141,3 +144,131 @@ def test_the_interpret_step_keeps_the_number_its_form_answers_with():
         1,
         0,
     )
+
+
+NAMED = "An old man in grey steps out from under the gate. “Elder Song,” Zhao Kun breathes."
+
+
+def codes(result, code: str) -> list[str | None]:
+    return [issue.subject for issue in result.issues if issue.code == code]
+
+
+def test_someone_new_the_update_leaves_nameless_takes_the_name_the_scene_calls_them_by(
+    fake, make_client
+):
+    """The narrator's form doesn't require a name, and in a live story it called an elder by
+    name all through the scene and left the name out of its update: he was refused for want
+    of one, and the record never had him (2026-11-13)."""
+    song = {"id": "elder-song", "age": 140, "location_id": "well", "rung": "Core Formation"}
+    told = scene(song, present=("elder-song",)) | {"narration": NAMED}
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input())
+
+    state = result.state
+    assert state.characters["elder-song"].name == "Elder Song"
+    assert on_realms(state, "elder-song") == 2
+    assert codes(result, NAMED_BY_SCENE) == ["elder-song"]
+    assert codes(result, "rejected") == []
+
+
+def test_someone_nameless_the_scene_never_names_is_still_refused(fake, make_client):
+    # C1: ARRIVES tells of an old man in grey and names nobody.
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=scene({"id": "elder-song", "location_id": "well"})))
+
+    _, result = play(make_client(), turn_input())
+
+    assert "elder-song" not in result.state.characters
+    assert [i.area for i in result.issues if i.code == "rejected"] == ["character.create"]
+    assert codes(result, NAMED_BY_SCENE) == []
+
+
+def test_a_word_that_is_no_name_names_nobody_though_the_scene_says_it(fake, make_client):
+    told = scene({"id": "stranger"}) | {"narration": "A stranger steps out from under the gate."}
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input())
+
+    assert "stranger" not in result.state.characters
+    assert codes(result, NAMED_BY_SCENE) == []
+
+
+def test_a_name_the_update_gives_stands_and_someone_on_record_keeps_theirs(fake, make_client):
+    # The scene calls the newcomer Elder Song and his update says Old Grey: the update's word
+    # stands. Zhao Kun's change gives no name, and the scene's "Zhao" is not a new one for him.
+    grey = {"id": "elder-song", "name": "Old Grey", "location_id": "well"}
+    told = scene(grey, {"id": "zhao"}) | {"narration": NAMED + " Zhao bows low."}
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input())
+
+    state = result.state
+    assert state.characters["elder-song"].name == "Old Grey"
+    zhao = state.characters["zhao"]
+    assert (zhao.name, zhao.aliases) == ("Zhao Kun", ["Senior Brother Zhao"])
+    assert codes(result, NAMED_BY_SCENE) == []
+
+
+def test_an_id_whose_words_someone_on_record_goes_by_is_nobody_new(fake, make_client):
+    # "zhao_kun" is Zhao Kun's id written another way, and "senior_brother_zhao" his alias: a
+    # second Zhao Kun on record would be worse than a refused change.
+    told = scene({"id": "zhao_kun"}, {"id": "senior_brother_zhao"}) | {
+        "narration": "Zhao Kun bows low. “Senior Brother Zhao,” someone whispers."
+    }
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input())
+
+    assert not {"zhao_kun", "senior_brother_zhao"} & result.state.characters.keys()
+    assert codes(result, NAMED_BY_SCENE) == []
+    refused = [i.area for i in result.issues if i.code == "rejected"]
+    assert refused == ["character.create", "character.create"]
+
+
+def test_a_name_the_scene_gives_is_held_to_what_any_new_name_is(fake, make_client):
+    # G12: nobody new is named after a real person, whoever supplied the name.
+    told = scene({"id": "elon_musk", "age": 55}) | {"narration": "Elon Musk waits by the well."}
+    fake.script(Node.INTERPRET, Reply(json=WAIT))
+    fake.script(Node.NARRATOR, Reply(json=told))
+
+    _, result = play(make_client(), turn_input())
+
+    assert "elon_musk" not in result.state.characters
+    assert codes(result, REAL_ENTITY) == ["Elon Musk"]
+
+
+@pytest.mark.parametrize(
+    ("told", "character_id", "name"),
+    [
+        ("“Elder Song,” you say.", "elder-song", "Elder Song"),
+        # As the scene writes it as a name, wherever it first says the words.
+        ("An elder. Song of the peak, elder song to some: Elder Song.", "elder_song", "Elder Song"),
+        ("Elder Núñez bows.", "elder_nunez", "Elder Núñez"),
+        ("Then Lin de la Cruz bows.", "lin_de_la_cruz", "Lin de la Cruz"),
+        # Never written as a name: each word takes a capital.
+        ("The envoy—calm—waits.", "envoy", "Envoy"),
+        ("The envoy waits.", "the_envoy", "The Envoy"),
+        # The words in a row and in order, or nothing.
+        ("An old man steps out.", "elder-song", None),
+        ("Song, the elder, nods.", "elder-song", None),
+        ("A song elder than the peak itself.", "elder-song", None),
+        ("Elder Songbird sings.", "elder-song", None),
+        ("Anything at all.", "", None),
+    ],
+)
+def test_the_name_a_scene_gives_someone_is_their_ids_words_as_it_writes_them(
+    told, character_id, name
+):
+    assert called_in(told, character_id) == name
+
+
+def test_the_narrators_form_says_someone_new_always_comes_with_a_name():
+    form = NarratorOutput.model_json_schema()
+    name = form["$defs"]["CharacterChange"]["properties"]["name"]
+
+    assert "always for someone new" in name["description"]

@@ -99,13 +99,16 @@ def on_record(before: WorldState, state: WorldState) -> str:
 )
 async def newcomers_stand(ev: Eval) -> None:
     rose: Counter[int] = Counter()
-    for seed in ev.seeds(6, live=0):
+    for number, seed in enumerate(ev.seeds(6, live=0)):
         story = on_the_mountain(ev, seed)
         before = story.state
+        # In every other story the update leaves the elder's name out, as a live one did: the
+        # scene calls him by it (C1).
+        nameless = bool(number % 2)
         people = (
             CharacterChange(
                 id=ELDER,
-                name="Elder Bai",
+                name=None if nameless else "Elder Bai",
                 age=140,
                 description="An elder of the inner court, in grey.",
                 meets_player=True,
@@ -120,13 +123,18 @@ async def newcomers_stand(ev: Eval) -> None:
             "I look up from the well",
             act("look up from the well", "look", ActionKind.TASK, MINUTE),
             narration=scene(
-                "An old man in grey comes down the steps, a boy at his heels.",
+                "Elder Bai comes down the steps in grey, a boy at his heels.",
                 *people,
                 present=(ELDER, BOY),
             ),
         )
         state = played.state
         elder = state.characters[ELDER]
+        ev.check(
+            "an elder the update left nameless is on record by the name the scene calls him",
+            elder.name == "Elder Bai" and ("named_by_scene" in played.issues) == nameless,
+            f"{seed}: {elder.name}, {played.issues}",
+        )
         ev.check(
             "whoever the scene brought in stands on the realm its update named",
             rung_of(state, ELDER) == CORE
