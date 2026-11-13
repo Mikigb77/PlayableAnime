@@ -22,6 +22,9 @@ came of it, save toward close family, where nothing of the kind is ever on recor
 that an event cut short keeps what the time it ran earned (`cut_short`, E7). Only the player
 character's own steps are read here, toward someone on record, and everyone in one is a
 recorded adult (F3).
+
+A move that wrongs someone is a deed (`deed`, W1): whoever is a couple with either of the two
+may see it or come to hear of it, and what they make of it is the world's (`engine.world`).
 """
 
 from __future__ import annotations
@@ -32,12 +35,13 @@ from engine import bonds
 from engine.context import Language
 from engine.contracts.delta import AttitudeShift, BondChange, CharacterChange, StateDelta
 from engine.contracts.intent import IntentStep, OutcomeClass, RomanceMove
-from engine.contracts.resolution import StepResolution, WooingSoFar
+from engine.contracts.resolution import ProposedDeed, StepResolution, WooingSoFar
 from engine.limits import Intimacy, intimacy, is_adult, partners
 from engine.resolve.checks import Settled
 from engine.state.cast import Character
 from engine.state.records import BondStage, StepResult
 from engine.state.world import WorldState
+from engine.world.norms import COURT, LIE_WITH, WED
 
 _STANDS = {
     BondStage.TOGETHER: "are together",
@@ -333,6 +337,65 @@ def _advance(told: _Told, more: int, won: bool, ends_s: int) -> None:
     if won and told.stage is BondStage.INTEREST and told.drawn >= bonds.COURTING_AT:
         told.to(BondStage.COURTING, f"{them} answered {_possessive(mover)} advances.")
         told.said.append(f"{them} answers it, and the two of you are courting now")
+
+
+_OUTCOME = {
+    StepResult.SUCCESS: "it worked",
+    StepResult.PARTIAL: "it partly worked",
+    StepResult.FAILURE: "it failed",
+}
+
+
+def deed(
+    state: WorldState,
+    actor: Character,
+    wooing: Wooing,
+    settled: Settled,
+    now: Heart,
+    hearts: dict[str, Heart],
+    *,
+    in_stopped_time: bool = False,
+) -> ProposedDeed | None:
+    """The move as a deed (W1), where it wrongs someone: whoever is a couple with either of the
+    two (`bonds.wronged`). None where it wrongs nobody. A move that was made counts whatever
+    came of it, since the asking was the wrong; a wedding only once the two are wed; ending a
+    romance, and anything toward close family, never. How grave it is follows what was done
+    and where it took the two (`bonds.gravity`, `now` being where the romance stands after
+    it). `hearts` is where this plan's earlier steps left the actor's other romances: a
+    partner the actor has just left isn't wronged by what comes after."""
+    if wooing.family or wooing.move is RomanceMove.PART:
+        return None
+    before, after = wooing.heart.stage, now.stage
+    wed = wooing.move is RomanceMove.WED
+    if wed and not (before is BondStage.PROMISED and after is BondStage.MARRIED):
+        return None
+    wronged = [
+        who
+        for who in bonds.wronged(state, actor.id, wooing.other.id)
+        if who not in hearts or (hearts[who].stage is not None and hearts[who].stage.couple)
+    ]
+    if not wronged:
+        return None
+    answered = settled.outcome_class is not OutcomeClass.RULED_OUT and (
+        settled.result is not StepResult.FAILURE
+    )
+    severity = bonds.gravity(
+        asked=wooing.move in (RomanceMove.DECLARE, RomanceMove.PROPOSE),
+        intimate=wooing.intimate,
+        answered=answered,
+        before=before,
+        after=after,
+    )
+    kind = WED if wed else LIE_WITH if wooing.intimate and answered else COURT
+    return ProposedDeed(
+        kind=kind,
+        text=f"{wooing.step.text} ({_OUTCOME[settled.result]})",
+        actor_id=None if actor.id == state.player_id else actor.id,
+        target_ids=[wooing.other.id],
+        wronged_ids=wronged,
+        severity=severity,
+        in_stopped_time=in_stopped_time,
+    )
 
 
 def so_far(

@@ -80,6 +80,10 @@ BELIEVED_FROM = 50
 # only while they are still talk. A brawl of last year is no longer news.
 TALK_FRESH_S = 60 * DAY
 
+# W17. Word of a move in a romance is carried to whoever it wronged when it was done within
+# this much travel of where they are: there, people know them.
+HOME_NEWS_S = DAY
+
 # --- Reputation and attitudes (W3, W4, W8, W9, W12) --------------------------------------------
 
 # How much a bystander who learns of harm done turns against the doer, by severity, before any

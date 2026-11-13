@@ -244,8 +244,16 @@ def test_an_interest_that_ended_before_anything_began_is_nothing_to_remember():
     assert told(over, "mara") == (None, None)
 
 
-def test_a_romance_that_began_again_shows_the_one_that_stands():
-    again = moved(moved(at(TOGETHER), OVER, 6), INTEREST, 9)
+def test_a_romance_that_began_again_shows_once_something_is_answered():
+    # An interest nothing has answered doesn't take the place of what ended.
+    asked = moved(moved(at(TOGETHER), OVER, 6), INTEREST, 9)
+    assert told(asked, "mara") == (OVER, "You were a couple until you ended it, day 6.")
+    # Once it is answered, the one that stands is the one to remember.
+    courting = moved(asked, COURTING, 12)
+    assert told(courting, "mara")[0] is COURTING
+    assert told(courting, "mara")[1].endswith(", day 12.")
+    # After an interest that came to nothing there is nothing older to show.
+    again = moved(moved(moved(farm(), INTEREST, 3), OVER, 4), INTEREST, 9)
     assert told(again, "mara") == (INTEREST, "You made your interest plain, day 9.")
 
 

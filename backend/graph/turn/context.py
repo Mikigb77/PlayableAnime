@@ -262,22 +262,30 @@ _PACE = {
 
 def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None:
     """W17. The romance between someone and the player character as the record has it: the
-    stage it stands at and since when, or how the last one ended, and their own heart and pace
-    in words. None when there has been nothing between the two and they aren't drawn to the
-    player character."""
+    stage it stands at and since when, or how the last one ended, the one that ended before
+    it (`earlier`), and their own heart and pace in words. None when there has been nothing
+    between the two and they aren't drawn to the player character."""
     you = state.player_id
     drawn = character.attitude_toward(you).attraction
     bond = bonds.live(state, character.id, you)
+    over = bonds.last_over(state, character.id, you)
+    ended = None
+    if over is not None:
+        ended = {
+            "ended": over.steps[-1].how if over.steps else "",
+            "since": ago_label(max(0, state.world_s - over.since_s)),
+        }
     view: dict[str, Any] = {}
     if bond is not None:
         view["stage"] = bond.stage.value
         begun = bool(bond.steps) and bond.steps[-1].turn > 0
         since = ago_label(max(0, state.world_s - bond.since_s))
         view["since"] = since if begun else "before the story began"
-    elif (over := bonds.last_over(state, character.id, you)) is not None:
-        view["stage"] = "over"
-        view["ended"] = over.steps[-1].how if over.steps else ""
-        view["since"] = ago_label(max(0, state.world_s - over.since_s))
+        if ended is not None:
+            # What was between the two before this one began, which a new start doesn't undo.
+            view["earlier"] = ended
+    elif ended is not None:
+        view |= {"stage": "over"} | ended
     elif drawn == 0:
         return None
     view["their_heart"] = bonds.heart_words(drawn, "you")
@@ -1105,6 +1113,30 @@ def _talk_view(plan: DirectorPlan, state: WorldState) -> dict[str, Any] | None:
     return {"saying": rumor.text} | asked if rumor is not None else None
 
 
+def _wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]]:
+    """W17. Whom a step's move in a romance wrongs (`Deed.wronged_ids`): whoever is a couple
+    with either of the two, by name, and `saw_it` for those who were there to see it, by the
+    deed as the world recorded it. The others know nothing of it yet (W2)."""
+    proposed = next((d for d in step.deeds if d.wronged_ids), None)
+    if proposed is None:
+        return []
+    recorded = max(
+        (
+            d
+            for d in state.deeds.values()
+            if d.text == proposed.text and d.wronged_ids == proposed.wronged_ids
+        ),
+        key=lambda d: (d.world_s, natural_key(d.id)),
+        default=None,
+    )
+    saw = set(recorded.witness_ids) if recorded is not None else set()
+    return [
+        {"id": who, "who": state.characters[who].name} | ({"saw_it": True} if who in saw else {})
+        for who in proposed.wronged_ids
+        if who in state.characters
+    ]
+
+
 def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
     steps = []
     for step in resolution.steps:
@@ -1155,6 +1187,9 @@ def _outcome_view(resolution: Resolution, state: WorldState) -> dict[str, Any]:
         if step.perils:
             # N6: what struck back at the player character after their step, in order.
             view["struck"] = [_struck_view(p) for p in step.perils]
+        if wronged := _wronged_view(step, state):
+            # W17: whose partner the move was made with or by, and who of them saw it.
+            view["wrongs"] = wronged
         if step.bout is not None:
             # W1: fought in a bout both sides agreed to, under these terms: no attack on anyone.
             view["bout"] = step.bout.terms.value

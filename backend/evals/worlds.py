@@ -9,6 +9,9 @@ from engine.samples import cultivation_world, farm_world, grounded_world
 from engine.state import (
     Attitude,
     Attributes,
+    Bond,
+    BondStage,
+    BondStep,
     Character,
     CharacterSheet,
     Condition,
@@ -16,6 +19,7 @@ from engine.state import (
     ConnectionKind,
     CostKind,
     Creature,
+    Disposition,
     Encounter,
     EncounterKind,
     Extraordinary,
@@ -1357,6 +1361,110 @@ def millers_daughter() -> WorldState:
     )
     state.summary = "Tomas Weller farms a small plot in the Long Valley, alone."
     return add(state, mara)
+
+
+JORN = "jorn-hale"
+AT_THE_MILL = (
+    "Mara Voss is shutting the mill for the evening, and old Bram watches the lane from his "
+    "bench across it."
+)
+
+
+def _evening_in_millbrook(state: WorldState, *, drawn: int) -> WorldState:
+    """Tomas in Millbrook of an evening, with Mara Voss at the mill door and old Bram on his
+    bench, who sees everything on the lane. `drawn` is how drawn Mara is to Tomas."""
+    mara = state.characters[MARA]
+    mara.location_id = "village"
+    mara.sheet.disposition.attitudes["tomas"] = Attitude(affinity=40, trust=40, attraction=drawn)
+    state.characters["tomas"].location_id = "village"
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": "village",
+            "present_ids": ["tomas", MARA, "bram"],
+            "positions": ["Tomas on the mill lane", "Mara at the mill door", "Bram on his bench"],
+            "props": ["the mill wheel, still turning"],
+            "ended_on": AT_THE_MILL,
+        }
+    )
+    return state
+
+
+def wife_at_home(*, heart: int = 60, drawn: int = 70) -> WorldState:
+    """The farm world for a romance that wrongs someone (W17): Tomas is married to Ilse, who is
+    at home on the farm, forty minutes from Millbrook, where he stands with Mara Voss and old
+    Bram. Mara's heart is his for the asking (`drawn`), and `heart` is how drawn his wife still
+    is to him: at 60, a betrayal takes it under what a marriage lasts on
+    (`engine.bonds.LEAVES_UNDER`), and at 80 it doesn't."""
+    state = millers_daughter()
+    ilse = farm_world().characters["ilse"]
+    ilse.sheet.disposition.attitudes["tomas"].attraction = heart
+    state.characters["ilse"] = ilse
+    state.bonds = farm_world().bonds
+    state.summary = "Tomas and Ilse farm a small plot in the Long Valley."
+    return _evening_in_millbrook(state, drawn=drawn)
+
+
+def husband_in_millbrook(*, there: bool, drawn: int = 70) -> WorldState:
+    """`millers_daughter` for a rival (W17): Tomas lives alone, and Mara Voss is married to Jorn
+    Hale, the Millbrook smith, who thinks nothing much of Tomas either way. With `there` he is
+    on the lane with them, and otherwise at his forge, in the village and out of sight."""
+    state = millers_daughter()
+    jorn = Character(
+        id=JORN,
+        name="Jorn Hale",
+        prominence=Prominence.KEY,
+        description="The Millbrook smith, Mara's husband: a quiet man with a long memory.",
+        appearance="33, heavy shoulders, burn scars on both forearms.",
+        age=33,
+        location_id="village",
+        known_by=["tomas"],
+        met_by=["tomas"],
+        sheet=CharacterSheet(
+            attributes=Attributes(strength=5, toughness=4),
+            skills=[Skill(name="smithing", level=SkillLevel.EXPERT)],
+            disposition=Disposition(
+                attitudes={
+                    "tomas": Attitude(affinity=10, trust=20),
+                    MARA: Attitude(affinity=70, trust=70, attraction=70),
+                }
+            ),
+        ),
+    )
+    state.characters[JORN] = jorn
+    state.characters[MARA].description = "The miller's daughter and the smith's wife."
+    state.characters[MARA].sheet.disposition.attitudes[JORN] = Attitude(
+        affinity=50, trust=60, attraction=40
+    )
+    state.bonds["bond-1"] = Bond(
+        id="bond-1",
+        a_id=JORN,
+        b_id=MARA,
+        stage=BondStage.MARRIED,
+        steps=[BondStep(stage=BondStage.MARRIED, how="As the story opens.")],
+    )
+    state = _evening_in_millbrook(state, drawn=drawn)
+    if there:
+        state.scene.present_ids.append(JORN)
+        state.scene.positions.append("Jorn in the forge door, wiping his hands")
+    return state
+
+
+def sweethearts(*, heart: int = 75) -> WorldState:
+    """`millers_daughter` with Tomas and Mara a couple these three months (W17), for a romance
+    one of them ends: `heart` is how drawn she is to him."""
+    state = millers_daughter()
+    mara = state.characters[MARA]
+    mara.sheet.disposition.attitudes["tomas"] = Attitude(affinity=60, trust=60, attraction=heart)
+    state.bonds["bond-1"] = Bond(
+        id="bond-1",
+        a_id="tomas",
+        b_id=MARA,
+        stage=BondStage.TOGETHER,
+        steps=[BondStep(stage=BondStage.TOGETHER, how="As the story opens.")],
+    )
+    state.scene.present_ids = ["tomas", MARA]
+    state.summary = "Tomas Weller farms a small plot in the Long Valley, and walks out with Mara."
+    return state
 
 
 HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."

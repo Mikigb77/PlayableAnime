@@ -140,6 +140,7 @@ def record_deed(
         place_id=place_id,
         victim_ids=victims,
         target_ids=list(dict.fromkeys(proposed.target_ids)),
+        wronged_ids=[i for i in dict.fromkeys(proposed.wronged_ids) if i != actor_id],
         severity=assess_severity(
             state, proposed.kind, proposed.severity, victims, proposed.target_ids
         ),

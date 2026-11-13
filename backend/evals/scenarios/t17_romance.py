@@ -8,9 +8,11 @@ told as a couple before the record makes them one, is the judge's in live mode.
 
 from __future__ import annotations
 
+from collections import Counter
+
 from engine import bonds
-from engine.base import DAY, MINUTE
-from engine.context import EventFrequency, StorySettings
+from engine.base import DAY, HOUR, MINUTE
+from engine.context import EventFrequency, Rating, StorySettings
 from engine.contracts import (
     ActionKind,
     AttitudeShift,
@@ -22,35 +24,48 @@ from engine.contracts import (
     SceneEnd,
     StateDelta,
 )
-from engine.state import BondStage, PowerAxis, StepResult
+from engine.state import (
+    BondEnd,
+    BondStage,
+    Deed,
+    EventStatus,
+    PendingEvent,
+    PowerAxis,
+    StepResult,
+    WorldState,
+)
 from engine.visibility import memory_view
+from engine.world import Kind
+from engine.world.answers import Answer
+from engine.world.norms import is_crime
 from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval, Played, Story
 from evals.scenario import REGISTRY
-from evals.scenarios.common import as_read, facts, plan, step
+from evals.scenarios.common import as_read, facts, full_day, plan, step
+from graph.llm import Node
 
 scenario = REGISTRY.scenario
 
-YOU, MARA = "tomas", worlds.MARA
+YOU, MARA, ILSE, JORN, BRAM = "tomas", worlds.MARA, "ilse", worlds.JORN, "bram"
 REST = bonds.REST_S[bonds.pace(MARA)]
 # The most one step can move her heart: a stretch of courting, thrown over the top.
 MOST = bonds.NOTCH * (bonds.MOST_NOTCHES + 1)
 WEEKS = 6  # of courting, at most, before the script gives up on getting somewhere
 
 
-def to_mara(text: str, move: RomanceMove | None, **kw) -> Intent:
-    """A step toward Mara, as the interpret step reads it: who it is with, and which move in a
-    romance it is."""
+def to_mara(text: str, move: RomanceMove | None, *, who: str = MARA, **kw) -> Intent:
+    """A step toward Mara (or `who`), as the interpret step reads it: who it is with, and
+    which move in a romance it is."""
     return plan(
         step(
             text,
             kw.pop("kind", ActionKind.CONVERSATION),
             kw.pop("duration_s", 10 * MINUTE),
-            target_ids=[MARA],
+            target_ids=[who],
             axis=PowerAxis.INFLUENCE,
             romance=move,
-            facts=facts(opposition_ids=[MARA], can_respond=True),
+            facts=facts(opposition_ids=[who], can_respond=True),
             **kw,
         )
     )
@@ -130,10 +145,10 @@ def stage(story: Story) -> BondStage | None:
     return bond.stage if bond is not None else None
 
 
-def remembered(story: Story) -> BondStage | None:
-    """Where Memory says the two stand (C6): what the player reads on Mara's entry."""
-    mara = next((p for p in memory_view(story.state).people if p.id == MARA), None)
-    return mara.bond if mara is not None else None
+def remembered(story: Story, who: str = MARA) -> BondStage | None:
+    """Where Memory says the two stand (C6): what the player reads on their entry."""
+    person = next((p for p in memory_view(story.state).people if p.id == who), None)
+    return person.bond if person is not None else None
 
 
 def by_her_heart(drawn: int, no: int, sure: int) -> OutcomeClass | None:
@@ -373,3 +388,607 @@ async def slow_romance(ev: Eval) -> None:
             ),
             story.turns,
         )
+
+
+# --- the world reacting: an affair, a rival and a breakup (W17) --------------------------------
+
+NIGHT = "I spend the night with Mara, and we sleep together"
+HOME = "I work my fields all day and sleep in my own bed"
+IN_MILLBROOK = "I help at the mill all day and sleep in my bed at the alehouse"
+TAKE_ME_BACK = "I take Ilse's hands and ask her to stay my wife"
+END = "I tell Mara it is over between us, and that I won't change my mind"
+ASK_AGAIN = "I ask Mara to be my sweetheart again"
+CALM = StorySettings(event_frequency=EventFrequency.CALM)
+DAYS_AT_HOME = 6  # at most, for word to get round and for whoever it wronged to come
+
+
+def night() -> Intent:
+    return to_mara(
+        "spend the night with Mara", RomanceMove.ADVANCE, verb="sleep with", duration_s=8 * HOUR
+    )
+
+
+def part() -> Intent:
+    return to_mara("tell Mara it is over between us", RomanceMove.PART, verb="end")
+
+
+def take_me_back() -> Intent:
+    return to_mara("ask Ilse to stay my wife", RomanceMove.DECLARE, who=ILSE, verb="ask")
+
+
+def mends_it(who: str, stage: BondStage) -> dict:
+    """A scripted scene whose narrator mends everything, and writes it into its update."""
+    update = StateDelta(
+        characters=[
+            CharacterChange(id=who, attitudes=[AttitudeShift(toward_id=YOU, attraction=60)])
+        ],
+        bonds=[BondChange(a_id=YOU, b_id=who, stage=stage, by_id=who)],
+    )
+    return {
+        "narration": "(scripted) All is forgiven, and the two are as they were.",
+        "suggestions": [],
+        "update": update.model_dump(mode="json"),
+    }
+
+
+def goes_home(state: WorldState) -> None:
+    """Tomas is back on his farm and alone at his gate: whoever saw what he did is free to
+    talk of it (W2)."""
+    state.characters[YOU].location_id = "farm"
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": "farm",
+            "present_ids": [YOU],
+            "positions": ["Tomas at his own gate"],
+            "props": [],
+            "ended_on": "Tomas is back at his own gate, with the day's work waiting.",
+        }
+    )
+
+
+def stays_in_millbrook(state: WorldState) -> None:
+    """Tomas has taken a bed over the Millbrook alehouse and is alone in its yard: he is where
+    he was last seen, and whoever saw what he did is free to talk of it (W2)."""
+    state.scene = state.scene.model_copy(
+        update={
+            "place_id": "village",
+            "present_ids": [YOU],
+            "positions": ["Tomas in the alehouse yard"],
+            "props": [],
+            "ended_on": "Tomas is alone in the alehouse yard, with the morning still cold.",
+        }
+    )
+
+
+def day_in_millbrook() -> Intent:
+    return plan(
+        step("Help at the mill all day", ActionKind.WORK, 12 * HOUR, verb="work"),
+        step("Sleep at the alehouse", ActionKind.REST, 12 * HOUR, verb="sleep"),
+    )
+
+
+def feels(story: Story, who: str, toward: str = YOU) -> tuple[int, int, int]:
+    felt = story.state.characters[who].attitude_toward(toward)
+    return felt.affinity, felt.trust, felt.attraction
+
+
+def wrongs(story: Story, who: str) -> list[Deed]:
+    """The deeds on record that wronged `who`, in the order they were done."""
+    return [d for d in story.state.deeds.values() if who in d.wronged_ids]
+
+
+def knows(story: Story, who: str) -> list[Deed]:
+    return [d for d in wrongs(story, who) if who in d.known_by]
+
+
+def came(story: Story, who: str, answer: Answer = Answer.CONFRONT) -> list[PendingEvent]:
+    """The times `who` came to the player character and found them."""
+    fired = story.fired(Kind.ANSWER, avenger_id=who, answer=answer.value)
+    return [e for e in fired if e.needs_player]
+
+
+def coming(story: Story, who: str, answer: Answer) -> list[PendingEvent]:
+    """`who` on their way, or already come, with `answer`."""
+    return [
+        e
+        for e in story.state.pending_events.values()
+        if e.kind == Kind.ANSWER
+        and e.status in (EventStatus.PENDING, EventStatus.APPLIED)
+        and e.payload.get("avenger_id") == who
+        and e.payload.get("answer") == answer.value
+    ]
+
+
+async def days_at_home(story: Story, who: str, *, away: bool = False) -> list[Played]:
+    """Days on the farm (or, `away`, in Millbrook) until `who` has come, or the script gives
+    up on it."""
+    played = []
+    for _ in range(DAYS_AT_HOME):
+        if came(story, who):
+            break
+        if away:
+            played.append(await story.act(IN_MILLBROOK, day_in_millbrook()))
+        else:
+            played.append(await story.act(HOME, full_day()))
+    return played
+
+
+def gravity_as_played(played: Played, was: BondStage | None, now: BondStage | None) -> int:
+    """How grave the record should hold a turn's one move to be (`engine.bonds.gravity`), from
+    how it was settled and where the two stood before and after."""
+    done = played.steps[0]
+    answered = (
+        done.outcome_class is not OutcomeClass.RULED_OUT and done.result is not StepResult.FAILURE
+    )
+    intimate = "night" in done.text
+    return bonds.gravity(asked=False, intimate=intimate, answered=answered, before=was, after=now)
+
+
+def trail(story: Story) -> list[str]:
+    """What Memory's deeds say came of them (C6)."""
+    return [entry.text for deed in memory_view(story.state).deeds for entry in deed.trail]
+
+
+@scenario(
+    "t17.an-affair",
+    suite="T17",
+    title="An affair comes home",
+    requirements=("W17", "W1", "W2", "W4", "W10", "C6", "T17"),
+    passes_when=(
+        "A married man walks someone home and spends the night with them, with a neighbour "
+        "looking on. Each move is a deed on record that wrongs his wife, graver the further it "
+        "went, and no crime: nobody reports it and the neighbour thinks no less of him. At "
+        "home she knows nothing and feels as before, until word reaches her from someone who "
+        "saw it. Then she loses liking, trust and heart by how far it went, and comes to have "
+        "it out, never for revenge. A wife whose heart is gone ends the marriage when she "
+        "finds him, and nothing the scene tells or he asks mends it; one whose heart holds "
+        "stays married. Memory tells the marriage as the record holds it"
+    ),
+)
+async def an_affair(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for index, seed in enumerate(ev.seeds(12, live=1)):
+        devoted = index % 3 == 2  # a wife whose heart holds through it
+        world = worlds.wife_at_home(heart=80 if devoted else 60)
+        story = ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
+        at_first, bram_at_first = feels(story, ILSE), feels(story, BRAM)
+
+        walked = await story.act(WALK, walk_home())
+        courting = stage(story)
+        slept = await story.act(NIGHT, night())
+        deeds = wrongs(story, ILSE)
+        ev.check(
+            "a move in a romance with someone else is a deed that wrongs the partner on record",
+            bool(deeds) and all(d.wronged_ids == [ILSE] and d.target_ids == [MARA] for d in deeds),
+            f"{seed}: {[(d.kind, d.wronged_ids) for d in story.state.deeds.values()]}, "
+            f"{as_read([walked, slept])}",
+        )
+        if len(deeds) == 2 and walked.steps and slept.steps:
+            expected = [
+                gravity_as_played(walked, None, courting),
+                gravity_as_played(slept, courting, stage(story)),
+            ]
+            ev.check(
+                "how grave it is follows how far it went",
+                [d.severity for d in deeds] == expected,
+                f"{seed}: {[(d.kind, d.severity) for d in deeds]} for {expected}",
+            )
+        ev.check(
+            "it is no crime, and nobody reports it",
+            not any(is_crime(story.state, d) for d in deeds) and not story.fired(Kind.REPORT),
+            f"{seed}: {[e.title for e in story.fired(Kind.REPORT)]}",
+        )
+        ev.check(
+            "someone it is nothing to thinks no less of him for it",
+            feels(story, BRAM) == bram_at_first,
+            f"{seed}: {bram_at_first} to {feels(story, BRAM)}",
+            live=False,
+        )
+        ev.check(
+            "a partner who is elsewhere knows nothing and feels as before",
+            feels(story, ILSE) == at_first
+            and not any(ILSE in d.known_by or ILSE in d.heard_by for d in deeds),
+            f"{seed}: {at_first} to {feels(story, ILSE)}",
+        )
+        await ev.judge(
+            "an evening with someone else",
+            Rubric(
+                must=("Mara is as warm to Tomas as OUTCOME says of her heart and of each step",),
+                must_not=(
+                    "Ilse is in these scenes, or anyone says she already knows",
+                    "The night is told in explicit sexual detail",
+                ),
+            ),
+            [walked, slept],
+        )
+
+        story.change(goes_home)
+        days = await days_at_home(story, ILSE)
+        known = knows(story, ILSE)
+        gravest = max((d.severity for d in known), default=0)
+        faced = came(story, ILSE)
+        ev.check(
+            "word of an affair reaches her from someone who saw it, and she comes to have it out",
+            bool(faced) == (gravest >= bonds.FACED_FROM) and bool(known) == bool(deeds),
+            f"{seed}: knows {[(d.kind, d.severity) for d in known]}, came {len(faced)} times, "
+            f"{as_read(days[-2:])}",
+        )
+        if not known:
+            ends["she never heard"] += 1
+            continue
+        lost = at_first[2] - feels(story, ILSE)[2]
+        least = bonds.WRONGED_HEART * gravest
+        most = least + bonds.WRONGED_HEART * bonds.AGAIN * (len(known) - 1)
+        ev.check(
+            "her heart falls by how far it went, and more of the same adds little",
+            least <= lost <= most and feels(story, ILSE)[0] < at_first[0],
+            f"{seed}: lost {lost}, between {least} and {most}; {at_first} to {feels(story, ILSE)}",
+        )
+        ev.check(
+            "nobody comes for revenge on their own partner",
+            not coming(story, ILSE, Answer.REVENGE),
+            seed,
+        )
+        if not faced:
+            ends["she never came"] += 1
+            continue
+        marriage = story.state.bonds["bond-1"]
+        over = marriage.stage is BondStage.OVER
+        ends["she ended it" if over else "she stayed"] += 1
+        heart_gone = feels(story, ILSE)[2] < bonds.LEAVES_UNDER
+        ev.check(
+            "a partner whose heart is gone ends it when they find them, and one whose heart "
+            "holds stays",
+            over == heart_gone
+            and (not over or (marriage.end is BondEnd.PARTED and marriage.steps[-1].by_id == ILSE)),
+            f"{seed}: {marriage.stage.value} with her heart at {feels(story, ILSE)[2]}",
+        )
+        told = "it is over between them" if over else "to hear it answered and not to attack"
+        ev.check(
+            "the scene is told what she came to do",
+            told in story.prompt(Node.NARRATOR),
+            f"{seed}: {faced[-1].title}",
+            live=False,
+        )
+        person = next(p for p in memory_view(story.state).people if p.id == ILSE)
+        line = person.bond_line or ""
+        ev.check(
+            "Memory tells the marriage as the record holds it",
+            person.bond is marriage.stage
+            and (not over or line.startswith("You were married until they ended it"))
+            and any(
+                text.startswith("Ilse Weller came to face you over it") for text in trail(story)
+            ),
+            f"{seed}: {person.bond} {line!r}, {trail(story)}",
+        )
+        if not over:
+            await ev.judge(
+                "she has it out with him",
+                Rubric(
+                    must=(
+                        "Ilse puts what Tomas did with Mara to him, as someone who knows of it",
+                        "Ilse is hurt, angry or cold, and the two are still married as the "
+                        "scene ends",
+                    ),
+                    must_not=(
+                        "Ilse attacks Tomas",
+                        "Ilse ends the marriage or leaves him for good",
+                        "Ilse behaves as if nothing had happened",
+                    ),
+                ),
+                days[-1:],
+            )
+            continue
+
+        mended = None if ev.live else mends_it(ILSE, BondStage.MARRIED)
+        asked = await story.act(TAKE_ME_BACK, take_me_back(), narration=mended)
+        expected = by_her_heart(feels(story, ILSE)[2], bonds.DECLARE_NO, bonds.DECLARE_SURE)
+        ev.check(
+            "asked to take him back, she answers by her heart",
+            answered_as(asked, expected),
+            f"{seed}: at {feels(story, ILSE)[2]}, {as_read([asked])}",
+        )
+        ev.check(
+            "what she ended stays ended, whatever the scene tells",
+            story.state.bonds["bond-1"].stage is BondStage.OVER
+            and ILSE not in bonds.partners(story.state, YOU)
+            and remembered(story, ILSE) is BondStage.OVER,
+            f"{seed}: {[(b.id, b.stage.value) for b in story.state.bonds.values()]}",
+        )
+        await ev.judge(
+            "she comes to end it",
+            Rubric(
+                must=(
+                    "Ilse comes to Tomas knowing what he did with Mara, and says so",
+                    "Ilse tells Tomas it is over between them, and it is still over when the "
+                    "scene ends",
+                    "Asked to stay his wife, Ilse does not take him back",
+                ),
+                must_not=(
+                    "Ilse forgives Tomas, or the two make up",
+                    "Ilse attacks Tomas",
+                    "The narrator lectures the player or refuses to play a scene",
+                ),
+            ),
+            [*days[-1:], asked],
+        )
+    ev.metric("ends", dict(ends))
+    ev.check(
+        "some wives end it and some stay, by their hearts",
+        ends["she ended it"] > 0 and ends["she stayed"] > 0,
+        str(dict(ends)),
+        live=False,
+    )
+
+
+RIVALS = ("told of it all", "saw it", "told of the walk")
+
+
+@scenario(
+    "t17.a-rival",
+    suite="T17",
+    title="A rival",
+    requirements=("W17", "W1", "W2", "W4", "W10", "C6", "T17"),
+    passes_when=(
+        "A man courts the smith's wife. The move wrongs her husband on record, and the scene "
+        "is told whether he saw it. A husband who saw it holds it against the man at once, by "
+        "how far it went, and one who was elsewhere feels as before until someone who saw it "
+        "tells him. Knowing of an affair, he comes to have it out, and the scene is told he "
+        "came to hear it answered and not to attack. He comes for revenge afterwards only "
+        "when what he knows of went as far as a night together. It is no crime, and Memory "
+        "says who came over it"
+    ),
+)
+async def a_rival(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for index, seed in enumerate(ev.seeds(12, live=1)):
+        how = RIVALS[index % len(RIVALS)]
+        saw = how == "saw it"
+        world = worlds.husband_in_millbrook(there=saw)
+        story = ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
+        at_first, his_wife = feels(story, JORN), feels(story, JORN, MARA)
+
+        first = await story.act(KISS, kiss()) if saw else await story.act(WALK, walk_home())
+        deeds = wrongs(story, JORN)
+        ev.check(
+            "courting someone's partner is a deed that wrongs them on record",
+            len(deeds) >= 1 and all(d.wronged_ids == [JORN] for d in deeds),
+            f"{seed}, he {how}: {[(d.kind, d.wronged_ids) for d in story.state.deeds.values()]}, "
+            f"{as_read([first])}",
+        )
+        if not deeds:
+            continue
+        seen = '"wrongs":[{"id":"jorn-hale","who":"Jorn Hale","saw_it":true}]'
+        unseen = '"wrongs":[{"id":"jorn-hale","who":"Jorn Hale"}]'
+        ev.check(
+            "the scene is told whose partner it was, and whether they saw it",
+            (seen if saw else unseen) in story.prompt(Node.NARRATOR),
+            f"{seed}, he {how}",
+            live=False,
+        )
+        severity = deeds[0].severity
+        if saw:
+            ev.check(
+                "a husband who saw it holds it against him by how far it went",
+                feels(story, JORN)
+                == (
+                    at_first[0] - bonds.RIVAL_LIKING * severity,
+                    at_first[1] - bonds.RIVAL_TRUST * severity,
+                    at_first[2],
+                ),
+                f"{seed}: {at_first} to {feels(story, JORN)} for severity {severity}",
+                live=False,
+            )
+        else:
+            ev.check(
+                "a husband who is elsewhere knows nothing and feels as before",
+                feels(story, JORN) == at_first and not knows(story, JORN),
+                f"{seed}: {at_first} to {feels(story, JORN)}",
+            )
+        ev.check(
+            "what he feels for his own wife is his, and nothing the move touches",
+            feels(story, JORN, MARA) == his_wife,
+            f"{seed}: {his_wife} to {feels(story, JORN, MARA)}",
+            live=False,
+        )
+        played = [first]
+        if how == "told of it all":
+            played.append(await story.act(NIGHT, night()))
+        await ev.judge(
+            "courting the smith's wife",
+            Rubric(
+                must=(
+                    "Mara is as warm to Tomas as OUTCOME says of her heart and of each step",
+                    "When OUTCOME says Jorn saw it, the scene shows what it is to him; when it "
+                    "doesn't, Jorn is not in the scene and nobody says he knows",
+                ),
+                must_not=("The night, if there is one, is told in explicit sexual detail",),
+            ),
+            played,
+        )
+
+        # Seen by her husband, he stays where he was seen. Seen by a neighbour, he goes home.
+        story.change(stays_in_millbrook if saw else goes_home)
+        days = await days_at_home(story, JORN, away=saw)
+        known = knows(story, JORN)
+        gravest = max((d.severity for d in known), default=0)
+        faced = came(story, JORN)
+        ev.check(
+            "a husband who knows of an affair comes to have it out",
+            bool(faced) == (gravest >= bonds.FACED_FROM),
+            f"{seed}, he {how}: knows {[(d.kind, d.severity) for d in known]}, came "
+            f"{len(faced)} times, {as_read(days[-2:])}",
+        )
+        ev.check(
+            "it is no crime, and nobody reports it",
+            not any(is_crime(story.state, d) for d in wrongs(story, JORN))
+            and not story.fired(Kind.REPORT),
+            f"{seed}: {[e.title for e in story.fired(Kind.REPORT)]}",
+        )
+        if not faced:
+            ends["he never came"] += 1
+            ev.check(
+                "nobody comes for revenge who has not had it out first",
+                not coming(story, JORN, Answer.REVENGE),
+                seed,
+            )
+            continue
+        after = bool(coming(story, JORN, Answer.REVENGE))
+        ends["revenge after having it out" if after else "had it out, and no more"] += 1
+        ev.check(
+            "the scene is told he came to hear it answered and not to attack",
+            "Jorn Hale comes to have it out with Tomas Weller, to hear it answered and not to "
+            "attack" in story.prompt(Node.NARRATOR),
+            f"{seed}: {faced[-1].title}",
+            live=False,
+        )
+        ev.check(
+            "a rival comes for revenge only over a night together",
+            after == (gravest >= bonds.BETRAYAL),
+            f"{seed}, he {how}: the gravest he knows of is {gravest}, revenge "
+            f"{[e.status.value for e in coming(story, JORN, Answer.REVENGE)]}",
+            live=False,  # in a live scene his liking may mend, and then he lets it rest (W4)
+        )
+        ev.check(
+            "Memory says who came over it",
+            any(text.startswith("Jorn Hale came to face you over it") for text in trail(story)),
+            f"{seed}: {trail(story)}",
+        )
+        await ev.judge(
+            "the husband has it out with him",
+            Rubric(
+                must=(
+                    "Jorn puts what Tomas did with Mara to him, as someone who knows of it, "
+                    "and waits for his answer",
+                ),
+                must_not=(
+                    "Jorn attacks Tomas in this scene",
+                    "Jorn is friendly, or behaves as if nothing had happened",
+                ),
+            ),
+            days[-1:],
+        )
+    ev.metric("ends", dict(ends))
+    ev.check(
+        "some husbands come for revenge afterwards and some have it out and no more",
+        ends["revenge after having it out"] > 0 and ends["had it out, and no more"] > 0,
+        str(dict(ends)),
+        live=False,
+    )
+
+
+@scenario(
+    "t17.a-breakup",
+    suite="T17",
+    title="A breakup",
+    requirements=("W17", "A2", "C6", "T17"),
+    passes_when=(
+        "A man tells his sweetheart it is over. Ending it is his to do, with nothing thrown: "
+        "it is over on record by his doing, whatever the scene tells, and it costs her some of "
+        "what she felt for him. Memory says the two were a couple until he ended it. A kiss "
+        "afterwards is no partner's kiss, and is thrown for. Asked to be his again, she "
+        "answers by her heart as it now stands, and a yes is a new romance on record beside "
+        "the one that ended"
+    ),
+)
+async def a_breakup(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for seed in ev.seeds(12, live=1):
+        story = ev.story(worlds.sweethearts(), seed=seed, settings=CALM, under_way=True)
+        at_first = feels(story, MARA)
+
+        mended = None if ev.live else mends_it(MARA, BondStage.TOGETHER)
+        ended = await story.act(END, part(), narration=mended)
+        old = story.state.bonds["bond-1"]
+        ev.check(
+            "ending it is the character's to do, with nothing thrown",
+            answered_as(ended, OutcomeClass.CERTAIN),
+            f"{seed}: {as_read([ended])}",
+        )
+        ev.check(
+            "it is over on record, by the one who ended it, whatever the scene tells",
+            (old.stage, old.end, old.steps[-1].by_id) == (BondStage.OVER, BondEnd.PARTED, YOU)
+            and bonds.partners(story.state, YOU) == [],
+            f"{seed}: {old.stage.value}, {[s.by_id for s in old.steps]}",
+        )
+        ev.check(
+            "it costs the one who was left some of what they felt",
+            feels(story, MARA)[2] == at_first[2] - bonds.PARTED_HEART_COUPLE
+            and feels(story, MARA)[0] < at_first[0],
+            f"{seed}: {at_first} to {feels(story, MARA)}",
+        )
+        ev.check(
+            "ending it costs her liking and trust by the rule, and no more",
+            feels(story, MARA)[:2]
+            == (at_first[0] - bonds.PARTED_COUPLE, at_first[1] - bonds.PARTED_COUPLE),
+            f"{seed}: {at_first} to {feels(story, MARA)}",
+            live=False,
+        )
+        person = next(p for p in memory_view(story.state).people if p.id == MARA)
+        ev.check(
+            "Memory says they were a couple until he ended it",
+            person.bond is BondStage.OVER
+            and (person.bond_line or "").startswith("You were a couple until you ended it"),
+            f"{seed}: {person.bond} {person.bond_line!r}",
+        )
+        await ev.judge(
+            "he ends it",
+            Rubric(
+                must=(
+                    "Tomas ends it, and Mara takes it as an ending, in her own way",
+                    "As the scene ends the two are no longer a couple",
+                ),
+                must_not=(
+                    "Mara talks him out of it, or the two are still together as the scene ends",
+                    "The narrator lectures the player or refuses to play the scene",
+                ),
+            ),
+            [ended],
+        )
+
+        kissed = await story.act(KISS, kiss())
+        ev.check(
+            "a kiss after the end is no partner's kiss: it is thrown for",
+            answered_as(kissed, None),
+            f"{seed}: {as_read([kissed])}",
+        )
+        ev.check(
+            "what ended stays ended, and nothing less than an ask makes a couple",
+            story.state.bonds["bond-1"].stage is BondStage.OVER
+            and stage(story) in (None, BondStage.INTEREST, BondStage.COURTING),
+            f"{seed}: {[(b.id, b.stage.value) for b in story.state.bonds.values()]}",
+        )
+
+        drawn = feels(story, MARA)[2]
+        again = await story.act(ASK_AGAIN, ask())
+        expected = by_her_heart(drawn, bonds.DECLARE_NO, bonds.DECLARE_SURE)
+        ev.check(
+            "asked again, she answers by her heart as it now stands",
+            answered_as(again, expected),
+            f"{seed}: at {drawn}, {as_read([again])}",
+        )
+        new = bonds.live(story.state, YOU, MARA)
+        again_a_couple = new is not None and new.stage.couple
+        ends["a couple again" if again_a_couple else "not a couple again"] += 1
+        ev.check(
+            "a yes is a new romance on record, beside the one that ended",
+            story.state.bonds["bond-1"].stage is BondStage.OVER
+            and (new is None or new.id != "bond-1")
+            and remembered(story) is (new.stage if new is not None else BondStage.OVER),
+            f"{seed}: {[(b.id, b.stage.value) for b in story.state.bonds.values()]}, Memory "
+            f"{remembered(story)}",
+        )
+        await ev.judge(
+            "after the end",
+            Rubric(
+                must=(
+                    "Mara answers the kiss and the ask as OUTCOME says of each, as someone he "
+                    "left and not as his sweetheart",
+                ),
+                must_not=(
+                    "Mara is told as his sweetheart again before OUTCOME says the two are together",
+                ),
+            ),
+            [kissed, again],
+        )
+    ev.metric("ends", dict(ends))

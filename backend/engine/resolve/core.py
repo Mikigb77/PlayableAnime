@@ -561,6 +561,7 @@ def _settle_step(
 
     wooing: romance.Wooing | None = None
     courted: WooingSoFar | None = None
+    affair: ProposedDeed | None = None
     if settled is None and bridging is None:
         # W17. A move in a romance is ruled on by the bond on record and the other's own
         # heart first (A2). What they leave open is thrown for like any step of words.
@@ -825,6 +826,16 @@ def _settle_step(
         courted = romance.so_far(
             wooing, settled, [_sentence(line) for line in said], over_the_top=over_the_top
         )
+        # A move that wrongs a partner of either is a deed of its own (W1).
+        affair = romance.deed(
+            state,
+            actor,
+            wooing,
+            settled,
+            frame.hearts[wooing.other.id],
+            {k: v for k, v in frame.hearts.items() if k != wooing.other.id},
+            in_stopped_time=frozen_now,
+        )
     if chain:
         places, deed = _chain_places(state, actor, step, chain)
         effects = _merge(effects, places)
@@ -931,7 +942,10 @@ def _settle_step(
     else:
         perils, escaped = [], []
 
-    if opposition is not None:
+    if affair is not None:
+        # W17. The move is the deed, with whom it wrongs, in place of the step's plain one.
+        deeds.insert(0, affair)
+    elif opposition is not None:
         # Harm to oneself is no deed against anyone (W1): only others are its victims.
         others_hit = [t for t in targets if t.id != actor.id]
         deed = proposed_deed(

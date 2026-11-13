@@ -8,8 +8,14 @@ one person's word (W4). It reaches the victims' factions
 too, and the factions those sit in: a kingdom learns who wiped out its army even where nobody
 lived to report it (W5, W13). Someone killed who mattered, with nobody close left, may still find
 an avenger the world hadn't shown yet (W15). A hunted beast's pack hears who killed it (G24).
+
+A move in a romance that wrongs someone (W17) sends word to whoever it wronged, and to nobody
+else: from an affair up, and only where someone could bring it, because it was done within a
+day's travel of them (`HOME_NEWS_S`) or someone who saw it is tied to them. What is done far
+from home, among strangers, reaches them only as talk, if it travels that far.
 """
 
+from engine import bonds
 from engine.base import DAY
 from engine.state.cast import FactionStatus, Prominence
 from engine.state.records import Deed, PendingEvent
@@ -21,13 +27,15 @@ from engine.world.knowledge import (
     FRIEND,
     Grounds,
     character_learns,
+    closeness,
     faction_learns,
     ties_of,
+    would_talk,
 )
 from engine.world.norms import Nature, deed_nature, is_beast, killed
 from engine.world.scheduling import Kind, World, pending, schedule
 from engine.world.telling import listing, struck_names
-from engine.world.tuning import NEWS_FACTOR, NEWS_FACTOR_INSTANT, NEWS_MIN_S
+from engine.world.tuning import HOME_NEWS_S, NEWS_FACTOR, NEWS_FACTOR_INSTANT, NEWS_MIN_S
 
 # When nothing on the map connects the victim's kin to the place, word still gets there.
 FAR_NEWS_S = 7 * DAY
@@ -62,6 +70,9 @@ def on_attributed(w: World, deed: Deed) -> None:
     factions, and look for an avenger where none is left."""
     state = w.state
     kind = deed_nature(state, deed)
+    if kind is Nature.ROMANCE:
+        _tell_wronged(w, deed)
+        return
     hunt = kind is Nature.HUNT
     if not hunt and (kind is not Nature.HARM or deed.severity < 3):
         return
@@ -108,6 +119,45 @@ def on_attributed(w: World, deed: Deed) -> None:
     _tell_factions(w, deed)
 
 
+def _tell_wronged(w: World, deed: Deed) -> None:
+    """W17. Word of a move in a romance sets out to whoever it wronged and doesn't know yet,
+    from an affair up (`bonds.FACED_FROM`): a flirt that went nowhere is nobody's errand.
+    Someone has to be able to bring it: it was done within `HOME_NEWS_S` of travel from them,
+    where people know them, or someone who saw it and would talk is tied to them. They learn
+    it from someone who knows (`Grounds.TOLD`), at the pace news travels (W10)."""
+    state = w.state
+    actor = state.characters.get(deed.actor_id)
+    if actor is None or deed.severity < bonds.FACED_FROM:
+        return
+    voices = [
+        state.characters[i]
+        for i in deed.witness_ids
+        if i in state.characters and would_talk(state, state.characters[i], deed)
+    ]
+    for wronged_id in deed.wronged_ids:
+        person = state.characters.get(wronged_id)
+        if person is None or not person.alive or wronged_id == state.player_id:
+            continue
+        if wronged_id in deed.known_by:
+            continue
+        if pending(state, Kind.TIDINGS, deed_id=deed.id, character_id=wronged_id):
+            continue
+        where = person.location_id
+        trip = travel_s(state, deed.place_id, where)
+        near = trip is not None and trip <= HOME_NEWS_S
+        if not near and not any(closeness(state, v, wronged_id) >= COMRADE for v in voices):
+            continue
+        schedule(
+            w,
+            Kind.TIDINGS,
+            w.at_s + _news_s(state, deed.place_id, where),
+            title=f"Word of what {actor.name} did reaches {person.name}",
+            subject_ids=[wronged_id, deed.actor_id],
+            place_id=where,
+            payload={"deed_id": deed.id, "character_id": wronged_id},
+        )
+
+
 def _tell_factions(w: World, deed: Deed) -> None:
     """W5, W11, W13: word of who did it reaches the victims' factions at the pace news travels
     to where each acts from, unless they already know."""
@@ -137,7 +187,7 @@ def _tell_factions(w: World, deed: Deed) -> None:
 
 def on_tidings(w: World, event: PendingEvent) -> None:
     """Word of a death or a grave harm reaches someone close to the victim (W4), or one of the
-    victims' factions (W5)."""
+    victims' factions (W5). Or word of a move in a romance reaches someone it wronged (W17)."""
     deed = w.state.deeds.get(str(event.payload.get("deed_id")))
     if deed is None:
         return
