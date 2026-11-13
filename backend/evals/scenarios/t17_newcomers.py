@@ -222,6 +222,17 @@ async def newcomers_stand(ev: Eval) -> None:
         ev.metric(
             f"who came into the story, and where the record has them, {seed}", came(before, state)
         )
+        higher = [
+            who
+            for who in state.characters
+            if who not in before.characters and (rung_of(state, who) or 0) > 0
+        ]
+        # The story is the eval's own, so a check that fails says what the scene told (T16).
+        ev.check(
+            "someone the scene brought in is on record on a realm above the outer disciples'",
+            bool(higher),
+            f"{seed}: {came(before, state)}, {seen.issues}; told: {seen.streamed}",
+        )
         ev.check(
             "nobody the story already had changed realm when the elder came",
             {who: rung for who, rung in standing(state).items() if who in before.characters}

@@ -1,4 +1,5 @@
-"""The form the interpret step fills for one turn (B5).
+"""The forms the model steps fill for one turn (B5): the interpret step's, and the narrator's
+where it asks more than its own (`narrator_form`).
 
 The whole form is `engine.contracts.Intent`, and most turns can't use all of it. A character
 with no power over time has nothing to say about what a throw weighs in stopped time, a world
@@ -21,6 +22,7 @@ from typing import Any
 
 from engine.contracts import Intent
 from engine.contracts.intent import GrowthKind
+from graph.turn.outputs import NarratorOutput
 
 
 @dataclass(frozen=True)
@@ -122,3 +124,53 @@ def _used(schema: dict[str, Any], defs: dict[str, Any]) -> set[str]:
         elif isinstance(node, list):
             todo.extend(node)
     return found
+
+
+# --- The narrator's form (G18) ----------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Above:
+    """G18. A ladder the story can pass the top of this turn (`engine.path.top_problem`), which
+    the narrator's form asks about: its id, its name and the name of its highest rung."""
+
+    ladder_id: str
+    ladder: str
+    top: str
+
+
+# G18, G7. What the narrator's form asks first while a ladder is open above its top. The scene's
+# own words have to name a rung above the top for the ladder to gain it, and the narrator
+# writes its scene before its update, so a question that comes after the scene is too late: in
+# the first stories on the real models no scene ever named one, with the ladder open and beings
+# from above it in the scene. And Gemini answers only what a form requires (`Intent`). So the
+# question comes first and is required, empty in any other scene.
+RUNG_ABOVE = (
+    "G18: answer before the scene. {ladder} is open above {top}, its highest rung. When this "
+    "scene brings in or shows someone or something stronger than {top}, or OUTCOME says the "
+    "character finds what lies beyond it, the name this scene gives the rung above {top}: a "
+    "new name of this world's making, never a rung WORLD lists, a stage or a title. The scene "
+    "then says that name, and whoever this update brings in who stands on that rung has it as "
+    "their rung. Empty in any other scene."
+)
+
+
+def narrator_form(above: Above | None) -> dict[str, Any] | None:
+    """The JSON schema of the narrator's form for a turn, or None for `NarratorOutput`'s own.
+    While the story can pass a ladder's top (`above`), the form asks first what the scene calls
+    the rung above it (`NarratorOutput.rung_above`). A fresh copy each call."""
+    return None if above is None else json.loads(_narrator_text(above))
+
+
+@lru_cache(maxsize=64)
+def _narrator_text(above: Above) -> str:
+    schema = NarratorOutput.model_json_schema()
+    asked = {
+        "type": "string",
+        # What the offline model answers: nothing.
+        "default": "",
+        "description": RUNG_ABOVE.format(ladder=above.ladder, top=above.top),
+    }
+    schema["properties"] = {"rung_above": asked, **schema["properties"]}
+    schema["required"] = ["rung_above", *schema.get("required", [])]
+    return json.dumps(schema)

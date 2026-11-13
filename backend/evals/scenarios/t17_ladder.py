@@ -123,15 +123,26 @@ def scene(
     rungs: list[NewRung] | None = None,
     people: list[CharacterChange] | None = None,
     present: tuple[str, ...] = (),
+    above: str = "",
 ) -> dict:
-    """A scripted scene on the summit, with what its update lists."""
+    """A scripted scene on the summit, with what its update lists and what it answers where
+    its form asks for the realm `above` the top (`NarratorOutput.rung_above`)."""
     end = SceneEnd(ended_on=ON_THE_SUMMIT, place_id="well", present_ids=[YOU, *present])
     update = StateDelta(scene_end=end, rungs=rungs or [], characters=people or [])
     return {
+        "rung_above": above,
         "narration": f"(scripted) {narration}",
         "suggestions": [],
         "update": update.model_dump(mode="json"),
     }
+
+
+def naming(narration: str, *, listed: bool, name: str = VOID) -> dict:
+    """A scene that proposes a realm above the top: `listed` under its update, as the engine's
+    contract has it, or else as its answer to the form's first question."""
+    if listed:
+        return scene(narration, rungs=[void(name=name)])
+    return scene(narration, above=name)
 
 
 def void(*, name: str = VOID, stands: tuple[str, ...] = ()) -> NewRung:
@@ -239,8 +250,10 @@ def told_above(state: WorldState) -> list[str]:
         "it, and over a hundred years whoever else stands on it climbed there, as a patriarch "
         "young for the old top does in some stories and not in others. A cultivator who has "
         "not heard of the highest realm can be told of nothing above it, and a rule that "
-        "never changes holds a ladder where it is. Live, a scene that names a realm above the "
-        "top has it on record, and reaching past the top lifts him onto nothing"
+        "never changes holds a ladder where it is. Live, the scene of his reach names a realm "
+        "above the top and the ladder has it, though he stands where he stood, and when an "
+        "envoy from above the top arrives, the scene names the envoy's realm and the record "
+        "has the envoy on it"
     ),
 )
 async def ladder_grows(ev: Eval) -> None:
@@ -256,7 +269,7 @@ async def ladder_grows(ev: Eval) -> None:
         had = rules(story.state)
         ceiling = next(rule.text for rule in story.state.bible.rules if rule.id == CEILING)
         played = await story.act(
-            REACH, reach(against_the_rule=filed), narration=scene(BARRIER, rungs=[void()])
+            REACH, reach(against_the_rule=filed), narration=naming(BARRIER, listed=filed)
         )
         stopped = played.step(0)
         ev.check(
@@ -266,24 +279,24 @@ async def ladder_grows(ev: Eval) -> None:
             f"{seed}: {stopped.outcome_class.value}, {stopped.reason}",
         )
         ev.check(
-            "the narrator is told beside it that the ladder can grow, however it was filed",
-            "update.rungs" in outcome(story.prompt(Node.NARRATOR)).get("beyond", ""),
+            "the narrator is told beside it to name what lies above, however it was filed",
+            "rung_above" in outcome(story.prompt(Node.NARRATOR)).get("beyond", ""),
             f"{seed}: {outcome(story.prompt(Node.NARRATOR))}",
         )
         ev.check(
             "and reads on the ladder itself that it is open above its top",
-            "update.rungs" in open_above(story.prompt(Node.NARRATOR)),
+            "rung_above" in open_above(story.prompt(Node.NARRATOR)),
             f"{seed}: {open_above(story.prompt(Node.NARRATOR))!r}",
         )
         ev.check(
-            "a rung the update lists and the scene never named changes nothing",
+            "a rung the scene never named changes nothing, listed or answered",
             len(realms(played.state).rungs) == TOP + 1 and RUNG_UNTOLD in played.issues,
             f"{seed}: {told_above(played.state)}, {played.issues}",
         )
 
         # Again, and this time the scene names what lies above.
         played = await story.act(
-            REACH, reach(against_the_rule=filed), narration=scene(GLIMPSE, rungs=[void()])
+            REACH, reach(against_the_rule=filed), narration=naming(GLIMPSE, listed=filed)
         )
         state = played.state
         ladder = realms(state)
@@ -383,15 +396,31 @@ async def ladder_grows(ev: Eval) -> None:
             description="A stranger out of the split sky, in robes no sect here wears.",
             meets_player=True,
         )
-        played = await story.act(
-            "I watch the sky over the summit",
-            act("watch the sky over the summit", "watch", ActionKind.TASK, 10 * MINUTE),
-            narration=scene(
-                f"The sky splits. A stranger steps out of it. “{VOID},” he says, of himself.",
+        arrival = f"The sky splits. A stranger steps out of it. “{VOID},” he says, of himself."
+        if filed:
+            # The update lists the realm, and under it who stands there.
+            told = scene(
+                arrival,
                 rungs=[void(stands=(ENVOY, worlds.ELDER_MO, YOU))],
                 people=[envoy],
                 present=(ENVOY,),
-            ),
+            )
+        else:
+            # The scene answers the form's question, and each change says its own realm.
+            said = [worlds.ELDER_MO, YOU]
+            told = scene(
+                arrival,
+                above=VOID,
+                people=[
+                    envoy.model_copy(update={"rung": VOID}),
+                    *(CharacterChange(id=who, rung=VOID) for who in said),
+                ],
+                present=(ENVOY,),
+            )
+        played = await story.act(
+            "I watch the sky over the summit",
+            act("watch the sky over the summit", "watch", ActionKind.TASK, 10 * MINUTE),
+            narration=told,
         )
         state = played.state
         was = standing(before)
@@ -515,7 +544,8 @@ async def ladder_grows(ev: Eval) -> None:
     ev.metric("attempts it took him to reach the new realm, in how many stories", dict(tries))
     ev.metric("others on the new realm after a hundred years, in how many stories", dict(reached))
 
-    # Live: he reaches past the top, and the story may or may not show him what lies there.
+    # Live: he reaches past the top, and the reach shows him that a realm lies there. The
+    # stories are the eval's own, so a check that fails says what the scene told (T16).
     for seed in ev.seeds(0, live=3):
         story = at_the_top(ev, f"{seed}/reach")
         seen = await story.act(REACH, reach())
@@ -523,6 +553,11 @@ async def ladder_grows(ev: Eval) -> None:
         named = told_above(state)
         ev.metric(f"realms told above the top when he reached, {seed}", named)
         ev.metric(f"told beside the outcome, {seed}", _stopped(seen))
+        ev.check(
+            "the scene of his reach names the realm above the top, and the ladder has it",
+            len(named) == 1,
+            f"{seed}: {named}, {_stopped(seen)}, {seen.issues}; told: {seen.streamed}",
+        )
         ev.check(
             "reaching past the top lifts him onto nothing",
             rung_of(state, YOU) == TOP,
@@ -552,7 +587,8 @@ async def ladder_grows(ev: Eval) -> None:
             context=on_record(state),
         )
 
-        # Live: a being from beyond arrives. Whatever the scene names is on record.
+        # Live: a being from beyond arrives. The scene names the realm they are of, and the
+        # record has it, with them on it.
         story = at_the_top(ev, f"{seed}/rift")
 
         def rift(state: WorldState) -> None:
@@ -579,6 +615,17 @@ async def ladder_grows(ev: Eval) -> None:
         )
         ev.metric(f"realms told above the top when the envoy came, {seed}", named)
         ev.metric(f"who came standing above the old top, {seed}", came)
+        new = sorted(who for who in state.characters if who not in before.characters)
+        ev.check(
+            "the scene of the arrival names the realm the envoy is of, and the ladder has it",
+            len(named) == 1,
+            f"{seed}: {named}, {seen.issues}; told: {seen.streamed}",
+        )
+        ev.check(
+            "someone the scene brought in stands on that realm, above the old top",
+            bool(came),
+            f"{seed}: came {came} of {new}, {standing(state)}, {seen.issues}",
+        )
         ev.check(
             "whatever the scene of the arrival named, nobody on record before it was lifted",
             all(
