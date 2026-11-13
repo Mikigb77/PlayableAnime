@@ -16,8 +16,16 @@ the move does, from the bond on record and from the other person's own heart
   no when it surely isn't, and thrown for in between.
 - A **wedding** takes two who are promised. **Parting** is always the character's to do.
 - Someone whose heart is closed (family, someone who wants nothing to do with the character,
-  someone too afraid of them, someone who ended it with them not long ago) is moved by nothing
-  of the kind.
+  someone too afraid of them, someone who ended it with them not long ago, someone who keeps
+  to a partner of their own) is moved by nothing of the kind.
+- Someone who has a partner already weighs it, each in their own way (`bonds.faith`). The
+  steadfast keep to their partner while that bond holds, and are never two people's at once:
+  once it no longer holds them they can be courted, and a yes to being a couple is leaving
+  the other. With someone torn, their partner stands in the way: every mark their heart has
+  to reach is higher by a part of their heart for that partner (`bonds.hold`), and a throw is
+  harder. Someone roving weighs nothing. A promise is to one person, so whoever gives it
+  leaves the partner they had, and nobody leaves a marriage where that is for life
+  (`bonds.for_life`).
 
 An advance that was answered moves their heart, at their own pace, and the bond comes to the
 stage the story has earned. The romance opens at interest with the first move made, whatever
@@ -46,7 +54,7 @@ from engine.contracts.intent import IntentStep, OutcomeClass, RomanceMove
 from engine.contracts.resolution import ProposedDeed, StepResolution, Trip, WooingSoFar
 from engine.limits import Intimacy, intimacy, is_adult, partners
 from engine.resolve.checks import Settled
-from engine.state.cast import Character
+from engine.state.cast import Character, Faith
 from engine.state.records import BondStage, StepResult
 from engine.state.sheet import PowerAxis
 from engine.state.world import WorldState
@@ -70,18 +78,20 @@ _CLOSED = {
     bonds.Closed.AVERSE: "{them} wants nothing of the kind from you.",
     bonds.Closed.AFRAID: "{them} is too afraid of you for anything to be freely given.",
     bonds.Closed.ENDED: "{them} ended it with you, and it is too soon for anything to mend it.",
+    bonds.Closed.BOUND: "{them} keeps to {partner}, and nothing of the kind moves them.",
 }
 
 
 @dataclass(frozen=True)
 class Heart:
     """Where a romance stands as a step starts: the bond's stage, if a live one is on record,
-    how drawn the other is, and when their heart last moved. The state's own record, or what
-    the earlier steps of this plan made of it."""
+    how drawn the other is, when their heart last moved, and whom they left for the actor.
+    The state's own record, or what the earlier steps of this plan made of it."""
 
     stage: BondStage | None = None
     attraction: int = 0
     moved_s: int | None = None
+    left: tuple[str, ...] = ()  # the partners of theirs they left for the actor in this plan
 
 
 @dataclass(frozen=True)
@@ -98,6 +108,11 @@ class Wooing:
     family: bool = False  # the two are close family, so nothing of this is ever on record
     away: bool = False  # they aren't where the step plays, so nothing of it reached them
     goes: Trip | None = None  # the way to them, when the step goes to them first (W10)
+    kept: Character | None = None  # the partner of their own who stands between the two
+    kept_heart: int = 0  # how drawn that partner is to them
+    steadfast: bool = False  # they are never two people's at once (`bonds.faith`)
+    hold: int = 0  # how much higher that partner sets every mark their heart has to reach
+    for_life: bool = False  # they are married to that partner where a marriage is for life
 
 
 def heart_of(state: WorldState, actor: Character, other: Character) -> Heart:
@@ -158,6 +173,18 @@ def read(
         away=away,
         goes=goes,
     )
+    # The partner of their own who stands between the two, unless this plan already had them
+    # leave that partner.
+    theirs = state.characters.get(bonds.kept(state, other.id, actor.id) or "")
+    if theirs is not None and theirs.id not in heart.left:
+        wooing = replace(
+            wooing,
+            kept=theirs,
+            kept_heart=bonds.heart_for(state, theirs, other.id),
+            steadfast=bonds.faith(state, other) is Faith.STEADFAST,
+            hold=bonds.hold(state, other, actor.id, promise=move is RomanceMove.PROPOSE),
+            for_life=bonds.for_life(state, other.id, theirs.id),
+        )
     family = bonds.kin(state.characters, actor.id, other.id)
     return replace(wooing, settled=_ruling(state, actor, wooing), family=family)
 
@@ -229,31 +256,44 @@ def _ruling(state: WorldState, actor: Character, wooing: Wooing) -> Settled | No
     if wooing.away:
         return _no(f"{them} isn't here.")
     closed = bonds.closed_to(state, wooing.other, actor.id)
+    theirs = wooing.kept.name if wooing.kept is not None else ""
     if wooing.move is RomanceMove.WED:
         if stage is BondStage.MARRIED:
             return _yes(f"{stands} already.")
         if stage is not BondStage.PROMISED:
             return _no(f"You and {them} aren't promised to each other.")
         if closed is not None:
-            return _no(_CLOSED[closed].format(them=them))
+            return _no(_CLOSED[closed].format(them=them, partner=theirs))
         return _yes(f"{stands}: nothing stands in the way.")
     if closed is not None:
-        return _no(_CLOSED[closed].format(them=them))
+        return _no(_CLOSED[closed].format(them=them, partner=theirs))
+    # Their own partner stands in the way of what would make the two a couple, and of a
+    # promise, which means leaving that partner.
+    held = wooing.hold
     if wooing.move is RomanceMove.DECLARE:
         if couple:
             return _yes(f"{stands} already.")
-        return _answer(them, drawn, bonds.DECLARE_NO, bonds.DECLARE_SURE)
+        if wooing.steadfast and wooing.for_life:
+            # Their yes would be leaving a marriage nobody leaves.
+            return _no(FOR_LIFE.format(them, theirs))
+        return _answer(them, drawn, bonds.DECLARE_NO, bonds.DECLARE_SURE, held, theirs)
     if wooing.move is RomanceMove.PROPOSE:
         if stage in (BondStage.PROMISED, BondStage.MARRIED):
             return _yes(f"{stands} already.")
         if stage is not BondStage.TOGETHER:
             return _no(f"You and {them} aren't together.")
-        return _answer(them, drawn, bonds.PROPOSE_NO, bonds.PROPOSE_SURE)
+        if wooing.for_life:
+            return _no(FOR_LIFE.format(them, theirs))
+        return _answer(them, drawn, bonds.PROPOSE_NO, bonds.PROPOSE_SURE, held, theirs)
     # An advance.
     if wooing.intimate:
-        if (couple and drawn >= bonds.INTIMATE_PARTNER) or drawn >= bonds.INTIMATE_SURE:
+        if wooing.kept is not None and wooing.steadfast and not couple:
+            return _no(NOT_TWO.format(them, theirs))
+        if (couple and drawn >= bonds.INTIMATE_PARTNER) or drawn - held >= bonds.INTIMATE_SURE:
             return _yes(f"{stands}: nothing stands in the way." if couple else _WANTS.format(them))
-        if not couple and drawn < bonds.INTIMATE_NO:
+        if not couple and drawn - held < bonds.INTIMATE_NO:
+            if drawn >= bonds.INTIMATE_NO:
+                return _no(BETWEEN.format(theirs, them))
             return _no(f"{_possessive(them)} heart isn't there.")
         return None
     if couple and drawn >= bonds.TENDER_SURE:
@@ -266,11 +306,24 @@ _WANTS = "{} wants this too."
 SLEPT = "You and {} sleep together"
 
 
-def _answer(them: str, drawn: int, no: int, sure: int) -> Settled | None:
-    """An ask their heart answers: yes at `sure` or more, no under `no`, open between."""
-    if drawn >= sure:
+# What the reason says where their own partner settles it.
+BETWEEN = "{} still stands between you and {}."
+NOT_TWO = "{} won't while they are still with {}."
+FOR_LIFE = "{} is married to {}, and here that is for life."
+# What it says once someone leaves the partner they had for the character.
+LEAVES = "{} leaves {} for you"
+
+
+def _answer(
+    them: str, drawn: int, no: int, sure: int, held: int = 0, theirs: str = ""
+) -> Settled | None:
+    """An ask their heart answers: yes at `sure` or more, no under `no`, open between. A
+    partner of their own raises both marks by `held`."""
+    if drawn - held >= sure:
         return _yes(_WANTS.format(them))
-    if drawn < no:
+    if drawn - held < no:
+        if drawn >= no:
+            return _no(BETWEEN.format(theirs, them))
         return _no(f"{_possessive(them)} heart isn't there yet.")
     return None
 
@@ -292,20 +345,44 @@ class _Told:
     said: list[str] = field(default_factory=list)
     moves: list[BondChange] = field(default_factory=list)
     felt: dict[str, int] = field(default_factory=dict)
+    held: int = 0  # how much higher a partner of their own sets the mark for courting
+    gone: tuple[str, ...] = ()  # whom they left for the actor earlier in this plan
+    left: list[CharacterChange] = field(default_factory=list)
 
     def to(self, new: BondStage, how: str) -> None:
         by = self.actor.id
         self.moves.append(BondChange(a_id=by, b_id=self.other.id, stage=new, by_id=by, how=how))
         self.stage = None if new is BondStage.OVER else new
 
+    def leaves(self, partner: Character, heart: int) -> None:
+        """They leave the partner they had for the actor: that romance is over, by their
+        doing, and being left costs the one who was left what it costs anyone
+        (`bonds.PARTED_COUPLE`). `heart` is how drawn that partner was to them."""
+        them, mover = self.other, self.actor.name
+        how = f"{them.name} left {partner.name} for {mover}."
+        self.moves.append(
+            BondChange(a_id=them.id, b_id=partner.id, stage=BondStage.OVER, by_id=them.id, how=how)
+        )
+        # From the heart they had, which the record may not hold yet (`bonds.heart_for`).
+        after = max(0, heart - bonds.PARTED_HEART_COUPLE)
+        on_record = partner.attitude_toward(them.id).attraction
+        cost = bonds.PARTED_COUPLE
+        shift = AttitudeShift(
+            toward_id=them.id, affinity=-cost, trust=-cost, attraction=after - on_record
+        )
+        self.left.append(CharacterChange(id=partner.id, attitudes=[shift]))
+        self.said.append(LEAVES.format(them.name, partner.name))
+
     def done(self) -> tuple[list[str], StateDelta, Heart]:
         changes = StateDelta(bonds=self.moves)
+        people = list(self.left)
         if self.felt:
             shift = AttitudeShift(toward_id=self.actor.id, **self.felt)
-            changes = changes.model_copy(
-                update={"characters": [CharacterChange(id=self.other.id, attitudes=[shift])]}
-            )
-        return self.said, changes, Heart(self.stage, self.drawn, self.moved_s)
+            people.insert(0, CharacterChange(id=self.other.id, attitudes=[shift]))
+        if people:
+            changes = changes.model_copy(update={"characters": people})
+        gone = (*self.gone, *(change.id for change in self.left))
+        return self.said, changes, Heart(self.stage, self.drawn, self.moved_s, gone)
 
 
 def settle(
@@ -322,7 +399,15 @@ def settle(
     advance that was answered moves the other's heart (`bonds.gain`), and the bond comes to
     the stage this earned. The first move opens the romance, whatever came of it."""
     heart = wooing.heart
-    told = _Told(actor, wooing.other, heart.stage, heart.attraction, heart.moved_s)
+    told = _Told(
+        actor,
+        wooing.other,
+        heart.stage,
+        heart.attraction,
+        heart.moved_s,
+        held=wooing.hold,
+        gone=heart.left,
+    )
     if (wooing.family or wooing.away) and wooing.move is not RomanceMove.PART:
         # Nothing of the kind is ever between close family, and nothing reached someone who
         # wasn't there.
@@ -367,10 +452,16 @@ def settle(
         told.to(BondStage.INTEREST, f"{mover} made it plain to {them}.")
     if won and wooing.move is RomanceMove.DECLARE:
         if told.stage in (BondStage.INTEREST, BondStage.COURTING):
+            if wooing.kept is not None and wooing.steadfast:
+                # Never two people's at once: their yes is leaving the partner they had.
+                told.leaves(wooing.kept, wooing.kept_heart)
             told.to(BondStage.TOGETHER, f"{mover} asked, and {them} said yes.")
             told.said.append(f"You and {them} are together now")
     elif won:
         if told.stage is BondStage.TOGETHER:
+            if wooing.kept is not None:
+                # A promise is to one person.
+                told.leaves(wooing.kept, wooing.kept_heart)
             told.to(BondStage.PROMISED, f"{mover} asked for a promise, and {them} gave it.")
             told.said.append(f"You and {them} are promised to each other now")
     elif thrown and half:
@@ -413,7 +504,8 @@ def _gain(
 
 def _advance(told: _Told, more: int, won: bool, ends_s: int) -> None:
     """An advance, made: the romance opens with it, their heart moves by `more`, and one that
-    came off with their heart far enough along makes it a courtship."""
+    came off with their heart far enough along makes it a courtship: further along where a
+    partner of their own stands in the way (`_Told.held`)."""
     them, mover = told.other.name, told.actor.name
     if told.stage is None:
         told.to(BondStage.INTEREST, f"{mover} made it plain to {them}.")
@@ -421,7 +513,7 @@ def _advance(told: _Told, more: int, won: bool, ends_s: int) -> None:
         told.drawn, told.moved_s = told.drawn + more, ends_s
         told.felt = {"attraction": more}
         told.said.append(f"{them} is more drawn to you than before")
-    if won and told.stage is BondStage.INTEREST and told.drawn >= bonds.COURTING_AT:
+    if won and told.stage is BondStage.INTEREST and told.drawn >= bonds.COURTING_AT + told.held:
         told.to(BondStage.COURTING, f"{them} answered {_possessive(mover)} advances.")
         told.said.append(f"{them} answers it, and the two of you are courting now")
 
@@ -449,7 +541,8 @@ def deed(
     romance, and anything toward close family, never. How grave it is follows what was done
     and where it took the two (`bonds.gravity`, `now` being where the romance stands after
     it). `hearts` is where this plan's earlier steps left the actor's other romances: a
-    partner the actor has just left isn't wronged by what comes after."""
+    partner the actor has just left isn't wronged by what comes after, and neither is one
+    the other left for the actor earlier in the plan (`Heart.left`)."""
     if wooing.family or wooing.away or wooing.move is RomanceMove.PART:
         return None
     before, after = wooing.heart.stage, now.stage
@@ -459,7 +552,8 @@ def deed(
     wronged = [
         who
         for who in bonds.wronged(state, actor.id, wooing.other.id)
-        if who not in hearts or (hearts[who].stage is not None and hearts[who].stage.couple)
+        if who not in wooing.heart.left
+        and (who not in hearts or (hearts[who].stage is not None and hearts[who].stage.couple))
     ]
     if not wronged:
         return None
@@ -524,7 +618,8 @@ def cut_short(
     actor, other = state.characters.get(actor_id), state.characters.get(kept.other_id)
     if actor is None or other is None or not other.alive:
         return reason, StateDelta()
-    told = _Told(actor, other, kept.stage, kept.attraction, kept.moved_s)
+    held = bonds.hold(state, other, actor_id)
+    told = _Told(actor, other, kept.stage, kept.attraction, kept.moved_s, held=held)
     more = _gain(told, True, kept.whole, kept.over_the_top, start_s, ran_s, cut=True)
     if more <= 0:
         return reason, StateDelta()

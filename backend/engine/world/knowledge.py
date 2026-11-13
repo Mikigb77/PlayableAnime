@@ -259,9 +259,12 @@ def _wronged(
 
 def _had_enough(state: WorldState, character: Character, deed: Deed) -> bool:
     """W17. Whether a partner who learns of one more move in an affair they already know of
-    has had enough: their heart is under `bonds.LEAVES_UNDER` now."""
+    has had enough: their heart is under `bonds.LEAVES_UNDER` now. Never where the two are
+    married for life (`bonds.for_life`): there is nothing they could come to end."""
     bond = bonds.live(state, character.id, deed.actor_id)
     if bond is None or not bond.stage.couple or deed.severity < bonds.FACED_FROM:
+        return False
+    if bonds.for_life(state, character.id, deed.actor_id):
         return False
     return character.attitude_toward(deed.actor_id).attraction < bonds.LEAVES_UNDER
 

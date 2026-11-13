@@ -430,7 +430,7 @@ def apply_change(
     for name in ("nature", "norms", "known_facts"):
         if lines := [line for line in getattr(change, name) if line.strip()]:
             merged[name] = lines
-    for name in ("calendar", "travel", "medicine", "opening", "several_partners"):
+    for name in ("calendar", "travel", "medicine", "opening", "several_partners", "unions"):
         if (part := getattr(change, name)) is not None:
             merged[name] = part
     merged["dropped_rule_ids"] = []

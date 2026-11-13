@@ -602,7 +602,14 @@ the scene tells only as much as the reason of the step holds. A \
 step toward someone who was a short way off goes to them first: it has a trip, they are where it \
 ends, and what they answer is told there. When a step's reason says they aren't here, it reached \
 nobody: the player character finds they are not around, and the scene never has them turn up, \
-answer or send word. A partner minds another romance, their own partner's or one with their \
+answer or send word. Someone who has a partner weighs it when anyone else courts them, each \
+in their own way: faith under a person who has a partner says how. Whoever keeps to their \
+partner turns every such advance down, kindly or not, and never wavers, hints or flirts back; \
+someone who could be moved shows the pull both ways; and only the reason of a step says how it \
+came out. When a reason says their partner still stands between the two, that is why they say \
+no, and when it says someone leaves their partner for the player character, they have made up \
+their mind and say so: the one they leave is told off the page unless they are in the scene. \
+A partner minds another romance, their own partner's or one with their \
 partner. wrongs under a step lists them. saw_it true: they were there and saw it happen, and the \
 scene shows what it is to them. With stayed_in, that place is where they saw it, from among the \
 people around, before the step took the scene elsewhere: they are shown seeing it there, and \

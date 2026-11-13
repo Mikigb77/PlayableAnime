@@ -102,6 +102,7 @@ from engine.state import (
     TimePower,
     Trait,
     Travel,
+    Unions,
     WorldBible,
     WorldRule,
     WorldState,
@@ -491,6 +492,7 @@ class _Assembler:
             laws=self._laws(),
             norms=_texts(w.norms, 8, 300),
             several_partners=bool(w.several_partners),
+            unions=w.unions or Unions.HELD,
             rules=list(rules.values()),
             mysteries=self._mysteries(),
         )
@@ -812,6 +814,7 @@ class _Assembler:
                     sheet=sheet,
                     agenda=agenda,
                     secrets=_texts(proposed.secrets, 6),
+                    faith=proposed.faith,
                     activity=Activity.ACTIVE if index < ACTIVE_NPCS else Activity.DORMANT,
                     origin=Origin(kind=OriginKind.PREMISE),
                     known_by=[PLAYER_ID] if knows in ("met", "heard_of") else [],
@@ -842,7 +845,9 @@ class _Assembler:
         that courting someone's wife wrongs a husband who is on record. One for each pair, and
         only between recorded adults (F3) who aren't close family. Someone the draft bound to
         the player character and left with no heart of their own is as drawn to them as they
-        are fond of them."""
+        are fond of them, and two key characters who are a couple each have a heart for the
+        other (`bonds.settled_heart`): how much of it there is says how far that partner
+        stands in a suitor's way (`bonds.hold`)."""
         romances: list[Bond] = []
         paired: set[frozenset[str]] = set()
 
@@ -876,7 +881,13 @@ class _Assembler:
         for npc_id, proposed in self.npc_list:
             partner_id = partners[npc_id]
             if partner_id in characters and partner_id != PLAYER_ID:
-                bind(npc_id, partner_id, BondStage(proposed.partner_bond))
+                stage = BondStage(proposed.partner_bond)
+                if bind(npc_id, partner_id, stage) and stage.couple:
+                    for one, other in ((npc_id, partner_id), (partner_id, npc_id)):
+                        attitudes = characters[one].sheet.disposition.attitudes
+                        toward = attitudes.setdefault(other, Attitude())
+                        if toward.attraction == 0:
+                            toward.attraction = bonds.settled_heart(one, other)
         return romances
 
     def _player(self) -> Character:

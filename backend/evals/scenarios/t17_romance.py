@@ -25,14 +25,18 @@ from engine.contracts import (
     StateDelta,
 )
 from engine.state import (
+    Bond,
     BondEnd,
     BondStage,
+    BondStep,
     Deed,
     EventStatus,
+    Faith,
     PendingEvent,
     Place,
     PowerAxis,
     StepResult,
+    Unions,
     WorldState,
 )
 from engine.visibility import memory_view
@@ -1187,6 +1191,255 @@ async def a_rival(ev: Eval) -> None:
         str(away),
         live=False,
     )
+
+
+WIVES = ("keeps to him", "gone cold", "torn", "for life")
+KEEPS = "Mara Voss keeps to Jorn Hale, and nothing of the kind moves them."
+NOT_TWO = "Mara Voss won't while they are still with Jorn Hale."
+BETWEEN = "Jorn Hale still stands between you and Mara Voss."
+LEAVES = "Mara Voss leaves Jorn Hale for you."
+FOR_LIFE = "Mara Voss is married to Jorn Hale, and here that is for life."
+# How far a husband she loves (a heart of 80 for him) stands in the way with a torn wife.
+LOVED = 80
+HELD = LOVED // bonds.HOLD
+
+
+def with_jorn(story: Story) -> BondStage | None:
+    bond = bonds.live(story.state, MARA, JORN)
+    return bond.stage if bond is not None else None
+
+
+def lovers(state: WorldState) -> None:
+    """Tomas and Mara have been lovers since before the story, as her marriage is."""
+    since = BondStep(stage=BondStage.TOGETHER, how="As the story opens.")
+    state.bonds["bond-2"] = Bond(
+        id="bond-2", a_id=YOU, b_id=MARA, stage=BondStage.TOGETHER, steps=[since]
+    )
+
+
+def settled_as(played: Played, expected: OutcomeClass | None, says: str = "") -> bool:
+    """Whether a turn's one move was settled as `expected` (`answered_as`), with `says` in
+    the reason of its step."""
+    return answered_as(played, expected) and says in played.steps[0].reason
+
+
+@scenario(
+    "t17.faithful",
+    suite="T17",
+    title="Someone else's wife",
+    requirements=("W17", "A2", "W1", "W10", "C6", "T17"),
+    passes_when=(
+        "A man courts the smith's wife, who is drawn to him. A wife who keeps to her husband "
+        "turns a walk, an ask and a night down with nothing thrown: her heart doesn't move, "
+        "each move still wrongs her husband on record, and the scene is told she keeps to "
+        "him. A wife like her whose marriage has gone cold refuses a night while she is "
+        "still married, and her yes to being his is leaving her husband: the marriage is "
+        "over on record by her doing, it costs him what being left costs anyone, and a night "
+        "afterwards wrongs nobody. With a wife who is torn her husband stands in the way: an "
+        "ask she would hear if she were free is turned down for him, and with her heart "
+        "further along it is thrown for, a step harder, and a yes makes her his lover and "
+        "leaves her married. Where a marriage is for life nobody gives a promise that would "
+        "end one, and where it can be left her promise ends it"
+    ),
+)
+async def faithful(ev: Eval) -> None:
+    ends: Counter[str] = Counter()
+    for index, seed in enumerate(ev.seeds(12, live=2)):
+        how = WIVES[index % len(WIVES)]
+
+        def story_of(world: WorldState, seed: str = seed) -> Story:
+            return ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
+
+        if how == "keeps to him":
+            story = story_of(
+                worlds.husband_in_millbrook(drawn=50, faith=Faith.STEADFAST, theirs=70)
+            )
+            was = heart(story)
+            played = [
+                await story.act(WALK, walk_home()),
+                await story.act(ASK, ask()),
+                await story.act(NIGHT, night()),
+            ]
+            ev.check(
+                "a wife who keeps to her husband turns every advance down with nothing thrown",
+                all(settled_as(turn, OutcomeClass.RULED_OUT, KEEPS) for turn in played),
+                f"{seed}: {as_read(played)}",
+            )
+            ev.check(
+                "nothing moves her heart, and all the record holds of the two is that he tried",
+                heart(story) == was
+                and stage(story) is BondStage.INTEREST
+                and with_jorn(story) is BondStage.MARRIED,
+                f"{seed}: {was} to {heart(story)}, {stage(story)}, {with_jorn(story)}",
+            )
+            deeds = wrongs(story, JORN)
+            ev.check(
+                "each move still wrongs her husband on record, and none is a night together",
+                len(deeds) == len(played) and all(d.kind == "court" for d in deeds),
+                f"{seed}: {[(d.kind, d.severity) for d in deeds]}, {as_read(played)}",
+            )
+            told = story.prompt(Node.NARRATOR)
+            ev.check(
+                "the scene is told she keeps to her husband, and that her heart is closed",
+                '"faith":"keeps to their partner' in told
+                and '"their_heart":"closed to you: they keep to Jorn Hale"' in told,
+                f"{seed}",
+                live=False,
+            )
+            await ev.judge(
+                "courting a wife who keeps to her husband",
+                Rubric(
+                    must=(
+                        "Mara turns Tomas down in every scene, as OUTCOME says of each step, "
+                        "and it is plain that she keeps to her husband",
+                        NIGHT_AS_DECIDED,
+                    ),
+                    must_not=(
+                        "Mara flirts back, wavers, or hints that she might yet be won",
+                        "Mara kisses Tomas, or agrees to be his sweetheart",
+                    ),
+                ),
+                played,
+            )
+        elif how == "gone cold":
+            story = story_of(
+                worlds.husband_in_millbrook(drawn=80, faith=Faith.STEADFAST, theirs=20)
+            )
+            his = feels(story, JORN, MARA)
+            early = await story.act(NIGHT, night())
+            ev.check(
+                "while she is still married there is no night with her",
+                settled_as(early, OutcomeClass.RULED_OUT, NOT_TWO)
+                and with_jorn(story) is BondStage.MARRIED,
+                f"{seed}: {with_jorn(story)}, {as_read([early])}",
+            )
+            yes = await story.act(ASK, ask())
+            ev.check(
+                "asked to be his, she says yes with nothing thrown and leaves her husband",
+                settled_as(yes, OutcomeClass.CERTAIN, LEAVES),
+                f"{seed}: {as_read([yes])}",
+            )
+            over = bonds.last_over(story.state, MARA, JORN)
+            ev.check(
+                "the marriage is over on record by her doing, and she is his and nobody else's",
+                stage(story) is BondStage.TOGETHER
+                and with_jorn(story) is None
+                and over is not None
+                and (over.end, over.steps[-1].by_id) == (BondEnd.PARTED, MARA)
+                and bonds.partners(story.state, MARA) == [YOU],
+                f"{seed}: {stage(story)}, {with_jorn(story)}, {bonds.partners(story.state, MARA)}",
+            )
+            cost = bonds.PARTED_COUPLE
+            ev.check(
+                "being left costs her husband what it costs anyone",
+                feels(story, JORN, MARA)
+                == (his[0] - cost, his[1] - cost, max(0, his[2] - bonds.PARTED_HEART_COUPLE)),
+                f"{seed}: {his} to {feels(story, JORN, MARA)}",
+                live=False,  # a live scene may move his liking as well
+            )
+            ev.check(
+                "Memory has the two as a couple",
+                remembered(story) is BondStage.TOGETHER,
+                f"{seed}: {remembered(story)}",
+            )
+            before = len(wrongs(story, JORN))
+            later = await story.act(NIGHT, night())
+            ev.check(
+                "a night with her now is theirs, and wrongs nobody",
+                settled_as(later, OutcomeClass.CERTAIN, "sleep together")
+                and len(wrongs(story, JORN)) == before,
+                f"{seed}: {[(d.kind, d.severity) for d in wrongs(story, JORN)]}, "
+                f"{as_read([later])}",
+            )
+            gravest = max((d.severity for d in wrongs(story, JORN)), default=0)
+            ev.check(
+                "taking her from him wronged her husband as gravely as anything does",
+                gravest == bonds.BETRAYAL,
+                f"{seed}: {[(d.kind, d.severity) for d in wrongs(story, JORN)]}",
+            )
+            await ev.judge(
+                "a wife whose marriage has gone cold",
+                Rubric(
+                    must=(
+                        "In the scene whose step is ruled out, Mara refuses the night because "
+                        "she is still married to Jorn",
+                        "In the scene whose OUTCOME says Mara leaves Jorn for Tomas, she says "
+                        "yes and makes plain that she is leaving her husband for him",
+                        NIGHT_AS_DECIDED,
+                    ),
+                    must_not=(
+                        "Jorn is in a scene, or is told of it on the page",
+                        "The night, if there is one, is told in explicit sexual detail",
+                    ),
+                ),
+                [early, yes, later],
+            )
+            if not ev.live:
+                # The man she left hears of it in the village, and comes over it (W2, W4).
+                story.change(goes_home)
+                days = await days_at_home(story, JORN)
+                ev.check(
+                    "the husband she left learns whom she left him for, and comes to have it out",
+                    bool(knows(story, JORN)) and bool(came(story, JORN)),
+                    f"{seed}: knows {[(d.kind, d.severity) for d in knows(story, JORN)]}, "
+                    f"{as_read(days[-2:])}",
+                )
+        elif how == "torn":
+            near = bonds.DECLARE_NO + HELD - 5  # enough for someone free to hear him out
+            story = story_of(
+                worlds.husband_in_millbrook(drawn=near, faith=Faith.TORN, theirs=LOVED)
+            )
+            first = await story.act(ASK, ask())
+            ev.check(
+                "an ask a free heart would hear is turned down for her husband",
+                settled_as(first, OutcomeClass.RULED_OUT, BETWEEN)
+                and by_her_heart(near, bonds.DECLARE_NO, bonds.DECLARE_SURE) is None,
+                f"{seed}: {as_read([first])}",
+            )
+            sure = bonds.DECLARE_SURE  # a free heart would say yes with nothing thrown
+
+            def further(state: WorldState, to: int = sure) -> None:
+                state.characters[MARA].sheet.disposition.attitudes[YOU].attraction = to
+
+            story.change(further)
+            second = await story.act(ASK, ask())
+            ev.check(
+                "with her heart further along it is thrown for, and her husband makes it harder",
+                settled_as(second, None, "Mara Voss is with Jorn Hale"),
+                f"{seed}: {as_read([second])}",
+            )
+            won = bool(second.steps) and second.steps[0].result is StepResult.SUCCESS
+            ends["she said yes" if won else "she said no"] += 1
+            ev.check(
+                "a yes makes her his lover and leaves her married, and a no leaves all as it was",
+                (stage(story) is BondStage.TOGETHER) == won
+                and with_jorn(story) is BondStage.MARRIED,
+                f"{seed}: {stage(story)}, {with_jorn(story)}, {as_read([second])}",
+            )
+        else:
+            here = story_of(
+                worlds.husband_in_millbrook(drawn=95, theirs=LOVED, unions=Unions.FOR_LIFE)
+            )
+            here.change(lovers)
+            no = await here.act(PROPOSE, propose())
+            ev.check(
+                "where a marriage is for life nobody gives a promise that would end one",
+                settled_as(no, OutcomeClass.RULED_OUT, FOR_LIFE)
+                and stage(here) is BondStage.TOGETHER
+                and with_jorn(here) is BondStage.MARRIED,
+                f"{seed}: {stage(here)}, {with_jorn(here)}, {as_read([no])}",
+            )
+            elsewhere = story_of(worlds.husband_in_millbrook(drawn=95, theirs=LOVED))
+            elsewhere.change(lovers)
+            yes = await elsewhere.act(PROPOSE, propose())
+            ev.check(
+                "where a marriage can be left, her promise to him ends it",
+                settled_as(yes, OutcomeClass.CERTAIN, LEAVES)
+                and stage(elsewhere) is BondStage.PROMISED
+                and with_jorn(elsewhere) is None,
+                f"{seed}: {stage(elsewhere)}, {with_jorn(elsewhere)}, {as_read([yes])}",
+            )
+    ev.metric("a torn wife, asked", dict(ends))
 
 
 @scenario(

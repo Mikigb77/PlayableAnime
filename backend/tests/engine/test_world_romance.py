@@ -26,6 +26,7 @@ from engine.state import (
     Membership,
     Place,
     Route,
+    Unions,
     Visibility,
     WorldState,
 )
@@ -414,6 +415,27 @@ def test_a_partner_whose_heart_is_gone_comes_to_end_it():
     ilse = next(p for p in memory_view(state).people if p.id == "ilse")
     assert ilse.bond is BondStage.OVER
     assert ilse.bond_line.startswith("You were married until they ended it")
+
+
+def test_where_a_marriage_is_for_life_a_wronged_wife_has_it_out_and_stays():
+    state = valley(heart=60)
+    state.bible.unions = Unions.FOR_LIFE
+    state, fired = faced(done(state, move(), move(bonds.BETRAYAL, "lie_with")))
+    assert feels(state)[2] < bonds.LEAVES_UNDER  # her heart is gone all the same
+    (came,) = [e for e in answers(fired) if e.needs_player]
+    assert came.title.startswith("Ilse Weller comes to have it out with Tomas Weller, to hear")
+    assert marriage(state).stage is BondStage.MARRIED
+    # One more evening of it gives her nothing new to come and end.
+    state.scene.present_ids = [YOU, "mara", "bram"]
+    state, fired = faced(done(state, move()))
+    assert not [e for e in answers(fired) if e.needs_player]
+    assert marriage(state).stage is BondStage.MARRIED
+    # Two who aren't wed part here like anywhere.
+    lovers = valley(heart=60)
+    lovers.bible.unions = Unions.FOR_LIFE
+    marriage(lovers).stage = BondStage.TOGETHER
+    lovers, _ = faced(done(lovers, move(), move(bonds.BETRAYAL, "lie_with")))
+    assert marriage(lovers).stage is BondStage.OVER
 
 
 def test_it_ends_only_once_they_have_found_them():

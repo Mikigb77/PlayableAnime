@@ -230,6 +230,16 @@ class Law(EngineModel):
     corruptible: bool = False
 
 
+class Unions(StrEnum):
+    """W17. How couples hold in this world, which is its custom. It says how many of its
+    people keep to a partner whatever comes (`engine.bonds.faith`) and whether a marriage
+    can be left at all."""
+
+    FOR_LIFE = "for_life"  # a marriage is for life: leaving one is all but unheard of
+    HELD = "held"  # a couple are held to each other: some part, and it costs them dearly
+    EASY = "easy"  # couples part and take up with others often, and nobody is surprised
+
+
 class Mystery(EngineModel):
     """N7. A major mystery is decided when it is created, answer and clues, so investigations stay
     fair. The answer is hidden from the player (C6) until the thread closes."""
@@ -271,6 +281,10 @@ class WorldBible(EngineModel):
             "W17: having several partners at once is the custom here, so another romance"
             " wrongs no partner. False where a couple are held to each other."
         ),
+    )
+    unions: Unions = Field(
+        default=Unions.HELD,
+        description="W17: how couples hold here, which sets how faithful its people are.",
     )
     rules: list[WorldRule] = Field(default_factory=list)
     mysteries: list[Mystery] = Field(default_factory=list)

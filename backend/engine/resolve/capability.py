@@ -47,7 +47,14 @@ from statistics import mean
 from engine import bonds, levels
 from engine import talent as talent_mod
 from engine.context import Difficulty
-from engine.contracts.intent import Challenge, Edge, EdgeSource, IntentStep, SheetPart
+from engine.contracts.intent import (
+    Challenge,
+    Edge,
+    EdgeSource,
+    IntentStep,
+    RomanceMove,
+    SheetPart,
+)
 from engine.resolve.checks import Drawn
 from engine.resolve.throw import MAX_GREENS, Hand, Number, level_number, own_die
 from engine.resolve.words import cap, is_are, mentions, name, possessive, stems
@@ -402,6 +409,11 @@ def number_for(
             if step.romance is not None and attitude.attraction >= bonds.DRAWN_AT:
                 # W17. Their own heart moves a step that is a move in a romance.
                 help_.append((f"{them} is drawn to {'you' if player else actor.name}", -STEP))
+            promise = step.romance is RomanceMove.PROPOSE
+            if step.romance is not None and bonds.hold(state, rival, actor.id, promise=promise):
+                # W17. A partner of their own stands in the way of it.
+                theirs = name(state, bonds.kept(state, rival.id, actor.id) or "")
+                number = number.plus(f"{them} is with {theirs}", STEP)
             warmth = (attitude.affinity + attitude.trust) / 2
             if warmth >= ATTITUDE_AT:
                 help_.append((f"{them} likes and trusts {'you' if player else actor.name}", -STEP))

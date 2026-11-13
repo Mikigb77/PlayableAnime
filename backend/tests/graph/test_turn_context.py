@@ -47,6 +47,7 @@ from engine.state.cast import (
     Character,
     CharacterStatus,
     DeathCertainty,
+    Faith,
     Place,
     Pregnancy,
     Prominence,
@@ -86,6 +87,7 @@ from engine.world import returns
 from engine.world.scheduling import World
 from graph.turn import prompts
 from graph.turn.context import (
+    _FAITH,
     _PACE,
     LAST_SCENE_CHARS,
     RECENT_SCENES,
@@ -1995,3 +1997,61 @@ def test_the_narrator_reads_a_heart_that_closed_when_they_ended_it():
     assert "A heart that is closed since they ended it answers nothing of the kind" in " ".join(
         prompts.NARRATOR_SYSTEM.split()
     )
+
+
+def test_the_narrator_reads_how_someone_holds_to_a_partner_of_their_own():
+    """W17. Someone who has a partner weighs it when anyone else courts them, each in their
+    own way, and the narrator is told which: otherwise a devoted wife flirts back in the
+    telling while the rules turn every advance down."""
+    state = farm_world()
+    state.scene.present_ids = ["tomas", "ilse", "bram", "mara"]
+    state.characters["mara"] = Character(id="mara", name="Mara", age=29, location_id="farm")
+    state.characters["jorn"] = Character(id="jorn", name="Jorn", age=33, location_id="village")
+    wed = BondStep(stage=BondStage.MARRIED)
+    state.bonds["bond-2"] = Bond(
+        id="bond-2", a_id="jorn", b_id="mara", stage=BondStage.MARRIED, steps=[wed]
+    )
+
+    def read(of: WorldState) -> tuple[dict, dict]:
+        text = brief(of).user
+        scene = json.loads(text.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])
+        you = json.loads(text.split("## PLAYER CHARACTER\n", 1)[1].split("\n\n## ", 1)[0])
+        return {p["id"]: p for p in scene["present"]}, you
+
+    present, you = read(state)
+    mara = present["mara"]
+    assert bonds.faith(state, state.characters["mara"]) is Faith.STEADFAST
+    assert mara["family"] == {
+        "partners": [{"id": "jorn", "name": "Jorn", "bond": "married"}],
+        "faith": "keeps to their partner: nobody else moves them while that bond holds",
+    }
+    assert "bond_with_you" not in mara  # nothing has been between the two
+    # Someone with nobody has nothing to weigh, and the player character's heart is their own.
+    assert "family" not in present["bram"] and "faith" not in you["family"]
+    assert (
+        present["ilse"]["family"]["faith"] == _FAITH[bonds.faith(state, state.characters["ilse"])]
+    )
+
+    # Once a move is on record, her heart reads closed, and whom she keeps to.
+    made = BondStep(stage=BondStage.INTEREST, turn=3, by_id="tomas")
+    state.bonds["bond-3"] = Bond(id="bond-3", a_id="tomas", b_id="mara", steps=[made])
+    assert read(state)[0]["mara"]["bond_with_you"]["their_heart"] == (
+        "closed to you: they keep to Jorn"
+    )
+    # Someone torn is told as such, with their heart as it stands.
+    state.characters["mara"].faith = Faith.TORN
+    mara = read(state)[0]["mara"]
+    assert mara["family"]["faith"] == (
+        "could be moved by someone else, with their partner standing in the way"
+    )
+    assert mara["bond_with_you"]["their_heart"] == "not drawn to you"
+    state.characters["mara"].faith = Faith.ROVING
+    assert read(state)[0]["mara"]["family"]["faith"] == "lets a partner stand in nobody's way"
+    # Where several partners are the custom there is nothing of the kind to weigh.
+    state.bible.several_partners = True
+    assert "faith" not in read(state)[0]["mara"]["family"]
+
+    system = " ".join(prompts.NARRATOR_SYSTEM.split())
+    assert "faith under a person who has a partner says how" in system
+    assert "never wavers, hints or flirts back" in system
+    assert "they have made up their mind and say so" in system
