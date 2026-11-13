@@ -69,7 +69,7 @@ from engine.world.births import NAME_ROOM, is_placeholder, placeholder_name
 from engine.world.geography import scene_ids, together, travel_s
 from engine.world.knowledge import closeness, shift_attitude
 from engine.world.norms import is_beast
-from engine.world.scheduling import Kind, World, by_id, pending
+from engine.world.scheduling import Kind, World, by_id, over, pending
 from engine.world.tuning import (
     CHILD_GAP_S,
     CHILD_RATE_MARRIED,
@@ -282,11 +282,6 @@ def _years(person: Character, since_s: int, now_s: int) -> float:
     return max(0, now_s - start) / YEAR
 
 
-def _over(rate: float, years: float) -> float:
-    """The chance of something within a stretch, from its chance in one year."""
-    return 1 - (1 - min(1.0, max(0.0, rate))) ** max(0.0, years)
-
-
 def _lifespan(state: WorldState, person: Character) -> int:
     """How long someone's people live (G23), or a human span where the world doesn't say."""
     people = next((p for p in state.bible.peoples if p.id == person.people_id), None)
@@ -421,7 +416,7 @@ def _couple(w: World, homes: _Homes, bond: Bond, a: Character, b: Character, yea
     part = (PART_RATE_MARRIED if married else PART_RATE_TOGETHER)[state.bible.unions]
     if min(hearts.values()) < bonds.LEAVES_UNDER:
         part *= PART_COLD
-    if part and w.roll("life", "part", bond.id).chance(_over(part, years)):
+    if part and w.roll("life", "part", bond.id).chance(over(part, years)):
         # Whoever's heart is less in it ends it.
         leaver, left = sorted((a, b), key=lambda c: (hearts[c.id], natural_key(c.id)))
         bonds.end(
@@ -440,7 +435,7 @@ def _couple(w: World, homes: _Homes, bond: Bond, a: Character, b: Character, yea
         _news(w, homes, LifeKind.PARTED, [leaver.id, left.id], by_id=leaver.id)
         return
     if not married:
-        if w.roll("life", "marry", bond.id).chance(_over(MARRY_RATE, years)):
+        if w.roll("life", "marry", bond.id).chance(over(MARRY_RATE, years)):
             # A wedding keeps a promise: the record has both steps, a stage at a time.
             hows = {
                 BondStage.PROMISED: f"{a.name} and {b.name} promised themselves to each other.",
@@ -465,7 +460,7 @@ def _couple(w: World, homes: _Homes, bond: Bond, a: Character, b: Character, yea
     ):
         return
     rate = CHILD_RATE_MARRIED if married else CHILD_RATE_TOGETHER
-    if w.roll("life", "child", bond.id).chance(_over(rate, years)):
+    if w.roll("life", "child", bond.id).chance(over(rate, years)):
         names = f"{a.name} and {b.name}"
         child = Character(
             id=state.new_id("npc"),
@@ -497,7 +492,7 @@ def _pair(w: World, homes: _Homes, person: Character, years: float) -> None:
     # The more their heart is with the player character, the longer they wait.
     waiting = 1 - person.attitude_toward(you).attraction / 100
     rate = PAIR_RATE * waiting * (1 if _prime(state, person) else PAIR_LATE)
-    if not w.roll("life", "pair", person.id).chance(_over(rate, years)):
+    if not w.roll("life", "pair", person.id).chance(over(rate, years)):
         return
     stream = w.roll("life", "partner", person.id)
     matches = _matches(homes, person)
@@ -595,7 +590,7 @@ def _tie(w: World, homes: _Homes, person: Character, years: float, known: Iterab
         return
     if person.age is not None and person.age < TIE_AGE:
         return
-    if not w.roll("life", "tie", person.id).chance(_over(TIE_RATE, years)):
+    if not w.roll("life", "tie", person.id).chance(over(TIE_RATE, years)):
         return
     others = []
     for other_id in sorted(set(known) - {person.id}, key=natural_key):

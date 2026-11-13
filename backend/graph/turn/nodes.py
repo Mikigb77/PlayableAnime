@@ -672,6 +672,9 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         world, told_news, played=state["world"], shown=shown, scene=scene_text
     )
     issues += [Issue("life_heard", "the scene told it", subject=key) for key in heard]
+    # W6, C6: and so with what the years did to the wider world.
+    world, heard = pipeline.settle_changes(world, told_news, scene=scene_text)
+    issues += [Issue("change_heard", "the scene told it", subject=key) for key in heard]
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 

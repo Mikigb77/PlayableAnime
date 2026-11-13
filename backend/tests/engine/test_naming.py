@@ -157,3 +157,27 @@ def test_everyone_called_is_whoever_a_few_words_are_the_name_of():
 def test_someone_named_for_anothers_sake_counts():
     state = world(MEI)
     assert naming.everyone_named(state, [["mei"]], ["I flirt with Mei's mother"]) == ["mei"]
+
+
+def test_factions_and_places_are_read_by_name_and_a_shared_word_comes_back_as_both():
+    """W6: whether a scene named a faction or a place it was handed news of
+    (`strife.borne_out`). A name of several words counts whole, with or without its article,
+    one word of a name with its capital, and a word two share is either of them."""
+    names = {
+        "crown": ["the Crown of Harrow"],
+        "league": ["the Eastmark League"],
+        "eastmark": ["Eastmark"],
+        "ford": ["Willow Ford"],
+    }
+
+    def spoken(text: str) -> set[frozenset[str]]:
+        return set(naming.spoken_of(names, [text]))
+
+    assert spoken("The League is gone, they say.") == {frozenset({"league"})}
+    assert spoken("word of the crown of harrow") == {frozenset({"crown"})}  # whole, any case
+    assert spoken("Eastmark burned.") == {frozenset({"eastmark", "league"})}
+    assert spoken("You cross at Willow Ford.") == {frozenset({"ford"})}
+    # A word without its capital is no name, an article never is, and "of" is no part of one.
+    assert spoken("you ford the stream, and the crown of the hill is bare") == set()
+    assert spoken("The mill turns. Of course it does.") == set()
+    assert naming.spoken_of({}, ["The League is gone."]) == []

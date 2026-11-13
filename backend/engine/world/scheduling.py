@@ -118,3 +118,10 @@ def event_rng(event: PendingEvent, rng: SeededRng) -> SeededRng:
 def by_id(records) -> list:
     """Records in a stable order, never the map's (Postgres JSONB reorders keys)."""
     return sorted(records, key=lambda r: natural_key(r.id))
+
+
+def over(rate: float, years: float) -> float:
+    """The chance of something within a stretch of `years`, from its chance in one year: a
+    month brings next to nothing and ten years a great deal, with nothing made to happen
+    (W6, W10)."""
+    return 1 - (1 - min(1.0, max(0.0, rate))) ** max(0.0, years)

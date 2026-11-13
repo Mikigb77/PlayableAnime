@@ -142,6 +142,14 @@ The first version's state, checked against the code in WS18.
       that it is one, after how long, and what the years brought them, the news stays theirs
       to tell until a scene does, naming whom it came with, and Memory then shows it with its
       day (W6, W10, C6).
+- [x] The wider world moves over the years: a war between two factions may come to a head while
+      the story is elsewhere. The stronger side wins outright where nothing the other has can
+      stand against it, a close war goes either way, a loser is weakened and loses land or
+      falls, and both may fall and leave their land to whoever takes it. A month brings
+      nothing, and some wars are never fought out. The player character's own faction and the
+      place they are in are the story's to tell. Far away it is news: the scene in a place it
+      touched, or that word has reached, is handed it, and Memory shows it once a scene told
+      it or the character heard the talk of it (W6, W7, W2, C6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

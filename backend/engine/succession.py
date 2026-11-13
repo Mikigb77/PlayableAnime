@@ -44,6 +44,7 @@ from engine.state.cast import Activity, Character, PlaceStatus, Prominence, Repu
 from engine.state.records import Fallen, GoalStatus, LeadStatus
 from engine.state.scene import SceneFrame
 from engine.state.world import WorldState
+from engine.world import strife
 from engine.world.lives import hand_over
 
 
@@ -204,6 +205,8 @@ def carry_on(
         if successor.id not in place.known_by:
             place.known_by.append(successor.id)
         place = new.places.get(place.parent_id or "")
+    # W6: they grew up knowing what the years did to the factions and places they know of.
+    strife.hand_over(new)
     for goal in new.goals.values():
         if goal.status is GoalStatus.ACTIVE:
             goal.status = GoalStatus.ABANDONED

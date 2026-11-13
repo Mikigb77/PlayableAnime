@@ -26,7 +26,7 @@ from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
 from engine.resolve.powers import growth
 from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import Character, CharacterStatus
+from engine.state.cast import Character, CharacterStatus, Faction, FactionStatus
 from engine.state.records import (
     Goal,
     GoalStatus,
@@ -34,7 +34,11 @@ from engine.state.records import (
     LifeKind,
     Origin,
     OriginKind,
+    Rumor,
+    StatusChange,
     StepResult,
+    WorldChange,
+    WorldChangeKind,
 )
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import Health
@@ -1424,6 +1428,90 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     _, again = play(make_client(), turn_input(after))
     assert not {"last_seen", "news"} & zhao_in_the_brief().keys()
     assert not [i for i in again.issues if i.code == "life_heard"]
+
+
+def test_a_scene_tells_what_the_years_did_to_the_wider_world_by_naming_it(
+    fake, make_client, log_lines
+):
+    """W6, C6: while Lin was on the peak, the Moon Pavilion fell to the Iron Banner, far away,
+    and word of it has reached Azure Peak. The narrator is handed it with its id. A scene that
+    lists it and says none of it leaves it news; one that names the Pavilion has told it, and
+    then Lin knows, and Memory shows the Pavilion as fallen."""
+    start = cultivation_world()
+    start.world_s = 3 * YEAR
+    start.factions["iron"] = Faction(id="iron", name="the Iron Banner", known_by=["lin"])
+    start.factions["moon"] = Faction(
+        id="moon",
+        name="the Moon Pavilion",
+        known_by=["lin"],
+        status=FactionStatus.DESTROYED,
+        status_history=[
+            StatusChange(status="destroyed", from_status="intact", world_s=2 * YEAR, turn=1)
+        ],
+    )
+    start.rumors["rumor-9"] = Rumor(
+        id="rumor-9",
+        text="The Moon Pavilion fell to the Iron Banner in their war.",
+        is_true=True,
+        reached_place_ids=["azure-peak"],
+        started_s=2 * YEAR,
+    )
+    start.changes["change-1"] = WorldChange(
+        id="change-1",
+        kind=WorldChangeKind.FELL,
+        faction_ids=["iron", "moon"],
+        rumor_id="rumor-9",
+        turn=1,
+        world_s=2 * YEAR,
+    )
+
+    def moved():
+        brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+        if "## WIDER WORLD\n" not in brief:
+            return None
+        return json.loads(brief.split("## WIDER WORLD\n", 1)[1].split("\n\n## ", 1)[0])
+
+    def pavilion(state) -> list[str]:
+        return next(f for f in memory_view(state).factions if f.id == "moon").lines
+
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["change-1"]}))
+    _, result = play(make_client(), turn_input(start))
+
+    assert moved()["news"] == [
+        {
+            "id": "change-1",
+            "what": "The Moon Pavilion fell to the Iron Banner in their war.",
+            "when": "a year ago",
+        }
+    ]
+    silent = result.state
+    assert silent.changes["change-1"].known_by == [] and pavilion(silent) == []
+    assert not [i for i in result.issues if i.code == "change_heard"]
+
+    telling = SCENE | {
+        "narration": 'Zhao ducks the stone. "The Moon Pavilion is gone, did you hear?"',
+        "told_news": ["change-1", "change-7"],
+    }
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=telling))
+    _, result = play(make_client(), turn_input(silent))
+
+    assert moved()["news"][0]["id"] == "change-1"
+    after = result.state
+    assert after.changes["change-1"].known_by == ["lin"]
+    assert pavilion(after)[0] == "Destroyed"
+    assert [(i.code, i.subject) for i in result.issues if i.code == "change_heard"] == [
+        ("change_heard", "change-1")
+    ]
+    # T6: the log counts it and names nothing.
+    told = [line["turn_issue"] for line in log_lines() if line.get("turn_issue")]
+    assert {"code": "change_heard"} in told
+
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    play(make_client(), turn_input(after))
+    assert moved() is None
 
 
 def test_a_scene_that_names_a_partner_the_world_brought_has_told_of_them(fake, make_client):

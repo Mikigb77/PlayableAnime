@@ -24,7 +24,7 @@ from typing import Protocol
 
 from engine.context import Language
 from engine.state.cast import Character, Faction, Place
-from engine.state.records import GARBLED_LEAD, Deed
+from engine.state.records import GARBLED_LEAD, Deed, WorldChange, WorldChangeKind
 from engine.state.scene import Terms
 from engine.state.world import WorldState
 from engine.world.norms import Nature, canonical, creature_of, deed_nature, killed
@@ -836,3 +836,81 @@ def bounty(who: str, target: str, language: Language = EN) -> str:
     return _WORDS[language]["bounty"].format(
         who=cap(who), target=target, of=with_word(language, "de", target)
     )
+
+
+# What people say of a change to the wider world (W6), by its kind. A war's end is told of the
+# war, so no verb has to agree with a faction's name, which may be one or many ("los Lobos
+# Grises"): what follows a place agrees with how many places there are.
+_CHANGES = {
+    EN: {
+        "beaten": "{Winner} beat {loser} in their war",
+        "took": " and took {places}",
+        "took_many": " and took {places}",
+        "fell": "{Loser} fell to {winner} in their war",
+        "fell_took": ", and what was theirs is {winner}'s now",
+        "spent": "The war between {both} wore both sides down, and neither won",
+        "both_fell": "{Both} destroyed each other in their war",
+        "both_left": ", and what was theirs is nobody's now",
+        "seized": "{Winner} took {places}, which nobody had held since the war",
+    },
+    ES: {
+        "beaten": "La guerra entre {both} se decantó del lado {of_winner}",
+        "took": ", y {places} pasó a sus manos",
+        "took_many": ", y {places} pasaron a sus manos",
+        "fell": "La guerra entre {both} acabó con la caída {of_loser}",
+        "fell_took": ", y lo que era suyo pasó a manos {of_winner}",
+        "spent": "La guerra entre {both} dejó exhaustos a ambos bandos, sin vencedor",
+        "both_fell": "La guerra entre {both} acabó con ambos bandos",
+        "both_left": ", y lo que era suyo quedó sin dueño",
+        "seized": "{Places} pasó a manos {of_winner}, tras quedar sin dueño en la guerra",
+    },
+    CA: {
+        "beaten": "La guerra entre {both} es va decantar del costat {of_winner}",
+        "took": ", i {places} va passar a les seves mans",
+        "took_many": ", i {places} van passar a les seves mans",
+        "fell": "La guerra entre {both} va acabar amb la caiguda {of_loser}",
+        "fell_took": ", i el que era seu va passar a mans {of_winner}",
+        "spent": "La guerra entre {both} va deixar exhaustos tots dos bàndols, sense cap vencedor",
+        "both_fell": "La guerra entre {both} va acabar amb tots dos bàndols",
+        "both_left": ", i el que era seu va quedar sense amo",
+        "seized": "{Places} va passar a mans {of_winner}, després de quedar sense amo a la guerra",
+    },
+}
+_CHANGE_TAILS = {
+    WorldChangeKind.BEATEN: "took",
+    WorldChangeKind.FELL: "fell_took",
+    WorldChangeKind.BOTH_FELL: "both_left",
+}
+
+
+def world_change(state: WorldState, change: WorldChange, language: Language = EN) -> str:
+    """What people say of a change to the wider world (W6, `engine.world.strife`): a war
+    that came to a head, or land nobody held that someone took. One sentence in the story's
+    language (S10), by the names on record: whoever hears it learns them. A war's end names
+    the places it took only where one side was beaten: a side that fell lost all it had."""
+    words = _CHANGES[language]
+    nobody = _WORDS[language]["someone"]
+    sides = [state.factions[i].name if i in state.factions else nobody for i in change.faction_ids]
+    winner, loser = sides[0], sides[-1]
+    places = [state.places[i].name for i in change.place_ids if i in state.places]
+    named = listing(places, language=language)
+    both = _joined(language, [winner, loser])
+    said = {
+        "winner": winner,
+        "Winner": cap(winner),
+        "loser": loser,
+        "Loser": cap(loser),
+        "both": both,
+        "Both": cap(both),
+        "of_winner": with_word(language, "de", winner),
+        "of_loser": with_word(language, "de", loser),
+        "places": named,
+        "Places": cap(named),
+    }
+    text = words[change.kind.value].format(**said)
+    tail = _CHANGE_TAILS.get(change.kind)
+    if tail and places:
+        if tail == "took" and len(places) > 1:
+            tail = "took_many"
+        text += words[tail].format(**said)
+    return f"{text}."
