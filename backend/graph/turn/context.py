@@ -451,7 +451,7 @@ def _who_else_view(
     came = [
         i for p in (plan.event, plan.moment, *plan.happenings) if p is not None for i in p.cast_ids
     ]
-    came += [i for event in seen for i in event.subject_ids]
+    came += [i for event in seen if due.brings(event, after) for i in event.subject_ids]
     shown |= set(bonds.unseen(after, turn)) - set(came)
     # A trip that stopped on the way ends the scene in a place only the narrator's scene names.
     on_the_way = any(

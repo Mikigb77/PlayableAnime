@@ -22,6 +22,7 @@ from engine.contracts import (
     StateDelta,
     StepResolution,
 )
+from engine.director import due
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
 from engine.state import (
@@ -340,7 +341,7 @@ def came_to_face(who: str, *, turn: int, needs_player: bool = True, **more) -> P
         status=EventStatus.APPLIED,
         applied_turn=turn,
         needs_player=needs_player,
-        subject_ids=[who],
+        subject_ids=[who, "lin"],
         **more,
     )
 
@@ -348,10 +349,12 @@ def came_to_face(who: str, *, turn: int, needs_player: bool = True, **more) -> P
 def test_a_turn_brings_whom_an_event_is_about_and_whom_the_world_sent():
     """Whoever the record has elsewhere comes into a scene only by the world's own doing: an
     event, a happening or a moment the director planned is about them, or an event of the
-    world fired where the player character could notice it. A step that faced or named
-    someone who is elsewhere brings nobody."""
+    world came to the player character or fired at the scene's own place. Someone who came
+    looking for them somewhere else and found them gone is there, and an answer given from
+    afar is about them and brings nobody: on the real model (2026-11-13) a husband who went
+    asking after the man in the village was told as coming, and walked in on him at his farm."""
     state = cultivation_world()  # Elder Mo is in the inner court
-    for name in ("nico", "rosa", "ugo"):
+    for name in ("nico", "rosa", "ugo", "vera", "pia"):
         state.characters[name] = Character(id=name, name=name.title(), location_id="inner-court")
     visit = PlannedEvent(
         size=EventSize.PERSONAL,
@@ -363,11 +366,18 @@ def test_a_turn_brings_whom_an_event_is_about_and_whom_the_world_sent():
     )
     state.pending_events["answer-rosa"] = came_to_face("rosa", turn=2)
     state.pending_events["answer-ugo"] = came_to_face("ugo", turn=1)  # an earlier turn's
-    state.pending_events["far"] = came_to_face(
-        "elder-mo", turn=2, needs_player=False, place_id="inner-court"
-    )  # out of the character's sight
+    looked = came_to_face("elder-mo", turn=2, needs_player=False, place_id="inner-court")
+    state.pending_events["far"] = looked  # he looked for Lin there, and found them gone
+    afar = came_to_face("vera", turn=2, needs_player=False)  # no place: it is only about Lin
+    state.pending_events["afar"] = afar
+    state.pending_events["here"] = came_to_face(
+        "pia", turn=2, needs_player=False, place_id="well"
+    )  # at the well, where the scene plays
 
-    assert pipeline.brought(state, DirectorPlan(event=visit), ctx(turn=2)) == ["nico", "rosa"]
+    assert not due.noticed(looked, state)
+    assert due.noticed(afar, state) and not due.brings(afar, state)
+    brought = pipeline.brought(state, DirectorPlan(event=visit), ctx(turn=2))
+    assert sorted(brought) == ["lin", "nico", "pia", "rosa"]
     assert pipeline.brought(state, DirectorPlan(), ctx(turn=3)) == []
 
 

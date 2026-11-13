@@ -874,6 +874,16 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
         PendingEvent(id="e3", kind="visit", title="RIGHT-HERE", due_s=0, place_id="well"),
         PendingEvent(id="e4", kind="plot", title="FAR-AWAY", due_s=0, place_id="inner-court"),
         PendingEvent(id="e5", kind="plot", title="NOWHERE", due_s=0),
+        # W10. Someone who came for the character to another place and found them gone is
+        # there, looking: nothing of it shows here, though it is about them.
+        PendingEvent(
+            id="e7",
+            kind="world.answer",
+            title="CAME-ELSEWHERE",
+            due_s=0,
+            place_id="inner-court",
+            subject_ids=["elder-mo", "lin"],
+        ),
         # A birth that came to nothing, here, is never told (N6).
         PendingEvent(
             id="e6",
@@ -896,8 +906,10 @@ def test_only_events_the_player_could_notice_reach_the_narrator():
     ).user
     for title in ("NEEDS-YOU", "ABOUT-YOU", "RIGHT-HERE"):
         assert title in text
-    for title in ("FAR-AWAY", "NOWHERE", "NEVER-BORN"):
+    for title in ("FAR-AWAY", "NOWHERE", "NEVER-BORN", "CAME-ELSEWHERE"):
         assert title not in text
+    # And he is not among those the scene may bring in.
+    assert "WHO ELSE" not in text
 
 
 def test_word_of_a_deed_on_its_way_is_nothing_the_player_character_notices():

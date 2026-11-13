@@ -13,6 +13,7 @@ from engine import bonds
 from engine.base import DAY, HOUR
 from engine.context import Language
 from engine.contracts import ProposedDeed
+from engine.director import due
 from engine.samples import farm_world
 from engine.state import (
     Attitude,
@@ -463,12 +464,18 @@ def test_whoever_is_already_where_they_are_has_found_them():
         assert coming.place_id == "village"
         coming.due_s = state.world_s + HOUR
         state.characters[YOU].location_id = "farm"
+        state.scene = state.scene.model_copy(update={"place_id": "farm", "present_ids": [YOU]})
         state.characters["jorn"].location_id = jorn_at
         return idle(state, state.world_s + 2 * HOUR)
 
     state, fired = comes("village")
-    assert not [e for e in answers(fired) if e.needs_player]
+    (looked,) = answers(fired)
+    assert not looked.needs_player
     assert any("found them gone" in fact.text for fact in state.facts.values())
+    # W10, C6. He is in Millbrook, asking after the man. Nothing of it shows at the farm, and
+    # it brings him into no scene there, though the event is about the two of them.
+    assert YOU in looked.subject_ids
+    assert not due.noticed(looked, state) and not due.brings(looked, state)
 
     state, fired = comes("farm")
     (came,) = [e for e in answers(fired) if e.needs_player]

@@ -46,6 +46,7 @@ from engine.limits import Intimacy, intimacy, is_adult, partners
 from engine.resolve.checks import Settled
 from engine.state.cast import Character
 from engine.state.records import BondStage, StepResult
+from engine.state.sheet import PowerAxis
 from engine.state.world import WorldState
 from engine.world import journeys
 from engine.world.geography import scene_ids, together
@@ -138,12 +139,18 @@ def read(
     away, goes = False, None
     if move is not RomanceMove.PART:
         away, goes = _reach(state, actor, other, step, place_id, trip, held)
+    # Code says what the move is measured on and whom it is made to, whatever the reading
+    # gave: a step of words to the other, whose own heart stands in its way (A2). On the real
+    # model a kiss read with no axis had nobody in its way, and was certain (2026-11-13).
+    told = {"romance": move, "axis": PowerAxis.INFLUENCE}
+    if other.id not in step.target_ids:
+        told["target_ids"] = [other.id, *step.target_ids]
     wooing = Wooing(
         move=move,
         other=other,
         intimate=words is Intimacy.SEXUAL,
         heart=heart,
-        step=step.model_copy(update={"romance": move}),
+        step=step.model_copy(update=told),
         away=away,
         goes=goes,
     )
