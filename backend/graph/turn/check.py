@@ -75,6 +75,8 @@ UNRECORDED_HARM = "unrecorded_harm"
 CLOCK_SCENE_END = "clock_scene_end"
 # G18: the update listed a rung above a ladder's top that the scene's words never named.
 RUNG_UNTOLD = "rung_untold"
+# C1: someone new the update left without a name took the one the scene calls them by.
+NAMED_BY_SCENE = "named_by_scene"
 # G18: the longest answer to the form's question about the rung above an open top
 # (`NarratorOutput.rung_above`) that is read as a rung's name. A sentence is not one.
 MAX_RUNG_NAME = 60
@@ -452,6 +454,53 @@ def with_rung_above(delta: StateDelta, name: str, above: Above | None) -> StateD
     return delta.model_copy(update={"rungs": [*delta.rungs, rung]})
 
 
+def called_in(told: str, character_id: str) -> str | None:
+    """C1. The name a scene gives someone whose id is made of that name's words: the words in
+    a row, as the scene writes them, whatever their case or accents ("elder-song" finds "Elder
+    Song", "elder_nunez" finds "Elder Núñez"). Where the scene writes them as a name, its
+    first word and its last with a capital, that is the name ("Lin de la Cruz"); else each
+    word takes a capital ("the envoy" gives "The Envoy"). None where the scene never says
+    them."""
+    wanted = limits.normalize(character_id).split()
+    words = re.findall(r"[^\W_]+", told)
+    folded = [limits.normalize(word) for word in words]
+    runs = [
+        words[start : start + len(wanted)]
+        for start in range(len(words) - len(wanted) + 1)
+        if wanted and folded[start : start + len(wanted)] == wanted
+    ]
+    if not runs:
+        return None
+    as_written = next((run for run in runs if run[0][:1].isupper() and run[-1][:1].isupper()), None)
+    if as_written is not None:
+        return " ".join(as_written)
+    return " ".join(word[:1].upper() + word[1:] for word in runs[0])
+
+
+def _named_by_scene(
+    delta: StateDelta, state: WorldState, told: str
+) -> tuple[StateDelta, list[Issue]]:
+    """C1. Someone new the update leaves without a name takes the name the scene calls them by,
+    where their id is made of its words (`called_in`). The narrator's form doesn't require a
+    name, the model answers only what a form requires as often as not, and in a live story an
+    elder the scene named throughout was refused for want of one, so the record never had him
+    (2026-11-13). Anyone the scene doesn't name that way stays nameless and is refused as
+    before (`engine.apply`), and so does an id whose words are what someone on record goes by:
+    that is their id written another way, not someone new."""
+    taken = {name for known in state.characters for name in naming.names(state, known)}
+    issues, characters = [], []
+    for change in delta.characters:
+        if change.id not in state.characters and not is_real_name(change.name):
+            name = called_in(told, change.id)
+            if name is not None and is_real_name(name) and limits.normalize(name) not in taken:
+                issues.append(Issue(NAMED_BY_SCENE, "the scene's name for them", change.id))
+                change = change.model_copy(update={"name": name})
+        characters.append(change)
+    if not issues:
+        return delta, issues
+    return delta.model_copy(update={"characters": characters}), issues
+
+
 def check_update(
     delta: StateDelta,
     state: WorldState,
@@ -468,7 +517,9 @@ def check_update(
     for it. The
     dead can't be present (C1), and the rolling summary is never blanked. A new character or
     faction named after a real person or organisation is left out, and a known one keeps its
-    name (G12). What the engine already moved this turn (`moved`, the transfers its steps and
+    name (G12); someone new the update left nameless is first given the name the scene calls
+    them by (`_named_by_scene`), so that name is held to the same. What the engine already
+    moved this turn (`moved`, the transfers its steps and
     events made, C10) is left out, so a payment told in the scene is never made twice. A rung
     above a ladder's top that the scene's own words never named is left out too (G18).
 
@@ -476,8 +527,9 @@ def check_update(
     An appearance it writes for them all the same was made up, so it is left out and the kept
     one stands (C9); a lasting change it names is still added to the kept one (`engine.looks`).
     """
+    delta, issues = _named_by_scene(delta, state, told)
     delta, hits = limits.strip_real_entities(delta, state)
-    issues = [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
+    issues += [Issue(REAL_ENTITY, hit.detail, hit.subject) for hit in hits]
     if not looks:
         characters = []
         for change in delta.characters:

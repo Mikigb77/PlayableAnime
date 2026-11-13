@@ -135,7 +135,11 @@ class CharacterChange(EngineModel):
     model_config = ConfigDict(json_schema_extra=_rung_required)
 
     id: str
-    name: Name | None = None
+    name: Name | None = Field(
+        default=None,
+        description="C1: always for someone new, the name the scene calls them by: nobody "
+        "nameless goes on record.",
+    )
     aliases: list[str] = Field(default_factory=list)
     prominence: Prominence | None = None
     description: str | None = None
