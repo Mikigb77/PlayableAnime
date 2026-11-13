@@ -44,7 +44,7 @@ from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval, Played, Story
 from evals.scenario import REGISTRY
-from evals.scenarios.common import as_read, facts, full_day, plan, step
+from evals.scenarios.common import as_left, as_read, facts, full_day, plan, step
 from graph.llm import Node
 
 scenario = REGISTRY.scenario
@@ -437,12 +437,13 @@ async def slow_romance(ev: Eval) -> None:
             answered_as(hasty, OutcomeClass.RULED_OUT) and stage(story) is BondStage.TOGETHER,
             f"{seed}: {stage(story)}, {as_read([hasty])}",
         )
+        promised = stage(story) is BondStage.PROMISED  # a live reading may have made it an ask
         await courted(ev, story, bonds.PROPOSE_SURE)
         asked = await story.act(PROPOSE, propose())
         expected = by_her_heart(heart(story), bonds.PROPOSE_NO, bonds.PROPOSE_SURE)
         ev.check(
             "a promise is answered by her heart",
-            answered_as(asked, expected),
+            answered_as(asked, OutcomeClass.CERTAIN if promised else expected),
             f"{seed}: at {heart(story)}, {as_read([asked])}",
         )
         if stage(story) is not BondStage.PROMISED:
@@ -533,6 +534,36 @@ def mends_it(who: str, stage: BondStage) -> dict:
         "suggestions": [],
         "update": update.model_dump(mode="json"),
     }
+
+
+def walks_in(who: str) -> dict:
+    """A scripted scene whose narrator has `who` walk in on it in Millbrook, whatever the
+    engine decided, as the real model did in the first stories about an affair (2026-11-13):
+    its update puts them in the village, among those present, having met Tomas there and
+    taken it badly. Only the world brings someone into a scene (W10), and what a move is to
+    someone who didn't see it is the engine's, once word reaches them (W17, W2)."""
+    seen = AttitudeShift(toward_id=YOU, affinity=-10, trust=-10)
+    update = StateDelta(
+        characters=[
+            CharacterChange(id=who, location_id="village", meets_player=True, attitudes=[seen])
+        ],
+        scene_end=SceneEnd(
+            ended_on="Someone stands at the end of the mill lane, and has seen it all.",
+            place_id="village",
+            present_ids=[YOU, MARA, BRAM, who],
+        ),
+    )
+    return {
+        "narration": "(scripted) At the end of the lane someone has stopped, and stares.",
+        "suggestions": [],
+        "update": update.model_dump(mode="json"),
+    }
+
+
+def who_else(story: Story) -> str:
+    """WHO ELSE of the last brief the narrator was sent, or nothing when it had none."""
+    _, found, rest = story.prompt(Node.NARRATOR).partition("\n## WHO ELSE\n")
+    return rest.partition("\n## ")[0] if found else ""
 
 
 def goes_home(state: WorldState) -> None:
@@ -643,10 +674,11 @@ def trail(story: Story) -> list[str]:
         "looking on. Each move is a deed on record that wrongs his wife, graver the further it "
         "went, and no crime: nobody reports it and the neighbour thinks no less of him. At "
         "home she knows nothing and feels as before, until word reaches her from someone who "
-        "saw it. Then she loses liking, trust and heart by how far it went, and comes to have "
-        "it out, never for revenge. A wife whose heart is gone ends the marriage when she "
-        "finds him, and nothing the scene tells or he asks mends it; one whose heart holds "
-        "stays married. Memory tells the marriage as the record holds it"
+        "saw it, and no scene brings her into it from the farm, whatever its narrator tells. "
+        "Then she loses liking, trust and heart by how far it went, and comes to have it out, "
+        "never for revenge. A wife whose heart is gone ends the marriage when she finds him, "
+        "and nothing the scene tells or he asks mends it or moves her so soon; one whose heart "
+        "holds stays married. Memory tells the marriage as the record holds it"
     ),
 )
 async def an_affair(ev: Eval) -> None:
@@ -657,9 +689,11 @@ async def an_affair(ev: Eval) -> None:
         story = ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
         at_first, bram_at_first = feels(story, ILSE), feels(story, BRAM)
 
-        walked = await story.act(WALK, walk_home())
+        # Offline, the narrator walks his wife in on both scenes, and the record keeps her out.
+        barges = None if ev.live else walks_in(ILSE)
+        walked = await story.act(WALK, walk_home(), narration=barges)
         courting = stage(story)
-        slept = await story.act(NIGHT, night())
+        slept = await story.act(NIGHT, night(), narration=barges)
         deeds = wrongs(story, ILSE)
         ev.check(
             "a move in a romance with someone else is a deed that wrongs the partner on record",
@@ -693,7 +727,15 @@ async def an_affair(ev: Eval) -> None:
             "a partner who is elsewhere knows nothing and feels as before",
             feels(story, ILSE) == at_first
             and not any(ILSE in d.known_by or ILSE in d.heard_by for d in deeds),
-            f"{seed}: {at_first} to {feels(story, ILSE)}",
+            f"{seed}: {at_first} to {feels(story, ILSE)}, "
+            f"{as_left(walked, ILSE)}, {as_left(slept, ILSE)}",
+        )
+        ev.check(
+            "nothing a scene tells brings her into it from the farm",
+            ILSE not in walked.state.scene.present_ids
+            and ILSE not in slept.state.scene.present_ids
+            and story.state.characters[ILSE].location_id == "farm",
+            f"{seed}: {as_left(walked, ILSE)}, {as_left(slept, ILSE)}",
         )
         await ev.judge(
             "an evening with someone else",
@@ -786,12 +828,12 @@ async def an_affair(ev: Eval) -> None:
             continue
 
         mended = None if ev.live else mends_it(ILSE, BondStage.MARRIED)
+        hers = feels(story, ILSE)
         asked = await story.act(TAKE_ME_BACK, take_me_back(), narration=mended)
-        expected = by_her_heart(feels(story, ILSE)[2], bonds.DECLARE_NO, bonds.DECLARE_SURE)
         ev.check(
-            "asked to take him back, she answers by her heart",
-            answered_as(asked, expected),
-            f"{seed}: at {feels(story, ILSE)[2]}, {as_read([asked])}",
+            "she ended it, so nothing he asks or does moves her so soon",
+            answered_as(asked, OutcomeClass.RULED_OUT) and feels(story, ILSE) == hers,
+            f"{seed}: {hers} to {feels(story, ILSE)}, {as_read([asked])}",
         )
         ev.check(
             "what she ended stays ended, whatever the scene tells",
@@ -837,8 +879,9 @@ RIVALS = ("told of it all", "saw it", "told of the walk")
     passes_when=(
         "A man courts the smith's wife. The move wrongs her husband on record, and the scene "
         "is told whether he saw it. A husband who saw it holds it against the man at once, by "
-        "how far it went, and one who was elsewhere feels as before until someone who saw it "
-        "tells him. Knowing of an affair, he comes to have it out, and the scene is told he "
+        "how far it went, and one who was out of sight feels as before until someone who saw "
+        "it tells him: the scene isn't offered him, and he isn't in it whatever its narrator "
+        "tells. Knowing of an affair, he comes to have it out, and the scene is told he "
         "came to hear it answered and not to attack. He comes for revenge afterwards only "
         "when what he knows of went as far as a night together. It is no crime, and Memory "
         "says who came over it. Wherever he has gone, to the farm to have it out or on an "
@@ -855,7 +898,13 @@ async def a_rival(ev: Eval) -> None:
         story = ev.story(world, seed=seed, settings=CALM, under_way=True, rating=Rating.MATURE)
         at_first, his_wife = feels(story, JORN), feels(story, JORN, MARA)
 
-        first = await story.act(KISS, kiss()) if saw else await story.act(WALK, walk_home())
+        # Offline, a husband who is out of sight is walked in on it by the narrator, and the
+        # record keeps him out.
+        barges = None if ev.live or saw else walks_in(JORN)
+        if saw:
+            first = await story.act(KISS, kiss())
+        else:
+            first = await story.act(WALK, walk_home(), narration=barges)
         deeds = wrongs(story, JORN)
         ev.check(
             "courting someone's partner is a deed that wrongs them on record",
@@ -865,14 +914,20 @@ async def a_rival(ev: Eval) -> None:
         )
         if not deeds:
             continue
-        seen = '"wrongs":[{"id":"jorn-hale","who":"Jorn Hale","saw_it":true}]'
-        unseen = '"wrongs":[{"id":"jorn-hale","who":"Jorn Hale"}]'
+        told = f'"wrongs":[{{"id":"jorn-hale","who":"Jorn Hale","saw_it":{str(saw).lower()}}}]'
         ev.check(
             "the scene is told whose partner it was, and whether they saw it",
-            (seen if saw else unseen) in story.prompt(Node.NARRATOR),
+            told in story.prompt(Node.NARRATOR),
             f"{seed}, he {how}",
             live=False,
         )
+        if not saw:
+            ev.check(
+                "a husband who didn't see it is not among those the scene may bring in",
+                JORN not in who_else(story),
+                f"{seed}, he {how}: {who_else(story)[:300]}",
+                live=False,
+            )
         severity = deeds[0].severity
         if saw:
             ev.check(
@@ -890,7 +945,12 @@ async def a_rival(ev: Eval) -> None:
             ev.check(
                 "a husband who is elsewhere knows nothing and feels as before",
                 feels(story, JORN) == at_first and not knows(story, JORN),
-                f"{seed}: {at_first} to {feels(story, JORN)}",
+                f"{seed}: {at_first} to {feels(story, JORN)}, {as_left(first, JORN)}",
+            )
+            ev.check(
+                "nothing a scene tells brings him into it",
+                JORN not in first.state.scene.present_ids,
+                f"{seed}: {as_left(first, JORN)}",
             )
         ev.check(
             "what he feels for his own wife is his, and nothing the move touches",
@@ -900,7 +960,12 @@ async def a_rival(ev: Eval) -> None:
         )
         played = [first]
         if how == "told of it all":
-            played.append(await story.act(NIGHT, night()))
+            played.append(await story.act(NIGHT, night(), narration=barges))
+            ev.check(
+                "nothing a scene tells brings him into it",
+                JORN not in played[-1].state.scene.present_ids,
+                f"{seed}: {as_left(played[-1], JORN)}",
+            )
         await ev.judge(
             "courting the smith's wife",
             Rubric(
@@ -936,7 +1001,8 @@ async def a_rival(ev: Eval) -> None:
         ev.check(
             "wherever the smith has gone, he is due back in Millbrook",
             is_at == "village" or (home is not None and home.place_id == "village"),
-            f"{seed}, he {how}: he is at {is_at}, due back at {home.place_id if home else None}",
+            f"{seed}, he {how}: he is at {is_at}, due back at {home.place_id if home else None}, "
+            f"{' | '.join(as_left(day, JORN) for day in days)}",
         )
         away += is_at != "village"
         if not faced:

@@ -31,7 +31,7 @@ Rules every seam follows:
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from engine import director, encounters, path, untold, world
+from engine import bonds, director, encounters, path, untold, world
 from engine.apply import DeltaSource, Rejection, apply_in_place
 from engine.base import DAY
 from engine.context import TurnContext
@@ -41,6 +41,7 @@ from engine.contracts.direction import (
 )
 from engine.contracts.intent import Intent
 from engine.contracts.resolution import Resolution, StepResolution, StopReason
+from engine.director import due
 from engine.resolve import resolve_intent, romance
 from engine.resolve.powers import growth
 from engine.rng import SeededRng
@@ -400,6 +401,33 @@ def reached(state: WorldState, resolution: Resolution, plan: DirectorPlan) -> li
             if c.alive and (c.location_id is None or region_of(state, c.location_id) == home)
         ]
     return [i for i in dict.fromkeys(ids) if i in state.characters]
+
+
+def brought(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> list[str]:
+    """W4, W10. Whom this turn brings into the scene from wherever the record has them: the
+    people an event, a happening or a moment the director planned is about, and those of an
+    event of the world that fired where the player character could notice it
+    (`director.due.in_sight`), such as someone who comes to have it out with them. Nobody else
+    comes from elsewhere: the narrator's scene has the people the record puts where it plays
+    (`engine.apply.Door`). `state` is the world the steps left."""
+    ids: list[str] = []
+    for planned in (plan.event, plan.moment, *plan.happenings):
+        if planned is not None:
+            ids += planned.cast_ids
+    for event in due.in_sight(state, ctx):
+        ids += event.subject_ids
+    return [i for i in dict.fromkeys(ids) if i in state.characters]
+
+
+def kept_out(state: WorldState, ctx: TurnContext, came: Iterable[str] = ()) -> list[str]:
+    """W17, W2. Whom this turn's scene can't bring in or touch: whoever a move in a romance made
+    this turn wrongs and who didn't see it (`bonds.unseen`), unless the world itself brought
+    them into the scene (`came`, from `brought`). The engine decided who saw the move before the
+    scene was told, and what it is to anyone else is the engine's, once a witness or word
+    reaches them: a scene that had them walk in on it would tell a story the record never
+    held (`engine.apply.Door`)."""
+    here = set(came)
+    return [who for who in bonds.unseen(state, ctx.turn) if who not in here]
 
 
 def hear_talk(

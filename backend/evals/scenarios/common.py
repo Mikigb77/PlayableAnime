@@ -262,6 +262,23 @@ READING_FIXES = (
 )
 
 
+def as_left(played: Played, *who: str) -> str:
+    """Where a turn left some people, for the detail of a failed check (T18): who its scene
+    has, where the record has each of `who`, and what of the narrator's word about people code
+    refused. The story is the eval's own (T16)."""
+    state = played.state
+    at = {i: state.characters[i].location_id for i in who if i in state.characters}
+    refused = []
+    if played.result is not None:
+        refused = [
+            issue.subject
+            for issue in played.result.issues
+            if issue.code == "rejected" and (issue.area or "").startswith("character.")
+        ]
+    said = f"t{played.turn} scene={state.scene.place_id}{state.scene.present_ids} at={at}"
+    return f"{said} refused={refused}" if refused else said
+
+
 def as_read(turns: list[Played]) -> str:
     """How each step of some turns was read and what code made of it, for the detail of a
     failed check: a live run's log is all that can be read of it afterwards (T18). The story
@@ -288,6 +305,8 @@ def as_read(turns: list[Played]) -> str:
                     f"{' crowd' if told.crowd else ''}"
                     f"{' asks_talk' if told.asks_talk else ''}"
                 )
+                if step_.romance is not None:
+                    said += f" romance={step_.romance.value}"  # W17: the move it was read as
                 if step_.targets:
                     said += f" words={step_.targets}"  # V3: targets the reading left as words
                 if step_.stranger is not None:

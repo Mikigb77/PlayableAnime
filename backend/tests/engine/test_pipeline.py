@@ -27,6 +27,7 @@ from engine.samples import cultivation_world, grounded_world
 from engine.state import (
     ActiveTimeEffect,
     Character,
+    Deed,
     EventSize,
     EventStatus,
     PendingEvent,
@@ -325,6 +326,79 @@ def test_a_turn_reaches_whom_its_steps_faced_changed_or_made_real_and_an_event_i
 
     assert reached == ["nico", "tano", "pia", "rosa", "ugo", "carmine"]
     assert pipeline.reached(state, Resolution(steps=[settled(0, 5)]), DirectorPlan()) == []
+
+
+# --- whom a turn brings into the scene, and whom its scene can't have (W10, W17) ---------------
+
+
+def came_to_face(who: str, *, turn: int, needs_player: bool = True, **more) -> PendingEvent:
+    return PendingEvent(
+        id=f"answer-{who}",
+        kind="world.answer",
+        title=f"{who} comes to have it out",
+        due_s=0,
+        status=EventStatus.APPLIED,
+        applied_turn=turn,
+        needs_player=needs_player,
+        subject_ids=[who],
+        **more,
+    )
+
+
+def test_a_turn_brings_whom_an_event_is_about_and_whom_the_world_sent():
+    """Whoever the record has elsewhere comes into a scene only by the world's own doing: an
+    event, a happening or a moment the director planned is about them, or an event of the
+    world fired where the player character could notice it. A step that faced or named
+    someone who is elsewhere brings nobody."""
+    state = cultivation_world()  # Elder Mo is in the inner court
+    for name in ("nico", "rosa", "ugo"):
+        state.characters[name] = Character(id=name, name=name.title(), location_id="inner-court")
+    visit = PlannedEvent(
+        size=EventSize.PERSONAL,
+        kind=EventKind.ARRIVAL,
+        source=EventSource.DECK,
+        title="A visitor",
+        brief="Someone comes in.",
+        cast_ids=["nico", "nobody-on-record"],
+    )
+    state.pending_events["answer-rosa"] = came_to_face("rosa", turn=2)
+    state.pending_events["answer-ugo"] = came_to_face("ugo", turn=1)  # an earlier turn's
+    state.pending_events["far"] = came_to_face(
+        "elder-mo", turn=2, needs_player=False, place_id="inner-court"
+    )  # out of the character's sight
+
+    assert pipeline.brought(state, DirectorPlan(event=visit), ctx(turn=2)) == ["nico", "rosa"]
+    assert pipeline.brought(state, DirectorPlan(), ctx(turn=3)) == []
+
+
+def wronging(deed_id: str, turn: int, wronged: list[str], saw: list[str]) -> Deed:
+    return Deed(
+        id=deed_id,
+        actor_id="lin",
+        kind="court",
+        text="kissed someone else",
+        turn=turn,
+        world_s=0,
+        target_ids=["zhao"],
+        wronged_ids=wronged,
+        witness_ids=saw,
+    )
+
+
+def test_a_scene_is_kept_from_whoever_its_move_wronged_and_who_did_not_see_it():
+    """W17. The engine decided who saw a move in a romance before the scene was told. Whoever
+    it wrongs and who wasn't there has no part in that scene, unless the world itself brought
+    them, and an earlier turn's move keeps nobody out of this one."""
+    state = cultivation_world()
+    for name in ("nico", "rosa", "ugo"):
+        state.characters[name] = Character(id=name, name=name.title(), location_id="well")
+    state.deeds["deed-1"] = wronging("deed-1", 2, ["nico", "rosa"], ["rosa", "zhao"])
+    state.deeds["deed-2"] = wronging("deed-2", 1, ["ugo"], [])
+
+    assert pipeline.kept_out(state, ctx(turn=2)) == ["nico"]
+    assert pipeline.kept_out(state, ctx(turn=2), ["nico"]) == []
+    assert pipeline.kept_out(state, ctx(turn=1)) == ["ugo"]
+    assert pipeline.kept_out(state, ctx(turn=3)) == []
 
 
 def test_a_stretch_of_a_day_or_more_reaches_everyone_in_the_region():

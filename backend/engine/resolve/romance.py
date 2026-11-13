@@ -14,7 +14,8 @@ the other person's own heart (`engine.bonds`), logic first (A2):
   no when it surely isn't, and thrown for in between.
 - A **wedding** takes two who are promised. **Parting** is always the character's to do.
 - Someone whose heart is closed (family, someone who wants nothing to do with the character,
-  someone too afraid of them) is moved by nothing of the kind.
+  someone too afraid of them, someone who ended it with them not long ago) is moved by nothing
+  of the kind.
 
 An advance that was answered moves their heart, at their own pace, and the bond comes to the
 stage the story has earned. The romance opens at interest with the first move made, whatever
@@ -65,6 +66,7 @@ _CLOSED = {
     bonds.Closed.FAMILY: "{them} is family, and nothing in them answers this.",
     bonds.Closed.AVERSE: "{them} wants nothing of the kind from you.",
     bonds.Closed.AFRAID: "{them} is too afraid of you for anything to be freely given.",
+    bonds.Closed.ENDED: "{them} ended it with you, and it is too soon for anything to mend it.",
 }
 
 

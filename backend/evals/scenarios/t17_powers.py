@@ -51,6 +51,7 @@ from engine.state import (
     StepResult,
     TalentFit,
     Visibility,
+    WorldState,
 )
 from engine.visibility import status_view
 from engine.world import Kind
@@ -1472,6 +1473,13 @@ def at_the_well(story: Story, words: str, *walks_in: str) -> dict:
     }
 
 
+def comes_by(state: WorldState) -> None:
+    """Elder Mo has come down from the inner court to the outer-court well, as the world moves
+    people (W10): a scene has only the people the record puts where it plays, whatever its
+    narrator tells (W4)."""
+    state.characters["elder-mo"].location_id = "well"
+
+
 def path_above(story: Story) -> list[tuple[str, bool, bool]]:
     """The rungs over their own on the Character screen: each one's name, whether it is known
     and whether unnamed rungs lie under it."""
@@ -1523,6 +1531,8 @@ async def the_path(ev: Eval) -> None:
         ev.check("nothing shows above before a scene names it", not path_above(story), live=False)
         for n, (words, scene) in enumerate(turns):
             walks_in = ("elder-mo",) if n == 3 else ()
+            if walks_in:
+                story.change(comes_by)
             scripted = at_the_well(story, scene, *walks_in) if scene and not ev.live else None
             played = await story.act(
                 words, act(words, "ask", ActionKind.EXCHANGE, MINUTE), narration=scripted
@@ -1577,6 +1587,7 @@ async def the_path(ev: Eval) -> None:
             not status_view(story.state).sheet.paths[0].higher,
             live=False,
         )
+        story.change(comes_by)
         scripted = at_the_well(story, passes, "elder-mo") if not ev.live else None
         played = await story.act(
             bow, act(bow, "bow", ActionKind.EXCHANGE, MINUTE), narration=scripted

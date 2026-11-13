@@ -31,6 +31,7 @@ from evals.scenarios import all_scenarios
 # How much of a failed check's line a run prints. A check's detail may say how each step of a
 # lesson was read, and a live run's log is all that can be read of the run afterwards.
 FAILURE_CHARS = 4000
+METRICS_CHARS = 1000
 
 
 class CallFormatter(logging.Formatter):
@@ -69,6 +70,10 @@ async def run(scenarios: Sequence[Scenario], mode: Mode, models: Models) -> list
         print(line, flush=True)
         for failure in result.failures():
             print(f"         {failure[:FAILURE_CHARS]}", flush=True)
+        if mode is Mode.LIVE and result.metrics:
+            # What a live run counted, such as how its stories ended: its log is all that can
+            # be read of it afterwards.
+            print(f"         metrics: {str(result.metrics)[:METRICS_CHARS]}", flush=True)
     return results
 
 

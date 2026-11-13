@@ -203,9 +203,58 @@ def test_a_partner_who_is_elsewhere_is_named_and_knows_nothing_yet(fake, make_cl
     result = play(fake, make_client, state, reading, scene(), "I kiss Mara")
 
     [step] = outcome(fake)["steps"]
-    assert step["wrongs"] == [{"id": "ilse", "who": "Ilse Weller"}]
+    assert step["wrongs"] == [{"id": "ilse", "who": "Ilse Weller", "saw_it": False}]
     (deed,) = result.state.deeds.values()
     assert "ilse" not in deed.known_by and feels(result.state) == (80, 80, 80)
+    # She is about the farm, where the scene plays, and the scene isn't offered her all the
+    # same: nobody walks in on what the engine decided they didn't see.
+    told = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    assert "## WHO ELSE" not in told or "ilse" not in section(told, "WHO ELSE")
+    system = fake.calls(Node.NARRATOR)[-1].prompt.system
+    assert "saw_it false: they were not there, and they know nothing of it." in " ".join(
+        system.split()
+    )
+
+
+def test_a_scene_that_walks_the_wronged_partner_in_changes_nothing_on_record(fake, make_client):
+    """The first stories about an affair on the real model (2026-11-13): the narrator had the
+    wife turn up in the scene, listed her among those present and had her take it badly, and
+    the record took its word, so she had seen the next move. Code keeps her out (W17, W10):
+    she isn't in the scene, she met nobody, she feels as before and she knows nothing, until
+    a witness or word reaches her (W2)."""
+    state = farm(60, BondStage.COURTING)
+    walked_in = scene(
+        characters=[
+            {
+                "id": "ilse",
+                "location_id": "farm",
+                "meets_player": True,
+                "attitudes": [{"affinity": -10, "trust": -10, "grudge": "Tomas kissed Mara"}],
+            }
+        ]
+    )
+    walked_in["update"]["scene_end"]["present_ids"] = ["tomas", "mara", "ilse"]
+    reading = asked("advance", "kiss Mara", "kiss")
+    result = play(fake, make_client, state, reading, walked_in, "I kiss Mara")
+
+    assert result.state.scene.present_ids == ["tomas", "mara"]
+    assert feels(result.state) == (80, 80, 80)
+    assert not result.state.characters["ilse"].attitude_toward("tomas").grudges
+    (deed,) = result.state.deeds.values()
+    assert "ilse" not in deed.witness_ids and "ilse" not in deed.known_by
+    refused = sorted(i.area for i in result.issues if i.code == "rejected")
+    assert refused == [
+        "character.attitude",
+        "character.location",
+        "character.meeting",
+        "character.presence",
+    ]
+
+    # The next move is as unseen as the first: the scene never had her.
+    reading = asked("advance", "kiss Mara again", "kiss")
+    after = play(fake, make_client, result.state, reading, scene(), "I kiss Mara again")
+    assert all("ilse" not in d.witness_ids for d in after.state.deeds.values())
+    assert feels(after.state) == (80, 80, 80)
 
 
 def test_a_move_that_wrongs_nobody_names_nobody(fake, make_client):
