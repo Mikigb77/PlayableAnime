@@ -4,7 +4,7 @@ from enum import StrEnum
 
 from pydantic import Field
 
-from engine.base import DAY, EngineModel, Name, Tier
+from engine.base import DAY, EngineModel, Name, Tier, WorldSeconds
 from engine.state.sheet import PowerAxis
 
 
@@ -103,6 +103,11 @@ class Rung(EngineModel):
         "longer than their people do: 0 where the rung lengthens no life, and None where the "
         "record doesn't say, as on a ladder drafted before rungs carried it, so that old age "
         "takes nobody who stands on it (`engine.world.old_age`).",
+    )
+    added_s: WorldSeconds | None = Field(
+        default=None,
+        description="G18, G7: when the story put this rung above the top its ladder was "
+        "drafted with (`engine.path.beyond_problem`). None for a rung the world started with.",
     )
 
 

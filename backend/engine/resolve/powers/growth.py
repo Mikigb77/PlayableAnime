@@ -318,9 +318,15 @@ def _breakthrough_check(state: WorldState, actor: Character, step: IntentStep) -
         return _ruled_out("There is no such ladder to climb here.")
     current = position.rung if position is not None else -1
     if current + 1 >= len(ladder.rungs):
-        top = ladder.rungs[-1].name
-        return _ruled_out(f"There is no rung above {top} here.")
+        return _ruled_out(no_rung_above(ladder))
     return None
+
+
+def no_rung_above(ladder: PowerLadder) -> str:
+    """G19, G18. Why a climb stops on a ladder's highest rung: the world holds nothing above
+    it that anyone has told of. It stops there until the story reaches past the top and the
+    ladder gains a rung (`engine.path.beyond_problem`)."""
+    return f"Nothing anyone knows of lies above {ladder.rungs[-1].name}."
 
 
 def _ladder(state: WorldState, actor: Character, ladder_id: str | None):

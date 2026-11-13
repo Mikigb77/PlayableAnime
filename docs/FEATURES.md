@@ -167,6 +167,14 @@ The first version's state, checked against the code in WS18.
       Living near, the character knows as it happens. Far away it is news under the person,
       told once a scene names them, and Memory then says which rung they rose to, with the
       day (W6, W10, G19, C6).
+- [x] A ladder grows past its top: when the story reaches past the highest rung of one of the
+      world's ladders, with gods, invaders or something the character finds beyond it, the
+      scene that names a rung above it adds that rung, and the Path screen grows with it.
+      Code decides whether it holds: the scene's own words name it, no rule that never
+      changes ends the ladder there, the character has been told of the old top, and a rung
+      the story added is climbed before the ladder grows again. Nobody on record is lifted
+      onto it: the character's rank starts to fill toward it, others climb toward it at their
+      own pace, and only beings that same scene brought in stand on it (G18, G7, G19, W6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)
