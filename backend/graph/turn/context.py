@@ -43,11 +43,18 @@ from engine.state.cast import (
     PlaceStatus,
     Prominence,
 )
-from engine.state.records import EventStatus, GoalStatus, LeadStatus, PendingEvent, RollRecord
+from engine.state.records import (
+    EventStatus,
+    GoalStatus,
+    LeadStatus,
+    LifeEvent,
+    PendingEvent,
+    RollRecord,
+)
 from engine.state.sheet import Attitude, TalentStrength
 from engine.state.world import WorldState, natural_key
 from engine.timekeeping import effect_over
-from engine.world import carriers, journeys, returns
+from engine.world import carriers, journeys, lives, returns
 from engine.world.geography import routes_from, scene_ids, together
 from engine.world.telling import account
 from graph.language import written_in
@@ -72,7 +79,18 @@ _INTERPRET_WORLD = {
     "medicine",
     "travel",
 }
-_RECORD_NOISE = {"known_by", "met_by", "visited_by", "status_history", "origin", "look_version"}
+_RECORD_NOISE = {
+    "known_by",
+    "met_by",
+    "visited_by",
+    "status_history",
+    "origin",
+    "look_version",
+    # W6: the engine's own bookkeeping of people's lives. `last_seen` says the first in words.
+    "seen_s",
+    "born_s",
+    "solitary",
+}
 # Shown by name in a character's `family` (N6) instead of as ids and in-world seconds.
 _KIN = {"parent_ids", "expecting"}
 _NPC_HIDDEN = {
@@ -200,6 +218,12 @@ def _family_view(
         ("children", [c.id for c in sorted(children, key=lambda c: natural_key(c.id))]),
     ):
         named = [_kin_name(state, i, knower) for i in ids if i in state.characters]
+        if key == "children":
+            # W10: a child grows with the world's years, and the scene shows them at that age.
+            for kin in named:
+                child = state.characters[kin["id"]]
+                if child.age is not None and child.alive:
+                    kin["age"] = child.age
         if named:
             family[key] = named
     # W17: whom they are a couple with, and how far it has come.
@@ -253,7 +277,61 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
         view.setdefault("toward_you", {})["heard_said"] = heard
     if bond := _bond_view(state, character):
         view["bond_with_you"] = bond
+    seen = character.seen_s
+    if seen is not None and state.world_s - seen >= _APART_S:
+        # W6: how long the two have been apart, so years that went by show on them.
+        view["last_seen"] = ago_label(state.world_s - seen)
+    if news := lives.news_of(state, character):
+        # W6, C6: what those years brought them that the player character hasn't heard.
+        view["news"] = [_life_view(state, event, character.id) for event in news[-_NEWS:]]
     return view
+
+
+# W6. From how long apart a brief says when the player character last saw someone, how much
+# news of one person's life it carries, and how much of what the scene's own time brought.
+_APART_S = 30 * DAY
+_NEWS = 5
+_LIVES = 12
+
+
+def _life_named(state: WorldState, character_id: str) -> dict[str, Any]:
+    """Someone a piece of news is about, by id and name. `unnamed` marks a partner or a child
+    the world brought who still goes by its placeholder (`lives.unnamed`)."""
+    person = state.characters[character_id]
+    named: dict[str, Any] = {"id": person.id, "name": person.name}
+    if lives.unnamed(person):
+        named["unnamed"] = True
+    return named
+
+
+def _life_view(state: WorldState, event: LifeEvent, of_id: str) -> dict[str, Any]:
+    """W6. Something that came to someone in their own life (`engine.world.lives`), as it is
+    told of them: what, how long ago, with whom, and the child for a birth."""
+    view: dict[str, Any] = {
+        "what": lives.said(event, of_id),
+        "when": ago_label(max(0, state.world_s - event.world_s)),
+    }
+    other = event.other(of_id)
+    if other in state.characters:
+        view["with"] = _life_named(state, other)
+    if event.child_id in state.characters:
+        view["child"] = _life_named(state, event.child_id)
+    return view
+
+
+def _lives_view(after: WorldState, turn: int) -> list[dict[str, Any]]:
+    """W6, C6. What the time this turn covered brought the people the player character knows,
+    where they were in the place to learn of it as it happened: the latest `_LIVES`, oldest
+    first. The time between the scenes counts as this turn's, as it does for FIRED."""
+    you, people = after.player_id, after.characters
+    told = []
+    for event in lives.heard_in(after, turn)[-_LIVES:]:
+        # It is told of whichever of the two the player character knows.
+        known = [i for i in event.subject_ids if i in people and you in people[i].known_by]
+        if known:
+            who = known[0]
+            told.append({"who": _life_named(after, who)} | _life_view(after, event, who))
+    return told
 
 
 _HEART = {"attraction": True, "heart_moved_s": True}
@@ -1018,6 +1096,8 @@ def narration_brief(
         sections.append(("WORN", tired))
     if seen:
         sections.append(("FIRED", [_event_view(e) for e in seen]))
+    if years := _lives_view(after, ctx.turn):
+        sections.append(("LIVES", years))
     if plan.event is not None:
         sections.append(("EVENT", _dump(plan.event, exclude=_PLANNED_HIDDEN)))
     if plan.happenings:

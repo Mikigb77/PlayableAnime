@@ -954,6 +954,25 @@ how many hold which way is the custom of the world:
 `evals/scenarios/t17_romance.py` plays it end to end: `t17.slow-romance`, `t17.an-affair`,
 `t17.a-rival`, `t17.faithful` and `t17.a-breakup`.
 
+**Lives of their own (W6, W10).** The people the story knows don't wait for the player
+character: over the years they find partners, marry, have children, part, make friends and
+fall out, and everyone grows older. Nothing is made to happen.
+
+| Piece | What |
+| --- | --- |
+| `engine/world/lives.py` | `live_on(w, since_s)` is the world's part for one stretch of the tick. `grow_older` adds the whole years since `WorldState.aged_s` to every age on record (a child with `born_s` by its birth, the dead at the age they died, a leading age in a look kept in step). `living` picks whose life it is (living key people and those the player character met, beasts and the scene aside, up to `LIVES_PEOPLE`), `_years` takes the season after `Character.seen_s` off a person's stretch, and `_over` turns a chance in one year into the chance over the stretch. `_couple` parts, weds or gives a child, `_pair` finds a single adult a partner (`_matches` from the record, or `_newcomer`, a minor character named "X's partner" with `OriginKind.ENGINE`), `_tie` makes two neighbours friends or foes. `settled` is one person in four by their id, `_storys` whoever's love is the story's to tell (the scene, the player character's partner, someone they court while near), and `_Homes`, read once per pass, where everyone lives: their place, or where they set out from while the world has them out on a trip (a pending `Kind.RETURN`, as `returns.trip_of` reads it). `_spent` is whoever has outlived their people's lifespan: until deaths of old age are built, `_pair`, `_matches` and `_tie` bring them nothing new. Every draw is `w.roll("life", what, id)`, so the same years play the same again (A3). |
+| `LifeEvent`, `LifeKind` (`engine/state/records.py`), `WorldState.lives` | The news of it: `paired`, `married`, `parted` (with `by_id`), `child` (with `child_id`), `friends`, `fell_out`, its one or two `subject_ids`, turn, time, timeline and `known_by`: the two it came to, and the player character at once when they know one of the two and live near them (`_news`, `_Homes.near`). The record itself is on what it touched (bonds, characters, attitudes); the latest `LIVES_KEPT` events are kept. `check_state` refuses news about someone not on record. |
+| `Character.seen_s`, `born_s`, `solitary`; `WorldState.aged_s` | When the player character was last with someone (a scene that ended with them in it, or the turn the two met, `engine.apply`), when someone born in the story was born, whether the world gives them no partner (`NpcP.solitary` in the draft), and up to when ages have been counted. |
+| `engine/world/tick.py`, `engine/heirs.py` | `on_tick` calls `live_on` for the stretch it covers. A successor's time jump ages everyone through `grow_older`. `births.on_birth` stamps `born_s`. |
+| `engine/pipeline.py`, `graph/turn/nodes.py` | `settle_lives` runs as a scene ends (`lives.settle`): whoever was in it has `seen_s` now, and the player character is added to `known_by` of their news. News is `lives.news_of`: what came to someone since the two were last together that the player character hasn't heard, so nothing from before they met (`seen_s` is None for a stranger). Each is a `life_heard` issue, logged by its code only (T6). |
+| `engine/succession.py` | `carry_on` calls `lives.hand_over` once someone else is the player character (N6): whoever they have met has `seen_s` now and their news is known to them, and everyone else has no `seen_s`. |
+| `engine/bonds.py` | `keeps_to` counts an answer to a suitor only when it came after the two they stand between became a couple, so someone courted, left for years and paired since keeps to the partner they have. |
+| `graph/turn/context.py` | `_npc_view` adds `last_seen` (apart 30 days or more) and `news` (`lives.news_of`, up to 5 events: `what`, `when`, `with`, `child`, each person with `unnamed` while under a placeholder, `lives.unnamed`), for SCENE's people and WHO ELSE. `_family_view` gives children their age. `_lives_view` writes LIVES: what this turn's time brought people that the player character knows of already (`lives.heard_in`, the events that came in this turn, up to 12), each told of the one of the two they know. The narrator's rules say how news is told and that a placeholder gets a name under its id. |
+| `engine/visibility.py` | `_Knowledge.life_lines` adds the heard events to a person's Memory entry, dated, in the three languages (`_LIFE_WORDS`, a named and a bare form each, the latest `_LIFE_LINES`). |
+| `engine/world/tuning.py` | The yearly chances and limits, under "Lives of their own". |
+
+`evals/scenarios/t17_lives.py` plays it end to end as `t17.years-away`.
+
 ## Model layer
 
 `backend/graph/llm/` is the one way the backend calls a model (B6, T5, T7). It is plain Python with

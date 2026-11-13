@@ -625,6 +625,18 @@ else, that person knows it, and it shows as hurt, anger or cold by how far it we
 or an event under FIRED has them come to have it out, they put it to the player character and hear \
 the answer. When it says it is over between them, they end it in this scene, and nothing said in \
 it changes that.
+- People lead lives of their own while the story is elsewhere (W6, W10). last_seen under a \
+person is how long ago the player character was last with them: after years they are that much \
+older, and it shows on them. news under a person is what that time brought them that the player \
+character hasn't heard: a partner, a wedding, a child, a parting, a close friend, a falling-out, \
+with when and with whom. Let it show or be said as the two meet, the way anyone learns it of \
+someone they haven't seen in years: a ring, a child at their side, a word about it. It is on \
+record: never undo it, and never make up a wedding, a child or a parting for someone the scene \
+only speaks of. Someone marked unnamed is a partner or a child the world brought, under a \
+placeholder: give them a name when the scene first tells of them. LIVES is what the time this \
+scene covers brought the people the player character lives among, which they saw or heard as it \
+happened: tell what matters to them in passing, as part of the time going by. Someone with no \
+news is as they were left, a little older: time changes some people and not others.
 - Whoever comes into the scene is who the record says (W4, E4). WHO ELSE lists the people this \
 turn may bring in who weren't in the scene when it began: whom the action names or meets, whom an \
 EVENT, a happening or a MOMENT is about, and those the record has at the place. Each is shown as \
@@ -709,8 +721,8 @@ carries the child, with the other parent: the child is born when it is due, if t
 never if they die first. When a pregnancy ends without a birth, set expecting with ended. Only \
 adults have children. Never make up the player character's parents or children: those come from \
 their story, and family marked unknown_to_you is kin they haven't learned of yet. A newborn the \
-world brought keeps a placeholder name such as "Mira's child" until someone names them: give \
-their name then, under their id.
+world brought keeps a placeholder name such as "Mira's child" until someone names them, and so \
+does a partner it gave someone ("Mara's partner"): give their name then, under their id.
 - items (C10): everything that changed hands in this scene beyond OUTCOME's changed_hands, money \
 included, one entry each: from_id who had it and to_id who has it now, by character id (the \
 player character's id is under PLAYER CHARACTER), or 'world' for what the world gives (found, \
@@ -800,7 +812,8 @@ takes from SCENE's place, where the map knows it. Use these names as spelled.
 people present with the player character, each without their secrets, with toward_you (its \
 grudges are deeds they know of, its heard_said deeds they have only heard talk of), sometimes \
 apparent_affinity, and bond_with_you where there is or was a romance between the two, or \
-they are drawn to the player character; where everyone stands (positions); the things that \
+they are drawn to the player character, last_seen and news where time has gone by since the \
+two were last together (W6); where everyone stands (positions); the things that \
 matter (props); \
 and the fight, chase, duel of words or negotiation under way, if any (encounter), with its \
 terms when both sides agreed to it (bout). on_the_way is a trip that stopped before its end: \
@@ -847,6 +860,8 @@ STYLE: the engine weighed what it holds. Absent for a scene of ordinary weight.
 - WORN: phrases that several of the last scenes used, to say another way or leave out.
 - FIRED: events in the world that came due while the scene played and that the player character \
 can notice. needs_you marks one that calls for them.
+- LIVES: what the time this scene covers brought the people the player character lives among: \
+who, what, when, with whom, and the child for a birth (W6).
 - EVENT: the scene's event: its size, kind, title, brief, themes, thread, cast and place, whether \
 it needs a decision, and what follows from it.
 - HAPPENINGS: smaller events that came to pass in the time that went by, in the same form.

@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from engine import bonds, pipeline
-from engine.base import DAY, HOUR, MINUTE
+from engine.base import DAY, HOUR, MINUTE, YEAR
 from engine.context import (
     ContentPrefs,
     GoreLevel,
@@ -64,8 +64,12 @@ from engine.state.records import (
     EventStatus,
     Goal,
     GoalStatus,
+    LifeEvent,
+    LifeKind,
     Mark,
     NumberPart,
+    Origin,
+    OriginKind,
     PendingEvent,
     RollRecord,
     StepResult,
@@ -2055,3 +2059,235 @@ def test_the_narrator_reads_how_someone_holds_to_a_partner_of_their_own():
     assert "faith under a person who has a partner says how" in system
     assert "never wavers, hints or flirts back" in system
     assert "they have made up their mind and say so" in system
+
+
+def _ten_years_on() -> WorldState:
+    """Tomas is back at the farm after ten years away, and Mara, whom he knew, is in the
+    scene. In those years the world gave her a partner the record lacked, the two married
+    and had a child (`engine.world.lives`), and nobody has told him."""
+    state = farm_world()
+    state.world_s = 10 * YEAR
+    state.scene.present_ids = ["tomas", "ilse", "mara"]
+    state.characters["ilse"].seen_s = state.world_s - DAY
+    state.characters["mara"] = Character(
+        id="mara", name="Mara", age=39, location_id="farm", met_by=["tomas"], seen_s=0
+    )
+    state.characters["char-9"] = Character(
+        id="char-9",
+        name="Mara's partner",
+        age=41,
+        location_id="farm",
+        known_by=["mara"],
+        origin=Origin(kind=OriginKind.ENGINE, ref_id="mara", text="Found a life with Mara."),
+    )
+    state.characters["char-10"] = Character(
+        id="char-10",
+        name="Mara's child",
+        age=4,
+        born_s=6 * YEAR,
+        location_id="farm",
+        parent_ids=["mara", "char-9"],
+        known_by=["mara", "char-9"],
+        origin=Origin(kind=OriginKind.BIRTH, ref_id="bond-2", text="Born to Mara."),
+    )
+    wed = BondStep(stage=BondStage.MARRIED, world_s=4 * YEAR)
+    state.bonds["bond-2"] = Bond(
+        id="bond-2", a_id="mara", b_id="char-9", stage=BondStage.MARRIED, steps=[wed]
+    )
+    for n, (kind, year, child) in enumerate(
+        [(LifeKind.PAIRED, 2, None), (LifeKind.MARRIED, 4, None), (LifeKind.CHILD, 6, "char-10")],
+        start=1,
+    ):
+        state.lives[f"life-{n}"] = LifeEvent(
+            id=f"life-{n}",
+            kind=kind,
+            subject_ids=["mara", "char-9"],
+            child_id=child,
+            world_s=year * YEAR,
+            known_by=["mara", "char-9"],
+        )
+    return state
+
+
+def test_the_narrator_reads_what_the_years_brought_someone_met_again():
+    """W6, W10 (Miki, 2026-11-13): "if you meet someone again after 10 years of training, you
+    cannot expect that someone to stay single", and "a narrator should know". Under someone the
+    player character hasn't seen in a long while, the brief says how long it has been and what
+    that time brought them, with whom, and marks a partner or a child the world brought who
+    still needs a name. Their family reads as it is now, with the child at the age they are."""
+    state = _ten_years_on()
+
+    present = {p["id"]: p for p in _section(brief(state).user, "SCENE")["present"]}
+
+    mara = present["mara"]
+    partner = {"id": "char-9", "name": "Mara's partner", "unnamed": True}
+    assert mara["last_seen"] == "10 years ago"
+    assert mara["news"] == [
+        {"what": "found a partner", "when": "8 years ago", "with": partner},
+        {"what": "married", "when": "6 years ago", "with": partner},
+        {
+            "what": "had a child",
+            "when": "4 years ago",
+            "with": partner,
+            "child": {"id": "char-10", "name": "Mara's child", "unnamed": True},
+        },
+    ]
+    assert mara["family"]["partners"] == [
+        {"id": "char-9", "name": "Mara's partner", "bond": "married"}
+    ]
+    assert mara["family"]["children"] == [{"id": "char-10", "name": "Mara's child", "age": 4}]
+    # The engine's own bookkeeping stays out: the brief says it in words.
+    assert not {"seen_s", "born_s", "solitary"} & mara.keys()
+    # Someone seen a day ago has no such line, and someone the years brought nothing has no
+    # news: "maybe 10 years go by and the person is exactly the same".
+    assert not {"last_seen", "news"} & present["ilse"].keys()
+
+    # Once the story has named them, they are told by that name like anyone.
+    state.characters["char-9"].name = "Edrik"
+    mara = _section(brief(state).user, "SCENE")["present"][-1]
+    assert mara["news"][0]["with"] == {"id": "char-9", "name": "Edrik"}
+
+
+def test_news_of_someone_is_told_once_and_the_two_have_then_met():
+    """C6: the scene the two meet in is where the player character hears it. After it, the
+    record has them as seen, the news is heard, and the next brief carries neither."""
+    state = _ten_years_on()
+
+    after, heard = pipeline.settle_lives(state)
+
+    assert heard == ["life-1", "life-2", "life-3"]
+    mara = _section(brief(after).user, "SCENE")["present"][-1]
+    assert not {"last_seen", "news"} & mara.keys()
+    assert mara["family"]["partners"][0]["name"] == "Mara's partner"  # what is, stays told
+    # The state the scene began in is untouched (B4).
+    assert state.characters["mara"].seen_s == 0 and state.lives["life-1"].known_by[-1] == "char-9"
+
+
+def test_no_more_than_the_latest_news_of_someone_is_read():
+    state = _ten_years_on()
+    for n in range(4, 12):
+        state.lives[f"life-{n}"] = LifeEvent(
+            id=f"life-{n}", kind=LifeKind.FRIENDS, subject_ids=["mara", "bram"], world_s=n * DAY
+        )
+
+    mara = _section(brief(state).user, "SCENE")["present"][-1]
+
+    assert [told["what"] for told in mara["news"]] == [
+        "became close friends with someone",
+        "became close friends with someone",
+        "found a partner",
+        "married",
+        "had a child",
+    ]
+
+
+def test_someone_who_comes_into_the_scene_is_read_with_their_years_too():
+    """W4: Mara isn't in the scene yet, and the turn may bring her in from the same place. WHO
+    ELSE reads her as the record has her now, so the narrator doesn't bring in the Mara of ten
+    years ago."""
+    state = _ten_years_on()
+    state.scene.present_ids = ["tomas", "ilse"]
+
+    others = {p["id"]: p for p in _section(brief(state).user, "WHO ELSE")}
+
+    assert others["mara"]["last_seen"] == "10 years ago"
+    assert [told["what"] for told in others["mara"]["news"]] == [
+        "found a partner",
+        "married",
+        "had a child",
+    ]
+
+
+def test_the_narrator_reads_what_the_scenes_own_time_brought_the_people_around():
+    """W6, C6. Where the player character lives among them, they see or hear what comes to
+    people as it happens, so a scene that covers a year is told it under LIVES. What an
+    earlier turn brought, and what nobody told them, stays out, and a scene with no such news
+    has no section."""
+    before = farm_world()
+    before.world_s = 9 * YEAR
+    before.characters["mara"] = Character(
+        id="mara", name="Mara", age=38, location_id="village", met_by=["tomas"]
+    )
+    assert "## LIVES" not in brief(before).user
+
+    after = before.model_copy(deep=True)
+    after.world_s = 10 * YEAR
+    told = {"subject_ids": ["bram", "mara"], "known_by": ["bram", "mara", "tomas"]}
+    turn = ctx().turn
+    after.lives = {
+        "life-1": LifeEvent(
+            id="life-1", kind=LifeKind.FELL_OUT, world_s=8 * YEAR, turn=turn - 1, **told
+        ),
+        "life-2": LifeEvent(
+            id="life-2", kind=LifeKind.FRIENDS, world_s=9 * YEAR + 183 * DAY, turn=turn, **told
+        ),
+        "life-3": LifeEvent(
+            id="life-3",
+            kind=LifeKind.PARTED,
+            subject_ids=["mara", "bram"],
+            by_id="bram",
+            world_s=9 * YEAR + 300 * DAY,
+            turn=turn,
+            known_by=["bram", "mara"],
+        ),
+    }
+
+    text = brief(before, after=after).user
+
+    assert _section(text, "LIVES") == [
+        {
+            "who": {"id": "bram", "name": "Old Bram"},
+            "what": "became close friends with someone",
+            "when": "6 months ago",
+            "with": {"id": "mara", "name": "Mara"},
+        }
+    ]
+
+
+def test_the_scenes_news_is_told_of_whoever_the_player_character_knows():
+    """C6: news is told of someone the player character knows, with whoever it was with. An
+    event whose first subject they have never heard of is told of the other, and one between
+    two people they have never heard of isn't told at all."""
+    before = farm_world()
+    before.world_s = 9 * YEAR
+    for cid, name in (("wen", "Wen"), ("odo", "Odo")):
+        before.characters[cid] = Character(id=cid, name=name, age=30, location_id="village")
+    after = before.model_copy(deep=True)
+    after.world_s = 10 * YEAR
+    turn = ctx().turn
+    after.lives = {
+        "life-1": LifeEvent(
+            id="life-1",
+            kind=LifeKind.FRIENDS,
+            subject_ids=["wen", "bram"],
+            world_s=9 * YEAR + 183 * DAY,
+            turn=turn,
+            known_by=["wen", "bram", "tomas"],
+        ),
+        "life-2": LifeEvent(
+            id="life-2",
+            kind=LifeKind.FELL_OUT,
+            subject_ids=["wen", "odo"],
+            world_s=9 * YEAR + 200 * DAY,
+            turn=turn,
+            known_by=["wen", "odo", "tomas"],
+        ),
+    }
+
+    told = _section(brief(before, after=after).user, "LIVES")
+
+    assert [(line["who"]["id"], line["with"]["id"]) for line in told] == [("bram", "wen")]
+
+
+def test_the_narrator_is_told_people_lead_lives_of_their_own():
+    """W6: the rule the brief's lines stand on, and Miki's own limit to it: nothing is made
+    to happen, and nobody gets a wedding or a child the record doesn't hold."""
+    system = " ".join(prompts.NARRATOR_SYSTEM.split())
+
+    assert "People lead lives of their own while the story is elsewhere (W6, W10)." in system
+    assert "after years they are that much older, and it shows on them" in system
+    assert "never undo it, and never make up a wedding, a child or a parting" in system
+    assert "Someone marked unnamed is a partner or a child the world brought" in system
+    assert "Someone with no news is as they were left, a little older" in system
+    assert 'does a partner it gave someone ("Mara\'s partner")' in system
+    assert "last_seen and news where time has gone by" in system

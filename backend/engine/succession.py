@@ -44,6 +44,7 @@ from engine.state.cast import Activity, Character, PlaceStatus, Prominence, Repu
 from engine.state.records import Fallen, GoalStatus, LeadStatus
 from engine.state.scene import SceneFrame
 from engine.state.world import WorldState
+from engine.world.lives import hand_over
 
 
 class Station(StrEnum):
@@ -192,6 +193,8 @@ def carry_on(
             update={"known_by": [successor.id], "met_by": [successor.id]}
         )
     new.player_id = successor.id
+    # W6: whom they were last with, and whose news they have heard, is theirs from here on.
+    hand_over(new)
     new.openings = []  # A3: the openings were the old character's, not theirs
     # C6: they know where they live, and the places around it.
     place = new.places.get(successor.location_id or "")

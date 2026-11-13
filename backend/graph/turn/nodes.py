@@ -661,6 +661,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         Issue("start_told", "the story told it", subject=key, area=key.partition(":")[0])
         for key in told
     ]
+    # W6, C6: the player character has now been with whoever the scene ended with, and has
+    # heard what the years brought them. Each is logged by its code only (T6), never who or what.
+    world, heard = pipeline.settle_lives(world)
+    issues += [Issue("life_heard", "the scene had them meet", subject=key) for key in heard]
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 

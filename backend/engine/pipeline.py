@@ -8,8 +8,8 @@
    `direct`: whether something new comes in, callbacks, suggestions and the picture (W16, M1).
 4. to 7. (context, narrate and the narrator's state update are the graph's. The graph applies the
    update with `engine.apply.apply_delta(state, delta, ctx, source=DeltaSource.NARRATOR)`, then
-   `settle_trips`, `settle_witnesses`, `settle_encounter`, `settle_path`, `settle_picture` and
-   `settle_untold`, and runs
+   `settle_trips`, `settle_witnesses`, `settle_encounter`, `settle_path`, `settle_picture`,
+   `settle_untold` and `settle_lives`, and runs
    `engine.invariants.check_transition` on the turn's first and last states before saving)
 
 Each seam has a trivial default body here. Other workstreams replace a body by calling into their
@@ -49,7 +49,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import carriers, hearsay, journeys
+from engine.world import carriers, hearsay, journeys, lives
 from engine.world.geography import region_of
 from engine.world.scheduling import World
 
@@ -65,6 +65,7 @@ __all__ = [
     "record_direction",
     "resolve",
     "settle_encounter",
+    "settle_lives",
     "settle_path",
     "settle_picture",
     "settle_trips",
@@ -516,6 +517,15 @@ def settle_untold(state: WorldState, named: Iterable[str] = ()) -> tuple[WorldSt
     out = {*named, *untold.reached(state)}
     told = [entry for entry in state.untold if entry in out]
     return (untold.tell(state, told), told) if told else (state, [])
+
+
+def settle_lives(state: WorldState) -> tuple[WorldState, list[str]]:
+    """After the narrator's update is applied (step 6). Whoever the scene ended with, the
+    player character has now been with, and has heard what the years brought each of them
+    (W6, C6, `engine.world.lives`): the narrator was shown that news to tell. Returns the
+    state, a new one when anything changed, and the ids of the news now heard, for the
+    turn's log."""
+    return lives.settle(state)
 
 
 def settle_picture(state: WorldState, plan: DirectorPlan) -> tuple[WorldState, DirectorPlan]:

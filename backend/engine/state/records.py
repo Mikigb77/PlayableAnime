@@ -455,6 +455,43 @@ class Bond(EngineModel):
         return self.steps[-1].world_s if self.steps else 0
 
 
+class LifeKind(StrEnum):
+    """W6. What came to someone in the life they lead on their own, while the story was
+    elsewhere."""
+
+    PAIRED = "paired"  # they found a partner
+    MARRIED = "married"
+    PARTED = "parted"  # they and their partner parted
+    CHILD = "child"  # a child was born to them
+    FRIENDS = "friends"  # they and someone became close friends
+    FELL_OUT = "fell_out"  # they and someone fell out for good
+
+
+class LifeEvent(EngineModel):
+    """W6, C1, C6. Something that came to one or two people in their own lives, by the world's
+    doing and in its own time: when, to whom, and who knows of it. The change itself is on the
+    records it touched (a romance, a child, how two people feel about each other); this is
+    the news of it, for whoever hasn't heard. It is worded where it is read
+    (`engine.world.lives.said` for the narrator, the player's Memory in the story's language),
+    so nothing here is a sentence."""
+
+    id: str
+    kind: LifeKind
+    subject_ids: list[str] = Field(
+        min_length=1, max_length=2, description="Whom it came to: someone, or the two of them."
+    )
+    child_id: str | None = Field(default=None, description="The child born, for a birth.")
+    by_id: str | None = Field(default=None, description="Who ended it, for a parting.")
+    turn: int = Field(default=0, ge=0)
+    world_s: WorldSeconds = 0
+    timeline_id: str = MAIN_TIMELINE
+    known_by: list[str] = Field(default_factory=list)
+
+    def other(self, character_id: str) -> str | None:
+        """The other of the two it came to, if there is one."""
+        return next((i for i in self.subject_ids if i != character_id), None)
+
+
 class ThreadKind(StrEnum):
     MYSTERY = "mystery"
     THREAT = "threat"

@@ -17,6 +17,7 @@ from engine.state.records import (
     Fallen,
     Goal,
     Lead,
+    LifeEvent,
     PendingEvent,
     Rumor,
     Thread,
@@ -185,6 +186,17 @@ class WorldState(EngineModel):
     bonds: dict[str, Bond] = Field(
         default_factory=dict, description="W17: the romances on record, by id."
     )
+    lives: dict[str, LifeEvent] = Field(
+        default_factory=dict,
+        description="W6: what came to people in their own lives while the story was "
+        "elsewhere, by id, the latest `engine.world.tuning.LIVES_KEPT` of them.",
+    )
+    aged_s: WorldSeconds | None = Field(
+        default=None,
+        description="W10: the moment everyone's age on record is brought up to, in whole "
+        "years from the first time the world counted (`engine.world.lives.grow_older`). None "
+        "until then.",
+    )
     facts: dict[str, Fact] = Field(default_factory=dict)
     goals: dict[str, Goal] = Field(default_factory=dict)
     leads: dict[str, Lead] = Field(default_factory=dict)
@@ -300,6 +312,7 @@ _KEYED_COLLECTIONS = (
     "deeds",
     "rumors",
     "bonds",
+    "lives",
     "facts",
     "goals",
     "leads",

@@ -212,14 +212,19 @@ def keeps_to(state: WorldState, other: Character, suitor_id: str) -> str | None:
     """The partner someone keeps to against a suitor, by id, or None when nothing of the
     kind closes their heart: they have no other partner, they aren't steadfast, or their own
     bond no longer holds them, which is a heart for their partner under `LEAVES_UNDER` where
-    the marriage isn't for life. Someone who has answered the suitor already, as the record
-    has it, is past keeping to anyone."""
+    the marriage isn't for life. Someone who answered the suitor while they had that partner,
+    as the record has it, is past keeping to anyone. An answer from before the two were a
+    couple doesn't count: whoever was courted, left for years and found someone since
+    (`engine.world.lives`) keeps to the partner they have now."""
     partner = kept(state, other.id, suitor_id)
     if partner is None or faith(state, other) is not Faith.STEADFAST:
         return None
     ours = live(state, other.id, suitor_id)
     if ours is not None and ours.stage is not BondStage.INTEREST:
-        return None
+        answers = [s.world_s for s in ours.steps if s.stage is not BondStage.INTEREST]
+        answered = answers[-1] if answers else 0
+        if answered >= (couple_since(live(state, other.id, partner)) or 0):
+            return None
     if heart_for(state, other, partner) >= LEAVES_UNDER or for_life(state, other.id, partner):
         return partner
     return None
